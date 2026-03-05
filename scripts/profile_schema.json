@@ -1,0 +1,17 @@
+{
+  "required": [
+    "meta",
+    "universe",
+    "model",
+    "strategy"
+  ],
+  "meta": {
+    "required": ["name", "market", "benchmark"]
+  },
+  "model": {
+    "required": ["class", "features", "label", "train_window"]
+  },
+  "strategy": {
+    "required": ["buy_rule", "sell_rule", "position_rule", "capital", "costs_bps", "backtest_window"]
+  }
+}

@@ -1,0 +1,10 @@
+policy:
+  us:
+    - yfinance
+  cn:
+    - efinance
+    - akshare
+    - baostock
+    - yfinance
+  hk:
+    - yfinance

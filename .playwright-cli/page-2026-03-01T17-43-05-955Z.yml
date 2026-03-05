@@ -1,0 +1,421 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e9]: ALPHA ENGINE
+      - navigation [ref=e10]:
+        - button "Agent Center" [ref=e11] [cursor=pointer]:
+          - img [ref=e13]
+          - generic [ref=e25]: Agent Center
+        - button "Dashboard" [ref=e26] [cursor=pointer]:
+          - img [ref=e27]
+          - generic [ref=e32]: Dashboard
+        - button "Stock Terminal" [ref=e33] [cursor=pointer]:
+          - img [ref=e34]
+          - generic [ref=e36]: Stock Terminal
+        - button "Arena" [ref=e37] [cursor=pointer]:
+          - img [ref=e38]
+          - generic [ref=e44]: Arena
+        - button "Model Registry" [ref=e45] [cursor=pointer]:
+          - img [ref=e46]
+          - generic [ref=e49]: Model Registry
+        - button "Compare" [ref=e50] [cursor=pointer]:
+          - img [ref=e51]
+          - generic [ref=e55]: Compare
+        - button "Reports" [ref=e56] [cursor=pointer]:
+          - img [ref=e57]
+          - generic [ref=e60]: Reports
+        - button "Data Management" [ref=e61] [cursor=pointer]:
+          - img [ref=e62]
+          - generic [ref=e66]: Data Management
+        - button "Strategy Spec" [ref=e67] [cursor=pointer]:
+          - img [ref=e68]
+          - generic [ref=e71]: Strategy Spec
+      - generic [ref=e72]:
+        - button "Collapse" [ref=e73] [cursor=pointer]:
+          - img [ref=e74]
+          - generic [ref=e77]: Collapse
+        - button "Panic" [ref=e78] [cursor=pointer]:
+          - img [ref=e79]
+          - generic [ref=e81]: Panic
+    - generic [ref=e82]:
+      - generic [ref=e83]:
+        - generic [ref=e84]:
+          - generic [ref=e85]: "Global Market:"
+          - generic [ref=e86]: 2026-02-27
+        - button "warning 1" [ref=e132] [cursor=pointer]:
+          - img [ref=e133]
+          - generic [ref=e92]: warning
+          - generic [ref=e135]: "1"
+        - button "Engine Idle" [ref=e93] [cursor=pointer]:
+          - generic [ref=e94]:
+            - img [ref=e95]
+            - generic [ref=e98]: Engine Idle
+      - banner [ref=e99]:
+        - heading "control center" [level=2] [ref=e101]
+        - generic [ref=e102]:
+          - button [ref=e104] [cursor=pointer]:
+            - img [ref=e105]
+          - button [ref=e111] [cursor=pointer]:
+            - img [ref=e112]
+          - button "Zhihao" [ref=e115] [cursor=pointer]:
+            - img [ref=e116]
+            - generic [ref=e119]: Zhihao
+      - main [ref=e120]:
+        - generic [ref=e136]:
+          - generic [ref=e137]:
+            - generic [ref=e138]:
+              - heading "Control Center" [level=1] [ref=e139]:
+                - img [ref=e140]
+                - text: Control Center
+              - paragraph [ref=e152]: Agentic Alpha Engine • Multi-Agent Orchestration
+            - button "System Healthy" [ref=e154] [cursor=pointer]:
+              - img [ref=e155]
+              - text: System Healthy
+          - generic [ref=e157]:
+            - generic [ref=e158]:
+              - heading "Thought Stream" [level=3] [ref=e160]:
+                - img [ref=e161]
+                - text: Thought Stream
+              - generic [ref=e174]:
+                - generic [ref=e175]:
+                  - generic [ref=e176]:
+                    - generic [ref=e177]: Governance Agent
+                    - generic [ref=e178]: 05:41 PM
+                  - paragraph [ref=e179]: Pipeline blocked by Risk Veto. Awaiting human intervention.
+                - generic [ref=e180]:
+                  - generic [ref=e181]:
+                    - generic [ref=e182]: Governance Agent
+                    - generic [ref=e183]: 05:41 PM
+                  - paragraph [ref=e184]: Evidence Canvas published to artifacts/dashboard/evidence_canvas.json
+                - generic [ref=e185]:
+                  - generic [ref=e186]:
+                    - generic [ref=e187]: Risk Agent
+                    - generic [ref=e188]: 05:41 PM
+                  - paragraph [ref=e189]:
+                    - img [ref=e190]
+                    - text: "VETO: Rejecting current Alpha proposals. Modifying pipeline guardrails. Reduced target leverage by 25%."
+                - generic [ref=e192]:
+                  - generic [ref=e193]:
+                    - generic [ref=e194]: Risk Agent (Sentinel)
+                    - generic [ref=e195]: 05:41 PM
+                  - paragraph [ref=e196]:
+                    - img [ref=e197]
+                    - text: "Recorded new risk case: High_Vol_Panic"
+                - generic [ref=e199]:
+                  - generic [ref=e200]:
+                    - generic [ref=e201]: Risk Agent
+                    - generic [ref=e202]: 05:41 PM
+                  - paragraph [ref=e203]:
+                    - img [ref=e204]
+                    - text: High risk event detected (IV=18.66, Panic=86.8). Exercising Dynamic Veto.
+                - generic [ref=e206]:
+                  - generic [ref=e207]:
+                    - generic [ref=e208]: Risk Agent
+                    - generic [ref=e209]: 05:41 PM
+                  - paragraph [ref=e210]:
+                    - img [ref=e211]
+                    - text: "Real-time IV: 18.66. Analyzing regime against historical risk cases."
+                - generic [ref=e213]:
+                  - generic [ref=e214]:
+                    - generic [ref=e215]: Risk Agent (Sentinel)
+                    - generic [ref=e216]: 05:41 PM
+                  - paragraph [ref=e217]:
+                    - img [ref=e218]
+                    - text: "Calculated market panic index: 86.8/100"
+                - generic [ref=e220]:
+                  - generic [ref=e221]:
+                    - generic [ref=e222]: Risk Agent (Sentinel)
+                    - generic [ref=e223]: 05:41 PM
+                  - paragraph [ref=e224]:
+                    - img [ref=e225]
+                    - text: Performing Sentiment Audit via news aggregation...
+                - generic [ref=e227]:
+                  - generic [ref=e228]:
+                    - generic [ref=e229]: Risk Agent
+                    - generic [ref=e230]: 05:41 PM
+                  - paragraph [ref=e231]:
+                    - img [ref=e232]
+                    - text: Commencing Risk Audit Routine over US...
+                - generic [ref=e234]:
+                  - generic [ref=e235]:
+                    - generic [ref=e236]: Governance Agent
+                    - generic [ref=e237]: 05:41 PM
+                  - paragraph [ref=e238]: "Review Loop: Submitting Alpha proposal for final Risk Audit..."
+                - generic [ref=e239]:
+                  - generic [ref=e240]:
+                    - generic [ref=e241]: Alpha Agent
+                    - generic [ref=e242]: 05:41 PM
+                  - paragraph [ref=e243]:
+                    - img [ref=e244]
+                    - text: Proposing model 'Mom_Vol_Alpha_v1' promotion to staging for Risk Audit.
+                - generic [ref=e247]:
+                  - generic [ref=e248]:
+                    - generic [ref=e249]: Alpha Agent
+                    - generic [ref=e250]: 05:41 PM
+                  - paragraph [ref=e251]:
+                    - img [ref=e252]
+                    - text: "Backtest completed. Metrics: Ann. Ret 31.17%, Sharpe 1.67. Meets deployment criteria."
+                - generic [ref=e255]:
+                  - generic [ref=e256]:
+                    - generic [ref=e257]: Alpha Agent
+                    - generic [ref=e258]: 05:41 PM
+                  - paragraph [ref=e259]:
+                    - img [ref=e260]
+                    - text: Updated factor_genes.json with latest experiment results.
+                - generic [ref=e263]:
+                  - generic [ref=e264]:
+                    - generic [ref=e265]: Alpha Agent
+                    - generic [ref=e266]: 05:41 PM
+                  - paragraph [ref=e267]:
+                    - img [ref=e268]
+                    - text: "Executing tool: `run_orchestrator(mode='rebacktest')`"
+                - generic [ref=e271]:
+                  - generic [ref=e272]:
+                    - generic [ref=e273]: Alpha Agent
+                    - generic [ref=e274]: 05:41 PM
+                  - paragraph [ref=e275]:
+                    - img [ref=e276]
+                    - text: Compiling Qlib Alpha158 expressions and dispatching to Orchestrator Tool...
+                - generic [ref=e279]:
+                  - generic [ref=e280]:
+                    - generic [ref=e281]: Alpha Agent (Refiner)
+                    - generic [ref=e282]: 05:41 PM
+                  - paragraph [ref=e283]:
+                    - img [ref=e284]
+                    - text: "Hyperparameters tuned: lr=0.01, max_depth=6"
+                - generic [ref=e287]:
+                  - generic [ref=e288]:
+                    - generic [ref=e289]: Alpha Agent (Refiner)
+                    - generic [ref=e290]: 05:40 PM
+                  - paragraph [ref=e291]:
+                    - img [ref=e292]
+                    - text: Tuning hyperparameters (learning rate, tree depth) to optimize Sharpe Ratio...
+                - generic [ref=e295]:
+                  - generic [ref=e296]:
+                    - generic [ref=e297]: Alpha Agent
+                    - generic [ref=e298]: 05:40 PM
+                  - paragraph [ref=e299]:
+                    - img [ref=e300]
+                    - text: "Proposing: Hypothesis: High volatility regimes combined with positive 20-day momentum yield asymmetric returns."
+                - generic [ref=e303]:
+                  - generic [ref=e304]:
+                    - generic [ref=e305]: Alpha Agent (Data Scout)
+                    - generic [ref=e306]: 05:40 PM
+                  - paragraph [ref=e307]:
+                    - img [ref=e308]
+                    - text: Data integrity check passed. No critical NaNs found.
+                - generic [ref=e311]:
+                  - generic [ref=e312]:
+                    - generic [ref=e313]: Alpha Agent (Data Scout)
+                    - generic [ref=e314]: 05:40 PM
+                  - paragraph [ref=e315]:
+                    - img [ref=e316]
+                    - text: Verifying data integrity for US market...
+                - generic [ref=e319]:
+                  - generic [ref=e320]:
+                    - generic [ref=e321]: Alpha Agent
+                    - generic [ref=e322]: 05:40 PM
+                  - paragraph [ref=e323]:
+                    - img [ref=e324]
+                    - text: Initiating autonomous research cycle for US equities.
+                - generic [ref=e327]:
+                  - generic [ref=e328]:
+                    - generic [ref=e329]: Governance Agent
+                    - generic [ref=e330]: 05:40 PM
+                  - paragraph [ref=e331]: Market normal. Instructing Alpha to proceed with standard research.
+                - generic [ref=e332]:
+                  - generic [ref=e333]:
+                    - generic [ref=e334]: Risk Agent
+                    - generic [ref=e335]: 05:40 PM
+                  - paragraph [ref=e336]:
+                    - img [ref=e337]
+                    - text: Market regime declared NORMAL. Current leverage target maintained. Alpha proposals conditionally approved.
+                - generic [ref=e339]:
+                  - generic [ref=e340]:
+                    - generic [ref=e341]: Risk Agent
+                    - generic [ref=e342]: 05:40 PM
+                  - paragraph [ref=e343]:
+                    - img [ref=e344]
+                    - text: "Real-time IV: 20.18. Analyzing regime against historical risk cases."
+                - generic [ref=e346]:
+                  - generic [ref=e347]:
+                    - generic [ref=e348]: Risk Agent (Sentinel)
+                    - generic [ref=e349]: 05:40 PM
+                  - paragraph [ref=e350]:
+                    - img [ref=e351]
+                    - text: "Calculated market panic index: 33.1/100"
+                - generic [ref=e353]:
+                  - generic [ref=e354]:
+                    - generic [ref=e355]: Risk Agent (Sentinel)
+                    - generic [ref=e356]: 05:40 PM
+                  - paragraph [ref=e357]:
+                    - img [ref=e358]
+                    - text: Performing Sentiment Audit via news aggregation...
+                - generic [ref=e360]:
+                  - generic [ref=e361]:
+                    - generic [ref=e362]: Risk Agent
+                    - generic [ref=e363]: 05:40 PM
+                  - paragraph [ref=e364]:
+                    - img [ref=e365]
+                    - text: Commencing Risk Audit Routine over US...
+                - generic [ref=e367]:
+                  - generic [ref=e368]:
+                    - generic [ref=e369]: Governance Agent
+                    - generic [ref=e370]: 05:40 PM
+                  - paragraph [ref=e371]: Consulting Risk Agent for Market Weather...
+                - generic [ref=e372]:
+                  - generic [ref=e373]:
+                    - generic [ref=e374]: Governance Agent
+                    - generic [ref=e375]: 05:39 PM
+                  - paragraph [ref=e376]: Starting daily routine for us market...
+                - generic [ref=e377]:
+                  - generic [ref=e378]:
+                    - generic [ref=e379]: Governance Agent
+                    - generic [ref=e380]: 10:56 PM
+                  - paragraph [ref=e381]: All pipelines finished successfully. Dashboard UI updated.
+                - generic [ref=e382]:
+                  - generic [ref=e383]:
+                    - generic [ref=e384]: Governance Agent
+                    - generic [ref=e385]: 10:56 PM
+                  - paragraph [ref=e386]: "Executing tool: `run_orchestrator('cn')`..."
+                - generic [ref=e387]:
+                  - generic [ref=e388]:
+                    - generic [ref=e389]: Governance Agent
+                    - generic [ref=e390]: 10:56 PM
+                  - paragraph [ref=e391]: Alpha research complete. Initiating core pipeline inference task.
+                - generic [ref=e392]:
+                  - generic [ref=e393]:
+                    - generic [ref=e394]: Alpha Agent
+                    - generic [ref=e395]: 10:56 PM
+                  - paragraph [ref=e396]:
+                    - img [ref=e397]
+                    - text: Proposing model 'Mom_Vol_Alpha_v1' promotion to staging for human review.
+                - generic [ref=e400]:
+                  - generic [ref=e401]:
+                    - generic [ref=e402]: Alpha Agent
+                    - generic [ref=e403]: 10:56 PM
+                  - paragraph [ref=e404]:
+                    - img [ref=e405]
+                    - text: "Backtest completed. Metrics: Ann. Ret 24.35%, Sharpe 1.80. Meets deployment criteria."
+                - generic [ref=e408]:
+                  - generic [ref=e409]:
+                    - generic [ref=e410]: Alpha Agent
+                    - generic [ref=e411]: 10:56 PM
+                  - paragraph [ref=e412]:
+                    - img [ref=e413]
+                    - text: "Executing tool: `run_orchestrator(mode='rebacktest')`"
+                - generic [ref=e416]:
+                  - generic [ref=e417]:
+                    - generic [ref=e418]: Alpha Agent
+                    - generic [ref=e419]: 10:56 PM
+                  - paragraph [ref=e420]:
+                    - img [ref=e421]
+                    - text: Compiling Qlib Alpha158 expressions and dispatching to Orchestrator Tool...
+                - generic [ref=e424]:
+                  - generic [ref=e425]:
+                    - generic [ref=e426]: Alpha Agent
+                    - generic [ref=e427]: 10:56 PM
+                  - paragraph [ref=e428]:
+                    - img [ref=e429]
+                    - text: "Hypothesis: High volatility regimes combined with positive 20-day momentum yield asymmetric returns. Constructing feature set: `(Close - Close[20])/Close[20]` + `StdDev(Close, 20)`."
+                - generic [ref=e432]:
+                  - generic [ref=e433]:
+                    - generic [ref=e434]: Alpha Agent
+                    - generic [ref=e435]: 10:56 PM
+                  - paragraph [ref=e436]:
+                    - img [ref=e437]
+                    - text: Initiating autonomous research cycle for CN equities.
+                - generic [ref=e440]:
+                  - generic [ref=e441]:
+                    - generic [ref=e442]: Governance Agent
+                    - generic [ref=e443]: 10:56 PM
+                  - paragraph [ref=e444]: Risk cleared. Requesting Alpha Agent to execute research cycle.
+                - generic [ref=e445]:
+                  - generic [ref=e446]:
+                    - generic [ref=e447]: Risk Agent
+                    - generic [ref=e448]: 10:56 PM
+                  - paragraph [ref=e449]:
+                    - img [ref=e450]
+                    - text: Risk Audit Complete. System is clear for Alpha Engine inference.
+                - generic [ref=e452]:
+                  - generic [ref=e453]:
+                    - generic [ref=e454]: Risk Agent
+                    - generic [ref=e455]: 10:56 PM
+                  - paragraph [ref=e456]:
+                    - img [ref=e457]
+                    - text: Market regime declared NORMAL. Current leverage target maintained. Risk parameters logged.
+                - generic [ref=e459]:
+                  - generic [ref=e460]:
+                    - generic [ref=e461]: Risk Agent
+                    - generic [ref=e462]: 10:56 PM
+                  - paragraph [ref=e463]:
+                    - img [ref=e464]
+                    - text: Calculated real-time implied volatility at 22.12. Analyzing regime.
+                - generic [ref=e466]:
+                  - generic [ref=e467]:
+                    - generic [ref=e468]: Risk Agent
+                    - generic [ref=e469]: 10:56 PM
+                  - paragraph [ref=e470]:
+                    - img [ref=e471]
+                    - text: Commencing Risk Audit Routine over CN...
+                - generic [ref=e473]:
+                  - generic [ref=e474]:
+                    - generic [ref=e475]: Governance Agent
+                    - generic [ref=e476]: 10:56 PM
+                  - paragraph [ref=e477]: Calling Risk Agent to verify market conditions before execution.
+                - generic [ref=e478]:
+                  - generic [ref=e479]:
+                    - generic [ref=e480]: Governance Agent
+                    - generic [ref=e481]: 10:56 PM
+                  - paragraph [ref=e482]: Starting new daily Multi-Agent workflow.
+            - generic [ref=e483]:
+              - heading "Evidence Canvas" [level=3] [ref=e485]:
+                - img [ref=e486]
+                - text: Evidence Canvas
+              - generic [ref=e495]:
+                - heading "Normalized Alpha Trajectory (%)" [level=3] [ref=e497]:
+                  - img [ref=e498]
+                  - text: Normalized Alpha Trajectory (%)
+                - generic [ref=e503]:
+                  - img [ref=e504]:
+                    - generic [ref=e508]:
+                      - generic [ref=e510]: Feb 25
+                      - generic [ref=e512]: Apr 25
+                      - generic [ref=e514]: Jun 25
+                      - generic [ref=e516]: Aug 25
+                      - generic [ref=e518]: Oct 25
+                      - generic [ref=e520]: Dec 25
+                      - generic [ref=e522]: Feb 26
+                    - generic [ref=e524]:
+                      - generic [ref=e526]: "-20%"
+                      - generic [ref=e528]: 0%
+                      - generic [ref=e530]: 20%
+                      - generic [ref=e532]: 40%
+                      - generic [ref=e534]: 60%
+                  - list [ref=e538]:
+                    - listitem [ref=e539]:
+                      - img [ref=e540]
+                      - text: "[US] LGBM_v1 2026-02-28"
+                    - listitem [ref=e542]:
+                      - img [ref=e543]
+                      - text: "[US] 2d48ee57 2026-02-05"
+              - generic [ref=e546]:
+                - generic [ref=e547]:
+                  - generic [ref=e548]:
+                    - img [ref=e549]
+                    - heading "Alpha Copilot" [level=3] [ref=e561]
+                  - button [ref=e562] [cursor=pointer]:
+                    - img [ref=e563]
+                - generic [ref=e568]:
+                  - generic [ref=e570]:
+                    - img [ref=e572]
+                    - paragraph [ref=e577]: Agentic Alpha Copilot initialized. I DO NOT execute trades directly. I analyze, score, and recommend. What sector should we investigate today?
+                  - generic [ref=e578]:
+                    - generic [ref=e579]:
+                      - textbox "Ask the Copilot to analyze a specific pair..." [ref=e580]
+                      - button [disabled]:
+                        - img
+                    - generic [ref=e581]: Copilot Answers are Non-Binding
+  - generic [ref=e582]: Oct

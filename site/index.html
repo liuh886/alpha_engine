@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Assistant - Results</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+    <!-- Modal for Curves -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-4 border-b flex justify-between items-center sticky top-0 bg-white">
+                <h2 id="modal-title" class="text-xl font-bold">Equity Curve</h2>
+                <button id="close-modal" class="text-gray-500 hover:text-black text-2xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <canvas id="curve-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bg-blue-800 p-4 shadow-md text-white">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Trading Assistant Dashboard</h1>
+            <div id="manifest-info" class="text-sm opacity-75">Loading...</div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto py-8">
+        <!-- Dashboard Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 class="text-gray-500 uppercase text-xs font-bold mb-1">Total Models</h3>
+                <p id="stat-models" class="text-3xl font-bold text-blue-600">-</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 class="text-gray-500 uppercase text-xs font-bold mb-1">Total Reports</h3>
+                <p id="stat-reports" class="text-3xl font-bold text-green-600">-</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 class="text-gray-500 uppercase text-xs font-bold mb-1">Latest Snapshot</h3>
+                <p id="stat-snapshot" class="text-3xl font-bold text-purple-600">-</p>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Model Leaderboard -->
+            <section class="bg-white p-6 rounded-lg shadow-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold border-b-2 border-blue-500 pb-1">Model Leaderboard</h2>
+                    <select id="market-filter" class="border rounded p-1 text-sm bg-gray-50">
+                        <option value="all">All Markets</option>
+                        <option value="us">US Equities</option>
+                        <option value="cn">CN A-Shares</option>
+                    </select>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-50 text-gray-600 uppercase text-xs leading-normal">
+                            <tr>
+                                <th class="py-3 px-4 text-left">Model / Tag</th>
+                                <th class="py-3 px-4 text-center">Market</th>
+                                <th class="py-3 px-4 text-center">Returns</th>
+                                <th class="py-3 px-4 text-center">DD</th>
+                                <th class="py-3 px-4 text-center">Chart</th>
+                            </tr>
+                        </thead>
+                        <tbody id="models-table" class="text-gray-600 text-sm">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Arena Rankings -->
+            <section class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold border-b-2 border-green-500 pb-1 mb-4">Global Arena Rankings</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-50 text-gray-600 uppercase text-xs leading-normal">
+                            <tr>
+                                <th class="py-3 px-4 text-left">Rank</th>
+                                <th class="py-3 px-4 text-left">Participant</th>
+                                <th class="py-3 px-4 text-center">NAV</th>
+                                <th class="py-3 px-4 text-center">Daily</th>
+                            </tr>
+                        </thead>
+                        <tbody id="arena-table" class="text-gray-600 text-sm">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Reports Index -->
+            <section class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
+                <h2 class="text-xl font-bold border-b-2 border-purple-500 pb-1 mb-4 text-center">Recent Reports</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="reports-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="mt-12 py-6 bg-gray-200 text-center text-gray-600 text-sm">
+        Trading Assistant Static Dashboard &copy; 2026 | Local-First Research
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

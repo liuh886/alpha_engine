@@ -1,0 +1,20 @@
+        if path == "/api/models/promote":
+            payload = _read_json_body(self)
+            version_id = str(payload.get("version_id") or "").strip()
+            stage = str(payload.get("stage") or "RECOMMENDED").strip()
+            if not version_id:
+                self._json(400, {"ok": False, "error": "missing version_id"})
+                return
+            ok = _get_model_service().promote_model(version_id, stage)
+            self._json(200, {"ok": ok})
+            return
+
+        if path == "/api/models/delete":
+            payload = _read_json_body(self)
+            version_id = str(payload.get("version_id") or "").strip()
+            if not version_id:
+                self._json(400, {"ok": False, "error": "missing version_id"})
+                return
+            ok = _get_model_service().delete_model(version_id)
+            self._json(200, {"ok": ok})
+            return

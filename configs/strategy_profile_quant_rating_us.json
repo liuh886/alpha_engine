@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "QuantRating_Weekly30EW_v1",
+    "description": "Weekly equal-weight 30-stock portfolio. Inclusion requires Strong Buy persistence; weekly rebalance back to 30 EW; cash reinvest only on rebalance day.",
+    "market": "us",
+    "benchmark": "QQQ",
+    "benchmark_by_market": {
+      "us": "QQQ"
+    }
+  },
+  "strategy": {
+    "strategy_mode": "weekly_quant_rating",
+    "universe_size": 30,
+    "strongbuy_consecutive_days": 3,
+    "strongbuy_fraction": 0.2,
+    "lookback_days": 20,
+    "min_dollar_vol_20d": 10000000,
+    "price_cap": 10000
+  }
+}

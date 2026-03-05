@@ -1,0 +1,66 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e6]
+      - generic [ref=e9]: ALPHA ENGINE
+    - navigation [ref=e10]:
+      - button "Agent Center" [ref=e11] [cursor=pointer]:
+        - img [ref=e13]
+        - generic [ref=e25]: Agent Center
+      - button "Dashboard" [ref=e26] [cursor=pointer]:
+        - img [ref=e27]
+        - generic [ref=e32]: Dashboard
+      - button "Stock Terminal" [ref=e33] [cursor=pointer]:
+        - img [ref=e34]
+        - generic [ref=e36]: Stock Terminal
+      - button "Arena" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+        - generic [ref=e44]: Arena
+      - button "Model Registry" [ref=e45] [cursor=pointer]:
+        - img [ref=e46]
+        - generic [ref=e49]: Model Registry
+      - button "Compare" [ref=e50] [cursor=pointer]:
+        - img [ref=e51]
+        - generic [ref=e55]: Compare
+      - button "Reports" [ref=e56] [cursor=pointer]:
+        - img [ref=e57]
+        - generic [ref=e60]: Reports
+      - button "Data Management" [ref=e61] [cursor=pointer]:
+        - img [ref=e62]
+        - generic [ref=e66]: Data Management
+      - button "Strategy Spec" [ref=e67] [cursor=pointer]:
+        - img [ref=e68]
+        - generic [ref=e71]: Strategy Spec
+    - generic [ref=e72]:
+      - button "Collapse" [ref=e73] [cursor=pointer]:
+        - img [ref=e74]
+        - generic [ref=e77]: Collapse
+      - button "Panic" [ref=e78] [cursor=pointer]:
+        - img [ref=e79]
+        - generic [ref=e81]: Panic
+  - generic [ref=e82]:
+    - generic [ref=e83]:
+      - generic [ref=e84]:
+        - generic [ref=e85]: "Global Market:"
+        - generic [ref=e86]: OFFLINE
+      - button "ok" [ref=e88] [cursor=pointer]:
+        - img [ref=e89]
+        - generic [ref=e92]: ok
+      - button "Engine Idle" [ref=e93] [cursor=pointer]:
+        - generic [ref=e94]:
+          - img [ref=e95]
+          - generic [ref=e98]: Engine Idle
+    - banner [ref=e99]:
+      - heading "control center" [level=2] [ref=e101]
+      - generic [ref=e102]:
+        - button [ref=e104] [cursor=pointer]:
+          - img [ref=e105]
+        - button [ref=e111] [cursor=pointer]:
+          - img [ref=e112]
+        - button "Zhihao" [ref=e115] [cursor=pointer]:
+          - img [ref=e116]
+          - generic [ref=e119]: Zhihao
+    - main [ref=e120]:
+      - generic [ref=e123]:
+        - img [ref=e124]
+        - paragraph [ref=e126]: Warming Engines

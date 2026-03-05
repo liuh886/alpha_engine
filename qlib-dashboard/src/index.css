@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221 83% 53%;
+    --radius: 0.75rem;
+
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    /* Deep Space Elegance */
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+    --card: 222 47% 7%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Vibrant Electric Blue Core */
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    /* Soft Glass Accents */
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 223 47% 11%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+    --accent: 216 34% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Cyberpunk Reds for Destructive */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Thinner, softer glass borders */
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+    --ring: 224.3 76.3% 48%;
+
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    /* Set up explicit fallback and ensure Inter is primarily clamped */
+    @apply bg-background text-foreground antialiased selection:bg-primary/20;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  .dark body {
+    /* Dynamic Mesh Gradient Core for Dark Theme */
+    background-color: hsla(224, 71%, 4%, 1);
+    background-image:
+      radial-gradient(at 0% 0%, hsla(232, 59%, 17%, 0.3) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(280, 59%, 20%, 0.3) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(200, 59%, 20%, 0.3) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(240, 59%, 15%, 0.3) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  body:not(.dark) {
+    /* Subtle Mesh Gradient Core for Light Theme */
+    background-image:
+      radial-gradient(at 0% 0%, hsla(210, 100%, 93%, 1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(280, 100%, 95%, 1) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(180, 100%, 92%, 1) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  /* Enforce tabular (monospaced) numerals for financial numbers globally */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+
+  /* Centralized glassmorphism card classes */
+  .glass-panel {
+    @apply bg-background/60 backdrop-blur-xl border border-white/10 dark:border-white/5 rounded-xl shadow-sm;
+  }
+
+  /* Elevate specific interaction elements */
+  .glass-button {
+    @apply bg-primary/90 hover:bg-primary backdrop-blur-md shadow-lg hover:shadow-primary/25 border border-primary/20 transition-all duration-300;
+  }
+
+  /* Dynamic scrollbars to fit the aesthetic */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors;
+  }
+
+  /* Shimmering Skeleton Effect */
+  .skeleton-shimmer {
+    @apply relative overflow-hidden bg-white/5 border border-white/10 backdrop-blur-sm;
+  }
+
+  .skeleton-shimmer::after {
+    @apply absolute inset-0 -translate-x-full;
+    content: "";
+    background-image: linear-gradient(90deg,
+        transparent 0,
+        rgba(255, 255, 255, 0.08) 20%,
+        rgba(255, 255, 255, 0.15) 60%,
+        transparent);
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+}

@@ -1,0 +1,100 @@
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+return np.nanmean(self.data)
+D:\miniforge3\lib\site-packages\qlib\utils\index_data.py:492: RuntimeWarning: Mean of empty slice
+return np.nanmean(self.data)
+[25612:MainThread](2026-02-05 13:34:34,472) INFO - qlib.timer - [log.py:127] - Time cost: 0.000s | waiting `async_log` Done
+[25612:MainThread](2026-02-05 13:34:34,490) ERROR - qlib.workflow - [utils.py:41] - An exception has been raised[IndexError: index 1300 is out of bounds for axis 0 with size 1300].
+File "D:\miniforge3\lib\runpy.py", line 196, in _run_module_as_main

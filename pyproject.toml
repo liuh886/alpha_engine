@@ -1,0 +1,52 @@
+[project]
+name = "trading-assistant"
+version = "1.0.0"
+description = "AI-powered trading assistant for CN and US markets based on Microsoft Qlib."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyqlib>=0.9.0",
+    "typing_extensions>=4.12.2",
+    "numpy",
+    "pandas",
+    "fire",
+    "pyyaml",
+    "tabulate",
+    "scikit-learn",
+    "lightgbm",
+    "matplotlib",
+    "yfinance",
+    "plotly",
+    "pytest",
+    "xgboost",
+    "baostock",
+    "akshare",
+    "efinance",
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
+    "protobuf<4.0.0",
+    "setuptools==69.5.1",
+    "slowapi",
+    "tiktoken>=0.12.0",
+    "mcp",
+    "fastmcp",
+]
+
+[tool.uv]
+managed = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]

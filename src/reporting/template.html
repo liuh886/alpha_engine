@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 交易策略回测报告</title>
+    <style>
+        :root { --bg: #f0f2f5; --card: #ffffff; --text: #1f2d3d; --primary: #348fe2; --border: #ebeef5; --green: #67c23a; --red: #f56c6c; --grey: #909399; }
+        [data-theme="dark"] { --bg: #1a1a1a; --card: #2d2d2d; --text: #dcdfe6; --border: #4c4d4f; --primary: #66b1ff; }
+        body { font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; line-height: 1.5; transition: all 0.3s; }
+        .container { max-width: 1300px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 12px 0 rgba(0,0,0,.1); border: 1px solid var(--border); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .grid-kpi { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
+        .kpi-item { text-align: center; padding: 12px; border-right: 1px solid var(--border); }
+        .kpi-item:last-child { border-right: none; }
+        .kpi-label { font-size: 13px; color: var(--grey); margin-bottom: 8px; }
+        .kpi-value { font-size: 22px; font-weight: 600; }
+        .positive { color: var(--green); } .negative { color: var(--red); }
+        .chart-box { height: 450px; position: relative; margin-top: 20px; }
+        .toolbar { margin-top: 10px; display: flex; gap: 10px; }
+        button { cursor: pointer; padding: 8px 16px; border-radius: 4px; border: 1px solid var(--primary); background: var(--primary); color: white; transition: 0.2s; }
+        button.outline { background: transparent; color: var(--primary); }
+        button:hover { opacity: 0.8; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th, td { padding: 12px; border-bottom: 1px solid var(--border); text-align: left; font-size: 14px; }
+        th { background: rgba(0,0,0,0.02); color: var(--grey); font-weight: 500; cursor: pointer; }
+        tr:hover { background: rgba(52, 143, 226, 0.05); }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #eee; color: #666; margin-right: 4px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card); padding: 30px; border-radius: 8px; width: 500px; }
+        #tooltip { position: absolute; background: rgba(0,0,0,0.8); color: #fff; padding: 10px; border-radius: 4px; pointer-events: none; z-index: 100; font-size: 12px; }
+        .explanation { border-left: 4px solid var(--primary); padding-left: 15px; background: rgba(52, 143, 226, 0.05); padding: 15px; border-radius: 0 4px 4px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1 style="margin:0;">AI 交易回测报告 <small id="marketLabel" style="font-weight: normal; color: var(--grey); font-size: 16px;"></small></h1>
+                <div style="font-size: 12px; color: var(--grey); margin-top: 4px;">生成时间: <span id="genTime"></span></div>
+            </div>
+            <div class="toolbar">
+                <button class="outline" onclick="toggleTheme()">深色模式</button>
+                <button class="outline" onclick="exportData()">导出 JSON</button>
+                <button onclick="document.getElementById('importFile').click()">导入回测</button>
+                <input type="file" id="importFile" hidden accept=".json" onchange="importData(event)">
+            </div>
+        </div>
+
+        <div class="card" id="agentThoughtBox" style="display:none; border-left: 4px solid var(--primary); background: rgba(52, 143, 226, 0.05);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <h3 style="margin: 0;">🔮 Agentic Alpha Engine 思绪流</h3>
+                <span class="tag">Governance Agent</span>
+            </div>
+            <div id="agentThoughtText" style="margin-top: 10px; font-size: 14px; color: var(--text);"></div>
+        </div>
+
+        <div class="card grid-kpi" id="kpiBoard">
+            <!-- KPIs -->
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0;">净值曲线对比</h3>
+                <div style="font-size: 13px;">
+                    <input type="checkbox" id="toggleBench" checked onchange="drawEquity()"> 显示基准
+                </div>
+            </div>
+            <div class="chart-box" id="equityChart">
+                <canvas id="equityCanvas"></canvas>
+                <div id="tooltip" style="display:none;"></div>
+            </div>
+        </div>
+
+        <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="card">
+                <h3>收益来源与说明</h3>
+                <div class="explanation" id="analysisText">正在分析数据...</div>
+                <div id="contribList" style="margin-top: 15px;"></div>
+            </div>
+            <div class="card">
+                <h3>历史回撤</h3>
+                <div style="height: 250px;"><canvas id="ddCanvas"></canvas></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>详细成交记录</h3>
+            <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+                <input type="text" id="symbolFilter" placeholder="搜索代码..." onkeyup="renderTradesTable()" style="padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+            </div>
+            <div style="overflow-x: auto; max-height: 500px;">
+                <table id="tradeTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('symbol')">标的</th>
+                            <th onclick="sortTable('entry_date')">开仓日期</th>
+                            <th onclick="sortTable('exit_date')">平仓日期</th>
+                            <th onclick="sortTable('shares')">股数</th>
+                            <th onclick="sortTable('netPnl')">盈亏</th>
+                            <th onclick="sortTable('return')">收益率</th>
+                            <th>原因</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="tradeModal" class="modal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 id="modalTitle">交易详情</h2>
+            <div id="modalBody"></div>
+            <button style="margin-top: 20px; width: 100%;" onclick="closeModal()">关闭</button>
+        </div>
+    </div>
+
+    <script>
+        let backtestData = {{DATA_JSON}};
+        let sortCol = 'exit_date';
+        let sortDesc = true;
+
+        function init() {
+            if(!backtestData) return;
+            document.getElementById('marketLabel').innerText = `[${backtestData.meta.market}]`;
+            document.getElementById('genTime').innerText = backtestData.meta.generated_at;
+            
+            if (backtestData.agent_thought) {
+                document.getElementById('agentThoughtBox').style.display = 'block';
+                document.getElementById('agentThoughtText').innerHTML = `<em>"${backtestData.agent_thought}"</em>`;
+            }
+            
+            calcAndRender();
+        }
+
+        function calcAndRender() {
+            const eq = backtestData.equityCurve;
+            const trades = backtestData.trades;
+            
+            const days = eq.length;
+            const years = days / 252;
+            const totalRet = eq[days-1].strategy - 1;
+            const annRet = Math.pow(eq[days-1].strategy, 1/years) - 1;
+            
+            let rets = [];
+            let peak = 0;
+            let maxDD = 0;
+            eq.forEach((d, i) => {
+                if(i > 0) rets.push(d.strategy / eq[i-1].strategy - 1);
+                if(d.strategy > peak) peak = d.strategy;
+                let dd = (peak - d.strategy) / peak;
+                if(dd > maxDD) maxDD = dd;
+            });
+            
+            const vol = Math.sqrt(rets.map(x => x*x).reduce((a,b)=>a+b)/rets.length) * Math.sqrt(252);
+            const sharpe = (annRet - 0.02) / (vol || 0.01);
+            const winTrades = trades.filter(t => t.netPnl > 0);
+            const winRate = winTrades.length / (trades.length || 1);
+            
+            const kpiBoard = document.getElementById('kpiBoard');
+            const metrics = [
+                {label: '累计收益', value: (totalRet*100).toFixed(2)+'%', pos: totalRet > 0},
+                {label: '年化收益', value: (annRet*100).toFixed(2)+'%', pos: annRet > 0},
+                {label: '最大回撤', value: (maxDD*100).toFixed(2)+'%', neg: true},
+                {label: '夏普比率', value: sharpe.toFixed(2)},
+                {label: '交易次数', value: trades.length},
+                {label: '胜率', value: (winRate*100).toFixed(1)+'%'}
+            ];
+            kpiBoard.innerHTML = metrics.map(m => `
+                <div class="kpi-item">
+                    <div class="kpi-label">${m.label}</div>
+                    <div class="kpi-value ${m.pos?'positive':(m.neg?'negative':'')}">${m.value}</div>
+                </div>
+            `).join('');
+
+            const totalFee = trades.reduce((a, b) => a + b.fee, 0);
+            const bestTrade = [...trades].sort((a,b)=>b.netPnl - a.netPnl)[0];
+            const analysisText = `本策略在 2025 年期间主要利用 ${backtestData.meta.market} 市场的周度动量与排名特征进行交易。
+                总共产生交易 ${trades.length} 笔，手续费及滑点共侵蚀收益约 ${totalFee.toFixed(2)}。
+                盈利最丰厚的单笔交易是 ${bestTrade?.symbol || 'N/A'}，贡献了 ${bestTrade?.netPnl.toFixed(2) || 0}。
+                策略目前的超额收益主要来源于对高排名个股的捕捉。`;
+            document.getElementById('analysisText').innerText = analysisText;
+
+            drawEquity();
+            drawDrawdown();
+            renderTradesTable();
+        }
+
+        function drawEquity() {
+            const canvas = document.getElementById('equityCanvas');
+            const ctx = canvas.getContext('2d');
+            const box = document.getElementById('equityChart');
+            canvas.width = box.clientWidth * 2;
+            canvas.height = box.clientHeight * 2;
+            canvas.style.width = box.clientWidth + 'px';
+            canvas.style.height = box.clientHeight + 'px';
+            ctx.scale(2, 2);
+            
+            const data = backtestData.equityCurve;
+            const showBench = document.getElementById('toggleBench').checked;
+            
+            let minVal = Math.min(...data.map(d => Math.min(d.strategy, showBench ? d.benchmark : 1)));
+            let maxVal = Math.max(...data.map(d => Math.max(d.strategy, showBench ? d.benchmark : 1)));
+            let range = (maxVal - minVal) || 0.1;
+            
+            const w = box.clientWidth, h = box.clientHeight;
+            const pad = 40;
+            const getX = (i) => pad + (i / (data.length - 1)) * (w - 2 * pad);
+            const getY = (v) => h - pad - ((v - minVal) / range) * (h - 2 * pad);
+
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.beginPath();
+            for(let i=0; i<=4; i++) {
+                let y = getY(minVal + (range * i/4));
+                ctx.moveTo(pad, y); ctx.lineTo(w-pad, y);
+                ctx.fillStyle = '#999'; ctx.fillText((minVal + (range * i/4)).toFixed(2), 5, y+3);
+            }
+            ctx.stroke();
+
+            if(showBench) {
+                ctx.strokeStyle = '#ccc'; ctx.setLineDash([5, 5]); ctx.beginPath();
+                data.forEach((d, i) => { if(i===0) ctx.moveTo(getX(i), getY(d.benchmark)); else ctx.lineTo(getX(i), getY(d.benchmark)); });
+                ctx.stroke(); ctx.setLineDash([]);
+            }
+
+            ctx.strokeStyle = '#348fe2'; ctx.lineWidth = 2; ctx.beginPath();
+            data.forEach((d, i) => { if(i===0) ctx.moveTo(getX(i), getY(d.strategy)); else ctx.lineTo(getX(i), getY(d.strategy)); });
+            ctx.stroke();
+        }
+
+        function drawDrawdown() {
+            const canvas = document.getElementById('ddCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.parentNode.clientWidth, h = canvas.parentNode.clientHeight;
+            canvas.width = w * 2; canvas.height = h * 2; canvas.style.width = w+'px'; canvas.style.height = h+'px';
+            ctx.scale(2, 2);
+            
+            const eq = backtestData.equityCurve;
+            let peak = 0;
+            const dds = eq.map(d => { if(d.strategy > peak) peak = d.strategy; return (d.strategy - peak) / peak; });
+            const maxD = Math.max(...dds.map(Math.abs), 0.01);
+            
+            ctx.fillStyle = 'rgba(245, 108, 108, 0.1)';
+            ctx.beginPath(); ctx.moveTo(0, 0);
+            dds.forEach((v, i) => ctx.lineTo((i/(dds.length-1))*w, (Math.abs(v)/maxD)*(h-20)));
+            ctx.lineTo(w, 0); ctx.fill();
+        }
+
+        function renderTradesTable() {
+            const filter = document.getElementById('symbolFilter').value.toUpperCase();
+            const tbody = document.querySelector('#tradeTable tbody');
+            let rows = backtestData.trades.filter(t => t.symbol.toUpperCase().includes(filter));
+            rows.sort((a, b) => sortDesc ? (a[sortCol] < b[sortCol] ? 1 : -1) : (a[sortCol] > b[sortCol] ? 1 : -1));
+            tbody.innerHTML = rows.map(t => `
+                <tr onclick="showTradeDetail('${t.symbol}', '${t.entry_date}')">
+                    <td><b>${t.symbol}</b></td>
+                    <td>${t.entry_date}</td>
+                    <td>${t.exit_date}</td>
+                    <td>${t.shares}</td>
+                    <td class="${t.netPnl>0?'positive':'negative'}">${t.netPnl.toFixed(2)}</td>
+                    <td class="${t.return>0?'positive':'negative'}">${(t.return*100).toFixed(2)}%</td>
+                    <td><span class="tag">${t.reason}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        function sortTable(col) { if(sortCol === col) sortDesc = !sortDesc; else { sortCol = col; sortDesc = true; } renderTradesTable(); }
+        function toggleTheme() { const b = document.body; b.getAttribute('data-theme') === 'dark' ? b.removeAttribute('data-theme') : b.setAttribute('data-theme', 'dark'); drawEquity(); drawDrawdown(); }
+        function exportData() { const blob = new Blob([JSON.stringify(backtestData, null, 2)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backtest.json`; a.click(); }
+        function importData(e) { const file = e.target.files[0]; const reader = new FileReader(); reader.onload = (ev) => { backtestData = JSON.parse(ev.target.result); init(); }; reader.readAsText(file); }
+        function showTradeDetail(symbol, date) {
+            const t = backtestData.trades.find(x => x.symbol === symbol && x.entry_date === date);
+            document.getElementById('modalBody').innerHTML = `<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>开仓: <b>${t.entry_date}</b></div><div>平仓: <b>${t.exit_date}</b></div>
+                <div>入场价: <b>${t.entry_price.toFixed(2)}</b></div><div>出场价: <b>${t.exit_price.toFixed(2)}</b></div>
+                <div>股数: <b>${t.shares}</b></div><div>手续费: <b>${t.fee.toFixed(2)}</b></div>
+                <div style="grid-column: span 2; font-size: 18px; border-top: 1px solid #eee; padding-top: 10px;">净盈亏: <b class="${t.netPnl>0?'positive':'negative'}">${t.netPnl.toFixed(2)}</b></div>
+            </div>`;
+            document.getElementById('tradeModal').style.display = 'block';
+        }
+        function closeModal() { document.getElementById('tradeModal').style.display = 'none'; }
+        init();
+    </script>
+</body>
+</html>

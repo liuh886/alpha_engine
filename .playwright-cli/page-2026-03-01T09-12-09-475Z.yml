@@ -1,0 +1,496 @@
+- generic [ref=e3]:
+  - generic:
+    - img
+  - generic [ref=e4]:
+    - generic [ref=e8]:
+      - heading "FastAPI 0.1.0 OAS 3.1" [level=1] [ref=e9]:
+        - text: FastAPI
+        - generic [ref=e10]:
+          - generic [ref=e12]: 0.1.0
+          - generic [ref=e14]: OAS 3.1
+      - link "/openapi.json" [ref=e15] [cursor=pointer]:
+        - /url: /openapi.json
+        - generic [ref=e16]: /openapi.json
+    - button "Authorize" [ref=e20] [cursor=pointer]:
+      - generic [ref=e21]: Authorize
+      - img [ref=e22]
+    - generic [ref=e26]:
+      - generic [ref=e28]:
+        - heading "data Collapse operation" [level=3] [ref=e29] [cursor=pointer]:
+          - link "data" [ref=e30]:
+            - /url: "#/data"
+          - button "Collapse operation" [expanded] [ref=e31]:
+            - img [ref=e32]
+        - generic [ref=e35]:
+          - generic [ref=e38] [cursor=pointer]:
+            - button "POST /api/data/update Trigger Data Update" [ref=e39]:
+              - generic [ref=e40]: POST
+              - generic [ref=e41]:
+                - link "/api/data/update" [ref=e43]:
+                  - /url: "#/data/trigger_data_update_api_data_update_post"
+                  - generic [ref=e44]:
+                    - text: /api
+                    - text: /data
+                    - text: /update
+                - generic [ref=e45]: Trigger Data Update
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e48]:
+              - img [ref=e49]
+            - button "post /api/data/update" [ref=e51]:
+              - img [ref=e52]
+          - generic [ref=e56] [cursor=pointer]:
+            - button "GET /api/data/instruments Get Instruments" [ref=e57]:
+              - generic [ref=e58]: GET
+              - generic [ref=e59]:
+                - link "/api/data/instruments" [ref=e61]:
+                  - /url: "#/data/get_instruments_api_data_instruments_get"
+                  - generic [ref=e62]:
+                    - text: /api
+                    - text: /data
+                    - text: /instruments
+                - generic [ref=e63]: Get Instruments
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e66]:
+              - img [ref=e67]
+            - button "get /api/data/instruments" [ref=e69]:
+              - img [ref=e70]
+          - generic [ref=e74] [cursor=pointer]:
+            - button "GET /api/data/status Get Data Status" [ref=e75]:
+              - generic [ref=e76]: GET
+              - generic [ref=e77]:
+                - link "/api/data/status" [ref=e79]:
+                  - /url: "#/data/get_data_status_api_data_status_get"
+                  - generic [ref=e80]:
+                    - text: /api
+                    - text: /data
+                    - text: /status
+                - generic [ref=e81]: Get Data Status
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e84]:
+              - img [ref=e85]
+            - button "get /api/data/status" [ref=e87]:
+              - img [ref=e88]
+          - generic [ref=e92] [cursor=pointer]:
+            - button "GET /api/data/snapshots/latest Get Latest Snapshot" [ref=e93]:
+              - generic [ref=e94]: GET
+              - generic [ref=e95]:
+                - link "/api/data/snapshots/latest" [ref=e97]:
+                  - /url: "#/data/get_latest_snapshot_api_data_snapshots_latest_get"
+                  - generic [ref=e98]:
+                    - text: /api
+                    - text: /data
+                    - text: /snapshots
+                    - text: /latest
+                - generic [ref=e99]: Get Latest Snapshot
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e102]:
+              - img [ref=e103]
+            - button "get /api/data/snapshots/latest" [ref=e105]:
+              - img [ref=e106]
+          - generic [ref=e110] [cursor=pointer]:
+            - button "GET /api/data/quality/latest Get Latest Quality" [ref=e111]:
+              - generic [ref=e112]: GET
+              - generic [ref=e113]:
+                - link "/api/data/quality/latest" [ref=e115]:
+                  - /url: "#/data/get_latest_quality_api_data_quality_latest_get"
+                  - generic [ref=e116]:
+                    - text: /api
+                    - text: /data
+                    - text: /quality
+                    - text: /latest
+                - generic [ref=e117]: Get Latest Quality
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e120]:
+              - img [ref=e121]
+            - button "get /api/data/quality/latest" [ref=e123]:
+              - img [ref=e124]
+          - generic [ref=e128] [cursor=pointer]:
+            - 'button "GET /api/data/stock/{symbol} Get Stock Data" [ref=e129]':
+              - generic [ref=e130]: GET
+              - generic [ref=e131]:
+                - 'link "/api/data/stock/{symbol}" [ref=e133]':
+                  - /url: "#/data/get_stock_data_api_data_stock__symbol__get"
+                  - generic [ref=e134]:
+                    - text: /api
+                    - text: /data
+                    - text: /stock
+                    - text: "/{symbol}"
+                - generic [ref=e135]: Get Stock Data
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e138]:
+              - img [ref=e139]
+            - 'button "get /api/data/stock/{symbol}" [ref=e141]':
+              - img [ref=e142]
+      - generic [ref=e145]:
+        - heading "models Collapse operation" [level=3] [ref=e146] [cursor=pointer]:
+          - link "models" [ref=e147]:
+            - /url: "#/models"
+          - button "Collapse operation" [expanded] [ref=e148]:
+            - img [ref=e149]
+        - generic [ref=e152]:
+          - generic [ref=e155] [cursor=pointer]:
+            - button "GET /api/models List Models" [ref=e156]:
+              - generic [ref=e157]: GET
+              - generic [ref=e158]:
+                - link "/api/models" [ref=e160]:
+                  - /url: "#/models/list_models_api_models_get"
+                  - generic [ref=e161]:
+                    - text: /api
+                    - text: /models
+                - generic [ref=e162]: List Models
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e165]:
+              - img [ref=e166]
+            - button "get /api/models" [ref=e168]:
+              - img [ref=e169]
+          - generic [ref=e173] [cursor=pointer]:
+            - button "POST /api/models/promote Promote Model" [ref=e174]:
+              - generic [ref=e175]: POST
+              - generic [ref=e176]:
+                - link "/api/models/promote" [ref=e178]:
+                  - /url: "#/models/promote_model_api_models_promote_post"
+                  - generic [ref=e179]:
+                    - text: /api
+                    - text: /models
+                    - text: /promote
+                - generic [ref=e180]: Promote Model
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e183]:
+              - img [ref=e184]
+            - button "post /api/models/promote" [ref=e186]:
+              - img [ref=e187]
+          - generic [ref=e191] [cursor=pointer]:
+            - button "POST /api/models/delete Delete Model" [ref=e192]:
+              - generic [ref=e193]: POST
+              - generic [ref=e194]:
+                - link "/api/models/delete" [ref=e196]:
+                  - /url: "#/models/delete_model_api_models_delete_post"
+                  - generic [ref=e197]:
+                    - text: /api
+                    - text: /models
+                    - text: /delete
+                - generic [ref=e198]: Delete Model
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e201]:
+              - img [ref=e202]
+            - button "post /api/models/delete" [ref=e204]:
+              - img [ref=e205]
+      - generic [ref=e208]:
+        - heading "arena Collapse operation" [level=3] [ref=e209] [cursor=pointer]:
+          - link "arena" [ref=e210]:
+            - /url: "#/arena"
+          - button "Collapse operation" [expanded] [ref=e211]:
+            - img [ref=e212]
+        - generic [ref=e215]:
+          - generic [ref=e218] [cursor=pointer]:
+            - button "POST /api/arena/settle Settle Arena" [ref=e219]:
+              - generic [ref=e220]: POST
+              - generic [ref=e221]:
+                - link "/api/arena/settle" [ref=e223]:
+                  - /url: "#/arena/settle_arena_api_arena_settle_post"
+                  - generic [ref=e224]:
+                    - text: /api
+                    - text: /arena
+                    - text: /settle
+                - generic [ref=e225]: Settle Arena
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e228]:
+              - img [ref=e229]
+            - button "post /api/arena/settle" [ref=e231]:
+              - img [ref=e232]
+          - generic [ref=e236] [cursor=pointer]:
+            - button "POST /api/arena/participants Add Participant" [ref=e237]:
+              - generic [ref=e238]: POST
+              - generic [ref=e239]:
+                - link "/api/arena/participants" [ref=e241]:
+                  - /url: "#/arena/add_participant_api_arena_participants_post"
+                  - generic [ref=e242]:
+                    - text: /api
+                    - text: /arena
+                    - text: /participants
+                - generic [ref=e243]: Add Participant
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e246]:
+              - img [ref=e247]
+            - button "post /api/arena/participants" [ref=e249]:
+              - img [ref=e250]
+      - generic [ref=e253]:
+        - heading "system Collapse operation" [level=3] [ref=e254] [cursor=pointer]:
+          - link "system" [ref=e255]:
+            - /url: "#/system"
+          - button "Collapse operation" [expanded] [ref=e256]:
+            - img [ref=e257]
+        - generic [ref=e260]:
+          - generic [ref=e263] [cursor=pointer]:
+            - button "GET /health Health Check" [ref=e264]:
+              - generic [ref=e265]: GET
+              - generic [ref=e266]:
+                - link "/health" [ref=e268]:
+                  - /url: "#/system/health_check_health_get"
+                - generic [ref=e269]: Health Check
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e272]:
+              - img [ref=e273]
+            - button "get /health" [ref=e275]:
+              - img [ref=e276]
+          - generic [ref=e280] [cursor=pointer]:
+            - button "GET /api/jobs List Jobs" [ref=e281]:
+              - generic [ref=e282]: GET
+              - generic [ref=e283]:
+                - link "/api/jobs" [ref=e285]:
+                  - /url: "#/system/list_jobs_api_jobs_get"
+                  - generic [ref=e286]:
+                    - text: /api
+                    - text: /jobs
+                - generic [ref=e287]: List Jobs
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e290]:
+              - img [ref=e291]
+            - button "get /api/jobs" [ref=e293]:
+              - img [ref=e294]
+          - generic [ref=e298] [cursor=pointer]:
+            - button "GET /api/system/paths Get System Paths" [ref=e299]:
+              - generic [ref=e300]: GET
+              - generic [ref=e301]:
+                - link "/api/system/paths" [ref=e303]:
+                  - /url: "#/system/get_system_paths_api_system_paths_get"
+                  - generic [ref=e304]:
+                    - text: /api
+                    - text: /system
+                    - text: /paths
+                - generic [ref=e305]: Get System Paths
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e308]:
+              - img [ref=e309]
+            - button "get /api/system/paths" [ref=e311]:
+              - img [ref=e312]
+          - generic [ref=e316] [cursor=pointer]:
+            - button "POST /api/system/exec Execute System Command" [ref=e317]:
+              - generic [ref=e318]: POST
+              - generic [ref=e319]:
+                - link "/api/system/exec" [ref=e321]:
+                  - /url: "#/system/execute_system_command_api_system_exec_post"
+                  - generic [ref=e322]:
+                    - text: /api
+                    - text: /system
+                    - text: /exec
+                - generic [ref=e323]: Execute System Command
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e326]:
+              - img [ref=e327]
+            - button "post /api/system/exec" [ref=e329]:
+              - img [ref=e330]
+      - generic [ref=e333]:
+        - heading "reports Collapse operation" [level=3] [ref=e334] [cursor=pointer]:
+          - link "reports" [ref=e335]:
+            - /url: "#/reports"
+          - button "Collapse operation" [expanded] [ref=e336]:
+            - img [ref=e337]
+        - generic [ref=e340]:
+          - generic [ref=e343] [cursor=pointer]:
+            - button "GET /api/reports List Reports" [ref=e344]:
+              - generic [ref=e345]: GET
+              - generic [ref=e346]:
+                - link "/api/reports" [ref=e348]:
+                  - /url: "#/reports/list_reports_api_reports_get"
+                  - generic [ref=e349]:
+                    - text: /api
+                    - text: /reports
+                - generic [ref=e350]: List Reports
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e353]:
+              - img [ref=e354]
+            - button "get /api/reports" [ref=e356]:
+              - img [ref=e357]
+          - generic [ref=e361] [cursor=pointer]:
+            - 'button "GET /api/reports/{report_id} Get Report" [ref=e362]':
+              - generic [ref=e363]: GET
+              - generic [ref=e364]:
+                - 'link "/api/reports/{report_id}" [ref=e366]':
+                  - /url: "#/reports/get_report_api_reports__report_id__get"
+                  - generic [ref=e367]:
+                    - text: /api
+                    - text: /reports
+                    - text: "/{report_id}"
+                - generic [ref=e368]: Get Report
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e371]:
+              - img [ref=e372]
+            - 'button "get /api/reports/{report_id}" [ref=e374]':
+              - img [ref=e375]
+          - generic [ref=e379] [cursor=pointer]:
+            - button "POST /api/reports/export Export Reports" [ref=e380]:
+              - generic [ref=e381]: POST
+              - generic [ref=e382]:
+                - link "/api/reports/export" [ref=e384]:
+                  - /url: "#/reports/export_reports_api_reports_export_post"
+                  - generic [ref=e385]:
+                    - text: /api
+                    - text: /reports
+                    - text: /export
+                - generic [ref=e386]: Export Reports
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e389]:
+              - img [ref=e390]
+            - button "post /api/reports/export" [ref=e392]:
+              - img [ref=e393]
+      - generic [ref=e396]:
+        - heading "strategy Collapse operation" [level=3] [ref=e397] [cursor=pointer]:
+          - link "strategy" [ref=e398]:
+            - /url: "#/strategy"
+          - button "Collapse operation" [expanded] [ref=e399]:
+            - img [ref=e400]
+        - generic [ref=e403]:
+          - generic [ref=e406] [cursor=pointer]:
+            - button "GET /api/strategy/list List Strategies" [ref=e407]:
+              - generic [ref=e408]: GET
+              - generic [ref=e409]:
+                - link "/api/strategy/list" [ref=e411]:
+                  - /url: "#/strategy/list_strategies_api_strategy_list_get"
+                  - generic [ref=e412]:
+                    - text: /api
+                    - text: /strategy
+                    - text: /list
+                - generic [ref=e413]: List Strategies
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e416]:
+              - img [ref=e417]
+            - button "get /api/strategy/list" [ref=e419]:
+              - img [ref=e420]
+          - generic [ref=e424] [cursor=pointer]:
+            - 'button "GET /api/strategy/content/{filename} Get Strategy Content" [ref=e425]':
+              - generic [ref=e426]: GET
+              - generic [ref=e427]:
+                - 'link "/api/strategy/content/{filename}" [ref=e429]':
+                  - /url: "#/strategy/get_strategy_content_api_strategy_content__filename__get"
+                  - generic [ref=e430]:
+                    - text: /api
+                    - text: /strategy
+                    - text: /content
+                    - text: "/{filename}"
+                - generic [ref=e431]: Get Strategy Content
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e434]:
+              - img [ref=e435]
+            - 'button "get /api/strategy/content/{filename}" [ref=e437]':
+              - img [ref=e438]
+          - generic [ref=e442] [cursor=pointer]:
+            - button "POST /api/strategy/save Save Strategy" [ref=e443]:
+              - generic [ref=e444]: POST
+              - generic [ref=e445]:
+                - link "/api/strategy/save" [ref=e447]:
+                  - /url: "#/strategy/save_strategy_api_strategy_save_post"
+                  - generic [ref=e448]:
+                    - text: /api
+                    - text: /strategy
+                    - text: /save
+                - generic [ref=e449]: Save Strategy
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e452]:
+              - img [ref=e453]
+            - button "post /api/strategy/save" [ref=e455]:
+              - img [ref=e456]
+      - generic [ref=e459]:
+        - heading "jobs Collapse operation" [level=3] [ref=e460] [cursor=pointer]:
+          - link "jobs" [ref=e461]:
+            - /url: "#/jobs"
+          - button "Collapse operation" [expanded] [ref=e462]:
+            - img [ref=e463]
+        - generic [ref=e466]:
+          - generic [ref=e469] [cursor=pointer]:
+            - button "POST /api/backtest/run Run Backtest" [ref=e470]:
+              - generic [ref=e471]: POST
+              - generic [ref=e472]:
+                - link "/api/backtest/run" [ref=e474]:
+                  - /url: "#/jobs/run_backtest_api_backtest_run_post"
+                  - generic [ref=e475]:
+                    - text: /api
+                    - text: /backtest
+                    - text: /run
+                - generic [ref=e476]: Run Backtest
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e479]:
+              - img [ref=e480]
+            - button "post /api/backtest/run" [ref=e482]:
+              - img [ref=e483]
+          - generic [ref=e487] [cursor=pointer]:
+            - button "POST /api/train/run Run Training" [ref=e488]:
+              - generic [ref=e489]: POST
+              - generic [ref=e490]:
+                - link "/api/train/run" [ref=e492]:
+                  - /url: "#/jobs/run_training_api_train_run_post"
+                  - generic [ref=e493]:
+                    - text: /api
+                    - text: /train
+                    - text: /run
+                - generic [ref=e494]: Run Training
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e497]:
+              - img [ref=e498]
+            - button "post /api/train/run" [ref=e500]:
+              - img [ref=e501]
+          - generic [ref=e505] [cursor=pointer]:
+            - 'button "DELETE /api/runs/{run_id} Delete Run" [ref=e506]':
+              - generic [ref=e507]: DELETE
+              - generic [ref=e508]:
+                - 'link "/api/runs/{run_id}" [ref=e510]':
+                  - /url: "#/jobs/delete_run_api_runs__run_id__delete"
+                  - generic [ref=e511]:
+                    - text: /api
+                    - text: /runs
+                    - text: "/{run_id}"
+                - generic [ref=e512]: Delete Run
+            - generic "Copy to clipboard"
+            - button "authorization button unlocked" [ref=e515]:
+              - img [ref=e516]
+            - 'button "delete /api/runs/{run_id}" [ref=e518]':
+              - img [ref=e519]
+      - generic [ref=e522]:
+        - heading "agent Collapse operation" [level=3] [ref=e523] [cursor=pointer]:
+          - link "agent" [ref=e524]:
+            - /url: "#/agent"
+          - button "Collapse operation" [expanded] [ref=e525]:
+            - img [ref=e526]
+        - generic [ref=e532] [cursor=pointer]:
+          - button "POST /api/agent/chat Agent Chat" [ref=e533]:
+            - generic [ref=e534]: POST
+            - generic [ref=e535]:
+              - link "/api/agent/chat" [ref=e537]:
+                - /url: "#/agent/agent_chat_api_agent_chat_post"
+                - generic [ref=e538]:
+                  - text: /api
+                  - text: /agent
+                  - text: /chat
+              - generic [ref=e539]: Agent Chat
+          - generic "Copy to clipboard"
+          - button "authorization button unlocked" [ref=e542]:
+            - img [ref=e543]
+          - button "post /api/agent/chat" [ref=e545]:
+            - img [ref=e546]
+    - generic [ref=e550]:
+      - heading "Schemas" [level=4] [ref=e551] [cursor=pointer]:
+        - button "Schemas" [expanded] [ref=e552]:
+          - generic [ref=e553]: Schemas
+          - img [ref=e554]
+      - generic [ref=e556]:
+        - article [ref=e557]:
+          - generic [ref=e558]:
+            - button "ChatRequest" [ref=e559] [cursor=pointer]:
+              - generic [ref=e561]: ChatRequest
+              - img [ref=e563]
+            - button "Expand all" [ref=e565] [cursor=pointer]
+            - strong [ref=e566]: object
+        - article [ref=e567]:
+          - generic [ref=e568]:
+            - button "HTTPValidationError" [ref=e569] [cursor=pointer]:
+              - generic [ref=e571]: HTTPValidationError
+              - img [ref=e573]
+            - button "Expand all" [ref=e575] [cursor=pointer]
+            - strong [ref=e576]: object
+        - article [ref=e577]:
+          - generic [ref=e578]:
+            - button "ValidationError" [ref=e579] [cursor=pointer]:
+              - generic [ref=e581]: ValidationError
+              - img [ref=e583]
+            - button "Expand all" [ref=e585] [cursor=pointer]
+            - strong [ref=e586]: object

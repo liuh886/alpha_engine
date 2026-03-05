@@ -1,0 +1,27 @@
+# ----------------------------------------------------
+# Dockerfile for FastAPI Backend (Agentic Alpha Engine)
+# Roadmap item 91/5: Docker-Compose Isolation
+# ----------------------------------------------------
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# System dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv for extremely fast python dependency resolution
+RUN pip install uv
+
+# Copy application code
+COPY . /app
+
+# Install project dependencies securely and quickly
+RUN uv pip install --system -r requirements.txt || uv pip install --system -e .
+
+EXPOSE 8001
+
+CMD ["python", "api_server.py"]
