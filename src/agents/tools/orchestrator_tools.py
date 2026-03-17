@@ -2,6 +2,9 @@ import subprocess
 from typing import Any
 import time
 
+from src.reliability.classifier import classify_failure
+from src.reliability.failure_log import append_failure_event
+
 _DAILY_RUNS_COUNT = 0
 _LAST_RUN_DAY = ""
 
@@ -56,14 +59,40 @@ def run_orchestrator(
         
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-        return {
+        res = {
             "success": result.returncode == 0,
             "stdout": result.stdout,
             "stderr": result.stderr,
             "returncode": result.returncode
         }
+        
+        if not res["success"]:
+            event = classify_failure(
+                component="tools.orchestrator_tools",
+                operation="run_orchestrator",
+                stderr=res["stderr"],
+                returncode=res["returncode"],
+                context={
+                    "market": market,
+                    "mode": mode,
+                    "model_type": model_type,
+                    "profile_path": profile_path
+                }
+            )
+            append_failure_event(event)
+            res["event"] = event.to_dict()
+            
+        return res
     except Exception as e:
+        event = classify_failure(
+            component="tools.orchestrator_tools",
+            operation="run_orchestrator",
+            exc=e,
+            context={"market": market, "mode": mode}
+        )
+        append_failure_event(event)
         return {
             "success": False,
-            "error": str(e)
+            "error": str(e),
+            "event": event.to_dict()
         }

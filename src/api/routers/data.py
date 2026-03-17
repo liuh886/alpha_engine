@@ -50,6 +50,7 @@ def get_instruments(market: str = Query("us")):
 
 @router.get("/status")
 def get_data_status():
+    import datetime
     latest = None
     cal_path = PROJECT_ROOT / "data" / "watchlist" / "calendars" / "day.txt"
     if cal_path.exists():
@@ -93,6 +94,32 @@ def get_data_status():
     except Exception:
         pass
 
+    # Calculate data readiness
+    readiness = "READY"
+    if not latest:
+        readiness = "NOT_INITIALIZED"
+    else:
+        try:
+            latest_dt = datetime.datetime.strptime(latest, "%Y-%m-%d").date()
+            # We assume "today" is what the system thinks today is
+            # In some simulation environments, it might be different, but here we use UTC/local
+            today = datetime.date.today()
+            diff = (today - latest_dt).days
+            
+            # Simple heuristic: if more than 4 days stale, it is STALE
+            # (Allows for a long weekend)
+            if diff > 4:
+                readiness = "STALE"
+            elif diff > 0:
+                # On Tuesday-Friday, we expect at least yesterday's data
+                # Mon is special because Sat/Sun have no data.
+                if today.weekday() in [1, 2, 3, 4] and diff > 1:
+                    readiness = "STALE"
+                elif today.weekday() == 0 and diff > 3: # Monday
+                    readiness = "STALE"
+        except Exception:
+            readiness = "UNKNOWN"
+
     return {
         "ok": True,
         "data": {
@@ -102,6 +129,8 @@ def get_data_status():
             "quality_status": quality_status,
             "quality_warnings": quality_warnings,
             "detailed_issues": detailed_issues,
+            "readiness": readiness,
+            "updated_at": datetime.datetime.now().isoformat()
         },
     }
 

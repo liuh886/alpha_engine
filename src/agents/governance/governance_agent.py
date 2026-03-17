@@ -1,6 +1,7 @@
 import os
 import json
 import time
+from typing import Optional, Dict, Any
 
 from src.agents.core.base_agent import BaseAgent
 from src.agents.tools.data_tools import run_data_update
@@ -11,6 +12,11 @@ from src.agents.tools.governance_tools import (
 from src.agents.tools.orchestrator_tools import run_orchestrator
 from src.agents.alpha.alpha_agent import AlphaAgent
 from src.agents.risk.risk_agent import RiskAgent
+
+from src.reliability.events import ReliabilityEvent
+from src.reliability.governance_policy import GovernanceReliabilityPolicy
+from src.reliability.failure_log import resolve_failure_event
+from src.reliability.classifier import classify_failure
 
 class GovernanceAgent(BaseAgent):
     """
@@ -23,6 +29,7 @@ class GovernanceAgent(BaseAgent):
         self.llm = llm_client
         self.alpha_agent = AlphaAgent(llm_client)
         self.risk_agent = RiskAgent(llm_client)
+        self.policy = GovernanceReliabilityPolicy()
         
         self.evidence_canvas_path = "artifacts/dashboard/evidence_canvas.json"
         os.makedirs(os.path.dirname(self.evidence_canvas_path), exist_ok=True)
@@ -39,20 +46,64 @@ You must:
 """)
         )
 
-    def self_heal(self, component: str, error_msg: str) -> bool:
-        """Attempt to recover from an error."""
-        format_thought_stream_for_report("Governance Agent", "warning", f"Initiating Self-Healing for {component}. Error: {error_msg}")
-        time.sleep(1)
-        # Mock self-healing logic
-        success = True
-        if "data" in component.lower():
-             format_thought_stream_for_report("Governance Agent", "info", "Switching to backup data source and retrying...")
-             time.sleep(1)
+    def self_heal(self, event_data: Dict[str, Any]) -> bool:
+        """Attempt to recover from an error using the reliability policy."""
+        # Convert dict to event object if needed
+        if isinstance(event_data, dict):
+            # Minimal reconstruction for policy check
+            event = ReliabilityEvent(
+                code=event_data.get("code", "UNKNOWN"),
+                category=event_data.get("category", "unknown"),
+                severity=event_data.get("severity", "medium"),
+                retryable=event_data.get("retryable", True),
+                component=event_data.get("component", "unknown"),
+                operation=event_data.get("operation", "unknown"),
+                event_id=event_data.get("event_id", ""),
+                market=event_data.get("market")
+            )
         else:
-             format_thought_stream_for_report("Governance Agent", "info", "Re-initializing environment variables...")
-             time.sleep(1)
+            event = event_data
+
+        format_thought_stream_for_report(
+            "Governance Agent", 
+            "warning", 
+            f"Initiating Self-Healing for {event.code} in {event.component}. Event ID: {event.event_id}"
+        )
+        
+        # Resolve action from policy
+        action_plan = self.policy.resolve_action(event)
+        action = action_plan.get("action", "none")
+        notes = action_plan.get("notes", "")
+        
+        format_thought_stream_for_report("Governance Agent", "info", f"Policy Recommendation: {action}. {notes}")
+        
+        success = False
+        if action == "refresh_data_then_retry":
+            format_thought_stream_for_report("Governance Agent", "info", f"Retrying data update for {event.market}...")
+            # Actual retry logic
+            retry_res = run_data_update(market=event.market or "cn")
+            success = retry_res["success"]
+        elif action == "retry_with_exponential_backoff":
+            format_thought_stream_for_report("Governance Agent", "info", "Sleeping before retry...")
+            time.sleep(2)
+            success = True # Signal to retry higher level
+        elif action == "none":
+            format_thought_stream_for_report("Governance Agent", "error", "No automated action possible. Manual intervention required.")
+            success = False
+        else:
+            # Fallback for other defined actions
+            format_thought_stream_for_report("Governance Agent", "info", f"Executing generic action: {action}")
+            time.sleep(1)
+            success = True
              
-        format_thought_stream_for_report("Governance Agent", "success", f"Self-Healing completed for {component}. Status: {'Resolved' if success else 'Failed'}")
+        if success and event.event_id:
+            resolve_failure_event(event.event_id, resolution={"action_taken": action, "success": True})
+            
+        format_thought_stream_for_report(
+            "Governance Agent", 
+            "success" if success else "error", 
+            f"Self-Healing {action} {'Completed' if success else 'Failed'} for {event.code}."
+        )
         return success
 
     def publish_evidence_canvas(self, market: str, risk_approved: bool):
@@ -81,9 +132,13 @@ You must:
         # Step 1: Data Update with Self-Healing
         data_res = run_data_update(market=market if market != "all" else "cn")
         if not data_res["success"]:
-            msg = f"Data update failed with code {data_res.get('returncode')}."
-            if not self.self_heal("Data Pipeline", msg):
-                append_to_human_run_log("FAILURE", "Data update failed and self-healing aborted.")
+            event = data_res.get("event")
+            if event:
+                if not self.self_heal(event):
+                    append_to_human_run_log("FAILURE", f"Data update failed ({event.get('code')}) and self-healing aborted.")
+                    return
+            else:
+                append_to_human_run_log("FAILURE", "Data update failed with no reliability event captured.")
                 return
 
         # Step 2: Daily Sync (Risk weather check)

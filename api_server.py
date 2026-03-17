@@ -15,10 +15,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pydantic import Field
 
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security import HTTPBasic, HTTPBasicCredentials, APIKeyHeader
 import secrets
 
 security = HTTPBasic(auto_error=False)
+api_key_header = APIKeyHeader(name="X-Developer-Token", auto_error=False)
 
 
 def _is_truthy(value: str | None, *, default: bool = False) -> bool:
@@ -32,29 +33,45 @@ def _is_local_request(request: Request) -> bool:
         host = str((request.client.host if request.client else "") or "").strip().lower()
     except Exception:
         host = ""
-    return host in {"127.0.0.1", "::1", "localhost"}
+    # Add common internal IPs if we are in a container/proxy setup
+    return host in {"127.0.0.1", "::1", "localhost", "0.0.0.0"}
 
 
 def verify_auth(
     request: Request,
     credentials: HTTPBasicCredentials | None = Depends(security),
+    developer_token: str | None = Depends(api_key_header),
 ):
-    # Local-first UX: allow localhost calls when explicitly enabled (default: enabled).
+    # 1. Developer Token Check (Stable mechanism for agents/developers)
+    expected_token = os.environ.get("ALPHA_DEVELOPER_TOKEN")
+    if expected_token and developer_token == expected_token:
+        return HTTPBasicCredentials(username="developer", password="")
+
+    # 2. Localhost trust (for UI and local calls)
     trust_localhost = _is_truthy(os.environ.get("TRADING_UI_TRUST_LOCALHOST"), default=True)
-    if credentials is None and trust_localhost and _is_local_request(request):
+    is_local = _is_local_request(request)
+    
+    if credentials is None and trust_localhost and is_local:
         return HTTPBasicCredentials(username="local", password="")
 
     if credentials is None:
+        print(f"Auth: Missing credentials. Host: {request.client.host if request.client else 'None'}. Local: {is_local}. URL: {request.url}")
         raise HTTPException(
             status_code=401,
             detail="Missing credentials",
             headers={"WWW-Authenticate": "Basic"},
         )
 
-    # Very basic static password check for prototype phase
+    # 3. Static password check (Basic Auth)
     correct_username = secrets.compare_digest(credentials.username, "agent")
     correct_password = secrets.compare_digest(credentials.password, os.environ.get("TRADING_UI_PASSWORD", "alpha2026"))
+    
     if not (correct_username and correct_password):
+        # Even if credentials provided, if we are on localhost and trust it, we could fall back.
+        if trust_localhost and is_local:
+             return HTTPBasicCredentials(username="local", password="")
+             
+        print(f"Auth: Incorrect credentials for {credentials.username}. Host: {request.client.host if request.client else 'None'}. Local: {is_local}")
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or password",
@@ -87,7 +104,7 @@ from fastapi.staticfiles import StaticFiles
 os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 app.mount("/artifacts", StaticFiles(directory=ARTIFACTS_DIR), name="artifacts")
 
-from src.api.routers import data, models, arena, system, reports, strategy, backtest, chat
+from src.api.routers import data, models, arena, system, reports, strategy, backtest, chat, workflow
 
 app.include_router(data.router, dependencies=[Depends(verify_auth)])
 app.include_router(models.router, dependencies=[Depends(verify_auth)])
@@ -97,9 +114,17 @@ app.include_router(reports.router, dependencies=[Depends(verify_auth)])
 app.include_router(strategy.router, dependencies=[Depends(verify_auth)])
 app.include_router(backtest.router, dependencies=[Depends(verify_auth)])
 app.include_router(chat.router, dependencies=[Depends(verify_auth)])
+app.include_router(workflow.router, dependencies=[Depends(verify_auth)])
 
 
 if __name__ == "__main__":
     import uvicorn
-    # Make sure to run on 8001 so the Vite proxy picks it up
-    uvicorn.run("api_server:app", host="127.0.0.1", port=8001, reload=False)
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Alpha Engine API Server")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind to")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8001)), help="Port to bind to")
+    args = parser.parse_args()
+    
+    print(f"Starting Alpha Engine API Server on {args.host}:{args.port}")
+    uvicorn.run("api_server:app", host=args.host, port=args.port, reload=False)

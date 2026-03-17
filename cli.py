@@ -24,9 +24,36 @@ def main():
     parser_br = subparsers.add_parser("breakfast", help="Generate daily morning trading report")
     parser_br.add_argument("--market", type=str, default="us", choices=["cn", "us"])
 
+    # Command: workflow
+    parser_wf = subparsers.add_parser("workflow", help="Run a formal workflow (train or backtest)")
+    parser_wf.add_argument("type", choices=["train", "backtest"], help="Workflow type")
+    parser_wf.add_argument("--market", type=str, default="us", help="Market (cn/us/all)")
+    parser_wf.add_argument("--model-type", type=str, default="lgbm", help="Model type (lgbm/linear)")
+    parser_wf.add_argument("--tag", type=str, default="", help="Model tag")
+    parser_wf.add_argument("--profile", type=str, default="", help="Path to strategy profile JSON")
+
     args = parser.parse_args()
 
-    if args.command == "backtest":
+    if args.command == "workflow":
+        from src.workflows.manager import WorkflowManager
+        manager = WorkflowManager(PROJECT_ROOT)
+        if args.type == "train":
+            manager.run_training_workflow(
+                market=args.market,
+                model_type=args.model_type,
+                profile=args.profile,
+                tag=args.tag,
+            )
+        elif args.type == "backtest":
+            manager.run_backtest_workflow(
+                market=args.market,
+                model_type=args.model_type,
+                profile=args.profile,
+                tag=args.tag,
+            )
+        print(f"✅ Workflow {args.type} completed successfully.")
+
+    elif args.command == "backtest":
         print(f"==> Starting Zero-Barrier Backtest for {args.market.upper()} <==")
         run_cmd([sys.executable, "scripts/update_data.py", "--market", args.market, "--lookback-days", "5"], "Data update failed")
         run_cmd([sys.executable, "-m", "src.orchestrator", "rebacktest", "--market", args.market], "Backtest execution failed")
