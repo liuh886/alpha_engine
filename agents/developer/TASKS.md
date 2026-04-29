@@ -61,13 +61,13 @@
 - [ ] 将 `ruff` 问题分批治理，不要一次性“大扫除”。
 - [ ] 第一批优先修复会影响可维护性的规则：`E402`、`E701`、`E722`、未使用导入、明显失效代码。
 - [ ] 第二批再处理 import 排序、typing 现代化、杂项规范问题。
-- [ ] 为 Python 和前端分别补最小 CI，至少覆盖 lint、关键单测、构建验证。
+- [x] 为 Python 和前端分别补最小 CI，至少覆盖 lint、关键单测、构建验证。
 
 ### P1. 清理生成物与仓库边界
-- [ ] 清理被提交进仓库的 `__pycache__`、测试缓存、截图、临时报表等生成物。
-- [ ] 更新 `.gitignore`，明确哪些 artifacts 是样例、哪些是运行产物。
-- [ ] 将示例报告与真实运行输出分层管理，避免测试/文档误引用本地产物。
-- [ ] 评估 `reports/`、`output/`、`artifacts/` 中哪些内容应保留，哪些应转为发布样例或 release asset。
+- [x] 清理被提交进仓库的 `__pycache__`、测试缓存、截图、临时报表等生成物。
+- [x] 更新 `.gitignore`，明确哪些 artifacts 是样例、哪些是运行产物。
+- [x] 将示例报告与真实运行输出分层管理，避免测试/文档误引用本地产物。
+- [x] 评估 `reports/`、`output/`、`artifacts/` 中哪些内容应保留，哪些应转为发布样例或 release asset。
 
 ### P2. 统一文档、路线图与真实实现
 - [x] 重写 README，使其只描述当前仍然有效的启动方式、系统结构和 UI 入口。
@@ -84,8 +84,8 @@
 - [x] 第 4 阶段：命令入口与文档统一
 - [ ] 第 5 阶段：安全收口 (Mostly Done)
 - [ ] 第 6 阶段：移除正式路径中的 stub/mock (In Progress)
-- [ ] 第 7 阶段：代码质量基线与 CI
-- [ ] 第 8 阶段：生成物清理与仓库边界重建
+- [x] 第 7 阶段：代码质量基线与 CI
+- [x] 第 8 阶段：生成物清理与仓库边界重建
 
 ---
 *Reference `agents/developer/DESIGN.md` for mission and `agents/developer/EVALUATE.md` for acceptance principles.*
