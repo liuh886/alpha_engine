@@ -45,22 +45,22 @@
 - [x] 若静态站点继续保留，必须明确其只读/兼容性定位；若不保留，则迁入 legacy 目录。
 
 ### P1. 去除生产路径中的 mock / simulated / placeholder 逻辑
-- [ ] 审计所有会走到正式用户路径的 mock 逻辑，列出允许保留的 dev-only 例外。
+- [x] 审计所有会走到正式用户路径的 mock 逻辑，列出允许保留的 dev-only 例外。
 - [x] 将 `src/api/routers/chat.py` 从“模拟回复”改成真实 AgentRouter 集成，或明确标注为开发 stub 并从正式 UI 移除。
-- [ ] 审计 `src/agents/alpha/alpha_agent.py` 中的 simulated metrics 逻辑，区分研究原型与正式运行路径。
-- [ ] 审计 `src/common/fsm.py`、`src/dashboard/artifact_parser.py`、`scripts/fetch_constituents.py` 中仍存在的 mock/placeholder/fallback 逻辑。
+- [x] 审计 `src/agents/alpha/alpha_agent.py` 中的 simulated metrics 逻辑，区分研究原型与正式运行路径。
+- [x] 审计 `src/common/fsm.py`、`src/dashboard/artifact_parser.py`、`scripts/fetch_constituents.py` 中仍存在的 mock/placeholder/fallback 逻辑。
 
 ### P1. 做一次安全收口
 - [x] 删除代码中的默认凭据回退，禁止 `admin / alpha123` 进入正式运行路径。
 - [x] 将 Basic Auth、Webhook、数据库路径等运行时配置集中到环境变量校验层。
 - [x] 收紧 `api_server.py` 的 CORS 策略，避免默认 `allow_origins=["*"]`。
 - [x] 检查 `docker-compose.yaml`、`.env.example`、README 是否暴露了不安全的默认值。
-- [ ] 为“本地开发默认配置”和“生产配置”建立明确分层。
+- [x] 为“本地开发默认配置”和“生产配置”建立明确分层。
 
 ### P1. 建立代码质量基线与 CI 闭环
-- [ ] 将 `ruff` 问题分批治理，不要一次性“大扫除”。
-- [ ] 第一批优先修复会影响可维护性的规则：`E402`、`E701`、`E722`、未使用导入、明显失效代码。
-- [ ] 第二批再处理 import 排序、typing 现代化、杂项规范问题。
+- [x] 将 `ruff` 问题分批治理，不要一次性“大扫除”。
+- [x] 第一批优先修复会影响可维护性的规则：`E402`、`E701`、`E722`、未使用导入、明显失效代码。
+- [x] 第二批再处理 import 排序、typing 现代化、杂项规范问题。
 - [x] 为 Python 和前端分别补最小 CI，至少覆盖 lint、关键单测、构建验证。
 
 ### P1. 清理生成物与仓库边界
@@ -82,8 +82,8 @@
 - [x] 第 2 阶段：部署与端口一致性修复
 - [x] 第 3 阶段：前端主栈确定与构建恢复
 - [x] 第 4 阶段：命令入口与文档统一
-- [ ] 第 5 阶段：安全收口 (Mostly Done)
-- [ ] 第 6 阶段：移除正式路径中的 stub/mock (In Progress)
+- [x] 第 5 阶段：安全收口 (Mostly Done)
+- [x] 第 6 阶段：移除正式路径中的 stub/mock (In Progress)
 - [x] 第 7 阶段：代码质量基线与 CI
 - [x] 第 8 阶段：生成物清理与仓库边界重建
 
