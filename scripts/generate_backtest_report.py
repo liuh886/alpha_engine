@@ -12,19 +12,31 @@ from src.reporting.backtest_report import generate_backtest_report, generate_lat
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate an HTML backtest report and index it in SQLite.")
+    parser = argparse.ArgumentParser(
+        description="Generate an HTML backtest report and index it in SQLite."
+    )
     parser.add_argument("--run-id", type=str, default="", help="Backtest run id (mlflow run_id).")
-    parser.add_argument("--market", type=str, default="", help="Market (us/cn). Used with --latest.")
-    parser.add_argument("--latest", action="store_true", help="Generate report for the latest run in --market.")
+    parser.add_argument(
+        "--market", type=str, default="", help="Market (us/cn). Used with --latest."
+    )
+    parser.add_argument(
+        "--latest", action="store_true", help="Generate report for the latest run in --market."
+    )
     parser.add_argument("--db-path", type=str, default="", help="Override SQLite metadata DB path.")
     args = parser.parse_args()
 
-    db_path = Path(args.db_path).expanduser() if str(args.db_path or "").strip() else resolve_metadata_db_path(PROJECT_ROOT)
+    db_path = (
+        Path(args.db_path).expanduser()
+        if str(args.db_path or "").strip()
+        else resolve_metadata_db_path(PROJECT_ROOT)
+    )
 
     if args.latest:
         if not str(args.market or "").strip():
             raise SystemExit("--market is required when using --latest")
-        out = generate_latest_backtest_report(market=args.market, project_root=PROJECT_ROOT, db_path=db_path)
+        out = generate_latest_backtest_report(
+            market=args.market, project_root=PROJECT_ROOT, db_path=db_path
+        )
     else:
         run_id = str(args.run_id or "").strip()
         if not run_id:
@@ -37,4 +49,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

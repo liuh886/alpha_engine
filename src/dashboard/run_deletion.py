@@ -141,7 +141,12 @@ def _remove_run_from_metadata_db(run_id: str, *, project_root: Path) -> bool:
         deleted_curve = BacktestEquityCurveIndex(db_path=db_path).delete_curve(run_id)
         deleted_models = ModelRegistryIndex(db_path=db_path).delete_versions_for_run(run_id)
         deleted_arena = ArenaIndex(db_path=db_path).delete_participants_for_run(run_id)
-        deleted_reports = ReportIndex(db_path=db_path).delete_reports_for_ref(ref_id=run_id, report_type="backtest") > 0
+        deleted_reports = (
+            ReportIndex(db_path=db_path).delete_reports_for_ref(
+                ref_id=run_id, report_type="backtest"
+            )
+            > 0
+        )
 
         deleted_report_files = False
         try:
@@ -157,7 +162,14 @@ def _remove_run_from_metadata_db(run_id: str, *, project_root: Path) -> bool:
         except Exception:
             deleted_report_files = False
 
-        return bool(deleted_run or deleted_curve or deleted_models or deleted_arena or deleted_reports or deleted_report_files)
+        return bool(
+            deleted_run
+            or deleted_curve
+            or deleted_models
+            or deleted_arena
+            or deleted_reports
+            or deleted_report_files
+        )
     except Exception:
         return False
 
@@ -183,7 +195,9 @@ def delete_backtest_run(
         return False
 
     deleted_dirs = _delete_run_dirs(run_id, mlruns_root=Path(mlruns_root))
-    deleted_json = _remove_run_from_dashboard_json(run_id, dashboard_json_path=Path(dashboard_json_path))
+    deleted_json = _remove_run_from_dashboard_json(
+        run_id, dashboard_json_path=Path(dashboard_json_path)
+    )
     deleted_models = False
     if model_list_path is not None:
         model_list_path = Path(model_list_path)

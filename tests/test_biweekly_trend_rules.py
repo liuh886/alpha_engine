@@ -19,7 +19,7 @@ def test_can_sell_min_hold_calendar_days():
 
     entry = date(2025, 1, 1)
     assert not can_sell(entry, date(2025, 1, 10), 10)  # 9 days elapsed
-    assert can_sell(entry, date(2025, 1, 11), 10)      # 10 days elapsed
+    assert can_sell(entry, date(2025, 1, 11), 10)  # 10 days elapsed
 
 
 def test_strategy_class_loadable():
@@ -41,7 +41,7 @@ def test_strategy_profile_has_biweekly_rules():
 
 
 def test_biweekly_strategy_removes_n_drop():
-    from scripts.strategy_to_workflow import apply_profile_to_config
+    from src.workflows.profile_compiler import apply_profile_to_config
 
     profile = {
         "strategy": {

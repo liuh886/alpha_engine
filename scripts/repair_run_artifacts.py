@@ -12,13 +12,13 @@ from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
 def repair_run(run_id, market="us"):
     print(f"Repairing Run {run_id} for {market}...")
-    
+
     # Init qlib
     cfg = build_qlib_init_cfg({}, market=market)
     safe_qlib_init(cfg)
-    
+
     from qlib.workflow.record_temp import PortAnaRecord, SigAnaRecord
-    
+
     # Get recorder
     exp_name = f"workflow_{market}"
     try:
@@ -62,16 +62,18 @@ def repair_run(run_id, market="us"):
             },
         },
     }
-    
+
     pa_record = PortAnaRecord(rec, port_analysis_config)
     pa_record.generate()
-    
+
     print("Generating SigAnaRecord...")
     sa_record = SigAnaRecord(rec, {})
     sa_record.generate()
 
     print(f"Successfully repaired {run_id}.")
 
+
 if __name__ == "__main__":
     import fire
+
     fire.Fire(repair_run)

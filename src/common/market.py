@@ -24,7 +24,9 @@ def resolve_start_date(start_date, calendar):
     return resolved, resolved != start
 
 
-def resolve_backtest_window(backtest_cfg: dict, calendar, *, default_start: str = "2025-01-01") -> dict:
+def resolve_backtest_window(
+    backtest_cfg: dict, calendar, *, default_start: str = "2025-01-01"
+) -> dict:
     """
     Ensure backtest window is aligned with available trading calendar.
 

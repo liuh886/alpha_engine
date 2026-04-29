@@ -25,7 +25,11 @@ def test_run_index_upserts_and_queries_runs(tmp_path: Path):
                 "name": "[US] X 2026-02-05 (run1)",
                 "date": "2026-02-05 00:00",
                 "market": "us",
-                "params": {"backtest_start": "2025-01-01", "backtest_end": "2026-02-04", "data_snapshot_id": "watchlist-day-2026-02-04"},
+                "params": {
+                    "backtest_start": "2025-01-01",
+                    "backtest_end": "2026-02-04",
+                    "data_snapshot_id": "watchlist-day-2026-02-04",
+                },
                 "data": {},
             },
             {
@@ -33,7 +37,11 @@ def test_run_index_upserts_and_queries_runs(tmp_path: Path):
                 "name": "[CN] Y 2026-02-05 (run2)",
                 "date": "2026-02-05 00:01",
                 "market": "cn",
-                "params": {"backtest_start": "2025-01-01", "backtest_end": "2026-02-03", "meta": {"data_snapshot_id": "watchlist-day-2026-02-03"}},
+                "params": {
+                    "backtest_start": "2025-01-01",
+                    "backtest_end": "2026-02-03",
+                    "meta": {"data_snapshot_id": "watchlist-day-2026-02-03"},
+                },
                 "data": {},
             },
         ],

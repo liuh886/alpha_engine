@@ -52,4 +52,3 @@ def test_arena_settle_latest_common_date(tmp_path: Path):
     assert leaderboard[1]["nav"] == pytest.approx(110.0)
     assert leaderboard[0]["daily_return"] == pytest.approx(0.2)
     assert leaderboard[1]["daily_return"] == pytest.approx(0.1)
-

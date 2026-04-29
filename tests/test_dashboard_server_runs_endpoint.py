@@ -32,7 +32,13 @@ def test_dashboard_server_runs_list_and_detail_endpoints(tmp_path: Path, monkeyp
     RunIndex(db_path=db_path).upsert_from_dashboard_db(
         {
             "models": [
-                {"id": "run1", "name": "r1", "market": "us", "date": "2026-02-05 00:00", "params": {}},
+                {
+                    "id": "run1",
+                    "name": "r1",
+                    "market": "us",
+                    "date": "2026-02-05 00:00",
+                    "params": {},
+                },
             ]
         }
     )
@@ -40,7 +46,9 @@ def test_dashboard_server_runs_list_and_detail_endpoints(tmp_path: Path, monkeyp
     httpd, t = _start_server()
     try:
         port = httpd.server_address[1]
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/runs?limit=10", timeout=5) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/runs?limit=10", timeout=5
+        ) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         assert data.get("ok") is True
         runs = data.get("runs") or []
@@ -53,4 +61,3 @@ def test_dashboard_server_runs_list_and_detail_endpoints(tmp_path: Path, monkeyp
     finally:
         httpd.shutdown()
         t.join(timeout=5)
-

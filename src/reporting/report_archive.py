@@ -132,4 +132,3 @@ def export_reports_zip(
         "included_reports": written,
         "listed_reports": len(reports),
     }
-

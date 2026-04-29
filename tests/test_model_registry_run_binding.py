@@ -25,7 +25,9 @@ def test_update_model_list_records_run_id(tmp_path: Path, monkeypatch):
             "model": {"class": "XGBModel", "kwargs": {"max_depth": 3}},
             "dataset": {"kwargs": {"segments": {"train": ["2020-01-01", "2024-12-31"]}}},
         },
-        "port_analysis_config": {"backtest": {"start_time": "2025-01-01", "end_time": "2025-01-02"}}, 
+        "port_analysis_config": {
+            "backtest": {"start_time": "2025-01-01", "end_time": "2025-01-02"}
+        },
     }
 
     orch = Orchestrator()

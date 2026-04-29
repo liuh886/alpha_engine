@@ -19,7 +19,9 @@ def main() -> int:
         default="all",
         help="Report type filter: all/backtest/arena_daily/archive (default: all).",
     )
-    parser.add_argument("--limit", type=int, default=100, help="Max reports to include (default: 100).")
+    parser.add_argument(
+        "--limit", type=int, default=100, help="Max reports to include (default: 100)."
+    )
     parser.add_argument("--db-path", type=str, default="", help="Override SQLite metadata DB path.")
     parser.add_argument("--output", type=str, default="", help="Override output zip path.")
     args = parser.parse_args()
@@ -29,7 +31,11 @@ def main() -> int:
     if limit <= 0:
         limit = 100
 
-    db_path = Path(args.db_path).expanduser() if str(args.db_path or "").strip() else resolve_metadata_db_path(PROJECT_ROOT)
+    db_path = (
+        Path(args.db_path).expanduser()
+        if str(args.db_path or "").strip()
+        else resolve_metadata_db_path(PROJECT_ROOT)
+    )
     output_path = Path(args.output).expanduser() if str(args.output or "").strip() else None
 
     out = export_reports_zip(

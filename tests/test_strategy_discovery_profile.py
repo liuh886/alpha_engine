@@ -7,7 +7,7 @@ sys.path.append(str(ROOT))
 from qlib.contrib.data.loader import Alpha158DL
 
 from scripts.extract_backtest_sample import load_workflow_meta
-from scripts.strategy_to_workflow import apply_profile_to_config
+from src.workflows.profile_compiler import apply_profile_to_config
 
 
 def test_profile_compiles_discovery_defaults():
@@ -55,7 +55,11 @@ def test_profile_compiles_discovery_defaults():
     for feat in profile["model"]["extra_features"]:
         assert feat in features
     alpha_features = Alpha158DL.get_feature_config(
-        {"kbar": {}, "price": {"windows": [0], "feature": ["OPEN", "HIGH", "LOW", "VWAP"]}, "rolling": {}}
+        {
+            "kbar": {},
+            "price": {"windows": [0], "feature": ["OPEN", "HIGH", "LOW", "VWAP"]},
+            "rolling": {},
+        }
     )[0]
     assert len(features) >= len(alpha_features) + len(profile["model"]["extra_features"])
 

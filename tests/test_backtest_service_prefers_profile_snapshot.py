@@ -15,7 +15,9 @@ def test_backtest_service_prefers_mlruns_profile_snapshot(tmp_path: Path, monkey
     snap.parent.mkdir(parents=True, exist_ok=True)
     snap.write_text('{"meta":{"name":"S1"}}', encoding="utf-8")
 
-    svc = BacktestService(project_root=tmp_path, python_exe="python", dashboard_db_path=tmp_path / "db.json")
+    svc = BacktestService(
+        project_root=tmp_path, python_exe="python", dashboard_db_path=tmp_path / "db.json"
+    )
     job = svc.create_job_from_payload(
         {
             "market": "us",
@@ -32,4 +34,3 @@ def test_backtest_service_prefers_mlruns_profile_snapshot(tmp_path: Path, monkey
     assert "--profile" in cmd
     prof = cmd[cmd.index("--profile") + 1]
     assert str(snap).replace("\\", "/") in str(prof).replace("\\", "/")
-

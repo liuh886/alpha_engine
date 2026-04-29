@@ -17,13 +17,16 @@ class TrainingService:
         market = str(payload.get("market") or "").lower().strip()
         if market not in {"cn", "us"}:
             raise ValueError("market is required and must be 'cn' or 'us'")
-            
+
         tag = str(payload.get("tag") or "").strip()
         if not tag:
             raise ValueError("tag is required for training to ensure traceability")
-            
+
         model_type = str(payload.get("model_type") or "lgbm").lower().strip() or "lgbm"
-        profile_path = str(payload.get("profile_path") or "configs/strategy_profile.json").strip() or "configs/strategy_profile.json"
+        profile_path = (
+            str(payload.get("profile_path") or "configs/strategy_profile.json").strip()
+            or "configs/strategy_profile.json"
+        )
 
         job_id = uuid.uuid4().hex
         log_path = RUNS_DIR / f"dashboard_train_{market}_{job_id}.log"
@@ -40,7 +43,7 @@ class TrainingService:
             "--profile",
             profile_path,
             "--tag",
-            tag
+            tag,
         ]
 
         return {

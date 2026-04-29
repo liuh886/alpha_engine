@@ -29,12 +29,16 @@ def test_dashboard_server_models_list_and_detail_endpoints(tmp_path: Path, monke
     monkeypatch.setenv("TRADING_ASSISTANT_METADATA_DB_PATH", str(db_path))
 
     idx = ModelRegistryIndex(db_path=db_path)
-    idx.upsert_entry({"id": "m1", "market": "us", "type": "LGBModel", "path": "models/m1.pkl", "run_id": "r1"})
+    idx.upsert_entry(
+        {"id": "m1", "market": "us", "type": "LGBModel", "path": "models/m1.pkl", "run_id": "r1"}
+    )
 
     httpd, t = _start_server()
     try:
         port = httpd.server_address[1]
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/models?limit=10", timeout=5) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/models?limit=10", timeout=5
+        ) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         assert data.get("ok") is True
         versions = data.get("versions") or []

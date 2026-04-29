@@ -10,4 +10,3 @@ def test_trade_ticket_path_is_under_reports_dir(tmp_path: Path):
 
     p = trade_ticket_path("us", "2025-12-31", reports_dir=tmp_path)
     assert p == tmp_path / "us" / "trade_tickets" / "trade_ticket_2025-12-31.md"
-

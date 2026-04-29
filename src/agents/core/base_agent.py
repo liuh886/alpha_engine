@@ -1,11 +1,13 @@
 import tiktoken
 from pydantic import BaseModel, ValidationError
 
+
 class BaseAgent:
     """
     Roadmap Item 32/33/40: LLM Defenses & Context Compression
     Base class providing protections against hallucination, prompt injection, and token blowouts.
     """
+
     def __init__(self, model_name: str = "gpt-4", max_context_tokens: int = 4000):
         self.model_name = model_name
         self.max_context_tokens = max_context_tokens
@@ -21,11 +23,16 @@ class BaseAgent:
         """
         tokens = self.tokenizer.encode(context)
         if len(tokens) > self.max_context_tokens:
-            truncated = tokens[:self.max_context_tokens]
-            return self.tokenizer.decode(truncated) + "\n...[CONTEXT COMPRESSED DUE TO LENGTH LIMITS]..."
+            truncated = tokens[: self.max_context_tokens]
+            return (
+                self.tokenizer.decode(truncated)
+                + "\n...[CONTEXT COMPRESSED DUE TO LENGTH LIMITS]..."
+            )
         return context
 
-    def validate_structured_output(self, OutputModel: type[BaseModel], llm_response: dict) -> BaseModel:
+    def validate_structured_output(
+        self, OutputModel: type[BaseModel], llm_response: dict
+    ) -> BaseModel:
         """
         Enforces strict schema compliance. If the LLM hallucinates keys or types,
         this will catch it before injecting bad state into the trading engine.

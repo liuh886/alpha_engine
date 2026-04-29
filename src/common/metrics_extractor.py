@@ -1,5 +1,6 @@
 from numbers import Real
 
+
 class MetricsExtractor:
     """Utility to extract structured JSON metrics from Qlib backtest records."""
 
@@ -46,7 +47,7 @@ class MetricsExtractor:
             if hasattr(analysis, key):
                 attrs[key] = getattr(analysis, key)
         return MetricsExtractor._coerce_metric_dict(attrs)
-    
+
     @staticmethod
     def extract_from_record(record):
         """
@@ -59,14 +60,14 @@ class MetricsExtractor:
             # Qlib usually stores indicators in 'port_analysis.pkl'
             analysis = record.load_object("port_analysis.pkl")
             metrics = MetricsExtractor._extract_from_analysis_object(analysis)
-                
+
             # Try to get from individual records if the above fails
-            if not metrics or metrics.get('annualized_return') == 0:
+            if not metrics or metrics.get("annualized_return") == 0:
                 # Fallback: check other typical Qlib record keys
-                for key in ['return', 'risk', 'analysis']:
+                for key in ["return", "risk", "analysis"]:
                     obj = record.load_object(f"{key}.pkl")
                     metrics.update(MetricsExtractor._extract_from_analysis_object(obj))
-                                 
+
             # Final touch: ensure all values are standard Python floats for JSON serialization
             return {k: round(v, 4) if isinstance(v, Real) else v for k, v in metrics.items()}
         except Exception as e:
@@ -80,6 +81,6 @@ class MetricsExtractor:
             "market": market.upper(),
             "period": f"{start_date} to {end_date}",
             "performance": metrics,
-            "status": "SUCCESS" if "error" not in metrics else "FAILED"
+            "status": "SUCCESS" if "error" not in metrics else "FAILED",
         }
         return summary

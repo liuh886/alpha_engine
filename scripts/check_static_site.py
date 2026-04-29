@@ -6,9 +6,9 @@ from pathlib import Path
 
 def check_site(site_dir: Path) -> bool:
     print(f"Checking static site in: {site_dir}")
-    
+
     errors = []
-    
+
     # 1. Check core files
     for f in ["index.html", "app.js", "styles.css", "data/manifest.json"]:
         if not (site_dir / f).exists():
@@ -56,18 +56,20 @@ def check_site(site_dir: Path) -> bool:
         for err in errors:
             print(f"  - {err}")
         return False
-    
+
     print("\n[OK] Static Site Check Passed.")
     return True
+
 
 def main():
     parser = argparse.ArgumentParser(description="Smoke test for static site artifacts.")
     parser.add_argument("--site-dir", type=str, default="site")
     args = parser.parse_args()
-    
+
     ok = check_site(Path(args.site_dir))
     if not ok:
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

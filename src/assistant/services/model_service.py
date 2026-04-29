@@ -22,19 +22,19 @@ class ModelService:
         """
         # 1. Get info before deletion
         version = self._model_index.get_version(version_id)
-        
+
         # 2. Update SQLite
         self._model_index.delete_version(version_id)
-        
+
         # 3. Update YAML
         yaml_path = MODELS_DIR / "model_list.yaml"
         if yaml_path.exists():
             try:
                 with open(yaml_path, encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {"models": []}
-                
+
                 data["models"] = [m for m in data.get("models", []) if m.get("id") != version_id]
-                
+
                 with open(yaml_path, "w", encoding="utf-8") as f:
                     yaml.dump(data, f, sort_keys=False)
             except Exception:
@@ -51,10 +51,12 @@ class ModelService:
                         abs_path.unlink()
                     except Exception:
                         pass
-            
+
             # Log deletion event
-            self._gov.log_run_event(str(version.get("market") or "all"), "Model Deletion", f"ID: {version_id}")
-            
+            self._gov.log_run_event(
+                str(version.get("market") or "all"), "Model Deletion", f"ID: {version_id}"
+            )
+
         return True
 
     def promote_model(self, version_id: str, stage: str = "RECOMMENDED") -> bool:
@@ -66,7 +68,7 @@ class ModelService:
         ok = self._model_index.update_stage(version_id, stage)
         if not ok:
             return False
-        
+
         # 2. Update YAML (Source of Truth)
         # We need to find the entry in model_list.yaml and update its stage or description
         # The design doc suggests YAML is SSOT.
@@ -75,14 +77,14 @@ class ModelService:
             try:
                 with open(yaml_path, encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {"models": []}
-                
+
                 updated = False
                 for m in data.get("models", []):
                     if m.get("id") == version_id:
                         m["stage"] = stage
                         updated = True
                         break
-                
+
                 if updated:
                     with open(yaml_path, "w", encoding="utf-8") as f:
                         yaml.dump(data, f, sort_keys=False)
@@ -102,9 +104,37 @@ class ModelService:
                         shutil.copy(src_path, dest_path)
                     except Exception:
                         pass
-        
+
         # 4. Log governance event
         if version:
-            self._gov.log_run_event(str(version.get("market") or "all"), "Model Promotion", f"ID: {version_id} -> {stage}")
-        
+            self._gov.log_run_event(
+                str(version.get("market") or "all"),
+                "Model Promotion",
+                f"ID: {version_id} -> {stage}",
+            )
+
         return True
+
+    def get_model_details(self, version_id: str) -> dict:
+        """
+        Retrieves complete model version details, including associated YAML config.
+        """
+        version = self._model_index.get_version(version_id)
+        if not version:
+            raise ValueError(f"Model version not found: {version_id}")
+
+        market = str(version.get("market") or "cn").lower()
+        config_name = f"{market}_lgbm_workflow.yaml"
+        config_path = self._project_root / "configs" / config_name
+
+        config_content = ""
+        if config_path.exists():
+            try:
+                config_content = config_path.read_text(encoding="utf-8")
+            except Exception:
+                config_content = "Error reading config file."
+
+        return {
+            "version": version,
+            "config": {"name": config_name, "content": config_content},
+        }

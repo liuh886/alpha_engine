@@ -25,7 +25,9 @@ from src.agents.agent_router import AgentRouter
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run project management flow as a chosen agent identity.")
+    parser = argparse.ArgumentParser(
+        description="Run project management flow as a chosen agent identity."
+    )
     parser.add_argument(
         "--agent",
         required=True,
@@ -69,7 +71,11 @@ def main() -> int:
 
     result = _run_by_agent(router, agent=args.agent, market=args.market, topic=args.topic)
     if args.json:
-        print(json.dumps({"ok": True, "agent": args.agent, "result": result}, ensure_ascii=False, default=str))
+        print(
+            json.dumps(
+                {"ok": True, "agent": args.agent, "result": result}, ensure_ascii=False, default=str
+            )
+        )
     else:
         print(f"[agent-entry] agent={args.agent}")
         print(result if result is not None else "ok")

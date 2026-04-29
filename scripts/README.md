@@ -17,8 +17,8 @@ This folder contains a mix of **supported entrypoints** (stable, documented) and
   - `python -m src.orchestrator run --market {market} --model_type lgbm --tag <MODEL_TAG> [--strategy_template <STRAT>]`
 - **Re-backtest** (P1 - Recompute drawdown or extend backtest to latest data without retraining.):
   - `python -m src.orchestrator rebacktest --market {market} --start 2025-01-01 --end latest`
-- **Dashboard Server** (P0 - Serves the analytical UI and local APIs.):
-  - `python scripts/dashboard_server.py`
+- **API Server** (P0 - Serves the analytical UI and local APIs.):
+  - `python api_server.py` (located in root)
 - **Build Dashboard DB** (P0 - Regenerate dashboard JSON from MLflow artifacts.):
   - `python scripts/build_dashboard_db.py`
 - **Daily Routine** (P0 - E2E sequence: data sync -> inference -> dashboard update.):

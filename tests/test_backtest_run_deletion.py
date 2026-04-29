@@ -62,7 +62,13 @@ def test_delete_backtest_run_removes_mlruns_and_dashboard_entry(tmp_path: Path):
     RunIndex(db_path=db_path).upsert_from_dashboard_db(
         {
             "models": [
-                {"id": run_id, "name": "bad", "market": "us", "date": "2026-02-05 00:00", "params": {}},
+                {
+                    "id": run_id,
+                    "name": "bad",
+                    "market": "us",
+                    "date": "2026-02-05 00:00",
+                    "params": {},
+                },
             ]
         }
     )
@@ -85,7 +91,12 @@ def test_delete_backtest_run_removes_mlruns_and_dashboard_entry(tmp_path: Path):
     assert arena.get_leaderboard(arena_id=a["id"], date="2025-01-01")
 
     # Seed model registry index so deletion also cleans it up.
-    assert ModelRegistryIndex(db_path=db_path).upsert_from_model_list_yaml(model_list, project_root=tmp_path) == 2
+    assert (
+        ModelRegistryIndex(db_path=db_path).upsert_from_model_list_yaml(
+            model_list, project_root=tmp_path
+        )
+        == 2
+    )
     assert ModelRegistryIndex(db_path=db_path).get_version("m1") is not None
 
     deleted = delete_backtest_run(

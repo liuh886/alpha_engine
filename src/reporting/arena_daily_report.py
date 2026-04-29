@@ -52,7 +52,14 @@ def _format_num(value: float | None) -> str:
         return "N/A"
 
 
-def _render_arena_html(*, arena: dict, date: str, leaderboard: list[dict], report_rel_path: str, agent_thought: str = "") -> str:
+def _render_arena_html(
+    *,
+    arena: dict,
+    date: str,
+    leaderboard: list[dict],
+    report_rel_path: str,
+    agent_thought: str = "",
+) -> str:
     name = str(arena.get("name") or "Arena")
     market = str(arena.get("market") or "")
     generated_at = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -114,12 +121,16 @@ def _render_arena_html(*, arena: dict, date: str, leaderboard: list[dict], repor
         <span class="pill">generated: {generated_at}</span>
       </div>
 
-      {f'''
+      {
+        f'''
       <div class="card" style="border-left: 4px solid #3b82f6; padding: 16px;">
         <h3 style="margin-top: 0; font-size: 16px;">🔮 Agentic Alpha Engine 洞察</h3>
         <p style="margin-bottom: 0; font-size: 14px; line-height: 1.6;"><em>"{agent_thought}"</em></p>
       </div>
-      ''' if agent_thought else ''}
+      '''
+        if agent_thought
+        else ""
+    }
 
       <div class="card">
         <table>
@@ -140,7 +151,9 @@ def _render_arena_html(*, arena: dict, date: str, leaderboard: list[dict], repor
       </div>
 
       <div class="footer">
-        This report is indexed in the local metadata DB and served via the dashboard server at: <code>{report_rel_path}</code>
+        This report is indexed in the local metadata DB and served via the dashboard server at: <code>{
+        report_rel_path
+    }</code>
       </div>
     </div>
   </body>
@@ -187,7 +200,9 @@ def generate_arena_daily_report(
     out_path = out_dir / "index.html"
 
     report_rel_path = (
-        str(out_path.relative_to(project_root)).replace("\\", "/") if out_path.is_relative_to(project_root) else str(out_path)
+        str(out_path.relative_to(project_root)).replace("\\", "/")
+        if out_path.is_relative_to(project_root)
+        else str(out_path)
     )
     html = _render_arena_html(
         arena=row,

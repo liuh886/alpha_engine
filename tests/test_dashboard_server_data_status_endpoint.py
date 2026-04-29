@@ -31,4 +31,3 @@ def test_dashboard_server_data_status_endpoint():
     finally:
         httpd.shutdown()
         t.join(timeout=5)
-

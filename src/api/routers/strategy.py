@@ -1,12 +1,16 @@
+import yaml
 from fastapi import APIRouter, HTTPException
+
 from src.common.paths import CONFIG_DIR
 
-router = APIRouter(prefix="/api/strategy", tags=["strategy"])
+router = APIRouter(tags=["strategy"])
+
 
 @router.get("/list")
 def list_strategies():
     files = list(CONFIG_DIR.glob("*.yaml")) + list(CONFIG_DIR.glob("*.json"))
     return {"ok": True, "files": [f.name for f in files]}
+
 
 @router.get("/content/{filename}")
 def get_strategy_content(filename: str):
@@ -16,13 +20,20 @@ def get_strategy_content(filename: str):
     content = cfg_path.read_text(encoding="utf-8", errors="replace")
     return {"ok": True, "filename": filename, "content": content}
 
+
 @router.post("/save")
 def save_strategy(payload: dict):
     filename = str(payload.get("filename") or "").strip()
     content = str(payload.get("content") or "")
     if not filename:
         raise HTTPException(status_code=400, detail="missing filename")
-    
+
+    # Validation: Ensure it's valid YAML before saving
+    try:
+        yaml.safe_load(content)
+    except yaml.YAMLError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid YAML syntax: {str(e)}")
+
     if "/" in filename or "\\" in filename or ".." in filename:
         raise HTTPException(status_code=403, detail="invalid filename")
 
@@ -32,3 +43,59 @@ def save_strategy(payload: dict):
         return {"ok": True, "filename": filename}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/schema/{filename}")
+def get_strategy_schema(filename: str):
+    """
+    Returns the schema definition based on the target config filename.
+    """
+    is_us = "us" in filename.lower()
+    return {
+        "ok": True,
+        "schema": {
+            "workflow": {
+                "title": "Global Workflow Params",
+                "fields": {
+                    "start_time": {
+                        "type": "date",
+                        "label": "Backtest Start",
+                        "default": "2025-01-01",
+                    },
+                    "end_time": {"type": "date", "label": "Backtest End", "default": "latest"},
+                    "market": {
+                        "type": "select",
+                        "options": ["cn", "us"],
+                        "label": "Primary Market",
+                        "default": "us" if is_us else "cn",
+                    },
+                },
+            },
+            "model": {
+                "title": "LGBM Hyperparameters",
+                "fields": {
+                    "learning_rate": {
+                        "type": "number",
+                        "min": 0.001,
+                        "max": 0.5,
+                        "step": 0.001,
+                        "label": "Learning Rate",
+                    },
+                    "num_leaves": {"type": "number", "min": 2, "max": 128, "label": "Num Leaves"},
+                    "n_estimators": {
+                        "type": "number",
+                        "min": 10,
+                        "max": 1000,
+                        "label": "N Estimators",
+                    },
+                },
+            },
+            "strategy": {
+                "title": "Portfolio Strategy",
+                "fields": {
+                    "topk": {"type": "number", "min": 1, "max": 50, "label": "Top K Selection"},
+                    "n_drop": {"type": "number", "min": 0, "max": 10, "label": "N Drop"},
+                },
+            },
+        },
+    }

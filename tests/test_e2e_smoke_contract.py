@@ -7,7 +7,7 @@ def test_e2e_smoke_dry_run():
     root = Path(__file__).resolve().parents[1]
     cmd = [sys.executable, "scripts/e2e_smoke.py", "--dry-run"]
     result = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True)
-    
+
     assert result.returncode == 0
     assert "=== E2E Smoke Test (Dry Run) ===" in result.stdout
     assert "scripts/update_data.py" in result.stdout

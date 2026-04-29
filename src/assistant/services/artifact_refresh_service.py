@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import subprocess
 import sys
-import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 # Ensure project root is in sys.path
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
+
 
 class ArtifactRefreshService:
     def __init__(
@@ -29,10 +29,12 @@ class ArtifactRefreshService:
 
         if metadata_db_resolver is None:
             from src.assistant.metadata_db import resolve_metadata_db_path
+
             metadata_db_resolver = resolve_metadata_db_path
-            
+
         if latest_report_generator is None:
             from src.reporting.backtest_report import generate_latest_backtest_report
+
             latest_report_generator = generate_latest_backtest_report
 
         self._metadata_db_resolver = metadata_db_resolver
@@ -44,12 +46,15 @@ class ArtifactRefreshService:
         Switched to in-process calls for reliability and speed.
         """
         self._printer(f"Refreshing training artifacts for {market} (In-process)...")
-        
+
         try:
             from src.reporting.generate import generate_report
+
             generate_report(market)
         except Exception as e:
-            self._printer(f"Warning: Failed in-process report generation: {e}. Falling back to subprocess...")
+            self._printer(
+                f"Warning: Failed in-process report generation: {e}. Falling back to subprocess..."
+            )
             self._subprocess_runner(
                 [self._python_exe, "-m", "src.reporting.generate", "--market", market],
                 check=True,
@@ -57,11 +62,14 @@ class ArtifactRefreshService:
 
         try:
             from scripts.build_dashboard_db import build_db
+
             build_db()
         except Exception as e:
-            self._printer(f"Warning: Failed in-process dashboard DB build: {e}. Falling back to subprocess...")
+            self._printer(
+                f"Warning: Failed in-process dashboard DB build: {e}. Falling back to subprocess..."
+            )
             self._subprocess_runner([self._python_exe, "scripts/build_dashboard_db.py"], check=True)
-            
+
         return {"dashboard_db_refreshed": True, "report_rel_path": None}
 
     def refresh_backtest_artifacts(
@@ -76,10 +84,15 @@ class ArtifactRefreshService:
         if refresh_dashboard_db:
             try:
                 from scripts.build_dashboard_db import build_db
+
                 build_db()
             except Exception as e:
-                self._printer(f"Warning: Failed in-process dashboard DB build: {e}. Falling back to subprocess...")
-                self._subprocess_runner([self._python_exe, "scripts/build_dashboard_db.py"], check=True)
+                self._printer(
+                    f"Warning: Failed in-process dashboard DB build: {e}. Falling back to subprocess..."
+                )
+                self._subprocess_runner(
+                    [self._python_exe, "scripts/build_dashboard_db.py"], check=True
+                )
 
         report_rel_path = None
         try:

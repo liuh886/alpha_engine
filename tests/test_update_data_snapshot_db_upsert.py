@@ -28,4 +28,3 @@ def test_update_data_can_upsert_snapshot_payload_to_sqlite(tmp_path: Path):
     from src.assistant.data_snapshot_index import DataSnapshotIndex
 
     assert DataSnapshotIndex(db_path=db_path).get_snapshot("watchlist-day-2026-02-04") is not None
-

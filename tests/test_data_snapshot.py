@@ -22,4 +22,3 @@ def test_build_data_snapshot_id_from_calendar_latest_day(tmp_path: Path):
 
     snap = build_data_snapshot_id(dataset_key="watchlist", freq="day", latest_calendar_day=latest)
     assert snap == "watchlist-day-2026-02-04"
-

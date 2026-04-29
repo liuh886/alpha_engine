@@ -23,4 +23,3 @@ def test_update_data_script_records_latest_snapshot_marker(tmp_path: Path):
     assert out_path.exists()
     text = out_path.read_text(encoding="utf-8")
     assert "watchlist-day-2026-02-04" in text
-

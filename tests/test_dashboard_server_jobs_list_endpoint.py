@@ -43,7 +43,9 @@ def test_dashboard_server_jobs_list_endpoint(tmp_path: Path, monkeypatch):
     httpd, t = _start_server()
     try:
         port = httpd.server_address[1]
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/jobs?limit=10", timeout=5) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/jobs?limit=10", timeout=5
+        ) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         assert data.get("ok") is True
         jobs = data.get("jobs") or []
@@ -51,4 +53,3 @@ def test_dashboard_server_jobs_list_endpoint(tmp_path: Path, monkeypatch):
     finally:
         httpd.shutdown()
         t.join(timeout=5)
-

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import contextlib
 import json
-import sqlite3
 import time
 from pathlib import Path
 
@@ -29,8 +29,14 @@ class ModelRegistryIndex:
         self._db_path = Path(db_path)
         self._ensure_schema()
 
-    def _connect(self) -> sqlite3.Connection:
-        return connect(self._db_path)
+    @contextlib.contextmanager
+    def _connect(self):
+        conn = connect(self._db_path)
+        try:
+            with conn:  # 关键修复：确保事务 Commit
+                yield conn
+        finally:
+            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
@@ -60,9 +66,15 @@ class ModelRegistryIndex:
             if "feature_importance_json" not in cols:
                 conn.execute("ALTER TABLE model_versions ADD COLUMN feature_importance_json TEXT")
 
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_model_versions_run_id ON model_versions(run_id)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_model_versions_market ON model_versions(market)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_model_versions_created_at ON model_versions(created_at)")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_model_versions_run_id ON model_versions(run_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_model_versions_market ON model_versions(market)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_model_versions_created_at ON model_versions(created_at)"
+            )
 
     def upsert_entry(self, entry: dict) -> bool:
         if not isinstance(entry, dict):
@@ -88,7 +100,7 @@ class ModelRegistryIndex:
         )
         if not isinstance(metrics, dict):
             metrics = {}
-        
+
         feature_importance = entry.get("feature_importance") or {}
         if not isinstance(feature_importance, dict):
             feature_importance = {}
@@ -139,7 +151,9 @@ class ModelRegistryIndex:
             )
         return True
 
-    def upsert_from_model_list_yaml(self, yaml_path: str | Path, *, project_root: str | Path | None = None) -> int:
+    def upsert_from_model_list_yaml(
+        self, yaml_path: str | Path, *, project_root: str | Path | None = None
+    ) -> int:
         yaml_path = Path(yaml_path)
         if not yaml_path.exists():
             return 0
@@ -181,11 +195,20 @@ class ModelRegistryIndex:
         if not version_id:
             return None
         with self._connect() as conn:
-            row = conn.execute("SELECT * FROM model_versions WHERE id = ?", (version_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM model_versions WHERE id = ?", (version_id,)
+            ).fetchone()
         if row is None:
             return None
         out = {k: row[k] for k in row.keys()}
-        for k in ("formats_json", "paths_json", "meta_json", "params_json", "metrics_json", "feature_importance_json"):
+        for k in (
+            "formats_json",
+            "paths_json",
+            "meta_json",
+            "params_json",
+            "metrics_json",
+            "feature_importance_json",
+        ):
             raw = out.get(k)
             if not raw:
                 continue
@@ -222,4 +245,3 @@ class ModelRegistryIndex:
         with self._connect() as conn:
             cur = conn.execute("DELETE FROM model_versions WHERE run_id = ?", (run_id,))
         return bool(cur.rowcount and cur.rowcount > 0)
-

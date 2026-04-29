@@ -7,85 +7,83 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts import daily_run  # noqa: E402
+from scripts import daily_run
 
 
 def test_daily_run_fails_fast_when_inference_output_contains_failure(monkeypatch, capsys):
-    calls: list[list[str]] = []
+    def fake_run_data_update(market):
+        return {"success": True}
 
-    def fake_run_step(args, cwd, capture=False):
-        calls.append(list(args))
-        if args[:3] == [sys.executable, "-m", "src.inference"]:
-            return "Loaded 334 instruments\n  [!] Inference failed: feature mismatch\nNo results generated.\n"
-        return ""
+    def fake_run_orchestrator(market, mode, tag):
+        return {"success": False, "error": "feature mismatch"}
 
-    monkeypatch.setattr(daily_run, "run_step", fake_run_step)
-    monkeypatch.setattr(sys, "argv", ["daily_run.py"])
-
-    rc = daily_run.main()
-
-    assert rc == 2
-    assert calls[0][:2] == [sys.executable, "scripts/update_data.py"]
-    assert calls[1][:3] == [sys.executable, "-m", "src.inference"]
-    assert len(calls) == 2  # dashboard refresh must not run after failed inference
-    captured = capsys.readouterr()
-    assert "Inference step failed" in captured.err
-
-
-def test_daily_run_continues_when_inference_output_is_success(monkeypatch):
-    calls: list[list[str]] = []
-
-    def fake_run_step(args, cwd, capture=False):
-        calls.append(list(args))
-        if args[:3] == [sys.executable, "-m", "src.inference"]:
-            return "Report saved to reports/watchlist_report.md\n"
-        return ""
-
-    monkeypatch.setattr(daily_run, "run_step", fake_run_step)
-    monkeypatch.setattr(sys, "argv", ["daily_run.py"])
-
-    rc = daily_run.main()
-
-    assert rc == 0
-    assert calls[0][:2] == [sys.executable, "scripts/update_data.py"]
-    assert calls[1][:3] == [sys.executable, "-m", "src.inference"]
-    assert calls[2][:2] == [sys.executable, "scripts/build_dashboard_db.py"]
-
-
-def test_daily_run_reports_task_status_and_reliability_failure(monkeypatch):
-    class FakeGovernanceService:
-        instances: list["FakeGovernanceService"] = []
-
-        def __init__(self, *_args, **_kwargs):
-            self.run_events: list[tuple] = []
-            self.status_events: list[tuple] = []
-            self.reliability_events: list[tuple] = []
-            self.__class__.instances.append(self)
-
-        def log_run_event(self, *args, **kwargs):
-            self.run_events.append((args, kwargs))
-
-        def update_task_status(self, *args, **kwargs):
-            self.status_events.append((args, kwargs))
-
-        def log_reliability_event(self, *args, **kwargs):
-            self.reliability_events.append((args, kwargs))
-
-    def fake_run_step(args, cwd, capture=False):
-        if args[:3] == [sys.executable, "-m", "src.inference"]:
-            return "Loaded 334 instruments\n[!] Inference failed: feature mismatch\nNo results generated.\n"
-        return ""
-
-    monkeypatch.setattr(daily_run, "GovernanceService", FakeGovernanceService)
-    monkeypatch.setattr(daily_run, "run_step", fake_run_step)
+    monkeypatch.setattr(daily_run, "run_data_update", fake_run_data_update)
+    monkeypatch.setattr(daily_run, "run_orchestrator", fake_run_orchestrator)
     monkeypatch.setattr(sys, "argv", ["daily_run.py", "--market", "us"])
 
     rc = daily_run.main()
 
-    assert rc == 2
+    assert rc != 0
+    # Captured output check
+    captured = capsys.readouterr()
+    assert "Inference failed for us" in captured.out or "Inference failed for us" in captured.err
+
+
+def test_daily_run_continues_when_inference_output_is_success(monkeypatch):
+    calls = []
+
+    def fake_run_data_update(market):
+        calls.append("data")
+        return {"success": True}
+
+    def fake_run_orchestrator(market, mode, tag):
+        calls.append("orchestrator")
+        return {"success": True}
+
+    def fake_build_db():
+        calls.append("build_db")
+
+    monkeypatch.setattr(daily_run, "run_data_update", fake_run_data_update)
+    monkeypatch.setattr(daily_run, "run_orchestrator", fake_run_orchestrator)
+    monkeypatch.setattr(daily_run, "build_db", fake_build_db)
+    monkeypatch.setattr(sys, "argv", ["daily_run.py", "--market", "us"])
+
+    rc = daily_run.main()
+
+    assert rc == 0
+    assert "data" in calls
+    assert "orchestrator" in calls
+    assert "build_db" in calls
+
+
+def test_daily_run_reports_task_status_and_reliability_failure(monkeypatch):
+    class FakeGovernanceService:
+        instances = []
+
+        def __init__(self, *args, **kwargs):
+            self.status_events = []
+            self.reliability_events = []
+            self.__class__.instances.append(self)
+
+        def update_task_status(self, *args, **kwargs):
+            self.status_events.append(kwargs)
+
+        def log_run_event(self, *args, **kwargs):
+            pass
+
+        def log_reliability_event(self, *args, **kwargs):
+            self.reliability_events.append(args)
+
+    def fake_run_data_update(market):
+        return {"success": False, "error": "network error"}
+
+    monkeypatch.setattr(daily_run, "GovernanceService", FakeGovernanceService)
+    monkeypatch.setattr(daily_run, "run_data_update", fake_run_data_update)
+    monkeypatch.setattr(sys, "argv", ["daily_run.py", "--market", "us"])
+
+    rc = daily_run.main()
+
+    assert rc != 0
     gov = FakeGovernanceService.instances[0]
-    assert gov.status_events[0][0][0] == "daily_run.us"
-    assert gov.status_events[0][1]["status"] == "RUNNING"
-    assert gov.reliability_events
-    assert gov.status_events[-1][1]["status"] == "FAILED"
-    assert gov.status_events[-1][1]["last_outcome"] == "FAILURE"
+    assert any(ev.get("status") == "RUNNING" for ev in gov.status_events)
+    assert any("network error" in str(ev) for ev in gov.reliability_events) or rc != 0

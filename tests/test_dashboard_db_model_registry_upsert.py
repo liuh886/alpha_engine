@@ -19,8 +19,20 @@ def test_build_dashboard_db_upserts_model_registry_to_sqlite(tmp_path: Path):
         yaml.safe_dump(
             {
                 "models": [
-                    {"id": "m1", "market": "us", "type": "LGBModel", "path": "models/m1.pkl", "run_id": "r1"},
-                    {"id": "m2", "market": "us", "type": "LGBModel", "path": "models/m2.pkl", "run_id": "r2"},
+                    {
+                        "id": "m1",
+                        "market": "us",
+                        "type": "LGBModel",
+                        "path": "models/m1.pkl",
+                        "run_id": "r1",
+                    },
+                    {
+                        "id": "m2",
+                        "market": "us",
+                        "type": "LGBModel",
+                        "path": "models/m2.pkl",
+                        "run_id": "r2",
+                    },
                 ]
             },
             sort_keys=False,
@@ -36,4 +48,3 @@ def test_build_dashboard_db_upserts_model_registry_to_sqlite(tmp_path: Path):
 
     idx = ModelRegistryIndex(db_path=db_path)
     assert {v["id"] for v in idx.list_versions(limit=10)} == {"m1", "m2"}
-

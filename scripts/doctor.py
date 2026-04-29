@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Compatibility wrapper: moved to agents/governance/scripts/doctor.py."""
+
 from __future__ import annotations
+
 import runpy
 from pathlib import Path
 

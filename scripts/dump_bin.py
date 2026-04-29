@@ -63,7 +63,11 @@ def dump_all(
 
         df = df.rename(columns={date_col: "date"})
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
-        df = df.dropna(subset=["date"]).drop_duplicates(subset=["date"], keep="last").sort_values("date")
+        df = (
+            df.dropna(subset=["date"])
+            .drop_duplicates(subset=["date"], keep="last")
+            .sort_values("date")
+        )
 
         if df.empty:
             continue
@@ -119,7 +123,9 @@ def dump_all(
         for symbol, df in data_cache.items():
             start_date = df["date"].iloc[0]
             end_date = df["date"].iloc[-1]
-            f_inst.write(f"{symbol}\t{start_date.strftime('%Y-%m-%d')}\t{end_date.strftime('%Y-%m-%d')}\n")
+            f_inst.write(
+                f"{symbol}\t{start_date.strftime('%Y-%m-%d')}\t{end_date.strftime('%Y-%m-%d')}\n"
+            )
 
             feature_dir = output_dir / "features" / symbol
             feature_dir.mkdir(parents=True, exist_ok=True)

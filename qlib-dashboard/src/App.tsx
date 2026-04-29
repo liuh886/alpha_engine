@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { getSampleData } from './lib/sample-data';
 import { parseQlibData, ModelData } from './lib/data-parser';
 import { Dashboard } from './components/Dashboard';
 import { ModelSelector } from './components/ModelSelector';
@@ -63,19 +62,13 @@ function App() {
           if (parsed.length > 0) {
             setModels(parsed);
             setSelectedModelId(parsed[0].id);
-            setLoading(false);
-            return;
           }
         }
-      } catch { /* fallback */ }
-
-      const sample = getSampleData();
-      if (sample) {
-        const parsed = parseQlibData(sample);
-        setModels(parsed);
-        if (parsed.length > 0) setSelectedModelId(parsed[0].id);
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     loadData();
   }, []);

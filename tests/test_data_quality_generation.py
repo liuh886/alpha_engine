@@ -14,7 +14,9 @@ def test_generate_data_quality_summary(tmp_path: Path):
     (provider / "calendars").mkdir(parents=True, exist_ok=True)
     (provider / "instruments").mkdir(parents=True, exist_ok=True)
     (provider / "calendars" / "day.txt").write_text("2026-02-04\n2026-02-05\n", encoding="utf-8")
-    (provider / "instruments" / "us.txt").write_text("AAPL\t2026-02-04\t2026-02-05\n", encoding="utf-8")
+    (provider / "instruments" / "us.txt").write_text(
+        "AAPL\t2026-02-04\t2026-02-05\n", encoding="utf-8"
+    )
 
     csv_dir = tmp_path / "data" / "csv_source"
     csv_dir.mkdir(parents=True, exist_ok=True)
@@ -42,4 +44,3 @@ def test_generate_data_quality_summary(tmp_path: Path):
     assert out["ok"] is True
     assert out["latest_calendar_day"] == "2026-02-05"
     assert out["markets"]["us"]["instruments"] == 1
-

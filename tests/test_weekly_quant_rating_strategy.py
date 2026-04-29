@@ -56,7 +56,7 @@ def test_select_target_respects_streak_and_sorts_by_score():
 
 
 def test_strategy_compiler_emits_weekly_quant_rating_strategy():
-    from scripts.strategy_to_workflow import apply_profile_to_config
+    from src.workflows.profile_compiler import apply_profile_to_config
 
     profile = {
         "meta": {"benchmark_by_market": {"us": "QQQ"}},
@@ -104,7 +104,7 @@ def test_strategy_compiler_emits_weekly_quant_rating_strategy():
 
 
 def test_strategy_compiler_clears_weekly_quant_rating_kwargs_when_switching_to_trend():
-    from scripts.strategy_to_workflow import apply_profile_to_config
+    from src.workflows.profile_compiler import apply_profile_to_config
 
     profile = {
         "strategy": {
@@ -256,14 +256,18 @@ def test_strategy_trades_only_on_week_last_day(monkeypatch):
                 trade_val = amt * price
                 position.set_cash(position.get_cash() + trade_val)
                 return trade_val, 0.0, None
-            position.set_stock_amount(order.stock_id, position.get_stock_amount(order.stock_id) + amt)
+            position.set_stock_amount(
+                order.stock_id, position.get_stock_amount(order.stock_id) + amt
+            )
             trade_val = amt * price
             position.set_cash(position.get_cash() - trade_val)
             return trade_val, 0.0, None
 
     # Patch qlib D.features to always pass tradability filters
     def fake_features(instruments, fields, start_time=None, end_time=None):
-        idx = pd.MultiIndex.from_product([instruments, [pd.Timestamp(end_time)]], names=["instrument", "datetime"])
+        idx = pd.MultiIndex.from_product(
+            [instruments, [pd.Timestamp(end_time)]], names=["instrument", "datetime"]
+        )
         df = pd.DataFrame(index=idx, columns=fields, dtype=float)
         for f in fields:
             if "$close" in f:
@@ -289,7 +293,9 @@ def test_strategy_trades_only_on_week_last_day(monkeypatch):
 
     position = FakePosition(cash=10_000)
     exchange = FakeExchange()
-    calendar = FakeTradeCalendar(["2026-01-08", "2026-01-09", "2026-01-12"], trade_step=1)  # Fri is last of week
+    calendar = FakeTradeCalendar(
+        ["2026-01-08", "2026-01-09", "2026-01-12"], trade_step=1
+    )  # Fri is last of week
 
     strat = WeeklyQuantRatingStrategy(
         signal=pd.Series(dtype=float),
@@ -382,7 +388,9 @@ def test_strategy_sells_names_not_in_target_on_rebalance(monkeypatch):
             return True
 
     def fake_features(instruments, fields, start_time=None, end_time=None):
-        idx = pd.MultiIndex.from_product([instruments, [pd.Timestamp(end_time)]], names=["instrument", "datetime"])
+        idx = pd.MultiIndex.from_product(
+            [instruments, [pd.Timestamp(end_time)]], names=["instrument", "datetime"]
+        )
         df = pd.DataFrame(index=idx, columns=fields, dtype=float)
         for f in fields:
             if "$close" in f:

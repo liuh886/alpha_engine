@@ -1,9 +1,10 @@
 import json
-import yaml
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+
+import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
+
 
 def load_profile(path: Path) -> dict:
     if not path.exists():
@@ -11,41 +12,54 @@ def load_profile(path: Path) -> dict:
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
+
 def get_region_for_market(market: str) -> str:
     market = (market or "").lower()
     if market in {"cn", "hk"}:
         return "cn"
     return "us"
 
+
 def ensure_list(value):
     if value is None:
         return []
     return value if isinstance(value, list) else [value]
+
 
 def collect_profile_warnings(profile: dict, market: str) -> list[str]:
     warnings: list[str] = []
     meta = profile.get("meta", {}) if isinstance(profile, dict) else {}
     model = profile.get("model", {}) if isinstance(profile, dict) else {}
     strategy = profile.get("strategy", {}) if isinstance(profile, dict) else {}
-    universe = profile.get("universe", {}) if isinstance(universe, dict) else {}
+    universe_val = profile.get("universe", {})
+    universe = universe_val if isinstance(universe_val, dict) else {}
 
     if meta.get("market") and str(meta.get("market")).lower() != str(market).lower():
-        warnings.append("meta.market differs from --market; compilation uses --market (meta.market is informational).")
+        warnings.append(
+            "meta.market differs from --market; compilation uses --market (meta.market is informational)."
+        )
 
     filters = universe.get("filters", {}) if isinstance(universe, dict) else {}
     if isinstance(filters, dict) and filters.get("min_liquidity") is not None:
-        warnings.append("universe.filters.min_liquidity is not enforced by the compiler; it is intended for runtime universe filtering.")
+        warnings.append(
+            "universe.filters.min_liquidity is not enforced by the compiler; it is intended for runtime universe filtering."
+        )
 
     if strategy.get("buy_rule") is not None:
         warnings.append("strategy.buy_rule is currently not used by compiler/strategies (ignored).")
     if strategy.get("sell_rule") is not None:
-        warnings.append("strategy.sell_rule is currently not used by compiler/strategies (ignored).")
+        warnings.append(
+            "strategy.sell_rule is currently not used by compiler/strategies (ignored)."
+        )
 
     feature_pack = (model.get("feature_pack") or "").lower()
     if feature_pack == "alpha158" and model.get("features"):
-        warnings.append("model.features is ignored when model.feature_pack=alpha158; use model.extra_features instead.")
+        warnings.append(
+            "model.features is ignored when model.feature_pack=alpha158; use model.extra_features instead."
+        )
 
     return warnings
+
 
 def rebalance_steps_from_frequency(freq):
     if freq is None:
@@ -63,6 +77,7 @@ def rebalance_steps_from_frequency(freq):
         if key in {"monthly", "1m", "month"}:
             return 21
     return None
+
 
 def apply_profile_to_config(profile: dict, cfg: dict, market: str) -> dict:
     meta = profile.get("meta", {})
@@ -180,7 +195,9 @@ def apply_profile_to_config(profile: dict, cfg: dict, market: str) -> dict:
         if strategy.get("universe_size") is not None:
             strat_kwargs["universe_size"] = int(strategy.get("universe_size"))
         if strategy.get("strongbuy_consecutive_days") is not None:
-            strat_kwargs["strongbuy_consecutive_days"] = int(strategy.get("strongbuy_consecutive_days"))
+            strat_kwargs["strongbuy_consecutive_days"] = int(
+                strategy.get("strongbuy_consecutive_days")
+            )
         if strategy.get("strongbuy_fraction") is not None:
             strat_kwargs["strongbuy_fraction"] = float(strategy.get("strongbuy_fraction"))
         if strategy.get("lookback_days") is not None:
@@ -195,11 +212,20 @@ def apply_profile_to_config(profile: dict, cfg: dict, market: str) -> dict:
     min_hold_days = strategy.get("min_hold_days")
     sell_on_ma = strategy.get("sell_on_ma")
     sell_rank_threshold = strategy.get("sell_rank_threshold")
-    if any(x is not None for x in [rebalance_steps, min_hold_days, sell_on_ma, sell_rank_threshold]):
+    if any(
+        x is not None for x in [rebalance_steps, min_hold_days, sell_on_ma, sell_rank_threshold]
+    ):
         strat["class"] = "BiweeklyTrendStrategy"
         strat["module_path"] = "src.strategies.biweekly_trend_strategy"
         strat_kwargs.pop("n_drop", None)
-        for key in ["universe_size", "strongbuy_consecutive_days", "strongbuy_fraction", "lookback_days", "min_dollar_vol_20d", "price_cap"]:
+        for key in [
+            "universe_size",
+            "strongbuy_consecutive_days",
+            "strongbuy_fraction",
+            "lookback_days",
+            "min_dollar_vol_20d",
+            "price_cap",
+        ]:
             strat_kwargs.pop(key, None)
         if rebalance_steps is not None:
             strat_kwargs["rebalance_steps"] = rebalance_steps
@@ -211,6 +237,7 @@ def apply_profile_to_config(profile: dict, cfg: dict, market: str) -> dict:
             strat_kwargs["sell_rank_threshold"] = sell_rank_threshold
 
     return cfg
+
 
 def maybe_update_watchlist(profile: dict, market: str):
     universe = profile.get("universe", {})
@@ -230,7 +257,13 @@ def maybe_update_watchlist(profile: dict, market: str):
     with open(watchlist_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=False)
 
-def compile_strategy_profile(*, market: Optional[str] = None, profile_path: str = "configs/strategy_profile.json", dry_run: bool = False) -> Path:
+
+def compile_strategy_profile(
+    *,
+    market: str | None = None,
+    profile_path: str = "configs/strategy_profile.json",
+    dry_run: bool = False,
+) -> Path:
     """
     核心编译逻辑：将策略 Profile JSON 编译为 Qlib 工作流 YAML。
     """

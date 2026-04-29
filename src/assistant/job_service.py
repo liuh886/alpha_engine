@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+import contextlib
 import json
+import os
+import signal
 import sqlite3
 import subprocess
+import threading
 import time
+import urllib.request
 from pathlib import Path
 
 from src.assistant.metadata_db import connect
+
+# Global registry for running processes
+_RUNNING_PROCS: dict[str, subprocess.Popen] = {}
+_PROCS_LOCK = threading.Lock()
 
 
 class JobService:
@@ -22,8 +31,14 @@ class JobService:
     def project_root(self) -> Path:
         return self._project_root
 
-    def _connect(self) -> sqlite3.Connection:
-        return connect(self._db_path)
+    @contextlib.contextmanager
+    def _connect(self):
+        conn = connect(self._db_path)
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
@@ -64,7 +79,6 @@ class JobService:
         commands = job.get("commands") or []
         commands_json = json.dumps(commands, ensure_ascii=False)
 
-        # Store the rest of the fields for forward compatibility.
         job_no_cmd = dict(job)
         job_no_cmd.pop("commands", None)
         job_json = json.dumps(job_no_cmd, ensure_ascii=False)
@@ -186,16 +200,36 @@ class JobService:
             conn.execute(f"UPDATE jobs SET {set_sql} WHERE id = ?", params)
 
     def _send_webhook_alert(self, job_id: str, error_msg: str):
-        import json
-        import os
-        import urllib.request
         webhook_url = os.environ.get("TRADING_WEBHOOK_URL")
-        if not webhook_url: return
+        if not webhook_url:
+            return
         try:
             payload = {"text": f"🚨 *Job Failed*: `{job_id}`\n```\n{error_msg[:1000]}\n```"}
-            req = urllib.request.Request(webhook_url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
+            req = urllib.request.Request(
+                webhook_url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
             urllib.request.urlopen(req, timeout=5)
-        except Exception: pass
+        except Exception:
+            pass
+
+    def kill_job(self, job_id: str) -> bool:
+        """
+        Kill a running job process if it exists in the registry.
+        """
+        with _PROCS_LOCK:
+            proc = _RUNNING_PROCS.get(str(job_id))
+            if proc:
+                try:
+                    if os.name == "nt":
+                        proc.terminate()  # Windows
+                    else:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                    return True
+                except Exception:
+                    return False
+        return False
 
     def run_job(self, job_id: str) -> None:
         job = self.get_job(str(job_id))
@@ -216,59 +250,59 @@ class JobService:
             log_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            if log_path:
-                with open(log_path, "w", encoding="utf-8") as f:
-                    for cmd in job.get("commands") or []:
-                        cmd_str = " ".join([str(x) for x in cmd])
+            for cmd in job.get("commands") or []:
+                cmd_str = " ".join([str(x) for x in cmd])
+
+                kwargs = {
+                    "cwd": str(self._project_root),
+                    "stdout": subprocess.PIPE,
+                    "stderr": subprocess.STDOUT,
+                    "text": True,
+                    "encoding": "utf-8",
+                    "errors": "replace",
+                }
+                if os.name != "nt":
+                    kwargs["start_new_session"] = True
+
+                proc = subprocess.Popen(cmd, **kwargs)
+
+                with _PROCS_LOCK:
+                    _RUNNING_PROCS[str(job_id)] = proc
+
+                try:
+                    stdout, _ = proc.communicate()
+                finally:
+                    with _PROCS_LOCK:
+                        if _RUNNING_PROCS.get(str(job_id)) == proc:
+                            del _RUNNING_PROCS[str(job_id)]
+
+                if log_path:
+                    with open(log_path, "a", encoding="utf-8") as f:
                         f.write(f"\n=== {cmd_str} ===\n")
+                        f.write(stdout)
                         f.flush()
-                        proc = subprocess.run(
-                            cmd, 
-                            cwd=str(self._project_root), 
-                            stdout=subprocess.PIPE, 
-                            stderr=subprocess.STDOUT, 
-                            text=True,
-                            encoding="utf-8",
-                            errors="replace"
-                        )
-                        f.write(proc.stdout)
-                        f.flush()
-                        
-                        if proc.returncode != 0:
-                            error_snippet = proc.stdout[-500:] if proc.stdout else "Process failed with no output"
-                            full_error = f"Command failed: {cmd_str}\n\nLast output:\n...{error_snippet}"
-                            self._send_webhook_alert(str(job_id), full_error)
-                            self.update_job(
-                                str(job_id),
-                                status="failed",
-                                exit_code=proc.returncode,
-                                error=full_error,
-                                finished_at=time.time(),
-                            )
-                            return
-            else:
-                for cmd in job.get("commands") or []:
-                    proc = subprocess.run(
-                        cmd, 
-                        cwd=str(self._project_root), 
-                        stdout=subprocess.PIPE, 
-                        stderr=subprocess.STDOUT, 
-                        text=True,
-                        encoding="utf-8",
-                        errors="replace"
-                    )
-                    if proc.returncode != 0:
-                        error_snippet = proc.stdout[-500:] if proc.stdout else "Process failed with no output"
-                        full_error = f"Command failed: {' '.join([str(x) for x in cmd])}\n\nLast output:\n...{error_snippet}"
-                        self._send_webhook_alert(str(job_id), full_error)
-                        self.update_job(
-                            str(job_id),
-                            status="failed",
-                            exit_code=proc.returncode,
-                            error=full_error,
-                            finished_at=time.time(),
-                        )
+
+                if proc.returncode != 0:
+                    # Check if it was killed by panic
+                    current = self.get_job(str(job_id))
+                    if (
+                        current
+                        and current.get("status") == "failed"
+                        and "SYSTEM_PANIC" in str(current.get("error"))
+                    ):
                         return
+
+                    error_snippet = stdout[-500:] if stdout else "Process failed with no output"
+                    full_error = f"Command failed: {cmd_str}\n\nLast output:\n...{error_snippet}"
+                    self._send_webhook_alert(str(job_id), full_error)
+                    self.update_job(
+                        str(job_id),
+                        status="failed",
+                        exit_code=proc.returncode,
+                        error=full_error,
+                        finished_at=time.time(),
+                    )
+                    return
 
             self.update_job(
                 str(job_id),
@@ -278,6 +312,7 @@ class JobService:
             )
         except Exception as e:
             import traceback
+
             full_error = f"Exception: {str(e)}\n\n{traceback.format_exc()}"
             self._send_webhook_alert(str(job_id), full_error)
             self.update_job(
@@ -289,9 +324,6 @@ class JobService:
             )
 
     def repair_jobs(self, *, timeout_hours: float = 24.0) -> int:
-        """
-        Mark jobs that have been 'running' for too long as 'failed'.
-        """
         self._ensure_schema()
         cutoff = time.time() - (float(timeout_hours) * 3600.0)
         with self._connect() as conn:

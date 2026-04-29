@@ -145,11 +145,12 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                 direction=None if self.forbid_all_trade_at_limit else OrderDir.SELL,
             ):
                 continue
-                
+
             # [GUARDRAIL 1/2] - Hardcoded Position & Slippage Check on Sells
             sell_amount = current_temp.get_stock_amount(code=code)
-            if sell_amount <= 0: continue
-            
+            if sell_amount <= 0:
+                continue
+
             sell_order = Order(
                 stock_id=code,
                 amount=sell_amount,
@@ -182,11 +183,11 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                     direction=None if self.forbid_all_trade_at_limit else OrderDir.BUY,
                 ):
                     continue
-                    
+
                 # [GUARDRAIL 2/2] - Hardcoded Position constraints (Max 15% allowed per tick)
                 max_allowed_buy_val = cash * 0.15
                 target_value = min(value, max_allowed_buy_val)
-                    
+
                 buy_price = self.trade_exchange.get_deal_price(
                     stock_id=code,
                     start_time=trade_start_time,
@@ -195,7 +196,7 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                 )
                 if buy_price is None or np.isnan(buy_price) or buy_price <= 0:
                     continue
-                    
+
                 buy_amount = target_value / buy_price
                 factor = self.trade_exchange.get_factor(
                     stock_id=code, start_time=trade_start_time, end_time=trade_end_time

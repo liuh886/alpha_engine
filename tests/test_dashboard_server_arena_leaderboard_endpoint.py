@@ -49,14 +49,18 @@ def test_dashboard_server_arena_endpoints(tmp_path: Path, monkeypatch):
     httpd, t = _start_server()
     try:
         port = httpd.server_address[1]
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/arenas?limit=10", timeout=5) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/arenas?limit=10", timeout=5
+        ) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         assert data.get("ok") is True
         arenas = data.get("arenas") or []
         assert any(x.get("name") == "US Arena" for x in arenas)
 
         q = urllib.parse.urlencode({"arena_name": "US Arena", "date": "latest"})
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/arena/leaderboard?{q}", timeout=5) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/arena/leaderboard?{q}", timeout=5
+        ) as resp:
             data2 = json.loads(resp.read().decode("utf-8"))
         assert data2.get("ok") is True
         assert data2.get("date") == "2025-01-02"
@@ -65,4 +69,3 @@ def test_dashboard_server_arena_endpoints(tmp_path: Path, monkeypatch):
     finally:
         httpd.shutdown()
         t.join(timeout=5)
-

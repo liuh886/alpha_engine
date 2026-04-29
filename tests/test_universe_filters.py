@@ -11,7 +11,9 @@ def test_filter_by_min_liquidity_keeps_only_eligible():
     from src.common.universe import filter_by_min_liquidity
 
     def fake_features(instruments, fields, start_time=None, end_time=None):
-        idx = pd.MultiIndex.from_product([instruments, [pd.Timestamp(start_time)]], names=["instrument", "datetime"])
+        idx = pd.MultiIndex.from_product(
+            [instruments, [pd.Timestamp(start_time)]], names=["instrument", "datetime"]
+        )
         df = pd.DataFrame(index=idx, columns=fields, dtype=float)
         # A is liquid, B is not
         df.loc[("A", pd.Timestamp(start_time)), fields[0]] = 1.0
@@ -33,7 +35,9 @@ def test_apply_profile_universe_filters_reads_min_liquidity():
     from src.common.universe import apply_profile_universe_filters
 
     def fake_features(instruments, fields, start_time=None, end_time=None):
-        idx = pd.MultiIndex.from_product([instruments, [pd.Timestamp(start_time)]], names=["instrument", "datetime"])
+        idx = pd.MultiIndex.from_product(
+            [instruments, [pd.Timestamp(start_time)]], names=["instrument", "datetime"]
+        )
         df = pd.DataFrame(index=idx, columns=fields, dtype=float)
         df.loc[("A", pd.Timestamp(start_time)), fields[0]] = 1.0
         df.loc[("A", pd.Timestamp(start_time)), fields[1]] = 2_000_000.0

@@ -31,7 +31,9 @@ def test_dashboard_server_arena_settle_creates_job(tmp_path: Path, monkeypatch):
     try:
         port = httpd.server_address[1]
 
-        payload = json.dumps({"market": "us", "arena_name": "US Arena", "date": "latest"}).encode("utf-8")
+        payload = json.dumps({"market": "us", "arena_name": "US Arena", "date": "latest"}).encode(
+            "utf-8"
+        )
         req = urllib.request.Request(
             f"http://127.0.0.1:{port}/api/arena/settle",
             method="POST",
@@ -48,7 +50,9 @@ def test_dashboard_server_arena_settle_creates_job(tmp_path: Path, monkeypatch):
         deadline = time.time() + 10
         status = None
         while time.time() < deadline:
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/jobs/{job_id}", timeout=5) as resp:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/api/jobs/{job_id}", timeout=5
+            ) as resp:
                 j = json.loads(resp.read().decode("utf-8"))
             status = (j.get("job") or {}).get("status")
             if status in {"succeeded", "failed"}:
@@ -59,4 +63,3 @@ def test_dashboard_server_arena_settle_creates_job(tmp_path: Path, monkeypatch):
     finally:
         httpd.shutdown()
         t.join(timeout=5)
-

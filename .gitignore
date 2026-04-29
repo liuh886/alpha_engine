@@ -25,44 +25,38 @@ wheels/
 *.egg
 
 # Virtual environments
+.venv/
 venv/
 env/
 ENV/
-.env
 
 # IDEs
 .vscode/
 .idea/
 *.swp
+.DS_Store
 
-# Project specific ignores
-data/raw_cache/
-data/snapshots/
-data/*.db
-data/*.sqlite
+# Tool specific
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.playwright-cli/
+.coverage
+htmlcov/
+coverage.xml
+
+# Project specific
+data/
 artifacts/
-!artifacts/site/
-!artifacts/README.md
-!artifacts/mlruns/
-!artifacts/models/
-!artifacts/runs/
-!artifacts/.pytest_cache/
-# However, we still want to ignore the CONTENT of these directories if they are large, 
-# but the instruction said "Boundary for sync-safe portable projects".
-# Actually, if we want them to be "sync-safe", we usually IGNORE them in Git/Cloud sync.
-# The user said: "If the vault is synced (e.g., via Dropbox/Git), these high-churn directories will cause sync conflicts and bloat."
-# So they SHOULD be ignored. My previous replace was maybe wrong in intent if I use !.
-# I will just update the paths to be relative to the new location.
-artifacts/mlruns/
-artifacts/runs/
-artifacts/models/*.pkl
-artifacts/models/*.bin
-artifacts/.pytest_cache/
+mlruns/
+output/
 site/data/
 site/reports/
 node_modules/
-.venv/
 *.log
-artifacts/
-data/
-mlruns/
+.env
+api_server_v2.log
+startup.log
+
+# Exclude specific files from ignore if needed
+# !artifacts/site/

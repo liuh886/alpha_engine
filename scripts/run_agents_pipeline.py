@@ -1,61 +1,107 @@
+import json
 import os
+import subprocess
 import time
 
-from src.agents.alpha.alpha_agent import AlphaAgent
-from src.agents.governance.governance_agent import GovernanceAgent
-from src.agents.risk.risk_agent import RiskAgent
-from src.agents.tools.governance_tools import format_thought_stream_for_report
 
-
-def run_multi_agent_pipeline():
-    print("=========================================")
-    print(" Agentic Alpha Engine Pipeline Triggered ")
-    print("=========================================")
-    
-    # Empty existing thought stream to prep for a fresh run
+def format_thought_stream_for_report(agent_name, level, message):
     stream_path = "artifacts/agent_thought_stream.json"
+    if not os.path.exists(os.path.dirname(stream_path)):
+        os.makedirs(os.path.dirname(stream_path), exist_ok=True)
+
+    entry = {
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "agent": agent_name,
+        "level": level,
+        "message": message,
+    }
+
+    data = []
     if os.path.exists(stream_path):
-        import json
-        with open(stream_path, "w") as f:
-            json.dump([], f)
-            
+        try:
+            with open(stream_path) as f:
+                data = json.load(f)
+        except:
+            data = []
+
+    data.append(entry)
+    with open(stream_path, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def run_command(cmd, agent_name, description, max_retries=3):
+    retries = 0
+    while retries < max_retries:
+        format_thought_stream_for_report(
+            agent_name, "info", f"Executing: {description} (Attempt {retries + 1}/{max_retries})..."
+        )
+        try:
+            process = subprocess.Popen(
+                cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            stdout, stderr = process.communicate()
+            if process.returncode == 0:
+                format_thought_stream_for_report(
+                    agent_name, "success", f"Successfully completed: {description}"
+                )
+                return True
+            else:
+                retries += 1
+                format_thought_stream_for_report(
+                    agent_name,
+                    "warning",
+                    f"Attempt {retries} failed for {description}. Retrying in 5s...",
+                )
+                time.sleep(5)
+        except Exception:
+            retries += 1
+            time.sleep(5)
+
+    format_thought_stream_for_report(
+        agent_name, "error", f"Permanent failure after {max_retries} attempts: {description}"
+    )
+    return False
+
+
+def run_multi_agent_pipeline(market="cn"):
+    print("=========================================")
+    print(f" Alpha Engine Pipeline: {market.upper()} Market ")
+    print("=========================================")
+
     # Step 1: Governance kicks off
-    gov = GovernanceAgent()
     format_thought_stream_for_report(
-        "Governance Agent", "info", "Starting new daily Multi-Agent workflow."
+        "Governance Agent", "info", f"Initiating real-world pipeline for {market} market."
     )
-    time.sleep(1)
+
+    # Step 2: Risk Agent audits (Simulated logic for now, but real script trigger)
     format_thought_stream_for_report(
-        "Governance Agent", "info", "Calling Risk Agent to verify market conditions before execution."
+        "Risk Agent", "info", "Verifying data integrity and market volatility."
     )
-    time.sleep(1)
-    
-    # Step 2: Risk Agent acts
-    risk = RiskAgent()
-    risk.audit_market_conditions("cn")
-    
-    # Step 3: Alpha Agent acts
+
+    # Step 3: Data Collection (Real)
+    # Note: collect_data.py currently handles both US/CN via watchlist.yaml
+    if not run_command("python scripts/collect_data.py", "Data Agent", "Market Data Collection"):
+        format_thought_stream_for_report(
+            "Governance Agent",
+            "warning",
+            "Data collection had issues, proceeding with partial data.",
+        )
+
+    # Step 4: Alpha Research (Inference & Backtest)
+    # This would normally involve running an orchestrator, let's trigger the report generation for the latest run
+    run_command(
+        f"python scripts/generate_backtest_report.py --latest --market {market}",
+        "Alpha Agent",
+        f"Generating {market} Backtest Report",
+    )
+
     format_thought_stream_for_report(
-        "Governance Agent", "info", "Risk cleared. Requesting Alpha Agent to execute research cycle."
+        "Governance Agent", "success", "Full pipeline cycle complete. Reports available in Web UI."
     )
-    time.sleep(1)
-    alpha = AlphaAgent()
-    alpha.research_cycle("cn")
-    
-    # Step 4: Governance finishes the loop
-    format_thought_stream_for_report(
-        "Governance Agent", "success", "Alpha research complete. Initiating core pipeline inference task."
-    )
-    time.sleep(1)
-    
-    # Simulate inference passing
-    format_thought_stream_for_report(
-        "Governance Agent", "info", "Executing tool: `run_orchestrator('cn')`..."
-    )
-    time.sleep(2)
-    format_thought_stream_for_report(
-        "Governance Agent", "success", "All pipelines finished successfully. Dashboard UI updated."
-    )
-    
+
+
 if __name__ == "__main__":
-    run_multi_agent_pipeline()
+    import sys
+
+    market = sys.argv[1] if len(sys.argv) > 1 else "cn"
+    run_multi_agent_pipeline(market)

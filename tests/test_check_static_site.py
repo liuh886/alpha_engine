@@ -16,6 +16,7 @@ def test_check_static_site_smoke():
         (site_dir / "styles.css").write_text("...")
         (site_dir / "data").mkdir(exist_ok=True)
         import json
+
         with open(site_dir / "data" / "manifest.json", "w") as f:
             json.dump({"generated_at": "...", "stats": {}}, f)
         with open(site_dir / "data" / "models.json", "w") as f:
@@ -25,11 +26,8 @@ def test_check_static_site_smoke():
         with open(site_dir / "data" / "reports.json", "w") as f:
             json.dump([], f)
 
-    cmd = [
-        sys.executable, "scripts/check_static_site.py",
-        "--site-dir", str(site_dir)
-    ]
-    
+    cmd = [sys.executable, "scripts/check_static_site.py", "--site-dir", str(site_dir)]
+
     result = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True)
     assert result.returncode == 0
     assert "[OK] Static Site Check Passed." in result.stdout

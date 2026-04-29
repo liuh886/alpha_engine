@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
-import sqlite3
 import time
 from pathlib import Path
 
@@ -25,8 +25,14 @@ class DataQualityIndex:
         self._db_path = Path(db_path)
         self._ensure_schema()
 
-    def _connect(self) -> sqlite3.Connection:
-        return connect(self._db_path)
+    @contextlib.contextmanager
+    def _connect(self):
+        conn = connect(self._db_path)
+        try:
+            with conn:  # 关键修复：确保事务 Commit
+                yield conn
+        finally:
+            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
@@ -57,7 +63,16 @@ class DataQualityIndex:
                 """
             )
 
-    def upsert(self, *, snapshot_id: str, dataset_key: str, freq: str, market: str, latest_calendar_day: str, summary: dict) -> dict:
+    def upsert(
+        self,
+        *,
+        snapshot_id: str,
+        dataset_key: str,
+        freq: str,
+        market: str,
+        latest_calendar_day: str,
+        summary: dict,
+    ) -> dict:
         snapshot_id = str(snapshot_id or "").strip()
         if not snapshot_id:
             raise ValueError("snapshot_id is required")
@@ -108,7 +123,9 @@ class DataQualityIndex:
         if not report_id:
             return None
         with self._connect() as conn:
-            row = conn.execute("SELECT * FROM data_quality_reports WHERE id = ?", (report_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM data_quality_reports WHERE id = ?", (report_id,)
+            ).fetchone()
         if row is None:
             return None
         out = {k: row[k] for k in row.keys()}
@@ -148,4 +165,3 @@ class DataQualityIndex:
         else:
             out["summary"] = {}
         return out
-

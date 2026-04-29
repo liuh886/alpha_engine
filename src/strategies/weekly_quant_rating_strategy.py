@@ -178,7 +178,9 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
         # Use `pred_start_time` (a trading timestamp) for any point-in-time market data queries.
         eligibility = self._compute_eligibility(candidates, pred_start_time)
         target = select_target(
-            scores_by_instrument={inst: float(pred_score.get(inst)) for inst in candidates if inst in pred_score.index},
+            scores_by_instrument={
+                inst: float(pred_score.get(inst)) for inst in candidates if inst in pred_score.index
+            },
             streaks=self._streaks,
             eligible_by_instrument=eligibility,
             strongbuy_consecutive_days=self.strongbuy_consecutive_days,
@@ -195,7 +197,10 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
             if code in target_set:
                 continue
             if not self.trade_exchange.is_stock_tradable(
-                stock_id=code, start_time=trade_start_time, end_time=trade_end_time, direction=OrderDir.SELL
+                stock_id=code,
+                start_time=trade_start_time,
+                end_time=trade_end_time,
+                direction=OrderDir.SELL,
             ):
                 continue
             amt = float(self.trade_position.get_stock_amount(code))
@@ -215,15 +220,22 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
         value_per = cash * float(self.risk_degree) / len(target)
 
         for code in target:
-            if not self.trade_exchange.is_stock_tradable(stock_id=code, start_time=trade_start_time, end_time=trade_end_time):
+            if not self.trade_exchange.is_stock_tradable(
+                stock_id=code, start_time=trade_start_time, end_time=trade_end_time
+            ):
                 continue
             price = self.trade_exchange.get_deal_price(
-                stock_id=code, start_time=trade_start_time, end_time=trade_end_time, direction=OrderDir.BUY
+                stock_id=code,
+                start_time=trade_start_time,
+                end_time=trade_end_time,
+                direction=OrderDir.BUY,
             )
             if price is None or np.isnan(price) or price <= 0:
                 continue
             amount = value_per / float(price)
-            factor = self.trade_exchange.get_factor(stock_id=code, start_time=trade_start_time, end_time=trade_end_time)
+            factor = self.trade_exchange.get_factor(
+                stock_id=code, start_time=trade_start_time, end_time=trade_end_time
+            )
             amount = self.trade_exchange.round_amount_by_trade_unit(amount, factor)
             if amount is None or np.isnan(amount) or amount <= 0:
                 continue

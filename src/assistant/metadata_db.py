@@ -26,4 +26,3 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
     except Exception:
         pass
     return conn
-

@@ -22,7 +22,7 @@ if q.get("ok"):
     idx = DataQualityIndex(db_path=resolve_metadata_db_path(project_root))
     snapshot_id = str(q.get("snapshot_id"))
     latest_day = str(q.get("latest_calendar_day"))
-    
+
     idx.upsert(
         snapshot_id=snapshot_id,
         dataset_key="watchlist",

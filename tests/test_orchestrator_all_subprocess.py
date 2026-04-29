@@ -17,9 +17,10 @@ def test_orchestrator_market_all_runs_via_subprocess(monkeypatch):
 
         return Result()
 
-    monkeypatch.setattr(orchestrator, "build_compile_cmd", fail_compile)
-    monkeypatch.setattr(orchestrator.subprocess, "run", fake_run)
+    import src.orchestrator
 
+    monkeypatch.setattr(src.orchestrator, "build_compile_cmd", fail_compile)
+    monkeypatch.setattr(src.orchestrator.subprocess, "run", fake_run)
     orchestrator.Orchestrator().run(
         market="all",
         model_type="lgbm",

@@ -9,16 +9,19 @@ def test_export_static_site_data_smoke():
     # Ensure artifacts/site/data exists for test output
     out_dir = root / "artifacts" / "site" / "test_data"
     out_dir.mkdir(parents=True, exist_ok=True)
-    
+
     cmd = [
-        sys.executable, "scripts/export_static_site_data.py",
-        "--market", "all",
-        "--output", str(out_dir)
+        sys.executable,
+        "scripts/export_static_site_data.py",
+        "--market",
+        "all",
+        "--output",
+        str(out_dir),
     ]
-    
+
     # Run script
     result = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True)
-    
+
     # If DB doesn't exist, we might get an error message but it's a "known" failure in clean envs.
     # But for a smoke test, we want to see it run.
     if result.returncode != 0:

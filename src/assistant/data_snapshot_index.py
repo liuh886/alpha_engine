@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import contextlib
 import json
-import sqlite3
 import time
 from pathlib import Path
 
@@ -19,8 +19,14 @@ class DataSnapshotIndex:
         self._db_path = Path(db_path)
         self._ensure_schema()
 
-    def _connect(self) -> sqlite3.Connection:
-        return connect(self._db_path)
+    @contextlib.contextmanager
+    def _connect(self):
+        conn = connect(self._db_path)
+        try:
+            with conn:  # 关键修复：确保事务 Commit
+                yield conn
+        finally:
+            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
@@ -119,4 +125,3 @@ class DataSnapshotIndex:
         if row is None:
             return None
         return {k: row[k] for k in row.keys()}
-

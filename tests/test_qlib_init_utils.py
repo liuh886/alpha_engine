@@ -22,4 +22,3 @@ def test_build_qlib_init_cfg_respects_existing_values():
     assert cfg["region"] == "us"
     assert cfg["provider_uri"] == "X"
     assert cfg["kernels"] == 9
-

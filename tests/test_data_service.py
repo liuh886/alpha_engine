@@ -17,4 +17,3 @@ def test_data_service_creates_update_job(tmp_path: Path):
     job = svc.create_update_job_from_payload({"full": False, "lookback_days": 7})
     assert job["type"] == "data_update"
     assert job["commands"][0][:2] == ["python", "scripts/update_data.py"]
-

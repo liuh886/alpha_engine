@@ -29,7 +29,9 @@ def test_compute_benchmark_returns_does_not_init_qlib():
     g["qlib"].init = fake_init
     g["D"].features = fake_features
 
-    out = g["compute_benchmark_returns"](["2025-01-01", "2025-01-02"], "QQQ", provider_uri="data/watchlist")
+    out = g["compute_benchmark_returns"](
+        ["2025-01-01", "2025-01-02"], "QQQ", provider_uri="data/watchlist"
+    )
     assert calls["n"] == 0
     assert set(out.keys()) == {"2025-01-01", "2025-01-02"}
 
@@ -43,7 +45,9 @@ def test_load_strategy_profile_for_run_prefers_artifact_snapshot(tmp_path: Path)
         '{"meta":{"name":"S1","description":"d1"}}', encoding="utf-8"
     )
 
-    out = g["load_strategy_profile_for_run"](run_dir, {"profile": "configs/ignored.json"}, project_root=tmp_path)
+    out = g["load_strategy_profile_for_run"](
+        run_dir, {"profile": "configs/ignored.json"}, project_root=tmp_path
+    )
     assert out.get("meta", {}).get("name") == "S1"
 
 
@@ -54,7 +58,9 @@ def test_load_strategy_profile_for_run_falls_back_to_profile_param(tmp_path: Pat
     (tmp_path / "configs").mkdir(parents=True, exist_ok=True)
     (tmp_path / "configs" / "p.json").write_text('{"meta":{"name":"S2"}}', encoding="utf-8")
 
-    out = g["load_strategy_profile_for_run"](run_dir, {"profile": "configs/p.json"}, project_root=tmp_path)
+    out = g["load_strategy_profile_for_run"](
+        run_dir, {"profile": "configs/p.json"}, project_root=tmp_path
+    )
     assert out.get("meta", {}).get("name") == "S2"
 
 

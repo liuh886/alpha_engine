@@ -15,10 +15,18 @@ def test_rebacktest_logs_data_snapshot_id_and_end_date(tmp_path: Path, monkeypat
 
     # Minimal cwd layout for universe file lookup.
     (tmp_path / "data" / "watchlist" / "instruments").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "data" / "watchlist" / "instruments" / "us.txt").write_text("AAPL\nMSFT\n", encoding="utf-8")
+    (tmp_path / "data" / "watchlist" / "instruments" / "us.txt").write_text(
+        "AAPL\nMSFT\n", encoding="utf-8"
+    )
 
+    import unittest.mock
+
+    mock_model = unittest.mock.MagicMock()
+    mock_model.predict.return_value = pd.Series(dtype=float)
+
+    monkeypatch.setattr(pickle, "load", lambda _f: mock_model)
     model_pkl = tmp_path / "model.pkl"
-    model_pkl.write_bytes(pickle.dumps(123))
+    model_pkl.write_text("dummy")
 
     calls: list[dict] = []
 
@@ -46,6 +54,10 @@ def test_rebacktest_logs_data_snapshot_id_and_end_date(tmp_path: Path, monkeypat
         def log_params(**kwargs):
             calls.append(dict(kwargs))
 
+        @staticmethod
+        def save_objects(**kwargs):
+            pass
+
     def fake_subprocess_run(*_args, **_kwargs):
         class R:
             returncode = 0
@@ -68,20 +80,43 @@ def test_rebacktest_logs_data_snapshot_id_and_end_date(tmp_path: Path, monkeypat
         return df
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("src.orchestrator.subprocess.run", fake_subprocess_run)
-    monkeypatch.setattr("src.orchestrator.qlib.init", lambda **_cfg: None)
-    monkeypatch.setattr("src.orchestrator.R", FakeR)
+    import qlib.workflow
+
+    import src.orchestrator
+
+    monkeypatch.setattr(src.orchestrator.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(src.orchestrator.qlib, "init", lambda **_cfg: None)
+
+    monkeypatch.setattr(qlib.workflow, "R", FakeR)
+    import src.research.backtest
+    import src.research.service
+    import src.research.training
+    import src.workflows.hooks
+
+    monkeypatch.setattr(src.research.service, "R", FakeR, raising=False)
+    monkeypatch.setattr(src.research.backtest, "R", FakeR, raising=False)
+    monkeypatch.setattr(src.research.training, "R", FakeR, raising=False)
+    monkeypatch.setattr(src.workflows.hooks, "R", FakeR, raising=False)
+    monkeypatch.setattr(src.orchestrator, "R", FakeR, raising=False)
     monkeypatch.setattr("qlib.data.D.calendar", fake_calendar, raising=False)
     monkeypatch.setattr("qlib.data.D.features", fake_features, raising=False)
 
-    # Stop after params logging, before heavy Qlib dataset init.
-    def stop_init_instance_by_config(*_args, **_kwargs):
-        raise RuntimeError("stop")
+    # Stop after params logging
+    def stop_at_backtest(*_args, **_kwargs):
+        raise RuntimeError("stop_at_backtest")
 
-    monkeypatch.setattr("src.orchestrator.init_instance_by_config", stop_init_instance_by_config)
+    import qlib.utils
+
+    mock_dataset = unittest.mock.MagicMock()
+    mock_dataset.prepare.return_value = pd.DataFrame()
+    monkeypatch.setattr(qlib.utils, "init_instance_by_config", lambda cfg, **_k: mock_dataset)
+    # Patch the actual backtest runner to stop there
+    import qlib.workflow.record_temp
+
+    monkeypatch.setattr(qlib.workflow.record_temp.PortAnaRecord, "generate", stop_at_backtest)
 
     orch = Orchestrator()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="stop_at_backtest"):
         orch.rebacktest(
             market="us",
             model_path=str(model_pkl),

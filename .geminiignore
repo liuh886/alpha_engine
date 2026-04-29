@@ -1,0 +1,22 @@
+# Cache and Build
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+__pycache__/
+.venv/
+dist/
+build/
+*.pyc
+
+# Project Specific Large Assets
+artifacts/
+data/
+mlruns/
+site/data/
+output/
+.playwright-cli/
+
+# Git and OS
+.git/
+.DS_Store
+Thumbs.db

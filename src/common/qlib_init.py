@@ -6,7 +6,9 @@ from src.common.market import get_region_for_market
 from src.common.paths import MLRUNS_DIR
 
 
-def build_qlib_init_cfg(base_cfg: dict | None, *, market: str, provider_uri_default: str = "data/watchlist") -> dict:
+def build_qlib_init_cfg(
+    base_cfg: dict | None, *, market: str, provider_uri_default: str = "data/watchlist"
+) -> dict:
     cfg = dict(base_cfg or {})
     cfg.setdefault("provider_uri", provider_uri_default)
     cfg.setdefault("region", get_region_for_market(market))
@@ -37,4 +39,3 @@ def safe_qlib_init(cfg: dict) -> None:
     except Exception:
         # Qlib is usually a singleton; repeat initialization can raise depending on version.
         pass
-

@@ -56,4 +56,3 @@ def test_model_registry_index_upserts_from_yaml_and_deletes_by_run(tmp_path: Pat
     assert idx.delete_versions_for_run("run_1") is True
     assert idx.get_version("us_model_20250102_000000") is None
     assert idx.get_version("us_model_20250103_000000") is not None
-

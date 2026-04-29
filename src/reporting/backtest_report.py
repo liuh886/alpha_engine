@@ -90,7 +90,9 @@ def _format_num(value: float) -> str:
         return "N/A"
 
 
-def _render_backtest_html(*, title: str, run: dict, metrics: dict, curve: list[dict], report_rel_path: str) -> str:
+def _render_backtest_html(
+    *, title: str, run: dict, metrics: dict, curve: list[dict], report_rel_path: str
+) -> str:
     run_id = str(run.get("id") or "")
     market = str(run.get("market") or "")
     backtest_start = str(run.get("backtest_start") or "")
@@ -158,7 +160,7 @@ def _render_backtest_html(*, title: str, run: dict, metrics: dict, curve: list[d
           <div class="meta">
             <span class="pill">market: {market or "unknown"}</span>
             <span class="pill">run_id: <code>{run_id}</code></span>
-            {f'<span class="pill">snapshot: {snapshot_id}</span>' if snapshot_id else ''}
+            {f'<span class="pill">snapshot: {snapshot_id}</span>' if snapshot_id else ""}
           </div>
           <div class="meta" style="margin-top: 8px;">
             window: {backtest_start or "?"} → {backtest_end or last_date or "?"}
@@ -240,7 +242,11 @@ def generate_backtest_report(
     project_root = Path(project_root)
     db_path = Path(db_path)
     reports_dir = Path(reports_dir) if reports_dir else project_root / "reports"
-    dashboard_db_path = Path(dashboard_db_path) if dashboard_db_path else project_root / "artifacts" / "dashboard" / "dashboard_db.json"
+    dashboard_db_path = (
+        Path(dashboard_db_path)
+        if dashboard_db_path
+        else project_root / "artifacts" / "dashboard" / "dashboard_db.json"
+    )
 
     run_index = RunIndex(db_path=db_path)
     run = run_index.get_run(run_id) or {"id": run_id}
@@ -264,7 +270,9 @@ def generate_backtest_report(
     curve = curve_index.list_curve(run_id)
     if not curve and dash_row:
         try:
-            report_normal = ((dash_row.get("data") or {}) if isinstance(dash_row.get("data"), dict) else {}).get("report_normal")
+            report_normal = (
+                (dash_row.get("data") or {}) if isinstance(dash_row.get("data"), dict) else {}
+            ).get("report_normal")
             curve_index.upsert_from_report_normal_json(run_id, report_normal)
             curve = curve_index.list_curve(run_id)
         except Exception:
@@ -277,8 +285,18 @@ def generate_backtest_report(
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "index.html"
 
-    report_rel_path = str(out_path.relative_to(project_root)).replace("\\", "/") if out_path.is_relative_to(project_root) else str(out_path)
-    html = _render_backtest_html(title=title, run=run, metrics=metrics, curve=curve, report_rel_path=f"/{report_rel_path.lstrip('/')}")
+    report_rel_path = (
+        str(out_path.relative_to(project_root)).replace("\\", "/")
+        if out_path.is_relative_to(project_root)
+        else str(out_path)
+    )
+    html = _render_backtest_html(
+        title=title,
+        run=run,
+        metrics=metrics,
+        curve=curve,
+        report_rel_path=f"/{report_rel_path.lstrip('/')}",
+    )
     out_path.write_text(html, encoding="utf-8")
 
     date = None
@@ -307,7 +325,9 @@ def generate_backtest_report(
     }
 
 
-def generate_latest_backtest_report(*, market: str, project_root: str | Path, db_path: str | Path) -> dict:
+def generate_latest_backtest_report(
+    *, market: str, project_root: str | Path, db_path: str | Path
+) -> dict:
     market = str(market or "").strip().lower()
     if not market:
         raise ValueError("market is required")
@@ -319,4 +339,3 @@ def generate_latest_backtest_report(*, market: str, project_root: str | Path, db
     if not run_id:
         raise ValueError(f"latest run row has no id for market={market}")
     return generate_backtest_report(run_id=run_id, project_root=project_root, db_path=db_path)
-

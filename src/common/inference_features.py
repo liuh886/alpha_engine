@@ -61,7 +61,9 @@ def resolve_feature_namespace(profile: dict[str, Any] | None, market_name: str) 
     return get_region_for_market(market_name)
 
 
-def build_default_inference_features(market_name: str, profile: dict[str, Any] | None = None) -> list[str]:
+def build_default_inference_features(
+    market_name: str, profile: dict[str, Any] | None = None
+) -> list[str]:
     feature_namespace = resolve_feature_namespace(profile, market_name)
     market_features = [
         template.format(feature_namespace=feature_namespace)

@@ -16,4 +16,3 @@ def test_dashboard_db_builder_infers_data_snapshot_id_from_params():
     infer = g["infer_data_snapshot_id"]
     assert infer({"data_snapshot_id": "watchlist-day-2026-02-04"}) == "watchlist-day-2026-02-04"
     assert infer({"backtest_end": "2026-02-04"}) == "watchlist-day-2026-02-04"
-

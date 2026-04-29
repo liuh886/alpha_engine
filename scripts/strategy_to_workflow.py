@@ -1,11 +1,12 @@
 import argparse
-import sys
 import os
+import sys
 
 # 确保能 import src 模块
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.workflows.profile_compiler import compile_strategy_profile
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -16,13 +17,12 @@ def main():
 
     try:
         compile_strategy_profile(
-            market=args.market,
-            profile_path=args.profile,
-            dry_run=args.dry_run
+            market=args.market, profile_path=args.profile, dry_run=args.dry_run
         )
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

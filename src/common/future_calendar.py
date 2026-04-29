@@ -11,7 +11,9 @@ def _read_nonempty_lines(path: Path) -> list[str]:
     return [ln.strip() for ln in text.splitlines() if ln.strip()]
 
 
-def ensure_calendar_future_file(provider_uri: str | Path, *, freq: str = "day", extra_days: int = 1) -> Path:
+def ensure_calendar_future_file(
+    provider_uri: str | Path, *, freq: str = "day", extra_days: int = 1
+) -> Path:
     """
     Ensure Qlib's `calendars/<freq>_future.txt` exists.
 
@@ -49,7 +51,10 @@ def ensure_calendar_future_file(provider_uri: str | Path, *, freq: str = "day", 
     out_text = "\n".join(out_lines) + "\n"
 
     try:
-        if future_path.exists() and future_path.read_text(encoding="utf-8", errors="replace") == out_text:
+        if (
+            future_path.exists()
+            and future_path.read_text(encoding="utf-8", errors="replace") == out_text
+        ):
             return future_path
     except Exception:
         pass
@@ -57,4 +62,3 @@ def ensure_calendar_future_file(provider_uri: str | Path, *, freq: str = "day", 
     calendars_dir.mkdir(parents=True, exist_ok=True)
     future_path.write_text(out_text, encoding="utf-8")
     return future_path
-

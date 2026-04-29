@@ -43,4 +43,3 @@ def test_data_snapshot_index_upserts_and_queries_latest(tmp_path: Path):
     one = idx.get_snapshot("watchlist-day-2026-02-03")
     assert one is not None
     assert one["latest_calendar_day"] == "2026-02-03"
-

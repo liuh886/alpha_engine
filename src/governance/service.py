@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import datetime
 import json
 import sqlite3
@@ -29,11 +30,16 @@ class GovernanceService:
     def db_path(self) -> Path:
         return self._db_path
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextlib.contextmanager
+    def _connect(self):
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(self._db_path)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            with conn:  # 关键修复：确保事务 Commit
+                yield conn
+        finally:
+            conn.close()
 
     def _init_db(self) -> None:
         try:
@@ -121,9 +127,7 @@ class GovernanceService:
                 conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_run_log_timestamp ON run_log(timestamp DESC)"
                 )
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_run_log_outcome ON run_log(outcome)"
-                )
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_run_log_outcome ON run_log(outcome)")
                 conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_run_log_task_slug ON run_log(task_slug)"
                 )
@@ -136,9 +140,7 @@ class GovernanceService:
                 conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_task_status_updated_at ON task_status(updated_at DESC)"
                 )
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_workflows_status ON workflows(status)"
-                )
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_workflows_status ON workflows(status)")
                 conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_workflows_updated_at ON workflows(updated_at DESC)"
                 )
@@ -150,8 +152,7 @@ class GovernanceService:
         conn: sqlite3.Connection, table_name: str, column_defs: dict[str, str]
     ) -> None:
         existing = {
-            str(row["name"])
-            for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+            str(row["name"]) for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
         }
         for column_name, column_sql in column_defs.items():
             if column_name in existing:

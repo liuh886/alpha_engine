@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sqlite3
+import contextlib
 import time
 from pathlib import Path
 
@@ -32,7 +32,11 @@ def _extract_curve_points(report_normal) -> list[dict]:
         columns = report_normal.get("columns") or []
         index = report_normal.get("index") or []
         data = report_normal.get("data") or []
-        if not isinstance(columns, list) or not isinstance(index, list) or not isinstance(data, list):
+        if (
+            not isinstance(columns, list)
+            or not isinstance(index, list)
+            or not isinstance(data, list)
+        ):
             return []
 
         col_to_idx = {str(c).lower(): i for i, c in enumerate(columns)}
@@ -75,7 +79,9 @@ def _extract_curve_points(report_normal) -> list[dict]:
 
 
 def _compute_drawdowns(points: list[dict]) -> list[dict]:
-    points = [p for p in points if isinstance(p, dict) and p.get("date") and p.get("nav") is not None]
+    points = [
+        p for p in points if isinstance(p, dict) and p.get("date") and p.get("nav") is not None
+    ]
     points.sort(key=lambda p: str(p.get("date")))
 
     peak = None
@@ -109,8 +115,14 @@ class BacktestEquityCurveIndex:
         self._db_path = Path(db_path)
         self._ensure_schema()
 
-    def _connect(self) -> sqlite3.Connection:
-        return connect(self._db_path)
+    @contextlib.contextmanager
+    def _connect(self):
+        conn = connect(self._db_path)
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
@@ -198,6 +210,7 @@ class BacktestEquityCurveIndex:
         if not run_id:
             return False
         with self._connect() as conn:
-            cur = conn.execute("DELETE FROM backtest_equity_curve WHERE backtest_run_id = ?", (run_id,))
+            cur = conn.execute(
+                "DELETE FROM backtest_equity_curve WHERE backtest_run_id = ?", (run_id,)
+            )
         return bool(cur.rowcount and cur.rowcount > 0)
-

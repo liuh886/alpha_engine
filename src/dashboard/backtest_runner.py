@@ -55,6 +55,7 @@ def build_backtest_commands(
         if cost_params:
             if isinstance(cost_params, dict):
                 import json
+
                 cmd += ["--cost_params", json.dumps(cost_params)]
             else:
                 cmd += ["--cost_params", str(cost_params)]
@@ -88,6 +89,7 @@ def build_backtest_commands(
     if cost_params:
         if isinstance(cost_params, dict):
             import json
+
             cmd += ["--cost_params", json.dumps(cost_params)]
         else:
             cmd += ["--cost_params", str(cost_params)]

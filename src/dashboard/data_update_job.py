@@ -35,4 +35,3 @@ def create_data_update_job(
         "log_path": str(log_path),
         "commands": commands,
     }
-

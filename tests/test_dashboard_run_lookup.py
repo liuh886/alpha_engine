@@ -7,7 +7,10 @@ from pathlib import Path
 def test_get_run_model_path_prefers_model_path(tmp_path: Path):
     db = {
         "models": [
-            {"id": "run_1", "params": {"model_path": "models/us_model_1.pkl", "profile": "configs/p1.json"}},
+            {
+                "id": "run_1",
+                "params": {"model_path": "models/us_model_1.pkl", "profile": "configs/p1.json"},
+            },
         ]
     }
     db_path = tmp_path / "dashboard_db.json"

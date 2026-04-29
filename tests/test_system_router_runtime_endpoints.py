@@ -90,4 +90,3 @@ def test_jobs_stream_endpoint_emits_log_lines_and_done_event(tmp_path: Path):
         assert "line-one" in body
         assert "line-two" in body
         assert "event: done" in body
-

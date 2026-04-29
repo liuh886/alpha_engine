@@ -16,5 +16,5 @@ svc = JobService(db_path=db_path, project_root=project_root)
 jobs = svc.list_jobs(status="running")
 print(f"Total running jobs: {len(jobs)}")
 for j in jobs:
-    elapsed = time.time() - j['started_at'] if j.get('started_at') else 0
+    elapsed = time.time() - j["started_at"] if j.get("started_at") else 0
     print(f"ID: {j['id']} | Type: {j['type']} | Elapsed: {elapsed:.1f}s | Cmd: {j.get('commands')}")

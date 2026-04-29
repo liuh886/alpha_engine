@@ -1,89 +1,43 @@
-import sys
-import uuid
-import time
-import threading
 import json
-from pathlib import Path
+import threading
+import time
+import uuid
+
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import StreamingResponse
-from src.api.dependencies import get_job_service, PROJECT_ROOT
-from src.common.paths import RUNS_DIR, DASHBOARD_DB_PATH, MLRUNS_DIR, MODELS_DIR, REPORTS_DIR, ARTIFACTS_DIR
+
+from src.api.dependencies import PROJECT_ROOT, get_job_service
+from src.common.paths import (
+    ARTIFACTS_DIR,
+    DASHBOARD_DB_PATH,
+    MLRUNS_DIR,
+    MODELS_DIR,
+    REPORTS_DIR,
+    RUNS_DIR,
+)
 
 router = APIRouter(tags=["system"])
 
-@router.get("/health")
-def health_check():
-    return {"ok": True}
 
-@router.get("/api/jobs")
-def list_jobs(limit: int = Query(100), status: str | None = None):
-    if limit <= 0:
-        limit = 100
-    jobs = get_job_service().list_jobs(limit=limit, status=status)
-    return {"ok": True, "jobs": jobs}
+@router.get("/thought_stream")
+def get_thought_stream(limit: int = Query(50)):
+    """
+    Returns the latest structured agent thought logs from artifacts/agent_thought_stream.json.
+    Used for showing real-time Agent reasoning in the Dashboard.
+    """
+    stream_path = ARTIFACTS_DIR / "agent_thought_stream.json"
+    if not stream_path.exists():
+        return {"ok": True, "stream": []}
 
-
-@router.get("/api/jobs/{job_id}")
-def get_job(job_id: str):
-    job = get_job_service().get_job(str(job_id))
-    if not job:
-        raise HTTPException(status_code=404, detail="job not found")
-    return {"ok": True, "job": job}
-
-
-@router.get("/api/jobs/{job_id}/stream")
-def stream_job_log(job_id: str):
-    js = get_job_service()
-    job = js.get_job(str(job_id))
-    if not job:
-        raise HTTPException(status_code=404, detail="job not found")
-
-    def _event_stream():
-        log_offset = 0
-        while True:
-            current = js.get_job(str(job_id))
-            if not current:
-                payload = json.dumps({"job_id": str(job_id), "error": "job not found"}, ensure_ascii=False)
-                yield f"event: error\ndata: {payload}\n\n"
-                return
-
-            log_path = str(current.get("log_path") or "").strip()
-            if log_path:
-                p = Path(log_path)
-                if p.exists() and p.is_file():
-                    try:
-                        with p.open("r", encoding="utf-8", errors="replace") as f:
-                            f.seek(log_offset)
-                            chunk = f.read()
-                            log_offset = f.tell()
-                    except Exception:
-                        chunk = ""
-                    if chunk:
-                        for line in chunk.splitlines():
-                            payload = json.dumps({"job_id": str(job_id), "line": line}, ensure_ascii=False)
-                            yield f"data: {payload}\n\n"
-
-            status = str(current.get("status") or "").strip().lower()
-            if status in {"succeeded", "failed"}:
-                payload = json.dumps({"job_id": str(job_id), "status": status}, ensure_ascii=False)
-                yield f"event: done\ndata: {payload}\n\n"
-                return
-
-            yield ": keep-alive\n\n"
-            time.sleep(0.5)
-
-    return StreamingResponse(
-        _event_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
+    try:
+        with stream_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            # Return last N entries
+            return {"ok": True, "stream": data[-limit:] if isinstance(data, list) else []}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "stream": []}
 
 
-@router.get("/api/system/paths")
+@router.get("/paths")
 def get_system_paths():
     js = get_job_service()
     return {
@@ -102,12 +56,19 @@ def get_system_paths():
     }
 
 
-@router.get("/api/system/docs/main")
+@router.get("/docs/main")
 def get_main_system_doc():
     """
     Return the SSOT user/developer guide markdown that is rendered in WebUI Docs.
     """
-    doc_path = PROJECT_ROOT / "agents" / "developer" / "docs" / "design" / "2026-03-02_trading_platform_user_developer_guide.md"
+    doc_path = (
+        PROJECT_ROOT
+        / "agents"
+        / "developer"
+        / "docs"
+        / "design"
+        / "2026-03-02_trading_platform_user_developer_guide.md"
+    )
     if not doc_path.exists():
         raise HTTPException(status_code=404, detail="main doc not found")
     try:
@@ -122,7 +83,7 @@ def get_main_system_doc():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/system/panic")
+@router.post("/panic")
 def panic_stop(payload: dict | None = None):
     payload = payload or {}
     reason = str(payload.get("reason") or "").strip() or "Triggered from dashboard kill switch"
@@ -136,6 +97,8 @@ def panic_stop(payload: dict | None = None):
         job_id = str(job.get("id") or "").strip()
         if not job_id:
             continue
+
+        # 1. Update DB state immediately
         js.update_job(
             job_id,
             status="failed",
@@ -143,42 +106,49 @@ def panic_stop(payload: dict | None = None):
             exit_code=-2,
             error=f"SYSTEM_PANIC: {reason}",
         )
-        halted += 1
+
+        # 2. Try to kill the physical process if it is registered
+        if js.kill_job(job_id):
+            halted += 1
+        else:
+            # Even if not in registry (maybe just started or in another process),
+            # we at least marked it as failed in DB.
+            pass
 
     return {
         "ok": True,
         "halted_jobs": halted,
+        "total_marked_failed": len(running),
         "reason": reason,
         "triggered_at": now,
     }
 
 
-@router.post("/api/system/exec")
+SAFE_COMMANDS = {
+    "train": ["uv", "run", "python", "-m", "src.orchestrator", "run"],
+    "backtest": ["uv", "run", "python", "-m", "src.orchestrator", "run", "--skip_train"],
+    "data_update": ["uv", "run", "python", "scripts/collect_data.py"],
+    "arena_settle": ["uv", "run", "python", "scripts/arena_settle.py"],
+}
+
+
+@router.post("/exec")
 def execute_system_command(payload: dict):
-    command_str = str(payload.get("command") or "").strip()
-    if not command_str:
-        raise HTTPException(status_code=400, detail="missing command")
+    task_key = str(payload.get("task") or "").strip()
+    args = payload.get("args") or []
 
-    import shlex
-    try:
-        parts = shlex.split(command_str)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid command syntax: {e}")
+    if task_key not in SAFE_COMMANDS:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid task. Allowed: {list(SAFE_COMMANDS.keys())}"
+        )
 
-    if not parts:
-        raise HTTPException(status_code=400, detail="empty command")
-
-    if parts[0] in ["python", "python.exe", "python3"]:
-        parts[0] = sys.executable
+    base_cmd = list(SAFE_COMMANDS[task_key])
+    # Sanitize args: only allow strings, no shell injection possible with Popen(list)
+    sanitized_args = [str(a) for a in args if ";" not in str(a) and "&" not in str(a)]
+    full_cmd = base_cmd + sanitized_args
 
     job_id = uuid.uuid4().hex
-    job_type = "system_exec"
-    if "orchestrator" in command_str:
-        job_type = "orchestrator_run"
-    elif "update_data" in command_str:
-        job_type = "data_update"
-    elif "arena_settle" in command_str:
-        job_type = "arena_settle"
+    job_type = f"system_{task_key}"
 
     log_path = RUNS_DIR / f"dashboard_exec_{job_id}.log"
     job = {
@@ -187,10 +157,10 @@ def execute_system_command(payload: dict):
         "status": "queued",
         "created_at": time.time(),
         "log_path": str(log_path),
-        "commands": [parts],
+        "commands": [full_cmd],
     }
 
     get_job_service().create_job(job)
     t = threading.Thread(target=get_job_service().run_job, args=(job_id,), daemon=True)
     t.start()
-    return {"ok": True, "job_id": job_id}
+    return {"ok": True, "job_id": job_id, "command": " ".join(full_cmd)}

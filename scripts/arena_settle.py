@@ -18,7 +18,9 @@ def get_or_create_arena(*, arena: ArenaIndex, name: str, market: str) -> dict:
     return arena.create_arena(name=name, market=market)
 
 
-def seed_from_model_registry(*, arena: ArenaIndex, arena_id: str, db_path: Path, market: str, limit: int) -> int:
+def seed_from_model_registry(
+    *, arena: ArenaIndex, arena_id: str, db_path: Path, market: str, limit: int
+) -> int:
     idx = ModelRegistryIndex(db_path=db_path)
     # If market is "all", pass None to list_versions to get models from all markets
     m_filter = None if market == "all" else market
@@ -35,13 +37,30 @@ def seed_from_model_registry(*, arena: ArenaIndex, arena_id: str, db_path: Path,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Settle the local Arena leaderboard from backtest equity curves.")
+    parser = argparse.ArgumentParser(
+        description="Settle the local Arena leaderboard from backtest equity curves."
+    )
     parser.add_argument("--market", type=str, default="us", help="Market key (us/cn). Default: us")
-    parser.add_argument("--arena-name", type=str, default="", help="Arena name (default: '{MARKET} Arena')")
-    parser.add_argument("--date", type=str, default="latest", help="Settlement date (YYYY-MM-DD) or 'latest' (default).")
-    parser.add_argument("--seed-from-model-registry", action="store_true", help="Add participants from model registry.")
-    parser.add_argument("--limit", type=int, default=50, help="Max model versions to seed (default: 50).")
-    parser.add_argument("--no-report", action="store_true", help="Skip generating the HTML daily arena report.")
+    parser.add_argument(
+        "--arena-name", type=str, default="", help="Arena name (default: '{MARKET} Arena')"
+    )
+    parser.add_argument(
+        "--date",
+        type=str,
+        default="latest",
+        help="Settlement date (YYYY-MM-DD) or 'latest' (default).",
+    )
+    parser.add_argument(
+        "--seed-from-model-registry",
+        action="store_true",
+        help="Add participants from model registry.",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=50, help="Max model versions to seed (default: 50)."
+    )
+    parser.add_argument(
+        "--no-report", action="store_true", help="Skip generating the HTML daily arena report."
+    )
     args = parser.parse_args()
 
     market = str(args.market or "").strip().lower() or "us"

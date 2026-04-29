@@ -1,15 +1,22 @@
-from typing import Any, Dict, Optional
-from .error_codes import ERR_PIPELINE_SUBPROCESS_FAILED, ERR_MODEL_MISSING, ERR_DATA_GAP, ERR_PROVIDER_TIMEOUT, CODES
+from typing import Any
+
+from .error_codes import (
+    ERR_DATA_GAP,
+    ERR_MODEL_MISSING,
+    ERR_PIPELINE_SUBPROCESS_FAILED,
+    ERR_PROVIDER_TIMEOUT,
+)
 from .events import ReliabilityEvent
+
 
 def classify_failure(
     *,
     component: str,
     operation: str = "unknown",
-    exc: Optional[Exception] = None,
+    exc: Exception | None = None,
     stderr: str = "",
-    returncode: Optional[int] = None,
-    context: Optional[Dict[str, Any]] = None
+    returncode: int | None = None,
+    context: dict[str, Any] | None = None,
 ) -> ReliabilityEvent:
     """
     根据异常、标准错误或退出码，将原始失败归类为结构化的可靠性事件。
@@ -17,7 +24,7 @@ def classify_failure(
     context = context or {}
     code_obj = ERR_PIPELINE_SUBPROCESS_FAILED
     summary = str(exc) if exc else (stderr[:200] if stderr else "Unknown subprocess failure")
-    
+
     # 规则解析
     if exc:
         if isinstance(exc, FileNotFoundError):
@@ -27,7 +34,7 @@ def classify_failure(
                 code_obj = ERR_DATA_GAP
         elif "timeout" in str(exc).lower():
             code_obj = ERR_PROVIDER_TIMEOUT
-            
+
     if stderr:
         low_stderr = stderr.lower()
         if "empty universe" in low_stderr or "no tickers" in low_stderr:
@@ -36,6 +43,7 @@ def classify_failure(
             code_obj = ERR_DATA_GAP
         elif "already initialized" in low_stderr:
             from .error_codes import ERR_QLIB_INIT_CONFLICT
+
             code_obj = ERR_QLIB_INIT_CONFLICT
 
     event = ReliabilityEvent(
@@ -49,16 +57,16 @@ def classify_failure(
         details={
             "stderr_tail": stderr[-500:] if stderr else "",
             "returncode": returncode,
-            "exception_type": type(exc).__name__ if exc else None
+            "exception_type": type(exc).__name__ if exc else None,
         },
-        **{k: v for k, v in context.items() if hasattr(ReliabilityEvent, k)}
+        **{k: v for k, v in context.items() if hasattr(ReliabilityEvent, k)},
     )
-    
+
     # 填充默认治理动作建议
     event.governance_action = {
         "action": code_obj.default_action,
         "status": "pending",
-        "notes": f"Detected via classification rules for {code_obj.code}"
+        "notes": f"Detected via classification rules for {code_obj.code}",
     }
-    
+
     return event

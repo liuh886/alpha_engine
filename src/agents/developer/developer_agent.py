@@ -40,4 +40,3 @@ You must:
             "topic": topic,
             "next_step": "Break down into design, implementation, and verification tasks.",
         }
-

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import types
 import sys
+import types
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -35,7 +35,9 @@ def test_resolve_features_supports_raw_profile_alpha158_plus_extra_features():
     }
     defaults = ["f1", "f2"]
 
-    feats = inference.resolve_inference_feature_list(profile, market_name="us", default_features=defaults)
+    feats = inference.resolve_inference_feature_list(
+        profile, market_name="us", default_features=defaults
+    )
 
     assert len(feats) == 163
     assert feats[-5:] == profile["model"]["extra_features"]

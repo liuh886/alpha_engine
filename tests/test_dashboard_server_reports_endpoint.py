@@ -42,17 +42,20 @@ def test_dashboard_server_reports_list_and_detail_endpoints(tmp_path: Path, monk
     httpd, t = _start_server()
     try:
         port = httpd.server_address[1]
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/reports?type=backtest&ref_id=run_1&limit=10", timeout=5) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/reports?type=backtest&ref_id=run_1&limit=10", timeout=5
+        ) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         assert data.get("ok") is True
         reports = data.get("reports") or []
         assert any(r.get("id") == report_id for r in reports)
 
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/reports/{report_id}", timeout=5) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/reports/{report_id}", timeout=5
+        ) as resp:
             data2 = json.loads(resp.read().decode("utf-8"))
         assert data2.get("ok") is True
         assert (data2.get("report") or {}).get("id") == report_id
     finally:
         httpd.shutdown()
         t.join(timeout=5)
-

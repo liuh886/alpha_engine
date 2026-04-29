@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sqlite3
+import contextlib
 import time
 import uuid
 from pathlib import Path
@@ -17,8 +17,14 @@ class DataProvenanceIndex:
         self._db_path = Path(db_path)
         self._ensure_schema()
 
-    def _connect(self) -> sqlite3.Connection:
-        return connect(self._db_path)
+    @contextlib.contextmanager
+    def _connect(self):
+        conn = connect(self._db_path)
+        try:
+            with conn:  # 关键修复：确保事务 Commit
+                yield conn
+        finally:
+            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
@@ -35,9 +41,15 @@ class DataProvenanceIndex:
                 )
                 """
             )
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_data_prov_symbol ON data_provenance(symbol)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_data_prov_market ON data_provenance(market)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_data_prov_created ON data_provenance(created_at)")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_data_prov_symbol ON data_provenance(symbol)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_data_prov_market ON data_provenance(market)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_data_prov_created ON data_provenance(created_at)"
+            )
 
     def record(
         self,
@@ -50,7 +62,7 @@ class DataProvenanceIndex:
     ) -> str:
         row_id = uuid.uuid4().hex
         created_at = time.time()
-        
+
         with self._connect() as conn:
             conn.execute(
                 """

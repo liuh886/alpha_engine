@@ -1,130 +1,163 @@
-import asyncio
-import json
 import os
-import time
-import uuid
-import signal
+import secrets
 import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
-
-load_dotenv()
-
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from pydantic import Field
+from fastapi.responses import FileResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.staticfiles import StaticFiles
 
-from fastapi.security import HTTPBasic, HTTPBasicCredentials, APIKeyHeader
-import secrets
+# Ensure PROJECT_ROOT is in sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
 
-security = HTTPBasic(auto_error=False)
-api_key_header = APIKeyHeader(name="X-Developer-Token", auto_error=False)
+load_dotenv(PROJECT_ROOT / ".env")
 
+from src.api.routers import (
+    arena,
+    backtest,
+    chat,
+    data,
+    jobs,
+    models,
+    reports,
+    strategy,
+    system,
+    workflow,
+)
 
-def _is_truthy(value: str | None, *, default: bool = False) -> bool:
-    if value is None:
-        return default
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+app = FastAPI(title="AlphaEngine Dashboard API", version="1.0.0")
 
-
-def _is_local_request(request: Request) -> bool:
-    try:
-        host = str((request.client.host if request.client else "") or "").strip().lower()
-    except Exception:
-        host = ""
-    # Add common internal IPs if we are in a container/proxy setup
-    return host in {"127.0.0.1", "::1", "localhost", "0.0.0.0"}
-
-
-def verify_auth(
-    request: Request,
-    credentials: HTTPBasicCredentials | None = Depends(security),
-    developer_token: str | None = Depends(api_key_header),
-):
-    # 1. Developer Token Check (Stable mechanism for agents/developers)
-    expected_token = os.environ.get("ALPHA_DEVELOPER_TOKEN")
-    if expected_token and developer_token == expected_token:
-        return HTTPBasicCredentials(username="developer", password="")
-
-    # 2. Localhost trust (for UI and local calls)
-    trust_localhost = _is_truthy(os.environ.get("TRADING_UI_TRUST_LOCALHOST"), default=True)
-    is_local = _is_local_request(request)
-    
-    if credentials is None and trust_localhost and is_local:
-        return HTTPBasicCredentials(username="local", password="")
-
-    if credentials is None:
-        print(f"Auth: Missing credentials. Host: {request.client.host if request.client else 'None'}. Local: {is_local}. URL: {request.url}")
-        raise HTTPException(
-            status_code=401,
-            detail="Missing credentials",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-
-    # 3. Static password check (Basic Auth)
-    correct_username = secrets.compare_digest(credentials.username, "agent")
-    correct_password = secrets.compare_digest(credentials.password, os.environ.get("TRADING_UI_PASSWORD", "alpha2026"))
-    
-    if not (correct_username and correct_password):
-        # Even if credentials provided, if we are on localhost and trust it, we could fall back.
-        if trust_localhost and is_local:
-             return HTTPBasicCredentials(username="local", password="")
-             
-        print(f"Auth: Incorrect credentials for {credentials.username}. Host: {request.client.host if request.client else 'None'}. Local: {is_local}")
-        raise HTTPException(
-            status_code=401,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return credentials
-
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-
-limiter = Limiter(key_func=get_remote_address)
-app = FastAPI()
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# CORS Configuration
+# Standard security: In production, allow_origins should be limited.
+# Defaulting to localhost and internal Docker communication.
+# User can override via ALLOWED_ORIGINS env var.
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+if allowed_origins_env:
+    allowed_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+else:
+    allowed_origins = [
+        "http://localhost:5173",  # Vite dev
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",  # Static serve
+        "http://127.0.0.1:8000",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
 )
 
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-ARTIFACTS_DIR = os.path.join(PROJECT_ROOT, "artifacts")
-CONFIG_DIR = os.path.join(PROJECT_ROOT, "config")
+security = HTTPBasic()
 
-from fastapi.staticfiles import StaticFiles
-os.makedirs(ARTIFACTS_DIR, exist_ok=True)
-app.mount("/artifacts", StaticFiles(directory=ARTIFACTS_DIR), name="artifacts")
 
-from src.api.routers import data, models, arena, system, reports, strategy, backtest, chat, workflow
+def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = os.getenv("TRADING_UI_USER")
+    correct_password = os.getenv("TRADING_UI_PASSWORD")
 
-app.include_router(data.router, dependencies=[Depends(verify_auth)])
-app.include_router(models.router, dependencies=[Depends(verify_auth)])
-app.include_router(arena.router, dependencies=[Depends(verify_auth)])
-app.include_router(system.router, dependencies=[Depends(verify_auth)])
-app.include_router(reports.router, dependencies=[Depends(verify_auth)])
-app.include_router(strategy.router, dependencies=[Depends(verify_auth)])
-app.include_router(backtest.router, dependencies=[Depends(verify_auth)])
-app.include_router(chat.router, dependencies=[Depends(verify_auth)])
-app.include_router(workflow.router, dependencies=[Depends(verify_auth)])
+    if not correct_username or not correct_password:
+        # Secure by default: Fail if auth is not configured.
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server authentication not configured. Please set TRADING_UI_USER and TRADING_UI_PASSWORD environment variables.",
+        )
 
+    is_correct_username = secrets.compare_digest(credentials.username, correct_username)
+    is_correct_password = secrets.compare_digest(credentials.password, correct_password)
+    if not (is_correct_username and is_correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+
+# 1. API Routers (Must come BEFORE static mount)
+app.include_router(
+    system.router, prefix="/api/system", tags=["system"], dependencies=[Depends(get_current_user)]
+)
+app.include_router(
+    jobs.router, prefix="/api", tags=["jobs"], dependencies=[Depends(get_current_user)]
+)
+app.include_router(
+    workflow.router,
+    prefix="/api/workflow",
+    tags=["workflow"],
+    dependencies=[Depends(get_current_user)],
+)
+app.include_router(
+    arena.router, prefix="/api/arena", tags=["arena"], dependencies=[Depends(get_current_user)]
+)
+app.include_router(
+    backtest.router,
+    prefix="/api/backtest",
+    tags=["backtest"],
+    dependencies=[Depends(get_current_user)],
+)
+app.include_router(
+    chat.router, prefix="/api/agent", tags=["agent"], dependencies=[Depends(get_current_user)]
+)
+app.include_router(
+    data.router, prefix="/api/data", tags=["data"], dependencies=[Depends(get_current_user)]
+)
+app.include_router(
+    models.router, prefix="/api/models", tags=["models"], dependencies=[Depends(get_current_user)]
+)
+app.include_router(
+    reports.router,
+    prefix="/api/reports",
+    tags=["reports"],
+    dependencies=[Depends(get_current_user)],
+)
+app.include_router(
+    strategy.router,
+    prefix="/api/strategy",
+    tags=["strategy"],
+    dependencies=[Depends(get_current_user)],
+)
+
+
+# 2. Public Endpoints
+@app.get("/health")
+@app.head("/health")
+@app.get("/api/public/health")
+@app.head("/api/public/health")
+def health_check():
+    return {"status": "ok", "version": "1.0.0"}
+
+
+@app.get("/api/public/version")
+@app.head("/api/public/version")
+def get_public_version():
+    return {"version": "2.5.0-PRO", "status": "stable"}
+
+
+# 3. Mount Static Files at ROOT
+site_path = PROJECT_ROOT / "site"
+
+if site_path.exists():
+    # Explicitly serve index.html at root to ensure it's handled
+    @app.api_route("/", methods=["GET", "HEAD"])
+    async def serve_index():
+        return FileResponse(site_path / "index.html")
+
+    # Mount everything else (StaticFiles supports HEAD automatically)
+    app.mount("/", StaticFiles(directory=str(site_path)), name="site")
 
 if __name__ == "__main__":
     import uvicorn
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="Alpha Engine API Server")
-    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8001)), help="Port to bind to")
-    args = parser.parse_args()
-    
-    print(f"Starting Alpha Engine API Server on {args.host}:{args.port}")
-    uvicorn.run("api_server:app", host=args.host, port=args.port, reload=False)
+
+    # Use environment variable for port, default to 8000
+    target_port = int(os.getenv("PORT", 8000))
+
+    print(f"\n>>> [SERVER] Launching Alpha Engine Dashboard on: http://localhost:{target_port}\n")
+    # Listen on 0.0.0.0 for Docker compatibility
+    uvicorn.run(app, host="0.0.0.0", port=target_port)

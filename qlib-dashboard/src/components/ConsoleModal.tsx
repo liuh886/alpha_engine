@@ -53,17 +53,37 @@ export function ConsoleModal({ isOpen, onClose, warnings }: ConsoleModalProps) {
     if (!cmdInput.trim()) return;
     setExecuting(true);
     try {
+      // Parse command to match task+args structure if it matches a quick command
+      let task = "backtest";
+      let args: string[] = [];
+      
+      if (cmdInput.includes("train")) {
+        task = "train";
+        if (cmdInput.includes("--market cn")) args = ["--market", "cn", "--tag", "PROD_CN"];
+        else args = ["--market", "us", "--tag", "PROD_V1"];
+      } else if (cmdInput.includes("update_data")) {
+        task = "data_update";
+        args = ["--market", "all"];
+      } else if (cmdInput.includes("arena_settle")) {
+        task = "arena_settle";
+        args = ["--market", "all"];
+      } else {
+        // Fallback for custom backtest
+        task = "backtest";
+        if (cmdInput.includes("--market cn")) args = ["--market", "cn"];
+      }
+
       const resp = await fetch("/api/system/exec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command: cmdInput })
+        body: JSON.stringify({ task, args })
       });
       if (resp.ok) {
         setCmdInput("");
         fetchJobs();
       } else {
         const err = await resp.json();
-        alert(`Execution failed: ${err.error || 'Unknown error'}`);
+        alert(`Execution failed: ${err.detail || err.error || 'Unknown error'}`);
       }
     } catch (e) {
       alert(`Network error: ${e}`);
@@ -73,11 +93,11 @@ export function ConsoleModal({ isOpen, onClose, warnings }: ConsoleModalProps) {
   };
 
   const quickCommands = [
-    { label: "Train US", cmd: "python -m src.orchestrator run --market us --tag PROD_V1", icon: Play },
-    { label: "Train CN", cmd: "python -m src.orchestrator run --market cn --tag PROD_CN", icon: Play },
-    { label: "Update Data", cmd: "python scripts/update_data.py --market all", icon: Database },
-    { label: "Full Backtest", cmd: "python -m src.orchestrator run --mode backtest --market us", icon: BarChart3 },
-    { label: "Arena Settle", cmd: "python scripts/arena_settle.py --market all", icon: BarChart3 },
+    { label: "Train US", cmd: "train --market us", icon: Play },
+    { label: "Train CN", cmd: "train --market cn", icon: Play },
+    { label: "Update Data", cmd: "data_update --market all", icon: Database },
+    { label: "Full Backtest", cmd: "backtest --market us", icon: BarChart3 },
+    { label: "Arena Settle", cmd: "arena_settle --market all", icon: BarChart3 },
     { label: "Clean Logs", cmd: "python scripts/cleanup_stuck_jobs.py", icon: X },
   ];
 

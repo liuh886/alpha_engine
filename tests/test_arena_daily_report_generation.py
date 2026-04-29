@@ -29,7 +29,9 @@ def test_generate_arena_daily_report(tmp_path: Path):
     arena.add_participant(arena_id=arena_id, name="Model A", run_id="run_1")
     arena.settle(arena_id=arena_id, date="2026-02-05")
 
-    out = generate_arena_daily_report(arena_id=arena_id, date="2026-02-05", project_root=project_root, db_path=db_path)
+    out = generate_arena_daily_report(
+        arena_id=arena_id, date="2026-02-05", project_root=project_root, db_path=db_path
+    )
     assert out["ok"] is True
     rel = out["report_rel_path"]
     assert rel
@@ -37,4 +39,3 @@ def test_generate_arena_daily_report(tmp_path: Path):
 
     rows = ReportIndex(db_path=db_path).list_reports(limit=10, report_type="arena_daily")
     assert any(r.get("ref_id") == arena_id for r in rows)
-

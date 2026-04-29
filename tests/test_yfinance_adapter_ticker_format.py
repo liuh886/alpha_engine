@@ -18,4 +18,3 @@ def test_hk_ticker_normalization_strips_one_leading_zero_for_5_digit_code():
 def test_hk_ticker_normalization_preserves_4_digit_code():
     assert _get_yahoo_ticker("0700.HK", "hk") == "0700.HK"
     assert _get_yahoo_ticker("700", "hk") == "700.HK"
-

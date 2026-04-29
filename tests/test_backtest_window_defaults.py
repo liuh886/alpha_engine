@@ -24,4 +24,3 @@ def test_resolve_backtest_window_fills_missing_start_and_end():
     updated = resolve_backtest_window({}, calendar, default_start="2025-01-01")
     assert updated["start_time"] == "2025-01-01"
     assert updated["end_time"] == "2025-12-31"
-

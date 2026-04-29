@@ -34,4 +34,3 @@ def test_dashboard_server_system_paths_endpoint():
     finally:
         httpd.shutdown()
         t.join(timeout=5)
-

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import contextlib
 import json
-import sqlite3
 import time
 from pathlib import Path
 
@@ -35,8 +35,14 @@ class RunIndex:
     def db_path(self) -> Path:
         return self._db_path
 
-    def _connect(self) -> sqlite3.Connection:
-        return connect(self._db_path)
+    @contextlib.contextmanager
+    def _connect(self):
+        conn = connect(self._db_path)
+        try:
+            with conn:  # 关键修复：确保事务 Commit
+                yield conn
+        finally:
+            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
@@ -49,6 +55,9 @@ class RunIndex:
                     date TEXT,
                     backtest_start TEXT,
                     backtest_end TEXT,
+                    annual_return REAL,
+                    sharpe REAL,
+                    max_drawdown REAL,
                     data_snapshot_id TEXT,
                     params_json TEXT,
                     feature_importance_json TEXT,
@@ -59,10 +68,18 @@ class RunIndex:
             # Migration for existing DBs
             cursor = conn.execute("PRAGMA table_info(backtest_runs)")
             cols = [row["name"] for row in cursor.fetchall()]
+            if "annual_return" not in cols:
+                conn.execute("ALTER TABLE backtest_runs ADD COLUMN annual_return REAL")
+            if "sharpe" not in cols:
+                conn.execute("ALTER TABLE backtest_runs ADD COLUMN sharpe REAL")
+            if "max_drawdown" not in cols:
+                conn.execute("ALTER TABLE backtest_runs ADD COLUMN max_drawdown REAL")
             if "feature_importance_json" not in cols:
                 conn.execute("ALTER TABLE backtest_runs ADD COLUMN feature_importance_json TEXT")
 
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_backtest_runs_market ON backtest_runs(market)")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_backtest_runs_market ON backtest_runs(market)"
+            )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_backtest_runs_date ON backtest_runs(date)")
 
     def upsert_from_dashboard_db(self, dashboard_db: dict) -> int:
@@ -86,8 +103,28 @@ class RunIndex:
             backtest_end = str(params.get("backtest_end") or "")
             data_snapshot_id = _infer_data_snapshot_id(params) or ""
             params_json = json.dumps(params, ensure_ascii=False)
-            
+
             run_data = m.get("data") or {}
+
+            # Extract indicators for direct access in lists
+            indicators = run_data.get("indicators") or {}
+            ann_return = 0.0
+            sharpe = 0.0
+            mdd = 0.0
+
+            # Qlib indicators_normal_1day.pkl format parsing
+            if isinstance(indicators, dict):
+                # Try standard keys (assuming dict-ified dataframe or summary)
+                # Usually report_normal has 'annual_return', 'sharpe', 'mdd'
+                ann_return = float(indicators.get("annual_return") or 0.0)
+                sharpe = float(indicators.get("sharpe") or 0.0)
+                mdd = float(indicators.get("max_drawdown") or 0.0)
+            elif isinstance(indicators, list) and len(indicators) > 0:
+                # Handle list of records
+                ann_return = float(indicators[0].get("annual_return") or 0.0)
+                sharpe = float(indicators[0].get("sharpe") or 0.0)
+                mdd = float(indicators[0].get("max_drawdown") or 0.0)
+
             feature_importance = run_data.get("feature_importance") or {}
             feature_importance_json = json.dumps(feature_importance, ensure_ascii=False)
 
@@ -99,6 +136,9 @@ class RunIndex:
                     date,
                     backtest_start,
                     backtest_end,
+                    ann_return,
+                    sharpe,
+                    mdd,
                     data_snapshot_id,
                     params_json,
                     feature_importance_json,
@@ -114,14 +154,18 @@ class RunIndex:
                 """
                 INSERT INTO backtest_runs (
                     id, name, market, date, backtest_start, backtest_end,
+                    annual_return, sharpe, max_drawdown,
                     data_snapshot_id, params_json, feature_importance_json, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     name=excluded.name,
                     market=excluded.market,
                     date=excluded.date,
                     backtest_start=excluded.backtest_start,
                     backtest_end=excluded.backtest_end,
+                    annual_return=excluded.annual_return,
+                    sharpe=excluded.sharpe,
+                    max_drawdown=excluded.max_drawdown,
                     data_snapshot_id=excluded.data_snapshot_id,
                     params_json=excluded.params_json,
                     feature_importance_json=excluded.feature_importance_json
@@ -142,7 +186,9 @@ class RunIndex:
 
     def get_run(self, run_id: str) -> dict | None:
         with self._connect() as conn:
-            row = conn.execute("SELECT * FROM backtest_runs WHERE id = ?", (str(run_id),)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM backtest_runs WHERE id = ?", (str(run_id),)
+            ).fetchone()
         if row is None:
             return None
         out = {k: row[k] for k in row.keys()}
@@ -153,7 +199,7 @@ class RunIndex:
                 out["params"] = {}
         else:
             out["params"] = {}
-            
+
         if out.get("feature_importance_json"):
             try:
                 out["feature_importance"] = json.loads(out["feature_importance_json"])
@@ -161,7 +207,7 @@ class RunIndex:
                 out["feature_importance"] = {}
         else:
             out["feature_importance"] = {}
-            
+
         return out
 
     def list_runs(self, *, limit: int = 100, market: str | None = None) -> list[dict]:

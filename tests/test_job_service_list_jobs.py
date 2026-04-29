@@ -44,4 +44,3 @@ def test_job_service_list_jobs_sorts_and_filters(tmp_path: Path):
 
     failed = svc.list_jobs(limit=10, status="failed")
     assert [j["id"] for j in failed] == ["job2"]
-

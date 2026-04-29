@@ -13,7 +13,9 @@ def test_backtest_service_creates_rebacktest_job(tmp_path: Path):
     except ModuleNotFoundError:
         pytest.fail("BacktestService is not implemented yet")
 
-    svc = BacktestService(project_root=tmp_path, python_exe="python", dashboard_db_path=tmp_path / "db.json")
+    svc = BacktestService(
+        project_root=tmp_path, python_exe="python", dashboard_db_path=tmp_path / "db.json"
+    )
     job = svc.create_job_from_payload(
         {
             "market": "us",
@@ -29,4 +31,3 @@ def test_backtest_service_creates_rebacktest_job(tmp_path: Path):
     assert job["mode"] == "rebacktest"
     assert job["market"] == "us"
     assert job["commands"][0][:3] == ["python", "-m", "src.orchestrator"]
-

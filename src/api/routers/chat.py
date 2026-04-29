@@ -1,12 +1,15 @@
-import asyncio
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/api/agent", tags=["agent"])
+from src.api.dependencies import get_model_index, get_quality_index, get_run_index
+
+router = APIRouter(tags=["agent"])
+
 
 class ChatRequest(BaseModel):
     message: str
     agent_type: str = "alpha"
+
 
 @router.post("/chat")
 async def agent_chat(req: ChatRequest):
@@ -16,17 +19,24 @@ async def agent_chat(req: ChatRequest):
     """
     try:
         from src.agents.agent_router import AgentRouter
+
+        # Inject real dependencies into the Router
+        router_instance = AgentRouter(
+            quality_index=get_quality_index(),
+            model_index=get_model_index(),
+            run_index=get_run_index()
+        )
         
-        # In a production environment, this triggers a real asyncio LLM completion.
-        # Here we mock the delay but enforce the routing architecture constraint.
-        await asyncio.sleep(1.5) 
-        
+        # Dispatch to the appropriate agent.
+        result = router_instance.route_task(req.agent_type, market="us")
+
         if req.agent_type == "alpha":
-            # Simulate LLM Response from BaseAgent.compress_context / chain-of-thought
-            reply = f"**AgentRouter Dispatch**: AlphaAgent\n\nI have reviewed your request regarding `{req.message}`. Based on my context compressed analysis of the current market dataframe, my suggestion is to reduce leverage by 20% on tech equities.\n\n* Confidence: 89%\n* Sector: Technology\n* Volatility: HIGH\n\nRun the `make backtest` pipeline to confirm historical bounds."
+            reply = f"**AgentRouter Dispatch**: AlphaAgent initiated research cycle. Result: {result.get('status', 'OK')}. Hypothesis: {result.get('hypothesis', 'N/A')}"
+        elif req.agent_type == "developer":
+            reply = f"**AgentRouter Dispatch**: DeveloperAgent planning execution. Next step: {result.get('next_step', 'N/A')}"
         else:
-            reply = "I am a specific Agent sub-routine. How can I help?"
-            
-        return {"ok": True, "reply": reply}
+            reply = f"**AgentRouter Dispatch**: {req.agent_type.capitalize()}Agent processed request."
+
+        return {"ok": True, "reply": reply, "result": result}
     except Exception as e:
         return {"ok": False, "error": str(e)}

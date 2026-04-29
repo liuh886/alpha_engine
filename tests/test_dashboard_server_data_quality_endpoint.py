@@ -51,4 +51,3 @@ def test_dashboard_server_data_quality_latest_endpoint(tmp_path: Path, monkeypat
     finally:
         httpd.shutdown()
         t.join(timeout=5)
-

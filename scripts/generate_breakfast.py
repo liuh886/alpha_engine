@@ -1,28 +1,29 @@
 import argparse
 import datetime
-import os
 import json
+import os
+
 
 def generate_breakfast(market: str):
     """Generates a markdown snippet summarizing the current system state."""
     os.makedirs("artifacts/reports", exist_ok=True)
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     out_path = f"artifacts/reports/breakfast_{market}_{today}.md"
-    
+
     # Try to extract latest metrics from dashboard DB
     lb_nav = "N/A"
     try:
-        with open("artifacts/dashboard/dashboard_db.json", "r") as f:
+        with open("artifacts/dashboard/dashboard_db.json") as f:
             db = json.load(f)
             if db.get("models") and len(db["models"]) > 0:
                 # Get the top model's latest return
                 latest_model = db["models"][0]
                 bt = latest_model.get("backtest", {})
                 if "metrics" in bt and "annualized_return" in bt["metrics"]:
-                     lb_nav = f"{bt['metrics']['annualized_return']*100:.2f}%"
+                    lb_nav = f"{bt['metrics']['annualized_return'] * 100:.2f}%"
     except Exception:
         pass
-        
+
     content = f"""# 🌅 Alpha Engine Breakfast Report
 **Date**: {today} | **Market**: {market.upper()}
 
@@ -40,8 +41,9 @@ def generate_breakfast(market: str):
 """
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(content)
-        
+
     print(f"Breakfast Report written to: {out_path}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -1,131 +1,42 @@
----
-path: 100_Project/2601_Trading/README.md
-version: 1.2.0
-last_edit_date: 2026-03-10
-status: active
-priority: tbd
-owner_role: product_manager
-type: project
----
+# AlphaEngine V2
 
-# Agentic Alpha Engine 🚀
+## 极简、优雅、自包含的量化策略研究引擎
 
-[English](#english) | [中文](#中文)
+### 1. 快速启动 (API Server & Dashboard)
+AlphaEngine 现在通过单一的 FastAPI 后端和现代化的 Vite 前端提供服务。
 
-## English
+> **Note:** This project uses [Astral `uv`](https://astral.sh/uv/) for dependency management. `uv.lock` is the source of truth.
 
-A local-first trading research platform for CN/US markets, combining a Python runtime with an agent-oriented workflow layer.
-
----
-
-### Module 1: Project Charter
-- **Core Goal**: 在禁止自动下单前提下，构建高透明度交易决策 Copilot。
-- **Success Criteria (KPIs)**:
-  - Daily routine 稳定成功率持续提升。
-  - 关键失败原因可复现、可归因。
-
----
-
-### Module 2: PM2 Service Deployment 🛠️
-To start all AlphaEngine services (API, Web, MCP) simultaneously as a robust system service:
-
-1. **Prerequisites**: Install `pm2` globally.
-   ```bash
-   npm install -g pm2
-   ```
-
-2. **Start Services**:
-   ```bash
-   pm2 start ecosystem.config.js
-   ```
-
-3. **Check Status**:
-   ```bash
-   pm2 list
-   pm2 logs
-   ```
-
-**Services Included**:
-- `alpha-api`: FastAPI backend for core logic (Port 8000).
-- `alpha-web`: Vite-based interactive dashboard (Port 5173).
-- `alpha-mcp`: Model Context Protocol server for AI agent integration.
-
----
-
-### Module 3: Bot & AI Agent Connection Guide 🤖
-AlphaEngine is **Agent-Ready**. You can connect your favorite AI assistants (Claude Desktop, Cursor, Windsurf) to use the engine as their quantitative "brain".
-
-#### 1. Integration Method (MCP)
-Add the following configuration to your agent's setting file (e.g., `claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "alpha-engine": {
-      "command": "uv",
-      "args": ["run", "python", "[FULL_PATH_TO_PROJECT]/src/api/mcp_server.py"],
-      "env": {
-        "PYTHONPATH": "[FULL_PATH_TO_PROJECT]"
-      }
-    }
-  }
-}
-```
-
-#### 2. Capabilities for Agents
-Once connected, any Bot can:
-- **`get_market_signals(market)`**: Analyze the current market (CN/US) and return high-conviction candidates.
-- **`run_backtest(market, start, end)`**: Execute strategy validation and return performance metrics (Sharpe, MDD).
-- **`repair_market_data(market)`**: Handle data gaps autonomously when the engine reports missing info.
-- **`diagnose_platform()`**: Self-check environment health.
-
----
-
-### Module 4: Architecture & Key Paths
-- **Source**: `src/` (Core logic, Inference, Reliability)
-- **API**: `api_server.py` (FastAPI)
-- **Web UI**: `qlib-dashboard/` (Vite + React)
-- **Agent Tools**: `src/agents/tools/` (Specialized skills for Advisors)
-
----
-
-### Run Log
-- **2026-03-10**: Finalized **PM2 Service Architecture** and **Bot Connection Guide**; decoupled Inference from Orchestrator.
-- **2026-03-03**: Upgraded README to LifeOS 4.1.1 compliance.
-
----
-
-## 中文 (快速启动)
-
-### 1. PM2 一键启动方案
-本项目支持通过 PM2 同时启动后端 API、前端看板以及 AI 助手所需的 MCP 服务：
-
+**本地开发:**
 ```bash
-# 确保安装了 PM2
-npm install -g pm2
+# 启动后端 (默认端口 8000)
+uv run python api_server.py
 
-# 启动所有服务
-pm2 start ecosystem.config.js
-
-# 查看运行状态
-pm2 list
+# 启动前端开发服务器 (在 qlib-dashboard 目录下)
+cd qlib-dashboard && npm run dev
 ```
 
-### 2. 智能体 (Bot) 连接指南
-您可以让 Claude, Cursor 或 Windsurf 直接调用 AlphaEngine 的量化能力。在您的配置文件中添加：
+**现代化 UI:**
+访问 `http://localhost:5173` (开发模式) 或 `http://localhost:8000` (生产模式) 查看策略看板。
 
-```json
-{
-  "mcpServers": {
-    "alpha-engine": {
-      "command": "uv",
-      "args": ["run", "python", "绝对路径/src/api/mcp_server.py"]
-    }
-  }
-}
+### 2. 核心架构
+- **单一运行时**: 所有 API 请求都通过 `api_server.py` 路由。
+- **Agent 驱动**: 内置 Alpha, Risk, Governance, Developer 四大 Agent 协同工作。
+- **Qlib 集成**: 底层基于微软 Qlib 量化框架，支持多种市场和特征包。
+
+### 3. 任务管理 (Makefile)
+使用 `Makefile` 快速执行常用任务：
+- `make data`: 更新市场数据。
+- `make train-us` / `make train-cn`: 训练模型。
+- `make backtest`: 运行回测流水线。
+- `make breakfast`: 生成每日晨报。
+
+### 4. 容器化部署
+推荐使用 Docker Compose 进行一键部署：
+```bash
+docker-compose up -d
 ```
+API 服务将运行在 `8000` 端口，前端已集成在容器内由 FastAPI 直接挂载。
 
-**Bot 可调用的能力**:
-- **市场分析**: 询问“今天美股有什么推荐标的？” -> 触发模型推理。
-- **回测验证**: 询问“帮我回测这个策略在 2024 年的表现。” -> 获取 Sharpe 与最大回撤。
-- **数据管理**: 自动修复数据缺失，确保分析的 Grounding（真实性）。
+---
+*更多细节请参考 `agents/developer/DESIGN.md` 和 `scripts/README.md`。*

@@ -28,4 +28,3 @@ def test_resolve_metadata_db_path_defaults_under_project_root(tmp_path: Path, mo
     monkeypatch.delenv("TRADING_ASSISTANT_METADATA_DB_PATH", raising=False)
     out = resolve_metadata_db_path(tmp_path)
     assert str(out).replace("\\", "/").endswith("/artifacts/metadata/metadata.db")
-

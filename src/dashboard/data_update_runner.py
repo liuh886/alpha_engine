@@ -23,4 +23,3 @@ def build_update_data_commands(
     if rebuild_dashboard_db:
         commands.append([str(python_exe), "scripts/build_dashboard_db.py"])
     return commands
-

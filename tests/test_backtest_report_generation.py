@@ -58,4 +58,3 @@ def test_generate_backtest_report_indexes_sqlite_and_writes_html(tmp_path: Path)
 
     rows = ReportIndex(db_path=db_path).list_reports(limit=10, report_type="backtest")
     assert any(r.get("ref_id") == "run_1" for r in rows)
-

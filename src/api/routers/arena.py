@@ -1,12 +1,35 @@
 import sys
-import uuid
-import time
 import threading
+import time
+import uuid
+
 from fastapi import APIRouter, HTTPException, Query
-from src.api.dependencies import get_arena_index, get_model_index, get_job_service
+
+from src.api.dependencies import get_arena_index, get_job_service, get_model_index
 from src.common.paths import RUNS_DIR
 
-router = APIRouter(prefix="/api/arena", tags=["arena"])
+router = APIRouter(tags=["arena"])
+
+
+@router.get("/leaderboard")
+def get_arena_leaderboard(
+    arena_id: str | None = Query(None),
+    arena_name: str | None = Query(None),
+    date: str = Query("latest"),
+):
+    idx = get_arena_index()
+    if not arena_id and arena_name:
+        a = idx.get_arena_by_name(arena_name)
+        if a:
+            arena_id = a["id"]
+
+    lb = idx.get_leaderboard(arena_id=arena_id, date=date)
+    resp_date = date
+    if (date == "latest" or not date) and arena_id:
+        resp_date = idx.get_latest_settled_date(arena_id=arena_id)
+
+    return {"ok": True, "leaderboard": lb, "date": resp_date}
+
 
 @router.post("/settle")
 def settle_arena(payload: dict):
@@ -24,7 +47,16 @@ def settle_arena(payload: dict):
     job_id = uuid.uuid4().hex
     log_path = RUNS_DIR / f"dashboard_arena_settle_{job_id}.log"
 
-    cmd = [sys.executable, "scripts/arena_settle.py", "--market", market, "--date", date, "--limit", str(limit)]
+    cmd = [
+        sys.executable,
+        "scripts/arena_settle.py",
+        "--market",
+        market,
+        "--date",
+        date,
+        "--limit",
+        str(limit),
+    ]
     if arena_name:
         cmd += ["--arena-name", arena_name]
     if seed:
@@ -44,6 +76,7 @@ def settle_arena(payload: dict):
     t.start()
     return {"ok": True, "job_id": job_id}
 
+
 @router.post("/participants")
 def add_participant(payload: dict):
     arena_id = str(payload.get("arena_id") or "").strip()
@@ -51,14 +84,16 @@ def add_participant(payload: dict):
     run_id = str(payload.get("run_id") or "").strip()
     model_version_id = str(payload.get("model_version_id") or "").strip()
     name = str(payload.get("name") or "").strip()
-    
+
     if model_version_id and not run_id:
         m_ver = get_model_index().get_version(model_version_id)
         if m_ver:
             run_id = str(m_ver.get("run_id") or "")
 
     if not run_id:
-        raise HTTPException(status_code=400, detail="missing run_id (or model_version_id with no bound run)")
+        raise HTTPException(
+            status_code=400, detail="missing run_id (or model_version_id with no bound run)"
+        )
 
     arena_row = None
     if arena_id:
@@ -71,11 +106,15 @@ def add_participant(payload: dict):
     a_id = str(arena_row.get("id") or "")
     try:
         participant = get_arena_index().add_participant(
-            arena_id=a_id, 
-            name=name or model_version_id or run_id, 
+            arena_id=a_id,
+            name=name or model_version_id or run_id,
             run_id=run_id,
-            model_version_id=model_version_id or None
+            model_version_id=model_version_id or None,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    return {"ok": True, "participant": participant, "arena": {"id": a_id, "name": arena_row.get("name")}}
+    return {
+        "ok": True,
+        "participant": participant,
+        "arena": {"id": a_id, "name": arena_row.get("name")},
+    }

@@ -2,6 +2,7 @@ import re
 
 _SAFE_TAG_RE = re.compile(r"[^A-Za-z0-9_-]+")
 
+
 def sanitize_tag(value: str, *, max_len: int = 40) -> str:
     value = str(value or "").strip()
     if not value:

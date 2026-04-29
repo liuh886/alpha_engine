@@ -54,4 +54,3 @@ def test_equity_curve_index_ignores_missing_account(tmp_path: Path):
     }
     assert idx.upsert_from_report_normal_json("run_2", report_normal) == 0
     assert idx.list_curve("run_2") == []
-

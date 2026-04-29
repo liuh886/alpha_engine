@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  alpha-api:
+    build: .
+    image: alpha-engine:latest
+    container_name: alpha-engine-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - alpha-data:/app/data
+      - alpha-artifacts:/app/artifacts
+    environment:
+      - TRADING_UI_USER=admin
+      - TRADING_UI_PASSWORD=alpha123
+      - MLFLOW_TRACKING_URI=sqlite:///artifacts/mlflow.db
+    restart: unless-stopped
+
+volumes:
+  alpha-data:
+  alpha-artifacts:

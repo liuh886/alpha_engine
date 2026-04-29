@@ -24,4 +24,3 @@ def test_format_run_name_falls_back_to_strategy_name():
 
     out = g["format_run_name"]("us", "2026-02-05 10:00", "abcdef1234", params, strategy_profile)
     assert out.startswith("[US] LGBM_v1 2026-02-05 10:00")
-

@@ -16,4 +16,3 @@ def test_dashboard_server_uses_job_service_not_in_memory_dict():
 
     assert "JOBS" not in g, "dashboard_server.py should not rely on a global in-memory JOBS dict"
     assert "_get_job_service" in g, "dashboard_server.py should expose a lazy JobService accessor"
-

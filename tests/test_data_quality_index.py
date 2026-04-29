@@ -24,4 +24,3 @@ def test_data_quality_index_upsert_and_get_latest(tmp_path: Path):
     latest = idx.get_latest(dataset_key="watchlist", freq="day", market="us")
     assert latest is not None
     assert latest.get("snapshot_id") == "watchlist-day-2026-02-05"
-

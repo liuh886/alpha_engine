@@ -15,4 +15,3 @@ def test_create_data_update_job_builds_commands(tmp_path: Path):
     assert job["type"] == "data_update"
     assert job["status"] == "queued"
     assert job["commands"][0][:2] == ["python", "scripts/update_data.py"]
-

@@ -40,7 +40,9 @@ def test_dashboard_server_run_curve_endpoint(tmp_path: Path, monkeypatch):
     httpd, t = _start_server()
     try:
         port = httpd.server_address[1]
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/runs/run1/curve?limit=10", timeout=5) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/runs/run1/curve?limit=10", timeout=5
+        ) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         assert data.get("ok") is True
         assert data.get("run_id") == "run1"
@@ -50,4 +52,3 @@ def test_dashboard_server_run_curve_endpoint(tmp_path: Path, monkeypatch):
     finally:
         httpd.shutdown()
         t.join(timeout=5)
-

@@ -1,6 +1,6 @@
 .PHONY: doctor data train backtest report dashboard all help
 
-PYTHON = python
+PYTHON = PYTHONPATH=. python3
 
 help:
 	@echo "Qlib Trading Assistant - Task Runner"
@@ -33,27 +33,25 @@ train-us:
 report:
 	$(PYTHON) -m src.reporting.generate --market all
 
-
 dev:
-	@echo "Starting Dashboard (Vite) and API Server..."
-	@start cmd /c "cd qlib-dashboard && npm run dev"
-	@start cmd /c "uv run python api_server.py"
+	@echo "Starting Dashboard (Vite) and API Server in background..."
+	@cd qlib-dashboard && (npm run dev -- --port 5173 &)
+	@uv run python api_server.py &
 	@echo "Services started. View at http://localhost:5173"
-
+	@echo "Use 'kill %1' or 'kill %2' (or Ctrl+C for the API) to stop."
 backtest:
 	@echo "Running Zero-Barrier Backtest..."
-	@uv run python cli.py backtest
+	@uv run python -m src.orchestrator run --skip_train
 
 breakfast:
 	@echo "Generating Morning Trading Report..."
-	@uv run python cli.py breakfast
+	@uv run python scripts/generate_breakfast.py
 
 lint:
 	@echo "Formatting and linting code..."
-	@uv run ruff format .
-	@uv run ruff check --fix .
-	@prettier --write .
-
+	@ruff format .
+	@ruff check --fix --ignore E402 .
+	@if [ -d "qlib-dashboard/node_modules" ]; then cd qlib-dashboard && npx prettier --write .; fi
 clean:
 	python -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').rglob('__pycache__')]"
 	python -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').rglob('.pytest_cache')]"

@@ -15,18 +15,19 @@ class EnvironmentManager:
     """
     Manages the Qlib runtime environment, initialization, and process isolation.
     """
+
     def __init__(self, project_root: Path):
         self.project_root = project_root
         self._initialized_market = None
 
     def ensure_qlib(self, market: str, config: dict):
         """
-        Initialize Qlib for a specific market. 
+        Initialize Qlib for a specific market.
         Handles future calendar files and provider URI resolution.
         """
         market = market.lower()
         qlib_init_cfg = build_qlib_init_cfg(config.get("qlib_init", {}) or {}, market=market)
-        
+
         # Ensure future calendar file exists (required for Qlib backtest endpoints)
         try:
             provider_uri = qlib_init_cfg.get("provider_uri")

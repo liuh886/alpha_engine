@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
-import sqlite3
 import time
 from pathlib import Path
 
@@ -25,8 +25,14 @@ class ReportIndex:
         self._db_path = Path(db_path)
         self._ensure_schema()
 
-    def _connect(self) -> sqlite3.Connection:
-        return connect(self._db_path)
+    @contextlib.contextmanager
+    def _connect(self):
+        conn = connect(self._db_path)
+        try:
+            with conn:  # 关键修复：确保事务 Commit
+                yield conn
+        finally:
+            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
@@ -102,7 +108,9 @@ class ReportIndex:
                 ),
             )
         row = self.get_report(report_id)
-        return row if row else {"id": report_id, "type": report_type, "ref_id": ref_id, "date": date_s}
+        return (
+            row if row else {"id": report_id, "type": report_type, "ref_id": ref_id, "date": date_s}
+        )
 
     def get_report(self, report_id: str) -> dict | None:
         report_id = str(report_id or "").strip()

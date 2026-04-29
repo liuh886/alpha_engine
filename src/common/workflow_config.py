@@ -97,4 +97,3 @@ def apply_backtest_and_test_window(
     segments["test"] = [str(seg_start), str(resolved_end)]
 
     return cfg
-

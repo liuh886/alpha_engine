@@ -28,4 +28,3 @@ def test_report_index_upsert_and_list(tmp_path: Path):
 
     rows = idx.list_reports(limit=10, report_type="backtest")
     assert len(rows) >= 1
-
