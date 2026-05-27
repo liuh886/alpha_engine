@@ -16,6 +16,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 load_dotenv(PROJECT_ROOT / ".env")
 
+try:
+    from importlib.metadata import version as _get_pkg_version
+    APP_VERSION = _get_pkg_version("trading-assistant")
+except Exception:
+    APP_VERSION = "2.5.0"
+
 from src.common.logging import setup_logging
 from src.common.runtime_settings import get_runtime_settings
 
@@ -36,7 +42,7 @@ from src.api.routers import (
 runtime_settings = get_runtime_settings()
 setup_logging(development=runtime_settings.env == "development")
 
-app = FastAPI(title="AlphaEngine Dashboard API", version="2.5.0")
+app = FastAPI(title="AlphaEngine Dashboard API", version=APP_VERSION)
 
 
 app.add_middleware(
@@ -130,13 +136,13 @@ app.include_router(
 @app.get("/api/public/health")
 @app.head("/api/public/health")
 def health_check():
-    return {"status": "ok", "version": "2.5.0"}
+    return {"status": "ok", "version": APP_VERSION}
 
 
 @app.get("/api/public/version")
 @app.head("/api/public/version")
 def get_public_version():
-    return {"version": "2.5.0-PRO", "status": "stable"}
+    return {"version": APP_VERSION, "status": "stable"}
 
 
 # 3. Mount Static Files at ROOT

@@ -26,7 +26,7 @@ class RuntimeSettings:
     reports_dir: Path = PROJECT_ROOT / "reports"
     scripts_dir: Path = PROJECT_ROOT / "scripts"
     artifacts_dir: Path = PROJECT_ROOT / "artifacts"
-    static_site_dir: Path = PROJECT_ROOT / "site"
+    static_site_dir: Path = PROJECT_ROOT / "qlib-dashboard" / "dist"
 
     @classmethod
     def from_env(cls, *, project_root: str | Path | None = None) -> RuntimeSettings:
