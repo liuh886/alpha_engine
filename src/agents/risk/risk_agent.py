@@ -5,6 +5,13 @@ import time
 from src.agents.core.base_agent import BaseAgent
 from src.agents.tools.governance_tools import format_thought_stream_for_report
 
+TRADING_DAYS_PER_YEAR = 252
+DEFAULT_VOLATILITY_FALLBACK = 15.0
+PANIC_INDEX_OFFSET = 10
+PANIC_INDEX_MULTIPLIER = 3.33
+HIGH_VOL_THRESHOLD = 25.0
+HIGH_PANIC_THRESHOLD = 75.0
+
 
 class RiskAgent(BaseAgent):
     """
@@ -69,18 +76,18 @@ You must:
                         returns.append(math.log(curr / prev))
                 mean_ret = sum(returns) / len(returns)
                 variance = sum((ret - mean_ret) ** 2 for ret in returns) / len(returns)
-                ann_vol = math.sqrt(variance) * math.sqrt(252) * 100
+                ann_vol = math.sqrt(variance) * math.sqrt(TRADING_DAYS_PER_YEAR) * 100
                 return min(100.0, max(0.0, ann_vol))
         except Exception as e:
             format_thought_stream_for_report("Risk Agent", "warning", f"Failed to compute benchmark vol: {e}")
-        return 15.0  # Safe deterministic fallback
+        return DEFAULT_VOLATILITY_FALLBACK
 
     def sentiment_audit(self, vol_metric: float) -> float:
         """Derive a panic index (0-100) deterministically."""
         format_thought_stream_for_report(
             "Risk Agent (Sentinel)", "info", "Performing Sentiment Audit via realized volatility proxy..."
         )
-        panic_index = min(100.0, max(0.0, (vol_metric - 10) * 3.33))
+        panic_index = min(100.0, max(0.0, (vol_metric - PANIC_INDEX_OFFSET) * PANIC_INDEX_MULTIPLIER))
         format_thought_stream_for_report(
             "Risk Agent (Sentinel)", "info", f"Calculated market panic index: {panic_index:.1f}/100"
         )
@@ -101,7 +108,7 @@ You must:
         )
 
         # 2. Dynamic Intervention
-        if vol_metric > 25.0 or panic_index > 75.0:
+        if vol_metric > HIGH_VOL_THRESHOLD or panic_index > HIGH_PANIC_THRESHOLD:
             format_thought_stream_for_report(
                 "Risk Agent",
                 "error",

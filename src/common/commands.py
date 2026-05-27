@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from src.common.runtime_settings import get_runtime_settings
+
 
 @dataclass
 class Command:
@@ -11,6 +13,8 @@ class Command:
     priority: str = "P1"
     task_id: str | None = None
 
+
+_port = get_runtime_settings().api_port
 
 PROJECT_COMMANDS = [
     Command(
@@ -41,7 +45,7 @@ PROJECT_COMMANDS = [
     Command(
         id="dashboard_serve",
         name="Dashboard Server",
-        command="uvicorn api_server:app --host 0.0.0.0 --port 8000",
+        command=f"uvicorn api_server:app --host 0.0.0.0 --port {_port}",
         description="Serves the analytical UI and local APIs via FastAPI.",
         role="supported",
         priority="P0",

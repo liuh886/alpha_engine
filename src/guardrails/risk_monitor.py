@@ -5,9 +5,13 @@ from src.common.runtime_settings import get_runtime_settings
 
 logger = get_logger(__name__)
 
-# Risk Agent configuration as per AGENTS.md
 MAX_DRAWDOWN_THRESHOLD = 0.15
-API_BASE = "http://localhost:8000/api"
+
+
+def _api_base() -> str:
+    settings = get_runtime_settings()
+    host = settings.api_host if settings.api_host != "0.0.0.0" else "localhost"
+    return f"http://{host}:{settings.api_port}/api"
 
 
 def check_backtest_risk(run_id, metrics):
@@ -31,7 +35,7 @@ def check_backtest_risk(run_id, metrics):
 
             auth = (username, password)
             resp = requests.post(
-                f"{API_BASE}/system/panic",
+                f"{_api_base()}/system/panic",
                 json={"reason": f"Risk Agent halt: Run {run_id} violated MDD contract ({mdd:.2%})"},
                 auth=auth,
             )
