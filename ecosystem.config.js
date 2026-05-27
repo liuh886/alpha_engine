@@ -22,7 +22,10 @@ module.exports = {
       },
       max_memory_restart: '2G',
       listen_timeout: 5000,
-      kill_timeout: 5000
+      kill_timeout: 5000,
+      windowsHide: true,
+      max_restarts: 10,
+      min_uptime: 5000
     }
   ]
 };

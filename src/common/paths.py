@@ -1,5 +1,5 @@
 
-from src.common.runtime_settings import get_runtime_settings
+from src.common.runtime_settings import PROJECT_ROOT, get_runtime_settings
 
 
 def get_config_dir():
@@ -31,6 +31,8 @@ ARTIFACTS_DIR = get_artifacts_dir()
 
 
 def __getattr__(name):
+    if name == "PROJECT_ROOT":
+        return PROJECT_ROOT
     if name == "CONFIG_DIR":
         return get_config_dir()
     if name == "DATA_DIR":
