@@ -58,7 +58,7 @@ class ResearchService:
     def run_training_pipeline(self, market: str, config: dict, tag: str = ""):
         exp_name = f"workflow_{market}"
         with R.start(experiment_name=exp_name):
-            model, reducer, model_path = train_model(
+            model, model_path = train_model(
                 market, config["task"]["model"], config["task"]["dataset"], tag
             )
 
