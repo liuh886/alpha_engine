@@ -8,12 +8,15 @@ from qlib.backtest.decision import Order, OrderDir, TradeDecisionWO
 from qlib.contrib.strategy.signal_strategy import BaseSignalStrategy
 from qlib.data import D
 
+from src.common.logging import get_logger
 from src.strategies.weekly_quant_rating_rules import (
     is_last_trading_day_of_week,
     select_target,
     select_top_fraction,
     update_streaks,
 )
+
+logger = get_logger(__name__)
 
 
 class WeeklyQuantRatingStrategy(BaseSignalStrategy):
@@ -59,6 +62,7 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                 future = [d for d in cal if d > cur_date]
                 return future[0] if future else None
             except Exception:
+                logger.debug("Failed to resolve next trade date", trade_step=trade_step, exc_info=True)
                 return None
 
     def _normalize_signal(self, pred_score):
@@ -97,7 +101,7 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                         last_dt = max(pred_score.index.get_level_values(dt_level))
                         pred_score = pred_score.xs(last_dt, level=dt_level)
             except Exception:
-                pass
+                logger.debug("Failed to normalize multi-index signal", exc_info=True)
         return pred_score
 
     def _compute_eligibility(self, instruments, asof_time) -> dict[str, bool]:
@@ -117,6 +121,7 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
             try:
                 df = D.features([inst], fields, start_time=asof_time, end_time=asof_time)
             except Exception:
+                logger.debug("Failed to fetch eligibility features", instrument=inst, exc_info=True)
                 result[inst] = False
                 continue
             if df is None or df.empty:
@@ -127,6 +132,7 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
             try:
                 row = df.xs(inst, level="instrument").iloc[-1]
             except Exception:
+                logger.debug("Failed to extract row from features dataframe", instrument=inst, exc_info=True)
                 result[inst] = False
                 continue
 

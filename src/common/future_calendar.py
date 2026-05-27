@@ -2,11 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 def _read_nonempty_lines(path: Path) -> list[str]:
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except Exception:
+        logger.debug("Failed to read calendar file", path=str(path), exc_info=True)
         return []
     return [ln.strip() for ln in text.splitlines() if ln.strip()]
 
@@ -44,7 +49,7 @@ def ensure_calendar_future_file(
             last = last + pd.Timedelta(days=1)
             appended.append(last.strftime("%Y-%m-%d"))
     except Exception:
-        # Best effort: if we can't parse, don't create a potentially wrong future file.
+        logger.debug("Failed to compute future calendar dates, skipping future file creation", exc_info=True)
         return future_path
 
     out_lines = base_lines + appended
@@ -57,7 +62,7 @@ def ensure_calendar_future_file(
         ):
             return future_path
     except Exception:
-        pass
+        logger.debug("Failed to compare existing future calendar file", exc_info=True)
 
     calendars_dir.mkdir(parents=True, exist_ok=True)
     future_path.write_text(out_text, encoding="utf-8")

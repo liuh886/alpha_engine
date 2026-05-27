@@ -186,6 +186,7 @@ class GovernanceService:
         try:
             decoded = json.loads(payload)
         except Exception:
+            logger.debug("Failed to decode details JSON payload", exc_info=True)
             return {}
         return decoded if isinstance(decoded, dict) else {}
 

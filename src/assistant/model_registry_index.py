@@ -7,12 +7,16 @@ from pathlib import Path
 import yaml
 
 from src.assistant.base_index import BaseIndex
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def _safe_json(value) -> str:
     try:
         return json.dumps(value, ensure_ascii=False)
     except Exception:
+        logger.debug("Failed to serialize value to JSON", exc_info=True)
         return "{}"
 
 
@@ -146,6 +150,7 @@ class ModelRegistryIndex(BaseIndex):
         try:
             data = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
         except Exception:
+            logger.warning("Failed to parse model_list YAML", path=str(yaml_path), exc_info=True)
             return 0
 
         models = data.get("models", [])
@@ -201,6 +206,7 @@ class ModelRegistryIndex(BaseIndex):
             try:
                 out[k.replace("_json", "")] = json.loads(raw)
             except Exception:
+                logger.debug("Failed to decode JSON field", field=k, version_id=version_id, exc_info=True)
                 out[k.replace("_json", "")] = {}
         return out
 

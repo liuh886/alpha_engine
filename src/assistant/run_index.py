@@ -5,6 +5,9 @@ import time
 from pathlib import Path
 
 from src.assistant.base_index import BaseIndex
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def _infer_data_snapshot_id(params: dict | None) -> str | None:
@@ -167,6 +170,7 @@ class RunIndex(BaseIndex):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
+            logger.debug("Failed to read dashboard DB file", path=str(path), exc_info=True)
             return 0
         return self.upsert_from_dashboard_db(data if isinstance(data, dict) else {})
 
@@ -182,6 +186,7 @@ class RunIndex(BaseIndex):
             try:
                 out["params"] = json.loads(out["params_json"])
             except Exception:
+                logger.debug("Failed to decode params_json for run", run_id=run_id, exc_info=True)
                 out["params"] = {}
         else:
             out["params"] = {}
@@ -190,6 +195,7 @@ class RunIndex(BaseIndex):
             try:
                 out["feature_importance"] = json.loads(out["feature_importance_json"])
             except Exception:
+                logger.debug("Failed to decode feature_importance_json for run", run_id=run_id, exc_info=True)
                 out["feature_importance"] = {}
         else:
             out["feature_importance"] = {}

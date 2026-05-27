@@ -33,6 +33,7 @@ def generate_report(market):
         try:
             workflow_cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
         except Exception:
+            logger.warning("Failed to parse workflow config YAML", cfg_path=str(cfg_path), exc_info=True)
             workflow_cfg = {}
 
     qlib_cfg = build_qlib_init_cfg(
@@ -118,7 +119,7 @@ def generate_report(market):
         if "port_analysis_1day.pkl" in artifacts:
             port_analysis = rec.load_object("port_analysis_1day.pkl")
     except Exception:
-        pass
+        logger.debug("Failed to load performance metrics artifact", exc_info=True)
 
     # 6. Generate Markdown Report
     report_dir = Path(REPORTS_DIR) / str(market).lower()

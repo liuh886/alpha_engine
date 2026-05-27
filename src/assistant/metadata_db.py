@@ -4,6 +4,10 @@ import os
 import sqlite3
 from pathlib import Path
 
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
+
 ENV_METADATA_DB_PATH = "TRADING_ASSISTANT_METADATA_DB_PATH"
 DEFAULT_RELATIVE_DB_PATH = Path("artifacts") / "metadata" / "metadata.db"
 
@@ -24,5 +28,5 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
     except Exception:
-        pass
+        logger.debug("Failed to set PRAGMA options on connection", db_path=str(p), exc_info=True)
     return conn

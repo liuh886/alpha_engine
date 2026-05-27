@@ -12,6 +12,9 @@ import urllib.request
 from pathlib import Path
 
 from src.assistant.metadata_db import connect
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
 
 # Global registry for running processes
 _RUNNING_PROCS: dict[str, subprocess.Popen] = {}
@@ -141,7 +144,7 @@ class JobService:
             try:
                 out.update(json.loads(row["job_json"]))
             except Exception:
-                pass
+                logger.debug("Failed to decode job_json for row", job_id=row["id"], exc_info=True)
 
         out.update(
             {
@@ -161,6 +164,7 @@ class JobService:
             try:
                 out["commands"] = json.loads(row["commands_json"])
             except Exception:
+                logger.debug("Failed to decode commands_json for row", job_id=row["id"], exc_info=True)
                 out["commands"] = []
         else:
             out["commands"] = []
@@ -212,7 +216,7 @@ class JobService:
             )
             urllib.request.urlopen(req, timeout=5)
         except Exception:
-            pass
+            logger.debug("Failed to send webhook alert", job_id=job_id, exc_info=True)
 
     def kill_job(self, job_id: str) -> bool:
         """
@@ -228,6 +232,7 @@ class JobService:
                         os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
                     return True
                 except Exception:
+                    logger.warning("Failed to kill job process", job_id=job_id, exc_info=True)
                     return False
         return False
 

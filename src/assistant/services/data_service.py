@@ -2,7 +2,10 @@ import datetime
 import json
 from pathlib import Path
 
+from src.common.logging import get_logger
 from src.dashboard.data_update_job import create_data_update_job
+
+logger = get_logger(__name__)
 
 
 class DataService:
@@ -18,6 +21,7 @@ class DataService:
         try:
             lookback_days = int(lookback_days) if lookback_days is not None else 30
         except Exception:
+            logger.debug("Failed to parse lookback_days, using default", raw_value=lookback_days, exc_info=True)
             lookback_days = 30
         if lookback_days < 0:
             lookback_days = 0
@@ -38,6 +42,7 @@ class DataService:
             lines = inst_path.read_text(encoding="utf-8").splitlines()
             return [line.split("\t")[0] for line in lines if line.strip()]
         except Exception:
+            logger.debug("Failed to read instruments file", path=str(inst_path), exc_info=True)
             return []
 
     def get_data_status(self, dashboard_db_path: Path, snapshot_index, quality_index) -> dict:
@@ -52,7 +57,7 @@ class DataService:
                         latest_cal = line
                         break
             except Exception:
-                pass
+                logger.debug("Failed to read calendar file", path=str(cal_path), exc_info=True)
 
         dashboard_generated_at = None
         if dashboard_db_path.exists():
@@ -60,7 +65,7 @@ class DataService:
                 db = json.loads(dashboard_db_path.read_text(encoding="utf-8"))
                 dashboard_generated_at = db.get("generated_at")
             except Exception:
-                pass
+                logger.debug("Failed to read dashboard DB", path=str(dashboard_db_path), exc_info=True)
 
         latest_snapshot_id = None
         try:
@@ -68,7 +73,7 @@ class DataService:
             if snap:
                 latest_snapshot_id = snap.get("snapshot_id")
         except Exception:
-            pass
+            logger.debug("Failed to query latest snapshot", exc_info=True)
 
         quality_warnings = []
         quality_status = "ok"
@@ -81,7 +86,7 @@ class DataService:
                     quality_status = "warning"
                 detailed_issues = q["summary"].get("markets") or {}
         except Exception:
-            pass
+            logger.debug("Failed to query quality index", exc_info=True)
 
         # Calculate readiness
         readiness = self._calculate_readiness(latest_cal)
@@ -112,4 +117,5 @@ class DataService:
                 return "STALE"
             return "READY"
         except Exception:
+            logger.debug("Failed to parse calendar date for readiness check", latest_cal=latest_cal, exc_info=True)
             return "UNKNOWN"

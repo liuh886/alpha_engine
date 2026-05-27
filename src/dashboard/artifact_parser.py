@@ -5,6 +5,10 @@ from typing import Any
 
 import pandas as pd
 
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 def load_qlib_pkl(path: Path) -> Any:
     if not path.exists():
@@ -13,6 +17,7 @@ def load_qlib_pkl(path: Path) -> Any:
         try:
             return pickle.load(f)
         except Exception:
+            logger.warning("Failed to load pickle artifact", path=str(path), exc_info=True)
             return None
 
 
@@ -127,6 +132,7 @@ def parse_profit_attribution(run_dir: Path) -> dict[str, Any]:
             desc = report.describe()
             metrics = json.loads(desc.to_json())
         except Exception:
+            logger.debug("Failed to compute report description metrics", exc_info=True)
             metrics = {}
 
     # Real attribution requires Factor analysis (out of scope for pure artifact parsing)

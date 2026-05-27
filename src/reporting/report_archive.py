@@ -6,6 +6,9 @@ import zipfile
 from pathlib import Path
 
 from src.assistant.report_index import ReportIndex
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def _resolve_under_root(path_str: str, *, project_root: Path) -> Path | None:
@@ -104,6 +107,7 @@ def export_reports_zip(
                 zf.write(src_path, arcname=arcname)
                 written += 1
             except Exception:
+                logger.debug("Failed to add file to reports zip archive", arcname=arcname, exc_info=True)
                 continue
 
     out_rel = (
@@ -123,7 +127,7 @@ def export_reports_zip(
             meta={"included_reports": written, "filter": {"type": type_filter, "limit": limit}},
         )
     except Exception:
-        pass
+        logger.debug("Failed to index exported reports archive", exc_info=True)
 
     return {
         "ok": True,

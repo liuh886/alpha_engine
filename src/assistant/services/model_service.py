@@ -6,8 +6,11 @@ from pathlib import Path
 import yaml
 
 from src.assistant.model_registry_index import ModelRegistryIndex
+from src.common.logging import get_logger
 from src.common.paths import MODELS_DIR
 from src.governance.service import GovernanceService
+
+logger = get_logger(__name__)
 
 
 class ModelService:
@@ -38,7 +41,7 @@ class ModelService:
                 with open(yaml_path, "w", encoding="utf-8") as f:
                     yaml.dump(data, f, sort_keys=False)
             except Exception:
-                pass
+                logger.warning("Failed to update model_list.yaml after deleting version", version_id=version_id, exc_info=True)
 
         # 4. Physical cleanup
         if version:
@@ -50,7 +53,7 @@ class ModelService:
                     try:
                         abs_path.unlink()
                     except Exception:
-                        pass
+                        logger.warning("Failed to delete model file from disk", path=str(abs_path), version_id=version_id, exc_info=True)
 
             # Log deletion event
             self._gov.log_run_event(
@@ -89,7 +92,7 @@ class ModelService:
                     with open(yaml_path, "w", encoding="utf-8") as f:
                         yaml.dump(data, f, sort_keys=False)
             except Exception:
-                pass
+                logger.warning("Failed to update model stage in YAML", version_id=version_id, stage=stage, exc_info=True)
 
         # 3. File System Action for RECOMMENDED
         version = self._model_index.get_version(version_id)
@@ -103,7 +106,7 @@ class ModelService:
                     try:
                         shutil.copy(src_path, dest_path)
                     except Exception:
-                        pass
+                        logger.warning("Failed to copy model file to recommended path", src=str(src_path), dest=str(dest_path), exc_info=True)
 
         # 4. Log governance event
         if version:
@@ -132,6 +135,7 @@ class ModelService:
             try:
                 config_content = config_path.read_text(encoding="utf-8")
             except Exception:
+                logger.warning("Failed to read model config file", config_path=str(config_path), exc_info=True)
                 config_content = "Error reading config file."
 
         return {

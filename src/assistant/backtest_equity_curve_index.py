@@ -3,6 +3,9 @@ from __future__ import annotations
 import time
 
 from src.assistant.base_index import BaseIndex
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def _to_float(value) -> float | None:
@@ -13,6 +16,7 @@ def _to_float(value) -> float | None:
     try:
         return float(str(value))
     except Exception:
+        logger.debug("Failed to convert value to float", value=value, exc_info=True)
         return None
 
 
@@ -175,6 +179,7 @@ class BacktestEquityCurveIndex(BaseIndex):
             try:
                 limit_i = int(limit)
             except Exception:
+                logger.debug("Failed to convert limit to int", limit=limit, exc_info=True)
                 limit_i = None
             if limit_i is not None and limit_i <= 0:
                 return []

@@ -6,6 +6,9 @@ import uuid
 
 from src.assistant.backtest_equity_curve_index import BacktestEquityCurveIndex
 from src.assistant.base_index import BaseIndex
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def _safe_json(value) -> str:
@@ -16,6 +19,7 @@ def _safe_json(value) -> str:
     try:
         return json.dumps(value)
     except Exception:
+        logger.debug("Failed to serialize value to JSON", exc_info=True)
         return "{}"
 
 
@@ -112,6 +116,7 @@ class ArenaIndex(BaseIndex):
                 try:
                     d["config"] = json.loads(d["config_json"])
                 except Exception:
+                    logger.debug("Failed to parse arena config_json", arena_id=d.get("id"), exc_info=True)
                     d["config"] = {}
             else:
                 d["config"] = {}

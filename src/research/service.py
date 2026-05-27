@@ -141,7 +141,7 @@ class ResearchService:
                     encoding="utf-8",
                 )
             except Exception:
-                pass
+                logger.debug("Failed to persist strategy profile artifact", exc_info=True)
 
         return results
 

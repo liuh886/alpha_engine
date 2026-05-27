@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import os
 
+from src.common.logging import get_logger
 from src.common.market import get_region_for_market
 from src.common.paths import MLRUNS_DIR
+
+logger = get_logger(__name__)
 
 
 def build_qlib_init_cfg(
@@ -37,5 +40,4 @@ def safe_qlib_init(cfg: dict) -> None:
     try:
         qlib.init(**cfg)
     except Exception:
-        # Qlib is usually a singleton; repeat initialization can raise depending on version.
-        pass
+        logger.debug("Qlib init raised (likely singleton re-initialization)", exc_info=True)

@@ -8,11 +8,14 @@ from qlib.data.dataset import DatasetH
 from qlib.data.dataset.handler import DataHandlerLP
 
 from src.common.guardrail_utils import apply_amount_fallback
+from src.common.logging import get_logger
 from src.common.inference_features import (
     build_default_inference_features,
     resolve_inference_feature_list,
 )
 from src.guardrails.rules import apply_guardrails
+
+logger = get_logger(__name__)
 
 
 def perform_inference(
@@ -46,7 +49,7 @@ def perform_inference(
                     prof, market_name=market, default_features=features
                 )
         except Exception:
-            pass
+            logger.debug("Failed to load inference profile, using default features", profile_path=str(profile_path), exc_info=True)
 
     data_loader_config = {
         "feature": features,

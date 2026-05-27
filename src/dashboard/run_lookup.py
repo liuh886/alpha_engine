@@ -3,6 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 def get_run_model_path(run_id: str, *, dashboard_db_path: str | Path) -> str | None:
     """
@@ -22,6 +26,7 @@ def get_run_model_path(run_id: str, *, dashboard_db_path: str | Path) -> str | N
     try:
         data = json.loads(db_path.read_text(encoding="utf-8"))
     except Exception:
+        logger.debug("Failed to read dashboard DB for model path lookup", path=str(db_path), exc_info=True)
         return None
 
     models = data.get("models", [])
@@ -65,6 +70,7 @@ def get_run_profile_path(run_id: str, *, dashboard_db_path: str | Path) -> str |
     try:
         data = json.loads(db_path.read_text(encoding="utf-8"))
     except Exception:
+        logger.debug("Failed to read dashboard DB for profile path lookup", path=str(db_path), exc_info=True)
         return None
 
     models = data.get("models", [])
