@@ -5,6 +5,10 @@ import fire
 import yaml
 from tabulate import tabulate
 
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class ModelManager:
     def __init__(self):
@@ -34,7 +38,7 @@ class ModelManager:
         """
         path = Path(path)
         if not path.exists():
-            print(f"Error: File not found at {path}")
+            logger.error("File not found", path=str(path))
             return
 
         data = self._load()
@@ -61,7 +65,7 @@ class ModelManager:
 
         data["models"].append(entry)
         self._save(data)
-        print(f"Successfully registered: {entry['id']}")
+        logger.info("Model registered", model_id=entry['id'])
 
     def list(self):
         """List all registered models."""
@@ -69,7 +73,7 @@ class ModelManager:
         models = data.get("models", [])
 
         if not models:
-            print("No models registered.")
+            logger.info("No models registered.")
             return
 
         table = []
@@ -84,12 +88,13 @@ class ModelManager:
 
             table.append([m["id"], m["market"], m["type"], m["created_at"], ret, ir])
 
-        print(
-            tabulate(
+        logger.info(
+            "Model list",
+            table=tabulate(
                 table,
                 headers=["ID", "Market", "Type", "Created", "Ann. Ret", "IR"],
                 tablefmt="simple",
-            )
+            ),
         )
 
     def delete(self, model_id):
@@ -99,7 +104,7 @@ class ModelManager:
 
         target = next((m for m in models if m["id"] == model_id), None)
         if not target:
-            print(f"Model ID '{model_id}' not found.")
+            logger.warning("Model ID not found", model_id=model_id)
             return
 
         # Remove file
@@ -107,16 +112,16 @@ class ModelManager:
         if path.exists():
             try:
                 os.remove(path)
-                print(f"Deleted file: {path}")
+                logger.info("Deleted model file", path=str(path))
             except Exception as e:
-                print(f"Error deleting file: {e}")
+                logger.error("Failed to delete model file", path=str(path), error=str(e))
         else:
-            print(f"File not found: {path}")
+            logger.warning("Model file not found on disk", path=str(path))
 
         # Remove from registry
         data["models"] = [m for m in models if m["id"] != model_id]
         self._save(data)
-        print(f"Removed '{model_id}' from registry.")
+        logger.info("Removed model from registry", model_id=model_id)
 
 
 if __name__ == "__main__":

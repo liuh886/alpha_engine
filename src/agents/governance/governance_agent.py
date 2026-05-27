@@ -11,9 +11,12 @@ from src.agents.tools.governance_tools import (
     append_to_human_run_log,
     format_thought_stream_for_report,
 )
+from src.common.logging import get_logger
 from src.reliability.events import ReliabilityEvent
 from src.reliability.failure_log import resolve_failure_event
 from src.reliability.governance_policy import GovernanceReliabilityPolicy
+
+logger = get_logger(__name__)
 
 
 class GovernanceAgent(BaseAgent):
@@ -139,7 +142,7 @@ You must:
         """
         Implements the v2.1 Coordination Protocol.
         """
-        print(f"--- Governance Agent starting daily routine for {market} ---")
+        logger.info("Governance Agent starting daily routine", market=market)
 
         format_thought_stream_for_report(
             "Governance Agent", "info", f"Starting daily routine for {market} market..."
@@ -199,7 +202,7 @@ You must:
 
         if final_approval:
             msg = "Daily Routine -> SUCCESS"
-            print(msg)
+            logger.info(msg)
             append_to_human_run_log("SUCCESS", msg)
             format_thought_stream_for_report(
                 "Governance Agent",
@@ -208,7 +211,7 @@ You must:
             )
         else:
             msg = "Daily Routine -> BLOCKED BY RISK VETO"
-            print(msg)
+            logger.warning(msg)
             append_to_human_run_log("BLOCKED", msg)
             format_thought_stream_for_report(
                 "Governance Agent",

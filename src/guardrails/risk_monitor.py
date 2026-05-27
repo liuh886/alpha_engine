@@ -1,6 +1,9 @@
 import requests
 
+from src.common.logging import get_logger
 from src.common.runtime_settings import get_runtime_settings
+
+logger = get_logger(__name__)
 
 # Risk Agent configuration as per AGENTS.md
 MAX_DRAWDOWN_THRESHOLD = 0.15
@@ -15,7 +18,7 @@ def check_backtest_risk(run_id, metrics):
     mdd = metrics.get("max_drawdown", 0.0)
 
     if mdd > MAX_DRAWDOWN_THRESHOLD:
-        print(f"!!! RISK VIOLATION: MDD {mdd:.2%} exceeds threshold {MAX_DRAWDOWN_THRESHOLD:.2%}")
+        logger.warning("Risk violation: MDD exceeds threshold", mdd=mdd, threshold=MAX_DRAWDOWN_THRESHOLD)
 
         # Triggering the "Red Button"
         try:
@@ -23,9 +26,7 @@ def check_backtest_risk(run_id, metrics):
             username = settings.trading_ui_user
             password = settings.trading_ui_password
             if not username or not password:
-                print(
-                    "Error: TRADING_UI_USER or TRADING_UI_PASSWORD not set. Cannot trigger panic."
-                )
+                logger.error("TRADING_UI_USER or TRADING_UI_PASSWORD not set; cannot trigger panic")
                 return False
 
             auth = (username, password)
@@ -35,10 +36,10 @@ def check_backtest_risk(run_id, metrics):
                 auth=auth,
             )
             if resp.status_code == 200:
-                print(">>> SYSTEM_PANIC triggered successfully. All jobs halted.")
+                logger.info("SYSTEM_PANIC triggered successfully; all jobs halted")
                 return True
         except Exception as e:
-            print(f"Failed to trigger Panic Stop: {str(e)}")
+            logger.error("Failed to trigger panic stop", error=str(e))
 
     return False
 

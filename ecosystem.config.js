@@ -1,18 +1,22 @@
 const path = require("path");
 const isWin = process.platform === "win32";
 const baseDir = __dirname;
-const pythonExe = isWin
-  ? path.join(baseDir, ".venv", "Scripts", "python.exe")
+
+// On Windows, use a Node wrapper that spawns Python with windowsHide: true
+// to prevent a visible console window from flashing on each restart.
+// On Linux/macOS, run Python directly via uv.
+const script = isWin
+  ? path.join(baseDir, "pm2_launcher.js")
   : "uv";
 
 module.exports = {
   apps: [
     {
       name: "alpha-hub",
-      script: pythonExe,
+      script: script,
       cwd: baseDir,
       args: isWin ? "api_server.py" : "run python api_server.py",
-      interpreter: "none",
+      interpreter: isWin ? "node" : "none",
       env: {
         PYTHONPATH: baseDir,
         PORT: 8000,
@@ -23,9 +27,8 @@ module.exports = {
       max_memory_restart: '2G',
       listen_timeout: 5000,
       kill_timeout: 5000,
-      windowsHide: true,
       max_restarts: 10,
-      min_uptime: 5000
+      min_uptime: 5000,
     }
   ]
 };

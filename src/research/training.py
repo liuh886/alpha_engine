@@ -5,14 +5,17 @@ from pathlib import Path
 
 from qlib.utils import init_instance_by_config
 
+from src.common.logging import get_logger
 from src.common.paths import MODELS_DIR
+
+logger = get_logger(__name__)
 
 
 def train_model(
     market: str, model_config: dict, dataset_config: dict, tag: str = ""
 ) -> tuple[object, Path]:
     """Train a Qlib model."""
-    print("Training Model...")
+    logger.info("Training model", market=market)
     dataset = init_instance_by_config(dataset_config)
 
     model = init_instance_by_config(model_config)

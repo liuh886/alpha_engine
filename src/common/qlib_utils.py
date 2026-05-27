@@ -2,6 +2,10 @@ import threading
 
 import qlib
 
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
+
 _qlib_lock = threading.Lock()
 _initialized_regions = set()
 
@@ -18,16 +22,16 @@ def ensure_qlib_init(provider_uri: str, region: str = "cn"):
         if cache_key in _initialized_regions:
             return True
 
-        print(f"[*] Initializing Qlib for region: {region} (URI: {provider_uri})...")
+        logger.info("Initializing Qlib", region=region, provider_uri=str(provider_uri))
         try:
             # If Qlib was already initialized by another call with same settings,
             # qlib.init is usually fast but we skip it entirely to be sure.
             qlib.init(provider_uri=str(provider_uri), region=region)
             _initialized_regions.add(cache_key)
-            print("[OK] Qlib initialized successfully.")
+            logger.info("Qlib initialized successfully")
             return True
         except Exception as e:
-            print(f"[!] Qlib initialization failed: {e}")
+            logger.error("Qlib initialization failed", error=str(e))
             return False
 
 

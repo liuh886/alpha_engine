@@ -3,6 +3,10 @@ from qlib.data.dataset.handler import DataHandler
 from qlib.workflow import R
 from qlib.workflow.record_temp import PortAnaRecord
 
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 def run_backtest(
     model: object, dataset: object, port_analysis_config: dict, recorder: object = None
@@ -10,7 +14,7 @@ def run_backtest(
     """
     Run inference and portfolio analysis.
     """
-    print("Running Inference for Backtest...")
+    logger.info("Running inference for backtest")
     pred_score = model.predict(dataset)
     if isinstance(pred_score, pd.Series):
         pred_score = pred_score.to_frame("score")

@@ -1,5 +1,9 @@
 from numbers import Real
 
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class MetricsExtractor:
     """Utility to extract structured JSON metrics from Qlib backtest records."""
@@ -71,7 +75,7 @@ class MetricsExtractor:
             # Final touch: ensure all values are standard Python floats for JSON serialization
             return {k: round(v, 4) if isinstance(v, Real) else v for k, v in metrics.items()}
         except Exception as e:
-            print(f"Error extracting metrics: {e}")
+            logger.error("Failed to extract metrics", error=str(e))
             return {"error": str(e)}
 
     @staticmethod

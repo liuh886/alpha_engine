@@ -11,6 +11,9 @@ from plotly.subplots import make_subplots
 from qlib.data import D
 
 from src.common.config_utils import load_watchlist
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def generate_interactive_report(
@@ -22,7 +25,7 @@ def generate_interactive_report(
     model_info=None,
     report_path="reports/backtest_report.html",
 ):
-    print("Generating interactive report with trade details...")
+    logger.info("Generating interactive report with trade details")
 
     # Identify Top Winners
     sorted_tickers = sorted(ticker_profits.items(), key=lambda x: x[1], reverse=True)
@@ -182,16 +185,16 @@ def generate_interactive_report(
         fig.update_yaxes(title_text="Price (Base 100)", row=i, col=1)
 
     fig.write_html(report_path)
-    print(f"Interactive report saved to {report_path}")
+    logger.info("Interactive report saved", report_path=report_path)
 
 
 def run_backtest(
     start_date="2025-10-23", end_date="2026-01-23", initial_cash=10000, topk=5, benchmark="QQQ"
 ):
-    print(f"=== Starting Backtest ({start_date} to {end_date}) ===")
-    print(f"Initial Cash: ${initial_cash}")
-    print("Strategy: CLASSIFIER SNIPER (Prob > 0.55 + MA60 Filter)")
-    print(f"Benchmark: {benchmark}")
+    logger.info("Starting backtest", start_date=start_date, end_date=end_date)
+    logger.info("Initial cash", initial_cash=initial_cash)
+    logger.info("Strategy: CLASSIFIER SNIPER (Prob > 0.55 + MA60 Filter)")
+    logger.info("Benchmark", benchmark=benchmark)
 
     # 1. Initialize Qlib
     qlib.init(provider_uri="data/watchlist")
@@ -217,13 +220,13 @@ def run_backtest(
         if t in all_instruments:
             target_instruments.append(t)
 
-    print(f"Universe: {len(target_instruments)} stocks")
+    logger.info("Universe", num_stocks=len(target_instruments))
 
     # 3. Load Model
     # Use the CLASSIFIER model
     with open("models/us_classifier.pkl", "rb") as f:
         model = pickle.load(f)
-    print(f"Loaded Model Type: {type(model)}")
+    logger.info("Loaded model", model_type=str(type(model)))
 
     # 4. Data
     from qlib.contrib.data.handler import Alpha158
@@ -249,11 +252,11 @@ def run_backtest(
     dh = Alpha158(**handler_kwargs)
 
     # Fetch feature data directly for sklearn/lgbm classifier
-    print("Fetching data for inference...")
+    logger.info("Fetching data for inference")
     df_data = dh.fetch(selector=(start_date, end_date), col_set="feature")
 
     # Predict Probabilities
-    print("Generating predictions (Probability)...")
+    logger.info("Generating predictions (Probability)")
     # LGBMClassifier.predict_proba returns [prob_0, prob_1]
     probs = model.predict_proba(df_data.values)[:, 1]
 
@@ -262,7 +265,7 @@ def run_backtest(
 
     # 5. Simulation
     # Fetch Prices AND MA60
-    print("Fetching Market Data & MA60...")
+    logger.info("Fetching Market Data & MA60")
     fields = ["$close", "$open", "$high", "$low", "Mean($close, 60)"]
     names = ["close", "open", "high", "low", "ma60"]
 
@@ -359,10 +362,10 @@ def run_backtest(
         "label": "T+20 Forward Return",
     }
 
-    print("\n=== Backtest Results ===")
-    print(f"Final Portfolio Value: ${hist_df['portfolio_value'].iloc[-1]:,.2f}")
-    print(f"Strategy Return:       {total_ret * 100:.2f}%")
-    print(f"Benchmark ({benchmark}) Return: {bench_total_ret * 100:.2f}%")
+    logger.info("Backtest Results")
+    logger.info("Final portfolio value", value=f"${hist_df['portfolio_value'].iloc[-1]:,.2f}")
+    logger.info("Strategy return", pct=f"{total_ret * 100:.2f}%")
+    logger.info("Benchmark return", benchmark=benchmark, pct=f"{bench_total_ret * 100:.2f}%")
 
     generate_interactive_report(
         hist_df, benchmark, close_prices, ticker_profits, trade_logs, model_info=model_info

@@ -8,9 +8,12 @@ from qlib.data import D
 from qlib.workflow import R
 
 from src.common.guardrail_utils import apply_amount_fallback
+from src.common.logging import get_logger
 from src.common.paths import CONFIG_DIR, REPORTS_DIR
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 from src.guardrails.rules import apply_guardrails
+
+logger = get_logger(__name__)
 
 
 def trade_ticket_path(market: str, date_str: str, *, reports_dir: Path = REPORTS_DIR) -> Path:
@@ -18,7 +21,7 @@ def trade_ticket_path(market: str, date_str: str, *, reports_dir: Path = REPORTS
 
 
 def generate_report(market):
-    print(f"Generating report for {market.upper()}...")
+    logger.info("Generating report", market=market.upper())
 
     # 1. Initialize Qlib with the correct data path
     cfg_path = CONFIG_DIR / f"{market}_lgbm_workflow.yaml"
@@ -43,7 +46,7 @@ def generate_report(market):
         exp_name = f"workflow_{market}"
         rec = R.get_recorder(experiment_name=exp_name)
     except Exception as e:
-        print(f"Error getting recorder for {market}: {e}")
+        logger.error("Error getting recorder", market=market, error=str(e))
         return
 
     # 3. Load Predictions
@@ -60,17 +63,17 @@ def generate_report(market):
                 pred = pickle.load(f)
 
     if pred is None or (isinstance(pred, pd.DataFrame) and pred.empty):
-        print("No predictions found. Check training logs.")
+        logger.warning("No predictions found, check training logs")
         return
 
     last_date = pred.index.get_level_values("datetime").max()
-    print(f"Last prediction date: {last_date}")
+    logger.info("Last prediction date", last_date=str(last_date))
 
     latest_pred = pred.xs(last_date, level="datetime").sort_values("score", ascending=False)
     top_candidates = latest_pred.head(50).copy()
 
     # 4. Fetch features for guardrails
-    print("Fetching features for guardrails...")
+    logger.info("Fetching features for guardrails")
     instruments = top_candidates.index.tolist()
     fields = [
         "$close",
@@ -85,7 +88,7 @@ def generate_report(market):
     try:
         df_features = D.features(instruments, fields, start_time=last_date, end_time=last_date)
         if df_features.empty:
-            print("Warning: No feature data found for guardrails.")
+            logger.warning("No feature data found for guardrails")
             top_candidates["passed_guardrails"] = True  # Fallback
         else:
             df_features.columns = names
@@ -102,7 +105,7 @@ def generate_report(market):
                 lambda x: x["passed"]
             )
     except Exception as e:
-        print(f"Error applying guardrails: {e}")
+        logger.error("Error applying guardrails", error=str(e))
         top_candidates["passed_guardrails"] = True
 
     final_picks = top_candidates[top_candidates["passed_guardrails"]].head(10)
@@ -156,7 +159,7 @@ def generate_report(market):
                         break
                 f.write(f"| {inst} | {row['score']:.4f} | {reason} |\n")
 
-    print(f"Report saved to {report_path}")
+    logger.info("Report saved", report_path=str(report_path))
 
     # 7. Generate Trade Ticket
     ticket_path = trade_ticket_path(market, str(last_date.date()))
@@ -169,7 +172,7 @@ def generate_report(market):
         for inst, row in final_picks.iterrows():
             f.write(f"| BUY | {inst} | 10% |\n")
 
-    print(f"Trade ticket saved to {ticket_path}")
+    logger.info("Trade ticket saved", ticket_path=str(ticket_path))
 
 
 if __name__ == "__main__":

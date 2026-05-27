@@ -3,6 +3,10 @@ from pathlib import Path
 
 import yaml
 
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -279,7 +283,7 @@ def compile_strategy_profile(
 
     # 收集并打印警告 (可以考虑集成到 ReliabilityEvent)
     for w in collect_profile_warnings(profile, market=target_market):
-        print(f"[profile warning] {w}")
+        logger.warning("Profile warning", message=w)
 
     model_class = (profile.get("model", {}).get("class") or "").lower()
     if "linear" in model_class:
@@ -296,12 +300,12 @@ def compile_strategy_profile(
     cfg = apply_profile_to_config(profile, cfg, target_market)
 
     if dry_run:
-        print(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=False))
+        logger.info("Dry-run config output", config=yaml.safe_dump(cfg, sort_keys=False, allow_unicode=False))
         return config_path
 
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=False)
 
     maybe_update_watchlist(profile, target_market)
-    print(f"Successfully compiled profile to {config_path}")
+    logger.info("Successfully compiled profile", config_path=str(config_path))
     return config_path

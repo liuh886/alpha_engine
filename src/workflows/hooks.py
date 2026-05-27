@@ -6,6 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from src.common.logging import get_logger
+
 # Suppress annoying Gym/Gymnasium warnings from Qlib
 warnings.filterwarnings("ignore", category=UserWarning, module="gym")
 warnings.filterwarnings("ignore", message=".*Gymnasium.*")
@@ -23,6 +25,8 @@ from src.reliability.classifier import classify_failure
 from src.research.registry import register_model
 from src.research.service import ResearchService
 from src.workflows.profile_compiler import compile_strategy_profile
+
+logger = get_logger(__name__)
 
 
 def get_task_slug(operation: str, market: str) -> str:
@@ -56,7 +60,7 @@ def generate_quality_report(market: str = "all"):
             )
             return q
     except Exception as e:
-        print(f"Failed to generate quality report: {e}")
+        logger.error("Failed to generate quality report", error=str(e))
     return None
 
 
@@ -64,7 +68,7 @@ def _repair_data(market: str, lookback_days: int = 60) -> bool:
     """
     Attempt to repair market data by running update_data script.
     """
-    print(f"--- Attempting Data Repair for {market.upper()} (lookback={lookback_days}d) ---")
+    logger.info("Attempting data repair", market=market.upper(), lookback_days=lookback_days)
     try:
         cmd = [
             sys.executable,
@@ -75,10 +79,10 @@ def _repair_data(market: str, lookback_days: int = 60) -> bool:
             str(lookback_days),
         ]
         subprocess.run(cmd, check=True, cwd=str(PROJECT_ROOT))
-        print(f"--- Data Repair Successful for {market.upper()} ---")
+        logger.info("Data repair successful", market=market.upper())
         return True
     except Exception as e:
-        print(f"--- Data Repair Failed for {market.upper()}: {e} ---")
+        logger.error("Data repair failed", market=market.upper(), error=str(e))
         return False
 
 
@@ -106,8 +110,9 @@ def on_pipeline_start(
                 updated_at = datetime.fromisoformat(updated_at_str)
                 now = datetime.now(updated_at.tzinfo)
                 if (now - updated_at).total_seconds() > 14400:  # 4 hours
-                    print(
-                        f"[!] Warning: Workflow {active[0]['workflow_id']} is RUNNING but stale. Overriding lock."
+                    logger.warning(
+                        "Workflow is RUNNING but stale, overriding lock",
+                        workflow_id=active[0]['workflow_id'],
                     )
                 else:
                     raise RuntimeError(
@@ -253,7 +258,7 @@ def run_training_pipeline(
             details={**(details or {}), "model_type": model_type, "tag": str(tag or "")},
         )
     except RuntimeError as e:
-        print(f"[!] {e}")
+        logger.warning(str(e))
         raise e
 
     tag = str(tag or "").strip()
@@ -309,7 +314,7 @@ def run_training_pipeline(
                 config = research.prepare_experiment(market, config, start_time)
             except RuntimeError as e:
                 if "No valid tickers found" in str(e) and attempt < max_retries:
-                    print(f"Data issue detected: {e}")
+                    logger.warning("Data issue detected", error=str(e))
                     if _repair_data(market):
                         attempt += 1
                         on_pipeline_retry(
@@ -358,7 +363,7 @@ def run_training_pipeline(
                     attempt=attempt,
                     reason=str(exc),
                 )
-                print(f"Retrying pipeline (attempt {attempt}/{max_retries})...")
+                logger.info("Retrying pipeline", attempt=attempt, max_retries=max_retries)
                 continue
 
             on_pipeline_failure(
@@ -413,7 +418,7 @@ def run_rebacktest_pipeline(
             },
         )
     except RuntimeError as e:
-        print(f"[!] {e}")
+        logger.warning(str(e))
         raise e
 
     try:

@@ -8,7 +8,10 @@ import pandas as pd
 import yaml
 
 from src.common.config_utils import load_watchlist
+from src.common.logging import get_logger
 from src.common.market import get_region_for_market
+
+logger = get_logger(__name__)
 
 
 def load_name_map(config_path="configs/name_map.yaml"):
@@ -28,7 +31,7 @@ def run_inference(
     research = ResearchService(PROJECT_ROOT)
 
     if market == "all":
-        print("=== Running Inference for ALL Markets ===")
+        logger.info("Running inference for all markets")
         for m in ["cn", "us"]:
             cmd = [sys.executable, "-m", "src.inference", "--market", m]
             subprocess.run(cmd, check=True)
@@ -45,12 +48,12 @@ def run_inference(
     }
 
     if market not in model_paths:
-        print(f"Error: Unknown market {market}")
+        logger.error("Unknown market", market=market)
         return
 
     tickers = watchlist.get(market, [])
     if not tickers:
-        print(f"No tickers for market {market}")
+        logger.warning("No tickers for market", market=market)
         return
 
     from src.common.qlib_utils import ensure_qlib_init
@@ -79,8 +82,7 @@ def run_inference(
                 lambda x: name_map.get(str(x), name_map.get(str(x).upper(), str(x)))
             )
 
-            print("\n=== Inference Results ===")
-            print(final_df[["name", "score", "passed", "market"]].head(20))
+            logger.info("Inference results", results=final_df[["name", "score", "passed", "market"]].head(20).to_string())
 
             # Save Report
             report_dir = Path("reports")
@@ -116,15 +118,15 @@ def run_inference(
                         f"| {row['instrument']} | {row['name']} | {row['market'].upper()} | {row['score']:.4f} | {row['passed']} | {reason} | {row['close']:.2f} |\n"
                     )
 
-            print(f"Report saved to {report_path}")
+            logger.info("Report saved", path=str(report_path))
         else:
-            print("No results generated.")
+            logger.warning("No results generated.")
 
     except Exception as e:
-        print(f"  [!] Inference failed: {e}")
+        logger.error("Inference failed", error=str(e))
         import traceback
 
-        traceback.print_exc()
+        logger.debug("Inference traceback", traceback=traceback.format_exc())
 
 
 if __name__ == "__main__":

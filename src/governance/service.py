@@ -7,9 +7,12 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from src.common.logging import get_logger
 from src.reliability.events import ReliabilityEvent
 from src.reliability.failure_log import append_failure_event
 from src.reliability.governance_policy import GovernanceReliabilityPolicy
+
+logger = get_logger(__name__)
 
 
 class GovernanceService:
@@ -145,7 +148,7 @@ class GovernanceService:
                     "CREATE INDEX IF NOT EXISTS idx_workflows_updated_at ON workflows(updated_at DESC)"
                 )
         except Exception as exc:
-            print(f"Failed to initialize governance database: {exc}")
+            logger.error("Failed to initialize governance database", error=str(exc))
 
     @staticmethod
     def _ensure_columns(
@@ -222,7 +225,7 @@ class GovernanceService:
                     ),
                 )
         except Exception as exc:
-            print(f"Failed to log governance event to DB: {exc}")
+            logger.error("Failed to log governance event to DB", error=str(exc))
 
     def log_failure_event(
         self,
@@ -296,7 +299,7 @@ class GovernanceService:
                     ),
                 )
         except Exception as exc:
-            print(f"Failed to update task status in DB: {exc}")
+            logger.error("Failed to update task status in DB", error=str(exc))
 
     def log_reliability_event(
         self,
@@ -316,7 +319,7 @@ class GovernanceService:
                 path=self._project_root / "artifacts" / "governance" / "failure_log.json",
             )
         except Exception as exc:
-            print(f"Failed to append reliability event to failure log: {exc}")
+            logger.error("Failed to append reliability event to failure log", error=str(exc))
 
         self.log_run_event(
             resolved_event.market or "ALL",
@@ -362,7 +365,7 @@ class GovernanceService:
                 rows = conn.execute(sql, params).fetchall()
             return [self._decode_run_log_row(row) for row in rows]
         except Exception as exc:
-            print(f"Failed to query history from DB: {exc}")
+            logger.error("Failed to query history from DB", error=str(exc))
             return []
 
     def query_failure_events(
@@ -391,7 +394,7 @@ class GovernanceService:
                 rows = conn.execute(sql, params).fetchall()
             return [self._decode_task_status_row(row) for row in rows]
         except Exception as exc:
-            print(f"Failed to query task statuses from DB: {exc}")
+            logger.error("Failed to query task statuses from DB", error=str(exc))
             return []
 
     def get_task_status(self, task_slug: str) -> dict[str, Any] | None:
@@ -404,7 +407,7 @@ class GovernanceService:
                 if row:
                     return self._decode_task_status_row(row)
         except Exception as exc:
-            print(f"Failed to get task status for {task_slug}: {exc}")
+            logger.error("Failed to get task status", task_slug=task_slug, error=str(exc))
         return None
 
     def update_workflow_status(
@@ -464,7 +467,7 @@ class GovernanceService:
                     ),
                 )
         except Exception as exc:
-            print(f"Failed to update workflow status in DB: {exc}")
+            logger.error("Failed to update workflow status in DB", error=str(exc))
 
     def query_workflows(
         self, *, status: str | None = None, limit: int = 100
@@ -482,7 +485,7 @@ class GovernanceService:
                 rows = conn.execute(sql, params).fetchall()
             return [self._decode_workflow_row(row) for row in rows]
         except Exception as exc:
-            print(f"Failed to query workflows from DB: {exc}")
+            logger.error("Failed to query workflows from DB", error=str(exc))
             return []
 
     def get_workflow_status(self, workflow_id: str) -> dict[str, Any] | None:
@@ -494,7 +497,7 @@ class GovernanceService:
                 if row:
                     return self._decode_workflow_row(row)
         except Exception as exc:
-            print(f"Failed to get workflow status for {workflow_id}: {exc}")
+            logger.error("Failed to get workflow status", workflow_id=workflow_id, error=str(exc))
         return None
 
     @staticmethod

@@ -6,8 +6,11 @@ import yaml
 from qlib.data import D
 from qlib.workflow import R
 
+from src.common.logging import get_logger
 from src.common.market import resolve_start_date
 from src.common.paths import CONFIG_DIR, PROJECT_ROOT
+
+logger = get_logger(__name__)
 from src.common.workflow_config import apply_backtest_and_test_window
 from src.data.universe import apply_liquidity_filter, clean_universe
 from src.research.backtest import run_backtest
@@ -95,7 +98,7 @@ class ResearchService:
                 )
                 R.log_params(data_snapshot_id=snapshot_id, data_end_date=cal_day)
             except Exception as e:
-                print(f"Warning: Failed to log data_snapshot_id: {e}")
+                logger.warning("Failed to log data_snapshot_id", error=str(e))
 
             from qlib.utils import init_instance_by_config
 

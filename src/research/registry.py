@@ -3,7 +3,10 @@ from pathlib import Path
 
 import yaml
 
+from src.common.logging import get_logger
 from src.common.paths import MODELS_DIR
+
+logger = get_logger(__name__)
 
 
 def register_model(
@@ -60,7 +63,7 @@ def register_model(
     with open(list_path, "w") as f:
         yaml.dump(data, f, sort_keys=False)
 
-    print(f"Registered model to {list_path}")
+    logger.info("Registered model", path=str(list_path))
 
     # 2. Update SQLite (Fast Index)
     try:
@@ -73,6 +76,6 @@ def register_model(
         db_path = resolve_metadata_db_path(artifacts_dir)
         ModelRegistryIndex(db_path=db_path).upsert_entry(entry)
     except Exception as e:
-        print(f"Warning: Failed to sync model registry to SQLite: {e}")
+        logger.warning("Failed to sync model registry to SQLite", error=str(e))
 
     return entry

@@ -1,6 +1,10 @@
 import datetime
 import os
 
+from src.common.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 def append_to_human_run_log(status: str, message: str) -> bool:
     """
@@ -34,7 +38,7 @@ def append_to_human_run_log(status: str, message: str) -> bool:
             f.write(log_line)
         return True
     except Exception as e:
-        print(f"Error appending to human run log: {e}")
+        logger.error("Failed to append to human run log", error=str(e))
         return False
 
 

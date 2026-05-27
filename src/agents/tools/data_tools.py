@@ -4,8 +4,11 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from src.common.logging import get_logger
 from src.reliability.classifier import classify_failure
 from src.reliability.failure_log import append_failure_event
+
+logger = get_logger(__name__)
 
 
 def with_retry(max_retries: int = 3, backoff_factor: float = 1.5):
@@ -28,8 +31,13 @@ def with_retry(max_retries: int = 3, backoff_factor: float = 1.5):
                     return result
                 except Exception as e:
                     last_err = e
-                    print(
-                        f"[Robustness] Attempt {attempt + 1}/{max_retries} failed for {func.__name__}. Retrying in {delay}s..."
+                    logger.warning(
+                        "Retry attempt failed",
+                        attempt=attempt + 1,
+                        max_retries=max_retries,
+                        function=func.__name__,
+                        delay=delay,
+                        error=str(last_err),
                     )
                     time.sleep(delay)
                     delay *= backoff_factor
