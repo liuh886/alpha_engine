@@ -1,4 +1,3 @@
-import os
 import secrets
 import sys
 from pathlib import Path
@@ -17,8 +16,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 load_dotenv(PROJECT_ROOT / ".env")
 
+from src.common.logging import setup_logging
+from src.common.runtime_settings import get_runtime_settings
+
 from src.api.routers import (
     arena,
+    artifacts,
     backtest,
     chat,
     data,
@@ -30,26 +33,15 @@ from src.api.routers import (
     workflow,
 )
 
-app = FastAPI(title="AlphaEngine Dashboard API", version="1.0.0")
+runtime_settings = get_runtime_settings()
+setup_logging(development=runtime_settings.env == "development")
 
-# CORS Configuration
-# Standard security: In production, allow_origins should be limited.
-# Defaulting to localhost and internal Docker communication.
-# User can override via ALLOWED_ORIGINS env var.
-allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
-if allowed_origins_env:
-    allowed_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
-else:
-    allowed_origins = [
-        "http://localhost:5173",  # Vite dev
-        "http://127.0.0.1:5173",
-        "http://localhost:8000",  # Static serve
-        "http://127.0.0.1:8000",
-    ]
+app = FastAPI(title="AlphaEngine Dashboard API", version="2.5.0")
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=list(runtime_settings.cors_origins),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
@@ -59,8 +51,9 @@ security = HTTPBasic()
 
 
 def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = os.getenv("TRADING_UI_USER")
-    correct_password = os.getenv("TRADING_UI_PASSWORD")
+    settings = get_runtime_settings()
+    correct_username = settings.trading_ui_user
+    correct_password = settings.trading_ui_password
 
     if not correct_username or not correct_password:
         # Secure by default: Fail if auth is not configured.
@@ -97,6 +90,12 @@ app.include_router(
     arena.router, prefix="/api/arena", tags=["arena"], dependencies=[Depends(get_current_user)]
 )
 app.include_router(
+    artifacts.router,
+    prefix="/api/artifacts",
+    tags=["artifacts"],
+    dependencies=[Depends(get_current_user)],
+)
+app.include_router(
     backtest.router,
     prefix="/api/backtest",
     tags=["backtest"],
@@ -131,7 +130,7 @@ app.include_router(
 @app.get("/api/public/health")
 @app.head("/api/public/health")
 def health_check():
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "version": "2.5.0"}
 
 
 @app.get("/api/public/version")
@@ -141,7 +140,7 @@ def get_public_version():
 
 
 # 3. Mount Static Files at ROOT
-site_path = PROJECT_ROOT / "site"
+site_path = runtime_settings.static_site_dir
 
 if site_path.exists():
     # Explicitly serve index.html at root to ensure it's handled
@@ -155,9 +154,7 @@ if site_path.exists():
 if __name__ == "__main__":
     import uvicorn
 
-    # Use environment variable for port, default to 8000
-    target_port = int(os.getenv("PORT", 8000))
-
+    target_port = runtime_settings.api_port
     print(f"\n>>> [SERVER] Launching Alpha Engine Dashboard on: http://localhost:{target_port}\n")
     # Listen on 0.0.0.0 for Docker compatibility
-    uvicorn.run(app, host="0.0.0.0", port=target_port)
+    uvicorn.run(app, host=runtime_settings.api_host, port=target_port)

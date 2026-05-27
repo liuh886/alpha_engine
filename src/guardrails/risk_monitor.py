@@ -1,6 +1,6 @@
-import os
-
 import requests
+
+from src.common.runtime_settings import get_runtime_settings
 
 # Risk Agent configuration as per AGENTS.md
 MAX_DRAWDOWN_THRESHOLD = 0.15
@@ -19,8 +19,9 @@ def check_backtest_risk(run_id, metrics):
 
         # Triggering the "Red Button"
         try:
-            username = os.getenv("TRADING_UI_USER")
-            password = os.getenv("TRADING_UI_PASSWORD")
+            settings = get_runtime_settings()
+            username = settings.trading_ui_user
+            password = settings.trading_ui_password
             if not username or not password:
                 print(
                     "Error: TRADING_UI_USER or TRADING_UI_PASSWORD not set. Cannot trigger panic."

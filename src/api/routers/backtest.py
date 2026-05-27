@@ -1,11 +1,9 @@
-import threading
-
 from fastapi import APIRouter, HTTPException, Query
 
 from src.api.dependencies import (
     get_backtest_service,
     get_curve_index,
-    get_job_service,
+    get_job_coordinator,
     get_run_index,
     get_training_service,
 )
@@ -111,11 +109,7 @@ def run_backtest(payload: dict):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    job_id = job["id"]
-    get_job_service().create_job(job)
-    t = threading.Thread(target=get_job_service().run_job, args=(job_id,), daemon=True)
-    t.start()
-    return {"ok": True, "job_id": job_id}
+    return get_job_coordinator().submit_response(job)
 
 
 @router.post("/train/run")
@@ -125,11 +119,7 @@ def run_training(payload: dict):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    job_id = job["id"]
-    get_job_service().create_job(job)
-    t = threading.Thread(target=get_job_service().run_job, args=(job_id,), daemon=True)
-    t.start()
-    return {"ok": True, "job_id": job_id}
+    return get_job_coordinator().submit_response(job)
 
 
 @router.delete("/runs/{run_id}")

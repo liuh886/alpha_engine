@@ -17,7 +17,3 @@ def _run_script_without_project_root(script_name: str) -> None:
 
 def test_extract_backtest_sample_script_imports_without_project_root():
     _run_script_without_project_root("build_dashboard_db.py")
-
-
-def test_dashboard_server_script_imports_without_project_root():
-    _run_script_without_project_root("dashboard_server.py")

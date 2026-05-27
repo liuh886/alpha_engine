@@ -1,6 +1,5 @@
 import json
 import os
-import random
 import time
 
 from src.agents.core.base_agent import BaseAgent
@@ -50,14 +49,38 @@ You must:
         except Exception:
             pass
 
-    def sentiment_audit(self) -> float:
-        """Analyze news and return a panic index (0-100)."""
+    def get_benchmark_volatility(self, market: str) -> float:
+        try:
+            from src.assistant.services.asset_inspection_service import AssetInspectionService
+            from src.common.runtime_settings import get_runtime_settings
+
+            settings = get_runtime_settings()
+            service = AssetInspectionService(project_root=settings.project_root, model_index=None)
+            benchmark = "SPY" if market.lower() == "us" else "SH000001"
+
+            res = service.inspect(benchmark)
+            prices = [float(d["close"]) for d in res.get("ohlcv", []) if d.get("close") is not None]
+
+            if len(prices) > 10:
+                import math
+                returns = []
+                for prev, curr in zip(prices, prices[1:]):
+                    if prev > 0 and curr > 0:
+                        returns.append(math.log(curr / prev))
+                mean_ret = sum(returns) / len(returns)
+                variance = sum((ret - mean_ret) ** 2 for ret in returns) / len(returns)
+                ann_vol = math.sqrt(variance) * math.sqrt(252) * 100
+                return min(100.0, max(0.0, ann_vol))
+        except Exception as e:
+            format_thought_stream_for_report("Risk Agent", "warning", f"Failed to compute benchmark vol: {e}")
+        return 15.0  # Safe deterministic fallback
+
+    def sentiment_audit(self, vol_metric: float) -> float:
+        """Derive a panic index (0-100) deterministically."""
         format_thought_stream_for_report(
-            "Risk Agent (Sentinel)", "info", "Performing Sentiment Audit via news aggregation..."
+            "Risk Agent (Sentinel)", "info", "Performing Sentiment Audit via realized volatility proxy..."
         )
-        time.sleep(1)
-        # Simulate sentiment parsing
-        panic_index = random.uniform(10.0, 90.0)
+        panic_index = min(100.0, max(0.0, (vol_metric - 10) * 3.33))
         format_thought_stream_for_report(
             "Risk Agent (Sentinel)", "info", f"Calculated market panic index: {panic_index:.1f}/100"
         )
@@ -67,17 +90,15 @@ You must:
         format_thought_stream_for_report(
             "Risk Agent", "info", f"Commencing Risk Audit Routine over {market.upper()}..."
         )
-        time.sleep(1)
 
         # 1. Sentiment & Volatility Audit
-        panic_index = self.sentiment_audit()
-        vol_metric = random.uniform(15.0, 32.0)
+        vol_metric = self.get_benchmark_volatility(market)
+        panic_index = self.sentiment_audit(vol_metric)
         format_thought_stream_for_report(
             "Risk Agent",
             "info",
-            f"Real-time IV: {vol_metric:.2f}. Analyzing regime against historical risk cases.",
+            f"Real-time IV Proxy: {vol_metric:.2f}. Analyzing regime against historical risk cases.",
         )
-        time.sleep(1)
 
         # 2. Dynamic Intervention
         if vol_metric > 25.0 or panic_index > 75.0:
@@ -86,7 +107,6 @@ You must:
                 "error",
                 f"High risk event detected (IV={vol_metric:.2f}, Panic={panic_index:.1f}). Exercising Dynamic Veto.",
             )
-            time.sleep(1)
             self.record_risk_case("High_Vol_Panic", {"vol": vol_metric, "panic": panic_index})
             format_thought_stream_for_report(
                 "Risk Agent",

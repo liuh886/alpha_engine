@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { HashRouter, Routes, Route, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { parseQlibData, ModelData } from './lib/data-parser';
 import { Dashboard } from './components/Dashboard';
 import { ModelSelector } from './components/ModelSelector';
@@ -17,24 +18,42 @@ import { ConsoleModal } from './components/ConsoleModal';
 import { List, Play, Loader2, Bell, User, Sun, Moon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useGlobalStore } from './store/globalStore';
+import { artifactUrl } from './lib/artifacts';
 
-const DASHBOARD_DB_URL = "/artifacts/dashboard/dashboard_db.json";
+const VIEW_TITLES: Record<string, string> = {
+  '': 'Agent Center',
+  'dashboard': 'Backtest Insights',
+  'terminal': 'Stock Terminal',
+  'arena': 'Arena',
+  'models': 'Model Registry',
+  'compare': 'Compare',
+  'reports': 'Reports',
+  'data': 'Data Management',
+  'strategy': 'Strategy Spec',
+  'docs': 'Docs',
+};
 
-function App() {
-  const [models, setModels] = useState<ModelData[]>([]);
-  const [selectedModelId, setSelectedModelId] = useState<string>("");
-  const [selectorOpen, setSelectorOpen] = useState(false);
-  const [consoleOpen, setConsoleOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"control-center" | "dashboard" | "strategy" | "compare" | "arena" | "reports" | "models" | "data" | "terminal" | "docs">("control-center");
+function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, setSelectorOpen, consoleOpen, setConsoleOpen, refreshFromServer, startBacktestForSelectedMarket, backtestRunning, handleDeleteModel, loading }: {
+  models: ModelData[];
+  selectedModelId: string;
+  setSelectedModelId: (id: string) => void;
+  selectorOpen: boolean;
+  setSelectorOpen: (open: boolean) => void;
+  consoleOpen: boolean;
+  setConsoleOpen: (open: boolean) => void;
+  refreshFromServer: (opts?: { selectLatest?: boolean }) => Promise<boolean>;
+  startBacktestForSelectedMarket: () => Promise<void>;
+  backtestRunning: boolean;
+  handleDeleteModel: (id: string) => Promise<void>;
+  loading: boolean;
+}) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, theme, setTheme } = useGlobalStore();
 
-  const {
-    latestCalendarDay, setLatestCalendarDay,
-    qualityStatus, setQualityStatus,
-    qualityWarnings, setQualityWarnings,
-    activeJobsCount, setActiveJobsCount,
-    theme, setTheme
-  } = useGlobalStore();
+  const currentPath = location.pathname.replace(/^\//, '');
+  const viewTitle = VIEW_TITLES[currentPath] ?? currentPath.replace('-', ' ');
+  const selectedModel = models.find(m => m.id === selectedModelId);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -44,10 +63,124 @@ function App() {
     }
   }, [theme]);
 
-  // Cross-page state
-  const [comparePreselect, setComparePreselect] = useState<string[]>([]);
+  const handleArenaCompare = (runId: string) => {
+    navigate('/compare', { state: { preselectedIds: [runId] } });
+  };
 
-  // Job states
+  return (
+    <div className="flex h-screen overflow-hidden bg-transparent">
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0 bg-transparent relative z-0">
+        <GlobalStatusBar
+          latestCalendarDay={latestCalendarDay}
+          qualityStatus={qualityStatus}
+          warnings={qualityWarnings}
+          activeJobsCount={activeJobsCount}
+          onOpenConsole={() => setConsoleOpen(true)}
+        />
+
+        <header className="h-14 border-b bg-card/50 backdrop-blur-md sticky top-0 z-40 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
+            <h2 className="uppercase tracking-widest">{viewTitle}</h2>
+            {currentPath === 'dashboard' && selectedModel && (
+              <>
+                <div className="h-4 w-px bg-border" />
+                <Button variant="ghost" size="sm" onClick={() => setSelectorOpen(true)} className="text-[10px] font-mono h-7 gap-2 px-2 hover:bg-muted/50">
+                  <List className="h-3 w-3" /> {selectedModel.name}
+                </Button>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {currentPath === 'dashboard' && (
+              <Button size="sm" variant="default" onClick={startBacktestForSelectedMarket} disabled={backtestRunning} className="h-8 gap-2 px-4 shadow-sm text-xs font-bold uppercase tracking-tighter">
+                {backtestRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3 fill-current" />}
+                {backtestRunning ? `Running` : "Execute Backtest"}
+              </Button>
+            )}
+
+            <div className="h-4 w-px bg-border mx-1" />
+
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+              {theme === 'dark' ? <Sun className="h-4 w-4 text-muted-foreground" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
+            </Button>
+
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setConsoleOpen(true)}><Bell className="h-4 w-4" /></Button>
+            <Button variant="outline" size="sm" className="h-8 gap-2 rounded-full border-primary/20 hover:border-primary/50 transition-colors text-left">
+              <User className="h-3.5 w-3.5" />
+              <span className="text-[10px] font-black uppercase tracking-tight">Zhihao</span>
+            </Button>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-6 max-w-[1600px] mx-auto w-full">
+          {loading ? (
+            <div className="h-full flex items-center justify-center p-8">
+              <div className="flex flex-col items-center gap-6 w-full max-w-3xl">
+                <div className="flex items-center gap-4">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary opacity-40 mix-blend-screen" />
+                  <p className="text-[10px] text-muted-foreground animate-pulse font-black uppercase tracking-widest">Warming Engines</p>
+                </div>
+                <div className="w-full grid grid-cols-3 gap-6">
+                  <div className="h-40 rounded-3xl skeleton-shimmer" />
+                  <div className="h-40 rounded-3xl skeleton-shimmer" />
+                  <div className="h-40 rounded-3xl skeleton-shimmer" />
+                </div>
+                <div className="w-full h-64 rounded-3xl skeleton-shimmer mt-6" />
+              </div>
+            </div>
+          ) : (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
+              <Outlet />
+            </div>
+          )}
+        </main>
+
+        <ModelSelector models={models} selectedModelId={selectedModelId} onSelect={setSelectedModelId} onDelete={handleDeleteModel} open={selectorOpen} onOpenChange={setSelectorOpen} />
+
+        <ConsoleModal
+          isOpen={consoleOpen}
+          onClose={() => setConsoleOpen(false)}
+          warnings={qualityWarnings}
+        />
+      </div>
+    </div>
+  );
+}
+
+function DashboardRoute({ models, selectedModelId, startUpdateData }: { models: ModelData[]; selectedModelId: string; startUpdateData: () => Promise<void> }) {
+  const selectedModel = models.find(m => m.id === selectedModelId);
+  if (selectedModel) {
+    return <Dashboard data={selectedModel.backtest} params={selectedModel.params} />;
+  }
+  return (
+    <div className="flex flex-col items-center justify-center py-32 bg-muted/10 rounded-3xl border-2 border-dashed border-border/50">
+      <p className="text-muted-foreground font-medium mb-6">No model data found in the local registry.</p>
+      <Button onClick={startUpdateData} variant="outline" className="rounded-full px-8 uppercase font-black text-[10px] tracking-widest">Bootstrap Data</Button>
+    </div>
+  );
+}
+
+function CompareRoute({ models }: { models: ModelData[] }) {
+  const location = useLocation();
+  const state = location.state as { preselectedIds?: string[] } | null;
+  return <ComparePage models={models} preselectedIds={state?.preselectedIds} />;
+}
+
+function ArenaRoute() {
+  const navigate = useNavigate();
+  return <ArenaPage onCompare={(runId) => navigate('/compare', { state: { preselectedIds: [runId] } })} />;
+}
+
+function App() {
+  const [models, setModels] = useState<ModelData[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { setLatestCalendarDay, setQualityStatus, setQualityWarnings, setActiveJobsCount } = useGlobalStore();
+
   const [backtestJobId, setBacktestJobId] = useState<string>("");
   const [backtestRunning, setBacktestRunning] = useState(false);
   const [dataJobId, setDataJobId] = useState<string>("");
@@ -55,7 +188,7 @@ function App() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const resp = await fetch(DASHBOARD_DB_URL, { cache: "no-store" });
+        const resp = await fetch(artifactUrl.dashboardDb, { cache: "no-store" });
         if (resp.ok) {
           const json = await resp.json();
           const parsed = parseQlibData(json);
@@ -105,7 +238,7 @@ function App() {
 
   const refreshFromServer = async (opts?: { selectLatest?: boolean }) => {
     try {
-      const resp = await fetch(DASHBOARD_DB_URL, { cache: "no-store" });
+      const resp = await fetch(artifactUrl.dashboardDb, { cache: "no-store" });
       if (!resp.ok) return false;
       const json = await resp.json();
       const parsed = parseQlibData(json);
@@ -121,6 +254,7 @@ function App() {
   };
 
   const startBacktestForSelectedMarket = async () => {
+    const selectedModel = models.find(m => m.id === selectedModelId);
     if (!selectedModel) return;
     const hasModelBinding = Boolean((selectedModel.params as any)?.model_path) || Boolean((selectedModel.params as any)?.source_model_path);
     if (!hasModelBinding) {
@@ -193,13 +327,6 @@ function App() {
     return () => window.clearInterval(timer);
   }, [dataJobId]);
 
-  const handleArenaCompare = (runId: string) => {
-    setComparePreselect([runId]);
-    setView("compare");
-  };
-
-  const selectedModel = models.find(m => m.id === selectedModelId);
-
   const handleDeleteModel = async (id: string) => {
     try {
       const resp = await fetch("/api/models/delete", {
@@ -212,102 +339,38 @@ function App() {
     } catch { /* ignore */ }
   };
 
-
-
   return (
-    <div className="flex h-screen overflow-hidden bg-transparent">
-      <Sidebar currentView={view} onNavigate={setView} />
-      <div className="flex-1 flex flex-col min-w-0 bg-transparent relative z-0">
-        <GlobalStatusBar
-          latestCalendarDay={latestCalendarDay}
-          qualityStatus={qualityStatus}
-          warnings={qualityWarnings}
-          activeJobsCount={activeJobsCount}
-          onOpenConsole={() => setConsoleOpen(true)}
-        />
-
-        <header className="h-14 border-b bg-card/50 backdrop-blur-md sticky top-0 z-40 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
-            <h2 className="uppercase tracking-widest">{view === 'dashboard' ? 'Backtest Insights' : view.replace('-', ' ')}</h2>
-            {view === 'dashboard' && selectedModel && (
-              <>
-                <div className="h-4 w-px bg-border" />
-                <Button variant="ghost" size="sm" onClick={() => setSelectorOpen(true)} className="text-[10px] font-mono h-7 gap-2 px-2 hover:bg-muted/50">
-                  <List className="h-3 w-3" /> {selectedModel.name}
-                </Button>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            {view === 'dashboard' && (
-              <Button size="sm" variant="default" onClick={startBacktestForSelectedMarket} disabled={backtestRunning} className="h-8 gap-2 px-4 shadow-sm text-xs font-bold uppercase tracking-tighter">
-                {backtestRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3 fill-current" />}
-                {backtestRunning ? `Running` : "Execute Backtest"}
-              </Button>
-            )}
-
-            <div className="h-4 w-px bg-border mx-1" />
-
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-              {theme === 'dark' ? <Sun className="h-4 w-4 text-muted-foreground" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
-            </Button>
-
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setConsoleOpen(true)}><Bell className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" className="h-8 gap-2 rounded-full border-primary/20 hover:border-primary/50 transition-colors text-left">
-              <User className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-black uppercase tracking-tight">Zhihao</span>
-            </Button>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-6 max-w-[1600px] mx-auto w-full">
-          {loading ? (
-            <div className="h-full flex items-center justify-center p-8">
-              <div className="flex flex-col items-center gap-6 w-full max-w-3xl">
-                <div className="flex items-center gap-4">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary opacity-40 mix-blend-screen" />
-                  <p className="text-[10px] text-muted-foreground animate-pulse font-black uppercase tracking-widest">Warming Engines</p>
-                </div>
-
-                {/* Roadmap Item 51: Layout Shift Skeletons */}
-                <div className="w-full grid grid-cols-3 gap-6">
-                  <div className="h-40 rounded-3xl skeleton-shimmer" />
-                  <div className="h-40 rounded-3xl skeleton-shimmer" />
-                  <div className="h-40 rounded-3xl skeleton-shimmer" />
-                </div>
-                <div className="w-full h-64 rounded-3xl skeleton-shimmer mt-6" />
-              </div>
-            </div>
-          ) : (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
-              {view === "control-center" ? <AgentControlCenter /> :
-                view === "arena" ? <ArenaPage onCompare={handleArenaCompare} /> :
-                  view === "terminal" ? <StockTerminal /> :
-                    view === "reports" ? <ReportsPage /> :
-                      view === "models" ? <ModelsPage /> :
-                        view === "data" ? <DataPage /> :
-                    view === "strategy" ? <StrategyPage /> :
-                      view === "docs" ? <DocsPage /> :
-                            view === "compare" ? <ComparePage models={models} preselectedIds={comparePreselect} /> :
-                              selectedModel ? <Dashboard data={selectedModel.backtest} params={selectedModel.params} /> :
-                                <div className="flex flex-col items-center justify-center py-32 bg-muted/10 rounded-3xl border-2 border-dashed border-border/50">
-                                  <p className="text-muted-foreground font-medium mb-6">No model data found in the local registry.</p>
-                                  <Button onClick={startUpdateData} variant="outline" className="rounded-full px-8 uppercase font-black text-[10px] tracking-widest">Bootstrap Data</Button>
-                                </div>}
-            </div>
-          )}
-        </main>
-
-        <ModelSelector models={models} selectedModelId={selectedModelId} onSelect={setSelectedModelId} onDelete={handleDeleteModel} open={selectorOpen} onOpenChange={setSelectorOpen} />
-
-        <ConsoleModal
-          isOpen={consoleOpen}
-          onClose={() => setConsoleOpen(false)}
-          warnings={qualityWarnings}
-        />
-      </div>
-    </div>
+    <HashRouter>
+      <Routes>
+        <Route element={
+          <Layout
+            models={models}
+            selectedModelId={selectedModelId}
+            setSelectedModelId={setSelectedModelId}
+            selectorOpen={selectorOpen}
+            setSelectorOpen={setSelectorOpen}
+            consoleOpen={consoleOpen}
+            setConsoleOpen={setConsoleOpen}
+            refreshFromServer={refreshFromServer}
+            startBacktestForSelectedMarket={startBacktestForSelectedMarket}
+            backtestRunning={backtestRunning}
+            handleDeleteModel={handleDeleteModel}
+            loading={loading}
+          />
+        }>
+          <Route index element={<AgentControlCenter models={models} />} />
+          <Route path="dashboard" element={<DashboardRoute models={models} selectedModelId={selectedModelId} startUpdateData={startUpdateData} />} />
+          <Route path="terminal" element={<StockTerminal />} />
+          <Route path="arena" element={<ArenaRoute />} />
+          <Route path="models" element={<ModelsPage />} />
+          <Route path="compare" element={<CompareRoute models={models} />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="data" element={<DataPage />} />
+          <Route path="strategy" element={<StrategyPage />} />
+          <Route path="docs" element={<DocsPage />} />
+        </Route>
+      </Routes>
+    </HashRouter>
   );
 }
 

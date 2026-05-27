@@ -1,7 +1,8 @@
-import logging
 from collections.abc import Callable
 from enum import Enum
 from typing import Any
+
+from src.common.logging import get_logger
 
 
 class State(Enum):
@@ -66,7 +67,7 @@ class TradingFSM:
 
     def _log(self, msg: str):
         self.history.append(msg)
-        logging.getLogger("FSM").info(msg)
+        get_logger("FSM").info(msg)
 
     # State Handlers
     def _init_pipeline(self) -> State:

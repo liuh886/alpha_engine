@@ -7,12 +7,10 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ModelData, parseQlibData } from '@/lib/data-parser';
+import { ModelData } from '@/lib/data-parser';
 import { ComparePage } from '@/pages/ComparePage';
 import { CopilotUI } from '@/components/CopilotUI';
-
-const DASHBOARD_DB_URL = "/artifacts/dashboard/dashboard_db.json";
-const THOUGHT_STREAM_URL = "/artifacts/agent_thought_stream.json";
+import { artifactUrl } from '@/lib/artifacts';
 
 interface AgentLog {
     id: string;
@@ -22,34 +20,23 @@ interface AgentLog {
     thought: string;
 }
 
-export function AgentControlCenter() {
-    const [models, setModels] = useState<ModelData[]>([]);
+export function AgentControlCenter({ models }: { models: ModelData[] }) {
     const [thoughtStream, setThoughtStream] = useState<AgentLog[]>([]);
 
     useEffect(() => {
-        const loadData = async () => {
+        const loadThoughtStream = async () => {
             try {
-                const resp = await fetch(DASHBOARD_DB_URL, { cache: "no-store" });
-                if (resp.ok) {
-                    const json = await resp.json();
-                    const parsed = parseQlibData(json);
-                    setModels(parsed);
-                }
-            } catch (e) {
-                console.error("Failed to load dashboard data", e);
-            }
-            try {
-                const tsResp = await fetch(THOUGHT_STREAM_URL, { cache: "no-store" });
+                const tsResp = await fetch(artifactUrl.thoughtStream, { cache: "no-store" });
                 if (tsResp.ok) {
                     const tsJson = await tsResp.json();
-                    setThoughtStream(tsJson.reverse()); // Show newest first
+                    setThoughtStream(tsJson.reverse());
                 }
             } catch (e) {
                 console.error("Failed to load thought stream", e);
             }
         };
-        loadData();
-        const interval = setInterval(loadData, 5000);
+        loadThoughtStream();
+        const interval = setInterval(loadThoughtStream, 5000);
         return () => clearInterval(interval);
     }, []);
     return (

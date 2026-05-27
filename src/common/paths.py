@@ -1,27 +1,25 @@
-import os
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+from src.common.runtime_settings import get_runtime_settings
 
 
 def get_config_dir():
-    return Path(os.environ.get("TRADING_CONFIG_DIR") or (PROJECT_ROOT / "configs"))
+    return get_runtime_settings().config_dir
 
 
 def get_data_dir():
-    return Path(os.environ.get("TRADING_DATA_DIR") or (PROJECT_ROOT / "data"))
+    return get_runtime_settings().data_dir
 
 
 def get_reports_dir():
-    return Path(os.environ.get("TRADING_REPORTS_DIR") or (PROJECT_ROOT / "reports"))
+    return get_runtime_settings().reports_dir
 
 
 def get_scripts_dir():
-    return Path(os.environ.get("TRADING_SCRIPTS_DIR") or (PROJECT_ROOT / "scripts"))
+    return get_runtime_settings().scripts_dir
 
 
 def get_artifacts_dir():
-    return Path(os.environ.get("TRADING_ARTIFACTS_DIR") or (PROJECT_ROOT / "artifacts"))
+    return get_runtime_settings().artifacts_dir
 
 
 # Static directories (initial values)

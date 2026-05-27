@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 
 from src.agents.alpha.alpha_agent import AlphaAgent
@@ -6,6 +5,7 @@ from src.agents.core.base_agent import BaseAgent
 from src.agents.developer.developer_agent import DeveloperAgent
 from src.agents.governance.governance_agent import GovernanceAgent
 from src.agents.risk.risk_agent import RiskAgent
+from src.common.logging import get_logger
 
 
 class AgentRouter:
@@ -26,7 +26,7 @@ class AgentRouter:
             "model_index": model_index,
             "run_index": run_index,
         }
-        self.logger = logging.getLogger("AgentRouter")
+        self.logger = get_logger("AgentRouter")
 
     def route_task(self, task_type: str, *args, **kwargs) -> Any:
         """

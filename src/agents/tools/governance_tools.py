@@ -73,5 +73,5 @@ def format_thought_stream_for_report(agent: str, level: str, thought_text: str) 
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(logs, f, indent=2, ensure_ascii=False)
         return True
-    except:
+    except Exception:
         return False

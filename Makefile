@@ -1,4 +1,4 @@
-.PHONY: doctor data train backtest report dashboard all help
+.PHONY: doctor data train train-cn train-us backtest breakfast report dashboard all help test typecheck lint clean dev
 
 PYTHON = PYTHONPATH=. python3
 
@@ -11,6 +11,8 @@ help:
 	@echo "  make backtest Run zero-barrier backtest pipeline"
 	@echo "  make breakfast Generate daily trading report markdown"
 	@echo "  make lint     Format and lint code using Ruff and Prettier"
+	@echo "  make test     Run pytest test suite"
+	@echo "  make typecheck Run mypy type checking"
 	@echo "  make clean    Remove generated files"
 	@echo ""
 	@echo "Advanced/Internal Targets:"
@@ -50,8 +52,17 @@ breakfast:
 lint:
 	@echo "Formatting and linting code..."
 	@ruff format .
-	@ruff check --fix --ignore E402 .
+	@ruff check --fix .
 	@if [ -d "qlib-dashboard/node_modules" ]; then cd qlib-dashboard && npx prettier --write .; fi
+
+test:
+	@echo "Running pytest..."
+	@pytest tests/
+
+typecheck:
+	@echo "Running mypy..."
+	@mypy src/
+
 clean:
 	python -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').rglob('__pycache__')]"
 	python -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').rglob('.pytest_cache')]"

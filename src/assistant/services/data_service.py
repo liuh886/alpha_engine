@@ -36,7 +36,7 @@ class DataService:
             return []
         try:
             lines = inst_path.read_text(encoding="utf-8").splitlines()
-            return [l.split("\t")[0] for l in lines if l.strip()]
+            return [line.split("\t")[0] for line in lines if line.strip()]
         except Exception:
             return []
 

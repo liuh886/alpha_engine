@@ -18,6 +18,8 @@ def _reset_job_service(tmp_path: Path) -> None:
     db_path = tmp_path / "metadata.db"
     # Set env before creating the singleton to isolate tests from local metadata DB.
     import os
+    os.environ["TRADING_UI_USER"] = "agent"
+    os.environ["TRADING_UI_PASSWORD"] = "alpha2026"
 
     os.environ["TRADING_ASSISTANT_METADATA_DB_PATH"] = str(db_path)
 
@@ -47,7 +49,7 @@ def test_jobs_detail_and_panic_endpoint(tmp_path: Path):
         panic_resp = client.post("/api/system/panic", json={"reason": "unit-test"}, headers=headers)
         assert panic_resp.status_code == 200
         assert panic_resp.json()["ok"] is True
-        assert panic_resp.json()["halted_jobs"] >= 1
+        assert panic_resp.json()["total_marked_failed"] >= 1
 
         updated = js.get_job(job_id)
         assert updated is not None

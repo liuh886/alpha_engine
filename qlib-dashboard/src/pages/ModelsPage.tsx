@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Cpu, RefreshCw, Star, Trash2, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { artifactUrl } from "@/lib/artifacts";
 
 type ModelVersion = {
   id: string; tag?: string; name?: string; market?: string; model_type?: string; path?: string; run_id?: string; created_at?: string; description?: string; metrics?: Record<string, any>; params?: Record<string, any>;
@@ -39,7 +40,7 @@ export function ModelsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`/artifacts/models.json`);
+      const resp = await fetch(artifactUrl.models);
       if (!resp.ok) return;
       const json = await resp.json();
       let rows = (json?.versions || []) as any[];
@@ -51,11 +52,11 @@ export function ModelsPage() {
       }));
       setVersions(parsed);
 
-      const arenasResp = await fetch("/artifacts/arenas.json");
+      const arenasResp = await fetch(artifactUrl.arenas);
       const arenasJson = await arenasResp.json();
       const pids = new Set<string>();
       for (const arena of (arenasJson.arenas || [])) {
-        const lbResp = await fetch(`/artifacts/arena_leaderboard_${arena.id}.json`);
+        const lbResp = await fetch(artifactUrl.arenaLeaderboard(arena.id));
         const lbJson = await lbResp.json();
         (lbJson.leaderboard || []).forEach((p: any) => {
           if (p.run_id) pids.add(p.run_id);

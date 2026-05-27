@@ -6,8 +6,8 @@ from pathlib import Path
 import yaml
 
 from src.assistant.model_registry_index import ModelRegistryIndex
-from src.assistant.services.governance_service import GovernanceService
 from src.common.paths import MODELS_DIR
+from src.governance.service import GovernanceService
 
 
 class ModelService:

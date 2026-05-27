@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import subprocess
 import sys
 from pathlib import Path
@@ -8,6 +7,7 @@ from pathlib import Path
 import qlib
 
 from src.common.future_calendar import ensure_calendar_future_file
+from src.common.logging import get_logger
 from src.common.qlib_init import build_qlib_init_cfg
 
 
@@ -37,7 +37,7 @@ class EnvironmentManager:
                     p_path = self.project_root / p_path
                 ensure_calendar_future_file(p_path, freq="day", extra_days=1)
         except Exception as e:
-            logging.warning(f"Could not ensure future calendar: {e}")
+            get_logger(__name__).warning(f"Could not ensure future calendar: {e}")
 
         # Initialize
         try:

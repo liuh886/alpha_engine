@@ -46,7 +46,7 @@ class ModelManager:
                 import ast
 
                 metrics = ast.literal_eval(metrics)
-            except:
+            except Exception:
                 metrics = {"raw": metrics}
 
         entry = {

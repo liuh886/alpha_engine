@@ -1,8 +1,6 @@
-import threading
-
 from fastapi import APIRouter, HTTPException, Query
 
-from src.api.dependencies import get_job_service, get_report_service
+from src.api.dependencies import get_job_coordinator, get_report_service
 
 router = APIRouter(tags=["reports"])
 
@@ -25,8 +23,4 @@ def get_report(report_id: str):
 @router.post("/export")
 def export_reports(payload: dict):
     job = get_report_service().create_export_job(payload)
-    job_id = job["id"]
-    get_job_service().create_job(job)
-    t = threading.Thread(target=get_job_service().run_job, args=(job_id,), daemon=True)
-    t.start()
-    return {"ok": True, "job_id": job_id}
+    return get_job_coordinator().submit_response(job)

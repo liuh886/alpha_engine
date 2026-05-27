@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { FileText, RefreshCw, Archive, ExternalLink, Download, Calendar, FlaskConical, Target, Zap, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { artifactUrl } from "@/lib/artifacts";
 
 type ReportRow = { id: string; type: string; ref_id: string; date?: string; paths?: Record<string, string>; meta?: Record<string, any>; };
 type ReportFilter = "all" | "backtest" | "arena_daily" | "archive";
@@ -24,7 +25,7 @@ export function ReportsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`/artifacts/reports.json`);
+      const resp = await fetch(artifactUrl.reports);
       if (!resp.ok) return;
       const json = await resp.json();
       let rpts = json?.reports || [];

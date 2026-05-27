@@ -1,3 +1,4 @@
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Database,
@@ -15,30 +16,23 @@ import {
 } from 'lucide-react';
 import { BrainCircuit } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useGlobalStore } from '../store/globalStore'; // New import
+import { useGlobalStore } from '../store/globalStore';
 
-interface SidebarProps {
-  currentView: string;
-  onNavigate: (view: any) => void; // Changed from onViewChange
-}
-
-export function Sidebar({
-  currentView,
-  onNavigate
-}: SidebarProps) {
+export function Sidebar() {
   const { sidebarCollapsed: collapsed, setSidebarCollapsed: setCollapsed } = useGlobalStore();
+  const location = useLocation();
 
   const navItems = [
-    { id: 'control-center', label: 'Agent Center', icon: BrainCircuit },
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'terminal', label: 'Stock Terminal', icon: Monitor },
-    { id: 'arena', label: 'Arena', icon: Trophy },
-    { id: 'models', label: 'Model Registry', icon: Cpu },
-    { id: 'compare', label: 'Compare', icon: Layers },
-    { id: 'reports', label: 'Reports', icon: FileText },
-    { id: 'data', label: 'Data Management', icon: Database },
-    { id: 'strategy', label: 'Strategy Spec', icon: Settings },
-    { id: 'docs', label: 'Docs', icon: BookOpen },
+    { path: '/', label: 'Agent Center', icon: BrainCircuit },
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/terminal', label: 'Stock Terminal', icon: Monitor },
+    { path: '/arena', label: 'Arena', icon: Trophy },
+    { path: '/models', label: 'Model Registry', icon: Cpu },
+    { path: '/compare', label: 'Compare', icon: Layers },
+    { path: '/reports', label: 'Reports', icon: FileText },
+    { path: '/data', label: 'Data Management', icon: Database },
+    { path: '/strategy', label: 'Strategy Spec', icon: Settings },
+    { path: '/docs', label: 'Docs', icon: BookOpen },
   ];
 
   return (
@@ -58,12 +52,14 @@ export function Sidebar({
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1 text-left">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = currentView === item.id;
+          const isActive = item.path === '/'
+            ? location.pathname === '/'
+            : location.pathname.startsWith(item.path);
 
           return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)} // Changed from onViewChange
+            <NavLink
+              key={item.path}
+              to={item.path}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 relative group overflow-hidden",
                 isActive
@@ -77,17 +73,17 @@ export function Sidebar({
               )}
               <Icon className={cn("h-4 w-4 flex-shrink-0 transition-transform duration-300", isActive ? "scale-110 drop-shadow-[0_0_5px_rgba(59,130,246,0.5)]" : "group-hover:scale-110")} />
               {!collapsed && <span>{item.label}</span>}
-            </button>
+            </NavLink>
           );
         })}
       </nav>
 
       <div className="p-2 border-t">
         <button
-          onClick={() => setCollapsed(!collapsed)} // Use setCollapsed from global store
+          onClick={() => setCollapsed(!collapsed)}
           className="w-full flex items-center justify-center p-2 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
         >
-          {collapsed ? <LogOut className="w-4 h-4" /> : <X className="w-4 h-4" />} {/* Changed icons */}
+          {collapsed ? <LogOut className="w-4 h-4" /> : <X className="w-4 h-4" />}
           {!collapsed && <span className="ml-2 text-xs font-bold uppercase tracking-widest">Collapse</span>}
         </button>
         <button

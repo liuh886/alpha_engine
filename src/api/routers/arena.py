@@ -1,11 +1,10 @@
 import sys
-import threading
 import time
 import uuid
 
 from fastapi import APIRouter, HTTPException, Query
 
-from src.api.dependencies import get_arena_index, get_job_service, get_model_index
+from src.api.dependencies import get_arena_index, get_job_coordinator, get_model_index
 from src.common.paths import RUNS_DIR
 
 router = APIRouter(tags=["arena"])
@@ -71,10 +70,7 @@ def settle_arena(payload: dict):
         "commands": [cmd],
     }
 
-    get_job_service().create_job(job)
-    t = threading.Thread(target=get_job_service().run_job, args=(job_id,), daemon=True)
-    t.start()
-    return {"ok": True, "job_id": job_id}
+    return get_job_coordinator().submit_response(job)
 
 
 @router.post("/participants")

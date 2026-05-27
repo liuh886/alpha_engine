@@ -5,11 +5,14 @@ from src.assistant.arena_index import ArenaIndex
 from src.assistant.backtest_equity_curve_index import BacktestEquityCurveIndex
 from src.assistant.data_quality_index import DataQualityIndex
 from src.assistant.data_snapshot_index import DataSnapshotIndex
+from src.assistant.job_coordinator import JobCoordinator
 from src.assistant.job_service import JobService
 from src.assistant.metadata_db import resolve_metadata_db_path
 from src.assistant.model_registry_index import ModelRegistryIndex
 from src.assistant.report_index import ReportIndex
 from src.assistant.run_index import RunIndex
+from src.assistant.services.artifact_gateway import ArtifactGateway
+from src.assistant.services.asset_inspection_service import AssetInspectionService
 from src.assistant.services.backtest_service import BacktestService
 from src.assistant.services.data_service import DataService
 from src.assistant.services.model_service import ModelService
@@ -23,6 +26,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 def get_job_service() -> JobService:
     # Always fresh to respect environment changes in tests
     return JobService(db_path=resolve_metadata_db_path(PROJECT_ROOT), project_root=PROJECT_ROOT)
+
+
+def get_job_coordinator() -> JobCoordinator:
+    return JobCoordinator(get_job_service())
 
 
 def get_backtest_service() -> BacktestService:
@@ -53,6 +60,16 @@ def get_model_service() -> ModelService:
 
 def get_data_service() -> DataService:
     return DataService(project_root=PROJECT_ROOT, python_exe=sys.executable)
+
+
+def get_asset_inspection_service() -> AssetInspectionService:
+    return AssetInspectionService(project_root=PROJECT_ROOT, model_index=get_model_index())
+
+
+def get_artifact_gateway() -> ArtifactGateway:
+    from src.common.paths import ARTIFACTS_DIR
+
+    return ArtifactGateway(artifacts_dir=ARTIFACTS_DIR)
 
 
 def get_report_service() -> ReportService:

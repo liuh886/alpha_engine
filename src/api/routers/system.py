@@ -1,11 +1,10 @@
 import json
-import threading
 import time
 import uuid
 
 from fastapi import APIRouter, HTTPException, Query
 
-from src.api.dependencies import PROJECT_ROOT, get_job_service
+from src.api.dependencies import PROJECT_ROOT, get_job_coordinator, get_job_service
 from src.common.paths import (
     ARTIFACTS_DIR,
     DASHBOARD_DB_PATH,
@@ -160,7 +159,6 @@ def execute_system_command(payload: dict):
         "commands": [full_cmd],
     }
 
-    get_job_service().create_job(job)
-    t = threading.Thread(target=get_job_service().run_job, args=(job_id,), daemon=True)
-    t.start()
-    return {"ok": True, "job_id": job_id, "command": " ".join(full_cmd)}
+    response = get_job_coordinator().submit_response(job)
+    response["command"] = " ".join(full_cmd)
+    return response

@@ -41,8 +41,8 @@ PROJECT_COMMANDS = [
     Command(
         id="dashboard_serve",
         name="Dashboard Server",
-        command="python scripts/dashboard_server.py",
-        description="Serves the analytical UI and local APIs.",
+        command="uvicorn api_server:app --host 0.0.0.0 --port 8000",
+        description="Serves the analytical UI and local APIs via FastAPI.",
         role="supported",
         priority="P0",
     ),

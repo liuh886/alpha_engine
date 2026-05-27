@@ -114,7 +114,7 @@ def generate_report(market):
         artifacts = rec.list_artifacts()
         if "port_analysis_1day.pkl" in artifacts:
             port_analysis = rec.load_object("port_analysis_1day.pkl")
-    except:
+    except Exception:
         pass
 
     # 6. Generate Markdown Report

@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Database, Loader2, CheckCircle2, AlertCircle, RefreshCw, Activity, Server, ShieldAlert, Download, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { artifactUrl } from "@/lib/artifacts";
 
 type DataStatus = {
   latest_calendar_day?: string;
@@ -31,7 +32,7 @@ export function DataPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const resp = await fetch("/artifacts/data_status.json", { cache: "no-store" });
+      const resp = await fetch(artifactUrl.dataStatus, { cache: "no-store" });
       if (resp.ok) {
         const json = await resp.json();
         setDataStatus((json?.data || {}) as DataStatus);
@@ -39,7 +40,7 @@ export function DataPage() {
     } catch { /* ignore */ }
 
     try {
-      const resp = await fetch("/artifacts/data_quality.json", { cache: "no-store" });
+      const resp = await fetch(artifactUrl.dataQuality, { cache: "no-store" });
       if (resp.ok) {
         const json = await resp.json();
         const rep = json?.quality;

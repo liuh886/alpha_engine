@@ -18,7 +18,7 @@ class GovernanceService:
 
     Ownership split:
     - ``engine_state.db``: governance run events, task state, failure audit trail
-    - ``jobs.db``: async execution queue state managed by ``src.common.jobs``
+    - ``jobs.db``: async execution queue state managed by ``src.assistant.job_service.JobService``
     """
 
     def __init__(self, project_root: str | Path):

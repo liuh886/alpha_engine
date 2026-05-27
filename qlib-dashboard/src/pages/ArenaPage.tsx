@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Trophy, RefreshCw, ExternalLink, Settings2, Target, Users, Calendar, Layers, ShieldCheck, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { artifactUrl } from "@/lib/artifacts";
 
 type Arena = { id: string; name: string; market: string; };
 type LeaderboardRow = { rank?: number; participant_name?: string; nav?: number; daily_return?: number; drawdown?: number; turnover?: number; run_id?: string; model_version_id?: string; edge_explanation?: string; };
@@ -35,7 +36,7 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
   const selectedArena = useMemo(() => arenas.find((a) => a.id === selectedArenaId) || null, [arenas, selectedArenaId]);
 
   const loadArenas = async () => {
-    const resp = await fetch("/artifacts/arenas.json");
+    const resp = await fetch(artifactUrl.arenas);
     if (!resp.ok) return;
     const json = await resp.json();
     const parsed = (json?.arenas || []).map((r: any) => ({ id: r.id, name: r.name || r.id, market: r.market || "unknown" }));
@@ -44,7 +45,7 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
   };
 
   const loadLeaderboard = async (arena: Arena) => {
-    const resp = await fetch(`/artifacts/arena_leaderboard_${encodeURIComponent(arena.id)}.json`);
+    const resp = await fetch(artifactUrl.arenaLeaderboard(arena.id));
     if (!resp.ok) return;
     const json = await resp.json();
     setLeaderboard(json?.leaderboard || []);
@@ -52,7 +53,7 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
   };
 
   const loadLatestReport = async (arena: Arena) => {
-    const resp = await fetch(`/artifacts/reports.json`);
+    const resp = await fetch(artifactUrl.reports);
     if (!resp.ok) return;
     const json = await resp.json();
     const r = (json?.reports || []).find((rep: any) => rep.type === "arena_daily" && rep.ref_id === arena.id);

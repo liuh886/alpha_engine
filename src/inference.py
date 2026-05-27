@@ -22,7 +22,7 @@ def load_name_map(config_path="configs/name_map.yaml"):
     return {}
 
 
-from src.common.paths import MODELS_DIR
+from src.common.paths import MODELS_DIR, PROJECT_ROOT
 from src.research.service import ResearchService
 
 

@@ -9,45 +9,34 @@ export function StockTerminal() {
   const [symbol, setSymbol] = useState("AAPL");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string>("");
 
   const fetchStockData = async (targetSymbol: string) => {
+    const querySymbol = targetSymbol.trim().toUpperCase();
+    if (!querySymbol) return;
+
     setLoading(true);
+    setError("");
     try {
-      const resp = await fetch(`/artifacts/stocks/${targetSymbol.toUpperCase()}.json`);
+      const resp = await fetch(`/api/data/stock/${encodeURIComponent(querySymbol)}`, {
+        cache: "no-store",
+      });
+      const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
-        // Fallback generator for ANY stock entered (bulletproof demo)
-        const ohlcv = [];
-        let base_price = Math.random() * 500 + 50;
-        const now = new Date();
-        for (let i = 0; i < 100; i++) {
-          const d = new Date(now);
-          d.setDate(d.getDate() - (100 - i));
-          base_price += (Math.random() - 0.5) * 5;
-          ohlcv.push({
-            time: d.toISOString().split('T')[0],
-            open: base_price + (Math.random() - 0.5) * 2,
-            high: base_price + Math.random() * 5,
-            low: base_price - Math.random() * 5,
-            close: base_price
-          });
-        }
-        setData({
-          ok: true, symbol: targetSymbol.toUpperCase(), confidence: 0.6 + Math.random() * 0.3,
-          trend: (Math.random() - 0.5) * 0.2, guardrails: [
-            { label: "Volatility Regime", status: "SAFE", color: "text-emerald-500" },
-            { label: "Liquidity Check", status: "PASS", color: "text-emerald-500" }
-          ], ohlcv
-        });
+        setData(null);
+        setError(json.detail || json.error || `No real market data found for ${querySymbol}.`);
         return;
       }
-      const json = await resp.json();
       if (json.ok) {
         setData(json);
       } else {
-        alert(json.error);
+        setData(null);
+        setError(json.error || `No real market data found for ${querySymbol}.`);
       }
     } catch (e) {
       console.error(e);
+      setData(null);
+      setError("Asset inspection failed because the API is unavailable.");
     } finally {
       setLoading(false);
     }
@@ -124,7 +113,9 @@ export function StockTerminal() {
       {!data && !loading && (
         <div className="flex flex-col items-center justify-center py-32 bg-muted/10 rounded-3xl border-2 border-dashed border-border/50">
           <Activity className="h-12 w-12 text-muted-foreground/30 mb-4" />
-          <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs italic">Awaiting asset selection</p>
+          <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs italic">
+            {error || "Awaiting asset selection"}
+          </p>
         </div>
       )}
 
@@ -189,9 +180,9 @@ export function StockTerminal() {
             </Card>
 
             <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-primary mb-3 text-left">Analyst Perspective</h4>
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-primary mb-3 text-left">Data Provenance</h4>
               <p className="text-xs leading-relaxed text-muted-foreground italic text-left">
-                "Asset exhibits strong momentum characteristics within the current regime. Recommended overweight position if liquidities remain above 20MA threshold."
+                Served from Qlib market data and the current recommended model artifact when available.
               </p>
             </div>
           </div>
