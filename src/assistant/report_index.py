@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import contextlib
 import hashlib
 import json
 import time
-from pathlib import Path
 
-from src.assistant.metadata_db import connect
+from src.assistant.base_index import BaseIndex
 
 
 def _report_id(report_type: str, ref_id: str, date: str | None) -> str:
@@ -14,25 +12,12 @@ def _report_id(report_type: str, ref_id: str, date: str | None) -> str:
     return hashlib.sha1(key.encode("utf-8")).hexdigest()
 
 
-class ReportIndex:
+class ReportIndex(BaseIndex):
     """
     Minimal report index stored in SQLite.
 
     This is a stepping stone toward the design doc's `reports` table.
     """
-
-    def __init__(self, *, db_path: str | Path):
-        self._db_path = Path(db_path)
-        self._ensure_schema()
-
-    @contextlib.contextmanager
-    def _connect(self):
-        conn = connect(self._db_path)
-        try:
-            with conn:  # 关键修复：确保事务 Commit
-                yield conn
-        finally:
-            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:

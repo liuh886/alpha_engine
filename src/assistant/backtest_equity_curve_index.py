@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import contextlib
 import time
-from pathlib import Path
 
-from src.assistant.metadata_db import connect
+from src.assistant.base_index import BaseIndex
 
 
 def _to_float(value) -> float | None:
@@ -104,25 +102,12 @@ def _compute_drawdowns(points: list[dict]) -> list[dict]:
     return out
 
 
-class BacktestEquityCurveIndex:
+class BacktestEquityCurveIndex(BaseIndex):
     """
     Persist per-run equity curves (NAV/drawdown/turnover) to the local metadata DB.
 
     This is derived data; the source of truth remains the MLflow artifacts.
     """
-
-    def __init__(self, *, db_path: str | Path):
-        self._db_path = Path(db_path)
-        self._ensure_schema()
-
-    @contextlib.contextmanager
-    def _connect(self):
-        conn = connect(self._db_path)
-        try:
-            with conn:
-                yield conn
-        finally:
-            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:

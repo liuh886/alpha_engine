@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import contextlib
 import json
 import time
 from pathlib import Path
 
-from src.assistant.metadata_db import connect
+from src.assistant.base_index import BaseIndex
 
 
 def _infer_data_snapshot_id(params: dict | None) -> str | None:
@@ -20,29 +19,16 @@ def _infer_data_snapshot_id(params: dict | None) -> str | None:
     return None
 
 
-class RunIndex:
+class RunIndex(BaseIndex):
     """
     Minimal backtest run index stored in SQLite.
 
     This is a stepping stone toward the design doc's full metadata schema.
     """
 
-    def __init__(self, *, db_path: str | Path):
-        self._db_path = Path(db_path)
-        self._ensure_schema()
-
     @property
     def db_path(self) -> Path:
         return self._db_path
-
-    @contextlib.contextmanager
-    def _connect(self):
-        conn = connect(self._db_path)
-        try:
-            with conn:  # 关键修复：确保事务 Commit
-                yield conn
-        finally:
-            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:

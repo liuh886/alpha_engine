@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import contextlib
 import json
 import time
 import uuid
-from pathlib import Path
 
 from src.assistant.backtest_equity_curve_index import BacktestEquityCurveIndex
-from src.assistant.metadata_db import connect
+from src.assistant.base_index import BaseIndex
 
 
 def _safe_json(value) -> str:
@@ -21,23 +19,10 @@ def _safe_json(value) -> str:
         return "{}"
 
 
-class ArenaIndex:
+class ArenaIndex(BaseIndex):
     """
     Manage trading arenas, participants, and periodic leaderboard settlements.
     """
-
-    def __init__(self, *, db_path: str | Path):
-        self._db_path = Path(db_path)
-        self._ensure_schema()
-
-    @contextlib.contextmanager
-    def _connect(self):
-        conn = connect(self._db_path)
-        try:
-            with conn:
-                yield conn
-        finally:
-            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:

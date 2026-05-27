@@ -1,30 +1,15 @@
 from __future__ import annotations
 
-import contextlib
 import time
 import uuid
-from pathlib import Path
 
-from src.assistant.metadata_db import connect
+from src.assistant.base_index import BaseIndex
 
 
-class DataProvenanceIndex:
+class DataProvenanceIndex(BaseIndex):
     """
     Persistence for data fetch provenance (source, fallback, errors).
     """
-
-    def __init__(self, *, db_path: str | Path):
-        self._db_path = Path(db_path)
-        self._ensure_schema()
-
-    @contextlib.contextmanager
-    def _connect(self):
-        conn = connect(self._db_path)
-        try:
-            with conn:  # 关键修复：确保事务 Commit
-                yield conn
-        finally:
-            conn.close()
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
