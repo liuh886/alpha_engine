@@ -7,12 +7,8 @@ import fire
 import pandas as pd
 import yaml
 
+from src.common.config_utils import load_watchlist
 from src.common.market import get_region_for_market
-
-
-def load_watchlist(config_path):
-    with open(config_path) as f:
-        return yaml.safe_load(f)
 
 
 def load_name_map(config_path="configs/name_map.yaml"):

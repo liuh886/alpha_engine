@@ -10,10 +10,7 @@ import yaml
 from plotly.subplots import make_subplots
 from qlib.data import D
 
-
-def load_watchlist(config_path):
-    with open(config_path) as f:
-        return yaml.safe_load(f)
+from src.common.config_utils import load_watchlist
 
 
 def generate_interactive_report(
