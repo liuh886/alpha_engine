@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import qlib
-import yaml
 from plotly.subplots import make_subplots
 from qlib.data import D
 

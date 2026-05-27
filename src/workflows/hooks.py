@@ -5,14 +5,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from src.common.logging import get_logger
-
 import qlib
 
 from src.assistant.data_quality_index import DataQualityIndex
 from src.assistant.metadata_db import resolve_metadata_db_path
 from src.assistant.services.artifact_refresh_service import ArtifactRefreshService
 from src.common.env_manager import EnvironmentManager
+from src.common.logging import get_logger
 from src.common.paths import ARTIFACTS_DIR, MODELS_DIR, PROJECT_ROOT, REPORTS_DIR, RUNS_DIR
 from src.data.quality import generate_data_quality_summary
 from src.governance.service import GovernanceService
