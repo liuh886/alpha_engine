@@ -12,6 +12,8 @@ import { DataPage } from './pages/DataPage';
 import { StockTerminal } from './pages/StockTerminal';
 import { AgentControlCenter } from './pages/AgentControlCenter';
 import { DocsPage } from './pages/DocsPage';
+import { BacktestPage } from './pages/BacktestPage';
+import { MethodologyPage } from './pages/MethodologyPage';
 import { GlobalStatusBar } from './components/GlobalStatusBar';
 import { Sidebar } from './components/Sidebar';
 import { ConsoleModal } from './components/ConsoleModal';
@@ -21,8 +23,10 @@ import { useGlobalStore } from './store/globalStore';
 import { artifactUrl } from './lib/artifacts';
 
 const VIEW_TITLES: Record<string, string> = {
-  '': 'Agent Center',
-  'dashboard': 'Backtest Insights',
+  '': 'Dashboard',
+  'agent': 'Agent Center',
+  'backtest': 'Backtest',
+  'dashboard': 'Dashboard',
   'terminal': 'Stock Terminal',
   'arena': 'Arena',
   'models': 'Model Registry',
@@ -30,6 +34,7 @@ const VIEW_TITLES: Record<string, string> = {
   'reports': 'Reports',
   'data': 'Data Management',
   'strategy': 'Strategy Spec',
+  'methodology': 'Methodology',
   'docs': 'Docs',
 };
 
@@ -49,7 +54,7 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, theme, setTheme } = useGlobalStore();
+  const { latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, dataGeneratedAt, apiError, theme, setTheme } = useGlobalStore();
 
   const currentPath = location.pathname.replace(/^\//, '');
   const viewTitle = VIEW_TITLES[currentPath] ?? currentPath.replace('-', ' ');
@@ -68,72 +73,64 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-transparent">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 bg-transparent relative z-0">
+      <div className="flex-1 flex flex-col min-w-0">
         <GlobalStatusBar
           latestCalendarDay={latestCalendarDay}
           qualityStatus={qualityStatus}
           warnings={qualityWarnings}
           activeJobsCount={activeJobsCount}
+          dataGeneratedAt={dataGeneratedAt}
+          apiError={apiError}
           onOpenConsole={() => setConsoleOpen(true)}
         />
 
-        <header className="h-14 border-b bg-card/50 backdrop-blur-md sticky top-0 z-40 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
-            <h2 className="uppercase tracking-widest">{viewTitle}</h2>
+        <header className="h-11 border-b bg-card sticky top-0 z-40 px-5 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <h2 className="font-semibold">{viewTitle}</h2>
             {currentPath === 'dashboard' && selectedModel && (
               <>
-                <div className="h-4 w-px bg-border" />
-                <Button variant="ghost" size="sm" onClick={() => setSelectorOpen(true)} className="text-[10px] font-mono h-7 gap-2 px-2 hover:bg-muted/50">
+                <div className="h-3.5 w-px bg-border" />
+                <Button variant="ghost" size="sm" onClick={() => setSelectorOpen(true)} className="text-xs font-mono h-6 gap-1.5 px-2">
                   <List className="h-3 w-3" /> {selectedModel.name}
                 </Button>
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {currentPath === 'dashboard' && (
-              <Button size="sm" variant="default" onClick={startBacktestForSelectedMarket} disabled={backtestRunning} className="h-8 gap-2 px-4 shadow-sm text-xs font-bold uppercase tracking-tighter">
+              <Button size="sm" variant="default" onClick={startBacktestForSelectedMarket} disabled={backtestRunning} className="h-7 gap-1.5 px-3 text-xs font-medium">
                 {backtestRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3 fill-current" />}
-                {backtestRunning ? `Running` : "Execute Backtest"}
+                {backtestRunning ? "Running" : "Run Backtest"}
               </Button>
             )}
 
-            <div className="h-4 w-px bg-border mx-1" />
+            <div className="h-3.5 w-px bg-border" />
 
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-              {theme === 'dark' ? <Sun className="h-4 w-4 text-muted-foreground" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
 
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setConsoleOpen(true)}><Bell className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" className="h-8 gap-2 rounded-full border-primary/20 hover:border-primary/50 transition-colors text-left">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setConsoleOpen(true)}><Bell className="h-4 w-4" /></Button>
+            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
               <User className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-black uppercase tracking-tight">Zhihao</span>
+              <span>Zhihao</span>
             </Button>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 max-w-[1600px] mx-auto w-full">
+        <main className="flex-1 overflow-y-auto p-5 max-w-[1400px] mx-auto w-full">
           {loading ? (
             <div className="h-full flex items-center justify-center p-8">
-              <div className="flex flex-col items-center gap-6 w-full max-w-3xl">
-                <div className="flex items-center gap-4">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary opacity-40 mix-blend-screen" />
-                  <p className="text-[10px] text-muted-foreground animate-pulse font-black uppercase tracking-widest">Warming Engines</p>
-                </div>
-                <div className="w-full grid grid-cols-3 gap-6">
-                  <div className="h-40 rounded-3xl skeleton-shimmer" />
-                  <div className="h-40 rounded-3xl skeleton-shimmer" />
-                  <div className="h-40 rounded-3xl skeleton-shimmer" />
-                </div>
-                <div className="w-full h-64 rounded-3xl skeleton-shimmer mt-6" />
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
+                <p className="text-sm text-muted-foreground">Loading...</p>
               </div>
             </div>
           ) : (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
-              <Outlet />
-            </div>
+            <Outlet />
           )}
         </main>
 
@@ -179,7 +176,7 @@ function App() {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { setLatestCalendarDay, setQualityStatus, setQualityWarnings, setActiveJobsCount } = useGlobalStore();
+  const { setLatestCalendarDay, setQualityStatus, setQualityWarnings, setActiveJobsCount, setDataGeneratedAt, setApiError } = useGlobalStore();
 
   const [backtestJobId, setBacktestJobId] = useState<string>("");
   const [backtestRunning, setBacktestRunning] = useState(false);
@@ -196,9 +193,13 @@ function App() {
             setModels(parsed);
             setSelectedModelId(parsed[0].id);
           }
+          if (json.generated_at) setDataGeneratedAt(String(json.generated_at));
+          setApiError(null);
+        } else {
+          setApiError(`Server error: HTTP ${resp.status}`);
         }
       } catch (err) {
-        console.error("Failed to load dashboard data:", err);
+        setApiError("Cannot reach server. Check if the backend is running.");
       } finally {
         setLoading(false);
       }
@@ -358,15 +359,18 @@ function App() {
             loading={loading}
           />
         }>
-          <Route index element={<AgentControlCenter models={models} />} />
+          <Route index element={<DashboardRoute models={models} selectedModelId={selectedModelId} startUpdateData={startUpdateData} />} />
+          <Route path="agent" element={<AgentControlCenter models={models} />} />
           <Route path="dashboard" element={<DashboardRoute models={models} selectedModelId={selectedModelId} startUpdateData={startUpdateData} />} />
           <Route path="terminal" element={<StockTerminal />} />
+          <Route path="backtest" element={<BacktestPage />} />
           <Route path="arena" element={<ArenaRoute />} />
           <Route path="models" element={<ModelsPage />} />
           <Route path="compare" element={<CompareRoute models={models} />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="data" element={<DataPage />} />
           <Route path="strategy" element={<StrategyPage />} />
+          <Route path="methodology" element={<MethodologyPage />} />
           <Route path="docs" element={<DocsPage />} />
         </Route>
       </Routes>

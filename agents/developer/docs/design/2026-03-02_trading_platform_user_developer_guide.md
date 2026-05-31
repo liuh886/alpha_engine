@@ -73,8 +73,9 @@ This guide follows common GitHub platform documentation patterns:
   - Quality index: metadata DB via `DataQualityIndex`
 
 ## 4.2 Backtest/Training domain
-- Train: `POST /api/train/run`.
+- Train: `POST /api/workflow/train`.
 - Re-backtest or train-in-dashboard flow: `POST /api/backtest/run`.
+- NL strategy compile: `POST /api/strategy/compile`.
 - Command compiler and orchestrator core: `src/orchestrator.py`.
 - Key constraints:
   - `train` requires `market in {cn, us}` and non-empty `tag`.
@@ -132,23 +133,20 @@ This guide follows common GitHub platform documentation patterns:
 - Strategy profile defaults: `configs/strategy_profile.json`, `configs/strategy_profile_quant_rating_us.json`
 
 ## 5.3 Containerized run
-- `docker-compose.yml` defines:
-  - `agentic-api` on `8001`
-  - `agentic-dashboard` on `5173`
+- `docker-compose.yaml` defines:
+  - `alpha-api` on `8000` (serves both API and frontend static files)
 - Mapped volumes include `data`, `artifacts`, `configs`.
+- Frontend is built into `qlib-dashboard/dist/` and served by FastAPI.
 
 ## 6. WebUI Functional Map (User-facing)
 
 ## 6.1 Main navigation views
-- Agent Center (`AgentControlCenter.tsx`)
-- Dashboard (`Dashboard`)
-- Stock Terminal (`StockTerminal.tsx`)
-- Arena (`ArenaPage.tsx`)
-- Model Registry (`ModelsPage.tsx`)
-- Compare (`ComparePage.tsx`)
-- Reports (`ReportsPage.tsx`)
-- Data Management (`DataPage.tsx`)
-- Strategy Spec (`StrategyPage.tsx`)
+- Dashboard (`Dashboard`) — backtest results overview
+- Backtest (`BacktestPage.tsx`) — backtest workbench + NL strategy compiler
+- Models (`ModelsPage.tsx`) — model registry with sorting/filtering
+- Compare (`ComparePage.tsx`) — side-by-side model comparison
+- Data (`DataPage.tsx`) — data management + completeness heatmap
+- Methodology (`MethodologyPage.tsx`) — training methodology docs
 - Docs (`DocsPage.tsx`, this guide)
 
 ## 6.2 UI-API integration patterns
@@ -171,9 +169,11 @@ This guide follows common GitHub platform documentation patterns:
 ## 7.2 Backtest/Train APIs
 - `POST /api/backtest/run`
   - fields: `market`, `model_type`, `mode`, `run_id`, `model_path`, `start`, `end`, `tag`, `profile_path`.
-- `POST /api/train/run`
+- `POST /api/workflow/train`
   - fields: `market`, `model_type`, `tag`, `profile_path`.
-- `DELETE /api/runs/{run_id}`
+- `POST /api/strategy/compile`
+  - fields: `text` (NL description), `market` (optional).
+- `DELETE /api/backtest/runs/{run_id}`
 
 ## 7.3 Model APIs
 - `GET /api/models?limit=100&market=us`
@@ -226,9 +226,7 @@ This guide follows common GitHub platform documentation patterns:
 
 ## 9. Security and Safety Notes
 
-- Basic auth is prototype-level and static (`agent` + env password).
-- Localhost bypass is enabled by default; disable for stricter setups.
-- `POST /api/system/exec` can run arbitrary command by design; restrict network exposure.
+- Basic auth via `TRADING_UI_USER` and `TRADING_UI_PASSWORD` environment variables.
 - `POST /api/system/panic` is an operational kill switch for queued/running jobs in metadata state.
 
 ## 10. Developer Workflows

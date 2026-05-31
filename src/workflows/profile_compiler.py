@@ -49,12 +49,8 @@ def collect_profile_warnings(profile: dict, market: str) -> list[str]:
             "universe.filters.min_liquidity is not enforced by the compiler; it is intended for runtime universe filtering."
         )
 
-    if strategy.get("buy_rule") is not None:
-        warnings.append("strategy.buy_rule is currently not used by compiler/strategies (ignored).")
-    if strategy.get("sell_rule") is not None:
-        warnings.append(
-            "strategy.sell_rule is currently not used by compiler/strategies (ignored)."
-        )
+    # buy_rule and sell_rule are now parsed and wired into strategy kwargs
+    # via _parse_score_threshold()
 
     feature_pack = (model.get("feature_pack") or "").lower()
     if feature_pack == "alpha158" and model.get("features"):
@@ -63,6 +59,19 @@ def collect_profile_warnings(profile: dict, market: str) -> list[str]:
         )
 
     return warnings
+
+
+def _parse_score_threshold(rule: str | None) -> float | None:
+    """Parse a score rule like 'score > 0' or 'score < -0.5' into a threshold value."""
+    if not rule or not isinstance(rule, str):
+        return None
+    parts = rule.strip().lower().split()
+    if len(parts) < 3 or parts[0] != "score":
+        return None
+    try:
+        return float(parts[2])
+    except (ValueError, IndexError):
+        return None
 
 
 def rebalance_steps_from_frequency(freq):
@@ -239,6 +248,14 @@ def apply_profile_to_config(profile: dict, cfg: dict, market: str) -> dict:
             strat_kwargs["sell_ma_window"] = sell_on_ma
         if sell_rank_threshold is not None:
             strat_kwargs["sell_rank_threshold"] = sell_rank_threshold
+
+        # Wire buy_rule / sell_rule into score thresholds
+        buy_threshold = _parse_score_threshold(strategy.get("buy_rule"))
+        sell_threshold = _parse_score_threshold(strategy.get("sell_rule"))
+        if buy_threshold is not None:
+            strat_kwargs["buy_score_threshold"] = buy_threshold
+        if sell_threshold is not None:
+            strat_kwargs["sell_score_threshold"] = sell_threshold
 
     return cfg
 

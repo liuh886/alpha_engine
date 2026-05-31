@@ -61,3 +61,31 @@ def get_stock_data(symbol: str):
         return get_asset_inspection_service().inspect(symbol)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/completeness")
+def get_data_completeness(
+    market: str = Query("us"),
+    feature: str = Query("close"),
+):
+    """Return a completeness/value matrix for the given market and feature.
+
+    For feature=close, returns 1.0 (data present) or null (missing).
+    For other features (volume, amount, etc), returns actual values or null.
+    """
+    from src.assistant.services.data_service import AVAILABLE_FEATURES
+
+    if feature not in AVAILABLE_FEATURES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown feature '{feature}'. Available: {AVAILABLE_FEATURES}",
+        )
+    result = get_data_service().get_completeness_matrix(market=market, feature=feature)
+    return {"ok": True, "data": result}
+
+
+@router.get("/features")
+def list_available_features():
+    """Return the list of features available for the completeness heatmap."""
+    from src.assistant.services.data_service import AVAILABLE_FEATURES
+    return {"ok": True, "features": AVAILABLE_FEATURES}

@@ -21,8 +21,6 @@ module.exports = {
         PYTHONPATH: baseDir,
         PORT: 8000,
         TRADING_STATIC_SITE_DIR: "qlib-dashboard/dist",
-        TRADING_UI_USER: process.env.TRADING_UI_USER || "admin",
-        TRADING_UI_PASSWORD: process.env.TRADING_UI_PASSWORD || "",
       },
       max_memory_restart: '2G',
       listen_timeout: 5000,

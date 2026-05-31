@@ -82,6 +82,26 @@ def get_main_system_doc():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/docs/methodology")
+def get_methodology_doc():
+    """
+    Return the model training methodology markdown.
+    """
+    doc_path = PROJECT_ROOT / "docs" / "methodology.md"
+    if not doc_path.exists():
+        raise HTTPException(status_code=404, detail="methodology doc not found")
+    try:
+        content = doc_path.read_text(encoding="utf-8", errors="replace")
+        return {
+            "ok": True,
+            "path": str(doc_path.relative_to(PROJECT_ROOT)).replace("\\", "/"),
+            "content": content,
+            "updated_at": doc_path.stat().st_mtime,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/panic")
 def panic_stop(payload: dict | None = None):
     payload = payload or {}

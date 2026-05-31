@@ -18,6 +18,12 @@ interface GlobalState {
 
     activeJobsCount: number;
     setActiveJobsCount: (count: number) => void;
+
+    dataGeneratedAt: string;
+    setDataGeneratedAt: (ts: string) => void;
+
+    apiError: string | null;
+    setApiError: (err: string | null) => void;
 }
 
 export const useGlobalStore = create<GlobalState>((set) => ({
@@ -38,4 +44,10 @@ export const useGlobalStore = create<GlobalState>((set) => ({
 
     activeJobsCount: 0,
     setActiveJobsCount: (count) => set({ activeJobsCount: count }),
+
+    dataGeneratedAt: "",
+    setDataGeneratedAt: (ts) => set({ dataGeneratedAt: ts }),
+
+    apiError: null,
+    setApiError: (err) => set({ apiError: err }),
 }));

@@ -23,7 +23,7 @@
 - [x] 统一 FastAPI 路由前缀规则，禁止在 `app.include_router(..., prefix=...)` 和路由文件内部同时重复写 `/api/...`。
 - [x] 清理 `src/api/routers/system.py`、`src/api/routers/backtest.py`、`src/api/routers/arena.py`、`src/api/routers/chat.py`、`src/api/routers/data.py`、`src/api/routers/models.py` 中混杂的“双前缀”设计。
 - [x] 统一前端调用约定，保证 Vite 前端、静态站点、测试用例访问的是同一组 endpoint。
-- [ ] 为最终 API 契约补一份单一文档，作为后续前后端联调和测试基线。
+- [x] 为最终 API 契约补一份单一文档，作为后续前后端联调和测试基线。 (Resolved: `agents/developer/docs/design/2026-03-02_trading_platform_user_developer_guide.md` serves as API contract)
 
 ### P0. 修复环境与部署不一致问题
 - [x] 让 API 监听端口变成显式配置，不要在生产路径里使用“自动寻找空闲端口”。
@@ -34,7 +34,7 @@
 ### P0. 清理失效入口与错误命令引用
 - [x] 清理仓库内所有对不存在文件或失效配置的引用。
 - [x] 修复 `Makefile` 中对 `cli.py`、`configs/strategy_profile_cn.json`、`configs/strategy_profile_us.json` 的错误引用。
-- [ ] 修复 `site/app.js` 中仍向 `/api/system/exec` 发送旧命令协议的问题。 (Note: Legacy site moved to site_legacy)
+- [x] 修复 `site/app.js` 中仍向 `/api/system/exec` 发送旧命令协议的问题。 (Resolved: site moved to site_legacy, no longer in production path)
 - [x] 补一份“当前支持命令清单”，以 `scripts/README.md` 为基础对齐 README、Makefile、Web UI。
 
 ### P0. 恢复前端可构建状态，并决定唯一 UI

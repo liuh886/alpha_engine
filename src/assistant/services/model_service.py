@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -11,6 +12,15 @@ from src.common.paths import MODELS_DIR
 from src.governance.service import GovernanceService
 
 logger = get_logger(__name__)
+
+# Minimum thresholds for RECOMMENDED promotion (Criterion C6)
+_PROMOTION_GATES = {
+    "excess_return_min": 0.0,        # excess return > 0
+    "information_ratio_min": 0.5,    # IR > 0.5
+    "mdd_benchmark_ratio_max": 1.5,  # MDD not worse than 1.5x benchmark
+    "require_positive_net_return": True,  # positive post-turnover return
+    "require_walk_forward": True,         # at least one walk-forward validation
+}
 
 
 class ModelService:
@@ -62,15 +72,80 @@ class ModelService:
 
         return True
 
-    def promote_model(self, version_id: str, stage: str = "RECOMMENDED") -> bool:
+    def _check_promotion_gates(self, version_id: str) -> list[str]:
+        """Check if a model version meets RECOMMENDED promotion gates.
+        Returns a list of gate failure reasons (empty = all gates pass)."""
+        version = self._model_index.get_version(version_id)
+        if not version:
+            return ["Model version not found"]
+
+        failures = []
+        metrics_json = version.get("metrics_json")
+        if not metrics_json:
+            return ["No metrics available for this model version"]
+
+        try:
+            metrics = json.loads(metrics_json) if isinstance(metrics_json, str) else metrics_json
+        except (json.JSONDecodeError, TypeError):
+            return ["Metrics data is corrupted"]
+
+        # Gate 1: Excess return > 0
+        excess_ret = metrics.get("excess_return") or metrics.get("excess_annual_return")
+        if excess_ret is not None and excess_ret <= _PROMOTION_GATES["excess_return_min"]:
+            failures.append(f"Excess return {excess_ret:.2%} <= 0 (gate: > 0)")
+
+        # Gate 2: Information ratio > 0.5
+        ir = metrics.get("information_ratio") or metrics.get("sharpe")
+        if ir is not None and ir < _PROMOTION_GATES["information_ratio_min"]:
+            failures.append(f"Information ratio {ir:.2f} < 0.5 (gate: >= 0.5)")
+
+        # Gate 3: Max drawdown not worse than 1.5x benchmark
+        mdd = metrics.get("max_drawdown")
+        bench_mdd = metrics.get("bench_max_drawdown") or metrics.get("benchmark_max_drawdown")
+        if mdd is not None and bench_mdd is not None and bench_mdd != 0:
+            ratio = abs(mdd) / abs(bench_mdd)
+            if ratio > _PROMOTION_GATES["mdd_benchmark_ratio_max"]:
+                failures.append(f"Max DD ratio {ratio:.1f}x benchmark > 1.5x (gate: <= 1.5x)")
+
+        # Gate 4: Positive post-turnover return (net of costs)
+        net_ret = metrics.get("excess_return_with_cost") or metrics.get("net_return_after_costs")
+        if net_ret is not None and net_ret <= 0:
+            failures.append(f"Net return after costs {net_ret:.2%} <= 0 (gate: > 0)")
+
+        # Gate 5: Walk-forward validation
+        params = version.get("params") or {}
+        if isinstance(params, str):
+            try:
+                params = json.loads(params)
+            except Exception:
+                params = {}
+        walk_forward = params.get("walk_forward") or metrics.get("walk_forward_validated")
+        if not walk_forward:
+            failures.append("Walk-forward validation not performed (required for RECOMMENDED)")
+
+        return failures
+
+    def promote_model(self, version_id: str, stage: str = "RECOMMENDED") -> dict:
         """
         Promote a model version to a new stage.
-        If stage is RECOMMENDED, copy the model file to recommended_<market>_model.pkl.
+        If stage is RECOMMENDED, enforce promotion gates first.
+        Returns {"ok": bool, "gate_failures": list[str]}.
         """
+        # Gate check for RECOMMENDED promotion
+        if stage.upper() == "RECOMMENDED":
+            gate_failures = self._check_promotion_gates(version_id)
+            if gate_failures:
+                logger.warning(
+                    "Promotion gate check failed",
+                    version_id=version_id,
+                    failures=gate_failures,
+                )
+                return {"ok": False, "gate_failures": gate_failures}
+
         # 1. Update SQLite
         ok = self._model_index.update_stage(version_id, stage)
         if not ok:
-            return False
+            return {"ok": False, "gate_failures": []}
 
         # 2. Update YAML (Source of Truth)
         # We need to find the entry in model_list.yaml and update its stage or description
@@ -116,7 +191,7 @@ class ModelService:
                 f"ID: {version_id} -> {stage}",
             )
 
-        return True
+        return {"ok": True, "gate_failures": []}
 
     def get_model_details(self, version_id: str) -> dict:
         """

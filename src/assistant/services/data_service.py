@@ -2,10 +2,18 @@ import datetime
 import json
 from pathlib import Path
 
+import numpy as np
+
 from src.common.logging import get_logger
 from src.dashboard.data_update_job import create_data_update_job
 
 logger = get_logger(__name__)
+
+# Features available in the Qlib binary store (data/watchlist/features/{symbol}/)
+AVAILABLE_FEATURES = [
+    "close", "open", "high", "low", "volume", "amount", "vwap", "money", "factor",
+    "mkt_us_ma20_dev", "mkt_us_ma60_dev", "mkt_cn_ma20_dev", "mkt_cn_ma60_dev",
+]
 
 
 class DataService:
@@ -101,6 +109,68 @@ class DataService:
             "readiness": readiness,
             "updated_at": datetime.datetime.now().isoformat(),
         }
+
+    def get_completeness_matrix(self, market: str = "us", feature: str = "close") -> dict:
+        """Read Qlib binary files directly and return a completeness/value matrix.
+
+        Returns {symbols: [...], dates: [...], values: [[float|null]]}
+        For coverage mode (feature=close), values are 1.0 (present) or null (missing).
+        For value mode (feature=volume/amount/etc), values are the actual feature values or null.
+        """
+        features_dir = self._project_root / "data" / "watchlist" / "features"
+        cal_path = self._project_root / "data" / "watchlist" / "calendars" / "day.txt"
+        inst_path = self._project_root / "data" / "watchlist" / "instruments" / f"{market}.txt"
+
+        if not cal_path.exists() or not inst_path.exists():
+            return {"symbols": [], "dates": [], "values": []}
+
+        # Read calendar dates
+        dates = [
+            line.strip() for line in cal_path.read_text(encoding="utf-8").splitlines() if line.strip()
+        ]
+        n_days = len(dates)
+
+        # Read instruments for this market
+        raw_lines = inst_path.read_text(encoding="utf-8").splitlines()
+        symbols = [line.split("\t")[0] for line in raw_lines if line.strip()]
+
+        # Determine the binary filename
+        # Market-specific features use mkt_{market}_ prefix
+        if feature.startswith("mkt_"):
+            bin_name = f"{feature}.day.bin"
+        else:
+            bin_name = f"{feature}.day.bin"
+
+        is_coverage = feature == "close"
+        values = []
+        valid_symbols = []
+
+        for sym in symbols:
+            bin_path = features_dir / sym / bin_name
+            if not bin_path.exists():
+                continue
+
+            try:
+                arr = np.fromfile(str(bin_path), dtype="<f4")
+            except Exception:
+                logger.debug("Failed to read binary file", path=str(bin_path), exc_info=True)
+                continue
+
+            # Pad or truncate to match calendar length
+            if len(arr) < n_days:
+                arr = np.concatenate([arr, np.full(n_days - len(arr), np.nan)])
+            elif len(arr) > n_days:
+                arr = arr[:n_days]
+
+            if is_coverage:
+                row = [1.0 if not np.isnan(v) else None for v in arr]
+            else:
+                row = [round(float(v), 6) if not np.isnan(v) else None for v in arr]
+
+            values.append(row)
+            valid_symbols.append(sym)
+
+        return {"symbols": valid_symbols, "dates": dates, "values": values}
 
     def _calculate_readiness(self, latest_cal: str | None) -> str:
         if not latest_cal:

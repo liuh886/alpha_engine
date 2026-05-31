@@ -32,8 +32,10 @@ def promote_model(payload: dict):
     stage = str(payload.get("stage") or "RECOMMENDED").strip()
     if not version_id:
         raise HTTPException(status_code=400, detail="missing version_id")
-    ok = get_model_service().promote_model(version_id, stage)
-    return {"ok": ok}
+    result = get_model_service().promote_model(version_id, stage)
+    if not result["ok"] and result.get("gate_failures"):
+        return {"ok": False, "gate_failures": result["gate_failures"]}
+    return {"ok": result["ok"]}
 
 
 @router.post("/delete")

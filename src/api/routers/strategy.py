@@ -2,8 +2,29 @@ import yaml
 from fastapi import APIRouter, HTTPException
 
 from src.common.paths import CONFIG_DIR
+from src.assistant.services.strategy_compiler_service import StrategyCompilerService
 
 router = APIRouter(tags=["strategy"])
+
+
+@router.post("/compile")
+def compile_strategy_from_nl(payload: dict):
+    """
+    Compile natural language strategy description into Qlib workflow YAML.
+    Body: { "text": "Strategy description...", "market": "us|cn" (optional) }
+    """
+    text = (payload.get("text") or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="missing 'text' field")
+
+    market = payload.get("market")
+
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parents[2]
+    service = StrategyCompilerService(project_root=project_root)
+    result = service.compile_from_nl(text=text, market=market)
+    return {"ok": True, **result}
 
 
 @router.get("/list")

@@ -42,24 +42,24 @@ We do not just build "bots"; we build a **Multi-Agent Decision Engine** where ea
 2. **Attribution Over Prediction**: We prioritize understanding *why* a strategy made money over pure black-box performance.
 3. **Safety First**: The Risk Agent has the "Red Button" authority to halt any execution that violates the volatility/drawdown contracts.
 
-## 5. Current Architectural Gaps (2026-04 Audit)
+## 5. Architectural Gaps (2026-04 Audit → 2026-05 Update)
 
 The current codebase has crossed the line from isolated implementation debt into structural architectural drift. The main issue is not lack of features, but lack of a single authoritative shape for the system.
 
-### A. Dual Runtime Truth
-- The project currently exposes two competing server shapes: `api_server.py` and `scripts/dashboard_server.py`.
-- This violates the intended Runtime Layer principle because API behavior, static asset serving, and tests are not anchored to one production runtime.
-- Architectural correction: define one canonical runtime, and downgrade the other entrypoint to either a compatibility shim or a test fixture.
+### A. Dual Runtime Truth — RESOLVED
+- ~~The project currently exposes two competing server shapes: `api_server.py` and `scripts/dashboard_server.py`.~~
+- `api_server.py` is the sole canonical runtime. `scripts/dashboard_server.py` has been retired.
+- **Status**: Resolved (2026-05). Single runtime enforced.
 
-### B. API Contract Drift
-- API prefixes are currently split across application mounting and router-local declarations.
-- This creates accidental routes instead of an intentional interface contract.
-- Architectural correction: the application shell owns global prefixes; routers own only resource-local paths.
+### B. API Contract Drift — RESOLVED
+- ~~API prefixes are currently split across application mounting and router-local declarations.~~
+- Application shell owns global prefixes (`/api/backtest`, `/api/models`, etc.); routers own only resource-local paths.
+- **Status**: Resolved (2026-05). All routers use relative paths; `app.include_router()` owns prefixes.
 
-### C. UI Boundary Drift
-- The system currently carries two UI stacks: `qlib-dashboard/` and `site/`.
-- Their relationship is undefined, but both encode product behavior and API assumptions.
-- Architectural correction: establish one primary product UI. Any secondary UI must be explicitly categorized as `legacy`, `static export`, or `support surface`.
+### C. UI Boundary Drift — RESOLVED
+- ~~The system currently carries two UI stacks: `qlib-dashboard/` and `site/`.~~
+- `qlib-dashboard/` is the sole product UI. `site/` moved to `site_legacy/`.
+- **Status**: Resolved (2026-05). Single UI stack.
 
 ### D. Application Logic Leaking into Transport Layer
 - API routers currently perform orchestration and artifact lookup duties that belong in application services.

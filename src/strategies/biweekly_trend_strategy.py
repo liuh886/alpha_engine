@@ -33,6 +33,8 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
         min_hold_days: int = 10,
         sell_ma_window: int = 60,
         sell_rank_threshold: int = 20,
+        buy_score_threshold: float | None = None,
+        sell_score_threshold: float | None = None,
         only_tradable: bool = False,
         forbid_all_trade_at_limit: bool = True,
         **kwargs,
@@ -44,6 +46,8 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
         self.min_hold_days = min_hold_days
         self.sell_ma_window = sell_ma_window
         self.sell_rank_threshold = sell_rank_threshold
+        self.buy_score_threshold = buy_score_threshold
+        self.sell_score_threshold = sell_score_threshold
         self.only_tradable = only_tradable
         self.forbid_all_trade_at_limit = forbid_all_trade_at_limit
         self.entry_dates: dict[str, date] = {}
@@ -130,6 +134,11 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                     rank = rank_map.get(code)
                     if rank is None or rank >= self.sell_rank_threshold:
                         sell_candidates.add(code)
+                    # Score-based sell rule
+                    if self.sell_score_threshold is not None:
+                        score = pred_score.get(code)
+                        if score is not None and score < self.sell_score_threshold:
+                            sell_candidates.add(code)
 
         sell_order_list = []
         buy_order_list = []
@@ -170,9 +179,11 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
             current_stock_list = current_temp.get_stock_list()
             desired_topk = list(pred_score.index[: self.topk])
             available_slots = max(0, self.topk - len(current_stock_list))
-            buy_list = [code for code in desired_topk if code not in current_stock_list][
-                :available_slots
-            ]
+            buy_list = [code for code in desired_topk if code not in current_stock_list]
+            # Score-based buy rule: only buy if score > threshold
+            if self.buy_score_threshold is not None:
+                buy_list = [c for c in buy_list if pred_score.get(c, 0) > self.buy_score_threshold]
+            buy_list = buy_list[:available_slots]
             value = cash * self.risk_degree / len(buy_list) if len(buy_list) > 0 else 0
 
             for code in buy_list:

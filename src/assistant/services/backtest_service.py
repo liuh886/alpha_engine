@@ -130,8 +130,19 @@ class BacktestService:
         run_path = self.get_run_path(run_id)
         if not run_path:
             raise ValueError(f"Run artifacts not found for {run_id}")
-        
+
         return parse_detailed_ledger(run_path)
+
+    def get_alpha_decomposition(self, run_id: str) -> dict:
+        """
+        Computes alpha decomposition: selection, timing, sizing, cost, beta.
+        """
+        from src.dashboard.artifact_parser import compute_alpha_decomposition
+        run_path = self.get_run_path(run_id)
+        if not run_path:
+            raise ValueError(f"Run artifacts not found for {run_id}")
+
+        return compute_alpha_decomposition(run_path)
 
     def delete_run(self, run_id: str) -> bool:
         """

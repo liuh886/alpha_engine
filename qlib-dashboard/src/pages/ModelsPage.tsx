@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Cpu, RefreshCw, Star, Trash2, Settings } from "lucide-react";
+import { Loader2, RefreshCw, Star, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { artifactUrl } from "@/lib/artifacts";
 
@@ -12,6 +13,7 @@ type ModelVersion = {
 };
 
 type MarketFilter = "all" | "us" | "cn";
+type SortKey = "none" | "sharpe" | "return" | "mdd";
 
 function shortId(value: string) {
   if (!value) return "";
@@ -24,18 +26,24 @@ function safeJson(value: any, fallback: any) {
   try { return JSON.parse(String(value)); } catch { return fallback; }
 }
 
-function formatPct(value?: number) {
+function formatPct(value?: number | null) {
   if (value === undefined || value === null || Number.isNaN(value)) return "N/A";
-  const p = value > 0 ? "+" : "";
-  return `${p}${(value * 100).toFixed(2)}%`;
+  return `${(value * 100).toFixed(2)}%`;
+}
+
+function formatNum(value?: number | null) {
+  if (value === undefined || value === null || Number.isNaN(value)) return "N/A";
+  return value.toFixed(2);
 }
 
 export function ModelsPage() {
   const [market, setMarket] = useState<MarketFilter>("all");
   const [versions, setVersions] = useState<ModelVersion[]>([]);
-  const [arenaParticipants, setArenaParticipants] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState<boolean>(false);
-  const [actionId, setActionId] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [actionId, setActionId] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("none");
+  const [sortAsc, setSortAsc] = useState(false);
+  const [minSharpe, setMinSharpe] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -51,49 +59,62 @@ export function ModelsPage() {
         params: safeJson(r.params_json, {}),
       }));
       setVersions(parsed);
-
-      const arenasResp = await fetch(artifactUrl.arenas);
-      const arenasJson = await arenasResp.json();
-      const pids = new Set<string>();
-      for (const arena of (arenasJson.arenas || [])) {
-        const lbResp = await fetch(artifactUrl.arenaLeaderboard(arena.id));
-        const lbJson = await lbResp.json();
-        (lbJson.leaderboard || []).forEach((p: any) => {
-          if (p.run_id) pids.add(p.run_id);
-        });
-      }
-      setArenaParticipants(pids);
-
     } catch { /* ignore */ }
     finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, [market]);
 
-  const toggleArena = async (v: ModelVersion) => {
-    if (!v.run_id) return;
-    const isJoined = arenaParticipants.has(v.run_id);
-    const mkt = String(v.market || "US").toUpperCase();
+  const getMetric = (v: ModelVersion, key: string): number | null => {
+    const m = v.metrics || {};
+    const val = m[key] ?? m[key === "sharpe" ? "information_ratio" : key === "return" ? "annualized_return" : key === "mdd" ? "max_drawdown" : key];
+    return val != null ? Number(val) : null;
+  };
 
-    setActionId(v.id);
-    try {
-      if (isJoined) {
-        alert("Engine: Manual clear required for participants via CLI 'arena_clear'.");
-      } else {
-        const ok = window.confirm(`Seed ${v.tag || v.id} into ${mkt} Arena?`);
-        if (!ok) return;
-        await fetch("/api/arena/participants", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ arena_name: `${mkt} Arena`, run_id: v.run_id, name: v.tag || v.id }),
-        });
-        load();
-      }
-    } catch { /* ignore */ }
-    finally { setActionId(""); }
+  const displayed = useMemo(() => {
+    let list = [...versions];
+
+    // Filter by min Sharpe
+    const threshold = parseFloat(minSharpe);
+    if (!isNaN(threshold)) {
+      list = list.filter(v => {
+        const s = getMetric(v, "sharpe");
+        return s !== null && s >= threshold;
+      });
+    }
+
+    // Sort
+    if (sortKey !== "none") {
+      const metricKey = sortKey === "sharpe" ? "sharpe" : sortKey === "return" ? "annualized_return" : "max_drawdown";
+      list.sort((a, b) => {
+        const va = getMetric(a, metricKey);
+        const vb = getMetric(b, metricKey);
+        if (va === null && vb === null) return 0;
+        if (va === null) return 1;
+        if (vb === null) return -1;
+        return sortAsc ? va - vb : vb - va;
+      });
+    }
+
+    return list;
+  }, [versions, sortKey, sortAsc, minSharpe]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortKey(key);
+      setSortAsc(false);
+    }
+  };
+
+  const SortIcon = ({ column }: { column: SortKey }) => {
+    if (sortKey !== column) return <ArrowUpDown className="h-3 w-3 opacity-30" />;
+    return sortAsc ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />;
   };
 
   const deleteModel = async (v: ModelVersion) => {
-    if (!window.confirm(`PERMANENTLY DELETE model ${v.tag || v.id}? This will physically remove the .pkl file.`)) return;
+    if (!window.confirm(`Delete model ${v.tag || v.id}?`)) return;
     setActionId(v.id);
     try {
       const resp = await fetch("/api/models/delete", {
@@ -109,125 +130,156 @@ export function ModelsPage() {
     const isRecommended = String(v.description).includes("RECOMMENDED");
     const newStage = isRecommended ? "STAGING" : "RECOMMENDED";
     if (!window.confirm(`Mark ${v.tag || v.id} as ${newStage}?`)) return;
-
     setActionId(v.id);
     try {
       const resp = await fetch("/api/models/promote", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ version_id: v.id, stage: newStage }),
       });
-      if (resp.ok) load();
+      const json = await resp.json();
+      if (json.ok) {
+        load();
+      } else if (json.gate_failures?.length) {
+        alert(`Promotion blocked:\n\n${json.gate_failures.join("\n")}`);
+      }
     } catch { /* ignore */ }
     finally { setActionId(""); }
   };
 
   return (
-    <div className="space-y-8 max-w-[1600px] mx-auto pb-20 text-left">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b pb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest mb-1"><Cpu className="h-3.5 w-3.5" /> Model Asset Management</div>
-          <h1 className="text-4xl font-black tracking-tight">Model Registry</h1>
-          <p className="text-muted-foreground text-sm max-w-md">Comprehensive inventory of trained model instances, hyperparameters, and cross-market seeding status.</p>
+    <div className="space-y-5 max-w-[1600px] mx-auto pb-16">
+      <div className="border-b pb-4 flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Model Registry</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Trained models with metrics. Sort by Sharpe, Return, or Max Drawdown.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="bg-muted p-1 rounded-lg flex gap-1 mr-2 border">
-            {(["all", "us", "cn"] as const).map(m => (
-              <button key={m} onClick={() => setMarket(m)} className={cn("px-3 py-1 text-[10px] uppercase font-black rounded-md transition-all", market === m ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground")}>{m}</button>
-            ))}
-          </div>
-          <Button onClick={load} variant="outline" size="sm" className="h-9 gap-2 shadow-sm border-primary/20 transition-all active:scale-95"><RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> Sync Assets</Button>
-        </div>
+        <Button onClick={load} variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+          <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} /> Refresh
+        </Button>
       </div>
 
-      <Card className="border-none shadow-xl overflow-hidden bg-card ring-1 ring-border/50">
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Market</label>
+          <div className="flex gap-1">
+            {(["all", "us", "cn"] as const).map(m => (
+              <Button key={m} variant={market === m ? "default" : "outline"} size="sm" onClick={() => setMarket(m)} className="h-7 text-xs uppercase">
+                {m}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Min Sharpe</label>
+          <Input
+            value={minSharpe}
+            onChange={(e) => setMinSharpe(e.target.value)}
+            placeholder="e.g. 0.5"
+            className="h-7 w-28 text-xs font-mono"
+            type="number"
+            step="0.1"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Sort by</label>
+          <div className="flex gap-1">
+            {([["sharpe", "Sharpe"], ["return", "Return"], ["mdd", "MDD"]] as const).map(([key, label]) => (
+              <Button key={key} variant={sortKey === key ? "default" : "outline"} size="sm" onClick={() => toggleSort(key)} className="h-7 text-xs gap-1">
+                {label} <SortIcon column={key} />
+              </Button>
+            ))}
+            {sortKey !== "none" && (
+              <Button variant="ghost" size="sm" onClick={() => setSortKey("none")} className="h-7 text-xs text-muted-foreground">
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+        <Badge variant="outline" className="text-xs h-7">
+          {displayed.length} model{displayed.length !== 1 ? "s" : ""}
+        </Badge>
+      </div>
+
+      {/* Table */}
+      <Card>
         <CardContent className="p-0">
           <Table>
-            <TableHeader className="bg-muted/30 border-b">
-              <TableRow className="hover:bg-transparent text-left">
-                <TableHead className="font-bold text-[10px] uppercase py-5 pl-8 w-[120px]">Version</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase w-[80px]">Mkt</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase">Identity & Logic</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase">Top Params</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase">Metrics</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase text-center w-[100px]">Arena</TableHead>
-                <TableHead className="text-right font-bold text-[10px] uppercase pr-8 w-[150px]">Management</TableHead>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">Version</TableHead>
+                <TableHead className="w-[60px]">Mkt</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Model</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("sharpe")}>
+                  <span className="flex items-center gap-1">Sharpe <SortIcon column="sharpe" /></span>
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("return")}>
+                  <span className="flex items-center gap-1">Ann. Return <SortIcon column="return" /></span>
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("mdd")}>
+                  <span className="flex items-center gap-1">Max DD <SortIcon column="mdd" /></span>
+                </TableHead>
+                <TableHead className="text-right w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {versions.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="h-64 text-center text-muted-foreground italic uppercase tracking-widest text-[10px] font-black">Scanning model database...</TableCell></TableRow>
+              {displayed.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-48 text-center text-muted-foreground text-sm">
+                    {loading ? "Loading models..." : "No models found."}
+                  </TableCell>
+                </TableRow>
               ) : (
-                versions.map((v) => {
-                  const metrics = v.metrics || {};
-                  const params = v.params || {};
-                  const ann = Number(metrics?.annualized_return || metrics?.ann_ret || 0);
+                displayed.map((v) => {
+                  const sharpe = getMetric(v, "sharpe");
+                  const annRet = getMetric(v, "annualized_return");
+                  const mdd = getMetric(v, "max_drawdown");
                   const isRecommended = String(v.description).includes("RECOMMENDED");
                   const isDoing = actionId === v.id;
-                  const isArenaJoined = v.run_id ? arenaParticipants.has(v.run_id) : false;
 
                   return (
-                    <TableRow key={v.id} className="group hover:bg-muted/10 transition-colors border-b last:border-0 text-left h-20">
-                      <TableCell className="pl-8">
+                    <TableRow key={v.id} className="group">
+                      <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-mono text-[11px] font-black text-primary">{shortId(v.id)}</span>
-                          <span className="text-[9px] text-muted-foreground font-bold">{v.created_at}</span>
+                          <span className="font-mono text-xs">{shortId(v.id)}</span>
+                          <span className="text-[10px] text-muted-foreground">{v.created_at?.slice(0, 10)}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="text-[9px] font-black uppercase px-1.5">{v.market}</Badge>
+                        <Badge variant="secondary" className="text-[10px] uppercase">{v.market}</Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-black tracking-tight">{v.tag || v.name}</span>
-                            {isRecommended && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 drop-shadow-sm" />}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter opacity-60 italic">{v.model_type || 'LGBModel'}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-medium">{v.tag || v.name}</span>
+                          {isRecommended && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{v.model_type || "LGBModel"}</TableCell>
+                      <TableCell>
+                        <span className={cn("font-mono text-xs", sharpe !== null && sharpe >= 1 ? "text-green-500" : sharpe !== null && sharpe < 0 ? "text-red-500" : "")}>
+                          {formatNum(sharpe)}
+                        </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-[200px]">
-                          {Object.entries(params).filter(([k]) => !['model_path', 'source_model_path', 'experiment_name'].includes(k)).slice(0, 3).map(([k, v]) => (
-                            <span key={k} className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground border border-border/50">
-                              {k.split('_').map(word => word[0]).join('').toUpperCase()}:{String(v)}
-                            </span>
-                          ))}
-                          {Object.keys(params).length === 0 && <span className="text-[9px] italic text-muted-foreground opacity-40">N/A</span>}
-                        </div>
+                        <span className={cn("font-mono text-xs", annRet !== null && annRet > 0 ? "text-green-500" : annRet !== null ? "text-red-500" : "")}>
+                          {formatPct(annRet)}
+                        </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-4">
-                          <div className="flex flex-col">
-                            <span className="text-[9px] uppercase font-black text-muted-foreground/40">Ann.R</span>
-                            <span className={cn("text-[11px] font-mono font-black", ann > 0 ? "text-emerald-500" : "text-rose-500")}>{formatPct(ann)}</span>
-                          </div>
-                          <div className="flex flex-col border-l pl-3 border-border/50">
-                            <span className="text-[9px] uppercase font-black text-muted-foreground/40">Sharpe</span>
-                            <span className="text-[11px] font-mono font-black">{(metrics?.sharpe || metrics?.information_ratio || 0).toFixed(2)}</span>
-                          </div>
-                        </div>
+                        <span className={cn("font-mono text-xs", mdd !== null && Math.abs(mdd) > 0.2 ? "text-red-500" : "")}>
+                          {formatPct(mdd)}
+                        </span>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center items-center h-full">
-                          <input
-                            type="checkbox"
-                            checked={isArenaJoined}
-                            onChange={() => toggleArena(v)}
-                            disabled={isDoing}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer transition-all"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="pr-8 text-right">
-                        <div className="flex justify-end gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
-                          <Button size="icon" variant="ghost" className={cn("h-8 w-8", isRecommended ? "text-amber-500 bg-amber-50" : "text-muted-foreground")} onClick={() => togglePromote(v)} disabled={isDoing}>
-                            {isDoing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className={cn("h-4 w-4", isRecommended && "fill-current")} />}
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="icon" variant="ghost" className={cn("h-7 w-7", isRecommended ? "text-amber-500" : "text-muted-foreground")} onClick={() => togglePromote(v)} disabled={isDoing}>
+                            {isDoing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className={cn("h-3.5 w-3.5", isRecommended && "fill-current")} />}
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => load()} title="Sync Details">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50" onClick={() => deleteModel(v)} disabled={isDoing}>
-                            <Trash2 className="h-4 w-4" />
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={() => deleteModel(v)} disabled={isDoing}>
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </TableCell>

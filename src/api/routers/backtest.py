@@ -102,6 +102,18 @@ def get_trading_ledger(run_id: str):
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@router.get("/{run_id}/alpha-decomposition")
+def get_alpha_decomposition(run_id: str):
+    """
+    Returns alpha decomposition: selection, timing, sizing, cost, beta.
+    """
+    try:
+        decomp = get_backtest_service().get_alpha_decomposition(run_id)
+        return {"ok": True, "run_id": run_id, **decomp}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @router.post("/run")
 def run_backtest(payload: dict):
     try:

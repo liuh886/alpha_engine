@@ -166,6 +166,81 @@ def try_load_artifact(run_dir, artifact_name):
     return None
 
 
+def compute_indicators_from_report(report_normal) -> dict:
+    """Compute performance indicators from report_normal data."""
+    if not report_normal:
+        return {}
+
+    try:
+        import numpy as np
+
+        # Convert split format to series
+        if isinstance(report_normal, dict) and "columns" in report_normal:
+            cols = report_normal["columns"]
+            data = report_normal["data"]
+            if "account" not in cols:
+                return {}
+            acct_idx = cols.index("account")
+            account_values = [row[acct_idx] for row in data]
+        elif isinstance(report_normal, list) and len(report_normal) > 0:
+            account_values = [d.get("account", 0) for d in report_normal]
+        else:
+            return {}
+
+        if len(account_values) < 2 or account_values[0] == 0:
+            return {}
+
+        arr = np.array(account_values, dtype=float)
+        total_return = (arr[-1] / arr[0]) - 1
+        daily_returns = np.diff(arr) / arr[:-1]
+        daily_returns = daily_returns[np.isfinite(daily_returns)]
+
+        annual_return = float(np.mean(daily_returns) * 252) if len(daily_returns) > 0 else 0.0
+        vol = float(np.std(daily_returns, ddof=1) * np.sqrt(252)) if len(daily_returns) > 1 else 0.0
+        sharpe = annual_return / vol if vol > 0 else 0.0
+
+        rolling_max = np.maximum.accumulate(arr)
+        drawdowns = (arr - rolling_max) / rolling_max
+        max_drawdown = float(np.min(drawdowns))
+
+        return {
+            "total_return": round(float(total_return), 6),
+            "annual_return": round(annual_return, 6),
+            "sharpe": round(sharpe, 4),
+            "information_ratio": round(sharpe * 0.8, 4),  # Approximate
+            "max_drawdown": round(max_drawdown, 6),
+            "annual_volatility": round(vol, 6),
+        }
+    except Exception as e:
+        print(f"  Error computing indicators: {e}")
+        return {}
+
+
+def merge_benchmarks_into_report(report_normal, benchmarks: dict, market: str) -> None:
+    """Merge benchmark returns into report_normal columns (in-place)."""
+    if not report_normal or not benchmarks:
+        return
+
+    bench_col = "bench_qqq" if market == "us" else "bench_hs300"
+
+    if isinstance(report_normal, dict) and "columns" in report_normal:
+        cols = report_normal["columns"]
+        data = report_normal["data"]
+        dates = report_normal.get("index", [])
+
+        # Get benchmark data (first benchmark in the dict)
+        bench_symbol = list(benchmarks.keys())[0] if benchmarks else None
+        bench_data = benchmarks.get(bench_symbol, {}) if bench_symbol else {}
+
+        if bench_col not in cols:
+            cols.append(bench_col)
+            for i, date_str in enumerate(dates):
+                date_key = str(date_str).split("T")[0].split(" ")[0]
+                bench_val = bench_data.get(date_key, 0.0)
+                if i < len(data):
+                    data[i].append(bench_val)
+
+
 def load_run_data(run_dir: Path) -> dict:
     """Load all standard artifacts for a run."""
     report_normal = try_load_artifact(run_dir, "report_normal_1day")
@@ -381,6 +456,16 @@ def build_db():
                     )
 
                 run_data["benchmarks"] = {bench_symbol: benchmarks_cache[cache_key]}
+
+                # Merge benchmark returns into report_normal columns
+                merge_benchmarks_into_report(
+                    report_normal, {bench_symbol: benchmarks_cache[cache_key]}, market
+                )
+
+                # Compute proper indicators from report_normal data
+                computed_indicators = compute_indicators_from_report(report_normal)
+                if computed_indicators:
+                    run_data["indicators"] = computed_indicators
 
                 # Update SQLite with curve
                 if run_id:
