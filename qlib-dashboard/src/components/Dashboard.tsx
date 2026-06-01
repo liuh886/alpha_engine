@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ModelSpec } from "./ModelSpec";
 import { MetricsExpanded } from "./MetricsExpanded";
 import { HoldingsSummary } from "./HoldingsSummary";
-import { Calendar, Tag } from "lucide-react";
+import { Calendar, Tag, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export function Dashboard({ data, params }: { data: BacktestData; params?: Record<string, any> }) {

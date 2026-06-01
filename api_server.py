@@ -31,11 +31,14 @@ from src.api.routers import (
     backtest,
     chat,
     data,
+    factors,
     jobs,
     models,
     reports,
     strategy,
     system,
+    tools,
+    walk_forward,
     workflow,
 )
 
@@ -108,6 +111,12 @@ app.include_router(
     dependencies=[Depends(get_current_user)],
 )
 app.include_router(
+    walk_forward.router,
+    prefix="/api/backtest",
+    tags=["walk-forward"],
+    dependencies=[Depends(get_current_user)],
+)
+app.include_router(
     chat.router, prefix="/api/agent", tags=["agent"], dependencies=[Depends(get_current_user)]
 )
 app.include_router(
@@ -126,6 +135,18 @@ app.include_router(
     strategy.router,
     prefix="/api/strategy",
     tags=["strategy"],
+    dependencies=[Depends(get_current_user)],
+)
+app.include_router(
+    tools.router,
+    prefix="/api/tools",
+    tags=["tools"],
+    dependencies=[Depends(get_current_user)],
+)
+app.include_router(
+    factors.router,
+    prefix="/api",
+    tags=["factors"],
     dependencies=[Depends(get_current_user)],
 )
 

@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException
 
 from src.common.paths import CONFIG_DIR
 from src.assistant.services.strategy_compiler_service import StrategyCompilerService
+from src.strategies.registry import StrategyRegistry
 
 router = APIRouter(tags=["strategy"])
 
@@ -64,6 +65,65 @@ def save_strategy(payload: dict):
         return {"ok": True, "filename": filename}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/plugins")
+def list_strategy_plugins():
+    """List all registered strategy plugins with metadata."""
+    registry = StrategyRegistry.get_instance()
+    plugins = registry.list_strategies()
+    return {"ok": True, "plugins": [p.to_dict() for p in plugins]}
+
+
+@router.get("/plugins/{name}/schema")
+def get_plugin_schema(name: str):
+    """Return JSON Schema for a plugin's parameters."""
+    registry = StrategyRegistry.get_instance()
+    plugin = registry.get(name)
+    if plugin is None:
+        raise HTTPException(status_code=404, detail=f"Plugin '{name}' not found")
+    return {"ok": True, "name": name, "schema": plugin.param_schema}
+
+
+@router.post("/plugins/{name}/validate")
+def validate_plugin_params(name: str, payload: dict):
+    """Validate parameters against a plugin's JSON Schema."""
+    registry = StrategyRegistry.get_instance()
+    plugin = registry.get(name)
+    if plugin is None:
+        raise HTTPException(status_code=404, detail=f"Plugin '{name}' not found")
+
+    schema = plugin.param_schema
+    properties = schema.get("properties", {})
+    required = set(schema.get("required", []))
+    errors: list[str] = []
+
+    # Check required fields
+    for field in required:
+        if field not in payload:
+            errors.append(f"Missing required parameter: '{field}'")
+
+    # Check types
+    TYPE_CHECKS = {
+        "integer": int,
+        "number": (int, float),
+        "string": str,
+        "boolean": bool,
+    }
+    for key, value in payload.items():
+        if key not in properties:
+            continue
+        expected_type = properties[key].get("type")
+        check = TYPE_CHECKS.get(expected_type)
+        if check and not isinstance(value, check):
+            errors.append(
+                f"Parameter '{key}' expected {expected_type}, got {type(value).__name__}"
+            )
+
+    if errors:
+        return {"ok": False, "errors": errors}
+
+    return {"ok": True, "message": "All parameters valid", "params": payload}
 
 
 @router.get("/schema/{filename}")

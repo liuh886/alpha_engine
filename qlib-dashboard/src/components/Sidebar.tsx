@@ -11,6 +11,7 @@ import {
   LogOut,
   FlaskConical,
   Layers,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalStore } from '../store/globalStore';
@@ -23,6 +24,7 @@ export function Sidebar() {
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/backtest', label: 'Backtest', icon: FlaskConical },
     { path: '/models', label: 'Models', icon: Cpu },
+    { path: '/factors', label: 'Factors', icon: BarChart3 },
     { path: '/compare', label: 'Compare', icon: Layers },
     { path: '/data', label: 'Data', icon: Database },
     { path: '/methodology', label: 'Methodology', icon: BookOpen },

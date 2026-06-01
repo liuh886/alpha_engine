@@ -1,4 +1,4 @@
-.PHONY: doctor data train train-cn train-us backtest breakfast report dashboard all help test typecheck lint clean dev
+.PHONY: doctor data train train-cn train-us train-cn-xgb train-us-xgb walk-forward-cn walk-forward-us backtest breakfast report dashboard all help test typecheck lint clean dev
 
 PYTHON = PYTHONPATH=. python3
 
@@ -16,9 +16,13 @@ help:
 	@echo "  make clean    Remove generated files"
 	@echo ""
 	@echo "Advanced/Internal Targets:"
-	@echo "  make train-cn  Train LGBM model for CN market"
-	@echo "  make train-us  Train LGBM model for US market"
-	@echo "  make report    Generate latest backtest reports (legacy)"
+	@echo "  make train-cn      Train LGBM model for CN market"
+	@echo "  make train-us      Train LGBM model for US market"
+	@echo "  make train-cn-xgb  Train XGBoost model for CN market"
+	@echo "  make train-us-xgb  Train XGBoost model for US market"
+	@echo "  make walk-forward-cn  Walk-forward validation for CN market"
+	@echo "  make walk-forward-us  Walk-forward validation for US market"
+	@echo "  make report        Generate latest backtest reports (legacy)"
 
 doctor:
 	$(PYTHON) scripts/doctor.py
@@ -31,6 +35,18 @@ train-cn:
 
 train-us:
 	$(PYTHON) -m src.orchestrator run --market us --tag LGBM_AUTO --profile configs/strategy_profile_us.json
+
+train-cn-xgb:
+	$(PYTHON) -m src.orchestrator run --market cn --model_type xgb --tag XGB_AUTO --profile configs/strategy_profile_cn.json
+
+train-us-xgb:
+	$(PYTHON) -m src.orchestrator run --market us --model_type xgb --tag XGB_AUTO --profile configs/strategy_profile_us.json
+
+walk-forward-cn:
+	$(PYTHON) -m src.orchestrator run --market cn --model_type lgbm --tag WF_LGBM --profile configs/strategy_profile_cn.json --walk_forward
+
+walk-forward-us:
+	$(PYTHON) -m src.orchestrator run --market us --model_type lgbm --tag WF_LGBM --profile configs/strategy_profile_us.json --walk_forward
 
 report:
 	$(PYTHON) -m src.reporting.generate --market all

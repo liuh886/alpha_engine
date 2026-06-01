@@ -1,3 +1,6 @@
+# DEPRECATED: Use src.agents.research_assistant.ResearchAssistant instead.
+# This module is kept for backward compatibility only.
+
 from __future__ import annotations
 
 import time

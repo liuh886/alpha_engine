@@ -56,7 +56,6 @@ export function DataHeatmap({ data, feature }: DataHeatmapProps) {
   }, [containerWidth, data.dates.length]);
 
   const canvasW = LABEL_W + data.dates.length * cellW;
-  const needsHScroll = canvasW > containerWidth;
 
   // Filter symbols by search
   const filteredIndices = useMemo(() => {

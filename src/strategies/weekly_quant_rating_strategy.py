@@ -34,6 +34,8 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
         lookback_days: int = 20,
         min_dollar_vol_20d: float = 10_000_000,
         price_cap: float = 10_000,
+        use_risk_manager: bool = False,
+        risk_config: dict | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -44,6 +46,19 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
         self.min_dollar_vol_20d = min_dollar_vol_20d
         self.price_cap = price_cap
         self._streaks: dict[str, int] = {}
+
+        # Optional risk management (backward-compatible: disabled by default)
+        self.use_risk_manager = use_risk_manager
+        self._risk_manager = None
+        if use_risk_manager:
+            from src.guardrails.position_risk import (
+                PositionRiskConfig,
+                PositionRiskManager,
+            )
+
+            cfg = PositionRiskConfig(**(risk_config or {}))
+            self._risk_manager = PositionRiskManager(cfg)
+            logger.info("Risk manager enabled", config=cfg)
 
     def _get_current_date(self, trade_start_time) -> date:
         return pd.Timestamp(trade_start_time).date()
@@ -223,7 +238,42 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                 orders.append(sell_order)
 
         cash = float(self.trade_position.get_cash())
-        value_per = cash * float(self.risk_degree) / len(target)
+
+        # Compute per-code target value (equal-weight or vol-adjusted)
+        value_map: dict[str, float] = {}
+        if target:
+            if self._risk_manager is not None:
+                try:
+                    vol_fields = [f"Std($close / Ref($close, 1) - 1, 20)"]
+                    vol_df = D.features(
+                        target, vol_fields,
+                        start_time=pred_start_time, end_time=pred_start_time,
+                    )
+                    if not vol_df.empty:
+                        vol_df.columns = ["vol_20d"]
+                        volatilities = vol_df.groupby(level="instrument")["vol_20d"].last()
+                        scores = pred_score.reindex(target).dropna()
+                        weights = self._risk_manager.compute_vol_adjusted_weights(
+                            target, scores, volatilities,
+                        )
+                        alloc = cash * float(self.risk_degree)
+                        for code in target:
+                            w = float(weights.get(code, 0.0))
+                            value_map[code] = alloc * w if w > 0 else alloc / len(target)
+                        logger.info("Vol-adjusted sizing applied", n=len(target))
+                    else:
+                        raise ValueError("Empty vol data")
+                except Exception as exc:
+                    logger.warning(
+                        "Vol-adjusted sizing failed; falling back to equal-weight",
+                        error=str(exc),
+                    )
+                    value_map = {}
+
+            # Fallback: equal-weight
+            if not value_map:
+                eq_value = cash * float(self.risk_degree) / len(target)
+                value_map = {code: eq_value for code in target}
 
         for code in target:
             if not self.trade_exchange.is_stock_tradable(
@@ -238,7 +288,7 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
             )
             if price is None or np.isnan(price) or price <= 0:
                 continue
-            amount = value_per / float(price)
+            amount = value_map.get(code, 0) / float(price)
             factor = self.trade_exchange.get_factor(
                 stock_id=code, start_time=trade_start_time, end_time=trade_end_time
             )

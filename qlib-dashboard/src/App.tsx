@@ -9,6 +9,7 @@ import { ArenaPage } from './pages/ArenaPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ModelsPage } from './pages/ModelsPage';
 import { DataPage } from './pages/DataPage';
+import { FactorPage } from './pages/FactorPage';
 import { StockTerminal } from './pages/StockTerminal';
 import { AgentControlCenter } from './pages/AgentControlCenter';
 import { DocsPage } from './pages/DocsPage';
@@ -33,12 +34,13 @@ const VIEW_TITLES: Record<string, string> = {
   'compare': 'Compare',
   'reports': 'Reports',
   'data': 'Data Management',
+  'factors': 'Factor Analysis',
   'strategy': 'Strategy Spec',
   'methodology': 'Methodology',
   'docs': 'Docs',
 };
 
-function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, setSelectorOpen, consoleOpen, setConsoleOpen, refreshFromServer, startBacktestForSelectedMarket, backtestRunning, handleDeleteModel, loading }: {
+function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, setSelectorOpen, consoleOpen, setConsoleOpen, startBacktestForSelectedMarket, backtestRunning, handleDeleteModel, loading }: {
   models: ModelData[];
   selectedModelId: string;
   setSelectedModelId: (id: string) => void;
@@ -46,13 +48,11 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
   setSelectorOpen: (open: boolean) => void;
   consoleOpen: boolean;
   setConsoleOpen: (open: boolean) => void;
-  refreshFromServer: (opts?: { selectLatest?: boolean }) => Promise<boolean>;
   startBacktestForSelectedMarket: () => Promise<void>;
   backtestRunning: boolean;
   handleDeleteModel: (id: string) => Promise<void>;
   loading: boolean;
 }) {
-  const navigate = useNavigate();
   const location = useLocation();
   const { latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, dataGeneratedAt, apiError, theme, setTheme } = useGlobalStore();
 
@@ -67,10 +67,6 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
-
-  const handleArenaCompare = (runId: string) => {
-    navigate('/compare', { state: { preselectedIds: [runId] } });
-  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -352,7 +348,6 @@ function App() {
             setSelectorOpen={setSelectorOpen}
             consoleOpen={consoleOpen}
             setConsoleOpen={setConsoleOpen}
-            refreshFromServer={refreshFromServer}
             startBacktestForSelectedMarket={startBacktestForSelectedMarket}
             backtestRunning={backtestRunning}
             handleDeleteModel={handleDeleteModel}
@@ -369,6 +364,7 @@ function App() {
           <Route path="compare" element={<CompareRoute models={models} />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="data" element={<DataPage />} />
+          <Route path="factors" element={<FactorPage />} />
           <Route path="strategy" element={<StrategyPage />} />
           <Route path="methodology" element={<MethodologyPage />} />
           <Route path="docs" element={<DocsPage />} />
