@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ModelData } from '@/lib/data-parser';
 import { ComparePage } from '@/pages/ComparePage';
 import { artifactUrl } from '@/lib/artifacts';
+import { apiFetch } from "@/lib/api";
 
 interface AgentLog {
     id: string;
@@ -29,7 +30,7 @@ interface ToolResult {
     ok: boolean;
     reply?: string;
     error?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 const quickActions = [
@@ -48,7 +49,7 @@ export function AgentControlCenter({ models }: { models: ModelData[] }) {
     useEffect(() => {
         const loadThoughtStream = async () => {
             try {
-                const tsResp = await fetch(artifactUrl.thoughtStream, { cache: "no-store" });
+                const tsResp = await apiFetch(artifactUrl.thoughtStream, { cache: "no-store" });
                 if (tsResp.ok) {
                     const tsJson = await tsResp.json();
                     setThoughtStream(tsJson.reverse());
@@ -62,17 +63,17 @@ export function AgentControlCenter({ models }: { models: ModelData[] }) {
         return () => clearInterval(interval);
     }, []);
 
-    const callTool = async (endpoint: string, method: string, body: any, actionLabel: string) => {
+    const callTool = async (endpoint: string, method: string, body: Record<string, unknown> | null, actionLabel: string) => {
         setLoading(actionLabel);
         try {
             const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json' } };
             if (body && method !== 'GET') opts.body = JSON.stringify(body);
-            const resp = await fetch(endpoint, opts);
+            const resp = await apiFetch(endpoint, opts);
             const data: ToolResult = await resp.json();
             const reply = data.reply || JSON.stringify(data, null, 2);
             setChatHistory(prev => [...prev, { role: 'user', text: `[${actionLabel}]` }, { role: 'assistant', text: reply }]);
-        } catch (e: any) {
-            setChatHistory(prev => [...prev, { role: 'user', text: `[${actionLabel}]` }, { role: 'assistant', text: `Error: ${e.message}` }]);
+        } catch (e: unknown) {
+            setChatHistory(prev => [...prev, { role: 'user', text: `[${actionLabel}]` }, { role: 'assistant', text: `Error: ${e instanceof Error ? e.message : String(e)}` }]);
         } finally {
             setLoading(null);
         }
@@ -89,15 +90,15 @@ export function AgentControlCenter({ models }: { models: ModelData[] }) {
         setChatHistory(prev => [...prev, { role: 'user', text: msg }]);
         setLoading('chat');
         try {
-            const resp = await fetch('/api/tools/chat', {
+            const resp = await apiFetch('/api/tools/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: msg }),
             });
             const data = await resp.json();
             setChatHistory(prev => [...prev, { role: 'assistant', text: data.reply || JSON.stringify(data, null, 2) }]);
-        } catch (e: any) {
-            setChatHistory(prev => [...prev, { role: 'assistant', text: `Error: ${e.message}` }]);
+        } catch (e: unknown) {
+            setChatHistory(prev => [...prev, { role: 'assistant', text: `Error: ${e instanceof Error ? e.message : String(e)}` }]);
         } finally {
             setLoading(null);
         }

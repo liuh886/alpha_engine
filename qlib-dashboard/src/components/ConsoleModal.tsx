@@ -16,6 +16,8 @@ type Job = {
   status: string;
   created_at: number;
   cmd?: string;
+  commands?: string;
+  name?: string;
   stdout?: string;
   error?: string;
 };
@@ -217,7 +219,7 @@ export function ConsoleModal({ isOpen, onClose, warnings }: ConsoleModalProps) {
                     <div className="flex items-start justify-between gap-6">
                       <div className="space-y-1.5 min-w-0">
                         <div className="flex items-center gap-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-left">{((j as any).name || j.type || 'Unknown Task').replace('_', ' ')}</span>
+                          <span className="text-xs font-black uppercase tracking-widest text-left">{(j.name || j.type || 'Unknown Task').replace('_', ' ')}</span>
                           <Badge variant={j.status === 'running' ? 'default' : j.status === 'succeeded' ? 'outline' : 'destructive'} className="text-[8px] font-black h-4 px-2 uppercase border-none">
                             {j.status}
                           </Badge>
@@ -229,10 +231,10 @@ export function ConsoleModal({ isOpen, onClose, warnings }: ConsoleModalProps) {
                       </div>
                     </div>
 
-                    {(j.cmd || (j as any).commands) && (
+                    {(j.cmd || j.commands) && (
                       <div className="mt-4 p-4 bg-slate-950 rounded-xl text-[10px] font-mono text-emerald-400/80 overflow-x-auto whitespace-nowrap border border-white/5 shadow-inner">
                         <span className="text-gray-600 select-none mr-3 font-black">bash:~$</span>
-                        {j.cmd || (j as any).commands}
+                        {j.cmd || j.commands}
                       </div>
                     )}
 

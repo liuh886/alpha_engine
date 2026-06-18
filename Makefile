@@ -1,4 +1,4 @@
-.PHONY: doctor data train train-cn train-us train-cn-xgb train-us-xgb walk-forward-cn walk-forward-us backtest breakfast report dashboard all help test typecheck lint clean dev
+.PHONY: doctor data train train-cn train-us train-cn-xgb train-us-xgb walk-forward-cn walk-forward-us backtest breakfast report dashboard all help test typecheck lint clean dev weekly-research check-decay weekly-report
 
 PYTHON = PYTHONPATH=. python3
 
@@ -14,6 +14,9 @@ help:
 	@echo "  make test     Run pytest test suite"
 	@echo "  make typecheck Run mypy type checking"
 	@echo "  make clean    Remove generated files"
+	@echo "  make weekly-research  Run full weekly research cycle"
+	@echo "  make check-decay      Check Active factors for alpha decay"
+	@echo "  make weekly-report    Generate weekly research report"
 	@echo ""
 	@echo "Advanced/Internal Targets:"
 	@echo "  make train-cn      Train LGBM model for CN market"
@@ -78,6 +81,15 @@ test:
 typecheck:
 	@echo "Running mypy..."
 	@mypy src/
+
+weekly-research:
+	$(PYTHON) scripts/weekly_research.py
+
+check-decay:
+	$(PYTHON) scripts/check_factor_decay.py
+
+weekly-report:
+	$(PYTHON) scripts/generate_weekly_report.py
 
 clean:
 	python -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').rglob('__pycache__')]"

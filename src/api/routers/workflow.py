@@ -18,6 +18,12 @@ class WorkflowRequest(BaseModel):
     details: dict[str, Any] | None = None
 
 
+class ResearchCycleRequest(BaseModel):
+    market: str = "us"
+    goal: str = "Find alpha factors"
+    auto_promote: bool = True
+
+
 @router.post("/train")
 def run_train_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks):
     gov = GovernanceService(PROJECT_ROOT)
@@ -69,6 +75,45 @@ def run_backtest_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks)
         details=payload.details,
     )
     return {"ok": True, "message": "Backtest workflow started in background"}
+
+
+@router.post("/research-cycle")
+def run_research_cycle_wf(
+    payload: ResearchCycleRequest, background_tasks: BackgroundTasks
+):
+    """Trigger a full research cycle in the background.
+
+    Runs: scan -> compile -> backtest -> attribute -> promote.
+    """
+    gov = GovernanceService(PROJECT_ROOT)
+    task_slug = get_task_slug("research-cycle", payload.market)
+
+    # Mutex check
+    active = [
+        w
+        for w in gov.query_workflows(status="RUNNING")
+        if w["market"] == str(payload.market).upper() and "Research Cycle" in str(w["name"])
+    ]
+    if active:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Research cycle already running: {active[0]['workflow_id']}",
+        )
+
+    def _run():
+        from src.agents.research_loop import run_research_cycle as _run_cycle
+
+        try:
+            _run_cycle(
+                market=payload.market,
+                goal_description=payload.goal,
+                auto_promote=payload.auto_promote,
+            )
+        except Exception:
+            pass  # errors are logged internally in the cycle
+
+    background_tasks.add_task(_run)
+    return {"ok": True, "message": "Research cycle started in background"}
 
 
 @router.get("/status")

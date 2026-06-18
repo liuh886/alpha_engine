@@ -42,14 +42,14 @@ export function AlphaDecomposition({ runId }: { runId: string }) {
   if (loading) return <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Computing...</CardContent></Card>;
   if (!data) return null;
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { name: string; description: string; value: number } }> }) => {
     if (!active || !payload?.length) return null;
     const d = payload[0].payload;
     return (
       <div className="bg-background/95 border shadow-lg rounded p-2.5 text-[10px] min-w-[160px]">
         <p className="font-semibold mb-1">{d.name}</p>
         <p className="text-muted-foreground">{d.description}</p>
-        <p className="font-mono mt-1">{d.value >= 0 ? "+" : ""}{d.value.toFixed(2)}%</p>
+        <p className="font-mono mt-1">{d.value >= 0 ? "+" : ""}{(d.value ?? 0).toFixed(2)}%</p>
       </div>
     );
   };
@@ -60,8 +60,8 @@ export function AlphaDecomposition({ runId }: { runId: string }) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold">Alpha Decomposition</CardTitle>
           <div className="flex gap-3 text-xs text-muted-foreground">
-            <span>Total: <span className="font-mono text-foreground">{data.total_return.toFixed(2)}%</span></span>
-            <span>Market: <span className="font-mono text-foreground">{data.market_return.toFixed(2)}%</span></span>
+            <span>Total: <span className="font-mono text-foreground">{(data.total_return ?? 0).toFixed(2)}%</span></span>
+            <span>Market: <span className="font-mono text-foreground">{(data.market_return ?? 0).toFixed(2)}%</span></span>
           </div>
         </div>
       </CardHeader>
@@ -91,7 +91,7 @@ export function AlphaDecomposition({ runId }: { runId: string }) {
                 <span className="text-muted-foreground">— {c.description}</span>
               </div>
               <span className={cn("font-mono", c.value >= 0 ? "text-green-500" : "text-red-500")}>
-                {c.value >= 0 ? "+" : ""}{c.value.toFixed(2)}%
+                {c.value >= 0 ? "+" : ""}{(c.value ?? 0).toFixed(2)}%
               </span>
             </div>
           ))}

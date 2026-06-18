@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import { apiFetch } from "@/lib/api";
 
 type DocResponse = {
   ok: boolean;
@@ -27,7 +28,8 @@ function slugify(text: string): string {
 function nodeText(children: ReactNode): string {
   if (typeof children === "string" || typeof children === "number") return String(children);
   if (Array.isArray(children)) return children.map((x) => nodeText(x)).join("");
-  if (children && typeof children === "object" && "props" in (children as any)) {
+  if (children && typeof children === "object" && children !== null && "props" in children) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return nodeText((children as any).props?.children);
   }
   return "";
@@ -98,7 +100,7 @@ export function DocsPage() {
     setLoading(true);
     setError("");
     try {
-      const resp = await fetch("/api/system/docs/main", { cache: "no-store" });
+      const resp = await apiFetch("/api/system/docs/main", { cache: "no-store" });
       if (!resp.ok) {
         setError(`Failed to load documentation: HTTP ${resp.status}`);
         return;

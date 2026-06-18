@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
+import type { Position, ReportRow } from "@/lib/types";
 
-export function AttributionInterpretation({ positions, report }: { positions: any[], report?: any[] }) {
+export function AttributionInterpretation({ positions, report }: { positions: Position[], report?: ReportRow[] }) {
   const labelByInstrument = useMemo(() => {
     const map = new Map<string, string>();
     for (const row of positions) {
@@ -27,7 +28,7 @@ export function AttributionInterpretation({ positions, report }: { positions: an
 
   const contributionRows = useMemo(() => {
     if (!positions.length) return [];
-    const instrumentData: Record<string, any[]> = {};
+    const instrumentData: Record<string, Position[]> = {};
     positions.forEach(p => {
         if (!instrumentData[p.instrument]) instrumentData[p.instrument] = [];
         instrumentData[p.instrument].push(p);
@@ -99,7 +100,7 @@ export function AttributionInterpretation({ positions, report }: { positions: an
                 {topContributors.map((c, i) => (
                   <li key={i} className="flex justify-between items-center text-xs">
                     <span className="font-medium truncate max-w-[140px] text-muted-foreground">{c.name}</span>
-                    <span className="font-mono text-green-500">+{c.value.toFixed(0)}</span>
+                    <span className="font-mono text-green-500">+{(c.value ?? 0).toFixed(0)}</span>
                   </li>
                 ))}
               </ul>
@@ -113,7 +114,7 @@ export function AttributionInterpretation({ positions, report }: { positions: an
                 {topLosers.map((c, i) => (
                   <li key={i} className="flex justify-between items-center text-xs">
                     <span className="font-medium truncate max-w-[140px] text-muted-foreground">{c.name}</span>
-                    <span className="font-mono text-red-500">{c.value.toFixed(0)}</span>
+                    <span className="font-mono text-red-500">{(c.value ?? 0).toFixed(0)}</span>
                   </li>
                 ))}
               </ul>

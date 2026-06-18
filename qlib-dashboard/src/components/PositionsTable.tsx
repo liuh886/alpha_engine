@@ -1,11 +1,12 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ComposedChart, Cell, CartesianGrid } from 'recharts';
 import { format, parseISO } from 'date-fns';
-import { cn } from "@/lib/utils";
 import { useVirtualizer } from '@tanstack/react-virtual';
+import type { Position, ReportRow } from '@/lib/types';
 
-export function PositionsTable({ positions, report }: { positions: any[], report?: any[] }) {
+export function PositionsTable({ positions, report }: { positions: Position[], report?: ReportRow[] }) {
   // Get unique dates from positions
   const dates = useMemo(() => Array.from(new Set(positions.map(p => p.date))).sort(), [positions]);
   const [selectedDateIdx, setSelectedDateIdx] = useState(dates.length - 1);
@@ -34,9 +35,10 @@ export function PositionsTable({ positions, report }: { positions: any[], report
     overscan: 5,
   });
 
-  const handleBarClick = (data: any) => {
-    if (!data) return;
-    const date = data.date;
+  const handleBarClick = (data: unknown) => {
+    if (!data || typeof data !== 'object') return;
+    const date = (data as Record<string, unknown>).date;
+    if (typeof date !== 'string') return;
     const idx = dates.indexOf(date);
     if (idx !== -1) {
       setSelectedDateIdx(idx);
@@ -158,17 +160,5 @@ export function PositionsTable({ positions, report }: { positions: any[], report
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function Badge({ children, variant, className }: any) {
-  return (
-    <span className={cn(
-      "px-2 py-0.5 rounded text-white",
-      variant === 'secondary' ? "bg-muted text-muted-foreground" : "bg-primary",
-      className
-    )}>
-      {children}
-    </span>
   );
 }

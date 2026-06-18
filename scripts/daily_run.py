@@ -9,7 +9,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 from scripts.build_dashboard_db import build_db
-from src.agents.governance.governance_agent import GovernanceAgent
+from src.agents.research_assistant import ResearchAssistant
 from src.agents.tools.data_tools import run_data_update
 from src.agents.tools.orchestrator_tools import run_orchestrator
 from src.governance.service import GovernanceService
@@ -28,7 +28,7 @@ def main():
 
     args = parser.parse_args()
     gov = GovernanceService(PROJECT_ROOT)
-    agent = GovernanceAgent()
+    agent = ResearchAssistant()
     task_slug = _task_slug(args.market)
 
     print(f"=== Starting Daily Routine for {args.market.upper()} ===")
@@ -132,9 +132,6 @@ def main():
         gov.log_reliability_event(event, task_slug=task_slug, source="daily_run")
         return 1
 
-
-if __name__ == "__main__":
-    sys.exit(main())
 
 if __name__ == "__main__":
     sys.exit(main())

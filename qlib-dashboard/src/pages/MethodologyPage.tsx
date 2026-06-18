@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, AlertCircle, FileCode2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 type DocResponse = {
   ok: boolean;
@@ -32,7 +33,7 @@ export function MethodologyPage() {
     setLoading(true);
     setError("");
     try {
-      const resp = await fetch("/api/system/docs/methodology", { cache: "no-store" });
+      const resp = await apiFetch("/api/system/docs/methodology", { cache: "no-store" });
       if (!resp.ok) {
         setError(`Failed to load: HTTP ${resp.status}`);
         return;

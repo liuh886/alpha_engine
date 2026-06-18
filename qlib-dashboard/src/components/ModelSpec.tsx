@@ -1,21 +1,26 @@
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import type { ModelParams } from "@/lib/types";
 
-export function ModelSpec({ params }: { params: Record<string, any> }) {
+export function ModelSpec({ params }: { params: ModelParams }) {
   const [isOpen, setIsOpen] = useState(false);
-  const meta = params?.meta || {};
-  const strategyProfile = meta.strategy_profile || {};
-  const workflowSnapshot = meta.workflow_snapshot || {};
-  const label = meta.label;
-  const features = meta.features || [];
-  const dataRange = meta.data_range || {};
-  const segments = meta.segments || {};
-  const modelClass = meta.model_class || params.model_class || params["model.class"];
-  const modelKwargs = meta.model_kwargs || {};
-  const modelProfile = strategyProfile.model || {};
-  const featurePack = modelProfile.feature_pack || meta.feature_pack;
-  const extraFeatures = modelProfile.extra_features || meta.extra_features || [];
+  const meta = (params?.meta || {}) as Record<string, unknown>;
+  const strategyProfile = (meta.strategy_profile || {}) as Record<string, unknown>;
+  const spStrategy = (strategyProfile.strategy || {}) as Record<string, unknown>;
+  const workflowSnapshot = (meta.workflow_snapshot || {}) as Record<string, unknown>;
+  const wsPortConfig = (workflowSnapshot.port_analysis_config || {}) as Record<string, unknown>;
+  const wsStrategy = (wsPortConfig.strategy || {}) as Record<string, unknown>;
+  const wsBacktest = (wsPortConfig.backtest || {}) as Record<string, unknown>;
+  const label = meta.label as string | string[] | undefined;
+  const features = (meta.features || []) as string[];
+  const dataRange = (meta.data_range || {}) as Record<string, string>;
+  const segments = (meta.segments || {}) as Record<string, string[]>;
+  const modelClass = (meta.model_class || params.model_class || params["model.class"]) as string | undefined;
+  const modelKwargs = (meta.model_kwargs || {}) as Record<string, unknown>;
+  const modelProfile = (strategyProfile.model || {}) as Record<string, unknown>;
+  const featurePack = (modelProfile.feature_pack || meta.feature_pack) as string | undefined;
+  const extraFeatures = (modelProfile.extra_features || meta.extra_features || []) as string[];
 
   const featurePreview = Array.isArray(features) ? features.slice(0, 10) : [];
   const featureRemainder =
@@ -131,43 +136,43 @@ export function ModelSpec({ params }: { params: Record<string, any> }) {
           </div>
 
           <div className="grid gap-2 text-xs">
-            {strategyProfile?.strategy && (
+            {spStrategy && Object.keys(spStrategy).length > 0 && (
               <div>
                 <span className="font-medium">Strategy:</span>{" "}
-                {strategyProfile.strategy.buy_rule} | {strategyProfile.strategy.sell_rule}
+                {String(spStrategy.buy_rule || '')} | {String(spStrategy.sell_rule || '')}
               </div>
             )}
-            {strategyProfile?.strategy?.backtest_window && (
+            {spStrategy?.backtest_window != null && (
               <div>
                 <span className="font-medium">Backtest Window:</span>{" "}
-                {strategyProfile.strategy.backtest_window.join(" → ")}
+                {Array.isArray(spStrategy.backtest_window) ? (spStrategy.backtest_window as string[]).join(" → ") : String(spStrategy.backtest_window)}
               </div>
             )}
-            {strategyProfile?.strategy?.capital !== undefined && (
+            {spStrategy?.capital !== undefined && (
               <div>
                 <span className="font-medium">Capital:</span>{" "}
-                {strategyProfile.strategy.capital}
+                {String(spStrategy.capital)}
               </div>
             )}
-            {strategyProfile?.strategy?.costs_bps !== undefined && (
+            {spStrategy?.costs_bps !== undefined && (
               <div>
                 <span className="font-medium">Costs (bps):</span>{" "}
-                {strategyProfile.strategy.costs_bps}
+                {String(spStrategy.costs_bps)}
               </div>
             )}
-            {workflowSnapshot?.port_analysis_config?.strategy?.kwargs && (
+            {wsStrategy?.kwargs != null && (
               <div>
                 <span className="font-medium">Strategy Params:</span>{" "}
-                {Object.entries(workflowSnapshot.port_analysis_config.strategy.kwargs)
+                {Object.entries(wsStrategy.kwargs as Record<string, unknown>)
                   .map(([k, v]) => `${k}=${v}`)
                   .join(", ")}
               </div>
             )}
-            {workflowSnapshot?.port_analysis_config?.backtest && (
+            {wsBacktest && Object.keys(wsBacktest).length > 0 && (
               <div>
                 <span className="font-medium">Backtest (cfg):</span>{" "}
-                {workflowSnapshot.port_analysis_config.backtest.start_time} →{" "}
-                {workflowSnapshot.port_analysis_config.backtest.end_time}
+                {String(wsBacktest.start_time || '')} →{" "}
+                {String(wsBacktest.end_time || '')}
               </div>
             )}
           </div>

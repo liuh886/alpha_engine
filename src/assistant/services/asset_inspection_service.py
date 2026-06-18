@@ -35,8 +35,23 @@ class AssetInspectionService:
     @staticmethod
     def infer_market_symbol(symbol: str) -> tuple[str, str]:
         symbol = str(symbol or "").strip().upper()
+
+        # Explicit suffix
         if symbol.endswith(".SH") or symbol.endswith(".SZ"):
             return "cn", symbol.split(".")[0]
+
+        # Chinese A-share numeric codes (no suffix):
+        # 600xxx, 601xxx, 603xxx, 605xxx → Shanghai
+        # 000xxx, 001xxx, 002xxx, 003xxx → Shenzhen
+        # 300xxx, 301xxx → ChiNext (Shenzhen)
+        # 688xxx → STAR Market (Shanghai)
+        if symbol.isdigit() and len(symbol) == 6:
+            prefix = symbol[:3]
+            if prefix in ("600", "601", "603", "605", "688"):
+                return "cn", symbol
+            if prefix in ("000", "001", "002", "003", "300", "301"):
+                return "cn", symbol
+
         return "us", symbol
 
     @staticmethod
@@ -44,17 +59,29 @@ class AssetInspectionService:
         if df.empty:
             return []
 
+        import math
+
         symbol_df = df.xs(clean_symbol, level="instrument")
         rows = []
         for dt, row in symbol_df.iterrows():
+            o = float(row["$open"]) if not math.isnan(row["$open"]) else None
+            h = float(row["$high"]) if not math.isnan(row["$high"]) else None
+            l = float(row["$low"]) if not math.isnan(row["$low"]) else None
+            c = float(row["$close"]) if not math.isnan(row["$close"]) else None
+            v = float(row["$volume"]) if not math.isnan(row["$volume"]) else None
+
+            # Skip rows with NaN values (incomplete data)
+            if any(x is None for x in [o, h, l, c, v]):
+                continue
+
             rows.append(
                 {
                     "time": dt.strftime("%Y-%m-%d"),
-                    "open": float(row["$open"]),
-                    "high": float(row["$high"]),
-                    "low": float(row["$low"]),
-                    "close": float(row["$close"]),
-                    "value": float(row["$volume"]),
+                    "open": o,
+                    "high": h,
+                    "low": l,
+                    "close": c,
+                    "value": v,
                 }
             )
         return rows

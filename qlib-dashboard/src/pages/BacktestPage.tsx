@@ -1,15 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Play, Loader2, CheckCircle2, XCircle, Terminal, Sparkles } from "lucide-react";
+import { Play, Loader2, CheckCircle2, XCircle, Terminal, Sparkles, BarChart3, TrendingUp, TrendingDown, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OverviewCards } from "@/components/OverviewCards";
 import { PerformanceCharts } from "@/components/PerformanceCharts";
 import { PositionsTable } from "@/components/PositionsTable";
 import { parseQlibData, ModelData } from "@/lib/data-parser";
 import { artifactUrl } from "@/lib/artifacts";
+import { apiFetch } from "@/lib/api";
+import { formatNum, formatPct } from "@/lib/format";
+import { useGlobalStore } from "@/store/globalStore";
 
 type JobStatus = "idle" | "running" | "succeeded" | "failed";
 
@@ -26,11 +29,44 @@ export function BacktestPage() {
   const pollRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
+  // Stock ranking state
+  const { selectedModelId, selectedModelMarket } = useGlobalStore();
+  const [rankingData, setRankingData] = useState<Array<{
+    symbol: string;
+    weighted_score: number;
+    total_signals: number;
+    grade_details: Record<string, { occurrences: number; win_rate: number; mean_return: number; cumulative_return: number }>;
+  }>>([]);
+  const [rankingLoading, setRankingLoading] = useState(false);
+  const [sortBy, setSortBy] = useState("weighted_score");
+  const [sortGrade, setSortGrade] = useState("AAA");
+  const [rankingMarket, setRankingMarket] = useState("cn");
+
   // NL Strategy Compiler
   const [nlText, setNlText] = useState("");
   const [nlCompiling, setNlCompiling] = useState(false);
-  const [nlResult, setNlResult] = useState<any>(null);
+  const [nlResult, setNlResult] = useState<{ market?: string; yaml_path?: string; summary?: Record<string, unknown> } | null>(null);
   const [nlError, setNlError] = useState<string | null>(null);
+
+  // Fetch stock ranking
+  const fetchRanking = useCallback(async () => {
+    setRankingLoading(true);
+    try {
+      const runIdParam = selectedModelId ? `&run_id=${encodeURIComponent(selectedModelId)}` : "";
+      const resp = await apiFetch(
+        `/api/stock-analysis/ranking?market=${rankingMarket}&step_size=10&forward_days=10&sort_by=${sortBy}&sort_grade=${sortGrade}&limit=50${runIdParam}`,
+        { cache: "no-store" },
+      );
+      const json = await resp.json().catch(() => ({}));
+      if (resp.ok && json.ok) {
+        setRankingData(json.ranking || []);
+      }
+    } catch {
+      setRankingData([]);
+    } finally {
+      setRankingLoading(false);
+    }
+  }, [rankingMarket, sortBy, sortGrade, selectedModelId]);
 
   const compileFromNL = async () => {
     if (!nlText.trim()) return;
@@ -38,7 +74,7 @@ export function BacktestPage() {
     setNlError(null);
     setNlResult(null);
     try {
-      const resp = await fetch("/api/strategy/compile", {
+      const resp = await apiFetch("/api/strategy/compile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: nlText, market }),
@@ -49,8 +85,8 @@ export function BacktestPage() {
       }
       const json = await resp.json();
       setNlResult(json);
-    } catch (e: any) {
-      setNlError(e.message);
+    } catch (e: unknown) {
+      setNlError(e instanceof Error ? e.message : String(e));
     } finally {
       setNlCompiling(false);
     }
@@ -79,7 +115,7 @@ export function BacktestPage() {
     setJobId(null);
 
     try {
-      const resp = await fetch("/api/workflow/train", {
+      const resp = await apiFetch("/api/workflow/train", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ market, model_type: modelType, tag: tag || undefined }),
@@ -90,9 +126,9 @@ export function BacktestPage() {
       }
       // Start polling for the job
       findAndWatchJob();
-    } catch (e: any) {
+    } catch (e: unknown) {
       setJobStatus("failed");
-      setJobError(e.message);
+      setJobError(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -105,7 +141,7 @@ export function BacktestPage() {
       try {
         if (!foundJobId) {
           // Look for a running job
-          const resp = await fetch("/api/jobs?status=running&limit=1", { cache: "no-store" });
+          const resp = await apiFetch("/api/jobs?status=running&limit=1", { cache: "no-store" });
           if (!resp.ok) return;
           const json = await resp.json();
           const jobs = json.jobs || [];
@@ -117,7 +153,7 @@ export function BacktestPage() {
 
         if (foundJobId) {
           // Check specific job status
-          const jobResp = await fetch(`/api/jobs/${encodeURIComponent(foundJobId)}`, { cache: "no-store" });
+          const jobResp = await apiFetch(`/api/jobs/${encodeURIComponent(foundJobId)}`, { cache: "no-store" });
           if (!jobResp.ok) return;
           const jobJson = await jobResp.json();
           const status = jobJson?.job?.status || "";
@@ -180,7 +216,7 @@ export function BacktestPage() {
 
   const loadResults = async () => {
     try {
-      const resp = await fetch(artifactUrl.dashboardDb, { cache: "no-store" });
+      const resp = await apiFetch(artifactUrl.dashboardDb, { cache: "no-store" });
       if (!resp.ok) return;
       const json = await resp.json();
       const models = parseQlibData(json);
@@ -249,12 +285,12 @@ export function BacktestPage() {
                 <div className="font-semibold text-sm mb-2">Generated Strategy Profile</div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   <div><span className="text-muted-foreground">Market:</span> <span className="font-mono uppercase">{nlResult.market}</span></div>
-                  <div><span className="text-muted-foreground">Rebalance:</span> <span className="font-mono">{nlResult.summary?.rebalance}</span></div>
-                  <div><span className="text-muted-foreground">TopK:</span> <span className="font-mono">{nlResult.summary?.topk}</span></div>
-                  <div><span className="text-muted-foreground">Sell MA:</span> <span className="font-mono">{nlResult.summary?.sell_ma}</span></div>
-                  <div><span className="text-muted-foreground">Min Hold:</span> <span className="font-mono">{nlResult.summary?.min_hold_days} days</span></div>
-                  <div><span className="text-muted-foreground">Buy Rule:</span> <span className="font-mono">{nlResult.summary?.buy_rule}</span></div>
-                  <div><span className="text-muted-foreground">Sell Rule:</span> <span className="font-mono">{nlResult.summary?.sell_rule}</span></div>
+                  <div><span className="text-muted-foreground">Rebalance:</span> <span className="font-mono">{String(nlResult.summary?.rebalance ?? '')}</span></div>
+                  <div><span className="text-muted-foreground">TopK:</span> <span className="font-mono">{String(nlResult.summary?.topk ?? '')}</span></div>
+                  <div><span className="text-muted-foreground">Sell MA:</span> <span className="font-mono">{String(nlResult.summary?.sell_ma ?? '')}</span></div>
+                  <div><span className="text-muted-foreground">Min Hold:</span> <span className="font-mono">{String(nlResult.summary?.min_hold_days ?? '')} days</span></div>
+                  <div><span className="text-muted-foreground">Buy Rule:</span> <span className="font-mono">{String(nlResult.summary?.buy_rule ?? '')}</span></div>
+                  <div><span className="text-muted-foreground">Sell Rule:</span> <span className="font-mono">{String(nlResult.summary?.sell_rule ?? '')}</span></div>
                 </div>
                 <div className="pt-2 text-muted-foreground">
                   <span className="font-mono text-[10px]">YAML: {nlResult.yaml_path}</span>
@@ -405,6 +441,122 @@ export function BacktestPage() {
           </div>
         </div>
       )}
+
+      {/* Stock Ranking Section */}
+      <Card>
+        <CardHeader className="pb-3 border-b">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" /> Stock Ranking (Model Effectiveness)
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {/* Market selector */}
+              <select
+                value={rankingMarket}
+                onChange={(e) => setRankingMarket(e.target.value)}
+                className="h-7 px-2 text-xs border rounded bg-background"
+              >
+                <option value="cn">CN</option>
+                <option value="us">US</option>
+              </select>
+              {/* Sort by selector */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="h-7 px-2 text-xs border rounded bg-background"
+              >
+                <option value="weighted_score">Weighted Score</option>
+                <option value="win_rate">Win Rate</option>
+                <option value="mean_return">Mean Return</option>
+                <option value="cumulative_return">Cumulative Return</option>
+              </select>
+              {/* Grade selector (for grade-specific sorting) */}
+              {sortBy !== "weighted_score" && (
+                <select
+                  value={sortGrade}
+                  onChange={(e) => setSortGrade(e.target.value)}
+                  className="h-7 px-2 text-xs border rounded bg-background"
+                >
+                  {["AAA", "AA", "A", "V", "VV", "VVV"].map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              )}
+              <Button
+                onClick={fetchRanking}
+                disabled={rankingLoading}
+                size="sm"
+                className="h-7 gap-1.5 px-3 text-xs"
+              >
+                {rankingLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <BarChart3 className="h-3 w-3" />}
+                Rank
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {rankingData.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-muted/5">
+                    <th className="text-left py-2 px-2 font-bold text-muted-foreground">#</th>
+                    <th className="text-left py-2 px-2 font-bold text-muted-foreground">Symbol</th>
+                    <th className="text-right py-2 px-2 font-bold text-muted-foreground">Score</th>
+                    <th className="text-right py-2 px-2 font-bold text-muted-foreground">Signals</th>
+                    <th className="text-center py-2 px-2 font-bold text-muted-foreground" colSpan={3}>AAA (Buy)</th>
+                    <th className="text-center py-2 px-2 font-bold text-muted-foreground" colSpan={3}>VVV (Sell)</th>
+                  </tr>
+                  <tr className="border-b bg-muted/5">
+                    <th></th><th></th><th></th><th></th>
+                    <th className="text-right py-1 px-2 text-[10px] text-muted-foreground">WR</th>
+                    <th className="text-right py-1 px-2 text-[10px] text-muted-foreground">Avg</th>
+                    <th className="text-right py-1 px-2 text-[10px] text-muted-foreground">Cum</th>
+                    <th className="text-right py-1 px-2 text-[10px] text-muted-foreground">WR</th>
+                    <th className="text-right py-1 px-2 text-[10px] text-muted-foreground">Avg</th>
+                    <th className="text-right py-1 px-2 text-[10px] text-muted-foreground">Cum</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rankingData.map((item, idx) => {
+                    const aaa = item.grade_details?.AAA || { occurrences: 0, win_rate: 0, mean_return: 0, cumulative_return: 0 };
+                    const vvv = item.grade_details?.VVV || { occurrences: 0, win_rate: 0, mean_return: 0, cumulative_return: 0 };
+                    return (
+                      <tr
+                        key={item.symbol}
+                        className="border-b border-dashed hover:bg-muted/5 cursor-pointer"
+                        onClick={() => window.location.hash = `#/terminal`}
+                      >
+                        <td className="py-2 px-2 text-muted-foreground">{idx + 1}</td>
+                        <td className="py-2 px-2 font-bold">{item.symbol}</td>
+                        <td className={cn(
+                          "py-2 px-2 text-right font-mono font-bold",
+                          item.weighted_score > 0 ? "text-green-400" : item.weighted_score < 0 ? "text-red-400" : "text-muted-foreground",
+                        )}>
+                          {item.weighted_score > 0 ? "+" : ""}{(item.weighted_score * 100).toFixed(2)}
+                        </td>
+                        <td className="py-2 px-2 text-right text-muted-foreground">{item.total_signals}</td>
+                        <td className="py-2 px-2 text-right font-mono">{aaa.win_rate > 0 ? formatPct(aaa.win_rate, 0) : "-"}</td>
+                        <td className="py-2 px-2 text-right font-mono">{aaa.occurrences > 0 ? formatPct(aaa.mean_return, 1) : "-"}</td>
+                        <td className="py-2 px-2 text-right font-mono">{aaa.occurrences > 0 ? formatPct(aaa.cumulative_return, 1) : "-"}</td>
+                        <td className="py-2 px-2 text-right font-mono">{vvv.occurrences > 0 ? formatPct(vvv.win_rate, 0) : "-"}</td>
+                        <td className="py-2 px-2 text-right font-mono">{vvv.occurrences > 0 ? formatPct(vvv.mean_return, 1) : "-"}</td>
+                        <td className="py-2 px-2 text-right font-mono">{vvv.occurrences > 0 ? formatPct(vvv.cumulative_return, 1) : "-"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <BarChart3 className="h-8 w-8 mb-2 opacity-30" />
+              <p className="text-sm">Click "Rank" to analyze model effectiveness across all stocks.</p>
+              <p className="text-xs mt-1">Higher weighted score = model signals are more accurate for that stock.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Empty state */}
       {jobStatus === "idle" && !resultModel && (

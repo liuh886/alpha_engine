@@ -20,10 +20,15 @@ const pythonExe = isWin
 const extraArgs = process.argv.slice(3);
 const child = spawn(pythonExe, [script, ...extraArgs], {
   cwd: __dirname,
-  stdio: "inherit",
+  stdio: "pipe",
   windowsHide: true,
+  detached: true,
   env: { ...process.env, PYTHONPATH: __dirname },
 });
+
+// Pipe child output to pm2's stdout/stderr so logs are captured
+if (child.stdout) child.stdout.pipe(process.stdout);
+if (child.stderr) child.stderr.pipe(process.stderr);
 
 child.on("exit", (code) => {
   process.exit(code ?? 1);

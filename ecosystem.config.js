@@ -2,26 +2,29 @@ const path = require("path");
 const isWin = process.platform === "win32";
 const baseDir = __dirname;
 
-// On Windows, use a Node wrapper that spawns Python with windowsHide: true
-// to prevent a visible console window from flashing on each restart.
-// On Linux/macOS, run Python directly via uv.
-const script = isWin
-  ? path.join(baseDir, "pm2_launcher.js")
-  : "uv";
-
 module.exports = {
   apps: [
     {
       name: "alpha-hub",
-      script: script,
+      // On Windows: .pyw file runs via pythonw (no console window).
+      // On Linux/macOS: uv run python api_server.py
+      script: isWin
+        ? path.join(baseDir, "pm2_launcher.pyw")
+        : "api_server.py",
+      interpreter: isWin ? "none" : "uv",
+      args: isWin ? "" : "run python api_server.py",
       cwd: baseDir,
-      args: isWin ? "api_server.py" : "run python api_server.py",
-      interpreter: isWin ? "node" : "none",
       env: {
         PYTHONPATH: baseDir,
         PORT: 8000,
         TRADING_STATIC_SITE_DIR: "qlib-dashboard/dist",
+        PYTHONUNBUFFERED: "1",
       },
+      // Log files (for pm2 logs / pm2 log tailing)
+      out_file: path.join(baseDir, "logs", "alpha-hub-out.log"),
+      error_file: path.join(baseDir, "logs", "alpha-hub-err.log"),
+      merge_logs: true,
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
       max_memory_restart: '2G',
       listen_timeout: 5000,
       kill_timeout: 5000,

@@ -19,7 +19,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    
+
+    /* Vitest globals */
+    "types": ["vitest/globals", "@testing-library/jest-dom/vitest"],
+
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

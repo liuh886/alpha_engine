@@ -17,6 +17,7 @@ def register_model(
     run_id: str = None,
     model_tag: str = "",
     description: str = "",
+    walk_forward: dict = None,
 ):
     """
     Register a model to model_list.yaml and SQLite index.
@@ -57,6 +58,15 @@ def register_model(
 
     if run_id:
         entry["run_id"] = str(run_id)
+
+    if walk_forward:
+        entry["walk_forward"] = walk_forward
+        # Propagate walk-forward gate status to top-level for easy filtering
+        if walk_forward.get("gate_passed") is False:
+            entry["gate_passed"] = False
+            entry["gate_failures"] = walk_forward.get("gate_failures", [])
+        elif walk_forward.get("gate_passed") is True:
+            entry["gate_passed"] = True
 
     data["models"].append(entry)
 

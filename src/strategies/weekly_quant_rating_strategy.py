@@ -213,6 +213,101 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
         target_set = set(target)
         orders = []
 
+        # --- Risk manager: stop-loss and trailing stop checks (every step) ---
+        if self._risk_manager is not None:
+            current_stock_list = self.trade_position.get_stock_list()
+            if current_stock_list:
+                from src.data.sector_map import get_sector_map
+                from src.guardrails.position_risk import PositionInfo
+
+                sample_inst = current_stock_list[0] if current_stock_list else ""
+                market = "cn" if sample_inst.endswith((".SH", ".SZ")) else "us"
+                try:
+                    sector_map = get_sector_map(market)
+                except Exception:
+                    sector_map = {}
+
+                total_value = float(self.trade_position.get_cash()) + sum(
+                    float(self.trade_position.get_stock_value(c)) for c in current_stock_list
+                )
+
+                # Fetch current prices for risk evaluation
+                price_fields = ["$close"]
+                try:
+                    price_df = D.features(
+                        current_stock_list, price_fields,
+                        start_time=pred_start_time, end_time=pred_start_time,
+                    )
+                    if not price_df.empty:
+                        price_df.columns = ["close"]
+                        cur_prices = price_df.groupby(level="instrument")["close"].last()
+                    else:
+                        cur_prices = pd.Series(dtype=float)
+                except Exception:
+                    cur_prices = pd.Series(dtype=float)
+
+                risk_positions: dict[str, PositionInfo] = {}
+                for code in current_stock_list:
+                    stock_val = float(self.trade_position.get_stock_value(code))
+                    cur_price = float(cur_prices.get(code, 0.0))
+                    risk_positions[code] = PositionInfo(
+                        instrument=code,
+                        weight=stock_val / total_value if total_value > 0 else 0.0,
+                        entry_price=stock_val / max(1, float(self.trade_position.get_stock_amount(code))),
+                        current_price=cur_price,
+                        peak_price=cur_price,
+                        sector=sector_map.get(code, "Unknown"),
+                    )
+
+                stop_signals = self._risk_manager.check_stop_loss(risk_positions)
+                for sig in stop_signals:
+                    inst = sig.instrument
+                    target_set.discard(inst)
+                    # Add sell order if stock is in portfolio but not in target
+                    if inst in [c for c in self.trade_position.get_stock_list()]:
+                        if self.trade_exchange.is_stock_tradable(
+                            stock_id=inst,
+                            start_time=trade_start_time,
+                            end_time=trade_end_time,
+                            direction=OrderDir.SELL,
+                        ):
+                            amt = float(self.trade_position.get_stock_amount(inst))
+                            if amt > 0:
+                                sell_order = Order(
+                                    stock_id=inst,
+                                    amount=amt,
+                                    start_time=trade_start_time,
+                                    end_time=trade_end_time,
+                                    direction=OrderDir.SELL,
+                                )
+                                if self.trade_exchange.check_order(sell_order):
+                                    orders.append(sell_order)
+                                    logger.info("Risk: stop-loss sell", instrument=inst, pnl=sig.current_value)
+
+                trailing_signals = self._risk_manager.check_trailing_stop(risk_positions)
+                for sig in trailing_signals:
+                    inst = sig.instrument
+                    target_set.discard(inst)
+                    if inst in [c for c in self.trade_position.get_stock_list()]:
+                        if self.trade_exchange.is_stock_tradable(
+                            stock_id=inst,
+                            start_time=trade_start_time,
+                            end_time=trade_end_time,
+                            direction=OrderDir.SELL,
+                        ):
+                            amt = float(self.trade_position.get_stock_amount(inst))
+                            if amt > 0:
+                                sell_order = Order(
+                                    stock_id=inst,
+                                    amount=amt,
+                                    start_time=trade_start_time,
+                                    end_time=trade_end_time,
+                                    direction=OrderDir.SELL,
+                                )
+                                if self.trade_exchange.check_order(sell_order):
+                                    orders.append(sell_order)
+                                    logger.info("Risk: trailing stop sell", instrument=inst, drawdown=sig.current_value)
+
         # Sell anything not in target (weekly-only turnover rule)
         for code in list(self.trade_position.get_stock_list()):
             if code in target_set:
@@ -275,11 +370,56 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                 eq_value = cash * float(self.risk_degree) / len(target)
                 value_map = {code: eq_value for code in target}
 
+        # Risk manager: position limits — cap buy value for existing overweight positions
+        position_limit_capped: set[str] = set()
+        if self._risk_manager is not None:
+            existing_list = self.trade_position.get_stock_list()
+            if existing_list:
+                from src.data.sector_map import get_sector_map
+                from src.guardrails.position_risk import PositionInfo as _PI
+
+                sample_inst = existing_list[0]
+                market = "cn" if sample_inst.endswith((".SH", ".SZ")) else "us"
+                try:
+                    sector_map = get_sector_map(market)
+                except Exception:
+                    sector_map = {}
+                total_value = float(self.trade_position.get_cash()) + sum(
+                    float(self.trade_position.get_stock_value(c)) for c in existing_list
+                )
+                existing_positions: dict[str, _PI] = {}
+                for code in existing_list:
+                    stock_val = float(self.trade_position.get_stock_value(code))
+                    existing_positions[code] = _PI(
+                        instrument=code,
+                        weight=stock_val / total_value if total_value > 0 else 0.0,
+                        entry_price=stock_val / max(1, float(self.trade_position.get_stock_amount(code))),
+                        current_price=stock_val / max(1, float(self.trade_position.get_stock_amount(code))),
+                        peak_price=stock_val / max(1, float(self.trade_position.get_stock_amount(code))),
+                        sector=sector_map.get(code, "Unknown"),
+                    )
+                pos_limit_signals = self._risk_manager.check_position_limits(existing_positions)
+                for sig in pos_limit_signals:
+                    position_limit_capped.add(sig.instrument)
+                    logger.info(
+                        "Risk: position limit cap",
+                        instrument=sig.instrument,
+                        weight=sig.current_value,
+                        limit=sig.threshold,
+                    )
+
         for code in target:
             if not self.trade_exchange.is_stock_tradable(
                 stock_id=code, start_time=trade_start_time, end_time=trade_end_time
             ):
                 continue
+
+            # Risk manager: reduce target for positions already at limit
+            target_value = value_map.get(code, 0)
+            if code in position_limit_capped:
+                target_value = min(target_value, cash * 0.10)
+                logger.info("Risk: reduced buy for capped position", instrument=code, target_value=target_value)
+
             price = self.trade_exchange.get_deal_price(
                 stock_id=code,
                 start_time=trade_start_time,
@@ -288,7 +428,7 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
             )
             if price is None or np.isnan(price) or price <= 0:
                 continue
-            amount = value_map.get(code, 0) / float(price)
+            amount = target_value / float(price)
             factor = self.trade_exchange.get_factor(
                 stock_id=code, start_time=trade_start_time, end_time=trade_end_time
             )

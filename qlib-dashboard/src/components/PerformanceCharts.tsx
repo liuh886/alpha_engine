@@ -3,12 +3,17 @@ import { Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import type { ReportRow } from '@/lib/types';
 
-export function PerformanceCharts({ report }: { report: any[] }) {
+export function PerformanceCharts({ report }: { report: ReportRow[] }) {
   const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const toggleVisibility = (entry: any) => {
-    setHiddenSeries(prev => ({ ...prev, [entry.dataKey]: !prev[entry.dataKey] }));
+    const key = String(entry?.dataKey ?? '');
+    if (key) {
+      setHiddenSeries(prev => ({ ...prev, [key]: !prev[key] }));
+    }
   };
 
   const chartData = useMemo(() => {
@@ -86,12 +91,12 @@ export function PerformanceCharts({ report }: { report: any[] }) {
   const hasQqq = useMemo(() => report.some(d => Number.isFinite(Number(d.bench_qqq))), [report]);
   const hasHs300 = useMemo(() => report.some(d => Number.isFinite(Number(d.bench_hs300))), [report]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number | string; color: string }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-background/95 border shadow-lg rounded p-2.5 text-[10px] min-w-[140px]">
         <p className="font-semibold mb-1.5 pb-1 border-b">{label}</p>
-        {payload.map((p: any) => (
+        {payload.map((p) => (
           <div key={p.name} className="flex justify-between gap-4 py-0.5">
             <span className="flex items-center gap-1 text-muted-foreground">
               <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: p.color }} />

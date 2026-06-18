@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, Line, ComposedChart, ReferenceDot, Area, Legend } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
+import type { Position, ReportRow } from '@/lib/types';
 
-export function Attribution({ positions, report }: { positions: any[]; report?: any[] }) {
+export function Attribution({ positions, report }: { positions: Position[]; report?: ReportRow[] }) {
   const [selectedInstrument, setSelectedInstrument] = useState<string | null>(null);
   const [fullPriceHistory, setFullPriceHistory] = useState<Record<string, number>>({});
   const [loadingPrice, setLoadingPrice] = useState(false);
@@ -42,7 +43,7 @@ export function Attribution({ positions, report }: { positions: any[]; report?: 
         const json = await resp.json();
         if (json.ok && json.ohlcv) {
           const history: Record<string, number> = {};
-          json.ohlcv.forEach((d: any) => {
+          json.ohlcv.forEach((d: { time: string; close: number | null }) => {
             // Robust normalization
             const dStr = String(d.time).split('T')[0].split(' ')[0].trim();
             if (d.close !== null && d.close !== undefined) {
@@ -190,7 +191,15 @@ export function Attribution({ positions, report }: { positions: any[]; report?: 
     return labelByInstrument.get(selectedInstrument) || selectedInstrument;
   }, [labelByInstrument, selectedInstrument]);
 
-  const CustomTradeTooltip = ({ active, payload, label }: any) => {
+  interface TradeTooltipPayload {
+    price: number | null;
+    weight: number;
+    cumPnL: number;
+    action: string | null;
+    delta: number;
+  }
+
+  const CustomTradeTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ payload: TradeTooltipPayload }>; label?: string }) => {
       if (active && payload && payload.length) {
           const d = payload[0].payload;
           return (
@@ -208,7 +217,7 @@ export function Attribution({ positions, report }: { positions: any[]; report?: 
                     <div className="flex justify-between gap-10 pt-1.5 border-t mt-1">
                         <span className="text-muted-foreground font-bold uppercase text-[10px]">Net PnL</span>
                         <span className={`font-mono font-black ${d.cumPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
-                            {d.cumPnL >= 0 ? '+' : ''}{d.cumPnL?.toFixed(2)} USD
+                            {d.cumPnL >= 0 ? '+' : ''}{(d.cumPnL ?? 0).toFixed(2)} USD
                         </span>
                     </div>
                     {d.action && (
@@ -358,7 +367,7 @@ export function Attribution({ positions, report }: { positions: any[]; report?: 
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} strokeOpacity={0.05} />
                     <XAxis type="number" tick={{fontSize: 9, fontWeight: 800}} axisLine={false} tickLine={false} />
                     <YAxis dataKey="name" type="category" width={180} tick={{ fontSize: 10, fontWeight: 800, fill: 'hsl(var(--foreground))' }} interval={0} axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)', fontSize: '10px', fontWeight: 'bold'}} formatter={(v: number) => [`$${v.toFixed(2)}`, 'Gain']} />
+                    <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)', fontSize: '10px', fontWeight: 'bold'}} formatter={(v: number) => [`$${(v ?? 0).toFixed(2)}`, 'Gain']} />
                     <Bar dataKey="value" onClick={(data) => setSelectedInstrument(data.instrument)} cursor="pointer" radius={[0, 4, 4, 0]} barSize={14}>
                       {topContributors.map((_, index) => (
                         <Cell key={`cell-${index}`} fill="#10b981" fillOpacity={0.7} className="hover:fill-opacity-100 transition-all duration-300" />
@@ -389,7 +398,7 @@ export function Attribution({ positions, report }: { positions: any[]; report?: 
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} strokeOpacity={0.05} />
                     <XAxis type="number" tick={{fontSize: 9, fontWeight: 800}} axisLine={false} tickLine={false} />
                     <YAxis dataKey="name" type="category" width={180} tick={{ fontSize: 10, fontWeight: 800, fill: 'hsl(var(--foreground))' }} interval={0} axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)', fontSize: '10px', fontWeight: 'bold'}} formatter={(v: number) => [`$${v.toFixed(2)}`, 'Loss']} />
+                    <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)', fontSize: '10px', fontWeight: 'bold'}} formatter={(v: number) => [`$${(v ?? 0).toFixed(2)}`, 'Loss']} />
                     <Bar dataKey="value" onClick={(data) => setSelectedInstrument(data.instrument)} cursor="pointer" radius={[0, 4, 4, 0]} barSize={14}>
                       {topLosers.map((_, index) => (
                         <Cell key={`cell-${index}`} fill="#f43f5e" fillOpacity={0.7} className="hover:fill-opacity-100 transition-all duration-300" />

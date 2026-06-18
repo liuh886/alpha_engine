@@ -100,3 +100,9 @@ def get_curve_index() -> BacktestEquityCurveIndex:
 
 def get_arena_index() -> ArenaIndex:
     return ArenaIndex(db_path=resolve_metadata_db_path(PROJECT_ROOT))
+
+
+def get_stock_decision_engine():
+    from src.strategies.stock_decision_engine import StockDecisionEngine
+
+    return StockDecisionEngine()

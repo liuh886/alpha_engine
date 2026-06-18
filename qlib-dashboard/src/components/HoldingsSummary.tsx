@@ -1,15 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Position } from "@/lib/types";
 
 export function HoldingsSummary({
   positions,
   title,
 }: {
-  positions: any[];
+  positions: Position[];
   title?: string;
 }) {
   if (!positions.length) return null;
 
-  const byDate: Record<string, any[]> = {};
+  const byDate: Record<string, Position[]> = {};
   for (const p of positions) {
     const d = p.date;
     if (!byDate[d]) byDate[d] = [];
@@ -65,7 +66,7 @@ export function HoldingsSummary({
           </div>
           <div className="flex flex-col">
             <span className="text-muted-foreground">Turnover (approx)</span>
-            <span className="font-medium">{turnover.toFixed(2)}</span>
+            <span className="font-medium">{(turnover ?? 0).toFixed(2)}</span>
           </div>
         </div>
       </CardContent>

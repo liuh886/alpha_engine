@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,13 +13,11 @@ import {
 import {
   Loader2,
   RefreshCw,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   BarChart3,
   Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatNum, useSort } from '@/lib/format';
 import {
   LineChart,
   Line,
@@ -43,11 +41,6 @@ type SortKey =
   | 'ic_ir'
   | 't_stat'
   | 'positive_ic_ratio';
-
-function formatNum(v: number | null | undefined, decimals = 4): string {
-  if (v === null || v === undefined || Number.isNaN(v)) return 'N/A';
-  return v.toFixed(decimals);
-}
 
 function icColor(v: number): string {
   if (v > 0.02) return 'text-green-500';
@@ -90,31 +83,11 @@ export function FactorPage() {
     selectFactor,
   } = useFactorStore();
 
-  const [sortKey, setSortKey] = useState<SortKey>('rank_ic');
-  const [sortAsc, setSortAsc] = useState(false);
+  const { sortKey, sortAsc, toggleSort, SortIcon } = useSort<SortKey>('rank_ic');
 
   useEffect(() => {
     fetchReport(market);
   }, [market]);
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortKey(key);
-      setSortAsc(false);
-    }
-  };
-
-  const SortIcon = ({ column }: { column: SortKey }) => {
-    if (sortKey !== column)
-      return <ArrowUpDown className="h-3 w-3 opacity-30" />;
-    return sortAsc ? (
-      <ArrowUp className="h-3 w-3 text-primary" />
-    ) : (
-      <ArrowDown className="h-3 w-3 text-primary" />
-    );
-  };
 
   const displayed = useMemo(() => {
     if (!report) return [];
@@ -143,12 +116,12 @@ export function FactorPage() {
     );
   }, [report, selectedFactor]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number | string; color: string }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-background/95 border shadow-lg rounded p-2.5 text-[10px] min-w-[120px]">
         <p className="font-semibold mb-1 pb-1 border-b">Lag: {label} days</p>
-        {payload.map((p: any) => (
+        {payload.map((p) => (
           <div key={p.name} className="flex justify-between gap-4 py-0.5">
             <span className="text-muted-foreground">IC</span>
             <span className="font-mono" style={{ color: p.color }}>
@@ -416,7 +389,7 @@ export function FactorPage() {
                       axisLine={false}
                       tickLine={false}
                       width={45}
-                      tickFormatter={(v: number) => v.toFixed(3)}
+                      tickFormatter={(v: number) => (v ?? 0).toFixed(3)}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <ReferenceLine

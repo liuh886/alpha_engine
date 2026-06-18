@@ -6,27 +6,15 @@ import { HoldingsSummary } from "@/components/HoldingsSummary";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine } from "recharts";
 import { Layers, TrendingUp, Target, Trophy, RefreshCw, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatPct as formatPercent, formatNum as formatNumber, shortId } from "@/lib/format";
+import { format, parseISO } from "date-fns";
 import { artifactUrl } from "@/lib/artifacts";
+import { apiFetch } from "@/lib/api";
 
 const MAX_COMPARE = 5;
 const COLORS = ["hsl(var(--primary))", "#f59e0b", "#0ea5e9", "#8b5cf6", "#ec4899"];
 
 type MetricDef = { label: string; key: string; format: (value?: number) => string; };
-
-function formatPercent(value?: number) {
-  if (value === undefined || value === null || Number.isNaN(value)) return "N/A";
-  return `${(value * 100).toFixed(2)}%`;
-}
-
-function formatNumber(value?: number) {
-  if (value === undefined || value === null || Number.isNaN(value)) return "N/A";
-  return value.toFixed(3);
-}
-
-function shortId(value: string) {
-  if (!value) return "";
-  return value.length <= 8 ? value : value.slice(0, 8);
-}
 
 const metricDefs: MetricDef[] = [
   { label: "Ann. Return", key: "Annualized Return", format: formatPercent },
@@ -38,6 +26,7 @@ const metricDefs: MetricDef[] = [
 ];
 
 function buildEquitySeries(models: ModelData[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = new Map<string, Record<string, any>>();
   for (const model of models) {
     const report = model.backtest.report || [];
@@ -102,14 +91,14 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
     setLeaderboardLoading(true);
     try {
       // Fetch all arenas, then load leaderboard from the first one
-      const arenasResp = await fetch(artifactUrl.arenas);
+      const arenasResp = await apiFetch(artifactUrl.arenas);
       if (!arenasResp.ok) { setLeaderboardLoading(false); return; }
       const arenasJson = await arenasResp.json();
       const arenas = (arenasJson?.arenas || []);
       if (arenas.length === 0) { setLeaderboardLoading(false); return; }
 
       const arenaId = arenas[0].id;
-      const resp = await fetch(artifactUrl.arenaLeaderboard(arenaId));
+      const resp = await apiFetch(artifactUrl.arenaLeaderboard(arenaId));
       if (!resp.ok) { setLeaderboardLoading(false); return; }
       const json = await resp.json();
       setLeaderboard(json?.leaderboard || []);
@@ -127,7 +116,9 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
   const sortedLeaderboard = useMemo(() => {
     const rows = [...leaderboard];
     rows.sort((a, b) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let va: any = a[sortKey];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let vb: any = b[sortKey];
       if (sortKey === "participant_name") {
         va = (va || "").toLowerCase();
@@ -388,7 +379,7 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
                         <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
                         <XAxis dataKey="date" tickFormatter={(d) => format(parseISO(d), 'MMM yy')} minTickGap={40} tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} tickLine={false} />
                         <YAxis tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '12px', fontSize: '10px' }} formatter={(v: any) => `${(v * 100).toFixed(2)}%`} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '12px', fontSize: '10px' }} formatter={(v: number | string) => `${(Number(v) * 100).toFixed(2)}%`} />
                         <Legend verticalAlign="top" align="right" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase' }} />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
                         {selectedModels.map((m, idx) => (<Line key={m.id} type="monotone" dataKey={m.id} name={m.name || shortId(m.id)} stroke={COLORS[idx % COLORS.length]} dot={false} strokeWidth={3} animationDuration={1500} />))}
@@ -411,13 +402,4 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
       )}
     </div>
   );
-}
-
-function parseISO(s: string) { return new Date(s); }
-function format(d: Date, fmt: string) {
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const m = monthNames[d.getMonth()];
-  const y = d.getFullYear().toString().slice(-2);
-  if (fmt.includes('MMM yy')) return `${m} ${y}`;
-  return `${d.getMonth() + 1}/${y}`;
 }

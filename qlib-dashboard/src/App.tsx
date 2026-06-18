@@ -1,27 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { parseQlibData, ModelData } from './lib/data-parser';
 import { Dashboard } from './components/Dashboard';
 import { ModelSelector } from './components/ModelSelector';
-import { StrategyPage } from './pages/StrategyPage';
-import { ComparePage } from './pages/ComparePage';
-import { ArenaPage } from './pages/ArenaPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { ModelsPage } from './pages/ModelsPage';
-import { DataPage } from './pages/DataPage';
-import { FactorPage } from './pages/FactorPage';
-import { StockTerminal } from './pages/StockTerminal';
-import { AgentControlCenter } from './pages/AgentControlCenter';
-import { DocsPage } from './pages/DocsPage';
-import { BacktestPage } from './pages/BacktestPage';
-import { MethodologyPage } from './pages/MethodologyPage';
 import { GlobalStatusBar } from './components/GlobalStatusBar';
 import { Sidebar } from './components/Sidebar';
 import { ConsoleModal } from './components/ConsoleModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { Skeleton } from './components/ui/skeleton';
 import { List, Play, Loader2, Bell, User, Sun, Moon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useGlobalStore } from './store/globalStore';
 import { artifactUrl } from './lib/artifacts';
+import { apiFetch, setAuthHeaderProvider } from './lib/api';
+import { useAuth } from './lib/auth';
+import { LoginPage } from './components/LoginPage';
+
+// Lazy-loaded pages (code splitting)
+const StrategyPage = lazy(() => import('./pages/StrategyPage').then(m => ({ default: m.StrategyPage })));
+const ComparePage = lazy(() => import('./pages/ComparePage').then(m => ({ default: m.ComparePage })));
+const ArenaPage = lazy(() => import('./pages/ArenaPage').then(m => ({ default: m.ArenaPage })));
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const ModelsPage = lazy(() => import('./pages/ModelsPage').then(m => ({ default: m.ModelsPage })));
+const DataPage = lazy(() => import('./pages/DataPage').then(m => ({ default: m.DataPage })));
+const FactorPage = lazy(() => import('./pages/FactorPage').then(m => ({ default: m.FactorPage })));
+const FactorRegistryPage = lazy(() => import('./pages/FactorRegistryPage').then(m => ({ default: m.FactorRegistryPage })));
+const ExperimentLogPage = lazy(() => import('./pages/ExperimentLogPage').then(m => ({ default: m.ExperimentLogPage })));
+const AttributionPage = lazy(() => import('./pages/AttributionPage').then(m => ({ default: m.AttributionPage })));
+const StockTerminal = lazy(() => import('./pages/StockTerminal').then(m => ({ default: m.StockTerminal })));
+const AgentControlCenter = lazy(() => import('./pages/AgentControlCenter').then(m => ({ default: m.AgentControlCenter })));
+const DocsPage = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.DocsPage })));
+const BacktestPage = lazy(() => import('./pages/BacktestPage').then(m => ({ default: m.BacktestPage })));
+const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then(m => ({ default: m.MethodologyPage })));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-full p-8">
+      <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
+    </div>
+  );
+}
 
 const VIEW_TITLES: Record<string, string> = {
   '': 'Dashboard',
@@ -35,6 +53,9 @@ const VIEW_TITLES: Record<string, string> = {
   'reports': 'Reports',
   'data': 'Data Management',
   'factors': 'Factor Analysis',
+  'factor-registry': 'Factor Registry',
+  'experiments': 'Experiments',
+  'attribution': 'Factor Attribution',
   'strategy': 'Strategy Spec',
   'methodology': 'Methodology',
   'docs': 'Docs',
@@ -54,7 +75,8 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
   loading: boolean;
 }) {
   const location = useLocation();
-  const { latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, dataGeneratedAt, apiError, theme, setTheme } = useGlobalStore();
+  const { latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, dataGeneratedAt, apiError, theme, setTheme, username } = useGlobalStore();
+  const { logout } = useAuth();
 
   const currentPath = location.pathname.replace(/^\//, '');
   const viewTitle = VIEW_TITLES[currentPath] ?? currentPath.replace('-', ' ');
@@ -110,23 +132,34 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
             </Button>
 
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setConsoleOpen(true)}><Bell className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => { if (confirm('Sign out?')) logout(); }}>
               <User className="h-3.5 w-3.5" />
-              <span>Zhihao</span>
+              <span>{username}</span>
             </Button>
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-5 max-w-[1400px] mx-auto w-full">
           {loading ? (
-            <div className="h-full flex items-center justify-center p-8">
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
-                <p className="text-sm text-muted-foreground">Loading...</p>
+            <div className="space-y-6 p-1">
+              <div className="grid grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-24 rounded-lg" />
+                ))}
+              </div>
+              <Skeleton className="h-[300px] rounded-lg" />
+              <div className="grid grid-cols-3 gap-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-48 rounded-lg" />
+                ))}
               </div>
             </div>
           ) : (
-            <Outlet />
+            <ErrorBoundary>
+              <Suspense fallback={<PageLoader />}>
+                <Outlet />
+              </Suspense>
+            </ErrorBoundary>
           )}
         </main>
 
@@ -167,21 +200,46 @@ function ArenaRoute() {
 }
 
 function App() {
+  const { isAuthenticated, authHeader } = useAuth();
+
+  // Wire up auth header provider for apiFetch
+  useEffect(() => {
+    setAuthHeaderProvider(authHeader);
+    return () => setAuthHeaderProvider(null);
+  }, [authHeader]);
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return <AuthenticatedApp />;
+}
+
+function AuthenticatedApp() {
   const [models, setModels] = useState<ModelData[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { setLatestCalendarDay, setQualityStatus, setQualityWarnings, setActiveJobsCount, setDataGeneratedAt, setApiError } = useGlobalStore();
+  const { setLatestCalendarDay, setQualityStatus, setQualityWarnings, setActiveJobsCount, setDataGeneratedAt, setApiError, setUsername, setSelectedModelId: setGlobalModelId, setSelectedModelMarket } = useGlobalStore();
 
   const [backtestJobId, setBacktestJobId] = useState<string>("");
   const [backtestRunning, setBacktestRunning] = useState(false);
   const [dataJobId, setDataJobId] = useState<string>("");
 
+  // Sync model selection to global store so StockTerminal can access it
+  useEffect(() => {
+    setGlobalModelId(selectedModelId);
+    const selectedModel = models.find(m => m.id === selectedModelId);
+    if (selectedModel?.market) {
+      setSelectedModelMarket(selectedModel.market);
+    }
+  }, [selectedModelId, models, setGlobalModelId, setSelectedModelMarket]);
+
   useEffect(() => {
     const loadData = async () => {
       try {
-        const resp = await fetch(artifactUrl.dashboardDb, { cache: "no-store" });
+        const resp = await apiFetch(artifactUrl.dashboardDb, { cache: "no-store" });
         if (resp.ok) {
           const json = await resp.json();
           const parsed = parseQlibData(json);
@@ -205,7 +263,7 @@ function App() {
 
   const loadDataStatus = async () => {
     try {
-      const resp = await fetch("/api/data/status", { cache: "no-store" });
+      const resp = await apiFetch("/api/data/status", { cache: "no-store" });
       if (!resp.ok) return;
       const json = await resp.json();
       setLatestCalendarDay(String(json?.data?.latest_calendar_day || ""));
@@ -216,7 +274,7 @@ function App() {
 
   const loadActiveJobs = async () => {
     try {
-      const resp = await fetch("/api/jobs?status=running", { cache: "no-store" });
+      const resp = await apiFetch("/api/jobs?status=running", { cache: "no-store" });
       if (!resp.ok) return;
       const json = await resp.json();
       setActiveJobsCount((json?.jobs || []).length);
@@ -226,6 +284,10 @@ function App() {
   useEffect(() => {
     loadDataStatus();
     loadActiveJobs();
+    apiFetch("/api/system/me", { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.username) setUsername(data.username); })
+      .catch(() => { /* server not running */ });
     const timer = setInterval(() => {
       loadDataStatus();
       loadActiveJobs();
@@ -235,7 +297,7 @@ function App() {
 
   const refreshFromServer = async (opts?: { selectLatest?: boolean }) => {
     try {
-      const resp = await fetch(artifactUrl.dashboardDb, { cache: "no-store" });
+      const resp = await apiFetch(artifactUrl.dashboardDb, { cache: "no-store" });
       if (!resp.ok) return false;
       const json = await resp.json();
       const parsed = parseQlibData(json);
@@ -253,7 +315,7 @@ function App() {
   const startBacktestForSelectedMarket = async () => {
     const selectedModel = models.find(m => m.id === selectedModelId);
     if (!selectedModel) return;
-    const hasModelBinding = Boolean((selectedModel.params as any)?.model_path) || Boolean((selectedModel.params as any)?.source_model_path);
+    const hasModelBinding = Boolean(selectedModel.params?.model_path) || Boolean(selectedModel.params?.source_model_path);
     if (!hasModelBinding) {
       console.warn("This run does not have a recorded model binding.");
       return;
@@ -262,7 +324,7 @@ function App() {
 
     setBacktestRunning(true);
     try {
-      const resp = await fetch("/api/backtest/run", {
+      const resp = await apiFetch("/api/backtest/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -280,7 +342,7 @@ function App() {
   useEffect(() => {
     if (!backtestJobId) return;
     const timer = window.setInterval(async () => {
-      const resp = await fetch(`/api/jobs/${encodeURIComponent(backtestJobId)}`);
+      const resp = await apiFetch(`/api/jobs/${encodeURIComponent(backtestJobId)}`);
       if (!resp.ok) return;
       const json = await resp.json();
       const status = json?.job?.status || "";
@@ -296,7 +358,7 @@ function App() {
 
   const startUpdateData = async () => {
     try {
-      const resp = await fetch("/api/data/update", {
+      const resp = await apiFetch("/api/data/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ full: false, lookback_days: 30 }),
@@ -311,7 +373,7 @@ function App() {
   useEffect(() => {
     if (!dataJobId) return;
     const timer = window.setInterval(async () => {
-      const resp = await fetch(`/api/jobs/${encodeURIComponent(dataJobId)}`);
+      const resp = await apiFetch(`/api/jobs/${encodeURIComponent(dataJobId)}`);
       if (!resp.ok) return;
       const json = await resp.json();
       const status = json?.job?.status || "";
@@ -326,7 +388,7 @@ function App() {
 
   const handleDeleteModel = async (id: string) => {
     try {
-      const resp = await fetch("/api/models/delete", {
+      const resp = await apiFetch("/api/models/delete", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ version_id: id })
       });
@@ -365,6 +427,9 @@ function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="data" element={<DataPage />} />
           <Route path="factors" element={<FactorPage />} />
+          <Route path="factor-registry" element={<FactorRegistryPage />} />
+          <Route path="experiments" element={<ExperimentLogPage />} />
+          <Route path="attribution" element={<AttributionPage />} />
           <Route path="strategy" element={<StrategyPage />} />
           <Route path="methodology" element={<MethodologyPage />} />
           <Route path="docs" element={<DocsPage />} />

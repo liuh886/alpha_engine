@@ -1,60 +1,333 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createChart, ColorType, CandlestickSeries } from "lightweight-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Search, ShieldAlert, Activity, Zap, Compass, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { apiFetch } from "@/lib/api";
+import { formatNum, formatPct, formatCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useGlobalStore } from "@/store/globalStore";
+import {
+  Search, ShieldAlert, Activity, Zap, Compass,
+  ArrowUpRight, ArrowDownRight, Loader2,
+  TrendingUp, TrendingDown, Minus, BarChart3,
+  CheckCircle, XCircle, AlertTriangle, List, ClipboardList,
+} from "lucide-react";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface StockDecision {
+  symbol: string;
+  signal: "BUY" | "HOLD" | "SELL";
+  confidence: number;
+  score: number | null;
+  rank: number | null;
+  reasons: string[];
+  factor_snapshot: Record<string, {
+    name: string;
+    expression: string;
+    value: number | null;
+    z_score: number | null;
+    percentile: number | null;
+    category: string;
+  }>;
+  guardrail_status: Record<string, {
+    passed: boolean;
+    reason?: string;
+    metric?: number;
+  }>;
+  risk_flags: string[];
+  timestamp: string;
+  recommended_strategy?: {
+    name: string;
+    display_name: string;
+    reason: string;
+    confidence: number;
+  };
+  price_targets?: {
+    current_price: number | null;
+    buy_range_low: number | null;
+    buy_range_high: number | null;
+    stop_loss_price: number | null;
+    target_price: number | null;
+    atr_20: number | null;
+    support: number | null;
+    resistance: number | null;
+  };
+}
+
+interface WatchlistItem {
+  symbol: string;
+  signal: "BUY" | "HOLD" | "SELL";
+  confidence: number;
+  score: number | null;
+  rank: number | null;
+  risk_flags: string[];
+  // G3: Enhanced fields
+  price?: number | null;
+  change_pct?: number | null;
+  change_5d_pct?: number | null;
+  recommended_strategy?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
+function SignalBadge({ signal }: { signal: "BUY" | "HOLD" | "SELL" }) {
+  const styles = {
+    BUY: "bg-green-500/20 text-green-400 border-green-500/30",
+    HOLD: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+    SELL: "bg-red-500/20 text-red-400 border-red-500/30",
+  };
+  const icons = {
+    BUY: <TrendingUp className="h-3 w-3" />,
+    HOLD: <Minus className="h-3 w-3" />,
+    SELL: <TrendingDown className="h-3 w-3" />,
+  };
+  return (
+    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-black uppercase border", styles[signal])}>
+      {icons[signal]} {signal}
+    </span>
+  );
+}
+
+function ConfidenceBar({ value }: { value: number }) {
+  const pct = Math.round(value * 100);
+  const color = pct >= 70 ? "bg-green-500" : pct >= 40 ? "bg-yellow-500" : "bg-red-500";
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs font-bold text-muted-foreground w-8 text-right">{pct}%</span>
+    </div>
+  );
+}
+
+function ReasonItem({ reason }: { reason: string }) {
+  const isPositive = reason.startsWith("✅");
+  const isWarning = reason.startsWith("⚠") || reason.startsWith("⚡");
+  const isDanger = reason.startsWith("🔴") || reason.startsWith("📉");
+  const icon = isPositive
+    ? <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 flex-shrink-0" />
+    : isDanger
+      ? <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+      : isWarning
+        ? <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 mt-0.5 flex-shrink-0" />
+        : <div className="h-3.5 w-3.5 rounded-full bg-muted-foreground/20 mt-0.5 flex-shrink-0" />;
+
+  return (
+    <div className="flex items-start gap-2 text-xs leading-relaxed">
+      {icon}
+      <span className={cn(isPositive && "text-green-400", isDanger && "text-red-400", isWarning && "text-yellow-400")}>
+        {reason}
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
 
 export function StockTerminal() {
   const [symbol, setSymbol] = useState("AAPL");
+  const [market, setMarket] = useState<"us" | "cn">("us");
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<any>(null);
+  // Get selected model from global store
+  const { selectedModelId, selectedModelMarket } = useGlobalStore();
   const [error, setError] = useState<string>("");
+  const [view, setView] = useState<"analysis" | "watchlist">("analysis");
 
-  const fetchStockData = async (targetSymbol: string) => {
+  // Stock analysis state
+  const [ohlcData, setOhlcData] = useState<Record<string, unknown> | null>(null);
+  const [decision, setDecision] = useState<StockDecision | null>(null);
+  const [decisionLoading, setDecisionLoading] = useState(false);
+  const [dataFreshness, setDataFreshness] = useState<{ pred_age_days?: number; is_stale?: boolean } | null>(null);
+  const [signalHistory, setSignalHistory] = useState<Array<{ signal: string; confidence: number; score: number | null; recorded_at: string; price_targets?: Record<string, number | null> }>>([]);
+  // Signal grade state (S4)
+  const [signalMarkers, setSignalMarkers] = useState<Array<{ time: string; position: string; color: string; shape: string; text: string; size: number }>>([]);
+  const [signalPerformance, setSignalPerformance] = useState<Record<string, { grade: string; grade_name: string; total_occurrences: number; win_rate: number; mean_return: number; cumulative_return: number }> | null>(null);
+  const [stepSize, setStepSize] = useState(10);
+  const [showSignalOverlay, setShowSignalOverlay] = useState(true);
+  const [dailySignalSeries, setDailySignalSeries] = useState<Array<{ date: string; percentile: number; grade: string; score: number; rank: number; total: number }>>([]);
+
+  // Watchlist state
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+
+  // ------------------------------------------------------------------
+  // Fetch stock OHLCV data (existing endpoint)
+  // ------------------------------------------------------------------
+  const fetchStockData = useCallback(async (targetSymbol: string) => {
     const querySymbol = targetSymbol.trim().toUpperCase();
     if (!querySymbol) return;
 
     setLoading(true);
     setError("");
     try {
-      const resp = await fetch(`/api/data/stock/${encodeURIComponent(querySymbol)}`, {
-        cache: "no-store",
-      });
+      const resp = await apiFetch(`/api/data/stock/${encodeURIComponent(querySymbol)}`, { cache: "no-store" });
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        setData(null);
-        setError(json.detail || json.error || `No real market data found for ${querySymbol}.`);
+      if (!resp.ok || !json.ok) {
+        setOhlcData(null);
+        setError(json.detail || json.error || `No data found for ${querySymbol}.`);
         return;
       }
-      if (json.ok) {
-        setData(json);
-      } else {
-        setData(null);
-        setError(json.error || `No real market data found for ${querySymbol}.`);
-      }
-    } catch (e) {
-      console.error(e);
-      setData(null);
-      setError("Asset inspection failed because the API is unavailable.");
+      setOhlcData(json);
+    } catch {
+      setOhlcData(null);
+      setError("API unavailable.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  // ------------------------------------------------------------------
+  // Fetch stock decision (new endpoint)
+  // ------------------------------------------------------------------
+  const fetchDecision = useCallback(async (targetSymbol: string) => {
+    const querySymbol = targetSymbol.trim().toUpperCase();
+    if (!querySymbol) return;
+
+    // Auto-detect market from symbol suffix
+    const detectedMarket = querySymbol.endsWith(".SH") || querySymbol.endsWith(".SZ") ? "cn" : "us";
+
+    setDecisionLoading(true);
+    try {
+      const resp = await apiFetch(
+        `/api/stock-analysis/${encodeURIComponent(querySymbol)}/decision?market=${detectedMarket}&include_factors=true`,
+        { cache: "no-store" },
+      );
+      const json = await resp.json().catch(() => ({}));
+      if (resp.ok && json.ok) {
+        setDecision(json.decision);
+        setDataFreshness(json.data_freshness || null);
+      } else {
+        setDecision(null);
+        setDataFreshness(null);
+      }
+    } catch {
+      setDecision(null);
+    } finally {
+      setDecisionLoading(false);
+    }
+  }, []);
+
+  // ------------------------------------------------------------------
+  // Fetch signal markers and performance (S4)
+  // ------------------------------------------------------------------
+  const fetchSignalData = useCallback(async (targetSymbol: string, currentStepSize?: number) => {
+    const querySymbol = targetSymbol.trim().toUpperCase();
+    if (!querySymbol) return;
+    const ss = currentStepSize ?? stepSize;
+    const detectedMarket = querySymbol.endsWith(".SH") || querySymbol.endsWith(".SZ") ? "cn" : "us";
+
+    // Build run_id parameter if a specific model is selected
+    const runIdParam = selectedModelId ? `&run_id=${encodeURIComponent(selectedModelId)}` : "";
+
+    try {
+      // Fetch markers
+      const markersResp = await apiFetch(
+        `/api/stock-analysis/${encodeURIComponent(querySymbol)}/signal-markers?market=${detectedMarket}&step_size=${ss}${runIdParam}`,
+        { cache: "no-store" },
+      );
+      const markersJson = await markersResp.json().catch(() => ({}));
+      if (markersResp.ok && markersJson.ok) {
+        setSignalMarkers(markersJson.markers || []);
+      }
+
+      // Fetch performance
+      const perfResp = await apiFetch(
+        `/api/stock-analysis/${encodeURIComponent(querySymbol)}/signal-performance?market=${detectedMarket}&step_size=${ss}&forward_days=10${runIdParam}`,
+        { cache: "no-store" },
+      );
+      const perfJson = await perfResp.json().catch(() => ({}));
+      if (perfResp.ok && perfJson.ok) {
+        setSignalPerformance(perfJson.performance || null);
+      }
+
+      // Fetch daily signal series for chart overlay
+      const dailyResp = await apiFetch(
+        `/api/stock-analysis/${encodeURIComponent(querySymbol)}/signal-daily?market=${detectedMarket}&step_size=${ss}&days=120${runIdParam}`,
+        { cache: "no-store" },
+      );
+      const dailyJson = await dailyResp.json().catch(() => ({}));
+      if (dailyResp.ok && dailyJson.ok) {
+        setDailySignalSeries(dailyJson.series || []);
+      }
+    } catch {
+      setSignalMarkers([]);
+      setSignalPerformance(null);
+      setDailySignalSeries([]);
+    }
+  }, [stepSize, selectedModelId]);
+
+  // ------------------------------------------------------------------
+  // Fetch signal history (T6)
+  // ------------------------------------------------------------------
+  const fetchSignalHistory = useCallback(async (targetSymbol: string) => {
+    const querySymbol = targetSymbol.trim().toUpperCase();
+    if (!querySymbol) return;
+    try {
+      const resp = await apiFetch(`/api/stock-analysis/${encodeURIComponent(querySymbol)}/history?days=30`, { cache: "no-store" });
+      const json = await resp.json().catch(() => ({}));
+      if (resp.ok && json.ok) {
+        setSignalHistory(json.history || []);
+      }
+    } catch {
+      setSignalHistory([]);
+    }
+  }, []);
+
+  // ------------------------------------------------------------------
+  // Fetch watchlist summary
+  // ------------------------------------------------------------------
+  const fetchWatchlist = useCallback(async () => {
+    setWatchlistLoading(true);
+    try {
+      const resp = await apiFetch(`/api/stock-analysis/watchlist/summary?market=${market}`, { cache: "no-store" });
+      const json = await resp.json().catch(() => ({}));
+      if (resp.ok && json.ok) {
+        setWatchlist(json.summary || []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setWatchlistLoading(false);
+    }
+  }, [market]);
+
+  // ------------------------------------------------------------------
+  // Handle search
+  // ------------------------------------------------------------------
+  const handleSearch = useCallback(() => {
+    const q = symbol.trim().toUpperCase();
+    if (!q) return;
+    setView("analysis");
+    fetchStockData(q);
+    fetchDecision(q);
+    fetchSignalHistory(q);
+    fetchSignalData(q);
+  }, [symbol, fetchStockData, fetchDecision, fetchSignalHistory, fetchSignalData]);
+
+  // ------------------------------------------------------------------
+  // K-line chart rendering
+  // ------------------------------------------------------------------
   useEffect(() => {
     const chartContainer = document.getElementById("kline-chart");
-    if (!chartContainer || !data?.ohlcv) return;
+    if (!chartContainer || !ohlcData?.ohlcv) return;
 
     const renderChart = () => {
       chartContainer.innerHTML = "";
-      // Fallback width if clientWidth is 0 during fast renders
       const width = chartContainer.clientWidth || chartContainer.parentElement?.clientWidth || 800;
 
       const chart = createChart(chartContainer, {
         layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "inherit" },
         grid: { vertLines: { color: "rgba(128,128,128,0.1)" }, horzLines: { color: "rgba(128,128,128,0.1)" } },
-        width: width,
+        width,
         height: 500,
         timeScale: { borderColor: "rgba(128,128,128,0.2)" },
       });
@@ -63,25 +336,196 @@ export function StockTerminal() {
         upColor: "#26a69a", downColor: "#ef5350", borderVisible: false,
         wickUpColor: "#26a69a", wickDownColor: "#ef5350",
       };
-      const candlestickSeries = typeof (chart as any).addCandlestickSeries === "function"
-        ? (chart as any).addCandlestickSeries(seriesOptions)
-        : (chart as any).addSeries(CandlestickSeries, seriesOptions);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chartApi = chart as any;
+      const candlestickSeries = typeof chartApi.addCandlestickSeries === "function"
+        ? chartApi.addCandlestickSeries(seriesOptions)
+        : chartApi.addSeries(CandlestickSeries, seriesOptions);
 
-      candlestickSeries.setData(data.ohlcv);
+      candlestickSeries.setData(ohlcData.ohlcv);
+
+      // S4: Add signal grade markers (AAA/AA/A/V/VV/VVV) from historical data
+      if (signalMarkers.length > 0) {
+        try {
+          candlestickSeries.setMarkers(signalMarkers);
+        } catch {
+          // Markers may not be supported in all chart versions
+        }
+      } else if (decision && decision.signal && ohlcData.ohlcv && Array.isArray(ohlcData.ohlcv) && ohlcData.ohlcv.length > 0) {
+        // Fallback: show current decision signal marker
+        const lastBar = ohlcData.ohlcv[ohlcData.ohlcv.length - 1];
+        const lastTime = lastBar.time;
+        const markerColor = decision.signal === "BUY" ? "#22c55e"
+          : decision.signal === "SELL" ? "#ef4444"
+          : "#eab308";
+        const markerShape = decision.signal === "BUY" ? "arrowUp"
+          : decision.signal === "SELL" ? "arrowDown"
+          : "circle";
+        try {
+          candlestickSeries.setMarkers([{
+            time: lastTime,
+            position: decision.signal === "BUY" ? "belowBar" : "aboveBar",
+            color: markerColor,
+            shape: markerShape,
+            text: decision.signal,
+            size: decision.signal === "HOLD" ? 1 : 2,
+          }]);
+        } catch {}
+      }
+
+      // Add price lines for buy range, stop loss, target
+      if (decision?.price_targets) {
+        // Price lines are added regardless of markers
+        if (decision.price_targets) {
+          const pt = decision.price_targets;
+          if (pt.buy_range_low != null) {
+            candlestickSeries.createPriceLine({
+              price: pt.buy_range_low,
+              color: "#22c55e",
+              lineWidth: 1,
+              lineStyle: 2, // Dashed
+              axisLabelVisible: true,
+              title: "Buy Low",
+            });
+          }
+          if (pt.buy_range_high != null) {
+            candlestickSeries.createPriceLine({
+              price: pt.buy_range_high,
+              color: "#22c55e",
+              lineWidth: 1,
+              lineStyle: 2,
+              axisLabelVisible: true,
+              title: "Buy High",
+            });
+          }
+          if (pt.stop_loss_price != null) {
+            candlestickSeries.createPriceLine({
+              price: pt.stop_loss_price,
+              color: "#ef4444",
+              lineWidth: 1,
+              lineStyle: 2,
+              axisLabelVisible: true,
+              title: "Stop Loss",
+            });
+          }
+          if (pt.target_price != null) {
+            candlestickSeries.createPriceLine({
+              price: pt.target_price,
+              color: "#3b82f6",
+              lineWidth: 1,
+              lineStyle: 2,
+              axisLabelVisible: true,
+              title: "Target",
+            });
+          }
+        }
+      }
+
+      // S4: Daily signal overlay - colored area showing rank percentile
+      if (showSignalOverlay && dailySignalSeries.length > 0) {
+        try {
+          // Add a line series for the percentile rank
+          const LineSeries = chartApi.addLineSeries ? chartApi.addLineSeries.bind(chartApi) : null;
+          if (LineSeries) {
+            const signalLine = chartApi.addLineSeries({
+              priceScaleId: "signal",
+              color: "rgba(99, 102, 241, 0.4)",
+              lineWidth: 1,
+              crosshairMarkerVisible: false,
+              lastValueVisible: false,
+              priceLineVisible: false,
+            });
+
+            // Set the signal scale on the right
+            chart.priceScale("signal").applyOptions({
+              scaleMargins: { top: 0.85, bottom: 0.0 },
+              drawTicks: false,
+            });
+
+            // Convert daily signal series to chart data
+            const signalData = dailySignalSeries
+              .filter(d => d.percentile != null)
+              .map(d => ({
+                time: d.date,
+                value: d.percentile,
+                color: d.grade
+                  ? (["AAA", "AA", "A"].includes(d.grade)
+                    ? "rgba(34, 197, 94, 0.6)"
+                    : "rgba(239, 68, 68, 0.6)")
+                  : "rgba(99, 102, 241, 0.3)",
+              }));
+
+            if (signalData.length > 0) {
+              signalLine.setData(signalData);
+            }
+
+            // Add grade markers as colored circles at the bottom
+            const gradeMarkers = dailySignalSeries
+              .filter(d => d.grade && ["AAA", "VVV"].includes(d.grade))
+              .map(d => ({
+                time: d.date,
+                position: d.grade === "AAA" ? "belowBar" : "aboveBar",
+                color: d.grade === "AAA" ? "#22c55e" : "#ef4444",
+                shape: "circle",
+                text: d.grade,
+                size: 1,
+              }));
+
+            if (gradeMarkers.length > 0) {
+              candlestickSeries.setMarkers([
+                ...gradeMarkers,
+                ...(signalMarkers.length > 0 ? signalMarkers : []),
+              ]);
+            }
+          }
+        } catch (e) {
+          // Signal overlay may not be supported in all chart versions
+        }
+      }
+
       chart.timeScale().fitContent();
-
     };
 
     const timer = setTimeout(renderChart, 50);
-
     return () => {
       clearTimeout(timer);
       chartContainer.innerHTML = "";
     };
-  }, [data]);
+  }, [ohlcData, decision, signalMarkers, dailySignalSeries, showSignalOverlay]);
 
+  // ------------------------------------------------------------------
+  // Load watchlist on mount when view switches
+  // ------------------------------------------------------------------
+  useEffect(() => {
+    if (view === "watchlist") {
+      fetchWatchlist();
+    }
+  }, [view, market, fetchWatchlist]);
+
+  // ------------------------------------------------------------------
+  // Factor keys for display
+  // ------------------------------------------------------------------
+  const factorEntries = decision?.factor_snapshot
+    ? Object.entries(decision.factor_snapshot)
+        .filter(([, v]) => v.value !== null)
+        .sort((a, b) => {
+          const za = Math.abs(a[1].z_score ?? 0);
+          const zb = Math.abs(b[1].z_score ?? 0);
+          return zb - za;
+        })
+        .slice(0, 15)
+    : [];
+
+  const guardrailEntries = decision?.guardrail_status
+    ? Object.entries(decision.guardrail_status).filter(([k]) => k !== "overall_passed")
+    : [];
+
+  // ------------------------------------------------------------------
+  // Render
+  // ------------------------------------------------------------------
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto pb-20">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b pb-8">
         <div className="space-y-1 text-left">
           <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest mb-1">
@@ -89,101 +533,683 @@ export function StockTerminal() {
             Market Intelligence
           </div>
           <h1 className="text-4xl font-black tracking-tight">Alpha Terminal</h1>
-          <p className="text-muted-foreground text-sm max-w-md">Real-time OHLC inspection and model confidence scores for individual assets.</p>
+          <p className="text-muted-foreground text-sm max-w-md">
+            Individual stock analysis with model-driven BUY / HOLD / SELL signals, factor exposure, and risk guardrails.
+          </p>
         </div>
 
-        <div className="flex w-full md:w-96 gap-2 bg-card p-1.5 rounded-xl shadow-lg border">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Enter ticker (e.g. NVDA, 600519.SH)"
-              className="w-full bg-transparent border-none pl-10 pr-4 py-2 text-sm focus:ring-0 outline-none font-bold placeholder:font-normal"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === "Enter" && fetchStockData(symbol)}
-            />
+        <div className="flex flex-col gap-3 items-end">
+          {/* Search bar */}
+          <div className="flex w-full md:w-96 gap-2 bg-card p-1.5 rounded-xl shadow-lg border">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Enter ticker (e.g. AAPL, 600519.SH)"
+                className="w-full bg-transparent border-none pl-10 pr-4 py-2 text-sm focus:ring-0 outline-none font-bold placeholder:font-normal"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              />
+            </div>
+            <Button onClick={handleSearch} disabled={loading || decisionLoading} size="sm" className="rounded-lg px-6 font-bold uppercase tracking-tighter">
+              {loading || decisionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Query"}
+            </Button>
           </div>
-          <Button onClick={() => fetchStockData(symbol)} disabled={loading} size="sm" className="rounded-lg px-6 font-bold uppercase tracking-tighter">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Query"}
-          </Button>
+
+          {/* View toggle */}
+          <div className="flex gap-1 bg-muted/30 p-0.5 rounded-lg">
+            <button
+              onClick={() => setView("analysis")}
+              className={cn(
+                "px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                view === "analysis" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <BarChart3 className="h-3 w-3 inline mr-1" /> Stock Analysis
+            </button>
+            <button
+              onClick={() => setView("watchlist")}
+              className={cn(
+                "px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                view === "watchlist" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <List className="h-3 w-3 inline mr-1" /> Watchlist Overview
+            </button>
+          </div>
         </div>
       </div>
 
-      {!data && !loading && (
+      {/* G1: Stale data warning banner */}
+      {dataFreshness?.is_stale && (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+          <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+          <span className="text-xs text-yellow-400">
+            Predictions are {dataFreshness.pred_age_days} days old. Consider retraining for fresher signals.
+          </span>
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* WATCHLIST OVERVIEW VIEW */}
+      {/* ================================================================ */}
+      {view === "watchlist" && (
+        <Card className="border shadow-lg bg-card text-card-foreground">
+          <CardHeader className="border-b bg-muted/10 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <CardTitle className="text-lg font-bold tracking-tight">Watchlist Signal Overview</CardTitle>
+                {/* Market toggle */}
+                <div className="flex gap-1 bg-muted/30 p-0.5 rounded-lg">
+                  <button
+                    onClick={() => { setMarket("us"); setWatchlist([]); }}
+                    className={cn(
+                      "px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                      market === "us" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    US
+                  </button>
+                  <button
+                    onClick={() => { setMarket("cn"); setWatchlist([]); }}
+                    className={cn(
+                      "px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                      market === "cn" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    CN
+                  </button>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchWatchlist} disabled={watchlistLoading}>
+                {watchlistLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Refresh"}
+              </Button>
+            </div>
+            {/* Signal stats */}
+            {watchlist.length > 0 && (
+              <div className="flex gap-4 mt-3">
+                <span className="text-xs font-bold text-green-400">
+                  BUY: {watchlist.filter(w => w.signal === "BUY").length}
+                </span>
+                <span className="text-xs font-bold text-yellow-400">
+                  HOLD: {watchlist.filter(w => w.signal === "HOLD").length}
+                </span>
+                <span className="text-xs font-bold text-red-400">
+                  SELL: {watchlist.filter(w => w.signal === "SELL").length}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Total: {watchlist.length}
+                </span>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="p-0">
+            {watchlistLoading && watchlist.length === 0 ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/5">
+                      <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Symbol</th>
+                      <th className="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Signal</th>
+                      <th className="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Price</th>
+                      <th className="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Chg%</th>
+                      <th className="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Confidence</th>
+                      <th className="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Score</th>
+                      <th className="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Rank</th>
+                      <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Strategy</th>
+                      <th className="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Risk</th>
+                      <th className="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {watchlist.map((item) => (
+                      <tr
+                        key={item.symbol}
+                        className="border-b border-dashed hover:bg-muted/5 transition-colors cursor-pointer"
+                        onClick={() => {
+                          setSymbol(item.symbol);
+                          setView("analysis");
+                          fetchStockData(item.symbol);
+                          fetchDecision(item.symbol);
+                          fetchSignalHistory(item.symbol);
+                          fetchSignalData(item.symbol);
+                        }}
+                      >
+                        <td className="py-3 px-3 font-bold">{item.symbol}</td>
+                        <td className="py-3 px-3 text-center">
+                          <SignalBadge signal={item.signal} />
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-xs">
+                          {item.price != null ? `$${item.price.toFixed(2)}` : "—"}
+                        </td>
+                        <td className={cn(
+                          "py-3 px-3 text-right font-mono text-xs font-bold",
+                          (item.change_pct ?? 0) > 0 ? "text-green-400" : (item.change_pct ?? 0) < 0 ? "text-red-400" : "text-muted-foreground",
+                        )}>
+                          {item.change_pct != null ? `${item.change_pct > 0 ? "+" : ""}${item.change_pct.toFixed(2)}%` : "—"}
+                        </td>
+                        <td className="py-3 px-3 w-32">
+                          <ConfidenceBar value={item.confidence} />
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-xs">
+                          {formatNum(item.score, 4)}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-xs">
+                          {item.rank !== null ? `#${item.rank + 1}` : "N/A"}
+                        </td>
+                        <td className="py-3 px-3 text-left text-[10px] text-muted-foreground">
+                          {item.recommended_strategy || "—"}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {item.risk_flags.length > 0 ? (
+                            <Badge variant="destructive" className="text-[10px]">
+                              {item.risk_flags.join(", ")}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <Button variant="ghost" size="sm" className="text-[10px] font-bold uppercase">
+                            Analyze
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {watchlist.length === 0 && !watchlistLoading && (
+                  <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">
+                    No watchlist data available. Run training first.
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ================================================================ */}
+      {/* STOCK ANALYSIS VIEW */}
+      {/* ================================================================ */}
+      {view === "analysis" && !ohlcData && !loading && (
         <div className="flex flex-col items-center justify-center py-32 bg-muted/10 rounded-3xl border-2 border-dashed border-border/50">
           <Activity className="h-12 w-12 text-muted-foreground/30 mb-4" />
           <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs italic">
-            {error || "Awaiting asset selection"}
+            {error || "Enter a ticker to begin analysis"}
           </p>
         </div>
       )}
 
-      {data && (
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-          <div className="xl:col-span-3 space-y-8">
-            <Card className="border shadow-lg bg-card text-card-foreground overflow-hidden">
-              <CardHeader className="border-b bg-muted/10 flex flex-row items-center justify-between py-4">
-                <div className="flex items-center gap-4">
-                  <div className="bg-primary px-3 py-1 rounded text-xs text-primary-foreground font-black uppercase">{data.symbol}</div>
-                  <CardTitle className="text-lg font-bold tracking-tight">Interactive Price Action</CardTitle>
-                </div>
-                <div className="flex gap-4 text-[10px] uppercase font-bold text-muted-foreground">
-                  <span className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-emerald-500" /> T+5 Outlook</span>
-                  <span className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-primary" /> Daily Resolution</span>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div id="kline-chart" className="w-full h-[500px]" />
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-6">
-            <Card className="border-none shadow-lg overflow-hidden group hover:shadow-xl transition-all">
-              <CardHeader className="pb-2 bg-muted/20 border-b mb-4">
-                <CardTitle className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground">
-                  <Zap className="h-3.5 w-3.5 text-yellow-500" /> Model Confidence
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline gap-2">
-                  <div className="text-5xl font-black tracking-tighter">{data.confidence?.toFixed(2) || "N/A"}</div>
-                  <div className={cn("text-xs font-bold flex items-center gap-0.5", data.trend >= 0 ? "text-green-500" : "text-red-500")}>
-                    {data.trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                    {Math.abs((data.trend || 0) * 100).toFixed(1)}%
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2 font-bold uppercase">Estimated probability of alpha generation</p>
-                <div className="mt-6 h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full group-hover:bg-primary/80 transition-all" style={{ width: `${(data.confidence || 0) * 100}%` }} />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-lg overflow-hidden">
-              <CardHeader className="pb-2 bg-muted/20 border-b mb-4">
-                <CardTitle className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground">
-                  <ShieldAlert className="h-3.5 w-3.5 text-primary" /> Risk Guardrails
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {(data.guardrails || []).map((risk: any, i: number) => (
-                  <div key={i} className="flex justify-between items-center border-b border-dashed pb-2 last:border-0">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">{risk.label}</span>
-                    <span className={cn("text-[10px] font-black uppercase tracking-tighter px-2 py-0.5 rounded border", (risk.color || "text-muted-foreground").replace('text', 'bg').replace('500', '500/10'), (risk.color || "text-muted-foreground").replace('text', 'border'), risk.color)}>
-                      {risk.status}
+      {view === "analysis" && ohlcData && (
+        <div className="space-y-8">
+          {/* Row 1: Decision Panel + Model Confidence */}
+          {decision && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Decision Card */}
+              <Card className={cn(
+                "border-2 shadow-lg overflow-hidden",
+                decision.signal === "BUY" && "border-green-500/30 bg-green-500/5",
+                decision.signal === "SELL" && "border-red-500/30 bg-red-500/5",
+                decision.signal === "HOLD" && "border-yellow-500/30 bg-yellow-500/5",
+              )}>
+                <CardHeader className="pb-2 border-b border-dashed">
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">
+                      Trading Signal
                     </span>
+                    <SignalBadge signal={decision.signal} />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="text-center">
+                    <div className={cn(
+                      "text-6xl font-black tracking-tighter",
+                      decision.signal === "BUY" && "text-green-400",
+                      decision.signal === "SELL" && "text-red-400",
+                      decision.signal === "HOLD" && "text-yellow-400",
+                    )}>
+                      {decision.signal}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">
+                      Confidence: {Math.round(decision.confidence * 100)}%
+                    </p>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
+                  <ConfidenceBar value={decision.confidence} />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Score: {formatNum(decision.score, 4)}</span>
+                    <span>Rank: {decision.rank !== null ? `#${decision.rank + 1}` : "N/A"}</span>
+                  </div>
 
-            <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-primary mb-3 text-left">Data Provenance</h4>
-              <p className="text-xs leading-relaxed text-muted-foreground italic text-left">
-                Served from Qlib market data and the current recommended model artifact when available.
-              </p>
+                  {/* Price Targets (P1-2) */}
+                  {decision.price_targets && decision.signal === "BUY" && (
+                    <div className="mt-3 pt-3 border-t border-dashed space-y-1.5">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Price Targets</div>
+                      {decision.price_targets.buy_range_low != null && decision.price_targets.buy_range_high != null && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Buy Range</span>
+                          <span className="font-mono font-bold text-green-400">
+                            {decision.price_targets.buy_range_low.toFixed(2)} - {decision.price_targets.buy_range_high.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      {decision.price_targets.stop_loss_price != null && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Stop Loss</span>
+                          <span className="font-mono font-bold text-red-400">{decision.price_targets.stop_loss_price.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {decision.price_targets.target_price != null && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Target</span>
+                          <span className="font-mono font-bold text-blue-400">{decision.price_targets.target_price.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {decision.price_targets.atr_20 != null && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">ATR(20)</span>
+                          <span className="font-mono text-muted-foreground">{decision.price_targets.atr_20.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Strategy Recommendation (P1-1) */}
+                  {decision.recommended_strategy && (
+                    <div className="mt-3 pt-3 border-t border-dashed">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Recommended Strategy</div>
+                      <div className="text-sm font-bold">{decision.recommended_strategy.display_name}</div>
+                      <div className="text-[11px] text-muted-foreground mt-1">{decision.recommended_strategy.reason}</div>
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="text-[10px] text-muted-foreground">Fit:</span>
+                        <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${Math.round(decision.recommended_strategy.confidence * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-bold">{Math.round(decision.recommended_strategy.confidence * 100)}%</span>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Decision Reasons */}
+              <Card className="lg:col-span-2 border shadow-lg bg-card text-card-foreground">
+                <CardHeader className="pb-2 border-b border-dashed">
+                  <CardTitle className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">
+                    Decision Analysis ({decision.reasons.length} factors)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 max-h-[300px] overflow-y-auto space-y-2">
+                  {decision.reasons.map((r, i) => (
+                    <ReasonItem key={i} reason={r} />
+                  ))}
+                  {decision.reasons.length === 0 && (
+                    <p className="text-muted-foreground text-xs italic">No specific reasons generated.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Row 2: K-line Chart + Side Panels */}
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+            <div className="xl:col-span-3 space-y-8">
+              <Card className="border shadow-lg bg-card text-card-foreground overflow-hidden">
+                <CardHeader className="border-b bg-muted/10 flex flex-row items-center justify-between py-4">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-primary px-3 py-1 rounded text-xs text-primary-foreground font-black uppercase">{ohlcData.symbol as string}</div>
+                    <CardTitle className="text-lg font-bold tracking-tight">Interactive Price Action</CardTitle>
+                  </div>
+                  <div className="flex gap-4 text-[10px] uppercase font-bold text-muted-foreground">
+                    <span className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-emerald-500" /> T+5 Outlook</span>
+                    <span className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-primary" /> Daily Resolution</span>
+                    {/* Signal overlay toggle */}
+                    <button
+                      onClick={() => setShowSignalOverlay(!showSignalOverlay)}
+                      className={cn(
+                        "flex items-center gap-1 px-2 py-0.5 rounded transition-all",
+                        showSignalOverlay
+                          ? "bg-indigo-500/20 text-indigo-400"
+                          : "bg-muted text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <div className={cn("h-2 w-2 rounded-full", showSignalOverlay ? "bg-indigo-400" : "bg-muted-foreground")} />
+                      Signal Overlay
+                    </button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div id="kline-chart" className="w-full h-[500px]" />
+                </CardContent>
+              </Card>
+
+              {/* Factor Exposure Visualization + Table */}
+              {factorEntries.length > 0 && (
+                <Card className="border shadow-lg bg-card text-card-foreground">
+                  <CardHeader className="border-b bg-muted/10 py-4">
+                    <CardTitle className="text-[10px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-2">
+                      <BarChart3 className="h-3.5 w-3.5" /> Factor Exposure (Top {factorEntries.length} Active Factors)
+                    </CardTitle>
+                  </CardHeader>
+                  {/* Factor Z-Score Bar Chart */}
+                  <CardContent className="pt-4 pb-2">
+                    <div className="space-y-2">
+                      {factorEntries.slice(0, 8).map(([name, snap]) => {
+                        const z = snap.z_score ?? 0;
+                        const barWidth = Math.min(Math.abs(z) / 3 * 100, 100); // 3σ = 100%
+                        const isPositive = z >= 0;
+                        return (
+                          <div key={name} className="flex items-center gap-2">
+                            <div className="w-32 text-[10px] font-mono text-muted-foreground truncate text-right">{name}</div>
+                            <div className="flex-1 flex items-center h-4">
+                              {/* Negative side */}
+                              <div className="w-1/2 flex justify-end">
+                                {!isPositive && (
+                                  <div
+                                    className="h-3 bg-red-500/60 rounded-l"
+                                    style={{ width: `${barWidth}%` }}
+                                  />
+                                )}
+                              </div>
+                              {/* Center line */}
+                              <div className="w-px h-4 bg-border" />
+                              {/* Positive side */}
+                              <div className="w-1/2 flex justify-start">
+                                {isPositive && (
+                                  <div
+                                    className="h-3 bg-green-500/60 rounded-r"
+                                    style={{ width: `${barWidth}%` }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                            <div className={cn(
+                              "w-12 text-[10px] font-mono font-bold text-right",
+                              z > 1 ? "text-green-400" : z < -1 ? "text-red-400" : "text-muted-foreground",
+                            )}>
+                              {z > 0 ? "+" : ""}{z.toFixed(2)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between mt-2 text-[9px] text-muted-foreground/50">
+                      <span>-3σ</span>
+                      <span>0</span>
+                      <span>+3σ</span>
+                    </div>
+                  </CardContent>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-muted/5">
+                            <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Factor</th>
+                            <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Category</th>
+                            <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Value</th>
+                            <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Z-Score</th>
+                            <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Percentile</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {factorEntries.map(([name, snap]) => (
+                            <tr key={name} className="border-b border-dashed hover:bg-muted/5">
+                              <td className="py-2.5 px-4 font-mono text-xs">{name}</td>
+                              <td className="py-2.5 px-4">
+                                <Badge variant="outline" className="text-[10px]">{snap.category}</Badge>
+                              </td>
+                              <td className="py-2.5 px-4 text-right font-mono text-xs">{formatNum(snap.value, 4)}</td>
+                              <td className={cn(
+                                "py-2.5 px-4 text-right font-mono text-xs font-bold",
+                                (snap.z_score ?? 0) > 2 && "text-green-400",
+                                (snap.z_score ?? 0) < -2 && "text-red-400",
+                              )}>
+                                {snap.z_score !== null ? `${snap.z_score > 0 ? "+" : ""}${snap.z_score.toFixed(2)}` : "N/A"}
+                              </td>
+                              <td className="py-2.5 px-4 text-right text-xs text-muted-foreground">
+                                {snap.percentile !== null ? `${snap.percentile.toFixed(0)}th` : "N/A"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* T6: Signal History Timeline */}
+              {signalHistory.length > 0 && (
+                <Card className="border shadow-lg bg-card text-card-foreground">
+                  <CardHeader className="border-b bg-muted/10 py-4">
+                    <CardTitle className="text-[10px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-2">
+                      <ClipboardList className="h-3.5 w-3.5" /> Signal History (Last {signalHistory.length} Records)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="space-y-3">
+                      {signalHistory.slice(0, 10).map((record, i) => {
+                        const sig = record.signal as "BUY" | "HOLD" | "SELL";
+                        const colors = { BUY: "border-green-500/30 bg-green-500/5", HOLD: "border-yellow-500/30 bg-yellow-500/5", SELL: "border-red-500/30 bg-red-500/5" };
+                        const dotColors = { BUY: "bg-green-500", HOLD: "bg-yellow-500", SELL: "bg-red-500" };
+                        return (
+                          <div key={i} className={cn("flex items-center gap-4 p-3 rounded-lg border", colors[sig] || colors.HOLD)}>
+                            <div className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", dotColors[sig] || dotColors.HOLD)} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold">{sig}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {record.confidence ? `${Math.round(record.confidence * 100)}%` : ""}
+                                </span>
+                                <span className="text-[10px] font-mono text-muted-foreground">
+                                  score: {record.score != null ? record.score.toFixed(4) : "N/A"}
+                                </span>
+                              </div>
+                              {record.price_targets?.stop_loss_price != null && (
+                                <div className="text-[10px] text-muted-foreground mt-0.5">
+                                  SL: {record.price_targets.stop_loss_price.toFixed(2)}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground flex-shrink-0">
+                              {record.recorded_at ? new Date(record.recorded_at).toLocaleDateString() : ""}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Right sidebar */}
+            <div className="space-y-6">
+              {/* Model Confidence (existing) */}
+              <Card className="border-none shadow-lg overflow-hidden group hover:shadow-xl transition-all">
+                <CardHeader className="pb-2 bg-muted/20 border-b mb-4">
+                  <CardTitle className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground">
+                    <Zap className="h-3.5 w-3.5 text-yellow-500" /> Model Confidence
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-5xl font-black tracking-tighter">
+                      {typeof ohlcData.confidence === "number" ? (ohlcData.confidence as number).toFixed(2) : "N/A"}
+                    </div>
+                    <div className={cn("text-xs font-bold flex items-center gap-0.5", ((ohlcData.trend as { strength?: number })?.strength ?? 0) >= 0 ? "text-green-500" : "text-red-500")}>
+                      {((ohlcData.trend as { strength?: number })?.strength ?? 0) >= 0
+                        ? <ArrowUpRight className="h-3 w-3" />
+                        : <ArrowDownRight className="h-3 w-3" />}
+                      {Math.abs(((ohlcData.trend as { strength?: number })?.strength ?? 0) * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2 font-bold uppercase">Estimated probability of alpha generation</p>
+                  <div className="mt-6 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full group-hover:bg-primary/80 transition-all" style={{ width: `${(typeof ohlcData.confidence === "number" ? ohlcData.confidence as number : 0) * 100}%` }} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* S4: Signal Performance Card */}
+              {signalPerformance && (
+                <Card className="border-none shadow-lg overflow-hidden">
+                  <CardHeader className="pb-2 bg-muted/20 border-b mb-4">
+                    <CardTitle className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground">
+                      <BarChart3 className="h-3.5 w-3.5 text-blue-500" /> Signal Performance (10d Returns)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {/* Step size selector */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-[10px] text-muted-foreground">Step:</span>
+                      {[10, 20, 30].map(ss => (
+                        <button
+                          key={ss}
+                          onClick={() => { setStepSize(ss); fetchSignalData(symbol, ss); }}
+                          className={cn(
+                            "px-2 py-0.5 text-[10px] font-bold rounded",
+                            stepSize === ss ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {ss}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Grade performance rows */}
+                    {["AAA", "AA", "A", "V", "VV", "VVV"].map(grade => {
+                      const p = signalPerformance[grade];
+                      if (!p || p.total_occurrences === 0) return null;
+                      const isBuy = ["AAA", "AA", "A"].includes(grade);
+                      const barWidth = Math.min(Math.abs(p.mean_return) / 10 * 100, 100);
+                      return (
+                        <div key={grade} className="flex items-center gap-2 text-xs">
+                          <div className={cn(
+                            "w-8 font-black text-center",
+                            isBuy ? "text-green-400" : "text-red-400",
+                          )}>
+                            {grade}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1">
+                              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={cn("h-full rounded-full", isBuy ? "bg-green-500" : "bg-red-500")}
+                                  style={{ width: `${barWidth}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className={cn(
+                            "w-14 text-right font-mono font-bold",
+                            p.mean_return >= 0 ? "text-green-400" : "text-red-400",
+                          )}>
+                            {p.mean_return >= 0 ? "+" : ""}{(p.mean_return * 100).toFixed(1)}%
+                          </div>
+                          <div className="w-10 text-right text-muted-foreground">
+                            {p.total_occurrences}次
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {/* Summary */}
+                    <div className="pt-2 border-t border-dashed text-[10px] text-muted-foreground">
+                      Win rate: Top grades avg {Math.round(
+                        ((signalPerformance["AAA"]?.win_rate ?? 0) + (signalPerformance["AA"]?.win_rate ?? 0) + (signalPerformance["A"]?.win_rate ?? 0)) / 3 * 100
+                      )}% | Bottom grades avg {Math.round(
+                        ((signalPerformance["V"]?.win_rate ?? 0) + (signalPerformance["VV"]?.win_rate ?? 0) + (signalPerformance["VVV"]?.win_rate ?? 0)) / 3 * 100
+                      )}%
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Guardrails (enhanced with decision data) */}
+              <Card className="border-none shadow-lg overflow-hidden">
+                <CardHeader className="pb-2 bg-muted/20 border-b mb-4">
+                  <CardTitle className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground">
+                    <ShieldAlert className="h-3.5 w-3.5 text-primary" /> Risk Guardrails
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {guardrailEntries.length > 0 ? (
+                    guardrailEntries.map(([name, detail]) => (
+                      <div key={name} className="flex justify-between items-center border-b border-dashed pb-2 last:border-0">
+                        <span className="text-xs font-bold text-muted-foreground uppercase">{name.replace("_", " ")}</span>
+                        <div className="flex items-center gap-2">
+                          {detail.metric !== undefined && (
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              {typeof detail.metric === "number" ? formatCompact(detail.metric) : detail.metric}
+                            </span>
+                          )}
+                          <span className={cn(
+                            "text-[10px] font-black uppercase tracking-tighter px-2 py-0.5 rounded border",
+                            detail.passed
+                              ? "bg-green-500/10 text-green-500 border-green-500/30"
+                              : "bg-red-500/10 text-red-500 border-red-500/30",
+                          )}>
+                            {detail.passed ? "PASS" : "FAIL"}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    // Fallback to original guardrails
+                    ((ohlcData.guardrails as Array<{ label: string; status: string; color?: string }>) || []).map((risk, i) => (
+                      <div key={i} className="flex justify-between items-center border-b border-dashed pb-2 last:border-0">
+                        <span className="text-xs font-bold text-muted-foreground uppercase">{risk.label}</span>
+                        <span className={cn(
+                          "text-[10px] font-black uppercase tracking-tighter px-2 py-0.5 rounded border",
+                          (risk.color || "text-muted-foreground").replace("text", "bg").replace("500", "500/10"),
+                          (risk.color || "text-muted-foreground").replace("text", "border"),
+                          risk.color,
+                        )}>
+                          {risk.status}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Risk Flags */}
+              {decision && decision.risk_flags.length > 0 && (
+                <Card className="border-red-500/30 bg-red-500/5 shadow-lg overflow-hidden">
+                  <CardHeader className="pb-2 border-b border-red-500/20 mb-4">
+                    <CardTitle className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-red-400">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Active Risk Flags
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {decision.risk_flags.map((flag, i) => (
+                      <Badge key={i} variant="destructive" className="mr-2 mb-2 text-[10px]">
+                        {flag.replace("_", " ")}
+                      </Badge>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Data Provenance */}
+              <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-primary mb-3 text-left">Data Provenance</h4>
+                <p className="text-xs leading-relaxed text-muted-foreground italic text-left">
+                  Served from Qlib market data and the current recommended model artifact.
+                  {decision && (
+                    <span className="block mt-1 not-italic text-foreground/60">
+                      Decision timestamp: {decision.timestamp}
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
           </div>
         </div>

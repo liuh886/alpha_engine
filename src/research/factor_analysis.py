@@ -257,7 +257,7 @@ def _compute_forward_returns(
 
 
 def _group_by_cross_section(
-    df: pd.DataFrame, freq: str = "M"
+    df: pd.DataFrame, freq: str = "ME"
 ) -> list[tuple[str, pd.DataFrame]]:
     """Group a (datetime, instrument) DataFrame by time periods."""
     if not isinstance(df.index, pd.MultiIndex):
@@ -305,7 +305,7 @@ def compute_factor_ic(
     end_date: str = "latest",
     factors: list[str] | None = None,
     forward_days: int = 10,
-    freq: str = "M",
+    freq: str = "ME",
     use_cache: bool = True,
 ) -> FactorAnalysisReport:
     """Compute Information Coefficient for each Alpha158 factor.
@@ -638,7 +638,7 @@ def compute_factor_decay(
 
         # Monthly cross-sections
         sections_fv = _group_by_cross_section(
-            fv_aligned.to_frame("fv"), freq="M"
+            fv_aligned.to_frame("fv"), freq="ME"
         )
 
         period_ics: list[float] = []

@@ -4,36 +4,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Star, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, RefreshCw, Star, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { shortId, formatPct, formatNum, useSort } from "@/lib/format";
 import { artifactUrl } from "@/lib/artifacts";
+import { apiFetch } from "@/lib/api";
 
 type ModelVersion = {
-  id: string; tag?: string; name?: string; market?: string; model_type?: string; path?: string; run_id?: string; created_at?: string; description?: string; metrics?: Record<string, any>; params?: Record<string, any>;
+  id: string; tag?: string; name?: string; market?: string; model_type?: string; path?: string; run_id?: string; created_at?: string; description?: string; metrics?: Record<string, number>; metrics_json?: string; params?: Record<string, unknown>; params_json?: string;
 };
 
 type MarketFilter = "all" | "us" | "cn";
 type SortKey = "none" | "sharpe" | "return" | "mdd";
 
-function shortId(value: string) {
-  if (!value) return "";
-  return value.length <= 8 ? value : value.slice(0, 8);
-}
-
-function safeJson(value: any, fallback: any) {
+function safeJson(value: unknown, fallback: unknown) {
   if (!value) return fallback;
   if (typeof value === "object") return value;
   try { return JSON.parse(String(value)); } catch { return fallback; }
-}
-
-function formatPct(value?: number | null) {
-  if (value === undefined || value === null || Number.isNaN(value)) return "N/A";
-  return `${(value * 100).toFixed(2)}%`;
-}
-
-function formatNum(value?: number | null) {
-  if (value === undefined || value === null || Number.isNaN(value)) return "N/A";
-  return value.toFixed(2);
 }
 
 export function ModelsPage() {
@@ -41,17 +28,16 @@ export function ModelsPage() {
   const [versions, setVersions] = useState<ModelVersion[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("none");
-  const [sortAsc, setSortAsc] = useState(false);
+  const { sortKey, sortAsc, toggleSort, SortIcon } = useSort<SortKey>("none");
   const [minSharpe, setMinSharpe] = useState("");
 
   const load = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(artifactUrl.models);
+      const resp = await apiFetch(artifactUrl.models);
       if (!resp.ok) return;
       const json = await resp.json();
-      let rows = (json?.versions || []) as any[];
+      let rows = (json?.versions || []) as ModelVersion[];
       if (market !== "all") rows = rows.filter(r => r.market === market);
       const parsed: ModelVersion[] = rows.filter((r) => r && r.id).map((r) => ({
         id: String(r.id), tag: String(r.tag || ""), name: String(r.name || ""), market: String(r.market || ""), model_type: String(r.model_type || ""), path: String(r.path || ""), run_id: String(r.run_id || ""), created_at: String(r.created_at || ""), description: String(r.description || ""),
@@ -99,25 +85,11 @@ export function ModelsPage() {
     return list;
   }, [versions, sortKey, sortAsc, minSharpe]);
 
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortKey(key);
-      setSortAsc(false);
-    }
-  };
-
-  const SortIcon = ({ column }: { column: SortKey }) => {
-    if (sortKey !== column) return <ArrowUpDown className="h-3 w-3 opacity-30" />;
-    return sortAsc ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />;
-  };
-
   const deleteModel = async (v: ModelVersion) => {
     if (!window.confirm(`Delete model ${v.tag || v.id}?`)) return;
     setActionId(v.id);
     try {
-      const resp = await fetch("/api/models/delete", {
+      const resp = await apiFetch("/api/models/delete", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ version_id: v.id }),
       });
@@ -132,7 +104,7 @@ export function ModelsPage() {
     if (!window.confirm(`Mark ${v.tag || v.id} as ${newStage}?`)) return;
     setActionId(v.id);
     try {
-      const resp = await fetch("/api/models/promote", {
+      const resp = await apiFetch("/api/models/promote", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ version_id: v.id, stage: newStage }),
       });
@@ -192,7 +164,7 @@ export function ModelsPage() {
               </Button>
             ))}
             {sortKey !== "none" && (
-              <Button variant="ghost" size="sm" onClick={() => setSortKey("none")} className="h-7 text-xs text-muted-foreground">
+              <Button variant="ghost" size="sm" onClick={() => toggleSort("none")} className="h-7 text-xs text-muted-foreground">
                 Clear
               </Button>
             )}

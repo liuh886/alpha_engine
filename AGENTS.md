@@ -1,27 +1,50 @@
-# Alpha Engine: Multi-Agent Governance Framework
+# Alpha Engine: Agent Architecture
 
-## 1. Agent Identities & Tactical Roles
-The project's vision is executed through specialized agents, each holding strict domain ownership.
+## 1. Architecture Overview
 
-| Agent | Strategic Role (Cognition) | Primary Assets |
+The agent system uses a single unified **ResearchAssistant** that consolidates all
+capabilities formerly split across Alpha, Risk, Governance, and Developer agents.
+An **AgentRouter** provides a thin facade for task dispatch, and **BaseAgent**
+offers shared utility methods.
+
+| Component | Role | Location |
 | :--- | :--- | :--- |
-| **Alpha Agent** | **The Strategy Architect**. Mines factors, documents alpha decay, and builds the "Strategy Encyclopedia". | `agents/alpha/docs/`, `src/strategies/` |
-| **Risk Agent** | **The Safety Officer**. Defines volatility contracts, monitors drawdowns, and holds "Red Button" authority. | `agents/risk/scripts/`, `src/guardrails/` |
-| **Governance Agent** | **The Auditor**. Ensures execution consistency, monitors "Style Drift", and manages data integrity. | `agents/governance/docs/`, `src/governance/` |
-| **Developer Agent** | **The Infrastructure Lead**. Manages the project's roadmap, architecture, and task orchestration. | `agents/developer/DESIGN.md`, `agents/developer/TASKS.md` |
+| **ResearchAssistant** | Unified agent handling research, risk, governance, and architecture tasks | `src/agents/research_assistant.py` |
+| **AgentRouter** | Thin facade that routes incoming tasks to ResearchAssistant methods | `src/agents/agent_router.py` |
+| **BaseAgent** | Utility base class (context compression, chain-of-thought prompts) | `src/agents/core/base_agent.py` |
 
-## 2. Collaborative Workflows (Collective Intelligence)
+## 2. ResearchAssistant Capabilities
+
+The ResearchAssistant exposes tool methods that map to the former agent roles:
+
+| Capability Domain | Method | Origin |
+| :--- | :--- | :--- |
+| Factor Analysis | `analyze_factors(market)` | Alpha Agent |
+| Hyperparameter Tuning | `suggest_hyperparams()` | Alpha Agent |
+| Data Quality | `check_data_quality(market)` | Alpha Agent |
+| Risk Assessment | `assess_risk()` | Risk Agent |
+| Drawdown Monitoring | `check_drawdown(run_id)` | Risk Agent |
+| Run Auditing | `audit_run(run_id)` | Governance Agent |
+| Consistency Checks | `check_consistency(run_id)` | Governance Agent |
+| Self-Healing | `self_heal(event_data)` | Governance Agent |
+| Architecture Docs | `describe_architecture()` | Developer Agent |
+| Chat Interface | `chat(message)` | Unified |
+
+## 3. Collaborative Workflows
+
+These workflows describe conceptual roles within the single ResearchAssistant,
+not separate runtime agents.
 
 ### The Strategy Onboarding Protocol
-1. **Alpha Agent** proposes a new factor/strategy with a "Why" document.
-2. **Risk Agent** generates a "Risk Contract" (Expected Vol, Max DD, Liquidity bounds).
-3. **Governance Agent** audits the backtest for "Data Leakage" or "Style Bias".
-4. **Developer Agent** integrates the strategy into the automated runtime.
+1. **Research (Alpha role)**: Propose a new factor/strategy with a hypothesis.
+2. **Risk Assessment (Risk role)**: Generate a risk contract (expected vol, max drawdown, liquidity bounds).
+3. **Governance Audit (Governance role)**: Audit the backtest for data leakage or style bias.
+4. **Integration (Developer role)**: Integrate the strategy into the automated runtime.
 
-## 3. Communication Protocols
-- **Vision Alignment**: Every task MUST map to one of the 4 Phases defined in `DESIGN.md`.
-- **Reasoning First**: Agents must explain their rationale before executing any structural changes.
-- **Continuous Learning**: Agents must update their internal docs after every major system event (e.g., a strategy failure or a performance breakthrough).
+## 4. Communication Protocols
+- **Vision Alignment**: Every task must map to one of the 4 Phases defined in `DESIGN.md`.
+- **Reasoning First**: The agent explains its rationale before executing structural changes.
+- **Continuous Learning**: Internal docs are updated after every major system event.
 
 ---
-*Reference `agents/developer/DESIGN.md` for the overarching vision.*
+*Reference `DESIGN.md` for the overarching vision.*

@@ -5,15 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { FileText, RefreshCw, ExternalLink, Download, Calendar, FlaskConical, Target, Archive } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { shortId } from "@/lib/format";
 import { artifactUrl } from "@/lib/artifacts";
+import { apiFetch } from "@/lib/api";
 
-type ReportRow = { id: string; type: string; ref_id: string; date?: string; paths?: Record<string, string>; meta?: Record<string, any>; };
+type ReportRow = { id: string; type: string; ref_id: string; date?: string; paths?: Record<string, string>; meta?: Record<string, unknown>; };
 type ReportFilter = "all" | "backtest" | "arena_daily" | "archive";
-
-function shortId(value: string) {
-  if (!value) return "";
-  return value.length <= 8 ? value : value.slice(0, 8);
-}
 
 export function ReportsPage() {
   const [reports, setReports] = useState<ReportRow[]>([]);
@@ -25,11 +22,11 @@ export function ReportsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(artifactUrl.reports);
+      const resp = await apiFetch(artifactUrl.reports);
       if (!resp.ok) return;
       const json = await resp.json();
       let rpts = json?.reports || [];
-      if (filter !== "all") rpts = rpts.filter((r: any) => r.type === filter);
+      if (filter !== "all") rpts = rpts.filter((r: ReportRow) => r.type === filter);
       setReports(rpts);
     } catch { /* ignore */ }
     finally { setLoading(false); }
@@ -46,7 +43,7 @@ export function ReportsPage() {
     if (!window.confirm(`Export ${filter} reports to ZIP?`)) return;
     setExportRunning(true);
     try {
-      const resp = await fetch("/api/reports/export", {
+      const resp = await apiFetch("/api/reports/export", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: filter === "all" ? "all" : filter, limit: 100 }),
       });
@@ -140,10 +137,10 @@ export function ReportsPage() {
                     <span className="text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> Date</span>
                     <span>{r.date || "Unknown"}</span>
                   </div>
-                  {r.meta?.model_type && (
+                  {r.meta?.model_type != null && (
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground flex items-center gap-1"><FlaskConical className="h-3 w-3" /> Model</span>
-                      <span>{r.meta.model_type}</span>
+                      <span>{String(r.meta.model_type)}</span>
                     </div>
                   )}
                   <div className="pt-2 border-t">

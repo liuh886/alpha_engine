@@ -24,6 +24,15 @@ interface GlobalState {
 
     apiError: string | null;
     setApiError: (err: string | null) => void;
+
+    username: string;
+    setUsername: (name: string) => void;
+
+    // Model selection (shared across pages)
+    selectedModelId: string;
+    setSelectedModelId: (id: string) => void;
+    selectedModelMarket: string;
+    setSelectedModelMarket: (market: string) => void;
 }
 
 export const useGlobalStore = create<GlobalState>((set) => ({
@@ -50,4 +59,13 @@ export const useGlobalStore = create<GlobalState>((set) => ({
 
     apiError: null,
     setApiError: (err) => set({ apiError: err }),
+
+    username: "User",
+    setUsername: (name) => set({ username: name }),
+
+    // Model selection
+    selectedModelId: "",
+    setSelectedModelId: (id) => set({ selectedModelId: id }),
+    selectedModelMarket: "us",
+    setSelectedModelMarket: (market) => set({ selectedModelMarket: market }),
 }));

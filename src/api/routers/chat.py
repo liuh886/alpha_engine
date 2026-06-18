@@ -31,11 +31,11 @@ async def agent_chat(req: ChatRequest):
         result = router_instance.route_task(req.agent_type, market="us")
 
         if req.agent_type == "alpha":
-            reply = f"**AgentRouter Dispatch**: AlphaAgent initiated research cycle. Result: {result.get('status', 'OK')}. Hypothesis: {result.get('hypothesis', 'N/A')}"
+            reply = f"**AgentRouter Dispatch**: ResearchAssistant initiated research cycle. Result: {result.get('status', 'OK')}. Hypothesis: {result.get('hypothesis', 'N/A')}"
         elif req.agent_type == "developer":
-            reply = f"**AgentRouter Dispatch**: DeveloperAgent planning execution. Next step: {result.get('next_step', 'N/A')}"
+            reply = f"**AgentRouter Dispatch**: ResearchAssistant planning execution. Next step: {result.get('next_step', 'N/A')}"
         else:
-            reply = f"**AgentRouter Dispatch**: {req.agent_type.capitalize()}Agent processed request."
+            reply = f"**AgentRouter Dispatch**: ResearchAssistant processed {req.agent_type} request."
 
         return {"ok": True, "reply": reply, "result": result}
     except Exception as e:

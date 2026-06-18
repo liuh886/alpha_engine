@@ -18,6 +18,7 @@ from src.governance.service import GovernanceService
 from src.reliability.classifier import classify_failure
 from src.research.registry import register_model
 from src.research.service import ResearchService
+from src.research.walk_forward import walk_forward_validate
 from src.workflows.profile_compiler import compile_strategy_profile
 
 logger = get_logger(__name__)
@@ -328,9 +329,91 @@ def run_training_pipeline(
             # 3. Execution
             results = research.run_training_pipeline(market, config, tag)
 
+            # 3.5 Walk-forward validation
+            walk_forward_data = None
+            try:
+                segments = config["task"]["dataset"]["kwargs"]["segments"]
+                train_start = segments["train"][0]
+                train_end = segments["train"][1] if len(segments["train"]) > 1 else segments.get("valid", ["", ""])[1]
+
+                wf_result = walk_forward_validate(
+                    market=market,
+                    model_type=model_type,
+                    train_start=train_start,
+                    train_end=train_end,
+                )
+                walk_forward_data = {
+                    "mean_ic": wf_result.mean_ic,
+                    "std_ic": wf_result.std_ic,
+                    "ic_ir": wf_result.ic_ir,
+                    "consistency_score": wf_result.consistency_score,
+                    "n_splits": len(wf_result.splits),
+                }
+
+                # Persist walk-forward results to artifacts
+                from dataclasses import asdict as _asdict
+
+                wf_dir = ARTIFACTS_DIR / "walk_forward"
+                wf_dir.mkdir(parents=True, exist_ok=True)
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                wf_file = wf_dir / f"{market}_{ts}.json"
+                with open(wf_file, "w", encoding="utf-8") as wf_f:
+                    json.dump(_asdict(wf_result), wf_f, indent=2, default=str)
+                logger.info("Walk-forward validation passed and persisted", file=str(wf_file), mean_ic=wf_result.mean_ic)
+
+                # Hard gate: walk-forward quality check
+                WF_HARD_GATES = {
+                    "min_icir": 0.3,
+                    "min_consistency": 0.55,
+                    "min_mean_ic": 0.0,
+                }
+
+                wf_ok = True
+                wf_failures = []
+                if walk_forward_data.get("ic_ir", 0) < WF_HARD_GATES["min_icir"]:
+                    wf_ok = False
+                    wf_failures.append(
+                        f"ICIR={walk_forward_data['ic_ir']:.3f} < {WF_HARD_GATES['min_icir']}"
+                    )
+                if walk_forward_data.get("consistency_score", 0) < WF_HARD_GATES["min_consistency"]:
+                    wf_ok = False
+                    wf_failures.append(
+                        f"consistency={walk_forward_data['consistency_score']:.3f} < {WF_HARD_GATES['min_consistency']}"
+                    )
+                if walk_forward_data.get("mean_ic", 0) < WF_HARD_GATES["min_mean_ic"]:
+                    wf_ok = False
+                    wf_failures.append(
+                        f"mean_ic={walk_forward_data['mean_ic']:.4f} < {WF_HARD_GATES['min_mean_ic']}"
+                    )
+
+                if not wf_ok:
+                    logger.error(
+                        "Walk-forward HARD GATE FAILED — model NOT registered",
+                        failures=wf_failures,
+                    )
+                    walk_forward_data["gate_passed"] = False
+                    walk_forward_data["gate_failures"] = wf_failures
+                else:
+                    walk_forward_data["gate_passed"] = True
+
+            except Exception as wf_exc:
+                logger.error(
+                    "Walk-forward validation FAILED — blocking model promotion",
+                    error=str(wf_exc),
+                    market=market,
+                )
+                walk_forward_data = {
+                    "gate_passed": False,
+                    "gate_failures": [f"Walk-forward execution failed: {wf_exc}"],
+                    "mean_ic": None,
+                    "ic_ir": None,
+                    "consistency_score": None,
+                }
+
             # 4. Finalize
             register_model(
-                market, results["model_path"], config, run_id=results["run_id"], model_tag=tag
+                market, results["model_path"], config, run_id=results["run_id"], model_tag=tag,
+                walk_forward=walk_forward_data,
             )
             artifact_refresh.refresh_training_artifacts(market=market)
 
@@ -345,6 +428,34 @@ def run_training_pipeline(
                     "run_id": results["run_id"],
                 },
             )
+
+            # Auto-rebuild dashboard DB so frontend shows the new model
+            try:
+                # First sync model_list.yaml to SQLite registry
+                import yaml
+                from pathlib import Path
+                from src.assistant.model_registry_index import ModelRegistryIndex
+                from src.assistant.metadata_db import resolve_metadata_db_path
+                from src.common import paths
+
+                model_list_path = paths.get_artifacts_dir() / "models" / "model_list.yaml"
+                if model_list_path.exists():
+                    with open(model_list_path) as f:
+                        ml_data = yaml.safe_load(f) or {"models": []}
+                    db_path = resolve_metadata_db_path(paths.get_artifacts_dir())
+                    index = ModelRegistryIndex(db_path=db_path)
+                    existing = {v['id'] for v in index.list_versions(limit=200)}
+                    for m in ml_data.get('models', []):
+                        if m['id'] not in existing:
+                            index.upsert_entry(m)
+                            logger.info("Synced model to SQLite", model_id=m['id'])
+
+                from scripts.build_dashboard_db import main as build_dashboard_db
+                build_dashboard_db()
+                logger.info("Dashboard DB rebuilt after training", market=market)
+            except Exception as exc:
+                logger.warning("Failed to rebuild dashboard DB", error=str(exc))
+
             return {"status": "SUCCESS", "market": market, "run_id": results["run_id"]}
         except Exception as exc:
             if attempt < max_retries:

@@ -1,3 +1,5 @@
+import os
+
 import requests
 
 from src.common.logging import get_logger
@@ -5,7 +7,7 @@ from src.common.runtime_settings import get_runtime_settings
 
 logger = get_logger(__name__)
 
-MAX_DRAWDOWN_THRESHOLD = 0.15
+MAX_DRAWDOWN_THRESHOLD = float(os.environ.get("ALPHA_ENGINE_MAX_DRAWDOWN_THRESHOLD", "0.15"))
 
 
 def _api_base() -> str:

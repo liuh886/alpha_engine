@@ -1,9 +1,41 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Save, FileCode, CheckCircle2, AlertCircle, RefreshCw, Play, BarChart3, Info, BookOpen, Loader2 } from "lucide-react";
+import { Save, FileCode, CheckCircle2, AlertCircle, RefreshCw, Play, BarChart3, Info, BookOpen, Loader2, Zap, TrendingUp, Shield, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
+
+// ---------------------------------------------------------------------------
+// Strategy registry types
+// ---------------------------------------------------------------------------
+
+interface StrategyInfo {
+  name: string;
+  version: string;
+  description: string;
+}
+
+const STRATEGY_GUIDE: Record<string, { icon: React.ComponentType<{ className?: string }>; use_case: string; best_for: string; color: string }> = {
+  biweekly_trend: {
+    icon: TrendingUp,
+    use_case: "双周调仓，趋势跟踪",
+    best_for: "大盘蓝筹股、趋势明确的股票、简单信号场景",
+    color: "text-blue-400",
+  },
+  dual_layer: {
+    icon: Layers,
+    use_case: "个股决策引擎 + 组合管理",
+    best_for: "多因子信号、高波动率股票、需要可解释买卖理由的场景",
+    color: "text-purple-400",
+  },
+  weekly_quant_rating: {
+    icon: Zap,
+    use_case: "周度评级，连续信号过滤",
+    best_for: "强动量股票、需要连续确认信号的场景",
+    color: "text-yellow-400",
+  },
+};
 
 export function StrategyPage() {
   const [files, setFiles] = useState<string[]>([]);
@@ -12,10 +44,11 @@ export function StrategyPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: 'ok' | 'error', msg: string } | null>(null);
+  const [strategies, setStrategies] = useState<StrategyInfo[]>([]);
 
   const loadFileList = async () => {
     try {
-      const resp = await fetch("/api/strategy/list");
+      const resp = await apiFetch("/api/strategy/list");
       const json = await resp.json();
       if (json.ok) {
         setFiles(json.files);
@@ -29,7 +62,7 @@ export function StrategyPage() {
   const loadFileContent = async (filename: string) => {
     setLoading(true);
     try {
-      const resp = await fetch(`/api/strategy/content/${filename}`);
+      const resp = await apiFetch(`/api/strategy/content/${filename}`);
       const json = await resp.json();
       if (json.ok) {
         setContent(json.content);
@@ -38,7 +71,17 @@ export function StrategyPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { loadFileList(); }, []);
+  const loadStrategies = async () => {
+    try {
+      const resp = await apiFetch("/api/strategy/plugins", { cache: "no-store" });
+      const json = await resp.json();
+      if (json.ok && json.plugins) {
+        setStrategies(json.plugins);
+      }
+    } catch { /* silent */ }
+  };
+
+  useEffect(() => { loadFileList(); loadStrategies(); }, []);
   useEffect(() => { if (selectedFile) loadFileContent(selectedFile); }, [selectedFile]);
 
   const handleSave = async () => {
@@ -46,7 +89,7 @@ export function StrategyPage() {
     setSaving(true);
     setStatus(null);
     try {
-      const resp = await fetch("/api/strategy/save", {
+      const resp = await apiFetch("/api/strategy/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename: selectedFile, content })
@@ -57,8 +100,8 @@ export function StrategyPage() {
       } else {
         setStatus({ type: 'error', msg: json.error || "Failed to save." });
       }
-    } catch (e: any) {
-      setStatus({ type: 'error', msg: e.message });
+    } catch (e: unknown) {
+      setStatus({ type: 'error', msg: e instanceof Error ? e.message : String(e) });
     } finally { setSaving(false); }
   };
 
@@ -109,6 +152,45 @@ export function StrategyPage() {
                 ))}
             </CardContent>
             </Card>
+
+            {/* P2-4: Strategy Registry Panel */}
+            {strategies.length > 0 && (
+                <Card className="border-none shadow-lg bg-muted/30">
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-[10px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Shield className="h-3.5 w-3.5" /> Available Strategies
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {strategies.map((s) => {
+                            const guide = STRATEGY_GUIDE[s.name];
+                            const Icon = guide?.icon || TrendingUp;
+                            return (
+                                <div key={s.name} className="p-3 rounded-xl border bg-background/50 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <Icon className={cn("h-4 w-4", guide?.color || "text-muted-foreground")} />
+                                        <span className="text-xs font-bold">{s.name}</span>
+                                        <Badge variant="outline" className="text-[9px] ml-auto">v{s.version}</Badge>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground leading-relaxed">{s.description}</p>
+                                    {guide && (
+                                        <div className="space-y-1 pt-1 border-t border-dashed">
+                                            <p className="text-[10px]">
+                                                <span className="font-bold text-foreground/70">适用场景: </span>
+                                                <span className="text-muted-foreground">{guide.use_case}</span>
+                                            </p>
+                                            <p className="text-[10px]">
+                                                <span className="font-bold text-foreground/70">最佳用于: </span>
+                                                <span className="text-muted-foreground">{guide.best_for}</span>
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </CardContent>
+                </Card>
+            )}
 
             <div className="p-6 bg-slate-900 text-white rounded-2xl border border-white/10 space-y-5 shadow-2xl">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">

@@ -2,9 +2,9 @@ policy:
   us:
     - yfinance
   cn:
+    - yfinance
     - efinance
     - akshare
     - baostock
-    - yfinance
   hk:
     - yfinance

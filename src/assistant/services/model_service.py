@@ -112,16 +112,58 @@ class ModelService:
         if net_ret is not None and net_ret <= 0:
             failures.append(f"Net return after costs {net_ret:.2%} <= 0 (gate: > 0)")
 
-        # Gate 5: Walk-forward validation
+        # Gate 5: Walk-forward validation (HARD GATE)
         params = version.get("params") or {}
         if isinstance(params, str):
             try:
                 params = json.loads(params)
             except Exception:
                 params = {}
-        walk_forward = params.get("walk_forward") or metrics.get("walk_forward_validated")
+        walk_forward = (
+            params.get("walk_forward")
+            or metrics.get("walk_forward_validated")
+            or version.get("walk_forward")
+        )
+
+        # Also check the payload (full entry dict stored during registration)
         if not walk_forward:
-            failures.append("Walk-forward validation not performed (required for RECOMMENDED)")
+            payload = version.get("payload") or {}
+            if isinstance(payload, str):
+                try:
+                    payload = json.loads(payload)
+                except Exception:
+                    payload = {}
+            walk_forward = payload.get("walk_forward")
+
+        # Fallback: check persisted walk-forward files on disk
+        if not walk_forward:
+            try:
+                wf_dir = self._project_root / "artifacts" / "walk_forward"
+                if wf_dir.exists():
+                    market = str(version.get("market") or "").lower()
+                    for p in sorted(wf_dir.glob(f"{market}_*.json"), reverse=True):
+                        with open(p, encoding="utf-8") as wf_f:
+                            wf_data = json.load(wf_f)
+                        if wf_data.get("mean_ic") is not None:
+                            walk_forward = wf_data
+                            break
+            except Exception:
+                pass
+
+        if not walk_forward:
+            failures.append("Walk-forward validation not performed (HARD GATE — required for promotion)")
+        else:
+            # Walk-forward data exists — now enforce gate_passed status
+            gate_passed = walk_forward.get("gate_passed")
+            if gate_passed is False:
+                gate_failures = walk_forward.get("gate_failures", [])
+                detail = "; ".join(str(f) for f in gate_failures) if gate_failures else "unknown reason"
+                failures.append(f"Walk-forward HARD GATE FAILED — promotion blocked ({detail})")
+            elif gate_passed is None:
+                # Legacy records without gate_passed field — treat as not validated
+                failures.append(
+                    "Walk-forward data exists but gate_passed status unknown (HARD GATE — revalidation required)"
+                )
 
         return failures
 

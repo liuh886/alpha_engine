@@ -81,8 +81,8 @@ export const useFactorStore = create<FactorStore>((set, get) => ({
         },
         loading: false,
       });
-    } catch (err: any) {
-      set({ error: err.message || 'Unknown error', loading: false });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Unknown error', loading: false });
     }
   },
 
@@ -102,7 +102,7 @@ export const useFactorStore = create<FactorStore>((set, get) => ({
         throw new Error(json.detail || 'Failed to fetch decay');
       }
       set({ decayData: json.decay || [], decayLoading: false });
-    } catch (err: any) {
+    } catch (err: unknown) {
       set({ decayData: [], decayLoading: false });
     }
   },

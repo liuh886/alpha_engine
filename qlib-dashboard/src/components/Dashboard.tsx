@@ -13,10 +13,11 @@ import { MetricsExpanded } from "./MetricsExpanded";
 import { HoldingsSummary } from "./HoldingsSummary";
 import { Calendar, Tag, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import type { ModelParams } from "@/lib/types";
 
-export function Dashboard({ data, params }: { data: BacktestData; params?: Record<string, any> }) {
+export function Dashboard({ data, params }: { data: BacktestData; params?: ModelParams }) {
   const meta = data.meta;
-  const runId = params?.id || "";
+  const runId = String(params?.id || "");
 
   return (
     <div className="space-y-5 max-w-[1400px] mx-auto pb-16">
@@ -26,7 +27,7 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Recor
           <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1 font-mono"><Calendar className="h-3 w-3" /> {meta.start} → {meta.end}</span>
             <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> {meta.benchmark}</span>
-            {params?.id && <Badge variant="outline" className="font-mono text-[10px] py-0">{params.id}</Badge>}
+            {params?.id != null && <Badge variant="outline" className="font-mono text-[10px] py-0">{String(params.id)}</Badge>}
           </div>
         </div>
       </div>

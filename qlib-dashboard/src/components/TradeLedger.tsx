@@ -20,7 +20,7 @@ interface PnLSymbol {
 }
 
 interface LedgerData {
-  holdings: any[];
+  holdings: Array<{ instrument: string; weight: number; price?: number; [key: string]: unknown }>;
   trades: Trade[];
   pnl_by_symbol: PnLSymbol[];
 }
@@ -76,7 +76,7 @@ export function TradeLedger({ runId }: { runId: string }) {
                 {topWinners.map((p, i) => (
                   <div key={i} className="flex justify-between items-center text-xs">
                     <span className="font-mono">{p.symbol}</span>
-                    <span className="font-mono text-green-500">+${p.pnl.toFixed(2)}</span>
+                    <span className="font-mono text-green-500">+${(p.pnl ?? 0).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -96,7 +96,7 @@ export function TradeLedger({ runId }: { runId: string }) {
                 {topLosers.map((p, i) => (
                   <div key={i} className="flex justify-between items-center text-xs">
                     <span className="font-mono">{p.symbol}</span>
-                    <span className="font-mono text-red-500">${p.pnl.toFixed(2)}</span>
+                    <span className="font-mono text-red-500">${(p.pnl ?? 0).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -140,10 +140,10 @@ export function TradeLedger({ runId }: { runId: string }) {
                         {t.type}
                       </Badge>
                     </td>
-                    <td className="py-1.5 px-3 text-right font-mono">{t.quantity.toFixed(0)}</td>
-                    <td className="py-1.5 px-3 text-right font-mono">${t.price.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right font-mono">{(t.quantity ?? 0).toFixed(0)}</td>
+                    <td className="py-1.5 px-3 text-right font-mono">${(t.price ?? 0).toFixed(2)}</td>
                     <td className={cn("py-1.5 px-3 text-right font-mono", t.type === "SELL" ? (t.pnl && t.pnl >= 0 ? "text-green-500" : "text-red-500") : "text-muted-foreground")}>
-                      {t.type === "SELL" && t.pnl !== undefined ? `$${t.pnl.toFixed(2)}` : "—"}
+                      {t.type === "SELL" && t.pnl != null ? `$${t.pnl.toFixed(2)}` : "—"}
                     </td>
                   </tr>
                 ))}

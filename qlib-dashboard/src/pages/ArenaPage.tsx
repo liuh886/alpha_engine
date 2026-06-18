@@ -4,21 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Trophy, RefreshCw, ExternalLink, Target, Users, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatPct, formatNum } from "@/lib/format";
 import { artifactUrl } from "@/lib/artifacts";
+import { apiFetch } from "@/lib/api";
 
 type Arena = { id: string; name: string; market: string; };
 type LeaderboardRow = { rank?: number; participant_name?: string; nav?: number; daily_return?: number; drawdown?: number; turnover?: number; run_id?: string; model_version_id?: string; edge_explanation?: string; };
 type ReportRow = { id: string; type: string; ref_id: string; date?: string; paths?: Record<string, string>; };
-
-function formatPct(value?: number) {
-  if (value === undefined || value === null || Number.isNaN(value)) return "N/A";
-  return `${(value * 100).toFixed(2)}%`;
-}
-
-function formatNum(value?: number, digits = 4) {
-  if (value === undefined || value === null || Number.isNaN(value)) return "N/A";
-  return value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
-}
 
 export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }) {
   const [arenas, setArenas] = useState<Arena[]>([]);
@@ -35,16 +27,16 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
   const selectedArena = useMemo(() => arenas.find((a) => a.id === selectedArenaId) || null, [arenas, selectedArenaId]);
 
   const loadArenas = async () => {
-    const resp = await fetch(artifactUrl.arenas);
+    const resp = await apiFetch(artifactUrl.arenas);
     if (!resp.ok) return;
     const json = await resp.json();
-    const parsed = (json?.arenas || []).map((r: any) => ({ id: r.id, name: r.name || r.id, market: r.market || "unknown" }));
+    const parsed = (json?.arenas || []).map((r: { id: string; name?: string; market?: string }) => ({ id: r.id, name: r.name || r.id, market: r.market || "unknown" }));
     setArenas(parsed);
     if (parsed.length > 0 && !selectedArenaId) setSelectedArenaId(parsed[0].id);
   };
 
   const loadLeaderboard = async (arena: Arena) => {
-    const resp = await fetch(artifactUrl.arenaLeaderboard(arena.id));
+    const resp = await apiFetch(artifactUrl.arenaLeaderboard(arena.id));
     if (!resp.ok) return;
     const json = await resp.json();
     setLeaderboard(json?.leaderboard || []);
@@ -52,10 +44,10 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
   };
 
   const loadLatestReport = async (arena: Arena) => {
-    const resp = await fetch(artifactUrl.reports);
+    const resp = await apiFetch(artifactUrl.reports);
     if (!resp.ok) return;
     const json = await resp.json();
-    const r = (json?.reports || []).find((rep: any) => rep.type === "arena_daily" && rep.ref_id === arena.id);
+    const r = (json?.reports || []).find((rep: { type: string; ref_id?: string }) => rep.type === "arena_daily" && rep.ref_id === arena.id);
     if (r) setReport({ id: r.id, type: r.type, ref_id: r.ref_id, date: r.date, paths: r.paths });
   };
 
@@ -72,7 +64,7 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
     if (!selectedArena) return;
     if (!window.confirm(`Start Arena Settlement for ${selectedArena.name}?`)) return;
     setRunning(true);
-    const resp = await fetch("/api/arena/settle", {
+    const resp = await apiFetch("/api/arena/settle", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ market: selectedArena.market, arena_name: selectedArena.name, date: "latest", seed_from_model_registry: seedFromModelRegistry, limit: seedLimit }),
     });
@@ -85,7 +77,7 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
   useEffect(() => {
     if (!jobId) return;
     const timer = window.setInterval(async () => {
-      const resp = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`);
+      const resp = await apiFetch(`/api/jobs/${encodeURIComponent(jobId)}`);
       if (!resp.ok) return;
       const json = await resp.json();
       const st = String(json?.job?.status || "");

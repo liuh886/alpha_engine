@@ -1,0 +1,802 @@
+# AlphaEngine Factor Pool Configuration
+# Auto-generated from combinatorial factor library (261 factors)
+# Each factor has: name, expression, direction
+#
+# Categories: momentum, volatility, volume, mean_reversion,
+#             technical, cross_field, composite
+#
+# To add custom factors, create a new YAML file following this
+# structure and load it via load_factor_pool() or the MCP tool.
+
+factor_pools:
+  momentum:
+  - name: momentum_ret_1
+    expression: $close/Ref($close,1)-1
+    direction: long
+  - name: momentum_ret_5
+    expression: $close/Ref($close,5)-1
+    direction: long
+  - name: momentum_ret_10
+    expression: $close/Ref($close,10)-1
+    direction: long
+  - name: momentum_ret_20
+    expression: $close/Ref($close,20)-1
+    direction: long
+  - name: momentum_ret_60
+    expression: $close/Ref($close,60)-1
+    direction: long
+  - name: momentum_lag_ret1_5
+    expression: Ref($close/Ref($close,1)-1,5)
+    direction: long
+  - name: momentum_lag_ret1_10
+    expression: Ref($close/Ref($close,1)-1,10)
+    direction: long
+  - name: momentum_lag_ret1_20
+    expression: Ref($close/Ref($close,1)-1,20)
+    direction: long
+  - name: momentum_lag_ret1_60
+    expression: Ref($close/Ref($close,1)-1,60)
+    direction: long
+  - name: momentum_lag_ret5_5
+    expression: Ref($close/Ref($close,5)-1,5)
+    direction: long
+  - name: momentum_lag_ret5_10
+    expression: Ref($close/Ref($close,5)-1,10)
+    direction: long
+  - name: momentum_lag_ret5_20
+    expression: Ref($close/Ref($close,5)-1,20)
+    direction: long
+  - name: momentum_lag_ret5_60
+    expression: Ref($close/Ref($close,5)-1,60)
+    direction: long
+  - name: momentum_lag_ret10_5
+    expression: Ref($close/Ref($close,10)-1,5)
+    direction: long
+  - name: momentum_lag_ret10_10
+    expression: Ref($close/Ref($close,10)-1,10)
+    direction: long
+  - name: momentum_lag_ret10_20
+    expression: Ref($close/Ref($close,10)-1,20)
+    direction: long
+  - name: momentum_lag_ret10_60
+    expression: Ref($close/Ref($close,10)-1,60)
+    direction: long
+  - name: momentum_lag_ret20_5
+    expression: Ref($close/Ref($close,20)-1,5)
+    direction: long
+  - name: momentum_lag_ret20_10
+    expression: Ref($close/Ref($close,20)-1,10)
+    direction: long
+  - name: momentum_lag_ret20_20
+    expression: Ref($close/Ref($close,20)-1,20)
+    direction: long
+  - name: momentum_lag_ret20_60
+    expression: Ref($close/Ref($close,20)-1,60)
+    direction: long
+  - name: momentum_lag_ret60_5
+    expression: Ref($close/Ref($close,60)-1,5)
+    direction: long
+  - name: momentum_lag_ret60_10
+    expression: Ref($close/Ref($close,60)-1,10)
+    direction: long
+  - name: momentum_lag_ret60_20
+    expression: Ref($close/Ref($close,60)-1,20)
+    direction: long
+  - name: momentum_lag_ret60_60
+    expression: Ref($close/Ref($close,60)-1,60)
+    direction: long
+  - name: momentum_accel1_5
+    expression: $close/Ref($close,1)-1-Ref($close/Ref($close,1)-1,5)
+    direction: long
+  - name: momentum_accel1_10
+    expression: $close/Ref($close,1)-1-Ref($close/Ref($close,1)-1,10)
+    direction: long
+  - name: momentum_accel1_20
+    expression: $close/Ref($close,1)-1-Ref($close/Ref($close,1)-1,20)
+    direction: long
+  - name: momentum_accel5_5
+    expression: $close/Ref($close,5)-1-Ref($close/Ref($close,5)-1,5)
+    direction: long
+  - name: momentum_accel5_10
+    expression: $close/Ref($close,5)-1-Ref($close/Ref($close,5)-1,10)
+    direction: long
+  - name: momentum_accel5_20
+    expression: $close/Ref($close,5)-1-Ref($close/Ref($close,5)-1,20)
+    direction: long
+  - name: momentum_mean_ret1_5
+    expression: Mean($close/Ref($close,1)-1,5)
+    direction: long
+  - name: momentum_mean_ret1_10
+    expression: Mean($close/Ref($close,1)-1,10)
+    direction: long
+  - name: momentum_mean_ret1_20
+    expression: Mean($close/Ref($close,1)-1,20)
+    direction: long
+  - name: momentum_mean_ret1_60
+    expression: Mean($close/Ref($close,1)-1,60)
+    direction: long
+  - name: momentum_mean_ret5_5
+    expression: Mean($close/Ref($close,5)-1,5)
+    direction: long
+  - name: momentum_mean_ret5_10
+    expression: Mean($close/Ref($close,5)-1,10)
+    direction: long
+  - name: momentum_mean_ret5_20
+    expression: Mean($close/Ref($close,5)-1,20)
+    direction: long
+  - name: momentum_mean_ret5_60
+    expression: Mean($close/Ref($close,5)-1,60)
+    direction: long
+  - name: momentum_mean_ret10_5
+    expression: Mean($close/Ref($close,10)-1,5)
+    direction: long
+  - name: momentum_mean_ret10_10
+    expression: Mean($close/Ref($close,10)-1,10)
+    direction: long
+  - name: momentum_mean_ret10_20
+    expression: Mean($close/Ref($close,10)-1,20)
+    direction: long
+  - name: momentum_mean_ret10_60
+    expression: Mean($close/Ref($close,10)-1,60)
+    direction: long
+  - name: momentum_mean_ret20_5
+    expression: Mean($close/Ref($close,20)-1,5)
+    direction: long
+  - name: momentum_mean_ret20_10
+    expression: Mean($close/Ref($close,20)-1,10)
+    direction: long
+  - name: momentum_mean_ret20_20
+    expression: Mean($close/Ref($close,20)-1,20)
+    direction: long
+  - name: momentum_mean_ret20_60
+    expression: Mean($close/Ref($close,20)-1,60)
+    direction: long
+  - name: momentum_mean_ret60_5
+    expression: Mean($close/Ref($close,60)-1,5)
+    direction: long
+  - name: momentum_mean_ret60_10
+    expression: Mean($close/Ref($close,60)-1,10)
+    direction: long
+  - name: momentum_mean_ret60_20
+    expression: Mean($close/Ref($close,60)-1,20)
+    direction: long
+  - name: momentum_mean_ret60_60
+    expression: Mean($close/Ref($close,60)-1,60)
+    direction: long
+  - name: momentum_max_ret1_10
+    expression: Max($close/Ref($close,1)-1,10)
+    direction: long
+  - name: momentum_max_ret1_20
+    expression: Max($close/Ref($close,1)-1,20)
+    direction: long
+  - name: momentum_max_ret1_60
+    expression: Max($close/Ref($close,1)-1,60)
+    direction: long
+  - name: momentum_max_ret5_10
+    expression: Max($close/Ref($close,5)-1,10)
+    direction: long
+  - name: momentum_max_ret5_20
+    expression: Max($close/Ref($close,5)-1,20)
+    direction: long
+  - name: momentum_max_ret5_60
+    expression: Max($close/Ref($close,5)-1,60)
+    direction: long
+  - name: momentum_max_ret10_10
+    expression: Max($close/Ref($close,10)-1,10)
+    direction: long
+  - name: momentum_max_ret10_20
+    expression: Max($close/Ref($close,10)-1,20)
+    direction: long
+  - name: momentum_max_ret10_60
+    expression: Max($close/Ref($close,10)-1,60)
+    direction: long
+  - name: momentum_min_ret1_10
+    expression: Min($close/Ref($close,1)-1,10)
+    direction: long
+  - name: momentum_min_ret1_20
+    expression: Min($close/Ref($close,1)-1,20)
+    direction: long
+  - name: momentum_min_ret1_60
+    expression: Min($close/Ref($close,1)-1,60)
+    direction: long
+  - name: momentum_min_ret5_10
+    expression: Min($close/Ref($close,5)-1,10)
+    direction: long
+  - name: momentum_min_ret5_20
+    expression: Min($close/Ref($close,5)-1,20)
+    direction: long
+  - name: momentum_min_ret5_60
+    expression: Min($close/Ref($close,5)-1,60)
+    direction: long
+  - name: momentum_min_ret10_10
+    expression: Min($close/Ref($close,10)-1,10)
+    direction: long
+  - name: momentum_min_ret10_20
+    expression: Min($close/Ref($close,10)-1,20)
+    direction: long
+  - name: momentum_min_ret10_60
+    expression: Min($close/Ref($close,10)-1,60)
+    direction: long
+  volatility:
+  - name: volatility_std_ret_5
+    expression: Std($close/Ref($close,1)-1,5)
+    direction: short
+  - name: volatility_std_ret_10
+    expression: Std($close/Ref($close,1)-1,10)
+    direction: short
+  - name: volatility_std_ret_20
+    expression: Std($close/Ref($close,1)-1,20)
+    direction: short
+  - name: volatility_std_ret_60
+    expression: Std($close/Ref($close,1)-1,60)
+    direction: short
+  - name: volatility_std_ret5_10
+    expression: Std($close/Ref($close,5)-1,10)
+    direction: short
+  - name: volatility_std_ret5_20
+    expression: Std($close/Ref($close,5)-1,20)
+    direction: short
+  - name: volatility_std_ret5_60
+    expression: Std($close/Ref($close,5)-1,60)
+    direction: short
+  - name: volatility_vol_ratio_5_20
+    expression: Std($close/Ref($close,1)-1,5)/Std($close/Ref($close,1)-1,20)
+    direction: short
+  - name: volatility_vol_ratio_5_60
+    expression: Std($close/Ref($close,1)-1,5)/Std($close/Ref($close,1)-1,60)
+    direction: short
+  - name: volatility_vol_ratio_10_20
+    expression: Std($close/Ref($close,1)-1,10)/Std($close/Ref($close,1)-1,20)
+    direction: short
+  - name: volatility_vol_ratio_10_60
+    expression: Std($close/Ref($close,1)-1,10)/Std($close/Ref($close,1)-1,60)
+    direction: short
+  - name: volatility_vol_ratio_20_60
+    expression: Std($close/Ref($close,1)-1,20)/Std($close/Ref($close,1)-1,60)
+    direction: short
+  - name: volatility_atr_5
+    expression: Mean(($high-$low)/$close,5)
+    direction: short
+  - name: volatility_atr_10
+    expression: Mean(($high-$low)/$close,10)
+    direction: short
+  - name: volatility_atr_20
+    expression: Mean(($high-$low)/$close,20)
+    direction: short
+  - name: volatility_atr_60
+    expression: Mean(($high-$low)/$close,60)
+    direction: short
+  - name: volatility_range_pct_5
+    expression: (Max($close,5)-Min($close,5))/$close
+    direction: short
+  - name: volatility_range_pct_10
+    expression: (Max($close,10)-Min($close,10))/$close
+    direction: short
+  - name: volatility_range_pct_20
+    expression: (Max($close,20)-Min($close,20))/$close
+    direction: short
+  - name: volatility_range_pct_60
+    expression: (Max($close,60)-Min($close,60))/$close
+    direction: short
+  - name: volatility_vol_of_vol_5
+    expression: Std($volume,5)/Mean($volume,5)
+    direction: short
+  - name: volatility_vol_of_vol_10
+    expression: Std($volume,10)/Mean($volume,10)
+    direction: short
+  - name: volatility_vol_of_vol_20
+    expression: Std($volume,20)/Mean($volume,20)
+    direction: short
+  - name: volatility_vol_of_vol_60
+    expression: Std($volume,60)/Mean($volume,60)
+    direction: short
+  volume:
+  - name: volume_vol_ma_ratio_5
+    expression: $volume/Mean($volume,5)
+    direction: long
+  - name: volume_vol_ma_ratio_10
+    expression: $volume/Mean($volume,10)
+    direction: long
+  - name: volume_vol_ma_ratio_20
+    expression: $volume/Mean($volume,20)
+    direction: long
+  - name: volume_vol_ma_ratio_60
+    expression: $volume/Mean($volume,60)
+    direction: long
+  - name: volume_vol_ma_5
+    expression: Mean($volume,5)
+    direction: long
+  - name: volume_vol_ma_10
+    expression: Mean($volume,10)
+    direction: long
+  - name: volume_vol_ma_20
+    expression: Mean($volume,20)
+    direction: long
+  - name: volume_vol_ma_60
+    expression: Mean($volume,60)
+    direction: long
+  - name: volume_vol_delta_5
+    expression: Delta($volume,5)
+    direction: long
+  - name: volume_vol_delta_10
+    expression: Delta($volume,10)
+    direction: long
+  - name: volume_vol_delta_20
+    expression: Delta($volume,20)
+    direction: long
+  - name: volume_vol_delta_60
+    expression: Delta($volume,60)
+    direction: long
+  - name: volume_vol_mom_5
+    expression: $volume/Ref($volume,5)-1
+    direction: long
+  - name: volume_vol_mom_10
+    expression: $volume/Ref($volume,10)-1
+    direction: long
+  - name: volume_vol_mom_20
+    expression: $volume/Ref($volume,20)-1
+    direction: long
+  - name: volume_vol_mom_60
+    expression: $volume/Ref($volume,60)-1
+    direction: long
+  - name: volume_vol_std_5
+    expression: Std($volume,5)
+    direction: long
+  - name: volume_vol_std_10
+    expression: Std($volume,10)
+    direction: long
+  - name: volume_vol_std_20
+    expression: Std($volume,20)
+    direction: long
+  - name: volume_vol_std_60
+    expression: Std($volume,60)
+    direction: long
+  - name: volume_vwap_5
+    expression: Mean($volume*$close,5)/Mean($volume,5)
+    direction: long
+  - name: volume_vwap_10
+    expression: Mean($volume*$close,10)/Mean($volume,10)
+    direction: long
+  - name: volume_vwap_20
+    expression: Mean($volume*$close,20)/Mean($volume,20)
+    direction: long
+  - name: volume_vwap_60
+    expression: Mean($volume*$close,60)/Mean($volume,60)
+    direction: long
+  - name: volume_vol_max_ratio_10
+    expression: $volume/Max($volume,10)
+    direction: long
+  - name: volume_vol_max_ratio_20
+    expression: $volume/Max($volume,20)
+    direction: long
+  - name: volume_vol_max_ratio_60
+    expression: $volume/Max($volume,60)
+    direction: long
+  - name: volume_vol_min_ratio_10
+    expression: $volume/Min($volume,10)
+    direction: long
+  - name: volume_vol_min_ratio_20
+    expression: $volume/Min($volume,20)
+    direction: long
+  - name: volume_vol_min_ratio_60
+    expression: $volume/Min($volume,60)
+    direction: long
+  mean_reversion:
+  - name: mean_reversion_ma_dev_5
+    expression: $close/Mean($close,5)-1
+    direction: short
+  - name: mean_reversion_ma_dev_10
+    expression: $close/Mean($close,10)-1
+    direction: short
+  - name: mean_reversion_ma_dev_20
+    expression: $close/Mean($close,20)-1
+    direction: short
+  - name: mean_reversion_ma_dev_60
+    expression: $close/Mean($close,60)-1
+    direction: short
+  - name: mean_reversion_price_ma_ratio_5
+    expression: $close/Mean($close,5)
+    direction: short
+  - name: mean_reversion_price_ma_ratio_10
+    expression: $close/Mean($close,10)
+    direction: short
+  - name: mean_reversion_price_ma_ratio_20
+    expression: $close/Mean($close,20)
+    direction: short
+  - name: mean_reversion_price_ma_ratio_60
+    expression: $close/Mean($close,60)
+    direction: short
+  - name: mean_reversion_bb_pos_5
+    expression: ($close-Mean($close,5))/Std($close,5)
+    direction: short
+  - name: mean_reversion_bb_pos_10
+    expression: ($close-Mean($close,10))/Std($close,10)
+    direction: short
+  - name: mean_reversion_bb_pos_20
+    expression: ($close-Mean($close,20))/Std($close,20)
+    direction: short
+  - name: mean_reversion_bb_pos_60
+    expression: ($close-Mean($close,60))/Std($close,60)
+    direction: short
+  - name: mean_reversion_ma_cross_5_20
+    expression: Mean($close,5)/Mean($close,20)-1
+    direction: short
+  - name: mean_reversion_ma_cross_5_60
+    expression: Mean($close,5)/Mean($close,60)-1
+    direction: short
+  - name: mean_reversion_ma_cross_10_20
+    expression: Mean($close,10)/Mean($close,20)-1
+    direction: short
+  - name: mean_reversion_ma_cross_10_60
+    expression: Mean($close,10)/Mean($close,60)-1
+    direction: short
+  - name: mean_reversion_ma_cross_20_60
+    expression: Mean($close,20)/Mean($close,60)-1
+    direction: short
+  - name: mean_reversion_stoch_k_5
+    expression: ($close-Min($close,5))/(Max($close,5)-Min($close,5))
+    direction: short
+  - name: mean_reversion_stoch_k_10
+    expression: ($close-Min($close,10))/(Max($close,10)-Min($close,10))
+    direction: short
+  - name: mean_reversion_stoch_k_20
+    expression: ($close-Min($close,20))/(Max($close,20)-Min($close,20))
+    direction: short
+  - name: mean_reversion_stoch_k_60
+    expression: ($close-Min($close,60))/(Max($close,60)-Min($close,60))
+    direction: short
+  - name: mean_reversion_ret_sharpe_5
+    expression: Mean($close/Ref($close,1)-1,5)/Std($close/Ref($close,1)-1,5)
+    direction: short
+  - name: mean_reversion_ret_sharpe_10
+    expression: Mean($close/Ref($close,1)-1,10)/Std($close/Ref($close,1)-1,10)
+    direction: short
+  - name: mean_reversion_ret_sharpe_20
+    expression: Mean($close/Ref($close,1)-1,20)/Std($close/Ref($close,1)-1,20)
+    direction: short
+  - name: mean_reversion_ret_sharpe_60
+    expression: Mean($close/Ref($close,1)-1,60)/Std($close/Ref($close,1)-1,60)
+    direction: short
+  technical:
+  - name: technical_rsi_proxy_5
+    expression: Mean(Greater($close/Ref($close,1)-1,0)*$close/Ref($close,1)-1,5)/(Mean(Abs($close/Ref($close,1)-1),5)+1e-10)
+    direction: long
+  - name: technical_rsi_proxy_10
+    expression: Mean(Greater($close/Ref($close,1)-1,0)*$close/Ref($close,1)-1,10)/(Mean(Abs($close/Ref($close,1)-1),10)+1e-10)
+    direction: long
+  - name: technical_rsi_proxy_20
+    expression: Mean(Greater($close/Ref($close,1)-1,0)*$close/Ref($close,1)-1,20)/(Mean(Abs($close/Ref($close,1)-1),20)+1e-10)
+    direction: long
+  - name: technical_rsi_proxy_60
+    expression: Mean(Greater($close/Ref($close,1)-1,0)*$close/Ref($close,1)-1,60)/(Mean(Abs($close/Ref($close,1)-1),60)+1e-10)
+    direction: long
+  - name: technical_pos_ret_sum_5
+    expression: Sum(Greater($close/Ref($close,1)-1,0),5)
+    direction: long
+  - name: technical_pos_ret_sum_10
+    expression: Sum(Greater($close/Ref($close,1)-1,0),10)
+    direction: long
+  - name: technical_pos_ret_sum_20
+    expression: Sum(Greater($close/Ref($close,1)-1,0),20)
+    direction: long
+  - name: technical_pos_ret_sum_60
+    expression: Sum(Greater($close/Ref($close,1)-1,0),60)
+    direction: long
+  - name: technical_neg_ret_sum_5
+    expression: Sum(Less($close/Ref($close,1)-1,0),5)
+    direction: long
+  - name: technical_neg_ret_sum_10
+    expression: Sum(Less($close/Ref($close,1)-1,0),10)
+    direction: long
+  - name: technical_neg_ret_sum_20
+    expression: Sum(Less($close/Ref($close,1)-1,0),20)
+    direction: long
+  - name: technical_neg_ret_sum_60
+    expression: Sum(Less($close/Ref($close,1)-1,0),60)
+    direction: long
+  - name: technical_up_down_ratio_5
+    expression: Sum(Greater($close/Ref($close,1)-1,0),5)/(Abs(Sum(Less($close/Ref($close,1)-1,0),5))+1e-10)
+    direction: long
+  - name: technical_up_down_ratio_10
+    expression: Sum(Greater($close/Ref($close,1)-1,0),10)/(Abs(Sum(Less($close/Ref($close,1)-1,0),10))+1e-10)
+    direction: long
+  - name: technical_up_down_ratio_20
+    expression: Sum(Greater($close/Ref($close,1)-1,0),20)/(Abs(Sum(Less($close/Ref($close,1)-1,0),20))+1e-10)
+    direction: long
+  - name: technical_up_down_ratio_60
+    expression: Sum(Greater($close/Ref($close,1)-1,0),60)/(Abs(Sum(Less($close/Ref($close,1)-1,0),60))+1e-10)
+    direction: long
+  - name: technical_price_high_ratio_5
+    expression: $close/Max($close,5)
+    direction: long
+  - name: technical_price_high_ratio_10
+    expression: $close/Max($close,10)
+    direction: long
+  - name: technical_price_high_ratio_20
+    expression: $close/Max($close,20)
+    direction: long
+  - name: technical_price_high_ratio_60
+    expression: $close/Max($close,60)
+    direction: long
+  - name: technical_price_low_ratio_5
+    expression: $close/Min($close,5)
+    direction: long
+  - name: technical_price_low_ratio_10
+    expression: $close/Min($close,10)
+    direction: long
+  - name: technical_price_low_ratio_20
+    expression: $close/Min($close,20)
+    direction: long
+  - name: technical_price_low_ratio_60
+    expression: $close/Min($close,60)
+    direction: long
+  - name: technical_close_open_ma_5
+    expression: Mean($close/$open,5)
+    direction: long
+  - name: technical_close_open_ma_10
+    expression: Mean($close/$open,10)
+    direction: long
+  - name: technical_close_open_ma_20
+    expression: Mean($close/$open,20)
+    direction: long
+  - name: technical_close_open_ma_60
+    expression: Mean($close/$open,60)
+    direction: long
+  - name: technical_upper_shadow_5
+    expression: Mean(($high-$close)/$close,5)
+    direction: long
+  - name: technical_upper_shadow_10
+    expression: Mean(($high-$close)/$close,10)
+    direction: long
+  - name: technical_upper_shadow_20
+    expression: Mean(($high-$close)/$close,20)
+    direction: long
+  - name: technical_upper_shadow_60
+    expression: Mean(($high-$close)/$close,60)
+    direction: long
+  - name: technical_lower_shadow_5
+    expression: Mean(($close-$low)/$close,5)
+    direction: long
+  - name: technical_lower_shadow_10
+    expression: Mean(($close-$low)/$close,10)
+    direction: long
+  - name: technical_lower_shadow_20
+    expression: Mean(($close-$low)/$close,20)
+    direction: long
+  - name: technical_lower_shadow_60
+    expression: Mean(($close-$low)/$close,60)
+    direction: long
+  - name: technical_delta_close_5
+    expression: Delta($close,5)
+    direction: long
+  - name: technical_delta_close_10
+    expression: Delta($close,10)
+    direction: long
+  - name: technical_delta_close_20
+    expression: Delta($close,20)
+    direction: long
+  - name: technical_delta_close_60
+    expression: Delta($close,60)
+    direction: long
+  - name: technical_norm_delta_5
+    expression: Delta($close,5)/$close
+    direction: long
+  - name: technical_norm_delta_10
+    expression: Delta($close,10)/$close
+    direction: long
+  - name: technical_norm_delta_20
+    expression: Delta($close,20)/$close
+    direction: long
+  - name: technical_norm_delta_60
+    expression: Delta($close,60)/$close
+    direction: long
+  cross_field:
+  - name: cross_field_corr_close_vol_5
+    expression: Corr($close,$volume,5)
+    direction: long
+  - name: cross_field_corr_close_vol_10
+    expression: Corr($close,$volume,10)
+    direction: long
+  - name: cross_field_corr_close_vol_20
+    expression: Corr($close,$volume,20)
+    direction: long
+  - name: cross_field_corr_close_vol_60
+    expression: Corr($close,$volume,60)
+    direction: long
+  - name: cross_field_corr_ret_vol_5
+    expression: Corr($close/Ref($close,1)-1,$volume,5)
+    direction: long
+  - name: cross_field_corr_ret_vol_10
+    expression: Corr($close/Ref($close,1)-1,$volume,10)
+    direction: long
+  - name: cross_field_corr_ret_vol_20
+    expression: Corr($close/Ref($close,1)-1,$volume,20)
+    direction: long
+  - name: cross_field_corr_ret_vol_60
+    expression: Corr($close/Ref($close,1)-1,$volume,60)
+    direction: long
+  - name: cross_field_corr_close_high_5
+    expression: Corr($close,$high,5)
+    direction: long
+  - name: cross_field_corr_close_high_10
+    expression: Corr($close,$high,10)
+    direction: long
+  - name: cross_field_corr_close_high_20
+    expression: Corr($close,$high,20)
+    direction: long
+  - name: cross_field_corr_close_high_60
+    expression: Corr($close,$high,60)
+    direction: long
+  - name: cross_field_corr_close_low_5
+    expression: Corr($close,$low,5)
+    direction: long
+  - name: cross_field_corr_close_low_10
+    expression: Corr($close,$low,10)
+    direction: long
+  - name: cross_field_corr_close_low_20
+    expression: Corr($close,$low,20)
+    direction: long
+  - name: cross_field_corr_close_low_60
+    expression: Corr($close,$low,60)
+    direction: long
+  - name: cross_field_corr_ret1_ret5_20
+    expression: Corr($close/Ref($close,1)-1,$close/Ref($close,5)-1,20)
+    direction: long
+  - name: cross_field_corr_ret1_ret5_60
+    expression: Corr($close/Ref($close,1)-1,$close/Ref($close,5)-1,60)
+    direction: long
+  - name: cross_field_corr_ret1_ret10_20
+    expression: Corr($close/Ref($close,1)-1,$close/Ref($close,10)-1,20)
+    direction: long
+  - name: cross_field_corr_ret1_ret10_60
+    expression: Corr($close/Ref($close,1)-1,$close/Ref($close,10)-1,60)
+    direction: long
+  - name: cross_field_corr_ret5_ret10_20
+    expression: Corr($close/Ref($close,5)-1,$close/Ref($close,10)-1,20)
+    direction: long
+  - name: cross_field_corr_ret5_ret10_60
+    expression: Corr($close/Ref($close,5)-1,$close/Ref($close,10)-1,60)
+    direction: long
+  - name: cross_field_corr_ret5_ret20_20
+    expression: Corr($close/Ref($close,5)-1,$close/Ref($close,20)-1,20)
+    direction: long
+  - name: cross_field_corr_ret5_ret20_60
+    expression: Corr($close/Ref($close,5)-1,$close/Ref($close,20)-1,60)
+    direction: long
+  - name: cross_field_corr_ret10_ret20_20
+    expression: Corr($close/Ref($close,10)-1,$close/Ref($close,20)-1,20)
+    direction: long
+  - name: cross_field_corr_ret10_ret20_60
+    expression: Corr($close/Ref($close,10)-1,$close/Ref($close,20)-1,60)
+    direction: long
+  - name: cross_field_pv_divergence_5
+    expression: Corr(Delta($close,5),Delta($volume,5),5)
+    direction: long
+  - name: cross_field_pv_divergence_10
+    expression: Corr(Delta($close,10),Delta($volume,10),10)
+    direction: long
+  - name: cross_field_pv_divergence_20
+    expression: Corr(Delta($close,20),Delta($volume,20),20)
+    direction: long
+  - name: cross_field_pv_divergence_60
+    expression: Corr(Delta($close,60),Delta($volume,60),60)
+    direction: long
+  - name: cross_field_corr_body_vol_5
+    expression: Corr($close-$open,$volume,5)
+    direction: long
+  - name: cross_field_corr_body_vol_10
+    expression: Corr($close-$open,$volume,10)
+    direction: long
+  - name: cross_field_corr_body_vol_20
+    expression: Corr($close-$open,$volume,20)
+    direction: long
+  - name: cross_field_corr_body_vol_60
+    expression: Corr($close-$open,$volume,60)
+    direction: long
+  composite:
+  - name: composite_vol_adj_mom_5
+    expression: Mean($close/Ref($close,1)-1,5)*($volume/Mean($volume,5))
+    direction: long
+  - name: composite_vol_adj_mom_10
+    expression: Mean($close/Ref($close,1)-1,10)*($volume/Mean($volume,10))
+    direction: long
+  - name: composite_vol_adj_mom_20
+    expression: Mean($close/Ref($close,1)-1,20)*($volume/Mean($volume,20))
+    direction: long
+  - name: composite_vol_adj_mom_60
+    expression: Mean($close/Ref($close,1)-1,60)*($volume/Mean($volume,60))
+    direction: long
+  - name: composite_skew_proxy_20
+    expression: Mean(Power($close/Ref($close,1)-1,3),20)/Power(Std($close/Ref($close,1)-1,20),3)
+    direction: long
+  - name: composite_skew_proxy_60
+    expression: Mean(Power($close/Ref($close,1)-1,3),60)/Power(Std($close/Ref($close,1)-1,60),3)
+    direction: long
+  - name: composite_kurt_proxy_20
+    expression: Mean(Power($close/Ref($close,1)-1,4),20)/Power(Std($close/Ref($close,1)-1,20),4)
+    direction: long
+  - name: composite_kurt_proxy_60
+    expression: Mean(Power($close/Ref($close,1)-1,4),60)/Power(Std($close/Ref($close,1)-1,60),4)
+    direction: long
+  - name: composite_vw_return_5
+    expression: Mean($close/Ref($close,1)-1*$volume,5)/Mean($volume,5)
+    direction: long
+  - name: composite_vw_return_10
+    expression: Mean($close/Ref($close,1)-1*$volume,10)/Mean($volume,10)
+    direction: long
+  - name: composite_vw_return_20
+    expression: Mean($close/Ref($close,1)-1*$volume,20)/Mean($volume,20)
+    direction: long
+  - name: composite_vw_return_60
+    expression: Mean($close/Ref($close,1)-1*$volume,60)/Mean($volume,60)
+    direction: long
+  - name: composite_efficiency_5
+    expression: Abs(Delta($close,5))/(Sum(Abs(Delta($close,1)),5)+1e-10)
+    direction: long
+  - name: composite_efficiency_10
+    expression: Abs(Delta($close,10))/(Sum(Abs(Delta($close,1)),10)+1e-10)
+    direction: long
+  - name: composite_efficiency_20
+    expression: Abs(Delta($close,20))/(Sum(Abs(Delta($close,1)),20)+1e-10)
+    direction: long
+  - name: composite_efficiency_60
+    expression: Abs(Delta($close,60))/(Sum(Abs(Delta($close,1)),60)+1e-10)
+    direction: long
+  - name: composite_vol_concentration_5
+    expression: Max($volume,5)/Mean($volume,5)
+    direction: long
+  - name: composite_vol_concentration_10
+    expression: Max($volume,10)/Mean($volume,10)
+    direction: long
+  - name: composite_vol_concentration_20
+    expression: Max($volume,20)/Mean($volume,20)
+    direction: long
+  - name: composite_vol_concentration_60
+    expression: Max($volume,60)/Mean($volume,60)
+    direction: long
+  - name: composite_mr_vol_confirm_10
+    expression: ($close/Mean($close,10)-1)*($volume/Mean($volume,10))
+    direction: long
+  - name: composite_mr_vol_confirm_20
+    expression: ($close/Mean($close,20)-1)*($volume/Mean($volume,20))
+    direction: long
+  - name: composite_mr_vol_confirm_60
+    expression: ($close/Mean($close,60)-1)*($volume/Mean($volume,60))
+    direction: long
+  - name: composite_trend_slope_10
+    expression: Slope($close,10)/$close
+    direction: long
+  - name: composite_trend_slope_20
+    expression: Slope($close,20)/$close
+    direction: long
+  - name: composite_trend_slope_60
+    expression: Slope($close,60)/$close
+    direction: long
+  - name: composite_trend_r2_10
+    expression: Rsquare($close,10)
+    direction: long
+  - name: composite_trend_r2_20
+    expression: Rsquare($close,20)
+    direction: long
+  - name: composite_trend_r2_60
+    expression: Rsquare($close,60)
+    direction: long
+  - name: composite_trend_resid_10
+    expression: Resi($close,10)/$close
+    direction: long
+  - name: composite_trend_resid_20
+    expression: Resi($close,20)/$close
+    direction: long
+  - name: composite_trend_resid_60
+    expression: Resi($close,60)/$close
+    direction: long
+  - name: composite_vol_trend_10
+    expression: Slope($volume,10)/Mean($volume,10)
+    direction: long
+  - name: composite_vol_trend_20
+    expression: Slope($volume,20)/Mean($volume,20)
+    direction: long
+  - name: composite_vol_trend_60
+    expression: Slope($volume,60)/Mean($volume,60)
+    direction: long
+

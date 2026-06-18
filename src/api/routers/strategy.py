@@ -67,6 +67,39 @@ def save_strategy(payload: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/compile-with-factors")
+def compile_with_factors(payload: dict):
+    """Compile a strategy config with registered Active factors.
+
+    Body::
+
+        {
+            "base_config": "us_lgbm_workflow.yaml",  // optional
+            "market": "us",                           // optional
+            "merge_mode": "append"                    // "append" or "replace"
+        }
+    """
+    base_config = payload.get("base_config", "us_lgbm_workflow.yaml")
+    market = payload.get("market", "us")
+    merge_mode = payload.get("merge_mode", "append")
+
+    try:
+        from src.research.factor_compiler import compile_factors_to_config
+
+        result = compile_factors_to_config(
+            base_config_path=base_config,
+            market=market,
+            merge_mode=merge_mode,
+        )
+        return {"ok": True, **result.to_dict()}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/plugins")
 def list_strategy_plugins():
     """List all registered strategy plugins with metadata."""

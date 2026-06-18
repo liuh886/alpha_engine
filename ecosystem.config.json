@@ -1,0 +1,28 @@
+{
+  "apps": [
+    {
+      "name": "alpha-weekly-research",
+      "script": "D:\\miniforge3\\python.exe",
+      "args": "D:\\Documents\\GitHub\\alpha_engine\\scripts\\weekly_research.py --market us",
+      "cwd": "D:\\Documents\\GitHub\\alpha_engine",
+      "cron_restart": "0 9 * * 1",
+      "autorestart": false
+    },
+    {
+      "name": "alpha-decay-check",
+      "script": "D:\\miniforge3\\python.exe",
+      "args": "D:\\Documents\\GitHub\\alpha_engine\\scripts\\check_factor_decay.py --update-metadata",
+      "cwd": "D:\\Documents\\GitHub\\alpha_engine",
+      "cron_restart": "0 8 * * 1",
+      "autorestart": false
+    },
+    {
+      "name": "alpha-weekly-report",
+      "script": "D:\\miniforge3\\python.exe",
+      "args": "D:\\Documents\\GitHub\\alpha_engine\\scripts\\generate_weekly_report.py",
+      "cwd": "D:\\Documents\\GitHub\\alpha_engine",
+      "cron_restart": "0 10 * * 1",
+      "autorestart": false
+    }
+  ]
+}

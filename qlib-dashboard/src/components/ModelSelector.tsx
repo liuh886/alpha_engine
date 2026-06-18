@@ -41,21 +41,22 @@ export function ModelSelector({
                         <TableBody>
                             {models.map(m => {
                                 const isSelected = m.id === selectedModelId;
-                                const ret = m.backtest.metrics["Annualized Return"];
-                                const ir = m.backtest.metrics["Information Ratio"];
-                                const sharpe = m.backtest.metrics["Sharpe Ratio"];
+                                const ret = m.backtest.metrics["Annualized Return"] ?? null;
+                                const ir = m.backtest.metrics["Information Ratio"] ?? null;
+                                const sharpe = m.backtest.metrics["Sharpe Ratio"] ?? null;
                                 const params = m.params || {};
-                                const meta = (params["meta"] || {}) as any;
-                                const strategyProfile = (meta?.strategy_profile || {}) as any;
-                                const strategy = (strategyProfile?.strategy || {}) as any;
-                                const universe = (strategyProfile?.universe || {}) as any;
-                                const universeFilters = (universe?.filters || {}) as any;
+                                const meta = (params["meta"] || {}) as Record<string, unknown>;
+                                const strategyProfile = (meta?.strategy_profile || {}) as Record<string, unknown>;
+                                const strategy = (strategyProfile?.strategy || {}) as Record<string, unknown>;
+                                const universe = (strategyProfile?.universe || {}) as Record<string, unknown>;
+                                const universeFilters = (universe?.filters || {}) as Record<string, unknown>;
 
-                                const rebalance = strategy?.rebalance_frequency;
-                                const minHoldDays = strategy?.min_hold_days;
-                                const topk = strategy?.position_rule?.topk;
-                                const costsBps = strategy?.costs_bps;
-                                const minLiquidity = universeFilters?.min_liquidity;
+                                const rebalance = strategy?.rebalance_frequency as string | undefined;
+                                const minHoldDays = strategy?.min_hold_days as number | undefined;
+                                const positionRule = (strategy?.position_rule || {}) as Record<string, unknown>;
+                                const topk = positionRule?.topk as number | undefined;
+                                const costsBps = strategy?.costs_bps as number | undefined;
+                                const minLiquidity = universeFilters?.min_liquidity as number | undefined;
 
                                 return (
                                     <TableRow
@@ -83,11 +84,11 @@ export function ModelSelector({
                                         </TableCell>
                                         <TableCell>
                                             <div className={`text-sm ${ret > 0 ? "text-green-600" : "text-red-600"}`}>
-                                                {ret !== undefined ? `${(ret * 100).toFixed(1)}%` : "N/A"}
+                                                {ret != null ? `${(ret * 100).toFixed(1)}%` : "N/A"}
                                             </div>
                                             <div className="text-xs text-muted-foreground">
-                                                IR: {ir !== undefined ? ir.toFixed(2) : "N/A"} | Sharpe:{" "}
-                                                {sharpe !== undefined ? sharpe.toFixed(2) : "N/A"}
+                                                IR: {ir != null ? ir.toFixed(2) : "N/A"} | Sharpe:{" "}
+                                                {sharpe != null ? sharpe.toFixed(2) : "N/A"}
                                             </div>
                                         </TableCell>
                                         <TableCell>

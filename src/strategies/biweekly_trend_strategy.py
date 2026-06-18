@@ -194,6 +194,19 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                                 pnl=sig.current_value,
                             )
 
+                trailing_signals = self._risk_manager.check_trailing_stop(risk_positions)
+                for sig in trailing_signals:
+                    inst = sig.instrument
+                    if inst not in sell_candidates:
+                        entry_date = self.entry_dates.get(inst)
+                        if can_sell(entry_date, current_date, self.min_hold_days):
+                            sell_candidates.add(inst)
+                            logger.info(
+                                "Risk: trailing stop sell",
+                                instrument=inst,
+                                drawdown=sig.current_value,
+                            )
+
             for code in current_stock_list:
                 entry_date = self.entry_dates.get(code)
                 if not can_sell(entry_date, current_date, self.min_hold_days):
@@ -350,6 +363,42 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                     eq_value = cash * self.risk_degree / len(buy_list)
                     value_map = {code: eq_value for code in buy_list}
 
+            # Risk manager: position limits — cap buy value for existing overweight positions
+            position_limit_capped: set[str] = set()
+            if self._risk_manager is not None and current_stock_list:
+                from src.data.sector_map import get_sector_map
+                from src.guardrails.position_risk import PositionInfo as _PI
+
+                sample_inst = current_stock_list[0]
+                market = "cn" if sample_inst.endswith((".SH", ".SZ")) else "us"
+                try:
+                    sector_map = get_sector_map(market)
+                except Exception:
+                    sector_map = {}
+                total_value = float(current_temp.get_cash()) + sum(
+                    float(current_temp.get_stock_value(c)) for c in current_stock_list
+                )
+                existing_positions: dict[str, _PI] = {}
+                for code in current_stock_list:
+                    stock_val = float(current_temp.get_stock_value(code))
+                    existing_positions[code] = _PI(
+                        instrument=code,
+                        weight=stock_val / total_value if total_value > 0 else 0.0,
+                        entry_price=self._estimate_entry_price(code, current_temp),
+                        current_price=stock_val / max(1, float(current_temp.get_stock_amount(code))),
+                        peak_price=stock_val / max(1, float(current_temp.get_stock_amount(code))),
+                        sector=sector_map.get(code, "Unknown"),
+                    )
+                pos_limit_signals = self._risk_manager.check_position_limits(existing_positions)
+                for sig in pos_limit_signals:
+                    position_limit_capped.add(sig.instrument)
+                    logger.info(
+                        "Risk: position limit cap",
+                        instrument=sig.instrument,
+                        weight=sig.current_value,
+                        limit=sig.threshold,
+                    )
+
             for code in buy_list:
                 if not self.trade_exchange.is_stock_tradable(
                     stock_id=code,
@@ -362,6 +411,11 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                 # [GUARDRAIL 2/2] - Hardcoded Position constraints (Max 15% allowed per tick)
                 max_allowed_buy_val = cash * 0.15
                 target_value = min(value_map.get(code, 0), max_allowed_buy_val)
+
+                # Risk manager: reduce target for positions already at limit
+                if code in position_limit_capped:
+                    target_value = min(target_value, max_allowed_buy_val * 0.5)
+                    logger.info("Risk: reduced buy for capped position", instrument=code, target_value=target_value)
 
                 buy_price = self.trade_exchange.get_deal_price(
                     stock_id=code,

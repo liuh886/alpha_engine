@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from src.common.logging import get_logger
 from src.common.paths import ARTIFACTS_DIR
@@ -166,3 +167,348 @@ async def get_factor_decay(
     except Exception as e:
         log.error("Factor decay computation failed", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Decay computation failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Batch factor scanning
+# ---------------------------------------------------------------------------
+
+
+class ScanRequest(BaseModel):
+    """Request body for POST /factors/scan."""
+
+    market: str = Field("us", pattern="^(us|cn)$")
+    start_date: str = Field("2021-01-01")
+    end_date: str = Field("2025-12-31")
+    train_end: str | None = Field(
+        None,
+        description=(
+            "If provided, IC/quintile metrics are computed only on data after "
+            "this date (out-of-sample). Omit for in-sample evaluation."
+        ),
+    )
+    factor_pool: list[dict] | None = Field(
+        None,
+        description=(
+            "Optional custom factor pool. Each entry needs 'name', 'expression', "
+            "and optionally 'category'. Omit to use the default 16-factor pool."
+        ),
+    )
+    gates: dict | None = Field(
+        None,
+        description="Override default gate thresholds (min_icir, min_t_stat, etc.).",
+    )
+    max_workers: int = Field(4, ge=1, le=16)
+    auto_register: bool = Field(
+        False,
+        description="If true, factors that pass gates are registered in the FactorRegistry.",
+    )
+
+
+@router.post("/scan")
+async def scan_factors(body: ScanRequest) -> dict:
+    """Batch-scan a pool of factor expressions against validation gates.
+
+    Accepts a custom factor pool or uses the built-in default pool of 16
+    classic alpha factors (momentum, volatility, volume, mean-reversion).
+    Returns a ScanReport ranked by |ICIR| descending.
+    """
+    from src.research.factor_scanner import DEFAULT_FACTOR_POOL, scan_factor_pool
+
+    factor_pool = body.factor_pool if body.factor_pool else DEFAULT_FACTOR_POOL
+
+    try:
+        report = scan_factor_pool(
+            factor_pool=factor_pool,
+            market=body.market,
+            start_date=body.start_date,
+            end_date=body.end_date,
+            train_end=body.train_end,
+            gates=body.gates,
+            max_workers=body.max_workers,
+            auto_register=body.auto_register,
+        )
+        return {"ok": True, "report": report.to_dict()}
+    except Exception as e:
+        log.error("Factor scan failed", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Factor scan failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Factor return attribution
+# ---------------------------------------------------------------------------
+
+
+class AttributionRequest(BaseModel):
+    """Request body for POST /factors/attribute."""
+
+    market: str = Field("us", pattern="^(us|cn)$")
+    start_date: str = Field("2021-01-01")
+    end_date: str = Field("2025-12-31")
+    strategy_config: str | None = Field(
+        None,
+        description="Path to strategy YAML config (reserved for future use).",
+    )
+    factor_ids: list[int] | None = Field(
+        None,
+        description="Specific factor IDs to attribute. Omit to use all Active factors.",
+    )
+
+
+@router.post("/attribute")
+async def attribute_factor_returns(body: AttributionRequest) -> dict:
+    """Run factor return attribution analysis.
+
+    Uses a cross-sectional factor model (OLS) to decompose portfolio returns
+    into per-factor return and risk contributions. Returns an AttributionReport
+    with per-factor exposures, IC values, return/risk breakdowns, and overall
+    model fit (R-squared).
+    """
+    from src.research.factor_attribution import attribute_returns
+
+    try:
+        report = attribute_returns(
+            market=body.market,
+            start_date=body.start_date,
+            end_date=body.end_date,
+            strategy_config=body.strategy_config,
+            factor_ids=body.factor_ids,
+        )
+        return {"ok": True, "report": report.to_dict()}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        log.error("Factor attribution failed", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Factor attribution failed: {e}")
+
+
+class RollingAttributionRequest(BaseModel):
+    """Request body for POST /factors/attribute/rolling."""
+
+    market: str = Field("us", pattern="^(us|cn)$")
+    start_date: str = Field("2021-01-01")
+    end_date: str = Field("2025-12-31")
+    factor_ids: list[int] | None = Field(
+        None,
+        description="Specific factor IDs to attribute. Omit to use all Active factors.",
+    )
+    window_months: int = Field(12, ge=3, le=60, description="Length of each window in months.")
+    step_months: int = Field(3, ge=1, le=24, description="Step between windows in months.")
+
+
+@router.post("/attribute/rolling")
+async def attribute_factor_returns_rolling(body: RollingAttributionRequest) -> dict:
+    """Compute factor attribution over rolling time windows.
+
+    Runs the cross-sectional factor model on overlapping windows to show how
+    factor contributions evolve over time. Returns per-window
+    AttributionReports, per-factor trend data, and human-readable window
+    labels.
+    """
+    from src.research.factor_attribution import attribute_returns_rolling
+
+    try:
+        result = attribute_returns_rolling(
+            market=body.market,
+            start_date=body.start_date,
+            end_date=body.end_date,
+            factor_ids=body.factor_ids,
+            window_months=body.window_months,
+            step_months=body.step_months,
+        )
+        return {"ok": True, "result": result.to_dict()}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        log.error("Rolling attribution failed", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Rolling attribution failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Factor Registry
+# ---------------------------------------------------------------------------
+
+
+@router.get("/registry")
+async def list_registry_factors(
+    stage: str | None = Query(None, description="Filter by stage"),
+    category: str | None = Query(None, description="Filter by category"),
+) -> dict:
+    """List all factors in the registry with their latest validation.
+
+    Returns the full factor list enriched with the most recent validation
+    record per factor, plus registry-level summary stats.
+    """
+    from src.research.factor_registry import FactorRegistry
+
+    registry = FactorRegistry()
+    factors = registry.list_factors(stage=stage, category=category)
+
+    # Attach latest validation to each factor
+    enriched: list[dict] = []
+    for f in factors:
+        validations = registry.get_validations(f["id"])
+        latest = validations[0] if validations else None
+        enriched.append({**f, "latest_validation": latest})
+
+    stats = registry.get_stats()
+
+    return {
+        "ok": True,
+        "factors": enriched,
+        "stats": stats,
+    }
+
+
+@router.get("/registry/{factor_id}")
+async def get_registry_factor_detail(factor_id: int) -> dict:
+    """Get full factor detail including validation history and usage.
+
+    Returns the factor record, all validation records (newest first),
+    and all usage records.
+    """
+    from src.research.factor_registry import FactorRegistry
+
+    registry = FactorRegistry()
+    factor = registry.get_factor(factor_id)
+    if not factor:
+        raise HTTPException(status_code=404, detail=f"Factor {factor_id} not found")
+
+    validations = registry.get_validations(factor_id)
+    usage = registry.get_usage(factor_id)
+
+    return {
+        "ok": True,
+        "factor": factor,
+        "validations": validations,
+        "usage": usage,
+    }
+
+
+@router.post("/registry/{factor_id}/promote")
+async def promote_registry_factor(factor_id: int) -> dict:
+    """Promote a factor to the next lifecycle stage.
+
+    Uses the three-tier gate system: Proposed -> Candidate -> Validated -> Active.
+    Returns the new stage on success, or an error message on failure.
+    """
+    from src.research.factor_registry import FactorRegistry
+
+    registry = FactorRegistry()
+    factor = registry.get_factor(factor_id)
+    if not factor:
+        raise HTTPException(status_code=404, detail=f"Factor {factor_id} not found")
+
+    result = registry.promote(factor_id)
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot promote factor in stage '{factor['stage']}'",
+        )
+
+    updated = registry.get_factor(factor_id)
+    return {"ok": True, "new_stage": updated["stage"] if updated else None}
+
+
+@router.post("/registry/{factor_id}/demote")
+async def demote_registry_factor(factor_id: int) -> dict:
+    """Demote an Active factor to Deprecated.
+
+    Only Active factors can be demoted. Returns success or error.
+    """
+    from src.research.factor_registry import FactorRegistry
+
+    registry = FactorRegistry()
+    factor = registry.get_factor(factor_id)
+    if not factor:
+        raise HTTPException(status_code=404, detail=f"Factor {factor_id} not found")
+
+    result = registry.demote(factor_id)
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot demote factor in stage '{factor['stage']}' (must be Active)",
+        )
+
+    updated = registry.get_factor(factor_id)
+    return {"ok": True, "new_stage": updated["stage"] if updated else None}
+
+
+# ---------------------------------------------------------------------------
+# Experiment journal endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/experiments")
+async def query_experiments_endpoint(
+    query: str = Query("summary", description="Query type: summary, tried, failed, or free-text search"),
+    market: str = Query("us", pattern="^(us|cn)$"),
+    scope: str = Query("all", pattern="^(all|factors|models|walk_forward)$"),
+    limit: int = Query(50, ge=1, le=500),
+) -> dict:
+    """Query the unified experiment journal.
+
+    Supports several query modes:
+    - ``summary``: overall stats across all registries
+    - ``tried``: what experiments have been attempted
+    - ``failed``: all failed experiments with reasons
+    - any other value: free-text search across the specified scope
+    """
+    from src.research.experiment_journal import ExperimentJournal
+
+    journal = ExperimentJournal()
+    query_lower = query.strip().lower()
+
+    try:
+        if query_lower == "summary":
+            result = journal.get_summary(market=market)
+        elif query_lower == "tried":
+            result = journal.what_have_i_tried(market=market)
+        elif query_lower == "failed":
+            result = journal.what_failed(market=market)
+        else:
+            result = journal.search_experiments(query=query, scope=scope)
+
+        return {"ok": True, "result": result}
+    except Exception as e:
+        log.error("Experiment journal query failed", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Query failed: {e}")
+
+
+@router.get("/experiments/summary")
+async def experiments_summary(
+    market: str = Query("us", pattern="^(us|cn)$"),
+) -> dict:
+    """Get summary statistics across all experiment registries.
+
+    Returns counts by stage for factors and models, walk-forward file counts,
+    validation pass rates, and recent activity.
+    """
+    from src.research.experiment_journal import ExperimentJournal
+
+    try:
+        journal = ExperimentJournal()
+        return {"ok": True, "summary": journal.get_summary(market=market)}
+    except Exception as e:
+        log.error("Experiment summary failed", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Summary failed: {e}")
+
+
+@router.get("/experiments/failed")
+async def experiments_failed(
+    market: str = Query("us", pattern="^(us|cn)$"),
+) -> dict:
+    """List all failed experiments with reasons.
+
+    Includes factors at Proposed or Deprecated stage, Archived models,
+    and walk-forward results with poor IC_IR.
+    """
+    from src.research.experiment_journal import ExperimentJournal
+
+    try:
+        journal = ExperimentJournal()
+        failures = journal.what_failed(market=market)
+        return {"ok": True, "total_failures": len(failures), "failures": failures}
+    except Exception as e:
+        log.error("Experiment failures query failed", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Query failed: {e}")

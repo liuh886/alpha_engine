@@ -35,6 +35,7 @@ from src.api.routers import (
     jobs,
     models,
     reports,
+    stock_analysis,
     strategy,
     system,
     tools,
@@ -149,9 +150,22 @@ app.include_router(
     tags=["factors"],
     dependencies=[Depends(get_current_user)],
 )
+app.include_router(
+    stock_analysis.router,
+    prefix="/api",
+    tags=["stock-analysis"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
-# 2. Public Endpoints
+# 2. Authenticated identity endpoint
+@app.get("/api/system/me")
+def whoami(username: str = Depends(get_current_user)):
+    """Return the authenticated user's username."""
+    return {"username": username}
+
+
+# 3. Public Endpoints
 @app.get("/health")
 @app.head("/health")
 @app.get("/api/public/health")
@@ -166,14 +180,23 @@ def get_public_version():
     return {"version": APP_VERSION, "status": "stable"}
 
 
-# 3. Mount Static Files at ROOT
+# 4. Mount Static Files at ROOT
 site_path = runtime_settings.static_site_dir
 
 if site_path.exists():
     # Explicitly serve index.html at root to ensure it's handled
     @app.api_route("/", methods=["GET", "HEAD"])
     async def serve_index():
-        return FileResponse(site_path / "index.html")
+        import hashlib
+        content = (site_path / "index.html").read_bytes()
+        etag = hashlib.md5(content).hexdigest()[:12]
+        return FileResponse(
+            site_path / "index.html",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "ETag": f'"{etag}"',
+            },
+        )
 
     # Mount everything else (StaticFiles supports HEAD automatically)
     app.mount("/", StaticFiles(directory=str(site_path)), name="site")

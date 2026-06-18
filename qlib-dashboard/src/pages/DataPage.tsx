@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DataHeatmap } from "@/components/DataHeatmap";
+import { apiFetch } from "@/lib/api";
 
 type HeatmapData = {
   symbols: string[];
@@ -38,7 +39,7 @@ export function DataPage() {
   const loadHeatmap = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(
+      const resp = await apiFetch(
         `/api/data/completeness?market=${market}&feature=${feature}`,
         { cache: "no-store" }
       );
@@ -68,7 +69,7 @@ export function DataPage() {
 
     setUpdating(true);
     try {
-      const resp = await fetch("/api/data/update", {
+      const resp = await apiFetch("/api/data/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ full, lookback_days: full ? 3650 : 30 }),

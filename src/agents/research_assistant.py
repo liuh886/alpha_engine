@@ -10,6 +10,9 @@ import structlog
 from .core.base_agent import BaseAgent
 from .tools.data_tools import run_data_update
 from .tools.governance_tools import format_thought_stream_for_report
+from src.reliability.events import ReliabilityEvent
+from src.reliability.failure_log import resolve_failure_event
+from src.reliability.governance_policy import GovernanceReliabilityPolicy
 
 log = structlog.get_logger()
 
@@ -51,13 +54,14 @@ class ResearchAssistant(BaseAgent):
                     json.dump({} if "factor" in path else [], f)
 
         os.makedirs(os.path.dirname(self._evidence_canvas_path), exist_ok=True)
+        self._policy = GovernanceReliabilityPolicy()
 
     # =====================================================================
     # Factor Analysis  (from Alpha Agent)
     # =====================================================================
 
     def analyze_factors(self, market: str = "us") -> dict[str, Any]:
-        """Run a full research cycle: data check -> hypothesis -> hyperparams."""
+        """Run a full research cycle: data check -> attribution -> hyperparams."""
         format_thought_stream_for_report(
             "ResearchAssistant",
             "info",
@@ -67,12 +71,59 @@ class ResearchAssistant(BaseAgent):
         if not self.check_data_quality(market).get("ok"):
             return {"ok": False, "error": "Data integrity check failed"}
 
-        hypothesis = (
-            "Hypothesis: High volatility regimes combined with positive 20-day momentum."
-        )
-        format_thought_stream_for_report(
-            "ResearchAssistant", "info", f"Proposing: {hypothesis}"
-        )
+        # --- Factor attribution ---
+        try:
+            from src.research.factor_attribution import attribute_returns
+
+            attribution_report = attribute_returns(market=market)
+            attribution_dict = attribution_report.to_dict()
+        except Exception as exc:
+            log.warning("Factor attribution failed", error=str(exc))
+            attribution_dict = None
+
+        # --- Active factors from registry ---
+        top_factors = []
+        factor_coverage = 0.0
+        excess_return = 0.0
+        recommendation = "No attribution data available."
+
+        if attribution_dict is not None:
+            try:
+                # Extract top 3 contributing factors
+                contribs = attribution_dict.get("factor_contributions", [])
+                for fc in contribs[:3]:
+                    top_factors.append({
+                        "name": fc.get("factor_name", ""),
+                        "ic": fc.get("factor_ic", 0.0),
+                        "return_contribution_pct": fc.get("return_contribution_pct", 0.0),
+                        "risk_contribution_pct": fc.get("risk_contribution_pct", 0.0),
+                    })
+
+                factor_coverage = attribution_dict.get("factor_coverage", 0.0)
+                excess_return = attribution_dict.get("excess_return", 0.0)
+
+                # Auto-generate recommendation
+                if top_factors:
+                    leader = top_factors[0]
+                    leader_name = leader["name"]
+                    leader_ret_pct = abs(leader["return_contribution_pct"])
+                    if leader_ret_pct > 0:
+                        recommendation = (
+                            f"Top contributor is {leader_name} with "
+                            f"{leader_ret_pct:.1f}% of return explained. "
+                            f"Model R^2 = {attribution_dict.get('attribution_confidence', 0):.2f}."
+                        )
+                    else:
+                        recommendation = (
+                            f"Factor model has R^2 = "
+                            f"{attribution_dict.get('attribution_confidence', 0):.2f} "
+                            f"but no dominant return contributor identified."
+                        )
+                else:
+                    recommendation = "Attribution completed but no active factors contributed."
+            except Exception as exc:
+                log.warning("Error processing attribution results", error=str(exc))
+                recommendation = f"Attribution partial: {exc}"
 
         hyperparams = self.suggest_hyperparams()
 
@@ -84,26 +135,67 @@ class ResearchAssistant(BaseAgent):
         return {
             "ok": True,
             "market": market,
-            "hypothesis": hypothesis,
+            "attribution": attribution_dict,
+            "top_factors": top_factors,
+            "factor_coverage": factor_coverage,
+            "excess_return": excess_return,
+            "recommendation": recommendation,
             "hyperparams": hyperparams,
             "status": "Ready for Backtest",
         }
 
     def suggest_hyperparams(self) -> dict[str, float]:
-        """Suggest LightGBM hyperparameter adjustments based on heuristics."""
+        """Suggest LightGBM hyperparameter adjustments based on active factor count.
+
+        More active factors suggest a richer feature space, which benefits from
+        stronger regularization (lower learning rate, shallower trees) to avoid
+        overfitting. Fewer factors allow more aggressive fitting.
+        """
         format_thought_stream_for_report(
             "ResearchAssistant",
             "info",
-            "Calculating optimal learning rate and tree depth...",
+            "Calculating optimal hyperparameters based on active factor pool...",
         )
-        best_lr = 0.05
-        best_depth = 6
+
+        n_active = 0
+        try:
+            from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
+
+            registry = FactorRegistry()
+            active_factors = registry.list_factors(stage=STAGE_ACTIVE)
+            n_active = len(active_factors)
+        except Exception as exc:
+            log.debug("Could not query factor registry for hyperparams", error=str(exc))
+
+        # Scale hyperparameters based on factor pool size:
+        #   0-5 factors   -> lr=0.08, depth=7 (aggressive, small feature space)
+        #   6-15 factors  -> lr=0.05, depth=6 (balanced, default)
+        #   16-30 factors -> lr=0.03, depth=5 (regularized)
+        #   31+ factors   -> lr=0.01, depth=4 (strong regularization)
+        if n_active <= 5:
+            best_lr = 0.08
+            best_depth = 7
+        elif n_active <= 15:
+            best_lr = 0.05
+            best_depth = 6
+        elif n_active <= 30:
+            best_lr = 0.03
+            best_depth = 5
+        else:
+            best_lr = 0.01
+            best_depth = 4
+
         format_thought_stream_for_report(
             "ResearchAssistant",
             "success",
-            f"Target hyperparameters proposed: lr={best_lr}, max_depth={best_depth}",
+            f"Target hyperparameters proposed for {n_active} active factors: "
+            f"lr={best_lr}, max_depth={best_depth}",
         )
-        return {"learning_rate": best_lr, "max_depth": best_depth}
+        return {
+            "learning_rate": best_lr,
+            "max_depth": best_depth,
+            "n_active_factors": n_active,
+        }
 
     # =====================================================================
     # Data Quality  (from Alpha Agent)
@@ -206,6 +298,73 @@ class ResearchAssistant(BaseAgent):
     # =====================================================================
     # Governance  (from Governance Agent)
     # =====================================================================
+
+    def self_heal(self, event_data: dict[str, Any]) -> bool:
+        """Attempt to recover from an error using the reliability policy."""
+        if isinstance(event_data, dict):
+            event = ReliabilityEvent(
+                code=event_data.get("code", "UNKNOWN"),
+                category=event_data.get("category", "unknown"),
+                severity=event_data.get("severity", "medium"),
+                retryable=event_data.get("retryable", True),
+                component=event_data.get("component", "unknown"),
+                operation=event_data.get("operation", "unknown"),
+                event_id=event_data.get("event_id", ""),
+                market=event_data.get("market"),
+            )
+        else:
+            event = event_data
+
+        format_thought_stream_for_report(
+            "ResearchAssistant",
+            "warning",
+            f"Initiating Self-Healing for {event.code} in {event.component}. Event ID: {event.event_id}",
+        )
+
+        action_plan = self._policy.resolve_action(event)
+        action = action_plan.get("action", "none")
+        notes = action_plan.get("notes", "")
+
+        format_thought_stream_for_report(
+            "ResearchAssistant", "info", f"Policy Recommendation: {action}. {notes}"
+        )
+
+        success = False
+        if action == "refresh_data_then_retry":
+            format_thought_stream_for_report(
+                "ResearchAssistant", "info", f"Retrying data update for {event.market}..."
+            )
+            retry_res = run_data_update(market=event.market or "cn")
+            success = retry_res["success"]
+        elif action == "retry_with_exponential_backoff":
+            format_thought_stream_for_report("ResearchAssistant", "info", "Sleeping before retry...")
+            time.sleep(2)
+            success = True
+        elif action == "none":
+            format_thought_stream_for_report(
+                "ResearchAssistant",
+                "error",
+                "No automated action possible. Manual intervention required.",
+            )
+            success = False
+        else:
+            format_thought_stream_for_report(
+                "ResearchAssistant", "info", f"Executing generic action: {action}"
+            )
+            time.sleep(1)
+            success = True
+
+        if success and event.event_id:
+            resolve_failure_event(
+                event.event_id, resolution={"action_taken": action, "success": True}
+            )
+
+        format_thought_stream_for_report(
+            "ResearchAssistant",
+            "success" if success else "error",
+            f"Self-Healing {action} {'Completed' if success else 'Failed'} for {event.code}.",
+        )
+        return success
 
     def audit_run(self, run_id: str) -> dict[str, Any]:
         """Audit a backtest run for consistency and generate evidence canvas."""

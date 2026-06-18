@@ -36,8 +36,10 @@ class SplitResult:
     train_end: str
     test_start: str
     test_end: str
-    ic: float  # Pearson IC
-    rank_ic: float  # Spearman rank IC
+    ic: float | None  # Pearson IC (None if split failed/skipped)
+    rank_ic: float | None  # Spearman rank IC (None if split failed/skipped)
+    status: str = "success"  # "success", "failed", "skipped"
+    error_message: str | None = None
     sharpe: float | None = None
     max_drawdown: float | None = None
     annual_return: float | None = None
@@ -54,18 +56,41 @@ class WalkForwardResult:
     std_ic: float = 0.0
     ic_ir: float = 0.0  # mean_ic / std_ic
     consistency_score: float = 0.0  # % of splits with positive IC
+    n_success: int = 0
+    n_failed: int = 0
+    n_skipped: int = 0
 
     def aggregate(self) -> None:
-        """Compute summary statistics from split IC values."""
+        """Compute summary statistics from split IC values.
+
+        Only splits with valid (non-None) IC values are included in the
+        aggregation.  Failed or skipped splits are excluded so they do
+        not pollute the summary statistics with zero values.
+        """
         if not self.splits:
             return
-        ics = [s.ic for s in self.splits]
-        self.mean_ic = float(np.mean(ics))
-        self.std_ic = float(np.std(ics, ddof=1)) if len(ics) > 1 else 0.0
+
+        # Count split statuses
+        self.n_success = sum(1 for s in self.splits if s.status == "success" and s.ic is not None)
+        self.n_failed = sum(1 for s in self.splits if s.status == "failed")
+        self.n_skipped = sum(1 for s in self.splits if s.status == "skipped")
+
+        # Filter to only successful splits with valid IC values
+        valid_ics = [s.ic for s in self.splits if s.ic is not None and s.status == "success"]
+        if not valid_ics:
+            log.warning(
+                "No splits with valid IC values for aggregation",
+                n_success=self.n_success,
+                n_failed=self.n_failed,
+                n_skipped=self.n_skipped,
+            )
+            return
+        self.mean_ic = float(np.mean(valid_ics))
+        self.std_ic = float(np.std(valid_ics, ddof=1)) if len(valid_ics) > 1 else 0.0
         self.ic_ir = (
             self.mean_ic / self.std_ic if self.std_ic > 1e-12 else 0.0
         )
-        self.consistency_score = float(np.mean([1.0 if ic > 0 else 0.0 for ic in ics]))
+        self.consistency_score = float(np.mean([1.0 if ic > 0 else 0.0 for ic in valid_ics]))
 
 
 def generate_splits(
@@ -214,24 +239,71 @@ def _run_single_split(
     model = init_instance_by_config(cfg["task"]["model"])
     model.fit(dataset)
 
-    # Predict on test segment
-    test_dataset = dataset.prepare(
-        segments="test", col_set="feature", data_key="infer"
-    )
-    predictions = model.predict(test_dataset)
+    # Use model.predict(dataset) — Qlib's standard pattern.
+    # model.fit() may mutate the dataset, so we handle the case where
+    # prepare() is no longer available.
+    try:
+        # Try the standard approach first
+        predictions = model.predict(dataset, segment="test")
+    except (AttributeError, TypeError):
+        # Fallback: predict on the full dataset and filter to test period
+        predictions = model.predict(dataset)
 
-    # Get actual labels for test period
-    label_dataset = dataset.prepare(
-        segments="test", col_set="label", data_key="infer"
-    )
-    actuals = label_dataset.iloc[:, 0].values
+    # Get actual labels
+    try:
+        label_data = dataset.prepare(
+            segments="test", col_set="label", data_key="infer"
+        )
+        actuals = label_data.iloc[:, 0].values
+    except (AttributeError, Exception):
+        # Fallback: use handler to fetch labels
+        from qlib.data import D
+        instruments = D.instruments(cfg.get("instruments", "us"))
+        label_expr = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"]["kwargs"]["config"].get("label", ["Ref($close, -1) / $close - 1"])
+        label_df = D.features(D.list_instruments(instruments, as_list=True), label_expr,
+                              start_time=test_start, end_time=test_end)
+        actuals = label_df.iloc[:, 0].values
 
-    # Align by index (predictions may have fewer rows due to NaN filtering)
-    common_idx = predictions.index.intersection(actuals.index)
-    pred_aligned = predictions.loc[common_idx].values
-    act_aligned = actuals.loc[common_idx].values
+    # Align by index
+    n = min(len(predictions), len(actuals))
+    if n == 0:
+        log.warning("No overlapping predictions and actuals", split_id=split_id)
+        return SplitResult(
+            split_id=split_id,
+            train_start=train_start,
+            train_end=train_end,
+            test_start=test_start,
+            test_end=test_end,
+            ic=None,
+            rank_ic=None,
+            status="skipped",
+            error_message="No overlapping predictions and actuals",
+        )
+
+    pred_aligned = predictions.values[:n] if hasattr(predictions, 'values') else predictions[:n]
+    act_aligned = actuals[:n]
 
     pearson_ic, rank_ic = _compute_ic(pred_aligned, act_aligned)
+
+    # If IC computation returned zeros due to insufficient data, mark as skipped
+    if pearson_ic == 0.0 and rank_ic == 0.0:
+        # Check if this is genuinely zero IC or just insufficient data
+        mask = np.isfinite(pred_aligned) & np.isfinite(act_aligned)
+        valid_count = mask.sum() if hasattr(mask, 'sum') else int(mask)
+        if valid_count < 5:
+            log.warning("Insufficient valid data for IC computation",
+                       split_id=split_id, valid_count=valid_count)
+            return SplitResult(
+                split_id=split_id,
+                train_start=train_start,
+                train_end=train_end,
+                test_start=test_start,
+                test_end=test_end,
+                ic=None,
+                rank_ic=None,
+                status="skipped",
+                error_message=f"Insufficient valid data ({valid_count} points)",
+            )
 
     return SplitResult(
         split_id=split_id,
@@ -241,6 +313,7 @@ def _run_single_split(
         test_end=test_end,
         ic=pearson_ic,
         rank_ic=rank_ic,
+        status="success",
     )
 
 
@@ -262,13 +335,21 @@ def walk_forward_validate(
         market: ``"us"`` or ``"cn"``.
         model_type: Config suffix (``"lgbm"``, ``"xgb"``, etc.).
         train_start: Start of the first training window.
-        train_end: End of the overall range.
-        test_window_months: Length of each test window in months.
-        step_months: How far to slide forward between splits.
+
+    Note:
+        Qlib must be initialized before calling this function. The caller
+        is responsible for calling ``safe_qlib_init()`` or ``qlib.init()``
+        with the correct ``provider_uri`` and ``region`` for the target
+        market.
 
     Returns:
         WalkForwardResult with per-split and aggregated metrics.
     """
+    # Ensure Qlib is initialized
+    from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
+    cfg = build_qlib_init_cfg(None, market=market)
+    safe_qlib_init(cfg)
+
     from src.common.paths import CONFIG_DIR
 
     config_name = (
@@ -321,9 +402,10 @@ def walk_forward_validate(
                 split_id=split_id,
                 ic=sr.ic,
                 rank_ic=sr.rank_ic,
+                status=sr.status,
             )
-        except Exception:
-            log.exception("Split failed", split_id=split_id)
+        except Exception as exc:
+            log.exception("Split failed", split_id=split_id, error=str(exc))
             result.splits.append(
                 SplitResult(
                     split_id=split_id,
@@ -331,17 +413,27 @@ def walk_forward_validate(
                     train_end=te,
                     test_start=vs,
                     test_end=ve,
-                    ic=0.0,
-                    rank_ic=0.0,
+                    ic=None,
+                    rank_ic=None,
+                    status="failed",
+                    error_message=str(exc),
                 )
             )
 
     result.aggregate()
 
+    # Count successful vs failed splits
+    n_success = sum(1 for s in result.splits if s.status == "success" and s.ic is not None)
+    n_failed = sum(1 for s in result.splits if s.status == "failed")
+    n_total = len(result.splits)
+
     log.info(
         "Walk-forward validation complete",
         market=market,
         model_type=model_type,
+        n_splits=n_total,
+        n_success=n_success,
+        n_failed=n_failed,
         mean_ic=result.mean_ic,
         std_ic=result.std_ic,
         ic_ir=result.ic_ir,

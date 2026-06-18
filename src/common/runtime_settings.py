@@ -48,7 +48,7 @@ class RuntimeSettings:
             reports_dir=_env_path("TRADING_REPORTS_DIR", root / "reports"),
             scripts_dir=_env_path("TRADING_SCRIPTS_DIR", root / "scripts"),
             artifacts_dir=_env_path("TRADING_ARTIFACTS_DIR", root / "artifacts"),
-            static_site_dir=_env_path("TRADING_STATIC_SITE_DIR", root / "site"),
+            static_site_dir=_env_path("TRADING_STATIC_SITE_DIR", root / "qlib-dashboard" / "dist"),
         )
 
     @property
