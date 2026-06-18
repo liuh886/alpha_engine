@@ -9,10 +9,10 @@ module.exports = {
       // On Windows: .pyw file runs via pythonw (no console window).
       // On Linux/macOS: uv run python api_server.py
       script: isWin
-        ? path.join(baseDir, "pm2_launcher.pyw")
+        ? path.join(baseDir, "pm2_launcher.js")
         : "api_server.py",
-      interpreter: isWin ? "none" : "uv",
-      args: isWin ? "" : "run python api_server.py",
+      interpreter: isWin ? "node" : "uv",
+      args: isWin ? "api_server.py" : "run python api_server.py",
       cwd: baseDir,
       env: {
         PYTHONPATH: baseDir,
