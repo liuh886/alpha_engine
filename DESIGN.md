@@ -138,3 +138,101 @@ FastAPI (api_server.py) → React Dashboard (qlib-dashboard/)
 - scripts/check_factor_decay.py: IC decay detection (decaying <50%, critical <30%)
 - scripts/generate_weekly_report.py: markdown report with recommendations
 - Makefile targets: make weekly-research, make check-decay, make weekly-report
+
+---
+
+## Backtest Performance Optimization (T40)
+
+### Problem Statement
+Current backtest iterates per-bar (379 bars for 1-year CN backtest). Each bar calls `D.features()` twice (MA + signal) and loops over all stocks. Total: ~7,548 iterations, ~2 minutes.
+
+### Phase 1 Design: Vectorized Signal Pre-computation
+
+#### Architecture
+```
+Current:  for each bar → D.features() → loop stocks → generate orders
+Proposed: pre-compute ALL signals → vectorized ranking → batch order generation
+```
+
+#### Component 1: Signal Pre-computer
+```python
+class VectorizedSignalPrecomputer:
+    """Pre-compute all signals for all stocks across all dates upfront."""
+
+    def precompute(self, instruments, dates, features):
+        # Single D.features() call for entire date range
+        all_data = D.features(instruments, features,
+                              start_time=dates[0], end_time=dates[-1])
+        # Vectorized MA computation
+        ma_matrix = all_data.rolling(window=20).mean()
+        # Vectorized ranking per date
+        rank_matrix = all_data.rank(axis=1, ascending=False)
+        return all_data, ma_matrix, rank_matrix
+```
+
+#### Component 2: Vectorized Strategy
+```python
+class VectorizedBiweeklyStrategy:
+    """Strategy that uses pre-computed signals instead of per-bar D.features()."""
+
+    def __init__(self, precomputed_data):
+        self.signals = precomputed_data['signals']
+        self.ma_matrix = precomputed_data['ma_matrix']
+        self.rank_matrix = precomputed_data['rank_matrix']
+
+    def generate_trade_decision(self, execute_result):
+        # Vectorized: select top-K from pre-computed ranks
+        current_date = self.get_current_date()
+        ranks = self.rank_matrix.loc[current_date]
+        top_k = ranks.nsmallest(self.topk).index.tolist()
+
+        # Vectorized: check MA cross-under for all held stocks
+        held = self.get_held_stocks()
+        ma_values = self.ma_matrix.loc[current_date, held]
+        close_values = self.signals.loc[current_date, held]
+        sell_mask = close_values < ma_values  # Vectorized comparison
+
+        return self.build_orders(top_k, sell_mask)
+```
+
+#### Component 3: Cached Feature Store
+```python
+class FeatureCache:
+    """Cache D.features() results to avoid repeated calls."""
+
+    def __init__(self):
+        self._cache = {}
+
+    def get_features(self, instruments, fields, start, end):
+        key = (tuple(instruments), tuple(fields), str(start), str(end))
+        if key not in self._cache:
+            self._cache[key] = D.features(instruments, fields, start, end)
+        return self._cache[key]
+```
+
+#### Expected Performance
+| Component | Current | Phase 1 | Speedup |
+|-----------|---------|---------|---------|
+| Signal computation | 379 × D.features() | 1 × D.features() | ~379x |
+| MA computation | 379 × D.features() | 1 × rolling() | ~379x |
+| Ranking | 379 × sort | 1 × argsort | ~379x |
+| Order generation | Sequential | Vectorized | ~5x |
+| **Total** | **~2 min** | **~10-15s** | **~10x** |
+
+#### Implementation Plan
+1. Create `src/strategies/vectorized_engine.py` with `VectorizedSignalPrecomputer`
+2. Create `src/strategies/vectorized_strategy.py` extending `BaseSignalStrategy`
+3. Add `vectorized: true` flag to strategy profile config
+4. Benchmark against current implementation (same inputs → same outputs)
+5. Update orchestrator to support vectorized mode
+
+#### Risks
+- Qlib `D.features()` may not support full date range fetch efficiently
+- Memory: 204 stocks × 379 days × 20 features = ~1.5MB (acceptable)
+- Compatibility: must produce identical results to current implementation
+
+### Phase 2 Design: GPU Acceleration (Future Research)
+- CuPy for GPU-accelerated matrix operations
+- PyTorch for batch inference
+- Estimated: additional 5-10x on top of Phase 1
+- Requires NVIDIA GPU with CUDA support

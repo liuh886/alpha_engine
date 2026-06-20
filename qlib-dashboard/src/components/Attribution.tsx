@@ -3,23 +3,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, Line, ComposedChart, ReferenceDot, Area, Legend } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
+import { useNameMap } from '@/lib/useNameMap';
+import { apiFetch } from '@/lib/api';
 import type { Position, ReportRow } from '@/lib/types';
 
 export function Attribution({ positions, report }: { positions: Position[]; report?: ReportRow[] }) {
   const [selectedInstrument, setSelectedInstrument] = useState<string | null>(null);
   const [fullPriceHistory, setFullPriceHistory] = useState<Record<string, number>>({});
   const [loadingPrice, setLoadingPrice] = useState(false);
+  const { getName } = useNameMap();
 
   const labelByInstrument = useMemo(() => {
     const map = new Map<string, string>();
     for (const row of positions) {
       if (!row?.instrument) continue;
       const code = String(row.instrument);
-      const label = row.instrument_label ? String(row.instrument_label) : code;
+      const label = row.instrument_label ? String(row.instrument_label) : getName(code);
       if (!map.has(code)) map.set(code, label);
     }
     return map;
-  }, [positions]);
+  }, [positions, getName]);
 
   const accountByDate = useMemo(() => {
     const map = new Map<string, number>();
@@ -39,7 +42,7 @@ export function Attribution({ positions, report }: { positions: Position[]; repo
     const fetchHistory = async () => {
       setLoadingPrice(true);
       try {
-        const resp = await fetch(`/api/data/stock/${selectedInstrument}`);
+        const resp = await apiFetch(`/api/data/stock/${selectedInstrument}`);
         const json = await resp.json();
         if (json.ok && json.ohlcv) {
           const history: Record<string, number> = {};

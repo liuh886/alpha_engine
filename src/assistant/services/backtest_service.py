@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import time
+import uuid
+from datetime import datetime
 from pathlib import Path
 
-from src.dashboard.backtest_job import create_backtest_job
+from src.common.paths import RUNS_DIR
 from src.dashboard.run_lookup import get_run_model_path, get_run_profile_path
+from src.workflows.commands import build_backtest_command_envelopes, build_workflow_commands
 
 
 class BacktestService:
@@ -63,20 +67,44 @@ class BacktestService:
                     if prof:
                         profile_path = str(prof)
 
-        return create_backtest_job(
+        if market not in {"cn", "us"}:
+            raise ValueError("market must be 'cn' or 'us'")
+        if resolved_mode not in {"train", "rebacktest"}:
+            raise ValueError("mode must be 'train' or 'rebacktest'")
+        if not tag:
+            tag = f"DB_{resolved_mode.upper()}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+
+        job_id = uuid.uuid4().hex
+        log_path = RUNS_DIR / f"dashboard_backtest_{market}_{job_id}.log"
+        command_envelopes = build_backtest_command_envelopes(
             market=market,
             model_type=model_type,
+            profile_path=profile_path,
             mode=resolved_mode,
             model_path=model_path,
             start=start,
             end=end,
-            project_root=self._project_root,
-            python_exe=self._python_exe,
-            profile_path=profile_path,
             tag=tag,
             strategy_template=strategy_template,
             cost_params=cost_params,
         )
+        commands = build_workflow_commands(python_exe=self._python_exe, envelopes=command_envelopes)
+
+        return {
+            "id": job_id,
+            "type": "backtest",
+            "market": market,
+            "model_type": model_type,
+            "mode": resolved_mode,
+            "tag": tag,
+            "strategy_template": strategy_template,
+            "cost_params": cost_params,
+            "status": "queued",
+            "created_at": time.time(),
+            "log_path": str(log_path),
+            "command_envelopes": [envelope.to_dict() for envelope in command_envelopes],
+            "commands": commands,
+        }
 
     def _find_mlruns_profile_snapshot(self, run_id: str) -> Path | None:
         """
@@ -103,8 +131,8 @@ class BacktestService:
             if not m_dir.exists():
                 continue
             for exp_dir in m_dir.iterdir():
-                # Skip experiment 0 (default) or .trash
-                if not exp_dir.is_dir() or exp_dir.name in ["0", ".trash"]:
+                # Skip .trash only
+                if not exp_dir.is_dir() or exp_dir.name == ".trash":
                     continue
                 cand = exp_dir / run_id
                 if cand.exists():
@@ -171,3 +199,6 @@ class BacktestService:
             except Exception:
                 pass
         return ok
+
+
+

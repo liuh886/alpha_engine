@@ -1,5 +1,5 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
-import { HashRouter, Routes, Route, useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useState, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
+import { HashRouter, Routes, Route, useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
 import { parseQlibData, ModelData } from './lib/data-parser';
 import { Dashboard } from './components/Dashboard';
 import { ModelSelector } from './components/ModelSelector';
@@ -8,13 +8,14 @@ import { Sidebar } from './components/Sidebar';
 import { ConsoleModal } from './components/ConsoleModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Skeleton } from './components/ui/skeleton';
-import { List, Play, Loader2, Bell, User, Sun, Moon } from 'lucide-react';
+import { Play, Loader2, Bell, User, Sun, Moon, ChevronDown, Database } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useGlobalStore } from './store/globalStore';
 import { artifactUrl } from './lib/artifacts';
 import { apiFetch, setAuthHeaderProvider } from './lib/api';
 import { useAuth } from './lib/auth';
-import { LoginPage } from './components/LoginPage';
+import { AuthGuard } from './components/AuthGuard';
+import { VIEW_TITLES } from './routes';
 
 // Lazy-loaded pages (code splitting)
 const StrategyPage = lazy(() => import('./pages/StrategyPage').then(m => ({ default: m.StrategyPage })));
@@ -32,6 +33,7 @@ const AgentControlCenter = lazy(() => import('./pages/AgentControlCenter').then(
 const DocsPage = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.DocsPage })));
 const BacktestPage = lazy(() => import('./pages/BacktestPage').then(m => ({ default: m.BacktestPage })));
 const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then(m => ({ default: m.MethodologyPage })));
+const SystemPage = lazy(() => import('./pages/SystemPage').then(m => ({ default: m.SystemPage })));
 
 function PageLoader() {
   return (
@@ -41,25 +43,17 @@ function PageLoader() {
   );
 }
 
-const VIEW_TITLES: Record<string, string> = {
-  '': 'Dashboard',
-  'agent': 'Agent Center',
-  'backtest': 'Backtest',
-  'dashboard': 'Dashboard',
-  'terminal': 'Stock Terminal',
-  'arena': 'Arena',
-  'models': 'Model Registry',
-  'compare': 'Compare',
-  'reports': 'Reports',
-  'data': 'Data Management',
-  'factors': 'Factor Analysis',
-  'factor-registry': 'Factor Registry',
-  'experiments': 'Experiments',
-  'attribution': 'Factor Attribution',
-  'strategy': 'Strategy Spec',
-  'methodology': 'Methodology',
-  'docs': 'Docs',
-};
+function NotFound() {
+  return (
+    <div className="flex flex-col items-center justify-center py-32 text-center">
+      <p className="text-6xl font-black text-muted-foreground/30 mb-4">404</p>
+      <p className="text-muted-foreground font-medium mb-6">Page not found.</p>
+      <Button asChild variant="outline" className="rounded-full px-8">
+        <Link to="/">Back to Dashboard</Link>
+      </Button>
+    </div>
+  );
+}
 
 function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, setSelectorOpen, consoleOpen, setConsoleOpen, startBacktestForSelectedMarket, backtestRunning, handleDeleteModel, loading }: {
   models: ModelData[];
@@ -107,18 +101,25 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
         <header className="h-11 border-b bg-card sticky top-0 z-40 px-5 flex items-center justify-between">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <h2 className="font-semibold">{viewTitle}</h2>
-            {currentPath === 'dashboard' && selectedModel && (
+            {(currentPath === 'dashboard' || currentPath === '') && selectedModel && (
               <>
                 <div className="h-3.5 w-px bg-border" />
-                <Button variant="ghost" size="sm" onClick={() => setSelectorOpen(true)} className="text-xs font-mono h-6 gap-1.5 px-2">
-                  <List className="h-3 w-3" /> {selectedModel.name}
+                <Button variant="outline" size="sm" onClick={() => setSelectorOpen(true)} className="text-xs font-mono h-7 gap-1.5 px-2.5 border-primary/20 hover:border-primary/40 hover:bg-primary/5">
+                  <Database className="h-3 w-3 text-primary" />
+                  <span className="font-bold">{selectedModel.name}</span>
+                  {selectedModel.market && (
+                    <span className="text-[9px] uppercase font-black tracking-widest text-muted-foreground bg-muted px-1 py-0.5 rounded">
+                      {String(selectedModel.market)}
+                    </span>
+                  )}
+                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
                 </Button>
               </>
             )}
           </div>
 
           <div className="flex items-center gap-2">
-            {currentPath === 'dashboard' && (
+            {(currentPath === 'dashboard' || currentPath === '') && (
               <Button size="sm" variant="default" onClick={startBacktestForSelectedMarket} disabled={backtestRunning} className="h-7 gap-1.5 px-3 text-xs font-medium">
                 {backtestRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3 fill-current" />}
                 {backtestRunning ? "Running" : "Run Backtest"}
@@ -127,11 +128,11 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
 
             <div className="h-3.5 w-px bg-border" />
 
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
 
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setConsoleOpen(true)}><Bell className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Open console" onClick={() => setConsoleOpen(true)}><Bell className="h-4 w-4" /></Button>
             <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => { if (confirm('Sign out?')) logout(); }}>
               <User className="h-3.5 w-3.5" />
               <span>{username}</span>
@@ -200,19 +201,19 @@ function ArenaRoute() {
 }
 
 function App() {
-  const { isAuthenticated, authHeader } = useAuth();
+  const { authHeader } = useAuth();
 
   // Wire up auth header provider for apiFetch
-  useEffect(() => {
+  useLayoutEffect(() => {
     setAuthHeaderProvider(authHeader);
     return () => setAuthHeaderProvider(null);
   }, [authHeader]);
 
-  if (!isAuthenticated) {
-    return <LoginPage />;
-  }
-
-  return <AuthenticatedApp />;
+  return (
+    <AuthGuard>
+      <AuthenticatedApp />
+    </AuthGuard>
+  );
 }
 
 function AuthenticatedApp() {
@@ -432,7 +433,9 @@ function AuthenticatedApp() {
           <Route path="attribution" element={<AttributionPage />} />
           <Route path="strategy" element={<StrategyPage />} />
           <Route path="methodology" element={<MethodologyPage />} />
+          <Route path="system" element={<SystemPage />} />
           <Route path="docs" element={<DocsPage />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </HashRouter>

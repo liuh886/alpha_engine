@@ -18,7 +18,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Keyword maps — each entry maps a set of keywords to a canonical value.
 # ---------------------------------------------------------------------------
@@ -56,6 +55,22 @@ _QUALITY_KEYWORDS: list[tuple[str, str, float]] = [
     ("conservative", "target_sharpe", 1.0),
 ]
 
+# Regime detection keywords
+_REGIME_KEYWORDS: dict[str, list[str]] = {
+    "high_volatility": ["高波动", "高波", "high vol", "volatile", "波动大", "震荡"],
+    "low_volatility": ["低波动", "低波", "low vol", "平稳", "波动小"],
+    "trending": ["趋势", "trending", "单边", "突破"],
+    "ranging": ["横盘", "ranging", "震荡", "区间"],
+}
+
+# Factor family suggestions based on regime
+_REGIME_FACTOR_FAMILIES: dict[str, list[str]] = {
+    "high_volatility": ["low_volatility", "quality", "defensive", "mean_reversion"],
+    "low_volatility": ["momentum", "trend", "carry"],
+    "trending": ["momentum", "trend", "breakout"],
+    "ranging": ["mean_reversion", "contrarian", "pairs"],
+}
+
 
 # ---------------------------------------------------------------------------
 # ResearchGoal dataclass
@@ -73,6 +88,9 @@ class ResearchGoal:
     max_iterations: int = 3  # max research cycles to run
     description: str = ""  # original natural language description
     constraints: dict = field(default_factory=dict)  # additional constraints (min_icir, max_factors, etc.)
+    regime_filter: str = ""  # market regime: "high_volatility", "low_volatility", "trending", "ranging"
+    suggested_factor_families: list[str] = field(default_factory=list)  # factor families to explore
+    target: dict = field(default_factory=dict)  # structured target: {max_drawdown, min_sharpe, min_ic, ...}
 
     def to_dict(self) -> dict:
         return {
@@ -83,6 +101,9 @@ class ResearchGoal:
             "max_iterations": self.max_iterations,
             "description": self.description,
             "constraints": self.constraints,
+            "regime_filter": self.regime_filter,
+            "suggested_factor_families": self.suggested_factor_families,
+            "target": self.target,
         }
 
 
@@ -175,6 +196,45 @@ def parse_research_goal(text: str) -> ResearchGoal:
     if max_iterations <= 0:
         max_iterations = 3  # default
 
+    # --- Regime filter ---
+    regime_hits = _match_keywords(normalised, _REGIME_KEYWORDS)
+    regime_filter = regime_hits[0] if regime_hits else ""
+
+    # --- Suggested factor families based on regime ---
+    suggested_families: list[str] = []
+    if regime_filter and regime_filter in _REGIME_FACTOR_FAMILIES:
+        suggested_families = _REGIME_FACTOR_FAMILIES[regime_filter]
+
+    # --- Target structure (max_drawdown, min_sharpe, etc.) ---
+    target: dict = {}
+    target["min_sharpe"] = target_sharpe
+
+    # Extract max_drawdown from patterns like "回撤别超过15%", "max drawdown 15%", "drawdown < 20%"
+    dd_match = re.search(
+        r"(?:回撤|drawdown|dd|mdd)[^\d]*(\d+(?:\.\d+)?)\s*%?",
+        normalised,
+        re.IGNORECASE,
+    )
+    if dd_match:
+        try:
+            dd_val = float(dd_match.group(1))
+            # Normalize: if > 1, assume percentage; if <= 1, assume fraction
+            target["max_drawdown"] = dd_val / 100.0 if dd_val > 1 else dd_val
+        except (ValueError, IndexError):
+            pass
+
+    # Extract min_ic from patterns like "IC至少0.05", "min IC 0.03"
+    ic_match = re.search(
+        r"(?:ic|信息系数)[^\d]*(\d+(?:\.\d+)?)",
+        normalised,
+        re.IGNORECASE,
+    )
+    if ic_match:
+        try:
+            target["min_ic"] = float(ic_match.group(1))
+        except (ValueError, IndexError):
+            pass
+
     return ResearchGoal(
         market=market,
         categories=categories,
@@ -183,4 +243,7 @@ def parse_research_goal(text: str) -> ResearchGoal:
         max_iterations=max_iterations,
         description=text.strip(),
         constraints=constraints,
+        regime_filter=regime_filter,
+        suggested_factor_families=suggested_families,
+        target=target,
     )

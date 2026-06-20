@@ -1,9 +1,9 @@
 {
   "meta": {
     "name": "NL_Generated",
-    "description": "Auto-generated from: Hold top 5 stocks, rebalance biweekly, sell below MA60, positive score to buy, negative score to sel",
-    "market": "us",
-    "benchmark": "QQQ",
+    "description": "Auto-generated from: test strategy",
+    "market": "cn",
+    "benchmark": "000300",
     "benchmark_by_market": {
       "cn": "000300",
       "us": "QQQ"
@@ -43,7 +43,7 @@
       ],
       "test": [
         "2026-01-01",
-        "2026-04-03"
+        "2026-06-18"
       ]
     },
     "kwargs": {
@@ -63,13 +63,11 @@
       "topk": 5,
       "n_drop": 5
     },
-    "capital": 100000,
+    "capital": 10000,
     "costs_bps": 10,
     "backtest_window": [
       "2026-01-01",
-      "2026-04-03"
-    ],
-    "buy_rule": "score > 0",
-    "sell_rule": "score < 0"
+      "2026-06-18"
+    ]
   }
 }

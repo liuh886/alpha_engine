@@ -9,10 +9,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
-
-import structlog
 
 log = structlog.get_logger()
 
@@ -66,7 +65,7 @@ class WalkForwardRequest(BaseModel):
     market: str = "us"
     model_type: str = "lgbm"
     train_start: str = "2021-01-01"
-    train_end: str = "2026-04-03"
+    train_end: str = ""
     test_window_months: int = 6
     step_months: int = 3
 

@@ -1,0 +1,64 @@
+# Credentials and private material
+.env
+.env.*
+**/secrets/**
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/*credential*
+
+# Runtime state and generated research outputs
+data/**
+artifacts/**
+mlruns/**
+reports/**
+site/**
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# Local frontend output and dependencies
+qlib-dashboard/dist/**
+**/node_modules/**
+
+# Python environments, caches, and coverage
+.venv/**
+venv/**
+env/**
+**/__pycache__/**
+**/*.py[cod]
+.pytest_cache/**
+.ruff_cache/**
+.mypy_cache/**
+.coverage
+coverage.xml
+htmlcov/**
+
+# Tooling, editor, and VCS state
+.git
+.git/**
+.worktrees
+.worktrees/**
+worktrees
+worktrees/**
+.idea/**
+.vscode/**
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+
+# Repository-only material not required by either build stage
+tests/**
+docs/**
+!docs/methodology.md
+TASKS.md
+evaluation.md
+EVALUATE.md
+
+# Generated runtime / smoke-test artifacts
+backups/**
+docker-compose.smoke.yml

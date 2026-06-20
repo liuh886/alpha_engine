@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from unittest.mock import patch
 
 import pandas as pd
@@ -16,7 +15,6 @@ from src.strategies.stock_decision_engine import (
     StockDecisionEngine,
     StrategyRecommendation,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -18,7 +18,7 @@ router = APIRouter(tags=["system"])
 
 
 @router.get("/thought_stream")
-def get_thought_stream(limit: int = Query(50)):
+def get_thought_stream(limit: int = Query(50, ge=1, le=500)):
     """
     Returns the latest structured agent thought logs from artifacts/agent_thought_stream.json.
     Used for showing real-time Agent reasoning in the Dashboard.
@@ -143,12 +143,48 @@ def panic_stop(payload: dict | None = None):
     }
 
 
-SAFE_COMMANDS = {
-    "train": ["uv", "run", "python", "-m", "src.orchestrator", "run"],
-    "backtest": ["uv", "run", "python", "-m", "src.orchestrator", "run", "--skip_train"],
+# Non-workflow safe commands (data_update, arena_settle stay explicit)
+_EXPLICIT_SAFE_COMMANDS = {
     "data_update": ["uv", "run", "python", "scripts/collect_data.py"],
     "arena_settle": ["uv", "run", "python", "scripts/arena_settle.py"],
 }
+
+# Workflow commands use the shared envelope from src.workflows.commands
+_WORKFLOW_ACTIONS = {"train", "backtest"}
+
+
+def _build_safe_command(task_key: str, args: list[str]) -> list[str] | None:
+    """Build a safe command list for the given task key.
+
+    Returns the command list, or None if the task_key is not valid.
+    """
+    from src.workflows.commands import WorkflowCommandEnvelope
+
+    if task_key in _EXPLICIT_SAFE_COMMANDS:
+        return list(_EXPLICIT_SAFE_COMMANDS[task_key])
+
+    if task_key not in _WORKFLOW_ACTIONS:
+        return None
+
+    # Parse market and model_type from args
+    market = "cn"
+    model_type = "lgbm"
+    for i, a in enumerate(args):
+        if a == "--market" and i + 1 < len(args):
+            market = args[i + 1]
+        elif a == "--model_type" and i + 1 < len(args):
+            model_type = args[i + 1]
+
+    mode = "train" if task_key == "train" else "rebacktest"
+    try:
+        envelope = WorkflowCommandEnvelope.from_backtest_request(
+            market=market,
+            model_type=model_type,
+            mode=mode,
+        )
+        return envelope.to_argv(python_exe="uv run python")
+    except Exception:
+        return None
 
 
 @router.post("/exec")
@@ -156,12 +192,13 @@ def execute_system_command(payload: dict):
     task_key = str(payload.get("task") or "").strip()
     args = payload.get("args") or []
 
-    if task_key not in SAFE_COMMANDS:
+    allowed_keys = list(_EXPLICIT_SAFE_COMMANDS.keys()) + list(_WORKFLOW_ACTIONS)
+    base_cmd = _build_safe_command(task_key, args)
+    if base_cmd is None:
         raise HTTPException(
-            status_code=400, detail=f"Invalid task. Allowed: {list(SAFE_COMMANDS.keys())}"
+            status_code=400, detail=f"Invalid task. Allowed: {allowed_keys}"
         )
 
-    base_cmd = list(SAFE_COMMANDS[task_key])
     # Sanitize args: only allow strings, no shell injection possible with Popen(list)
     sanitized_args = [str(a) for a in args if ";" not in str(a) and "&" not in str(a)]
     full_cmd = base_cmd + sanitized_args

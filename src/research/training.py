@@ -1,3 +1,4 @@
+import json
 import pickle
 import shutil
 from datetime import datetime
@@ -12,10 +13,22 @@ logger = get_logger(__name__)
 
 
 def train_model(
-    market: str, model_config: dict, dataset_config: dict, tag: str = ""
+    market: str,
+    model_config: dict,
+    dataset_config: dict,
+    tag: str = "",
+    snapshot_id: str = "",
 ) -> tuple[object, Path]:
-    """Train a Qlib model."""
-    logger.info("Training model", market=market)
+    """Train a Qlib model.
+
+    Parameters
+    ----------
+    snapshot_id : str, optional
+        Content-addressed snapshot ID of the data used for this training
+        run.  When provided, it is persisted alongside the model artifact
+        so that the training run can be reproduced with the exact same data.
+    """
+    logger.info("Training model", market=market, snapshot_id=snapshot_id or None)
     dataset = init_instance_by_config(dataset_config)
 
     model = init_instance_by_config(model_config)
@@ -36,5 +49,18 @@ def train_model(
     with open(model_path, "wb") as f:
         pickle.dump(model, f)
     shutil.copy(model_path, MODELS_DIR / f"{market}_model.pkl")
+
+    # Persist training metadata alongside the model so the run is
+    # reproducible with the exact same data snapshot.
+    if snapshot_id:
+        meta = {
+            "snapshot_id": snapshot_id,
+            "market": market,
+            "tag": safe_tag,
+            "created_at": timestamp,
+        }
+        meta_path = model_path.with_suffix(".meta.json")
+        meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        logger.info("Persisted model metadata", meta_path=str(meta_path))
 
     return model, model_path

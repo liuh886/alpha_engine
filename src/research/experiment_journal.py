@@ -14,9 +14,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from src.common.logging import get_logger
 
@@ -419,7 +417,7 @@ class ExperimentJournal:
         # Factors
         registry = self._get_factor_registry()
         factor_stats = registry.get_stats()
-        all_factors = registry.list_factors()
+        registry.list_factors()
         by_stage = factor_stats["by_stage"]
         active = by_stage.get("Active", 0)
         validated = by_stage.get("Validated", 0)

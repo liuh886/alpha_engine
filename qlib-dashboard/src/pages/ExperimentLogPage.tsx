@@ -61,7 +61,7 @@ export function ExperimentLogPage() {
 
   const loadSummary = useCallback(async () => {
     try {
-      const resp = await apiFetch("/api/factors/experiments/summary", { cache: "no-store" });
+      const resp = await apiFetch("/api/factors/experiments/log/summary", { cache: "no-store" });
       if (!resp.ok) return;
       const json = await resp.json();
       if (json.ok) setSummary(json.summary || null);
@@ -70,7 +70,7 @@ export function ExperimentLogPage() {
 
   const loadExperiments = useCallback(async () => {
     try {
-      const resp = await apiFetch("/api/factors/experiments?query=tried", { cache: "no-store" });
+      const resp = await apiFetch("/api/factors/experiments/log", { cache: "no-store" });
       if (!resp.ok) return;
       const json = await resp.json();
       if (json.ok) setExperiments(json.experiments || []);

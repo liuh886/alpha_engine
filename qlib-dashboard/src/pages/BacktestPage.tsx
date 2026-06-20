@@ -1,36 +1,92 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Play, Loader2, CheckCircle2, XCircle, Terminal, Sparkles, BarChart3, TrendingUp, TrendingDown, ArrowUpDown } from "lucide-react";
+import { Play, Loader2, CheckCircle2, XCircle, Terminal, Sparkles, BarChart3, ExternalLink, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OverviewCards } from "@/components/OverviewCards";
 import { PerformanceCharts } from "@/components/PerformanceCharts";
 import { PositionsTable } from "@/components/PositionsTable";
 import { parseQlibData, ModelData } from "@/lib/data-parser";
-import { artifactUrl } from "@/lib/artifacts";
-import { apiFetch } from "@/lib/api";
-import { formatNum, formatPct } from "@/lib/format";
+import { formatPct } from "@/lib/format";
 import { useGlobalStore } from "@/store/globalStore";
+import { useNameMap } from "@/lib/useNameMap";
+import { useQuery } from "@/hooks/useQuery";
+import { useMutation } from "@/hooks/useMutation";
+import { releaseApi } from "@/lib/release-api";
+import {
+  parseReleaseIdentity,
+  releaseSearch,
+  resolveEvidenceIdentity,
+  resolveWorkflowResult,
+  type ReleaseOutcome as ReleaseOutcomeState,
+} from "@/lib/release-workflow";
+import { ReleaseOutcome } from "@/components/ReleaseOutcome";
+import type { WorkflowStatusEntry } from "@/lib/api-types";
 
-type JobStatus = "idle" | "running" | "succeeded" | "failed";
+type WorkflowStatus = "idle" | "running" | "succeeded" | "failed";
+
+const SESSION_KEY = "alpha_engine_active_workflow";
+
+interface PersistedWorkflow {
+  workflowId: string;
+  snapshotId: string;
+  market: string;
+  modelType: string;
+  tag: string;
+  startedAt: number;
+}
+
+function saveWorkflowState(state: PersistedWorkflow | null) {
+  if (state) {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(state));
+  } else {
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+}
+
+function loadWorkflowState(): PersistedWorkflow | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedWorkflow;
+  } catch {
+    return null;
+  }
+}
 
 export function BacktestPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const routeIdentity = parseReleaseIdentity(location.search);
+  const persistedWorkflow = loadWorkflowState();
+
+  // --- Form state ---
   const [market, setMarket] = useState("us");
   const [modelType, setModelType] = useState("lgbm");
   const [tag, setTag] = useState("");
-  const [jobStatus, setJobStatus] = useState<JobStatus>("idle");
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // --- Job state ---
+  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus>(routeIdentity.workflowId || persistedWorkflow ? "running" : "idle");
+  const [workflowId, setWorkflowId] = useState<string | null>(routeIdentity.workflowId ?? persistedWorkflow?.workflowId ?? null);
+  const [snapshotId, setSnapshotId] = useState<string | null>(routeIdentity.snapshotId ?? persistedWorkflow?.snapshotId ?? null);
+  const [workflowOutcome, setWorkflowOutcome] = useState<{ state: ReleaseOutcomeState; reason: string }>(() =>
+    routeIdentity.snapshotId || persistedWorkflow?.snapshotId
+      ? { state: "success", reason: "Snapshot identity is pinned for training." }
+      : { state: "blocked", reason: "Select an approved snapshot from Data before training." },
+  );
   const [jobError, setJobError] = useState<string | null>(null);
   const [logLines, setLogLines] = useState<string[]>([]);
   const [resultModel, setResultModel] = useState<ModelData | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<number | null>(null);
-  const timeoutRef = useRef<number | null>(null);
+  const completionRef = useRef("");
+  const { getName } = useNameMap();
 
   // Stock ranking state
-  const { selectedModelId, selectedModelMarket } = useGlobalStore();
+  const { selectedModelId } = useGlobalStore();
   const [rankingData, setRankingData] = useState<Array<{
     symbol: string;
     weighted_score: number;
@@ -48,20 +104,37 @@ export function BacktestPage() {
   const [nlResult, setNlResult] = useState<{ market?: string; yaml_path?: string; summary?: Record<string, unknown> } | null>(null);
   const [nlError, setNlError] = useState<string | null>(null);
 
+  // --- Resume on mount ---
+  useEffect(() => {
+    const persisted = loadWorkflowState();
+    if (persisted) {
+      // Check if stale (> 15 minutes old)
+      if (Date.now() - persisted.startedAt > 15 * 60 * 1000) {
+        saveWorkflowState(null);
+        return;
+      }
+      setMarket(persisted.market);
+      setModelType(persisted.modelType);
+      setTag(persisted.tag);
+      setSnapshotId(persisted.snapshotId);
+      setWorkflowId(persisted.workflowId);
+      setWorkflowStatus("running");
+    }
+  }, []);
+
   // Fetch stock ranking
   const fetchRanking = useCallback(async () => {
     setRankingLoading(true);
     try {
-      const runIdParam = selectedModelId ? `&run_id=${encodeURIComponent(selectedModelId)}` : "";
-      const resp = await apiFetch(
-        `/api/stock-analysis/ranking?market=${rankingMarket}&step_size=10&forward_days=10&sort_by=${sortBy}&sort_grade=${sortGrade}&limit=50${runIdParam}`,
-        { cache: "no-store" },
-      );
-      const json = await resp.json().catch(() => ({}));
-      if (resp.ok && json.ok) {
-        setRankingData(json.ranking || []);
-      }
-    } catch {
+      const json = await releaseApi.getStockRanking({
+        market: rankingMarket,
+        sort_by: sortBy,
+        sort_grade: sortGrade,
+        run_id: selectedModelId || undefined,
+      });
+      setRankingData(json.ranking || []);
+    } catch (err) {
+      console.warn("[BacktestPage] loadRanking failed:", err);
       setRankingData([]);
     } finally {
       setRankingLoading(false);
@@ -74,16 +147,7 @@ export function BacktestPage() {
     setNlError(null);
     setNlResult(null);
     try {
-      const resp = await apiFetch("/api/strategy/compile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: nlText, market }),
-      });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.detail || `HTTP ${resp.status}`);
-      }
-      const json = await resp.json();
+      const json = await releaseApi.compileStrategy(nlText, market);
       setNlResult(json);
     } catch (e: unknown) {
       setNlError(e instanceof Error ? e.message : String(e));
@@ -99,133 +163,151 @@ export function BacktestPage() {
     }
   }, [logLines]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) window.clearInterval(pollRef.current);
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-    };
-  }, []);
+  const workflowQuery = useQuery<WorkflowStatusEntry[]>({
+    fetcher: () => releaseApi.getWorkflow(workflowId || ""),
+    enabled: Boolean(workflowId) && workflowStatus === "running",
+  });
 
-  const startBacktest = async () => {
-    setJobStatus("running");
+  useEffect(() => {
+    if (!workflowId || workflowStatus !== "running") return;
+    const timer = window.setInterval(workflowQuery.refetch, 1000);
+    return () => window.clearInterval(timer);
+  }, [workflowId, workflowQuery.refetch, workflowStatus]);
+
+  const loadExactResult = useCallback(async (workflow: WorkflowStatusEntry) => {
+    try {
+      const [registry, artifact] = await Promise.all([
+        releaseApi.listModels(),
+        releaseApi.getDashboardArtifact(),
+      ]);
+      const resolution = resolveWorkflowResult(workflow, registry.versions, snapshotId ?? undefined);
+      setWorkflowOutcome({ state: resolution.state, reason: resolution.reason });
+
+      if (resolution.state !== "success" || !resolution.snapshotId || !resolution.runId || !resolution.modelId) return;
+      setSnapshotId(resolution.snapshotId);
+
+      const parsed = parseQlibData(artifact);
+      const exactModel = parsed.find((candidate) => candidate.id === resolution.runId || candidate.id === resolution.modelId);
+      if (!exactModel) {
+        setWorkflowOutcome({ state: "partial", reason: `Run ${resolution.runId} is registered but missing from dashboard artifacts.` });
+        return;
+      }
+
+      const evidence = await releaseApi.getModelEvidence(resolution.modelId);
+      const evidenceResolution = resolveEvidenceIdentity(evidence, resolution.modelId);
+      setWorkflowOutcome({ state: evidenceResolution.state, reason: evidenceResolution.reason });
+      setResultModel(exactModel);
+      navigate({
+        pathname: location.pathname,
+        search: releaseSearch({
+          snapshotId: resolution.snapshotId,
+          workflowId: workflow.workflow_id,
+          runId: resolution.runId,
+          modelId: resolution.modelId,
+          evidenceId: evidenceResolution.evidenceId,
+        }, location.search),
+      }, { replace: true });
+    } catch (error) {
+      setWorkflowOutcome({
+        state: "failed",
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, [location.pathname, location.search, navigate, snapshotId]);
+
+  useEffect(() => {
+    const workflow = workflowQuery.data?.[0];
+    if (!workflow || completionRef.current === `${workflow.workflow_id}:${workflow.status}`) return;
+    const status = String(workflow.status).toUpperCase();
+    if (status === "SUCCESS") {
+      completionRef.current = `${workflow.workflow_id}:${workflow.status}`;
+      saveWorkflowState(null);
+      setWorkflowStatus("succeeded");
+      void loadExactResult(workflow);
+    } else if (status === "FAILED") {
+      completionRef.current = `${workflow.workflow_id}:${workflow.status}`;
+      saveWorkflowState(null);
+      setWorkflowStatus("failed");
+      const reason = String(workflow.error || workflow.details?.summary || "Workflow failed. Check logs for details.");
+      setJobError(reason);
+      setWorkflowOutcome({ state: "failed", reason });
+    }
+  }, [loadExactResult, workflowQuery.data]);
+
+  useEffect(() => {
+    if (workflowQuery.error && workflowStatus === "running") {
+      setWorkflowOutcome({ state: "failed", reason: workflowQuery.error });
+    }
+  }, [workflowQuery.error, workflowStatus]);
+
+  const validate = (): string | null => {
+    if (!snapshotId) return "An approved snapshot identity is required. Start from the Data page.";
+    if (!tag.trim()) return "Tag is required (used to identify this run).";
+    if (!market) return "Market is required.";
+    if (!modelType.trim()) return "Model type is required.";
+    return null;
+  };
+
+  const trainMutation = useMutation({
+    mutateFn: releaseApi.submitTraining,
+    onSuccess: (data, variables) => {
+      const wfId = data.workflow_id;
+      if (!wfId) {
+        setWorkflowStatus("failed");
+        setWorkflowOutcome({ state: "failed", reason: "Server did not return a workflow ID." });
+        return;
+      }
+      completionRef.current = "";
+      setWorkflowId(wfId);
+      saveWorkflowState({
+        workflowId: wfId,
+        snapshotId: variables.snapshot_id,
+        market: variables.market,
+        modelType: variables.model_type,
+        tag: variables.tag,
+        startedAt: Date.now(),
+      });
+      navigate({
+        pathname: location.pathname,
+        search: releaseSearch({ snapshotId: variables.snapshot_id, workflowId: wfId }, location.search),
+      }, { replace: true });
+      setWorkflowOutcome({ state: "loading", reason: `Training workflow ${wfId} is running.` });
+    },
+    onError: (message) => {
+      setWorkflowStatus("failed");
+      setJobError(message);
+      setWorkflowOutcome({ state: "failed", reason: message });
+      saveWorkflowState(null);
+    },
+  });
+
+  const startBacktest = () => {
+    const err = validate();
+    if (err) {
+      setValidationError(err);
+      return;
+    }
+    setValidationError(null);
+    setWorkflowStatus("running");
     setJobError(null);
     setLogLines([]);
     setResultModel(null);
-    setJobId(null);
-
-    try {
-      const resp = await apiFetch("/api/workflow/train", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ market, model_type: modelType, tag: tag || undefined }),
-      });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.detail || `HTTP ${resp.status}`);
-      }
-      // Start polling for the job
-      findAndWatchJob();
-    } catch (e: unknown) {
-      setJobStatus("failed");
-      setJobError(e instanceof Error ? e.message : String(e));
-    }
+    setWorkflowId(null);
+    setWorkflowOutcome({ state: "loading", reason: "Submitting snapshot-bound training workflow." });
+    trainMutation.mutate({ market, model_type: modelType, tag: tag.trim(), snapshot_id: snapshotId! });
   };
 
-  const findAndWatchJob = () => {
-    let foundJobId: string | null = null;
-    let streamStarted = false;
-
-    // Phase 1: Find the running job
-    pollRef.current = window.setInterval(async () => {
-      try {
-        if (!foundJobId) {
-          // Look for a running job
-          const resp = await apiFetch("/api/jobs?status=running&limit=1", { cache: "no-store" });
-          if (!resp.ok) return;
-          const json = await resp.json();
-          const jobs = json.jobs || [];
-          if (jobs.length > 0) {
-            foundJobId = jobs[0].id;
-            setJobId(foundJobId);
-          }
-        }
-
-        if (foundJobId) {
-          // Check specific job status
-          const jobResp = await apiFetch(`/api/jobs/${encodeURIComponent(foundJobId)}`, { cache: "no-store" });
-          if (!jobResp.ok) return;
-          const jobJson = await jobResp.json();
-          const status = jobJson?.job?.status || "";
-
-          // Start log streaming once
-          if (!streamStarted) {
-            streamStarted = true;
-            streamLogs(foundJobId);
-          }
-
-          if (status === "succeeded") {
-            cleanup();
-            setJobStatus("succeeded");
-            loadResults();
-          } else if (status === "failed") {
-            cleanup();
-            setJobStatus("failed");
-            setJobError(jobJson?.job?.error || "Backtest failed. Check logs for details.");
-          }
-        }
-      } catch {
-        /* ignore transient errors */
-      }
-    }, 2000);
-
-    // Timeout after 10 minutes
-    timeoutRef.current = window.setTimeout(() => {
-      cleanup();
-      setJobStatus("failed");
-      setJobError("Timeout: backtest took longer than 10 minutes.");
-    }, 600000);
-  };
-
-  const cleanup = () => {
-    if (pollRef.current) {
-      window.clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-    if (timeoutRef.current) {
-      window.clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  };
-
-  const streamLogs = (id: string) => {
-    const es = new EventSource(`/api/jobs/${encodeURIComponent(id)}/stream`);
-    es.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.line) {
-          setLogLines((prev) => [...prev, data.line]);
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-    es.addEventListener("done", () => es.close());
-    es.onerror = () => es.close();
-  };
-
-  const loadResults = async () => {
-    try {
-      const resp = await apiFetch(artifactUrl.dashboardDb, { cache: "no-store" });
-      if (!resp.ok) return;
-      const json = await resp.json();
-      const models = parseQlibData(json);
-      if (models.length > 0) {
-        setResultModel(models[0]);
-      }
-    } catch {
-      /* ignore */
-    }
+  const resetToIdle = () => {
+    saveWorkflowState(null);
+    setWorkflowStatus("idle");
+    setWorkflowId(null);
+    setJobError(null);
+    setLogLines([]);
+    setResultModel(null);
+    setValidationError(null);
+    setWorkflowOutcome(snapshotId
+      ? { state: "success", reason: "Snapshot identity is pinned for training." }
+      : { state: "blocked", reason: "Select an approved snapshot from Data before training." });
   };
 
   return (
@@ -237,6 +319,8 @@ export function BacktestPage() {
           Execute backtests and analyze results.
         </p>
       </div>
+
+      <ReleaseOutcome state={workflowOutcome.state} reason={workflowOutcome.reason} />
 
       {/* NL Strategy Compiler */}
       <Card>
@@ -326,8 +410,9 @@ export function BacktestPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Model</label>
+              <label htmlFor="release-model-type" className="text-xs text-muted-foreground">Model</label>
               <Input
+                id="release-model-type"
                 value={modelType}
                 onChange={(e) => setModelType(e.target.value)}
                 className="h-7 w-28 text-xs font-mono"
@@ -335,47 +420,73 @@ export function BacktestPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Tag</label>
+              <label htmlFor="release-tag" className="text-xs text-muted-foreground">
+                Tag <span className="text-destructive">*</span>
+              </label>
               <Input
+                id="release-tag"
                 value={tag}
                 onChange={(e) => setTag(e.target.value)}
-                placeholder="optional"
+                placeholder="required"
                 className="h-7 w-40 text-xs font-mono"
               />
             </div>
 
             <Button
               onClick={startBacktest}
-              disabled={jobStatus === "running"}
+              disabled={workflowStatus === "running"}
               className="h-7 gap-1.5 px-4 text-xs"
             >
-              {jobStatus === "running" ? (
+              {workflowStatus === "running" ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
                 <Play className="h-3 w-3 fill-current" />
               )}
-              {jobStatus === "running" ? "Running..." : "Execute"}
+              {workflowStatus === "running" ? "Running..." : "Execute"}
             </Button>
 
-            {jobStatus !== "idle" && (
+            {workflowStatus !== "idle" && (
               <Badge
                 variant={
-                  jobStatus === "succeeded" ? "default" :
-                  jobStatus === "failed" ? "destructive" : "outline"
+                  workflowStatus === "succeeded" ? "default" :
+                  workflowStatus === "failed" ? "destructive" : "outline"
                 }
                 className="gap-1 text-xs"
               >
-                {jobStatus === "running" && <Loader2 className="h-3 w-3 animate-spin" />}
-                {jobStatus === "succeeded" && <CheckCircle2 className="h-3 w-3" />}
-                {jobStatus === "failed" && <XCircle className="h-3 w-3" />}
-                {jobStatus}
+                {workflowStatus === "running" && <Loader2 className="h-3 w-3 animate-spin" />}
+                {workflowStatus === "succeeded" && <CheckCircle2 className="h-3 w-3" />}
+                {workflowStatus === "failed" && <XCircle className="h-3 w-3" />}
+                {workflowStatus}
               </Badge>
+            )}
+
+            {(workflowStatus === "succeeded" || workflowStatus === "failed") && (
+              <Button variant="ghost" size="sm" onClick={resetToIdle} className="h-7 text-xs text-muted-foreground">
+                New Run
+              </Button>
             )}
           </div>
 
+          {/* Validation error */}
+          {validationError && (
+            <div className="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-600">
+              {validationError}
+            </div>
+          )}
+
+          {/* Job error */}
           {jobError && (
             <div className="mt-3 p-2.5 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive font-mono">
               {jobError}
+            </div>
+          )}
+
+          {/* Workflow ID display */}
+          {workflowId && workflowStatus === "running" && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+              <Terminal className="h-3 w-3" />
+              <span>Tracking workflow:</span>
+              <code className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{workflowId}</code>
             </div>
           )}
         </CardContent>
@@ -388,9 +499,9 @@ export function BacktestPage() {
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Terminal className="h-4 w-4" /> Live Log
             </CardTitle>
-            {jobId && (
+            {workflowId && (
               <Badge variant="outline" className="font-mono text-xs">
-                {jobId.slice(0, 8)}
+                {workflowId}
               </Badge>
             )}
           </CardHeader>
@@ -421,8 +532,32 @@ export function BacktestPage() {
       {/* Results */}
       {resultModel && (
         <div className="space-y-5">
-          <div className="flex items-center gap-2 text-green-500 font-medium text-sm">
-            <CheckCircle2 className="h-4 w-4" /> Results: {resultModel.name}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-green-500 font-medium text-sm">
+              <CheckCircle2 className="h-4 w-4" /> Results: {resultModel.name}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => navigate({ pathname: "/models", search: location.search })}
+              >
+                <ExternalLink className="h-3 w-3" /> View in Model Registry
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => navigate(
+                  { pathname: "/compare", search: location.search },
+                  { state: { preselectedIds: [routeIdentity.modelId, routeIdentity.runId, resultModel.id].filter(Boolean) as string[] } },
+                )}
+                aria-label="Compare exact result"
+              >
+                <Layers className="h-3 w-3" /> Compare
+              </Button>
+            </div>
           </div>
 
           <OverviewCards metrics={resultModel.backtest.metrics} />
@@ -528,7 +663,10 @@ export function BacktestPage() {
                         onClick={() => window.location.hash = `#/terminal`}
                       >
                         <td className="py-2 px-2 text-muted-foreground">{idx + 1}</td>
-                        <td className="py-2 px-2 font-bold">{item.symbol}</td>
+                        <td className="py-2 px-2 font-bold">
+                          <div>{getName(item.symbol)}</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">{item.symbol}</div>
+                        </td>
                         <td className={cn(
                           "py-2 px-2 text-right font-mono font-bold",
                           item.weighted_score > 0 ? "text-green-400" : item.weighted_score < 0 ? "text-red-400" : "text-muted-foreground",
@@ -559,11 +697,14 @@ export function BacktestPage() {
       </Card>
 
       {/* Empty state */}
-      {jobStatus === "idle" && !resultModel && (
+      {workflowStatus === "idle" && !resultModel && (
         <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-lg bg-muted/30">
           <Terminal className="h-10 w-10 text-muted-foreground/30 mb-3" />
           <p className="text-muted-foreground text-sm">
             Configure parameters and click Execute to run a backtest.
+          </p>
+          <p className="text-muted-foreground text-xs mt-1">
+            Tag is required to identify and track your run.
           </p>
         </div>
       )}

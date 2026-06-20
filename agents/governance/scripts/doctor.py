@@ -32,7 +32,7 @@ def check_dependencies():
             missing.append(d)
 
     try:
-        from qlib.workflow import R
+        from qlib.workflow import R  # noqa: F401
 
         print("  [OK] Qlib C++ Extensions (workflow/record_temp)")
     except ImportError as e:

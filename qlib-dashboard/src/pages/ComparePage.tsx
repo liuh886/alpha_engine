@@ -1,32 +1,33 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { ModelData } from "@/lib/data-parser";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ModelData, parseQlibData } from "@/lib/data-parser";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { HoldingsSummary } from "@/components/HoldingsSummary";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine } from "recharts";
-import { Layers, TrendingUp, Target, Trophy, RefreshCw, ArrowUpDown } from "lucide-react";
+import { Layers, TrendingUp, Target, Trophy, RefreshCw, ArrowUpDown, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPct as formatPercent, formatNum as formatNumber, shortId } from "@/lib/format";
+import { shortId, formatPct } from "@/lib/format";
 import { format, parseISO } from "date-fns";
-import { artifactUrl } from "@/lib/artifacts";
-import { apiFetch } from "@/lib/api";
+import { ReleaseOutcome } from "@/components/ReleaseOutcome";
+import { Button } from "@/components/ui/button";
+import { useQuery } from "@/hooks/useQuery";
+import { releaseApi } from "@/lib/release-api";
+import { parseReleaseIdentity, type OutcomeSummary } from "@/lib/release-workflow";
+import type { ModelVersion } from "@/lib/api-types";
+import {
+  STANDARD_METRICS,
+  formatMetricValue,
+  checkModelCompatibility,
+  METRIC_SCHEMA_VERSION,
+  type CompatibilityWarning,
+} from "@/types/metrics";
 
 const MAX_COMPARE = 5;
 const COLORS = ["hsl(var(--primary))", "#f59e0b", "#0ea5e9", "#8b5cf6", "#ec4899"];
 
-type MetricDef = { label: string; key: string; format: (value?: number) => string; };
-
-const metricDefs: MetricDef[] = [
-  { label: "Ann. Return", key: "Annualized Return", format: formatPercent },
-  { label: "Sharpe Ratio", key: "Sharpe Ratio", format: formatNumber },
-  { label: "Information Ratio", key: "Information Ratio", format: formatNumber },
-  { label: "Max Drawdown", key: "Max Drawdown", format: formatPercent },
-  { label: "Ann. Volatility", key: "Annualized Volatility", format: formatPercent },
-  { label: "Total Return", key: "Total Return", format: formatPercent },
-];
-
 function buildEquitySeries(models: ModelData[]) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const rows = new Map<string, Record<string, any>>();
   for (const model of models) {
     const report = model.backtest.report || [];
@@ -43,82 +44,108 @@ function buildEquitySeries(models: ModelData[]) {
   return Array.from(rows.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// ---- Leaderboard types ----
-type LeaderboardRow = {
-  rank?: number;
-  participant_name?: string;
-  nav?: number;
-  daily_return?: number;
-  drawdown?: number;
-  turnover?: number;
-  run_id?: string;
-  model_version_id?: string;
-  edge_explanation?: string;
-};
-
 type SortKey = "rank" | "participant_name" | "nav" | "daily_return" | "drawdown";
 
 // ---- Tab type ----
 type TabId = "comparison" | "leaderboard";
 
 export function ComparePage({ models, preselectedIds, compact = false }: { models: ModelData[], preselectedIds?: string[], compact?: boolean }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const routeIdentity = parseReleaseIdentity(location.search);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("comparison");
-
-  // Leaderboard state
-  const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortAsc, setSortAsc] = useState(true);
 
-  useEffect(() => {
-    if (preselectedIds && preselectedIds.length > 0) {
-      setSelectedIds(preselectedIds);
-    } else if (models.length > 0 && selectedIds.length === 0) {
-      setSelectedIds(models.slice(0, 2).map(m => m.id));
-    }
-  }, [models, preselectedIds]);
+  const comparisonQuery = useQuery<{ models: ModelData[]; registry: ModelVersion[] }>({
+    enabled: !compact,
+    fetcher: async (signal) => {
+      const [artifact, registry] = await Promise.all([
+        releaseApi.getDashboardArtifact(signal),
+        releaseApi.listModels(undefined, signal),
+      ]);
+      return { models: parseQlibData(artifact), registry: registry.versions };
+    },
+  });
+  const availableModels = compact ? models : comparisonQuery.data?.models ?? [];
+  const registry = compact ? [] : comparisonQuery.data?.registry ?? [];
 
-  const selectedModels = useMemo(() => models.filter(m => selectedIds.includes(m.id)), [models, selectedIds]);
+  const arenasQuery = useQuery({
+    enabled: !compact && activeTab === "leaderboard",
+    fetcher: (signal) => releaseApi.listArenas(signal),
+  });
+  const arenaId = arenasQuery.data?.arenas[0]?.id ?? "";
+  const leaderboardQuery = useQuery({
+    enabled: !compact && activeTab === "leaderboard" && Boolean(arenaId),
+    queryKey: arenaId,
+    fetcher: (signal) => releaseApi.getLeaderboard(arenaId, signal),
+  });
+  const leaderboard = leaderboardQuery.data?.leaderboard ?? [];
+  const leaderboardLoading = arenasQuery.loading || leaderboardQuery.loading;
+
+  useEffect(() => {
+    const requested = [
+      ...(preselectedIds ?? []),
+      routeIdentity.modelId,
+      routeIdentity.runId,
+    ].filter(Boolean) as string[];
+    const resolved = requested.flatMap((id) => {
+      const direct = availableModels.find((model) => model.id === id);
+      if (direct) return [direct.id];
+      const registered = registry.find((model) => model.id === id || model.run_id === id);
+      if (!registered) return [];
+      const artifact = availableModels.find((model) => model.id === registered.run_id || model.id === registered.id);
+      return artifact ? [artifact.id] : [];
+    });
+
+    if (resolved.length > 0) {
+      setSelectedIds(Array.from(new Set(resolved)).slice(0, MAX_COMPARE));
+    } else if (availableModels.length > 0) {
+      // Prefer models that have actual metric data
+      const withData = availableModels.filter(m => Object.values(m.backtest.metrics).some(v => v != null));
+      const initial = withData.length >= 2 ? withData.slice(0, 2) : availableModels.slice(0, 2);
+      setSelectedIds(initial.map(m => m.id));
+    }
+  }, [availableModels, preselectedIds, registry, routeIdentity.modelId, routeIdentity.runId]);
+
+  const selectedModels = useMemo(() => availableModels.filter(m => selectedIds.includes(m.id)), [availableModels, selectedIds]);
   const equitySeries = useMemo(() => buildEquitySeries(selectedModels), [selectedModels]);
+  const compatWarnings = useMemo(() => checkModelCompatibility(selectedModels), [selectedModels]);
 
   const toggleModel = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < MAX_COMPARE ? [...prev, id] : prev);
   };
 
-  // Leaderboard data loading
-  const loadLeaderboard = useCallback(async () => {
-    setLeaderboardLoading(true);
-    try {
-      // Fetch all arenas, then load leaderboard from the first one
-      const arenasResp = await apiFetch(artifactUrl.arenas);
-      if (!arenasResp.ok) { setLeaderboardLoading(false); return; }
-      const arenasJson = await arenasResp.json();
-      const arenas = (arenasJson?.arenas || []);
-      if (arenas.length === 0) { setLeaderboardLoading(false); return; }
+  const comparisonOutcome = useMemo<OutcomeSummary>(() => {
+    if (comparisonQuery.loading && !comparisonQuery.data) return { state: "loading", reason: "Loading registry and backtest artifacts." };
+    if (comparisonQuery.error) return { state: "failed", reason: comparisonQuery.error };
+    if (availableModels.length === 0) return { state: "empty", reason: "No backtest artifacts are available for comparison." };
+    if (!routeIdentity.modelId && !routeIdentity.runId) return { state: "success", reason: `${availableModels.length} backtest artifacts are available.` };
 
-      const arenaId = arenas[0].id;
-      const resp = await apiFetch(artifactUrl.arenaLeaderboard(arenaId));
-      if (!resp.ok) { setLeaderboardLoading(false); return; }
-      const json = await resp.json();
-      setLeaderboard(json?.leaderboard || []);
-    } catch {
-      // silent
-    } finally {
-      setLeaderboardLoading(false);
+    const registered = registry.find((model) => model.id === routeIdentity.modelId);
+    if (routeIdentity.modelId && !registered) {
+      return { state: "partial", reason: `Model ${routeIdentity.modelId} is missing from the registry.` };
     }
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === "leaderboard") loadLeaderboard();
-  }, [activeTab, loadLeaderboard]);
+    if (routeIdentity.runId && registered?.run_id !== routeIdentity.runId) {
+      return { state: "blocked", reason: `Model ${registered?.id} is not bound to run ${routeIdentity.runId}.` };
+    }
+    const exactRun = routeIdentity.runId || registered?.run_id;
+    if (!exactRun || !availableModels.some((model) => model.id === exactRun || model.id === registered?.id)) {
+      return { state: "partial", reason: `Run ${exactRun || "unknown"} is missing from dashboard artifacts.` };
+    }
+    if (routeIdentity.evidenceId && routeIdentity.modelId && routeIdentity.evidenceId !== routeIdentity.modelId) {
+      return { state: "blocked", reason: `Evidence ${routeIdentity.evidenceId} is not bound to model ${routeIdentity.modelId}.` };
+    }
+    return { state: "success", reason: `Exact release identity selected: ${exactRun} / ${registered?.id || routeIdentity.modelId}.` };
+  }, [availableModels, comparisonQuery.data, comparisonQuery.error, comparisonQuery.loading, registry, routeIdentity.evidenceId, routeIdentity.modelId, routeIdentity.runId]);
 
   const sortedLeaderboard = useMemo(() => {
     const rows = [...leaderboard];
     rows.sort((a, b) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       let va: any = a[sortKey];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       let vb: any = b[sortKey];
       if (sortKey === "participant_name") {
         va = (va || "").toLowerCase();
@@ -152,8 +179,19 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
             <h1 className="text-4xl font-black tracking-tight">Model Comparison</h1>
             <p className="text-muted-foreground text-sm max-w-md">Overlay up to {MAX_COMPARE} strategies to analyze relative performance and alpha decay.</p>
           </div>
+          {routeIdentity.modelId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate({ pathname: "/models", search: location.search })}
+            >
+              Open exact model in registry
+            </Button>
+          )}
         </div>
       )}
+
+      {!compact && <ReleaseOutcome state={comparisonOutcome.state} reason={comparisonOutcome.reason} />}
 
       {/* Tab bar (only in full mode) */}
       {!compact && (
@@ -189,8 +227,9 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
               <CardDescription className="text-[10px] mt-1">Strategies ranked by key performance metrics from the Arena</CardDescription>
             </div>
             <button
-              onClick={loadLeaderboard}
+              onClick={() => arenaId ? leaderboardQuery.refetch() : arenasQuery.refetch()}
               className="p-1.5 rounded hover:bg-muted transition-colors"
+              aria-label="Refresh leaderboard"
               title="Refresh leaderboard"
             >
               <RefreshCw className={cn("h-3.5 w-3.5 text-muted-foreground", leaderboardLoading && "animate-spin")} />
@@ -230,7 +269,7 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
                     const rank = r.rank ?? i + 1;
                     const alpha = r.daily_return != null ? r.daily_return - 0 : null; // vs benchmark (0 = baseline)
                     return (
-                      <React.Fragment key={i}>
+                      <Fragment key={i}>
                         <TableRow className="group">
                           <TableCell className="text-center">
                             {rank <= 3 ? (
@@ -257,16 +296,16 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
                             "text-right font-mono text-xs",
                             (r.daily_return || 0) > 0 ? "text-green-500" : (r.daily_return || 0) < 0 ? "text-red-500" : ""
                           )}>
-                            {formatPercent(r.daily_return)}
+                            {formatPct(r.daily_return)}
                           </TableCell>
                           <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                            {formatPercent(r.drawdown)}
+                            {formatPct(r.drawdown)}
                           </TableCell>
                           <TableCell className={cn(
                             "text-right font-mono text-xs font-bold",
                             alpha != null && alpha > 0 ? "text-green-500" : alpha != null && alpha < 0 ? "text-red-500" : "text-muted-foreground"
                           )}>
-                            {alpha != null ? formatPercent(alpha) : "N/A"}
+                            {alpha != null ? formatPct(alpha) : "N/A"}
                           </TableCell>
                         </TableRow>
                         {rank === 1 && r.edge_explanation && (
@@ -282,7 +321,7 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
                             </TableCell>
                           </TableRow>
                         )}
-                      </React.Fragment>
+                      </Fragment>
                     );
                   })
                 )}
@@ -302,13 +341,14 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
                 <CardDescription className="text-[10px] text-left">Select models to sync with the main engine</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                {models.map((m) => {
+                {availableModels.map((m) => {
                   const isActive = selectedIds.includes(m.id);
                   const colorIdx = selectedIds.indexOf(m.id);
                   return (
                     <button
                       key={m.id}
                       onClick={() => toggleModel(m.id)}
+                      aria-pressed={isActive}
                       className={cn(
                         "w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all group",
                         isActive ? "bg-background border-primary shadow-md scale-[1.02]" : "bg-transparent border-transparent hover:border-border hover:bg-muted/50"
@@ -339,6 +379,23 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
               </div>
             ) : (
               <>
+                {compatWarnings.length > 0 && (
+                  <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-left" role="alert">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-amber-600">
+                        Comparison Warning
+                      </span>
+                      <span className="text-[10px] text-muted-foreground ml-auto font-mono">schema v{METRIC_SCHEMA_VERSION}</span>
+                    </div>
+                    <ul className="space-y-0.5 ml-6">
+                      {compatWarnings.map((w: CompatibilityWarning) => (
+                        <li key={w.code} className="text-xs text-amber-700/90">{w.message}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {!compact && (
                   <Card className="border-none shadow-xl overflow-hidden">
                     <CardContent className="p-0">
@@ -357,10 +414,10 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {metricDefs.map((metric) => (
+                          {STANDARD_METRICS.filter((d) => d.required).map((metric) => (
                             <TableRow key={metric.key} className="hover:bg-muted/10 transition-colors border-b last:border-0 text-left">
                               <TableCell className="font-bold text-[10px] uppercase text-muted-foreground pl-6">{metric.label}</TableCell>
-                              {selectedModels.map((m) => (<TableCell key={`${m.id}-${metric.key}`} className="text-center font-mono font-black text-xs">{metric.format(m.backtest.metrics[metric.key])}</TableCell>))}
+                              {selectedModels.map((m) => (<TableCell key={`${m.id}-${metric.key}`} className="text-center font-mono font-black text-xs">{formatMetricValue(m.backtest.metrics[metric.key], metric)}</TableCell>))}
                             </TableRow>
                           ))}
                         </TableBody>

@@ -45,22 +45,21 @@ def run_orchestrator(
 
     _DAILY_RUNS_COUNT += 1
 
-    cmd = [
-        "python",
-        "-m",
-        "src.orchestrator",
-        mode,
-        "--market",
-        market,
-        "--model_type",
-        model_type,
-        "--profile",
-        profile_path,
-    ]
-    if tag:
-        cmd.extend(["--tag", tag])
-    if strategy_template:
-        cmd.extend(["--strategy_template", strategy_template])
+    # Build command via shared workflow envelope
+    from src.workflows.commands import WorkflowCommandEnvelope
+
+    try:
+        envelope = WorkflowCommandEnvelope.from_backtest_request(
+            market=market,
+            model_type=model_type,
+            profile_path=profile_path,
+            mode="train" if mode == "run" else "rebacktest",
+            tag=tag or None,
+            strategy_template=strategy_template or None,
+        )
+        cmd = envelope.to_argv(python_exe="python")
+    except ValueError as e:
+        return {"success": False, "error": f"Unsupported orchestrator mode '{mode}': {e}"}
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)

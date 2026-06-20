@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
+import { useNameMap } from "@/lib/useNameMap";
 
 interface Trade {
   date: string;
@@ -29,16 +31,17 @@ export function TradeLedger({ runId }: { runId: string }) {
   const [data, setData] = useState<LedgerData | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const { getName } = useNameMap();
 
   useEffect(() => {
     if (!runId) return;
     setLoading(true);
-    fetch(`/api/backtest/${encodeURIComponent(runId)}/ledger`)
+    apiFetch(`/api/backtest/${encodeURIComponent(runId)}/ledger`)
       .then(r => r.json())
       .then(json => {
         if (json.ok) setData(json);
       })
-      .catch(() => {})
+      .catch((err) => { console.warn("[TradeLedger] fetch failed:", err); })
       .finally(() => setLoading(false));
   }, [runId]);
 
@@ -75,7 +78,7 @@ export function TradeLedger({ runId }: { runId: string }) {
               <div className="space-y-1.5">
                 {topWinners.map((p, i) => (
                   <div key={i} className="flex justify-between items-center text-xs">
-                    <span className="font-mono">{p.symbol}</span>
+                    <span className="font-mono">{getName(p.symbol)}</span>
                     <span className="font-mono text-green-500">+${(p.pnl ?? 0).toFixed(2)}</span>
                   </div>
                 ))}
@@ -95,7 +98,7 @@ export function TradeLedger({ runId }: { runId: string }) {
               <div className="space-y-1.5">
                 {topLosers.map((p, i) => (
                   <div key={i} className="flex justify-between items-center text-xs">
-                    <span className="font-mono">{p.symbol}</span>
+                    <span className="font-mono">{getName(p.symbol)}</span>
                     <span className="font-mono text-red-500">${(p.pnl ?? 0).toFixed(2)}</span>
                   </div>
                 ))}
@@ -134,7 +137,7 @@ export function TradeLedger({ runId }: { runId: string }) {
                 {displayTrades.map((t, i) => (
                   <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="py-1.5 px-3 font-mono">{t.date}</td>
-                    <td className="py-1.5 px-3 font-mono">{t.symbol}</td>
+                    <td className="py-1.5 px-3 font-mono">{getName(t.symbol)}</td>
                     <td className="py-1.5 px-3 text-center">
                       <Badge variant={t.type === "BUY" ? "default" : "destructive"} className="text-[10px] px-1.5">
                         {t.type}

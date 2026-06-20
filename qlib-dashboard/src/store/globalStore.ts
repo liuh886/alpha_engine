@@ -4,6 +4,10 @@ interface GlobalState {
     theme: "dark" | "light";
     setTheme: (theme: "dark" | "light") => void;
 
+    /** When true, internal routes are visible in the sidebar. */
+    operatorMode: boolean;
+    setOperatorMode: (on: boolean) => void;
+
     sidebarCollapsed: boolean;
     setSidebarCollapsed: (col: boolean) => void;
 
@@ -36,8 +40,11 @@ interface GlobalState {
 }
 
 export const useGlobalStore = create<GlobalState>((set) => ({
-    theme: "dark",
+    theme: "light",
     setTheme: (t) => set({ theme: t }),
+
+    operatorMode: false,
+    setOperatorMode: (on) => set({ operatorMode: on }),
 
     sidebarCollapsed: false,
     setSidebarCollapsed: (col) => set({ sidebarCollapsed: col }),

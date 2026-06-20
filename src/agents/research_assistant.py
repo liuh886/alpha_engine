@@ -7,12 +7,13 @@ from typing import Any
 
 import structlog
 
-from .core.base_agent import BaseAgent
-from .tools.data_tools import run_data_update
-from .tools.governance_tools import format_thought_stream_for_report
 from src.reliability.events import ReliabilityEvent
 from src.reliability.failure_log import resolve_failure_event
 from src.reliability.governance_policy import GovernanceReliabilityPolicy
+
+from .core.base_agent import BaseAgent
+from .tools.data_tools import run_data_update
+from .tools.governance_tools import format_thought_stream_for_report
 
 log = structlog.get_logger()
 

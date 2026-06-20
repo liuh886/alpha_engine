@@ -69,25 +69,40 @@ function icInterpretation(ic: number, icIr: number): string {
   return parts.join(' | ');
 }
 
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number | string; color: string }>; label?: string }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-background/95 border shadow-lg rounded p-2.5 text-[10px] min-w-[120px]">
+      <p className="font-semibold mb-1 pb-1 border-b">Lag: {label} days</p>
+      {payload.map((p) => (
+        <div key={p.name} className="flex justify-between gap-4 py-0.5">
+          <span className="text-muted-foreground">IC</span>
+          <span className="font-mono" style={{ color: p.color }}>
+            {typeof p.value === 'number' ? p.value.toFixed(4) : p.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export function FactorPage() {
-  const {
-    market,
-    report,
-    selectedFactor,
-    decayData,
-    loading,
-    decayLoading,
-    error,
-    setMarket,
-    fetchReport,
-    selectFactor,
-  } = useFactorStore();
+  const market = useFactorStore((s) => s.market);
+  const report = useFactorStore((s) => s.report);
+  const selectedFactor = useFactorStore((s) => s.selectedFactor);
+  const decayData = useFactorStore((s) => s.decayData);
+  const loading = useFactorStore((s) => s.loading);
+  const decayLoading = useFactorStore((s) => s.decayLoading);
+  const error = useFactorStore((s) => s.error);
+  const setMarket = useFactorStore((s) => s.setMarket);
+  const fetchReport = useFactorStore((s) => s.fetchReport);
+  const selectFactor = useFactorStore((s) => s.selectFactor);
 
   const { sortKey, sortAsc, toggleSort, SortIcon } = useSort<SortKey>('rank_ic');
 
   useEffect(() => {
     fetchReport(market);
-  }, [market]);
+  }, [market, fetchReport]);
 
   const displayed = useMemo(() => {
     if (!report) return [];
@@ -115,23 +130,6 @@ export function FactorPage() {
       null
     );
   }, [report, selectedFactor]);
-
-  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number | string; color: string }>; label?: string }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="bg-background/95 border shadow-lg rounded p-2.5 text-[10px] min-w-[120px]">
-        <p className="font-semibold mb-1 pb-1 border-b">Lag: {label} days</p>
-        {payload.map((p) => (
-          <div key={p.name} className="flex justify-between gap-4 py-0.5">
-            <span className="text-muted-foreground">IC</span>
-            <span className="font-mono" style={{ color: p.color }}>
-              {typeof p.value === 'number' ? p.value.toFixed(4) : p.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-5 max-w-[1600px] mx-auto pb-16">

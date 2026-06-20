@@ -239,17 +239,17 @@ task:
                 - Std($close, 10)
                 - $volume/Ref($volume, 10)-1
                 label:
-                - Ref($close, -10) / Ref($close, -1) - 1
+                - (Ref($close, -10) / Ref($close, -1) - 1) - Mean(Ref($close, -10) / Ref($close, -1) - 1, 10)
       segments:
         train:
         - '2021-01-01'
         - '2024-12-31'
         valid:
         - '2025-01-01'
-        - '2025-12-31'
+        - '2025-06-30'
         test:
-        - '2026-01-01'
-        - '2026-04-03'
+        - '2025-07-01'
+        - '2026-06-18'
 port_analysis_config:
   strategy:
     class: BiweeklyTrendStrategy
@@ -263,10 +263,17 @@ port_analysis_config:
       sell_rank_threshold: 20
       buy_score_threshold: 0.0
       sell_score_threshold: 0.0
+      use_risk_manager: true
+      risk_config:
+        stop_loss_pct: -0.1
+        trailing_stop_pct: -0.15
+        max_position_weight: 0.2
+        max_sector_weight: 0.35
+        target_portfolio_vol: 0.15
   backtest:
     start_time: '2026-01-01'
     end_time: '2026-04-03'
-    account: 100000
+    account: 10000
     benchmark: QQQ
     exchange_kwargs:
       limit_threshold: 0.095

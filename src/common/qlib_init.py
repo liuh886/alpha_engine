@@ -8,6 +8,9 @@ from src.common.paths import MLRUNS_DIR
 
 logger = get_logger(__name__)
 
+# Cache: track which market has been initialized to avoid redundant calls
+_initialized_market: str | None = None
+
 
 def build_qlib_init_cfg(
     base_cfg: dict | None, *, market: str, provider_uri_default: str = "data/watchlist"
@@ -35,9 +38,30 @@ def build_qlib_init_cfg(
 
 
 def safe_qlib_init(cfg: dict) -> None:
+    """Initialize Qlib with caching to avoid redundant re-initialization.
+
+    Skips initialization if the same market is already active.
+    Saves ~3s per call when market hasn't changed.
+    """
+    global _initialized_market
+
     import qlib
+
+    # Extract market from config (from exp_manager default_exp_name)
+    market = ""
+    exp_manager = cfg.get("exp_manager", {})
+    if isinstance(exp_manager, dict):
+        kwargs = exp_manager.get("kwargs", {})
+        exp_name = kwargs.get("default_exp_name", "")
+        if exp_name.startswith("workflow_"):
+            market = exp_name.replace("workflow_", "")
+
+    # Skip if same market is already initialized
+    if market and market == _initialized_market:
+        return
 
     try:
         qlib.init(**cfg)
+        _initialized_market = market
     except Exception:
         logger.debug("Qlib init raised (likely singleton re-initialization)", exc_info=True)

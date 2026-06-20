@@ -12,6 +12,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from src.common.dates import default_end_date
 from src.common.logging import get_logger
 from src.common.paths import ARTIFACTS_DIR
 
@@ -179,7 +180,7 @@ class ScanRequest(BaseModel):
 
     market: str = Field("us", pattern="^(us|cn)$")
     start_date: str = Field("2021-01-01")
-    end_date: str = Field("2025-12-31")
+    end_date: str = Field(default_factory=default_end_date)
     train_end: str | None = Field(
         None,
         description=(
@@ -244,7 +245,7 @@ class AttributionRequest(BaseModel):
 
     market: str = Field("us", pattern="^(us|cn)$")
     start_date: str = Field("2021-01-01")
-    end_date: str = Field("2025-12-31")
+    end_date: str = Field(default_factory=default_end_date)
     strategy_config: str | None = Field(
         None,
         description="Path to strategy YAML config (reserved for future use).",
@@ -274,7 +275,31 @@ async def attribute_factor_returns(body: AttributionRequest) -> dict:
             strategy_config=body.strategy_config,
             factor_ids=body.factor_ids,
         )
-        return {"ok": True, "report": report.to_dict()}
+        report_dict = report.to_dict()
+        # Reshape to match frontend expected format
+        summary = {
+            "total_return": report_dict.get("total_return", 0),
+            "excess_return": report_dict.get("excess_return", 0),
+            "factor_coverage": report_dict.get("factor_coverage", 0),
+            "unexplained_return": report_dict.get("unexplained_return", 0),
+            "benchmark_return": report_dict.get("benchmark_return", 0),
+            "period": report_dict.get("period", ""),
+            "market": report_dict.get("market", body.market),
+            "strategy_name": report_dict.get("strategy_name", ""),
+        }
+        factors = []
+        for fc in report_dict.get("factor_contributions", []):
+            factors.append({
+                "factor_id": 0,
+                "factor_name": fc.get("factor_name", ""),
+                "factor_expression": fc.get("factor_expression", ""),
+                "ic": fc.get("factor_ic", 0),
+                "return_contribution": fc.get("return_contribution_pct", 0),
+                "risk_contribution": fc.get("risk_contribution_pct", 0),
+                "exposure": fc.get("exposure", 0),
+                "status": "Active",
+            })
+        return {"ok": True, "summary": summary, "factors": factors}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -287,7 +312,7 @@ class RollingAttributionRequest(BaseModel):
 
     market: str = Field("us", pattern="^(us|cn)$")
     start_date: str = Field("2021-01-01")
-    end_date: str = Field("2025-12-31")
+    end_date: str = Field(default_factory=default_end_date)
     factor_ids: list[int] | None = Field(
         None,
         description="Specific factor IDs to attribute. Omit to use all Active factors.",
@@ -322,6 +347,36 @@ async def attribute_factor_returns_rolling(body: RollingAttributionRequest) -> d
     except Exception as e:
         log.error("Rolling attribution failed", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Rolling attribution failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Factor Existence Check (T-03: deduplication)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/exists")
+async def check_factor_exists(
+    expression: str = Query(..., description="Factor expression to check"),
+) -> dict:
+    """Check if a factor expression already exists in the registry.
+
+    Returns the existing factor info if found, or exists=false if not.
+    """
+    from src.research.factor_registry import FactorRegistry
+
+    registry = FactorRegistry()
+    existing = registry.get_factor_by_expression(expression)
+    if existing:
+        return {
+            "ok": True,
+            "exists": True,
+            "factor_id": existing["id"],
+            "name": existing["name"],
+            "stage": existing["stage"],
+            "category": existing["category"],
+            "message": f"Factor already exists: ID={existing['id']}, name='{existing['name']}', stage={existing['stage']}",
+        }
+    return {"ok": True, "exists": False}
 
 
 # ---------------------------------------------------------------------------
@@ -512,3 +567,101 @@ async def experiments_failed(
     except Exception as e:
         log.error("Experiment failures query failed", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Query failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Structured experiment endpoints for ExperimentLogPage
+# ---------------------------------------------------------------------------
+
+
+@router.get("/experiments/log")
+async def experiment_log(
+    market: str = Query("cn", pattern="^(us|cn)$"),
+    limit: int = Query(100, ge=1, le=500),
+) -> dict:
+    """Return structured experiment log entries matching frontend ExperimentEntry type."""
+    try:
+        from src.research.factor_registry import FactorRegistry
+
+        registry = FactorRegistry()
+        entries = []
+        entry_id = 0
+
+        # Factors from registry
+        for f in registry.list_factors():
+            validations = registry.get_validations(f["id"])
+            latest = validations[0] if validations else None
+            ic = latest.get("ic") if latest else None
+            stage = f.get("stage", "Proposed")
+            result = "pass" if stage in ("Active", "Validated") else ("fail" if stage in ("Deprecated", "Retired") else "in_progress")
+            entries.append({
+                "id": entry_id,
+                "timestamp": f.get("updated_at", f.get("created_at", "")),
+                "type": "factor",
+                "name": f.get("name", ""),
+                "result": result,
+                "metrics": {"ic": ic, "stage": stage},
+            })
+            entry_id += 1
+
+        # Walk-forward results from artifacts
+        import json as _json
+        from pathlib import Path
+        wf_dir = Path("artifacts/walk_forward")
+        if wf_dir.exists():
+            for wf_file in sorted(wf_dir.glob(f"{market}_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:20]:
+                try:
+                    with open(wf_file) as fh:
+                        data = _json.load(fh)
+                    mean_ic = data.get("mean_ic", 0)
+                    result = "pass" if data.get("ic_ir", 0) >= 0.3 else "fail"
+                    entries.append({
+                        "id": entry_id,
+                        "timestamp": wf_file.stem.split("_", 1)[1] if "_" in wf_file.stem else "",
+                        "type": "wf",
+                        "name": wf_file.name,
+                        "result": result,
+                        "metrics": {"mean_ic": mean_ic, "ic_ir": data.get("ic_ir", 0), "consistency": data.get("consistency_score", 0)},
+                    })
+                    entry_id += 1
+                except Exception:
+                    continue
+
+        return {"ok": True, "experiments": entries[:limit]}
+    except Exception as e:
+        log.error("Experiment log failed", error=str(e), exc_info=True)
+        return {"ok": True, "experiments": []}
+
+
+@router.get("/experiments/log/summary")
+async def experiment_log_summary(
+    market: str = Query("cn", pattern="^(us|cn)$"),
+) -> dict:
+    """Return summary matching frontend ExperimentSummary type."""
+    try:
+        from pathlib import Path
+
+        from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
+
+        registry = FactorRegistry()
+        active_factors = len(registry.list_factors(stage=STAGE_ACTIVE))
+
+        wf_dir = Path("artifacts/walk_forward")
+        wf_count = len(list(wf_dir.glob(f"{market}_*.json"))) if wf_dir.exists() else 0
+
+        # Count failed (deprecated + retired factors)
+        all_factors = registry.list_factors()
+        failed = sum(1 for f in all_factors if f.get("stage") in ("Deprecated", "Retired"))
+
+        return {
+            "ok": True,
+            "summary": {
+                "total_experiments": len(all_factors) + wf_count,
+                "active_factors": active_factors,
+                "wf_results": wf_count,
+                "failed_experiments": failed,
+            },
+        }
+    except Exception as e:
+        log.error("Experiment summary failed", error=str(e), exc_info=True)
+        return {"ok": True, "summary": {"total_experiments": 0, "active_factors": 0, "wf_results": 0, "failed_experiments": 0}}

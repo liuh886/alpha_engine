@@ -36,7 +36,7 @@ def append_failure_event(
     if len(data["events"]) > max_events:
         data["events"] = data["events"][:max_events]
 
-    data["updated_at"] = datetime.datetime.utcnow().isoformat() + "Z"
+    data["updated_at"] = datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
 
     # 原子写入
     temp_path = path.with_suffix(".tmp")

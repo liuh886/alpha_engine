@@ -140,7 +140,7 @@ def _format_factor_library_status() -> str:
 
 def _format_top_performers() -> str:
     """Query the factor registry for top 5 factors by ICIR."""
-    from src.research.factor_registry import FactorRegistry, STAGE_ACTIVE
+    from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
 
     registry = FactorRegistry()
     active_factors = registry.list_factors(stage=STAGE_ACTIVE)

@@ -8,7 +8,7 @@ import type { ReportRow } from '@/lib/types';
 export function PerformanceCharts({ report }: { report: ReportRow[] }) {
   const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const toggleVisibility = (entry: any) => {
     const key = String(entry?.dataKey ?? '');
     if (key) {

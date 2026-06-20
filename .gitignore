@@ -41,6 +41,9 @@ ENV/
 .mypy_cache/
 .ruff_cache/
 .playwright-cli/
+test-results/
+blob-report/
+playwright-report/
 .coverage
 htmlcov/
 coverage.xml
@@ -58,5 +61,68 @@ node_modules/
 api_server_v2.log
 startup.log
 
+# Qlib dashboard build output
+qlib-dashboard/dist/
+qlib-dashboard/.vite/
+
+# Sweep and experimental configs
+configs/sweep/
+configs/*_baseline_*.json
+configs/*_conservative*.json
+configs/*_deep_slow*.json
+configs/*_fast_shallow*.json
+configs/*_enhanced*.json
+configs/*_sweep_*.yaml
+configs/*_v2*.json
+configs/*_v2*.yaml
+configs/*_top*.yaml
+configs/watchlist_top*.yaml
+configs/cn_lgbm_workflow.yaml.*.bak
+configs/cn_lgbm_workflow.yaml.bak
+configs/cn_lgbm_workflow.yaml.current_bak
+configs/cn_lgbm_workflow.yaml.sweep_backup
+configs/cn_lgbm_*_workflow.yaml
+configs/us_lgbm_workflow_with_factors_*.yaml
+configs/selected_features.json
+configs/strategy_profile_cn_baseline.json
+
+# Experimental scripts
+scripts/explore_*.py
+scripts/run_*.py
+scripts/compare_*.py
+scripts/sweep_*.py
+scripts/select_*.py
+scripts/update_config_*.py
+scripts/train_*_model.py
+scripts/check_outputs.py
+scripts/t01_*.py
+scripts/t01_*.txt
+
+# Backtest reports (regenerated)
+reports/backtests/
+
+# Static site generated files
+site/app.js
+site/styles.css
+site/data/
+
+# Backup files
+*.bak
+*.current_bak
+*.sweep_backup
+
+# Alpha hub service
+alpha_hub_service.js
+
+# Temporary experiment outputs
+*.tmp
+*.temp
+sweep_results/
+experiment_*/
+
 # Exclude specific files from ignore if needed
 # !artifacts/site/
+
+# Docker backup and smoke-test artifacts
+backups/
+docker-compose.smoke.yml

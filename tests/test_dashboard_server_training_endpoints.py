@@ -12,6 +12,7 @@ def test_training_service_create_job():
     assert job["type"] == "train"
     assert job["market"] == "us"
     assert job["tag"] == "LGBM_v1"
+    assert job["command_envelopes"][0]["action"] == "run"
     assert "src.orchestrator" in job["commands"][0]
     assert "--market us" in " ".join(job["commands"][0])
 

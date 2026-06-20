@@ -58,11 +58,17 @@ class JobService:
                     error TEXT,
                     log_path TEXT,
                     job_json TEXT,
-                    commands_json TEXT
+                    commands_json TEXT,
+                    command_envelope_json TEXT
                 )
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
+            # Migrate: add column if missing (existing DBs)
+            try:
+                conn.execute("ALTER TABLE jobs ADD COLUMN command_envelope_json TEXT")
+            except Exception:
+                pass  # Column already exists
 
     def create_job(self, job: dict) -> None:
         self._ensure_schema()
@@ -82,8 +88,16 @@ class JobService:
         commands = job.get("commands") or []
         commands_json = json.dumps(commands, ensure_ascii=False)
 
+        # Store command envelopes as first-class intent (H2)
+        # Accept both singular (backward compat) and plural forms
+        envelopes = job.get("command_envelopes") or job.get("command_envelope")
+        if envelopes is not None and not isinstance(envelopes, list):
+            envelopes = [envelopes]
+        envelope_json = json.dumps(envelopes, ensure_ascii=False) if envelopes else None
+
         job_no_cmd = dict(job)
         job_no_cmd.pop("commands", None)
+        job_no_cmd.pop("command_envelope", None)
         job_json = json.dumps(job_no_cmd, ensure_ascii=False)
 
         with self._connect() as conn:
@@ -91,9 +105,10 @@ class JobService:
                 """
                 INSERT INTO jobs (
                     id, type, status, created_at, started_at, finished_at,
-                    exit_code, error, log_path, job_json, commands_json
+                    exit_code, error, log_path, job_json, commands_json,
+                    command_envelope_json
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job_id,
@@ -107,6 +122,7 @@ class JobService:
                     log_path,
                     job_json,
                     commands_json,
+                    envelope_json,
                 ),
             )
 
@@ -168,6 +184,21 @@ class JobService:
                 out["commands"] = []
         else:
             out["commands"] = []
+
+        # Load command envelopes (H2 — always returns a list or None)
+        try:
+            envelope_raw = row["command_envelope_json"]
+        except (IndexError, KeyError):
+            envelope_raw = None
+        if envelope_raw:
+            try:
+                parsed = json.loads(envelope_raw)
+                # Normalize: always expose as list
+                out["command_envelopes"] = parsed if isinstance(parsed, list) else [parsed]
+            except Exception:
+                out["command_envelopes"] = None
+        else:
+            out["command_envelopes"] = None
 
         return out
 

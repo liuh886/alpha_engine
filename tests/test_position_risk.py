@@ -239,8 +239,8 @@ def test_vol_adjusted_zero_vol_excluded():
 
 def test_evaluate_portfolio_returns_all_signals():
     from src.guardrails.position_risk import (
-        PositionRiskManager,
         PositionRiskConfig,
+        PositionRiskManager,
         SignalType,
     )
 
@@ -301,7 +301,6 @@ def test_evaluate_portfolio_no_signals_when_healthy():
 
 def test_backward_compat_no_risk_manager():
     """When use_risk_manager=False (default), no PositionRiskManager is created."""
-    from src.guardrails.position_risk import PositionRiskManager
 
     # Simulate: strategy does not create a risk manager
     risk_manager = None
@@ -318,9 +317,9 @@ def test_backward_compat_no_risk_manager():
 
 def test_signal_to_dict():
     from src.guardrails.position_risk import (
+        ActionType,
         PositionRiskSignal,
         SignalType,
-        ActionType,
     )
 
     sig = PositionRiskSignal(
@@ -344,8 +343,8 @@ def test_signal_to_dict():
 
 def test_custom_config_tighter_stop_loss():
     from src.guardrails.position_risk import (
-        PositionRiskManager,
         PositionRiskConfig,
+        PositionRiskManager,
     )
 
     config = PositionRiskConfig(stop_loss_pct=-0.05)  # Tighter: -5%

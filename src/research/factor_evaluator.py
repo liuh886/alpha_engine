@@ -7,7 +7,6 @@ IC decay, quintile return analysis, and applying configurable pass/fail gates.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -393,9 +392,9 @@ def _compute_ic_series(
 
     # Extract the single factor column as a Series
     if isinstance(factor_df.columns, pd.MultiIndex):
-        fv_series = factor_df.iloc[:, 0]
+        factor_df.iloc[:, 0]
     else:
-        fv_series = factor_df.iloc[:, 0]
+        factor_df.iloc[:, 0]
 
     period_pearson: list[float] = []
     period_spearman: list[float] = []
@@ -480,9 +479,9 @@ def _compute_quintile_returns(
         return [], 0.0
 
     if isinstance(factor_df.columns, pd.MultiIndex):
-        fv_series = factor_df.iloc[:, 0]
+        factor_df.iloc[:, 0]
     else:
-        fv_series = factor_df.iloc[:, 0]
+        factor_df.iloc[:, 0]
 
     # Accumulate per-quintile returns across periods
     quintile_returns_acc: dict[int, list[float]] = {q: [] for q in range(1, 6)}
@@ -662,7 +661,7 @@ def evaluate_factor(
     expression: str,
     market: str = "us",
     start_date: str = "2021-01-01",
-    end_date: str = "2025-12-31",
+    end_date: str = None,
     train_end: str | None = None,
     label_horizon: int = 10,
     gates: dict | None = None,
@@ -694,6 +693,8 @@ def evaluate_factor(
     Returns:
         A ``FactorEvalResult`` with all metrics and verdict.
     """
+    from src.common.dates import default_end_date
+    end_date = end_date or default_end_date()
     gates = gates or dict(DEFAULT_GATES)
 
     # ------------------------------------------------------------------

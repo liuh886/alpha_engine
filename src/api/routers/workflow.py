@@ -1,11 +1,16 @@
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
 from src.common.paths import PROJECT_ROOT
 from src.governance.service import GovernanceService
+from src.research.workflow_runtime import create_research_workflow
+from src.research.workflow_types import ResearchWorkflowRequest
 from src.workflows.hooks import get_task_slug, run_rebacktest_pipeline, run_training_pipeline
+
+logger = structlog.get_logger()
 
 router = APIRouter(tags=["workflows"])
 
@@ -27,7 +32,7 @@ class ResearchCycleRequest(BaseModel):
 @router.post("/train")
 def run_train_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks):
     gov = GovernanceService(PROJECT_ROOT)
-    get_task_slug("run", payload.market)
+    workflow_id = get_task_slug("run", payload.market)
 
     # Check if already running (mutex)
     active = [
@@ -48,13 +53,13 @@ def run_train_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks):
         tag=payload.tag,
         details=payload.details,
     )
-    return {"ok": True, "message": "Training workflow started in background"}
+    return {"ok": True, "workflow_id": workflow_id, "message": "Training workflow started in background"}
 
 
 @router.post("/backtest")
 def run_backtest_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks):
     gov = GovernanceService(PROJECT_ROOT)
-    get_task_slug("rebacktest", payload.market)
+    workflow_id = get_task_slug("rebacktest", payload.market)
 
     active = [
         w
@@ -74,7 +79,7 @@ def run_backtest_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks)
         tag=payload.tag,
         details=payload.details,
     )
-    return {"ok": True, "message": "Backtest workflow started in background"}
+    return {"ok": True, "workflow_id": workflow_id, "message": "Backtest workflow started in background"}
 
 
 @router.post("/research-cycle")
@@ -86,7 +91,7 @@ def run_research_cycle_wf(
     Runs: scan -> compile -> backtest -> attribute -> promote.
     """
     gov = GovernanceService(PROJECT_ROOT)
-    task_slug = get_task_slug("research-cycle", payload.market)
+    get_task_slug("research-cycle", payload.market)
 
     # Mutex check
     active = [
@@ -101,22 +106,29 @@ def run_research_cycle_wf(
         )
 
     def _run():
-        from src.agents.research_loop import run_research_cycle as _run_cycle
-
         try:
-            _run_cycle(
+            workflow_request = ResearchWorkflowRequest(
                 market=payload.market,
-                goal_description=payload.goal,
-                auto_promote=payload.auto_promote,
+                goal=payload.goal,
+                requested_by="api.workflow.research-cycle",
+                metadata={"auto_promote": payload.auto_promote},
             )
-        except Exception:
-            pass  # errors are logged internally in the cycle
+            create_research_workflow().run(workflow_request)
+        except Exception as e:
+            logger.warning("Research cycle failed", error=str(e))
 
     background_tasks.add_task(_run)
     return {"ok": True, "message": "Research cycle started in background"}
 
 
 @router.get("/status")
-def list_workflows(status: str | None = None, limit: int = 20):
+def list_workflows(
+    status: str | None = None,
+    workflow_id: str | None = None,
+    limit: int = 20,
+):
     gov = GovernanceService(PROJECT_ROOT)
-    return gov.query_workflows(status=status, limit=limit)
+    workflows = gov.query_workflows(status=status, limit=limit)
+    if workflow_id:
+        workflows = [w for w in workflows if w.get("workflow_id") == workflow_id]
+    return workflows

@@ -7,6 +7,16 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
+# Ensure all logging goes to stderr so it doesn't pollute MCP JSON-RPC on stdout
+from src.common.logging import setup_logging
+
+setup_logging(development=True)
+
+from src.common.dates import default_end_date
+from src.research.workflow_runtime import create_research_workflow
+from src.research.workflow_types import ResearchWorkflowRequest
+from src.workflows.commands import build_backtest_commands
+
 logger = logging.getLogger(__name__)
 
 # Define the project root
@@ -115,36 +125,29 @@ def run_backtest(token: str = "", market: str = "us", start_date: str = "2024-01
 
         from src.common.metrics_extractor import MetricsExtractor
 
-        # Run orchestrator command
-        cmd = [
-            sys.executable,
-            "-m",
-            "src.orchestrator",
-            "rebacktest",
-            "--market",
-            market,
-            "--start",
-            start_date,
-            "--end",
-            end_date,
-        ]
+        cmd = build_backtest_commands(
+            python_exe=sys.executable,
+            market=market,
+            model_type="lgbm",
+            profile_path="configs/strategy_profile.json",
+            mode="rebacktest",
+            start=start_date,
+            end=end_date,
+        )[0]
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
 
         # Search for the latest record in MLflow/Qlib workflow
-        # Qlib's R.list_rec can help find the latest backtest
         try:
-            # We filter by market to get relevant records
             recs = R.list_rec(experiment_name=market, recorder_name="backtest")
             if recs:
-                # Get the most recent recorder
                 latest_rec = recs[0]
                 metrics = MetricsExtractor.extract_from_record(latest_rec)
                 summary = MetricsExtractor.format_summary(metrics, market, start_date, end_date)
-                return (
-                    f"Backtest completed successfully.\n\nRESULTS: {json.dumps(summary, indent=2)}"
-                )
-        except Exception:
-            pass
+                return f"Backtest completed successfully.\n\nRESULTS: {json.dumps(summary, indent=2)}"
+        except Exception as rec_err:
+            # Log but don't hide — fall through to stdout-based summary
+            import structlog
+            structlog.get_logger().warning("backtest_record_lookup_failed", error=str(rec_err))
 
         return f"Backtest completed. Summary from log:\n{result.stdout[-1000:]}"
     except Exception as e:
@@ -218,6 +221,18 @@ def define_factor(
             return json.dumps({"status": "error", "message": f"Invalid expression syntax: {err}"})
 
         registry = FactorRegistry()
+
+        # Check if expression already exists (dedup)
+        existing = registry.get_factor_by_expression(expression)
+        if existing:
+            return json.dumps({
+                "status": "exists",
+                "factor_id": existing["id"],
+                "name": existing["name"],
+                "stage": existing["stage"],
+                "message": f"Factor already exists: ID={existing['id']}, name='{existing['name']}', stage={existing['stage']}. Use this factor_id instead.",
+            })
+
         factor_id = registry.register_factor(
             name=name,
             expression=expression,
@@ -237,7 +252,7 @@ def define_factor(
         if "UNIQUE constraint" in str(e):
             return json.dumps({
                 "status": "error",
-                "message": f"Factor with name '{name}' already exists.",
+                "message": f"Factor with name '{name}' already exists (different expression). Choose a different name.",
             })
         return json.dumps({"status": "error", "message": f"Error defining factor: {e}"})
 
@@ -247,7 +262,7 @@ def evaluate_factor(
     expression: str,
     market: str = "us",
     start_date: str = "2021-01-01",
-    end_date: str = "2025-12-31",
+    end_date: str = None,
     train_end: str = "",
     token: str = "",
 ) -> str:
@@ -264,6 +279,7 @@ def evaluate_factor(
 
     Returns a comprehensive JSON with all evaluation metrics and pass/fail verdict.
     """
+    end_date = end_date or default_end_date()
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
     try:
@@ -313,7 +329,9 @@ def validate_factor(
         if eval_result.passed:
             promoted = registry.promote(factor_id)
             if promoted:
-                stage = "Validated"
+                # Read actual stage after promotion (promote advances one step)
+                updated = registry.get_factor(factor_id)
+                stage = updated["stage"] if updated else factor["stage"]
 
         return json.dumps({
             "status": "success",
@@ -352,7 +370,12 @@ def register_factor_for_strategy(
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
     try:
-        from src.research.factor_registry import STAGE_ACTIVE, STAGE_VALIDATED, FactorRegistry
+        from src.research.factor_registry import (
+            _STAGE_ORDER,
+            STAGE_ACTIVE,
+            STAGE_VALIDATED,
+            FactorRegistry,
+        )
 
         registry = FactorRegistry()
         factor = registry.get_factor(factor_id)
@@ -360,8 +383,8 @@ def register_factor_for_strategy(
             return json.dumps({"status": "error", "message": f"Factor with id {factor_id} not found."})
 
         stage = factor["stage"]
-        stage_order = {"Proposed": 0, "Validated": 1, "Active": 2, "Deprecated": 3}
-        if stage_order.get(stage, -1) < stage_order[STAGE_VALIDATED]:
+        stage_idx = {s: i for i, s in enumerate(_STAGE_ORDER)}
+        if stage_idx.get(stage, -1) < stage_idx[STAGE_VALIDATED]:
             return json.dumps({
                 "status": "error",
                 "message": f"Factor '{factor['name']}' is at '{stage}' stage. Must be at least Validated to register for a strategy.",
@@ -392,9 +415,11 @@ def discover_factor(
     expression: str,
     market: str = "us",
     category: str = "custom",
+    direction: str = "long",
+    lookback_days: int = 10,
     thesis: str = "",
     start_date: str = "2021-01-01",
-    end_date: str = "2025-12-31",
+    end_date: str = None,
     token: str = "",
 ) -> str:
     """One-call factor lifecycle tool: register, evaluate, validate, and promote.
@@ -404,16 +429,19 @@ def discover_factor(
     2. Register factor in the registry (Proposed stage)
     3. Evaluate factor (IC, decay, quintile analysis)
     4. Record validation results
-    5. If passed: promote to Validated, then to Active
+    5. If passed: promote through gates (Proposed → Candidate → Validated → Active)
     6. If failed: leave at Proposed with diagnostic info
 
     Returns a comprehensive JSON with all metrics, pass/fail verdict, and final stage.
     """
+    end_date = end_date or default_end_date()
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
     try:
         from src.research.factor_evaluator import (
             evaluate_factor as _evaluate_factor,
+        )
+        from src.research.factor_evaluator import (
             validate_expression_syntax,
         )
         from src.research.factor_registry import FactorRegistry
@@ -434,8 +462,8 @@ def discover_factor(
                 name=name,
                 expression=expression,
                 category=category,
-                direction="long",
-                lookback_days=10,
+                direction=direction,
+                lookback_days=lookback_days,
                 thesis=thesis,
             )
         except Exception as e:
@@ -458,15 +486,18 @@ def discover_factor(
         # Step 4: Record validation
         registry.record_validation(factor_id, market, metrics)
 
-        # Step 5-6: Promote based on results
+        # Step 5-6: Promote based on results (promote advances one step at a time)
+        # Stage order: Proposed → Candidate → Validated → Active
         stage = "Proposed"
         if eval_result.passed:
-            promoted_val = registry.promote(factor_id)  # Proposed -> Validated
-            if promoted_val:
-                stage = "Validated"
-                promoted_act = registry.promote(factor_id)  # Validated -> Active
-                if promoted_act:
-                    stage = "Active"
+            # Promote as far as gates allow (up to 3 times)
+            for _ in range(3):
+                promoted = registry.promote(factor_id)
+                if not promoted:
+                    break
+            # Read actual stage after promotions
+            updated = registry.get_factor(factor_id)
+            stage = updated["stage"] if updated else "Proposed"
 
         return json.dumps({
             "status": "success",
@@ -491,7 +522,7 @@ def discover_factor(
             },
             "quintile_returns": metrics["quintile_returns"],
             "message": (
-                f"Factor '{name}' discovered and promoted to Active stage."
+                f"Factor '{name}' discovered and promoted to {stage} stage."
                 if eval_result.passed
                 else f"Factor '{name}' evaluation failed. Left at Proposed stage with diagnostic info."
             ),
@@ -504,24 +535,41 @@ def discover_factor(
 def scan_factor_pool(
     market: str = "us",
     start_date: str = "2021-01-01",
-    end_date: str = "2025-12-31",
+    end_date: str = None,
     auto_register: bool = False,
+    pool_path: str = "",
     token: str = "",
 ) -> str:
-    """Scan the default factor pool (momentum, volatility, volume, mean-reversion).
+    """Scan a factor pool against validation gates.
 
-    Evaluates all pre-built factors against validation gates and returns a
-    ranked ScanReport as JSON.  When *auto_register* is True, factors that
-    pass all gates are automatically registered in the FactorRegistry at the
-    Proposed stage.
+    Evaluates all factors and returns a ranked ScanReport as JSON.
+    When *auto_register* is True, factors that pass all gates are
+    automatically registered in the FactorRegistry at the Proposed stage.
+
+    Args:
+        market: Market to evaluate against (us or cn).
+        start_date: Evaluation start date.
+        end_date: Evaluation end date.
+        auto_register: If True, auto-register passing factors.
+        pool_path: Path to a YAML factor pool file. Empty string uses the
+            default combinatorial library (261 factors).
+        token: Authentication token.
     """
+    end_date = end_date or default_end_date()
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
     try:
-        from src.research.factor_scanner import DEFAULT_FACTOR_POOL, scan_factor_pool as _scan
+        from src.research.factor_scanner import scan_factor_pool as _scan
+
+        if pool_path:
+            from src.research.factor_library import load_factor_pool_from_yaml
+            factor_pool = load_factor_pool_from_yaml(pool_path)
+        else:
+            from src.research.factor_scanner import DEFAULT_FACTOR_POOL
+            factor_pool = DEFAULT_FACTOR_POOL
 
         report = _scan(
-            factor_pool=DEFAULT_FACTOR_POOL,
+            factor_pool=factor_pool,
             market=market,
             start_date=start_date,
             end_date=end_date,
@@ -636,7 +684,7 @@ def compile_strategy_with_factors(
 def attribute_factor_returns(
     market: str = "us",
     start_date: str = "2021-01-01",
-    end_date: str = "2025-12-31",
+    end_date: str = None,
     token: str = "",
 ) -> str:
     """Run factor return attribution analysis for all Active factors.
@@ -645,6 +693,7 @@ def attribute_factor_returns(
     into per-factor contributions. Returns a JSON report with per-factor
     return/risk contributions, exposures, IC values, and overall model fit.
     """
+    end_date = end_date or default_end_date()
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
     try:
@@ -664,7 +713,7 @@ def attribute_factor_returns(
 def attribute_returns_rolling(
     market: str = "us",
     start_date: str = "2021-01-01",
-    end_date: str = "2025-12-31",
+    end_date: str = None,
     factor_ids_str: str = "",
     window_months: int = 12,
     step_months: int = 3,
@@ -687,6 +736,7 @@ def attribute_returns_rolling(
         step_months: Step between consecutive windows in months.
         token: Authentication token.
     """
+    end_date = end_date or default_end_date()
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
     try:
@@ -814,13 +864,33 @@ def run_research_cycle(
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
     try:
-        from src.agents.research_loop import run_research_cycle as _run_cycle
-
-        result = _run_cycle(
+        request = ResearchWorkflowRequest(
             market=market,
-            goal_description=goal,
+            goal=goal,
+            requested_by="mcp.run_research_cycle",
+            metadata={"goal": goal},
         )
-        return json.dumps(result.to_dict(), indent=2)
+        result = create_research_workflow().run(request)
+        result_dict = result.to_dict()
+        workflow_status = result_dict.get("status", "unknown")
+        success = workflow_status != "failed"
+
+        return json.dumps(
+            {
+                "status": "success" if success else "error",
+                "success": success,
+                "run_id": result_dict.get("run_id"),
+                "workflow_status": workflow_status,
+                "steps": result_dict.get("steps", []),
+                "summary": {
+                    "market": market,
+                    "goal": goal,
+                    "step_count": len(result_dict.get("steps", [])),
+                },
+                "workflow": result_dict,
+            },
+            indent=2,
+        )
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error running research cycle: {e}"})
 
@@ -847,15 +917,24 @@ def run_iterative_research(
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
     try:
-        from src.agents.research_loop import run_iterative_research as _run_iter
-
-        results = _run_iter(
-            market=market,
-            goal=goal,
-            max_iterations=max_iterations,
-            target_sharpe=target_sharpe,
-        )
-        return json.dumps([r.to_dict() for r in results], indent=2)
+        workflow = create_research_workflow()
+        results = []
+        for iteration in range(max(1, int(max_iterations))):
+            request = ResearchWorkflowRequest(
+                market=market,
+                goal=goal,
+                requested_by="mcp.run_iterative_research",
+                metadata={
+                    "iteration": iteration + 1,
+                    "max_iterations": max_iterations,
+                    "target_sharpe": target_sharpe,
+                },
+            )
+            result = workflow.run(request)
+            results.append(result.to_dict())
+            if result.status.value == "failed":
+                break
+        return json.dumps(results, indent=2)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error running iterative research: {e}"})
 
@@ -920,5 +999,59 @@ def compare_models_with_fdr(
         return json.dumps({"status": "error", "message": f"Error in model FDR comparison: {e}"})
 
 
+@mcp.tool()
+def validate_model_batch(
+    model_results_json: str,
+    alpha: float = 0.05,
+    token: str = "",
+) -> str:
+    """Validate a batch of model results using FDR-corrected significance testing.
+
+    This is the T-04 MCP tool that wraps ModelBatchValidator. It accepts
+    multiple model backtest results, applies Benjamini-Hochberg FDR correction,
+    and returns which models are statistically significant after correcting
+    for multiple testing.
+
+    Args:
+        model_results_json: JSON string -- array of model result dicts, each with
+            "model_id", "sharpe", and optionally "n_obs" (default 252).
+        alpha: FDR threshold (default 0.05).
+        token: Authentication token.
+
+    Returns:
+        JSON with "results" (per-model with fdr_significant flag),
+        "n_significant", "n_total", and "promotable" (list of promotable model IDs).
+    """
+    if not _verify_token(token):
+        return "Authentication failed: invalid or missing token."
+    try:
+        from src.research.model_fdr import ModelBatchValidator
+
+        model_results = json.loads(model_results_json)
+        if not isinstance(model_results, list):
+            return json.dumps({"status": "error", "message": "Input must be a JSON array."})
+
+        validator = ModelBatchValidator(alpha=alpha)
+        for mr in model_results:
+            validator.add_result(
+                model_id=mr.get("model_id", "unknown"),
+                sharpe=mr.get("sharpe", 0.0),
+                n_obs=mr.get("n_obs", 252),
+                n_params=mr.get("n_params", 1),
+            )
+
+        report = validator.validate()
+        report["promotable"] = validator.get_promotable()
+        report["status"] = "success"
+
+        return json.dumps(report, indent=2, default=str)
+    except json.JSONDecodeError as e:
+        return json.dumps({"status": "error", "message": f"Invalid JSON input: {e}"})
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Error in model batch validation: {e}"})
+
+
 if __name__ == "__main__":
     mcp.run()
+
+

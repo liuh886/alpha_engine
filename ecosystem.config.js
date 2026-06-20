@@ -8,11 +8,15 @@ module.exports = {
       name: "alpha-hub",
       // On Windows: .pyw file runs via pythonw (no console window).
       // On Linux/macOS: uv run python api_server.py
+      // On Windows: pythonw + .pyw = no console window at all.
+      // On Linux/macOS: uv run python api_server.py
       script: isWin
-        ? path.join(baseDir, "pm2_launcher.js")
+        ? path.join(baseDir, "pm2_launcher.pyw")
         : "api_server.py",
-      interpreter: isWin ? "node" : "uv",
-      args: isWin ? "api_server.py" : "run python api_server.py",
+      interpreter: isWin
+        ? path.join(baseDir, ".venv", "Scripts", "pythonw.exe")
+        : "uv",
+      args: isWin ? [] : ["run", "python", "api_server.py"],
       cwd: baseDir,
       env: {
         PYTHONPATH: baseDir,

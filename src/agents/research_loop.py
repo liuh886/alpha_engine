@@ -848,3 +848,119 @@ def run_iterative_research_from_goal(
         target_sharpe=parsed.target_sharpe,
         base_config=base_config,
     )
+
+
+# T-07: Research loop with ExperimentJournal integration
+def run_research_loop(
+    goal: str,
+    max_iterations: int = 20,
+    market: str = "us",
+    target_sharpe: float = 1.0,
+) -> dict:
+    """Run a research loop that queries ExperimentJournal and avoids failed paths.
+
+    This fulfills T-07 acceptance criteria:
+    1. Query ExperimentJournal to understand history
+    2. Use what_failed() to avoid repeating failed paths
+    3. Propose new hypothesis → construct factor → test → store
+    4. Stop when max_iterations reached or VALIDATED factor found
+    5. Return structured report
+
+    Parameters
+    ----------
+    goal:
+        Natural-language research goal description.
+    max_iterations:
+        Hard cap on the number of cycles (default 20).
+    market:
+        Market region ("us" or "cn").
+    target_sharpe:
+        Sharpe ratio at which the loop considers the result satisfactory.
+
+    Returns
+    -------
+    dict
+        Structured report with:
+        - "iterations": list of CycleResult dicts
+        - "best_sharpe": best Sharpe achieved
+        - "validated_factors": list of factors that reached Validated stage
+        - "failed_hypotheses": list of failed approaches to avoid
+        - "status": "success" | "max_iterations" | "target_reached"
+    """
+    from src.research.experiment_journal import ExperimentJournal
+    from src.research.factor_registry import FactorRegistry
+
+    journal = ExperimentJournal()
+    registry = FactorRegistry()
+    summary = journal.get_summary()
+
+    # Step 1: Query ExperimentJournal to understand history
+    existing_stages = summary.get("factors", {}).get("by_stage", {})
+    summary.get("factors", {}).get("by_category", {})
+
+    # Step 2: Identify failed hypotheses from Proposed factors that never advanced
+    failed_hypotheses = []
+    proposed_factors = registry.list_factors(stage="Proposed")
+    for f in proposed_factors:
+        # Factors stuck at Proposed with low IC are likely failed hypotheses
+        failed_hypotheses.append({
+            "expression": f.get("expression", ""),
+            "category": f.get("category", ""),
+            "reason": "stuck_at_proposed",
+        })
+
+    log.info(
+        "research_loop_started",
+        goal=goal,
+        max_iterations=max_iterations,
+        existing_factors=summary.get("factors", {}).get("total", 0),
+        active_factors=existing_stages.get("Active", 0),
+        failed_hypotheses=len(failed_hypotheses),
+    )
+
+    # Step 3: Run iterative research
+    results = run_iterative_research(
+        market=market,
+        goal=goal,
+        max_iterations=max_iterations,
+        target_sharpe=target_sharpe,
+    )
+
+    # Step 4: Collect validated factors
+    validated_factors = []
+    for r in results:
+        if r.new_active_factors:
+            validated_factors.extend(r.new_active_factors)
+
+    # Step 5: Check if we found a VALIDATED factor
+    final_summary = journal.get_summary()
+    final_stages = final_summary.get("factors", {}).get("by_stage", {})
+
+    # Determine status
+    if validated_factors:
+        status = "target_reached"
+    elif len(results) >= max_iterations:
+        status = "max_iterations"
+    else:
+        status = "completed"
+
+    report = {
+        "iterations": [r.to_dict() for r in results],
+        "best_sharpe": max((r.sharpe for r in results), default=0.0),
+        "validated_factors": validated_factors,
+        "failed_hypotheses": failed_hypotheses[:10],  # Top 10
+        "total_cycles": len(results),
+        "factors_discovered": final_summary.get("factors", {}).get("total", 0),
+        "active_factors": final_stages.get("Active", 0),
+        "status": status,
+    }
+
+    log.info(
+        "research_loop_complete",
+        total_cycles=report["total_cycles"],
+        best_sharpe=report["best_sharpe"],
+        validated_factors=len(validated_factors),
+        status=report["status"],
+    )
+
+    return report

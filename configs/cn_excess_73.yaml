@@ -1,0 +1,116 @@
+qlib_init:
+  provider_uri: data/watchlist
+  region: cn
+market: cn
+benchmark: '000300'
+task:
+  model:
+    class: LGBModel
+    module_path: qlib.contrib.model.gbdt
+    kwargs:
+      loss: mse
+      learning_rate: 0.05
+      num_leaves: 64
+      max_depth: 8
+      early_stopping_rounds: 50
+      verbose: -1
+  dataset:
+    class: DatasetH
+    module_path: qlib.data.dataset
+    kwargs:
+      handler:
+        class: DataHandlerLP
+        module_path: qlib.data.dataset.handler
+        kwargs:
+          start_time: '2021-01-01'
+          end_time: '2026-06-18'
+          instruments: cn
+          learn_processors:
+          - class: DropnaLabel
+          - class: CSZScoreNorm
+            kwargs:
+              fields_group: label
+          infer_processors:
+          - class: CSZScoreNorm
+            kwargs:
+              fields_group: feature
+          data_loader:
+            class: QlibDataLoader
+            kwargs:
+              config:
+                feature:
+                - ($close-$open)/$open
+                - ($high-$low)/$open
+                - ($close-$open)/($high-$low+1e-12)
+                - $open/$close
+                - $high/$close
+                - $low/$close
+                - $close/Ref($close, 5)-1
+                - $close/Ref($close, 10)-1
+                - $close/Ref($close, 20)-1
+                - $close/Ref($close, 60)-1
+                - Std($close/Ref($close, 1)-1, 5)
+                - Std($close/Ref($close, 1)-1, 10)
+                - Std($close/Ref($close, 1)-1, 20)
+                - Std($close/Ref($close, 1)-1, 60)
+                - $volume/Mean($volume, 5)
+                - $volume/Mean($volume, 10)
+                - $volume/Mean($volume, 20)
+                - Mean($close, 5)/$close
+                - Mean($close, 10)/$close
+                - Mean($close, 20)/$close
+                - Std($close, 5)/$close
+                - Std($close, 10)/$close
+                - Std($close, 20)/$close
+                - ($high-Mean($high, 5))/$close
+                - ($low-Mean($low, 5))/$close
+                - ($close-Min($low, 10))/(Max($high, 10)-Min($low, 10)+1e-12)
+                - ($close-Min($low, 20))/(Max($high, 20)-Min($low, 20)+1e-12)
+                - Mean(Max($close-Ref($close,1),0),10)/(Mean(Abs($close-Ref($close,1)),10)+1e-12)
+                - Mean(Max($close-Ref($close,1),0),20)/(Mean(Abs($close-Ref($close,1)),20)+1e-12)
+                - Corr($close, Log($volume+1), 10)
+                - Corr($close, Log($volume+1), 20)
+                label:
+                - (Ref($close, -10) / Ref($close, -1) - 1) - Mean(Ref($close, -10)
+                  / Ref($close, -1) - 1, 10)
+      segments:
+        train:
+        - '2021-01-01'
+        - '2024-12-31'
+        valid:
+        - '2025-01-01'
+        - '2025-06-30'
+        test:
+        - '2025-07-01'
+        - '2026-06-18'
+port_analysis_config:
+  strategy:
+    class: BiweeklyTrendStrategy
+    module_path: src.strategies.biweekly_trend_strategy
+    kwargs:
+      signal: <PRED>
+      topk: 5
+      rebalance_steps: 10
+      min_hold_days: 10
+      sell_ma_window: 60
+      sell_rank_threshold: 20
+      use_risk_manager: true
+      risk_config:
+        stop_loss_pct: -0.1
+        trailing_stop_pct: -0.15
+        max_position_weight: 0.2
+        max_sector_weight: 0.35
+        target_portfolio_vol: 0.15
+      buy_score_threshold: 0.0
+      sell_score_threshold: 0.0
+  backtest:
+    start_time: '2025-01-01'
+    end_time: '2026-01-27'
+    account: 10000
+    benchmark: '000300'
+    exchange_kwargs:
+      limit_threshold: 0.095
+      deal_price: close
+      open_cost: 0.001
+      close_cost: 0.001
+      min_cost: 0

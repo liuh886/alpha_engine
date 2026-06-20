@@ -25,7 +25,8 @@ async def analyze_factors(market: str = "us"):
 async def suggest_hyperparams():
     """Suggest LightGBM hyperparameter adjustments."""
     assistant = _get_assistant()
-    return assistant.suggest_hyperparams()
+    result = assistant.suggest_hyperparams()
+    return {"ok": True, **result}
 
 
 @router.post("/assess-risk")
@@ -53,7 +54,7 @@ async def audit_run(run_id: str):
 async def list_capabilities():
     """List all available research tools."""
     assistant = _get_assistant()
-    return {"capabilities": assistant.list_capabilities()}
+    return {"ok": True, "capabilities": assistant.list_capabilities()}
 
 
 @router.post("/chat")

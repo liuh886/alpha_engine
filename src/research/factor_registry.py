@@ -10,7 +10,6 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from src.assistant.base_index import BaseIndex
@@ -31,6 +30,7 @@ __all__ = [
     "STAGE_VALIDATED",
     "STAGE_ACTIVE",
     "STAGE_DEPRECATED",
+    "STAGE_QUARANTINED",
 ]
 
 logger = get_logger(__name__)
@@ -43,9 +43,12 @@ STAGE_PROPOSED = "Proposed"
 STAGE_CANDIDATE = "Candidate"    # Gate 1 passed
 STAGE_VALIDATED = "Validated"    # Gate 2 passed
 STAGE_ACTIVE = "Active"          # Gate 3 passed
+STAGE_WATCH = "Watch"            # Decay detected, monitoring
 STAGE_DEPRECATED = "Deprecated"
+STAGE_RETIRED = "Retired"        # Permanently removed
+STAGE_QUARANTINED = "Quarantined"  # Invalid/suspect record, excluded from queries
 
-_STAGE_ORDER = [STAGE_PROPOSED, STAGE_CANDIDATE, STAGE_VALIDATED, STAGE_ACTIVE, STAGE_DEPRECATED]
+_STAGE_ORDER = [STAGE_PROPOSED, STAGE_CANDIDATE, STAGE_VALIDATED, STAGE_ACTIVE, STAGE_WATCH, STAGE_DEPRECATED, STAGE_RETIRED, STAGE_QUARANTINED]
 
 # ---------------------------------------------------------------------------
 # Configurable validation gate thresholds
@@ -405,12 +408,20 @@ class FactorRegistry(BaseIndex):
         stage: str | None = None,
         category: str | None = None,
     ) -> list[dict]:
-        """List factors, optionally filtered by *stage* and/or *category*."""
+        """List factors, optionally filtered by *stage* and/or *category*.
+
+        Quarantined factors are excluded unless ``stage=STAGE_QUARANTINED``
+        is explicitly passed.
+        """
         clauses: list[str] = []
         params: list[Any] = []
         if stage:
             clauses.append("stage = ?")
             params.append(stage)
+        else:
+            # Exclude quarantined records by default
+            clauses.append("stage != ?")
+            params.append(STAGE_QUARANTINED)
         if category:
             clauses.append("category = ?")
             params.append(category)
@@ -422,16 +433,29 @@ class FactorRegistry(BaseIndex):
             rows = conn.execute(sql, tuple(params)).fetchall()
         return [self._row_to_dict(r) for r in rows]
 
-    def search_factors(self, query: str) -> list[dict]:
-        """Free-text search across factor ``name``, ``thesis``, and ``expression``."""
-        q = f"%{query.strip()}%"
-        sql = """
-            SELECT * FROM factors
-            WHERE name LIKE ? OR thesis LIKE ? OR expression LIKE ?
-            ORDER BY created_at DESC
+    def search_factors(self, query: str, *, include_quarantined: bool = False) -> list[dict]:
+        """Free-text search across factor ``name``, ``thesis``, and ``expression``.
+
+        Quarantined factors are excluded by default unless
+        ``include_quarantined=True``.
         """
+        q = f"%{query.strip()}%"
+        if include_quarantined:
+            sql = """
+                SELECT * FROM factors
+                WHERE name LIKE ? OR thesis LIKE ? OR expression LIKE ?
+                ORDER BY created_at DESC
+            """
+            params = (q, q, q)
+        else:
+            sql = """
+                SELECT * FROM factors
+                WHERE (name LIKE ? OR thesis LIKE ? OR expression LIKE ?) AND stage != ?
+                ORDER BY created_at DESC
+            """
+            params = (q, q, q, STAGE_QUARANTINED)
         with self._connect() as conn:
-            rows = conn.execute(sql, (q, q, q)).fetchall()
+            rows = conn.execute(sql, params).fetchall()
         return [self._row_to_dict(r) for r in rows]
 
     # ------------------------------------------------------------------
@@ -499,6 +523,69 @@ class FactorRegistry(BaseIndex):
             return False
 
         return self.update_stage(factor_id, STAGE_DEPRECATED)
+
+    # ------------------------------------------------------------------
+    # Quarantine
+    # ------------------------------------------------------------------
+
+    def quarantine_factor(self, factor_id: int, reason: str = "") -> bool:
+        """Quarantine a factor, marking it as invalid or suspect.
+
+        Quarantined factors are excluded from ``list_factors`` and
+        ``search_factors`` by default.  They are not deleted -- the
+        original record is preserved for auditing.
+
+        Returns ``True`` if the factor was quarantined, ``False`` if the
+        factor was not found.
+        """
+        with self._connect() as conn:
+            row = conn.execute("SELECT stage FROM factors WHERE id = ?", (factor_id,)).fetchone()
+        if not row:
+            return False
+
+        now = self._now()
+        with self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE factors SET stage = ?, thesis = CASE WHEN thesis = '' THEN ? ELSE thesis || ' | ' || ? END, updated_at = ? WHERE id = ?",
+                (STAGE_QUARANTINED, f"[QUARANTINED] {reason}", f"[QUARANTINED] {reason}", now, factor_id),
+            )
+        if cur.rowcount > 0:
+            logger.info("factor_quarantined", factor_id=factor_id, reason=reason)
+            return True
+        return False
+
+    def quarantine_by_name_pattern(self, pattern: str, reason: str = "") -> int:
+        """Quarantine all factors whose name matches a SQL LIKE pattern.
+
+        Common patterns::
+
+            quarantine_by_name_pattern("test_%",  "test records")
+            quarantine_by_name_pattern("%_dummy",  "dummy records")
+            quarantine_by_name_pattern("run_123%", "test run")
+
+        Returns the number of factors quarantined.
+        """
+        now = self._now()
+        reason_prefix = f"[QUARANTINED] {reason}" if reason else "[QUARANTINED]"
+        with self._connect() as conn:
+            cur = conn.execute(
+                """
+                UPDATE factors
+                SET stage = ?,
+                    thesis = CASE WHEN thesis = '' THEN ? ELSE thesis || ' | ' || ? END,
+                    updated_at = ?
+                WHERE name LIKE ? AND stage != ?
+                """,
+                (STAGE_QUARANTINED, reason_prefix, reason_prefix, now, pattern, STAGE_QUARANTINED),
+            )
+        count = cur.rowcount
+        if count > 0:
+            logger.info("factors_quarantined_by_pattern", pattern=pattern, count=count, reason=reason)
+        return count
+
+    def list_quarantined(self) -> list[dict]:
+        """Return all quarantined factors."""
+        return self.list_factors(stage=STAGE_QUARANTINED)
 
     # ------------------------------------------------------------------
     # Validation

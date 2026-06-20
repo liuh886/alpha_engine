@@ -1,8 +1,8 @@
 """Set up weekly research automation via PM2 or Windows Task Scheduler."""
 import os
-import sys
-import subprocess
 import platform
+import sys
+
 
 def setup_pm2_cron():
     """Set up PM2 cron job for weekly research."""

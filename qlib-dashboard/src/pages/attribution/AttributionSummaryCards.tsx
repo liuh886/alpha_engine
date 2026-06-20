@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, Target, Shield, AlertTriangle } from "lucide-react";
+import { TrendingUp, Target, Shield, AlertTriangle, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatSignedPct } from "./types";
 import type { AttributionSummary } from "./types";
@@ -18,6 +18,9 @@ export function AttributionSummaryCards({ summary }: { summary: AttributionSumma
               <p className={cn("text-2xl font-bold", summary ? (summary.total_return >= 0 ? "text-green-500" : "text-red-500") : "")}>
                 {summary ? formatSignedPct(summary.total_return) : "--"}
               </p>
+              {summary?.period && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">{summary.period}</p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -70,6 +73,26 @@ export function AttributionSummaryCards({ summary }: { summary: AttributionSumma
           </div>
         </CardContent>
       </Card>
+
+      {/* Benchmark return card */}
+      {summary?.benchmark_return !== undefined && summary.benchmark_return !== 0 && (
+        <Card className="col-span-2 md:col-span-4">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-3 text-sm">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Benchmark Return:</span>
+              <span className={cn("font-mono font-medium", summary.benchmark_return >= 0 ? "text-green-500" : "text-red-500")}>
+                {formatSignedPct(summary.benchmark_return)}
+              </span>
+              {summary.market && (
+                <span className="text-xs text-muted-foreground ml-auto">
+                  Market: {summary.market.toUpperCase()}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

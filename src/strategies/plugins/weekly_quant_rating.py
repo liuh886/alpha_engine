@@ -4,8 +4,8 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
-from ..weekly_quant_rating_strategy import WeeklyQuantRatingStrategy
 from ..registry import StrategyPlugin, _schema_from_constructor
+from ..weekly_quant_rating_strategy import WeeklyQuantRatingStrategy
 
 _NAME = "weekly_quant_rating"
 _VERSION = "1.0.0"

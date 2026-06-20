@@ -76,37 +76,72 @@ class DataService:
                 logger.debug("Failed to read dashboard DB", path=str(dashboard_db_path), exc_info=True)
 
         latest_snapshot_id = None
+        snapshot_status = "unknown"
+        snapshot_error = ""
         try:
-            snap = snapshot_index.get_latest(dataset_key="watchlist", freq="day")
+            snap = snapshot_index.get_latest_manifest(dataset_key="watchlist", freq="day")
             if snap:
                 latest_snapshot_id = snap.get("snapshot_id")
-        except Exception:
+                manifest = snap.get("manifest")
+                if not isinstance(manifest, dict) or manifest.get("snapshot_id") != latest_snapshot_id:
+                    snapshot_status = "failed"
+                    snapshot_error = "indexed snapshot manifest is missing or mismatched"
+                else:
+                    snapshot_status = "ready"
+        except Exception as exc:
+            snapshot_status = "failed"
+            snapshot_error = str(exc)
             logger.debug("Failed to query latest snapshot", exc_info=True)
 
         quality_warnings = []
-        quality_status = "ok"
+        quality_status = "unknown"
+        quality_error = ""
         detailed_issues = {}
         try:
             q = quality_index.get_latest(dataset_key="watchlist", freq="day", market="all")
-            if q and isinstance(q.get("summary"), dict):
-                quality_warnings = q["summary"].get("warnings") or []
-                if quality_warnings:
-                    quality_status = "warning"
-                detailed_issues = q["summary"].get("markets") or {}
-        except Exception:
+            if q:
+                summary = q.get("summary")
+                if not isinstance(summary, dict):
+                    quality_status = "failed"
+                    quality_error = "quality summary is missing"
+                elif not latest_snapshot_id or q.get("snapshot_id") != latest_snapshot_id:
+                    quality_status = "failed"
+                    quality_error = "quality snapshot mismatch"
+                elif not summary.get("ok"):
+                    quality_status = "failed"
+                    quality_error = str(summary.get("error") or "quality validation failed")
+                else:
+                    quality_warnings = summary.get("warnings") or []
+                    quality_status = "warning" if quality_warnings else "ok"
+                    detailed_issues = summary.get("markets") or {}
+        except Exception as exc:
+            quality_status = "failed"
+            quality_error = str(exc)
             logger.debug("Failed to query quality index", exc_info=True)
 
         # Calculate readiness
         readiness = self._calculate_readiness(latest_cal)
+        if "failed" in {snapshot_status, quality_status}:
+            status = "failed"
+        elif "unknown" in {snapshot_status, quality_status}:
+            status = "unknown"
+        elif quality_status == "warning":
+            status = "warning"
+        else:
+            status = "ok"
 
         return {
             "latest_calendar_day": latest_cal,
             "dashboard_db_generated_at": dashboard_generated_at,
             "latest_snapshot_id": latest_snapshot_id,
+            "snapshot_status": snapshot_status,
+            "snapshot_error": snapshot_error,
             "quality_status": quality_status,
+            "quality_error": quality_error,
             "quality_warnings": quality_warnings,
             "detailed_issues": detailed_issues,
             "readiness": readiness,
+            "status": status,
             "updated_at": datetime.datetime.now().isoformat(),
         }
 
@@ -151,13 +186,21 @@ class DataService:
                 continue
 
             try:
-                arr = np.fromfile(str(bin_path), dtype="<f4")
+                raw = np.fromfile(str(bin_path), dtype="<f4")
+                # Qlib binary format: 4-byte int32 header (start_index) + float32 data
+                # The header is written as int32(0) but read as float32(0.0)
+                # Skip the first element (header) to get actual data
+                if len(raw) > 1:
+                    arr = raw[1:]  # skip the 4-byte header misinterpreted as float
+                else:
+                    arr = raw
             except Exception:
                 logger.debug("Failed to read binary file", path=str(bin_path), exc_info=True)
                 continue
 
             # Pad or truncate to match calendar length
             if len(arr) < n_days:
+                logger.debug("binary_array_short", symbol=sym, feature=feature, expected=n_days, actual=len(arr))
                 arr = np.concatenate([arr, np.full(n_days - len(arr), np.nan)])
             elif len(arr) > n_days:
                 arr = arr[:n_days]
@@ -171,6 +214,131 @@ class DataService:
             valid_symbols.append(sym)
 
         return {"symbols": valid_symbols, "dates": dates, "values": values}
+
+    def validate_data_integrity(self, market: str = "us") -> dict:
+        """Run data integrity checks and return a report.
+
+        Checks:
+        1. Instrument/feature sync — ghosts and missing entries
+        2. Binary array length consistency
+        3. Temporal gap detection (missing trading days)
+        4. Value anomalies (NaN ratio, zero clusters)
+        """
+        features_dir = self._project_root / "data" / "watchlist" / "features"
+        cal_path = self._project_root / "data" / "watchlist" / "calendars" / "day.txt"
+        inst_path = self._project_root / "data" / "watchlist" / "instruments" / f"{market}.txt"
+
+        report: dict = {
+            "ok": True,
+            "market": market,
+            "checks": {},
+            "warnings": [],
+            "errors": [],
+        }
+
+        # 1. Instrument/feature sync
+        feature_syms = set()
+        if features_dir.exists():
+            feature_syms = set(d.name for d in features_dir.iterdir() if d.is_dir())
+
+        inst_syms = set()
+        if inst_path.exists():
+            for line in inst_path.read_text(encoding="utf-8").splitlines():
+                parts = line.strip().split("\t")
+                if parts and parts[0]:
+                    inst_syms.add(parts[0])
+
+        ghosts = inst_syms - feature_syms
+        missing = feature_syms - inst_syms
+        report["checks"]["instrument_sync"] = {
+            "instruments": len(inst_syms),
+            "feature_dirs": len(feature_syms),
+            "ghosts": sorted(ghosts),
+            "missing": sorted(missing),
+        }
+        if ghosts:
+            report["warnings"].append(f"{len(ghosts)} symbols in instruments but no features: {sorted(ghosts)[:5]}")
+        if missing:
+            report["warnings"].append(f"{len(missing)} symbols with features but not in instruments: {sorted(missing)[:5]}")
+
+        # 2. Binary array length consistency
+        if not cal_path.exists():
+            report["errors"].append("Calendar file not found")
+            return report
+
+        dates = [line.strip() for line in cal_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        n_days = len(dates)
+        (n_days + 1) * 4  # +1 for int32 header
+
+        length_issues = []
+        for sym in sorted(inst_syms):
+            close_path = features_dir / sym / "close.day.bin"
+            if not close_path.exists():
+                continue
+            actual_bytes = close_path.stat().st_size
+            actual_floats = (actual_bytes - 4) // 4  # subtract header
+            if abs(actual_floats - n_days) > 1:
+                length_issues.append({"symbol": sym, "expected": n_days, "actual": actual_floats})
+
+        report["checks"]["binary_lengths"] = {
+            "expected_floats": n_days,
+            "issues": length_issues[:20],  # cap output
+        }
+        if length_issues:
+            report["warnings"].append(f"{len(length_issues)} symbols have mismatched binary lengths")
+
+        # 3. Temporal gap detection — check close feature for NaN gaps
+        gap_symbols = []
+        nan_heavy = []
+        for sym in sorted(inst_syms)[:100]:  # sample first 100 for performance
+            close_path = features_dir / sym / "close.day.bin"
+            if not close_path.exists():
+                continue
+            try:
+                raw = np.fromfile(str(close_path), dtype="<f4")
+                arr = raw[1:] if len(raw) > 1 else raw  # skip header
+                if len(arr) < n_days:
+                    arr = np.concatenate([arr, np.full(n_days - len(arr), np.nan)])
+
+                # Count NaN ratio
+                nan_count = int(np.sum(np.isnan(arr)))
+                nan_ratio = nan_count / n_days
+                if nan_ratio > 0.5:
+                    nan_heavy.append({"symbol": sym, "nan_ratio": round(nan_ratio, 3)})
+
+                # Find gaps in valid data (consecutive NaN runs > 5 days)
+                is_nan = np.isnan(arr)
+                gap_start = None
+                for i, v in enumerate(is_nan):
+                    if v and gap_start is None:
+                        gap_start = i
+                    elif not v and gap_start is not None:
+                        gap_len = i - gap_start
+                        if gap_len > 5:
+                            gap_symbols.append({
+                                "symbol": sym,
+                                "gap_start": dates[gap_start] if gap_start < len(dates) else str(gap_start),
+                                "gap_end": dates[i] if i < len(dates) else str(i),
+                                "gap_days": gap_len,
+                            })
+                        gap_start = None
+            except Exception:
+                continue
+
+        report["checks"]["temporal_gaps"] = {
+            "gaps_found": len(gap_symbols),
+            "gaps": gap_symbols[:20],
+            "nan_heavy_symbols": nan_heavy[:10],
+        }
+        if gap_symbols:
+            report["warnings"].append(f"{len(gap_symbols)} temporal gaps (>5 days) detected")
+        if nan_heavy:
+            report["warnings"].append(f"{len(nan_heavy)} symbols have >50% NaN values")
+
+        # Overall status
+        if report["errors"]:
+            report["ok"] = False
+        return report
 
     def _calculate_readiness(self, latest_cal: str | None) -> str:
         if not latest_cal:
