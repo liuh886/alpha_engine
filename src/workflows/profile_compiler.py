@@ -34,7 +34,7 @@ def collect_profile_warnings(profile: dict, market: str) -> list[str]:
     warnings: list[str] = []
     meta = profile.get("meta", {}) if isinstance(profile, dict) else {}
     model = profile.get("model", {}) if isinstance(profile, dict) else {}
-    strategy = profile.get("strategy", {}) if isinstance(profile, dict) else {}
+    profile.get("strategy", {}) if isinstance(profile, dict) else {}
     universe_val = profile.get("universe", {})
     universe = universe_val if isinstance(universe_val, dict) else {}
 

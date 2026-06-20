@@ -18,6 +18,10 @@ export interface AttributionSummary {
   excess_return: number;      // percentage
   factor_coverage: number;    // R^2, 0-1
   unexplained_return: number; // percentage
+  benchmark_return?: number;  // percentage
+  period?: string;            // e.g. "2025-01-01 to 2026-01-01"
+  market?: string;            // "us" | "cn"
+  strategy_name?: string;
 }
 
 export interface AttributionResponse {

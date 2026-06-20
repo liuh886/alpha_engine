@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { apiFetch } from '@/lib/api';
 
 interface FactorICResult {
   factor_name: string;
@@ -54,7 +55,7 @@ export const useFactorStore = create<FactorStore>((set, get) => ({
   fetchReport: async (market: string) => {
     set({ loading: true, error: null });
     try {
-      const resp = await fetch(
+      const resp = await apiFetch(
         `/api/factors/ic/top?market=${encodeURIComponent(market)}&n=30`,
         { cache: 'no-store' }
       );
@@ -90,7 +91,7 @@ export const useFactorStore = create<FactorStore>((set, get) => ({
     const { market } = get();
     set({ selectedFactor: factor, decayData: [], decayLoading: true });
     try {
-      const resp = await fetch(
+      const resp = await apiFetch(
         `/api/factors/decay?market=${encodeURIComponent(market)}&factor=${encodeURIComponent(factor)}&max_lag=20`,
         { cache: 'no-store' }
       );
@@ -103,7 +104,9 @@ export const useFactorStore = create<FactorStore>((set, get) => ({
       }
       set({ decayData: json.decay || [], decayLoading: false });
     } catch (err: unknown) {
-      set({ decayData: [], decayLoading: false });
+      const msg = err instanceof Error ? err.message : 'Failed to load decay data';
+      console.warn('[factorStore] selectFactor error:', msg);
+      set({ decayData: [], decayLoading: false, error: msg });
     }
   },
 

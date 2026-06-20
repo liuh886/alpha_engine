@@ -13,7 +13,7 @@ def evaluate(market, model_path):
     # 1. Init Qlib
     try:
         qlib.init(provider_uri="data/watchlist", region="us")  # Use US region for neutral calendar
-    except:
+    except Exception:
         pass
 
     # 2. Load Model

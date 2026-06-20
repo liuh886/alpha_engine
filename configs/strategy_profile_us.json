@@ -47,6 +47,7 @@
     "rebalance_frequency": "biweekly",
     "min_hold_days": 10,
     "sell_on_ma": 60,
+    "vectorized": false,
     "sell_rank_threshold": 20,
     "position_rule": {
       "topk": 5,

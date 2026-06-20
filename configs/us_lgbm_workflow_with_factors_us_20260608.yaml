@@ -301,7 +301,7 @@ port_analysis_config:
         trailing_stop_pct: -0.15
         max_position_weight: 0.2
         max_sector_weight: 0.35
-        target_vol: 0.15
+        target_portfolio_vol: 0.15
   backtest:
     start_time: '2026-01-01'
     end_time: '2026-04-03'

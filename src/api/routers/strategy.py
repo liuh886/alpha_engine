@@ -1,8 +1,8 @@
 import yaml
 from fastapi import APIRouter, HTTPException
 
-from src.common.paths import CONFIG_DIR
 from src.assistant.services.strategy_compiler_service import StrategyCompilerService
+from src.common.paths import CONFIG_DIR
 from src.strategies.registry import StrategyRegistry
 
 router = APIRouter(tags=["strategy"])

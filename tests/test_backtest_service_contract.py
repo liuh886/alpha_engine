@@ -20,3 +20,6 @@ def test_backtest_service_explicit_contract():
     assert job["strategy_template"] == "TopK_10_2W"
     assert job["cost_params"] == {"commission": 0.0005}
     assert job["tag"] == "BT_TEST"
+    assert job["command_envelopes"][0]["strategy_template"] == "TopK_10_2W"
+    assert "--strategy_template TopK_10_2W" in " ".join(job["commands"][0])
+    assert '--cost_params {"commission": 0.0005}' in " ".join(job["commands"][0])

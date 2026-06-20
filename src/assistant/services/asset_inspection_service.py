@@ -66,12 +66,12 @@ class AssetInspectionService:
         for dt, row in symbol_df.iterrows():
             o = float(row["$open"]) if not math.isnan(row["$open"]) else None
             h = float(row["$high"]) if not math.isnan(row["$high"]) else None
-            l = float(row["$low"]) if not math.isnan(row["$low"]) else None
+            low = float(row["$low"]) if not math.isnan(row["$low"]) else None
             c = float(row["$close"]) if not math.isnan(row["$close"]) else None
             v = float(row["$volume"]) if not math.isnan(row["$volume"]) else None
 
             # Skip rows with NaN values (incomplete data)
-            if any(x is None for x in [o, h, l, c, v]):
+            if any(x is None for x in [o, h, low, c, v]):
                 continue
 
             rows.append(
@@ -79,7 +79,7 @@ class AssetInspectionService:
                     "time": dt.strftime("%Y-%m-%d"),
                     "open": o,
                     "high": h,
-                    "low": l,
+                    "low": low,
                     "close": c,
                     "value": v,
                 }
@@ -150,18 +150,26 @@ class AssetInspectionService:
 
     def _load_recommended_prediction(self, clean_symbol: str) -> tuple[float | None, float | None]:
         try:
+            # Strategy 1: Look up recommended run_id from model index
             run_id = self._get_recommended_run_id()
-            if not run_id:
-                return None, None
+            pred_path = self._find_prediction_path(run_id) if run_id else None
 
-            pred_path = self._find_prediction_path(run_id)
+            # Strategy 2: Fallback to latest pred.pkl if no recommended model
+            if not pred_path:
+                pred_path = self._find_latest_prediction_path()
+
             if not pred_path:
                 return None, None
 
             with pred_path.open("rb") as f:
                 pred_df = pickle.load(f)
 
-            if clean_symbol not in pred_df.index.get_level_values("instrument"):
+            if not isinstance(pred_df, type(None)) and hasattr(pred_df.index, 'get_level_values'):
+                instruments = pred_df.index.get_level_values("instrument")
+            else:
+                return None, None
+
+            if clean_symbol not in instruments:
                 return None, None
 
             ticker_pred = pred_df.xs(clean_symbol, level="instrument")
@@ -180,11 +188,14 @@ class AssetInspectionService:
     def _get_recommended_run_id(self) -> str | None:
         if self._model_index is None:
             return None
-        with self._model_index._connect() as conn:
-            row = conn.execute(
-                "SELECT run_id FROM model_versions WHERE description LIKE '%RECOMMENDED%' LIMIT 1"
-            ).fetchone()
-        return str(row[0]) if row else None
+        try:
+            with self._model_index._connect() as conn:
+                row = conn.execute(
+                    "SELECT run_id FROM model_versions WHERE description LIKE '%RECOMMENDED%' LIMIT 1"
+                ).fetchone()
+            return str(row[0]) if row else None
+        except Exception:
+            return None
 
     def _find_prediction_path(self, run_id: str) -> Path | None:
         from src.common.paths import MLRUNS_DIR
@@ -203,3 +214,30 @@ class AssetInspectionService:
                 if pred_path.exists():
                     return pred_path
         return None
+
+    def _find_latest_prediction_path(self) -> Path | None:
+        """Fallback: find the most recently modified pred.pkl across all mlruns."""
+        from src.common.paths import MLRUNS_DIR
+
+        best_path = None
+        best_mtime = 0.0
+        for mlruns_dir in [
+            MLRUNS_DIR,
+            self._project_root / "mlruns",
+            self._project_root / "artifacts" / "mlruns",
+        ]:
+            if not mlruns_dir.exists():
+                continue
+            for pred_file in mlruns_dir.rglob("pred.pkl"):
+                mt = pred_file.stat().st_mtime
+                if mt > best_mtime:
+                    best_mtime = mt
+                    best_path = pred_file
+            # Also check for 'pred' without extension (Qlib output)
+            for pred_file in mlruns_dir.rglob("pred"):
+                if pred_file.is_file() and pred_file.suffix == "":
+                    mt = pred_file.stat().st_mtime
+                    if mt > best_mtime:
+                        best_mtime = mt
+                        best_path = pred_file
+        return best_path

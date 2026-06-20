@@ -7,10 +7,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 import numpy as np
+import structlog
 import yaml
 from qlib.utils import init_instance_by_config
-
-import structlog
 
 log = structlog.get_logger()
 
@@ -95,7 +94,7 @@ class WalkForwardResult:
 
 def generate_splits(
     train_start: str = "2021-01-01",
-    train_end: str = "2026-04-03",
+    train_end: str = None,
     test_window_months: int = 6,
     step_months: int = 3,
 ) -> list[tuple[str, str, str, str]]:
@@ -108,6 +107,8 @@ def generate_splits(
     Returns:
         List of (train_start, train_end, test_start, test_end) tuples.
     """
+    from src.common.dates import default_train_end
+    train_end = train_end or default_train_end()
     start = datetime.strptime(train_start, "%Y-%m-%d")
     end = datetime.strptime(train_end, "%Y-%m-%d")
 
@@ -321,7 +322,7 @@ def walk_forward_validate(
     market: str = "us",
     model_type: str = "lgbm",
     train_start: str = "2021-01-01",
-    train_end: str = "2026-04-03",
+    train_end: str = None,
     test_window_months: int = 6,
     step_months: int = 3,
 ) -> WalkForwardResult:
@@ -345,6 +346,8 @@ def walk_forward_validate(
     Returns:
         WalkForwardResult with per-split and aggregated metrics.
     """
+    from src.common.dates import default_train_end
+    train_end = train_end or default_train_end()
     # Ensure Qlib is initialized
     from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
     cfg = build_qlib_init_cfg(None, market=market)

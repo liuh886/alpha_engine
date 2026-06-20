@@ -33,8 +33,13 @@ logger = structlog.get_logger()
 __all__ = [
     "SignalGrade",
     "SignalPerformance",
+    "SignalProvenance",
     "StockScore",
     "SignalGradeEngine",
+    "MIN_OCCURRENCES_FOR_QUALIFICATION",
+    "compute_direction_adjusted_hit_rate",
+    "compute_confidence_interval_95",
+    "determine_qualification",
 ]
 
 # ---------------------------------------------------------------------------
@@ -99,6 +104,26 @@ class StockScore:
         }
 
 
+@dataclass(frozen=True)
+class SignalProvenance:
+    """Immutable provenance metadata tracing a signal back to its model run."""
+
+    model_version_id: str
+    run_id: str
+    prediction_checksum: str
+    snapshot_id: str
+    validity_expiry: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "model_version_id": self.model_version_id,
+            "run_id": self.run_id,
+            "prediction_checksum": self.prediction_checksum,
+            "snapshot_id": self.snapshot_id,
+            "validity_expiry": self.validity_expiry,
+        }
+
+
 @dataclass
 class SignalGrade:
     """Signal grade for a single stock on a single date."""
@@ -110,9 +135,10 @@ class SignalGrade:
     total_stocks: int
     score: float
     percentile: float  # 0-100
+    provenance: SignalProvenance | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "symbol": self.symbol,
             "date": self.date,
             "grade": self.grade,
@@ -121,6 +147,9 @@ class SignalGrade:
             "score": round(self.score, 4) if not math.isnan(self.score) else None,
             "percentile": round(self.percentile, 1),
         }
+        if self.provenance is not None:
+            result["provenance"] = self.provenance.to_dict()
+        return result
 
 
 @dataclass
@@ -138,9 +167,19 @@ class SignalPerformance:
     max_return: float
     min_return: float
     avg_score: float  # average model score when this grade was assigned
+    provenance: SignalProvenance | None = None
+    # Evidence fields (requirements 39-41)
+    model_version_id: str = ""
+    policy_version: str = ""
+    direction_adjusted_hit_rate: float = 0.0
+    benchmark_excess_return: float = 0.0
+    cost_adjusted_return: float = 0.0
+    confidence_interval_95: list[float] = field(default_factory=lambda: [0.0, 0.0])
+    qualification_status: str = ""  # "qualified", "unqualified", "excluded", "failed"
+    failure_reasons: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "grade": self.grade,
             "grade_name": GRADE_NAMES.get(self.grade, ""),
             "total_occurrences": self.total_occurrences,
@@ -153,7 +192,105 @@ class SignalPerformance:
             "max_return": round(self.max_return, 6),
             "min_return": round(self.min_return, 6),
             "avg_score": round(self.avg_score, 4),
+            # Evidence fields
+            "model_version_id": self.model_version_id,
+            "policy_version": self.policy_version,
+            "direction_adjusted_hit_rate": round(self.direction_adjusted_hit_rate, 4),
+            "benchmark_excess_return": round(self.benchmark_excess_return, 6),
+            "cost_adjusted_return": round(self.cost_adjusted_return, 6),
+            "confidence_interval_95": [
+                round(self.confidence_interval_95[0], 6),
+                round(self.confidence_interval_95[1], 6),
+            ],
+            "qualification_status": self.qualification_status,
+            "failure_reasons": list(self.failure_reasons),
         }
+        if self.provenance is not None:
+            result["provenance"] = self.provenance.to_dict()
+        return result
+
+
+# ---------------------------------------------------------------------------
+# Evidence helpers (requirements 39-41)
+# ---------------------------------------------------------------------------
+
+# Minimum observation count for a grade to be considered qualified
+MIN_OCCURRENCES_FOR_QUALIFICATION = 5
+
+
+def compute_direction_adjusted_hit_rate(
+    returns: np.ndarray, grade: str
+) -> float:
+    """Compute hit rate adjusted for signal direction.
+
+    For buy grades (AAA/AA/A), a 'hit' is a positive return.
+    For sell grades (VVV/VV/V), a 'hit' is a negative return.
+    """
+    if len(returns) == 0:
+        return 0.0
+    if grade in ("AAA", "AA", "A"):
+        return float(np.sum(returns > 0) / len(returns))
+    if grade in ("V", "VV", "VVV"):
+        return float(np.sum(returns < 0) / len(returns))
+    return 0.0
+
+
+def compute_confidence_interval_95(
+    returns: np.ndarray,
+) -> list[float]:
+    """Compute 95% confidence interval for mean return using t-distribution.
+
+    For small samples, uses the t critical value. For n >= 30, approximates
+    with z = 1.96.
+    Returns [lower, upper].
+    """
+    n = len(returns)
+    if n < 2:
+        mean = float(returns.mean()) if n == 1 else 0.0
+        return [mean, mean]
+    mean = float(np.mean(returns))
+    std_err = float(np.std(returns, ddof=1) / np.sqrt(n))
+    # t critical value for 95% CI: use 1.96 for large n, look up for small n
+    if n >= 30:
+        t_crit = 1.96
+    else:
+        # Approximate t critical values for common small sample sizes (df = n-1)
+        # Two-tailed 95% CI
+        _t_table = {
+            1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
+            6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+            11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
+            16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
+            21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
+            26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045,
+        }
+        t_crit = _t_table.get(n - 1, 1.96)
+    return [mean - t_crit * std_err, mean + t_crit * std_err]
+
+
+def determine_qualification(
+    total_occurrences: int,
+    returns: np.ndarray | None = None,
+) -> tuple[str, list[str]]:
+    """Determine qualification status and failure reasons.
+
+    Returns (status, failure_reasons).
+    Status is one of: "qualified", "unqualified", "excluded", "failed".
+    """
+    reasons: list[str] = []
+    if total_occurrences == 0:
+        return "excluded", ["no_signal_occurrences"]
+    if total_occurrences < MIN_OCCURRENCES_FOR_QUALIFICATION:
+        reasons.append(
+            f"insufficient_observations: {total_occurrences} < {MIN_OCCURRENCES_FOR_QUALIFICATION}"
+        )
+        return "unqualified", reasons
+    if returns is not None and len(returns) > 0:
+        nan_ratio = float(np.sum(np.isnan(returns)) / len(returns))
+        if nan_ratio > 0.5:
+            reasons.append(f"high_nan_ratio: {nan_ratio:.1%}")
+            return "failed", reasons
+    return "qualified", []
 
 
 # ---------------------------------------------------------------------------
@@ -252,26 +389,30 @@ class SignalGradeEngine:
         )
 
     def _rank_to_grade(self, rank: int, total: int) -> str:
-        """Convert a 0-based rank to a signal grade."""
+        """Convert a 0-based rank to a signal grade.
+
+        For small universes (total < 6 * step_size), tiers are scaled
+        proportionally to avoid overlap between buy and sell grades.
+        """
         n = self.step_size
 
-        # AAA: rank < n (Top N)
+        # Scale down tiers if universe is too small for 6 non-overlapping tiers
+        if total < 6 * n:
+            n = max(1, total // 6)
+
+        # Buy grades (top of the ranking)
         if rank < n:
             return "AAA"
-        # AA: rank < 2n (Top 2N)
         if rank < 2 * n:
             return "AA"
-        # A: rank < 3n (Top 3N)
         if rank < 3 * n:
             return "A"
 
-        # VVV: rank >= total - n (Bottom N)
+        # Sell grades (bottom of the ranking)
         if rank >= total - n:
             return "VVV"
-        # VV: rank >= total - 2n (Bottom 2N)
         if rank >= total - 2 * n:
             return "VV"
-        # V: rank >= total - 3n (Bottom 3N)
         if rank >= total - 3 * n:
             return "V"
 
@@ -282,6 +423,7 @@ class SignalGradeEngine:
         symbol: str,
         pred_df: pd.DataFrame,
         target_date: str,
+        provenance: SignalProvenance | None = None,
     ) -> SignalGrade:
         """Get the signal grade for a stock on a specific date.
 
@@ -293,6 +435,8 @@ class SignalGradeEngine:
             Full prediction DataFrame with MultiIndex (datetime, instrument).
         target_date : str
             ISO date string to evaluate.
+        provenance : SignalProvenance, optional
+            Provenance metadata to attach to the resulting grade.
 
         Returns
         -------
@@ -313,13 +457,17 @@ class SignalGradeEngine:
             day_preds = pred_df.xs(closest_date, level="datetime")
             pred_score = day_preds.iloc[:, 0].sort_values(ascending=False)
 
-            return self.compute_grade(symbol, pred_score, date=str(closest_date.date()))
+            grade = self.compute_grade(symbol, pred_score, date=str(closest_date.date()))
+            if provenance is not None:
+                grade.provenance = provenance
+            return grade
 
         except Exception as exc:
             logger.warning("grade_computation_failed", symbol=symbol, error=str(exc))
             return SignalGrade(
                 symbol=symbol, date=target_date, grade="",
                 rank=-1, total_stocks=0, score=float("nan"), percentile=0.0,
+                provenance=provenance,
             )
 
     # ------------------------------------------------------------------
@@ -400,6 +548,11 @@ class SignalGradeEngine:
         price_df: pd.DataFrame | None = None,
         market: str = "us",
         forward_days: int = 10,
+        provenance: SignalProvenance | None = None,
+        model_version_id: str = "",
+        policy_version: str = "",
+        benchmark_return: float = 0.0,
+        cost_bps: float = 10.0,
     ) -> dict[str, SignalPerformance]:
         """Compute historical signal performance for a stock.
 
@@ -419,6 +572,16 @@ class SignalGradeEngine:
             Market identifier for Qlib data fetch.
         forward_days : int
             Number of days to look forward for return computation.
+        provenance : SignalProvenance, optional
+            Provenance metadata to attach to each resulting performance record.
+        model_version_id : str
+            Model version identifier for evidence tracking.
+        policy_version : str
+            Grade policy version string.
+        benchmark_return : float
+            Annualized benchmark return for excess return computation (e.g., 0.10 for 10%).
+        cost_bps : float
+            Round-trip transaction cost in basis points (default 10 bps).
 
         Returns
         -------
@@ -441,6 +604,10 @@ class SignalGradeEngine:
         grade_returns: dict[str, list[float]] = {g: [] for g in GRADES}
         grade_scores: dict[str, list[float]] = {g: [] for g in GRADES}
 
+        # Drop NaN values from price data
+        close_prices = price_df.iloc[:, 0] if isinstance(price_df, pd.DataFrame) else price_df
+        close_prices = close_prices.dropna()
+
         for sg in grades:
             if not sg.grade:
                 continue
@@ -448,7 +615,6 @@ class SignalGradeEngine:
             # Find the price on the grade date
             try:
                 grade_date = pd.Timestamp(sg.date)
-                close_prices = price_df.iloc[:, 0] if isinstance(price_df, pd.DataFrame) else price_df
 
                 # Find price on grade date
                 if grade_date in close_prices.index:
@@ -467,7 +633,7 @@ class SignalGradeEngine:
                     continue
                 exit_price = float(close_prices.iloc[close_prices.index.get_loc(grade_date) + forward_days])
 
-                if entry_price > 0:
+                if entry_price > 0 and not pd.isna(entry_price) and not pd.isna(exit_price):
                     forward_return = (exit_price - entry_price) / entry_price
                     grade_returns[sg.grade].append(forward_return)
                     grade_scores[sg.grade].append(sg.score)
@@ -477,17 +643,30 @@ class SignalGradeEngine:
 
         # Aggregate performance per grade
         results: dict[str, SignalPerformance] = {}
+        cost_decimal = cost_bps / 10000.0  # convert bps to decimal
+        # Per-period benchmark return (annualized → per forward_days period)
+        per_period_benchmark = benchmark_return * (forward_days / 252.0) if benchmark_return else 0.0
+
         for grade in GRADES:
             returns = grade_returns[grade]
             scores = grade_scores[grade]
 
             if not returns:
+                qual_status, fail_reasons = determine_qualification(0)
                 results[grade] = SignalPerformance(
                     grade=grade, total_occurrences=0,
                     positive_count=0, negative_count=0,
                     win_rate=0.0, mean_return=0.0, cumulative_return=0.0,
                     median_return=0.0, max_return=0.0, min_return=0.0,
-                    avg_score=0.0,
+                    avg_score=0.0, provenance=provenance,
+                    model_version_id=model_version_id,
+                    policy_version=policy_version,
+                    direction_adjusted_hit_rate=0.0,
+                    benchmark_excess_return=0.0,
+                    cost_adjusted_return=0.0,
+                    confidence_interval_95=[0.0, 0.0],
+                    qualification_status=qual_status,
+                    failure_reasons=fail_reasons,
                 )
                 continue
 
@@ -498,12 +677,21 @@ class SignalGradeEngine:
             valid_scores = np.array(scores)[valid_mask] if scores else np.array([])
 
             if len(arr) == 0:
+                qual_status, fail_reasons = determine_qualification(0)
                 results[grade] = SignalPerformance(
                     grade=grade, total_occurrences=0,
                     positive_count=0, negative_count=0,
                     win_rate=0.0, mean_return=0.0, cumulative_return=0.0,
                     median_return=0.0, max_return=0.0, min_return=0.0,
-                    avg_score=0.0,
+                    avg_score=0.0, provenance=provenance,
+                    model_version_id=model_version_id,
+                    policy_version=policy_version,
+                    direction_adjusted_hit_rate=0.0,
+                    benchmark_excess_return=0.0,
+                    cost_adjusted_return=0.0,
+                    confidence_interval_95=[0.0, 0.0],
+                    qualification_status=qual_status,
+                    failure_reasons=fail_reasons,
                 )
                 continue
 
@@ -513,26 +701,118 @@ class SignalGradeEngine:
             raw_cumulative = float(np.sum(arr))
             adjusted_cumulative = raw_cumulative / forward_days if forward_days > 0 else raw_cumulative
 
+            # Evidence computations
+            mean_ret = float(np.mean(arr))
+            dir_hit_rate = compute_direction_adjusted_hit_rate(arr, grade)
+            ci = compute_confidence_interval_95(arr)
+            benchmark_excess = mean_ret - per_period_benchmark
+            cost_adj = mean_ret - cost_decimal
+            qual_status, fail_reasons = determine_qualification(len(arr), arr)
+
             results[grade] = SignalPerformance(
                 grade=grade,
                 total_occurrences=len(arr),
                 positive_count=int(np.sum(arr > 0)),
                 negative_count=int(np.sum(arr < 0)),
                 win_rate=float(np.sum(arr > 0) / len(arr)),
-                mean_return=float(np.mean(arr)),
+                mean_return=mean_ret,
                 cumulative_return=adjusted_cumulative,
                 median_return=float(np.median(arr)),
                 max_return=float(np.max(arr)),
                 min_return=float(np.min(arr)),
                 avg_score=float(np.mean(valid_scores)) if len(valid_scores) > 0 else 0.0,
+                provenance=provenance,
+                model_version_id=model_version_id,
+                policy_version=policy_version,
+                direction_adjusted_hit_rate=dir_hit_rate,
+                benchmark_excess_return=benchmark_excess,
+                cost_adjusted_return=cost_adj,
+                confidence_interval_95=ci,
+                qualification_status=qual_status,
+                failure_reasons=fail_reasons,
             )
 
         return results
+
+    def compute_total_score(self, performance: dict[str, SignalPerformance]) -> dict[str, Any]:
+        """Compute a total score describing how well signals predict this stock.
+
+        Scoring logic (uses MEAN return per signal, not cumulative):
+        - Buy signals (AAA/AA/A): mean_return > 0 → positive contribution
+        - Sell signals (V/VV/VVV): mean_return < 0 → positive contribution (correctly predicted decline)
+        - Weighted by signal strength and occurrence count
+
+        Returns:
+            dict with total_score, buy_score, sell_score, grade, description
+        """
+        from src.strategies.signal_grade_engine import GRADE_WEIGHTS
+
+        buy_score = 0.0
+        sell_score = 0.0
+        buy_count = 0
+        sell_count = 0
+        total_signals = 0
+
+        for grade, perf in performance.items():
+            if perf.total_occurrences == 0:
+                continue
+
+            weight = GRADE_WEIGHTS.get(grade, 0)
+            total_signals += perf.total_occurrences
+
+            # Use mean_return (average per signal), not cumulative
+            mean_ret = perf.mean_return
+
+            if weight > 0:  # Buy signals
+                # Positive mean return = good for buy
+                buy_score += mean_ret * weight
+                buy_count += perf.total_occurrences
+            elif weight < 0:  # Sell signals
+                # Negative mean return = good for sell (model correctly predicted decline)
+                sell_score += abs(mean_ret) * abs(weight)
+                sell_count += perf.total_occurrences
+
+        # Normalize by signal count to get per-signal average
+        avg_buy_score = buy_score / buy_count if buy_count > 0 else 0.0
+        avg_sell_score = sell_score / sell_count if sell_count > 0 else 0.0
+        total_score = avg_buy_score + avg_sell_score
+
+        # Grade the total score (stricter thresholds)
+        if total_score > 0.03:
+            grade = "A+"
+            description = "模型对此股票高度有效"
+        elif total_score > 0.015:
+            grade = "A"
+            description = "模型对此股票有效"
+        elif total_score > 0.005:
+            grade = "B"
+            description = "模型对此股票中度有效"
+        elif total_score > 0.0:
+            grade = "C"
+            description = "模型对此股票轻微有效"
+        elif total_score > -0.005:
+            grade = "D"
+            description = "模型对此股票无效"
+        else:
+            grade = "F"
+            description = "模型对此股票反向有效（谨慎使用）"
+
+        return {
+            "total_score": round(total_score, 6),
+            "buy_score": round(avg_buy_score, 6),
+            "sell_score": round(avg_sell_score, 6),
+            "grade": grade,
+            "description": description,
+            "total_signals": total_signals,
+            "buy_signals": buy_count,
+            "sell_signals": sell_count,
+        }
 
     def _fetch_prices(self, symbol: str, market: str) -> pd.DataFrame | None:
         """Fetch close prices from Qlib."""
         try:
             from qlib.data import D
+
             from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
             safe_qlib_init(build_qlib_init_cfg({}, market=market))
@@ -799,6 +1079,9 @@ class SignalGradeEngine:
         symbol: str,
         pred_df: pd.DataFrame,
         start_date: str | None = None,
+        price_df: pd.DataFrame | None = None,
+        market: str = "us",
+        forward_days: int = 10,
     ) -> list[dict[str, Any]]:
         """Generate K-line chart markers for all historical signal grades.
 
@@ -810,8 +1093,38 @@ class SignalGradeEngine:
         - color: green for buy, red for sell
         - shape: "arrowUp" for buy, "arrowDown" for sell
         - text: grade label (AAA, AA, A, V, VV, VVV)
+        - tooltip: rich text with identity, timestamp, rank, score, grade,
+          qualification status, and forward return when available
         """
         grades = self.get_historical_grades(symbol, pred_df, start_date=start_date)
+
+        # Optionally compute forward returns for tooltip enrichment
+        forward_returns: dict[str, float] = {}
+        if price_df is not None and not price_df.empty:
+            close_prices = price_df.iloc[:, 0] if isinstance(price_df, pd.DataFrame) else price_df
+            close_prices = close_prices.dropna()
+            for sg in grades:
+                if not sg.grade:
+                    continue
+                try:
+                    grade_date = pd.Timestamp(sg.date)
+                    if grade_date in close_prices.index:
+                        entry_price = float(close_prices.loc[grade_date])
+                    else:
+                        mask = close_prices.index <= grade_date
+                        if mask.any():
+                            entry_price = float(close_prices.loc[mask].iloc[-1])
+                        else:
+                            continue
+                    future_dates = close_prices.index[close_prices.index > grade_date]
+                    if len(future_dates) >= forward_days:
+                        exit_price = float(close_prices.iloc[
+                            close_prices.index.get_loc(grade_date) + forward_days
+                        ])
+                        if entry_price > 0 and not pd.isna(exit_price):
+                            forward_returns[sg.date] = (exit_price - entry_price) / entry_price
+                except Exception:
+                    continue
 
         grade_colors = {
             "AAA": "#00ff00",  # Bright green
@@ -837,6 +1150,21 @@ class SignalGradeEngine:
                 continue
 
             is_buy = sg.grade in ("AAA", "AA", "A")
+            grade_name = GRADE_NAMES.get(sg.grade, "")
+
+            # Build rich tooltip
+            tooltip_parts = [
+                f"{symbol} | {sg.date}",
+                f"Grade: {sg.grade} ({grade_name})",
+                f"Rank: {sg.rank}/{sg.total_stocks} (P{sg.percentile:.0f})",
+                f"Score: {sg.score:.4f}",
+            ]
+            fwd_ret = forward_returns.get(sg.date)
+            if fwd_ret is not None:
+                tooltip_parts.append(f"{forward_days}d Return: {fwd_ret:+.2%}")
+            qualification = "qualified" if sg.grade else "ungraded"
+            tooltip_parts.append(f"Status: {qualification}")
+
             markers.append({
                 "time": sg.date,
                 "position": "belowBar" if is_buy else "aboveBar",
@@ -844,6 +1172,7 @@ class SignalGradeEngine:
                 "shape": "arrowUp" if is_buy else "arrowDown",
                 "text": sg.grade,
                 "size": grade_sizes.get(sg.grade, 1),
+                "tooltip": " | ".join(tooltip_parts),
             })
 
         return markers

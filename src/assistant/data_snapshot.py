@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 import time
+import uuid
 from pathlib import Path
+
+from src.data.snapshot import DataSnapshot
+from src.data.snapshot_manifest import SnapshotManifest
 
 
 def read_latest_calendar_day(provider_dir: str | Path, *, freq: str = "day") -> str | None:
@@ -29,6 +34,7 @@ def read_latest_calendar_day(provider_dir: str | Path, *, freq: str = "day") -> 
 
 
 def build_data_snapshot_id(*, dataset_key: str, freq: str, latest_calendar_day: str) -> str:
+    """Legacy date-marker adapter. This ID is never authoritative."""
     dataset_key = str(dataset_key or "").strip()
     freq = str(freq or "").strip()
     latest_calendar_day = str(latest_calendar_day or "").strip()
@@ -41,6 +47,35 @@ def build_data_snapshot_id(*, dataset_key: str, freq: str, latest_calendar_day: 
     return f"{dataset_key}-{freq}-{latest_calendar_day}"
 
 
+def write_latest_manifest_file(
+    *, output_path: str | Path, dataset_key: str, manifest: SnapshotManifest
+) -> dict:
+    """Atomically persist an exact manifest marker for compatibility readers."""
+    if manifest.identity_version < 2 or manifest.computed_snapshot_id() != manifest.snapshot_id:
+        raise ValueError("manifest identity mismatch")
+    payload = {
+        "dataset_key": str(dataset_key),
+        "snapshot_id": manifest.snapshot_id,
+        "authoritative": True,
+        "manifest": manifest.to_dict(),
+    }
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output_path.parent / f".{output_path.name}.{uuid.uuid4().hex}.tmp"
+    temporary.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    os.replace(temporary, output_path)
+    return payload
+
+
+def resolve_snapshot_provider(
+    snapshot_id: str, *, snapshot_store: str | Path
+) -> Path:
+    """Resolve and verify a snapshot for training/backtest/inference use."""
+    return DataSnapshot.resolve_snapshot(snapshot_id, store=snapshot_store).provider_path
+
+
 def write_latest_snapshot_file(
     *,
     output_path: str | Path,
@@ -50,8 +85,10 @@ def write_latest_snapshot_file(
     latest_calendar_day: str,
 ) -> dict:
     """
-    Write a small JSON marker describing the latest data snapshot.
-    This is a lightweight stepping stone toward a full snapshot manager.
+    Write a legacy date-only marker for compatibility callers.
+
+    New runtime consumers must use ``write_latest_manifest_file`` and
+    ``resolve_snapshot_provider``.
     """
     snapshot_id = build_data_snapshot_id(
         dataset_key=dataset_key,

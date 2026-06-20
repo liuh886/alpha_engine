@@ -29,7 +29,7 @@ class CustomEncoder(json.JSONEncoder):
         if hasattr(obj, "to_dict"):
             try:
                 return obj.to_dict()
-            except:
+            except Exception:
                 pass
         return str(obj)
 
@@ -74,7 +74,7 @@ def parse_positions(positions_obj):
                 clean_str = clean_str.replace("'", '"')
                 parsed = json.loads(clean_str)
                 pos_dict = parsed.get("position", {})
-            except:
+            except Exception:
                 continue
         else:
             pos_dict = pos_data
@@ -108,7 +108,7 @@ def load_strategy_profile_for_run(run_dir: Path, params: dict, project_root: Pat
     if snap.exists():
         try:
             return json.loads(snap.read_text(encoding="utf-8"))
-        except:
+        except Exception:
             pass
 
     prof_path_str = params.get("profile") or "configs/strategy_profile.json"
@@ -119,7 +119,7 @@ def load_strategy_profile_for_run(run_dir: Path, params: dict, project_root: Pat
     if p.exists():
         try:
             return json.loads(p.read_text(encoding="utf-8"))
-        except:
+        except Exception:
             pass
     return {}
 
@@ -271,7 +271,7 @@ def load_run_data(run_dir: Path) -> dict:
                             sig_analysis[key] = {
                                 dt.strftime("%Y-%m-%d"): float(v) for dt, v in s.items()
                             }
-                except:
+                except Exception:
                     pass
 
     return {
@@ -330,11 +330,13 @@ def upsert_model_registry_to_metadata_db(
                 idx.upsert_entry(m)
                 count += 1
             return count
-        except:
+        except Exception:
             return 0
 
     if model_entry and db_path:
         try:
+            # Extract backtest metrics from the model entry's data.indicators
+            indicators = (model_entry.get("data") or {}).get("indicators") or {}
             ModelRegistryIndex(db_path=db_path).upsert_entry(
                 {
                     "id": model_entry["id"],
@@ -343,10 +345,11 @@ def upsert_model_registry_to_metadata_db(
                     "market": model_entry["market"],
                     "created_at": model_entry["date"],
                     "params": model_entry["params"],
+                    "backtest": {"metrics": indicators} if indicators else None,
                 }
             )
             return 1
-        except:
+        except Exception:
             return 0
     return 0
 
@@ -377,7 +380,7 @@ def upsert_equity_curves_to_metadata_db(
                 run_id_or_data, report_normal
             )
             return 1
-        except:
+        except Exception:
             return 0
     return 0
 
@@ -422,7 +425,7 @@ def build_db():
         if v.get("params_json"):
             try:
                 params = json.loads(v["params_json"])
-            except:
+            except Exception:
                 pass
 
         strategy_profile = {}

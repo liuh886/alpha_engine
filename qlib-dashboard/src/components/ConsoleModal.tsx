@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 interface ConsoleModalProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ export function ConsoleModal({ isOpen, onClose, warnings }: ConsoleModalProps) {
   const fetchJobs = async () => {
     setLoading(true);
     try {
-      const resp = await fetch("/api/jobs?limit=20");
+      const resp = await apiFetch("/api/jobs?limit=20");
       const json = await resp.json();
       if (json.ok) {
         setJobs(json.jobs || []);
@@ -75,7 +76,7 @@ export function ConsoleModal({ isOpen, onClose, warnings }: ConsoleModalProps) {
         if (cmdInput.includes("--market cn")) args = ["--market", "cn"];
       }
 
-      const resp = await fetch("/api/system/exec", {
+      const resp = await apiFetch("/api/system/exec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task, args })
@@ -118,7 +119,7 @@ export function ConsoleModal({ isOpen, onClose, warnings }: ConsoleModalProps) {
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] text-left opacity-60">Engine Kernel & Task Scheduler</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-muted/50 transition-all">
+          <Button variant="ghost" size="icon" aria-label="Close console" onClick={onClose} className="rounded-full hover:bg-muted/50 transition-all">
             <X className="h-5 w-5" />
           </Button>
         </header>

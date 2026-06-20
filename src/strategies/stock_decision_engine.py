@@ -18,7 +18,6 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-import numpy as np
 import pandas as pd
 import structlog
 
@@ -54,6 +53,9 @@ DEFAULT_DECISION_CONFIG: dict[str, Any] = {
     "sell_rank_threshold": 50,  # rank >= this → SELL candidate
     "buy_score_threshold": 0.0,
     "sell_score_threshold": -0.1,
+    # Percentile-based thresholds (for excess returns)
+    "buy_percentile_threshold": 70,   # percentile >= this → BUY candidate
+    "sell_percentile_threshold": 30,  # percentile <= this → SELL candidate
     # Factor extremes
     "factor_z_extreme": 2.0,    # |z-score| > this → flagged
     # Confidence weights (must sum to 1.0)
@@ -183,12 +185,6 @@ class StockDecision:
         return result
 
 
-def _round_price(val: float | None) -> float | None:
-    if val is None or (isinstance(val, float) and math.isnan(val)):
-        return None
-    return round(val, 2)
-
-
 # ---------------------------------------------------------------------------
 # Engine
 # ---------------------------------------------------------------------------
@@ -251,7 +247,6 @@ class StockDecisionEngine:
         StockDecision
         """
         symbol = str(symbol).strip().upper()
-        cfg = self.config
 
         # --- 0. Basic score and rank ---
         score = float(pred_score.get(symbol, float("nan")))
@@ -382,6 +377,7 @@ class StockDecisionEngine:
         """Load watchlist tickers for the given market."""
         try:
             from pathlib import Path
+
             import yaml
 
             watchlist_path = Path(__file__).resolve().parents[2] / "configs" / "watchlist.yaml"
@@ -417,15 +413,16 @@ class StockDecisionEngine:
 
         try:
             from qlib.data import D
+
             from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
             safe_qlib_init(build_qlib_init_cfg({}, market=market))
 
             fields = [
                 "$close",
-                f"Mean($close, 20)",
-                f"Std($close/Ref($close,1)-1, 20)",
-                f"Std($close/Ref($close,1)-1, 252)",
+                "Mean($close, 20)",
+                "Std($close/Ref($close,1)-1, 20)",
+                "Std($close/Ref($close,1)-1, 252)",
                 "$amount",
             ]
             df = D.features(
@@ -461,7 +458,7 @@ class StockDecisionEngine:
 
         except Exception as exc:
             logger.warning("guardrail_check_failed", symbol=symbol, error=str(exc))
-            result["overall_passed"] = True  # lenient fallback
+            result["overall_passed"] = False  # safe fallback: block signal when guardrails can't run
             result["error"] = str(exc)
 
         return result
@@ -518,6 +515,7 @@ class StockDecisionEngine:
 
         try:
             from qlib.data import D
+
             from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
             safe_qlib_init(build_qlib_init_cfg({}, market=market))
@@ -589,7 +587,7 @@ class StockDecisionEngine:
         z_extreme = cfg["factor_z_extreme"]
 
         try:
-            from src.research.factor_registry import FactorRegistry, STAGE_ACTIVE
+            from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
 
             registry = FactorRegistry()
             active_factors = registry.list_factors(stage=STAGE_ACTIVE)
@@ -601,6 +599,7 @@ class StockDecisionEngine:
             factors_to_eval = active_factors[:20]
 
             from qlib.data import D
+
             from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
             safe_qlib_init(build_qlib_init_cfg({}, market=market))
@@ -713,9 +712,11 @@ class StockDecisionEngine:
         1. Risk flags (stop-loss, trailing stop) → SELL
         2. Guardrail failure → SELL
         3. MA cross-under → SELL
-        4. Model signal: top rank + positive score → BUY
-        5. Model signal: bottom rank or negative score → SELL
+        4. Model signal: top percentile → BUY
+        5. Model signal: bottom percentile → SELL
         6. Otherwise → HOLD
+
+        Note: Uses percentile-based thresholds for excess returns labels.
         """
         cfg = self.config
 
@@ -731,13 +732,22 @@ class StockDecisionEngine:
         if ma_signal and "死叉" in ma_signal:
             return "SELL"
 
-        # 4. Model signal
-        if not math.isnan(score) and rank is not None:
-            # BUY: top rank + positive score
-            if rank < cfg["buy_rank_topk"] and score > cfg["buy_score_threshold"]:
+        # 4. Model signal (percentile-based for excess returns)
+        if not math.isnan(score) and rank is not None and total_stocks > 0:
+            # Calculate percentile (0-100, higher = better)
+            percentile = (1 - rank / total_stocks) * 100
+
+            # BUY: top percentile
+            if percentile >= cfg.get("buy_percentile_threshold", 70):
                 return "BUY"
 
-            # SELL: bottom rank or very negative score
+            # SELL: bottom percentile
+            if percentile <= cfg.get("sell_percentile_threshold", 30):
+                return "SELL"
+
+            # Also check absolute thresholds (for backward compatibility)
+            if rank < cfg["buy_rank_topk"] and score > cfg["buy_score_threshold"]:
+                return "BUY"
             if rank >= cfg["sell_rank_threshold"]:
                 return "SELL"
             if score < cfg["sell_score_threshold"]:
@@ -925,6 +935,7 @@ class StockDecisionEngine:
         """
         try:
             from qlib.data import D
+
             from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
             safe_qlib_init(build_qlib_init_cfg({}, market=market))
@@ -953,7 +964,7 @@ class StockDecisionEngine:
             high = float(last.iloc[1]) if pd.notna(last.iloc[1]) else None
             low = float(last.iloc[2]) if pd.notna(last.iloc[2]) else None
             ma20 = float(last.iloc[3]) if pd.notna(last.iloc[3]) else None
-            ma60 = float(last.iloc[4]) if pd.notna(last.iloc[4]) else None
+            float(last.iloc[4]) if pd.notna(last.iloc[4]) else None
             high_20d = float(last.iloc[5]) if pd.notna(last.iloc[5]) else None
             low_20d = float(last.iloc[6]) if pd.notna(last.iloc[6]) else None
 
@@ -1022,11 +1033,11 @@ class StockDecisionEngine:
             tr_values = []
             for i in range(1, len(df)):
                 h = highs.iloc[i]
-                l = lows.iloc[i]
+                low = lows.iloc[i]
                 pc = closes.iloc[i - 1]
-                if any(pd.isna(v) for v in [h, l, pc]):
+                if any(pd.isna(v) for v in [h, low, pc]):
                     continue
-                tr = max(h - l, abs(h - pc), abs(l - pc))
+                tr = max(h - low, abs(h - pc), abs(low - pc))
                 tr_values.append(tr)
 
             if len(tr_values) < period:

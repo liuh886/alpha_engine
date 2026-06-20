@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 from src.common.paths import RUNS_DIR
+from src.workflows.commands import WorkflowCommandEnvelope, build_workflow_commands
 
 
 class TrainingService:
@@ -31,20 +32,17 @@ class TrainingService:
         job_id = uuid.uuid4().hex
         log_path = RUNS_DIR / f"dashboard_train_{market}_{job_id}.log"
 
-        cmd = [
-            self._python_exe,
-            "-m",
-            "src.orchestrator",
-            "run",
-            "--market",
-            market,
-            "--model_type",
-            model_type,
-            "--profile",
-            profile_path,
-            "--tag",
-            tag,
-        ]
+        command_envelope = WorkflowCommandEnvelope.from_backtest_request(
+            market=market,
+            model_type=model_type,
+            profile_path=profile_path,
+            mode="train",
+            tag=tag,
+        )
+        commands = build_workflow_commands(
+            python_exe=self._python_exe,
+            envelopes=[command_envelope],
+        )
 
         return {
             "id": job_id,
@@ -55,5 +53,7 @@ class TrainingService:
             "status": "queued",
             "created_at": time.time(),
             "log_path": str(log_path),
-            "commands": [cmd],
+            "command_envelopes": [command_envelope.to_dict()],
+            "commands": commands,
         }
+

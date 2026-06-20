@@ -4,9 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ComposedChart, Cell, CartesianGrid } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { useNameMap } from '@/lib/useNameMap';
 import type { Position, ReportRow } from '@/lib/types';
 
 export function PositionsTable({ positions, report }: { positions: Position[], report?: ReportRow[] }) {
+  const { getName } = useNameMap();
   // Get unique dates from positions
   const dates = useMemo(() => Array.from(new Set(positions.map(p => p.date))).sort(), [positions]);
   const [selectedDateIdx, setSelectedDateIdx] = useState(dates.length - 1);
@@ -57,7 +59,7 @@ export function PositionsTable({ positions, report }: { positions: Position[], r
         </CardHeader>
         <CardContent className="h-[250px] p-4 pt-6">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={report}>
+            <ComposedChart data={report || []}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
               <XAxis dataKey="date" tickFormatter={(d) => format(parseISO(d), 'MM/yy')} minTickGap={30} tick={{ fontSize: 8 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 8 }} axisLine={false} tickLine={false} width={30} />
@@ -137,8 +139,8 @@ export function PositionsTable({ positions, report }: { positions: Position[], r
                     >
                       <td className="px-4 py-2 flex-1 flex items-center">
                         <div className="flex flex-col">
-                          <span className="font-bold text-primary tracking-tight leading-tight">{pos.instrument_label || pos.instrument}</span>
-                          {pos.instrument_label && <span className="text-[9px] text-muted-foreground font-mono opacity-60 leading-tight">{pos.instrument}</span>}
+                          <span className="font-bold text-primary tracking-tight leading-tight">{pos.instrument_label || getName(pos.instrument)}</span>
+                          <span className="text-[9px] text-muted-foreground font-mono opacity-60 leading-tight">{pos.instrument}</span>
                         </div>
                       </td>
                       <td className="px-4 py-2 text-right flex-1 flex items-center justify-end">

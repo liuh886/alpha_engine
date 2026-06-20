@@ -10,6 +10,13 @@ from src.common.paths import RUNS_DIR
 router = APIRouter(tags=["arena"])
 
 
+@router.get("/list")
+def list_arenas(market: str | None = Query(None)):
+    idx = get_arena_index()
+    arenas = idx.list_arenas(market=market)
+    return {"ok": True, "arenas": arenas}
+
+
 @router.get("/leaderboard")
 def get_arena_leaderboard(
     arena_id: str | None = Query(None),

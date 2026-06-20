@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 interface AlphaComponent {
   name: string;
@@ -30,7 +31,7 @@ export function AlphaDecomposition({ runId }: { runId: string }) {
   useEffect(() => {
     if (!runId) return;
     setLoading(true);
-    fetch(`/api/backtest/${encodeURIComponent(runId)}/alpha-decomposition`)
+    apiFetch(`/api/backtest/${encodeURIComponent(runId)}/alpha-decomposition`)
       .then(r => r.json())
       .then(json => {
         if (json.ok && json.components?.length) setData(json);

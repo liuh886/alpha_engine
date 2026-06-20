@@ -59,7 +59,7 @@ def run_simulation(market, model, top_k=10, initial_capital=100000000):
             res["close"] = df.loc[X.index, "close"]
             res["instrument"] = t
             all_data.append(res)
-        except:
+        except Exception:
             continue
 
     if not all_data:

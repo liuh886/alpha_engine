@@ -29,7 +29,7 @@ function nodeText(children: ReactNode): string {
   if (typeof children === "string" || typeof children === "number") return String(children);
   if (Array.isArray(children)) return children.map((x) => nodeText(x)).join("");
   if (children && typeof children === "object" && children !== null && "props" in children) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     return nodeText((children as any).props?.children);
   }
   return "";

@@ -18,12 +18,9 @@ from scipy import stats
 from src.common.logging import get_logger
 from src.research.factor_evaluator import DEFAULT_GATES, evaluate_factor
 from src.research.factor_library import (
-    COMPOSITE_LIBRARY,
-    CROSS_FIELD_LIBRARY,
     FACTOR_LIBRARY,
     MEAN_REVERSION_LIBRARY,
     MOMENTUM_LIBRARY,
-    TECHNICAL_LIBRARY,
     VOLATILITY_LIBRARY,
     VOLUME_LIBRARY,
 )
@@ -240,7 +237,7 @@ def scan_factor_pool(
     factor_pool: list[dict] | None = None,
     market: str = "us",
     start_date: str = "2021-01-01",
-    end_date: str = "2025-12-31",
+    end_date: str = None,
     train_end: str | None = None,
     gates: dict | None = None,
     max_workers: int = 4,
@@ -284,6 +281,8 @@ def scan_factor_pool(
     -------
     ScanReport
     """
+    from src.common.dates import default_end_date
+    end_date = end_date or default_end_date()
     # Resolve the factor pool: explicit path > explicit list > default library
     if pool_path:
         from src.research.factor_library import load_factor_pool_from_yaml

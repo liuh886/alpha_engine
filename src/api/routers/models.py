@@ -1,58 +1,119 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
 import structlog
+from fastapi import APIRouter, Query
+from fastapi import Path as ApiPath
+from fastapi.responses import JSONResponse
 
 from src.api.dependencies import get_model_index, get_model_service
+from src.api.schemas.release_contracts import (
+    IDENTIFIER_PATTERN,
+    ContractAPIRoute,
+    Market,
+    ModelDeleteRequestV1,
+    ModelPromotionRequestV1,
+    error_response,
+)
 
 logger = structlog.get_logger()
 
-router = APIRouter(tags=["models"])
+router = APIRouter(tags=["models"], route_class=ContractAPIRoute)
 
 
 @router.get("")
-def list_models(limit: int = Query(100), market: str | None = None):
+def list_models(
+    limit: int = Query(100, ge=1, le=200),
+    market: Market | None = Query(None),
+):
     try:
-        limit = int(limit)
+        versions = get_model_index().list_versions(
+            limit=limit,
+            market=market.value if market else None,
+        )
+        return {"ok": True, "schema_version": "v1", "versions": versions}
     except Exception:
-        limit = 100
-    if limit <= 0:
-        limit = 100
-    versions = get_model_index().list_versions(limit=limit, market=market)
-    return {"ok": True, "versions": versions}
-
-
-@router.get("/{version_id}")
-def get_model_details(version_id: str):
-    try:
-        details = get_model_service().get_model_details(version_id)
-        return {"ok": True, **details}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.exception("model_list_failed")
+        return error_response(
+            status_code=500,
+            error_code="API_INTERNAL_ERROR",
+            message="Unable to list model artifacts",
+        )
 
 
 @router.post("/promote")
-def promote_model(payload: dict):
-    version_id = str(payload.get("version_id") or "").strip()
-    stage = str(payload.get("stage") or "RECOMMENDED").strip()
-    if not version_id:
-        raise HTTPException(status_code=400, detail="missing version_id")
-    result = get_model_service().promote_model(version_id, stage)
-    if not result["ok"] and result.get("gate_failures"):
-        return {"ok": False, "gate_failures": result["gate_failures"]}
-    return {"ok": result["ok"]}
+def promote_model(payload: ModelPromotionRequestV1):
+    artifact_id = payload.artifact_id
+    try:
+        if get_model_index().get_version(artifact_id) is None:
+            return error_response(
+                status_code=404,
+                error_code="MODEL_ARTIFACT_NOT_FOUND",
+                message="Model artifact not found",
+                details={"artifact_id": artifact_id},
+            )
+
+        result = get_model_service().promote_model(artifact_id, payload.stage.value)
+        if not result.get("ok"):
+            return error_response(
+                status_code=409,
+                error_code="MODEL_PROMOTION_CONFLICT",
+                message="Model artifact cannot transition to the requested stage",
+                details={
+                    "artifact_id": artifact_id,
+                    "stage": payload.stage.value,
+                    "gate_failures": result.get("gate_failures", []),
+                },
+            )
+        return {
+            "ok": True,
+            "schema_version": "v1",
+            "artifact_id": artifact_id,
+            "stage": payload.stage.value,
+        }
+    except Exception:
+        logger.exception("model_promotion_failed", artifact_id=artifact_id)
+        return error_response(
+            status_code=500,
+            error_code="API_INTERNAL_ERROR",
+            message="Unable to promote model artifact",
+        )
 
 
 @router.post("/delete")
-def delete_model(payload: dict):
-    version_id = str(payload.get("version_id") or "").strip()
-    if not version_id:
-        raise HTTPException(status_code=400, detail="missing version_id")
-    ok = get_model_service().delete_model(version_id)
-    return {"ok": ok}
+def delete_model(payload: ModelDeleteRequestV1):
+    artifact_id = payload.artifact_id
+    try:
+        if get_model_index().get_version(artifact_id) is None:
+            return error_response(
+                status_code=404,
+                error_code="MODEL_ARTIFACT_NOT_FOUND",
+                message="Model artifact not found",
+                details={"artifact_id": artifact_id},
+            )
+
+        if not get_model_service().delete_model(artifact_id):
+            return error_response(
+                status_code=409,
+                error_code="MODEL_DELETE_CONFLICT",
+                message="Model artifact could not be deleted",
+                details={"artifact_id": artifact_id},
+            )
+        return {
+            "ok": True,
+            "schema_version": "v1",
+            "artifact_id": artifact_id,
+            "deleted": True,
+        }
+    except Exception:
+        logger.exception("model_delete_failed", artifact_id=artifact_id)
+        return error_response(
+            status_code=500,
+            error_code="API_INTERNAL_ERROR",
+            message="Unable to delete model artifact",
+        )
 
 
 # ------------------------------------------------------------------
@@ -70,13 +131,13 @@ def model_health_check():
     - Whether the model registry has a RECOMMENDED entry
     - Prediction coverage (how many stocks have scores)
     """
-    from src.common.paths import MLRUNS_DIR, ARTIFACTS_DIR
+    from src.common.paths import ARTIFACTS_DIR, MLRUNS_DIR
 
     report: dict = {
         "ok": True,
         "checks": {},
         "warnings": [],
-        "status": "healthy",
+        "status": "ready",
     }
 
     # 1. Check model registry for RECOMMENDED entry
@@ -138,11 +199,20 @@ def model_health_check():
     except Exception as exc:
         report["checks"]["data"] = {"available": False, "error": str(exc)}
 
-    # Determine overall status
-    if report["warnings"]:
-        report["status"] = "degraded" if len(report["warnings"]) <= 2 else "unhealthy"
+    required_checks = (
+        bool(report["checks"].get("recommended_model", {}).get("exists")),
+        bool(report["checks"].get("predictions", {}).get("exists")),
+        bool(report["checks"].get("data", {}).get("available")),
+    )
+    if all(required_checks) and not report["warnings"]:
+        return report
 
-    return report
+    report["ok"] = False
+    report["status"] = "degraded" if any(required_checks) else "blocked"
+    report["error_code"] = (
+        "MODEL_HEALTH_DEGRADED" if report["status"] == "degraded" else "MODEL_HEALTH_BLOCKED"
+    )
+    return JSONResponse(status_code=503, content=report)
 
 
 def _check_prediction_freshness(mlruns_dir: Path, artifacts_dir: Path) -> dict:
@@ -194,15 +264,51 @@ def _check_qlib_data() -> dict:
     """Check if Qlib data is accessible."""
     try:
         from qlib.data import D
+
         from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
         safe_qlib_init(build_qlib_init_cfg({}, market="us"))
 
         # Try a simple data fetch
-        df = D.features(["AAPL"], ["$close"], start_time="2026-01-01", end_time="2026-06-17")
+        from datetime import datetime
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        df = D.features(["AAPL"], ["$close"], start_time="2026-01-01", end_time=end_date)
         if df.empty:
             return {"available": False, "reason": "Empty data returned"}
 
         return {"available": True, "sample_records": len(df)}
     except Exception as exc:
         return {"available": False, "error": str(exc)}
+
+
+@router.get("/{artifact_id}")
+def get_model_details(
+    artifact_id: str = ApiPath(
+        ...,
+        min_length=1,
+        max_length=128,
+        pattern=IDENTIFIER_PATTERN,
+    ),
+):
+    try:
+        details = get_model_service().get_model_details(artifact_id)
+        return {
+            "ok": True,
+            "schema_version": "v1",
+            "artifact_id": artifact_id,
+            **details,
+        }
+    except ValueError:
+        return error_response(
+            status_code=404,
+            error_code="MODEL_ARTIFACT_NOT_FOUND",
+            message="Model artifact not found",
+            details={"artifact_id": artifact_id},
+        )
+    except Exception:
+        logger.exception("model_details_failed", artifact_id=artifact_id)
+        return error_response(
+            status_code=500,
+            error_code="API_INTERNAL_ERROR",
+            message="Unable to load model artifact",
+        )

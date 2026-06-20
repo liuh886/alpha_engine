@@ -29,7 +29,7 @@ def rebuild():
 
             df.to_csv(clean_dir / f.name, index=False)
             valid_count += 1
-        except:
+        except Exception:
             continue
 
     print(f"Cleaned {valid_count} robust CSVs.")

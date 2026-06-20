@@ -16,9 +16,8 @@ Attribution metrics:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -442,7 +441,7 @@ def _estimate_factor_model(
         n_factors = factor_spread_df.shape[1]
         return np.zeros(n_factors), 0.0, np.array([])
 
-    intercept = beta_full[0]
+    beta_full[0]
     betas = beta_full[1:]
 
     # Predicted values and residuals
@@ -465,7 +464,7 @@ def _estimate_factor_model(
 def attribute_returns(
     market: str = "us",
     start_date: str = "2021-01-01",
-    end_date: str = "2025-12-31",
+    end_date: str = None,
     strategy_config: str | None = None,
     factor_ids: list[int] | None = None,
 ) -> AttributionReport:
@@ -490,6 +489,8 @@ def attribute_returns(
     Returns:
         An ``AttributionReport`` with per-factor contributions.
     """
+    from src.common.dates import default_end_date
+    end_date = end_date or default_end_date()
     from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
 
     log.info(
@@ -580,7 +581,7 @@ def attribute_returns(
     # 3. Compute per-factor IC and quintile-spread return series
     # ------------------------------------------------------------------
     # Group by monthly cross-sections
-    cross_sections_raw = _group_by_cross_section(raw_factor_df, freq="ME")
+    _group_by_cross_section(raw_factor_df, freq="ME")
     cross_sections_z = _group_by_cross_section(factor_df, freq="ME")
 
     # Get column mapping
@@ -791,7 +792,7 @@ def attribute_returns(
 def attribute_returns_rolling(
     market: str = "us",
     start_date: str = "2021-01-01",
-    end_date: str = "2025-12-31",
+    end_date: str = None,
     factor_ids: list[int] | None = None,
     window_months: int = 12,
     step_months: int = 3,
@@ -817,6 +818,8 @@ def attribute_returns_rolling(
         A :class:`TimeVaryingAttribution` containing per-window reports,
         factor contribution trends, and human-readable window labels.
     """
+    from src.common.dates import default_end_date
+    end_date = end_date or default_end_date()
     import calendar
 
     def _add_months(dt: datetime, months: int) -> datetime:

@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "LGBM_v1",
-    "description": "Baseline LGBM (alpha158 + momentum/vol/volume features). Biweekly rebalance, TopK=5, min_liquidity=1,000,000, window 2025-01-01 -> latest.",
+    "description": "Sweep baseline: current LGBM (lr=0.05, depth=10, leaves=128)",
     "market": "cn",
     "benchmark": "000300",
     "benchmark_by_market": {
@@ -31,7 +31,7 @@
     "train_window": {
       "train": ["2021-01-01", "2024-12-31"],
       "valid": ["2025-01-01", "2025-12-31"],
-      "test": ["2026-01-01", "2026-04-03"]
+      "test": ["2026-01-01", "2026-06-17"]
     },
     "kwargs": {
       "learning_rate": 0.05,
@@ -47,6 +47,7 @@
     "rebalance_frequency": "biweekly",
     "min_hold_days": 10,
     "sell_on_ma": 60,
+    "vectorized": false,
     "sell_rank_threshold": 20,
     "position_rule": {
       "topk": 5,
@@ -54,6 +55,6 @@
     },
     "capital": 10000,
     "costs_bps": 10,
-    "backtest_window": ["2026-01-01", "2026-04-03"]
+    "backtest_window": ["2026-01-01", "2026-06-17"]
   }
 }

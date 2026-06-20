@@ -62,14 +62,14 @@ def register():
                             tags = meta.get("tags", {})
                             if "cn" in str(tags).lower():
                                 market = "cn"
-                    except:
+                    except Exception:
                         pass
 
                 try:
                     with open(report_path, "rb") as f:
                         df = pickle.load(f)
                     last_date = str(df.index[-1].date())
-                except:
+                except Exception:
                     last_date = "unknown"
 
                 entry = {

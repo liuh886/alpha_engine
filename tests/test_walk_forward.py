@@ -51,7 +51,7 @@ class TestGenerateSplits:
             step_months=3,
         )
         for i in range(1, len(splits)):
-            prev_ve = splits[i - 1][3]
+            splits[i - 1][3]
             curr_vs = splits[i][2]
             # Current test_start should be >= previous test_end minus some tolerance
             # (they can overlap when step < test_window)
@@ -220,11 +220,10 @@ class TestWalkForwardAPI:
 
     def test_start_walk_forward_returns_job_id(self):
         """POST /backtest/walk-forward returns a job_id."""
+        from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
         from src.api.routers.walk_forward import router
-
-        from fastapi import FastAPI
 
         app = FastAPI()
         app.include_router(router)
@@ -249,11 +248,10 @@ class TestWalkForwardAPI:
 
     def test_get_result_unknown_job(self):
         """GET with unknown job_id returns 404."""
+        from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
         from src.api.routers.walk_forward import router
-
-        from fastapi import FastAPI
 
         app = FastAPI()
         app.include_router(router)
@@ -264,11 +262,10 @@ class TestWalkForwardAPI:
 
     def test_get_result_after_submit(self):
         """GET after POST returns the job with pending/running status."""
+        from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
         from src.api.routers.walk_forward import router
-
-        from fastapi import FastAPI
 
         app = FastAPI()
         app.include_router(router)

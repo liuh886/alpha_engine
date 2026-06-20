@@ -1,0 +1,123 @@
+# Alpha Engine – Production Docker Compose
+# ==========================================
+#
+# LAN Exposure Policy
+# -------------------
+# By default the API binds to localhost only (127.0.0.1).  To expose on your
+# LAN set:
+#   ALPHA_ENGINE_BIND_ADDRESS=0.0.0.0
+# in your shell environment or .env file.  LAN exposure means any device on
+# your network can reach the UI and API -- only enable this on trusted
+# networks and always keep TRADING_UI_USER / TRADING_UI_PASSWORD set to
+# strong values.
+#
+# Rollback Procedure
+# ------------------
+# 1. Tag the current image before upgrading:
+#      docker tag alpha-engine:local alpha-engine:previous
+# 2. Upgrade and verify:
+#      docker compose up -d --build
+#      make smoke
+# 3. If the new image fails, roll back:
+#      ALPHA_ENGINE_IMAGE=alpha-engine:previous docker compose up -d
+#
+# The ALPHA_ENGINE_PREVIOUS_IMAGE variable below is a convenience alias;
+# set it to the tag you want to fall back to.
+
+services:
+  api:
+    image: ${ALPHA_ENGINE_IMAGE:-alpha-engine:local}
+    build:
+      context: .
+      target: runtime
+    init: true
+    restart: unless-stopped
+    read_only: true
+    ports:
+      - "${ALPHA_ENGINE_BIND_ADDRESS:-127.0.0.1}:${ALPHA_ENGINE_PORT:-8000}:8000"
+    environment:
+      ALPHA_ENGINE_ENV: production
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      TRADING_UI_USER: ${TRADING_UI_USER:?set TRADING_UI_USER in the shell or Compose environment}
+      TRADING_UI_PASSWORD: ${TRADING_UI_PASSWORD:?set TRADING_UI_PASSWORD in the shell or Compose environment}
+      ALPHA_DEVELOPER_TOKEN: ${ALPHA_DEVELOPER_TOKEN:?set ALPHA_DEVELOPER_TOKEN in the shell or Compose environment}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000}
+    volumes:
+      - alpha-engine-data:/app/data
+      - alpha-engine-artifacts:/app/artifacts
+      - alpha-engine-mlruns:/app/mlruns
+      - alpha-engine-reports:/app/reports
+      - alpha-engine-configs:/app/configs
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "/app/scripts/container-healthcheck.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 30s
+
+  # ---- Backup service (opt-in) ----------------------------------------
+  # Run with:  docker compose --profile backup run backup
+  # Produces a timestamped tarball of all named volumes in ./backups/.
+  backup:
+    image: alpine:3.22
+    profiles: ["backup"]
+    init: true
+    read_only: true
+    volumes:
+      - alpha-engine-data:/data/data:ro
+      - alpha-engine-artifacts:/data/artifacts:ro
+      - alpha-engine-mlruns:/data/mlruns:ro
+      - alpha-engine-reports:/data/reports:ro
+      - alpha-engine-configs:/data/configs:ro
+      - ./backups:/backups
+    command:
+      - sh
+      - -c
+      - |
+        ts=$$(date +%Y%m%d%H%M%S)
+        tar czf /backups/alpha-engine-$$ts.tar.gz -C /data .
+        echo "Backup saved to ./backups/alpha-engine-$$ts.tar.gz"
+
+  # ---- Restore service (opt-in) ----------------------------------------
+  # Run with:  docker compose --profile backup run restore ./backups/alpha-engine-YYYYMMDDHHMMSS.tar.gz
+  # WARNING: overwrites current volume data.
+  restore:
+    image: alpine:3.22
+    profiles: ["backup"]
+    init: true
+    read_only: true
+    volumes:
+      - alpha-engine-data:/data/data
+      - alpha-engine-artifacts:/data/artifacts
+      - alpha-engine-mlruns:/data/mlruns
+      - alpha-engine-reports:/data/reports
+      - alpha-engine-configs:/data/configs
+      - ./backups:/backups:ro
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        if [ -z "$$1" ]; then echo "Usage: docker compose --profile backup run restore ./backups/<file>.tar.gz"; exit 1; fi
+        echo "Restoring from $$1 ..."
+        tar xzf "$$1" -C /data
+        echo "Restore complete."
+    # Pass the backup path as the first argument after the command
+
+volumes:
+  alpha-engine-data:
+    name: ${ALPHA_ENGINE_VOLUME_PREFIX:-alpha-engine}-data
+  alpha-engine-artifacts:
+    name: ${ALPHA_ENGINE_VOLUME_PREFIX:-alpha-engine}-artifacts
+  alpha-engine-mlruns:
+    name: ${ALPHA_ENGINE_VOLUME_PREFIX:-alpha-engine}-mlruns
+  alpha-engine-reports:
+    name: ${ALPHA_ENGINE_VOLUME_PREFIX:-alpha-engine}-reports
+  alpha-engine-configs:
+    name: ${ALPHA_ENGINE_VOLUME_PREFIX:-alpha-engine}-configs

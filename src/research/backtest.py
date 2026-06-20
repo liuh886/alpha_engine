@@ -25,7 +25,12 @@ def run_backtest(
         labels = dataset.prepare(segments="test", col_set="label", data_key=DataHandler.DK_L)
 
     if recorder:
+        # Save both with and without .pkl suffix so PortAnaRecord's
+        # SignalRecord dependency check (which looks for pred.pkl/label.pkl)
+        # passes. R.save_objects uses the key as-is, while SignalRecord.generate
+        # saves as pred.pkl.
         R.save_objects(pred=pred_score, label=labels)
+        R.save_objects(**{"pred.pkl": pred_score, "label.pkl": labels})
         pa_record = PortAnaRecord(recorder, port_analysis_config)
         pa_record.generate()
 

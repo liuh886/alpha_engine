@@ -11,12 +11,13 @@ Endpoints:
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
 import pandas as pd
 import structlog
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 
 logger = structlog.get_logger()
 
@@ -24,9 +25,12 @@ router = APIRouter(prefix="/stock-analysis", tags=["stock-analysis"])
 
 
 def _infer_market(symbol: str) -> str:
-    """Infer market from symbol suffix."""
+    """Infer market from symbol suffix or numeric pattern."""
     s = symbol.strip().upper()
     if s.endswith(".SH") or s.endswith(".SZ"):
+        return "cn"
+    # CN A-share codes are 6-digit numbers
+    if s.isdigit() and len(s) == 6:
         return "cn"
     return "us"
 
@@ -54,17 +58,24 @@ def _load_predictions_and_ranks(market: str):
     try:
         import pickle
         from pathlib import Path
-        from src.common.paths import MLRUNS_DIR, ARTIFACTS_DIR
 
-        # Try to find the recommended model's predictions
+        from src.common.paths import ARTIFACTS_DIR, MLRUNS_DIR
+
+        # Search in multiple directories including root mlruns
+        project_root = Path(__file__).resolve().parents[3]
+        search_dirs = [MLRUNS_DIR, ARTIFACTS_DIR, project_root / "mlruns"]
+
+        # Try to find the recommended model's predictions matching the market
         pred_df = None
         pred_path = None
         pred_mtime = 0.0
 
-        # Strategy 1: look for latest pred.pkl in mlruns
-        if MLRUNS_DIR.exists():
+        # Strategy 1: look for latest pred.pkl in mlruns that matches market
+        for search_dir in search_dirs:
+            if not search_dir.exists():
+                continue
             pred_files = sorted(
-                MLRUNS_DIR.rglob("pred.pkl"),
+                search_dir.rglob("pred.pkl"),
                 key=lambda p: p.stat().st_mtime,
                 reverse=True,
             )
@@ -73,24 +84,40 @@ def _load_predictions_and_ranks(market: str):
                     with pf.open("rb") as f:
                         candidate = pickle.load(f)
                     if isinstance(candidate, pd.DataFrame) and not candidate.empty:
-                        pred_df = candidate
-                        pred_path = pf
-                        pred_mtime = pf.stat().st_mtime
-                        break
+                        # Validate market match
+                        if _validate_market(candidate, market):
+                            pred_df = candidate
+                            pred_path = pf
+                            pred_mtime = pf.stat().st_mtime
+                            break
                 except Exception:
                     continue
+            if pred_df is not None:
+                break
 
-        # Strategy 2: check artifacts directory
+        # Also check for 'pred' files without extension (Qlib output)
         if pred_df is None:
-            artifact_pred = ARTIFACTS_DIR / "pred.pkl"
-            if artifact_pred.exists():
-                try:
-                    with artifact_pred.open("rb") as f:
-                        pred_df = pickle.load(f)
-                    pred_path = artifact_pred
-                    pred_mtime = artifact_pred.stat().st_mtime
-                except Exception:
-                    pass
+            for search_dir in search_dirs:
+                if not search_dir.exists():
+                    continue
+                for pred_file in sorted(
+                    search_dir.rglob("pred"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )[:5]:
+                    try:
+                        with pred_file.open("rb") as f:
+                            candidate = pickle.load(f)
+                        if isinstance(candidate, pd.DataFrame) and not candidate.empty:
+                            if hasattr(candidate.index, 'get_level_values') and 'datetime' in candidate.index.names:
+                                pred_df = candidate
+                                pred_path = pred_file
+                                pred_mtime = pred_file.stat().st_mtime
+                                break
+                    except Exception:
+                        continue
+                if pred_df is not None:
+                    break
 
         if pred_df is None or pred_df.empty:
             return None, None, None
@@ -130,6 +157,7 @@ def _load_watchlist(market: str) -> list[str]:
     """Load watchlist tickers for the given market."""
     try:
         from pathlib import Path
+
         import yaml
 
         watchlist_path = Path(__file__).resolve().parents[3] / "configs" / "watchlist.yaml"
@@ -223,9 +251,10 @@ def get_stock_factors(
     clean = _clean_symbol(symbol)
 
     try:
-        from src.research.factor_registry import FactorRegistry, STAGE_ACTIVE
         from qlib.data import D
+
         from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
+        from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
 
         safe_qlib_init(build_qlib_init_cfg({}, market=resolved_market))
 
@@ -318,6 +347,7 @@ def get_watchlist_summary(
     price_map: dict[str, dict] = {}
     try:
         from qlib.data import D
+
         from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
         safe_qlib_init(build_qlib_init_cfg({}, market=market))
@@ -367,7 +397,7 @@ def get_watchlist_summary(
                 "symbol": ticker,
                 "signal": decision.signal,
                 "confidence": round(decision.confidence, 3),
-                "score": round(decision.score, 4) if decision.score == decision.score else None,
+                "score": round(decision.score, 4) if not math.isnan(decision.score) else None,
                 "rank": decision.rank,
                 "risk_flags": decision.risk_flags,
             }
@@ -416,7 +446,6 @@ def get_data_freshness(market: str = Query("us", description="us or cn")):
     and overall data health status.
     """
     try:
-        from src.common.paths import MLRUNS_DIR
 
         result: dict = {
             "ok": True,
@@ -429,6 +458,7 @@ def get_data_freshness(market: str = Query("us", description="us or cn")):
         # Check Qlib data
         try:
             from qlib.data import D
+
             from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
             safe_qlib_init(build_qlib_init_cfg({}, market=market))
@@ -452,16 +482,18 @@ def get_data_freshness(market: str = Query("us", description="us or cn")):
             result["sources"]["qlib"] = {"available": False, "error": str(exc)}
 
         # Check predictions
-        import pickle
-        from src.common.paths import MLRUNS_DIR as _ml, ARTIFACTS_DIR as _ar
+        from datetime import datetime as _dt
+
+        from src.common.paths import ARTIFACTS_DIR as _ar
+        from src.common.paths import MLRUNS_DIR as _ml
 
         best_pred_age = None
         for search_dir in [_ml, _ar]:
             if not search_dir.exists():
                 continue
             for pred_file in search_dir.rglob("pred.pkl"):
-                mt = datetime.fromtimestamp(pred_file.stat().st_mtime)
-                age = (datetime.now() - mt).days
+                mt = _dt.fromtimestamp(pred_file.stat().st_mtime)
+                age = (_dt.now() - mt).days
                 if best_pred_age is None or age < best_pred_age:
                     best_pred_age = age
 
@@ -573,7 +605,6 @@ class _SignalHistoryStore:
 
     def __init__(self, db_path: str | None = None):
         if db_path is None:
-            from pathlib import Path
             from src.common.paths import ARTIFACTS_DIR
 
             db_path = str(ARTIFACTS_DIR / "signal_history.db")
@@ -803,7 +834,7 @@ def compile_nl_strategy(req: NLStrategyRequest):
     # Query factor registry for matching Active factors
     recommended_factors: list[dict] = []
     try:
-        from src.research.factor_registry import FactorRegistry, STAGE_ACTIVE
+        from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
 
         registry = FactorRegistry()
         all_active = registry.list_factors(stage=STAGE_ACTIVE)
@@ -951,6 +982,11 @@ def _validate_market(pred_df: pd.DataFrame, expected_market: str) -> bool:
         return True  # Assume valid if can't check
 
 
+# Cache for loaded predictions: {cache_key: (pred_df, timestamp)}
+_pred_cache: dict[str, tuple[pd.DataFrame, float]] = {}
+_PRED_CACHE_TTL = 300  # 5 minutes
+
+
 def _load_full_predictions(market: str, run_id: str | None = None):
     """Load the full prediction DataFrame (not just latest cross-section).
 
@@ -965,8 +1001,8 @@ def _load_full_predictions(market: str, run_id: str | None = None):
     """
     try:
         import pickle
-        from pathlib import Path
-        from src.common.paths import MLRUNS_DIR, ARTIFACTS_DIR
+
+        from src.common.paths import ARTIFACTS_DIR, MLRUNS_DIR
 
         # If specific run_id requested, find it directly
         if run_id:
@@ -997,7 +1033,11 @@ def _load_full_predictions(market: str, run_id: str | None = None):
                             continue
 
         # Default: find the latest pred.pkl that matches the market
-        for search_dir in [MLRUNS_DIR, ARTIFACTS_DIR]:
+        from pathlib import Path as _Path
+        project_root = _Path(__file__).resolve().parents[3]
+        search_dirs = [MLRUNS_DIR, ARTIFACTS_DIR, project_root / "mlruns"]
+
+        for search_dir in search_dirs:
             if not search_dir.exists():
                 continue
             pred_files = sorted(
@@ -1018,7 +1058,7 @@ def _load_full_predictions(market: str, run_id: str | None = None):
                     continue
 
         # Also check for 'pred' files without extension (Qlib output)
-        for search_dir in [MLRUNS_DIR]:
+        for search_dir in search_dirs:
             if not search_dir.exists():
                 continue
             for pred_file in sorted(
@@ -1042,6 +1082,33 @@ def _load_full_predictions(market: str, run_id: str | None = None):
         return None
 
 
+def _load_predictions_with_cache(market: str, run_id: str | None = None):
+    """Load predictions with caching wrapper."""
+    import time
+
+    cache_key = f"{market}:{run_id or 'latest'}"
+    now = time.time()
+
+    # Check cache
+    if cache_key in _pred_cache:
+        pred_df, cached_at = _pred_cache[cache_key]
+        if now - cached_at < _PRED_CACHE_TTL:
+            return pred_df
+
+    # Load fresh
+    pred_df = _load_full_predictions(market, run_id)
+
+    # Cache result
+    if pred_df is not None:
+        _pred_cache[cache_key] = (pred_df, now)
+        # Evict old entries
+        if len(_pred_cache) > 10:
+            oldest_key = min(_pred_cache, key=lambda k: _pred_cache[k][1])
+            del _pred_cache[oldest_key]
+
+    return pred_df
+
+
 @router.get("/{symbol}/signal-grade")
 def get_signal_grade(
     symbol: str,
@@ -1062,7 +1129,7 @@ def get_signal_grade(
 
     from src.strategies.signal_grade_engine import SignalGradeEngine
 
-    pred_df = _load_full_predictions(resolved_market)
+    pred_df = _load_predictions_with_cache(resolved_market)
     if pred_df is None:
         raise HTTPException(status_code=404, detail="No model predictions found.")
 
@@ -1094,11 +1161,18 @@ def get_signal_performance(
     step_size: int = Query(10, description="Grade tier size"),
     forward_days: int = Query(10, description="Forward return period in days"),
     run_id: str = Query(None, description="Specific model run ID (optional)"),
+    model_version_id: str = Query("", description="Model version identifier"),
+    policy_version: str = Query("", description="Grade policy version"),
 ):
     """Get historical signal performance for a stock.
 
     Returns cumulative returns for each signal grade (AAA/AA/A/V/VV/VVV)
     based on actual price movements after each signal occurrence.
+
+    Now includes evidence fields: model_version_id, policy_version,
+    direction_adjusted_hit_rate, benchmark_excess_return, cost_adjusted_return,
+    confidence_interval_95, qualification_status, failure_reasons.
+    Also returns per-grade screener counts and evaluation period.
     """
     if not symbol or not symbol.strip():
         raise HTTPException(status_code=400, detail="symbol is required")
@@ -1106,9 +1180,9 @@ def get_signal_performance(
     resolved_market = market or _infer_market(symbol)
     clean = _clean_symbol(symbol)
 
-    from src.strategies.signal_grade_engine import SignalGradeEngine
+    from src.strategies.signal_grade_engine import GRADES, SignalGradeEngine
 
-    pred_df = _load_full_predictions(resolved_market, run_id=run_id)
+    pred_df = _load_predictions_with_cache(resolved_market, run_id=run_id)
     if pred_df is None:
         raise HTTPException(status_code=404, detail="No model predictions found.")
 
@@ -1120,7 +1194,74 @@ def get_signal_performance(
             pred_df=pred_df,
             market=resolved_market,
             forward_days=forward_days,
+            model_version_id=model_version_id or (run_id or ""),
+            policy_version=policy_version or f"step{step_size}",
         )
+
+        # Compute total score
+        total_score = engine.compute_total_score(performance)
+
+        # Compute evaluation period from pred_df
+        eval_start = None
+        eval_end = None
+        if isinstance(pred_df.index, pd.MultiIndex) and "datetime" in pred_df.index.names:
+            dates = pred_df.index.get_level_values("datetime")
+            eval_start = dates.min().strftime("%Y-%m-%d")
+            eval_end = dates.max().strftime("%Y-%m-%d")
+
+        # Per-grade screener counts
+        grade_counts: dict[str, dict[str, int]] = {}
+        total_count = 0
+        eligible_count = 0
+        graded_count = 0
+        neutral_count = 0
+        unqualified_count = 0
+        excluded_count = 0
+        failed_count = 0
+
+        for g in GRADES:
+            p = performance.get(g)
+            if p is None:
+                grade_counts[g] = {"occurrences": 0, "qualified": 0, "unqualified": 0}
+                continue
+            occ = p.total_occurrences
+            total_count += occ
+            is_qualified = p.qualification_status == "qualified"
+            is_unqualified = p.qualification_status == "unqualified"
+            is_excluded = p.qualification_status == "excluded"
+            is_failed = p.qualification_status == "failed"
+
+            grade_counts[g] = {
+                "occurrences": occ,
+                "qualified": 1 if is_qualified else 0,
+                "unqualified": 1 if is_unqualified else 0,
+                "excluded": 1 if is_excluded else 0,
+                "failed": 1 if is_failed else 0,
+            }
+            if occ > 0:
+                eligible_count += 1
+            if is_qualified:
+                graded_count += occ
+            elif is_unqualified:
+                unqualified_count += occ
+            elif is_excluded:
+                excluded_count += occ
+            elif is_failed:
+                failed_count += occ
+
+        # Stocks with no grade get "neutral"
+        # Count neutral as total - (graded + unqualified + excluded + failed)
+        neutral_count = max(0, total_count - graded_count - unqualified_count - excluded_count - failed_count)
+
+        screener_counts = {
+            "total": total_count,
+            "eligible": eligible_count,
+            "graded": graded_count,
+            "neutral": neutral_count,
+            "unqualified": unqualified_count,
+            "excluded": excluded_count,
+            "failed": failed_count,
+        }
 
         return {
             "ok": True,
@@ -1128,7 +1269,16 @@ def get_signal_performance(
             "market": resolved_market,
             "step_size": step_size,
             "forward_days": forward_days,
+            "model_version_id": model_version_id or (run_id or "latest"),
+            "policy_version": policy_version or f"step{step_size}",
+            "evaluation_period": {
+                "start": eval_start,
+                "end": eval_end,
+            },
+            "screener_counts": screener_counts,
+            "grade_counts": grade_counts,
             "performance": {k: v.to_dict() for k, v in performance.items()},
+            "total_score": total_score,
         }
     except Exception as exc:
         logger.error("signal_performance_failed", symbol=symbol, error=str(exc))
@@ -1142,11 +1292,15 @@ def get_signal_markers(
     step_size: int = Query(10, description="Grade tier size"),
     start_date: str = Query(None, description="Start date for markers (ISO format)"),
     run_id: str = Query(None, description="Specific model run ID (optional)"),
+    forward_days: int = Query(10, description="Forward return period for tooltips"),
+    include_returns: bool = Query(True, description="Include forward returns in tooltips"),
 ):
     """Get K-line chart markers for all historical signal grades.
 
     Returns a list of markers compatible with lightweight-charts addMarkers API.
-    Each marker has: time, position, color, shape, text (grade), size.
+    Each marker has: time, position, color, shape, text (grade), size, tooltip.
+    The tooltip includes identity, timestamp, rank, score, grade, qualification,
+    and forward return (when available).
     """
     if not symbol or not symbol.strip():
         raise HTTPException(status_code=400, detail="symbol is required")
@@ -1156,14 +1310,36 @@ def get_signal_markers(
 
     from src.strategies.signal_grade_engine import SignalGradeEngine
 
-    pred_df = _load_full_predictions(resolved_market, run_id=run_id)
+    pred_df = _load_predictions_with_cache(resolved_market, run_id=run_id)
     if pred_df is None:
         raise HTTPException(status_code=404, detail="No model predictions found.")
 
     engine = SignalGradeEngine(step_size=step_size)
 
     try:
-        markers = engine.get_kline_markers(clean, pred_df, start_date=start_date)
+        # Optionally fetch price data for forward return tooltips
+        price_df = None
+        if include_returns:
+            try:
+                from qlib.data import D
+
+                from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
+
+                safe_qlib_init(build_qlib_init_cfg({}, market=resolved_market))
+                price_df = D.features(
+                    [clean],
+                    ["$close"],
+                    start_time=pd.Timestamp.now() - pd.Timedelta(days=365 * 3),
+                )
+                if hasattr(price_df.index, 'get_level_values') and 'instrument' in price_df.index.names:
+                    price_df = price_df.xs(clean, level="instrument")
+            except Exception:
+                price_df = None
+
+        markers = engine.get_kline_markers(
+            clean, pred_df, start_date=start_date,
+            price_df=price_df, market=resolved_market, forward_days=forward_days,
+        )
 
         return {
             "ok": True,
@@ -1199,7 +1375,7 @@ def get_daily_signal_series(
 
     from src.strategies.signal_grade_engine import SignalGradeEngine
 
-    pred_df = _load_full_predictions(resolved_market, run_id=run_id)
+    pred_df = _load_predictions_with_cache(resolved_market, run_id=run_id)
     if pred_df is None:
         raise HTTPException(status_code=404, detail="No model predictions found.")
 
@@ -1253,9 +1429,9 @@ def get_stock_ranking(
     - mean_return: Sort by mean return of a specific grade
     - cumulative_return: Sort by cumulative return of a specific grade
     """
-    from src.strategies.signal_grade_engine import SignalGradeEngine
+    from src.strategies.signal_grade_engine import GRADES, SignalGradeEngine
 
-    pred_df = _load_full_predictions(market, run_id=run_id)
+    pred_df = _load_predictions_with_cache(market, run_id=run_id)
     if pred_df is None:
         raise HTTPException(status_code=404, detail="No model predictions found.")
 
@@ -1275,7 +1451,6 @@ def get_stock_ranking(
             scores.sort(key=lambda s: s.weighted_score, reverse=True)
         elif sort_by in ("win_rate", "mean_return", "cumulative_return"):
             grade = sort_grade if sort_grade in GRADES else "AAA"
-            reverse = True  # Higher is better for all metrics
             # For V/VV/VVV cumulative_return, more negative is better
             if sort_by == "cumulative_return" and grade in ("V", "VV", "VVV"):
                 scores.sort(

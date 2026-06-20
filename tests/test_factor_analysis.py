@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Synthetic data helpers
 # ---------------------------------------------------------------------------
@@ -166,7 +165,6 @@ class TestComputeFactorIC:
         mock_init,
     ):
         """Test compute_factor_ic with a mocked DataHandlerLP."""
-        from unittest.mock import MagicMock
 
         from src.research.factor_analysis import compute_factor_ic
 
@@ -186,7 +184,7 @@ class TestComputeFactorIC:
                 start_date="2021-01-01",
                 end_date="2021-06-30",
                 forward_days=10,
-                freq="M",
+                freq="ME",
                 use_cache=False,
             )
 
@@ -213,7 +211,6 @@ class TestComputeFactorIC:
         mock_init,
     ):
         """Test compute_factor_ic with empty factor data."""
-        from unittest.mock import MagicMock
 
         from src.research.factor_analysis import compute_factor_ic
 
@@ -244,7 +241,6 @@ class TestComputeFactorDecay:
     @patch("src.research.factor_analysis._init_qlib")
     @patch("src.research.factor_analysis._compute_forward_returns")
     def test_decay_returns_points(self, mock_fwd, mock_init):
-        from unittest.mock import MagicMock
 
         from src.research.factor_analysis import compute_factor_decay
 
@@ -293,9 +289,8 @@ class TestComputeFactorDecay:
 
 class TestCache:
     def test_cache_roundtrip(self, tmp_path):
-        from src.research.factor_analysis import _load_cached, _save_cache
-
         import src.research.factor_analysis as mod
+        from src.research.factor_analysis import _load_cached, _save_cache
 
         original_dir = mod._CACHE_DIR
         mod._CACHE_DIR = tmp_path

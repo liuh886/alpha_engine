@@ -21,7 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 from src.common.logging import get_logger
-from src.research.factor_registry import FactorRegistry, STAGE_ACTIVE, STAGE_DEPRECATED
+from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
 
 log = get_logger(__name__)
 

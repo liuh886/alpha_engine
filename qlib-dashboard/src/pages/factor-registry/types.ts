@@ -1,6 +1,6 @@
 /** Types and constants for FactorRegistryPage */
 
-export type FactorStage = "Proposed" | "Candidate" | "Validated" | "Active" | "Deprecated";
+export type FactorStage = "Proposed" | "Candidate" | "Validated" | "Active" | "Watch" | "Deprecated" | "Retired";
 
 export interface FactorRecord {
   id: number;
@@ -71,10 +71,12 @@ export const STAGE_COLORS: Record<FactorStage, string> = {
   Candidate: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   Validated: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   Active: "bg-green-500/20 text-green-400 border-green-500/30",
+  Watch: "bg-orange-500/20 text-orange-400 border-orange-500/30",
   Deprecated: "bg-red-500/20 text-red-400 border-red-500/30",
+  Retired: "bg-red-800/20 text-red-600 border-red-800/30",
 };
 
-export const ALL_STAGES: FactorStage[] = ["Proposed", "Candidate", "Validated", "Active", "Deprecated"];
+export const ALL_STAGES: FactorStage[] = ["Proposed", "Candidate", "Validated", "Active", "Watch", "Deprecated", "Retired"];
 
 export function truncateExpression(expr: string, maxLen = 45): string {
   if (expr.length <= maxLen) return expr;

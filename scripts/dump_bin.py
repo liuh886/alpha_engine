@@ -62,7 +62,7 @@ def dump_all(
                 raise ValueError(f"Missing date column '{date_field_name}' in {csv_file}")
 
         df = df.rename(columns={date_col: "date"})
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=True).dt.tz_localize(None)
         df = (
             df.dropna(subset=["date"])
             .drop_duplicates(subset=["date"], keep="last")

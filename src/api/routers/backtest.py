@@ -7,12 +7,17 @@ from src.api.dependencies import (
     get_run_index,
     get_training_service,
 )
+from src.api.schemas.release_contracts import (
+    BacktestRunRequestV1,
+    ContractAPIRoute,
+    TrainingRunRequestV1,
+)
 
-router = APIRouter(tags=["backtest"])
+router = APIRouter(tags=["backtest"], route_class=ContractAPIRoute)
 
 
 @router.get("/")
-def list_backtests(market: str = Query(None), limit: int = Query(50)):
+def list_backtests(market: str = Query(None), limit: int = Query(50, ge=1, le=500)):
     """
     Returns a list of backtest runs with core metrics.
     Used by the Arena view and Dashboard lists.
@@ -115,9 +120,9 @@ def get_alpha_decomposition(run_id: str):
 
 
 @router.post("/run")
-def run_backtest(payload: dict):
+def run_backtest(payload: BacktestRunRequestV1):
     try:
-        job = get_backtest_service().create_job_from_payload(payload)
+        job = get_backtest_service().create_job_from_payload(payload.model_dump())
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -125,9 +130,9 @@ def run_backtest(payload: dict):
 
 
 @router.post("/train/run")
-def run_training(payload: dict):
+def run_training(payload: TrainingRunRequestV1):
     try:
-        job = get_training_service().create_job_from_payload(payload)
+        job = get_training_service().create_job_from_payload(payload.model_dump())
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

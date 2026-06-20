@@ -228,7 +228,7 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                     sector_map = {}
 
                 total_value = float(self.trade_position.get_cash()) + sum(
-                    float(self.trade_position.get_stock_value(c)) for c in current_stock_list
+                    float(float(self.trade_position.get_stock_price(c)) * float(self.trade_position.get_stock_amount(c))) for c in current_stock_list
                 )
 
                 # Fetch current prices for risk evaluation
@@ -248,7 +248,7 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
 
                 risk_positions: dict[str, PositionInfo] = {}
                 for code in current_stock_list:
-                    stock_val = float(self.trade_position.get_stock_value(code))
+                    stock_val = float(float(self.trade_position.get_stock_price(code)) * float(self.trade_position.get_stock_amount(code)))
                     cur_price = float(cur_prices.get(code, 0.0))
                     risk_positions[code] = PositionInfo(
                         instrument=code,
@@ -339,7 +339,7 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
         if target:
             if self._risk_manager is not None:
                 try:
-                    vol_fields = [f"Std($close / Ref($close, 1) - 1, 20)"]
+                    vol_fields = ["Std($close / Ref($close, 1) - 1, 20)"]
                     vol_df = D.features(
                         target, vol_fields,
                         start_time=pred_start_time, end_time=pred_start_time,
@@ -385,11 +385,11 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                 except Exception:
                     sector_map = {}
                 total_value = float(self.trade_position.get_cash()) + sum(
-                    float(self.trade_position.get_stock_value(c)) for c in existing_list
+                    float(float(self.trade_position.get_stock_price(c)) * float(self.trade_position.get_stock_amount(c))) for c in existing_list
                 )
                 existing_positions: dict[str, _PI] = {}
                 for code in existing_list:
-                    stock_val = float(self.trade_position.get_stock_value(code))
+                    stock_val = float(float(self.trade_position.get_stock_price(code)) * float(self.trade_position.get_stock_amount(code)))
                     existing_positions[code] = _PI(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,

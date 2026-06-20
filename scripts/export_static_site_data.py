@@ -2,6 +2,7 @@ import argparse
 import json
 import shutil
 import sqlite3
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -43,7 +44,7 @@ def export_data(market: str, output_dir: Path):
                 if m.get(k):
                     try:
                         m[k.replace("_json", "")] = json.loads(m[k])
-                    except:
+                    except Exception:
                         m[k.replace("_json", "")] = {}
 
     with open(output_dir / "models.json", "w", encoding="utf-8") as f:
@@ -94,7 +95,7 @@ def export_data(market: str, output_dir: Path):
                             shutil.copy(src_path, dest_path)
                             # Update the path in the JSON to be relative to the site root
                             r["static_html_path"] = f"reports/{flat_name}"
-                        except:
+                        except Exception:
                             pass
 
     with open(output_dir / "reports.json", "w", encoding="utf-8") as f:

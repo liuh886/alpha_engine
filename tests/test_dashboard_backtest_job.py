@@ -17,6 +17,7 @@ def test_create_backtest_job_validates_market_and_builds_commands(tmp_path: Path
     )
     assert job["market"] == "us"
     assert job["status"] == "queued"
+    assert job["command_envelopes"][0]["action"] == "run"
     assert job["commands"][0][:6] == ["python", "-m", "src.orchestrator", "run", "--market", "us"]
 
 

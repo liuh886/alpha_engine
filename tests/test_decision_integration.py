@@ -6,9 +6,7 @@ P3-3: Consistency tests — verify decision engine aligns with BiweeklyTrendStra
 
 from __future__ import annotations
 
-import math
-from datetime import date
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -19,7 +17,6 @@ from src.strategies.stock_decision_engine import (
     StockDecisionEngine,
     StrategyRecommendation,
 )
-
 
 # ---------------------------------------------------------------------------
 # P3-1: Integration tests — verify full pipeline produces coherent results

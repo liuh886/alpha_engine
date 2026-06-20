@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from src.api.dependencies import get_model_index, get_quality_index, get_run_index
@@ -39,4 +39,4 @@ async def agent_chat(req: ChatRequest):
 
         return {"ok": True, "reply": reply, "result": result}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))

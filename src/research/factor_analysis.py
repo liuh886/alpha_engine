@@ -164,7 +164,6 @@ def _load_factor_names(market: str) -> list[str]:
 
 def _init_qlib(market: str) -> None:
     """Initialize Qlib with the appropriate market region."""
-    import qlib
     from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
     cfg = build_qlib_init_cfg(None, market=market)
@@ -183,7 +182,7 @@ def _load_factor_data(
     """
     from qlib.data.dataset.handler import DataHandlerLP
 
-    label_expr = f"Ref($close, -{{}}) / Ref($close, -1) - 1"
+    label_expr = "Ref($close, -{}) / Ref($close, -1) - 1"
 
     handler_kwargs = {
         "start_time": start_date,
@@ -263,7 +262,7 @@ def _group_by_cross_section(
     if not isinstance(df.index, pd.MultiIndex):
         return []
 
-    dates = df.index.get_level_values("datetime")
+    df.index.get_level_values("datetime")
     grouped = df.groupby(pd.Grouper(level="datetime", freq=freq))
     result = []
     for period_key, group_df in grouped:

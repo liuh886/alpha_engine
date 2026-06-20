@@ -6,7 +6,10 @@ from datetime import datetime
 from pathlib import Path
 
 from src.common.paths import RUNS_DIR
-from src.dashboard.backtest_runner import build_backtest_commands
+from src.workflows.commands import (
+    build_backtest_command_envelopes,
+    build_workflow_commands,
+)
 
 
 def create_backtest_job(
@@ -41,8 +44,7 @@ def create_backtest_job(
     job_id = uuid.uuid4().hex
     log_path = RUNS_DIR / f"dashboard_backtest_{market}_{job_id}.log"
 
-    commands = build_backtest_commands(
-        python_exe=python_exe,
+    command_envelopes = build_backtest_command_envelopes(
         market=market,
         model_type=model_type,
         profile_path=profile_path,
@@ -51,7 +53,10 @@ def create_backtest_job(
         start=start,
         end=end,
         tag=tag,
+        strategy_template=kwargs.get("strategy_template"),
+        cost_params=kwargs.get("cost_params"),
     )
+    commands = build_workflow_commands(python_exe=python_exe, envelopes=command_envelopes)
 
     return {
         "id": job_id,
@@ -65,5 +70,7 @@ def create_backtest_job(
         "status": "queued",
         "created_at": time.time(),
         "log_path": str(log_path),
+        "command_envelopes": [envelope.to_dict() for envelope in command_envelopes],
         "commands": commands,
     }
+

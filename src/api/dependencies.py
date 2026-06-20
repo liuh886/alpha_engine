@@ -19,6 +19,7 @@ from src.assistant.services.model_service import ModelService
 from src.assistant.services.report_service import ReportService
 from src.assistant.services.training_service import TrainingService
 from src.common.paths import DASHBOARD_DB_PATH
+from src.research.evidence import EvidenceLedger
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -70,6 +71,10 @@ def get_artifact_gateway() -> ArtifactGateway:
     from src.common.paths import ARTIFACTS_DIR
 
     return ArtifactGateway(artifacts_dir=ARTIFACTS_DIR)
+
+
+def get_evidence_ledger() -> EvidenceLedger:
+    return EvidenceLedger()
 
 
 def get_report_service() -> ReportService:

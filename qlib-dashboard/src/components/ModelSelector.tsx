@@ -35,6 +35,7 @@ export function ModelSelector({
                                 <TableHead>Market</TableHead>
                                 <TableHead>Metrics (Ann. Ret / IR / Sharpe)</TableHead>
                                 <TableHead>Strategy Params</TableHead>
+                                <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Action</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -99,6 +100,13 @@ export function ModelSelector({
                                                 {costsBps !== undefined && <div>Costs: {String(costsBps)} bps</div>}
                                                 {minLiquidity !== undefined && <div>Min Liquidity: {String(minLiquidity)}</div>}
                                             </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {ret !== null ? (
+                                                <Badge variant="default" className="text-[10px]">Has Data</Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="text-[10px] text-muted-foreground">No Data</Badge>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end items-center gap-2">

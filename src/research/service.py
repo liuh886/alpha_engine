@@ -1,4 +1,5 @@
 import pickle
+from copy import deepcopy
 from pathlib import Path
 
 import pandas as pd
@@ -13,6 +14,8 @@ from src.common.paths import CONFIG_DIR, PROJECT_ROOT
 logger = get_logger(__name__)
 from src.common.workflow_config import apply_backtest_and_test_window
 from src.data.universe import apply_liquidity_filter, clean_universe
+from src.models.artifact import create_artifact
+from src.models.reconstruction import validate_inference
 from src.research.backtest import run_backtest
 from src.research.inference import apply_inference_guardrails, perform_inference
 from src.research.training import train_model
@@ -33,6 +36,41 @@ class ResearchService:
             raise FileNotFoundError(f"Config file not found: {config_file}")
         with open(config_file) as f:
             return yaml.safe_load(f)
+
+    def resolve_snapshot_binding(self, snapshot_id: str = "") -> dict[str, str]:
+        """Resolve an immutable snapshot ID to the exact staged provider path."""
+        from src.data.snapshot import DataSnapshot
+
+        store = self.project_root / "data" / "snapshots"
+        snapshot = (
+            DataSnapshot.resolve_snapshot(snapshot_id, store=store)
+            if snapshot_id
+            else DataSnapshot.get_latest_snapshot(store=store)
+        )
+        if snapshot is None:
+            raise FileNotFoundError("No published DataSnapshot is available for training")
+        if snapshot_id and snapshot.snapshot_id != snapshot_id:
+            raise RuntimeError(
+                f"Resolved snapshot identity mismatch: requested={snapshot_id}, "
+                f"resolved={snapshot.snapshot_id}"
+            )
+        provider_uri = Path(snapshot.manifest.storage_uri).resolve()
+        if not provider_uri.is_dir():
+            raise FileNotFoundError(
+                f"Resolved DataSnapshot provider path does not exist: {provider_uri}"
+            )
+        return {
+            "snapshot_id": snapshot.snapshot_id,
+            "provider_uri": str(provider_uri),
+        }
+
+    @staticmethod
+    def bind_config_to_snapshot(config: dict, binding: dict[str, str]) -> dict:
+        """Return a detached config pinned to the resolved snapshot provider."""
+        resolved = deepcopy(config)
+        resolved.setdefault("qlib_init", {})["provider_uri"] = binding["provider_uri"]
+        resolved["data_snapshot_id"] = binding["snapshot_id"]
+        return resolved
 
     def prepare_experiment(
         self,
@@ -58,29 +96,109 @@ class ResearchService:
         )
         return config
 
-    def run_training_pipeline(self, market: str, config: dict, tag: str = ""):
+    def run_training_pipeline(
+        self,
+        market: str,
+        config: dict,
+        tag: str = "",
+        snapshot_id: str = "",
+        snapshot_binding: dict[str, str] | None = None,
+    ):
+        binding = snapshot_binding or self.resolve_snapshot_binding(snapshot_id)
+        if snapshot_id and binding.get("snapshot_id") != snapshot_id:
+            raise RuntimeError(
+                f"Training snapshot mismatch: requested={snapshot_id}, "
+                f"resolved={binding.get('snapshot_id')}"
+            )
+        resolved_config = self.bind_config_to_snapshot(config, binding)
         exp_name = f"workflow_{market}"
         with R.start(experiment_name=exp_name):
             model, model_path = train_model(
-                market, config["task"]["model"], config["task"]["dataset"], tag
+                market,
+                resolved_config["task"]["model"],
+                resolved_config["task"]["dataset"],
+                tag,
+                snapshot_id=binding["snapshot_id"],
             )
 
             # Re-init dataset for inference
             from qlib.utils import init_instance_by_config
 
-            dataset = init_instance_by_config(config["task"]["dataset"])
+            dataset = init_instance_by_config(resolved_config["task"]["dataset"])
 
             recorder = R.get_recorder()
             pred_score, labels = run_backtest(
-                model, dataset, config["port_analysis_config"], recorder
+                model, dataset, resolved_config["port_analysis_config"], recorder
             )
+
+            raw_metrics = recorder.list_metrics() or {}
+            metrics = self._extract_standard_metrics(raw_metrics)
+            model_kwargs = resolved_config["task"]["model"].get("kwargs", {}) or {}
+            seed = int(model_kwargs.get("seed", model_kwargs.get("random_state", 0)))
+            costs = (
+                resolved_config.get("port_analysis_config", {})
+                .get("backtest", {})
+                .get("exchange_kwargs", {})
+            )
+            manifest = create_artifact(
+                model_dir=model_path,
+                config=resolved_config,
+                predictions=pred_score,
+                labels=labels,
+                snapshot_id=binding["snapshot_id"],
+                provider_uri=binding["provider_uri"],
+                benchmark=resolved_config.get("benchmark", ""),
+                costs=costs,
+                seeds={"python": seed, "numpy": seed, "model": seed},
+                logs=[
+                    f"run_id={recorder.id}",
+                    f"market={market}",
+                    f"snapshot_id={binding['snapshot_id']}",
+                    "training=complete",
+                ],
+                metrics=metrics,
+            )
+
+            # Validate that the stored model binary can reproduce predictions
+            inference_result = validate_inference(manifest.id, n_samples=50)
 
             return {
                 "model_path": model_path,
                 "run_id": recorder.id,
                 "model": model,
                 "dataset": dataset,
+                "pred": pred_score,
+                "label": labels,
+                "metrics": metrics,
+                "artifact_id": manifest.id,
+                "artifact": manifest,
+                "inference_result": inference_result,
+                "snapshot_id": binding["snapshot_id"],
+                "provider_uri": binding["provider_uri"],
             }
+
+    @staticmethod
+    def _extract_standard_metrics(raw_metrics: dict) -> dict:
+        """Collapse Qlib-prefixed recorder metrics to the standard names."""
+        metrics = dict(raw_metrics)
+        for raw_key, value in raw_metrics.items():
+            key = str(raw_key).lower()
+            if "excess_return_with_cost" in key and key.endswith("annualized_return"):
+                metrics.setdefault("excess_return_with_cost", value)
+            elif "excess_return_without_cost" in key and key.endswith("annualized_return"):
+                metrics.setdefault("excess_return", value)
+            elif "excess_return_without_cost" in key and key.endswith("max_drawdown"):
+                metrics.setdefault("max_drawdown", value)
+            elif "bench" in key and key.endswith("max_drawdown"):
+                metrics.setdefault("bench_max_drawdown", value)
+
+            if key.endswith("information_ratio"):
+                metrics.setdefault("information_ratio", value)
+            if key.endswith("annualized_return"):
+                metrics.setdefault("annualized_return", value)
+            if key.endswith("max_drawdown"):
+                metrics.setdefault("max_drawdown", value)
+        return metrics
 
     def run_backtest_only(self, market: str, config: dict, model_path: Path):
         with open(model_path, "rb") as f:

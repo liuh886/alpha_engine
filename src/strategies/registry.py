@@ -4,7 +4,7 @@ import importlib
 import inspect
 import pkgutil
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
 import structlog

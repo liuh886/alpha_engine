@@ -32,7 +32,8 @@ describe('ErrorBoundary', () => {
     );
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-    expect(screen.getByText('Test error')).toBeInTheDocument();
+    // "Test error" is inside a <pre> alongside stack traces, so use a custom matcher
+    expect(screen.getByText((content) => content.includes('Test error'))).toBeInTheDocument();
     expect(screen.getByText('Try Again')).toBeInTheDocument();
     expect(screen.getByText('Reload Page')).toBeInTheDocument();
 

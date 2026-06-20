@@ -3,8 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.strategies.registry import PluginInfo, StrategyRegistry, _schema_from_constructor
-
+from src.strategies.registry import StrategyRegistry, _schema_from_constructor
 
 # ---------------------------------------------------------------------------
 # Fixtures

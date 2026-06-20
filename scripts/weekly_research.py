@@ -11,7 +11,6 @@ Runs every week via cron/PM2:
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import time
 from datetime import datetime
@@ -340,7 +339,7 @@ def main() -> int:
         action="store_true",
         help="Skip factor decay check",
     )
-    args = parser.parse_args()
+    parser.parse_args()
 
     # For now, run_weekly_research handles all markets together.
     # The --market flag can be used for future targeted runs.

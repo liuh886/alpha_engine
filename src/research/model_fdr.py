@@ -123,3 +123,88 @@ def apply_model_fdr(
     )
 
     return model_results
+
+
+class ModelBatchValidator:
+    """Validates a batch of model results against FDR-corrected significance.
+
+    Wraps :func:`apply_model_fdr` and :func:`compute_model_p_value` into
+    a stateful class that tracks the full validation lifecycle.
+
+    Usage::
+
+        validator = ModelBatchValidator(alpha=0.05)
+        validator.add_result("model_1", sharpe=1.5, n_obs=252)
+        validator.add_result("model_2", sharpe=0.3, n_obs=252)
+        report = validator.validate()
+        for r in report["results"]:
+            print(r["model_id"], r["fdr_significant"])
+    """
+
+    def __init__(self, alpha: float = 0.05):
+        self.alpha = alpha
+        self._results: list[dict] = []
+
+    def add_result(
+        self,
+        model_id: str,
+        sharpe: float,
+        n_obs: int = 252,
+        n_params: int = 1,
+        **extra,
+    ) -> None:
+        """Add a single model result for batch validation."""
+        entry = {
+            "model_id": model_id,
+            "sharpe": sharpe,
+            "n_obs": n_obs,
+            "n_params": n_params,
+            **extra,
+        }
+        self._results.append(entry)
+
+    def validate(self) -> dict:
+        """Run FDR correction and return a structured report.
+
+        Returns
+        -------
+        dict
+            ``"results"`` -- list of per-model dicts with ``fdr_significant``
+            ``"n_significant"`` -- count of FDR-significant models
+            ``"n_total"`` -- total models tested
+            ``"alpha"`` -- FDR threshold used
+        """
+        if not self._results:
+            return {
+                "results": [],
+                "n_significant": 0,
+                "n_total": 0,
+                "alpha": self.alpha,
+            }
+
+        enriched = apply_model_fdr(
+            [dict(r) for r in self._results],  # copy to avoid mutation
+            alpha=self.alpha,
+        )
+
+        n_sig = sum(1 for r in enriched if r.get("fdr_significant"))
+
+        return {
+            "results": enriched,
+            "n_significant": n_sig,
+            "n_total": len(enriched),
+            "alpha": self.alpha,
+        }
+
+    def get_promotable(self) -> list[str]:
+        """Return model IDs that are FDR-significant."""
+        report = self.validate()
+        return [
+            r["model_id"]
+            for r in report["results"]
+            if r.get("fdr_significant")
+        ]
+
+    def clear(self) -> None:
+        """Reset the batch."""
+        self._results.clear()

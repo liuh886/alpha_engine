@@ -1,19 +1,22 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
+import { useNameMap } from '@/lib/useNameMap';
 import type { Position, ReportRow } from "@/lib/types";
 
 export function AttributionInterpretation({ positions, report }: { positions: Position[], report?: ReportRow[] }) {
+  const { getName } = useNameMap();
+
   const labelByInstrument = useMemo(() => {
     const map = new Map<string, string>();
     for (const row of positions) {
       if (!row?.instrument) continue;
       const code = String(row.instrument);
-      const label = row.instrument_label ? String(row.instrument_label) : code;
+      const label = row.instrument_label ? String(row.instrument_label) : getName(code);
       if (!map.has(code)) map.set(code, label);
     }
     return map;
-  }, [positions]);
+  }, [positions, getName]);
 
   const accountByDate = useMemo(() => {
     const map = new Map<string, number>();

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { useNameMap } from "@/lib/useNameMap";
 
 interface HeatmapData {
   symbols: string[];
@@ -35,6 +36,7 @@ function valueToColor(v: number, min: number, max: number): string {
 export function DataHeatmap({ data, feature }: DataHeatmapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { getName } = useNameMap();
   const [search, setSearch] = useState("");
   const [scrollTop, setScrollTop] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -69,6 +71,12 @@ export function DataHeatmap({ data, feature }: DataHeatmapProps) {
   const filteredSymbols = useMemo(
     () => filteredIndices.map((i) => data.symbols[i]),
     [filteredIndices, data.symbols]
+  );
+
+  // Mapped display names (Chinese names for CN tickers)
+  const displayNames = useMemo(
+    () => filteredSymbols.map((sym) => getName(sym)),
+    [filteredSymbols, getName]
   );
 
   const filteredValues = useMemo(
@@ -167,7 +175,7 @@ export function DataHeatmap({ data, feature }: DataHeatmapProps) {
     ctx.textBaseline = "middle";
     for (let r = startRow; r < endRow; r++) {
       const y = HEADER_H + r * CELL_H - scrollTop + CELL_H / 2;
-      ctx.fillText(filteredSymbols[r], LABEL_W - 8, y);
+      ctx.fillText(displayNames[r], LABEL_W - 8, y);
     }
 
     // Draw header (time percentage)
@@ -191,6 +199,7 @@ export function DataHeatmap({ data, feature }: DataHeatmapProps) {
       ctx.strokeRect(hx - 0.5, hy - 0.5, cellW, CELL_H);
     }
   }, [
+    displayNames,
     filteredSymbols,
     filteredValues,
     totalCols,
@@ -289,7 +298,7 @@ export function DataHeatmap({ data, feature }: DataHeatmapProps) {
             top: hoveredCell!.y - 10,
           }}
         >
-          <div className="font-mono font-bold">{tooltipContent.sym}</div>
+          <div className="font-mono font-bold">{getName(tooltipContent.sym)}</div>
           <div className="text-muted-foreground">{tooltipContent.date}</div>
           <div className="mt-1">
             {tooltipContent.val === null || tooltipContent.val === undefined ? (

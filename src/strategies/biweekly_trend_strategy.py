@@ -98,17 +98,15 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
         return result
 
     def _estimate_entry_price(self, code: str, position) -> float:
-        """Estimate entry price from position cost basis.
+        """Estimate entry price from position.
 
         Falls back to current price if cost basis is unavailable.
         """
         try:
-            cost = float(position.get_stock_cost(code))
-            amount = float(position.get_stock_amount(code))
-            if amount > 0 and cost > 0:
-                return cost / amount
-        except Exception:
-            pass
+            # Use current price as estimate (Qlib doesn't track cost basis)
+            return float(position.get_stock_price(code))
+        except Exception as e:
+            logger.debug("Failed to get cost basis", code=code, error=str(e))
         return 0.0
 
     def generate_trade_decision(self, execute_result=None):
@@ -162,16 +160,13 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                 except Exception:
                     sector_map = {}
 
-                total_value = float(current_temp.get_cash()) + sum(
-                    float(current_temp.get_stock_value(code))
-                    for code in current_stock_list
-                )
+                total_value = float(current_temp.get_cash()) + float(current_temp.calculate_stock_value())
                 risk_positions: dict[str, PositionInfo] = {}
                 for code in current_stock_list:
                     close_ma = ma_map.get(code)
                     cur_price = close_ma[0] if close_ma and close_ma[0] else 0.0
                     entry_px = self._estimate_entry_price(code, current_temp)
-                    stock_val = float(current_temp.get_stock_value(code))
+                    stock_val = float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code))
                     risk_positions[code] = PositionInfo(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,
@@ -281,11 +276,11 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                     sector_map = {}
 
                 total_value = float(current_temp.get_cash()) + sum(
-                    float(current_temp.get_stock_value(c)) for c in remaining
+                    float(float(current_temp.get_stock_price(c)) * float(current_temp.get_stock_amount(c))) for c in remaining
                 )
                 risk_positions: dict[str, PositionInfo] = {}
                 for code in remaining:
-                    stock_val = float(current_temp.get_stock_value(code))
+                    stock_val = float(float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code)))
                     risk_positions[code] = PositionInfo(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,
@@ -300,7 +295,7 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                     # Sell the smallest position in the overweight sector
                     sector_name = sig.reason.split("'")[1] if "'" in sig.reason else ""
                     sector_positions = [
-                        (c, float(current_temp.get_stock_value(c)))
+                        (c, float(float(current_temp.get_stock_price(c)) * float(current_temp.get_stock_amount(c))))
                         for c in remaining
                         if (sector_map.get(c, "Unknown") == sector_name
                             and c not in sell_candidates)
@@ -332,7 +327,7 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                 if self._risk_manager is not None:
                     # Vol-adjusted sizing
                     try:
-                        vol_fields = [f"Std($close / Ref($close, 1) - 1, 20)"]
+                        vol_fields = ["Std($close / Ref($close, 1) - 1, 20)"]
                         vol_df = D.features(
                             buy_list, vol_fields,
                             start_time=trade_start_time, end_time=trade_end_time,
@@ -376,11 +371,11 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                 except Exception:
                     sector_map = {}
                 total_value = float(current_temp.get_cash()) + sum(
-                    float(current_temp.get_stock_value(c)) for c in current_stock_list
+                    float(float(current_temp.get_stock_price(c)) * float(current_temp.get_stock_amount(c))) for c in current_stock_list
                 )
                 existing_positions: dict[str, _PI] = {}
                 for code in current_stock_list:
-                    stock_val = float(current_temp.get_stock_value(code))
+                    stock_val = float(float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code)))
                     existing_positions[code] = _PI(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,

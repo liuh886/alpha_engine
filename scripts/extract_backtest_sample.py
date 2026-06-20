@@ -38,13 +38,13 @@ def load_workflow_meta(market: str, model_type: str = "lgbm") -> dict:
             try:
                 # Stub specifically for test_workflow_meta_includes_alpha158_fields
                 meta["label"] = ["Ref($close, -10) / Ref($close, -1) - 1"]
-            except:
+            except Exception:
                 pass
 
             # extract features
             try:
                 meta["features"] = ["$close/Ref($close, 10)-1"]  # Stub
-            except:
+            except Exception:
                 pass
     return meta
 

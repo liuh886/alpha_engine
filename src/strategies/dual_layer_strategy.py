@@ -123,12 +123,10 @@ class DualLayerStrategy(BaseSignalStrategy):
 
     def _estimate_entry_price(self, code: str, position) -> float:
         try:
-            cost = float(position.get_stock_cost(code))
-            amount = float(position.get_stock_amount(code))
-            if amount > 0 and cost > 0:
-                return cost / amount
-        except Exception:
-            pass
+            # Use current price as estimate
+            return float(position.get_stock_price(code))
+        except Exception as e:
+            logger.debug("Failed to get cost basis", code=code, error=str(e))
         return 0.0
 
     def _detect_market(self, instruments: list[str]) -> str:
@@ -208,11 +206,11 @@ class DualLayerStrategy(BaseSignalStrategy):
         held_positions: dict[str, dict] = {}
         if current_stock_list:
             total_value = float(current_temp.get_cash()) + sum(
-                float(current_temp.get_stock_value(code))
+                float(float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code)))
                 for code in current_stock_list
             )
             for code in current_stock_list:
-                stock_val = float(current_temp.get_stock_value(code))
+                stock_val = float(float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code)))
                 held_positions[code] = {
                     "weight": stock_val / total_value if total_value > 0 else 0.0,
                     "entry_price": self._estimate_entry_price(code, current_temp),
@@ -403,11 +401,11 @@ class DualLayerStrategy(BaseSignalStrategy):
                 except Exception:
                     sector_map = {}
                 total_value = float(current_temp.get_cash()) + sum(
-                    float(current_temp.get_stock_value(c)) for c in current_stock_list
+                    float(float(current_temp.get_stock_price(c)) * float(current_temp.get_stock_amount(c))) for c in current_stock_list
                 )
                 existing_positions: dict[str, _PI] = {}
                 for code in current_stock_list:
-                    stock_val = float(current_temp.get_stock_value(code))
+                    stock_val = float(float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code)))
                     existing_positions[code] = _PI(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,

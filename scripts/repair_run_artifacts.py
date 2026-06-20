@@ -23,7 +23,7 @@ def repair_run(run_id, market="us"):
     exp_name = f"workflow_{market}"
     try:
         rec = R.get_recorder(recorder_id=run_id, experiment_name=exp_name)
-    except:
+    except Exception:
         print(f"Could not get recorder {run_id}")
         return
 

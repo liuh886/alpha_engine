@@ -11,7 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, RefreshCw, Target, AlertTriangle, PieChart } from "lucide-react";
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid,
+} from "recharts";
+import { Loader2, RefreshCw, Target, AlertTriangle, PieChart, ChevronDown, ChevronUp, TrendingUp, ExternalLink, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatNum, formatPct, useSort } from "@/lib/format";
 import { ContributionBar } from "./attribution/ContributionBar";
@@ -31,6 +34,8 @@ import type {
 type MarketFilter = "US" | "CN";
 type SortKey = "none" | "name" | "ic" | "return" | "risk" | "exposure";
 
+const BENCHMARK_LABEL: Record<MarketFilter, string> = { US: "QQQ", CN: "CSI300" };
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -48,6 +53,12 @@ export function AttributionPage() {
     return d.toISOString().slice(0, 10);
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  // Rolling attribution state
+  const [showRolling, setShowRolling] = useState(false);
+  const [rollingData, setRollingData] = useState<Array<Record<string, unknown>>>([]);
+  const [rollingLoading, setRollingLoading] = useState(false);
+  const [rollingFactors, setRollingFactors] = useState<string[]>([]);
 
   const { sortKey, sortAsc, toggleSort, SortIcon } = useSort<SortKey>("none");
 
@@ -90,6 +101,59 @@ export function AttributionPage() {
   useEffect(() => {
     loadAttribution();
   }, [loadAttribution]);
+
+  // Fetch rolling attribution
+  const loadRolling = useCallback(async () => {
+    setRollingLoading(true);
+    try {
+      const resp = await apiFetch("/api/factors/attribute/rolling", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          market: market.toLowerCase(),
+          start_date: startDate,
+          end_date: endDate,
+          window_months: 12,
+          step_months: 3,
+        }),
+        cache: "no-store",
+      });
+      const json = await resp.json().catch(() => ({}));
+      // Backend returns { ok, result: { windows, factor_trends, window_labels } }
+      const result = json.result as Record<string, unknown> | undefined;
+      if (json.ok && result?.windows) {
+        const windows = result.windows as Array<Record<string, unknown>>;
+        const labels = (result.window_labels as string[]) || [];
+        const trends = (result.factor_trends as Record<string, number[]>) || {};
+
+        // Factor names from factor_trends keys (authoritative)
+        const factorNames = Object.keys(trends);
+        setRollingFactors(factorNames);
+
+        // Build chart data: one point per window
+        const chartData = windows.map((w: Record<string, unknown>, i: number) => {
+          const point: Record<string, unknown> = { window: labels[i] || w.period || `W${i + 1}` };
+          // Map each factor's contribution from its trend array
+          factorNames.forEach((name) => {
+            const arr = trends[name];
+            if (arr && i < arr.length) {
+              point[name] = arr[i];
+            }
+          });
+          return point;
+        });
+        setRollingData(chartData);
+      }
+    } catch {
+      // silent
+    } finally {
+      setRollingLoading(false);
+    }
+  }, [market, startDate, endDate]);
+
+  useEffect(() => {
+    if (showRolling && rollingData.length === 0) loadRolling();
+  }, [showRolling]);
 
   // ------------------------------------------------------------------
   // Derived data
@@ -145,6 +209,26 @@ export function AttributionPage() {
           <p className="text-muted-foreground text-sm mt-1">
             Decompose portfolio returns into factor contributions and residual alpha.
           </p>
+          {/* Decision-ready metadata bar */}
+          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Info className="h-3 w-3" />
+              Benchmark: <span className="font-medium text-foreground">{BENCHMARK_LABEL[market]}</span>
+            </span>
+            <span className="text-muted-foreground/40">|</span>
+            <span>Period: <span className="font-mono">{startDate}</span> to <span className="font-mono">{endDate}</span></span>
+            <span className="text-muted-foreground/40">|</span>
+            <span>Market: <span className="font-medium text-foreground">{market}</span></span>
+            <span className="text-muted-foreground/40">|</span>
+            <a
+              href={`/api/evidence/research_run/attribution_${market.toLowerCase()}_${startDate}_${endDate}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+            >
+              Evidence <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
         </div>
         <Button onClick={loadAttribution} variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
           <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} /> Refresh
@@ -217,6 +301,61 @@ export function AttributionPage() {
             </div>
           )}
         </CardContent>
+      </Card>
+
+      {/* Rolling Attribution (collapsible) */}
+      <Card>
+        <CardHeader
+          className="pb-3 border-b cursor-pointer"
+          onClick={() => setShowRolling(!showRolling)}
+        >
+          <CardTitle className="text-sm font-semibold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" /> Rolling Factor Attribution (12M Window)
+            </div>
+            {showRolling ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </CardTitle>
+        </CardHeader>
+        {showRolling && (
+          <CardContent className="pt-4">
+            {rollingLoading ? (
+              <div className="h-48 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
+              </div>
+            ) : rollingData.length === 0 ? (
+              <div className="h-32 flex flex-col items-center justify-center gap-1 text-muted-foreground text-sm">
+                <span>No rolling attribution data available.</span>
+                <span className="text-xs text-muted-foreground/70">Ensure sufficient history exists (&gt;12 months) and re-run attribution.</span>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={rollingData}>
+                  <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+                  <XAxis dataKey="window" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                    formatter={(value: number) => [`${value?.toFixed(2)}%`, ""]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  {rollingFactors.slice(0, 8).map((name, i) => {
+                    const colors = ["#22c55e", "#3b82f6", "#eab308", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316", "#ec4899"];
+                    return (
+                      <Line
+                        key={name}
+                        type="monotone"
+                        dataKey={name}
+                        stroke={colors[i % colors.length]}
+                        strokeWidth={1.5}
+                        dot={false}
+                      />
+                    );
+                  })}
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        )}
       </Card>
 
       {/* Detailed Attribution Table */}

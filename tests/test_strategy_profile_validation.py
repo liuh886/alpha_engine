@@ -21,5 +21,5 @@ def test_collect_profile_warnings_flags_unimplemented_fields():
     warnings = collect_profile_warnings(profile, market="us")
     joined = "\n".join(warnings).lower()
     assert "min_liquidity" in joined
-    assert "buy_rule" in joined
-    assert "sell_rule" in joined
+    # buy_rule and sell_rule are now parsed and wired into strategy kwargs
+    # via _parse_score_threshold(), so they no longer generate warnings

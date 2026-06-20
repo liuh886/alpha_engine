@@ -1,0 +1,117 @@
+"""Verify one explicit release candidate and optionally run all quality gates.
+
+The candidate ID is resolved from --candidate (primary) or the
+ALPHA_RELEASE_CANDIDATE environment variable (fallback).  Neither defaults
+to anything — the script exits non-zero when no candidate is specified.
+
+Examples:
+    uv run python scripts/release_gate.py --candidate rc_20260620
+    uv run python scripts/release_gate.py --candidate rc_20260620 \
+        --run-quality-gates --evidence-dir artifacts/release_gates
+    ALPHA_RELEASE_CANDIDATE=rc_20260620 uv run python scripts/release_gate.py
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.release.candidate import (  # noqa: E402
+    get_git_revision,
+    resolve_candidate_reference,
+    verify_release_candidate,
+)
+from src.release.quality import run_quality_gates  # noqa: E402
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    candidate_ref = args.candidate or os.environ.get("ALPHA_RELEASE_CANDIDATE")
+    if not candidate_ref:
+        return _emit(
+            {
+                "schema_version": "1",
+                "status": "fail",
+                "error": "explicit_release_candidate_required",
+            },
+            output=args.output,
+        ) or 2
+
+    revision = get_git_revision(PROJECT_ROOT)
+    candidate_path = resolve_candidate_reference(candidate_ref, PROJECT_ROOT)
+    candidate_report = verify_release_candidate(
+        candidate_path,
+        project_root=PROJECT_ROOT,
+        revision=revision,
+    )
+    result: dict[str, Any] = {
+        "schema_version": "1",
+        "candidate_verification": candidate_report.to_dict(),
+    }
+
+    quality_report: dict[str, Any] | None = None
+    if args.run_quality_gates:
+        quality_report = run_quality_gates(
+            PROJECT_ROOT,
+            (PROJECT_ROOT / args.evidence_dir).resolve(),
+            revision=revision,
+        )
+        result["quality_gates"] = quality_report
+
+    result["status"] = (
+        "pass"
+        if candidate_report.ok
+        and (quality_report is None or quality_report.get("status") == "pass")
+        else "fail"
+    )
+    if args.run_quality_gates:
+        verdict_path = (PROJECT_ROOT / args.evidence_dir).resolve() / "release_gate_verdict.json"
+        verdict_path.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
+    _emit(result, output=args.output)
+    return 0 if result["status"] == "pass" else 1
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--candidate",
+        help="Exact ReleaseCandidate manifest path or rc_* identifier. "
+        "Falls back to ALPHA_RELEASE_CANDIDATE env var. No default is allowed.",
+    )
+    parser.add_argument(
+        "--run-quality-gates",
+        action="store_true",
+        help="Run the complete local/CI backend, frontend, browser, and packaging gates.",
+    )
+    parser.add_argument(
+        "--evidence-dir",
+        default="artifacts/release_gates",
+        help="Project-relative directory for command logs and machine-readable evidence.",
+    )
+    parser.add_argument("--output", help="Optional path for the final JSON verdict.")
+    return parser
+
+
+def _emit(payload: dict[str, Any], *, output: str | None) -> int:
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    if output:
+        path = Path(output)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    print(text)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
