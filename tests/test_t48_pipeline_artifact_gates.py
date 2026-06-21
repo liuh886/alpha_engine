@@ -298,7 +298,7 @@ class TestPipelineReturnDict:
 class TestRegisterArtifactInHooks:
     """register_artifact must be called when walk-forward validation passes."""
 
-    def test_register_artifact_called_on_wf_pass(self, tmp_path):
+    def test_register_artifact_called_on_wf_pass(self, tmp_path, monkeypatch):
         """When walk-forward passes, hooks should call register_artifact."""
         from dataclasses import dataclass
 
@@ -322,6 +322,8 @@ class TestRegisterArtifactInHooks:
         mock_reconstruction = ReconstructionResult(
             artifact_id="abc", passed=True, status="passed", clean_process=True
         )
+
+        monkeypatch.setattr("src.workflows.hooks.ARTIFACTS_DIR", tmp_path)
 
         with (
             patch("src.workflows.hooks.walk_forward_validate", return_value=mock_wf_result),

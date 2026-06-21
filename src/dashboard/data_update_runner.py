@@ -5,6 +5,7 @@ def build_update_data_commands(
     *,
     python_exe: str,
     full: bool = False,
+    market: str = "all",
     start: str = "2020-01-01",
     lookback_days: int = 30,
     rebuild_dashboard_db: bool = True,
@@ -14,6 +15,8 @@ def build_update_data_commands(
     then optionally rebuilding the dashboard DB JSON.
     """
     cmd = [str(python_exe), "scripts/update_data.py"]
+    if str(market).lower() != "all":
+        cmd += ["--market", str(market).lower()]
     if full:
         cmd += ["--full", "--start", str(start)]
     else:

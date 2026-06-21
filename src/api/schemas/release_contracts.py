@@ -69,6 +69,7 @@ class DataUpdateRequestV1(StrictRequestV1):
     """Request contract for triggering a data update job."""
 
     full: bool = False
+    market: Literal["all", "us", "cn", "hk"] = "all"
     start: str = "2020-01-01"
     lookback_days: int = Field(default=30, ge=0, le=365)
 

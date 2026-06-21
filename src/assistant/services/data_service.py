@@ -24,6 +24,7 @@ class DataService:
     def create_update_job_from_payload(self, payload: dict) -> dict:
         payload = payload or {}
         full = bool(payload.get("full") or False)
+        market = str(payload.get("market") or "all").strip().lower() or "all"
         start = str(payload.get("start") or "2020-01-01").strip() or "2020-01-01"
         lookback_days = payload.get("lookback_days")
         try:
@@ -38,6 +39,7 @@ class DataService:
             project_root=self._project_root,
             python_exe=self._python_exe,
             full=full,
+            market=market,
             start=start,
             lookback_days=lookback_days,
         )

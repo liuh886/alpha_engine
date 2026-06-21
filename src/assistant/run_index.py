@@ -202,17 +202,18 @@ class RunIndex(BaseIndex):
 
         return out
 
-    def list_runs(self, *, limit: int = 100, market: str | None = None) -> list[dict]:
+    def list_runs(self, *, limit: int = 100, offset: int = 0, market: str | None = None) -> list[dict]:
         limit = int(limit) if limit is not None else 100
+        offset = int(offset) if offset is not None else 0
         if limit <= 0:
             return []
-        market = str(market).strip().lower() if market else ""
-        if market:
-            sql = "SELECT * FROM backtest_runs WHERE market = ? ORDER BY date DESC, created_at DESC LIMIT ?"
-            params = (market, limit)
+        market_s = str(market).strip().lower() if market else ""
+        if market_s:
+            sql = "SELECT * FROM backtest_runs WHERE market = ? ORDER BY date DESC, created_at DESC LIMIT ? OFFSET ?"
+            params = (market_s, limit, offset)
         else:
-            sql = "SELECT * FROM backtest_runs ORDER BY date DESC, created_at DESC LIMIT ?"
-            params = (limit,)
+            sql = "SELECT * FROM backtest_runs ORDER BY date DESC, created_at DESC LIMIT ? OFFSET ?"
+            params = (limit, offset)
         with self._connect() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [{k: r[k] for k in r.keys()} for r in rows]

@@ -69,7 +69,7 @@ class _TrainingService:
 
 
 class _RunIndex:
-    def list_runs(self, *, market=None, limit=50) -> list[dict]:
+    def list_runs(self, *, market=None, limit=50, offset=0) -> list[dict]:
         return [{"id": f"run-{i}", "name": f"Run {i}", "market": "us", "date": "2026-01-01"} for i in range(min(limit, 3))]
 
     def get_run(self, run_id: str) -> dict | None:
@@ -592,6 +592,7 @@ class TestPydanticModelContracts:
         req = DataUpdateRequestV1()
         assert req.schema_version == "v1"
         assert req.full is False
+        assert req.market == "all"
         assert req.start == "2020-01-01"
         assert req.lookback_days == 30
 

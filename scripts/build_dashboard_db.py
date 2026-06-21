@@ -4,6 +4,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -207,13 +208,52 @@ def compute_indicators_from_report(report_normal) -> dict:
             "total_return": round(float(total_return), 6),
             "annual_return": round(annual_return, 6),
             "sharpe": round(sharpe, 4),
-            "information_ratio": round(sharpe * 0.8, 4),  # Approximate
+            # IR placeholder — computed after benchmark merge (see _compute_ir)
+            "information_ratio": 0.0,
             "max_drawdown": round(max_drawdown, 6),
             "annual_volatility": round(vol, 6),
         }
     except Exception as e:
         print(f"  Error computing indicators: {e}")
         return {}
+
+
+def _compute_information_ratio(report_normal, market: str) -> float | None:
+    """Compute Information Ratio = mean(excess_return) / std(excess_return) * sqrt(252).
+
+    Requires benchmark columns to already be merged into report_normal.
+    """
+    try:
+        bench_col = "bench_qqq" if market == "us" else "bench_hs300"
+        if isinstance(report_normal, dict) and "columns" in report_normal:
+            cols = report_normal["columns"]
+            data = report_normal["data"]
+            port_col = cols[0] if cols else None
+            if port_col is None or bench_col not in cols:
+                return None
+            pi = cols.index(port_col)
+            bi = cols.index(bench_col)
+            port_vals = np.array([r[pi] for r in data], dtype=float)
+            bench_vals = np.array([r[bi] for r in data], dtype=float)
+
+            # Daily returns
+            port_ret = np.diff(port_vals) / port_vals[:-1]
+            bench_ret = np.diff(bench_vals) / bench_vals[:-1]
+            mask = np.isfinite(port_ret) & np.isfinite(bench_ret)
+            port_ret = port_ret[mask]
+            bench_ret = bench_ret[mask]
+
+            if len(port_ret) < 10:
+                return None
+            excess = port_ret - bench_ret
+            mean_excess = float(np.mean(excess))
+            std_excess = float(np.std(excess, ddof=1))
+            if std_excess < 1e-10:
+                return 0.0
+            return mean_excess / std_excess * np.sqrt(252)
+    except Exception:
+        return None
+    return None
 
 
 def merge_benchmarks_into_report(report_normal, benchmarks: dict, market: str) -> None:
@@ -385,7 +425,18 @@ def upsert_equity_curves_to_metadata_db(
     return 0
 
 
-def build_db():
+def build_db(model_id: str = "", sync_yaml: bool = False):
+    """Build (or incrementally update) the dashboard JSON database.
+
+    Parameters
+    ----------
+    model_id : str
+        If non-empty, only process this single model version.
+        If empty, do a full rebuild of all models.
+    sync_yaml : bool
+        If True, write the complete SQLite registry back to model_list.yaml
+        to repair any drift between the two.
+    """
     mlruns_dirs = [MLRUNS_DIR, PROJECT_ROOT / "mlruns", PROJECT_ROOT / "artifacts" / "mlruns"]
     dashboard_db_path = DASHBOARD_DB_PATH
     dashboard_db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -393,9 +444,30 @@ def build_db():
     db_path = resolve_metadata_db_path(PROJECT_ROOT)
     model_index = ModelRegistryIndex(db_path=db_path)
 
-    print(f"Building comprehensive dashboard DB from {db_path} and MLflow artifacts...")
+    # --- Sync YAML from SQLite if requested (repair drift) ---
+    if sync_yaml:
+        _sync_yaml_from_sqlite(model_index, PROJECT_ROOT)
 
-    versions = model_index.list_versions(limit=100)
+    mode = f"single model {model_id}" if model_id else "ALL models"
+    print(f"Building dashboard DB ({mode}) from {db_path} ...")
+
+    # Get versions
+    if model_id:
+        version = model_index.get_version(model_id)
+        versions = [version] if version else []
+    else:
+        versions = model_index.list_versions(limit=500)
+
+    # Load existing dashboard DB for incremental updates
+    existing_models: dict[str, dict] = {}
+    if model_id and dashboard_db_path.exists():
+        try:
+            with open(dashboard_db_path, encoding="utf-8") as f:
+                existing_data = json.load(f)
+            existing_models = {m["id"]: m for m in existing_data.get("models", [])}
+        except Exception:
+            pass
+
     name_map = load_name_map()
 
     enriched_models = []
@@ -468,6 +540,10 @@ def build_db():
                 # Compute proper indicators from report_normal data
                 computed_indicators = compute_indicators_from_report(report_normal)
                 if computed_indicators:
+                    # Compute proper IR from excess returns vs benchmark
+                    proper_ir = _compute_information_ratio(report_normal, market)
+                    if proper_ir is not None:
+                        computed_indicators["information_ratio"] = round(proper_ir, 4)
                     run_data["indicators"] = computed_indicators
 
                 # Update SQLite with curve
@@ -493,9 +569,22 @@ def build_db():
         # Sync back to model registry
         upsert_model_registry_to_metadata_db(model_entry, db_path)
 
+    # Build output
+    if model_id and existing_models:
+        # Incremental: replace/add only the processed model(s)
+        for m in enriched_models:
+            existing_models[m["id"]] = m
+        final_models = list(existing_models.values())
+    elif model_id:
+        # No existing DB — just the single model
+        final_models = enriched_models
+    else:
+        # Full rebuild
+        final_models = enriched_models
+
     data = {
         "generated_at": datetime.now().isoformat(),
-        "models": enriched_models,
+        "models": final_models,
         "name_map": name_map,
     }
 
@@ -507,14 +596,79 @@ def build_db():
         from src.assistant.run_index import RunIndex
 
         RunIndex(db_path=db_path).upsert_from_dashboard_db(data)
-        print(f"Successfully synced {len(enriched_models)} runs to RunIndex.")
+        print(f"Synced {len(final_models)} runs to RunIndex.")
     except Exception as e:
         print(f"Warning: Failed to sync to RunIndex: {e}")
 
     print(
-        f"Successfully wrote {len(enriched_models)} models with full backtest data to {dashboard_db_path}"
+        f"Wrote {len(final_models)} models to {dashboard_db_path}"
     )
 
 
+def _sync_yaml_from_sqlite(model_index: ModelRegistryIndex, project_root: Path) -> int:
+    """Write the complete SQLite registry to model_list.yaml.
+
+    This repairs any drift between the two by making YAML a perfect
+    mirror of SQLite.  Only use this for repair/migration — under
+    normal operation, YAML is an append-only log and minor drift is
+    acceptable.
+    """
+    yaml_path = project_root / "artifacts" / "models" / "model_list.yaml"
+    versions = model_index.list_versions(limit=5000)
+
+    # Build full entries from SQLite rows
+    models = []
+    for v in versions:
+        entry = {
+            "id": v.get("id", ""),
+            "tag": v.get("tag", ""),
+            "name": v.get("name", ""),
+            "path": v.get("path", ""),
+            "type": v.get("model_type", ""),
+            "market": v.get("market", ""),
+            "created_at": v.get("created_at", ""),
+            "stage": v.get("stage", "CANDIDATE"),
+            "description": v.get("description", ""),
+        }
+        if v.get("run_id"):
+            entry["run_id"] = v["run_id"]
+        # Reconstruct params/metrics from JSON
+        raw_params = v.get("params_json")
+        if raw_params:
+            try:
+                entry["params"] = json.loads(raw_params) if isinstance(raw_params, str) else raw_params
+            except Exception:
+                pass
+        raw_metrics = v.get("metrics_json")
+        if raw_metrics:
+            try:
+                metrics = json.loads(raw_metrics) if isinstance(raw_metrics, str) else raw_metrics
+                entry["backtest"] = {"metrics": metrics}
+            except Exception:
+                pass
+        models.append(entry)
+
+    data = {"models": models}
+    yaml_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(yaml_path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, sort_keys=False)
+    print(f"Synced {len(models)} models from SQLite → {yaml_path}")
+    return len(models)
+
+
+def main(*, model_id: str = "", sync_yaml: bool = False) -> None:
+    """Build the dashboard database for CLI and in-process workflow callers."""
+    build_db(model_id=model_id, sync_yaml=sync_yaml)
+
+
 if __name__ == "__main__":
-    build_db()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Build dashboard JSON database")
+    parser.add_argument("--model-id", type=str, default="",
+                        help="Only update a single model version (incremental)")
+    parser.add_argument("--sync-yaml", action="store_true",
+                        help="Write SQLite registry back to model_list.yaml (repair drift)")
+    args = parser.parse_args()
+    main(model_id=args.model_id, sync_yaml=args.sync_yaml)
+

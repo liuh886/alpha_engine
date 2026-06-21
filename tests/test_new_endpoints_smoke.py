@@ -101,12 +101,22 @@ class TestDecayEndpoints:
 class TestPortfolioEndpoints:
     """Smoke tests for /api/portfolio endpoints."""
 
-    def test_check_portfolio(self):
-        """POST /api/portfolio/check should check constraints."""
+    def test_check_portfolio_rejects_unbound_positions(self):
+        """POST /api/portfolio/check must fail closed without artifact identities."""
         data = _curl_post("/api/portfolio/check", {
             "positions": {"000001": 0.1, "600519": 0.2},
             "market": "cn",
             "portfolio_value": 100000,
         })
-        assert data.get("ok") is True
-        assert "total_violations" in data
+        assert data.get("ok") is False
+        assert data.get("error_code") == "API_VALIDATION_ERROR"
+        missing_fields = {
+            detail["location"][-1]
+            for detail in data.get("details", [])
+            if detail.get("type") == "missing"
+        }
+        assert missing_fields == {
+            "portfolio_artifact_id",
+            "model_artifact_id",
+            "data_snapshot_id",
+        }

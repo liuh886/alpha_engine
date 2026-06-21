@@ -13,6 +13,7 @@ def create_data_update_job(
     project_root: Path,
     python_exe: str,
     full: bool = False,
+    market: str = "all",
     start: str = "2020-01-01",
     lookback_days: int = 30,
 ) -> dict:
@@ -22,6 +23,7 @@ def create_data_update_job(
     commands = build_update_data_commands(
         python_exe=python_exe,
         full=bool(full),
+        market=str(market),
         start=str(start),
         lookback_days=int(lookback_days),
         rebuild_dashboard_db=True,

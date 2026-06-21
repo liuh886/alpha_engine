@@ -17,7 +17,9 @@ class ReportService:
         self._report_index = report_index
         self._job_service = job_service
 
-    def list_reports(self, limit: int = 100, report_type: str | None = None, ref_id: str | None = None) -> list[dict]:
+    def list_reports(
+        self, limit: int = 100, report_type: str | None = None, ref_id: str | None = None
+    ) -> list[dict]:
         rows = self._report_index.list_reports(limit=limit, report_type=report_type, ref_id=ref_id)
         decoded = []
         for r in rows:
@@ -33,13 +35,30 @@ class ReportService:
     def get_report(self, report_id: str) -> dict | None:
         return self._report_index.get_report(report_id)
 
+    def resolve_report_file(self, report_id: str, file_format: str) -> Path | None:
+        row = self.get_report(report_id)
+        if not row:
+            return None
+        paths = row.get("paths") if isinstance(row.get("paths"), dict) else {}
+        relative_path = str(paths.get(file_format) or "").strip()
+        if not relative_path:
+            return None
+
+        project_root = self._project_root.resolve()
+        candidate = (project_root / relative_path).resolve()
+        try:
+            candidate.relative_to(project_root)
+        except ValueError:
+            return None
+        return candidate if candidate.is_file() else None
+
     def create_export_job(self, payload: dict) -> dict:
         type_filter = str(payload.get("type") or "all").strip() or "all"
         try:
             limit = int(payload.get("limit") or 100)
         except Exception:
             limit = 100
-        
+
         job_id = uuid.uuid4().hex
         log_path = RUNS_DIR / f"dashboard_reports_export_{job_id}.log"
         cmd = [

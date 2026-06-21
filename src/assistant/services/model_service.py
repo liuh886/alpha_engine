@@ -43,15 +43,20 @@ class ModelService:
 
     def delete_model(self, version_id: str) -> bool:
         """
-        Delete a model version from index, YAML and disk.
+        Delete a model version from the SQLite registry (single source of truth).
+
+        YAML is updated as a human-readable log only — failures in YAML
+        do not block deletion.
         """
         # 1. Get info before deletion
         version = self._model_index.get_version(version_id)
 
-        # 2. Update SQLite
-        self._model_index.delete_version(version_id)
+        # 2. Delete from SQLite (authoritative)
+        deleted = self._model_index.delete_version(version_id)
+        if not deleted:
+            logger.warning("No rows deleted from SQLite registry", version_id=version_id)
 
-        # 3. Update YAML
+        # 3. Update YAML as log (secondary — failure is non-blocking)
         yaml_path = MODELS_DIR / "model_list.yaml"
         if yaml_path.exists():
             try:
@@ -64,7 +69,7 @@ class ModelService:
                     yaml.dump(data, f, sort_keys=False)
             except Exception:
                 logger.warning(
-                    "Failed to update model_list.yaml after deleting version",
+                    "Failed to update model_list.yaml after deleting version (SQLite already deleted)",
                     version_id=version_id,
                     exc_info=True,
                 )
@@ -293,23 +298,29 @@ class ModelService:
         alias_existed = False
 
         try:
+            # 1. Update SQLite first (authoritative)
             if not self._model_index.update_stage(version_id, stage):
                 raise RuntimeError("Model registry stage update failed")
 
+            # 2. Update YAML as log (secondary — non-blocking)
             if yaml_path.exists():
-                with open(yaml_path, encoding="utf-8") as f:
-                    data = yaml.safe_load(f) or {"models": []}
+                try:
+                    with open(yaml_path, encoding="utf-8") as f:
+                        data = yaml.safe_load(f) or {"models": []}
 
-                updated = False
-                for m in data.get("models", []):
-                    if m.get("id") == version_id:
-                        m["stage"] = stage
-                        updated = True
-                        break
+                    for m in data.get("models", []):
+                        if m.get("id") == version_id:
+                            m["stage"] = stage
+                            break
 
-                if updated:
                     with open(yaml_path, "w", encoding="utf-8") as f:
                         yaml.dump(data, f, sort_keys=False)
+                except Exception:
+                    logger.warning(
+                        "Failed to update YAML log (SQLite already updated)",
+                        version_id=version_id,
+                        exc_info=True,
+                    )
 
             if is_recommended:
                 market = str(version.get("market") or "unknown").lower()
@@ -345,15 +356,17 @@ class ModelService:
                 stage=stage,
                 error=str(exc),
             )
+            # Rollback SQLite first (authoritative)
             try:
                 self._model_index.update_stage(version_id, old_stage)
             except Exception:
-                logger.error("Failed to roll back model registry stage", exc_info=True)
+                logger.error("Failed to roll back SQLite model stage", exc_info=True)
+            # Rollback YAML (secondary)
             try:
                 if yaml_before is not None:
                     yaml_path.write_bytes(yaml_before)
             except Exception:
-                logger.error("Failed to roll back model registry YAML", exc_info=True)
+                logger.error("Failed to roll back YAML log", exc_info=True)
             try:
                 if alias_path is not None:
                     if alias_existed and alias_before is not None:

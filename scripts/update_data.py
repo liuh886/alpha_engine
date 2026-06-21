@@ -173,6 +173,15 @@ def filter_regions_for_market(regions: dict, market: str) -> dict:
     return {k: (v if k == market else []) for k, v in regions.items()}
 
 
+def build_selected_universe(regions: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Return only markets that contain symbols after market filtering."""
+    return {
+        market: [str(symbol).upper() for symbol in symbols]
+        for market, symbols in regions.items()
+        if symbols
+    }
+
+
 def load_watchlist():
     from src.common.paths import CONFIG_DIR
 
@@ -351,7 +360,7 @@ def run_data_update(args) -> DataSnapshot:
     regions = filter_regions_for_market(regions, args.market)
 
     selected_markets = {k for k, v in regions.items() if v}
-    universe = {k: [str(t).upper() for t in v] for k, v in regions.items()}
+    universe = build_selected_universe(regions)
 
     accounting = UpdateAccounting(configured=universe)
 

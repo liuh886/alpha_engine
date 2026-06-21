@@ -17,12 +17,17 @@ router = APIRouter(tags=["backtest"], route_class=ContractAPIRoute)
 
 
 @router.get("/")
-def list_backtests(market: str = Query(None), limit: int = Query(50, ge=1, le=500)):
+def list_backtests(
+    market: str = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
     """
     Returns a list of backtest runs with core metrics.
+    Supports pagination via ``offset`` and ``limit``.
     Used by the Arena view and Dashboard lists.
     """
-    runs = get_run_index().list_runs(market=market, limit=limit)
+    runs = get_run_index().list_runs(market=market, limit=limit, offset=offset)
     # Map to frontend expected format
     formatted = []
     for r in runs:
@@ -38,7 +43,7 @@ def list_backtests(market: str = Query(None), limit: int = Query(50, ge=1, le=50
                 "strategy_name": r.get("params", {}).get("model_tag") or "AlphaStrategy",
             }
         )
-    return {"ok": True, "runs": formatted}
+    return {"ok": True, "runs": formatted, "offset": offset, "limit": limit}
 
 
 @router.get("/curve")

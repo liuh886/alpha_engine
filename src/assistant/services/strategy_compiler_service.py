@@ -177,7 +177,8 @@ def parse_natural_language(text: str) -> dict[str, Any]:
             "train_window": {
                 "train": ["2021-01-01", "2024-12-31"],
                 "valid": ["2025-01-01", "2025-12-31"],
-                "test": ["2026-01-01", "2026-06-18"],
+                # Test window uses dynamic end — override per run
+                "test": ["2026-01-01", "USE_default_end_date"],
             },
             "kwargs": {
                 "learning_rate": 0.05,

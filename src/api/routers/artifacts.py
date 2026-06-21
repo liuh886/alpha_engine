@@ -1,8 +1,23 @@
+import json
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 
 from src.api.dependencies import get_artifact_gateway
+from src.common.paths import DASHBOARD_DB_PATH
 
 router = APIRouter(tags=["artifacts"])
+
+
+@router.get("/dashboard-db")
+def get_dashboard_db():
+    """Return the full dashboard database for frontend comparison/display."""
+    try:
+        if not DASHBOARD_DB_PATH.exists():
+            return {"ok": True, "models": [], "name_map": {}, "generated_at": ""}
+        return json.loads(DASHBOARD_DB_PATH.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/arena-leaderboard/{arena_id}")
