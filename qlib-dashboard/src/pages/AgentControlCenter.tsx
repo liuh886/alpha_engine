@@ -26,6 +26,21 @@ interface AgentLog {
     thought: string;
 }
 
+/** Safely format a timestamp string for display. Never returns "Invalid Date". */
+function _safeFormatTime(ts: string | undefined | null): string {
+    if (!ts) return "—";
+    try {
+        const d = new Date(ts);
+        if (Number.isNaN(d.getTime())) {
+            // Fall back to raw string (truncated) if parsing fails
+            return ts.slice(0, 16);
+        }
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return ts.slice(0, 16);
+    }
+}
+
 interface ToolResult {
     ok: boolean;
     reply?: string;
@@ -148,23 +163,24 @@ export function AgentControlCenter({ models }: { models: ModelData[] }) {
                             </div>
                         ) : (
                             thoughtStream.map(log => {
-                                const isRisk = log.agent.toLowerCase().includes('risk');
-                                const isAlpha = log.agent.toLowerCase().includes('alpha');
-                                const isAssistant = log.agent.toLowerCase().includes('researchassistant');
-                                const bgClass = isRisk ? 'bg-amber-500/10 hover:bg-amber-500/20' : isAlpha || isAssistant ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : 'bg-white/5 hover:bg-white/10';
-                                const borderClass = isRisk ? 'border-amber-500/20' : isAlpha || isAssistant ? 'border-emerald-500/20' : 'border-white/5';
-                                const textClass = isRisk ? 'text-amber-500' : isAlpha || isAssistant ? 'text-emerald-500' : 'text-muted-foreground';
-                                const dateStr = new Date(log.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                // Normalized agent name: all entries are from the unified ResearchAssistant.
+                                // Legacy multi-agent entries (Alpha, Risk, Governance, Developer) are
+                                // preserved in the audit payload but displayed under the unified identity.
+                                const agentLabel = "ResearchAssistant";
+                                const bgClass = 'bg-emerald-500/10 hover:bg-emerald-500/20';
+                                const borderClass = 'border-emerald-500/20';
+                                const textClass = 'text-emerald-500';
+                                // Defensive timestamp formatting: never render "Invalid Date"
+                                const dateStr = _safeFormatTime(log.date);
 
                                 return (
                                     <div key={log.id} className={`p-4 rounded-2xl border backdrop-blur-sm transition-all ${bgClass} ${borderClass}`}>
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className={`text-[10px] uppercase font-black tracking-widest ${textClass}`}>{log.agent}</span>
+                                            <span className={`text-[10px] uppercase font-black tracking-widest ${textClass}`}>{agentLabel}</span>
                                             <span className={`text-[10px] text-muted-foreground border px-2 py-0.5 rounded-full ${borderClass}`}>{dateStr}</span>
                                         </div>
-                                        <p className={`text-sm font-medium leading-relaxed flex gap-2 ${isRisk ? 'text-amber-50' : isAlpha || isAssistant ? 'text-emerald-50' : 'text-foreground/90'}`}>
-                                            {isRisk && <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />}
-                                            {(isAlpha || isAssistant) && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
+                                        <p className={`text-sm font-medium leading-relaxed flex gap-2 ${'text-emerald-50'}`}>
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                                             {log.thought}
                                         </p>
                                     </div>

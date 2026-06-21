@@ -46,8 +46,25 @@ def format_thought_stream_for_report(agent: str, level: str, thought_text: str) 
     """
     Writes the Agent's thought stream to a local state file
     so the dashboard GUI can pick it up and display it.
+
+    The *agent* parameter is normalized to ``"ResearchAssistant"`` — the
+    codebase consolidated from four legacy agents (Alpha, Risk, Governance,
+    Developer) into a single unified ResearchAssistant in T18/T19.  Legacy
+    agent names are accepted for backward compatibility but are rewritten
+    on write so the frontend never displays multi-agent identities.
     """
     import json
+
+    # Normalize to unified identity (T18/T19 consolidation)
+    normalized_agent = "ResearchAssistant"
+    if agent != normalized_agent:
+        import logging
+        _log = logging.getLogger(__name__)
+        _log.debug(
+            "Normalizing legacy agent name in thought stream",
+            legacy_agent=agent,
+            normalized=normalized_agent,
+        )
 
     os.makedirs("artifacts", exist_ok=True)
     filepath = "artifacts/agent_thought_stream.json"
@@ -56,15 +73,31 @@ def format_thought_stream_for_report(agent: str, level: str, thought_text: str) 
     if os.path.exists(filepath):
         try:
             with open(filepath, encoding="utf-8") as f:
-                logs = json.load(f)
+                raw_logs = json.load(f)
+            # Normalize legacy entries that use different field names
+            for entry in raw_logs:
+                if not isinstance(entry, dict):
+                    continue
+                normalized = {
+                    "id": entry.get("id", ""),
+                    "date": entry.get("date", entry.get("timestamp", "")),
+                    "agent": entry.get("agent", "ResearchAssistant"),
+                    "level": entry.get("level", "info"),
+                    "thought": entry.get("thought", entry.get("message", "")),
+                }
+                # Generate versioned id for entries missing it
+                if not normalized["id"] or "_" not in str(normalized["id"]):
+                    normalized["id"] = f"legacy_{len(logs):04d}"
+                logs.append(normalized)
         except Exception:
             logs = []
 
+    now = datetime.datetime.now()
     logs.append(
         {
-            "id": str(datetime.datetime.now().timestamp()),
-            "date": datetime.datetime.now().isoformat(),
-            "agent": agent,
+            "id": now.strftime("%Y%m%d_%H%M%S_%f"),
+            "date": now.isoformat(),
+            "agent": normalized_agent,
             "level": level,
             "thought": thought_text,
         }
