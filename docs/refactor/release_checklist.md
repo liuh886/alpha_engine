@@ -15,13 +15,14 @@ This document formalizes the release gates and checklist for transitioning Alpha
 - [ ] **Visual Regressions**: Check `tabular-nums` formatting on metrics, ensure consistent color tokens for Status and Action cards, and verify dark-mode compatibility.
 
 ### Performance & Security
-- [ ] **Performance Budget**: Run `npm run build` and ensure the gzipped output is `< 450KB`.
+- [ ] **Bundle Budget Gate**: Run `npm run check:bundle-budget` (in `qlib-dashboard/`). This builds the production bundle, measures the gzip size of `dist/index.html`, and exits non-zero if it exceeds 450 KB. No manual inspection needed.
 - [ ] **Memory Leaks**: Confirm polling logic (e.g., `useJobs`) correctly cleans up intervals to prevent timer leakage.
 - [ ] **Lint & Tests**: 
   - `uv run ruff check .` must pass.
   - `uv run pytest -q` must pass.
-  - `npm run lint` must report 0 errors/warnings.
-  - `npm test` must pass all frontend tests.
+  - `cd qlib-dashboard && npm run lint` must report 0 errors/warnings.
+  - `cd qlib-dashboard && npm test` must pass all frontend tests.
+  - `cd qlib-dashboard && npm run check:bundle-budget` must exit 0.
 
 ## 2. Release Steps
 
