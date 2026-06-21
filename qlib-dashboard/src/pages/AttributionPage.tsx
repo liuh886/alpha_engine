@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { Loader2, RefreshCw, Target, AlertTriangle, PieChart, ChevronDown, ChevronUp, TrendingUp, ExternalLink, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatNum, formatPct, useSort } from "@/lib/format";
+import { formatNum, useSort } from "@/lib/format";
 import { ContributionBar } from "./attribution/ContributionBar";
 import { AttributionSummaryCards } from "./attribution/AttributionSummaryCards";
 import { apiFetch } from "@/lib/api";
@@ -47,12 +47,25 @@ export function AttributionPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [market, setMarket] = useState<MarketFilter>("US");
+  const [modelId, setModelId] = useState("");
+  const [models, setModels] = useState<Array<{id:string; name?:string; market?:string}>>([]);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() - 1);
     return d.toISOString().slice(0, 10);
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  // Load available models for selector
+  useEffect(() => {
+    apiFetch(`/api/models?market=${market.toLowerCase()}&limit=100`)
+      .then(r => r.json())
+      .then(data => {
+        const versions = data?.versions || [];
+        setModels(versions.map((v: any) => ({id: v.id, name: v.tag || v.name, market: v.market})));
+      })
+      .catch(() => setModels([]));
+  }, [market]);
 
   // Rolling attribution state
   const [showRolling, setShowRolling] = useState(false);
@@ -77,6 +90,7 @@ export function AttributionPage() {
           market: market.toLowerCase(),
           start_date: startDate,
           end_date: endDate,
+          strategy_config: modelId || undefined,
         }),
         cache: "no-store",
       });
@@ -244,6 +258,16 @@ export function AttributionPage() {
               <Button key={m} variant={market === m ? "default" : "outline"} size="sm" onClick={() => setMarket(m)} className="h-7 text-xs uppercase">{m}</Button>
             ))}
           </div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Model (optional)</label>
+          <select value={modelId} onChange={(e) => setModelId(e.target.value)}
+            className="h-7 w-44 text-xs border rounded bg-background px-2">
+            <option value="">All factors only</option>
+            {models.map(m => (
+              <option key={m.id} value={m.id}>{m.name || m.id}</option>
+            ))}
+          </select>
         </div>
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">Start Date</label>
@@ -425,7 +449,7 @@ export function AttributionPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className="font-mono text-xs">{formatPct(f.risk_contribution)}</span>
+                        <span className="font-mono text-xs">{formatNum(f.risk_contribution, 2)}%</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className={cn("font-mono text-xs", f.exposure > 0.5 ? "text-blue-500" : f.exposure < -0.5 ? "text-yellow-500" : "")}>

@@ -36,6 +36,7 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
   const [arenas, setArenas] = useState<Arena[]>([]);
   const [selectedArenaId, setSelectedArenaId] = useState<string>("");
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [settledDate, setSettledDate] = useState<string>("");
   const [seedFromModelRegistry, setSeedFromModelRegistry] = useState(true);
   const [seedLimit, setSeedLimit] = useState(30);
@@ -43,6 +44,7 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
   const [jobStatus, setJobStatus] = useState("");
   const [running, setRunning] = useState(false);
   const [report, setReport] = useState<ReportRow | null>(null);
+  const [reportOpening, setReportOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const selectedArena = useMemo(() => arenas.find((a) => a.id === selectedArenaId) || null, [arenas, selectedArenaId]);
@@ -54,13 +56,14 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
       const json = await resp.json();
       const parsed = (json?.arenas || []).map((r: { id: string; name?: string; market?: string }) => ({ id: r.id, name: r.name || r.id, market: r.market || "unknown" }));
       setArenas(parsed);
-      if (parsed.length > 0 && !selectedArenaId) setSelectedArenaId(parsed[0].id);
+      if (parsed.length > 0) setSelectedArenaId(current => current || parsed[0].id);
     } catch (err) {
       console.warn("[ArenaPage] loadArenas failed:", err);
     }
-  }, [selectedArenaId]);
+  }, []);
 
   const loadLeaderboard = useCallback(async (arena: Arena) => {
+    setLeaderboardLoading(true);
     try {
       const resp = await apiFetch(`/api/arena/leaderboard?arena_id=${encodeURIComponent(arena.id)}`);
       if (!resp.ok) return;
@@ -69,6 +72,8 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
       setSettledDate(String(json?.date || ""));
     } catch (err) {
       console.warn("[ArenaPage] loadLeaderboard failed:", err);
+    } finally {
+      setLeaderboardLoading(false);
     }
   }, []);
 
@@ -157,7 +162,26 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
     return () => window.clearInterval(timer);
   }, [jobId, refreshSelected]);
 
-  const reportHref = report?.paths?.html ? `/${String(report.paths.html).replace(/^\/+/, "")}` : "";
+  const openReport = useCallback(async () => {
+    if (!report?.paths?.html) return;
+    const reportWindow = window.open("about:blank", "_blank");
+    if (reportWindow) reportWindow.opener = null;
+    setReportOpening(true);
+    try {
+      const resp = await apiFetch(`/api/reports/${encodeURIComponent(report.id)}/file?format=html`);
+      if (!resp.ok) {
+        reportWindow?.close();
+        return;
+      }
+      const url = URL.createObjectURL(await resp.blob());
+      if (reportWindow) reportWindow.location.href = url;
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      reportWindow?.close();
+    } finally {
+      setReportOpening(false);
+    }
+  }, [report]);
 
   return (
     <div className="space-y-5 max-w-[1400px] mx-auto pb-16">
@@ -284,9 +308,14 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
                   <span>{leaderboard.length}</span>
                 </div>
               </div>
-              {reportHref && (
-                <Button asChild variant="outline" className="w-full h-8 gap-1.5 text-xs">
-                  <a href={reportHref} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Full Report</a>
+              {report?.paths?.html && (
+                <Button
+                  variant="outline"
+                  className="w-full h-8 gap-1.5 text-xs"
+                  disabled={reportOpening}
+                  onClick={openReport}
+                >
+                  <ExternalLink className="h-3 w-3" /> {reportOpening ? "Opening..." : "Full Report"}
                 </Button>
               )}
             </CardContent>
@@ -310,8 +339,10 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {leaderboard.length === 0 ? (
+                {leaderboardLoading ? (
                   <TableRow><TableCell colSpan={8} className="h-48 text-center text-muted-foreground text-sm">Loading leaderboard...</TableCell></TableRow>
+                ) : leaderboard.length === 0 ? (
+                  <TableRow><TableCell colSpan={8} className="h-48 text-center text-muted-foreground text-sm">No leaderboard results. Run a settlement to add contestants.</TableCell></TableRow>
                 ) : (
                   leaderboard.map((r, i) => {
                     const rank = r.rank ?? i + 1;

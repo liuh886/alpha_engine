@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { FileText, RefreshCw, ExternalLink, Download, Calendar, FlaskConical, Target, Archive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { shortId } from "@/lib/format";
-import { artifactUrl } from "@/lib/artifacts";
 import { apiFetch } from "@/lib/api";
 
 type ReportRow = { id: string; type: string; ref_id: string; date?: string; paths?: Record<string, string>; meta?: Record<string, unknown>; };
@@ -18,25 +17,42 @@ export function ReportsPage() {
   const [filter, setFilter] = useState<ReportFilter>("all");
   const [search, setSearch] = useState("");
   const [exportRunning, setExportRunning] = useState(false);
+  const [openingId, setOpeningId] = useState("");
 
   const load = async () => {
     setLoading(true);
     try {
-      const resp = await apiFetch(artifactUrl.reports);
+      const typeQuery = filter === "all" ? "" : `&type=${encodeURIComponent(filter)}`;
+      const resp = await apiFetch(`/api/reports?limit=100${typeQuery}`);
       if (!resp.ok) return;
       const json = await resp.json();
-      let rpts = json?.reports || [];
-      if (filter !== "all") rpts = rpts.filter((r: ReportRow) => r.type === filter);
-      setReports(rpts);
+      setReports(json?.reports || []);
     } catch { /* ignore */ }
     finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, [filter]);
 
-  const toHref = (r: ReportRow) => {
-    const p = r.paths?.html || r.paths?.zip || "";
-    return p ? `/${String(p).replace(/^\/+/, "")}` : "";
+  const openReport = async (r: ReportRow) => {
+    const format = r.paths?.html ? "html" : r.paths?.zip ? "zip" : "";
+    if (!format) return;
+    const reportWindow = window.open("about:blank", "_blank");
+    if (reportWindow) reportWindow.opener = null;
+    setOpeningId(r.id);
+    try {
+      const resp = await apiFetch(`/api/reports/${encodeURIComponent(r.id)}/file?format=${format}`);
+      if (!resp.ok) {
+        reportWindow?.close();
+        return;
+      }
+      const url = URL.createObjectURL(await resp.blob());
+      if (reportWindow) reportWindow.location.href = url;
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      reportWindow?.close();
+    } finally {
+      setOpeningId("");
+    }
   };
 
   const startExport = async () => {
@@ -115,7 +131,7 @@ export function ReportsPage() {
           </div>
         ) : (
           filteredReports.map((r) => {
-            const href = toHref(r);
+            const hasArtifact = Boolean(r.paths?.html || r.paths?.zip);
             const market = String(r.meta?.market || "global").toUpperCase();
 
             return (
@@ -144,9 +160,14 @@ export function ReportsPage() {
                     </div>
                   )}
                   <div className="pt-2 border-t">
-                    {href ? (
-                      <Button asChild variant="outline" className="w-full h-8 gap-1.5 text-xs">
-                        <a href={href} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /> Open</a>
+                    {hasArtifact ? (
+                      <Button
+                        variant="outline"
+                        className="w-full h-8 gap-1.5 text-xs"
+                        disabled={openingId === r.id}
+                        onClick={() => openReport(r)}
+                      >
+                        <ExternalLink className="h-3 w-3" /> {openingId === r.id ? "Opening..." : "Open"}
                       </Button>
                     ) : (
                       <Button disabled variant="outline" className="w-full h-8 text-xs text-muted-foreground">No artifact</Button>

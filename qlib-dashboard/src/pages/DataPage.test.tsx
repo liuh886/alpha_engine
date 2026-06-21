@@ -126,6 +126,7 @@ describe("DataPage", () => {
     vi.clearAllMocks();
     mockGetDataStatus.mockResolvedValue(FIXTURE_STATUS_OK);
     mockGetWatchlist.mockResolvedValue(FIXTURE_WATCHLIST);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   // ---- Loading state ----
@@ -312,6 +313,17 @@ describe("DataPage", () => {
     await waitFor(() => {
       expect(screen.getByText("No symbols in HK watchlist")).toBeVisible();
     });
+  });
+
+  it("submits an update for the selected market", async () => {
+    mockSubmitDataUpdate.mockResolvedValue({ ok: true, job_id: "job-us" });
+    mockGetJob.mockResolvedValue({ ok: true, job: { id: "job-us", status: "RUNNING" } });
+    renderDataPage();
+
+    fireEvent.click(await screen.findByLabelText("Select US market"));
+    fireEvent.click(screen.getByRole("button", { name: "Incremental" }));
+
+    await waitFor(() => expect(mockSubmitDataUpdate).toHaveBeenCalledWith(false, "us"));
   });
 
   // ---- Job reconnection ----

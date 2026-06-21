@@ -65,6 +65,7 @@ export function ModelsPage() {
   const [market, setMarket] = useState<MarketFilter>("all");
   const [actionId, setActionId] = useState("");
   const { sortKey, sortAsc, toggleSort, SortIcon } = useSort<SortKey>("none");
+  const [searchText, setSearchText] = useState("");
   const [minSharpe, setMinSharpe] = useState("");
   const [gateFailures, setGateFailures] = useState<Record<string, string[]>>({});
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
@@ -105,6 +106,18 @@ export function ModelsPage() {
   const displayed = useMemo(() => {
     let list = [...versions];
 
+    // Filter by search text (matches id, tag, name, market, model_type)
+    const query = searchText.trim().toLowerCase();
+    if (query) {
+      list = list.filter(v =>
+        v.id?.toLowerCase().includes(query) ||
+        v.tag?.toLowerCase().includes(query) ||
+        v.name?.toLowerCase().includes(query) ||
+        v.market?.toLowerCase().includes(query) ||
+        v.model_type?.toLowerCase().includes(query)
+      );
+    }
+
     // Filter by min Sharpe
     const threshold = parseFloat(minSharpe);
     if (!isNaN(threshold)) {
@@ -127,7 +140,7 @@ export function ModelsPage() {
     }
 
     return list;
-  }, [versions, sortKey, sortAsc, minSharpe]);
+  }, [versions, sortKey, sortAsc, minSharpe, searchText]);
 
   const registryOutcome = useMemo<OutcomeSummary>(() => {
     if (modelsQuery.loading && !modelsQuery.data) return { state: "loading", reason: "Loading the model registry." };
@@ -295,6 +308,15 @@ export function ModelsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Search</label>
+          <Input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Name, tag, market..."
+            className="h-7 w-44 text-xs"
+          />
+        </div>
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">Market</label>
           <div className="flex gap-1">

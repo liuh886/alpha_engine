@@ -353,8 +353,8 @@ export function DataPage() {
     },
   });
 
-  const updateMutation = useMutation<JobSubmitResponse, { full: boolean }>({
-    mutateFn: ({ full }) => releaseApi.submitDataUpdate(full),
+  const updateMutation = useMutation<JobSubmitResponse, { full: boolean; market: "us" | "cn" | "hk" }>({
+    mutateFn: ({ full, market: selectedMarket }) => releaseApi.submitDataUpdate(full, selectedMarket),
     onSuccess: (data) => {
       const jid = data.job_id;
       if (jid) {
@@ -418,7 +418,7 @@ export function DataPage() {
     const type = full ? "FULL RE-INGESTION" : "INCREMENTAL UPDATE";
     if (!window.confirm(`Start ${type}?\nFull re-ingestion will wipe local cache and fetch everything.\nIncremental update only fetches the last 30 days.`)) return;
     setUpdatePhase("submitting");
-    updateMutation.mutate({ full });
+    updateMutation.mutate({ full, market });
   };
 
   const handleJobDone = useCallback(async (success: boolean) => {

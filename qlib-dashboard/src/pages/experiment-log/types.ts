@@ -20,7 +20,7 @@ export interface ExperimentEntry {
 }
 
 export interface FailedExperiment {
-  id: number;
+  id: string | number;
   timestamp: string;
   type: ExperimentType;
   name: string;
@@ -50,17 +50,18 @@ export const ALL_TYPES: ExperimentType[] = ["factor", "model", "wf"];
 
 export function formatTimestamp(ts: string): string {
   if (!ts) return "N/A";
-  try {
-    const d = new Date(ts);
-    return d.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return ts.slice(0, 16);
-  }
+  const compact = ts.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/);
+  const normalized = compact
+    ? `${compact[1]}-${compact[2]}-${compact[3]}T${compact[4]}:${compact[5]}:${compact[6]}`
+    : ts;
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return ts.slice(0, 16);
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export function formatMetricValue(v: number | string | null | undefined): string {

@@ -5,6 +5,29 @@ import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ReportRow } from '@/lib/types';
 
+function normalizeBenchmarkSeries(values: Array<number | undefined>): number[] {
+  const numeric = values.map(value => Number.isFinite(Number(value)) ? Number(value) : null);
+  const first = numeric.find((value): value is number => value !== null);
+  if (first === undefined) return values.map(() => 0);
+
+  // Backtest artifacts use both benchmark equity levels (often starting at
+  // 1, 100, or initial capital) and daily returns. Normalize both contracts
+  // to cumulative return before charting.
+  if (first > 0.5) {
+    let previous = first;
+    return numeric.map(value => {
+      if (value !== null) previous = value;
+      return previous / first - 1;
+    });
+  }
+
+  let cumulative = 1;
+  return numeric.map(value => {
+    cumulative *= 1 + (value ?? 0);
+    return cumulative - 1;
+  });
+}
+
 export function PerformanceCharts({ report }: { report: ReportRow[] }) {
   const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
 
@@ -18,22 +41,19 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
 
   const chartData = useMemo(() => {
     if (!report.length) return [];
-    let cumulativeQqq = 1.0;
-    let cumulativeHs300 = 1.0;
     const initialAccount = report[0].account;
+    const qqqSeries = normalizeBenchmarkSeries(report.map(row => row.bench_qqq));
+    const hs300Series = normalizeBenchmarkSeries(report.map(row => row.bench_hs300));
+    const useQqq = report.some(row => Number.isFinite(Number(row.bench_qqq)));
 
-    return report.map(d => {
-      const qqqRet = Number.isFinite(Number(d.bench_qqq)) ? Number(d.bench_qqq) : 0;
-      const hs300Ret = Number.isFinite(Number(d.bench_hs300)) ? Number(d.bench_hs300) : 0;
-      cumulativeQqq *= (1 + qqqRet);
-      cumulativeHs300 *= (1 + hs300Ret);
+    return report.map((d, index) => {
       const strategyRet = (d.account / initialAccount) - 1;
       return {
         date: d.date,
         strategy: strategyRet,
-        benchmark_qqq: cumulativeQqq - 1,
-        benchmark_hs300: cumulativeHs300 - 1,
-        excess: strategyRet - (Number.isFinite(Number(d.bench_qqq)) ? cumulativeQqq - 1 : cumulativeHs300 - 1),
+        benchmark_qqq: qqqSeries[index],
+        benchmark_hs300: hs300Series[index],
+        excess: strategyRet - (useQqq ? qqqSeries[index] : hs300Series[index]),
         pos_ratio: (Number(d.value) || 0) / (Number(d.account) || 1),
       };
     });
