@@ -7,6 +7,7 @@ import { expect, test } from "@playwright/test";
 // Since a live environment's data state is non-deterministic (e.g., might be empty, 
 // might have models), these tests are skipped by default. They serve as an executable 
 // audit checklist that a developer can un-skip when verifying against a seeded live DB.
+// NOTE: This file is intentionally skipped by default and is NOT a CI gate.
 // ----------------------------------------------------------------------------------
 
 test.describe("Live Backend Audit Checklist", () => {

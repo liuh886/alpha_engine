@@ -17,6 +17,8 @@ This ledger records identified bugs and execution paths during the Phase 1 stabi
 
 ## Pending Live Audit Risks
 
+*(Note: These items cannot be validated fully via static fixtures. They are tracked via the `live-backend-audit.spec.ts` test suite. **This suite is skipped by default and is explicitly NOT a CI gate.** It serves purely as an executable checklist for developers verifying a live seeded environment.)*
+
 | Bug ID | Entry | Steps | Expected | Actual | Severity | Module | Status | Regression Test | Evidence / Screenshot | Owner |
 |---|---|---|---|---|---|---|---|---|---|---|
 | BUG-003 | Data Update Tracking | Click update button | Progress tracking with success/fail verdict | Not verified. Requires seeded live backend to observe long-polling or failure states. | P1 | Job Center | Pending Live Audit | [live-backend-audit.spec.ts](../../qlib-dashboard/e2e/live-backend-audit.spec.ts) | - | TBD |
