@@ -4,7 +4,6 @@ import {
     Activity,
     Database,
     CheckCircle2,
-    AlertTriangle,
     Search,
     Shield,
     BarChart3,

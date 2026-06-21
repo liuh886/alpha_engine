@@ -27,17 +27,24 @@ const MAX_COMPARE = 5;
 const COLORS = ["hsl(var(--primary))", "#f59e0b", "#0ea5e9", "#8b5cf6", "#ec4899"];
 
 function buildEquitySeries(models: ModelData[]) {
-   
+
   const rows = new Map<string, Record<string, any>>();
   for (const model of models) {
     const report = model.backtest.report || [];
     if (!report.length) continue;
-    const firstAccount = Number(report[0]?.account || 1);
+    const firstAccount = Number(report[0]?.account);
+    // Skip models whose first account value is missing/invalid —
+    // there is no reliable base to normalise against.
+    if (!Number.isFinite(firstAccount) || firstAccount <= 0) continue;
     for (const row of report) {
       const date = row.date;
       if (!date) continue;
+      const account = Number(row.account);
       const entry = rows.get(date) || { date };
-      entry[model.id] = (Number(row.account || 0) / firstAccount) - 1;
+      // Missing or invalid account → null (gap in the chart), NOT -100 %
+      entry[model.id] = Number.isFinite(account)
+        ? (account / firstAccount) - 1
+        : null;
       rows.set(date, entry);
     }
   }
@@ -152,8 +159,8 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
         vb = (vb || "").toLowerCase();
         return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
       }
-      va = va ?? 0;
-      vb = vb ?? 0;
+      va = Number.isFinite(va) ? va : 0;
+      vb = Number.isFinite(vb) ? vb : 0;
       return sortAsc ? va - vb : vb - va;
     });
     return rows;

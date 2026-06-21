@@ -7,12 +7,14 @@ import type { ReportRow } from '@/lib/types';
 
 function normalizeBenchmarkSeries(values: Array<number | undefined>): number[] {
   const numeric = values.map(value => Number.isFinite(Number(value)) ? Number(value) : null);
-  const first = numeric.find((value): value is number => value !== null);
+  const first = numeric.find((value): value is number => value !== null && value > 0);
   if (first === undefined) return values.map(() => 0);
 
   // Backtest artifacts use both benchmark equity levels (often starting at
   // 1, 100, or initial capital) and daily returns. Normalize both contracts
   // to cumulative return before charting.
+  // Values near zero represent daily returns; values above 0.5 represent
+  // equity levels (e.g. initial capital 10000 or normalised 1.0).
   if (first > 0.5) {
     let previous = first;
     return numeric.map(value => {
@@ -41,20 +43,32 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
 
   const chartData = useMemo(() => {
     if (!report.length) return [];
-    const initialAccount = report[0].account;
+    const initialAccount = Number(report[0].account);
+    // Bail out if the first account value is missing or invalid — all curves
+    // are normalised against it and would render NaN/Infinity silently.
+    if (!Number.isFinite(initialAccount) || initialAccount <= 0) return [];
     const qqqSeries = normalizeBenchmarkSeries(report.map(row => row.bench_qqq));
     const hs300Series = normalizeBenchmarkSeries(report.map(row => row.bench_hs300));
     const useQqq = report.some(row => Number.isFinite(Number(row.bench_qqq)));
 
     return report.map((d, index) => {
-      const strategyRet = (d.account / initialAccount) - 1;
+      const account = Number(d.account);
+      const strategyRet = Number.isFinite(account)
+        ? (account / initialAccount) - 1
+        : null as unknown as number;  // Recharts skips null data points
+      const value = Number(d.value);
+      const posRatio = Number.isFinite(account) && account > 0 && Number.isFinite(value)
+        ? value / account
+        : null as unknown as number;
       return {
         date: d.date,
         strategy: strategyRet,
         benchmark_qqq: qqqSeries[index],
         benchmark_hs300: hs300Series[index],
-        excess: strategyRet - (useQqq ? qqqSeries[index] : hs300Series[index]),
-        pos_ratio: (Number(d.value) || 0) / (Number(d.account) || 1),
+        excess: Number.isFinite(strategyRet)
+          ? strategyRet - (useQqq ? qqqSeries[index] : hs300Series[index])
+          : null as unknown as number,
+        pos_ratio: posRatio,
       };
     });
   }, [report]);
@@ -62,10 +76,14 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
   // T5: Drawdown data
   const drawdownData = useMemo(() => {
     if (!chartData.length) return [];
-    let peak = chartData[0].strategy;
+    // Find first valid strategy value as initial peak
+    let peak = 0;
+    let initialized = false;
     return chartData.map(d => {
+      if (!Number.isFinite(d.strategy)) return { date: d.date, drawdown: null as unknown as number };
+      if (!initialized) { peak = d.strategy; initialized = true; }
       if (d.strategy > peak) peak = d.strategy;
-      const dd = peak > 0 ? (d.strategy - peak) / (1 + peak) : 0;
+      const dd = (d.strategy - peak) / (1 + peak);
       return { date: d.date, drawdown: dd };
     });
   }, [chartData]);
@@ -75,7 +93,10 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
     let worst = 0;
     let worstIdx = 0;
     drawdownData.forEach((d, i) => {
-      if (d.drawdown < worst) { worst = d.drawdown; worstIdx = i; }
+      if (Number.isFinite(d.drawdown) && (d.drawdown as number) < worst) {
+        worst = d.drawdown as number;
+        worstIdx = i;
+      }
     });
     return worst < 0 ? { value: worst, date: drawdownData[worstIdx].date, index: worstIdx } : null;
   }, [drawdownData]);
@@ -83,15 +104,20 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
   // T6: Monthly returns
   const monthlyReturns = useMemo(() => {
     if (!report.length) return [];
+    const firstAccount = Number(report[0].account);
+    if (!Number.isFinite(firstAccount) || firstAccount <= 0) return [];
     const byMonth: Record<string, number[]> = {};
-    let prevAccount = report[0].account;
+    let prevAccount = firstAccount;
     for (let i = 1; i < report.length; i++) {
       const d = report[i];
+      const account = Number(d.account);
+      // Skip rows with missing date or invalid account
+      if (!d.date || !Number.isFinite(account)) continue;
       const ym = d.date.slice(0, 7); // "YYYY-MM"
       if (!byMonth[ym]) byMonth[ym] = [];
-      const dayRet = (d.account - prevAccount) / prevAccount;
+      const dayRet = (account - prevAccount) / prevAccount;
       byMonth[ym].push(dayRet);
-      prevAccount = d.account;
+      prevAccount = account;
     }
     return Object.entries(byMonth).map(([ym, rets]) => {
       const cumRet = rets.reduce((acc, r) => acc * (1 + r), 1) - 1;
