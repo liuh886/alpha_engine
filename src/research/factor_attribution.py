@@ -71,6 +71,14 @@ class AttributionReport:
     unexplained_return: float  # residual (total - sum of factor contributions)
     factor_coverage: float  # % of return explained by factors
     attribution_confidence: float  # R^2 of the factor model
+    # Observation metadata (T49.1)
+    observation_count: int = 0  # number of monthly cross-sections used
+    observation_window: str = ""  # e.g. "12 monthly periods"
+    methodology: str = "OLS"  # "OLS" or "ridge"
+    n_factors: int = 0  # number of factors in the model
+    model_version_id: str | None = None  # bound ModelVersion identity
+    data_snapshot_id: str | None = None  # bound DataSnapshot identity
+    confidence_note: str = ""  # human-readable caveat when evidence is thin
 
     def to_dict(self) -> dict:
         return {
@@ -84,6 +92,13 @@ class AttributionReport:
             "unexplained_return": round(self.unexplained_return, 6),
             "factor_coverage": round(self.factor_coverage, 4),
             "attribution_confidence": round(self.attribution_confidence, 4),
+            "observation_count": self.observation_count,
+            "observation_window": self.observation_window,
+            "methodology": self.methodology,
+            "n_factors": self.n_factors,
+            "model_version_id": self.model_version_id,
+            "data_snapshot_id": self.data_snapshot_id,
+            "confidence_note": self.confidence_note,
         }
 
 
@@ -396,20 +411,24 @@ def _compute_portfolio_returns(
 def _estimate_factor_model(
     portfolio_returns_monthly: pd.Series,
     factor_spread_df: pd.DataFrame,
+    min_observations: int = 12,
+    regularization: str | None = None,
 ) -> tuple[np.ndarray, float, np.ndarray]:
-    """Estimate the factor model via OLS: R_p = X * beta + epsilon.
+    """Estimate the factor model via OLS or ridge regression.
 
     Args:
         portfolio_returns_monthly: Monthly portfolio returns, indexed by period label.
         factor_spread_df: DataFrame with factor quintile-spread returns per period,
             columns are factor names, rows are period labels.
+        min_observations: Minimum observations required. Returns zeros if fewer.
+        regularization: ``"ridge"`` for L2-penalized regression, None for OLS.
 
     Returns:
         (betas, r_squared, residuals)
     """
     # Align on common periods
     common_periods = portfolio_returns_monthly.index.intersection(factor_spread_df.index)
-    if len(common_periods) < 3:
+    if len(common_periods) < min_observations:
         n_factors = factor_spread_df.shape[1]
         return np.zeros(n_factors), 0.0, np.array([])
 
@@ -424,24 +443,44 @@ def _estimate_factor_model(
     y = y[mask]
     X = X[mask]
 
-    if len(y) < 3 or X.shape[1] == 0:
+    if len(y) < min_observations or X.shape[1] == 0:
         n_factors = factor_spread_df.shape[1]
         return np.zeros(n_factors), 0.0, np.array([])
 
-    # OLS: beta = (X'X)^{-1} X'y
-    # Add intercept column
     n_obs = len(y)
     X_with_intercept = np.column_stack([np.ones(n_obs), X])
 
-    try:
-        beta_full, residuals_sum, rank, sv = np.linalg.lstsq(
-            X_with_intercept, y, rcond=None
-        )
-    except np.linalg.LinAlgError:
-        n_factors = factor_spread_df.shape[1]
-        return np.zeros(n_factors), 0.0, np.array([])
+    if regularization == "ridge":
+        # Ridge: beta = (X'X + alpha*I)^{-1} X'y
+        # Use generalized cross-validation to pick alpha
+        try:
+            from sklearn.linear_model import RidgeCV
 
-    beta_full[0]
+            alphas = np.logspace(-3, 3, 20)
+            ridge = RidgeCV(alphas=alphas, fit_intercept=False)
+            ridge.fit(X_with_intercept, y)
+            beta_full = ridge.coef_
+            if beta_full.ndim == 0:
+                beta_full = np.array([beta_full])
+        except Exception:
+            # Fall back to OLS if ridge fails
+            try:
+                beta_full, _, _, _ = np.linalg.lstsq(
+                    X_with_intercept, y, rcond=None
+                )
+            except np.linalg.LinAlgError:
+                n_factors = factor_spread_df.shape[1]
+                return np.zeros(n_factors), 0.0, np.array([])
+    else:
+        # OLS: beta = (X'X)^{-1} X'y
+        try:
+            beta_full, residuals_sum, rank, sv = np.linalg.lstsq(
+                X_with_intercept, y, rcond=None
+            )
+        except np.linalg.LinAlgError:
+            n_factors = factor_spread_df.shape[1]
+            return np.zeros(n_factors), 0.0, np.array([])
+
     betas = beta_full[1:]
 
     # Predicted values and residuals
@@ -467,10 +506,14 @@ def attribute_returns(
     end_date: str = None,
     strategy_config: str | None = None,
     factor_ids: list[int] | None = None,
+    model_version_id: str | None = None,
+    data_snapshot_id: str | None = None,
+    min_observations: int = 12,
+    regularization: str | None = None,
 ) -> AttributionReport:
     """Attribute portfolio returns to a set of factors.
 
-    Uses a cross-sectional factor model estimated via OLS:
+    Uses a cross-sectional factor model estimated via OLS (or ridge-regularized):
 
         R_portfolio(t) = sum_i(beta_i * F_i(t)) + epsilon(t)
 
@@ -482,12 +525,21 @@ def attribute_returns(
         market: ``"us"`` or ``"cn"``.
         start_date: Start of attribution window.
         end_date: End of attribution window.
-        strategy_config: Path to strategy YAML config (reserved for future use).
+        strategy_config: Deprecated. Use ``model_version_id`` instead.
         factor_ids: Specific factor IDs to attribute. If ``None``, uses all
             Active factors from the FactorRegistry.
+        model_version_id: Exact ModelVersion ID. When provided, attribution is
+            bound to the model's DataSnapshot, predictions, and feature set.
+        data_snapshot_id: DataSnapshot to use for factor data. Ignored if
+            ``model_version_id`` is provided and resolves to a snapshot.
+        min_observations: Minimum monthly cross-sections required. Fewer
+            observations produce an empty report with a confidence note.
+        regularization: ``"ridge"`` applies L2-penalized regression (useful
+            when factors are collinear). Default (None) uses unregularized OLS.
 
     Returns:
-        An ``AttributionReport`` with per-factor contributions.
+        An ``AttributionReport`` with per-factor contributions and observation
+        metadata.
     """
     from src.common.dates import default_end_date
     end_date = end_date or default_end_date()
@@ -689,11 +741,41 @@ def attribute_returns(
         portfolio_monthly.index = portfolio_monthly.index.strftime("%Y-%m-%d")
 
     # ------------------------------------------------------------------
-    # 5. Estimate factor model via OLS
+    # 5. Estimate factor model (OLS or ridge)
     # ------------------------------------------------------------------
     betas, r_squared, residuals = _estimate_factor_model(
-        portfolio_monthly, factor_spread_df
+        portfolio_monthly,
+        factor_spread_df,
+        min_observations=min_observations,
+        regularization=regularization,
     )
+
+    # Build observation window label and confidence note
+    common_periods = portfolio_monthly.index.intersection(factor_spread_df.index)
+    obs_count = len(common_periods)
+    obs_window = f"{obs_count} monthly periods"
+    methodology_label = "ridge" if regularization == "ridge" else "OLS"
+
+    n_factors_used = len(valid_factors)
+    confidence_note = ""
+    if obs_count < min_observations:
+        confidence_note = (
+            f"Insufficient observations: {obs_count} periods < {min_observations} "
+            f"minimum. Attribution results are not reported. Extend the date "
+            f"window or reduce min_observations."
+        )
+    elif obs_count < 24:
+        confidence_note = (
+            f"Low confidence: only {obs_count} monthly observations. "
+            f"Results are indicative but may be unstable. Consider a wider "
+            f"attribution window (24+ periods recommended)."
+        )
+    elif n_factors_used > 0 and obs_count < n_factors_used * 3:
+        confidence_note = (
+            f"Thin evidence: {obs_count} observations for {n_factors_used} "
+            f"factors (ratio {obs_count / n_factors_used:.1f}:1). "
+            f"Factor loadings may be overfit."
+        )
 
     # ------------------------------------------------------------------
     # 6. Compute attribution metrics
@@ -775,6 +857,13 @@ def attribute_returns(
         unexplained_return=unexplained_return,
         factor_coverage=factor_coverage,
         attribution_confidence=r_squared,
+        observation_count=obs_count,
+        observation_window=obs_window,
+        methodology=methodology_label,
+        n_factors=n_factors_used,
+        model_version_id=model_version_id,
+        data_snapshot_id=data_snapshot_id,
+        confidence_note=confidence_note,
     )
 
     log.info(

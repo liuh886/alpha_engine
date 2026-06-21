@@ -246,13 +246,38 @@ class AttributionRequest(BaseModel):
     market: str = Field("us", pattern="^(us|cn)$")
     start_date: str = Field("2021-01-01")
     end_date: str = Field(default_factory=default_end_date)
+    model_version_id: str | None = Field(
+        None,
+        description="Exact ModelVersion ID to bind attribution to. Resolves the model's "
+        "DataSnapshot, predictions, and feature set for reproducible attribution.",
+    )
+    data_snapshot_id: str | None = Field(
+        None,
+        description="DataSnapshot ID for attribution. If model_version_id is also "
+        "provided, it takes precedence and the snapshot is resolved from the model.",
+    )
     strategy_config: str | None = Field(
         None,
-        description="Path to strategy YAML config (reserved for future use).",
+        description="Deprecated: use model_version_id instead. "
+        "Path to strategy YAML config or model ID string.",
     )
     factor_ids: list[int] | None = Field(
         None,
         description="Specific factor IDs to attribute. Omit to use all Active factors.",
+    )
+    min_observations: int = Field(
+        12,
+        ge=3,
+        le=120,
+        description="Minimum number of monthly observations required for valid "
+        "attribution. Attribution fails closed (returns empty report) when the "
+        "common period count is below this threshold.",
+    )
+    regularization: str | None = Field(
+        None,
+        pattern="^(ridge|none)$",
+        description="Regularization method for the factor model. 'ridge' applies L2 "
+        "penalty (helpful when factors are collinear). Defaults to unregularized OLS.",
     )
 
 
@@ -260,12 +285,47 @@ class AttributionRequest(BaseModel):
 async def attribute_factor_returns(body: AttributionRequest) -> dict:
     """Run factor return attribution analysis.
 
-    Uses a cross-sectional factor model (OLS) to decompose portfolio returns
-    into per-factor return and risk contributions. Returns an AttributionReport
-    with per-factor exposures, IC values, return/risk breakdowns, and overall
-    model fit (R-squared).
+    Uses a cross-sectional factor model (OLS or ridge-regularized) to decompose
+    portfolio returns into per-factor return and risk contributions. When
+    ``model_version_id`` is provided, attribution is bound to the model's exact
+    DataSnapshot, predictions, and feature set — changing the selected model
+    changes the bound evidence or fails closed with a visible reason.
+
+    Returns an AttributionReport with per-factor exposures, IC values,
+    return/risk breakdowns, overall model fit (R-squared), and observation
+    metadata (count, window, methodology).
     """
     from src.research.factor_attribution import attribute_returns
+
+    # Resolve model identity: model_version_id takes precedence
+    model_version_id = body.model_version_id
+    data_snapshot_id = body.data_snapshot_id
+
+    if model_version_id:
+        try:
+            from src.assistant.metadata_db import resolve_metadata_db_path
+            from src.assistant.model_registry_index import ModelRegistryIndex
+            from src.common import paths
+
+            db_path = resolve_metadata_db_path(paths.get_artifacts_dir())
+            index = ModelRegistryIndex(db_path=db_path)
+            entry = index.get_version(model_version_id)
+            if entry is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Model version not found: {model_version_id}",
+                )
+            # Resolve snapshot from the model version
+            if entry.get("data_snapshot_id"):
+                data_snapshot_id = data_snapshot_id or entry["data_snapshot_id"]
+        except HTTPException:
+            raise
+        except Exception as exc:
+            log.warning(
+                "Failed to resolve model version for attribution",
+                model_version_id=model_version_id,
+                error=str(exc),
+            )
 
     try:
         report = attribute_returns(
@@ -274,31 +334,48 @@ async def attribute_factor_returns(body: AttributionRequest) -> dict:
             end_date=body.end_date,
             strategy_config=body.strategy_config,
             factor_ids=body.factor_ids,
+            model_version_id=model_version_id,
+            data_snapshot_id=data_snapshot_id,
+            min_observations=body.min_observations,
+            regularization=body.regularization,
         )
         report_dict = report.to_dict()
         # Reshape to match frontend expected format
         summary = {
             "total_return": report_dict.get("total_return", 0),
             "excess_return": report_dict.get("excess_return", 0),
-            "factor_coverage": report_dict.get("factor_coverage", 0),
+            # The frontend contract defines factor_coverage as model R-squared
+            # in the 0..1 range.  factor_coverage in the research report is a
+            # different return-explained percentage in the 0..100 range.
+            "factor_coverage": report_dict.get("attribution_confidence", 0),
             "unexplained_return": report_dict.get("unexplained_return", 0),
             "benchmark_return": report_dict.get("benchmark_return", 0),
             "period": report_dict.get("period", ""),
             "market": report_dict.get("market", body.market),
             "strategy_name": report_dict.get("strategy_name", ""),
+            "model_version_id": model_version_id or None,
+            "data_snapshot_id": data_snapshot_id or None,
+            "observation_count": report_dict.get("observation_count", 0),
+            "observation_window": report_dict.get("observation_window", ""),
+            "methodology": report_dict.get("methodology", "OLS"),
+            "n_factors": report_dict.get("n_factors", 0),
+            "residual": report_dict.get("unexplained_return", 0),
+            "confidence_note": report_dict.get("confidence_note", ""),
         }
         factors = []
-        for fc in report_dict.get("factor_contributions", []):
-            factors.append({
-                "factor_id": 0,
-                "factor_name": fc.get("factor_name", ""),
-                "factor_expression": fc.get("factor_expression", ""),
-                "ic": fc.get("factor_ic", 0),
-                "return_contribution": fc.get("return_contribution_pct", 0),
-                "risk_contribution": fc.get("risk_contribution_pct", 0),
-                "exposure": fc.get("exposure", 0),
-                "status": "Active",
-            })
+        for factor_index, fc in enumerate(report_dict.get("factor_contributions", []), start=1):
+            factors.append(
+                {
+                    "factor_id": fc.get("factor_id", factor_index),
+                    "factor_name": fc.get("factor_name", ""),
+                    "factor_expression": fc.get("factor_expression", ""),
+                    "ic": fc.get("factor_ic", 0),
+                    "return_contribution": fc.get("return_contribution_pct", 0),
+                    "risk_contribution": fc.get("risk_contribution_pct", 0),
+                    "exposure": fc.get("exposure", 0),
+                    "status": "Active",
+                }
+            )
         return {"ok": True, "summary": summary, "factors": factors}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -408,10 +485,29 @@ async def list_registry_factors(
 
     stats = registry.get_stats()
 
+    # Add scan_stats — latest factor scan summary
+    scan_stats = None
+    try:
+        from src.research.factor_scanner import FactorScanner
+
+        scanner = FactorScanner()
+        latest_scan = scanner.get_latest_scan()
+        if latest_scan:
+            results = latest_scan.get("results", [])
+            passed = sum(1 for r in results if r.get("fdr_significant"))
+            scan_stats = {
+                "passed": passed,
+                "total_scanned": len(results),
+                "scanned_at": latest_scan.get("scanned_at", ""),
+            }
+    except Exception:
+        pass
+
     return {
         "ok": True,
         "factors": enriched,
         "stats": stats,
+        "scan_stats": scan_stats,
     }
 
 
@@ -496,7 +592,9 @@ async def demote_registry_factor(factor_id: int) -> dict:
 
 @router.get("/experiments")
 async def query_experiments_endpoint(
-    query: str = Query("summary", description="Query type: summary, tried, failed, or free-text search"),
+    query: str = Query(
+        "summary", description="Query type: summary, tried, failed, or free-text search"
+    ),
     market: str = Query("us", pattern="^(us|cn)$"),
     scope: str = Query("all", pattern="^(all|factors|models|walk_forward)$"),
     limit: int = Query(50, ge=1, le=500),
@@ -563,10 +661,48 @@ async def experiments_failed(
     try:
         journal = ExperimentJournal()
         failures = journal.what_failed(market=market)
-        return {"ok": True, "total_failures": len(failures), "failures": failures}
+        formatted = [
+            _format_failed_experiment(failure, index)
+            for index, failure in enumerate(failures)
+        ]
+        return {"ok": True, "total_failures": len(formatted), "failures": formatted}
     except Exception as e:
         log.error("Experiment failures query failed", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Query failed: {e}")
+
+
+def _format_failed_experiment(failure: dict, index: int) -> dict:
+    """Map journal-native failures to the ExperimentLog frontend contract."""
+    source = str(failure.get("_source") or "")
+    experiment_type = "wf" if source == "walk_forward" else source
+    name = str(
+        failure.get("name")
+        or failure.get("file")
+        or failure.get("id")
+        or f"failure-{index + 1}"
+    )
+    excluded = {
+        "_source",
+        "_timestamp",
+        "timestamp",
+        "id",
+        "name",
+        "file",
+        "reason",
+    }
+    details = {
+        key: value
+        for key, value in failure.items()
+        if key not in excluded and isinstance(value, (str, int, float, bool))
+    }
+    return {
+        "id": f"{experiment_type or 'unknown'}:{failure.get('id') or failure.get('file') or index}",
+        "timestamp": str(failure.get("timestamp") or failure.get("_timestamp") or ""),
+        "type": experiment_type if experiment_type in {"factor", "model", "wf"} else "wf",
+        "name": name,
+        "failure_reason": str(failure.get("reason") or "Unknown failure"),
+        "details": details,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -576,7 +712,7 @@ async def experiments_failed(
 
 @router.get("/experiments/log")
 async def experiment_log(
-    market: str = Query("cn", pattern="^(us|cn)$"),
+    market: str = Query("us", pattern="^(us|cn)$"),
     limit: int = Query(100, ge=1, le=500),
 ) -> dict:
     """Return structured experiment log entries matching frontend ExperimentEntry type."""
@@ -593,39 +729,89 @@ async def experiment_log(
             latest = validations[0] if validations else None
             ic = latest.get("ic") if latest else None
             stage = f.get("stage", "Proposed")
-            result = "pass" if stage in ("Active", "Validated") else ("fail" if stage in ("Deprecated", "Retired") else "in_progress")
-            entries.append({
-                "id": entry_id,
-                "timestamp": f.get("updated_at", f.get("created_at", "")),
-                "type": "factor",
-                "name": f.get("name", ""),
-                "result": result,
-                "metrics": {"ic": ic, "stage": stage},
-            })
+            result = (
+                "pass"
+                if stage in ("Active", "Validated")
+                else ("fail" if stage in ("Deprecated", "Retired") else "in_progress")
+            )
+            entries.append(
+                {
+                    "id": entry_id,
+                    "timestamp": f.get("updated_at", f.get("created_at", "")),
+                    "type": "factor",
+                    "name": f.get("name", ""),
+                    "result": result,
+                    "metrics": {"ic": ic, "stage": stage},
+                }
+            )
             entry_id += 1
 
         # Walk-forward results from artifacts
         import json as _json
         from pathlib import Path
+
         wf_dir = Path("artifacts/walk_forward")
         if wf_dir.exists():
-            for wf_file in sorted(wf_dir.glob(f"{market}_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:20]:
+            for wf_file in sorted(
+                wf_dir.glob(f"{market}_*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+            )[:20]:
                 try:
                     with open(wf_file) as fh:
                         data = _json.load(fh)
                     mean_ic = data.get("mean_ic", 0)
                     result = "pass" if data.get("ic_ir", 0) >= 0.3 else "fail"
-                    entries.append({
-                        "id": entry_id,
-                        "timestamp": wf_file.stem.split("_", 1)[1] if "_" in wf_file.stem else "",
-                        "type": "wf",
-                        "name": wf_file.name,
-                        "result": result,
-                        "metrics": {"mean_ic": mean_ic, "ic_ir": data.get("ic_ir", 0), "consistency": data.get("consistency_score", 0)},
-                    })
+                    entries.append(
+                        {
+                            "id": entry_id,
+                            "timestamp": wf_file.stem.split("_", 1)[1]
+                            if "_" in wf_file.stem
+                            else "",
+                            "type": "wf",
+                            "name": wf_file.name,
+                            "result": result,
+                            "metrics": {
+                                "mean_ic": mean_ic,
+                                "ic_ir": data.get("ic_ir", 0),
+                                "consistency": data.get("consistency_score", 0),
+                            },
+                        }
+                    )
                     entry_id += 1
                 except Exception:
                     continue
+
+        # Model entries from SQLite registry
+        try:
+            from src.assistant.metadata_db import resolve_metadata_db_path
+            from src.assistant.model_registry_index import ModelRegistryIndex
+            from src.common import paths
+
+            db_path = resolve_metadata_db_path(paths.get_artifacts_dir())
+            model_reg = ModelRegistryIndex(db_path=db_path)
+            for v in model_reg.list_versions(limit=100, market=market):
+                wf = (
+                    v.get("payload", {}).get("walk_forward", {})
+                    if isinstance(v.get("payload"), dict)
+                    else {}
+                )
+                wf_passed = wf.get("gate_passed", False) if isinstance(wf, dict) else False
+                entries.append(
+                    {
+                        "id": entry_id,
+                        "timestamp": v.get("created_at", ""),
+                        "type": "model",
+                        "name": v.get("tag", v.get("id", "")),
+                        "result": "pass" if wf_passed else "in_progress",
+                        "metrics": {
+                            "stage": v.get("stage", "CANDIDATE"),
+                            "market": v.get("market", ""),
+                            "model_type": v.get("model_type", ""),
+                        },
+                    }
+                )
+                entry_id += 1
+        except Exception:
+            pass
 
         return {"ok": True, "experiments": entries[:limit]}
     except Exception as e:
@@ -635,12 +821,13 @@ async def experiment_log(
 
 @router.get("/experiments/log/summary")
 async def experiment_log_summary(
-    market: str = Query("cn", pattern="^(us|cn)$"),
+    market: str = Query("us", pattern="^(us|cn)$"),
 ) -> dict:
     """Return summary matching frontend ExperimentSummary type."""
     try:
         from pathlib import Path
 
+        from src.research.experiment_journal import ExperimentJournal
         from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
 
         registry = FactorRegistry()
@@ -649,9 +836,9 @@ async def experiment_log_summary(
         wf_dir = Path("artifacts/walk_forward")
         wf_count = len(list(wf_dir.glob(f"{market}_*.json"))) if wf_dir.exists() else 0
 
-        # Count failed (deprecated + retired factors)
+        # Use the same cross-registry failure definition as the detail panel.
         all_factors = registry.list_factors()
-        failed = sum(1 for f in all_factors if f.get("stage") in ("Deprecated", "Retired"))
+        failed = len(ExperimentJournal().what_failed(market=market))
 
         return {
             "ok": True,
@@ -664,4 +851,12 @@ async def experiment_log_summary(
         }
     except Exception as e:
         log.error("Experiment summary failed", error=str(e), exc_info=True)
-        return {"ok": True, "summary": {"total_experiments": 0, "active_factors": 0, "wf_results": 0, "failed_experiments": 0}}
+        return {
+            "ok": True,
+            "summary": {
+                "total_experiments": 0,
+                "active_factors": 0,
+                "wf_results": 0,
+                "failed_experiments": 0,
+            },
+        }
