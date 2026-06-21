@@ -89,7 +89,7 @@ describe("PerformanceCharts benchmark normalization", () => {
     expect(data[0].strategy).toBe(0);
     // But benchmark is zeroed out because it was corrupt
     const benchVals = data.map((row) => row.benchmark);
-    expect(benchVals.every(v => v === 0)).toBe(true);
+    expect(benchVals.every(v => v === null)).toBe(true);
   });
 
   it("handles empty report gracefully", () => {

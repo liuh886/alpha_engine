@@ -131,10 +131,20 @@ def stage_data():
 # ──────────────────────────────────────────────────────────────────
 def stage_train(Xtr, ytr, Xva, yva):
     """Train LightGBM model."""
+
     def _s(c):
-        return (str(c).replace("$", "D").replace("/", "_d_").replace("(", "L")
-                .replace(")", "R").replace(",", "_").replace(" ", "_")
-                .replace("-", "neg").replace("+", "plus"))
+        return (
+            str(c)
+            .replace("$", "D")
+            .replace("/", "_d_")
+            .replace("(", "L")
+            .replace(")", "R")
+            .replace(",", "_")
+            .replace(" ", "_")
+            .replace("-", "neg")
+            .replace("+", "plus")
+        )
+
     Xtr.columns = [_s(c) for c in Xtr.columns]
     Xva.columns = [_s(c) for c in Xva.columns]
     fnames = Xtr.columns.tolist()
@@ -173,10 +183,20 @@ def stage_train(Xtr, ytr, Xva, yva):
 # ──────────────────────────────────────────────────────────────────
 def stage_validate(booster, Xte, fnames, close_all, symbols):
     """TOP/BOTTOM analysis + walk-forward IC."""
+
     def _s(c):
-        return (str(c).replace("$", "D").replace("/", "_d_").replace("(", "L")
-                .replace(")", "R").replace(",", "_").replace(" ", "_")
-                .replace("-", "neg").replace("+", "plus"))
+        return (
+            str(c)
+            .replace("$", "D")
+            .replace("/", "_d_")
+            .replace("(", "L")
+            .replace(")", "R")
+            .replace(",", "_")
+            .replace(" ", "_")
+            .replace("-", "neg")
+            .replace("+", "plus")
+        )
+
     Xte.columns = [_s(c) for c in Xte.columns]
     y_pred = booster.predict(Xte[fnames])
     predictions = pd.DataFrame(y_pred, index=Xte.index, columns=["score"])

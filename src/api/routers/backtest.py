@@ -7,6 +7,7 @@ from src.api.dependencies import (
     get_run_index,
     get_training_service,
 )
+from src.api.schemas.jobs import JobResponse
 from src.api.schemas.release_contracts import (
     BacktestRunRequestV1,
     ContractAPIRoute,
@@ -124,7 +125,7 @@ def get_alpha_decomposition(run_id: str):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/run")
+@router.post("/run", response_model=JobResponse)
 def run_backtest(payload: BacktestRunRequestV1):
     try:
         job = get_backtest_service().create_job_from_payload(payload.model_dump())
@@ -134,7 +135,7 @@ def run_backtest(payload: BacktestRunRequestV1):
     return get_job_coordinator().submit_response(job)
 
 
-@router.post("/train/run")
+@router.post("/train/run", response_model=JobResponse)
 def run_training(payload: TrainingRunRequestV1):
     try:
         job = get_training_service().create_job_from_payload(payload.model_dump())

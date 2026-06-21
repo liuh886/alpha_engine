@@ -127,10 +127,20 @@ def load_data():
 
 def train_model(X_train, y_train, X_valid, y_valid):
     """Train LightGBM on Alpha158 + absolute return."""
+
     def _s(c):
-        return (str(c).replace("$", "D").replace("/", "_d_").replace("(", "L")
-                .replace(")", "R").replace(",", "_").replace(" ", "_")
-                .replace("-", "neg").replace("+", "plus"))
+        return (
+            str(c)
+            .replace("$", "D")
+            .replace("/", "_d_")
+            .replace("(", "L")
+            .replace(")", "R")
+            .replace(",", "_")
+            .replace(" ", "_")
+            .replace("-", "neg")
+            .replace("+", "plus")
+        )
+
     X_train.columns = [_s(c) for c in X_train.columns]
     X_valid.columns = [_s(c) for c in X_valid.columns]
     feature_names = X_train.columns.tolist()
@@ -173,10 +183,20 @@ def train_model(X_train, y_train, X_valid, y_valid):
 
 def run_backtest(booster, X_test, y_test, feature_names, symbols):
     """Run vectorized + grade-weighted backtests using REAL forward returns."""
+
     def _s(c):
-        return (str(c).replace("$", "D").replace("/", "_d_").replace("(", "L")
-                .replace(")", "R").replace(",", "_").replace(" ", "_")
-                .replace("-", "neg").replace("+", "plus"))
+        return (
+            str(c)
+            .replace("$", "D")
+            .replace("/", "_d_")
+            .replace("(", "L")
+            .replace(")", "R")
+            .replace(",", "_")
+            .replace(" ", "_")
+            .replace("-", "neg")
+            .replace("+", "plus")
+        )
+
     X_test.columns = [_s(c) for c in X_test.columns]
 
     # Predictions DataFrame

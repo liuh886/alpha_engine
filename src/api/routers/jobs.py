@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from src.api.dependencies import get_job_coordinator, get_job_service
+from src.api.schemas.jobs import JobResponse
 
 router = APIRouter(tags=["jobs"])
 
@@ -107,7 +108,7 @@ def cancel_job(job_id: str):
     return {"ok": True, "job_id": str(job_id), "message": "Job cancelled"}
 
 
-@router.post("/jobs/{job_id}/rerun")
+@router.post("/jobs/{job_id}/rerun", response_model=JobResponse)
 def rerun_job(job_id: str):
     """Re-submit a failed or cancelled job with the same commands."""
     js = get_job_service()

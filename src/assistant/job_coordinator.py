@@ -34,7 +34,15 @@ class JobCoordinator:
         return job_id
 
     def submit_response(self, job: dict) -> dict:
-        return {"ok": True, "job_id": self.submit(job)}
+        job_id = self.submit(job)
+        return {
+            "job_id": job_id,
+            "status": "queued",
+            "started_at": job.get("created_at") or 0.0,
+            "source": job.get("source", "api"),
+            "intent": job.get("type", "unknown"),
+            "next_action": "poll_status",
+        }
 
     @staticmethod
     def _validate_job(job: dict) -> str:

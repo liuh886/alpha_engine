@@ -533,9 +533,18 @@ def walk_forward_vectorized(
 
     # Sanitize column names
     def _s(c):
-        return (str(c).replace("$", "D").replace("/", "_d_").replace("(", "L")
-                .replace(")", "R").replace(",", "_").replace(" ", "_")
-                .replace("-", "neg").replace("+", "plus"))
+        return (
+            str(c)
+            .replace("$", "D")
+            .replace("/", "_d_")
+            .replace("(", "L")
+            .replace(")", "R")
+            .replace(",", "_")
+            .replace(" ", "_")
+            .replace("-", "neg")
+            .replace("+", "plus")
+        )
+
     X_all.columns = [_s(c) for c in X_all.columns]
     feature_names = X_all.columns.tolist()
 
