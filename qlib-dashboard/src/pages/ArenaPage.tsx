@@ -7,6 +7,7 @@ import { Loader2, Trophy, RefreshCw, ExternalLink, Target, Users, Calendar, Aler
 import { cn } from "@/lib/utils";
 import { formatPct, formatNum } from "@/lib/format";
 import { apiFetch } from "@/lib/api";
+import { Placeholder } from "@/components/Placeholder";
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 600_000; // 10 minutes
@@ -32,7 +33,9 @@ type LeaderboardRow = {
 };
 type ReportRow = { id: string; type: string; ref_id: string; date?: string; paths?: Record<string, string>; };
 
-export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }) {
+import { useNavigate } from 'react-router-dom';
+export function ArenaPage() {
+  const navigate = useNavigate();
   const [arenas, setArenas] = useState<Arena[]>([]);
   const [selectedArenaId, setSelectedArenaId] = useState<string>("");
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
@@ -340,9 +343,9 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
               </TableHeader>
               <TableBody>
                 {leaderboardLoading ? (
-                  <TableRow><TableCell colSpan={8} className="h-48 text-center text-muted-foreground text-sm">Loading leaderboard...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="p-0"><Placeholder className="border-none bg-transparent" icon={Trophy} title="Loading Leaderboard" description="Fetching current arena standings." /></TableCell></TableRow>
                 ) : leaderboard.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="h-48 text-center text-muted-foreground text-sm">No leaderboard results. Run a settlement to add contestants.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="p-0"><Placeholder className="border-none bg-transparent" icon={Trophy} title="No Contestants" description="No leaderboard results. Run a settlement to add contestants." /></TableCell></TableRow>
                 ) : (
                   leaderboard.map((r, i) => {
                     const rank = r.rank ?? i + 1;
@@ -380,7 +383,10 @@ export function ArenaPage({ onCompare }: { onCompare?: (runId: string) => void }
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button size="sm" variant="ghost" className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => (r.model_version_id || r.run_id) && onCompare?.(r.model_version_id || r.run_id || "")}>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => {
+                              const id = r.model_version_id || r.run_id;
+                              if (id) navigate('/compare', { state: { preselectedIds: [id] } });
+                            }}>
                               Compare
                             </Button>
                           </TableCell>

@@ -128,19 +128,21 @@ export function Sidebar() {
           {collapsed ? <LogOut className="w-4 h-4" /> : <X className="w-4 h-4" />}
           {!collapsed && <span className="ml-2 text-xs font-medium">Collapse</span>}
         </button>
-        <button
-          onClick={async () => {
-            if (confirm("EMERGENCY KILL SWITCH: Halt all jobs?")) {
-              try { await apiFetch("/api/system/panic", { method: "POST" }); alert("System Panic Engaged."); } catch (e) { console.error("Panic failed:", e); }
-            }
-          }}
-          className="w-full flex items-center justify-center p-2 rounded bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
-          aria-label="Emergency kill switch — halt all jobs"
-          title="KILL SWITCH"
-        >
-          <AlertTriangle className="h-4 w-4" />
-          {!collapsed && <span className="ml-2 text-xs font-bold">Panic</span>}
-        </button>
+        {(operatorMode || location.pathname.startsWith('/system')) && (
+          <button
+            onClick={async () => {
+              if (confirm("EMERGENCY KILL SWITCH: Halt all jobs?")) {
+                try { await apiFetch("/api/system/panic", { method: "POST" }); alert("System Panic Engaged."); } catch (e) { console.error("Panic failed:", e); }
+              }
+            }}
+            className="w-full flex items-center justify-center p-2 rounded bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            aria-label="Emergency kill switch — halt all jobs"
+            title="KILL SWITCH"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            {!collapsed && <span className="ml-2 text-xs font-bold">Panic</span>}
+          </button>
+        )}
       </div>
     </div>
   );
