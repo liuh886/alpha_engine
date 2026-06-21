@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from src.api.dependencies import get_job_coordinator, get_report_service
+from src.api.schemas.jobs import JobResponse
 
 router = APIRouter(tags=["reports"])
 
@@ -35,7 +36,7 @@ def get_report_file(report_id: str, format: str = Query("html", pattern="^(html|
     )
 
 
-@router.post("/export")
+@router.post("/export", response_model=JobResponse)
 def export_reports(payload: dict):
     job = get_report_service().create_export_job(payload)
     return get_job_coordinator().submit_response(job)

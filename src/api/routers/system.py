@@ -5,6 +5,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, Query
 
 from src.api.dependencies import PROJECT_ROOT, get_job_coordinator, get_job_service
+from src.api.schemas.jobs import JobResponse
 from src.common.paths import (
     ARTIFACTS_DIR,
     DASHBOARD_DB_PATH,
@@ -187,7 +188,7 @@ def _build_safe_command(task_key: str, args: list[str]) -> list[str] | None:
         return None
 
 
-@router.post("/exec")
+@router.post("/exec", response_model=JobResponse)
 def execute_system_command(payload: dict):
     task_key = str(payload.get("task") or "").strip()
     args = payload.get("args") or []

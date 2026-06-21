@@ -21,7 +21,7 @@ class DataProvenanceIndex(BaseIndex):
                     market TEXT,
                     source_used TEXT,
                     fallback_used INTEGER,
-                    error_code TEXT,
+                    code TEXT,
                     created_at REAL
                 )
                 """
@@ -43,7 +43,7 @@ class DataProvenanceIndex(BaseIndex):
         market: str,
         source_used: str | None = None,
         fallback_used: bool = False,
-        error_code: str | None = None,
+        code: str | None = None,
     ) -> str:
         row_id = uuid.uuid4().hex
         created_at = time.time()
@@ -51,7 +51,7 @@ class DataProvenanceIndex(BaseIndex):
         with self._connect() as conn:
             conn.execute(
                 """
-                INSERT INTO data_provenance (id, symbol, market, source_used, fallback_used, error_code, created_at)
+                INSERT INTO data_provenance (id, symbol, market, source_used, fallback_used, code, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
@@ -60,7 +60,7 @@ class DataProvenanceIndex(BaseIndex):
                     str(market or ""),
                     str(source_used or ""),
                     1 if fallback_used else 0,
-                    str(error_code or ""),
+                    str(code or ""),
                     created_at,
                 ),
             )

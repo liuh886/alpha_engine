@@ -72,17 +72,21 @@ Xte, yte = X[te].copy(), y_s[te].copy()
 mu, sd = Xtr.mean(), Xtr.std().replace(0, 1.0)
 for df in [Xtr, Xva, Xte]:
     df[:] = (df - mu) / sd
+
+
 def _s(c):
     return (
-    str(c)
-    .replace("$", "D")
-    .replace("/", "_d_")
-    .replace("(", "L")
-    .replace(")", "R")
-    .replace(",", "_")
-    .replace(" ", "_")
-    .replace("-", "neg")
-)
+        str(c)
+        .replace("$", "D")
+        .replace("/", "_d_")
+        .replace("(", "L")
+        .replace(")", "R")
+        .replace(",", "_")
+        .replace(" ", "_")
+        .replace("-", "neg")
+    )
+
+
 Xtr.columns = [_s(c) for c in Xtr.columns]
 Xva.columns = [_s(c) for c in Xva.columns]
 Xte.columns = [_s(c) for c in Xte.columns]

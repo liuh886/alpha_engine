@@ -129,7 +129,7 @@ class TestPortfolioEndpoints:
             },
         )
         assert data.get("ok") is False
-        assert data.get("error_code") == "API_VALIDATION_ERROR"
+        assert data.get("code") == "API_VALIDATION_ERROR"
         missing_fields = {
             detail["location"][-1]
             for detail in data.get("details", [])

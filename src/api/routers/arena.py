@@ -5,6 +5,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, Query
 
 from src.api.dependencies import get_arena_index, get_job_coordinator, get_model_index
+from src.api.schemas.jobs import JobResponse
 from src.common.paths import RUNS_DIR
 
 router = APIRouter(tags=["arena"])
@@ -37,7 +38,7 @@ def get_arena_leaderboard(
     return {"ok": True, "leaderboard": lb, "date": resp_date}
 
 
-@router.post("/settle")
+@router.post("/settle", response_model=JobResponse)
 def settle_arena(payload: dict):
     market = str(payload.get("market") or "us").strip().lower() or "us"
     arena_name = str(payload.get("arena_name") or "").strip()

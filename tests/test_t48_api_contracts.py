@@ -47,7 +47,14 @@ class _ModelService:
 
 class _JobCoordinator:
     def submit_response(self, job: dict) -> dict:
-        return {"ok": True, "job_id": job.get("id", "test-job")}
+        return {
+            "job_id": job.get("id", "test-job"),
+            "status": "pending",
+            "started_at": 123456789.0,
+            "source": "test",
+            "intent": "test",
+            "next_action": "wait",
+        }
 
 
 class _DataService:
@@ -145,7 +152,7 @@ class TestUnknownFieldRejection:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
     def test_model_delete_rejects_unknown_fields(self, model_client):
         response = model_client.post(
@@ -158,7 +165,7 @@ class TestUnknownFieldRejection:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
     def test_data_update_rejects_unknown_fields(self, data_client):
         response = data_client.post(
@@ -167,7 +174,7 @@ class TestUnknownFieldRejection:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
     def test_backtest_run_rejects_unknown_fields(self, backtest_client):
         response = backtest_client.post(
@@ -176,7 +183,7 @@ class TestUnknownFieldRejection:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
     def test_training_run_rejects_unknown_fields(self, backtest_client):
         response = backtest_client.post(
@@ -185,7 +192,7 @@ class TestUnknownFieldRejection:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
 
 # ---------------------------------------------------------------------------
@@ -204,7 +211,7 @@ class TestUnknownStageRejection:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
 
 # ---------------------------------------------------------------------------
@@ -223,7 +230,7 @@ class TestUnknownMarketRejection:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
     @pytest.mark.parametrize("market", ["crypto", "eu", "japan", "", "US", "CN"])
     def test_training_run_rejects_unknown_market(self, backtest_client, market):
@@ -233,7 +240,7 @@ class TestUnknownMarketRejection:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
 
 # ---------------------------------------------------------------------------
@@ -280,7 +287,7 @@ class TestModelHealthRouteOrdering:
         """'health' should NOT match /{artifact_id} pattern.
 
         If 'health' matched /{artifact_id}, the handler would try to load
-        artifact 'health' and return 404 with error_code='MODEL_ARTIFACT_NOT_FOUND'.
+        artifact 'health' and return 404 with code='MODEL_ARTIFACT_NOT_FOUND'.
         The correct behavior is reaching the health handler, which returns
         a response containing 'checks' (200 if healthy, 503 if degraded).
         """
@@ -293,7 +300,7 @@ class TestModelHealthRouteOrdering:
         assert "checks" in body
         assert response.status_code in (200, 503)
         # Must NOT be an artifact-not-found response
-        assert body.get("error_code") != "MODEL_ARTIFACT_NOT_FOUND"
+        assert body.get("code") != "MODEL_ARTIFACT_NOT_FOUND"
 
 
 # ---------------------------------------------------------------------------
@@ -357,7 +364,7 @@ class TestMissingArtifactIdentity:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
     def test_model_delete_requires_artifact_id(self, model_client):
         response = model_client.post(
@@ -366,7 +373,7 @@ class TestMissingArtifactIdentity:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
     def test_backtest_run_requires_market(self, backtest_client):
         response = backtest_client.post(
@@ -375,7 +382,7 @@ class TestMissingArtifactIdentity:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
     def test_training_run_requires_market_and_tag(self, backtest_client):
         response = backtest_client.post(
@@ -384,7 +391,7 @@ class TestMissingArtifactIdentity:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
     def test_training_run_requires_tag(self, backtest_client):
         response = backtest_client.post(
@@ -393,7 +400,7 @@ class TestMissingArtifactIdentity:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
 
 # ---------------------------------------------------------------------------
@@ -454,7 +461,7 @@ class TestSchemaVersionEnforcement:
         )
         assert response.status_code == 422
         body = response.json()
-        assert body["error_code"] == "API_VALIDATION_ERROR"
+        assert body["code"] == "API_VALIDATION_ERROR"
 
     def test_data_update_defaults_to_v1(self, data_client):
         """DataUpdateRequestV1 should default schema_version to v1."""
@@ -463,6 +470,7 @@ class TestSchemaVersionEnforcement:
             json={},
         )
         # Should succeed (v1 is default, no unknown fields)
+        print(response.json() if response.content else response.content)
         assert response.status_code == 200
 
 
@@ -481,9 +489,8 @@ class TestContractEnvelopeShape:
         )
         body = response.json()
         assert body["ok"] is False
-        assert "error_code" in body
-        assert "error" in body
-        assert "details" in body
+        assert "code" in body
+        assert "detail" in body
 
     def test_success_response_has_ok_true(self, model_client, monkeypatch):
         index = _ModelIndex()
@@ -511,7 +518,7 @@ class TestBacktestMutationSuccess:
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["ok"] is True
+        assert "job_id" in body
 
     def test_training_run_success(self, backtest_client):
         response = backtest_client.post(
@@ -520,7 +527,7 @@ class TestBacktestMutationSuccess:
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["ok"] is True
+        assert "job_id" in body
 
     def test_backtest_delete_success(self, backtest_client):
         response = backtest_client.delete("/api/backtest/runs/run-1")

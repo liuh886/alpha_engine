@@ -440,7 +440,7 @@ def run_data_update(args) -> DataSnapshot:
                         market=reg,
                         source_used=source_used,
                         fallback_used=fallback_used,
-                        error_code=error_code,
+                        code=error_code,
                     )
                 except Exception:
                     pass

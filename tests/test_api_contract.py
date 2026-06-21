@@ -119,7 +119,7 @@ class TestPortfolioEndpoints:
             headers=auth_headers,
         )
         assert resp.status_code == 422
-        assert resp.json()["error_code"] == "API_VALIDATION_ERROR"
+        assert resp.json()["code"] == "API_VALIDATION_ERROR"
 
 
 class TestDataEndpoints:
@@ -143,7 +143,7 @@ class TestAPIFailurePaths:
             headers=auth_headers,
         )
         assert resp.status_code == 422
-        assert resp.json()["error_code"] == "API_VALIDATION_ERROR"
+        assert resp.json()["code"] == "API_VALIDATION_ERROR"
 
     def test_portfolio_invalid_market(self, client, auth_headers):
         """Unknown markets are rejected at the contract boundary."""
@@ -153,7 +153,7 @@ class TestAPIFailurePaths:
             headers=auth_headers,
         )
         assert resp.status_code == 422
-        assert resp.json()["error_code"] == "API_VALIDATION_ERROR"
+        assert resp.json()["code"] == "API_VALIDATION_ERROR"
 
     def test_decay_factor_not_found(self, client, auth_headers):
         """Non-existent factor should return 404."""
@@ -195,7 +195,7 @@ class TestAPIFailurePaths:
             headers=auth_headers,
         )
         assert resp.status_code == 422
-        assert resp.json()["error_code"] == "API_VALIDATION_ERROR"
+        assert resp.json()["code"] == "API_VALIDATION_ERROR"
 
 
 class TestPipelineFailureRecording:
