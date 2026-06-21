@@ -225,11 +225,16 @@ def apply_profile_to_config(profile: dict, cfg: dict, market: str) -> dict:
     min_hold_days = strategy.get("min_hold_days")
     sell_on_ma = strategy.get("sell_on_ma")
     sell_rank_threshold = strategy.get("sell_rank_threshold")
+    use_vectorized = bool(strategy.get("vectorized", False))
     if any(
         x is not None for x in [rebalance_steps, min_hold_days, sell_on_ma, sell_rank_threshold]
     ):
-        strat["class"] = "BiweeklyTrendStrategy"
-        strat["module_path"] = "src.strategies.biweekly_trend_strategy"
+        if use_vectorized:
+            strat["class"] = "VectorizedBiweeklyStrategy"
+            strat["module_path"] = "src.strategies.vectorized_strategy"
+        else:
+            strat["class"] = "BiweeklyTrendStrategy"
+            strat["module_path"] = "src.strategies.biweekly_trend_strategy"
         strat_kwargs.pop("n_drop", None)
         for key in [
             "universe_size",
