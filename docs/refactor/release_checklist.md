@@ -15,7 +15,7 @@ This document formalizes the release gates and checklist for transitioning Alpha
 - [ ] **Visual Regressions**: Check `tabular-nums` formatting on metrics, ensure consistent color tokens for Status and Action cards, and verify dark-mode compatibility.
 
 ### Performance & Security
-- [ ] **Bundle Budget Gate**: Run `npm run check:bundle-budget` (in `qlib-dashboard/`). This builds the production bundle, measures the gzip size of `dist/index.html`, and exits non-zero if it exceeds 450 KB. No manual inspection needed.
+- [ ] **Bundle Budget Gate**: Run `npm run check:bundle-budget` (in `qlib-dashboard/`). This builds the production bundle, extracts all JS assets (standalone `.js` files or inline `<script>` blocks from the single-file build), gzips each independently, and exits non-zero if the total JS gzip exceeds 450 KB. CSS, HTML markup, and other non-JS content are excluded from the budget.
 - [ ] **Memory Leaks**: Confirm polling logic (e.g., `useJobs`) correctly cleans up intervals to prevent timer leakage.
 - [ ] **Lint & Tests**: 
   - `uv run ruff check .` must pass.
