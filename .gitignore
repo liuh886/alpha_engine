@@ -126,3 +126,21 @@ experiment_*/
 # Docker backup and smoke-test artifacts
 backups/
 docker-compose.smoke.yml
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Qlib cache
+qlib_cache/
+*.db-journal
+*.db-wal
+
+# PM2 logs and PID
+logs/
+*.pid
