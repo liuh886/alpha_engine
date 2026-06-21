@@ -29,17 +29,17 @@ describe("PerformanceCharts benchmark normalization", () => {
     render(
       <PerformanceCharts report={[
         { date: "2026-01-01", account: 10_000, bench_qqq: 10_000 },
-        { date: "2026-01-02", account: 10_100, bench_qqq: 10_100 },
-        { date: "2026-01-03", account: 10_200, bench_qqq: 10_200 },
+        { date: "2026-01-02", account: 10_100, bench_qqq: 10_050 },
+        { date: "2026-01-03", account: 10_200, bench_qqq: 10_100 },
       ]} />,
     );
 
     const data = equityChartData();
     const values = data.map((row) => row.benchmark);
     expect(values[0]).toBe(0);
-    expect(values[1]).toBeCloseTo(0.01, 10);
-    expect(values[2]).toBeCloseTo(0.02, 10);
-    expect(data[2].excess).toBeCloseTo(0, 10);
+    expect(values[1]).toBeCloseTo(0.005, 10);
+    expect(values[2]).toBeCloseTo(0.01, 10);
+    expect(data[2].excess).toBeCloseTo(0.01, 10);
   });
 
   it("compounds a benchmark daily-return series (via bench column)", () => {
