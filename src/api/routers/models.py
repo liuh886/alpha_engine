@@ -207,7 +207,7 @@ def model_health_check():
 
     report["ok"] = False
     report["status"] = "degraded" if any(required_checks) else "blocked"
-    report["error_code"] = (
+    report["code"] = (
         "MODEL_HEALTH_DEGRADED" if report["status"] == "degraded" else "MODEL_HEALTH_BLOCKED"
     )
     return JSONResponse(status_code=503, content=report)

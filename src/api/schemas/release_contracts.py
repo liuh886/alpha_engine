@@ -198,15 +198,20 @@ def error_response(
     error_code: str,
     message: str,
     details: Any | None = None,
+    recoverable: bool = False,
+    next_action: str | None = None,
     extra: dict[str, Any] | None = None,
 ) -> JSONResponse:
     payload: dict[str, Any] = {
         "ok": False,
-        "error_code": error_code,
-        "error": message,
+        "code": error_code,
+        "message": message,
+        "recoverable": recoverable,
     }
     if details is not None:
-        payload["details"] = details
+        payload["detail"] = details
+    if next_action is not None:
+        payload["next_action"] = next_action
     if extra:
         payload.update(extra)
     return JSONResponse(status_code=status_code, content=payload)

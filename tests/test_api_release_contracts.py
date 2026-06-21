@@ -251,7 +251,7 @@ def test_model_health_stale_artifacts_are_degraded(model_client, monkeypatch):
 
     assert response.status_code == 503
     assert response.json()["status"] == "degraded"
-    assert response.json()["error_code"] == "MODEL_HEALTH_DEGRADED"
+    assert response.json()["code"] == "MODEL_HEALTH_DEGRADED"
 
 
 @pytest.mark.parametrize("query", ["limit=0", "limit=201", "market=invalid"])
@@ -261,14 +261,14 @@ def test_model_list_parameters_are_bounded(model_client, monkeypatch, query):
     response = model_client.get(f"/api/models?{query}")
 
     assert response.status_code == 422
-    assert response.json()["error_code"] == "API_VALIDATION_ERROR"
+    assert response.json()["code"] == "API_VALIDATION_ERROR"
 
 
 def test_model_identifier_rejects_path_characters(model_client):
     response = model_client.get("/api/models/bad%24id")
 
     assert response.status_code == 422
-    assert response.json()["error_code"] == "API_VALIDATION_ERROR"
+    assert response.json()["code"] == "API_VALIDATION_ERROR"
 
 
 @pytest.mark.parametrize(
@@ -289,7 +289,7 @@ def test_model_mutation_contract_rejects_invalid_payloads(model_client, payload)
     response = model_client.post("/api/models/promote", json=payload)
 
     assert response.status_code == 422
-    assert response.json()["error_code"] == "API_VALIDATION_ERROR"
+    assert response.json()["code"] == "API_VALIDATION_ERROR"
 
 
 def test_model_promotion_requires_existing_artifact(model_client, monkeypatch):
@@ -301,7 +301,7 @@ def test_model_promotion_requires_existing_artifact(model_client, monkeypatch):
     )
 
     assert response.status_code == 404
-    assert response.json()["error_code"] == "MODEL_ARTIFACT_NOT_FOUND"
+    assert response.json()["code"] == "MODEL_ARTIFACT_NOT_FOUND"
 
 
 def test_model_promotion_gate_failure_is_conflict(model_client, monkeypatch):
@@ -316,8 +316,8 @@ def test_model_promotion_gate_failure_is_conflict(model_client, monkeypatch):
     )
 
     assert response.status_code == 409
-    assert response.json()["error_code"] == "MODEL_PROMOTION_CONFLICT"
-    assert response.json()["details"]["gate_failures"] == ["missing metrics"]
+    assert response.json()["code"] == "MODEL_PROMOTION_CONFLICT"
+    assert response.json()["detail"]["gate_failures"] == ["missing metrics"]
 
 
 def test_model_promotion_success_uses_exact_artifact(model_client, monkeypatch):
@@ -348,7 +348,7 @@ def test_model_delete_service_rejection_is_conflict(model_client, monkeypatch):
     )
 
     assert response.status_code == 409
-    assert response.json()["error_code"] == "MODEL_DELETE_CONFLICT"
+    assert response.json()["code"] == "MODEL_DELETE_CONFLICT"
 
 
 def test_model_mutation_internal_failure_is_stable(model_client, monkeypatch):
@@ -366,7 +366,7 @@ def test_model_mutation_internal_failure_is_stable(model_client, monkeypatch):
     )
 
     assert response.status_code == 500
-    assert response.json()["error_code"] == "API_INTERNAL_ERROR"
+    assert response.json()["code"] == "API_INTERNAL_ERROR"
     assert "database unavailable" not in response.text
 
 
@@ -386,7 +386,7 @@ def test_portfolio_contract_rejects_invalid_inputs(portfolio_client, updates):
     response = portfolio_client.post("/api/portfolio/check", json=_portfolio_payload(**updates))
 
     assert response.status_code == 422
-    assert response.json()["error_code"] == "API_VALIDATION_ERROR"
+    assert response.json()["code"] == "API_VALIDATION_ERROR"
 
 
 def test_portfolio_contract_rejects_more_than_500_positions(portfolio_client):
@@ -398,7 +398,7 @@ def test_portfolio_contract_rejects_more_than_500_positions(portfolio_client):
     )
 
     assert response.status_code == 422
-    assert response.json()["error_code"] == "API_VALIDATION_ERROR"
+    assert response.json()["code"] == "API_VALIDATION_ERROR"
 
 
 def test_portfolio_requires_resolvable_model_identity(portfolio_client, monkeypatch):
@@ -407,7 +407,7 @@ def test_portfolio_requires_resolvable_model_identity(portfolio_client, monkeypa
     response = portfolio_client.post("/api/portfolio/check", json=_portfolio_payload())
 
     assert response.status_code == 404
-    assert response.json()["error_code"] == "MODEL_ARTIFACT_NOT_FOUND"
+    assert response.json()["code"] == "MODEL_ARTIFACT_NOT_FOUND"
 
 
 def test_portfolio_requires_resolvable_portfolio_identity(portfolio_client, monkeypatch, tmp_path):
@@ -422,7 +422,7 @@ def test_portfolio_requires_resolvable_portfolio_identity(portfolio_client, monk
     response = portfolio_client.post("/api/portfolio/check", json=_portfolio_payload())
 
     assert response.status_code == 404
-    assert response.json()["error_code"] == "PORTFOLIO_ARTIFACT_NOT_FOUND"
+    assert response.json()["code"] == "PORTFOLIO_ARTIFACT_NOT_FOUND"
 
 
 def test_portfolio_requires_resolvable_snapshot_identity(portfolio_client, monkeypatch):
@@ -434,7 +434,7 @@ def test_portfolio_requires_resolvable_snapshot_identity(portfolio_client, monke
     response = portfolio_client.post("/api/portfolio/check", json=_portfolio_payload())
 
     assert response.status_code == 404
-    assert response.json()["error_code"] == "DATA_SNAPSHOT_NOT_FOUND"
+    assert response.json()["code"] == "DATA_SNAPSHOT_NOT_FOUND"
 
 
 def test_portfolio_rejects_conflicting_artifact_bindings(portfolio_client, monkeypatch):
@@ -454,7 +454,7 @@ def test_portfolio_rejects_conflicting_artifact_bindings(portfolio_client, monke
     response = portfolio_client.post("/api/portfolio/check", json=_portfolio_payload())
 
     assert response.status_code == 409
-    assert response.json()["error_code"] == "ARTIFACT_IDENTITY_CONFLICT"
+    assert response.json()["code"] == "ARTIFACT_IDENTITY_CONFLICT"
 
 
 def test_real_collector_missing_price_cannot_complete_liquidity(monkeypatch):
@@ -557,7 +557,7 @@ def test_portfolio_partial_reports_skipped_checks(portfolio_client, monkeypatch)
     body = response.json()
     assert body["ok"] is False
     assert body["status"] == "partial"
-    assert body["error_code"] == "PORTFOLIO_CHECK_PARTIAL"
+    assert body["code"] == "PORTFOLIO_CHECK_PARTIAL"
     assert {item["check"] for item in body["skipped_checks"]} == {"turnover_cost"}
 
 
@@ -577,7 +577,7 @@ def test_portfolio_blocked_uses_service_unavailable(portfolio_client, monkeypatc
     body = response.json()
     assert body["ok"] is False
     assert body["status"] == "blocked"
-    assert body["error_code"] == "PORTFOLIO_CHECK_BLOCKED"
+    assert body["code"] == "PORTFOLIO_CHECK_BLOCKED"
     assert len(body["skipped_checks"]) == 5
 
 
@@ -590,7 +590,7 @@ def test_portfolio_internal_failure_is_stable(portfolio_client, monkeypatch):
     response = portfolio_client.post("/api/portfolio/check", json=_portfolio_payload())
 
     assert response.status_code == 500
-    assert response.json()["error_code"] == "API_INTERNAL_ERROR"
+    assert response.json()["code"] == "API_INTERNAL_ERROR"
     assert "secret provider path" not in response.text
 
 

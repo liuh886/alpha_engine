@@ -36,7 +36,7 @@ def test_record_and_list(temp_db):
     # Order is DESC by created_at
     assert recent[0]["symbol"] == "600519"
     assert recent[0]["fallback_used"] == 1
-    assert recent[0]["error_code"] == "baostock_failed"
+    assert recent[0]["code"] == "baostock_failed"
 
     assert recent[1]["symbol"] == "AAPL"
     assert recent[1]["fallback_used"] == 0

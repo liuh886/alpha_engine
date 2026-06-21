@@ -432,9 +432,9 @@ def check_portfolio_constraints(request: PortfolioCheckRequestV1):
             **summary,
         }
         if status == "partial":
-            response["error_code"] = "PORTFOLIO_CHECK_PARTIAL"
+            response["code"] = "PORTFOLIO_CHECK_PARTIAL"
         elif status == "blocked":
-            response["error_code"] = "PORTFOLIO_CHECK_BLOCKED"
+            response["code"] = "PORTFOLIO_CHECK_BLOCKED"
             return JSONResponse(status_code=503, content=jsonable_encoder(response))
         return response
     except FileNotFoundError:
