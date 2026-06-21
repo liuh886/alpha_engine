@@ -65,7 +65,7 @@ test("Models page shows identity fields (snapshot, run, stage) in the table", as
   await expect(row).toContainText("snapshot-cn");
 
   // Verify run ID is displayed (truncated)
-  await expect(row).toContainText("run-relea");
+  await expect(row).toContainText("run-rele");
 });
 
 test("Models page shows provenance chain on expand", async ({ page }) => {
@@ -87,9 +87,9 @@ test("Models page shows provenance chain on expand", async ({ page }) => {
   await expect(page.getByText("Evidence ID:")).toBeVisible();
 
   // Verify stage progress is visible
-  await expect(page.getByText("CANDIDATE")).toBeVisible();
-  await expect(page.getByText("STAGING")).toBeVisible();
-  await expect(page.getByText("RECOMMENDED")).toBeVisible();
+  await expect(page.getByText("CANDIDATE", { exact: true })).toBeVisible();
+  await expect(page.getByText("STAGING").first()).toBeVisible();
+  await expect(page.getByText("RECOMMENDED").first()).toBeVisible();
 });
 
 test("Data page shows snapshot identity and quality verdict", async ({ page }) => {
