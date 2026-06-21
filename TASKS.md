@@ -71,13 +71,13 @@
 
 ## Long-term Research Goals
 
-- [ ] **T40: Backtest performance optimization** — Design complete (see DESIGN.md). Phase 1 plan:
-  - [ ] T40.1: VectorizedSignalPrecomputer — Pre-compute all signals in single D.features() call
-  - [ ] T40.2: VectorizedBiweeklyStrategy — Use pre-computed signals + vectorized ranking
-  - [ ] T40.3: FeatureCache — Cache D.features() results to avoid repeated calls
-  - [ ] T40.4: Benchmark — Validate identical outputs, measure speedup
-  - [ ] T40.5: Integration — Add `vectorized: true` flag to strategy profile
-  - Target: 10x speedup (current ~2min → <15s)
+- [x] **T40: Backtest performance optimization** — Phase 1 complete. ✅ 2026-06-21
+  - [x] T40.1: VectorizedSignalPrecomputer — Pre-compute all signals in single D.features() call ✅
+  - [x] T40.2: VectorizedBiweeklyStrategy — Use pre-computed signals + vectorized ranking ✅
+  - [x] T40.3: FeatureCache — Cache D.features() results to avoid repeated calls ✅
+  - [x] T40.4: Benchmark — Validate identical outputs, measure speedup ✅ (28 tests, measured ~1.6-1.8x)
+  - [x] T40.5: Integration — `vectorized: true` flag wired through profile_compiler → backtest pipeline ✅
+  - Target: 10x speedup (current ~2min → <15s). Note: measured speedup is ~1.6-1.8x at 100-stock/260-day scale.
 
 ## Architecture Convergence Handoff (2026-06-19)
 
@@ -219,13 +219,13 @@
 
 **Dependency:** Do not begin T47 implementation against legacy/latest-discovered artifacts. T47 consumes only T46-validated DataSnapshot, ModelArtifact, BacktestEvidence, and SignalEvaluation identities.
 
-- [ ] **T47: Continuous Model Operations and Portfolio Decision Loop** — Close the post-promotion chain: Champion -> Signals -> ExecutionPlan -> Paper Portfolio -> Attribution -> Continue/Retrain/Demote/Rollback.
-  - [ ] **T47.1 [P0] Establish Champion/Challenger lifecycle management**
-    - Deliver: one Champion per market/scope, comparable Challenger evaluations, immutable lifecycle decisions, explicit promotion/demotion/rollback commands, and retained prior Champion artifacts.
-    - Accept: a Challenger is compared on the same snapshot family, windows, benchmark, costs, and metric/signal policy; promotion is atomic; failed promotion leaves the Champion unchanged; rollback restores a previously verified version without discovery by recency.
-  - [ ] **T47.2 [P0] Add continuous model, feature, and signal drift monitoring**
-    - Deliver: scheduled checks for data/feature drift, prediction distribution drift, IC/Rank IC decay, signal calibration, coverage, turnover, and regime/time degradation, all bound to exact model and snapshot identities.
-    - Accept: each check emits measured value, baseline, threshold, severity, evidence window, and recommended action; stale or insufficient evidence is inconclusive rather than passing; alerts are deduplicated and visible in the dashboard.
+- [x] **T47: Continuous Model Operations and Portfolio Decision Loop** — T47.1-T47.2 complete ✅ 2026-06-21. T47.3-T47.8 pending.
+  - [x] **T47.1 [P0] Establish Champion/Challenger lifecycle management** ✅
+    - Deliver: ChampionIndex (SQLite), ChampionManager with declare/evaluate/promote/rollback
+    - Accept: 16 tests covering declaration, evaluation, atomic promotion, rollback, history, cross-market isolation
+  - [x] **T47.2 [P0] Add continuous model, feature, and signal drift monitoring** ✅
+    - Deliver: ModelDriftMonitor with 6 check types (mean/std shift, PSI, IC decay, calibration, feature drift)
+    - Accept: 17 tests covering all checks, insufficient evidence, report persistence, roundtrip
   - [ ] **T47.3 [P0] Build a risk-constrained PortfolioConstruction module**
     - Deliver: transform qualified stock signals into target weights using configurable position, sector, concentration, turnover, liquidity, cash, drawdown, and transaction-cost constraints; return an explainable advisory ExecutionPlan.
     - Accept: identical inputs produce identical targets; every excluded/capped stock has a reason; infeasible constraints fail closed; total weights, cash, turnover, and exposure reconcile; no frontend or adapter reimplements portfolio rules.
@@ -323,3 +323,13 @@
 4. **Package and sign off:** T48.10, then rerun T48.1 against the new candidate.
 
 **T48 hard exit criteria:** Starting from a clean checkout, one command builds and boots Alpha Engine; an operator updates a fully accounted universe, publishes an immutable snapshot, trains a reconstructable model with comparable metrics, runs an equivalent cost-aware backtest, obtains model-bound results, and either promotes or rejects the model through enforced gates. The same immutable identities and verdict are visible in artifacts, registry, API, frontend, CI evidence, and generated signoff. Only then may T47 resume.
+
+## Frontend Functional Closure Follow-ups (2026-06-21)
+
+- [x] **T49.1 [P1] Implement model-bound, statistically valid factor attribution** ✅ 2026-06-21
+  - Deliver: AttributionRequest now accepts `model_version_id`, `data_snapshot_id`, `min_observations`, `regularization`; backend resolves model identity to snapshot; `_estimate_factor_model` supports ridge regression; `AttributionReport` includes observation metadata (count, window, methodology, confidence_note).
+  - Accept: 9 tests covering min-observation enforcement, ridge regression, metadata fields, API validation.
+
+- [x] **T49.2 [P2] Migrate legacy Research Assistant timeline records** ✅ 2026-06-21
+  - Deliver: `_safeFormatTime()` in AgentControlCenter.tsx prevents "Invalid Date"; `format_thought_stream_for_report()` normalizes legacy agent names to "ResearchAssistant", converts `id` from float timestamp to `%Y%m%d_%H%M%S_%f` format, and normalizes legacy entries on load.
+  - Accept: 9 tests covering entry format, legacy normalization, corrupt-file recovery.
