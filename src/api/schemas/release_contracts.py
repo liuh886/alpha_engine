@@ -195,18 +195,23 @@ class PortfolioCheckRequestV1(StrictRequestV1):
 def error_response(
     *,
     status_code: int,
-    error_code: str,
+    code: str,
     message: str,
     details: Any | None = None,
+    recoverable: bool = False,
+    next_action: str | None = None,
     extra: dict[str, Any] | None = None,
 ) -> JSONResponse:
     payload: dict[str, Any] = {
         "ok": False,
-        "error_code": error_code,
-        "error": message,
+        "code": code,
+        "message": message,
+        "recoverable": recoverable,
     }
     if details is not None:
-        payload["details"] = details
+        payload["detail"] = details
+    if next_action is not None:
+        payload["next_action"] = next_action
     if extra:
         payload.update(extra)
     return JSONResponse(status_code=status_code, content=payload)
@@ -232,7 +237,7 @@ class ContractAPIRoute(APIRoute):
                 ]
                 return error_response(
                     status_code=422,
-                    error_code="API_VALIDATION_ERROR",
+                    code="API_VALIDATION_ERROR",
                     message="Request validation failed",
                     details=details,
                 )

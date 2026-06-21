@@ -38,7 +38,7 @@ def list_models(
         logger.exception("model_list_failed")
         return error_response(
             status_code=500,
-            error_code="API_INTERNAL_ERROR",
+            code="API_INTERNAL_ERROR",
             message="Unable to list model artifacts",
         )
 
@@ -50,7 +50,7 @@ def promote_model(payload: ModelPromotionRequestV1):
         if get_model_index().get_version(artifact_id) is None:
             return error_response(
                 status_code=404,
-                error_code="MODEL_ARTIFACT_NOT_FOUND",
+                code="MODEL_ARTIFACT_NOT_FOUND",
                 message="Model artifact not found",
                 details={"artifact_id": artifact_id},
             )
@@ -59,7 +59,7 @@ def promote_model(payload: ModelPromotionRequestV1):
         if not result.get("ok"):
             return error_response(
                 status_code=409,
-                error_code="MODEL_PROMOTION_CONFLICT",
+                code="MODEL_PROMOTION_CONFLICT",
                 message="Model artifact cannot transition to the requested stage",
                 details={
                     "artifact_id": artifact_id,
@@ -77,7 +77,7 @@ def promote_model(payload: ModelPromotionRequestV1):
         logger.exception("model_promotion_failed", artifact_id=artifact_id)
         return error_response(
             status_code=500,
-            error_code="API_INTERNAL_ERROR",
+            code="API_INTERNAL_ERROR",
             message="Unable to promote model artifact",
         )
 
@@ -89,7 +89,7 @@ def delete_model(payload: ModelDeleteRequestV1):
         if get_model_index().get_version(artifact_id) is None:
             return error_response(
                 status_code=404,
-                error_code="MODEL_ARTIFACT_NOT_FOUND",
+                code="MODEL_ARTIFACT_NOT_FOUND",
                 message="Model artifact not found",
                 details={"artifact_id": artifact_id},
             )
@@ -97,7 +97,7 @@ def delete_model(payload: ModelDeleteRequestV1):
         if not get_model_service().delete_model(artifact_id):
             return error_response(
                 status_code=409,
-                error_code="MODEL_DELETE_CONFLICT",
+                code="MODEL_DELETE_CONFLICT",
                 message="Model artifact could not be deleted",
                 details={"artifact_id": artifact_id},
             )
@@ -111,7 +111,7 @@ def delete_model(payload: ModelDeleteRequestV1):
         logger.exception("model_delete_failed", artifact_id=artifact_id)
         return error_response(
             status_code=500,
-            error_code="API_INTERNAL_ERROR",
+            code="API_INTERNAL_ERROR",
             message="Unable to delete model artifact",
         )
 
@@ -207,7 +207,7 @@ def model_health_check():
 
     report["ok"] = False
     report["status"] = "degraded" if any(required_checks) else "blocked"
-    report["error_code"] = (
+    report["code"] = (
         "MODEL_HEALTH_DEGRADED" if report["status"] == "degraded" else "MODEL_HEALTH_BLOCKED"
     )
     return JSONResponse(status_code=503, content=report)
@@ -300,7 +300,7 @@ def get_model_details(
     except ValueError:
         return error_response(
             status_code=404,
-            error_code="MODEL_ARTIFACT_NOT_FOUND",
+            code="MODEL_ARTIFACT_NOT_FOUND",
             message="Model artifact not found",
             details={"artifact_id": artifact_id},
         )
@@ -308,6 +308,6 @@ def get_model_details(
         logger.exception("model_details_failed", artifact_id=artifact_id)
         return error_response(
             status_code=500,
-            error_code="API_INTERNAL_ERROR",
+            code="API_INTERNAL_ERROR",
             message="Unable to load model artifact",
         )

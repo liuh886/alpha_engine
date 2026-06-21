@@ -10,6 +10,7 @@ from src.api.dependencies import (
     get_quality_index,
     get_snapshot_index,
 )
+from src.api.schemas.jobs import JobResponse
 from src.api.schemas.release_contracts import (
     ContractAPIRoute,
     DataUpdateRequestV1,
@@ -19,7 +20,7 @@ from src.common.paths import DASHBOARD_DB_PATH
 router = APIRouter(tags=["data"], route_class=ContractAPIRoute)
 
 
-@router.post("/update")
+@router.post("/update", response_model=JobResponse)
 def trigger_data_update(payload: DataUpdateRequestV1):
     try:
         job = get_data_service().create_update_job_from_payload(payload.model_dump())

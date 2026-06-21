@@ -16,7 +16,7 @@ import {
 const ALL_RELEASE_LEVELS: ReleaseLevel[] = ['release', 'experimental', 'internal'];
 
 // All valid nav groups from the type.
-const ALL_NAV_GROUPS: NavGroupTitle[] = ['Core', 'Research', 'Strategy', 'System'];
+const ALL_NAV_GROUPS: NavGroupTitle[] = ['Daily Research', 'Model Lab', 'Backtest & Attribution', 'System & Ops'];
 
 describe('route registry', () => {
   // -----------------------------------------------------------------------
@@ -168,7 +168,7 @@ describe('route registry', () => {
   it('index route (empty path) exists and is in Core', () => {
     const indexRoute = routes.find((r) => r.path === '');
     expect(indexRoute).toBeDefined();
-    expect(indexRoute!.navGroup).toBe('Core');
+    expect(indexRoute!.navGroup).toBe('Daily Research');
   });
 
   it('no route path contains a leading slash', () => {

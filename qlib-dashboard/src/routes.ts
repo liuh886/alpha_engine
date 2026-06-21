@@ -34,7 +34,7 @@ import type { ComponentType } from 'react';
 
 export type ReleaseLevel = 'release' | 'experimental' | 'internal';
 
-export type NavGroupTitle = 'Core' | 'Research' | 'Strategy' | 'System';
+export type NavGroupTitle = 'Daily Research' | 'Model Lab' | 'Backtest & Attribution' | 'System & Ops';
 
 export interface RouteDefinition {
   /** Hash-router path (without leading `/`; empty string = index). */
@@ -58,30 +58,30 @@ export interface RouteDefinition {
 // ---------------------------------------------------------------------------
 
 export const routes: RouteDefinition[] = [
-  // -- Core ----------------------------------------------------------------
-  { path: '',            title: 'Dashboard',       label: 'Dashboard',       releaseLevel: 'release',      navGroup: 'Core',      icon: LayoutDashboard },
-  { path: 'terminal',    title: 'Stock Terminal',   label: 'Stock Terminal',  releaseLevel: 'experimental', navGroup: 'Core',      icon: Terminal },
-  { path: 'backtest',    title: 'Backtest',         label: 'Backtest',        releaseLevel: 'release',      navGroup: 'Core',      icon: FlaskConical },
+  // -- Daily Research --------------------------------------------------------
+  { path: '',            title: 'Dashboard',       label: 'Dashboard',       releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard },
+  { path: 'terminal',    title: 'Stock Terminal',   label: 'Stock Terminal',  releaseLevel: 'experimental', navGroup: 'Daily Research',      icon: Terminal },
 
-  // -- Research ------------------------------------------------------------
-  { path: 'models',          title: 'Model Registry',    label: 'Models',           releaseLevel: 'release',      navGroup: 'Research',  icon: Cpu },
-  { path: 'factors',         title: 'Factor Analysis',   label: 'Factor Analysis',  releaseLevel: 'release',      navGroup: 'Research',  icon: BarChart3 },
-  { path: 'factor-registry', title: 'Factor Registry',   label: 'Factor Registry',  releaseLevel: 'experimental', navGroup: 'Research',  icon: ListChecks },
-  { path: 'experiments',     title: 'Experiments',       label: 'Experiments',      releaseLevel: 'experimental', navGroup: 'Research',  icon: ClipboardList },
-  { path: 'attribution',     title: 'Factor Attribution', label: 'Attribution',     releaseLevel: 'experimental', navGroup: 'Research',  icon: PieChart },
-  { path: 'compare',         title: 'Compare',           label: 'Compare',          releaseLevel: 'release',      navGroup: 'Research',  icon: Layers },
+  // -- Model Lab -------------------------------------------------------------
+  { path: 'models',          title: 'Model Registry',    label: 'Models',           releaseLevel: 'release',      navGroup: 'Model Lab',  icon: Cpu },
+  { path: 'factors',         title: 'Factor Analysis',   label: 'Factor Analysis',  releaseLevel: 'release',      navGroup: 'Model Lab',  icon: BarChart3 },
+  { path: 'factor-registry', title: 'Factor Registry',   label: 'Factor Registry',  releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: ListChecks },
+  { path: 'experiments',     title: 'Experiments',       label: 'Experiments',      releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: ClipboardList },
+  { path: 'strategy',  title: 'Strategy Spec', label: 'Strategy Spec', releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: Settings },
+  { path: 'arena',     title: 'Arena',         label: 'Arena',         releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: Swords },
 
-  // -- Strategy ------------------------------------------------------------
-  { path: 'arena',     title: 'Arena',         label: 'Arena',         releaseLevel: 'experimental', navGroup: 'Strategy',  icon: Swords },
-  { path: 'strategy',  title: 'Strategy Spec', label: 'Strategy Spec', releaseLevel: 'experimental', navGroup: 'Strategy',  icon: Settings },
-  { path: 'reports',   title: 'Reports',       label: 'Reports',       releaseLevel: 'release',      navGroup: 'Strategy',  icon: ScrollText },
+  // -- Backtest & Attribution ------------------------------------------------
+  { path: 'backtest',    title: 'Backtest',         label: 'Backtest',        releaseLevel: 'release',      navGroup: 'Backtest & Attribution',      icon: FlaskConical },
+  { path: 'attribution',     title: 'Factor Attribution', label: 'Attribution',     releaseLevel: 'experimental', navGroup: 'Backtest & Attribution',  icon: PieChart },
+  { path: 'compare',         title: 'Compare',           label: 'Compare',          releaseLevel: 'release',      navGroup: 'Backtest & Attribution',  icon: Layers },
+  { path: 'reports',   title: 'Reports',       label: 'Reports',       releaseLevel: 'release',      navGroup: 'Backtest & Attribution',  icon: ScrollText },
 
-  // -- System --------------------------------------------------------------
-  { path: 'system',      title: 'System Monitor', label: 'System Monitor', releaseLevel: 'internal',     navGroup: 'System',    icon: Activity },
-  { path: 'data',        title: 'Data Management', label: 'Data',         releaseLevel: 'release',      navGroup: 'System',    icon: Database },
-  { path: 'agent',       title: 'Agent Center',   label: 'Agent Center',   releaseLevel: 'internal',     navGroup: 'System',    icon: Bot },
-  { path: 'methodology', title: 'Methodology',    label: 'Methodology',    releaseLevel: 'experimental', navGroup: 'System',    icon: BookOpen },
-  { path: 'docs',        title: 'Docs',           label: 'Docs',           releaseLevel: 'release',      navGroup: 'System',    icon: FileText },
+  // -- System & Ops ----------------------------------------------------------
+  { path: 'data',        title: 'Data Management', label: 'Data',         releaseLevel: 'release',      navGroup: 'System & Ops',    icon: Database },
+  { path: 'system',      title: 'System Monitor', label: 'System Monitor', releaseLevel: 'internal',     navGroup: 'System & Ops',    icon: Activity },
+  { path: 'agent',       title: 'Agent Center',   label: 'Agent Center',   releaseLevel: 'internal',     navGroup: 'System & Ops',    icon: Bot },
+  { path: 'methodology', title: 'Methodology',    label: 'Methodology',    releaseLevel: 'experimental', navGroup: 'System & Ops',    icon: BookOpen },
+  { path: 'docs',        title: 'Docs',           label: 'Docs',           releaseLevel: 'release',      navGroup: 'System & Ops',    icon: FileText },
 ];
 
 // ---------------------------------------------------------------------------
