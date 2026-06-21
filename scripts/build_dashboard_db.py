@@ -257,7 +257,12 @@ def _compute_information_ratio(report_normal, market: str) -> float | None:
 
 
 def merge_benchmarks_into_report(report_normal, benchmarks: dict, market: str) -> None:
-    """Merge benchmark returns into report_normal columns (in-place)."""
+    """Merge benchmark returns into report_normal columns (in-place).
+
+    Converts daily benchmark returns to an equity-level series (starting at
+    the report's initial account value) so the frontend can normalise both
+    strategy and benchmark curves against the same base.
+    """
     if not report_normal or not benchmarks:
         return
 
@@ -272,13 +277,36 @@ def merge_benchmarks_into_report(report_normal, benchmarks: dict, market: str) -
         bench_symbol = list(benchmarks.keys())[0] if benchmarks else None
         bench_data = benchmarks.get(bench_symbol, {}) if bench_symbol else {}
 
+        # Determine starting equity level from report's account column
+        account_idx = cols.index("account") if "account" in cols else None
+        first_account = data[0][account_idx] if account_idx is not None and data else 10000.0
+
         if bench_col not in cols:
             cols.append(bench_col)
+            running_equity = float(first_account)
             for i, date_str in enumerate(dates):
                 date_key = str(date_str).split("T")[0].split(" ")[0]
-                bench_val = bench_data.get(date_key, 0.0)
+                daily_ret = bench_data.get(date_key)
+                if daily_ret is not None and isinstance(daily_ret, (int, float)):
+                    running_equity *= (1.0 + float(daily_ret))
+                # If benchmark data is unavailable for this date, keep previous level
                 if i < len(data):
-                    data[i].append(bench_val)
+                    data[i].append(running_equity)
+
+            # Guard: if the resulting benchmark series is corrupt (matches account
+            # exactly because all daily_ret were 0.0), remove the column so the
+            # frontend falls back to the Qlib "bench" column.
+            if account_idx is not None:
+                bench_idx = cols.index(bench_col)
+                all_identical = True
+                for row in data:
+                    if abs(row[bench_idx] - row[account_idx]) > max(abs(row[account_idx]), 1.0) * 1e-6:
+                        all_identical = False
+                        break
+                if all_identical:
+                    cols.pop(bench_idx)
+                    for row in data:
+                        row.pop(bench_idx)
 
 
 def load_run_data(run_dir: Path) -> dict:
@@ -323,7 +351,13 @@ def load_run_data(run_dir: Path) -> dict:
 
 
 def compute_benchmark_returns(dates: list[str], symbol: str, provider_uri: str):
-    """Fetch benchmark returns from Qlib cache."""
+    """Fetch benchmark daily returns from Qlib.
+
+    Returns a dict mapping date strings (YYYY-MM-DD) to daily returns.
+    The first available date's return is NaN (pct_change on first row) and
+    is excluded from the result — merge_benchmarks_into_report handles this
+    by holding the initial equity level constant on the first date.
+    """
     if not dates:
         return {}
     try:
@@ -344,9 +378,13 @@ def compute_benchmark_returns(dates: list[str], symbol: str, provider_uri: str):
             return {}
 
         df = df.xs(symbol, level="instrument")
-        df["return"] = df["$close"].pct_change().fillna(0)
+        df["return"] = df["$close"].pct_change()
 
-        return {dt.strftime("%Y-%m-%d"): float(ret) for dt, ret in df["return"].items()}
+        return {
+            dt.strftime("%Y-%m-%d"): float(ret)
+            for dt, ret in df["return"].items()
+            if pd.notna(ret)
+        }
     except Exception as e:
         print(f"  Failed to compute benchmark {symbol}: {e}")
         return {}

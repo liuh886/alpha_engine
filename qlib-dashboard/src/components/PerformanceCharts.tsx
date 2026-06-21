@@ -47,15 +47,61 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
     // Bail out if the first account value is missing or invalid — all curves
     // are normalised against it and would render NaN/Infinity silently.
     if (!Number.isFinite(initialAccount) || initialAccount <= 0) return [];
-    const qqqSeries = normalizeBenchmarkSeries(report.map(row => row.bench_qqq));
-    const hs300Series = normalizeBenchmarkSeries(report.map(row => row.bench_hs300));
-    const useQqq = report.some(row => Number.isFinite(Number(row.bench_qqq)));
+
+    // ── Benchmark data source ──────────────────────────────────────────
+    // Qlib artefacts carry a "bench" column with daily benchmark returns.
+    // Newer training paths append "bench_qqq" / "bench_hs300" (equity-level
+    // or daily-return columns).  Prefer the Qlib "bench" column when present
+    // and valid; fall back to the merged columns otherwise.
+    const benchDaily: Array<number | undefined> = report.map(row => row.bench);
+    const benchQqq: Array<number | undefined> = report.map(row => row.bench_qqq);
+    const benchHs300: Array<number | undefined> = report.map(row => row.bench_hs300);
+
+    const hasBench = benchDaily.some(v => Number.isFinite(Number(v)));
+    const hasQqq = benchQqq.some(v => Number.isFinite(Number(v)));
+    const hasHs300 = benchHs300.some(v => Number.isFinite(Number(v)));
+
+    // Detect corrupt benchmark data — if every benchmark value equals the
+    // corresponding account value, the merge was broken and the series
+    // would paint a fake identical curve.
+    const isCorrupt = (benchVals: Array<number | undefined>) => {
+      if (benchVals.length === 0) return true;
+      let differs = false;
+      for (let i = 0; i < Math.min(benchVals.length, report.length); i++) {
+        const bv = Number(benchVals[i]);
+        const av = Number(report[i].account);
+        if (!Number.isFinite(bv) || !Number.isFinite(av)) continue;
+        // Allow floating-point rounding (1e-6 relative tolerance)
+        if (Math.abs(bv - av) > Math.max(Math.abs(av), 1) * 1e-6) { differs = true; break; }
+      }
+      return !differs;
+    };
+
+    // Primary benchmark: Qlib "bench" (daily returns) → compound.
+    // Secondary: bench_qqq / bench_hs300 equity series → normalise.
+    let benchSeries: number[];
+    let benchLabel: string;
+    if (hasBench && !isCorrupt(benchDaily)) {
+      benchSeries = normalizeBenchmarkSeries(benchDaily);
+      benchLabel = 'benchmark';
+    } else if (hasQqq && !isCorrupt(benchQqq)) {
+      benchSeries = normalizeBenchmarkSeries(benchQqq);
+      benchLabel = 'benchmark_qqq';
+    } else if (hasHs300 && !isCorrupt(benchHs300)) {
+      benchSeries = normalizeBenchmarkSeries(benchHs300);
+      benchLabel = 'benchmark_hs300';
+    } else {
+      // No valid benchmark — still render the strategy curve
+      benchSeries = report.map(() => 0);
+      benchLabel = '';
+    }
 
     return report.map((d, index) => {
       const account = Number(d.account);
       const strategyRet = Number.isFinite(account)
         ? (account / initialAccount) - 1
         : null as unknown as number;  // Recharts skips null data points
+      const benchVal = benchLabel ? benchSeries[index] : null as unknown as number;
       const value = Number(d.value);
       const posRatio = Number.isFinite(account) && account > 0 && Number.isFinite(value)
         ? value / account
@@ -63,10 +109,9 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
       return {
         date: d.date,
         strategy: strategyRet,
-        benchmark_qqq: qqqSeries[index],
-        benchmark_hs300: hs300Series[index],
-        excess: Number.isFinite(strategyRet)
-          ? strategyRet - (useQqq ? qqqSeries[index] : hs300Series[index])
+        benchmark: benchVal,
+        excess: Number.isFinite(strategyRet) && Number.isFinite(benchVal)
+          ? strategyRet - benchVal
           : null as unknown as number,
         pos_ratio: posRatio,
       };
@@ -134,8 +179,7 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
     return years;
   }, [monthlyReturns]);
 
-  const hasQqq = useMemo(() => report.some(d => Number.isFinite(Number(d.bench_qqq))), [report]);
-  const hasHs300 = useMemo(() => report.some(d => Number.isFinite(Number(d.bench_hs300))), [report]);
+  const hasBenchmark = useMemo(() => chartData.some(d => Number.isFinite(d.benchmark)), [chartData]);
 
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number | string; color: string }>; label?: string }) => {
     if (!active || !payload?.length) return null;
@@ -191,8 +235,7 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
               <Legend verticalAlign="top" align="right" height={30} iconType="circle" onClick={toggleVisibility} wrapperStyle={{ fontSize: '11px', cursor: 'pointer' }} />
               <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity={0.3} />
               <Area hide={hiddenSeries['strategy']} type="monotone" dataKey="strategy" stroke="hsl(var(--primary))" strokeWidth={2} fillOpacity={1} fill="url(#gradStrategy)" name="Alpha Engine" />
-              {hasQqq && <Line hide={hiddenSeries['benchmark_qqq']} type="monotone" dataKey="benchmark_qqq" stroke="#f59e0b" dot={false} strokeWidth={1.5} strokeDasharray="5 5" name="Nasdaq 100" />}
-              {hasHs300 && <Line hide={hiddenSeries['benchmark_hs300']} type="monotone" dataKey="benchmark_hs300" stroke="#0ea5e9" dot={false} strokeWidth={1.5} name="CSI 300" />}
+              {hasBenchmark && <Line hide={hiddenSeries['benchmark']} type="monotone" dataKey="benchmark" stroke="#f59e0b" dot={false} strokeWidth={1.5} strokeDasharray="5 5" name="Benchmark" />}
             </ComposedChart>
           </ResponsiveContainer>
         </CardContent>
