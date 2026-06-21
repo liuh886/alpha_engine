@@ -117,4 +117,3 @@ class StrategyExecutionEngine:
                     )
                 )
         return violations
-

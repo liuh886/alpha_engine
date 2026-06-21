@@ -13,7 +13,9 @@ def _curl_get(path: str) -> dict:
     """Make a GET request to the API."""
     result = subprocess.run(
         ["curl", "-s", "-u", "admin:alpha2026", f"http://localhost:8000{path}"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     if result.returncode != 0:
         return {"ok": False, "error": f"curl failed: {result.stderr}"}
@@ -26,11 +28,22 @@ def _curl_get(path: str) -> dict:
 def _curl_post(path: str, data: dict) -> dict:
     """Make a POST request to the API."""
     result = subprocess.run(
-        ["curl", "-s", "-u", "admin:alpha2026", "-X", "POST",
-         "-H", "Content-Type: application/json",
-         "-d", json.dumps(data),
-         f"http://localhost:8000{path}"],
-        capture_output=True, text=True, timeout=30,
+        [
+            "curl",
+            "-s",
+            "-u",
+            "admin:alpha2026",
+            "-X",
+            "POST",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            json.dumps(data),
+            f"http://localhost:8000{path}",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     if result.returncode != 0:
         return {"ok": False, "error": f"curl failed: {result.stderr}"}
@@ -43,6 +56,7 @@ def _curl_post(path: str, data: dict) -> dict:
 def _server_running() -> bool:
     """Check if API server is running."""
     import socket
+
     try:
         s = socket.create_connection(("localhost", 8000), timeout=2)
         s.close()
@@ -70,11 +84,14 @@ class TestResearchEndpoints:
 
     def test_start_run(self):
         """POST /api/research/run should accept request."""
-        data = _curl_post("/api/research/run", {
-            "market": "cn",
-            "goal": "smoke test",
-            "model_type": "lgbm",
-        })
+        data = _curl_post(
+            "/api/research/run",
+            {
+                "market": "cn",
+                "goal": "smoke test",
+                "model_type": "lgbm",
+            },
+        )
         assert data.get("ok") is True
         assert "run_id" in data
 
@@ -103,11 +120,14 @@ class TestPortfolioEndpoints:
 
     def test_check_portfolio_rejects_unbound_positions(self):
         """POST /api/portfolio/check must fail closed without artifact identities."""
-        data = _curl_post("/api/portfolio/check", {
-            "positions": {"000001": 0.1, "600519": 0.2},
-            "market": "cn",
-            "portfolio_value": 100000,
-        })
+        data = _curl_post(
+            "/api/portfolio/check",
+            {
+                "positions": {"000001": 0.1, "600519": 0.2},
+                "market": "cn",
+                "portfolio_value": 100000,
+            },
+        )
         assert data.get("ok") is False
         assert data.get("error_code") == "API_VALIDATION_ERROR"
         missing_fields = {

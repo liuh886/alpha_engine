@@ -6,6 +6,7 @@ Usage:
     python scripts/bump_version.py major    # 2.5.0 -> 3.0.0
     python scripts/bump_version.py 3.1.0    # Set explicit version
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,7 +48,9 @@ def bump_version(current: str, bump: str) -> str:
         # Explicit version
         parts = bump.split(".")
         if len(parts) != 3 or not all(p.isdigit() for p in parts):
-            print(f"Error: invalid version '{bump}'. Use major/minor/patch or x.y.z", file=sys.stderr)
+            print(
+                f"Error: invalid version '{bump}'. Use major/minor/patch or x.y.z", file=sys.stderr
+            )
             sys.exit(1)
         major, minor, patch = (int(x) for x in parts)
 

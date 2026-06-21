@@ -13,7 +13,11 @@ class ReliabilityEvent:
     component: str
     operation: str
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: str = field(default_factory=lambda: datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"))
+    timestamp: str = field(
+        default_factory=lambda: (
+            datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
+        )
+    )
     status: str = "open"
     summary: str = ""
     details: dict[str, Any] = field(default_factory=dict)

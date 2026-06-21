@@ -77,26 +77,30 @@ class ExecutionDiagnostics:
         nav: float,
         allocation: GradeAllocation | None = None,
     ) -> None:
-        self.records.append({
-            "date": date,
-            "regime_factor": round(regime_factor, 4),
-            "regime_reasons": regime_reasons,
-            "long_count": long_count,
-            "short_count": short_count,
-            "turnover": round(turnover, 6),
-            "cost": round(cost, 6),
-            "port_return": round(port_ret, 6),
-            "bench_return": round(bench_ret, 6),
-            "nav": round(nav, 2),
-            "long_positions": (
-                {k: round(v, 4) for k, v in allocation.long_positions.items()}
-                if allocation else {}
-            ),
-            "short_positions": (
-                {k: round(v, 4) for k, v in allocation.short_positions.items()}
-                if allocation else {}
-            ),
-        })
+        self.records.append(
+            {
+                "date": date,
+                "regime_factor": round(regime_factor, 4),
+                "regime_reasons": regime_reasons,
+                "long_count": long_count,
+                "short_count": short_count,
+                "turnover": round(turnover, 6),
+                "cost": round(cost, 6),
+                "port_return": round(port_ret, 6),
+                "bench_return": round(bench_ret, 6),
+                "nav": round(nav, 2),
+                "long_positions": (
+                    {k: round(v, 4) for k, v in allocation.long_positions.items()}
+                    if allocation
+                    else {}
+                ),
+                "short_positions": (
+                    {k: round(v, 4) for k, v in allocation.short_positions.items()}
+                    if allocation
+                    else {}
+                ),
+            }
+        )
 
     def to_dataframe(self) -> pd.DataFrame:
         return pd.DataFrame(self.records)
@@ -138,11 +142,7 @@ class SignalExecutionEngine:
 
     def __init__(self, config: SignalExecutionConfig | None = None):
         self._cfg = config or SignalExecutionConfig()
-        self._regime_filter = (
-            RegimeFilter(self._cfg)
-            if self._cfg.enable_regime_filter
-            else None
-        )
+        self._regime_filter = RegimeFilter(self._cfg) if self._cfg.enable_regime_filter else None
         self._weight_assigner = GradeWeightAssigner(self._cfg)
 
     # ------------------------------------------------------------------
@@ -186,9 +186,7 @@ class SignalExecutionEngine:
         return_matrix = self._build_matrix(returns)
 
         # Common dates
-        common_dates = sorted(
-            set(score_matrix.index) & set(return_matrix.index)
-        )
+        common_dates = sorted(set(score_matrix.index) & set(return_matrix.index))
         if not common_dates:
             logger.warning("No common dates between predictions and returns")
             return self._empty_result()
@@ -207,9 +205,7 @@ class SignalExecutionEngine:
             bench_series = benchmark_returns.iloc[:, 0]
 
         # IC pre-computation (used by regime filter AND result metrics)
-        mean_ic, ic_ir, pos_ratio, ic_series = compute_ic_vectorized(
-            predictions, returns
-        )
+        mean_ic, ic_ir, pos_ratio, ic_series = compute_ic_vectorized(predictions, returns)
 
         # Diagnostics collector
         diagnostics = ExecutionDiagnostics()
@@ -227,13 +223,22 @@ class SignalExecutionEngine:
             # --- Scores ---
             if date not in score_matrix.index:
                 self._record_flat(
-                    portfolio_values, benchmark_values, period_returns,
-                    bench_series, date,
+                    portfolio_values,
+                    benchmark_values,
+                    period_returns,
+                    bench_series,
+                    date,
                 )
                 diagnostics.record(
-                    date=str(date.date()), regime_factor=1.0,
-                    regime_reasons=["no_data"], long_count=0, short_count=0,
-                    turnover=0.0, cost=0.0, port_ret=0.0, bench_ret=0.0,
+                    date=str(date.date()),
+                    regime_factor=1.0,
+                    regime_reasons=["no_data"],
+                    long_count=0,
+                    short_count=0,
+                    turnover=0.0,
+                    cost=0.0,
+                    port_ret=0.0,
+                    bench_ret=0.0,
                     nav=portfolio_values[-1],
                 )
                 continue
@@ -241,13 +246,22 @@ class SignalExecutionEngine:
             scores = score_matrix.loc[date].dropna()
             if scores.empty:
                 self._record_flat(
-                    portfolio_values, benchmark_values, period_returns,
-                    bench_series, date,
+                    portfolio_values,
+                    benchmark_values,
+                    period_returns,
+                    bench_series,
+                    date,
                 )
                 diagnostics.record(
-                    date=str(date.date()), regime_factor=1.0,
-                    regime_reasons=["empty_scores"], long_count=0, short_count=0,
-                    turnover=0.0, cost=0.0, port_ret=0.0, bench_ret=0.0,
+                    date=str(date.date()),
+                    regime_factor=1.0,
+                    regime_reasons=["empty_scores"],
+                    long_count=0,
+                    short_count=0,
+                    turnover=0.0,
+                    cost=0.0,
+                    port_ret=0.0,
+                    bench_ret=0.0,
                     nav=portfolio_values[-1],
                 )
                 continue
@@ -290,7 +304,7 @@ class SignalExecutionEngine:
             net_ret = port_ret - cost
 
             # --- Update state ---
-            capital *= (1.0 + net_ret)
+            capital *= 1.0 + net_ret
             portfolio_values.append(capital)
             period_returns.append(net_ret)
 
@@ -302,14 +316,14 @@ class SignalExecutionEngine:
             if bench_series is not None and date in bench_series.index:
                 raw = float(bench_series.loc[date])
                 bench_ret = raw if np.isfinite(raw) else 0.0
-            benchmark_values.append(
-                benchmark_values[-1] * (1.0 + bench_ret)
-            )
+            benchmark_values.append(benchmark_values[-1] * (1.0 + bench_ret))
 
             # --- Diagnostics ---
             turnover = self._compute_oneway_turnover(
-                allocation.long_positions, prev_long,
-                allocation.short_positions, prev_short,
+                allocation.long_positions,
+                prev_long,
+                allocation.short_positions,
+                prev_short,
             )
             diagnostics.record(
                 date=str(date.date()),
@@ -356,22 +370,14 @@ class SignalExecutionEngine:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _validate_inputs(
-        predictions: pd.DataFrame, returns: pd.DataFrame
-    ) -> None:
+    def _validate_inputs(predictions: pd.DataFrame, returns: pd.DataFrame) -> None:
         """Validate MultiIndex structure and column presence."""
         if not isinstance(predictions.index, pd.MultiIndex):
-            raise ValueError(
-                "predictions must have MultiIndex (datetime, instrument)"
-            )
+            raise ValueError("predictions must have MultiIndex (datetime, instrument)")
         if "datetime" not in predictions.index.names:
-            raise ValueError(
-                "predictions index must include 'datetime' level"
-            )
+            raise ValueError("predictions index must include 'datetime' level")
         if "instrument" not in predictions.index.names:
-            raise ValueError(
-                "predictions index must include 'instrument' level"
-            )
+            raise ValueError("predictions index must include 'instrument' level")
         if len(predictions.columns) == 0:
             raise ValueError("predictions must have at least one column")
         if len(returns.columns) == 0:
@@ -444,7 +450,10 @@ class SignalExecutionEngine:
         Cost = one-way turnover × avg(buy_cost_bps, sell_cost_bps) / 10000.
         """
         turnover = self._compute_oneway_turnover(
-            long_positions, prev_long, short_positions, prev_short,
+            long_positions,
+            prev_long,
+            short_positions,
+            prev_short,
         )
         avg_cost_bps = (self._cfg.buy_cost_bps + self._cfg.sell_cost_bps) / 2.0
         return turnover * avg_cost_bps / 10000.0
@@ -457,10 +466,7 @@ class SignalExecutionEngine:
         prev_short: dict[str, float],
     ) -> float:
         """Compute one-way turnover = Σ|Δw| / 2."""
-        all_symbols = (
-            set(long_positions) | set(prev_long)
-            | set(short_positions) | set(prev_short)
-        )
+        all_symbols = set(long_positions) | set(prev_long) | set(short_positions) | set(prev_short)
         total_change = 0.0
         for s in all_symbols:
             total_change += abs(long_positions.get(s, 0.0) - prev_long.get(s, 0.0))
@@ -499,9 +505,7 @@ class SignalExecutionEngine:
         periods_per_year = 252.0 / self._cfg.rebalance_days
         ret_std = float(ret_arr.std())
         sharpe = (
-            float(ret_arr.mean() / ret_std * np.sqrt(periods_per_year))
-            if ret_std > 1e-10
-            else 0.0
+            float(ret_arr.mean() / ret_std * np.sqrt(periods_per_year)) if ret_std > 1e-10 else 0.0
         )
 
         n_periods = len(period_returns)

@@ -381,7 +381,9 @@ def test_rc_20260620_fails_verification(tmp_path: Path) -> None:
         "status": "rejected",
         "rejection_reason": "T48 audit: no formal DataSnapshot, missing required metrics",
     }
-    candidate_path = tmp_path / "artifacts" / "release_candidate" / "20260620" / "release_manifest.json"
+    candidate_path = (
+        tmp_path / "artifacts" / "release_candidate" / "20260620" / "release_manifest.json"
+    )
     _write_json(candidate_path, candidate)
 
     report = verify_release_candidate(candidate_path, project_root=tmp_path, revision=REVISION)

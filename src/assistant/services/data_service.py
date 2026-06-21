@@ -11,8 +11,19 @@ logger = get_logger(__name__)
 
 # Features available in the Qlib binary store (data/watchlist/features/{symbol}/)
 AVAILABLE_FEATURES = [
-    "close", "open", "high", "low", "volume", "amount", "vwap", "money", "factor",
-    "mkt_us_ma20_dev", "mkt_us_ma60_dev", "mkt_cn_ma20_dev", "mkt_cn_ma60_dev",
+    "close",
+    "open",
+    "high",
+    "low",
+    "volume",
+    "amount",
+    "vwap",
+    "money",
+    "factor",
+    "mkt_us_ma20_dev",
+    "mkt_us_ma60_dev",
+    "mkt_cn_ma20_dev",
+    "mkt_cn_ma60_dev",
 ]
 
 
@@ -30,7 +41,11 @@ class DataService:
         try:
             lookback_days = int(lookback_days) if lookback_days is not None else 30
         except Exception:
-            logger.debug("Failed to parse lookback_days, using default", raw_value=lookback_days, exc_info=True)
+            logger.debug(
+                "Failed to parse lookback_days, using default",
+                raw_value=lookback_days,
+                exc_info=True,
+            )
             lookback_days = 30
         if lookback_days < 0:
             lookback_days = 0
@@ -75,7 +90,9 @@ class DataService:
                 db = json.loads(dashboard_db_path.read_text(encoding="utf-8"))
                 dashboard_generated_at = db.get("generated_at")
             except Exception:
-                logger.debug("Failed to read dashboard DB", path=str(dashboard_db_path), exc_info=True)
+                logger.debug(
+                    "Failed to read dashboard DB", path=str(dashboard_db_path), exc_info=True
+                )
 
         latest_snapshot_id = None
         snapshot_status = "unknown"
@@ -85,7 +102,10 @@ class DataService:
             if snap:
                 latest_snapshot_id = snap.get("snapshot_id")
                 manifest = snap.get("manifest")
-                if not isinstance(manifest, dict) or manifest.get("snapshot_id") != latest_snapshot_id:
+                if (
+                    not isinstance(manifest, dict)
+                    or manifest.get("snapshot_id") != latest_snapshot_id
+                ):
                     snapshot_status = "failed"
                     snapshot_error = "indexed snapshot manifest is missing or mismatched"
                 else:
@@ -163,7 +183,9 @@ class DataService:
 
         # Read calendar dates
         dates = [
-            line.strip() for line in cal_path.read_text(encoding="utf-8").splitlines() if line.strip()
+            line.strip()
+            for line in cal_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
         ]
         n_days = len(dates)
 
@@ -202,7 +224,13 @@ class DataService:
 
             # Pad or truncate to match calendar length
             if len(arr) < n_days:
-                logger.debug("binary_array_short", symbol=sym, feature=feature, expected=n_days, actual=len(arr))
+                logger.debug(
+                    "binary_array_short",
+                    symbol=sym,
+                    feature=feature,
+                    expected=n_days,
+                    actual=len(arr),
+                )
                 arr = np.concatenate([arr, np.full(n_days - len(arr), np.nan)])
             elif len(arr) > n_days:
                 arr = arr[:n_days]
@@ -259,16 +287,24 @@ class DataService:
             "missing": sorted(missing),
         }
         if ghosts:
-            report["warnings"].append(f"{len(ghosts)} symbols in instruments but no features: {sorted(ghosts)[:5]}")
+            report["warnings"].append(
+                f"{len(ghosts)} symbols in instruments but no features: {sorted(ghosts)[:5]}"
+            )
         if missing:
-            report["warnings"].append(f"{len(missing)} symbols with features but not in instruments: {sorted(missing)[:5]}")
+            report["warnings"].append(
+                f"{len(missing)} symbols with features but not in instruments: {sorted(missing)[:5]}"
+            )
 
         # 2. Binary array length consistency
         if not cal_path.exists():
             report["errors"].append("Calendar file not found")
             return report
 
-        dates = [line.strip() for line in cal_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        dates = [
+            line.strip()
+            for line in cal_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
         n_days = len(dates)
         (n_days + 1) * 4  # +1 for int32 header
 
@@ -287,7 +323,9 @@ class DataService:
             "issues": length_issues[:20],  # cap output
         }
         if length_issues:
-            report["warnings"].append(f"{len(length_issues)} symbols have mismatched binary lengths")
+            report["warnings"].append(
+                f"{len(length_issues)} symbols have mismatched binary lengths"
+            )
 
         # 3. Temporal gap detection — check close feature for NaN gaps
         gap_symbols = []
@@ -317,12 +355,16 @@ class DataService:
                     elif not v and gap_start is not None:
                         gap_len = i - gap_start
                         if gap_len > 5:
-                            gap_symbols.append({
-                                "symbol": sym,
-                                "gap_start": dates[gap_start] if gap_start < len(dates) else str(gap_start),
-                                "gap_end": dates[i] if i < len(dates) else str(i),
-                                "gap_days": gap_len,
-                            })
+                            gap_symbols.append(
+                                {
+                                    "symbol": sym,
+                                    "gap_start": dates[gap_start]
+                                    if gap_start < len(dates)
+                                    else str(gap_start),
+                                    "gap_end": dates[i] if i < len(dates) else str(i),
+                                    "gap_days": gap_len,
+                                }
+                            )
                         gap_start = None
             except Exception:
                 continue
@@ -357,5 +399,9 @@ class DataService:
                 return "STALE"
             return "READY"
         except Exception:
-            logger.debug("Failed to parse calendar date for readiness check", latest_cal=latest_cal, exc_info=True)
+            logger.debug(
+                "Failed to parse calendar date for readiness check",
+                latest_cal=latest_cal,
+                exc_info=True,
+            )
             return "UNKNOWN"

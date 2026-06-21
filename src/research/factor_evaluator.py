@@ -21,11 +21,11 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 DEFAULT_GATES: dict[str, float] = {
-    "min_icir": 0.3,              # Calibrated for walk-forward IC level (~0.09)
-    "min_t_stat": 1.5,            # Relaxed for small stock universe (118 stocks)
-    "min_positive_ratio": 0.55,   # Keep: consistency matters
-    "min_quintile_spread": 0.001, # Lowered: real IC produces smaller spreads
-    "min_ic_decay_5d_ratio": 0.3, # IC at 5d should retain at least 30% of IC at 1d
+    "min_icir": 0.3,  # Calibrated for walk-forward IC level (~0.09)
+    "min_t_stat": 1.5,  # Relaxed for small stock universe (118 stocks)
+    "min_positive_ratio": 0.55,  # Keep: consistency matters
+    "min_quintile_spread": 0.001,  # Lowered: real IC produces smaller spreads
+    "min_ic_decay_5d_ratio": 0.3,  # IC at 5d should retain at least 30% of IC at 1d
 }
 
 # ---------------------------------------------------------------------------
@@ -37,10 +37,10 @@ DEFAULT_GATES: dict[str, float] = {
 class QuintileReturn:
     """Mean forward return for a single quintile bucket."""
 
-    quintile: int          # 1 (bottom) to 5 (top)
+    quintile: int  # 1 (bottom) to 5 (top)
     mean_return: float
     annualized_return: float
-    n_stocks: float        # average number of stocks per period
+    n_stocks: float  # average number of stocks per period
 
 
 @dataclass
@@ -54,25 +54,25 @@ class FactorEvalResult:
     end_date: str
 
     # IC metrics
-    ic: float              # Pearson IC
-    rank_ic: float         # Spearman rank IC
+    ic: float  # Pearson IC
+    rank_ic: float  # Spearman rank IC
     ic_std: float
-    icir: float            # IC / IC_std
-    t_stat: float          # IC / (IC_std / sqrt(n_periods))
+    icir: float  # IC / IC_std
+    t_stat: float  # IC / (IC_std / sqrt(n_periods))
     positive_ratio: float  # fraction of periods with positive IC
     n_periods: int
 
     # Decay
-    decay_1d: float        # IC at 1-day horizon
-    decay_5d: float        # IC at 5-day horizon
-    decay_10d: float       # IC at 10-day horizon
+    decay_1d: float  # IC at 1-day horizon
+    decay_5d: float  # IC at 5-day horizon
+    decay_10d: float  # IC at 10-day horizon
 
     # Quintile analysis
     quintile_returns: list[QuintileReturn]
-    quintile_spread: float # top quintile mean return - bottom quintile mean return
+    quintile_spread: float  # top quintile mean return - bottom quintile mean return
 
     # Diagnostics
-    coverage: float        # fraction of stocks with non-null factor values
+    coverage: float  # fraction of stocks with non-null factor values
     mean_value: float
     std_value: float
 
@@ -149,23 +149,40 @@ def validate_expression_syntax(expression: str) -> tuple[bool, str]:
     open_parens = stripped.count("(")
     close_parens = stripped.count(")")
     if open_parens != close_parens:
-        return False, (
-            f"Mismatched parentheses: {open_parens} '(' vs {close_parens} ')'"
-        )
+        return False, (f"Mismatched parentheses: {open_parens} '(' vs {close_parens} ')'")
 
     # At least one Qlib field or function must appear
     qlib_funcs = {
-        "Ref", "Mean", "Std", "Slope", "Rsquare", "Resi", "Max", "Min",
-        "Quantile", "Rank", "IdxMax", "IdxMin", "Corr", "Log", "Abs",
-        "Sum", "Greater", "Less", "If", "Abs", "Sign", "Power", "Sqrt",
-        "Log", "Exp",
+        "Ref",
+        "Mean",
+        "Std",
+        "Slope",
+        "Rsquare",
+        "Resi",
+        "Max",
+        "Min",
+        "Quantile",
+        "Rank",
+        "IdxMax",
+        "IdxMin",
+        "Corr",
+        "Log",
+        "Abs",
+        "Sum",
+        "Greater",
+        "Less",
+        "If",
+        "Abs",
+        "Sign",
+        "Power",
+        "Sqrt",
+        "Log",
+        "Exp",
     }
     has_field = "$" in stripped
     has_func = any(fn + "(" in stripped for fn in qlib_funcs)
     if not has_field and not has_func:
-        return False, (
-            "Expression contains no Qlib field references ($) or functions"
-        )
+        return False, ("Expression contains no Qlib field references ($) or functions")
 
     return True, ""
 
@@ -299,9 +316,7 @@ def _compute_forward_returns(
     return fwd_series.dropna()
 
 
-def _group_by_cross_section(
-    df: pd.DataFrame, freq: str = "ME"
-) -> list[tuple[str, pd.DataFrame]]:
+def _group_by_cross_section(df: pd.DataFrame, freq: str = "ME") -> list[tuple[str, pd.DataFrame]]:
     """Group a (datetime, instrument) DataFrame by calendar periods."""
     if not isinstance(df.index, pd.MultiIndex):
         return []
@@ -379,9 +394,7 @@ def _compute_ic_series(
     if len(common_dates) == 0:
         return [], [], 0
 
-    factor_df = factor_df.loc[
-        factor_df.index.get_level_values("datetime").isin(common_dates)
-    ]
+    factor_df = factor_df.loc[factor_df.index.get_level_values("datetime").isin(common_dates)]
     forward_returns = forward_returns.loc[
         forward_returns.index.get_level_values("datetime").isin(common_dates)
     ]
@@ -467,9 +480,7 @@ def _compute_quintile_returns(
     if len(common_dates) == 0:
         return [], 0.0
 
-    factor_df = factor_df.loc[
-        factor_df.index.get_level_values("datetime").isin(common_dates)
-    ]
+    factor_df = factor_df.loc[factor_df.index.get_level_values("datetime").isin(common_dates)]
     forward_returns = forward_returns.loc[
         forward_returns.index.get_level_values("datetime").isin(common_dates)
     ]
@@ -533,13 +544,19 @@ def _compute_quintile_returns(
         rets = quintile_returns_acc[q]
         counts = quintile_stock_counts[q]
         if not rets:
-            results.append(QuintileReturn(quintile=q, mean_return=0.0, annualized_return=0.0, n_stocks=0.0))
+            results.append(
+                QuintileReturn(quintile=q, mean_return=0.0, annualized_return=0.0, n_stocks=0.0)
+            )
             continue
 
         mean_ret = float(np.mean(rets))
         ann_ret = mean_ret * annualization_factor
         avg_stocks = float(np.mean(counts))
-        results.append(QuintileReturn(quintile=q, mean_return=mean_ret, annualized_return=ann_ret, n_stocks=avg_stocks))
+        results.append(
+            QuintileReturn(
+                quintile=q, mean_return=mean_ret, annualized_return=ann_ret, n_stocks=avg_stocks
+            )
+        )
 
     spread = 0.0
     if results[4].mean_return != 0.0 or results[0].mean_return != 0.0:
@@ -602,7 +619,9 @@ def _apply_gates(
             f"positive_ratio={positive_ratio:.4f} < min_positive_ratio={gates.get('min_positive_ratio', DEFAULT_GATES['min_positive_ratio'])}"
         )
 
-    if abs(quintile_spread) < gates.get("min_quintile_spread", DEFAULT_GATES["min_quintile_spread"]):
+    if abs(quintile_spread) < gates.get(
+        "min_quintile_spread", DEFAULT_GATES["min_quintile_spread"]
+    ):
         fail_reasons.append(
             f"|quintile_spread|={abs(quintile_spread):.6f} < min_quintile_spread={gates.get('min_quintile_spread', DEFAULT_GATES['min_quintile_spread'])}"
         )
@@ -694,6 +713,7 @@ def evaluate_factor(
         A ``FactorEvalResult`` with all metrics and verdict.
     """
     from src.common.dates import default_end_date
+
     end_date = end_date or default_end_date()
     gates = gates or dict(DEFAULT_GATES)
 
@@ -703,7 +723,10 @@ def evaluate_factor(
     valid, err = validate_expression_syntax(expression)
     if not valid:
         return _make_failure_result(
-            expression, market, start_date, end_date,
+            expression,
+            market,
+            start_date,
+            end_date,
             [f"Invalid expression syntax: {err}"],
         )
 
@@ -731,13 +754,19 @@ def evaluate_factor(
     except Exception as exc:
         log.warning("Failed to load factor data", expression=expression, error=str(exc))
         return _make_failure_result(
-            expression, market, start_date, end_date,
+            expression,
+            market,
+            start_date,
+            end_date,
             [f"Failed to load factor data: {exc}"],
         )
 
     if factor_df.empty:
         return _make_failure_result(
-            expression, market, start_date, end_date,
+            expression,
+            market,
+            start_date,
+            end_date,
             ["No factor data returned -- expression may reference missing fields"],
         )
 
@@ -754,7 +783,10 @@ def evaluate_factor(
     fwd_returns = _compute_forward_returns(market, start_date, end_date, label_horizon)
     if fwd_returns.empty:
         return _make_failure_result(
-            expression, market, start_date, end_date,
+            expression,
+            market,
+            start_date,
+            end_date,
             ["No forward returns computed -- insufficient price data"],
         )
 
@@ -769,11 +801,18 @@ def evaluate_factor(
         fwd_returns_oos = fwd_returns.loc[oos_mask_fwd]
         if factor_df_oos.empty or fwd_returns_oos.empty:
             return _make_failure_result(
-                expression, market, start_date, end_date,
+                expression,
+                market,
+                start_date,
+                end_date,
                 [f"No OOS data after train_end={train_end}"],
             )
-        log.info("Computing IC on OOS period", train_end=train_end,
-                 n_factor_rows=len(factor_df_oos), n_fwd_rows=len(fwd_returns_oos))
+        log.info(
+            "Computing IC on OOS period",
+            train_end=train_end,
+            n_factor_rows=len(factor_df_oos),
+            n_fwd_rows=len(fwd_returns_oos),
+        )
     else:
         factor_df_oos = factor_df
         fwd_returns_oos = fwd_returns
@@ -784,7 +823,10 @@ def evaluate_factor(
 
     if not period_pearson:
         return _make_failure_result(
-            expression, market, start_date, end_date,
+            expression,
+            market,
+            start_date,
+            end_date,
             ["No valid cross-sections -- insufficient overlapping data"],
         )
 
@@ -795,11 +837,7 @@ def evaluate_factor(
     mean_rank_ic = float(np.mean(rank_ic_array))
     ic_std = float(np.std(ic_array, ddof=1)) if len(ic_array) > 1 else 0.0
     icir = mean_ic / ic_std if ic_std > 1e-10 else 0.0
-    t_stat = (
-        float(mean_ic / (ic_std / np.sqrt(len(ic_array))))
-        if ic_std > 1e-10
-        else 0.0
-    )
+    t_stat = float(mean_ic / (ic_std / np.sqrt(len(ic_array)))) if ic_std > 1e-10 else 0.0
     positive_ratio = float(np.mean(ic_array > 0))
 
     # ------------------------------------------------------------------
@@ -808,9 +846,7 @@ def evaluate_factor(
     decay_horizons = {1: 0.0, 5: 0.0, 10: 0.0}
     for horizon in decay_horizons:
         try:
-            mean_p, _ = _compute_ic_for_horizon(
-                expression, market, start_date, end_date, horizon
-            )
+            mean_p, _ = _compute_ic_for_horizon(expression, market, start_date, end_date, horizon)
             decay_horizons[horizon] = mean_p if np.isfinite(mean_p) else 0.0
         except Exception as exc:
             log.debug("Decay computation failed", horizon=horizon, error=str(exc))

@@ -38,8 +38,16 @@ def sample_pred_score():
 def sample_rank_map():
     """Rank map matching sample_pred_score (sorted descending)."""
     return {
-        "NVDA": 0, "AAPL": 1, "AMD": 2, "META": 3, "MSFT": 4,
-        "AMZN": 5, "GOOG": 6, "NFLX": 7, "INTC": 8, "TSLA": 9,
+        "NVDA": 0,
+        "AAPL": 1,
+        "AMD": 2,
+        "META": 3,
+        "MSFT": 4,
+        "AMZN": 5,
+        "GOOG": 6,
+        "NFLX": 7,
+        "INTC": 8,
+        "TSLA": 9,
     }
 
 
@@ -277,7 +285,9 @@ class TestConfidence:
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_guardrails")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_ma_signal")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
-    def test_confidence_range(self, mock_factors, mock_ma, mock_guardrails, engine, sample_pred_score, sample_rank_map):
+    def test_confidence_range(
+        self, mock_factors, mock_ma, mock_guardrails, engine, sample_pred_score, sample_rank_map
+    ):
         """Confidence should always be between 0.1 and 0.95."""
         mock_guardrails.return_value = {"overall_passed": True}
         mock_ma.return_value = None
@@ -304,8 +314,12 @@ class TestConfidence:
         mock_ma.return_value = None
         mock_factors.return_value = ({}, [])
 
-        top = engine.evaluate("NVDA", sample_pred_score, sample_rank_map, "us", include_factors=False)
-        bottom = engine.evaluate("TSLA", sample_pred_score, sample_rank_map, "us", include_factors=False)
+        top = engine.evaluate(
+            "NVDA", sample_pred_score, sample_rank_map, "us", include_factors=False
+        )
+        bottom = engine.evaluate(
+            "TSLA", sample_pred_score, sample_rank_map, "us", include_factors=False
+        )
 
         assert top.confidence > bottom.confidence
 
@@ -347,11 +361,19 @@ class TestFactorSnapshot:
 class TestConfig:
     def test_default_config_keys(self):
         expected_keys = {
-            "extension_threshold", "vol_threshold", "min_liquidity",
-            "sell_ma_window", "buy_rank_topk", "sell_rank_threshold",
-            "buy_score_threshold", "sell_score_threshold",
+            "extension_threshold",
+            "vol_threshold",
+            "min_liquidity",
+            "sell_ma_window",
+            "buy_rank_topk",
+            "sell_rank_threshold",
+            "buy_score_threshold",
+            "sell_score_threshold",
             "factor_z_extreme",
-            "weight_model", "weight_guardrail", "weight_factor", "weight_trend",
+            "weight_model",
+            "weight_guardrail",
+            "weight_factor",
+            "weight_trend",
         }
         assert expected_keys.issubset(set(DEFAULT_DECISION_CONFIG.keys()))
 
@@ -359,7 +381,9 @@ class TestConfig:
         engine = StockDecisionEngine(config={"buy_rank_topk": 10})
         assert engine.config["buy_rank_topk"] == 10
         # Other defaults should be preserved
-        assert engine.config["sell_rank_threshold"] == DEFAULT_DECISION_CONFIG["sell_rank_threshold"]
+        assert (
+            engine.config["sell_rank_threshold"] == DEFAULT_DECISION_CONFIG["sell_rank_threshold"]
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +409,14 @@ class TestStrategyRecommendation:
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_buy_signal_gets_recommendation(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails, engine, sample_pred_score, sample_rank_map
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
+        sample_pred_score,
+        sample_rank_map,
     ):
         """BUY signal should include a strategy recommendation."""
         mock_guardrails.return_value = {"overall_passed": True}
@@ -403,7 +434,11 @@ class TestStrategyRecommendation:
 
         assert decision.signal == "BUY"
         assert decision.recommended_strategy is not None
-        assert decision.recommended_strategy.name in ("biweekly_trend", "dual_layer", "weekly_quant_rating")
+        assert decision.recommended_strategy.name in (
+            "biweekly_trend",
+            "dual_layer",
+            "weekly_quant_rating",
+        )
         assert 0 < decision.recommended_strategy.confidence <= 1
 
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_guardrails")
@@ -471,7 +506,14 @@ class TestPriceTargets:
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_buy_signal_includes_price_targets(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails, engine, sample_pred_score, sample_rank_map
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
+        sample_pred_score,
+        sample_rank_map,
     ):
         """BUY signal should include price targets when available."""
         mock_guardrails.return_value = {"overall_passed": True}

@@ -77,7 +77,9 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                 future = [d for d in cal if d > cur_date]
                 return future[0] if future else None
             except Exception:
-                logger.debug("Failed to resolve next trade date", trade_step=trade_step, exc_info=True)
+                logger.debug(
+                    "Failed to resolve next trade date", trade_step=trade_step, exc_info=True
+                )
                 return None
 
     def _normalize_signal(self, pred_score):
@@ -147,7 +149,9 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
             try:
                 row = df.xs(inst, level="instrument").iloc[-1]
             except Exception:
-                logger.debug("Failed to extract row from features dataframe", instrument=inst, exc_info=True)
+                logger.debug(
+                    "Failed to extract row from features dataframe", instrument=inst, exc_info=True
+                )
                 result[inst] = False
                 continue
 
@@ -228,15 +232,21 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                     sector_map = {}
 
                 total_value = float(self.trade_position.get_cash()) + sum(
-                    float(float(self.trade_position.get_stock_price(c)) * float(self.trade_position.get_stock_amount(c))) for c in current_stock_list
+                    float(
+                        float(self.trade_position.get_stock_price(c))
+                        * float(self.trade_position.get_stock_amount(c))
+                    )
+                    for c in current_stock_list
                 )
 
                 # Fetch current prices for risk evaluation
                 price_fields = ["$close"]
                 try:
                     price_df = D.features(
-                        current_stock_list, price_fields,
-                        start_time=pred_start_time, end_time=pred_start_time,
+                        current_stock_list,
+                        price_fields,
+                        start_time=pred_start_time,
+                        end_time=pred_start_time,
                     )
                     if not price_df.empty:
                         price_df.columns = ["close"]
@@ -248,12 +258,16 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
 
                 risk_positions: dict[str, PositionInfo] = {}
                 for code in current_stock_list:
-                    stock_val = float(float(self.trade_position.get_stock_price(code)) * float(self.trade_position.get_stock_amount(code)))
+                    stock_val = float(
+                        float(self.trade_position.get_stock_price(code))
+                        * float(self.trade_position.get_stock_amount(code))
+                    )
                     cur_price = float(cur_prices.get(code, 0.0))
                     risk_positions[code] = PositionInfo(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,
-                        entry_price=stock_val / max(1, float(self.trade_position.get_stock_amount(code))),
+                        entry_price=stock_val
+                        / max(1, float(self.trade_position.get_stock_amount(code))),
                         current_price=cur_price,
                         peak_price=cur_price,
                         sector=sector_map.get(code, "Unknown"),
@@ -282,7 +296,11 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                                 )
                                 if self.trade_exchange.check_order(sell_order):
                                     orders.append(sell_order)
-                                    logger.info("Risk: stop-loss sell", instrument=inst, pnl=sig.current_value)
+                                    logger.info(
+                                        "Risk: stop-loss sell",
+                                        instrument=inst,
+                                        pnl=sig.current_value,
+                                    )
 
                 trailing_signals = self._risk_manager.check_trailing_stop(risk_positions)
                 for sig in trailing_signals:
@@ -306,7 +324,11 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                                 )
                                 if self.trade_exchange.check_order(sell_order):
                                     orders.append(sell_order)
-                                    logger.info("Risk: trailing stop sell", instrument=inst, drawdown=sig.current_value)
+                                    logger.info(
+                                        "Risk: trailing stop sell",
+                                        instrument=inst,
+                                        drawdown=sig.current_value,
+                                    )
 
         # Sell anything not in target (weekly-only turnover rule)
         for code in list(self.trade_position.get_stock_list()):
@@ -341,15 +363,19 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                 try:
                     vol_fields = ["Std($close / Ref($close, 1) - 1, 20)"]
                     vol_df = D.features(
-                        target, vol_fields,
-                        start_time=pred_start_time, end_time=pred_start_time,
+                        target,
+                        vol_fields,
+                        start_time=pred_start_time,
+                        end_time=pred_start_time,
                     )
                     if not vol_df.empty:
                         vol_df.columns = ["vol_20d"]
                         volatilities = vol_df.groupby(level="instrument")["vol_20d"].last()
                         scores = pred_score.reindex(target).dropna()
                         weights = self._risk_manager.compute_vol_adjusted_weights(
-                            target, scores, volatilities,
+                            target,
+                            scores,
+                            volatilities,
                         )
                         alloc = cash * float(self.risk_degree)
                         for code in target:
@@ -385,17 +411,27 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
                 except Exception:
                     sector_map = {}
                 total_value = float(self.trade_position.get_cash()) + sum(
-                    float(float(self.trade_position.get_stock_price(c)) * float(self.trade_position.get_stock_amount(c))) for c in existing_list
+                    float(
+                        float(self.trade_position.get_stock_price(c))
+                        * float(self.trade_position.get_stock_amount(c))
+                    )
+                    for c in existing_list
                 )
                 existing_positions: dict[str, _PI] = {}
                 for code in existing_list:
-                    stock_val = float(float(self.trade_position.get_stock_price(code)) * float(self.trade_position.get_stock_amount(code)))
+                    stock_val = float(
+                        float(self.trade_position.get_stock_price(code))
+                        * float(self.trade_position.get_stock_amount(code))
+                    )
                     existing_positions[code] = _PI(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,
-                        entry_price=stock_val / max(1, float(self.trade_position.get_stock_amount(code))),
-                        current_price=stock_val / max(1, float(self.trade_position.get_stock_amount(code))),
-                        peak_price=stock_val / max(1, float(self.trade_position.get_stock_amount(code))),
+                        entry_price=stock_val
+                        / max(1, float(self.trade_position.get_stock_amount(code))),
+                        current_price=stock_val
+                        / max(1, float(self.trade_position.get_stock_amount(code))),
+                        peak_price=stock_val
+                        / max(1, float(self.trade_position.get_stock_amount(code))),
                         sector=sector_map.get(code, "Unknown"),
                     )
                 pos_limit_signals = self._risk_manager.check_position_limits(existing_positions)
@@ -418,7 +454,11 @@ class WeeklyQuantRatingStrategy(BaseSignalStrategy):
             target_value = value_map.get(code, 0)
             if code in position_limit_capped:
                 target_value = min(target_value, cash * 0.10)
-                logger.info("Risk: reduced buy for capped position", instrument=code, target_value=target_value)
+                logger.info(
+                    "Risk: reduced buy for capped position",
+                    instrument=code,
+                    target_value=target_value,
+                )
 
             price = self.trade_exchange.get_deal_price(
                 stock_id=code,

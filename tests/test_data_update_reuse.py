@@ -91,9 +91,7 @@ def test_data_update_creates_snapshot_with_correct_manifest(tmp_path: Path):
         assert len(digest) == 64, f"checksum for {rel} should be SHA-256"
 
     # The manifest on disk matches the in-memory object
-    on_disk = SnapshotManifest.read(
-        store / "snapshots" / snap.snapshot_id / "manifest.json"
-    )
+    on_disk = SnapshotManifest.read(store / "snapshots" / snap.snapshot_id / "manifest.json")
     assert on_disk.snapshot_id == snap.snapshot_id
     assert on_disk.file_checksums == m.file_checksums
 
@@ -173,9 +171,7 @@ def test_partial_update_cannot_be_published(tmp_path: Path):
     data_dir = _write_data_files(tmp_path / "partial", version="partial_v")
     store = tmp_path / "store"
 
-    snap = DataSnapshot.create_snapshot(
-        data_dir, store=store, quality_verdict="partial"
-    )
+    snap = DataSnapshot.create_snapshot(data_dir, store=store, quality_verdict="partial")
     assert snap.manifest.quality_verdict == "partial"
 
     with pytest.raises(ValueError, match="quality_verdict"):
@@ -190,9 +186,7 @@ def test_fail_verdict_cannot_be_published(tmp_path: Path):
     data_dir = _write_data_files(tmp_path / "fail", version="fail_v")
     store = tmp_path / "store"
 
-    snap = DataSnapshot.create_snapshot(
-        data_dir, store=store, quality_verdict="fail"
-    )
+    snap = DataSnapshot.create_snapshot(data_dir, store=store, quality_verdict="fail")
 
     with pytest.raises(ValueError, match="quality_verdict"):
         DataSnapshot.publish_snapshot(snap.snapshot_id, store=store)
@@ -203,9 +197,7 @@ def test_pass_verdict_can_be_published(tmp_path: Path):
     data_dir = _write_data_files(tmp_path / "ok", version="pass_v")
     store = tmp_path / "store"
 
-    snap = DataSnapshot.create_snapshot(
-        data_dir, store=store, quality_verdict="pass"
-    )
+    snap = DataSnapshot.create_snapshot(data_dir, store=store, quality_verdict="pass")
     DataSnapshot.publish_snapshot(snap.snapshot_id, store=store)
 
     latest = DataSnapshot.get_latest_snapshot(store=store)
@@ -225,9 +217,7 @@ def test_train_model_accepts_snapshot_id():
     from src.research.training import train_model
 
     sig = inspect.signature(train_model)
-    assert "snapshot_id" in sig.parameters, (
-        "train_model must accept a snapshot_id parameter"
-    )
+    assert "snapshot_id" in sig.parameters, "train_model must accept a snapshot_id parameter"
     # Default should be empty string (optional)
     assert sig.parameters["snapshot_id"].default == ""
 
@@ -262,9 +252,7 @@ def test_snapshot_id_is_logged_in_model_artifact(tmp_path: Path):
 
     # Verify the default value allows calling without the argument
     defaults = {
-        k: v.default
-        for k, v in sig.parameters.items()
-        if v.default is not inspect.Parameter.empty
+        k: v.default for k, v in sig.parameters.items() if v.default is not inspect.Parameter.empty
     }
     assert defaults.get("snapshot_id") is not None  # has a default
 
@@ -276,9 +264,7 @@ def test_run_training_pipeline_hooks_accepts_snapshot_id():
     from src.workflows.hooks import run_training_pipeline
 
     sig = inspect.signature(run_training_pipeline)
-    assert "snapshot_id" in sig.parameters, (
-        "hooks.run_training_pipeline must accept snapshot_id"
-    )
+    assert "snapshot_id" in sig.parameters, "hooks.run_training_pipeline must accept snapshot_id"
 
 
 def test_n_plus_1_reuses_secondary_market_bytes_without_mutating_n(tmp_path: Path):

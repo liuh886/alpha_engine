@@ -148,7 +148,7 @@ def run_training(payload: TrainingRunRequestV1):
 def delete_run(run_id: str):
     if not run_id:
         raise HTTPException(status_code=400, detail="missing run_id")
-    
+
     ok = get_backtest_service().delete_run(run_id)
     if ok:
         return {"ok": True, "run_id": run_id}

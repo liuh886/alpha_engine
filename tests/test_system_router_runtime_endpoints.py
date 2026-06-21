@@ -18,6 +18,7 @@ def _reset_job_service(tmp_path: Path) -> None:
     db_path = tmp_path / "metadata.db"
     # Set env before creating the singleton to isolate tests from local metadata DB.
     import os
+
     os.environ["TRADING_UI_USER"] = "agent"
     os.environ["TRADING_UI_PASSWORD"] = "alpha2026"
 

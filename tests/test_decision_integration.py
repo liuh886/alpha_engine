@@ -34,14 +34,48 @@ class TestDecisionIntegration:
     def universe_scores(self):
         """A realistic universe of 20 stocks with model scores."""
         instruments = [
-            "AAPL", "NVDA", "MSFT", "GOOG", "AMZN", "META", "TSLA", "NFLX",
-            "AMD", "INTC", "CRM", "ADBE", "PYPL", "SQ", "SNAP", "UBER",
-            "LYFT", "COIN", "RIVN", "LCID",
+            "AAPL",
+            "NVDA",
+            "MSFT",
+            "GOOG",
+            "AMZN",
+            "META",
+            "TSLA",
+            "NFLX",
+            "AMD",
+            "INTC",
+            "CRM",
+            "ADBE",
+            "PYPL",
+            "SQ",
+            "SNAP",
+            "UBER",
+            "LYFT",
+            "COIN",
+            "RIVN",
+            "LCID",
         ]
         scores = [
-            0.62, 0.71, 0.31, 0.18, 0.22, 0.45, -0.15, -0.05,
-            0.55, -0.10, 0.28, 0.15, -0.08, 0.05, -0.20, 0.12,
-            -0.18, 0.35, -0.25, -0.30,
+            0.62,
+            0.71,
+            0.31,
+            0.18,
+            0.22,
+            0.45,
+            -0.15,
+            -0.05,
+            0.55,
+            -0.10,
+            0.28,
+            0.15,
+            -0.08,
+            0.05,
+            -0.20,
+            0.12,
+            -0.18,
+            0.35,
+            -0.25,
+            -0.30,
         ]
         series = pd.Series(scores, index=instruments)
         return series.sort_values(ascending=False)
@@ -55,16 +89,25 @@ class TestDecisionIntegration:
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_buy_signals_have_positive_scores(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails,
-        engine, universe_scores, rank_map,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
+        universe_scores,
+        rank_map,
     ):
         """All BUY signals should have positive model scores."""
         mock_guardrails.return_value = {"overall_passed": True}
         mock_ma.return_value = None
         mock_factors.return_value = ({}, [])
         mock_pt.return_value = PriceTargets(
-            current_price=100.0, buy_range_low=98.0, buy_range_high=102.0,
-            stop_loss_price=95.0, target_price=110.0,
+            current_price=100.0,
+            buy_range_low=98.0,
+            buy_range_high=102.0,
+            stop_loss_price=95.0,
+            target_price=110.0,
         )
 
         for symbol in universe_scores.index:
@@ -77,15 +120,23 @@ class TestDecisionIntegration:
             )
             if decision.signal == "BUY":
                 assert decision.score > 0, f"{symbol} is BUY but score={decision.score}"
-                assert decision.confidence > 0.5, f"{symbol} BUY confidence too low: {decision.confidence}"
+                assert decision.confidence > 0.5, (
+                    f"{symbol} BUY confidence too low: {decision.confidence}"
+                )
 
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_guardrails")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_ma_signal")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_sell_signals_have_negative_scores_or_risk(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails,
-        engine, universe_scores, rank_map,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
+        universe_scores,
+        rank_map,
     ):
         """SELL signals should have negative scores, bottom ranks, or risk flags."""
         mock_guardrails.return_value = {"overall_passed": True}
@@ -103,19 +154,29 @@ class TestDecisionIntegration:
             )
             if decision.signal == "SELL":
                 has_negative = decision.score < 0
-                has_bottom_rank = decision.rank is not None and decision.rank >= engine.config["sell_rank_threshold"]
+                has_bottom_rank = (
+                    decision.rank is not None
+                    and decision.rank >= engine.config["sell_rank_threshold"]
+                )
                 has_risk = len(decision.risk_flags) > 0
                 has_guardrail_fail = not decision.guardrail_status.get("overall_passed", True)
-                assert has_negative or has_bottom_rank or has_risk or has_guardrail_fail, \
+                assert has_negative or has_bottom_rank or has_risk or has_guardrail_fail, (
                     f"{symbol} is SELL but score={decision.score}, rank={decision.rank}, flags={decision.risk_flags}"
+                )
 
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_guardrails")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_ma_signal")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_buy_signals_have_strategy_recommendation(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails,
-        engine, universe_scores, rank_map,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
+        universe_scores,
+        rank_map,
     ):
         """All BUY signals should have a strategy recommendation."""
         mock_guardrails.return_value = {"overall_passed": True}
@@ -134,10 +195,13 @@ class TestDecisionIntegration:
             )
             if decision.signal == "BUY":
                 buy_count += 1
-                assert decision.recommended_strategy is not None, \
+                assert decision.recommended_strategy is not None, (
                     f"{symbol} is BUY but has no strategy recommendation"
+                )
                 assert decision.recommended_strategy.name in (
-                    "biweekly_trend", "dual_layer", "weekly_quant_rating"
+                    "biweekly_trend",
+                    "dual_layer",
+                    "weekly_quant_rating",
                 )
 
         assert buy_count > 0, "Expected at least one BUY signal in the test universe"
@@ -147,16 +211,26 @@ class TestDecisionIntegration:
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_buy_signals_have_price_targets(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails,
-        engine, universe_scores, rank_map,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
+        universe_scores,
+        rank_map,
     ):
         """All BUY signals should have price targets when available."""
         mock_guardrails.return_value = {"overall_passed": True}
         mock_ma.return_value = None
         mock_factors.return_value = ({}, [])
         mock_pt.return_value = PriceTargets(
-            current_price=185.0, buy_range_low=183.0, buy_range_high=187.0,
-            stop_loss_price=179.0, target_price=196.0, atr_20=3.5,
+            current_price=185.0,
+            buy_range_low=183.0,
+            buy_range_high=187.0,
+            stop_loss_price=179.0,
+            target_price=196.0,
+            atr_20=3.5,
         )
 
         for symbol in universe_scores.index:
@@ -168,8 +242,9 @@ class TestDecisionIntegration:
                 include_factors=False,
             )
             if decision.signal == "BUY":
-                assert decision.price_targets is not None, \
+                assert decision.price_targets is not None, (
                     f"{symbol} is BUY but has no price targets"
+                )
                 assert decision.price_targets.stop_loss_price is not None
                 assert decision.price_targets.target_price is not None
 
@@ -178,8 +253,14 @@ class TestDecisionIntegration:
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_signal_distribution_is_reasonable(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails,
-        engine, universe_scores, rank_map,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
+        universe_scores,
+        rank_map,
     ):
         """Signal distribution should be reasonable — not all BUY or all SELL."""
         mock_guardrails.return_value = {"overall_passed": True}
@@ -211,8 +292,14 @@ class TestDecisionIntegration:
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_decision_to_dict_is_json_serializable(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails,
-        engine, universe_scores, rank_map,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
+        universe_scores,
+        rank_map,
     ):
         """All decision fields should be JSON-serializable."""
         import json
@@ -262,7 +349,11 @@ class TestDecisionConsistency:
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_sell_on_ma_cross_under_consistent(
-        self, mock_pt, mock_factors, mock_guardrails, engine,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_guardrails,
+        engine,
     ):
         """If close < MA60, both strategy and engine should sell."""
         mock_guardrails.return_value = {"overall_passed": True}
@@ -270,7 +361,9 @@ class TestDecisionConsistency:
         mock_pt.return_value = None
 
         # Mock MA signal returning cross-under
-        with patch.object(engine, "_check_ma_signal", return_value="📉 MA60 死叉 — 价格 140.00 < MA60 150.00"):
+        with patch.object(
+            engine, "_check_ma_signal", return_value="📉 MA60 死叉 — 价格 140.00 < MA60 150.00"
+        ):
             scores = pd.Series([0.5], index=["AAPL"])
             rank_map = {"AAPL": 0}
 
@@ -281,14 +374,21 @@ class TestDecisionConsistency:
                 market="us",
                 include_factors=False,
             )
-            assert decision.signal == "SELL", f"Expected SELL on MA cross-under, got {decision.signal}"
+            assert decision.signal == "SELL", (
+                f"Expected SELL on MA cross-under, got {decision.signal}"
+            )
 
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_guardrails")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_ma_signal")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_sell_on_rank_drop_consistent(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails, engine,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
     ):
         """If rank >= sell_rank_threshold, both strategy and engine should sell."""
         mock_guardrails.return_value = {"overall_passed": True}
@@ -317,7 +417,12 @@ class TestDecisionConsistency:
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_sell_on_guardrail_failure_consistent(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails, engine,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
     ):
         """If guardrails fail, both strategy and engine should not buy."""
         mock_guardrails.return_value = {
@@ -338,14 +443,21 @@ class TestDecisionConsistency:
             market="us",
             include_factors=False,
         )
-        assert decision.signal == "SELL", f"Expected SELL on guardrail failure, got {decision.signal}"
+        assert decision.signal == "SELL", (
+            f"Expected SELL on guardrail failure, got {decision.signal}"
+        )
 
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_guardrails")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._check_ma_signal")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_sell_on_stop_loss_consistent(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails, engine,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
     ):
         """If stop-loss is triggered, engine should return SELL."""
         mock_guardrails.return_value = {"overall_passed": True}
@@ -381,7 +493,12 @@ class TestDecisionConsistency:
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._analyze_factors")
     @patch("src.strategies.stock_decision_engine.StockDecisionEngine._compute_price_targets")
     def test_buy_requires_positive_score_and_top_rank(
-        self, mock_pt, mock_factors, mock_ma, mock_guardrails, engine,
+        self,
+        mock_pt,
+        mock_factors,
+        mock_ma,
+        mock_guardrails,
+        engine,
     ):
         """BUY should only occur with positive score AND top rank."""
         mock_guardrails.return_value = {"overall_passed": True}
@@ -418,9 +535,14 @@ class TestSerialization:
 
         rec = StrategyRecommendation("dual_layer", "Dual Layer", "test reason", 0.85)
         pt = PriceTargets(
-            current_price=185.5, buy_range_low=183.0, buy_range_high=188.0,
-            stop_loss_price=178.0, target_price=197.0, atr_20=3.5,
-            support=180.0, resistance=192.0,
+            current_price=185.5,
+            buy_range_low=183.0,
+            buy_range_high=188.0,
+            stop_loss_price=178.0,
+            target_price=197.0,
+            atr_20=3.5,
+            support=180.0,
+            resistance=192.0,
         )
         decision = StockDecision(
             symbol="AAPL",
@@ -429,10 +551,16 @@ class TestSerialization:
             score=0.62,
             rank=2,
             reasons=["✅ 模型分数 +0.6200 为正", "📋 推荐策略: Dual Layer"],
-            factor_snapshot={"mom_20d": {
-                "name": "mom_20d", "expression": "$close/Ref($close,20)-1",
-                "value": 0.12, "z_score": 1.8, "percentile": 92.0, "category": "momentum",
-            }},
+            factor_snapshot={
+                "mom_20d": {
+                    "name": "mom_20d",
+                    "expression": "$close/Ref($close,20)-1",
+                    "value": 0.12,
+                    "z_score": 1.8,
+                    "percentile": 92.0,
+                    "category": "momentum",
+                }
+            },
             guardrail_status={
                 "overall_passed": True,
                 "extension": {"passed": True, "metric": 0.08},

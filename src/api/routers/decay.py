@@ -58,8 +58,11 @@ def check_factor_decay(
     # Load per-factor IC from validation records
     ic_history = pd.Series(dtype=float)
     validations = registry.get_validations(factor["id"])
-    ic_records = [(v["validated_at"][:10], float(v["ic"])) for v in validations
-                  if v.get("ic") is not None and v.get("market", "").lower() == market.lower()]
+    ic_records = [
+        (v["validated_at"][:10], float(v["ic"]))
+        for v in validations
+        if v.get("ic") is not None and v.get("market", "").lower() == market.lower()
+    ]
     if ic_records:
         ic_records.sort(key=lambda x: x[0])
         dates, ics = zip(*ic_records)

@@ -72,7 +72,7 @@ class PrecomputedSignals:
         close = self.get_close_on_date(dt)
         ma = self.get_ma_on_date(dt)
         common = close.index.intersection(ma.index)
-        return (close[common] < ma[common])
+        return close[common] < ma[common]
 
 
 class VectorizedSignalPrecomputer:
@@ -168,9 +168,7 @@ class VectorizedSignalPrecomputer:
         close_matrix = close_df.iloc[:, 0].unstack(level="instrument")
 
         # Step 2: Vectorized MA computation (no D.features() call needed)
-        ma_matrix = close_matrix.rolling(
-            window=self.ma_window, min_periods=self.ma_window
-        ).mean()
+        ma_matrix = close_matrix.rolling(window=self.ma_window, min_periods=self.ma_window).mean()
 
         # Step 3: Load predictions and build score matrix
         instruments = list(close_matrix.columns)

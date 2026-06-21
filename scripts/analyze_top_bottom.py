@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -27,7 +27,6 @@ if str(ROOT) not in sys.path:
 
 import numpy as np
 import pandas as pd
-from scipy.stats import pearsonr
 
 
 def load_model_predictions(art_dir: Path) -> tuple[pd.DataFrame, str, str] | None:
@@ -70,6 +69,7 @@ def compute_top_bottom_returns(
     Returns dict with per-period returns and cumulative stats.
     """
     from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
+
     safe_qlib_init(build_qlib_init_cfg(None, market="cn"))
     from qlib.data import D
 
@@ -170,21 +170,29 @@ def compute_top_bottom_returns(
 
         # Get benchmark forward return
         try:
-            bench_close = bench_raw.xs("000300", level="instrument").iloc[:, 0] if isinstance(bench_raw.index, pd.MultiIndex) else bench_raw.iloc[:, 0]
+            (
+                bench_raw.xs("000300", level="instrument").iloc[:, 0]
+                if isinstance(bench_raw.index, pd.MultiIndex)
+                else bench_raw.iloc[:, 0]
+            )
             # This is already the forward return expression, so just use it directly
             if date in bench.index:
-                br = float(bench.loc[date].iloc[0]) if isinstance(bench.loc[date], pd.DataFrame) else float(bench.loc[date])
+                br = (
+                    float(bench.loc[date].iloc[0])
+                    if isinstance(bench.loc[date], pd.DataFrame)
+                    else float(bench.loc[date])
+                )
                 bench_returns.append(br)
             else:
                 bench_returns.append(0.0)
         except Exception:
             bench_returns.append(0.0)
 
-        top_cum_ret *= (1.0 + top_avg)
-        bottom_cum_ret *= (1.0 + bottom_avg)
+        top_cum_ret *= 1.0 + top_avg
+        bottom_cum_ret *= 1.0 + bottom_avg
         # Use the actual benchmark return loaded above
         if bench_returns:
-            bench_cum_ret *= (1.0 + bench_returns[-1])
+            bench_cum_ret *= 1.0 + bench_returns[-1]
 
         top_cum_vals.append(top_cum_ret)
         bottom_cum_vals.append(bottom_cum_ret)
@@ -196,7 +204,7 @@ def compute_top_bottom_returns(
     top_arr = np.array(top_returns)
     bottom_arr = np.array(bottom_returns)
     spread_arr = top_arr - bottom_arr
-    bench_arr = np.array(bench_returns) if bench_returns else np.zeros_like(top_arr)
+    np.array(bench_returns) if bench_returns else np.zeros_like(top_arr)
 
     # Cumulative stats
     top_total = top_cum_ret - 1.0
@@ -211,8 +219,14 @@ def compute_top_bottom_returns(
 
     # Annualized
     periods_per_year = 252 / rebalance_days
-    top_ann = (1 + top_total) ** (periods_per_year / len(top_returns)) - 1 if len(top_returns) > 0 else 0
-    spread_sharpe = np.mean(spread_arr) / np.std(spread_arr) * np.sqrt(periods_per_year) if np.std(spread_arr) > 1e-10 else 0
+    top_ann = (
+        (1 + top_total) ** (periods_per_year / len(top_returns)) - 1 if len(top_returns) > 0 else 0
+    )
+    spread_sharpe = (
+        np.mean(spread_arr) / np.std(spread_arr) * np.sqrt(periods_per_year)
+        if np.std(spread_arr) > 1e-10
+        else 0
+    )
 
     return {
         "n_periods": len(top_returns),
@@ -231,7 +245,7 @@ def compute_top_bottom_returns(
         "top_cum_vals": [float(x) for x in top_cum_vals],
         "bottom_cum_vals": [float(x) for x in bottom_cum_vals],
         "bench_cum_vals": [float(x) for x in bench_cum_vals],
-        "rebalance_dates": [str(d.date()) for d in rebalance_dates[:len(top_returns)]],
+        "rebalance_dates": [str(d.date()) for d in rebalance_dates[: len(top_returns)]],
     }
 
 
@@ -242,7 +256,9 @@ def main():
     print("=" * 80)
     print("  TOP/BOTTOM Signal Quality Analysis — All CN Models")
     print("=" * 80)
-    print(f"  {'Model':<42} {'TOP':>8} {'BOT':>8} {'Spread':>8} {'Bench':>8} {'S Sharpe':>7} {'T Win':>6} {'B Win':>6}")
+    print(
+        f"  {'Model':<42} {'TOP':>8} {'BOT':>8} {'Spread':>8} {'Bench':>8} {'S Sharpe':>7} {'T Win':>6} {'B Win':>6}"
+    )
     print("-" * 80)
 
     results = []
@@ -263,9 +279,11 @@ def main():
         print("done")
         results.append((tag, tb))
 
-        print(f"  {tag:<42} {tb['top_total_return']:>7.2%} {tb['bottom_total_return']:>7.2%} "
-              f"{tb['top_bottom_spread']:>7.2%} {tb['benchmark_total_return']:>7.2%} "
-              f"{tb['spread_sharpe']:>6.2f} {tb['top_win_rate']:>5.0%} {tb['bottom_win_rate']:>5.0%}")
+        print(
+            f"  {tag:<42} {tb['top_total_return']:>7.2%} {tb['bottom_total_return']:>7.2%} "
+            f"{tb['top_bottom_spread']:>7.2%} {tb['benchmark_total_return']:>7.2%} "
+            f"{tb['spread_sharpe']:>6.2f} {tb['top_win_rate']:>5.0%} {tb['bottom_win_rate']:>5.0%}"
+        )
 
     print("-" * 80)
 
@@ -274,18 +292,24 @@ def main():
         best = max(results, key=lambda x: x[1]["top_bottom_spread"])
         print(f"\n  ★ Best model: {best[0]} (spread={best[1]['top_bottom_spread']:.2%})")
         tb = best[1]
-        print(f"\n  Per-period TOP returns (first 10):")
+        print("\n  Per-period TOP returns (first 10):")
         print(f"  {[f'{x:.2%}' for x in tb['top_cum_vals'][1:11]]}")
 
     # 3. Diagnose: compute sign consistency
-    print(f"\n  === Sign Direction Analysis ===")
+    print("\n  === Sign Direction Analysis ===")
     for tag, tb in sorted(results, key=lambda x: x[1]["top_bottom_spread"], reverse=True):
-        spread_sign = "+" if tb["top_bottom_spread"] > 0 else "-"
-        signal_quality = "✅ VALID" if tb["top_bottom_spread"] > 0.05 else \
-                         "⚠️ WEAK" if tb["top_bottom_spread"] > 0 else \
-                         "❌ INVERTED"
-        print(f"  {signal_quality} {tag[:45]}: spread={tb['top_bottom_spread']:+.2%} "
-              f"TOP={tb['top_total_return']:+.2%} BOT={tb['bottom_total_return']:+.2%}")
+        "+" if tb["top_bottom_spread"] > 0 else "-"
+        signal_quality = (
+            "✅ VALID"
+            if tb["top_bottom_spread"] > 0.05
+            else "⚠️ WEAK"
+            if tb["top_bottom_spread"] > 0
+            else "❌ INVERTED"
+        )
+        print(
+            f"  {signal_quality} {tag[:45]}: spread={tb['top_bottom_spread']:+.2%} "
+            f"TOP={tb['top_total_return']:+.2%} BOT={tb['bottom_total_return']:+.2%}"
+        )
 
     # 4. Save results
     output = {
@@ -293,8 +317,14 @@ def main():
         "top_k": 15,
         "rebalance_days": 10,
         "forward_days": 10,
-        "results": {tag: {k: v for k, v in tb.items() if k not in ("top_cum_vals", "bottom_cum_vals", "bench_cum_vals", "rebalance_dates")}
-                     for tag, tb in results},
+        "results": {
+            tag: {
+                k: v
+                for k, v in tb.items()
+                if k not in ("top_cum_vals", "bottom_cum_vals", "bench_cum_vals", "rebalance_dates")
+            }
+            for tag, tb in results
+        },
     }
     out_path = ROOT / "artifacts" / "top_bottom_analysis.json"
     out_path.write_text(json.dumps(output, indent=2, default=str))

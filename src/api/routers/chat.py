@@ -24,9 +24,9 @@ async def agent_chat(req: ChatRequest):
         router_instance = AgentRouter(
             quality_index=get_quality_index(),
             model_index=get_model_index(),
-            run_index=get_run_index()
+            run_index=get_run_index(),
         )
-        
+
         # Dispatch to the appropriate agent.
         result = router_instance.route_task(req.agent_type, market="us")
 
@@ -35,7 +35,9 @@ async def agent_chat(req: ChatRequest):
         elif req.agent_type == "developer":
             reply = f"**AgentRouter Dispatch**: ResearchAssistant planning execution. Next step: {result.get('next_step', 'N/A')}"
         else:
-            reply = f"**AgentRouter Dispatch**: ResearchAssistant processed {req.agent_type} request."
+            reply = (
+                f"**AgentRouter Dispatch**: ResearchAssistant processed {req.agent_type} request."
+            )
 
         return {"ok": True, "reply": reply, "result": result}
     except Exception as e:

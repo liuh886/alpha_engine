@@ -41,7 +41,9 @@ class ResearchWorkflowStore:
         if not self.runs_dir.exists():
             return []
         items: list[dict[str, Any]] = []
-        for path in sorted(self.runs_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        for path in sorted(
+            self.runs_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        ):
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
@@ -83,4 +85,3 @@ class ResearchWorkflowStore:
             evidence_bundle_id=data.get("evidence_bundle_id"),
             warnings=data.get("warnings", []),
         )
-

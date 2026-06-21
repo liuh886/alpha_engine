@@ -21,7 +21,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from src.execution.signal_execution_config import SignalExecutionConfig
-from src.strategies.signal_grade_engine import GRADES, SignalGradeEngine
+from src.strategies.signal_grade_engine import SignalGradeEngine
 
 # ---------------------------------------------------------------------------
 # Public types

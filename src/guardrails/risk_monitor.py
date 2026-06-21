@@ -24,7 +24,9 @@ def check_backtest_risk(run_id, metrics):
     mdd = metrics.get("max_drawdown", 0.0)
 
     if mdd > MAX_DRAWDOWN_THRESHOLD:
-        logger.warning("Risk violation: MDD exceeds threshold", mdd=mdd, threshold=MAX_DRAWDOWN_THRESHOLD)
+        logger.warning(
+            "Risk violation: MDD exceeds threshold", mdd=mdd, threshold=MAX_DRAWDOWN_THRESHOLD
+        )
 
         # Triggering the "Red Button"
         try:

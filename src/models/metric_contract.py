@@ -26,13 +26,13 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 # Metric unit constants
-UNIT_RATIO = "ratio"          # dimensionless ratio (e.g. Sharpe)
-UNIT_RETURN = "return"        # annualised or period return
-UNIT_FRACTION = "fraction"    # 0-1 fraction (e.g. coverage)
-UNIT_COUNT = "count"          # integer count
-UNIT_CURRENCY = "currency"    # monetary value
-UNIT_DAYS = "days"            # calendar/trading days
-UNIT_NONE = "none"            # no unit
+UNIT_RATIO = "ratio"  # dimensionless ratio (e.g. Sharpe)
+UNIT_RETURN = "return"  # annualised or period return
+UNIT_FRACTION = "fraction"  # 0-1 fraction (e.g. coverage)
+UNIT_COUNT = "count"  # integer count
+UNIT_CURRENCY = "currency"  # monetary value
+UNIT_DAYS = "days"  # calendar/trading days
+UNIT_NONE = "none"  # no unit
 
 
 @dataclass(frozen=True)
@@ -65,8 +65,12 @@ _CONTRACT_V1_FIELDS: list[FieldSpec] = [
     # --- Risk metrics ---
     FieldSpec("volatility", UNIT_RATIO, "Annualised return volatility (std dev)", False),
     FieldSpec("sharpe", UNIT_RATIO, "Sharpe ratio (excess return / volatility)", False),
-    FieldSpec("information_ratio", UNIT_RATIO, "Information ratio (excess return / tracking error)", False),
-    FieldSpec("max_drawdown", UNIT_RETURN, "Maximum peak-to-trough drawdown (negative value)", True),
+    FieldSpec(
+        "information_ratio", UNIT_RATIO, "Information ratio (excess return / tracking error)", False
+    ),
+    FieldSpec(
+        "max_drawdown", UNIT_RETURN, "Maximum peak-to-trough drawdown (negative value)", True
+    ),
     # --- Execution / portfolio metrics ---
     FieldSpec("turnover", UNIT_FRACTION, "Average portfolio turnover per period", False),
     FieldSpec("costs", UNIT_RETURN, "Estimated transaction costs over evaluation window", False),
@@ -150,6 +154,7 @@ _ALIASES: dict[str, str | None] = {
 # Public API
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MetricContract:
     """Versioned metric schema definition.
@@ -220,6 +225,7 @@ class MetricContract:
 # Normalisation
 # ---------------------------------------------------------------------------
 
+
 def _coerce_float(value: Any) -> float | None:
     """Attempt to convert *value* to ``float``; return ``None`` on failure."""
     if value is None:
@@ -286,6 +292,7 @@ def normalize_metrics(raw_dict: dict[str, Any], version: str = "v1") -> dict[str
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ValidationResult:

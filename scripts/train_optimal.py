@@ -16,22 +16,21 @@ from __future__ import annotations
 import json
 import sys
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
-import uuid
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 import lightgbm as lgb
-import numpy as np
 import pandas as pd
 import structlog
 from qlib.contrib.data.loader import Alpha158DL
 from qlib.data import D
 
-from src.common.paths import ARTIFACTS_DIR, MODELS_DIR, CONFIG_DIR, DASHBOARD_DB_PATH
+from src.common.paths import ARTIFACTS_DIR, DASHBOARD_DB_PATH
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 from src.execution.signal_execution_config import SignalExecutionConfig
 from src.execution.signal_execution_engine import SignalExecutionEngine
@@ -60,15 +59,22 @@ def load_data():
     safe_qlib_init(build_qlib_init_cfg(None, market=MARKET))
 
     instr_path = ROOT / "data" / "watchlist" / "instruments" / f"{MARKET}.txt"
-    symbols = [l.split("\t")[0] for l in instr_path.read_text().splitlines() if l.strip()]
+    symbols = [line.split("\t")[0] for line in instr_path.read_text().splitlines() if line.strip()]
     logger.info("Symbols loaded", n=len(symbols))
 
-    alpha_exprs = Alpha158DL.get_feature_config({
-        "kbar": {}, "price": {"windows": [0], "feature": ["OPEN", "HIGH", "LOW", "VWAP"]}, "rolling": {},
-    })[0]
+    alpha_exprs = Alpha158DL.get_feature_config(
+        {
+            "kbar": {},
+            "price": {"windows": [0], "feature": ["OPEN", "HIGH", "LOW", "VWAP"]},
+            "rolling": {},
+        }
+    )[0]
     extra_exprs = [
-        "$close/Ref($close, 5)-1", "$close/Ref($close, 10)-1", "$close/Ref($close, 20)-1",
-        "Std($close, 10)", "$volume/Ref($volume, 10)-1",
+        "$close/Ref($close, 5)-1",
+        "$close/Ref($close, 10)-1",
+        "$close/Ref($close, 20)-1",
+        "Std($close, 10)",
+        "$volume/Ref($volume, 10)-1",
     ]
     all_exprs = list(alpha_exprs) + extra_exprs
     label_expr = ["Ref($close, -10) / Ref($close, -1) - 1"]
@@ -77,18 +83,21 @@ def load_data():
     t0 = time.perf_counter()
     X_all = D.features(symbols, all_exprs, start_time=TRAIN_START, end_time=TEST_END)
     y_all = D.features(symbols, label_expr, start_time=TRAIN_START, end_time=TEST_END)
-    logger.info("Data loaded", seconds=round(time.perf_counter()-t0, 1), X=X_all.shape)
+    logger.info("Data loaded", seconds=round(time.perf_counter() - t0, 1), X=X_all.shape)
 
     X_all = X_all.fillna(0.0)
     y_series = y_all.iloc[:, 0]
 
     # Split
-    train_mask = (X_all.index.get_level_values("datetime") >= TRAIN_START) & \
-                 (X_all.index.get_level_values("datetime") <= TRAIN_END)
-    test_mask = (X_all.index.get_level_values("datetime") >= TEST_START) & \
-                (X_all.index.get_level_values("datetime") <= TEST_END)
-    valid_mask = (X_all.index.get_level_values("datetime") >= "2024-07-01") & \
-                 (X_all.index.get_level_values("datetime") <= "2024-12-31")
+    train_mask = (X_all.index.get_level_values("datetime") >= TRAIN_START) & (
+        X_all.index.get_level_values("datetime") <= TRAIN_END
+    )
+    test_mask = (X_all.index.get_level_values("datetime") >= TEST_START) & (
+        X_all.index.get_level_values("datetime") <= TEST_END
+    )
+    valid_mask = (X_all.index.get_level_values("datetime") >= "2024-07-01") & (
+        X_all.index.get_level_values("datetime") <= "2024-12-31"
+    )
 
     X_train = X_all[train_mask].copy()
     y_train = y_series[train_mask].copy()
@@ -118,9 +127,10 @@ def load_data():
 
 def train_model(X_train, y_train, X_valid, y_valid):
     """Train LightGBM on Alpha158 + absolute return."""
-    _s = lambda c: (str(c).replace("$","D").replace("/","_d_").replace("(","L")
-                     .replace(")","R").replace(",","_").replace(" ","_")
-                     .replace("-","neg").replace("+","plus"))
+    def _s(c):
+        return (str(c).replace("$", "D").replace("/", "_d_").replace("(", "L")
+                .replace(")", "R").replace(",", "_").replace(" ", "_")
+                .replace("-", "neg").replace("+", "plus"))
     X_train.columns = [_s(c) for c in X_train.columns]
     X_valid.columns = [_s(c) for c in X_valid.columns]
     feature_names = X_train.columns.tolist()
@@ -131,27 +141,42 @@ def train_model(X_train, y_train, X_valid, y_valid):
     valid_data = lgb.Dataset(X_valid, label=y_valid, reference=train_data)
 
     params = {
-        "objective": "regression", "metric": "l2",
-        "learning_rate": 0.05, "max_depth": 10, "num_leaves": 128,
-        "feature_fraction": 0.8879, "bagging_fraction": 0.8789,
-        "lambda_l1": 1.0, "lambda_l2": 1.0,
-        "num_threads": 20, "verbosity": -1, "min_data_in_leaf": 20,
+        "objective": "regression",
+        "metric": "l2",
+        "learning_rate": 0.05,
+        "max_depth": 10,
+        "num_leaves": 128,
+        "feature_fraction": 0.8879,
+        "bagging_fraction": 0.8789,
+        "lambda_l1": 1.0,
+        "lambda_l2": 1.0,
+        "num_threads": 20,
+        "verbosity": -1,
+        "min_data_in_leaf": 20,
     }
-    booster = lgb.train(params, train_data, num_boost_round=500,
-                        valid_sets=[valid_data],
-                        callbacks=[lgb.early_stopping(50), lgb.log_evaluation(100)])
+    booster = lgb.train(
+        params,
+        train_data,
+        num_boost_round=500,
+        valid_sets=[valid_data],
+        callbacks=[lgb.early_stopping(50), lgb.log_evaluation(100)],
+    )
     elapsed = time.perf_counter() - t0
-    logger.info("Trained", seconds=round(elapsed,1),
-                best_iter=booster.best_iteration,
-                best_score=round(booster.best_score["valid_0"]["l2"], 6))
+    logger.info(
+        "Trained",
+        seconds=round(elapsed, 1),
+        best_iter=booster.best_iteration,
+        best_score=round(booster.best_score["valid_0"]["l2"], 6),
+    )
     return booster, feature_names
 
 
 def run_backtest(booster, X_test, y_test, feature_names, symbols):
     """Run vectorized + grade-weighted backtests using REAL forward returns."""
-    _s = lambda c: (str(c).replace("$","D").replace("/","_d_").replace("(","L")
-                     .replace(")","R").replace(",","_").replace(" ","_")
-                     .replace("-","neg").replace("+","plus"))
+    def _s(c):
+        return (str(c).replace("$", "D").replace("/", "_d_").replace("(", "L")
+                .replace(")", "R").replace(",", "_").replace(" ", "_")
+                .replace("-", "neg").replace("+", "plus"))
     X_test.columns = [_s(c) for c in X_test.columns]
 
     # Predictions DataFrame
@@ -159,16 +184,24 @@ def run_backtest(booster, X_test, y_test, feature_names, symbols):
     predictions = pd.DataFrame(y_pred, index=X_test.index, columns=["score"])
 
     # Load REAL forward returns (not training labels — which may be negated)
-    real_returns = D.features(symbols, ["Ref($close, -10) / Ref($close, -1) - 1"],
-                              start_time=TEST_START, end_time=TEST_END)
+    real_returns = D.features(
+        symbols,
+        ["Ref($close, -10) / Ref($close, -1) - 1"],
+        start_time=TEST_START,
+        end_time=TEST_END,
+    )
     if isinstance(real_returns, pd.DataFrame):
         real_returns.columns = ["return"]
         if real_returns.index.names == ["instrument", "datetime"]:
             real_returns = real_returns.swaplevel().sort_index()
 
     # Benchmark
-    bench_raw = D.features([BENCHMARK], ["Ref($close, -10) / Ref($close, -1) - 1"],
-                           start_time=TEST_START, end_time=TEST_END)
+    bench_raw = D.features(
+        [BENCHMARK],
+        ["Ref($close, -10) / Ref($close, -1) - 1"],
+        start_time=TEST_START,
+        end_time=TEST_END,
+    )
     if isinstance(bench_raw.index, pd.MultiIndex):
         bench = bench_raw.xs(BENCHMARK, level="instrument")
     else:
@@ -177,16 +210,28 @@ def run_backtest(booster, X_test, y_test, feature_names, symbols):
         bench.columns = ["benchmark"]
 
     # 1. Vectorized backtest (baseline)
-    vec_result = run_vectorized_backtest(predictions, real_returns, bench,
-                                          topk=TOP_K, rebalance_days=REBALANCE_DAYS,
-                                          initial_capital=10000.0, cost_bps=COST_BPS,
-                                          non_overlapping=True)
+    vec_result = run_vectorized_backtest(
+        predictions,
+        real_returns,
+        bench,
+        topk=TOP_K,
+        rebalance_days=REBALANCE_DAYS,
+        initial_capital=10000.0,
+        cost_bps=COST_BPS,
+        non_overlapping=True,
+    )
 
     # 2. Grade-weighted + regime (best engine)
-    cfg = SignalExecutionConfig(market=MARKET, step_size=5, long_fraction=1.0,
-                                 short_fraction=0.0, rebalance_days=REBALANCE_DAYS,
-                                 enable_regime_filter=True,
-                                 buy_cost_bps=COST_BPS/2, sell_cost_bps=COST_BPS/2)
+    cfg = SignalExecutionConfig(
+        market=MARKET,
+        step_size=5,
+        long_fraction=1.0,
+        short_fraction=0.0,
+        rebalance_days=REBALANCE_DAYS,
+        enable_regime_filter=True,
+        buy_cost_bps=COST_BPS / 2,
+        sell_cost_bps=COST_BPS / 2,
+    )
     engine = SignalExecutionEngine(cfg)
     grade_result = engine.execute(predictions, real_returns, bench)
 
@@ -201,13 +246,18 @@ def main():
     # 2. Walk-forward
     logger.info("Running walk-forward vectorized...")
     wf_result = walk_forward_vectorized(
-        market=MARKET, train_start=TRAIN_START, train_end=TRAIN_END,
-        test_window_months=6, step_months=3, n_estimators=200,
+        market=MARKET,
+        train_start=TRAIN_START,
+        train_end=TRAIN_END,
+        test_window_months=6,
+        step_months=3,
+        n_estimators=200,
     )
 
     # 3. Backtests
     predictions, returns, vec_result, grade_result = run_backtest(
-        booster, X_test, y_test, feature_names, symbols)
+        booster, X_test, y_test, feature_names, symbols
+    )
 
     # 4. Build artifact
     artifact_id = uuid.uuid4().hex
@@ -216,6 +266,7 @@ def main():
 
     # Save model
     import pickle
+
     model_path = artifact_dir / f"cn_model_{MODEL_TAG}.pkl"
     with open(model_path, "wb") as f:
         pickle.dump(booster, f)
@@ -231,8 +282,10 @@ def main():
         "vectorized_backtest": vec_result.to_dict(),
         "grade_regime_backtest": grade_result.to_dict(),
         "walk_forward": {
-            "mean_ic": wf_result.mean_ic, "ic_ir": wf_result.ic_ir,
-            "consistency": wf_result.consistency_score, "n_splits": len(wf_result.splits),
+            "mean_ic": wf_result.mean_ic,
+            "ic_ir": wf_result.ic_ir,
+            "consistency": wf_result.consistency_score,
+            "n_splits": len(wf_result.splits),
         },
         "model_tag": MODEL_TAG,
         "market": MARKET,
@@ -256,12 +309,17 @@ def main():
     (artifact_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
     # .registered marker
-    (artifact_dir / ".registered").write_text(json.dumps({
-        "artifact_id": artifact_id,
-        "registered_at": datetime.now().isoformat(),
-        "inference_gate": {"passed": True},
-        "reconstruction_gate": {"passed": True, "clean_process": True},
-    }, indent=2))
+    (artifact_dir / ".registered").write_text(
+        json.dumps(
+            {
+                "artifact_id": artifact_id,
+                "registered_at": datetime.now().isoformat(),
+                "inference_gate": {"passed": True},
+                "reconstruction_gate": {"passed": True, "clean_process": True},
+            },
+            indent=2,
+        )
+    )
 
     # 5. Register in SQLite
     version_id = f"cn_model_{MODEL_TAG}_{datetime.now().strftime('%Y%m%d')}"
@@ -269,13 +327,14 @@ def main():
         from src.assistant.metadata_db import resolve_metadata_db_path
         from src.assistant.model_registry_index import ModelRegistryIndex
         from src.common import paths
+
         db_path = resolve_metadata_db_path(paths.get_artifacts_dir())
         reg = ModelRegistryIndex(db_path=db_path)
 
         entry = {
             "id": version_id,
             "tag": MODEL_TAG,
-            "name": f"Optimal Alpha158 + Absolute Return",
+            "name": "Optimal Alpha158 + Absolute Return",
             "market": MARKET,
             "model_type": "LightGBM",
             "path": str(model_path).replace("\\", "/"),
@@ -283,13 +342,20 @@ def main():
             "created_at": str(datetime.now().date()),
             "stage": "STAGING",
             "description": "Optimal: 181 Alpha158 + absolute return label. Best known config.",
-            "params": {"learning_rate": 0.05, "max_depth": 10, "num_leaves": 128, "n_features": len(feature_names)},
+            "params": {
+                "learning_rate": 0.05,
+                "max_depth": 10,
+                "num_leaves": 128,
+                "n_features": len(feature_names),
+            },
             "backtest": {"metrics": vec_result.to_dict()},
             "walk_forward": {
                 "gate_passed": wf_result.consistency_score >= 0.5 and wf_result.mean_ic > 0,
-                "mean_ic": wf_result.mean_ic, "ic_ir": wf_result.ic_ir,
+                "mean_ic": wf_result.mean_ic,
+                "ic_ir": wf_result.ic_ir,
                 "consistency": wf_result.consistency_score,
-                "model_id": version_id, "artifact_id": artifact_id,
+                "model_id": version_id,
+                "artifact_id": artifact_id,
             },
             "artifact_id": artifact_id,
         }
@@ -309,7 +375,7 @@ def main():
         entry = {
             "id": version_id,
             "run_id": artifact_id,
-            "name": f"Optimal CN Alpha158 AbsRet",
+            "name": "Optimal CN Alpha158 AbsRet",
             "date": str(datetime.now().date()),
             "experiment": "optimal_training",
             "market": MARKET,
@@ -347,14 +413,20 @@ def main():
     print(f"  Model ID:        {version_id}")
     print(f"  Artifact:        {artifact_id}")
     print(f"  Features:        {len(feature_names)} (Alpha158 + extras)")
-    print(f"  Label:           Absolute 10-day return")
+    print("  Label:           Absolute 10-day return")
     print(f"  Training:        {TRAIN_START} → {TRAIN_END}")
     print(f"  Test:            {TEST_START} → {TEST_END}")
     print(f"  LightGBM:        best_iter={booster.best_iteration}")
-    print(f"  Walk-forward IC: {wf_result.mean_ic:.4f} (IR={wf_result.ic_ir:.2f}, C={wf_result.consistency_score:.0%})")
-    print(f"  Backtest (vec):  excess={vec_result.excess_return:.2%} sharpe={vec_result.sharpe_ratio:.2f} mdd={vec_result.max_drawdown:.2%}")
-    print(f"  Backtest (grad): excess={grade_result.excess_return:.2%} sharpe={grade_result.sharpe_ratio:.2f} mdd={grade_result.max_drawdown:.2%}")
-    print(f"  Registered:      SQLite + Dashboard DB")
+    print(
+        f"  Walk-forward IC: {wf_result.mean_ic:.4f} (IR={wf_result.ic_ir:.2f}, C={wf_result.consistency_score:.0%})"
+    )
+    print(
+        f"  Backtest (vec):  excess={vec_result.excess_return:.2%} sharpe={vec_result.sharpe_ratio:.2f} mdd={vec_result.max_drawdown:.2%}"
+    )
+    print(
+        f"  Backtest (grad): excess={grade_result.excess_return:.2%} sharpe={grade_result.sharpe_ratio:.2f} mdd={grade_result.max_drawdown:.2%}"
+    )
+    print("  Registered:      SQLite + Dashboard DB")
     print("=" * 70)
 
 

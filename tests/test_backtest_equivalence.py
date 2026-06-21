@@ -115,8 +115,12 @@ class TestBacktestEquivalence:
             tradable=ALL_TRADABLE,
         )
 
-        direct_changes = {c.instrument: (c.from_weight, c.to_weight) for c in direct_result.position_changes}
-        adapter_changes = {c.instrument: (c.from_weight, c.to_weight) for c in adapter_result.position_changes}
+        direct_changes = {
+            c.instrument: (c.from_weight, c.to_weight) for c in direct_result.position_changes
+        }
+        adapter_changes = {
+            c.instrument: (c.from_weight, c.to_weight) for c in adapter_result.position_changes
+        }
         assert direct_changes == adapter_changes
 
 

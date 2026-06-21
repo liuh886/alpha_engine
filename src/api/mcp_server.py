@@ -88,7 +88,9 @@ def get_market_signals(token: str = "", market: str = "us"):
 
 
 @mcp.tool()
-def repair_market_data(token: str = "", market: str = "us", symbols: str = "all", lookback_days: int = 60):
+def repair_market_data(
+    token: str = "", market: str = "us", symbols: str = "all", lookback_days: int = 60
+):
     """
     Directional repair tool for fixing data gaps.
     Agent can specify specific market and lookback depth based on the inference proposal.
@@ -113,7 +115,12 @@ def repair_market_data(token: str = "", market: str = "us", symbols: str = "all"
 
 
 @mcp.tool()
-def run_backtest(token: str = "", market: str = "us", start_date: str = "2024-01-01", end_date: str = "2024-12-31"):
+def run_backtest(
+    token: str = "",
+    market: str = "us",
+    start_date: str = "2024-01-01",
+    end_date: str = "2024-12-31",
+):
     """
     Run a strategy backtest for the specified market and date range.
     Returns a structured JSON containing alpha/excess return summary (Sharpe, Drawdown, etc.).
@@ -143,10 +150,13 @@ def run_backtest(token: str = "", market: str = "us", start_date: str = "2024-01
                 latest_rec = recs[0]
                 metrics = MetricsExtractor.extract_from_record(latest_rec)
                 summary = MetricsExtractor.format_summary(metrics, market, start_date, end_date)
-                return f"Backtest completed successfully.\n\nRESULTS: {json.dumps(summary, indent=2)}"
+                return (
+                    f"Backtest completed successfully.\n\nRESULTS: {json.dumps(summary, indent=2)}"
+                )
         except Exception as rec_err:
             # Log but don't hide — fall through to stdout-based summary
             import structlog
+
             structlog.get_logger().warning("backtest_record_lookup_failed", error=str(rec_err))
 
         return f"Backtest completed. Summary from log:\n{result.stdout[-1000:]}"
@@ -225,13 +235,15 @@ def define_factor(
         # Check if expression already exists (dedup)
         existing = registry.get_factor_by_expression(expression)
         if existing:
-            return json.dumps({
-                "status": "exists",
-                "factor_id": existing["id"],
-                "name": existing["name"],
-                "stage": existing["stage"],
-                "message": f"Factor already exists: ID={existing['id']}, name='{existing['name']}', stage={existing['stage']}. Use this factor_id instead.",
-            })
+            return json.dumps(
+                {
+                    "status": "exists",
+                    "factor_id": existing["id"],
+                    "name": existing["name"],
+                    "stage": existing["stage"],
+                    "message": f"Factor already exists: ID={existing['id']}, name='{existing['name']}', stage={existing['stage']}. Use this factor_id instead.",
+                }
+            )
 
         factor_id = registry.register_factor(
             name=name,
@@ -241,19 +253,23 @@ def define_factor(
             lookback_days=lookback_days,
             thesis=thesis,
         )
-        return json.dumps({
-            "status": "success",
-            "factor_id": factor_id,
-            "name": name,
-            "stage": "Proposed",
-            "message": f"Factor '{name}' registered with id {factor_id} at Proposed stage.",
-        })
+        return json.dumps(
+            {
+                "status": "success",
+                "factor_id": factor_id,
+                "name": name,
+                "stage": "Proposed",
+                "message": f"Factor '{name}' registered with id {factor_id} at Proposed stage.",
+            }
+        )
     except Exception as e:
         if "UNIQUE constraint" in str(e):
-            return json.dumps({
-                "status": "error",
-                "message": f"Factor with name '{name}' already exists (different expression). Choose a different name.",
-            })
+            return json.dumps(
+                {
+                    "status": "error",
+                    "message": f"Factor with name '{name}' already exists (different expression). Choose a different name.",
+                }
+            )
         return json.dumps({"status": "error", "message": f"Error defining factor: {e}"})
 
 
@@ -316,7 +332,9 @@ def validate_factor(
         registry = FactorRegistry()
         factor = registry.get_factor(factor_id)
         if factor is None:
-            return json.dumps({"status": "error", "message": f"Factor with id {factor_id} not found."})
+            return json.dumps(
+                {"status": "error", "message": f"Factor with id {factor_id} not found."}
+            )
 
         expression = factor["expression"]
         eval_result = _evaluate_factor(expression=expression, market=market)
@@ -333,24 +351,26 @@ def validate_factor(
                 updated = registry.get_factor(factor_id)
                 stage = updated["stage"] if updated else factor["stage"]
 
-        return json.dumps({
-            "status": "success",
-            "factor_id": factor_id,
-            "name": factor["name"],
-            "market": market,
-            "passed": eval_result.passed,
-            "fail_reasons": eval_result.fail_reasons,
-            "metrics": {
-                "ic": metrics["ic"],
-                "rank_ic": metrics["rank_ic"],
-                "icir": metrics["icir"],
-                "t_stat": metrics["t_stat"],
-                "positive_ratio": metrics["positive_ratio"],
-                "quintile_spread": metrics["quintile_spread"],
-            },
-            "promoted": promoted,
-            "stage": stage,
-        })
+        return json.dumps(
+            {
+                "status": "success",
+                "factor_id": factor_id,
+                "name": factor["name"],
+                "market": market,
+                "passed": eval_result.passed,
+                "fail_reasons": eval_result.fail_reasons,
+                "metrics": {
+                    "ic": metrics["ic"],
+                    "rank_ic": metrics["rank_ic"],
+                    "icir": metrics["icir"],
+                    "t_stat": metrics["t_stat"],
+                    "positive_ratio": metrics["positive_ratio"],
+                    "quintile_spread": metrics["quintile_spread"],
+                },
+                "promoted": promoted,
+                "stage": stage,
+            }
+        )
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error validating factor: {e}"})
 
@@ -380,15 +400,19 @@ def register_factor_for_strategy(
         registry = FactorRegistry()
         factor = registry.get_factor(factor_id)
         if factor is None:
-            return json.dumps({"status": "error", "message": f"Factor with id {factor_id} not found."})
+            return json.dumps(
+                {"status": "error", "message": f"Factor with id {factor_id} not found."}
+            )
 
         stage = factor["stage"]
         stage_idx = {s: i for i, s in enumerate(_STAGE_ORDER)}
         if stage_idx.get(stage, -1) < stage_idx[STAGE_VALIDATED]:
-            return json.dumps({
-                "status": "error",
-                "message": f"Factor '{factor['name']}' is at '{stage}' stage. Must be at least Validated to register for a strategy.",
-            })
+            return json.dumps(
+                {
+                    "status": "error",
+                    "message": f"Factor '{factor['name']}' is at '{stage}' stage. Must be at least Validated to register for a strategy.",
+                }
+            )
 
         registry.record_usage(factor_id, strategy_config, weight)
 
@@ -396,17 +420,21 @@ def register_factor_for_strategy(
         if stage == STAGE_VALIDATED:
             promoted = registry.promote(factor_id)
 
-        return json.dumps({
-            "status": "success",
-            "factor_id": factor_id,
-            "name": factor["name"],
-            "strategy_config": strategy_config,
-            "weight": weight,
-            "promoted_to_active": promoted,
-            "stage": STAGE_ACTIVE if promoted else stage,
-        })
+        return json.dumps(
+            {
+                "status": "success",
+                "factor_id": factor_id,
+                "name": factor["name"],
+                "strategy_config": strategy_config,
+                "weight": weight,
+                "promoted_to_active": promoted,
+                "stage": STAGE_ACTIVE if promoted else stage,
+            }
+        )
     except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error registering factor for strategy: {e}"})
+        return json.dumps(
+            {"status": "error", "message": f"Error registering factor for strategy: {e}"}
+        )
 
 
 @mcp.tool()
@@ -449,11 +477,13 @@ def discover_factor(
         # Step 1: Validate expression syntax
         valid, err = validate_expression_syntax(expression)
         if not valid:
-            return json.dumps({
-                "status": "error",
-                "stage": "Rejected",
-                "message": f"Invalid expression syntax: {err}",
-            })
+            return json.dumps(
+                {
+                    "status": "error",
+                    "stage": "Rejected",
+                    "message": f"Invalid expression syntax: {err}",
+                }
+            )
 
         # Step 2: Register factor
         registry = FactorRegistry()
@@ -468,10 +498,12 @@ def discover_factor(
             )
         except Exception as e:
             if "UNIQUE constraint" in str(e):
-                return json.dumps({
-                    "status": "error",
-                    "message": f"Factor with name '{name}' already exists.",
-                })
+                return json.dumps(
+                    {
+                        "status": "error",
+                        "message": f"Factor with name '{name}' already exists.",
+                    }
+                )
             raise
 
         # Step 3: Evaluate factor
@@ -499,34 +531,36 @@ def discover_factor(
             updated = registry.get_factor(factor_id)
             stage = updated["stage"] if updated else "Proposed"
 
-        return json.dumps({
-            "status": "success",
-            "factor_id": factor_id,
-            "name": name,
-            "stage": stage,
-            "market": market,
-            "passed": eval_result.passed,
-            "fail_reasons": eval_result.fail_reasons,
-            "metrics": {
-                "ic": metrics["ic"],
-                "rank_ic": metrics["rank_ic"],
-                "icir": metrics["icir"],
-                "t_stat": metrics["t_stat"],
-                "positive_ratio": metrics["positive_ratio"],
-                "quintile_spread": metrics["quintile_spread"],
-                "decay_1d": metrics["decay_1d"],
-                "decay_5d": metrics["decay_5d"],
-                "decay_10d": metrics["decay_10d"],
-                "coverage": metrics["coverage"],
-                "n_periods": metrics["n_periods"],
-            },
-            "quintile_returns": metrics["quintile_returns"],
-            "message": (
-                f"Factor '{name}' discovered and promoted to {stage} stage."
-                if eval_result.passed
-                else f"Factor '{name}' evaluation failed. Left at Proposed stage with diagnostic info."
-            ),
-        })
+        return json.dumps(
+            {
+                "status": "success",
+                "factor_id": factor_id,
+                "name": name,
+                "stage": stage,
+                "market": market,
+                "passed": eval_result.passed,
+                "fail_reasons": eval_result.fail_reasons,
+                "metrics": {
+                    "ic": metrics["ic"],
+                    "rank_ic": metrics["rank_ic"],
+                    "icir": metrics["icir"],
+                    "t_stat": metrics["t_stat"],
+                    "positive_ratio": metrics["positive_ratio"],
+                    "quintile_spread": metrics["quintile_spread"],
+                    "decay_1d": metrics["decay_1d"],
+                    "decay_5d": metrics["decay_5d"],
+                    "decay_10d": metrics["decay_10d"],
+                    "coverage": metrics["coverage"],
+                    "n_periods": metrics["n_periods"],
+                },
+                "quintile_returns": metrics["quintile_returns"],
+                "message": (
+                    f"Factor '{name}' discovered and promoted to {stage} stage."
+                    if eval_result.passed
+                    else f"Factor '{name}' evaluation failed. Left at Proposed stage with diagnostic info."
+                ),
+            }
+        )
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error in factor discovery: {e}"})
 
@@ -563,9 +597,11 @@ def scan_factor_pool(
 
         if pool_path:
             from src.research.factor_library import load_factor_pool_from_yaml
+
             factor_pool = load_factor_pool_from_yaml(pool_path)
         else:
             from src.research.factor_scanner import DEFAULT_FACTOR_POOL
+
             factor_pool = DEFAULT_FACTOR_POOL
 
         report = _scan(
@@ -602,13 +638,15 @@ def load_factor_pool(path: str = "", token: str = "") -> str:
             cat = f["category"]
             summary[cat] = summary.get(cat, 0) + 1
         summary["total"] = len(factors)
-        return json.dumps({
-            "status": "success",
-            "source": path or "configs/factor_pool.yaml",
-            "summary": summary,
-            "factors": factors[:50],  # preview first 50
-            "total_loaded": len(factors),
-        })
+        return json.dumps(
+            {
+                "status": "success",
+                "source": path or "configs/factor_pool.yaml",
+                "summary": summary,
+                "factors": factors[:50],  # preview first 50
+                "total_loaded": len(factors),
+            }
+        )
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error loading factor pool: {e}"})
 
@@ -672,7 +710,9 @@ def compile_strategy_with_factors(
         )
         return json.dumps(result.to_dict(), indent=2)
     except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error compiling strategy with factors: {e}"})
+        return json.dumps(
+            {"status": "error", "message": f"Error compiling strategy with factors: {e}"}
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1053,5 +1093,3 @@ def validate_model_batch(
 
 if __name__ == "__main__":
     mcp.run()
-
-

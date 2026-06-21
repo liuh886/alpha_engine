@@ -25,6 +25,7 @@ from src.strategies.signal_grade_engine import (
 # Synthetic data helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_pred_df(
     dates: list[str],
     instruments: list[str],
@@ -38,7 +39,9 @@ def _make_pred_df(
     return pd.DataFrame({"score": scores}, index=idx)
 
 
-def _make_price_series(dates: list[str], start_price: float = 100.0, daily_return: float = 0.001) -> pd.Series:
+def _make_price_series(
+    dates: list[str], start_price: float = 100.0, daily_return: float = 0.001
+) -> pd.Series:
     """Create a synthetic close price series with deterministic drift."""
     dt_index = pd.to_datetime(dates)
     prices = [start_price * (1 + daily_return) ** i for i in range(len(dates))]
@@ -248,31 +251,59 @@ class TestSellSignalPenalization:
 
         # Good model: sell signals followed by drops
         good_sell = SignalPerformance(
-            grade="VVV", total_occurrences=10,
-            positive_count=2, negative_count=8, win_rate=0.2,
-            mean_return=-0.03, cumulative_return=-0.03,
-            median_return=-0.03, max_return=0.01, min_return=-0.06, avg_score=-0.5,
+            grade="VVV",
+            total_occurrences=10,
+            positive_count=2,
+            negative_count=8,
+            win_rate=0.2,
+            mean_return=-0.03,
+            cumulative_return=-0.03,
+            median_return=-0.03,
+            max_return=0.01,
+            min_return=-0.06,
+            avg_score=-0.5,
         )
         good_buy = SignalPerformance(
-            grade="AAA", total_occurrences=10,
-            positive_count=8, negative_count=2, win_rate=0.8,
-            mean_return=0.03, cumulative_return=0.03,
-            median_return=0.03, max_return=0.06, min_return=-0.01, avg_score=0.5,
+            grade="AAA",
+            total_occurrences=10,
+            positive_count=8,
+            negative_count=2,
+            win_rate=0.8,
+            mean_return=0.03,
+            cumulative_return=0.03,
+            median_return=0.03,
+            max_return=0.06,
+            min_return=-0.01,
+            avg_score=0.5,
         )
         good_score = engine.compute_total_score({"AAA": good_buy, "VVV": good_sell})
 
         # Bad model: sell signals followed by rises
         bad_sell = SignalPerformance(
-            grade="VVV", total_occurrences=10,
-            positive_count=8, negative_count=2, win_rate=0.8,
-            mean_return=0.03, cumulative_return=0.03,
-            median_return=0.03, max_return=0.06, min_return=-0.01, avg_score=-0.5,
+            grade="VVV",
+            total_occurrences=10,
+            positive_count=8,
+            negative_count=2,
+            win_rate=0.8,
+            mean_return=0.03,
+            cumulative_return=0.03,
+            median_return=0.03,
+            max_return=0.06,
+            min_return=-0.01,
+            avg_score=-0.5,
         )
         bad_buy = SignalPerformance(
-            grade="AAA", total_occurrences=10,
-            positive_count=2, negative_count=8, win_rate=0.2,
-            mean_return=-0.03, cumulative_return=-0.03,
-            median_return=-0.03, max_return=0.01, min_return=-0.06, avg_score=0.5,
+            grade="AAA",
+            total_occurrences=10,
+            positive_count=2,
+            negative_count=8,
+            win_rate=0.2,
+            mean_return=-0.03,
+            cumulative_return=-0.03,
+            median_return=-0.03,
+            max_return=0.01,
+            min_return=-0.06,
+            avg_score=0.5,
         )
         bad_score = engine.compute_total_score({"AAA": bad_buy, "VVV": bad_sell})
 
@@ -292,16 +323,30 @@ class TestSellSignalPenalization:
         #   sell_score = 0
         #   total = 0.0095 → B grade (> 0.005)
         high_buy_aaa = SignalPerformance(
-            grade="AAA", total_occurrences=10,
-            positive_count=9, negative_count=1, win_rate=0.9,
-            mean_return=0.05, cumulative_return=0.05,
-            median_return=0.05, max_return=0.10, min_return=-0.01, avg_score=0.8,
+            grade="AAA",
+            total_occurrences=10,
+            positive_count=9,
+            negative_count=1,
+            win_rate=0.9,
+            mean_return=0.05,
+            cumulative_return=0.05,
+            median_return=0.05,
+            max_return=0.10,
+            min_return=-0.01,
+            avg_score=0.8,
         )
         high_buy_a = SignalPerformance(
-            grade="A", total_occurrences=10,
-            positive_count=8, negative_count=2, win_rate=0.8,
-            mean_return=0.04, cumulative_return=0.04,
-            median_return=0.04, max_return=0.08, min_return=-0.01, avg_score=0.6,
+            grade="A",
+            total_occurrences=10,
+            positive_count=8,
+            negative_count=2,
+            win_rate=0.8,
+            mean_return=0.04,
+            cumulative_return=0.04,
+            median_return=0.04,
+            max_return=0.08,
+            min_return=-0.01,
+            avg_score=0.6,
         )
         result = engine.compute_total_score({"AAA": high_buy_aaa, "A": high_buy_a})
         assert result["total_score"] > 0.005  # B or above
@@ -314,10 +359,17 @@ class TestSellSignalPenalization:
         # To get F (< -0.005), need more negative mean:
         # avg_buy_score = (-0.5 * 3) / 50 = -0.03 → F grade
         terrible = SignalPerformance(
-            grade="AAA", total_occurrences=50,
-            positive_count=5, negative_count=45, win_rate=0.1,
-            mean_return=-0.5, cumulative_return=-0.5,
-            median_return=-0.5, max_return=0.01, min_return=-1.0, avg_score=0.8,
+            grade="AAA",
+            total_occurrences=50,
+            positive_count=5,
+            negative_count=45,
+            win_rate=0.1,
+            mean_return=-0.5,
+            cumulative_return=-0.5,
+            median_return=-0.5,
+            max_return=0.01,
+            min_return=-1.0,
+            avg_score=0.8,
         )
         result = engine.compute_total_score({"AAA": terrible})
         assert result["grade"] == "F"
@@ -325,12 +377,20 @@ class TestSellSignalPenalization:
     def test_signal_performance_serialization(self):
         """SignalPerformance.to_dict() must be JSON-serializable."""
         perf = SignalPerformance(
-            grade="AAA", total_occurrences=10,
-            positive_count=7, negative_count=3, win_rate=0.7,
-            mean_return=0.02, cumulative_return=0.02,
-            median_return=0.015, max_return=0.05, min_return=-0.02, avg_score=0.6,
+            grade="AAA",
+            total_occurrences=10,
+            positive_count=7,
+            negative_count=3,
+            win_rate=0.7,
+            mean_return=0.02,
+            cumulative_return=0.02,
+            median_return=0.015,
+            max_return=0.05,
+            min_return=-0.02,
+            avg_score=0.6,
         )
         import json
+
         serialized = json.dumps(perf.to_dict())
         deserialized = json.loads(serialized)
         assert deserialized["grade"] == "AAA"
@@ -437,10 +497,17 @@ class TestInsufficientObservations:
         engine = SignalGradeEngine()
         zero_perfs = {
             grade: SignalPerformance(
-                grade=grade, total_occurrences=0,
-                positive_count=0, negative_count=0, win_rate=0.0,
-                mean_return=0.0, cumulative_return=0.0,
-                median_return=0.0, max_return=0.0, min_return=0.0, avg_score=0.0,
+                grade=grade,
+                total_occurrences=0,
+                positive_count=0,
+                negative_count=0,
+                win_rate=0.0,
+                mean_return=0.0,
+                cumulative_return=0.0,
+                median_return=0.0,
+                max_return=0.0,
+                min_return=0.0,
+                avg_score=0.0,
             )
             for grade in GRADES
         }
@@ -451,8 +518,13 @@ class TestInsufficientObservations:
     def test_signal_grade_serialization(self):
         """SignalGrade.to_dict() must handle NaN scores gracefully."""
         grade = SignalGrade(
-            symbol="TEST", date="2026-01-15", grade="",
-            rank=-1, total_stocks=0, score=float("nan"), percentile=0.0,
+            symbol="TEST",
+            date="2026-01-15",
+            grade="",
+            rank=-1,
+            total_stocks=0,
+            score=float("nan"),
+            percentile=0.0,
         )
         d = grade.to_dict()
         assert d["score"] is None  # NaN → None in JSON

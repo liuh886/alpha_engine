@@ -171,7 +171,10 @@ def verify_release_candidate(
     code_identity = candidate.get("code_identity")
     if not isinstance(code_identity, dict):
         report.add(
-            "code_identity_missing", False, report.candidate_manifest, "code_identity object is required"
+            "code_identity_missing",
+            False,
+            report.candidate_manifest,
+            "code_identity object is required",
         )
         code_identity = {}
     pinned_revision = code_identity.get("revision")
@@ -187,7 +190,9 @@ def verify_release_candidate(
 
     markets = candidate.get("markets")
     if not isinstance(markets, dict):
-        report.add("markets_missing", False, report.candidate_manifest, "markets object is required")
+        report.add(
+            "markets_missing", False, report.candidate_manifest, "markets object is required"
+        )
         markets = {}
     market_names = set(markets)
     report.add(
@@ -221,7 +226,9 @@ def _verify_lockfile(value: Any, root: Path, report: VerificationReport) -> str:
     path = _project_path(value.get("path"), root)
     expected = value.get("sha256")
     if path is None or not path.is_file():
-        report.add("lockfile_missing", False, "code_identity.lockfile", "referenced lockfile missing")
+        report.add(
+            "lockfile_missing", False, "code_identity.lockfile", "referenced lockfile missing"
+        )
         return ""
     actual = _sha256(path)
     report.add(
@@ -235,7 +242,9 @@ def _verify_lockfile(value: Any, root: Path, report: VerificationReport) -> str:
 
 def _verify_metric_schema(value: Any, report: VerificationReport) -> None:
     if not isinstance(value, dict):
-        report.add("metric_schema_missing", False, "metric_schema", "metric_schema object is required")
+        report.add(
+            "metric_schema_missing", False, "metric_schema", "metric_schema object is required"
+        )
         return
     fields = value.get("required_fields")
     report.add(
@@ -317,7 +326,11 @@ def _verify_market(
             metrics = payload.get("metrics")
             if isinstance(metrics, dict):
                 combined_metrics.update(
-                    {key: float(metric) for key, metric in metrics.items() if _finite_number(metric)}
+                    {
+                        key: float(metric)
+                        for key, metric in metrics.items()
+                        if _finite_number(metric)
+                    }
                 )
 
     missing = [name for name in REQUIRED_RELEASE_METRICS if name not in combined_metrics]
@@ -364,7 +377,10 @@ def _verify_snapshot(
         "missing=" + ",".join(missing) if missing else "required snapshot fields present",
     )
     report.add(
-        "snapshot_quality", payload.get("quality_verdict") == "pass", subject, "quality_verdict must be pass"
+        "snapshot_quality",
+        payload.get("quality_verdict") == "pass",
+        subject,
+        "quality_verdict must be pass",
     )
     checksums = payload.get("file_checksums")
     if not isinstance(checksums, dict) or not checksums:
@@ -508,8 +524,10 @@ def _verify_evidence(
         f"evidence must bind to {market}/{artifact_id}/{snapshot_id} with pass status",
     )
     metrics = payload.get("metrics")
-    metrics_ok = isinstance(metrics, dict) and bool(metrics) and all(
-        _finite_number(metric) for metric in metrics.values()
+    metrics_ok = (
+        isinstance(metrics, dict)
+        and bool(metrics)
+        and all(_finite_number(metric) for metric in metrics.values())
     )
     report.add(
         f"{kind}_evidence_metrics",
@@ -528,7 +546,9 @@ def _verify_metric_thresholds(
     report: VerificationReport,
 ) -> None:
     signal_ref = evidence.get("signal")
-    signal_path = _project_path(signal_ref.get("path"), root) if isinstance(signal_ref, dict) else None
+    signal_path = (
+        _project_path(signal_ref.get("path"), root) if isinstance(signal_ref, dict) else None
+    )
     subject = _display_path(signal_path, root) if signal_path else market
     report.add(
         "icir_threshold",
@@ -556,9 +576,7 @@ def _verify_metric_thresholds(
     )
 
 
-def _verify_frontend(
-    value: Any, root: Path, revision: Any, report: VerificationReport
-) -> None:
+def _verify_frontend(value: Any, root: Path, revision: Any, report: VerificationReport) -> None:
     payload, subject = _load_reference(value, "path", root, report, "frontend_build")
     if payload is None:
         return

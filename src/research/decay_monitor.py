@@ -34,9 +34,10 @@ __all__ = ["DecayMonitor", "DecayStatus", "FactorDecayReport"]
 
 class DecayStatus(str, Enum):
     """Factor decay status."""
-    HEALTHY = "healthy"      # No decay detected
-    WATCH = "watch"          # Early warning signs
-    DEGRADED = "degraded"    # Significant decay
+
+    HEALTHY = "healthy"  # No decay detected
+    WATCH = "watch"  # Early warning signs
+    DEGRADED = "degraded"  # Significant decay
     DOWNgrade = "downgrade"  # Should be demoted
 
 
@@ -156,7 +157,9 @@ class DecayMonitor:
         report.icir_current = report.ic_current / std if std > 1e-10 else 0.0
 
         # Rank correlation instability
-        rolling_corr = ic_history.rolling(63).apply(lambda x: np.corrcoef(x, np.arange(len(x)))[0, 1] if len(x) > 2 else 0)
+        rolling_corr = ic_history.rolling(63).apply(
+            lambda x: np.corrcoef(x, np.arange(len(x)))[0, 1] if len(x) > 2 else 0
+        )
         report.rank_corr_instability = float(rolling_corr.std())
 
         # Determine status
@@ -172,7 +175,9 @@ class DecayMonitor:
 
         # Check 6m vs 12m average
         if report.ic_6m_avg < report.ic_12m_avg * 0.7:
-            alerts.append(f"6m avg ({report.ic_6m_avg:.4f}) < 70% of 12m avg ({report.ic_12m_avg:.4f})")
+            alerts.append(
+                f"6m avg ({report.ic_6m_avg:.4f}) < 70% of 12m avg ({report.ic_12m_avg:.4f})"
+            )
 
         # Check rank correlation instability
         if report.rank_corr_instability > self.rank_corr_instability_threshold:
@@ -414,12 +419,16 @@ class DecayMonitor:
                 # Downgrade to Retired
                 registry.update_stage(factor_id, STAGE_RETIRED)
                 changes["downgrade"] += 1
-                logger.info("factor_downgraded", factor=report.factor_name, reason=report.recommendation)
+                logger.info(
+                    "factor_downgraded", factor=report.factor_name, reason=report.recommendation
+                )
             elif report.status in (DecayStatus.WATCH, DecayStatus.DEGRADED):
                 # Move to Watch
                 registry.update_stage(factor_id, STAGE_WATCH)
                 changes["watch"] += 1
-                logger.info("factor_moved_to_watch", factor=report.factor_name, status=report.status.value)
+                logger.info(
+                    "factor_moved_to_watch", factor=report.factor_name, status=report.status.value
+                )
             else:
                 changes["healthy"] += 1
 
@@ -448,11 +457,16 @@ class DecayMonitor:
             "total_factors": len(reports),
             "status_distribution": status_counts,
             "factors_needing_attention": [
-                r.to_dict() for r in reports
+                r.to_dict()
+                for r in reports
                 if r.status in (DecayStatus.WATCH, DecayStatus.DEGRADED, DecayStatus.DOWNgrade)
             ],
             "recommendations": [
-                {"factor": r.factor_name, "status": r.status.value, "recommendation": r.recommendation}
+                {
+                    "factor": r.factor_name,
+                    "status": r.status.value,
+                    "recommendation": r.recommendation,
+                }
                 for r in reports
                 if r.status != DecayStatus.HEALTHY
             ],

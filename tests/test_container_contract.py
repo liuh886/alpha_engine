@@ -83,9 +83,7 @@ def test_runtime_image_uses_explicit_safe_copy_inputs() -> None:
         r"site/|qlib-dashboard/dist/|node_modules/|\.venv/|\.git/)"
     )
     unsafe = [
-        line
-        for line in copy_lines
-        if "--from=" not in line and forbidden_sources.search(line)
+        line for line in copy_lines if "--from=" not in line and forbidden_sources.search(line)
     ]
     assert unsafe == []
 
@@ -99,7 +97,7 @@ def test_runtime_is_non_root_and_has_startup_and_readiness_contracts() -> None:
     assert "entrypoint" in dockerfile and "container-entrypoint.sh" in dockerfile
     assert "healthcheck" in dockerfile and "container-healthcheck.py" in dockerfile
 
-    assert 'ALPHA_ENGINE_ENV:-' in entrypoint
+    assert "ALPHA_ENGINE_ENV:-" in entrypoint
     assert "TRADING_UI_USER" in entrypoint
     assert "TRADING_UI_PASSWORD" in entrypoint
     assert "ALPHA_DEVELOPER_TOKEN" in entrypoint

@@ -82,7 +82,10 @@ def run_inference(
                 lambda x: name_map.get(str(x), name_map.get(str(x).upper(), str(x)))
             )
 
-            logger.info("Inference results", results=final_df[["name", "score", "passed", "market"]].head(20).to_string())
+            logger.info(
+                "Inference results",
+                results=final_df[["name", "score", "passed", "market"]].head(20).to_string(),
+            )
 
             # Save Report
             report_dir = Path("reports")

@@ -167,7 +167,9 @@ class DualLayerStrategy(BaseSignalStrategy):
                         instrument=inst,
                         signal=decision.signal,
                         confidence=round(decision.confidence, 3),
-                        score=round(decision.score, 4) if decision.score == decision.score else None,
+                        score=round(decision.score, 4)
+                        if decision.score == decision.score
+                        else None,
                         rank=decision.rank,
                     )
             except Exception as exc:
@@ -206,11 +208,17 @@ class DualLayerStrategy(BaseSignalStrategy):
         held_positions: dict[str, dict] = {}
         if current_stock_list:
             total_value = float(current_temp.get_cash()) + sum(
-                float(float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code)))
+                float(
+                    float(current_temp.get_stock_price(code))
+                    * float(current_temp.get_stock_amount(code))
+                )
                 for code in current_stock_list
             )
             for code in current_stock_list:
-                stock_val = float(float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code)))
+                stock_val = float(
+                    float(current_temp.get_stock_price(code))
+                    * float(current_temp.get_stock_amount(code))
+                )
                 held_positions[code] = {
                     "weight": stock_val / total_value if total_value > 0 else 0.0,
                     "entry_price": self._estimate_entry_price(code, current_temp),
@@ -347,9 +355,7 @@ class DualLayerStrategy(BaseSignalStrategy):
 
             # Decision engine BUY gate
             if self._decision_engine is not None and buy_list:
-                engine_signals = self._run_decision_engine(
-                    buy_list, pred_score, rank_map, market
-                )
+                engine_signals = self._run_decision_engine(buy_list, pred_score, rank_map, market)
                 # Only buy stocks where engine returns BUY
                 buy_list = [c for c in buy_list if engine_signals.get(c) == "BUY"]
                 for c in buy_list:
@@ -364,15 +370,19 @@ class DualLayerStrategy(BaseSignalStrategy):
                     try:
                         vol_fields = ["Std($close / Ref($close, 1) - 1, 20)"]
                         vol_df = D.features(
-                            buy_list, vol_fields,
-                            start_time=trade_start_time, end_time=trade_end_time,
+                            buy_list,
+                            vol_fields,
+                            start_time=trade_start_time,
+                            end_time=trade_end_time,
                         )
                         if not vol_df.empty:
                             vol_df.columns = ["vol_20d"]
                             volatilities = vol_df.groupby(level="instrument")["vol_20d"].last()
                             scores = pred_score.reindex(buy_list).dropna()
                             weights = self._risk_manager.compute_vol_adjusted_weights(
-                                buy_list, scores, volatilities,
+                                buy_list,
+                                scores,
+                                volatilities,
                             )
                             alloc = cash * self.risk_degree
                             for code in buy_list:
@@ -401,16 +411,24 @@ class DualLayerStrategy(BaseSignalStrategy):
                 except Exception:
                     sector_map = {}
                 total_value = float(current_temp.get_cash()) + sum(
-                    float(float(current_temp.get_stock_price(c)) * float(current_temp.get_stock_amount(c))) for c in current_stock_list
+                    float(
+                        float(current_temp.get_stock_price(c))
+                        * float(current_temp.get_stock_amount(c))
+                    )
+                    for c in current_stock_list
                 )
                 existing_positions: dict[str, _PI] = {}
                 for code in current_stock_list:
-                    stock_val = float(float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code)))
+                    stock_val = float(
+                        float(current_temp.get_stock_price(code))
+                        * float(current_temp.get_stock_amount(code))
+                    )
                     existing_positions[code] = _PI(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,
                         entry_price=self._estimate_entry_price(code, current_temp),
-                        current_price=stock_val / max(1, float(current_temp.get_stock_amount(code))),
+                        current_price=stock_val
+                        / max(1, float(current_temp.get_stock_amount(code))),
                         peak_price=stock_val / max(1, float(current_temp.get_stock_amount(code))),
                         sector=sector_map.get(code, "Unknown"),
                     )

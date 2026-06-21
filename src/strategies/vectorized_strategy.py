@@ -159,11 +159,15 @@ class VectorizedBiweeklyStrategy(BaseSignalStrategy):
             except Exception:
                 sector_map = {}
 
-            total_value = float(current_temp.get_cash()) + float(current_temp.calculate_stock_value())
+            total_value = float(current_temp.get_cash()) + float(
+                current_temp.calculate_stock_value()
+            )
             risk_positions: dict[str, PositionInfo] = {}
             for code in current_stock_list:
                 held_positions.get(code, {}) if (held_positions := {}) else {}
-                stock_val = float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code))
+                stock_val = float(current_temp.get_stock_price(code)) * float(
+                    current_temp.get_stock_amount(code)
+                )
                 risk_positions[code] = PositionInfo(
                     instrument=code,
                     weight=stock_val / total_value if total_value > 0 else 0.0,

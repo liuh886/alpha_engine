@@ -322,7 +322,10 @@ def compile_strategy_profile(
     cfg = apply_profile_to_config(profile, cfg, target_market)
 
     if dry_run:
-        logger.info("Dry-run config output", config=yaml.safe_dump(cfg, sort_keys=False, allow_unicode=False))
+        logger.info(
+            "Dry-run config output",
+            config=yaml.safe_dump(cfg, sort_keys=False, allow_unicode=False),
+        )
         return config_path
 
     with open(config_path, "w", encoding="utf-8") as f:

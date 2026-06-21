@@ -140,4 +140,3 @@ class ExecutionResult:
             "position_changes": [change.to_dict() for change in self.position_changes],
             "explanation": self.explanation,
         }
-

@@ -50,6 +50,7 @@ def _get_artifacts_root() -> Path:
         return _ARTIFACTS_ROOT
     try:
         from src.common.paths import get_artifacts_dir
+
         return get_artifacts_dir()
     except Exception:
         return Path("artifacts")
@@ -170,8 +171,7 @@ def create_artifact(
         metric_validation = validate_metrics(normalized_metrics)
         if not metric_validation.ok:
             raise ArtifactValidationError(
-                "ModelArtifact has missing required metrics: "
-                f"{metric_validation.missing_required}"
+                f"ModelArtifact has missing required metrics: {metric_validation.missing_required}"
             )
 
     # A JSON round-trip detaches all nested config objects from mutable caller state.
@@ -285,9 +285,7 @@ def create_artifact(
         missing_complete = manifest.missing_complete()
         if missing_complete:
             shutil.rmtree(artifact_dir, ignore_errors=True)
-            raise ArtifactValidationError(
-                f"ModelArtifact is incomplete: {missing_complete}"
-            )
+            raise ArtifactValidationError(f"ModelArtifact is incomplete: {missing_complete}")
 
     # Persist manifest
     manifest_path = artifact_dir / "manifest.json"
@@ -433,12 +431,15 @@ def register_artifact(
     artifact_dir = _get_artifacts_root() / "artifacts" / artifact_id
     reg_marker = artifact_dir / ".registered"
     reg_marker.write_text(
-        json.dumps({
-            "artifact_id": artifact_id,
-            "registered_at": datetime.now().isoformat(),
-            "inference_gate": inference_result.__dict__,
-            "reconstruction_gate": reconstruction_result.__dict__,
-        }, indent=2),
+        json.dumps(
+            {
+                "artifact_id": artifact_id,
+                "registered_at": datetime.now().isoformat(),
+                "inference_gate": inference_result.__dict__,
+                "reconstruction_gate": reconstruction_result.__dict__,
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
 
@@ -450,20 +451,22 @@ def register_artifact(
 
         db_path = resolve_metadata_db_path(paths.get_artifacts_dir())
         index = ModelRegistryIndex(db_path=db_path)
-        index.upsert_entry({
-            "id": artifact_id,
-            "tag": f"artifact_{artifact_id[:8]}",
-            "path": str(artifact_dir / manifest.model_binary_path),
-            "type": manifest.config.get("task", {}).get("model", {}).get("class", "Unknown"),
-            "market": manifest.config.get("market", ""),
-            "created_at": datetime.now().isoformat(),
-            "run_id": artifact_id,
-            "artifact_id": artifact_id,
-            "artifact_config": manifest.config,
-            "inference_gate": inference_result.__dict__,
-            "reconstruction_gate": reconstruction_result.__dict__,
-            "backtest": {"metrics": {}},
-        })
+        index.upsert_entry(
+            {
+                "id": artifact_id,
+                "tag": f"artifact_{artifact_id[:8]}",
+                "path": str(artifact_dir / manifest.model_binary_path),
+                "type": manifest.config.get("task", {}).get("model", {}).get("class", "Unknown"),
+                "market": manifest.config.get("market", ""),
+                "created_at": datetime.now().isoformat(),
+                "run_id": artifact_id,
+                "artifact_id": artifact_id,
+                "artifact_config": manifest.config,
+                "inference_gate": inference_result.__dict__,
+                "reconstruction_gate": reconstruction_result.__dict__,
+                "backtest": {"metrics": {}},
+            }
+        )
     except Exception as exc:
         logger.debug("Could not upsert to model registry DB", error=str(exc))
 
@@ -479,9 +482,9 @@ def register_artifact(
 def _extract_features(config: dict[str, Any]) -> list[str]:
     """Try to extract feature list from a qlib-style config."""
     try:
-        loader_cfg = (
-            config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"]["kwargs"]["config"]
-        )
+        loader_cfg = config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"][
+            "kwargs"
+        ]["config"]
         feature_exprs = loader_cfg.get("feature", [])
         return [str(f) for f in feature_exprs]
     except (KeyError, TypeError):
@@ -491,9 +494,9 @@ def _extract_features(config: dict[str, Any]) -> list[str]:
 def _extract_label_schema(config: dict[str, Any]) -> dict[str, Any]:
     """Try to extract label schema from a qlib-style config."""
     try:
-        loader_cfg = (
-            config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"]["kwargs"]["config"]
-        )
+        loader_cfg = config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"][
+            "kwargs"
+        ]["config"]
         label_exprs = loader_cfg.get("label", [])
         return {"expressions": [str(expr) for expr in label_exprs]}
     except (KeyError, TypeError):

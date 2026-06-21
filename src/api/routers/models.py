@@ -182,9 +182,7 @@ def model_health_check():
         pred_info = _check_prediction_freshness(MLRUNS_DIR, ARTIFACTS_DIR)
         report["checks"]["predictions"] = pred_info
         if pred_info.get("age_days") is not None and pred_info["age_days"] > 7:
-            report["warnings"].append(
-                f"Latest predictions are {pred_info['age_days']} days old."
-            )
+            report["warnings"].append(f"Latest predictions are {pred_info['age_days']} days old.")
         if not pred_info.get("exists"):
             report["warnings"].append("No prediction files found.")
     except Exception as exc:
@@ -271,6 +269,7 @@ def _check_qlib_data() -> dict:
 
         # Try a simple data fetch
         from datetime import datetime
+
         end_date = datetime.now().strftime("%Y-%m-%d")
         df = D.features(["AAPL"], ["$close"], start_time="2026-01-01", end_time=end_date)
         if df.empty:

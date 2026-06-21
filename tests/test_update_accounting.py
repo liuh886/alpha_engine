@@ -171,7 +171,15 @@ def test_summary_dict_has_required_fields():
     for market in ("cn", "us"):
         assert market in summary["markets"]
         market_data = summary["markets"][market]
-        for field in ("configured", "attempted", "updated", "reused", "excluded", "failed", "stale"):
+        for field in (
+            "configured",
+            "attempted",
+            "updated",
+            "reused",
+            "excluded",
+            "failed",
+            "stale",
+        ):
             assert field in market_data, f"missing field {field} in market {market}"
 
 

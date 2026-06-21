@@ -282,6 +282,7 @@ def scan_factor_pool(
     ScanReport
     """
     from src.common.dates import default_end_date
+
     end_date = end_date or default_end_date()
     # Resolve the factor pool: explicit path > explicit list > default library
     if pool_path:
@@ -333,9 +334,7 @@ def scan_factor_pool(
     # FDR correction: derive p-values from t-stats and apply BH procedure
     # ------------------------------------------------------------------
     fdr_alpha = 0.05
-    raw_p_values = [
-        _derive_p_value(r.t_stat, r.n_periods) for r in results
-    ]
+    raw_p_values = [_derive_p_value(r.t_stat, r.n_periods) for r in results]
     significant_mask, adjusted_p_values = benjamini_hochberg_correction(
         raw_p_values, alpha=fdr_alpha
     )
@@ -345,9 +344,7 @@ def scan_factor_pool(
         result.adjusted_p_value = adjusted_p_values[i]
         result.fdr_significant = significant_mask[i]
 
-    fdr_passed_factors = [
-        r for r in results if r.passed and r.fdr_significant
-    ]
+    fdr_passed_factors = [r for r in results if r.passed and r.fdr_significant]
 
     passed_results = [r for r in results if r.passed]
     top_factors = passed_results[:20]

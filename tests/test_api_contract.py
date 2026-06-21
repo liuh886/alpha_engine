@@ -29,6 +29,7 @@ def client():
 def auth_headers():
     """Return valid auth headers."""
     import base64
+
     creds = base64.b64encode(b"admin:alpha2026").decode()
     return {"Authorization": f"Basic {creds}"}
 
@@ -277,7 +278,9 @@ class TestSystemCommandRegistry:
         assert "src.orchestrator" in train_cmd
         assert "--market" in train_cmd
         # No element should contain spaces (no "uv run python" single string)
-        assert all(" " not in tok for tok in train_cmd), f"argv tokens must not contain spaces: {train_cmd}"
+        assert all(" " not in tok for tok in train_cmd), (
+            f"argv tokens must not contain spaces: {train_cmd}"
+        )
 
         backtest_cmd = _build_safe_command("backtest", ["--market", "us"])
         assert backtest_cmd is not None

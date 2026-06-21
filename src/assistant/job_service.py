@@ -180,7 +180,9 @@ class JobService:
             try:
                 out["commands"] = json.loads(row["commands_json"])
             except Exception:
-                logger.debug("Failed to decode commands_json for row", job_id=row["id"], exc_info=True)
+                logger.debug(
+                    "Failed to decode commands_json for row", job_id=row["id"], exc_info=True
+                )
                 out["commands"] = []
         else:
             out["commands"] = []

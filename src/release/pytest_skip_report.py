@@ -38,4 +38,3 @@ def _skip_reason(longrepr: Any) -> str:
     if isinstance(longrepr, tuple) and len(longrepr) >= 3:
         return str(longrepr[2]).removeprefix("Skipped: ").strip()
     return str(longrepr).strip()
-

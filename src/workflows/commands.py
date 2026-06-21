@@ -241,5 +241,3 @@ def _append_optional_flags(
         else:
             cmd += ["--cost_params", str(cost_params)]
     return cmd
-
-

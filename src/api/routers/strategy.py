@@ -149,9 +149,7 @@ def validate_plugin_params(name: str, payload: dict):
         expected_type = properties[key].get("type")
         check = TYPE_CHECKS.get(expected_type)
         if check and not isinstance(value, check):
-            errors.append(
-                f"Parameter '{key}' expected {expected_type}, got {type(value).__name__}"
-            )
+            errors.append(f"Parameter '{key}' expected {expected_type}, got {type(value).__name__}")
 
     if errors:
         return {"ok": False, "errors": errors}

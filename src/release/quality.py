@@ -79,9 +79,7 @@ def build_quality_commands(project_root: Path, evidence_dir: Path) -> list[Comma
     ]
 
 
-def classify_skips(
-    skips: list[dict[str, str]], approved: set[str] | None = None
-) -> dict[str, Any]:
+def classify_skips(skips: list[dict[str, str]], approved: set[str] | None = None) -> dict[str, Any]:
     """Classify exact pytest node ids; every non-approved skip fails the gate."""
     approved = approved or set()
     rows = sorted(skips, key=lambda row: (row.get("nodeid", ""), row.get("reason", "")))
@@ -143,7 +141,9 @@ def run_quality_gates(
             "implementation": platform.python_implementation(),
             "platform": platform.platform(),
         },
-        "commands": [asdict(result) | {"status": "pass" if result.ok else "fail"} for result in results],
+        "commands": [
+            asdict(result) | {"status": "pass" if result.ok else "fail"} for result in results
+        ],
         "skip_accounting": skip_accounting,
     }
     report["status"] = (
@@ -154,9 +154,7 @@ def run_quality_gates(
     return report
 
 
-def _run_command(
-    spec: CommandSpec, output_dir: Path, environment: dict[str, str]
-) -> CommandResult:
+def _run_command(spec: CommandSpec, output_dir: Path, environment: dict[str, str]) -> CommandResult:
     started = time.perf_counter()
     try:
         process = subprocess.run(

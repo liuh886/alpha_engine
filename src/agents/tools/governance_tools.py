@@ -59,6 +59,7 @@ def format_thought_stream_for_report(agent: str, level: str, thought_text: str) 
     normalized_agent = "ResearchAssistant"
     if agent != normalized_agent:
         import logging
+
         _log = logging.getLogger(__name__)
         _log.debug(
             "Normalizing legacy agent name in thought stream",

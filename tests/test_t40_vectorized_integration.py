@@ -15,6 +15,7 @@ sys.path.append(str(ROOT))
 # Profile compiler: vectorized flag → strategy class
 # ---------------------------------------------------------------------------
 
+
 def test_apply_profile_to_config_vectorized_true_sets_class():
     """When strategy.vectorized=true, the config uses VectorizedBiweeklyStrategy."""
     from src.workflows.profile_compiler import apply_profile_to_config
@@ -112,6 +113,7 @@ def test_apply_profile_to_config_vectorized_preserves_kwargs():
 # Backtest module: vectorized strategy detection
 # ---------------------------------------------------------------------------
 
+
 def test_is_vectorized_strategy_detects_class():
     """_is_vectorized_strategy returns True when class matches."""
     from src.research.backtest import _is_vectorized_strategy
@@ -145,6 +147,7 @@ def test_is_vectorized_strategy_handles_missing_config():
 # ---------------------------------------------------------------------------
 # Profile JSON: vectorized flag presence
 # ---------------------------------------------------------------------------
+
 
 def test_strategy_profile_cn_has_vectorized_flag():
     """CN strategy profile contains the vectorized flag."""

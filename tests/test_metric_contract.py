@@ -153,7 +153,9 @@ class TestNormalizeMetrics:
 
     def test_win_rate_mapped_to_none(self):
         """'Win Rate' is explicitly mapped to None in the alias table."""
-        result = normalize_metrics({"Win Rate": 0.6, "annualized_return": 0.10, "max_drawdown": -0.10})
+        result = normalize_metrics(
+            {"Win Rate": 0.6, "annualized_return": 0.10, "max_drawdown": -0.10}
+        )
         assert "Win Rate" not in result
         assert "win_rate" not in result
         assert result["annualized_return"] == pytest.approx(0.10)
@@ -182,10 +184,12 @@ class TestValidateMetrics:
     """Validation rejects missing required fields."""
 
     def test_all_required_present(self):
-        metrics = normalize_metrics({
-            "annualized_return": 0.15,
-            "max_drawdown": -0.20,
-        })
+        metrics = normalize_metrics(
+            {
+                "annualized_return": 0.15,
+                "max_drawdown": -0.20,
+            }
+        )
         vr = validate_metrics(metrics)
         assert vr.ok is True
         assert vr.missing_required == []
@@ -212,10 +216,12 @@ class TestValidateMetrics:
         assert "max_drawdown" in vr.missing_required
 
     def test_optional_fields_not_required(self):
-        metrics = normalize_metrics({
-            "annualized_return": 0.15,
-            "max_drawdown": -0.20,
-        })
+        metrics = normalize_metrics(
+            {
+                "annualized_return": 0.15,
+                "max_drawdown": -0.20,
+            }
+        )
         vr = validate_metrics(metrics)
         assert vr.ok is True
         # Sharpe is optional — None is fine
@@ -227,10 +233,13 @@ class TestValidateMetrics:
         assert vr.ok is False
 
     def test_version_compatibility_v1(self):
-        metrics = normalize_metrics({
-            "annualized_return": 0.10,
-            "max_drawdown": -0.05,
-        }, version="v1")
+        metrics = normalize_metrics(
+            {
+                "annualized_return": 0.10,
+                "max_drawdown": -0.05,
+            },
+            version="v1",
+        )
         vr = validate_metrics(metrics, version="v1")
         assert vr.ok is True
 

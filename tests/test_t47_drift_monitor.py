@@ -11,12 +11,10 @@ Verify:
 """
 
 import sys
-import tempfile
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))
@@ -80,7 +78,9 @@ def test_prediction_mean_shift_detected():
     current = _make_shifted_predictions(200, shift=0.10)
 
     report = monitor.check_model(
-        "mv_test", current, _make_returns(200),
+        "mv_test",
+        current,
+        _make_returns(200),
         baseline_predictions=baseline,
     )
 
@@ -105,7 +105,9 @@ def test_prediction_mean_no_shift():
     current = pd.Series(rng.normal(0.02, 0.05, 200))
 
     report = monitor.check_model(
-        "mv_test", current, _make_returns(200),
+        "mv_test",
+        current,
+        _make_returns(200),
         baseline_predictions=baseline,
     )
 
@@ -145,7 +147,9 @@ def test_psi_detects_distribution_shift():
     current = pd.Series(rng.normal(0.10, 0.10, 500))
 
     report = monitor.check_model(
-        "mv_test", current, _make_returns(500),
+        "mv_test",
+        current,
+        _make_returns(500),
         baseline_predictions=baseline,
     )
 
@@ -171,7 +175,9 @@ def test_psi_no_shift_for_same_distribution():
     current = baseline.copy()
 
     report = monitor.check_model(
-        "mv_test", current, _make_returns(500),
+        "mv_test",
+        current,
+        _make_returns(500),
         baseline_predictions=baseline,
     )
 
@@ -187,11 +193,9 @@ def test_psi_no_shift_for_same_distribution():
 
 def test_ic_decay_detected():
     """IC is measured and check reports appropriate severity for the data."""
-    from src.research.drift_monitor import DriftSeverity, ModelDriftMonitor
+    from src.research.drift_monitor import ModelDriftMonitor
 
-    monitor = ModelDriftMonitor(
-        market="cn", ic_decay_threshold=0.3, min_evidence_days=5
-    )
+    monitor = ModelDriftMonitor(market="cn", ic_decay_threshold=0.3, min_evidence_days=5)
 
     rng = np.random.default_rng(42)
     n = 200
@@ -216,9 +220,7 @@ def test_ic_decay_not_flagged_for_positive_ic():
     """Positive IC is not flagged."""
     from src.research.drift_monitor import DriftSeverity, ModelDriftMonitor
 
-    monitor = ModelDriftMonitor(
-        market="cn", ic_decay_threshold=0.3, min_evidence_days=5
-    )
+    monitor = ModelDriftMonitor(market="cn", ic_decay_threshold=0.3, min_evidence_days=5)
 
     rng = np.random.default_rng(42)
     base = rng.normal(0.0, 0.05, 500)
@@ -242,9 +244,7 @@ def test_calibration_detected_for_uncalibrated():
     """Zero-slope calibration is flagged."""
     from src.research.drift_monitor import DriftSeverity, ModelDriftMonitor
 
-    monitor = ModelDriftMonitor(
-        market="us", calibration_slope_threshold=0.2, min_evidence_days=5
-    )
+    monitor = ModelDriftMonitor(market="us", calibration_slope_threshold=0.2, min_evidence_days=5)
 
     rng = np.random.default_rng(42)
     pred = pd.Series(rng.normal(0.0, 0.05, 200))
@@ -266,9 +266,7 @@ def test_calibration_pass_for_correlated():
     """Correlated predictions produce calibration near 1.0."""
     from src.research.drift_monitor import DriftSeverity, ModelDriftMonitor
 
-    monitor = ModelDriftMonitor(
-        market="us", calibration_slope_threshold=0.5, min_evidence_days=5
-    )
+    monitor = ModelDriftMonitor(market="us", calibration_slope_threshold=0.5, min_evidence_days=5)
 
     rng = np.random.default_rng(42)
     base = rng.normal(0.0, 0.05, 500)
@@ -289,11 +287,9 @@ def test_calibration_pass_for_correlated():
 
 def test_drift_report_persisted(tmp_path):
     """Drift reports are persisted to artifact dir."""
-    from src.research.drift_monitor import DriftSeverity, ModelDriftMonitor
+    from src.research.drift_monitor import ModelDriftMonitor
 
-    monitor = ModelDriftMonitor(
-        market="cn", artifact_dir=tmp_path / "drift", min_evidence_days=5
-    )
+    monitor = ModelDriftMonitor(market="cn", artifact_dir=tmp_path / "drift", min_evidence_days=5)
     pred = _make_predictions(100, seed=42)
     ret = _make_returns(100, seed=43)
 
@@ -307,11 +303,9 @@ def test_drift_report_persisted(tmp_path):
 
 def test_drift_report_roundtrip(tmp_path):
     """DriftReport can be serialized and retrieved."""
-    from src.research.drift_monitor import DriftSeverity, ModelDriftMonitor
+    from src.research.drift_monitor import ModelDriftMonitor
 
-    monitor = ModelDriftMonitor(
-        market="us", artifact_dir=tmp_path / "drift", min_evidence_days=5
-    )
+    monitor = ModelDriftMonitor(market="us", artifact_dir=tmp_path / "drift", min_evidence_days=5)
     # Use correlated data so calibration passes
     rng = np.random.default_rng(42)
     n = 200
@@ -320,7 +314,9 @@ def test_drift_report_roundtrip(tmp_path):
     ret = pd.Series(base + rng.normal(0.0, 0.01, n))
 
     monitor.check_model(
-        "mv_roundtrip", pred, ret,
+        "mv_roundtrip",
+        pred,
+        ret,
         baseline_predictions=pd.Series(rng.normal(0.02, 0.05, n)),
     )
     retrieved = monitor.get_last_report("mv_roundtrip")
@@ -328,7 +324,10 @@ def test_drift_report_roundtrip(tmp_path):
     assert retrieved.model_version_id == "mv_roundtrip"
     # With correlated data and a baseline, overall should not be CRITICAL
     assert retrieved.overall_severity.value in (
-        "ok", "watch", "inconclusive", "warning",
+        "ok",
+        "watch",
+        "inconclusive",
+        "warning",
     )
 
 
@@ -349,21 +348,23 @@ def test_feature_drift_detected():
     """Feature drift is detected via per-feature PSI."""
     from src.research.drift_monitor import DriftSeverity, ModelDriftMonitor
 
-    monitor = ModelDriftMonitor(
-        market="cn", psi_threshold=0.1, min_evidence_days=5
-    )
+    monitor = ModelDriftMonitor(market="cn", psi_threshold=0.1, min_evidence_days=5)
 
     rng = np.random.default_rng(42)
     n = 200
-    baseline_features = pd.DataFrame({
-        "f1": rng.normal(0, 1, n),
-        "f2": rng.normal(0, 1, n),
-    })
+    baseline_features = pd.DataFrame(
+        {
+            "f1": rng.normal(0, 1, n),
+            "f2": rng.normal(0, 1, n),
+        }
+    )
     # f1 is shifted significantly
-    current_features = pd.DataFrame({
-        "f1": rng.normal(2.0, 2.0, n),  # mean shift + std change
-        "f2": rng.normal(0, 1, n),       # unchanged
-    })
+    current_features = pd.DataFrame(
+        {
+            "f1": rng.normal(2.0, 2.0, n),  # mean shift + std change
+            "f2": rng.normal(0, 1, n),  # unchanged
+        }
+    )
 
     report = monitor.check_model(
         "mv_test",
@@ -420,7 +421,9 @@ def test_overall_severity_is_max():
     current = pd.Series(rng.normal(0.15, 0.05, 200))  # strongly shifted
 
     report = monitor.check_model(
-        "mv_test", current, _make_returns(200),
+        "mv_test",
+        current,
+        _make_returns(200),
         baseline_predictions=baseline,
     )
 

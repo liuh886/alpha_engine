@@ -40,7 +40,6 @@ def test_strategy_execution_domain_does_not_import_qlib():
         assert not any("qlib" in line.lower() for line in import_lines), str(path)
 
 
-
 def test_assistant_services_do_not_import_dashboard_job_command_builders():
     forbidden = (
         "src.dashboard.backtest_job",
@@ -54,4 +53,3 @@ def test_assistant_services_do_not_import_dashboard_job_command_builders():
             if line.startswith("import ") or line.startswith("from ")
         ]
         assert not any(token in line for token in forbidden for line in import_lines), str(path)
-

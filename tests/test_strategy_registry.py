@@ -1,4 +1,5 @@
 """Tests for the strategy plugin registry."""
+
 from __future__ import annotations
 
 import pytest
@@ -8,6 +9,7 @@ from src.strategies.registry import StrategyRegistry, _schema_from_constructor
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def _reset_registry():
@@ -20,6 +22,7 @@ def _reset_registry():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class _StubPlugin:
     """Minimal StrategyPlugin implementation for unit tests."""
@@ -59,6 +62,7 @@ class _StubPlugin:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestSingleton:
     def test_get_instance_returns_same_object(self):

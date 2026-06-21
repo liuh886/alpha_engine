@@ -107,7 +107,8 @@ def apply_model_fdr(
 
     p_values = [mr["p_value"] for mr in model_results]
     significant_mask, adjusted_p_values = benjamini_hochberg_correction(
-        p_values, alpha=alpha,
+        p_values,
+        alpha=alpha,
     )
 
     for i, mr in enumerate(model_results):
@@ -199,11 +200,7 @@ class ModelBatchValidator:
     def get_promotable(self) -> list[str]:
         """Return model IDs that are FDR-significant."""
         report = self.validate()
-        return [
-            r["model_id"]
-            for r in report["results"]
-            if r.get("fdr_significant")
-        ]
+        return [r["model_id"] for r in report["results"] if r.get("fdr_significant")]
 
     def clear(self) -> None:
         """Reset the batch."""

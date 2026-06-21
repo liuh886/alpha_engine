@@ -49,15 +49,15 @@ DEFAULT_DECISION_CONFIG: dict[str, Any] = {
     # MA signals
     "sell_ma_window": 60,
     # Model signal thresholds
-    "buy_rank_topk": 20,       # rank < this → BUY candidate
+    "buy_rank_topk": 20,  # rank < this → BUY candidate
     "sell_rank_threshold": 50,  # rank >= this → SELL candidate
     "buy_score_threshold": 0.0,
     "sell_score_threshold": -0.1,
     # Percentile-based thresholds (for excess returns)
-    "buy_percentile_threshold": 70,   # percentile >= this → BUY candidate
+    "buy_percentile_threshold": 70,  # percentile >= this → BUY candidate
     "sell_percentile_threshold": 30,  # percentile <= this → SELL candidate
     # Factor extremes
-    "factor_z_extreme": 2.0,    # |z-score| > this → flagged
+    "factor_z_extreme": 2.0,  # |z-score| > this → flagged
     # Confidence weights (must sum to 1.0)
     "weight_model": 0.50,
     "weight_guardrail": 0.20,
@@ -98,13 +98,13 @@ class PriceTargets:
     """Actionable price levels for a stock."""
 
     current_price: float | None = None
-    buy_range_low: float | None = None   # 建议买入区间下限
+    buy_range_low: float | None = None  # 建议买入区间下限
     buy_range_high: float | None = None  # 建议买入区间上限
-    stop_loss_price: float | None = None # 止损价
-    target_price: float | None = None    # 目标价
-    atr_20: float | None = None          # 20日 ATR（波动率参考）
-    support: float | None = None         # 近期支撑位
-    resistance: float | None = None      # 近期阻力位
+    stop_loss_price: float | None = None  # 止损价
+    target_price: float | None = None  # 目标价
+    atr_20: float | None = None  # 20日 ATR（波动率参考）
+    support: float | None = None  # 近期支撑位
+    resistance: float | None = None  # 近期阻力位
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -129,10 +129,10 @@ def _round_price(v: float | None) -> float | None:
 class StrategyRecommendation:
     """Recommended strategy for a stock with reasoning."""
 
-    name: str           # e.g. "biweekly_trend", "dual_layer", "weekly_quant_rating"
-    display_name: str   # human-readable name
-    reason: str         # why this strategy fits
-    confidence: float   # 0-1 how well the stock fits this strategy
+    name: str  # e.g. "biweekly_trend", "dual_layer", "weekly_quant_rating"
+    display_name: str  # human-readable name
+    reason: str  # why this strategy fits
+    confidence: float  # 0-1 how well the stock fits this strategy
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -311,7 +311,9 @@ class StockDecisionEngine:
 
         # --- 8. Positive reasons for BUY ---
         if signal == "BUY":
-            positive = self._generate_positive_reasons(score, rank, total_stocks, guardrail_status, factor_snapshot)
+            positive = self._generate_positive_reasons(
+                score, rank, total_stocks, guardrail_status, factor_snapshot
+            )
             reasons = positive + reasons  # positive first, then warnings
 
         # --- 9. Strategy recommendation (P1-1) ---
@@ -335,9 +337,7 @@ class StockDecisionEngine:
         if price_targets is not None and signal == "BUY":
             pt = price_targets
             if pt.buy_range_low is not None and pt.buy_range_high is not None:
-                reasons.append(
-                    f"💰 建议买入区间: {pt.buy_range_low:.2f} - {pt.buy_range_high:.2f}"
-                )
+                reasons.append(f"💰 建议买入区间: {pt.buy_range_low:.2f} - {pt.buy_range_high:.2f}")
             if pt.stop_loss_price is not None:
                 reasons.append(f"🛑 止损参考价: {pt.stop_loss_price:.2f}")
             if pt.target_price is not None:
@@ -452,13 +452,13 @@ class StockDecisionEngine:
             liq = check_liquidity(amount, cfg["min_liquidity"])
             result["liquidity"] = liq
 
-            result["overall_passed"] = all(
-                r["passed"] for r in [ext, vol, liq]
-            )
+            result["overall_passed"] = all(r["passed"] for r in [ext, vol, liq])
 
         except Exception as exc:
             logger.warning("guardrail_check_failed", symbol=symbol, error=str(exc))
-            result["overall_passed"] = False  # safe fallback: block signal when guardrails can't run
+            result["overall_passed"] = (
+                False  # safe fallback: block signal when guardrails can't run
+            )
             result["error"] = str(exc)
 
         return result
@@ -467,9 +467,7 @@ class StockDecisionEngine:
     # Risk checks
     # ------------------------------------------------------------------
 
-    def _check_risk(
-        self, symbol: str, held_positions: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    def _check_risk(self, symbol: str, held_positions: dict[str, Any]) -> list[dict[str, Any]]:
         """Check stop-loss and trailing stop for a held position."""
         from src.guardrails.position_risk import (
             PositionInfo,
@@ -567,7 +565,9 @@ class StockDecisionEngine:
             elif pct <= 25:
                 parts.append(f"排名 {effective_rank + 1}/{total_stocks}（Top {pct:.1f}%）")
             elif pct >= 90:
-                parts.append(f"排名 {effective_rank + 1}/{total_stocks}（Bottom {100 - pct:.1f}%）⚠")
+                parts.append(
+                    f"排名 {effective_rank + 1}/{total_stocks}（Bottom {100 - pct:.1f}%）⚠"
+                )
             else:
                 parts.append(f"排名 {effective_rank + 1}/{total_stocks}（{pct:.1f}%）")
 
@@ -618,7 +618,9 @@ class StockDecisionEngine:
             # Load universe tickers for z-score calculation
             universe_tickers = self._load_universe_tickers(market)
             # Remove the target stock from universe to avoid double-counting
-            universe_tickers = [t for t in universe_tickers if t != symbol][:50]  # limit for performance
+            universe_tickers = [t for t in universe_tickers if t != symbol][
+                :50
+            ]  # limit for performance
 
             universe_df = pd.DataFrame()
             if universe_tickers:
@@ -639,7 +641,11 @@ class StockDecisionEngine:
 
             for i, (name, expr, cat) in enumerate(zip(names, expressions, categories)):
                 try:
-                    val = float(stock_latest.iloc[i]) if stock_latest is not None and pd.notna(stock_latest.iloc[i]) else None
+                    val = (
+                        float(stock_latest.iloc[i])
+                        if stock_latest is not None and pd.notna(stock_latest.iloc[i])
+                        else None
+                    )
 
                     z_score = None
                     percentile = None
@@ -655,7 +661,9 @@ class StockDecisionEngine:
                             if std_val > 1e-10:
                                 z_score = (val - mean_val) / std_val
                             # Percentile
-                            percentile = float((latest_per_stock < val).sum() / len(latest_per_stock) * 100)
+                            percentile = float(
+                                (latest_per_stock < val).sum() / len(latest_per_stock) * 100
+                            )
 
                     snapshots[name] = FactorSnapshot(
                         name=name,
@@ -683,9 +691,13 @@ class StockDecisionEngine:
                     positive = sum(1 for z in z_scores if z > 0.5)
                     negative = sum(1 for z in z_scores if z < -0.5)
                     if positive > len(z_scores) * 0.7:
-                        reasons.append(f"✅ 因子一致性高 — {positive}/{len(z_scores)} 个因子同向看多")
+                        reasons.append(
+                            f"✅ 因子一致性高 — {positive}/{len(z_scores)} 个因子同向看多"
+                        )
                     elif negative > len(z_scores) * 0.7:
-                        reasons.append(f"⚠ 因子一致性高 — {negative}/{len(z_scores)} 个因子同向看空")
+                        reasons.append(
+                            f"⚠ 因子一致性高 — {negative}/{len(z_scores)} 个因子同向看空"
+                        )
 
         except Exception as exc:
             logger.warning("factor_analysis_failed", symbol=symbol, error=str(exc))
@@ -781,7 +793,7 @@ class StockDecisionEngine:
             if rank is not None and total_stocks > 0:
                 rank_pct = rank / total_stocks
                 # Boost for top ranks, penalize for bottom
-                model_conf *= (1.0 - rank_pct * 0.5)
+                model_conf *= 1.0 - rank_pct * 0.5
 
         # Guardrail confidence
         guardrail_conf = 1.0 if guardrail_passed else 0.2
@@ -868,31 +880,41 @@ class StockDecisionEngine:
 
             # WeeklyQuantRating: best for strong momentum + top rank
             if score_strong and top_rank and momentum_z > 1.0:
-                candidates.append((
-                    "weekly_quant_rating",
-                    "Weekly Quant Rating",
-                    f"强动量信号（z-score={momentum_z:.1f}）+ Top 排名，适合周度评级策略的连续买入逻辑",
-                    min(0.95, 0.6 + momentum_z * 0.1),
-                ))
+                candidates.append(
+                    (
+                        "weekly_quant_rating",
+                        "Weekly Quant Rating",
+                        f"强动量信号（z-score={momentum_z:.1f}）+ Top 排名，适合周度评级策略的连续买入逻辑",
+                        min(0.95, 0.6 + momentum_z * 0.1),
+                    )
+                )
 
             # DualLayer: best for complex factor profiles or high volatility
             if len(factor_snapshot) >= 5 or vol_regime == "high":
-                vol_note = "，波动率偏高需要个股级风控" if vol_regime == "high" else "，多因子信号适合个股决策引擎分解"
-                candidates.append((
-                    "dual_layer",
-                    "Dual Layer Strategy",
-                    f"因子暴露丰富（{len(factor_snapshot)} 个 Active 因子）{vol_note}",
-                    min(0.9, 0.5 + len(factor_snapshot) * 0.03),
-                ))
+                vol_note = (
+                    "，波动率偏高需要个股级风控"
+                    if vol_regime == "high"
+                    else "，多因子信号适合个股决策引擎分解"
+                )
+                candidates.append(
+                    (
+                        "dual_layer",
+                        "Dual Layer Strategy",
+                        f"因子暴露丰富（{len(factor_snapshot)} 个 Active 因子）{vol_note}",
+                        min(0.9, 0.5 + len(factor_snapshot) * 0.03),
+                    )
+                )
 
             # BiweeklyTrend: default for stable, clear-signal stocks
             if signal == "BUY":
-                candidates.append((
-                    "biweekly_trend",
-                    "Biweekly Trend",
-                    "双周调仓策略，适合趋势明确的大盘股",
-                    0.5,
-                ))
+                candidates.append(
+                    (
+                        "biweekly_trend",
+                        "Biweekly Trend",
+                        "双周调仓策略，适合趋势明确的大盘股",
+                        0.5,
+                    )
+                )
 
             if not candidates:
                 return None
@@ -916,9 +938,7 @@ class StockDecisionEngine:
     # Price targets (P1-2)
     # ------------------------------------------------------------------
 
-    def _compute_price_targets(
-        self, symbol: str, market: str, signal: str
-    ) -> PriceTargets | None:
+    def _compute_price_targets(self, symbol: str, market: str, signal: str) -> PriceTargets | None:
         """Compute actionable price levels using ATR, MA, and recent highs/lows.
 
         For BUY signals:
@@ -942,13 +962,13 @@ class StockDecisionEngine:
 
             # Fetch price data for ATR and support/resistance calculation
             fields = [
-                "$close",                          # 0
-                "$high",                           # 1
-                "$low",                            # 2
-                "Mean($close, 20)",                # 3: MA20
-                "Mean($close, 60)",                # 4: MA60
-                "Max($high, 20)",                  # 5: 20-day high (resistance)
-                "Min($low, 20)",                   # 6: 20-day low (support)
+                "$close",  # 0
+                "$high",  # 1
+                "$low",  # 2
+                "Mean($close, 20)",  # 3: MA20
+                "Mean($close, 60)",  # 4: MA60
+                "Max($high, 20)",  # 5: 20-day high (resistance)
+                "Min($low, 20)",  # 6: 20-day low (support)
             ]
             df = D.features(
                 [symbol],
@@ -1027,7 +1047,7 @@ class StockDecisionEngine:
                 return None
 
             highs = df.iloc[:, 1].astype(float)  # $high
-            lows = df.iloc[:, 2].astype(float)    # $low
+            lows = df.iloc[:, 2].astype(float)  # $low
             closes = df.iloc[:, 0].astype(float)  # $close
 
             tr_values = []

@@ -121,9 +121,7 @@ def register_model(
         logger.info("Model registered in SQLite", version_id=version_id, stage=stage)
     except Exception as e:
         logger.error("CRITICAL: Failed to write model to SQLite registry", error=str(e))
-        raise RuntimeError(
-            f"Model registration aborted — SQLite write failed: {e}"
-        ) from e
+        raise RuntimeError(f"Model registration aborted — SQLite write failed: {e}") from e
 
     # === STEP 2 (SECONDARY): Append to YAML as human-readable log ===
     list_path = MODELS_DIR / "model_list.yaml"

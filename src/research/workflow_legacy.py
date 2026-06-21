@@ -105,4 +105,3 @@ def _convert_status(status: str) -> WorkflowStatus:
         return WorkflowStatus(status)
     except ValueError:
         return WorkflowStatus.PENDING
-

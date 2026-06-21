@@ -288,7 +288,7 @@ def merge_benchmarks_into_report(report_normal, benchmarks: dict, market: str) -
                 date_key = str(date_str).split("T")[0].split(" ")[0]
                 daily_ret = bench_data.get(date_key)
                 if daily_ret is not None and isinstance(daily_ret, (int, float)):
-                    running_equity *= (1.0 + float(daily_ret))
+                    running_equity *= 1.0 + float(daily_ret)
                 # If benchmark data is unavailable for this date, keep previous level
                 if i < len(data):
                     data[i].append(running_equity)
@@ -300,7 +300,10 @@ def merge_benchmarks_into_report(report_normal, benchmarks: dict, market: str) -
                 bench_idx = cols.index(bench_col)
                 all_identical = True
                 for row in data:
-                    if abs(row[bench_idx] - row[account_idx]) > max(abs(row[account_idx]), 1.0) * 1e-6:
+                    if (
+                        abs(row[bench_idx] - row[account_idx])
+                        > max(abs(row[account_idx]), 1.0) * 1e-6
+                    ):
                         all_identical = False
                         break
                 if all_identical:
@@ -381,9 +384,7 @@ def compute_benchmark_returns(dates: list[str], symbol: str, provider_uri: str):
         df["return"] = df["$close"].pct_change()
 
         return {
-            dt.strftime("%Y-%m-%d"): float(ret)
-            for dt, ret in df["return"].items()
-            if pd.notna(ret)
+            dt.strftime("%Y-%m-%d"): float(ret) for dt, ret in df["return"].items() if pd.notna(ret)
         }
     except Exception as e:
         print(f"  Failed to compute benchmark {symbol}: {e}")
@@ -638,9 +639,7 @@ def build_db(model_id: str = "", sync_yaml: bool = False):
     except Exception as e:
         print(f"Warning: Failed to sync to RunIndex: {e}")
 
-    print(
-        f"Wrote {len(final_models)} models to {dashboard_db_path}"
-    )
+    print(f"Wrote {len(final_models)} models to {dashboard_db_path}")
 
 
 def _sync_yaml_from_sqlite(model_index: ModelRegistryIndex, project_root: Path) -> int:
@@ -674,7 +673,9 @@ def _sync_yaml_from_sqlite(model_index: ModelRegistryIndex, project_root: Path) 
         raw_params = v.get("params_json")
         if raw_params:
             try:
-                entry["params"] = json.loads(raw_params) if isinstance(raw_params, str) else raw_params
+                entry["params"] = (
+                    json.loads(raw_params) if isinstance(raw_params, str) else raw_params
+                )
             except Exception:
                 pass
         raw_metrics = v.get("metrics_json")
@@ -703,10 +704,13 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Build dashboard JSON database")
-    parser.add_argument("--model-id", type=str, default="",
-                        help="Only update a single model version (incremental)")
-    parser.add_argument("--sync-yaml", action="store_true",
-                        help="Write SQLite registry back to model_list.yaml (repair drift)")
+    parser.add_argument(
+        "--model-id", type=str, default="", help="Only update a single model version (incremental)"
+    )
+    parser.add_argument(
+        "--sync-yaml",
+        action="store_true",
+        help="Write SQLite registry back to model_list.yaml (repair drift)",
+    )
     args = parser.parse_args()
     main(model_id=args.model_id, sync_yaml=args.sync_yaml)
-

@@ -23,7 +23,9 @@ def _write_sample_data(root: Path, *, variant: str = "alpha") -> Path:
     d = root / "data_src"
     d.mkdir(parents=True, exist_ok=True)
     (d / "a.csv").write_text("date,close\n2026-01-01,100.0\n", encoding="utf-8")
-    (d / "b.csv").write_text(f"date,close\n2026-01-02,{200 if variant == 'alpha' else 999}\n", encoding="utf-8")
+    (d / "b.csv").write_text(
+        f"date,close\n2026-01-02,{200 if variant == 'alpha' else 999}\n", encoding="utf-8"
+    )
     sub = d / "sub"
     sub.mkdir(exist_ok=True)
     (sub / "c.csv").write_text(f"metric\n{variant}\n", encoding="utf-8")
@@ -134,7 +136,8 @@ def test_manifest_json_round_trip(tmp_path: Path):
     store = tmp_path / "store"
 
     snap = DataSnapshot.create_snapshot(
-        data, store=store,
+        data,
+        store=store,
         source_adapter="yfinance",
         universe="sp500",
         date_range={"start": "2025-01-01", "end": "2026-01-01"},

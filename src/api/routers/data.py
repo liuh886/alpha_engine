@@ -93,6 +93,7 @@ def get_data_completeness(
 def list_available_features():
     """Return the list of features available for the completeness heatmap."""
     from src.assistant.services.data_service import AVAILABLE_FEATURES
+
     return {"ok": True, "features": AVAILABLE_FEATURES}
 
 
@@ -146,7 +147,9 @@ def _save_watchlist_yaml(data: dict) -> None:
 
 def _sync_instruments_file(market: str, symbols: list[str]) -> None:
     """Sync the instruments txt file for a market."""
-    instr_path = Path(__file__).resolve().parents[3] / "data" / "watchlist" / "instruments" / f"{market}.txt"
+    instr_path = (
+        Path(__file__).resolve().parents[3] / "data" / "watchlist" / "instruments" / f"{market}.txt"
+    )
     if not instr_path.parent.exists():
         instr_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -195,10 +198,7 @@ def get_watchlist():
     for market, symbols in data.items():
         if not isinstance(symbols, list):
             continue
-        result[market] = [
-            {"symbol": str(s), "name": name_map.get(str(s), "")}
-            for s in symbols
-        ]
+        result[market] = [{"symbol": str(s), "name": name_map.get(str(s), "")} for s in symbols]
 
     return {"ok": True, "watchlist": result}
 
@@ -236,7 +236,9 @@ def add_symbols(req: AddSymbolsRequest):
 
     # Sort numerically for CN/HK, alphabetically for US
     if market in ("cn", "hk"):
-        data[market] = sorted(set(str(s) for s in data[market]), key=lambda x: int(x) if x.isdigit() else x)
+        data[market] = sorted(
+            set(str(s) for s in data[market]), key=lambda x: int(x) if x.isdigit() else x
+        )
     else:
         data[market] = sorted(set(str(s) for s in data[market]))
 

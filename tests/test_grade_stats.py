@@ -30,6 +30,7 @@ from src.strategies.signal_grade_engine import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_perf(
     grade: str = "AAA",
     n: int = 20,
@@ -288,8 +289,20 @@ class TestQualificationStatus:
 
     def test_high_nan_ratio_is_failed(self):
         """Returns with >50% NaN → status = 'failed'."""
-        returns = np.array([0.01, float("nan"), float("nan"), float("nan"), 0.02, float("nan"),
-                            float("nan"), float("nan"), float("nan"), float("nan")])
+        returns = np.array(
+            [
+                0.01,
+                float("nan"),
+                float("nan"),
+                float("nan"),
+                0.02,
+                float("nan"),
+                float("nan"),
+                float("nan"),
+                float("nan"),
+                float("nan"),
+            ]
+        )
         status, reasons = determine_qualification(10, returns)
         assert status == "failed"
         assert any("nan" in r.lower() for r in reasons)
@@ -346,10 +359,10 @@ class TestScreenerCounts:
         # Create performance with known qualification statuses
         perfs = {}
         perfs["AAA"] = _make_perf(grade="AAA", n=20)  # qualified
-        perfs["AA"] = _make_perf(grade="AA", n=3)     # unqualified (< MIN)
-        perfs["A"] = _make_perf(grade="A", n=0)       # excluded (0 occ)
-        perfs["V"] = _make_perf(grade="V", n=10)      # qualified
-        perfs["VV"] = _make_perf(grade="VV", n=0)     # excluded
+        perfs["AA"] = _make_perf(grade="AA", n=3)  # unqualified (< MIN)
+        perfs["A"] = _make_perf(grade="A", n=0)  # excluded (0 occ)
+        perfs["V"] = _make_perf(grade="V", n=10)  # qualified
+        perfs["VV"] = _make_perf(grade="VV", n=0)  # excluded
         perfs["VVV"] = _make_perf(grade="VVV", n=15)  # qualified
 
         # Simulate the screener count logic from the API

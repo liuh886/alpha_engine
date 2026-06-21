@@ -16,7 +16,6 @@ from src.execution.signal_execution_config import SignalExecutionConfig
 from src.execution.signal_execution_engine import SignalExecutionEngine
 from src.research.vectorized_backtest import BacktestResult, run_vectorized_backtest
 
-
 # ---------------------------------------------------------------------------
 # Synthetic data generators
 # ---------------------------------------------------------------------------
@@ -42,11 +41,13 @@ def _make_predictions(
             # First 10 stocks → higher score, last 10 → lower score
             base_score = (n_stocks - idx) / n_stocks * 0.1
             noise = rng.normal(0, 0.02)
-            records.append({
-                "datetime": date,
-                "instrument": inst,
-                "score": base_score + noise,
-            })
+            records.append(
+                {
+                    "datetime": date,
+                    "instrument": inst,
+                    "score": base_score + noise,
+                }
+            )
 
     df = pd.DataFrame(records)
     return df.set_index(["datetime", "instrument"]).sort_index()
@@ -75,19 +76,19 @@ def _make_returns(
             # Linear: stock_000 gets +0.02/day, stock_049 gets -0.02/day
             base_ret = (n_stocks / 2 - idx) / n_stocks * 0.04 / np.sqrt(forward_days)
             noise = rng.normal(0, 0.01)
-            records.append({
-                "datetime": date,
-                "instrument": inst,
-                "return": base_ret + noise,
-            })
+            records.append(
+                {
+                    "datetime": date,
+                    "instrument": inst,
+                    "return": base_ret + noise,
+                }
+            )
 
     df = pd.DataFrame(records)
     return df.set_index(["datetime", "instrument"]).sort_index()
 
 
-def _make_benchmark(
-    n_dates: int = 60, seed: int = 99
-) -> pd.DataFrame:
+def _make_benchmark(n_dates: int = 60, seed: int = 99) -> pd.DataFrame:
     """Synthetic benchmark returns (slightly positive drift)."""
     rng = np.random.default_rng(seed)
     dates = pd.date_range("2024-01-01", periods=n_dates, freq="B")
@@ -135,9 +136,7 @@ def default_config() -> SignalExecutionConfig:
 
 
 class TestInputValidation:
-    def test_multiindex_predictions_accepted(
-        self, predictions: pd.DataFrame
-    ) -> None:
+    def test_multiindex_predictions_accepted(self, predictions: pd.DataFrame) -> None:
         """MultiIndex predictions pass validation."""
         engine = SignalExecutionEngine()
         # Should not raise
@@ -297,8 +296,12 @@ class TestVectorizedBacktestComparison:
             long_fraction=1.0,
             short_fraction=0.0,
             grade_weights={
-                "AAA": 1.0, "AA": 1.0, "A": 1.0,
-                "V": 0.0, "VV": 0.0, "VVV": 0.0,
+                "AAA": 1.0,
+                "AA": 1.0,
+                "A": 1.0,
+                "V": 0.0,
+                "VV": 0.0,
+                "VVV": 0.0,
             },
             rebalance_days=10,
             buy_cost_bps=10.0,

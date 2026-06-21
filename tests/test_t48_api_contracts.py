@@ -70,7 +70,10 @@ class _TrainingService:
 
 class _RunIndex:
     def list_runs(self, *, market=None, limit=50, offset=0) -> list[dict]:
-        return [{"id": f"run-{i}", "name": f"Run {i}", "market": "us", "date": "2026-01-01"} for i in range(min(limit, 3))]
+        return [
+            {"id": f"run-{i}", "name": f"Run {i}", "market": "us", "date": "2026-01-01"}
+            for i in range(min(limit, 3))
+        ]
 
     def get_run(self, run_id: str) -> dict | None:
         return {"id": run_id, "tag": "Test", "market": "us"} if run_id != "missing" else None
@@ -282,9 +285,7 @@ class TestModelHealthRouteOrdering:
         a response containing 'checks' (200 if healthy, 503 if degraded).
         """
         monkeypatch.setattr(models, "get_model_index", lambda: _ModelIndex())
-        monkeypatch.setattr(
-            models, "get_model_service", lambda: _ModelService()
-        )
+        monkeypatch.setattr(models, "get_model_service", lambda: _ModelService())
 
         response = model_client.get("/api/models/health")
         body = response.json()
@@ -325,18 +326,18 @@ class TestListEndpointBounds:
         response = backtest_client.get("/api/backtest/?limit=10")
         assert response.status_code == 200
 
-    def test_system_thought_stream_rejects_limit_below_1(self, system_client, monkeypatch, tmp_path):
+    def test_system_thought_stream_rejects_limit_below_1(
+        self, system_client, monkeypatch, tmp_path
+    ):
         # Thought stream reads from file; stub it to avoid file dependency
-        monkeypatch.setattr(
-            "src.common.paths.ARTIFACTS_DIR", tmp_path
-        )
+        monkeypatch.setattr("src.common.paths.ARTIFACTS_DIR", tmp_path)
         response = system_client.get("/api/system/thought_stream?limit=0")
         assert response.status_code == 422
 
-    def test_system_thought_stream_rejects_limit_above_500(self, system_client, monkeypatch, tmp_path):
-        monkeypatch.setattr(
-            "src.common.paths.ARTIFACTS_DIR", tmp_path
-        )
+    def test_system_thought_stream_rejects_limit_above_500(
+        self, system_client, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr("src.common.paths.ARTIFACTS_DIR", tmp_path)
         response = system_client.get("/api/system/thought_stream?limit=501")
         assert response.status_code == 422
 

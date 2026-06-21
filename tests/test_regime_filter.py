@@ -9,7 +9,6 @@ import pytest
 from src.execution.regime_filter import RegimeFilter, RegimeSignal
 from src.execution.signal_execution_config import SignalExecutionConfig
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -33,9 +32,7 @@ def regime_filter(default_config: SignalExecutionConfig) -> RegimeFilter:
     return RegimeFilter(default_config)
 
 
-def _make_return_matrix(
-    n_days: int = 300, n_stocks: int = 50, seed: int = 42
-) -> pd.DataFrame:
+def _make_return_matrix(n_days: int = 300, n_stocks: int = 50, seed: int = 42) -> pd.DataFrame:
     """Synthetic return matrix: datetime x instrument."""
     rng = np.random.default_rng(seed)
     dates = pd.date_range("2024-01-01", periods=n_days, freq="B")
@@ -63,36 +60,28 @@ def _make_benchmark(n_days: int = 300, seed: int = 42) -> pd.Series:
 
 
 class TestICDecay:
-    def test_positive_ic_trend_returns_full_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_positive_ic_trend_returns_full_exposure(self, regime_filter: RegimeFilter) -> None:
         """Improving IC → full exposure."""
         ic_series = [0.01 + i * 0.0001 for i in range(100)]
         slope, factor = regime_filter._check_ic_decay(ic_series)
         assert slope > 0
         assert factor == pytest.approx(1.0)
 
-    def test_flat_ic_returns_full_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_flat_ic_returns_full_exposure(self, regime_filter: RegimeFilter) -> None:
         """Flat IC → full exposure (slope ≈ 0)."""
         ic_series = [0.01] * 100
         slope, factor = regime_filter._check_ic_decay(ic_series)
         assert abs(slope) < 1e-10
         assert factor == pytest.approx(1.0)
 
-    def test_declining_ic_reduces_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_declining_ic_reduces_exposure(self, regime_filter: RegimeFilter) -> None:
         """Declining IC → reduced exposure."""
         ic_series = [0.02 - i * 0.0003 for i in range(100)]
         slope, factor = regime_filter._check_ic_decay(ic_series)
         assert slope < 0
         assert factor < 1.0
 
-    def test_steeply_declining_ic_goes_to_zero(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_steeply_declining_ic_goes_to_zero(self, regime_filter: RegimeFilter) -> None:
         """Very steep IC decline → exposure near zero."""
         # Steep decline: from 0.5 to -1.5 over 100 points → slope ≈ -0.02
         ic_series = [0.5 - i * 0.02 for i in range(100)]
@@ -100,9 +89,7 @@ class TestICDecay:
         assert slope < -0.01
         assert factor <= 0.3  # Should be very low
 
-    def test_insufficient_data_returns_full_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_insufficient_data_returns_full_exposure(self, regime_filter: RegimeFilter) -> None:
         """Fewer than 10 IC points → assume favorable."""
         ic_series = [-0.05, -0.04, -0.03]
         slope, factor = regime_filter._check_ic_decay(ic_series)
@@ -115,18 +102,14 @@ class TestICDecay:
 
 
 class TestVolSpike:
-    def test_normal_vol_returns_full_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_normal_vol_returns_full_exposure(self, regime_filter: RegimeFilter) -> None:
         """Normal volatility → full exposure."""
         return_matrix = _make_return_matrix(n_days=300, seed=42)
         date = return_matrix.index[-1]
         ratio, factor = regime_filter._check_vol_spike(return_matrix, date)
         assert factor == pytest.approx(1.0, abs=0.1)
 
-    def test_high_vol_spike_reduces_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_high_vol_spike_reduces_exposure(self, regime_filter: RegimeFilter) -> None:
         """Vol spike → reduced exposure."""
         rng = np.random.default_rng(99)
         n_days, n_stocks = 300, 50
@@ -136,7 +119,8 @@ class TestVolSpike:
         # Spike in the last 20 days → vol20 becomes much larger
         data[-20:, :] = rng.normal(0.0005, 0.05, size=(20, n_stocks))
         return_matrix = pd.DataFrame(
-            data, index=dates,
+            data,
+            index=dates,
             columns=[f"STOCK_{i:03d}" for i in range(n_stocks)],
         )
         date = return_matrix.index[-1]
@@ -144,9 +128,7 @@ class TestVolSpike:
         # Vol20 should be >> vol252
         assert ratio > 1.5
 
-    def test_insufficient_history_returns_full_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_insufficient_history_returns_full_exposure(self, regime_filter: RegimeFilter) -> None:
         """Fewer than 252 days → full exposure (not enough history)."""
         return_matrix = _make_return_matrix(n_days=100, seed=42)
         date = return_matrix.index[-1]
@@ -160,9 +142,7 @@ class TestVolSpike:
 
 
 class TestTrendFilter:
-    def test_benchmark_above_ma_returns_full_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_benchmark_above_ma_returns_full_exposure(self, regime_filter: RegimeFilter) -> None:
         """Benchmark above MA → full exposure."""
         bench = _make_benchmark(n_days=300, seed=42)
         # Force an uptrend by adding linear drift
@@ -172,9 +152,7 @@ class TestTrendFilter:
         assert not below_ma
         assert factor == pytest.approx(1.0)
 
-    def test_benchmark_below_ma_reduces_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_benchmark_below_ma_reduces_exposure(self, regime_filter: RegimeFilter) -> None:
         """Benchmark below MA → reduced exposure."""
         bench = _make_benchmark(n_days=300, seed=42)
         # Force a downtrend by subtracting linear drift
@@ -184,9 +162,7 @@ class TestTrendFilter:
         # Should detect bearish trend
         assert factor <= 1.0
 
-    def test_no_benchmark_returns_full_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_no_benchmark_returns_full_exposure(self, regime_filter: RegimeFilter) -> None:
         """No benchmark data → full exposure."""
         below_ma, factor = regime_filter._check_trend(None, pd.Timestamp("2024-06-01"))
         assert not below_ma
@@ -199,9 +175,7 @@ class TestTrendFilter:
 
 
 class TestEvaluate:
-    def test_normal_market_returns_full_exposure(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_normal_market_returns_full_exposure(self, regime_filter: RegimeFilter) -> None:
         """All three pillars green → is_favorable=True, factor=1.0."""
         return_matrix = _make_return_matrix(n_days=300, seed=42)
         bench = _make_benchmark(n_days=300, seed=42)
@@ -218,9 +192,7 @@ class TestEvaluate:
         assert signal.exposure_factor == pytest.approx(1.0, abs=0.05)
         assert len(signal.reasons) == 0
 
-    def test_multiple_adverse_signals_use_minimum(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_multiple_adverse_signals_use_minimum(self, regime_filter: RegimeFilter) -> None:
         """When multiple pillars signal danger, the minimum factor wins."""
         return_matrix = _make_return_matrix(n_days=300, seed=42)
         bench = _make_benchmark(n_days=300, seed=42)
@@ -238,13 +210,14 @@ class TestEvaluate:
         # Reasons should list all adverse conditions
         assert len(signal.reasons) > 0
 
-    def test_regime_signal_is_frozen(
-        self, regime_filter: RegimeFilter
-    ) -> None:
+    def test_regime_signal_is_frozen(self, regime_filter: RegimeFilter) -> None:
         """RegimeSignal should be frozen/immutable."""
         signal = RegimeSignal(
-            is_favorable=True, exposure_factor=1.0,
-            ic_trend_slope=0.0, vol_ratio=1.0, trend_below_ma=False,
+            is_favorable=True,
+            exposure_factor=1.0,
+            ic_trend_slope=0.0,
+            vol_ratio=1.0,
+            trend_below_ma=False,
         )
         with pytest.raises(Exception):
             signal.exposure_factor = 0.5  # type: ignore[misc]

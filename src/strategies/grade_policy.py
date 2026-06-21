@@ -403,9 +403,7 @@ def qualify_grade(
     # Qualification gates
     failure_reasons: list[str] = []
     if n_independent < min_observations:
-        failure_reasons.append(
-            f"insufficient_observations: {n_independent} < {min_observations}"
-        )
+        failure_reasons.append(f"insufficient_observations: {n_independent} < {min_observations}")
 
     qualified = len(failure_reasons) == 0
 

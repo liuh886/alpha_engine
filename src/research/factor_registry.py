@@ -40,15 +40,24 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 STAGE_PROPOSED = "Proposed"
-STAGE_CANDIDATE = "Candidate"    # Gate 1 passed
-STAGE_VALIDATED = "Validated"    # Gate 2 passed
-STAGE_ACTIVE = "Active"          # Gate 3 passed
-STAGE_WATCH = "Watch"            # Decay detected, monitoring
+STAGE_CANDIDATE = "Candidate"  # Gate 1 passed
+STAGE_VALIDATED = "Validated"  # Gate 2 passed
+STAGE_ACTIVE = "Active"  # Gate 3 passed
+STAGE_WATCH = "Watch"  # Decay detected, monitoring
 STAGE_DEPRECATED = "Deprecated"
-STAGE_RETIRED = "Retired"        # Permanently removed
+STAGE_RETIRED = "Retired"  # Permanently removed
 STAGE_QUARANTINED = "Quarantined"  # Invalid/suspect record, excluded from queries
 
-_STAGE_ORDER = [STAGE_PROPOSED, STAGE_CANDIDATE, STAGE_VALIDATED, STAGE_ACTIVE, STAGE_WATCH, STAGE_DEPRECATED, STAGE_RETIRED, STAGE_QUARANTINED]
+_STAGE_ORDER = [
+    STAGE_PROPOSED,
+    STAGE_CANDIDATE,
+    STAGE_VALIDATED,
+    STAGE_ACTIVE,
+    STAGE_WATCH,
+    STAGE_DEPRECATED,
+    STAGE_RETIRED,
+    STAGE_QUARANTINED,
+]
 
 # ---------------------------------------------------------------------------
 # Configurable validation gate thresholds
@@ -57,8 +66,8 @@ _STAGE_ORDER = [STAGE_PROPOSED, STAGE_CANDIDATE, STAGE_VALIDATED, STAGE_ACTIVE, 
 # Legacy single-gate thresholds (kept for backward compatibility with
 # ``record_validation`` and ``_evaluate_gates``)
 VALIDATION_GATES: dict[str, float] = {
-    "min_icir": 0.3,             # Calibrated for walk-forward IC level (~0.09)
-    "min_t_stat": 1.5,           # Relaxed for small stock universe (118 stocks)
+    "min_icir": 0.3,  # Calibrated for walk-forward IC level (~0.09)
+    "min_t_stat": 1.5,  # Relaxed for small stock universe (118 stocks)
     "min_positive_ratio": 0.55,  # fraction of periods with positive IC
     "min_quintile_spread": 0.001,  # Lowered: real IC produces smaller spreads
     "min_ic_decay_5d_ratio": 0.3,  # IC at 5d should retain at least 30% of IC at 1d
@@ -74,16 +83,16 @@ GATE_1_THRESHOLDS: dict[str, float] = {
 }
 
 GATE_2_THRESHOLDS: dict[str, float] = {
-    "min_icir": 0.5,              # Calibrated for walk-forward IC level
-    "min_t_stat": 2.0,            # Standard 95% confidence
-    "min_positive_ratio": 0.60,   # Higher consistency required
+    "min_icir": 0.5,  # Calibrated for walk-forward IC level
+    "min_t_stat": 2.0,  # Standard 95% confidence
+    "min_positive_ratio": 0.60,  # Higher consistency required
     "min_quintile_spread": 0.001,
     "min_ic_decay_5d_ratio": 0.3,  # IC should retain at least 30% at 5d
 }
 
 GATE_3_THRESHOLDS: dict[str, float] = {
-    "min_icir": 1.0,              # Production quality (walk-forward model ICIR=1.46)
-    "min_t_stat": 2.5,            # High confidence
+    "min_icir": 1.0,  # Production quality (walk-forward model ICIR=1.46)
+    "min_t_stat": 2.5,  # High confidence
     "min_positive_ratio": 0.65,
     "min_quintile_spread": 0.002,
     "min_ic_decay_5d_ratio": 0.4,  # IC should retain at least 40% at 5d
@@ -371,7 +380,17 @@ class FactorRegistry(BaseIndex):
                                      lookback_days, thesis, stage, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (name, expression, category, direction, lookback_days, thesis, STAGE_PROPOSED, now, now),
+                (
+                    name,
+                    expression,
+                    category,
+                    direction,
+                    lookback_days,
+                    thesis,
+                    STAGE_PROPOSED,
+                    now,
+                    now,
+                ),
             )
             factor_id = cur.lastrowid
         logger.info("factor_registered", factor_id=factor_id, name=name, category=category)
@@ -500,7 +519,9 @@ class FactorRegistry(BaseIndex):
         idx = _STAGE_ORDER.index(current)
         # Cannot promote beyond Active; Deprecated is terminal
         if idx >= _STAGE_ORDER.index(STAGE_ACTIVE):
-            logger.debug("factor_already_at_max_promotable_stage", factor_id=factor_id, stage=current)
+            logger.debug(
+                "factor_already_at_max_promotable_stage", factor_id=factor_id, stage=current
+            )
             return False
 
         new_stage = _STAGE_ORDER[idx + 1]
@@ -547,7 +568,13 @@ class FactorRegistry(BaseIndex):
         with self._connect() as conn:
             cur = conn.execute(
                 "UPDATE factors SET stage = ?, thesis = CASE WHEN thesis = '' THEN ? ELSE thesis || ' | ' || ? END, updated_at = ? WHERE id = ?",
-                (STAGE_QUARANTINED, f"[QUARANTINED] {reason}", f"[QUARANTINED] {reason}", now, factor_id),
+                (
+                    STAGE_QUARANTINED,
+                    f"[QUARANTINED] {reason}",
+                    f"[QUARANTINED] {reason}",
+                    now,
+                    factor_id,
+                ),
             )
         if cur.rowcount > 0:
             logger.info("factor_quarantined", factor_id=factor_id, reason=reason)
@@ -580,7 +607,9 @@ class FactorRegistry(BaseIndex):
             )
         count = cur.rowcount
         if count > 0:
-            logger.info("factors_quarantined_by_pattern", pattern=pattern, count=count, reason=reason)
+            logger.info(
+                "factors_quarantined_by_pattern", pattern=pattern, count=count, reason=reason
+            )
         return count
 
     def list_quarantined(self) -> list[dict]:
@@ -610,7 +639,10 @@ class FactorRegistry(BaseIndex):
             return False
         if positive_ratio is not None and positive_ratio < VALIDATION_GATES["min_positive_ratio"]:
             return False
-        if quintile_spread is not None and quintile_spread < VALIDATION_GATES["min_quintile_spread"]:
+        if (
+            quintile_spread is not None
+            and quintile_spread < VALIDATION_GATES["min_quintile_spread"]
+        ):
             return False
 
         # Decay ratio: IC at 5d should retain at least min_ratio of IC at 1d.
@@ -641,9 +673,15 @@ class FactorRegistry(BaseIndex):
         if t_stat is not None and t_stat < gate.get("min_t_stat", 0):
             return False, f"t_stat={t_stat:.4f} < min_t_stat={gate['min_t_stat']}"
         if positive_ratio is not None and positive_ratio < gate.get("min_positive_ratio", 0):
-            return False, f"positive_ratio={positive_ratio:.4f} < min_positive_ratio={gate['min_positive_ratio']}"
+            return (
+                False,
+                f"positive_ratio={positive_ratio:.4f} < min_positive_ratio={gate['min_positive_ratio']}",
+            )
         if quintile_spread is not None and quintile_spread < gate.get("min_quintile_spread", 0):
-            return False, f"quintile_spread={quintile_spread:.6f} < min_quintile_spread={gate['min_quintile_spread']}"
+            return (
+                False,
+                f"quintile_spread={quintile_spread:.6f} < min_quintile_spread={gate['min_quintile_spread']}",
+            )
 
         min_decay = gate.get("min_ic_decay_5d_ratio")
         if min_decay is not None and mean_decay_1d is not None and mean_decay_5d is not None:

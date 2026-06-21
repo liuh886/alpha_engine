@@ -13,6 +13,7 @@ ResearchGoal(market='us', categories=['momentum'], direction='long', ...)
 >>> parse_research_goal("扫描所有市场的价值因子")
 ResearchGoal(market='all', categories=['mean_reversion'], direction='long', ...)
 """
+
 from __future__ import annotations
 
 import re
@@ -87,10 +88,16 @@ class ResearchGoal:
     target_sharpe: float = 0.8  # minimum acceptable Sharpe ratio
     max_iterations: int = 3  # max research cycles to run
     description: str = ""  # original natural language description
-    constraints: dict = field(default_factory=dict)  # additional constraints (min_icir, max_factors, etc.)
-    regime_filter: str = ""  # market regime: "high_volatility", "low_volatility", "trending", "ranging"
+    constraints: dict = field(
+        default_factory=dict
+    )  # additional constraints (min_icir, max_factors, etc.)
+    regime_filter: str = (
+        ""  # market regime: "high_volatility", "low_volatility", "trending", "ranging"
+    )
     suggested_factor_families: list[str] = field(default_factory=list)  # factor families to explore
-    target: dict = field(default_factory=dict)  # structured target: {max_drawdown, min_sharpe, min_ic, ...}
+    target: dict = field(
+        default_factory=dict
+    )  # structured target: {max_drawdown, min_sharpe, min_ic, ...}
 
     def to_dict(self) -> dict:
         return {

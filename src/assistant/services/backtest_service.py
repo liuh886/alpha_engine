@@ -122,11 +122,16 @@ class BacktestService:
         Checks all possible mlruns locations (MLRUNS_DIR, project_root/mlruns, artifacts/mlruns).
         """
         from src.common.paths import MLRUNS_DIR
+
         run_id = str(run_id or "").strip()
         if not run_id:
             return None
 
-        mlruns_dirs = [MLRUNS_DIR, self._project_root / "mlruns", self._project_root / "artifacts" / "mlruns"]
+        mlruns_dirs = [
+            MLRUNS_DIR,
+            self._project_root / "mlruns",
+            self._project_root / "artifacts" / "mlruns",
+        ]
         for m_dir in mlruns_dirs:
             if not m_dir.exists():
                 continue
@@ -144,10 +149,11 @@ class BacktestService:
         Retrieves real profit attribution data from Qlib artifacts via the dashboard parser.
         """
         from src.dashboard.artifact_parser import parse_profit_attribution
+
         run_path = self.get_run_path(run_id)
         if not run_path:
             raise ValueError(f"Run artifacts not found for {run_id}")
-        
+
         return parse_profit_attribution(run_path)
 
     def get_trading_ledger(self, run_id: str) -> dict:
@@ -155,6 +161,7 @@ class BacktestService:
         Retrieves the real execution ledger (Holdings & Trades) from Qlib artifacts.
         """
         from src.dashboard.artifact_parser import parse_detailed_ledger
+
         run_path = self.get_run_path(run_id)
         if not run_path:
             raise ValueError(f"Run artifacts not found for {run_id}")
@@ -166,6 +173,7 @@ class BacktestService:
         Computes alpha decomposition: selection, timing, sizing, cost, beta.
         """
         from src.dashboard.artifact_parser import compute_alpha_decomposition
+
         run_path = self.get_run_path(run_id)
         if not run_path:
             raise ValueError(f"Run artifacts not found for {run_id}")
@@ -178,7 +186,7 @@ class BacktestService:
         """
         from src.common.paths import MLRUNS_DIR
         from src.dashboard.run_deletion import delete_backtest_run
-        
+
         ok = delete_backtest_run(
             run_id,
             mlruns_root=MLRUNS_DIR,
@@ -191,6 +199,7 @@ class BacktestService:
             try:
                 import subprocess
                 import sys
+
                 subprocess.run(
                     [sys.executable, "scripts/build_dashboard_db.py"],
                     cwd=str(self._project_root),
@@ -199,6 +208,3 @@ class BacktestService:
             except Exception:
                 pass
         return ok
-
-
-

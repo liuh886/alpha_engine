@@ -420,9 +420,7 @@ def test_publish_provider_snapshot_different_data_yields_different_id(tmp_path: 
 
 
 def test_validate_for_publish_raises_when_symbols_unaccounted():
-    accounting = update_data.UpdateAccounting(
-        configured={"us": ["AAPL", "MSFT", "GOOG"]}
-    )
+    accounting = update_data.UpdateAccounting(configured={"us": ["AAPL", "MSFT", "GOOG"]})
     accounting.add("attempted", "us", "AAPL")
     accounting.add("updated", "us", "AAPL")
     accounting.add("attempted", "us", "MSFT")

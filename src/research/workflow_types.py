@@ -120,4 +120,3 @@ class ResearchWorkflowResult:
             "evidence_bundle_id": self.evidence_bundle_id,
             "warnings": list(self.warnings),
         }
-

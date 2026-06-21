@@ -121,9 +121,7 @@ class TestFailedWalkForward:
         assert validate_stage_for_registration(entry) == "CANDIDATE"
 
     def test_failed_wf_downgrades_recommended_to_candidate(self):
-        entry = _make_entry(
-            stage="RECOMMENDED", wf_passed=False, inference_passed=True
-        )
+        entry = _make_entry(stage="RECOMMENDED", wf_passed=False, inference_passed=True)
         assert validate_stage_for_registration(entry) == "CANDIDATE"
 
     def test_missing_wf_downgrades_staging_to_candidate(self):

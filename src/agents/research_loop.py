@@ -412,8 +412,8 @@ def run_research_cycle(
         # Extract metrics from the backtest results
         if backtest_results and backtest_results.get("status") == "SUCCESS":
             # Metrics are typically stored in MLflow; attempt extraction
-            result.sharpe, result.max_drawdown, result.excess_return = (
-                _extract_backtest_metrics(market)
+            result.sharpe, result.max_drawdown, result.excess_return = _extract_backtest_metrics(
+                market
             )
         phase_successes += 1
         log.info(
@@ -456,18 +456,14 @@ def run_research_cycle(
         )
 
         result.factor_coverage = attribution_report.attribution_confidence
-        result.top_contributors = [
-            c.to_dict() for c in attribution_report.factor_contributions[:3]
-        ]
+        result.top_contributors = [c.to_dict() for c in attribution_report.factor_contributions[:3]]
 
         phase_successes += 1
         log.info(
             "attribution_phase_complete",
             r2=result.factor_coverage,
             top_contributor=(
-                result.top_contributors[0]["factor_name"]
-                if result.top_contributors
-                else "none"
+                result.top_contributors[0]["factor_name"] if result.top_contributors else "none"
             ),
         )
     except Exception as exc:
@@ -604,11 +600,13 @@ def _build_validation_metrics(
     if scan_report is not None:
         for sr in scan_report.results:
             if sr.name == factor_name:
-                metrics.update({
-                    "icir": sr.icir,
-                    "t_stat": sr.t_stat,
-                    "quintile_spread": sr.quintile_spread,
-                })
+                metrics.update(
+                    {
+                        "icir": sr.icir,
+                        "t_stat": sr.t_stat,
+                        "quintile_spread": sr.quintile_spread,
+                    }
+                )
                 break
 
     # Extract IC from attribution results
@@ -903,11 +901,13 @@ def run_research_loop(
     proposed_factors = registry.list_factors(stage="Proposed")
     for f in proposed_factors:
         # Factors stuck at Proposed with low IC are likely failed hypotheses
-        failed_hypotheses.append({
-            "expression": f.get("expression", ""),
-            "category": f.get("category", ""),
-            "reason": "stuck_at_proposed",
-        })
+        failed_hypotheses.append(
+            {
+                "expression": f.get("expression", ""),
+                "category": f.get("category", ""),
+                "reason": "stuck_at_proposed",
+            }
+        )
 
     log.info(
         "research_loop_started",

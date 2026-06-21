@@ -188,7 +188,9 @@ class TestValidateInferenceInPipeline:
         )
 
         with (
-            patch("src.research.service.validate_inference", return_value=mock_inference_result) as mock_vi,
+            patch(
+                "src.research.service.validate_inference", return_value=mock_inference_result
+            ) as mock_vi,
             patch("src.research.service.R") as mock_R,
             patch("src.research.service.train_model") as mock_train,
             patch("src.research.service.run_backtest") as mock_backtest,
@@ -230,6 +232,7 @@ class TestValidateInferenceInPipeline:
             # First positional arg is the artifact_id
             assert call_args[0][0]  # artifact_id is non-empty
             assert call_args[1].get("n_samples") == 50 or call_args[0][1] == 50
+
 
 # ---------------------------------------------------------------------------
 # Test 3: Training pipeline return dict includes inference_result
@@ -310,6 +313,7 @@ class TestRegisterArtifactInHooks:
             consistency_score: float = 0.7
             n_splits: int = 3
             splits: list = None
+
             def __post_init__(self):
                 if self.splits is None:
                     self.splits = [1, 2, 3]
@@ -330,7 +334,9 @@ class TestRegisterArtifactInHooks:
             patch("src.workflows.hooks.register_model"),
             patch("src.workflows.hooks.register_artifact") as mock_ra,
             patch("src.workflows.hooks.validate_inference", return_value=mock_inference),
-            patch("src.workflows.hooks._run_clean_reconstruction", return_value=mock_reconstruction),
+            patch(
+                "src.workflows.hooks._run_clean_reconstruction", return_value=mock_reconstruction
+            ),
             patch("src.workflows.hooks.ResearchService") as mock_rs_cls,
             patch("src.workflows.hooks.GovernanceService"),
             patch("src.workflows.hooks.EnvironmentManager"),
@@ -409,6 +415,7 @@ class TestRegisterArtifactInHooks:
             consistency_score: float = 0.3
             n_splits: int = 3
             splits: list = None
+
             def __post_init__(self):
                 if self.splits is None:
                     self.splits = [1, 2, 3]
@@ -427,7 +434,9 @@ class TestRegisterArtifactInHooks:
             patch("src.workflows.hooks.register_model"),
             patch("src.workflows.hooks.register_artifact") as mock_ra,
             patch("src.workflows.hooks.validate_inference", return_value=mock_inference),
-            patch("src.workflows.hooks._run_clean_reconstruction", return_value=mock_reconstruction),
+            patch(
+                "src.workflows.hooks._run_clean_reconstruction", return_value=mock_reconstruction
+            ),
             patch("src.workflows.hooks.ResearchService") as mock_rs_cls,
             patch("src.workflows.hooks.GovernanceService"),
             patch("src.workflows.hooks.EnvironmentManager"),

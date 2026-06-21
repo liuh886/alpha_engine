@@ -1,4 +1,3 @@
-
 from src.common.runtime_settings import PROJECT_ROOT, get_runtime_settings
 
 

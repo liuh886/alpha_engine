@@ -158,7 +158,12 @@ def get_job_logs(job_id: str, tail: int = Query(200)):
     try:
         with p.open("r", encoding="utf-8", errors="replace") as f:
             all_lines = f.readlines()
-        tail_lines = [line.rstrip("\n\r") for line in all_lines[-max(tail, 1):]]
-        return {"ok": True, "job_id": str(job_id), "lines": tail_lines, "total_lines": len(all_lines)}
+        tail_lines = [line.rstrip("\n\r") for line in all_lines[-max(tail, 1) :]]
+        return {
+            "ok": True,
+            "job_id": str(job_id),
+            "lines": tail_lines,
+            "total_lines": len(all_lines),
+        }
     except Exception as e:
         return {"ok": False, "error": str(e), "job_id": str(job_id), "lines": []}

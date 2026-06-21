@@ -98,8 +98,7 @@ def _mutation_guard(monkeypatch: pytest.MonkeyPatch):
             for prod_path in PRODUCTION_PATHS:
                 if resolved == prod_path or _is_relative(resolved, prod_path):
                     raise PermissionError(
-                        f"[mutation-guard] Test attempted to write to production "
-                        f"path: {resolved}"
+                        f"[mutation-guard] Test attempted to write to production path: {resolved}"
                     )
 
         return _real_open(file, mode, *args, **kwargs)

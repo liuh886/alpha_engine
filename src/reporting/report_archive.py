@@ -107,7 +107,9 @@ def export_reports_zip(
                 zf.write(src_path, arcname=arcname)
                 written += 1
             except Exception:
-                logger.debug("Failed to add file to reports zip archive", arcname=arcname, exc_info=True)
+                logger.debug(
+                    "Failed to add file to reports zip archive", arcname=arcname, exc_info=True
+                )
                 continue
 
     out_rel = (

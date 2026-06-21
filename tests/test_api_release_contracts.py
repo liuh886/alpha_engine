@@ -410,9 +410,7 @@ def test_portfolio_requires_resolvable_model_identity(portfolio_client, monkeypa
     assert response.json()["error_code"] == "MODEL_ARTIFACT_NOT_FOUND"
 
 
-def test_portfolio_requires_resolvable_portfolio_identity(
-    portfolio_client, monkeypatch, tmp_path
-):
+def test_portfolio_requires_resolvable_portfolio_identity(portfolio_client, monkeypatch, tmp_path):
     (tmp_path / "latest.json").write_text("{}", encoding="utf-8")
     monkeypatch.setattr(
         portfolio,
@@ -527,7 +525,9 @@ def test_portfolio_ready_requires_all_checks(portfolio_client, monkeypatch):
     monkeypatch.setattr(
         portfolio,
         "_collect_portfolio_market_data",
-        lambda _request: _market_data(include_factor=True, include_turnover=True, include_qlib=True),
+        lambda _request: _market_data(
+            include_factor=True, include_turnover=True, include_qlib=True
+        ),
         raising=False,
     )
 
@@ -545,7 +545,9 @@ def test_portfolio_partial_reports_skipped_checks(portfolio_client, monkeypatch)
     monkeypatch.setattr(
         portfolio,
         "_collect_portfolio_market_data",
-        lambda _request: _market_data(include_factor=True, include_turnover=False, include_qlib=True),
+        lambda _request: _market_data(
+            include_factor=True, include_turnover=False, include_qlib=True
+        ),
         raising=False,
     )
 
@@ -563,7 +565,9 @@ def test_portfolio_blocked_uses_service_unavailable(portfolio_client, monkeypatc
     monkeypatch.setattr(
         portfolio,
         "_collect_portfolio_market_data",
-        lambda _request: _market_data(include_factor=False, include_turnover=False, include_qlib=False),
+        lambda _request: _market_data(
+            include_factor=False, include_turnover=False, include_qlib=False
+        ),
         raising=False,
     )
 

@@ -53,7 +53,11 @@ def run_train_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks):
         tag=payload.tag,
         details=payload.details,
     )
-    return {"ok": True, "workflow_id": workflow_id, "message": "Training workflow started in background"}
+    return {
+        "ok": True,
+        "workflow_id": workflow_id,
+        "message": "Training workflow started in background",
+    }
 
 
 @router.post("/backtest")
@@ -79,13 +83,15 @@ def run_backtest_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks)
         tag=payload.tag,
         details=payload.details,
     )
-    return {"ok": True, "workflow_id": workflow_id, "message": "Backtest workflow started in background"}
+    return {
+        "ok": True,
+        "workflow_id": workflow_id,
+        "message": "Backtest workflow started in background",
+    }
 
 
 @router.post("/research-cycle")
-def run_research_cycle_wf(
-    payload: ResearchCycleRequest, background_tasks: BackgroundTasks
-):
+def run_research_cycle_wf(payload: ResearchCycleRequest, background_tasks: BackgroundTasks):
     """Trigger a full research cycle in the background.
 
     Runs: scan -> compile -> backtest -> attribute -> promote.

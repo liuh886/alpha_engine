@@ -33,7 +33,9 @@ def generate_report(market):
         try:
             workflow_cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
         except Exception:
-            logger.warning("Failed to parse workflow config YAML", cfg_path=str(cfg_path), exc_info=True)
+            logger.warning(
+                "Failed to parse workflow config YAML", cfg_path=str(cfg_path), exc_info=True
+            )
             workflow_cfg = {}
 
     qlib_cfg = build_qlib_init_cfg(

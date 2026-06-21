@@ -19,6 +19,7 @@ sys.path.append(str(ROOT))
 # _estimate_factor_model: min_observations enforcement
 # ---------------------------------------------------------------------------
 
+
 def test_estimate_factor_model_enforces_min_observations():
     """Returns zero betas when observations are below the minimum."""
     from src.research.factor_attribution import _estimate_factor_model
@@ -26,13 +27,9 @@ def test_estimate_factor_model_enforces_min_observations():
     # 5 periods, min_observations=10 → should fail
     idx = [f"2021-{m:02d}-01" for m in range(1, 6)]
     portfolio = pd.Series([0.01, -0.02, 0.03, 0.01, 0.02], index=idx)
-    factors = pd.DataFrame(
-        {"momentum": [0.02, 0.01, -0.01, 0.03, 0.01]}, index=idx
-    )
+    factors = pd.DataFrame({"momentum": [0.02, 0.01, -0.01, 0.03, 0.01]}, index=idx)
 
-    betas, r2, residuals = _estimate_factor_model(
-        portfolio, factors, min_observations=10
-    )
+    betas, r2, residuals = _estimate_factor_model(portfolio, factors, min_observations=10)
     assert len(betas) == 1
     assert betas[0] == 0.0
     assert r2 == 0.0
@@ -52,9 +49,7 @@ def test_estimate_factor_model_passes_with_enough_observations():
     portfolio = pd.Series(portfolio_ret, index=idx)
     factors = pd.DataFrame({"f1": factor_ret}, index=idx)
 
-    betas, r2, residuals = _estimate_factor_model(
-        portfolio, factors, min_observations=12
-    )
+    betas, r2, residuals = _estimate_factor_model(portfolio, factors, min_observations=12)
     assert len(betas) == 1
     assert abs(betas[0]) > 0
     assert r2 > 0
@@ -64,6 +59,7 @@ def test_estimate_factor_model_passes_with_enough_observations():
 # ---------------------------------------------------------------------------
 # _estimate_factor_model: ridge regularization
 # ---------------------------------------------------------------------------
+
 
 def test_estimate_factor_model_ridge_returns_valid_betas():
     """Ridge regularization produces finite betas even with collinear factors."""
@@ -91,6 +87,7 @@ def test_estimate_factor_model_ridge_returns_valid_betas():
 # ---------------------------------------------------------------------------
 # AttributionReport: observation metadata fields
 # ---------------------------------------------------------------------------
+
 
 def test_attribution_report_includes_observation_metadata():
     """AttributionReport.to_dict() includes all T49.1 metadata fields."""
@@ -165,6 +162,7 @@ def test_attribution_report_defaults_observation_fields():
 # ---------------------------------------------------------------------------
 # API contract: AttributionRequest validation
 # ---------------------------------------------------------------------------
+
 
 def test_attribution_request_accepts_model_version_id():
     """AttributionRequest accepts and validates model_version_id."""

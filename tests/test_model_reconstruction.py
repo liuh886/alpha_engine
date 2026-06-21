@@ -437,7 +437,9 @@ class TestValidateInference:
         assert result.passed is False
         assert "empty" in result.error.lower()
 
-    def test_inference_result_details(self, artifacts_root, synthetic_model_dir, sample_config, synthetic_model):
+    def test_inference_result_details(
+        self, artifacts_root, synthetic_model_dir, sample_config, synthetic_model
+    ):
         """InferenceResult.details contains useful metadata."""
         feat_df, score_df = _make_synthetic_data(synthetic_model, n_rows=30, n_features=3, seed=99)
         combined = feat_df.copy()
@@ -460,9 +462,7 @@ class TestValidateInference:
 
 
 class TestRegistryEligibility:
-    def test_registration_requires_fresh_inference_and_clean_reconstruction(
-        self, created_artifact
-    ):
+    def test_registration_requires_fresh_inference_and_clean_reconstruction(self, created_artifact):
         inference = InferenceResult(artifact_id=created_artifact.id, passed=True, n_samples=10)
         same_process = ReconstructionResult(
             artifact_id=created_artifact.id,

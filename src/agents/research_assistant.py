@@ -93,12 +93,14 @@ class ResearchAssistant(BaseAgent):
                 # Extract top 3 contributing factors
                 contribs = attribution_dict.get("factor_contributions", [])
                 for fc in contribs[:3]:
-                    top_factors.append({
-                        "name": fc.get("factor_name", ""),
-                        "ic": fc.get("factor_ic", 0.0),
-                        "return_contribution_pct": fc.get("return_contribution_pct", 0.0),
-                        "risk_contribution_pct": fc.get("risk_contribution_pct", 0.0),
-                    })
+                    top_factors.append(
+                        {
+                            "name": fc.get("factor_name", ""),
+                            "ic": fc.get("factor_ic", 0.0),
+                            "return_contribution_pct": fc.get("return_contribution_pct", 0.0),
+                            "risk_contribution_pct": fc.get("risk_contribution_pct", 0.0),
+                        }
+                    )
 
                 factor_coverage = attribution_dict.get("factor_coverage", 0.0)
                 excess_return = attribution_dict.get("excess_return", 0.0)
@@ -263,7 +265,9 @@ class ResearchAssistant(BaseAgent):
         vol_metric = self._get_benchmark_volatility(market)
         panic_index = self._sentiment_audit(vol_metric)
 
-        is_normal = vol_metric <= self.HIGH_VOL_THRESHOLD and panic_index <= self.HIGH_PANIC_THRESHOLD
+        is_normal = (
+            vol_metric <= self.HIGH_VOL_THRESHOLD and panic_index <= self.HIGH_PANIC_THRESHOLD
+        )
 
         if not is_normal:
             format_thought_stream_for_report(
@@ -294,7 +298,12 @@ class ResearchAssistant(BaseAgent):
             f"Checking drawdown for run {run_id}...",
         )
         # Placeholder — in production this would query RunIndex
-        return {"ok": True, "run_id": run_id, "max_drawdown": None, "note": "RunIndex integration pending"}
+        return {
+            "ok": True,
+            "run_id": run_id,
+            "max_drawdown": None,
+            "note": "RunIndex integration pending",
+        }
 
     # =====================================================================
     # Governance  (from Governance Agent)
@@ -338,7 +347,9 @@ class ResearchAssistant(BaseAgent):
             retry_res = run_data_update(market=event.market or "cn")
             success = retry_res["success"]
         elif action == "retry_with_exponential_backoff":
-            format_thought_stream_for_report("ResearchAssistant", "info", "Sleeping before retry...")
+            format_thought_stream_for_report(
+                "ResearchAssistant", "info", "Sleeping before retry..."
+            )
             time.sleep(2)
             success = True
         elif action == "none":
@@ -402,7 +413,12 @@ class ResearchAssistant(BaseAgent):
             "info",
             f"Checking consistency for run {run_id}...",
         )
-        return {"ok": True, "run_id": run_id, "consistent": True, "note": "Full consistency checks pending RunIndex integration"}
+        return {
+            "ok": True,
+            "run_id": run_id,
+            "consistent": True,
+            "note": "Full consistency checks pending RunIndex integration",
+        }
 
     # =====================================================================
     # Architecture  (from Developer Agent)
@@ -462,15 +478,51 @@ class ResearchAssistant(BaseAgent):
     def list_capabilities(self) -> list[dict[str, str]]:
         """List all available tools with descriptions."""
         return [
-            {"name": "analyze_factors", "description": "Analyze factor effectiveness for a given market", "source": "Alpha Agent"},
-            {"name": "suggest_hyperparams", "description": "Suggest LightGBM hyperparameter adjustments", "source": "Alpha Agent"},
-            {"name": "check_data_quality", "description": "Check data integrity for a given market", "source": "Alpha Agent"},
-            {"name": "assess_risk", "description": "Assess portfolio risk metrics and market regime", "source": "Risk Agent"},
-            {"name": "check_drawdown", "description": "Check drawdown metrics for a specific run", "source": "Risk Agent"},
-            {"name": "audit_run", "description": "Audit a backtest run for consistency", "source": "Governance Agent"},
-            {"name": "check_consistency", "description": "Check execution consistency", "source": "Governance Agent"},
-            {"name": "describe_architecture", "description": "Describe system architecture", "source": "Developer Agent"},
-            {"name": "chat", "description": "Natural language interface to all tools", "source": "Unified"},
+            {
+                "name": "analyze_factors",
+                "description": "Analyze factor effectiveness for a given market",
+                "source": "Alpha Agent",
+            },
+            {
+                "name": "suggest_hyperparams",
+                "description": "Suggest LightGBM hyperparameter adjustments",
+                "source": "Alpha Agent",
+            },
+            {
+                "name": "check_data_quality",
+                "description": "Check data integrity for a given market",
+                "source": "Alpha Agent",
+            },
+            {
+                "name": "assess_risk",
+                "description": "Assess portfolio risk metrics and market regime",
+                "source": "Risk Agent",
+            },
+            {
+                "name": "check_drawdown",
+                "description": "Check drawdown metrics for a specific run",
+                "source": "Risk Agent",
+            },
+            {
+                "name": "audit_run",
+                "description": "Audit a backtest run for consistency",
+                "source": "Governance Agent",
+            },
+            {
+                "name": "check_consistency",
+                "description": "Check execution consistency",
+                "source": "Governance Agent",
+            },
+            {
+                "name": "describe_architecture",
+                "description": "Describe system architecture",
+                "source": "Developer Agent",
+            },
+            {
+                "name": "chat",
+                "description": "Natural language interface to all tools",
+                "source": "Unified",
+            },
         ]
 
     # =====================================================================
@@ -488,11 +540,7 @@ class ResearchAssistant(BaseAgent):
             benchmark = "SPY" if market.lower() == "us" else "SH000001"
 
             res = service.inspect(benchmark)
-            prices = [
-                float(d["close"])
-                for d in res.get("ohlcv", [])
-                if d.get("close") is not None
-            ]
+            prices = [float(d["close"]) for d in res.get("ohlcv", []) if d.get("close") is not None]
 
             if len(prices) > 10:
                 import math

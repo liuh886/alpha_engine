@@ -83,9 +83,7 @@ class PositionRiskManager:
     def __init__(self, config: PositionRiskConfig | None = None):
         self.config = config or PositionRiskConfig()
 
-    def check_stop_loss(
-        self, positions: dict[str, PositionInfo]
-    ) -> list[PositionRiskSignal]:
+    def check_stop_loss(self, positions: dict[str, PositionInfo]) -> list[PositionRiskSignal]:
         """Check simple stop-loss: current_price vs entry_price."""
         signals: list[PositionRiskSignal] = []
         threshold = self.config.stop_loss_pct
@@ -102,18 +100,13 @@ class PositionRiskManager:
                         current_value=round(pnl_pct, 4),
                         threshold=threshold,
                         action=ActionType.SELL,
-                        reason=(
-                            f"Stop-loss triggered: {pnl_pct:.2%} "
-                            f"(threshold {threshold:.2%})"
-                        ),
+                        reason=(f"Stop-loss triggered: {pnl_pct:.2%} (threshold {threshold:.2%})"),
                     )
                 )
 
         return signals
 
-    def check_trailing_stop(
-        self, positions: dict[str, PositionInfo]
-    ) -> list[PositionRiskSignal]:
+    def check_trailing_stop(self, positions: dict[str, PositionInfo]) -> list[PositionRiskSignal]:
         """Check trailing stop: current_price vs peak_price."""
         signals: list[PositionRiskSignal] = []
         threshold = self.config.trailing_stop_pct
@@ -139,9 +132,7 @@ class PositionRiskManager:
 
         return signals
 
-    def check_position_limits(
-        self, positions: dict[str, PositionInfo]
-    ) -> list[PositionRiskSignal]:
+    def check_position_limits(self, positions: dict[str, PositionInfo]) -> list[PositionRiskSignal]:
         """Check if any single position exceeds max_position_weight."""
         signals: list[PositionRiskSignal] = []
         threshold = self.config.max_position_weight
@@ -155,18 +146,13 @@ class PositionRiskManager:
                         current_value=round(pos.weight, 4),
                         threshold=threshold,
                         action=ActionType.REDUCE,
-                        reason=(
-                            f"Position weight {pos.weight:.2%} exceeds limit "
-                            f"{threshold:.2%}"
-                        ),
+                        reason=(f"Position weight {pos.weight:.2%} exceeds limit {threshold:.2%}"),
                     )
                 )
 
         return signals
 
-    def check_sector_exposure(
-        self, positions: dict[str, PositionInfo]
-    ) -> list[PositionRiskSignal]:
+    def check_sector_exposure(self, positions: dict[str, PositionInfo]) -> list[PositionRiskSignal]:
         """Check if any sector exceeds max_sector_weight."""
         signals: list[PositionRiskSignal] = []
         threshold = self.config.max_sector_weight
@@ -179,9 +165,7 @@ class PositionRiskManager:
         for sector, weight in sector_weights.items():
             if weight > threshold:
                 instruments_in_sector = [
-                    inst
-                    for inst, pos in positions.items()
-                    if (pos.sector or "Unknown") == sector
+                    inst for inst, pos in positions.items() if (pos.sector or "Unknown") == sector
                 ]
                 signals.append(
                     PositionRiskSignal(
@@ -191,8 +175,7 @@ class PositionRiskManager:
                         threshold=threshold,
                         action=ActionType.REDUCE,
                         reason=(
-                            f"Sector '{sector}' weight {weight:.2%} exceeds limit "
-                            f"{threshold:.2%}"
+                            f"Sector '{sector}' weight {weight:.2%} exceeds limit {threshold:.2%}"
                         ),
                     )
                 )
@@ -244,9 +227,7 @@ class PositionRiskManager:
         )
         return result
 
-    def evaluate_portfolio(
-        self, positions: dict[str, PositionInfo]
-    ) -> list[PositionRiskSignal]:
+    def evaluate_portfolio(self, positions: dict[str, PositionInfo]) -> list[PositionRiskSignal]:
         """Run ALL risk checks and return aggregated signals."""
         signals: list[PositionRiskSignal] = []
         signals.extend(self.check_stop_loss(positions))

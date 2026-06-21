@@ -116,7 +116,9 @@ class ArenaIndex(BaseIndex):
                 try:
                     d["config"] = json.loads(d["config_json"])
                 except Exception:
-                    logger.debug("Failed to parse arena config_json", arena_id=d.get("id"), exc_info=True)
+                    logger.debug(
+                        "Failed to parse arena config_json", arena_id=d.get("id"), exc_info=True
+                    )
                     d["config"] = {}
             else:
                 d["config"] = {}

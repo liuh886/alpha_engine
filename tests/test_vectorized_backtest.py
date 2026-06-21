@@ -119,10 +119,18 @@ class TestRunVectorizedBacktest:
         returns = _make_returns(pred)
 
         result_overlap = run_vectorized_backtest(
-            predictions=pred, returns=returns, topk=5, rebalance_days=10, non_overlapping=False,
+            predictions=pred,
+            returns=returns,
+            topk=5,
+            rebalance_days=10,
+            non_overlapping=False,
         )
         result_non_overlap = run_vectorized_backtest(
-            predictions=pred, returns=returns, topk=5, rebalance_days=10, non_overlapping=True,
+            predictions=pred,
+            returns=returns,
+            topk=5,
+            rebalance_days=10,
+            non_overlapping=True,
         )
 
         # Non-overlapping should have fewer periods
@@ -154,6 +162,7 @@ class TestRunVectorizedBacktest:
         assert "mean_ic" in d
         # Should be JSON serializable
         import json
+
         json.dumps(d)
 
 
@@ -164,14 +173,10 @@ def _make_adapter_fixture(market: str):
         if market == "cn"
         else ["AAPL", "AMZN", "GOOG", "MSFT", "NVDA", "TSLA"]
     )
-    index = pd.MultiIndex.from_product(
-        [dates, instruments], names=["datetime", "instrument"]
-    )
+    index = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
     date_no = np.repeat(np.arange(len(dates), dtype=float), len(instruments))
     stock_no = np.tile(np.arange(len(instruments), dtype=float), len(dates))
-    predictions = pd.DataFrame(
-        {"score": -0.05 - stock_no * 0.1 + date_no * 0.003}, index=index
-    )
+    predictions = pd.DataFrame({"score": -0.05 - stock_no * 0.1 + date_no * 0.003}, index=index)
     returns = pd.DataFrame(
         {"return": (stock_no - 2.5) * 0.001 + (date_no % 3 - 1) * 0.0005},
         index=index,
@@ -197,13 +202,9 @@ def _make_benchmark_fixture():
     instruments = [f"SH{600000 + i:06d}" for i in range(100)] + [
         f"SZ{1 + i:06d}" for i in range(100)
     ]
-    index = pd.MultiIndex.from_product(
-        [dates, instruments], names=["datetime", "instrument"]
-    )
+    index = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
     predictions = pd.DataFrame({"score": rng.normal(size=len(index))}, index=index)
-    returns = pd.DataFrame(
-        {"return": rng.normal(0.0002, 0.012, size=len(index))}, index=index
-    )
+    returns = pd.DataFrame({"return": rng.normal(0.0002, 0.012, size=len(index))}, index=index)
     predictions.loc[rng.random(len(index)) < 0.03, "score"] = np.nan
     config = AdapterBacktestConfig(
         calendar=tuple(dates),

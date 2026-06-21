@@ -114,8 +114,7 @@ class TimeVaryingAttribution:
         return {
             "windows": [w.to_dict() for w in self.windows],
             "factor_trends": {
-                k: [round(v, 6) for v in vals]
-                for k, vals in self.factor_trends.items()
+                k: [round(v, 6) for v in vals] for k, vals in self.factor_trends.items()
             },
             "window_labels": self.window_labels,
         }
@@ -268,9 +267,7 @@ def _compute_forward_returns(
     return fwd_series.dropna()
 
 
-def _group_by_cross_section(
-    df: pd.DataFrame, freq: str = "ME"
-) -> list[tuple[str, pd.DataFrame]]:
+def _group_by_cross_section(df: pd.DataFrame, freq: str = "ME") -> list[tuple[str, pd.DataFrame]]:
     """Group a (datetime, instrument) DataFrame by calendar periods."""
     if not isinstance(df.index, pd.MultiIndex):
         return []
@@ -353,9 +350,7 @@ def _compute_quintile_spread_series(
             continue
 
         try:
-            quintile_labels = pd.qcut(
-                fv_aligned, q=5, labels=[1, 2, 3, 4, 5], duplicates="drop"
-            )
+            quintile_labels = pd.qcut(fv_aligned, q=5, labels=[1, 2, 3, 4, 5], duplicates="drop")
         except ValueError:
             continue
 
@@ -465,18 +460,14 @@ def _estimate_factor_model(
         except Exception:
             # Fall back to OLS if ridge fails
             try:
-                beta_full, _, _, _ = np.linalg.lstsq(
-                    X_with_intercept, y, rcond=None
-                )
+                beta_full, _, _, _ = np.linalg.lstsq(X_with_intercept, y, rcond=None)
             except np.linalg.LinAlgError:
                 n_factors = factor_spread_df.shape[1]
                 return np.zeros(n_factors), 0.0, np.array([])
     else:
         # OLS: beta = (X'X)^{-1} X'y
         try:
-            beta_full, residuals_sum, rank, sv = np.linalg.lstsq(
-                X_with_intercept, y, rcond=None
-            )
+            beta_full, residuals_sum, rank, sv = np.linalg.lstsq(X_with_intercept, y, rcond=None)
         except np.linalg.LinAlgError:
             n_factors = factor_spread_df.shape[1]
             return np.zeros(n_factors), 0.0, np.array([])
@@ -542,6 +533,7 @@ def attribute_returns(
         metadata.
     """
     from src.common.dates import default_end_date
+
     end_date = end_date or default_end_date()
     from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
 
@@ -618,9 +610,7 @@ def attribute_returns(
 
     # Load raw factor values (for quintile ranking)
     try:
-        raw_factor_df = _load_raw_factor_values(
-            factor_expressions, market, start_date, end_date
-        )
+        raw_factor_df = _load_raw_factor_values(factor_expressions, market, start_date, end_date)
     except Exception:
         raw_factor_df = factor_df
 
@@ -651,9 +641,7 @@ def attribute_returns(
     factor_spread_dict: dict[str, pd.Series] = {}
     factor_ic_dict: dict[str, float] = {}
 
-    for col_idx, (factor_name, expression) in enumerate(
-        zip(factor_names, factor_expressions)
-    ):
+    for col_idx, (factor_name, expression) in enumerate(zip(factor_names, factor_expressions)):
         # --- Quintile-spread return series ---
         if col_idx < len(raw_cols):
             # Extract single-factor raw data
@@ -694,9 +682,7 @@ def attribute_returns(
                 if np.isfinite(ic):
                     period_ics.append(ic)
 
-            factor_ic_dict[factor_name] = (
-                float(np.mean(period_ics)) if period_ics else 0.0
-            )
+            factor_ic_dict[factor_name] = float(np.mean(period_ics)) if period_ics else 0.0
         else:
             factor_ic_dict[factor_name] = 0.0
 
@@ -707,8 +693,9 @@ def attribute_returns(
 
     # Drop factors with no data
     valid_factors = [
-        name for name in factor_names if name in factor_spread_df.columns
-        and factor_spread_df[name].notna().any()
+        name
+        for name in factor_names
+        if name in factor_spread_df.columns and factor_spread_df[name].notna().any()
     ]
     if not valid_factors:
         log.warning("No factors have valid quintile-spread data")
@@ -734,9 +721,7 @@ def attribute_returns(
         # Fall back: use equal-weighted average of factor spreads as proxy
         portfolio_monthly = factor_spread_df.mean(axis=1)
     else:
-        portfolio_monthly = portfolio_daily.resample("ME").apply(
-            lambda x: (1 + x).prod() - 1
-        )
+        portfolio_monthly = portfolio_daily.resample("ME").apply(lambda x: (1 + x).prod() - 1)
         # Align index to match period labels from cross-sections
         portfolio_monthly.index = portfolio_monthly.index.strftime("%Y-%m-%d")
 
@@ -815,9 +800,7 @@ def attribute_returns(
 
     # Factor coverage: what % of total return is explained
     factor_coverage = (
-        abs(sum_explained) / abs(total_return) * 100.0
-        if abs(total_return) > 1e-15
-        else 0.0
+        abs(sum_explained) / abs(total_return) * 100.0 if abs(total_return) > 1e-15 else 0.0
     )
     factor_coverage = min(factor_coverage, 100.0)
 
@@ -908,6 +891,7 @@ def attribute_returns_rolling(
         factor contribution trends, and human-readable window labels.
     """
     from src.common.dates import default_end_date
+
     end_date = end_date or default_end_date()
     import calendar
 
@@ -1001,7 +985,9 @@ def attribute_returns_rolling(
 
     factor_trends: dict[str, list[float]] = {name: [] for name in sorted(all_factor_names)}
     for report in windows:
-        contrib_by_name = {fc.factor_name: fc.return_contribution_pct for fc in report.factor_contributions}
+        contrib_by_name = {
+            fc.factor_name: fc.return_contribution_pct for fc in report.factor_contributions
+        }
         for name in factor_trends:
             factor_trends[name].append(contrib_by_name.get(name, 0.0))
 

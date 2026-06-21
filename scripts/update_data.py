@@ -93,9 +93,7 @@ def publish_provider_snapshot(
 ) -> DataSnapshot:
     """Persist all mandatory evidence and move the authoritative pointer last."""
     accounting.validate_for_publish(selected_markets=selected_markets)
-    _validate_quality_report(
-        quality_report, universe=universe, quality_policy=quality_policy
-    )
+    _validate_quality_report(quality_report, universe=universe, quality_policy=quality_policy)
     provider_dir = Path(provider_dir)
     calendar_path = provider_dir / "calendars" / f"{frequency}.txt"
     if not calendar_path.exists():
@@ -154,9 +152,7 @@ def publish_provider_snapshot(
             summary=report,
         )
 
-    DataSnapshotIndex(db_path=db_path).upsert_manifest(
-        snapshot.manifest, dataset_key=dataset_key
-    )
+    DataSnapshotIndex(db_path=db_path).upsert_manifest(snapshot.manifest, dataset_key=dataset_key)
     write_latest_manifest_file(
         output_path=marker_path, dataset_key=dataset_key, manifest=snapshot.manifest
     )
@@ -320,14 +316,10 @@ def build_provider_stage(
 
         inst_dir = provider_stage / "instruments"
         inst_dir.mkdir(exist_ok=True)
-        (inst_dir / f"{market}.txt").write_text(
-            "\n".join(instruments) + "\n", encoding="utf-8"
-        )
+        (inst_dir / f"{market}.txt").write_text("\n".join(instruments) + "\n", encoding="utf-8")
 
     sorted_dates = sorted(all_dates)
-    (cal_dir / "day.txt").write_text(
-        "\n".join(sorted_dates) + "\n", encoding="utf-8"
-    )
+    (cal_dir / "day.txt").write_text("\n".join(sorted_dates) + "\n", encoding="utf-8")
 
 
 def run_data_update(args) -> DataSnapshot:
@@ -397,9 +389,7 @@ def run_data_update(args) -> DataSnapshot:
                 if existing is not None:
                     last = existing["date"].max()
                     lookback = max(int(args.lookback_days), 0)
-                    start = (pd.Timestamp(last) - pd.Timedelta(days=lookback)).strftime(
-                        "%Y-%m-%d"
-                    )
+                    start = (pd.Timestamp(last) - pd.Timedelta(days=lookback)).strftime("%Y-%m-%d")
 
                 # Spot consistency check
                 if not spot_check_done:
@@ -416,13 +406,10 @@ def run_data_update(args) -> DataSnapshot:
                         report["providers"] = [p_name, f_name]
                         consistency_reports.append(report)
                         if not report["ok"]:
-                            print(
-                                f"    [!] Consistency Warning for {t}: {report['warnings']}"
-                            )
+                            print(f"    [!] Consistency Warning for {t}: {report['warnings']}")
                         else:
                             print(
-                                f"    [OK] Consistency check passed for {t} "
-                                f"({p_name} vs {f_name})"
+                                f"    [OK] Consistency check passed for {t} ({p_name} vs {f_name})"
                             )
                         spot_check_done = True
 
@@ -460,11 +447,7 @@ def run_data_update(args) -> DataSnapshot:
 
                 if not resp.ok or not resp.result:
                     errs = "; ".join(
-                        [
-                            f"{a.provider}: {a.error}"
-                            for a in resp.attempts
-                            if not a.ok and a.error
-                        ]
+                        [f"{a.provider}: {a.error}" for a in resp.attempts if not a.ok and a.error]
                     )
                     print(f"    [!] Failed: {errs or 'unknown error'}")
                     accounting.add("failed", reg, qlib_ticker, reason=errs or "fetch failed")
@@ -484,9 +467,7 @@ def run_data_update(args) -> DataSnapshot:
                     )
                     for e in schema_errors:
                         print(f"        -> {e}")
-                    accounting.add(
-                        "failed", reg, qlib_ticker, reason="schema validation failed"
-                    )
+                    accounting.add("failed", reg, qlib_ticker, reason="schema validation failed")
                     continue
 
                 merged = _merge_existing(existing, validated_df)
@@ -541,9 +522,7 @@ def run_data_update(args) -> DataSnapshot:
         all_consistency_warnings = []
         for rep in consistency_reports:
             if not rep["ok"]:
-                all_consistency_warnings.extend(
-                    [f"[{rep['symbol']}] {w}" for w in rep["warnings"]]
-                )
+                all_consistency_warnings.extend([f"[{rep['symbol']}] {w}" for w in rep["warnings"]])
         if all_consistency_warnings:
             q["warnings"] = list(set((q.get("warnings") or []) + all_consistency_warnings))
 

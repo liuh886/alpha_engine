@@ -20,6 +20,7 @@ sys.path.append(str(ROOT))
 # Thought stream entry format (unit tests, no file I/O)
 # ---------------------------------------------------------------------------
 
+
 def test_thought_stream_entry_format():
     """A manually constructed entry has all required fields in the new format."""
     from datetime import datetime
@@ -54,7 +55,7 @@ def test_legacy_float_id_is_rejected():
     import time
 
     legacy_id = str(time.time())  # e.g. "1750456800.123456"
-    assert "." in legacy_id or legacy_id.isdigit() or not "_" in legacy_id
+    assert "." in legacy_id or legacy_id.isdigit() or "_" not in legacy_id
 
 
 def test_normalized_agent_name_constant():
@@ -75,6 +76,7 @@ def test_format_thought_stream_is_callable():
 # ---------------------------------------------------------------------------
 # AgentControlCenter: _safeFormatTime (frontend equivalent logic in Python)
 # ---------------------------------------------------------------------------
+
 
 def test_safe_format_time_handles_valid_iso():
     """Valid ISO 8601 timestamp formats correctly."""
@@ -108,7 +110,7 @@ def test_safe_format_time_handles_invalid_string():
     from datetime import datetime
 
     try:
-        d = datetime.fromisoformat(ts)
+        datetime.fromisoformat(ts)
         assert False, "Should have raised"
     except ValueError:
         pass  # Expected
@@ -117,6 +119,7 @@ def test_safe_format_time_handles_invalid_string():
 # ---------------------------------------------------------------------------
 # Backward compatibility: legacy thought stream entries
 # ---------------------------------------------------------------------------
+
 
 def test_legacy_entries_in_existing_file_are_preserved():
     """If the file already has legacy entries, their audit payload is preserved."""

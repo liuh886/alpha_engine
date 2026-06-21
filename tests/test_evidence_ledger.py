@@ -76,23 +76,25 @@ def test_research_run_bundle_has_provenance_fields(tmp_path):
     runs_dir = tmp_path / "research_runs"
     runs_dir.mkdir()
     (runs_dir / f"{run_id}.json").write_text(
-        json.dumps({
-            "run_id": run_id,
-            "market": "cn",
-            "goal": "provenance test",
-            "status": "completed",
-            "recommendation": "deploy",
-            "created_at": "2026-06-19T10:00:00",
-            "completed_at": "2026-06-19T10:05:00",
-            "total_duration_seconds": 300,
-            "steps": [
-                {"name": "train", "status": "completed", "output": {"ic": 0.05}},
-                {"name": "walk_forward", "status": "completed", "output": {"mean_ic": 0.04}},
-            ],
-            "n_steps": 2,
-            "n_completed": 2,
-            "n_failed": 0,
-        }),
+        json.dumps(
+            {
+                "run_id": run_id,
+                "market": "cn",
+                "goal": "provenance test",
+                "status": "completed",
+                "recommendation": "deploy",
+                "created_at": "2026-06-19T10:00:00",
+                "completed_at": "2026-06-19T10:05:00",
+                "total_duration_seconds": 300,
+                "steps": [
+                    {"name": "train", "status": "completed", "output": {"ic": 0.05}},
+                    {"name": "walk_forward", "status": "completed", "output": {"mean_ic": 0.04}},
+                ],
+                "n_steps": 2,
+                "n_completed": 2,
+                "n_failed": 0,
+            }
+        ),
         encoding="utf-8",
     )
 
@@ -105,7 +107,9 @@ def test_research_run_bundle_has_provenance_fields(tmp_path):
     assert bundle.generated_at  # non-empty timestamp
 
     # Must trace back to the artifact
-    assert any(s.name == "research_run_artifact" and s.status.value == "found" for s in bundle.sources)
+    assert any(
+        s.name == "research_run_artifact" and s.status.value == "found" for s in bundle.sources
+    )
 
     # Must include step metrics
     assert bundle.metrics.get("n_steps") == 2

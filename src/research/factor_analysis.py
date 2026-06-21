@@ -136,9 +136,7 @@ def _load_factor_names(market: str) -> list[str]:
         config_file = CONFIG_DIR / config_name
 
     if not config_file.exists():
-        raise FileNotFoundError(
-            f"Workflow config not found for market={market}"
-        )
+        raise FileNotFoundError(f"Workflow config not found for market={market}")
 
     with open(config_file) as f:
         config = yaml.safe_load(f)
@@ -255,9 +253,7 @@ def _compute_forward_returns(
     return fwd_series.dropna()
 
 
-def _group_by_cross_section(
-    df: pd.DataFrame, freq: str = "ME"
-) -> list[tuple[str, pd.DataFrame]]:
+def _group_by_cross_section(df: pd.DataFrame, freq: str = "ME") -> list[tuple[str, pd.DataFrame]]:
     """Group a (datetime, instrument) DataFrame by time periods."""
     if not isinstance(df.index, pd.MultiIndex):
         return []
@@ -431,12 +427,8 @@ def compute_factor_ic(
             generated_at=datetime.now().isoformat(),
         )
 
-    factor_df = factor_df.loc[
-        factor_df.index.get_level_values("datetime").isin(common_dates)
-    ]
-    fwd_returns = fwd_returns.loc[
-        fwd_returns.index.get_level_values("datetime").isin(common_dates)
-    ]
+    factor_df = factor_df.loc[factor_df.index.get_level_values("datetime").isin(common_dates)]
+    fwd_returns = fwd_returns.loc[fwd_returns.index.get_level_values("datetime").isin(common_dates)]
 
     # Group by cross-section periods
     cross_sections = _group_by_cross_section(factor_df, freq=freq)
@@ -501,11 +493,7 @@ def compute_factor_ic(
         ic_std = float(np.std(ic_array, ddof=1)) if len(ic_array) > 1 else 0.0
         ic_ir = mean_ic / ic_std if ic_std > 1e-10 else 0.0
         pos_ratio = float(np.mean(ic_array > 0))
-        t_stat = (
-            float(mean_ic / (ic_std / np.sqrt(len(ic_array))))
-            if ic_std > 1e-10
-            else 0.0
-        )
+        t_stat = float(mean_ic / (ic_std / np.sqrt(len(ic_array)))) if ic_std > 1e-10 else 0.0
 
         factor_results.append(
             FactorICResult(
@@ -629,17 +617,11 @@ def compute_factor_decay(
         if len(common_dates) == 0:
             continue
 
-        fv_aligned = fv.loc[
-            fv.index.get_level_values("datetime").isin(common_dates)
-        ]
-        fwd_aligned = fwd.loc[
-            fwd.index.get_level_values("datetime").isin(common_dates)
-        ]
+        fv_aligned = fv.loc[fv.index.get_level_values("datetime").isin(common_dates)]
+        fwd_aligned = fwd.loc[fwd.index.get_level_values("datetime").isin(common_dates)]
 
         # Monthly cross-sections
-        sections_fv = _group_by_cross_section(
-            fv_aligned.to_frame("fv"), freq="ME"
-        )
+        sections_fv = _group_by_cross_section(fv_aligned.to_frame("fv"), freq="ME")
 
         period_ics: list[float] = []
         for period_label, section_df in sections_fv:

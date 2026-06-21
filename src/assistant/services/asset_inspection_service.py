@@ -164,7 +164,7 @@ class AssetInspectionService:
             with pred_path.open("rb") as f:
                 pred_df = pickle.load(f)
 
-            if not isinstance(pred_df, type(None)) and hasattr(pred_df.index, 'get_level_values'):
+            if not isinstance(pred_df, type(None)) and hasattr(pred_df.index, "get_level_values"):
                 instruments = pred_df.index.get_level_values("instrument")
             else:
                 return None, None

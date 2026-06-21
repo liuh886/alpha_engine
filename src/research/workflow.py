@@ -120,4 +120,3 @@ class ResearchWorkflow:
 
     def list_runs(self, limit: int = 20) -> list[dict]:
         return self.store.list(limit=limit)
-

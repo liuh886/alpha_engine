@@ -65,7 +65,7 @@ class ModelManager:
 
         data["models"].append(entry)
         self._save(data)
-        logger.info("Model registered", model_id=entry['id'])
+        logger.info("Model registered", model_id=entry["id"])
 
     def list(self):
         """List all registered models."""

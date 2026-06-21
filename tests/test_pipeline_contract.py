@@ -112,9 +112,18 @@ class TestPipelineStepContracts:
 
         summary = run.get_summary()
         required_fields = [
-            "run_id", "market", "goal", "status", "recommendation",
-            "created_at", "completed_at", "total_duration_seconds",
-            "steps", "n_steps", "n_completed", "n_failed",
+            "run_id",
+            "market",
+            "goal",
+            "status",
+            "recommendation",
+            "created_at",
+            "completed_at",
+            "total_duration_seconds",
+            "steps",
+            "n_steps",
+            "n_completed",
+            "n_failed",
         ]
         for field in required_fields:
             assert field in summary, f"Missing field: {field}"
@@ -138,7 +147,15 @@ class TestPipelineStepContracts:
         run = ResearchRun(market="cn", goal="test sequence")
         run.start()
 
-        step_names = ["factor_scan", "compile", "train", "validate", "backtest", "attribution", "report"]
+        step_names = [
+            "factor_scan",
+            "compile",
+            "train",
+            "validate",
+            "backtest",
+            "attribution",
+            "report",
+        ]
         for name in step_names:
             with run.step(name) as step:
                 step.output = {"status": "ok"}
@@ -252,7 +269,9 @@ def test_research_service_success_emits_exactly_one_model_artifact(tmp_path, mon
     def fake_validate_inference(artifact_id, **kwargs):
         return InferenceResult(artifact_id=artifact_id, passed=True, n_samples=50, n_predictions=50)
 
-    monkeypatch.setattr(service_module, "validate_inference", fake_validate_inference, raising=False)
+    monkeypatch.setattr(
+        service_module, "validate_inference", fake_validate_inference, raising=False
+    )
 
     config = {
         "market": "us",

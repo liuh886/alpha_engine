@@ -137,6 +137,12 @@ def get_walk_forward_result(job_id: str) -> dict[str, Any]:
     # Fallback: try loading from persisted files on disk.
     persisted = _load_persisted_result(job_id)
     if persisted:
-        return {"ok": True, "job_id": job_id, "status": "succeeded", "result": persisted, "source": "disk"}
+        return {
+            "ok": True,
+            "job_id": job_id,
+            "status": "succeeded",
+            "result": persisted,
+            "source": "disk",
+        }
 
     raise HTTPException(status_code=404, detail="job not found")

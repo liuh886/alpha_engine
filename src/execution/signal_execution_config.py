@@ -30,14 +30,16 @@ class SignalExecutionConfig:
     """Number of stocks per grade tier. AAA = top N, AA = top 2N,
     A = top 3N, V = bottom 3N, VV = bottom 2N, VVV = bottom N."""
 
-    grade_weights: dict[str, float] = field(default_factory=lambda: {
-        "AAA": 3.0,
-        "AA": 2.0,
-        "A": 1.0,
-        "V": -1.0,
-        "VV": -2.0,
-        "VVV": -3.0,
-    })
+    grade_weights: dict[str, float] = field(
+        default_factory=lambda: {
+            "AAA": 3.0,
+            "AA": 2.0,
+            "A": 1.0,
+            "V": -1.0,
+            "VV": -2.0,
+            "VVV": -3.0,
+        }
+    )
     """Raw weight multiplier per grade. Positive = long, negative = short.
     Higher absolute value = stronger conviction position."""
 
@@ -110,38 +112,26 @@ class SignalExecutionConfig:
         if self.market not in ("cn", "us"):
             raise ValueError(f"market must be 'cn' or 'us', got {self.market!r}")
         if self.long_fraction <= 0 or self.long_fraction > 1:
-            raise ValueError(
-                f"long_fraction must be in (0, 1], got {self.long_fraction}"
-            )
+            raise ValueError(f"long_fraction must be in (0, 1], got {self.long_fraction}")
         if self.short_fraction < 0 or self.short_fraction > 1:
-            raise ValueError(
-                f"short_fraction must be in [0, 1], got {self.short_fraction}"
-            )
+            raise ValueError(f"short_fraction must be in [0, 1], got {self.short_fraction}")
         if self.long_fraction + self.short_fraction > 1.0:
             raise ValueError(
                 "long_fraction + short_fraction must not exceed 1.0, "
                 f"got {self.long_fraction} + {self.short_fraction}"
             )
         if self.rebalance_days <= 0:
-            raise ValueError(
-                f"rebalance_days must be positive, got {self.rebalance_days}"
-            )
+            raise ValueError(f"rebalance_days must be positive, got {self.rebalance_days}")
         if self.step_size <= 0:
-            raise ValueError(
-                f"step_size must be positive, got {self.step_size}"
-            )
+            raise ValueError(f"step_size must be positive, got {self.step_size}")
         if self.max_single_position_weight <= 0:
             raise ValueError(
                 "max_single_position_weight must be positive, "
                 f"got {self.max_single_position_weight}"
             )
         if self.min_stocks_per_side < 1:
-            raise ValueError(
-                f"min_stocks_per_side must be >= 1, got {self.min_stocks_per_side}"
-            )
+            raise ValueError(f"min_stocks_per_side must be >= 1, got {self.min_stocks_per_side}")
         if self.ic_lookback_days < 10:
-            raise ValueError(
-                f"ic_lookback_days must be >= 10, got {self.ic_lookback_days}"
-            )
+            raise ValueError(f"ic_lookback_days must be >= 10, got {self.ic_lookback_days}")
         if self.buy_cost_bps < 0 or self.sell_cost_bps < 0:
             raise ValueError("cost_bps must be non-negative")

@@ -160,7 +160,9 @@ def test_run_backtest_auth_success(monkeypatch):
         monkeypatch.setenv("ALPHA_DEVELOPER_TOKEN", "secret123")
         mcp_server._DEVELOPER_TOKEN = "secret123"
 
-        mcp_server.run_backtest(token="secret123", market="us", start_date="2025-01-01", end_date="2025-01-31")
+        mcp_server.run_backtest(
+            token="secret123", market="us", start_date="2025-01-01", end_date="2025-01-31"
+        )
 
         assert commands, "expected subprocess.run to be invoked"
         cmd = commands[0]

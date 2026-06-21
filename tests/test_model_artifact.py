@@ -43,6 +43,7 @@ def _eligibility_results(artifact_id: str) -> dict:
         ),
     }
 
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -196,7 +197,10 @@ class TestCreateArtifact:
         assert manifest.config_path == "resolved_config.json"
         assert manifest.logs_path == "training.log"
         assert manifest.metrics_path == "metrics.json"
-        assert json.loads((artifact_dir / manifest.metrics_path).read_text())["annualized_return"] == 0.12
+        assert (
+            json.loads((artifact_dir / manifest.metrics_path).read_text())["annualized_return"]
+            == 0.12
+        )
         assert (artifact_dir / manifest.logs_path).read_text(encoding="utf-8").splitlines() == [
             "fit:start",
             "fit:complete",
@@ -266,7 +270,9 @@ class TestCreateArtifact:
         assert loaded.features == manifest.features
         assert loaded.checksums == manifest.checksums
 
-    def test_create_rejects_missing_model_dir(self, artifacts_root, sample_config, sample_predictions, sample_labels):
+    def test_create_rejects_missing_model_dir(
+        self, artifacts_root, sample_config, sample_predictions, sample_labels
+    ):
         with pytest.raises(FileNotFoundError, match="Model directory not found"):
             create_artifact(
                 model_dir="/nonexistent/path",
@@ -276,7 +282,9 @@ class TestCreateArtifact:
                 snapshot_id="test_snap",
             )
 
-    def test_create_rejects_empty_model_dir(self, artifacts_root, tmp_path, sample_config, sample_predictions, sample_labels):
+    def test_create_rejects_empty_model_dir(
+        self, artifacts_root, tmp_path, sample_config, sample_predictions, sample_labels
+    ):
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
         with pytest.raises(FileNotFoundError, match="No .pkl"):
@@ -336,6 +344,7 @@ class TestValidateArtifact:
         bad = ArtifactManifest(id="bad1", model_binary_path="")
         _REGISTRY = get_registry()
         from src.models import artifact as _mod
+
         _mod._REGISTRY[bad.id] = bad
 
         with pytest.raises(ArtifactValidationError, match="missing required fields"):

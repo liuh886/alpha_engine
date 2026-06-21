@@ -56,4 +56,3 @@ class TrainingService:
             "command_envelopes": [command_envelope.to_dict()],
             "commands": commands,
         }
-

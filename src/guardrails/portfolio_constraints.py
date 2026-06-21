@@ -35,6 +35,7 @@ __all__ = [
 
 class ConstraintType(str, Enum):
     """Types of portfolio constraints."""
+
     INDUSTRY_CONCENTRATION = "industry_concentration"
     CORRELATION_CROWDING = "correlation_crowding"
     FACTOR_EXPOSURE = "factor_exposure"
@@ -80,31 +81,26 @@ class ConstraintViolation:
 # Default constraint configuration
 DEFAULT_CONSTRAINT_CONFIG: dict[str, Any] = {
     # Industry concentration
-    "max_industry_weight": 0.30,        # Max 30% in any single industry
-    "max_top3_industry_weight": 0.60,   # Max 60% in top 3 industries
-
+    "max_industry_weight": 0.30,  # Max 30% in any single industry
+    "max_top3_industry_weight": 0.60,  # Max 60% in top 3 industries
     # Correlation crowding
-    "max_pairwise_correlation": 0.80,   # Max correlation between any two positions
-    "max_avg_correlation": 0.50,        # Max average pairwise correlation
-    "correlation_lookback_days": 60,    # Days for correlation calculation
-
+    "max_pairwise_correlation": 0.80,  # Max correlation between any two positions
+    "max_avg_correlation": 0.50,  # Max average pairwise correlation
+    "correlation_lookback_days": 60,  # Days for correlation calculation
     # Factor exposure
     "max_single_factor_exposure": 2.0,  # Max z-score for any single factor
-    "max_factor_exposure_abs": 1.5,     # Max absolute factor exposure
-
+    "max_factor_exposure_abs": 1.5,  # Max absolute factor exposure
     # Liquidity capacity
     "min_daily_volume_usd": 1_000_000,  # Min daily volume in USD
-    "max_position_pct_adv": 0.05,       # Max 5% of average daily volume
-
+    "max_position_pct_adv": 0.05,  # Max 5% of average daily volume
     # Turnover cost
-    "max_daily_turnover": 0.20,         # Max 20% daily turnover
-    "max_monthly_turnover": 1.00,       # Max 100% monthly turnover
-    "turnover_cost_bps": 10,            # Estimated cost per turnover in bps
-
+    "max_daily_turnover": 0.20,  # Max 20% daily turnover
+    "max_monthly_turnover": 1.00,  # Max 100% monthly turnover
+    "turnover_cost_bps": 10,  # Estimated cost per turnover in bps
     # Consecutive loss de-leverage
-    "consecutive_loss_days": 5,         # Days of consecutive losses
-    "deleverage_factor": 0.50,          # Reduce exposure by 50%
-    "loss_threshold_pct": -0.02,        # Daily loss threshold
+    "consecutive_loss_days": 5,  # Days of consecutive losses
+    "deleverage_factor": 0.50,  # Reduce exposure by 50%
+    "loss_threshold_pct": -0.02,  # Daily loss threshold
 }
 
 
@@ -178,26 +174,30 @@ class PortfolioConstraintEngine:
         max_weight = self.config["max_industry_weight"]
         for industry, weight in industry_weights.items():
             if weight > max_weight:
-                violations.append(ConstraintViolation(
-                    type=ConstraintType.INDUSTRY_CONCENTRATION,
-                    severity="critical" if weight > max_weight * 1.2 else "warning",
-                    message=f"Industry '{industry}' weight {weight:.1%} exceeds limit {max_weight:.1%}",
-                    details={"industry": industry, "weight": weight, "limit": max_weight},
-                    suggested_action=f"Reduce {industry} exposure by {weight - max_weight:.1%}",
-                ))
+                violations.append(
+                    ConstraintViolation(
+                        type=ConstraintType.INDUSTRY_CONCENTRATION,
+                        severity="critical" if weight > max_weight * 1.2 else "warning",
+                        message=f"Industry '{industry}' weight {weight:.1%} exceeds limit {max_weight:.1%}",
+                        details={"industry": industry, "weight": weight, "limit": max_weight},
+                        suggested_action=f"Reduce {industry} exposure by {weight - max_weight:.1%}",
+                    )
+                )
 
         # Check top-3 industry concentration
         sorted_industries = sorted(industry_weights.values(), reverse=True)
         top3_weight = sum(sorted_industries[:3])
         max_top3 = self.config["max_top3_industry_weight"]
         if top3_weight > max_top3:
-            violations.append(ConstraintViolation(
-                type=ConstraintType.INDUSTRY_CONCENTRATION,
-                severity="warning",
-                message=f"Top 3 industries weight {top3_weight:.1%} exceeds limit {max_top3:.1%}",
-                details={"top3_weight": top3_weight, "limit": max_top3},
-                suggested_action="Diversify across more industries",
-            ))
+            violations.append(
+                ConstraintViolation(
+                    type=ConstraintType.INDUSTRY_CONCENTRATION,
+                    severity="warning",
+                    message=f"Top 3 industries weight {top3_weight:.1%} exceeds limit {max_top3:.1%}",
+                    details={"top3_weight": top3_weight, "limit": max_top3},
+                    suggested_action="Diversify across more industries",
+                )
+            )
 
         return violations
 
@@ -226,16 +226,18 @@ class PortfolioConstraintEngine:
 
         # Check pairwise
         for i, s1 in enumerate(available):
-            for s2 in available[i+1:]:
+            for s2 in available[i + 1 :]:
                 corr = corr_matrix.loc[s1, s2]
                 if abs(corr) > max_corr:
-                    violations.append(ConstraintViolation(
-                        type=ConstraintType.CORRELATION_CROWDING,
-                        severity="warning",
-                        message=f"High correlation ({corr:.2f}) between {s1} and {s2}",
-                        details={"symbol1": s1, "symbol2": s2, "correlation": corr},
-                        suggested_action=f"Consider reducing one of {s1}/{s2}",
-                    ))
+                    violations.append(
+                        ConstraintViolation(
+                            type=ConstraintType.CORRELATION_CROWDING,
+                            severity="warning",
+                            message=f"High correlation ({corr:.2f}) between {s1} and {s2}",
+                            details={"symbol1": s1, "symbol2": s2, "correlation": corr},
+                            suggested_action=f"Consider reducing one of {s1}/{s2}",
+                        )
+                    )
 
         # Check average correlation
         n = len(available)
@@ -243,13 +245,15 @@ class PortfolioConstraintEngine:
             mask = np.triu(np.ones((n, n), dtype=bool), k=1)
             avg = corr_matrix.values[mask].mean()
             if avg > avg_corr:
-                violations.append(ConstraintViolation(
-                    type=ConstraintType.CORRELATION_CROWDING,
-                    severity="warning",
-                    message=f"Portfolio average correlation {avg:.2f} exceeds limit {avg_corr:.2f}",
-                    details={"avg_correlation": avg, "limit": avg_corr},
-                    suggested_action="Add uncorrelated positions to diversify",
-                ))
+                violations.append(
+                    ConstraintViolation(
+                        type=ConstraintType.CORRELATION_CROWDING,
+                        severity="warning",
+                        message=f"Portfolio average correlation {avg:.2f} exceeds limit {avg_corr:.2f}",
+                        details={"avg_correlation": avg, "limit": avg_corr},
+                        suggested_action="Add uncorrelated positions to diversify",
+                    )
+                )
 
         return violations
 
@@ -273,13 +277,15 @@ class PortfolioConstraintEngine:
             for factor, z_score in exposures.items():
                 weighted_exp = abs(weight * z_score)
                 if weighted_exp > max_exp:
-                    violations.append(ConstraintViolation(
-                        type=ConstraintType.FACTOR_EXPOSURE,
-                        severity="warning",
-                        message=f"High {factor} exposure ({weighted_exp:.2f}) from {symbol}",
-                        details={"symbol": symbol, "factor": factor, "exposure": weighted_exp},
-                        suggested_action=f"Reduce {symbol} position or hedge {factor} exposure",
-                    ))
+                    violations.append(
+                        ConstraintViolation(
+                            type=ConstraintType.FACTOR_EXPOSURE,
+                            severity="warning",
+                            message=f"High {factor} exposure ({weighted_exp:.2f}) from {symbol}",
+                            details={"symbol": symbol, "factor": factor, "exposure": weighted_exp},
+                            suggested_action=f"Reduce {symbol} position or hedge {factor} exposure",
+                        )
+                    )
 
         return violations
 
@@ -321,36 +327,40 @@ class PortfolioConstraintEngine:
 
             # Check minimum ADV (in currency)
             if adv_currency < min_adv:
-                violations.append(ConstraintViolation(
-                    type=ConstraintType.LIQUIDITY_CAPACITY,
-                    severity="warning",
-                    message=f"{symbol} ADV {adv_currency:,.0f} below minimum {min_adv:,.0f}",
-                    details={
-                        "symbol": symbol,
-                        "adv_currency": adv_currency,
-                        "adv_shares": avg_volume_shares,
-                        "min_adv": min_adv,
-                    },
-                    suggested_action=f"Reduce {symbol} position size",
-                ))
+                violations.append(
+                    ConstraintViolation(
+                        type=ConstraintType.LIQUIDITY_CAPACITY,
+                        severity="warning",
+                        message=f"{symbol} ADV {adv_currency:,.0f} below minimum {min_adv:,.0f}",
+                        details={
+                            "symbol": symbol,
+                            "adv_currency": adv_currency,
+                            "adv_shares": avg_volume_shares,
+                            "min_adv": min_adv,
+                        },
+                        suggested_action=f"Reduce {symbol} position size",
+                    )
+                )
 
             # Check position as % of ADV
             if adv_currency > 0:
                 pct_adv = position_value / adv_currency
                 if pct_adv > max_pct_adv:
-                    violations.append(ConstraintViolation(
-                        type=ConstraintType.LIQUIDITY_CAPACITY,
-                        severity="critical" if pct_adv > max_pct_adv * 2 else "warning",
-                        message=f"{symbol} position {pct_adv:.1%} of ADV ({adv_currency:,.0f}) exceeds {max_pct_adv:.1%}",
-                        details={
-                            "symbol": symbol,
-                            "pct_adv": pct_adv,
-                            "adv_currency": adv_currency,
-                            "position_value": position_value,
-                            "limit": max_pct_adv,
-                        },
-                        suggested_action=f"Reduce {symbol} to <{max_pct_adv:.1%} of ADV",
-                    ))
+                    violations.append(
+                        ConstraintViolation(
+                            type=ConstraintType.LIQUIDITY_CAPACITY,
+                            severity="critical" if pct_adv > max_pct_adv * 2 else "warning",
+                            message=f"{symbol} position {pct_adv:.1%} of ADV ({adv_currency:,.0f}) exceeds {max_pct_adv:.1%}",
+                            details={
+                                "symbol": symbol,
+                                "pct_adv": pct_adv,
+                                "adv_currency": adv_currency,
+                                "position_value": position_value,
+                                "limit": max_pct_adv,
+                            },
+                            suggested_action=f"Reduce {symbol} to <{max_pct_adv:.1%} of ADV",
+                        )
+                    )
 
         return violations
 
@@ -380,13 +390,15 @@ class PortfolioConstraintEngine:
         if total_turnover > max_daily:
             cost_bps = self.config["turnover_cost_bps"]
             cost_pct = total_turnover * cost_bps / 10000
-            violations.append(ConstraintViolation(
-                type=ConstraintType.TURNOVER_COST,
-                severity="warning",
-                message=f"Daily turnover {total_turnover:.1%} exceeds limit {max_daily:.1%} (cost: {cost_pct:.2%})",
-                details={"turnover": total_turnover, "limit": max_daily, "cost_pct": cost_pct},
-                suggested_action="Reduce turnover by keeping more positions",
-            ))
+            violations.append(
+                ConstraintViolation(
+                    type=ConstraintType.TURNOVER_COST,
+                    severity="warning",
+                    message=f"Daily turnover {total_turnover:.1%} exceeds limit {max_daily:.1%} (cost: {cost_pct:.2%})",
+                    details={"turnover": total_turnover, "limit": max_daily, "cost_pct": cost_pct},
+                    suggested_action="Reduce turnover by keeping more positions",
+                )
+            )
 
         return violations
 
@@ -414,13 +426,19 @@ class PortfolioConstraintEngine:
 
         if loss_streak >= consecutive_days:
             deleverage = self.config["deleverage_factor"]
-            violations.append(ConstraintViolation(
-                type=ConstraintType.CONSECUTIVE_LOSS,
-                severity="critical",
-                message=f"{loss_streak} consecutive loss days (>{consecutive_days} threshold)",
-                details={"loss_streak": loss_streak, "threshold": consecutive_days, "deleverage_factor": deleverage},
-                suggested_action=f"Reduce exposure by {deleverage:.0%}",
-            ))
+            violations.append(
+                ConstraintViolation(
+                    type=ConstraintType.CONSECUTIVE_LOSS,
+                    severity="critical",
+                    message=f"{loss_streak} consecutive loss days (>{consecutive_days} threshold)",
+                    details={
+                        "loss_streak": loss_streak,
+                        "threshold": consecutive_days,
+                        "deleverage_factor": deleverage,
+                    },
+                    suggested_action=f"Reduce exposure by {deleverage:.0%}",
+                )
+            )
 
         return violations
 
@@ -460,8 +478,7 @@ class PortfolioConstraintEngine:
                     for symbol, weight in adjusted.items():
                         if industry_map.get(symbol) == industry:
                             adjusted[symbol] = weight * scale
-                    logger.info("industry_concentration_applied",
-                                industry=industry, scale=scale)
+                    logger.info("industry_concentration_applied", industry=industry, scale=scale)
 
             elif violation.type == ConstraintType.CONSECUTIVE_LOSS:
                 # De-leverage all positions

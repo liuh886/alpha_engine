@@ -69,9 +69,7 @@ def write_latest_manifest_file(
     return payload
 
 
-def resolve_snapshot_provider(
-    snapshot_id: str, *, snapshot_store: str | Path
-) -> Path:
+def resolve_snapshot_provider(snapshot_id: str, *, snapshot_store: str | Path) -> Path:
     """Resolve and verify a snapshot for training/backtest/inference use."""
     return DataSnapshot.resolve_snapshot(snapshot_id, store=snapshot_store).provider_path
 

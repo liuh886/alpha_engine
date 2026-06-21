@@ -50,7 +50,9 @@ class TrainingResult:
             "valid_ic": round(self.valid_ic, 4),
             "backtest_result": self.backtest_result,
             "training_time": round(self.training_time, 2),
-            "top_features": dict(sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:20]),
+            "top_features": dict(
+                sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:20]
+            ),
         }
 
 
@@ -71,7 +73,11 @@ def load_market_data(market: str = "cn") -> tuple[pd.DataFrame, pd.Series, pd.Da
     # Get symbols filtered by market
     instr_file = Path(f"data/watchlist/instruments/{market}.txt")
     if instr_file.exists():
-        symbols = [line.split("\t")[0].strip() for line in instr_file.read_text().splitlines() if line.strip()]
+        symbols = [
+            line.split("\t")[0].strip()
+            for line in instr_file.read_text().splitlines()
+            if line.strip()
+        ]
     else:
         # Fallback: use all features
         data_dir = Path("data/watchlist/features")
@@ -91,7 +97,9 @@ def load_market_data(market: str = "cn") -> tuple[pd.DataFrame, pd.Series, pd.Da
     # Load labels (10-day forward excess returns)
     labels = D.features(
         symbols,
-        ["(Ref($close, -10) / Ref($close, -1) - 1) - Mean(Ref($close, -10) / Ref($close, -1) - 1, 10)"],
+        [
+            "(Ref($close, -10) / Ref($close, -1) - 1) - Mean(Ref($close, -10) / Ref($close, -1) - 1, 10)"
+        ],
         start_time="2018-01-01",
         end_time="2026-06-18",
     )
@@ -106,7 +114,7 @@ def load_market_data(market: str = "cn") -> tuple[pd.DataFrame, pd.Series, pd.Da
     )
 
     t1 = time.time()
-    print(f"Data loading: {t1-t0:.2f}s")
+    print(f"Data loading: {t1 - t0:.2f}s")
 
     return ohlcv, labels, benchmark
 
@@ -162,7 +170,7 @@ def compute_features_vectorized(ohlcv: pd.DataFrame) -> pd.DataFrame:
     features_df = features_df.set_index(["datetime", "instrument"])
 
     t1 = time.time()
-    print(f"Feature computation: {t1-t0:.2f}s, {len(features_df.columns)} features")
+    print(f"Feature computation: {t1 - t0:.2f}s, {len(features_df.columns)} features")
 
     return features_df
 
@@ -224,7 +232,7 @@ def train_model_optimized(
     )
 
     t1 = time.time()
-    print(f"Training: {t1-t0:.2f}s, best_iteration={model.best_iteration}")
+    print(f"Training: {t1 - t0:.2f}s, best_iteration={model.best_iteration}")
 
     # Feature importance
     importance = model.feature_importance(importance_type="gain")
@@ -373,6 +381,7 @@ def train_and_evaluate(
 
     # Load ABSOLUTE returns for backtest (not excess returns)
     from qlib.data import D as _D
+
     symbols = list(set(features_df.index.get_level_values("instrument")))
     abs_returns = _D.features(
         symbols,

@@ -73,4 +73,3 @@ def create_backtest_job(
         "command_envelopes": [envelope.to_dict() for envelope in command_envelopes],
         "commands": commands,
     }
-

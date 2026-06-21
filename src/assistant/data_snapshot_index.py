@@ -68,9 +68,7 @@ class DataSnapshotIndex(BaseIndex):
             raise ValueError("dataset_key is required")
 
         latest_day = str(
-            manifest.calendar.get("latest_day")
-            or manifest.date_range.get("end")
-            or ""
+            manifest.calendar.get("latest_day") or manifest.date_range.get("end") or ""
         )
         manifest_payload = manifest.to_dict()
         self._write_row(

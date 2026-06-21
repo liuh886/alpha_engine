@@ -28,9 +28,7 @@ def _make_synthetic_factor_data(
     dates = pd.bdate_range("2021-01-01", periods=n_dates, freq="B")
     instruments = [f"STOCK_{i:03d}" for i in range(n_stocks)]
 
-    idx = pd.MultiIndex.from_product(
-        [dates, instruments], names=["datetime", "instrument"]
-    )
+    idx = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
 
     # Generate factor values
     factor_data = {}
@@ -247,9 +245,7 @@ class TestComputeFactorDecay:
         rng = np.random.RandomState(42)
         dates = pd.bdate_range("2021-01-01", periods=60, freq="B")
         instruments = [f"S{i:03d}" for i in range(20)]
-        idx = pd.MultiIndex.from_product(
-            [dates, instruments], names=["datetime", "instrument"]
-        )
+        idx = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
 
         factor_df = pd.DataFrame({"my_factor": rng.randn(len(idx))}, index=idx)
         fwd_series = pd.Series(
@@ -382,12 +378,10 @@ class TestAPIEndpoints:
                 forward_days=10,
                 n_periods=3,
                 factors=[
-                    FactorICResult(f"f{i}", 0.01, 0.012, 0.005, 2.0, 0.7, 3.0)
-                    for i in range(5)
+                    FactorICResult(f"f{i}", 0.01, 0.012, 0.005, 2.0, 0.7, 3.0) for i in range(5)
                 ],
                 top_factors=[
-                    FactorICResult(f"f{i}", 0.01, 0.012, 0.005, 2.0, 0.7, 3.0)
-                    for i in range(3)
+                    FactorICResult(f"f{i}", 0.01, 0.012, 0.005, 2.0, 0.7, 3.0) for i in range(3)
                 ],
                 generated_at="2024-01-01T00:00:00",
             )
@@ -410,9 +404,7 @@ class TestAPIEndpoints:
     def test_decay_endpoint(self, mock_decay, client):
         from src.research.factor_analysis import DecayPoint
 
-        mock_decay.return_value = [
-            DecayPoint(lag_days=i, ic=0.05 / i) for i in range(1, 11)
-        ]
+        mock_decay.return_value = [DecayPoint(lag_days=i, ic=0.05 / i) for i in range(1, 11)]
 
         resp = client.get("/api/factors/decay?market=us&factor=close&max_lag=10")
         assert resp.status_code == 200

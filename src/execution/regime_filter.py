@@ -146,8 +146,7 @@ class RegimeFilter:
         factors.append(trend_factor)
         if trend_factor < 1.0:
             reasons.append(
-                f"Bear trend: benchmark below MA-{self._trend_ma_window}, "
-                f"factor={trend_factor:.2f}"
+                f"Bear trend: benchmark below MA-{self._trend_ma_window}, factor={trend_factor:.2f}"
             )
 
         # Conservative aggregation: minimum factor wins
@@ -181,7 +180,7 @@ class RegimeFilter:
         if len(ic_series) < 10:
             return 0.0, 1.0  # Not enough data → assume favorable
 
-        recent = np.array(ic_series[-self._ic_lookback:], dtype=float)
+        recent = np.array(ic_series[-self._ic_lookback :], dtype=float)
         x = np.arange(len(recent), dtype=float)
         # Linear regression: y = a + b*x, slope = b
         slope = float(np.polyfit(x, recent, 1)[0])
@@ -222,9 +221,7 @@ class RegimeFilter:
         vol20 = float(cs_ret.tail(20).std())
         vol252 = float(cs_ret.tail(252).std())
 
-        result = check_volatility_regime(
-            vol20, vol252, threshold=self._vol_ratio_threshold
-        )
+        result = check_volatility_regime(vol20, vol252, threshold=self._vol_ratio_threshold)
         ratio = vol20 / vol252 if vol252 > 1e-10 else 1.0
 
         if result["passed"]:

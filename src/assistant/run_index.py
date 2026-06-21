@@ -195,14 +195,18 @@ class RunIndex(BaseIndex):
             try:
                 out["feature_importance"] = json.loads(out["feature_importance_json"])
             except Exception:
-                logger.debug("Failed to decode feature_importance_json for run", run_id=run_id, exc_info=True)
+                logger.debug(
+                    "Failed to decode feature_importance_json for run", run_id=run_id, exc_info=True
+                )
                 out["feature_importance"] = {}
         else:
             out["feature_importance"] = {}
 
         return out
 
-    def list_runs(self, *, limit: int = 100, offset: int = 0, market: str | None = None) -> list[dict]:
+    def list_runs(
+        self, *, limit: int = 100, offset: int = 0, market: str | None = None
+    ) -> list[dict]:
         limit = int(limit) if limit is not None else 100
         offset = int(offset) if offset is not None else 0
         if limit <= 0:

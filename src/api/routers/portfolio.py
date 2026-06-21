@@ -107,9 +107,7 @@ def _artifact_identity_conflicts(
         actual_value = str(actual).lower() if binding.endswith(".market") else str(actual)
         expected_value = expected.lower() if binding.endswith(".market") else expected
         if actual_value != expected_value:
-            conflicts.append(
-                {"binding": binding, "expected": expected, "actual": str(actual)}
-            )
+            conflicts.append({"binding": binding, "expected": expected, "actual": str(actual)})
     return conflicts
 
 
@@ -270,9 +268,7 @@ def _collect_portfolio_market_data(
             price_df = D.features(symbols, ["$close"], start_time="2025-01-01")
             if price_df.empty:
                 data_status["price"] = "empty"
-                data_warnings.append(
-                    "Liquidity check skipped: snapshot price data is empty"
-                )
+                data_warnings.append("Liquidity check skipped: snapshot price data is empty")
             else:
                 price_wide = price_df.unstack(level="instrument")
                 price_wide.columns = [column[1] for column in price_wide.columns]

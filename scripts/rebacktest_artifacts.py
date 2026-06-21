@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 import sys
-import time
 from datetime import datetime
 from pathlib import Path
 
@@ -22,12 +21,11 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-import numpy as np
 import pandas as pd
 
 from src.common.paths import ARTIFACTS_DIR, DASHBOARD_DB_PATH
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
-from src.research.vectorized_backtest import BacktestResult, run_vectorized_backtest
+from src.research.vectorized_backtest import run_vectorized_backtest
 
 
 def load_artifact_data(artifact_dir: Path):
@@ -43,17 +41,13 @@ def load_artifact_data(artifact_dir: Path):
     # Load predictions
     pred_df = pd.read_csv(pred_path)
     # Convert numeric instrument IDs to zero-padded strings
-    pred_df["instrument"] = pred_df["instrument"].apply(
-        lambda x: str(int(x)).zfill(6)
-    )
+    pred_df["instrument"] = pred_df["instrument"].apply(lambda x: str(int(x)).zfill(6))
     pred_df["datetime"] = pd.to_datetime(pred_df["datetime"])
     predictions = pred_df.set_index(["datetime", "instrument"]).sort_index()
 
     # Load labels
     labels_df = pd.read_csv(labels_path)
-    labels_df["instrument"] = labels_df["instrument"].apply(
-        lambda x: str(int(x)).zfill(6)
-    )
+    labels_df["instrument"] = labels_df["instrument"].apply(lambda x: str(int(x)).zfill(6))
     labels_df["datetime"] = pd.to_datetime(labels_df["datetime"])
     labels = labels_df.set_index(["datetime", "instrument"]).sort_index()
     # Rename label column to "return" for vectorized backtest
@@ -79,7 +73,9 @@ def load_artifact_data(artifact_dir: Path):
     return predictions, labels, market
 
 
-def run_rebacktest(artifact_dir: Path, predictions: pd.DataFrame, labels: pd.DataFrame, market: str):
+def run_rebacktest(
+    artifact_dir: Path, predictions: pd.DataFrame, labels: pd.DataFrame, market: str
+):
     """Run vectorized backtest using REAL forward returns (not training labels).
 
     Training labels are often transformed (excess, rank, z-score) and are NOT
@@ -150,13 +146,17 @@ def run_rebacktest(artifact_dir: Path, predictions: pd.DataFrame, labels: pd.Dat
     # Save metrics
     metrics = result.to_dict()
     # Convert numpy types to native Python for JSON serialization
-    metrics = json.loads(json.dumps(metrics, default=lambda x: float(x) if hasattr(x, 'item') else str(x)))
+    metrics = json.loads(
+        json.dumps(metrics, default=lambda x: float(x) if hasattr(x, "item") else str(x))
+    )
     metrics_path = artifact_dir / "metrics.json"
     metrics_path.write_text(json.dumps(metrics, indent=2))
 
-    print(f"  {artifact_dir.name}: excess={result.excess_return:.2%} "
-          f"sharpe={result.sharpe_ratio:.2f} mdd={result.max_drawdown:.2%} "
-          f"IC={result.mean_ic:.4f}")
+    print(
+        f"  {artifact_dir.name}: excess={result.excess_return:.2%} "
+        f"sharpe={result.sharpe_ratio:.2f} mdd={result.max_drawdown:.2%} "
+        f"IC={result.mean_ic:.4f}"
+    )
 
     return result, metrics
 
@@ -169,7 +169,12 @@ def register_artifact_dir(artifact_dir: Path, metrics: dict, market: str):
         "registered_at": datetime.now().isoformat(),
         "metrics": metrics,
         "inference_gate": {"artifact_id": artifact_dir.name, "passed": True},
-        "reconstruction_gate": {"artifact_id": artifact_dir.name, "passed": True, "status": "passed", "clean_process": True},
+        "reconstruction_gate": {
+            "artifact_id": artifact_dir.name,
+            "passed": True,
+            "status": "passed",
+            "clean_process": True,
+        },
     }
     marker_path.write_text(json.dumps(marker_data, indent=2))
 
@@ -178,6 +183,7 @@ def register_artifact_dir(artifact_dir: Path, metrics: dict, market: str):
         from src.assistant.metadata_db import resolve_metadata_db_path
         from src.assistant.model_registry_index import ModelRegistryIndex
         from src.common import paths
+
         artifacts_dir = paths.get_artifacts_dir()
         db_path = resolve_metadata_db_path(artifacts_dir)
         registry = ModelRegistryIndex(db_path=db_path)
@@ -189,8 +195,11 @@ def register_artifact_dir(artifact_dir: Path, metrics: dict, market: str):
             aid = payload.get("artifact_id", "") or v.get("artifact_id", "")
             if aid == artifact_dir.name:
                 # Update metrics
-                manifest = json.loads((artifact_dir / "manifest.json").read_text()) \
-                    if (artifact_dir / "manifest.json").exists() else {}
+                manifest = (
+                    json.loads((artifact_dir / "manifest.json").read_text())
+                    if (artifact_dir / "manifest.json").exists()
+                    else {}
+                )
                 entry_update = {
                     "id": v["id"],
                     "market": market,
@@ -223,7 +232,7 @@ def main():
         print(f"Processing {art_dir.name}...")
         data = load_artifact_data(art_dir)
         if data is None:
-            print(f"  SKIP: missing predictions or labels")
+            print("  SKIP: missing predictions or labels")
             continue
 
         predictions, labels, market = data
@@ -244,13 +253,14 @@ def main():
     # Rebuild dashboard DB and add artifact entries
     print("\nRebuilding dashboard DB...")
     import subprocess
+
     subprocess.run([sys.executable, str(ROOT / "scripts" / "build_dashboard_db.py")], check=True)
 
     # Add artifact entries directly to dashboard DB
     db_path = DASHBOARD_DB_PATH
     if db_path.exists() and all_metrics:
         db = json.loads(db_path.read_text())
-        existing_ids = {m["id"] for m in db.get("models", [])}
+        {m["id"] for m in db.get("models", [])}
 
         for art_id, metrics in all_metrics.items():
             # Read manifest for metadata

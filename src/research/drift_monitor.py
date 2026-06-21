@@ -190,7 +190,9 @@ class ModelDriftMonitor:
         # Normalize to 1D Series
         pred_series = self._to_series(predictions)
         ret_series = self._to_series(returns)
-        base_series = self._to_series(baseline_predictions) if baseline_predictions is not None else None
+        base_series = (
+            self._to_series(baseline_predictions) if baseline_predictions is not None else None
+        )
 
         n_obs = len(pred_series.dropna())
         evidence_window = f"{n_obs} observations"
@@ -209,44 +211,26 @@ class ModelDriftMonitor:
             )
 
         # --- Check 1: Prediction mean shift ---
-        checks.append(
-            self._check_prediction_mean_shift(
-                pred_series, base_series, evidence_window
-            )
-        )
+        checks.append(self._check_prediction_mean_shift(pred_series, base_series, evidence_window))
 
         # --- Check 2: Prediction std shift ---
-        checks.append(
-            self._check_prediction_std_shift(
-                pred_series, base_series, evidence_window
-            )
-        )
+        checks.append(self._check_prediction_std_shift(pred_series, base_series, evidence_window))
 
         # --- Check 3: PSI (prediction distribution shift) ---
         if base_series is not None and len(base_series.dropna()) >= self.min_evidence_days:
-            checks.append(
-                self._check_psi(pred_series, base_series, evidence_window)
-            )
+            checks.append(self._check_psi(pred_series, base_series, evidence_window))
 
         # --- Check 4: IC decay ---
         if len(ret_series.dropna()) >= self.min_evidence_days:
-            checks.append(
-                self._check_ic_decay(pred_series, ret_series, evidence_window)
-            )
+            checks.append(self._check_ic_decay(pred_series, ret_series, evidence_window))
 
         # --- Check 5: Signal calibration ---
         if len(ret_series.dropna()) >= self.min_evidence_days:
-            checks.append(
-                self._check_calibration(pred_series, ret_series, evidence_window)
-            )
+            checks.append(self._check_calibration(pred_series, ret_series, evidence_window))
 
         # --- Check 6: Feature drift (PSI per feature) ---
         if features is not None and baseline_features is not None:
-            checks.append(
-                self._check_feature_drift(
-                    features, baseline_features, evidence_window
-                )
-            )
+            checks.append(self._check_feature_drift(features, baseline_features, evidence_window))
 
         # Determine overall severity (worst across all checks)
         severity_order = {
@@ -271,7 +255,9 @@ class ModelDriftMonitor:
         )
 
         # Build summary
-        alerts = [c for c in checks if c.severity not in (DriftSeverity.OK, DriftSeverity.INCONCLUSIVE)]
+        alerts = [
+            c for c in checks if c.severity not in (DriftSeverity.OK, DriftSeverity.INCONCLUSIVE)
+        ]
         if not alerts:
             summary = "All checks passed — no drift detected."
         else:
@@ -502,7 +488,9 @@ class ModelDriftMonitor:
             severity=severity,
             evidence_window=evidence_window,
             recommended_action=action,
-            details={"interpretation": "PSI < 0.1: no shift; 0.1-0.25: moderate; >0.25: significant"},
+            details={
+                "interpretation": "PSI < 0.1: no shift; 0.1-0.25: moderate; >0.25: significant"
+            },
         )
 
     def _check_ic_decay(
@@ -696,7 +684,8 @@ class ModelDriftMonitor:
                 "max_feature": max_feature,
                 "n_features_checked": len(per_feature_psi),
                 "per_feature_psi": {
-                    k: round(v, 6) for k, v in sorted(
+                    k: round(v, 6)
+                    for k, v in sorted(
                         per_feature_psi.items(),
                         key=lambda x: x[1],
                         reverse=True,

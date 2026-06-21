@@ -575,10 +575,10 @@ class ExperimentJournal:
                     "_source": "model",
                     "id": d["version_id"],
                     "name": d["model_name"],
-                        "architecture": d.get("architecture"),
-                        "stage": "Archived",
-                        "timestamp": d.get("updated_at") or d.get("created_at") or "",
-                        "reason": "Archived (superseded or underperforming)",
+                    "architecture": d.get("architecture"),
+                    "stage": "Archived",
+                    "timestamp": d.get("updated_at") or d.get("created_at") or "",
+                    "reason": "Archived (superseded or underperforming)",
                     "metrics": d.get("metrics"),
                 }
             )

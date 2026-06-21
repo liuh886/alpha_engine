@@ -54,7 +54,9 @@ class ExcessTrainingResult:
             "spread": round(self.spread, 4),
             "sharpe": round(self.sharpe, 4),
             "training_time": round(self.training_time, 2),
-            "top_features": dict(sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:20]),
+            "top_features": dict(
+                sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:20]
+            ),
         }
 
 
@@ -76,7 +78,9 @@ def load_and_detrend_data(
 
     # Get symbols
     instr_file = Path(f"data/watchlist/instruments/{market}.txt")
-    symbols = [line.split("\t")[0].strip() for line in instr_file.read_text().splitlines() if line.strip()]
+    symbols = [
+        line.split("\t")[0].strip() for line in instr_file.read_text().splitlines() if line.strip()
+    ]
 
     # Load OHLCV
     print(f"Loading {len(symbols)} {market.upper()} symbols...")
@@ -157,7 +161,7 @@ def compute_features(ohlcv: pd.DataFrame) -> pd.DataFrame:
     features_df = features_df.set_index(["datetime", "instrument"])
 
     t1 = time.time()
-    print(f"Feature computation: {t1-t0:.2f}s, {len(features_df.columns)} features")
+    print(f"Feature computation: {t1 - t0:.2f}s, {len(features_df.columns)} features")
 
     return features_df
 
@@ -286,8 +290,12 @@ def run_excess_backtest(
     returns_df = stock_returns.to_frame(name="return")
 
     # Flatten benchmark to datetime index
-    bench_flat = benchmark_returns.iloc[:, 0] if isinstance(benchmark_returns, pd.DataFrame) else benchmark_returns
-    if hasattr(bench_flat, 'index') and 'instrument' in str(bench_flat.index.names):
+    bench_flat = (
+        benchmark_returns.iloc[:, 0]
+        if isinstance(benchmark_returns, pd.DataFrame)
+        else benchmark_returns
+    )
+    if hasattr(bench_flat, "index") and "instrument" in str(bench_flat.index.names):
         bench_symbol = bench_flat.index.get_level_values("instrument").unique()[0]
         bench_flat = bench_flat.xs(bench_symbol, level="instrument")
 
@@ -295,7 +303,9 @@ def run_excess_backtest(
     result_top = run_vectorized_backtest(
         predictions=predictions,
         returns=returns_df,
-        benchmark_returns=bench_flat.to_frame(name="return") if isinstance(bench_flat, pd.Series) else bench_flat,
+        benchmark_returns=bench_flat.to_frame(name="return")
+        if isinstance(bench_flat, pd.Series)
+        else bench_flat,
         topk=topk,
         rebalance_days=rebalance_days,
         cost_bps=20,
@@ -308,7 +318,9 @@ def run_excess_backtest(
     result_bottom = run_vectorized_backtest(
         predictions=pred_inv,
         returns=returns_df,
-        benchmark_returns=bench_flat.to_frame(name="return") if isinstance(bench_flat, pd.Series) else bench_flat,
+        benchmark_returns=bench_flat.to_frame(name="return")
+        if isinstance(bench_flat, pd.Series)
+        else bench_flat,
         topk=topk,
         rebalance_days=rebalance_days,
         cost_bps=20,
@@ -347,9 +359,12 @@ def train_and_evaluate_excess(
 
     # Prepare data
     X_train, y_train, X_valid, y_valid = prepare_data(
-        features, excess_labels,
-        "2018-01-01", "2024-12-31",
-        "2025-01-01", "2025-06-30",
+        features,
+        excess_labels,
+        "2018-01-01",
+        "2024-12-31",
+        "2025-01-01",
+        "2025-06-30",
     )
 
     # Train
@@ -379,8 +394,12 @@ def train_and_evaluate_excess(
 
     # Run backtest
     backtest = run_excess_backtest(
-        model, X_test, stock_returns_flat, bench_test,
-        topk=topk, rebalance_days=rebalance_days,
+        model,
+        X_test,
+        stock_returns_flat,
+        bench_test,
+        topk=topk,
+        rebalance_days=rebalance_days,
     )
 
     print(f"TOP {topk} excess: {backtest['top_excess']:.2%}")

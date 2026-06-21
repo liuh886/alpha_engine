@@ -319,7 +319,9 @@ def _gen_cross_field(factors: list[dict], seen: set[str]) -> None:
             long_ret = RETURN_EXPRESSIONS[long_h]
             expr = f"Corr({short_ret},{long_ret},{w})"
             _add(
-                factors, seen, cat,
+                factors,
+                seen,
+                cat,
                 _make_name(cat, f"corr_ret{short_h}_ret{long_h}", w),
                 expr,
             )
@@ -449,11 +451,13 @@ def load_factor_pool_from_yaml(path: str | Path | None = None) -> list[dict[str,
             if expr in seen:
                 continue
             seen.add(expr)
-            factors.append({
-                "name": item["name"],
-                "expression": expr,
-                "category": category,
-            })
+            factors.append(
+                {
+                    "name": item["name"],
+                    "expression": expr,
+                    "category": category,
+                }
+            )
 
     return factors
 
@@ -546,11 +550,14 @@ def get_factor_library_json(category: str = "") -> str:
         filtered = get_factors_by_category(category)
     else:
         filtered = FACTOR_LIBRARY
-    return json.dumps({
-        "total": len(filtered),
-        "summary": get_library_summary(),
-        "factors": filtered,
-    }, indent=2)
+    return json.dumps(
+        {
+            "total": len(filtered),
+            "summary": get_library_summary(),
+            "factors": filtered,
+        },
+        indent=2,
+    )
 
 
 if __name__ == "__main__":

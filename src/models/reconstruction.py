@@ -106,9 +106,7 @@ def _load_model_binary(artifact_dir: Path, manifest: ArtifactManifest) -> Any:
     """Load the pickled model binary from an artifact directory."""
     model_path = artifact_dir / manifest.model_binary_path
     if not model_path.exists():
-        raise FileNotFoundError(
-            f"Model binary not found: {model_path}"
-        )
+        raise FileNotFoundError(f"Model binary not found: {model_path}")
     with open(model_path, "rb") as f:
         return pickle.load(f)
 
@@ -117,9 +115,7 @@ def _load_predictions(artifact_dir: Path, manifest: ArtifactManifest) -> pd.Data
     """Load stored predictions CSV."""
     pred_path = artifact_dir / manifest.predictions_path
     if not pred_path.exists():
-        raise FileNotFoundError(
-            f"Predictions file not found: {pred_path}"
-        )
+        raise FileNotFoundError(f"Predictions file not found: {pred_path}")
     return pd.read_csv(pred_path, index_col=0)
 
 
@@ -127,9 +123,7 @@ def _load_labels(artifact_dir: Path, manifest: ArtifactManifest) -> pd.DataFrame
     """Load stored labels CSV."""
     labels_path = artifact_dir / manifest.labels_path
     if not labels_path.exists():
-        raise FileNotFoundError(
-            f"Labels file not found: {labels_path}"
-        )
+        raise FileNotFoundError(f"Labels file not found: {labels_path}")
     return pd.read_csv(labels_path, index_col=0)
 
 
@@ -272,11 +266,7 @@ def reconstruct_model(
     result = ReconstructionResult(
         artifact_id=artifact_id,
         passed=passed,
-        status=(
-            ReconstructionStatus.PASSED.value
-            if passed
-            else ReconstructionStatus.FAILED.value
-        ),
+        status=(ReconstructionStatus.PASSED.value if passed else ReconstructionStatus.FAILED.value),
         clean_process=clean_process,
         prediction_correlation=round(corr, 6),
         prediction_match_pct=round(match_pct, 4),

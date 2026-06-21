@@ -500,9 +500,13 @@ class TestFactorRegistryStats:
         reg = _make_registry(tmp_path)
 
         # Register factors in different categories and stages
-        fid1 = reg.register_factor(name="mom_1", expression="$close/Ref($close,5)-1", category="momentum")
+        fid1 = reg.register_factor(
+            name="mom_1", expression="$close/Ref($close,5)-1", category="momentum"
+        )
         fid2 = reg.register_factor(name="vol_1", expression="Rank($volume)", category="volume")
-        fid3 = reg.register_factor(name="mom_2", expression="Std($close,20)", category="momentum", direction="short")
+        fid3 = reg.register_factor(
+            name="mom_2", expression="Std($close,20)", category="momentum", direction="short"
+        )
 
         # Promote fid2 to Candidate
         reg.promote(fid2)
@@ -876,7 +880,8 @@ class TestThreeTierPromotion:
         ic_values = [0.01, 0.03, 0.05, 0.07, 0.09]
         for ic_val in ic_values:
             reg.record_validation(
-                active_fid, "us",
+                active_fid,
+                "us",
                 {"ic": ic_val, "icir": 1.5, "t_stat": 4.0, "positive_ratio": 0.70},
             )
 
@@ -904,7 +909,9 @@ class TestThreeTierPromotion:
         # Register an Active factor with a known IC value
         active_fid = reg.register_factor(name="active_factor", expression="$close")
         reg.update_stage(active_fid, STAGE_ACTIVE)
-        reg.record_validation(active_fid, "us", {"ic": 0.05, "icir": 1.5, "t_stat": 4.0, "positive_ratio": 0.70})
+        reg.record_validation(
+            active_fid, "us", {"ic": 0.05, "icir": 1.5, "t_stat": 4.0, "positive_ratio": 0.70}
+        )
 
         # IC series with very different pattern -> low correlation
         ic_series = [-0.05, 0.02, -0.03, 0.04, -0.01]
@@ -939,13 +946,19 @@ class TestThreeTierPromotion:
         # Create two Active factors with different IC values
         a1 = reg.register_factor(name="active_1", expression="$close/Ref($close,1)")
         reg.update_stage(a1, STAGE_ACTIVE)
-        reg.record_validation(a1, "us", {"ic": 0.01, "icir": 1.0, "t_stat": 3.0, "positive_ratio": 0.65})
+        reg.record_validation(
+            a1, "us", {"ic": 0.01, "icir": 1.0, "t_stat": 3.0, "positive_ratio": 0.65}
+        )
 
         a2 = reg.register_factor(name="active_2", expression="Std($close,10)")
         reg.update_stage(a2, STAGE_ACTIVE)
-        reg.record_validation(a2, "us", {"ic": 0.08, "icir": 1.0, "t_stat": 3.0, "positive_ratio": 0.65})
+        reg.record_validation(
+            a2, "us", {"ic": 0.08, "icir": 1.0, "t_stat": 3.0, "positive_ratio": 0.65}
+        )
 
-        result = reg.check_factor_correlation(fid, [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09])
+        result = reg.check_factor_correlation(
+            fid, [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09]
+        )
         # Should be a valid float between 0 and 1
         assert 0.0 <= result <= 1.0
 

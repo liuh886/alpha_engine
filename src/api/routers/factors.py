@@ -662,8 +662,7 @@ async def experiments_failed(
         journal = ExperimentJournal()
         failures = journal.what_failed(market=market)
         formatted = [
-            _format_failed_experiment(failure, index)
-            for index, failure in enumerate(failures)
+            _format_failed_experiment(failure, index) for index, failure in enumerate(failures)
         ]
         return {"ok": True, "total_failures": len(formatted), "failures": formatted}
     except Exception as e:
@@ -676,10 +675,7 @@ def _format_failed_experiment(failure: dict, index: int) -> dict:
     source = str(failure.get("_source") or "")
     experiment_type = "wf" if source == "walk_forward" else source
     name = str(
-        failure.get("name")
-        or failure.get("file")
-        or failure.get("id")
-        or f"failure-{index + 1}"
+        failure.get("name") or failure.get("file") or failure.get("id") or f"failure-{index + 1}"
     )
     excluded = {
         "_source",

@@ -135,7 +135,9 @@ class TestPortfolioConstraints:
 
         violations = engine.check_portfolio(positions, market_data)
         industry_violations = [v for v in violations if v.type.value == "industry_concentration"]
-        assert len(industry_violations) == 0, "Diversified portfolio should not trigger industry violation"
+        assert len(industry_violations) == 0, (
+            "Diversified portfolio should not trigger industry violation"
+        )
 
     def test_consecutive_loss_detection(self):
         """5+ consecutive loss days should trigger de-leverage."""

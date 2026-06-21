@@ -106,7 +106,9 @@ def _extract_feature_list(cfg: dict) -> list[str]:
     """
     try:
         return list(
-            cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"]["kwargs"]["config"]["feature"]
+            cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"]["kwargs"][
+                "config"
+            ]["feature"]
         )
     except (KeyError, TypeError):
         return []
@@ -114,7 +116,9 @@ def _extract_feature_list(cfg: dict) -> list[str]:
 
 def _set_feature_list(cfg: dict, features: list[str]) -> None:
     """Set the feature expression list in the config dict (in-place)."""
-    cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"]["kwargs"]["config"]["feature"] = features
+    cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"]["kwargs"]["config"][
+        "feature"
+    ] = features
 
 
 def _extract_config_summary(cfg: dict) -> dict[str, Any]:

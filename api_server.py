@@ -19,6 +19,7 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 try:
     from importlib.metadata import version as _get_pkg_version
+
     APP_VERSION = _get_pkg_version("trading-assistant")
 except Exception:
     APP_VERSION = "2.5.0"
@@ -307,9 +308,7 @@ def health_ready():
         checks["dashboard_db"] = {"status": "error", "detail": str(exc)}
 
     if all_ok:
-        return ReadinessCheckResponse(
-            status="ready", version=APP_VERSION, checks=checks
-        )
+        return ReadinessCheckResponse(status="ready", version=APP_VERSION, checks=checks)
     return JSONResponse(
         status_code=503,
         content=ReadinessCheckResponse(
@@ -332,6 +331,7 @@ if site_path.exists():
     @app.api_route("/", methods=["GET", "HEAD"])
     async def serve_index():
         import hashlib
+
         content = (site_path / "index.html").read_bytes()
         etag = hashlib.md5(content).hexdigest()[:12]
         return FileResponse(

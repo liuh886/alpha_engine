@@ -1,4 +1,5 @@
 """Vectorized Biweekly strategy plugin wrapper."""
+
 from __future__ import annotations
 
 import inspect

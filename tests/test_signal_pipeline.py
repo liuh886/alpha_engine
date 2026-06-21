@@ -28,9 +28,7 @@ def sample_predictions():
     """Create sample predictions for testing."""
     dates = pd.date_range("2025-01-02", periods=100, freq="B")
     instruments = ["000001", "000002", "000003", "000004", "000005"]
-    idx = pd.MultiIndex.from_product(
-        [dates, instruments], names=["datetime", "instrument"]
-    )
+    idx = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
     np.random.seed(42)
     scores = np.random.randn(len(idx))
     return pd.DataFrame({"score": scores}, index=idx)
@@ -258,7 +256,9 @@ class TestWalkForward:
     @pytest.fixture(autouse=True)
     def skip_mlflow_issues(self):
         """Skip walk-forward tests due to MLflow/SQLAlchemy compatibility."""
-        pytest.skip("Walk-forward tests require MLflow database - SQLAlchemy 2.0 compatibility issue")
+        pytest.skip(
+            "Walk-forward tests require MLflow database - SQLAlchemy 2.0 compatibility issue"
+        )
 
     def test_walk_forward_runs(self):
         """Walk-forward should complete without errors."""

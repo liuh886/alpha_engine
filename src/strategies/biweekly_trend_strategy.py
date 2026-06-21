@@ -160,13 +160,17 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                 except Exception:
                     sector_map = {}
 
-                total_value = float(current_temp.get_cash()) + float(current_temp.calculate_stock_value())
+                total_value = float(current_temp.get_cash()) + float(
+                    current_temp.calculate_stock_value()
+                )
                 risk_positions: dict[str, PositionInfo] = {}
                 for code in current_stock_list:
                     close_ma = ma_map.get(code)
                     cur_price = close_ma[0] if close_ma and close_ma[0] else 0.0
                     entry_px = self._estimate_entry_price(code, current_temp)
-                    stock_val = float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code))
+                    stock_val = float(current_temp.get_stock_price(code)) * float(
+                        current_temp.get_stock_amount(code)
+                    )
                     risk_positions[code] = PositionInfo(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,
@@ -276,16 +280,24 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                     sector_map = {}
 
                 total_value = float(current_temp.get_cash()) + sum(
-                    float(float(current_temp.get_stock_price(c)) * float(current_temp.get_stock_amount(c))) for c in remaining
+                    float(
+                        float(current_temp.get_stock_price(c))
+                        * float(current_temp.get_stock_amount(c))
+                    )
+                    for c in remaining
                 )
                 risk_positions: dict[str, PositionInfo] = {}
                 for code in remaining:
-                    stock_val = float(float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code)))
+                    stock_val = float(
+                        float(current_temp.get_stock_price(code))
+                        * float(current_temp.get_stock_amount(code))
+                    )
                     risk_positions[code] = PositionInfo(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,
                         entry_price=self._estimate_entry_price(code, current_temp),
-                        current_price=stock_val / max(1, float(current_temp.get_stock_amount(code))),
+                        current_price=stock_val
+                        / max(1, float(current_temp.get_stock_amount(code))),
                         peak_price=stock_val / max(1, float(current_temp.get_stock_amount(code))),
                         sector=sector_map.get(code, "Unknown"),
                     )
@@ -295,10 +307,17 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                     # Sell the smallest position in the overweight sector
                     sector_name = sig.reason.split("'")[1] if "'" in sig.reason else ""
                     sector_positions = [
-                        (c, float(float(current_temp.get_stock_price(c)) * float(current_temp.get_stock_amount(c))))
+                        (
+                            c,
+                            float(
+                                float(current_temp.get_stock_price(c))
+                                * float(current_temp.get_stock_amount(c))
+                            ),
+                        )
                         for c in remaining
-                        if (sector_map.get(c, "Unknown") == sector_name
-                            and c not in sell_candidates)
+                        if (
+                            sector_map.get(c, "Unknown") == sector_name and c not in sell_candidates
+                        )
                     ]
                     sector_positions.sort(key=lambda x: x[1])
                     for inst, _ in sector_positions[:1]:
@@ -329,15 +348,19 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                     try:
                         vol_fields = ["Std($close / Ref($close, 1) - 1, 20)"]
                         vol_df = D.features(
-                            buy_list, vol_fields,
-                            start_time=trade_start_time, end_time=trade_end_time,
+                            buy_list,
+                            vol_fields,
+                            start_time=trade_start_time,
+                            end_time=trade_end_time,
                         )
                         if not vol_df.empty:
                             vol_df.columns = ["vol_20d"]
                             volatilities = vol_df.groupby(level="instrument")["vol_20d"].last()
                             scores = pred_score.reindex(buy_list).dropna()
                             weights = self._risk_manager.compute_vol_adjusted_weights(
-                                buy_list, scores, volatilities,
+                                buy_list,
+                                scores,
+                                volatilities,
                             )
                             alloc = cash * self.risk_degree
                             for code in buy_list:
@@ -371,16 +394,24 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                 except Exception:
                     sector_map = {}
                 total_value = float(current_temp.get_cash()) + sum(
-                    float(float(current_temp.get_stock_price(c)) * float(current_temp.get_stock_amount(c))) for c in current_stock_list
+                    float(
+                        float(current_temp.get_stock_price(c))
+                        * float(current_temp.get_stock_amount(c))
+                    )
+                    for c in current_stock_list
                 )
                 existing_positions: dict[str, _PI] = {}
                 for code in current_stock_list:
-                    stock_val = float(float(current_temp.get_stock_price(code)) * float(current_temp.get_stock_amount(code)))
+                    stock_val = float(
+                        float(current_temp.get_stock_price(code))
+                        * float(current_temp.get_stock_amount(code))
+                    )
                     existing_positions[code] = _PI(
                         instrument=code,
                         weight=stock_val / total_value if total_value > 0 else 0.0,
                         entry_price=self._estimate_entry_price(code, current_temp),
-                        current_price=stock_val / max(1, float(current_temp.get_stock_amount(code))),
+                        current_price=stock_val
+                        / max(1, float(current_temp.get_stock_amount(code))),
                         peak_price=stock_val / max(1, float(current_temp.get_stock_amount(code))),
                         sector=sector_map.get(code, "Unknown"),
                     )
@@ -410,7 +441,11 @@ class BiweeklyTrendStrategy(BaseSignalStrategy):
                 # Risk manager: reduce target for positions already at limit
                 if code in position_limit_capped:
                     target_value = min(target_value, max_allowed_buy_val * 0.5)
-                    logger.info("Risk: reduced buy for capped position", instrument=code, target_value=target_value)
+                    logger.info(
+                        "Risk: reduced buy for capped position",
+                        instrument=code,
+                        target_value=target_value,
+                    )
 
                 buy_price = self.trade_exchange.get_deal_price(
                     stock_id=code,

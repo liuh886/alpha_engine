@@ -484,6 +484,7 @@ def run_training_pipeline(
             # --- Data freshness check ---
             try:
                 from qlib.data import D
+
                 cal = D.calendar(start_time="2020-01-01")
                 if cal is not None and len(cal) > 0:
                     latest_cal = datetime.strptime(str(cal[-1])[:10], "%Y-%m-%d").date()
@@ -697,7 +698,9 @@ def run_training_pipeline(
                 "snapshot_id": snapshot_id,
                 "gate_failures": walk_forward_data.get("gate_failures", []),
                 "inference_passed": inference_result.passed if inference_result else None,
-                "reconstruction_status": reconstruction_result.status if reconstruction_result else None,
+                "reconstruction_status": reconstruction_result.status
+                if reconstruction_result
+                else None,
                 "artifact_registered": artifact_registered,
             }
             if gate_outcome["operational_success"]:

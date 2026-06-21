@@ -195,9 +195,7 @@ def execute_system_command(payload: dict):
     allowed_keys = list(_EXPLICIT_SAFE_COMMANDS.keys()) + list(_WORKFLOW_ACTIONS)
     base_cmd = _build_safe_command(task_key, args)
     if base_cmd is None:
-        raise HTTPException(
-            status_code=400, detail=f"Invalid task. Allowed: {allowed_keys}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid task. Allowed: {allowed_keys}")
 
     # Sanitize args: only allow strings, no shell injection possible with Popen(list)
     sanitized_args = [str(a) for a in args if ";" not in str(a) and "&" not in str(a)]

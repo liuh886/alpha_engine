@@ -149,9 +149,7 @@ def _run_adapter_backtest(
                         continue
                     side = "buy" if delta > 0 else "sell"
                     weight_delta = abs(delta)
-                    orders.append(
-                        AdapterOrder(date, instrument, side, weight_delta, target_weight)
-                    )
+                    orders.append(AdapterOrder(date, instrument, side, weight_delta, target_weight))
                     cost_bps = config.buy_cost_bps if side == "buy" else config.sell_cost_bps
                     cost += weight_delta * cost_bps / 10_000.0
                     total_turnover += weight_delta
@@ -197,8 +195,10 @@ def run_vectorized_adapter_backtest(
     config: AdapterBacktestConfig,
 ) -> AdapterBacktestResult:
     """Execute the batch materialization path with Qlib-shaped inputs."""
-    score_matrix = predictions.iloc[:, 0].unstack(level="instrument").reindex(
-        index=pd.DatetimeIndex(config.calendar)
+    score_matrix = (
+        predictions.iloc[:, 0]
+        .unstack(level="instrument")
+        .reindex(index=pd.DatetimeIndex(config.calendar))
     )
 
     def select(date: pd.Timestamp) -> list[str] | None:
@@ -224,9 +224,7 @@ class _PredictionCache:
     def __init__(self) -> None:
         self._values: dict[tuple[pd.Timestamp, ...], pd.DataFrame] = {}
 
-    def get(
-        self, source: _CountingPredictionSource, dates: Sequence[pd.Timestamp]
-    ) -> pd.DataFrame:
+    def get(self, source: _CountingPredictionSource, dates: Sequence[pd.Timestamp]) -> pd.DataFrame:
         key = tuple(dates)
         if key not in self._values:
             self._values[key] = source.fetch(dates)
@@ -453,9 +451,16 @@ def run_vectorized_backtest(
 
     if not common_dates:
         return BacktestResult(
-            total_return=0, benchmark_return=0, excess_return=0,
-            max_drawdown=0, sharpe_ratio=0, annual_return=0, volatility=0,
-            mean_ic=0, ic_ir=0, positive_ic_ratio=0,
+            total_return=0,
+            benchmark_return=0,
+            excess_return=0,
+            max_drawdown=0,
+            sharpe_ratio=0,
+            annual_return=0,
+            volatility=0,
+            mean_ic=0,
+            ic_ir=0,
+            positive_ic_ratio=0,
         )
 
     # Compute IC (always on full set)
@@ -496,10 +501,10 @@ def run_vectorized_backtest(
 
             # Compute turnover cost
             all_symbols = set(current_holdings.keys()) | set(new_holdings.keys())
-            turnover = sum(
-                abs(new_holdings.get(s, 0) - current_holdings.get(s, 0))
-                for s in all_symbols
-            ) / 2
+            turnover = (
+                sum(abs(new_holdings.get(s, 0) - current_holdings.get(s, 0)) for s in all_symbols)
+                / 2
+            )
             cost = turnover * cost_bps / 10000
 
             current_holdings = new_holdings
@@ -522,10 +527,13 @@ def run_vectorized_backtest(
                 if valid_returns:
                     # Re-normalize weights
                     total_weight = sum(current_holdings[s] for s in valid_returns)
-                    port_ret = sum(
-                        (current_holdings[s] / total_weight) * valid_returns[s]
-                        for s in valid_returns
-                    ) - cost
+                    port_ret = (
+                        sum(
+                            (current_holdings[s] / total_weight) * valid_returns[s]
+                            for s in valid_returns
+                        )
+                        - cost
+                    )
                 else:
                     port_ret = 0.0
             except (KeyError, TypeError):

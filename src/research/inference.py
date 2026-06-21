@@ -49,7 +49,11 @@ def perform_inference(
                     prof, market_name=market, default_features=features
                 )
         except Exception:
-            logger.debug("Failed to load inference profile, using default features", profile_path=str(profile_path), exc_info=True)
+            logger.debug(
+                "Failed to load inference profile, using default features",
+                profile_path=str(profile_path),
+                exc_info=True,
+            )
 
     data_loader_config = {
         "feature": features,

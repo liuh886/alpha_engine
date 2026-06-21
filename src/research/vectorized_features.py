@@ -55,7 +55,9 @@ def compute_kbar_features(df: pd.DataFrame) -> pd.DataFrame:
     return features
 
 
-def compute_rolling_features(df: pd.DataFrame, windows: list[int] = [5, 10, 20, 30, 60]) -> pd.DataFrame:
+def compute_rolling_features(
+    df: pd.DataFrame, windows: list[int] = [5, 10, 20, 30, 60]
+) -> pd.DataFrame:
     """Compute rolling window features.
 
     Parameters
@@ -97,7 +99,9 @@ def compute_rolling_features(df: pd.DataFrame, windows: list[int] = [5, 10, 20, 
         features[f"vol_std_{w}"] = v.rolling(w).std() / (v + 1e-12)
 
         # Price position in range
-        features[f"price_pos_{w}"] = (c - lo.rolling(w).min()) / (h.rolling(w).max() - lo.rolling(w).min() + 1e-12)
+        features[f"price_pos_{w}"] = (c - lo.rolling(w).min()) / (
+            h.rolling(w).max() - lo.rolling(w).min() + 1e-12
+        )
 
     return features
 

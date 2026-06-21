@@ -37,14 +37,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     candidate_ref = args.candidate or os.environ.get("ALPHA_RELEASE_CANDIDATE")
     if not candidate_ref:
-        return _emit(
-            {
-                "schema_version": "1",
-                "status": "fail",
-                "error": "explicit_release_candidate_required",
-            },
-            output=args.output,
-        ) or 2
+        return (
+            _emit(
+                {
+                    "schema_version": "1",
+                    "status": "fail",
+                    "error": "explicit_release_candidate_required",
+                },
+                output=args.output,
+            )
+            or 2
+        )
 
     revision = get_git_revision(PROJECT_ROOT)
     candidate_path = resolve_candidate_reference(candidate_ref, PROJECT_ROOT)

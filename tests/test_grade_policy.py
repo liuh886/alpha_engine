@@ -157,8 +157,7 @@ class TestObservationValidation:
 class TestQualification:
     def test_qualifies_with_enough_observations(self):
         obs_list = [
-            _obs(grade="AAA", score=0.03, asof_date=f"2026-01-{i:02d}")
-            for i in range(1, 101)
+            _obs(grade="AAA", score=0.03, asof_date=f"2026-01-{i:02d}") for i in range(1, 101)
         ]
         q = qualify_grade(obs_list, min_observations=100)
         assert q.qualified
@@ -166,14 +165,18 @@ class TestQualification:
         assert q.failure_reasons == []
 
     def test_qualification_returns_correct_grade(self):
-        obs_list = [_obs(grade="VVV", score=-0.02, asof_date=f"2026-01-{i:02d}") for i in range(1, 51)]
+        obs_list = [
+            _obs(grade="VVV", score=-0.02, asof_date=f"2026-01-{i:02d}") for i in range(1, 51)
+        ]
         q = qualify_grade(obs_list, min_observations=20)
         assert q.grade == "VVV"
         assert q.qualified
 
     def test_qualification_computes_hit_rate(self):
         # AAA = buy-side, positive scores should produce high hit rate
-        obs_list = [_obs(grade="AAA", score=0.05, asof_date=f"2026-01-{i:02d}") for i in range(1, 51)]
+        obs_list = [
+            _obs(grade="AAA", score=0.05, asof_date=f"2026-01-{i:02d}") for i in range(1, 51)
+        ]
         q = qualify_grade(obs_list, min_observations=10)
         assert q.direction_adjusted_hit_rate == 1.0
 
@@ -194,7 +197,9 @@ class TestQualification:
 
 class TestQualificationFails:
     def test_fails_below_minimum(self):
-        obs_list = [_obs(grade="AA", score=0.04, asof_date=f"2026-01-{i:02d}") for i in range(1, 11)]
+        obs_list = [
+            _obs(grade="AA", score=0.04, asof_date=f"2026-01-{i:02d}") for i in range(1, 11)
+        ]
         q = qualify_grade(obs_list, min_observations=100)
         assert not q.qualified
         assert "insufficient_observations" in q.failure_reasons[0]
@@ -212,12 +217,28 @@ class TestQualificationFails:
 
 class TestOrderingCheck:
     def test_perfect_positive_ordering(self):
-        mapping = {"VVV": -0.05, "VV": -0.03, "V": -0.01, "neutral": 0.0, "A": 0.01, "AA": 0.03, "AAA": 0.05}
+        mapping = {
+            "VVV": -0.05,
+            "VV": -0.03,
+            "V": -0.01,
+            "neutral": 0.0,
+            "A": 0.01,
+            "AA": 0.03,
+            "AAA": 0.05,
+        }
         rho = check_ordering(mapping)
         assert rho > 0.99
 
     def test_perfect_negative_ordering(self):
-        mapping = {"VVV": 0.05, "VV": 0.03, "V": 0.01, "neutral": 0.0, "A": -0.01, "AA": -0.03, "AAA": -0.05}
+        mapping = {
+            "VVV": 0.05,
+            "VV": 0.03,
+            "V": 0.01,
+            "neutral": 0.0,
+            "A": -0.01,
+            "AA": -0.03,
+            "AAA": -0.05,
+        }
         rho = check_ordering(mapping)
         assert rho < -0.99
 

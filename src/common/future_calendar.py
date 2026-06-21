@@ -49,7 +49,9 @@ def ensure_calendar_future_file(
             last = last + pd.Timedelta(days=1)
             appended.append(last.strftime("%Y-%m-%d"))
     except Exception:
-        logger.debug("Failed to compute future calendar dates, skipping future file creation", exc_info=True)
+        logger.debug(
+            "Failed to compute future calendar dates, skipping future file creation", exc_info=True
+        )
         return future_path
 
     out_lines = base_lines + appended

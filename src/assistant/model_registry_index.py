@@ -16,26 +16,26 @@ logger = get_logger(__name__)
 # Validated stage enum -- fail-closed: only known stages are accepted.
 # ---------------------------------------------------------------------------
 _MODEL_STAGES = {
-    "CANDIDATE",      # Initial: research output, not gate-checked
-    "STAGING",        # Walk-forward passed, but not yet fully validated
-    "RECOMMENDED",    # Fully validated: inference + reconstruction + walk-forward passed
-    "REJECTED",       # Failed gates
-    "SUPERSEDED",     # Replaced by a newer model
+    "CANDIDATE",  # Initial: research output, not gate-checked
+    "STAGING",  # Walk-forward passed, but not yet fully validated
+    "RECOMMENDED",  # Fully validated: inference + reconstruction + walk-forward passed
+    "REJECTED",  # Failed gates
+    "SUPERSEDED",  # Replaced by a newer model
 }
 
 # Valid promotion transitions (from -> set of allowed targets).
 _STAGE_TRANSITIONS: dict[str, set[str]] = {
-    "CANDIDATE":  {"STAGING", "REJECTED"},
-    "STAGING":    {"RECOMMENDED", "REJECTED", "SUPERSEDED"},
+    "CANDIDATE": {"STAGING", "REJECTED"},
+    "STAGING": {"RECOMMENDED", "REJECTED", "SUPERSEDED"},
     "RECOMMENDED": {"SUPERSEDED", "REJECTED"},
-    "REJECTED":   {"CANDIDATE"},  # allow re-entry after fixes
-    "SUPERSEDED": set(),          # terminal
+    "REJECTED": {"CANDIDATE"},  # allow re-entry after fixes
+    "SUPERSEDED": set(),  # terminal
 }
 
 # Minimum gate evidence required per stage.
 _STAGE_GATE_REQUIREMENTS: dict[str, set[str]] = {
-    "CANDIDATE":  set(),                    # no gates required
-    "STAGING":    {"walk_forward_passed"},  # WF must pass
+    "CANDIDATE": set(),  # no gates required
+    "STAGING": {"walk_forward_passed"},  # WF must pass
     "RECOMMENDED": {"walk_forward_passed", "inference_passed"},  # WF + inference
     # REJECTED / SUPERSEDED have no upward requirements
 }
@@ -138,8 +138,7 @@ def validate_evidence_binding(entry: dict) -> list[str]:
         entry_id = entry.get("id")
         if wf_model_id and entry_id and wf_model_id != entry_id:
             errors.append(
-                f"Walk-forward evidence belongs to model {wf_model_id}, "
-                f"not to {entry_id}"
+                f"Walk-forward evidence belongs to model {wf_model_id}, not to {entry_id}"
             )
 
     # 3. Artifact ID, if present, must be a non-empty string

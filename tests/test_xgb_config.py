@@ -58,12 +58,12 @@ def test_xgb_config_preserves_features_and_labels():
     with open("configs/us_xgb_workflow.yaml") as f:
         xgb_cfg = yaml.safe_load(f)
 
-    lgbm_features = lgbm_cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"][
-        "data_loader"
-    ]["kwargs"]["config"]["feature"]
-    xgb_features = xgb_cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"][
-        "data_loader"
-    ]["kwargs"]["config"]["feature"]
+    lgbm_features = lgbm_cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"][
+        "kwargs"
+    ]["config"]["feature"]
+    xgb_features = xgb_cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"][
+        "kwargs"
+    ]["config"]["feature"]
     assert lgbm_features == xgb_features
 
 

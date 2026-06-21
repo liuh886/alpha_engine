@@ -211,7 +211,11 @@ def _schema_from_constructor(cls: type, exclude: set[str] | None = None) -> dict
         if isinstance(ann, str):
             # Still a string — try to eval it in the class module namespace
             try:
-                ann = eval(ann, getattr(cls, "__module__", None) and vars(__import__(cls.__module__, fromlist=["*"])))
+                ann = eval(
+                    ann,
+                    getattr(cls, "__module__", None)
+                    and vars(__import__(cls.__module__, fromlist=["*"])),
+                )
             except Exception:
                 pass
 

@@ -23,6 +23,7 @@ router = APIRouter(prefix="/research", tags=["research"])
 
 class ResearchRunRequest(BaseModel):
     """Request to start a research run."""
+
     market: str = "cn"
     goal: str = "Find alpha factors"
     model_type: str = "lgbm"
@@ -78,18 +79,20 @@ def list_research_runs(
         if status and run_data.get("status") != status:
             continue
         steps = run_data.get("steps", [])
-        runs.append({
-            "run_id": run_data["run_id"],
-            "market": req.get("market"),
-            "goal": req.get("goal"),
-            "status": run_data.get("status"),
-            "recommendation": run_data.get("evidence_bundle_id"),
-            "created_at": run_data.get("started_at"),
-            "completed_at": run_data.get("completed_at"),
-            "n_steps": len(steps),
-            "n_completed": sum(1 for s in steps if s.get("status") == "completed"),
-            "n_failed": sum(1 for s in steps if s.get("status") == "failed"),
-        })
+        runs.append(
+            {
+                "run_id": run_data["run_id"],
+                "market": req.get("market"),
+                "goal": req.get("goal"),
+                "status": run_data.get("status"),
+                "recommendation": run_data.get("evidence_bundle_id"),
+                "created_at": run_data.get("started_at"),
+                "completed_at": run_data.get("completed_at"),
+                "n_steps": len(steps),
+                "n_completed": sum(1 for s in steps if s.get("status") == "completed"),
+                "n_failed": sum(1 for s in steps if s.get("status") == "failed"),
+            }
+        )
 
     if len(runs) >= limit:
         return {"ok": True, "runs": runs[:limit], "total": len(runs[:limit])}
@@ -109,18 +112,20 @@ def list_research_runs(
             if status and run_data.get("status") != status:
                 continue
 
-            runs.append({
-                "run_id": run_data["run_id"],
-                "market": run_data["market"],
-                "goal": run_data["goal"],
-                "status": run_data["status"],
-                "recommendation": run_data.get("recommendation"),
-                "created_at": run_data["created_at"],
-                "completed_at": run_data.get("completed_at"),
-                "n_steps": run_data.get("n_steps", 0),
-                "n_completed": run_data.get("n_completed", 0),
-                "n_failed": run_data.get("n_failed", 0),
-            })
+            runs.append(
+                {
+                    "run_id": run_data["run_id"],
+                    "market": run_data["market"],
+                    "goal": run_data["goal"],
+                    "status": run_data["status"],
+                    "recommendation": run_data.get("recommendation"),
+                    "created_at": run_data["created_at"],
+                    "completed_at": run_data.get("completed_at"),
+                    "n_steps": run_data.get("n_steps", 0),
+                    "n_completed": run_data.get("n_completed", 0),
+                    "n_failed": run_data.get("n_failed", 0),
+                }
+            )
         except Exception:
             continue
 

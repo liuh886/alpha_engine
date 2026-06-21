@@ -18,7 +18,6 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-import numpy as np
 import pandas as pd
 import structlog
 from qlib.data import D
@@ -27,7 +26,7 @@ from src.common.paths import ARTIFACTS_DIR
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 from src.execution.signal_execution_config import SignalExecutionConfig
 from src.execution.signal_execution_engine import SignalExecutionEngine
-from src.research.vectorized_backtest import BacktestResult, run_vectorized_backtest
+from src.research.vectorized_backtest import run_vectorized_backtest
 
 logger = structlog.get_logger(__name__)
 
@@ -67,9 +66,7 @@ def load_artifact_predictions_and_returns() -> tuple[pd.DataFrame, pd.DataFrame,
     # Load predictions
     pred_df = pd.read_csv(artifact_dir / "predictions.csv")
     # Convert numeric instrument IDs to zero-padded ticker symbols
-    pred_df["instrument"] = pred_df["instrument"].apply(
-        lambda x: str(int(x)).zfill(6)
-    )
+    pred_df["instrument"] = pred_df["instrument"].apply(lambda x: str(int(x)).zfill(6))
     pred_df["datetime"] = pd.to_datetime(pred_df["datetime"])
     predictions = pred_df.set_index(["datetime", "instrument"]).sort_index()
     logger.info("Predictions loaded", shape=predictions.shape)
@@ -173,7 +170,8 @@ def run_benchmarks(
         "wall_seconds": time.perf_counter() - t0,
         "description": "分级权重 + 市场状态过滤（纯多头）",
         "diagnostics": result_regime._diagnostics.summary()  # type: ignore[attr-defined]
-        if hasattr(result_regime, "_diagnostics") else {},
+        if hasattr(result_regime, "_diagnostics")
+        else {},
     }
 
     # --- 4. Full: Grade-weighted + regime + short side ---
@@ -196,7 +194,8 @@ def run_benchmarks(
         "wall_seconds": time.perf_counter() - t0,
         "description": "完整：分级权重 + 状态过滤 + 做空端（80%多/20%空）",
         "diagnostics": result_full._diagnostics.summary()  # type: ignore[attr-defined]
-        if hasattr(result_full, "_diagnostics") else {},
+        if hasattr(result_full, "_diagnostics")
+        else {},
     }
 
     return results
@@ -211,8 +210,10 @@ def print_comparison(results: dict) -> None:
     )
     print("\n" + "=" * len(header))
     print("SignalExecutionEngine Benchmark — Real CN Data")
-    print(f"Period: {TEST_START} → {TEST_END} | "
-          f"TopK≈{TOP_K} | Rebalance={REBALANCE_DAYS}d | Cost={COST_BPS}bps")
+    print(
+        f"Period: {TEST_START} → {TEST_END} | "
+        f"TopK≈{TOP_K} | Rebalance={REBALANCE_DAYS}d | Cost={COST_BPS}bps"
+    )
     print("=" * len(header))
     print(header)
     print("-" * len(header))

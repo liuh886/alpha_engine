@@ -86,10 +86,14 @@ class EvidenceLedger:
             artifacts_dir = ARTIFACTS_DIR
         self.artifacts_dir = Path(artifacts_dir)
         self.factor_db_path = (
-            Path(factor_db_path) if factor_db_path is not None else self.artifacts_dir / "factor_registry.db"
+            Path(factor_db_path)
+            if factor_db_path is not None
+            else self.artifacts_dir / "factor_registry.db"
         )
         self.model_list_path = (
-            Path(model_list_path) if model_list_path is not None else self.artifacts_dir / "models" / "model_list.yaml"
+            Path(model_list_path)
+            if model_list_path is not None
+            else self.artifacts_dir / "models" / "model_list.yaml"
         )
         self._last_bundle: EvidenceBundle | None = None
 
@@ -171,7 +175,9 @@ class EvidenceLedger:
         self._last_bundle = bundle
         return bundle
 
-    def from_factor(self, factor_id_or_name: str | int, market: str | None = None) -> EvidenceBundle:
+    def from_factor(
+        self, factor_id_or_name: str | int, market: str | None = None
+    ) -> EvidenceBundle:
         """Build evidence from the factor registry and optional factor artifact."""
         subject_id = str(factor_id_or_name)
         bundle = self._empty_bundle(subject_type="factor", subject_id=subject_id)

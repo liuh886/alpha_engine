@@ -24,8 +24,7 @@ def test_calculate_guardrails_marks_extreme_volatility_before_high():
 
 def test_calculate_guardrails_marks_low_liquidity():
     ohlcv = [
-        {"time": f"2026-01-{idx + 1:02d}", "close": 10.0 + idx, "value": 100.0}
-        for idx in range(12)
+        {"time": f"2026-01-{idx + 1:02d}", "close": 10.0 + idx, "value": 100.0} for idx in range(12)
     ]
 
     guardrails = AssetInspectionService.calculate_guardrails(ohlcv)

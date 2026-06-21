@@ -84,9 +84,7 @@ def _format_decay_alerts(decay_results: list[dict]) -> str:
     if not decay_results:
         return "No Active factors to check.\n"
 
-    alerts = [
-        r for r in decay_results if r.get("status") in ("decaying", "critical_decay")
-    ]
+    alerts = [r for r in decay_results if r.get("status") in ("decaying", "critical_decay")]
 
     if not alerts:
         return "All Active factors are healthy -- no decay detected.\n"
@@ -154,13 +152,15 @@ def _format_top_performers() -> str:
         validations = registry.get_validations(f["id"])
         latest = validations[0] if validations else None
         if latest and latest.get("icir") is not None:
-            factor_metrics.append({
-                "name": f["name"],
-                "category": f.get("category", "unknown"),
-                "icir": latest["icir"],
-                "ic": latest.get("ic", 0.0),
-                "rank_ic": latest.get("rank_ic", 0.0),
-            })
+            factor_metrics.append(
+                {
+                    "name": f["name"],
+                    "category": f.get("category", "unknown"),
+                    "icir": latest["icir"],
+                    "ic": latest.get("ic", 0.0),
+                    "rank_ic": latest.get("rank_ic", 0.0),
+                }
+            )
 
     if not factor_metrics:
         return "No Active factors with ICIR data.\n"

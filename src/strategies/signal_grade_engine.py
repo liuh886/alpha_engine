@@ -218,9 +218,7 @@ class SignalPerformance:
 MIN_OCCURRENCES_FOR_QUALIFICATION = 5
 
 
-def compute_direction_adjusted_hit_rate(
-    returns: np.ndarray, grade: str
-) -> float:
+def compute_direction_adjusted_hit_rate(returns: np.ndarray, grade: str) -> float:
     """Compute hit rate adjusted for signal direction.
 
     For buy grades (AAA/AA/A), a 'hit' is a positive return.
@@ -257,12 +255,35 @@ def compute_confidence_interval_95(
         # Approximate t critical values for common small sample sizes (df = n-1)
         # Two-tailed 95% CI
         _t_table = {
-            1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
-            6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
-            11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
-            16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
-            21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
-            26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045,
+            1: 12.706,
+            2: 4.303,
+            3: 3.182,
+            4: 2.776,
+            5: 2.571,
+            6: 2.447,
+            7: 2.365,
+            8: 2.306,
+            9: 2.262,
+            10: 2.228,
+            11: 2.201,
+            12: 2.179,
+            13: 2.160,
+            14: 2.145,
+            15: 2.131,
+            16: 2.120,
+            17: 2.110,
+            18: 2.101,
+            19: 2.093,
+            20: 2.086,
+            21: 2.080,
+            22: 2.074,
+            23: 2.069,
+            24: 2.064,
+            25: 2.060,
+            26: 2.056,
+            27: 2.052,
+            28: 2.048,
+            29: 2.045,
         }
         t_crit = _t_table.get(n - 1, 1.96)
     return [mean - t_crit * std_err, mean + t_crit * std_err]
@@ -465,8 +486,13 @@ class SignalGradeEngine:
         except Exception as exc:
             logger.warning("grade_computation_failed", symbol=symbol, error=str(exc))
             return SignalGrade(
-                symbol=symbol, date=target_date, grade="",
-                rank=-1, total_stocks=0, score=float("nan"), percentile=0.0,
+                symbol=symbol,
+                date=target_date,
+                grade="",
+                rank=-1,
+                total_stocks=0,
+                score=float("nan"),
+                percentile=0.0,
                 provenance=provenance,
             )
 
@@ -631,7 +657,9 @@ class SignalGradeEngine:
                 future_dates = close_prices.index[close_prices.index > grade_date]
                 if len(future_dates) < forward_days:
                     continue
-                exit_price = float(close_prices.iloc[close_prices.index.get_loc(grade_date) + forward_days])
+                exit_price = float(
+                    close_prices.iloc[close_prices.index.get_loc(grade_date) + forward_days]
+                )
 
                 if entry_price > 0 and not pd.isna(entry_price) and not pd.isna(exit_price):
                     forward_return = (exit_price - entry_price) / entry_price
@@ -645,7 +673,9 @@ class SignalGradeEngine:
         results: dict[str, SignalPerformance] = {}
         cost_decimal = cost_bps / 10000.0  # convert bps to decimal
         # Per-period benchmark return (annualized → per forward_days period)
-        per_period_benchmark = benchmark_return * (forward_days / 252.0) if benchmark_return else 0.0
+        per_period_benchmark = (
+            benchmark_return * (forward_days / 252.0) if benchmark_return else 0.0
+        )
 
         for grade in GRADES:
             returns = grade_returns[grade]
@@ -654,11 +684,18 @@ class SignalGradeEngine:
             if not returns:
                 qual_status, fail_reasons = determine_qualification(0)
                 results[grade] = SignalPerformance(
-                    grade=grade, total_occurrences=0,
-                    positive_count=0, negative_count=0,
-                    win_rate=0.0, mean_return=0.0, cumulative_return=0.0,
-                    median_return=0.0, max_return=0.0, min_return=0.0,
-                    avg_score=0.0, provenance=provenance,
+                    grade=grade,
+                    total_occurrences=0,
+                    positive_count=0,
+                    negative_count=0,
+                    win_rate=0.0,
+                    mean_return=0.0,
+                    cumulative_return=0.0,
+                    median_return=0.0,
+                    max_return=0.0,
+                    min_return=0.0,
+                    avg_score=0.0,
+                    provenance=provenance,
                     model_version_id=model_version_id,
                     policy_version=policy_version,
                     direction_adjusted_hit_rate=0.0,
@@ -679,11 +716,18 @@ class SignalGradeEngine:
             if len(arr) == 0:
                 qual_status, fail_reasons = determine_qualification(0)
                 results[grade] = SignalPerformance(
-                    grade=grade, total_occurrences=0,
-                    positive_count=0, negative_count=0,
-                    win_rate=0.0, mean_return=0.0, cumulative_return=0.0,
-                    median_return=0.0, max_return=0.0, min_return=0.0,
-                    avg_score=0.0, provenance=provenance,
+                    grade=grade,
+                    total_occurrences=0,
+                    positive_count=0,
+                    negative_count=0,
+                    win_rate=0.0,
+                    mean_return=0.0,
+                    cumulative_return=0.0,
+                    median_return=0.0,
+                    max_return=0.0,
+                    min_return=0.0,
+                    avg_score=0.0,
+                    provenance=provenance,
                     model_version_id=model_version_id,
                     policy_version=policy_version,
                     direction_adjusted_hit_rate=0.0,
@@ -699,7 +743,9 @@ class SignalGradeEngine:
             # Each signal holds for `forward_days` days, so signals overlap.
             # Effective cumulative = sum(returns) / forward_days
             raw_cumulative = float(np.sum(arr))
-            adjusted_cumulative = raw_cumulative / forward_days if forward_days > 0 else raw_cumulative
+            adjusted_cumulative = (
+                raw_cumulative / forward_days if forward_days > 0 else raw_cumulative
+            )
 
             # Evidence computations
             mean_ret = float(np.mean(arr))
@@ -826,7 +872,7 @@ class SignalGradeEngine:
                 return None
 
             # Extract single stock
-            if hasattr(df.index, 'get_level_values') and 'instrument' in df.index.names:
+            if hasattr(df.index, "get_level_values") and "instrument" in df.index.names:
                 df = df.xs(symbol, level="instrument")
 
             return df
@@ -1053,14 +1099,16 @@ class SignalGradeEngine:
                     percentile = (1.0 - rank / total) * 100 if total > 0 else 0.0
                     grade = self._rank_to_grade(rank, total)
 
-                    result.append({
-                        "date": dt.strftime("%Y-%m-%d"),
-                        "percentile": round(percentile, 1),
-                        "grade": grade,
-                        "score": round(score, 4),
-                        "rank": rank,
-                        "total": total,
-                    })
+                    result.append(
+                        {
+                            "date": dt.strftime("%Y-%m-%d"),
+                            "percentile": round(percentile, 1),
+                            "grade": grade,
+                            "score": round(score, 4),
+                            "rank": rank,
+                            "total": total,
+                        }
+                    )
                 except Exception:
                     continue
 
@@ -1118,9 +1166,9 @@ class SignalGradeEngine:
                             continue
                     future_dates = close_prices.index[close_prices.index > grade_date]
                     if len(future_dates) >= forward_days:
-                        exit_price = float(close_prices.iloc[
-                            close_prices.index.get_loc(grade_date) + forward_days
-                        ])
+                        exit_price = float(
+                            close_prices.iloc[close_prices.index.get_loc(grade_date) + forward_days]
+                        )
                         if entry_price > 0 and not pd.isna(exit_price):
                             forward_returns[sg.date] = (exit_price - entry_price) / entry_price
                 except Exception:
@@ -1128,10 +1176,10 @@ class SignalGradeEngine:
 
         grade_colors = {
             "AAA": "#00ff00",  # Bright green
-            "AA": "#22c55e",   # Green
-            "A": "#86efac",    # Light green
-            "V": "#fca5a5",    # Light red
-            "VV": "#ef4444",   # Red
+            "AA": "#22c55e",  # Green
+            "A": "#86efac",  # Light green
+            "V": "#fca5a5",  # Light red
+            "VV": "#ef4444",  # Red
             "VVV": "#ff0000",  # Bright red
         }
 
@@ -1165,14 +1213,16 @@ class SignalGradeEngine:
             qualification = "qualified" if sg.grade else "ungraded"
             tooltip_parts.append(f"Status: {qualification}")
 
-            markers.append({
-                "time": sg.date,
-                "position": "belowBar" if is_buy else "aboveBar",
-                "color": grade_colors.get(sg.grade, "#888"),
-                "shape": "arrowUp" if is_buy else "arrowDown",
-                "text": sg.grade,
-                "size": grade_sizes.get(sg.grade, 1),
-                "tooltip": " | ".join(tooltip_parts),
-            })
+            markers.append(
+                {
+                    "time": sg.date,
+                    "position": "belowBar" if is_buy else "aboveBar",
+                    "color": grade_colors.get(sg.grade, "#888"),
+                    "shape": "arrowUp" if is_buy else "arrowDown",
+                    "text": sg.grade,
+                    "size": grade_sizes.get(sg.grade, 1),
+                    "tooltip": " | ".join(tooltip_parts),
+                }
+            )
 
         return markers

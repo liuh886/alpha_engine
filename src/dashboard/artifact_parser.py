@@ -88,9 +88,9 @@ def parse_detailed_ledger(run_dir: Path) -> dict[str, Any]:
                 existing_qty = prev_amt
                 existing_avg = avg_entry_price.get(ticker, price)
                 if existing_qty + buy_qty > 0:
-                    avg_entry_price[ticker] = (
-                        existing_avg * existing_qty + price * buy_qty
-                    ) / (existing_qty + buy_qty)
+                    avg_entry_price[ticker] = (existing_avg * existing_qty + price * buy_qty) / (
+                        existing_qty + buy_qty
+                    )
                 all_trades.append(
                     {
                         "date": date_str,
@@ -217,9 +217,11 @@ def compute_alpha_decomposition(run_dir: Path) -> dict[str, Any]:
             bench_ret = report[bench_col].dropna()
             if len(bench_ret) > 1:
                 port_daily = account.pct_change().dropna()
-                mkt_daily = bench_ret.iloc[:len(port_daily)]
+                mkt_daily = bench_ret.iloc[: len(port_daily)]
                 if len(mkt_daily) == len(port_daily) and mkt_daily.std() > 0:
-                    aligned = pd.DataFrame({"port": port_daily.values, "mkt": mkt_daily.values}).dropna()
+                    aligned = pd.DataFrame(
+                        {"port": port_daily.values, "mkt": mkt_daily.values}
+                    ).dropna()
                     if len(aligned) > 10:
                         beta = aligned["port"].cov(aligned["mkt"]) / aligned["mkt"].var()
                         market_return = (1 + mkt_daily).prod() - 1
@@ -246,8 +248,16 @@ def compute_alpha_decomposition(run_dir: Path) -> dict[str, Any]:
                     prev_dt = sorted_dates[i - 1]
                     pos_obj = positions[dt]
                     prev_obj = positions[prev_dt]
-                    curr_dict = pos_obj.position if hasattr(pos_obj, "position") else (pos_obj.get("position", {}) if isinstance(pos_obj, dict) else {})
-                    prev_dict = prev_obj.position if hasattr(prev_obj, "position") else (prev_obj.get("position", {}) if isinstance(prev_obj, dict) else {})
+                    curr_dict = (
+                        pos_obj.position
+                        if hasattr(pos_obj, "position")
+                        else (pos_obj.get("position", {}) if isinstance(pos_obj, dict) else {})
+                    )
+                    prev_dict = (
+                        prev_obj.position
+                        if hasattr(prev_obj, "position")
+                        else (prev_obj.get("position", {}) if isinstance(prev_obj, dict) else {})
+                    )
 
                     held_returns = []
                     weight_returns = []
@@ -255,7 +265,11 @@ def compute_alpha_decomposition(run_dir: Path) -> dict[str, Any]:
                         if ticker in ["cash", "now_account_value"]:
                             continue
                         curr_px = curr_dict[ticker].get("price", 0)
-                        prev_px = prev_dict.get(ticker, {}).get("price", 0) if isinstance(prev_dict.get(ticker), dict) else 0
+                        prev_px = (
+                            prev_dict.get(ticker, {}).get("price", 0)
+                            if isinstance(prev_dict.get(ticker), dict)
+                            else 0
+                        )
                         weight = curr_dict[ticker].get("amount", 0) * curr_px
                         if prev_px > 0 and curr_px > 0:
                             ret = (curr_px / prev_px) - 1
@@ -274,19 +288,39 @@ def compute_alpha_decomposition(run_dir: Path) -> dict[str, Any]:
                     eq_cum = 1.0
                     actual_cum = 1.0
                     for eq_r, act_r in zip(eq_returns, actual_returns):
-                        eq_cum *= (1 + eq_r)
-                        actual_cum *= (1 + act_r)
+                        eq_cum *= 1 + eq_r
+                        actual_cum *= 1 + act_r
                     sizing_alpha = actual_cum - eq_cum
 
         # --- Timing alpha (residual) ---
         timing_alpha = total_return - selection_alpha - beta_contribution - sizing_alpha - cost_drag
 
         components = [
-            {"name": "Selection", "value": round(selection_alpha * 100, 2), "description": "Stock picking skill vs market"},
-            {"name": "Timing", "value": round(timing_alpha * 100, 2), "description": "Entry/exit timing quality"},
-            {"name": "Sizing", "value": round(sizing_alpha * 100, 2), "description": "Position weight optimization"},
-            {"name": "Cost", "value": round(cost_drag * 100, 2), "description": "Transaction cost drag"},
-            {"name": "Beta", "value": round(beta_contribution * 100, 2), "description": "Market exposure contribution"},
+            {
+                "name": "Selection",
+                "value": round(selection_alpha * 100, 2),
+                "description": "Stock picking skill vs market",
+            },
+            {
+                "name": "Timing",
+                "value": round(timing_alpha * 100, 2),
+                "description": "Entry/exit timing quality",
+            },
+            {
+                "name": "Sizing",
+                "value": round(sizing_alpha * 100, 2),
+                "description": "Position weight optimization",
+            },
+            {
+                "name": "Cost",
+                "value": round(cost_drag * 100, 2),
+                "description": "Transaction cost drag",
+            },
+            {
+                "name": "Beta",
+                "value": round(beta_contribution * 100, 2),
+                "description": "Market exposure contribution",
+            },
         ]
 
     return {

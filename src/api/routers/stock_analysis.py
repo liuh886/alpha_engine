@@ -109,7 +109,10 @@ def _load_predictions_and_ranks(market: str):
                         with pred_file.open("rb") as f:
                             candidate = pickle.load(f)
                         if isinstance(candidate, pd.DataFrame) and not candidate.empty:
-                            if hasattr(candidate.index, 'get_level_values') and 'datetime' in candidate.index.names:
+                            if (
+                                hasattr(candidate.index, "get_level_values")
+                                and "datetime" in candidate.index.names
+                            ):
                                 pred_df = candidate
                                 pred_path = pred_file
                                 pred_mtime = pred_file.stat().st_mtime
@@ -124,7 +127,10 @@ def _load_predictions_and_ranks(market: str):
 
         # Compute freshness info
         from datetime import datetime
-        pred_age_days = (datetime.now().timestamp() - pred_mtime) / 86400 if pred_mtime > 0 else None
+
+        pred_age_days = (
+            (datetime.now().timestamp() - pred_mtime) / 86400 if pred_mtime > 0 else None
+        )
         freshness = {
             "pred_age_days": round(pred_age_days, 1) if pred_age_days is not None else None,
             "is_stale": pred_age_days is not None and pred_age_days > 7,
@@ -179,7 +185,11 @@ def _load_watchlist(market: str) -> list[str]:
             tickers = []
 
         # Filter out ETFs and non-stock entries
-        stocks = [t for t in tickers if isinstance(t, str) and not t.startswith("SPY") and not t.startswith("QQQ")]
+        stocks = [
+            t
+            for t in tickers
+            if isinstance(t, str) and not t.startswith("SPY") and not t.startswith("QQQ")
+        ]
         return stocks
 
     except Exception as exc:
@@ -262,7 +272,12 @@ def get_stock_factors(
         active_factors = registry.list_factors(stage=STAGE_ACTIVE)
 
         if not active_factors:
-            return {"ok": True, "symbol": symbol, "factors": [], "message": "No Active factors in registry"}
+            return {
+                "ok": True,
+                "symbol": symbol,
+                "factors": [],
+                "message": "No Active factors in registry",
+            }
 
         factors_to_eval = active_factors[:30]  # limit for performance
         expressions = [f["expression"] for f in factors_to_eval]
@@ -300,16 +315,20 @@ def get_stock_factors(
                             std_val = float(latest_per_stock.std())
                             if std_val > 1e-10:
                                 z_score = (val - mean_val) / std_val
-                            percentile = float((latest_per_stock < val).sum() / len(latest_per_stock) * 100)
+                            percentile = float(
+                                (latest_per_stock < val).sum() / len(latest_per_stock) * 100
+                            )
 
-                result.append({
-                    "name": factor["name"],
-                    "expression": factor["expression"],
-                    "category": factor["category"],
-                    "value": val,
-                    "z_score": round(z_score, 4) if z_score is not None else None,
-                    "percentile": round(percentile, 1) if percentile is not None else None,
-                })
+                result.append(
+                    {
+                        "name": factor["name"],
+                        "expression": factor["expression"],
+                        "category": factor["category"],
+                        "value": val,
+                        "z_score": round(z_score, 4) if z_score is not None else None,
+                        "percentile": round(percentile, 1) if percentile is not None else None,
+                    }
+                )
 
         return {"ok": True, "symbol": symbol, "market": resolved_market, "factors": result}
 
@@ -368,12 +387,24 @@ def get_watchlist_summary(
                             close = float(last.iloc[0]) if pd.notna(last.iloc[0]) else None
                             prev_close = float(last.iloc[1]) if pd.notna(last.iloc[1]) else None
                             close_5d = float(last.iloc[2]) if pd.notna(last.iloc[2]) else None
-                            change_pct = ((close - prev_close) / prev_close * 100) if close and prev_close and prev_close > 0 else None
-                            change_5d_pct = ((close - close_5d) / close_5d * 100) if close and close_5d and close_5d > 0 else None
+                            change_pct = (
+                                ((close - prev_close) / prev_close * 100)
+                                if close and prev_close and prev_close > 0
+                                else None
+                            )
+                            change_5d_pct = (
+                                ((close - close_5d) / close_5d * 100)
+                                if close and close_5d and close_5d > 0
+                                else None
+                            )
                             price_map[inst] = {
                                 "price": round(close, 2) if close else None,
-                                "change_pct": round(change_pct, 2) if change_pct is not None else None,
-                                "change_5d_pct": round(change_5d_pct, 2) if change_5d_pct is not None else None,
+                                "change_pct": round(change_pct, 2)
+                                if change_pct is not None
+                                else None,
+                                "change_5d_pct": round(change_5d_pct, 2)
+                                if change_5d_pct is not None
+                                else None,
                             }
                     except Exception:
                         continue
@@ -446,7 +477,6 @@ def get_data_freshness(market: str = Query("us", description="us or cn")):
     and overall data health status.
     """
     try:
-
         result: dict = {
             "ok": True,
             "market": market,
@@ -474,7 +504,9 @@ def get_data_freshness(market: str = Query("us", description="us or cn")):
                     "age_days": age_days,
                 }
                 if age_days > 3:
-                    result["warnings"].append(f"Qlib data is {age_days} days old (latest: {latest_date.strftime('%Y-%m-%d')})")
+                    result["warnings"].append(
+                        f"Qlib data is {age_days} days old (latest: {latest_date.strftime('%Y-%m-%d')})"
+                    )
             else:
                 result["sources"]["qlib"] = {"available": False}
                 result["warnings"].append("No Qlib data found")
@@ -560,10 +592,12 @@ def analyze_portfolio(req: PortfolioAnalysisRequest):
     for symbol in req.symbols:
         clean = _clean_symbol(symbol)
         if clean not in rank_map:
-            results.append({
-                "symbol": symbol,
-                "error": f"Symbol not found in model predictions for market '{req.market}'",
-            })
+            results.append(
+                {
+                    "symbol": symbol,
+                    "error": f"Symbol not found in model predictions for market '{req.market}'",
+                }
+            )
             stats["error"] += 1
             continue
 
@@ -671,9 +705,7 @@ class _SignalHistoryStore:
                 ),
             )
 
-    def get_history(
-        self, symbol: str, market: str = "us", days: int = 30
-    ) -> list[dict[str, Any]]:
+    def get_history(self, symbol: str, market: str = "us", days: int = 30) -> list[dict[str, Any]]:
         """Retrieve signal history for a symbol."""
         import json
         from datetime import datetime, timedelta
@@ -842,23 +874,27 @@ def compile_nl_strategy(req: NLStrategyRequest):
         # Filter by matched categories
         for factor in all_active:
             if factor["category"] in matched_categories:
-                recommended_factors.append({
-                    "name": factor["name"],
-                    "expression": factor["expression"],
-                    "category": factor["category"],
-                    "direction": factor.get("direction", "long"),
-                })
+                recommended_factors.append(
+                    {
+                        "name": factor["name"],
+                        "expression": factor["expression"],
+                        "category": factor["category"],
+                        "direction": factor.get("direction", "long"),
+                    }
+                )
 
         # If not enough, add top factors from other categories
         if len(recommended_factors) < req.max_factors:
             for factor in all_active:
                 if factor["name"] not in {f["name"] for f in recommended_factors}:
-                    recommended_factors.append({
-                        "name": factor["name"],
-                        "expression": factor["expression"],
-                        "category": factor["category"],
-                        "direction": factor.get("direction", "long"),
-                    })
+                    recommended_factors.append(
+                        {
+                            "name": factor["name"],
+                            "expression": factor["expression"],
+                            "category": factor["category"],
+                            "direction": factor.get("direction", "long"),
+                        }
+                    )
                 if len(recommended_factors) >= req.max_factors:
                     break
 
@@ -873,7 +909,7 @@ def compile_nl_strategy(req: NLStrategyRequest):
         "input": req.description,
         "matched_keywords": matched_keywords,
         "matched_categories": matched_categories,
-        "recommended_factors": recommended_factors[:req.max_factors],
+        "recommended_factors": recommended_factors[: req.max_factors],
         "strategy_recommendation": strategy_recommendation,
         "message": f"Found {len(recommended_factors)} factors matching '{req.description}'",
     }
@@ -1034,6 +1070,7 @@ def _load_full_predictions(market: str, run_id: str | None = None):
 
         # Default: find the latest pred.pkl that matches the market
         from pathlib import Path as _Path
+
         project_root = _Path(__file__).resolve().parents[3]
         search_dirs = [MLRUNS_DIR, ARTIFACTS_DIR, project_root / "mlruns"]
 
@@ -1070,7 +1107,10 @@ def _load_full_predictions(market: str, run_id: str | None = None):
                     with pred_file.open("rb") as f:
                         candidate = pickle.load(f)
                     if isinstance(candidate, pd.DataFrame) and not candidate.empty:
-                        if hasattr(candidate.index, 'get_level_values') and 'datetime' in candidate.index.names:
+                        if (
+                            hasattr(candidate.index, "get_level_values")
+                            and "datetime" in candidate.index.names
+                        ):
                             if _validate_market(candidate, market):
                                 return candidate
                 except Exception:
@@ -1113,7 +1153,9 @@ def _load_predictions_with_cache(market: str, run_id: str | None = None):
 def get_signal_grade(
     symbol: str,
     market: str = Query(None, description="us or cn"),
-    step_size: int = Query(10, description="Grade tier size (default 10: AAA=Top10, AA=Top20, A=Top30)"),
+    step_size: int = Query(
+        10, description="Grade tier size (default 10: AAA=Top10, AA=Top20, A=Top30)"
+    ),
     include_history: bool = Query(False, description="Include historical grades"),
 ):
     """Get the current signal grade (AAA/AA/A/V/VV/VVV) for a stock.
@@ -1251,7 +1293,9 @@ def get_signal_performance(
 
         # Stocks with no grade get "neutral"
         # Count neutral as total - (graded + unqualified + excluded + failed)
-        neutral_count = max(0, total_count - graded_count - unqualified_count - excluded_count - failed_count)
+        neutral_count = max(
+            0, total_count - graded_count - unqualified_count - excluded_count - failed_count
+        )
 
         screener_counts = {
             "total": total_count,
@@ -1331,14 +1375,21 @@ def get_signal_markers(
                     ["$close"],
                     start_time=pd.Timestamp.now() - pd.Timedelta(days=365 * 3),
                 )
-                if hasattr(price_df.index, 'get_level_values') and 'instrument' in price_df.index.names:
+                if (
+                    hasattr(price_df.index, "get_level_values")
+                    and "instrument" in price_df.index.names
+                ):
                     price_df = price_df.xs(clean, level="instrument")
             except Exception:
                 price_df = None
 
         markers = engine.get_kline_markers(
-            clean, pred_df, start_date=start_date,
-            price_df=price_df, market=resolved_market, forward_days=forward_days,
+            clean,
+            pred_df,
+            start_date=start_date,
+            price_df=price_df,
+            market=resolved_market,
+            forward_days=forward_days,
         )
 
         return {
@@ -1408,8 +1459,13 @@ def get_stock_ranking(
     market: str = Query("us", description="us or cn"),
     step_size: int = Query(10, description="Grade tier size"),
     forward_days: int = Query(10, description="Holding period in days"),
-    sort_by: str = Query("weighted_score", description="Sort by: weighted_score, win_rate, mean_return, cumulative_return"),
-    sort_grade: str = Query("AAA", description="For grade-specific sorting: AAA, AA, A, V, VV, VVV"),
+    sort_by: str = Query(
+        "weighted_score",
+        description="Sort by: weighted_score, win_rate, mean_return, cumulative_return",
+    ),
+    sort_grade: str = Query(
+        "AAA", description="For grade-specific sorting: AAA, AA, A, V, VV, VVV"
+    ),
     limit: int = Query(50, description="Max stocks to return"),
     run_id: str = Query(None, description="Specific model run ID"),
 ):

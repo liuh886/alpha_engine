@@ -13,6 +13,7 @@ sys.path.append(str(ROOT))
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_position(
     instrument: str,
     weight: float = 0.10,
@@ -36,6 +37,7 @@ def _make_position(
 # ---------------------------------------------------------------------------
 # Stop-loss
 # ---------------------------------------------------------------------------
+
 
 def test_stop_loss_triggers_at_minus_10_pct():
     from src.guardrails.position_risk import (
@@ -70,6 +72,7 @@ def test_stop_loss_no_trigger_within_threshold():
 # Trailing stop
 # ---------------------------------------------------------------------------
 
+
 def test_trailing_stop_triggers_at_minus_15_pct_from_peak():
     from src.guardrails.position_risk import (
         ActionType,
@@ -103,6 +106,7 @@ def test_trailing_stop_no_trigger_above_threshold():
 # Position limits
 # ---------------------------------------------------------------------------
 
+
 def test_position_limit_triggers_when_overweight():
     from src.guardrails.position_risk import (
         ActionType,
@@ -135,6 +139,7 @@ def test_position_limit_no_trigger_at_threshold():
 # ---------------------------------------------------------------------------
 # Sector exposure
 # ---------------------------------------------------------------------------
+
 
 def test_sector_exposure_triggers_when_overweight():
     from src.guardrails.position_risk import (
@@ -179,6 +184,7 @@ def test_sector_exposure_no_trigger_within_limit():
 # Vol-adjusted weights
 # ---------------------------------------------------------------------------
 
+
 def test_vol_adjusted_weights_sum_to_one():
     from src.guardrails.position_risk import PositionRiskManager
 
@@ -213,9 +219,7 @@ def test_vol_adjusted_empty_returns_empty():
     from src.guardrails.position_risk import PositionRiskManager
 
     mgr = PositionRiskManager()
-    weights = mgr.compute_vol_adjusted_weights(
-        [], pd.Series(dtype=float), pd.Series(dtype=float)
-    )
+    weights = mgr.compute_vol_adjusted_weights([], pd.Series(dtype=float), pd.Series(dtype=float))
     assert len(weights) == 0
 
 
@@ -236,6 +240,7 @@ def test_vol_adjusted_zero_vol_excluded():
 # ---------------------------------------------------------------------------
 # evaluate_portfolio (aggregate)
 # ---------------------------------------------------------------------------
+
 
 def test_evaluate_portfolio_returns_all_signals():
     from src.guardrails.position_risk import (
@@ -287,8 +292,12 @@ def test_evaluate_portfolio_no_signals_when_healthy():
 
     mgr = PositionRiskManager()
     positions = {
-        "AAPL": _make_position("AAPL", weight=0.10, entry_price=100.0, current_price=105.0, peak_price=105.0),
-        "JPM": _make_position("JPM", weight=0.10, entry_price=50.0, current_price=52.0, peak_price=52.0),
+        "AAPL": _make_position(
+            "AAPL", weight=0.10, entry_price=100.0, current_price=105.0, peak_price=105.0
+        ),
+        "JPM": _make_position(
+            "JPM", weight=0.10, entry_price=50.0, current_price=52.0, peak_price=52.0
+        ),
     }
 
     signals = mgr.evaluate_portfolio(positions)
@@ -298,6 +307,7 @@ def test_evaluate_portfolio_no_signals_when_healthy():
 # ---------------------------------------------------------------------------
 # Backward compatibility: disabled risk manager produces no signals
 # ---------------------------------------------------------------------------
+
 
 def test_backward_compat_no_risk_manager():
     """When use_risk_manager=False (default), no PositionRiskManager is created."""
@@ -314,6 +324,7 @@ def test_backward_compat_no_risk_manager():
 # ---------------------------------------------------------------------------
 # Signal serialization
 # ---------------------------------------------------------------------------
+
 
 def test_signal_to_dict():
     from src.guardrails.position_risk import (
@@ -340,6 +351,7 @@ def test_signal_to_dict():
 # ---------------------------------------------------------------------------
 # Custom config
 # ---------------------------------------------------------------------------
+
 
 def test_custom_config_tighter_stop_loss():
     from src.guardrails.position_risk import (

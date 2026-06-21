@@ -60,14 +60,28 @@ def _make_frozen_cn_fixture():
     rng = np.random.default_rng(FIXTURE_SEED)
     dates = pd.bdate_range("2025-07-01", periods=60)
     instruments = [
-        "SH600000", "SH600036", "SZ000001", "SZ000333", "SH600519",
-        "SZ300750", "SH601318", "SZ000858", "SH600276", "SZ002415",
-        "SH601166", "SZ000568", "SH600031", "SZ002594", "SH601888",
-        "SZ000725", "SH600585", "SZ002475", "SH601012", "SZ300059",
+        "SH600000",
+        "SH600036",
+        "SZ000001",
+        "SZ000333",
+        "SH600519",
+        "SZ300750",
+        "SH601318",
+        "SZ000858",
+        "SH600276",
+        "SZ002415",
+        "SH601166",
+        "SZ000568",
+        "SH600031",
+        "SZ002594",
+        "SH601888",
+        "SZ000725",
+        "SH600585",
+        "SZ002475",
+        "SH601012",
+        "SZ300059",
     ]
-    index = pd.MultiIndex.from_product(
-        [dates, instruments], names=["datetime", "instrument"]
-    )
+    index = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
     scores = rng.normal(0.0, 1.0, size=len(index))
     # Inject a few NaN predictions (5% missing rate)
     mask = rng.random(len(index)) < 0.05
@@ -95,14 +109,28 @@ def _make_frozen_us_fixture():
     rng = np.random.default_rng(FIXTURE_SEED + 1)
     dates = pd.bdate_range("2025-07-01", periods=60)
     instruments = [
-        "AAPL", "MSFT", "GOOG", "AMZN", "NVDA",
-        "TSLA", "META", "BRK.B", "JPM", "V",
-        "UNH", "JNJ", "WMT", "PG", "MA",
-        "HD", "DIS", "NFLX", "ADBE", "CRM",
+        "AAPL",
+        "MSFT",
+        "GOOG",
+        "AMZN",
+        "NVDA",
+        "TSLA",
+        "META",
+        "BRK.B",
+        "JPM",
+        "V",
+        "UNH",
+        "JNJ",
+        "WMT",
+        "PG",
+        "MA",
+        "HD",
+        "DIS",
+        "NFLX",
+        "ADBE",
+        "CRM",
     ]
-    index = pd.MultiIndex.from_product(
-        [dates, instruments], names=["datetime", "instrument"]
-    )
+    index = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
     scores = rng.normal(0.0, 1.0, size=len(index))
     mask = rng.random(len(index)) < 0.05
     scores = scores.astype(float)
@@ -181,7 +209,9 @@ def _assert_orders_identical(
     )
     for i, (a, b) in enumerate(zip(orders_a, orders_b)):
         assert a.date == b.date, f"Order[{i}] date: {a.date} vs {b.date}"
-        assert a.instrument == b.instrument, f"Order[{i}] instrument: {a.instrument} vs {b.instrument}"
+        assert a.instrument == b.instrument, (
+            f"Order[{i}] instrument: {a.instrument} vs {b.instrument}"
+        )
         assert a.side == b.side, f"Order[{i}] side: {a.side} vs {b.side}"
         assert abs(a.weight_delta - b.weight_delta) <= atol, (
             f"Order[{i}] weight_delta: {a.weight_delta} vs {b.weight_delta}"
@@ -286,10 +316,7 @@ class TestDeterminism:
     def test_ordinary_deterministic(self, market_fixture):
         """Ordinary path is deterministic across 5 runs."""
         predictions, returns, config = market_fixture
-        results = [
-            run_ordinary_adapter_backtest(predictions, returns, config)
-            for _ in range(5)
-        ]
+        results = [run_ordinary_adapter_backtest(predictions, returns, config) for _ in range(5)]
         for i in range(1, len(results)):
             _assert_orders_identical(results[0].orders, results[i].orders)
             _assert_holdings_equivalent(results[0].holdings, results[i].holdings)
@@ -299,10 +326,7 @@ class TestDeterminism:
     def test_vectorized_deterministic(self, market_fixture):
         """Vectorized path is deterministic across 5 runs."""
         predictions, returns, config = market_fixture
-        results = [
-            run_vectorized_adapter_backtest(predictions, returns, config)
-            for _ in range(5)
-        ]
+        results = [run_vectorized_adapter_backtest(predictions, returns, config) for _ in range(5)]
         for i in range(1, len(results)):
             _assert_orders_identical(results[0].orders, results[i].orders)
             _assert_holdings_equivalent(results[0].holdings, results[i].holdings)
@@ -345,9 +369,7 @@ class TestMissingPredictions:
         # rebalance date where it was missing.
         first_rebalance = config.rebalance_dates[0]
         first_date_buys = {
-            o.instrument
-            for o in vectorized.orders
-            if o.date == first_rebalance and o.side == "buy"
+            o.instrument for o in vectorized.orders if o.date == first_rebalance and o.side == "buy"
         }
         assert missing_instrument not in first_date_buys, (
             f"Missing instrument '{missing_instrument}' appeared in buy orders -- "
@@ -358,8 +380,10 @@ class TestMissingPredictions:
         """The score matrix must preserve NaN for missing predictions."""
         predictions, returns, config, missing_instrument = _make_us_fixture_with_gap()
         # Build the score matrix the same way the vectorized path does
-        score_matrix = predictions.iloc[:, 0].unstack(level="instrument").reindex(
-            index=pd.DatetimeIndex(config.calendar)
+        score_matrix = (
+            predictions.iloc[:, 0]
+            .unstack(level="instrument")
+            .reindex(index=pd.DatetimeIndex(config.calendar))
         )
         first_date = config.calendar[0]
         assert pd.isna(score_matrix.loc[first_date, missing_instrument]), (
@@ -398,9 +422,7 @@ class TestMissingPredictions:
         """
         dates = pd.bdate_range("2026-01-05", periods=10)
         instruments = ["A", "B", "C", "D", "E"]
-        index = pd.MultiIndex.from_product(
-            [dates, instruments], names=["datetime", "instrument"]
-        )
+        index = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
         # A has the highest score on dates[0], but is missing on dates[3]
         scores = np.full(len(index), -0.5)
         rng = np.random.default_rng(99)
@@ -411,9 +433,7 @@ class TestMissingPredictions:
             elif inst == "B":
                 scores[i] = -0.1
         # Set A's prediction on dates[3] to NaN
-        mask = np.array([
-            (d == dates[3] and inst == "A") for d, inst in index
-        ])
+        mask = np.array([(d == dates[3] and inst == "A") for d, inst in index])
         scores = scores.astype(float)
         scores[mask] = np.nan
 
@@ -443,13 +463,9 @@ class TestMissingPredictions:
         calendar_idx = config.calendar.index(rebalance_3)
         held_instruments = set(vectorized.holdings[calendar_idx].keys())
         # B should be held (score -0.1 is higher than D/E at -0.5)
-        assert "B" in held_instruments, (
-            f"B (score -0.1) should be held, got {held_instruments}"
-        )
+        assert "B" in held_instruments, f"B (score -0.1) should be held, got {held_instruments}"
         # A should NOT be held (NaN)
-        assert "A" not in held_instruments, (
-            f"A (NaN) should not be held, got {held_instruments}"
-        )
+        assert "A" not in held_instruments, f"A (NaN) should not be held, got {held_instruments}"
 
 
 def _make_us_fixture_with_gap():
@@ -457,9 +473,7 @@ def _make_us_fixture_with_gap():
     rng = np.random.default_rng(FIXTURE_SEED + 100)
     dates = pd.bdate_range("2025-07-01", periods=60)
     instruments = ["AAPL", "MSFT", "GOOG", "AMZN", "NVDA"]
-    index = pd.MultiIndex.from_product(
-        [dates, instruments], names=["datetime", "instrument"]
-    )
+    index = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
     scores = rng.normal(0.0, 1.0, size=len(index))
     predictions = pd.DataFrame({"score": scores}, index=index)
     returns = pd.DataFrame(
@@ -527,15 +541,9 @@ class TestPerformanceBenchmarks:
         )
 
         # Both paths must produce equivalent results
-        _assert_orders_identical(
-            ordinary_cold.result.orders, vectorized_cold.result.orders
-        )
-        _assert_holdings_equivalent(
-            ordinary_cold.result.holdings, vectorized_cold.result.holdings
-        )
-        _assert_nav_equivalent(
-            ordinary_cold.result.nav, vectorized_cold.result.nav
-        )
+        _assert_orders_identical(ordinary_cold.result.orders, vectorized_cold.result.orders)
+        _assert_holdings_equivalent(ordinary_cold.result.holdings, vectorized_cold.result.holdings)
+        _assert_nav_equivalent(ordinary_cold.result.nav, vectorized_cold.result.nav)
 
         # Record baselines (non-failing)
         report = {
@@ -558,15 +566,21 @@ class TestPerformanceBenchmarks:
             report["warm_speedup_ratio"] = round(warm_speedup, 2)
 
         # Print report for CI logs
-        print(f"\n=== T48.7 Performance Baseline ({predictions.index[0][0].strftime('%Y-%m-%d')}) ===")
+        print(
+            f"\n=== T48.7 Performance Baseline ({predictions.index[0][0].strftime('%Y-%m-%d')}) ==="
+        )
         for k, v in report.items():
             print(f"  {k}: {v}")
 
         # Soft assertions -- warn but don't fail
         if ordinary_cold.wall_seconds > MAX_COLD_SECONDS:
-            print(f"  WARNING: ordinary cold ({ordinary_cold.wall_seconds:.2f}s) > {MAX_COLD_SECONDS}s threshold")
+            print(
+                f"  WARNING: ordinary cold ({ordinary_cold.wall_seconds:.2f}s) > {MAX_COLD_SECONDS}s threshold"
+            )
         if vectorized_cold.wall_seconds > MAX_WARM_SECONDS:
-            print(f"  WARNING: vectorized cold ({vectorized_cold.wall_seconds:.2f}s) > {MAX_WARM_SECONDS}s threshold")
+            print(
+                f"  WARNING: vectorized cold ({vectorized_cold.wall_seconds:.2f}s) > {MAX_WARM_SECONDS}s threshold"
+            )
 
     def test_larger_universe_benchmark(self, capsys):
         """Benchmark with a larger universe (100 stocks, 260 days).
@@ -577,15 +591,9 @@ class TestPerformanceBenchmarks:
         rng = np.random.default_rng(FIXTURE_SEED + 200)
         dates = pd.bdate_range("2025-01-02", periods=260)
         instruments = [f"SH{600000 + i:06d}" for i in range(100)]
-        index = pd.MultiIndex.from_product(
-            [dates, instruments], names=["datetime", "instrument"]
-        )
-        predictions = pd.DataFrame(
-            {"score": rng.normal(size=len(index))}, index=index
-        )
-        returns = pd.DataFrame(
-            {"return": rng.normal(0.0002, 0.012, size=len(index))}, index=index
-        )
+        index = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
+        predictions = pd.DataFrame({"score": rng.normal(size=len(index))}, index=index)
+        returns = pd.DataFrame({"return": rng.normal(0.0002, 0.012, size=len(index))}, index=index)
         # Inject 3% NaN rate
         predictions.loc[rng.random(len(index)) < 0.03, "score"] = np.nan
 
@@ -604,12 +612,8 @@ class TestPerformanceBenchmarks:
         vectorized_warm = measurements["vectorized_warm"]
 
         # Equivalence check
-        _assert_orders_identical(
-            ordinary.result.orders, vectorized_cold.result.orders
-        )
-        _assert_nav_equivalent(
-            ordinary.result.nav, vectorized_cold.result.nav
-        )
+        _assert_orders_identical(ordinary.result.orders, vectorized_cold.result.orders)
+        _assert_nav_equivalent(ordinary.result.nav, vectorized_cold.result.nav)
 
         # Compute and report speedup ratio
         if vectorized_cold.wall_seconds > 0:
@@ -673,15 +677,9 @@ class TestSpeedupRatioDocumentation:
         rng = np.random.default_rng(FIXTURE_SEED + 300)
         dates = pd.bdate_range("2025-01-02", periods=260)
         instruments = [f"SH{600000 + i:06d}" for i in range(100)]
-        index = pd.MultiIndex.from_product(
-            [dates, instruments], names=["datetime", "instrument"]
-        )
-        predictions = pd.DataFrame(
-            {"score": rng.normal(size=len(index))}, index=index
-        )
-        returns = pd.DataFrame(
-            {"return": rng.normal(0.0002, 0.012, size=len(index))}, index=index
-        )
+        index = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
+        predictions = pd.DataFrame({"score": rng.normal(size=len(index))}, index=index)
+        returns = pd.DataFrame({"return": rng.normal(0.0002, 0.012, size=len(index))}, index=index)
         predictions.loc[rng.random(len(index)) < 0.03, "score"] = np.nan
 
         config = AdapterBacktestConfig(
@@ -716,9 +714,11 @@ class TestSpeedupRatioDocumentation:
         print(f"  Vectorized warm: {vectorized_warm.wall_seconds:.6f}s")
         print(f"  Cold speedup:    {cold_ratio:.2f}x")
         print(f"  Warm speedup:    {warm_ratio:.2f}x")
-        print(f"  Fetch counts:    ordinary={ordinary.fetch_count}, "
-              f"vec_cold={vectorized_cold.fetch_count}, "
-              f"warm={vectorized_warm.fetch_count}")
+        print(
+            f"  Fetch counts:    ordinary={ordinary.fetch_count}, "
+            f"vec_cold={vectorized_cold.fetch_count}, "
+            f"warm={vectorized_warm.fetch_count}"
+        )
 
         # The test always passes -- it exists to measure and document.
         # If someone claims ~10x without running this test, the claim is unverified.
@@ -733,15 +733,9 @@ class TestSpeedupRatioDocumentation:
         rng = np.random.default_rng(FIXTURE_SEED + 400)
         dates = pd.bdate_range("2025-01-02", periods=260)
         instruments = [f"SH{600000 + i:06d}" for i in range(100)]
-        index = pd.MultiIndex.from_product(
-            [dates, instruments], names=["datetime", "instrument"]
-        )
-        predictions = pd.DataFrame(
-            {"score": rng.normal(size=len(index))}, index=index
-        )
-        returns = pd.DataFrame(
-            {"return": rng.normal(0.0002, 0.012, size=len(index))}, index=index
-        )
+        index = pd.MultiIndex.from_product([dates, instruments], names=["datetime", "instrument"])
+        predictions = pd.DataFrame({"score": rng.normal(size=len(index))}, index=index)
+        returns = pd.DataFrame({"return": rng.normal(0.0002, 0.012, size=len(index))}, index=index)
         predictions.loc[rng.random(len(index)) < 0.03, "score"] = np.nan
 
         config = AdapterBacktestConfig(

@@ -46,6 +46,7 @@ __all__ = ["ResearchRun", "StepStatus", "Step"]
 
 class StepStatus(str, Enum):
     """Status of a research pipeline step."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -168,8 +169,7 @@ class ResearchRun:
             step.status = StepStatus.COMPLETED
             step.completed_at = datetime.now().isoformat()
             step.duration_seconds = (
-                datetime.fromisoformat(step.completed_at) -
-                datetime.fromisoformat(step.started_at)
+                datetime.fromisoformat(step.completed_at) - datetime.fromisoformat(step.started_at)
             ).total_seconds()
             logger.info(
                 "step_completed",
@@ -182,8 +182,7 @@ class ResearchRun:
             step.error = f"{type(exc).__name__}: {exc}"
             step.completed_at = datetime.now().isoformat()
             step.duration_seconds = (
-                datetime.fromisoformat(step.completed_at) -
-                datetime.fromisoformat(step.started_at)
+                datetime.fromisoformat(step.completed_at) - datetime.fromisoformat(step.started_at)
             ).total_seconds()
             logger.error(
                 "step_failed",
@@ -267,6 +266,7 @@ class ResearchRun:
         """Save run summary to JSON file."""
         if path is None:
             from src.common.paths import ARTIFACTS_DIR
+
             path = ARTIFACTS_DIR / "research_runs" / f"{self.run_id}.json"
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -413,7 +413,9 @@ def run_research_pipeline(
     # Step 5: Backtest — extract performance from walk-forward results
     with run.step("backtest", {"market": market}) as step:
         wf_dir = Path("artifacts/walk_forward")
-        wf_files = sorted(wf_dir.glob(f"{market}_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        wf_files = sorted(
+            wf_dir.glob(f"{market}_*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
 
         if wf_files:
             with open(wf_files[0]) as f:
@@ -423,23 +425,29 @@ def run_research_pipeline(
             split_metrics = []
             for split in wf_data.get("splits", []):
                 if split.get("status") == "success":
-                    split_metrics.append({
-                        "split_id": split["split_id"],
-                        "train_end": split.get("train_end"),
-                        "test_start": split.get("test_start"),
-                        "test_end": split.get("test_end"),
-                        "ic": split.get("ic"),
-                        "rank_ic": split.get("rank_ic"),
-                        "sharpe": split.get("sharpe"),
-                        "max_drawdown": split.get("max_drawdown"),
-                        "annual_return": split.get("annual_return"),
-                    })
+                    split_metrics.append(
+                        {
+                            "split_id": split["split_id"],
+                            "train_end": split.get("train_end"),
+                            "test_start": split.get("test_start"),
+                            "test_end": split.get("test_end"),
+                            "ic": split.get("ic"),
+                            "rank_ic": split.get("rank_ic"),
+                            "sharpe": split.get("sharpe"),
+                            "max_drawdown": split.get("max_drawdown"),
+                            "annual_return": split.get("annual_return"),
+                        }
+                    )
 
             # Aggregate performance
             ics = [s["ic"] for s in split_metrics if s.get("ic") is not None]
             sharpes = [s["sharpe"] for s in split_metrics if s.get("sharpe") is not None]
-            returns = [s["annual_return"] for s in split_metrics if s.get("annual_return") is not None]
-            drawdowns = [s["max_drawdown"] for s in split_metrics if s.get("max_drawdown") is not None]
+            returns = [
+                s["annual_return"] for s in split_metrics if s.get("annual_return") is not None
+            ]
+            drawdowns = [
+                s["max_drawdown"] for s in split_metrics if s.get("max_drawdown") is not None
+            ]
 
             step.output = {
                 "source": str(wf_files[0]),
@@ -507,7 +515,9 @@ def run_research_pipeline(
             # Fallback to walk-forward IC-based attribution
             logger.warning("factor_attribution_failed", error=str(e))
             wf_dir = Path("artifacts/walk_forward")
-            wf_files = sorted(wf_dir.glob(f"{market}_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+            wf_files = sorted(
+                wf_dir.glob(f"{market}_*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+            )
             if wf_files:
                 with open(wf_files[0]) as f:
                     wf_data = json.load(f)
@@ -536,7 +546,10 @@ def run_research_pipeline(
                 step.output = {"recommendation": "DEPLOY", "reason": f"IC={ic:.4f} > 0.1 threshold"}
                 run.complete(recommendation=f"Deploy model: IC={ic:.4f}")
             else:
-                step.output = {"recommendation": "ITERATE", "reason": f"IC={ic:.4f} < 0.1 threshold"}
+                step.output = {
+                    "recommendation": "ITERATE",
+                    "reason": f"IC={ic:.4f} < 0.1 threshold",
+                }
                 run.complete(recommendation=f"Iterate: IC={ic:.4f} below threshold")
         else:
             step.output = {"recommendation": "FAILED", "reason": "Walk-forward did not complete"}

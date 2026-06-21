@@ -139,9 +139,7 @@ class ChampionIndex(BaseIndex):
     def get_champion(self, market: str) -> ChampionRecord | None:
         """Return the current Champion for *market*, or None."""
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM champions WHERE market = ?", (market,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM champions WHERE market = ?", (market,)).fetchone()
         if row is None:
             return None
         return self._row_to_record(dict(row))
@@ -163,9 +161,7 @@ class ChampionIndex(BaseIndex):
             conn.execute("DELETE FROM champions WHERE market = ?", (market,))
             conn.commit()
 
-    def get_history(
-        self, market: str, limit: int = 20
-    ) -> list[dict[str, Any]]:
+    def get_history(self, market: str, limit: int = 20) -> list[dict[str, Any]]:
         """Return recent champion lifecycle events for *market*."""
         with self._connect() as conn:
             rows = conn.execute(
@@ -298,8 +294,7 @@ class ChampionManager:
         binding_errors = validate_evidence_binding(entry)
         if binding_errors:
             raise ValueError(
-                f"Evidence binding failed for {model_version_id}: "
-                f"{'; '.join(binding_errors)}"
+                f"Evidence binding failed for {model_version_id}: {'; '.join(binding_errors)}"
             )
 
         # Resolve artifact and snapshot
@@ -407,8 +402,7 @@ class ChampionManager:
                 f"champion={champion_excess:.4f}"
             )
         details.append(
-            f"Excess return: challenger={challenger_excess:.4f} vs "
-            f"champion={champion_excess:.4f}"
+            f"Excess return: challenger={challenger_excess:.4f} vs champion={champion_excess:.4f}"
         )
 
         # --- Gate 2: Max drawdown comparison ---
@@ -419,23 +413,16 @@ class ChampionManager:
                 f"Max DD: challenger={challenger_mdd:.4f} > "
                 f"champion={champion_mdd:.4f} (+10% tolerance)"
             )
-        details.append(
-            f"Max DD: challenger={challenger_mdd:.4f} vs "
-            f"champion={champion_mdd:.4f}"
-        )
+        details.append(f"Max DD: challenger={challenger_mdd:.4f} vs champion={champion_mdd:.4f}")
 
         # --- Gate 3: Information ratio comparison ---
         challenger_ir = challenger_metrics.get("information_ratio", 0)
         champion_ir = champion_metrics.get("information_ratio", 0)
         if challenger_ir < champion_ir * 0.9:
             failures.append(
-                f"IR: challenger={challenger_ir:.4f} < "
-                f"champion={champion_ir:.4f} (-10% tolerance)"
+                f"IR: challenger={challenger_ir:.4f} < champion={champion_ir:.4f} (-10% tolerance)"
             )
-        details.append(
-            f"IR: challenger={challenger_ir:.4f} vs "
-            f"champion={champion_ir:.4f}"
-        )
+        details.append(f"IR: challenger={challenger_ir:.4f} vs champion={champion_ir:.4f}")
 
         # --- Gate 4: Annualized return ---
         challenger_ann = challenger_metrics.get("annualized_return", 0)
@@ -446,8 +433,7 @@ class ChampionManager:
                 f"champion={champion_ann:.4f} (-5% tolerance)"
             )
         details.append(
-            f"Ann. return: challenger={challenger_ann:.4f} vs "
-            f"champion={champion_ann:.4f}"
+            f"Ann. return: challenger={challenger_ann:.4f} vs champion={champion_ann:.4f}"
         )
 
         passed = len(failures) == 0
@@ -483,8 +469,7 @@ class ChampionManager:
         result = self.evaluate_challenger(market, challenger_id)
         if not result.passed:
             raise ValueError(
-                f"Challenge failed for {challenger_id}: "
-                f"{'; '.join(result.failure_reasons)}"
+                f"Challenge failed for {challenger_id}: {'; '.join(result.failure_reasons)}"
             )
 
         return self.declare_champion(
@@ -518,9 +503,7 @@ class ChampionManager:
         if target_version_id:
             entry = self.registry.get_version(target_version_id)
             if entry is None:
-                raise ValueError(
-                    f"Rollback target not found in registry: {target_version_id}"
-                )
+                raise ValueError(f"Rollback target not found in registry: {target_version_id}")
             return self.declare_champion(
                 market=market,
                 model_version_id=target_version_id,
@@ -565,9 +548,7 @@ class ChampionManager:
         """Return recent champion lifecycle events."""
         return self._champion_index.get_history(market, limit=limit)
 
-    def list_challengers(
-        self, market: str, limit: int = 20
-    ) -> list[dict[str, Any]]:
+    def list_challengers(self, market: str, limit: int = 20) -> list[dict[str, Any]]:
         """List potential challengers: RECOMMENDED models for *market*."""
         versions = self.registry.list_versions(limit=200)
         challengers = []

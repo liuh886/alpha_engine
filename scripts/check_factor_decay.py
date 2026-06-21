@@ -26,10 +26,10 @@ from src.research.factor_registry import STAGE_ACTIVE, FactorRegistry
 log = get_logger(__name__)
 
 # Decay thresholds
-DECAYING_THRESHOLD = 0.50    # recent IC < 50% of historical
-CRITICAL_THRESHOLD = 0.30    # recent IC < 30% of historical
-RECENT_MONTHS = 6            # window for "recent" IC computation
-MIN_VALIDATIONS = 5          # minimum validations required for a reliable check
+DECAYING_THRESHOLD = 0.50  # recent IC < 50% of historical
+CRITICAL_THRESHOLD = 0.30  # recent IC < 30% of historical
+RECENT_MONTHS = 6  # window for "recent" IC computation
+MIN_VALIDATIONS = 5  # minimum validations required for a reliable check
 
 
 def _cutoff_date(months: int) -> str:
