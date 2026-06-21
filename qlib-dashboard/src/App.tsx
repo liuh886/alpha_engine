@@ -1,18 +1,16 @@
 import { useState, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
-import { parseQlibData, ModelData } from './lib/data-parser';
-import { Dashboard } from './components/Dashboard';
+import { ModelData } from './lib/data-parser';
 import { ModelSelector } from './components/ModelSelector';
 import { GlobalStatusBar } from './components/GlobalStatusBar';
 import { Sidebar } from './components/Sidebar';
 import { ConsoleModal } from './components/ConsoleModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Skeleton } from './components/ui/skeleton';
-import { Play, Loader2, Bell, User, Sun, Moon, ChevronDown, Database } from 'lucide-react';
+import { Loader2, Bell, User, Sun, Moon, ChevronDown, Database } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useGlobalStore } from './store/globalStore';
-import { artifactUrl } from './lib/artifacts';
-import { apiFetch, setAuthHeaderProvider } from './lib/api';
+import { setAuthHeaderProvider } from './lib/api';
 import { useAuth } from './lib/auth';
 import { AuthGuard } from './components/AuthGuard';
 import { VIEW_TITLES } from './routes';
@@ -55,7 +53,7 @@ function NotFound() {
   );
 }
 
-function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, setSelectorOpen, consoleOpen, setConsoleOpen, startBacktestForSelectedMarket, backtestRunning, handleDeleteModel, loading }: {
+function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, setSelectorOpen, consoleOpen, setConsoleOpen, handleDeleteModel, loading }: {
   models: ModelData[];
   selectedModelId: string;
   setSelectedModelId: (id: string) => void;
@@ -201,13 +199,11 @@ function App() {
 }
 
 import { useAppBootstrap } from './hooks/useAppBootstrap';
-import { backtestApi } from './api/backtestApi';
 import { dataApi } from './api/dataApi';
 
 function AuthenticatedApp() {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
-  const { qualityWarnings } = useGlobalStore();
 
   const {
     loading,
@@ -215,17 +211,19 @@ function AuthenticatedApp() {
     selectedModelId,
     setSelectedModelId,
     fetchModels,
+    loadDataStatus,
     deleteModel,
-    jobs: { isPolling: jobsPolling, submitAndPoll }
+    jobs: { submitAndPoll }
   } = useAppBootstrap();
-
-  // removed backtestRunning state
 
   const startUpdateData = async () => {
     try {
       await submitAndPoll(
         () => dataApi.updateData(false, 30),
-        () => fetchModels()
+        async () => {
+          await fetchModels();
+          await loadDataStatus();
+        }
       );
     } catch {
       /* ignore */

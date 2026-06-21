@@ -27,7 +27,7 @@ def test_record_and_list(temp_db):
         market="cn",
         source_used="efinance",
         fallback_used=True,
-        error_code="baostock_failed",
+        code="baostock_failed",
     )
 
     recent = idx.list_recent()

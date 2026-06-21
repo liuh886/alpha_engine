@@ -625,15 +625,15 @@ def _load_reference(
 
 
 def _read_json_object(
-    path: Path, report: VerificationReport, error_code: str
+    path: Path, report: VerificationReport, code: str
 ) -> dict[str, Any] | None:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        report.add(error_code, False, str(path), f"{type(exc).__name__}: {exc}")
+        report.add(code, False, str(path), f"{type(exc).__name__}: {exc}")
         return None
     if not isinstance(value, dict):
-        report.add(error_code, False, str(path), "JSON root must be an object")
+        report.add(code, False, str(path), "JSON root must be an object")
         return None
     return value
 

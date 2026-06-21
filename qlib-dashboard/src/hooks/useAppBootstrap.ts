@@ -43,6 +43,7 @@ export function useAppBootstrap() {
     selectedModelId,
     setSelectedModelId,
     fetchModels,
+    loadDataStatus,
     deleteModel,
     jobs: {
       activeJobId,

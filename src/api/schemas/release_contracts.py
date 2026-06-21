@@ -195,7 +195,7 @@ class PortfolioCheckRequestV1(StrictRequestV1):
 def error_response(
     *,
     status_code: int,
-    error_code: str,
+    code: str,
     message: str,
     details: Any | None = None,
     recoverable: bool = False,
@@ -204,7 +204,7 @@ def error_response(
 ) -> JSONResponse:
     payload: dict[str, Any] = {
         "ok": False,
-        "code": error_code,
+        "code": code,
         "message": message,
         "recoverable": recoverable,
     }
@@ -237,7 +237,7 @@ class ContractAPIRoute(APIRoute):
                 ]
                 return error_response(
                     status_code=422,
-                    error_code="API_VALIDATION_ERROR",
+                    code="API_VALIDATION_ERROR",
                     message="Request validation failed",
                     details=details,
                 )

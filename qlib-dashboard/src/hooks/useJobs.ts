@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { jobsApi, JobEnvelope } from '@/api/jobsApi';
 import { useGlobalStore } from '@/store/globalStore';
 
@@ -22,18 +22,28 @@ export function useJobs() {
     return () => clearInterval(timer);
   }, [pollActiveJobsCount]);
 
+  const timerRef = useRef<number | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setIsPolling(false);
+    setActiveJobId(null);
+  }, []);
+
   const startPolling = useCallback((jobId: string, onComplete?: (status: string) => void) => {
+    stopPolling();
     setActiveJobId(jobId);
     setIsPolling(true);
     
-    const timer = setInterval(async () => {
+    timerRef.current = window.setInterval(async () => {
       try {
         const resp = await jobsApi.getJob(jobId);
         const status = resp.job?.status || "";
         if (status === "succeeded" || status === "failed") {
-          clearInterval(timer);
-          setIsPolling(false);
-          setActiveJobId(null);
+          stopPolling();
           pollActiveJobsCount();
           if (onComplete) onComplete(status);
         }
@@ -45,9 +55,10 @@ export function useJobs() {
     // Initial check
     pollActiveJobsCount();
 
-    return () => clearInterval(timer);
-  }, [pollActiveJobsCount]);
+    return stopPolling;
+  }, [pollActiveJobsCount, stopPolling]);
 
+  useEffect(() => stopPolling, [stopPolling]);
   const submitAndPoll = useCallback(async (
     submitFn: () => Promise<JobEnvelope>, 
     onComplete?: (status: string) => void

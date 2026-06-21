@@ -20,6 +20,10 @@ export function useModels() {
   const fetchModels = useCallback(async (opts?: { selectLatest?: boolean }) => {
     try {
       const json = await modelsApi.getDashboardDb();
+      if (json.generated_at) {
+        useGlobalStore.getState().setDataGeneratedAt(String(json.generated_at));
+      }
+      
       const parsed = parseQlibData(json);
       setModels(parsed);
       
@@ -28,17 +32,14 @@ export function useModels() {
           setSelectedModelId(parsed[0].id);
         } else {
           // preserve selection or pick first
-          setSelectedModelIdState(prev => {
-            const stillExists = parsed.some(m => m.id === prev);
-            const nextId = stillExists ? prev : parsed[0].id;
-            
-            // manually sync global since we are in state setter
-            setGlobalModelId(nextId);
-            const m = parsed.find(x => x.id === nextId);
-            if (m?.market) setSelectedModelMarket(m.market);
-            
-            return nextId;
-          });
+          const currentGlobalId = useGlobalStore.getState().selectedModelId;
+          const stillExists = parsed.some(m => m.id === currentGlobalId);
+          const nextId = stillExists ? currentGlobalId : parsed[0].id;
+          
+          setSelectedModelIdState(nextId);
+          setGlobalModelId(nextId);
+          const m = parsed.find(x => x.id === nextId);
+          if (m?.market) setSelectedModelMarket(m.market);
         }
       } else {
         setModels([]);
@@ -51,7 +52,7 @@ export function useModels() {
       console.error("Failed to fetch models", e);
       return null;
     }
-  }, [setGlobalModelId, setSelectedModelMarket]);
+  }, [setGlobalModelId, setSelectedModelMarket, setSelectedModelId]);
 
   const deleteModel = useCallback(async (versionId: string) => {
     try {

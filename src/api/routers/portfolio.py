@@ -367,7 +367,7 @@ def check_portfolio_constraints(request: PortfolioCheckRequestV1):
         if model_artifact is None:
             return error_response(
                 status_code=404,
-                error_code="MODEL_ARTIFACT_NOT_FOUND",
+                code="MODEL_ARTIFACT_NOT_FOUND",
                 message="Model artifact not found",
                 details={"model_artifact_id": request.model_artifact_id},
             )
@@ -377,14 +377,14 @@ def check_portfolio_constraints(request: PortfolioCheckRequestV1):
         except FileNotFoundError:
             return error_response(
                 status_code=404,
-                error_code="PORTFOLIO_ARTIFACT_NOT_FOUND",
+                code="PORTFOLIO_ARTIFACT_NOT_FOUND",
                 message="Portfolio artifact not found",
                 details={"portfolio_artifact_id": request.portfolio_artifact_id},
             )
         except ValueError:
             return error_response(
                 status_code=409,
-                error_code="PORTFOLIO_ARTIFACT_INVALID",
+                code="PORTFOLIO_ARTIFACT_INVALID",
                 message="Portfolio artifact could not be validated",
                 details={"portfolio_artifact_id": request.portfolio_artifact_id},
             )
@@ -397,7 +397,7 @@ def check_portfolio_constraints(request: PortfolioCheckRequestV1):
         if identity_conflicts:
             return error_response(
                 status_code=409,
-                error_code="ARTIFACT_IDENTITY_CONFLICT",
+                code="ARTIFACT_IDENTITY_CONFLICT",
                 message="Artifact identities are not mutually consistent",
                 details={"conflicts": identity_conflicts},
             )
@@ -440,7 +440,7 @@ def check_portfolio_constraints(request: PortfolioCheckRequestV1):
     except FileNotFoundError:
         return error_response(
             status_code=404,
-            error_code="DATA_SNAPSHOT_NOT_FOUND",
+            code="DATA_SNAPSHOT_NOT_FOUND",
             message="Data snapshot not found",
             details={"data_snapshot_id": request.data_snapshot_id},
         )
@@ -453,7 +453,7 @@ def check_portfolio_constraints(request: PortfolioCheckRequestV1):
         )
         return error_response(
             status_code=500,
-            error_code="API_INTERNAL_ERROR",
+            code="API_INTERNAL_ERROR",
             message="Unable to evaluate portfolio constraints",
         )
 

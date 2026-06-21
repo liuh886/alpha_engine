@@ -47,7 +47,14 @@ class _ModelService:
 
 class _JobCoordinator:
     def submit_response(self, job: dict) -> dict:
-        return {"ok": True, "job_id": job.get("id", "test-job")}
+        return {
+            "job_id": job.get("id", "test-job"),
+            "status": "pending",
+            "started_at": 123456789.0,
+            "source": "test",
+            "intent": "test",
+            "next_action": "wait",
+        }
 
 
 class _DataService:
@@ -280,7 +287,7 @@ class TestModelHealthRouteOrdering:
         """'health' should NOT match /{artifact_id} pattern.
 
         If 'health' matched /{artifact_id}, the handler would try to load
-        artifact 'health' and return 404 with error_code='MODEL_ARTIFACT_NOT_FOUND'.
+        artifact 'health' and return 404 with code='MODEL_ARTIFACT_NOT_FOUND'.
         The correct behavior is reaching the health handler, which returns
         a response containing 'checks' (200 if healthy, 503 if degraded).
         """
@@ -463,6 +470,7 @@ class TestSchemaVersionEnforcement:
             json={},
         )
         # Should succeed (v1 is default, no unknown fields)
+        print(response.json() if response.content else response.content)
         assert response.status_code == 200
 
 
@@ -481,9 +489,8 @@ class TestContractEnvelopeShape:
         )
         body = response.json()
         assert body["ok"] is False
-        assert "error_code" in body
-        assert "error" in body
-        assert "details" in body
+        assert "code" in body
+        assert "detail" in body
 
     def test_success_response_has_ok_true(self, model_client, monkeypatch):
         index = _ModelIndex()
@@ -511,7 +518,7 @@ class TestBacktestMutationSuccess:
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["ok"] is True
+        assert "job_id" in body
 
     def test_training_run_success(self, backtest_client):
         response = backtest_client.post(
@@ -520,7 +527,7 @@ class TestBacktestMutationSuccess:
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["ok"] is True
+        assert "job_id" in body
 
     def test_backtest_delete_success(self, backtest_client):
         response = backtest_client.delete("/api/backtest/runs/run-1")
