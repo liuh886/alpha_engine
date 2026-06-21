@@ -123,7 +123,7 @@ describe("ModelsPage", () => {
     mockListModels.mockReturnValue(new Promise(() => {})); // never resolves
     renderModelsPage();
 
-    expect(screen.getByText("Loading models...")).toBeVisible();
+    expect(screen.getByText(/Loading models/i)).toBeVisible();
   });
 
   // ---- Empty state ----
@@ -133,7 +133,7 @@ describe("ModelsPage", () => {
     renderModelsPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/No models found/)).toBeVisible();
+      expect(screen.getByText(/No models found/i)).toBeVisible();
     });
   });
 

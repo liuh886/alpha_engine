@@ -51,7 +51,30 @@ export interface RouteDefinition {
   icon: ComponentType<{ className?: string }>;
   /** Sidebar label. */
   label: string;
+  /** React Component. */
+  component: ComponentType<any>;
 }
+
+import { lazy } from 'react';
+
+// Lazy-loaded pages (code splitting)
+const TrueDashboard = lazy(() => import('./components/TrueDashboard').then(m => ({ default: m.TrueDashboard })));
+const StrategyPage = lazy(() => import('./pages/StrategyPage').then(m => ({ default: m.StrategyPage })));
+const ComparePage = lazy(() => import('./pages/ComparePage').then(m => ({ default: m.ComparePage })));
+const ArenaPage = lazy(() => import('./pages/ArenaPage').then(m => ({ default: m.ArenaPage })));
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const ModelsPage = lazy(() => import('./pages/ModelsPage').then(m => ({ default: m.ModelsPage })));
+const DataPage = lazy(() => import('./pages/DataPage').then(m => ({ default: m.DataPage })));
+const FactorPage = lazy(() => import('./pages/FactorPage').then(m => ({ default: m.FactorPage })));
+const FactorRegistryPage = lazy(() => import('./pages/FactorRegistryPage').then(m => ({ default: m.FactorRegistryPage })));
+const ExperimentLogPage = lazy(() => import('./pages/ExperimentLogPage').then(m => ({ default: m.ExperimentLogPage })));
+const AttributionPage = lazy(() => import('./pages/AttributionPage').then(m => ({ default: m.AttributionPage })));
+const StockTerminal = lazy(() => import('./pages/StockTerminal').then(m => ({ default: m.StockTerminal })));
+const AgentControlCenter = lazy(() => import('./pages/AgentControlCenter').then(m => ({ default: m.AgentControlCenter })));
+const DocsPage = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.DocsPage })));
+const BacktestPage = lazy(() => import('./pages/BacktestPage').then(m => ({ default: m.BacktestPage })));
+const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then(m => ({ default: m.MethodologyPage })));
+const SystemPage = lazy(() => import('./pages/SystemPage').then(m => ({ default: m.SystemPage })));
 
 // ---------------------------------------------------------------------------
 // Registry
@@ -59,29 +82,30 @@ export interface RouteDefinition {
 
 export const routes: RouteDefinition[] = [
   // -- Daily Research --------------------------------------------------------
-  { path: '',            title: 'Dashboard',       label: 'Dashboard',       releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard },
-  { path: 'terminal',    title: 'Stock Terminal',   label: 'Stock Terminal',  releaseLevel: 'experimental', navGroup: 'Daily Research',      icon: Terminal },
+  { path: '',            title: 'Dashboard',       label: 'Dashboard',       releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard, component: TrueDashboard },
+  { path: 'dashboard',   title: 'Dashboard',       label: 'Dashboard',       releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard, component: TrueDashboard },
+  { path: 'terminal',    title: 'Stock Terminal',   label: 'Stock Terminal',  releaseLevel: 'experimental', navGroup: 'Daily Research',      icon: Terminal, component: StockTerminal },
 
   // -- Model Lab -------------------------------------------------------------
-  { path: 'models',          title: 'Model Registry',    label: 'Models',           releaseLevel: 'release',      navGroup: 'Model Lab',  icon: Cpu },
-  { path: 'factors',         title: 'Factor Analysis',   label: 'Factor Analysis',  releaseLevel: 'release',      navGroup: 'Model Lab',  icon: BarChart3 },
-  { path: 'factor-registry', title: 'Factor Registry',   label: 'Factor Registry',  releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: ListChecks },
-  { path: 'experiments',     title: 'Experiments',       label: 'Experiments',      releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: ClipboardList },
-  { path: 'strategy',  title: 'Strategy Spec', label: 'Strategy Spec', releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: Settings },
-  { path: 'arena',     title: 'Arena',         label: 'Arena',         releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: Swords },
+  { path: 'models',          title: 'Model Registry',    label: 'Models',           releaseLevel: 'release',      navGroup: 'Model Lab',  icon: Cpu, component: ModelsPage },
+  { path: 'factors',         title: 'Factor Analysis',   label: 'Factor Analysis',  releaseLevel: 'release',      navGroup: 'Model Lab',  icon: BarChart3, component: FactorPage },
+  { path: 'factor-registry', title: 'Factor Registry',   label: 'Factor Registry',  releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: ListChecks, component: FactorRegistryPage },
+  { path: 'experiments',     title: 'Experiments',       label: 'Experiments',      releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: ClipboardList, component: ExperimentLogPage },
+  { path: 'strategy',  title: 'Strategy Spec', label: 'Strategy Spec', releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: Settings, component: StrategyPage },
+  { path: 'arena',     title: 'Arena',         label: 'Arena',         releaseLevel: 'experimental', navGroup: 'Model Lab',  icon: Swords, component: ArenaPage },
 
   // -- Backtest & Attribution ------------------------------------------------
-  { path: 'backtest',    title: 'Backtest',         label: 'Backtest',        releaseLevel: 'release',      navGroup: 'Backtest & Attribution',      icon: FlaskConical },
-  { path: 'attribution',     title: 'Factor Attribution', label: 'Attribution',     releaseLevel: 'experimental', navGroup: 'Backtest & Attribution',  icon: PieChart },
-  { path: 'compare',         title: 'Compare',           label: 'Compare',          releaseLevel: 'release',      navGroup: 'Backtest & Attribution',  icon: Layers },
-  { path: 'reports',   title: 'Reports',       label: 'Reports',       releaseLevel: 'release',      navGroup: 'Backtest & Attribution',  icon: ScrollText },
+  { path: 'backtest',    title: 'Backtest',         label: 'Backtest',        releaseLevel: 'release',      navGroup: 'Backtest & Attribution',      icon: FlaskConical, component: BacktestPage },
+  { path: 'attribution',     title: 'Factor Attribution', label: 'Attribution',     releaseLevel: 'experimental', navGroup: 'Backtest & Attribution',  icon: PieChart, component: AttributionPage },
+  { path: 'compare',         title: 'Compare',           label: 'Compare',          releaseLevel: 'release',      navGroup: 'Backtest & Attribution',  icon: Layers, component: ComparePage },
+  { path: 'reports',   title: 'Reports',       label: 'Reports',       releaseLevel: 'release',      navGroup: 'Backtest & Attribution',  icon: ScrollText, component: ReportsPage },
 
   // -- System & Ops ----------------------------------------------------------
-  { path: 'data',        title: 'Data Management', label: 'Data',         releaseLevel: 'release',      navGroup: 'System & Ops',    icon: Database },
-  { path: 'system',      title: 'System Monitor', label: 'System Monitor', releaseLevel: 'internal',     navGroup: 'System & Ops',    icon: Activity },
-  { path: 'agent',       title: 'Agent Center',   label: 'Agent Center',   releaseLevel: 'internal',     navGroup: 'System & Ops',    icon: Bot },
-  { path: 'methodology', title: 'Methodology',    label: 'Methodology',    releaseLevel: 'experimental', navGroup: 'System & Ops',    icon: BookOpen },
-  { path: 'docs',        title: 'Docs',           label: 'Docs',           releaseLevel: 'release',      navGroup: 'System & Ops',    icon: FileText },
+  { path: 'data',        title: 'Data Management', label: 'Data',         releaseLevel: 'release',      navGroup: 'System & Ops',    icon: Database, component: DataPage },
+  { path: 'system',      title: 'System Monitor', label: 'System Monitor', releaseLevel: 'internal',     navGroup: 'System & Ops',    icon: Activity, component: SystemPage },
+  { path: 'agent',       title: 'Agent Center',   label: 'Agent Center',   releaseLevel: 'internal',     navGroup: 'System & Ops',    icon: Bot, component: AgentControlCenter },
+  { path: 'methodology', title: 'Methodology',    label: 'Methodology',    releaseLevel: 'experimental', navGroup: 'System & Ops',    icon: BookOpen, component: MethodologyPage },
+  { path: 'docs',        title: 'Docs',           label: 'Docs',           releaseLevel: 'release',      navGroup: 'System & Ops',    icon: FileText, component: DocsPage },
 ];
 
 // ---------------------------------------------------------------------------

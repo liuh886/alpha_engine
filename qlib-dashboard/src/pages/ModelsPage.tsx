@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Star, Trash2, ExternalLink, AlertTriangle, Layers, GitBranch, ChevronDown, ChevronRight, Link2 } from "lucide-react";
+import { Loader2, RefreshCw, Star, Trash2, ExternalLink, AlertTriangle, Layers, GitBranch, ChevronDown, ChevronRight, Link2, Cpu } from "lucide-react";
+import { Placeholder } from "@/components/Placeholder";
 import { cn } from "@/lib/utils";
 import { shortId, useSort } from "@/lib/format";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -389,10 +390,13 @@ export function ModelsPage() {
             <TableBody>
               {displayed.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="h-48 text-center text-muted-foreground text-sm">
-                    {modelsQuery.loading && !modelsQuery.data
-                      ? "Loading models..."
-                      : "No models found. Train a model via the workflow page first."}
+                  <TableCell colSpan={12} className="p-0">
+                    <Placeholder 
+                      className="border-none bg-transparent"
+                      icon={Cpu} 
+                      title={modelsQuery.loading && !modelsQuery.data ? "Loading Models..." : "No Models Found"} 
+                      description={modelsQuery.loading && !modelsQuery.data ? "Fetching registry data." : "No models match your search criteria or the registry is empty. Train a model via the workflow page first."} 
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

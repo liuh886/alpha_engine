@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { OverviewCards } from "@/components/OverviewCards";
 import { PerformanceCharts } from "@/components/PerformanceCharts";
 import { PositionsTable } from "@/components/PositionsTable";
+import { Placeholder } from "@/components/Placeholder";
 import { parseQlibData, ModelData } from "@/lib/data-parser";
 import { formatPct } from "@/lib/format";
 import { useGlobalStore } from "@/store/globalStore";
@@ -687,26 +688,23 @@ export function BacktestPage() {
               </table>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <BarChart3 className="h-8 w-8 mb-2 opacity-30" />
-              <p className="text-sm">Click "Rank" to analyze model effectiveness across all stocks.</p>
-              <p className="text-xs mt-1">Higher weighted score = model signals are more accurate for that stock.</p>
-            </div>
+            <Placeholder 
+              className="border-none bg-transparent"
+              icon={BarChart3} 
+              title="Awaiting Ranking" 
+              description="Click 'Rank' to analyze model effectiveness across all stocks. Higher weighted score = model signals are more accurate for that stock." 
+            />
           )}
         </CardContent>
       </Card>
 
       {/* Empty state */}
       {workflowStatus === "idle" && !resultModel && (
-        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-lg bg-muted/30">
-          <Terminal className="h-10 w-10 text-muted-foreground/30 mb-3" />
-          <p className="text-muted-foreground text-sm">
-            Configure parameters and click Execute to run a backtest.
-          </p>
-          <p className="text-muted-foreground text-xs mt-1">
-            Tag is required to identify and track your run.
-          </p>
-        </div>
+        <Placeholder 
+          icon={Terminal} 
+          title="Ready for Execution" 
+          description="Configure parameters and click Execute to run a backtest. Tag is required to identify and track your run." 
+        />
       )}
     </div>
   );

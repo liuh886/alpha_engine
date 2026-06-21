@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
-import { HashRouter, Routes, Route, useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation, Outlet, Link } from 'react-router-dom';
 import { ModelData } from './lib/data-parser';
 import { ModelSelector } from './components/ModelSelector';
 import { GlobalStatusBar } from './components/GlobalStatusBar';
@@ -14,24 +14,6 @@ import { setAuthHeaderProvider } from './lib/api';
 import { useAuth } from './lib/auth';
 import { AuthGuard } from './components/AuthGuard';
 import { VIEW_TITLES } from './routes';
-
-// Lazy-loaded pages (code splitting)
-const StrategyPage = lazy(() => import('./pages/StrategyPage').then(m => ({ default: m.StrategyPage })));
-const ComparePage = lazy(() => import('./pages/ComparePage').then(m => ({ default: m.ComparePage })));
-const ArenaPage = lazy(() => import('./pages/ArenaPage').then(m => ({ default: m.ArenaPage })));
-const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
-const ModelsPage = lazy(() => import('./pages/ModelsPage').then(m => ({ default: m.ModelsPage })));
-const DataPage = lazy(() => import('./pages/DataPage').then(m => ({ default: m.DataPage })));
-const FactorPage = lazy(() => import('./pages/FactorPage').then(m => ({ default: m.FactorPage })));
-const FactorRegistryPage = lazy(() => import('./pages/FactorRegistryPage').then(m => ({ default: m.FactorRegistryPage })));
-const ExperimentLogPage = lazy(() => import('./pages/ExperimentLogPage').then(m => ({ default: m.ExperimentLogPage })));
-const AttributionPage = lazy(() => import('./pages/AttributionPage').then(m => ({ default: m.AttributionPage })));
-const StockTerminal = lazy(() => import('./pages/StockTerminal').then(m => ({ default: m.StockTerminal })));
-const AgentControlCenter = lazy(() => import('./pages/AgentControlCenter').then(m => ({ default: m.AgentControlCenter })));
-const DocsPage = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.DocsPage })));
-const BacktestPage = lazy(() => import('./pages/BacktestPage').then(m => ({ default: m.BacktestPage })));
-const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then(m => ({ default: m.MethodologyPage })));
-const SystemPage = lazy(() => import('./pages/SystemPage').then(m => ({ default: m.SystemPage })));
 
 function PageLoader() {
   return (
@@ -165,22 +147,8 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
   );
 }
 
-import { TrueDashboard } from './components/TrueDashboard';
-
-function DashboardRoute({ startUpdateData }: { startUpdateData: () => Promise<void> }) {
-  return <TrueDashboard startUpdateData={startUpdateData} />;
-}
-
-function CompareRoute({ models }: { models: ModelData[] }) {
-  const location = useLocation();
-  const state = location.state as { preselectedIds?: string[] } | null;
-  return <ComparePage models={models} preselectedIds={state?.preselectedIds} />;
-}
-
-function ArenaRoute() {
-  const navigate = useNavigate();
-  return <ArenaPage onCompare={(runId) => navigate('/compare', { state: { preselectedIds: [runId] } })} />;
-}
+import { useAppBootstrap } from './hooks/useAppBootstrap';
+import { routes } from './routes';
 
 function App() {
   const { authHeader } = useAuth();
@@ -198,9 +166,6 @@ function App() {
   );
 }
 
-import { useAppBootstrap } from './hooks/useAppBootstrap';
-import { dataApi } from './api/dataApi';
-
 function AuthenticatedApp() {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
@@ -210,25 +175,8 @@ function AuthenticatedApp() {
     models,
     selectedModelId,
     setSelectedModelId,
-    fetchModels,
-    loadDataStatus,
     deleteModel,
-    jobs: { submitAndPoll }
   } = useAppBootstrap();
-
-  const startUpdateData = async () => {
-    try {
-      await submitAndPoll(
-        () => dataApi.updateData(false, 30),
-        async () => {
-          await fetchModels();
-          await loadDataStatus();
-        }
-      );
-    } catch {
-      /* ignore */
-    }
-  };
 
   const handleDeleteModel = async (id: string) => {
     await deleteModel(id);
@@ -250,24 +198,10 @@ function AuthenticatedApp() {
             loading={loading}
           />
         }>
-          <Route index element={<DashboardRoute startUpdateData={startUpdateData} />} />
-          <Route path="agent" element={<AgentControlCenter models={models} />} />
-          <Route path="dashboard" element={<DashboardRoute startUpdateData={startUpdateData} />} />
-          <Route path="terminal" element={<StockTerminal />} />
-          <Route path="backtest" element={<BacktestPage />} />
-          <Route path="arena" element={<ArenaRoute />} />
-          <Route path="models" element={<ModelsPage />} />
-          <Route path="compare" element={<CompareRoute models={models} />} />
-          <Route path="reports" element={<ReportsPage />} />
-          <Route path="data" element={<DataPage />} />
-          <Route path="factors" element={<FactorPage />} />
-          <Route path="factor-registry" element={<FactorRegistryPage />} />
-          <Route path="experiments" element={<ExperimentLogPage />} />
-          <Route path="attribution" element={<AttributionPage />} />
-          <Route path="strategy" element={<StrategyPage />} />
-          <Route path="methodology" element={<MethodologyPage />} />
-          <Route path="system" element={<SystemPage />} />
-          <Route path="docs" element={<DocsPage />} />
+          {routes.map(r => {
+            const Component = r.component;
+            return <Route key={r.path} path={r.path} element={<Component models={models} />} />
+          })}
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

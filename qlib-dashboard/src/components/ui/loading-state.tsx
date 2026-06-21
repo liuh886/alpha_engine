@@ -3,6 +3,8 @@ import { Loader2, AlertCircle, Inbox, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
+import { Placeholder } from "@/components/Placeholder";
+
 /* ------------------------------------------------------------------ */
 /*  LoadingSpinner                                                     */
 /* ------------------------------------------------------------------ */
@@ -21,13 +23,13 @@ export function LoadingSpinner({
   ...props
 }: LoadingSpinnerProps) {
   return (
-    <div
-      role="status"
-      className={cn("flex flex-col items-center justify-center gap-2 py-8", className)}
-      {...props}
-    >
-      <Loader2 className="animate-spin text-muted-foreground" style={{ width: size, height: size }} />
-      {message && <p className="text-sm text-muted-foreground">{message}</p>}
+    <div className={className} {...props}>
+      <Placeholder 
+        className="border-none bg-transparent"
+        icon={Loader2} 
+        title="Loading" 
+        description={message} 
+      />
     </div>
   );
 }
@@ -42,7 +44,7 @@ export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Optional description below the message. */
   description?: string;
   /** Optional icon. Defaults to Inbox. */
-  icon?: React.ReactNode;
+  icon?: any;
 }
 
 export function EmptyState({
@@ -53,18 +55,13 @@ export function EmptyState({
   ...props
 }: EmptyStateProps) {
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center gap-2 py-12 text-center",
-        className,
-      )}
-      {...props}
-    >
-      {icon ?? <Inbox className="h-10 w-10 text-muted-foreground/50" />}
-      <p className="text-sm font-medium text-muted-foreground">{message}</p>
-      {description && (
-        <p className="text-xs text-muted-foreground/70 max-w-xs">{description}</p>
-      )}
+    <div className={className} {...props}>
+      <Placeholder 
+        className="border-none bg-transparent"
+        icon={icon ?? Inbox} 
+        title={message} 
+        description={description} 
+      />
     </div>
   );
 }
@@ -87,22 +84,20 @@ export function ErrorState({
   ...props
 }: ErrorStateProps) {
   return (
-    <div
-      role="alert"
-      className={cn(
-        "flex flex-col items-center justify-center gap-3 py-12 text-center",
-        className,
-      )}
-      {...props}
-    >
-      <AlertCircle className="h-10 w-10 text-destructive/70" />
-      <p className="text-sm font-medium text-destructive">{message}</p>
-      {onRetry && (
-        <Button variant="outline" size="sm" onClick={onRetry} className="gap-1.5">
-          <RefreshCw className="h-3.5 w-3.5" />
-          Retry
-        </Button>
-      )}
+    <div className={className} {...props}>
+      <Placeholder 
+        className="border-none bg-transparent"
+        icon={AlertCircle} 
+        title="Error" 
+        description={message} 
+        variant="error"
+        action={onRetry ? (
+          <Button variant="outline" size="sm" onClick={onRetry} className="gap-1.5 h-7 text-xs">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
+        ) : undefined}
+      />
     </div>
   );
 }

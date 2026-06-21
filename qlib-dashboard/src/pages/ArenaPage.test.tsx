@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ArenaPage } from "./ArenaPage";
+import { MemoryRouter } from "react-router-dom";
 
 const mockApiFetch = vi.fn();
 
@@ -50,14 +51,22 @@ describe("ArenaPage", () => {
   });
 
   it("renders an empty state after an empty leaderboard response", async () => {
-    render(<ArenaPage />);
+    render(
+      <MemoryRouter>
+        <ArenaPage />
+      </MemoryRouter>
+    );
 
-    expect(await screen.findByText("No leaderboard results. Run a settlement to add contestants.")).toBeVisible();
-    await waitFor(() => expect(screen.queryByText("Loading leaderboard...")).not.toBeInTheDocument());
+    expect(await screen.findByText(/No leaderboard results\. Run a settlement to add contestants\./i)).toBeVisible();
+    await waitFor(() => expect(screen.queryByText(/Loading leaderboard.../i)).not.toBeInTheDocument());
   });
 
   it("opens the full report through the authenticated reports API", async () => {
-    render(<ArenaPage />);
+    render(
+      <MemoryRouter>
+        <ArenaPage />
+      </MemoryRouter>
+    );
     fireEvent.click(await screen.findByText("Full Report"));
 
     await waitFor(() => {

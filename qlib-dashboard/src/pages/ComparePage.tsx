@@ -4,6 +4,7 @@ import { ModelData, parseQlibData } from "@/lib/data-parser";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { HoldingsSummary } from "@/components/HoldingsSummary";
+import { Placeholder } from "@/components/Placeholder";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine } from "recharts";
 import { Layers, TrendingUp, Target, Trophy, RefreshCw, ArrowUpDown, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,9 +57,11 @@ type SortKey = "rank" | "participant_name" | "nav" | "daily_return" | "drawdown"
 // ---- Tab type ----
 type TabId = "comparison" | "leaderboard";
 
-export function ComparePage({ models, preselectedIds, compact = false }: { models: ModelData[], preselectedIds?: string[], compact?: boolean }) {
+export function ComparePage({ models, preselectedIds: propIds, compact = false }: { models: ModelData[], preselectedIds?: string[], compact?: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const state = location.state as { preselectedIds?: string[] } | null;
+  const preselectedIds = propIds ?? state?.preselectedIds;
   const routeIdentity = parseReleaseIdentity(location.search);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("comparison");
@@ -380,10 +383,7 @@ export function ComparePage({ models, preselectedIds, compact = false }: { model
 
           <div className={cn("space-y-8", compact ? "col-span-full" : "xl:col-span-3")}>
             {selectedModels.length === 0 ? (
-              <div className="h-96 flex flex-col items-center justify-center bg-muted/10 rounded-3xl border-2 border-dashed border-border/50">
-                <Target className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs italic">Awaiting Model Selection</p>
-              </div>
+              <Placeholder icon={Target} title="Awaiting Model Selection" description="Select up to 5 models from the Active Portfolio list to begin relative analysis." />
             ) : (
               <>
                 {compatWarnings.length > 0 && (
