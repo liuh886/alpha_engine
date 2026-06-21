@@ -1,0 +1,128 @@
+name: Alpha Engine CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RELEASE_CANDIDATE: rc_20260620
+  EVIDENCE_DIR: artifacts/release_gates
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Backend quality gates
+  # -----------------------------------------------------------------------
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv and locked Python dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      # -- Gate 1: Ruff lint (must pass) -----------------------------------
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      # -- Gate 2: Mypy type check (ratcheted scope) -----------------------
+      - name: Mypy type check (ratcheted scope)
+        run: uv run mypy src/release src/models/metric_contract.py
+
+      # -- Gate 3: Pytest (zero-unapproved-skip) ---------------------------
+      - name: Pytest
+        run: uv run pytest tests -q --strict-markers
+
+      # -- Gate 4: Release gate candidate verification ---------------------
+      - name: Release gate verification
+        run: >-
+          uv run python scripts/release_gate.py
+          --candidate $RELEASE_CANDIDATE
+          --run-quality-gates
+          --evidence-dir $EVIDENCE_DIR
+
+      # -- Gate 5: Package build -------------------------------------------
+      - name: Package build
+        run: uv build
+
+      - name: Upload backend evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-evidence
+          path: ${{ env.EVIDENCE_DIR }}/
+          if-no-files-found: warn
+
+  # -----------------------------------------------------------------------
+  # Frontend quality gates
+  # -----------------------------------------------------------------------
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+
+      # -- Gate 6: npm ci (deterministic install) --------------------------
+      - name: Install frontend dependencies
+        working-directory: qlib-dashboard
+        run: npm ci
+
+      # -- Gate 7: TypeScript type check -----------------------------------
+      - name: TypeScript type check
+        working-directory: qlib-dashboard
+        run: npx tsc --noEmit
+
+      # -- Gate 8: Frontend lint -------------------------------------------
+      - name: Frontend lint
+        working-directory: qlib-dashboard
+        run: npm run lint
+
+      # -- Gate 9: Frontend unit tests -------------------------------------
+      - name: Frontend unit tests
+        working-directory: qlib-dashboard
+        run: npm test
+
+      # -- Gate 10: Frontend build -----------------------------------------
+      - name: Frontend build
+        working-directory: qlib-dashboard
+        run: npm run build
+
+      # -- Gate 11: Playwright E2E (conditional on build success) ----------
+      - name: Install Playwright browsers
+        working-directory: qlib-dashboard
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright E2E tests
+        working-directory: qlib-dashboard
+        run: npx playwright test
+
+      - name: Upload frontend build artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: qlib-dashboard/dist/
+          if-no-files-found: warn
