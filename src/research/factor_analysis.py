@@ -321,6 +321,9 @@ def compute_factor_ic(
     """
     import qlib
 
+    # Init Qlib FIRST — must be before any qlib.data.D usage
+    _init_qlib(market)
+
     # Resolve end_date
     if end_date == "latest" or not end_date:
         calendar = qlib.data.D.calendar()
@@ -344,10 +347,7 @@ def compute_factor_ic(
                 generated_at=cached["generated_at"],
             )
 
-    # Init Qlib
-    _init_qlib(market)
-
-    # Load factor names
+    # Qlib already initialized above — load factor names
     if factors is None:
         factors = _load_factor_names(market)
 
@@ -563,12 +563,13 @@ def compute_factor_decay(
 
     import qlib
 
+    # Init Qlib FIRST
+    _init_qlib(market)
+
     # Resolve end_date
     if end_date == "latest" or not end_date:
         calendar = qlib.data.D.calendar()
         end_date = str(pd.Timestamp(calendar[-1]).strftime("%Y-%m-%d"))
-
-    _init_qlib(market)
 
     log.info(
         "Computing factor decay",

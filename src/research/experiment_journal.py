@@ -49,7 +49,9 @@ class ExperimentJournal:
 
         self._factor_db_path = factor_db_path or str(ARTIFACTS_DIR / "factor_registry.db")
         self._model_db_path = model_db_path or str(ARTIFACTS_DIR / "registry.db")
-        self._walk_forward_dir = Path(walk_forward_dir) if walk_forward_dir else ARTIFACTS_DIR / "walk_forward"
+        self._walk_forward_dir = (
+            Path(walk_forward_dir) if walk_forward_dir else ARTIFACTS_DIR / "walk_forward"
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -146,12 +148,14 @@ class ExperimentJournal:
             latest_val = validations[0] if validations else None
             usage = registry.get_usage(f["id"])
 
-            results.append({
-                **f,
-                "latest_validation": latest_val,
-                "validation_count": len(validations),
-                "usage_count": len(usage),
-            })
+            results.append(
+                {
+                    **f,
+                    "latest_validation": latest_val,
+                    "validation_count": len(validations),
+                    "usage_count": len(usage),
+                }
+            )
 
         return results
 
@@ -212,7 +216,11 @@ class ExperimentJournal:
                 arch_lower = (d.get("architecture") or "").lower()
                 hp = d.get("hyperparameters") or {}
                 hp_market = str(hp.get("market", "")).lower()
-                if market.lower() not in name_lower and market.lower() not in arch_lower and market.lower() != hp_market:
+                if (
+                    market.lower() not in name_lower
+                    and market.lower() not in arch_lower
+                    and market.lower() != hp_market
+                ):
                     continue
 
             results.append(d)
@@ -266,29 +274,33 @@ class ExperimentJournal:
             # Summarise splits into key metrics
             split_summaries = []
             for s in splits:
-                split_summaries.append({
-                    "split_id": s.get("split_id"),
-                    "train_period": f"{s.get('train_start', '')} -> {s.get('train_end', '')}",
-                    "test_period": f"{s.get('test_start', '')} -> {s.get('test_end', '')}",
-                    "ic": s.get("ic"),
-                    "rank_ic": s.get("rank_ic"),
-                    "sharpe": s.get("sharpe"),
-                    "max_drawdown": s.get("max_drawdown"),
-                    "annual_return": s.get("annual_return"),
-                })
+                split_summaries.append(
+                    {
+                        "split_id": s.get("split_id"),
+                        "train_period": f"{s.get('train_start', '')} -> {s.get('train_end', '')}",
+                        "test_period": f"{s.get('test_start', '')} -> {s.get('test_end', '')}",
+                        "ic": s.get("ic"),
+                        "rank_ic": s.get("rank_ic"),
+                        "sharpe": s.get("sharpe"),
+                        "max_drawdown": s.get("max_drawdown"),
+                        "annual_return": s.get("annual_return"),
+                    }
+                )
 
-            summaries.append({
-                "market": r.get("market"),
-                "model_type": r.get("model_type"),
-                "n_splits": len(splits),
-                "mean_ic": r.get("mean_ic"),
-                "std_ic": r.get("std_ic"),
-                "ic_ir": r.get("ic_ir"),
-                "consistency_score": r.get("consistency_score"),
-                "timestamp": r.get("_timestamp"),
-                "file": r.get("_file"),
-                "splits": split_summaries,
-            })
+            summaries.append(
+                {
+                    "market": r.get("market"),
+                    "model_type": r.get("model_type"),
+                    "n_splits": len(splits),
+                    "mean_ic": r.get("mean_ic"),
+                    "std_ic": r.get("std_ic"),
+                    "ic_ir": r.get("ic_ir"),
+                    "consistency_score": r.get("consistency_score"),
+                    "timestamp": r.get("_timestamp"),
+                    "file": r.get("_file"),
+                    "splits": split_summaries,
+                }
+            )
 
         return summaries
 
@@ -331,15 +343,17 @@ class ExperimentJournal:
             for r in wf_results:
                 searchable = json.dumps(r, default=str).lower()
                 if query_lower in searchable:
-                    results.append({
-                        "market": r.get("market"),
-                        "model_type": r.get("model_type"),
-                        "mean_ic": r.get("mean_ic"),
-                        "ic_ir": r.get("ic_ir"),
-                        "timestamp": r.get("_timestamp"),
-                        "file": r.get("_file"),
-                        "_source": "walk_forward",
-                    })
+                    results.append(
+                        {
+                            "market": r.get("market"),
+                            "model_type": r.get("model_type"),
+                            "mean_ic": r.get("mean_ic"),
+                            "ic_ir": r.get("ic_ir"),
+                            "timestamp": r.get("_timestamp"),
+                            "file": r.get("_file"),
+                            "_source": "walk_forward",
+                        }
+                    )
 
         return results
 
@@ -365,7 +379,9 @@ class ExperimentJournal:
             "total_validations": factor_stats["total_validations"],
             "total_passed_validations": factor_stats["total_passed_validations"],
             "pass_rate": (
-                round(factor_stats["total_passed_validations"] / factor_stats["total_validations"], 4)
+                round(
+                    factor_stats["total_passed_validations"] / factor_stats["total_validations"], 4
+                )
                 if factor_stats["total_validations"] > 0
                 else 0.0
             ),
@@ -443,7 +459,9 @@ class ExperimentJournal:
         if stage_bits:
             factor_parts.append(", ".join(stage_bits))
         if total_val > 0:
-            factor_parts.append(f"{passed}/{total_val} validations passed ({passed/total_val:.0%})")
+            factor_parts.append(
+                f"{passed}/{total_val} validations passed ({passed / total_val:.0%})"
+            )
 
         # Top categories
         by_cat = factor_stats.get("by_category", {})
@@ -499,8 +517,10 @@ class ExperimentJournal:
     def what_failed(self, market: str = "us") -> list[dict]:
         """List all failed experiments with reasons.
 
-        Returns factors that are still at Proposed or Deprecated stage,
-        models that are Archived, and walk-forward results with poor IC_IR.
+        Returns factors with an explicit failed validation or a terminal
+        Deprecated/Retired stage, models that are Archived, and walk-forward
+        results with poor IC_IR. A Proposed factor with no validation is
+        pending work, not a failed experiment.
 
         Returns:
             List of dicts, each with ``_source``, ``name``/``id``, and
@@ -508,13 +528,17 @@ class ExperimentJournal:
         """
         failures: list[dict] = []
 
-        # Failed factors: still at Proposed (never passed validation) or Deprecated
+        # Failed factors: an explicit failed validation, or a terminal stage.
         registry = self._get_factor_registry()
-        for stage in ("Proposed", "Deprecated"):
+        for stage in ("Proposed", "Deprecated", "Retired"):
             factors = registry.list_factors(stage=stage)
             for f in factors:
                 validations = registry.get_validations(f["id"])
                 latest = validations[0] if validations else None
+                if stage == "Proposed" and (
+                    not latest or latest.get("passed") is None or bool(latest.get("passed"))
+                ):
+                    continue
                 reason = f"Stage: {stage}"
                 if latest and not latest.get("passed"):
                     # Extract failure reason from metrics
@@ -530,42 +554,51 @@ class ExperimentJournal:
                 elif not latest:
                     reason += " (no validation runs)"
 
-                failures.append({
-                    "_source": "factor",
-                    "id": f["id"],
-                    "name": f["name"],
-                    "category": f.get("category"),
-                    "stage": stage,
-                    "reason": reason,
-                })
+                failures.append(
+                    {
+                        "_source": "factor",
+                        "id": f["id"],
+                        "name": f["name"],
+                        "category": f.get("category"),
+                        "stage": stage,
+                        "timestamp": f.get("updated_at") or f.get("created_at") or "",
+                        "reason": reason,
+                    }
+                )
 
         # Failed models: Archived stage
         model_reg = self._get_model_registry()
         for m in model_reg.list_models(stage="Archived"):
             d = m.model_dump() if hasattr(m, "model_dump") else m.dict()
-            failures.append({
-                "_source": "model",
-                "id": d["version_id"],
-                "name": d["model_name"],
-                "architecture": d.get("architecture"),
-                "stage": "Archived",
-                "reason": "Archived (superseded or underperforming)",
-                "metrics": d.get("metrics"),
-            })
+            failures.append(
+                {
+                    "_source": "model",
+                    "id": d["version_id"],
+                    "name": d["model_name"],
+                        "architecture": d.get("architecture"),
+                        "stage": "Archived",
+                        "timestamp": d.get("updated_at") or d.get("created_at") or "",
+                        "reason": "Archived (superseded or underperforming)",
+                    "metrics": d.get("metrics"),
+                }
+            )
 
         # Failed walk-forward: low IC_IR
         wf_files = self._load_walk_forward_files(market=market)
         for r in wf_files:
             ic_ir = r.get("ic_ir") or 0
             if ic_ir < 0.3:
-                failures.append({
-                    "_source": "walk_forward",
-                    "file": r.get("_file"),
-                    "market": r.get("market"),
-                    "model_type": r.get("model_type"),
-                    "reason": f"Low IC_IR={ic_ir:.4f} (< 0.3)",
-                    "mean_ic": r.get("mean_ic"),
-                    "ic_ir": ic_ir,
-                })
+                failures.append(
+                    {
+                        "_source": "walk_forward",
+                        "file": r.get("_file"),
+                        "market": r.get("market"),
+                        "model_type": r.get("model_type"),
+                        "_timestamp": r.get("_timestamp") or "",
+                        "reason": f"Low IC_IR={ic_ir:.4f} (< 0.3)",
+                        "mean_ic": r.get("mean_ic"),
+                        "ic_ir": ic_ir,
+                    }
+                )
 
         return failures

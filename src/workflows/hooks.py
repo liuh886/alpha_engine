@@ -481,6 +481,22 @@ def run_training_pipeline(
             env.check_directories([MODELS_DIR, ARTIFACTS_DIR, REPORTS_DIR, RUNS_DIR])
 
             # 2. Data Preparation
+            # --- Data freshness check ---
+            try:
+                from qlib.data import D
+                cal = D.calendar(start_time="2020-01-01")
+                if cal is not None and len(cal) > 0:
+                    latest_cal = datetime.strptime(str(cal[-1])[:10], "%Y-%m-%d").date()
+                    age_days = (datetime.now().date() - latest_cal).days
+                    if age_days > 3:
+                        logger.warning(
+                            "Data may be stale",
+                            latest_calendar_day=str(latest_cal),
+                            age_days=age_days,
+                        )
+            except Exception:
+                pass  # Non-blocking
+
             start_time = config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["start_time"]
             try:
                 config = research.prepare_experiment(market, config, start_time)

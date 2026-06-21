@@ -38,21 +38,17 @@ def register_model(
     artifact_config: dict = None,
 ):
     """
-    Register a model to model_list.yaml and SQLite index.
+    Register a model to the SQLite registry (single source of truth).
+
+    model_list.yaml is kept as a human-readable **append-only log**
+    and is never used as an authoritative read source.
 
     Stage is determined by walk-forward gate status:
     - walk-forward passes  -> STAGING
     - walk-forward fails   -> CANDIDATE
     - walk-forward missing -> CANDIDATE
     """
-    # 1. Update YAML (Source of Truth)
-    list_path = MODELS_DIR / "model_list.yaml"
-    if list_path.exists():
-        with open(list_path) as f:
-            data = yaml.safe_load(f) or {"models": []}
-    else:
-        data = {"models": []}
-
+    # 1. Build entry dict
     safe_metrics = {}
     if isinstance(metrics, dict):
         for key, value in metrics.items():
@@ -80,7 +76,10 @@ def register_model(
             "period": config["task"]["dataset"]["kwargs"]["segments"]["train"],
         },
         "backtest": {
-            "period": f"{config['port_analysis_config']['backtest']['start_time']} to {config['port_analysis_config']['backtest']['end_time']}",
+            "period": (
+                f"{config['port_analysis_config']['backtest']['start_time']} to "
+                f"{config['port_analysis_config']['backtest']['end_time']}"
+            ),
             "metrics": safe_metrics,
         },
     }
@@ -94,7 +93,6 @@ def register_model(
         if artifact_id:
             bound_walk_forward["artifact_id"] = str(artifact_id)
         entry["walk_forward"] = bound_walk_forward
-        # Propagate walk-forward gate status to top-level for easy filtering
         if bound_walk_forward.get("gate_passed") is False:
             entry["gate_passed"] = False
             entry["gate_failures"] = bound_walk_forward.get("gate_failures", [])
@@ -106,24 +104,47 @@ def register_model(
     if isinstance(artifact_config, dict):
         entry["artifact_config"] = artifact_config
 
-    data["models"].append(entry)
-
-    with open(list_path, "w") as f:
-        yaml.dump(data, f, sort_keys=False)
-
-    logger.info("Registered model", path=str(list_path), stage=stage)
-
-    # 2. Update SQLite (Fast Index) -- use validate=True for fail-closed behavior
+    # === STEP 1 (PRIMARY): Write to SQLite — the single source of truth ===
+    sqlite_ok = False
     try:
         from src.assistant.metadata_db import resolve_metadata_db_path
         from src.assistant.model_registry_index import ModelRegistryIndex
         from src.common import paths
 
-        # Use dynamic artifacts dir to respect test environments
         artifacts_dir = paths.get_artifacts_dir()
         db_path = resolve_metadata_db_path(artifacts_dir)
-        ModelRegistryIndex(db_path=db_path).upsert_entry(entry, validate=True)
+        registry_idx = ModelRegistryIndex(db_path=db_path)
+        sqlite_ok = registry_idx.upsert_entry(entry, validate=True)
+        if not sqlite_ok:
+            logger.error("SQLite registry upsert returned False", version_id=version_id)
+            raise RuntimeError("SQLite upsert failed")
+        logger.info("Model registered in SQLite", version_id=version_id, stage=stage)
     except Exception as e:
-        logger.warning("Failed to sync model registry to SQLite", error=str(e))
+        logger.error("CRITICAL: Failed to write model to SQLite registry", error=str(e))
+        raise RuntimeError(
+            f"Model registration aborted — SQLite write failed: {e}"
+        ) from e
+
+    # === STEP 2 (SECONDARY): Append to YAML as human-readable log ===
+    list_path = MODELS_DIR / "model_list.yaml"
+    try:
+        if list_path.exists():
+            with open(list_path) as f:
+                data = yaml.safe_load(f) or {"models": []}
+        else:
+            data = {"models": []}
+
+        data["models"].append(entry)
+
+        with open(list_path, "w") as f:
+            yaml.dump(data, f, sort_keys=False)
+
+        logger.info("Model appended to YAML log", path=str(list_path), version_id=version_id)
+    except Exception as e:
+        # YAML is secondary — log warning but don't fail registration
+        logger.warning(
+            "Failed to append model to YAML log (SQLite registration succeeded)",
+            error=str(e),
+        )
 
     return entry
