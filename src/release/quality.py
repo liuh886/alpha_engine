@@ -49,10 +49,10 @@ def build_quality_commands(project_root: Path, evidence_dir: Path) -> list[Comma
     frontend = root / "qlib-dashboard"
     evidence_dir.resolve() / "pytest_skips.json"
     return [
-        CommandSpec("ruff", ("python", "-m", "ruff", "check", "."), root),
+        CommandSpec("ruff", ("uv", "run", "ruff", "check", "."), root),
         CommandSpec(
             "mypy_ratchet",
-            ("python", "-m", "mypy", "src/release", "scripts/release_gate.py"),
+            ("uv", "run", "mypy", "src/release", "scripts/release_gate.py"),
             root,
         ),
         CommandSpec(
