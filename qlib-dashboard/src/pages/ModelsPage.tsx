@@ -26,12 +26,6 @@ import { normalizeModelRegistryEntry } from "@/lib/model-normalizer";
 type MarketFilter = "all" | "us" | "cn";
 type SortKey = "none" | "Sharpe Ratio" | "Annualized Return" | "Max Drawdown";
 
-function safeJson<T>(value: unknown, fallback: T): T {
-  if (!value) return fallback;
-  if (typeof value === "object") return value as T;
-  try { return JSON.parse(String(value)) as T; } catch { return fallback; }
-}
-
 const BENCHMARK_BY_MARKET: Record<string, string> = { us: "QQQ", cn: "CSI300" };
 const STALE_THRESHOLD_DAYS = 14;
 

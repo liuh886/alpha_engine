@@ -2,6 +2,13 @@ import { useEffect, useCallback } from 'react';
 import { useGlobalStore } from '@/store/globalStore';
 import { dataApi } from '@/api/dataApi';
 
+export function normalizeQualityStatus(value: unknown): "ok" | "warning" | "error" {
+  if (value === "warning" || value === "error") {
+    return value;
+  }
+  return "ok";
+}
+
 export function useDataStatus() {
   const { 
     setLatestCalendarDay, 
@@ -16,7 +23,7 @@ export function useDataStatus() {
       const statusData = resp.data;
       if (statusData) {
         setLatestCalendarDay(String(statusData.latest_calendar_day || ""));
-        setQualityStatus(statusData.quality_status || "ok");
+        setQualityStatus(normalizeQualityStatus(statusData.quality_status));
         setQualityWarnings(statusData.quality_warnings || []);
         if (statusData.dashboard_generated_at) {
           setDataGeneratedAt(String(statusData.dashboard_generated_at));

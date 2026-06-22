@@ -4,11 +4,12 @@ import { useJobs } from '@/hooks/useJobs';
 import { lookupMetricValueByKey } from "@/types/metrics";
 import { dataApi } from '@/api/dataApi';
 import { PerformanceCharts } from '@/components/PerformanceCharts';
+import { PositionsTable } from '@/components/PositionsTable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Placeholder } from '@/components/Placeholder';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Play, Database, Cpu, Activity, AlertCircle, CheckCircle2, FlaskConical, Target, ShieldAlert, BarChart3, ClipboardList, ScrollText, ArrowRight } from 'lucide-react';
+import { Play, Database, Cpu, Activity, CheckCircle2, FlaskConical, Target, ShieldAlert, BarChart3, ClipboardList, ScrollText, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function TrueDashboard() {
@@ -203,7 +204,20 @@ export function TrueDashboard() {
       {bestModel && bestModel.backtest && bestModel.backtest.report && bestModel.backtest.report.length > 0 && (
         <>
           <h2 className="text-lg font-bold uppercase tracking-widest text-muted-foreground mt-8 mb-4">Backtest Performance</h2>
-          <PerformanceCharts report={bestModel.backtest.report} />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <div className="xl:col-span-2">
+              <PerformanceCharts report={bestModel.backtest.report} />
+            </div>
+            <div>
+              {bestModel.backtest.positions && bestModel.backtest.positions.length > 0 ? (
+                <PositionsTable positions={bestModel.backtest.positions} report={bestModel.backtest.report} />
+              ) : (
+                <Card className="h-full flex items-center justify-center border-dashed">
+                  <span className="text-muted-foreground text-sm">No position data</span>
+                </Card>
+              )}
+            </div>
+          </div>
         </>
       )}
 

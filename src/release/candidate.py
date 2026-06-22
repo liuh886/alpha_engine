@@ -624,9 +624,7 @@ def _load_reference(
     return _read_json_object(path, report, f"{kind}_json_invalid"), subject
 
 
-def _read_json_object(
-    path: Path, report: VerificationReport, code: str
-) -> dict[str, Any] | None:
+def _read_json_object(path: Path, report: VerificationReport, code: str) -> dict[str, Any] | None:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:

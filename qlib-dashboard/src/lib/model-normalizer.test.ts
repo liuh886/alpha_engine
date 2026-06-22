@@ -44,6 +44,31 @@ describe("normalizeModelRegistryEntry", () => {
     expect(normalized.metrics?.["Rank IC"]).toBe(0.04);
   });
 
+  it("extracts standard metrics from payload.data.indicators if metrics_json is empty", () => {
+    const rawBackendPayload = {
+      id: "cn_model_123",
+      created_ts: 1781982887,
+      metrics_json: "{}",
+      payload_json: JSON.stringify({
+        path: "/artifacts/model2.pkl",
+        data: {
+          indicators: {
+            annual_return: 0.15,
+            sharpe: 1.2,
+            max_drawdown: -0.1
+          }
+        }
+      })
+    };
+
+    const normalized = normalizeModelRegistryEntry(rawBackendPayload);
+    expect(normalized.path).toBe("/artifacts/model2.pkl");
+    expect(normalized.created_at).toBe(new Date(1781982887 * 1000).toISOString());
+    expect(normalized.metrics?.["Annualized Return"]).toBe(0.15);
+    expect(normalized.metrics?.["Sharpe Ratio"]).toBe(1.2);
+    expect(normalized.metrics?.["Max Drawdown"]).toBe(-0.1);
+  });
+
   it("handles missing fields gracefully", () => {
     const empty = normalizeModelRegistryEntry({});
     expect(empty.id).toBe("");
