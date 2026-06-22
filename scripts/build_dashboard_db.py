@@ -414,8 +414,8 @@ def upsert_model_registry_to_metadata_db(
 
     if model_entry and db_path:
         try:
-            # Extract backtest metrics from the model entry's data.indicators
             indicators = (model_entry.get("data") or {}).get("indicators") or {}
+            sig_analysis = (model_entry.get("data") or {}).get("sig_analysis") or {}
             ModelRegistryIndex(db_path=db_path).upsert_entry(
                 {
                     "id": model_entry["id"],
@@ -425,6 +425,11 @@ def upsert_model_registry_to_metadata_db(
                     "created_at": model_entry["date"],
                     "params": model_entry["params"],
                     "backtest": {"metrics": indicators} if indicators else None,
+                    "path": model_entry.get("path", ""),
+                    "payload_json": json.dumps({
+                        "data": {"sig_analysis": sig_analysis},
+                        "path": model_entry.get("path", "")
+                    }),
                 }
             )
             return 1
@@ -599,6 +604,7 @@ def build_db(model_id: str = "", sync_yaml: bool = False):
             "date": v["created_at"],
             "experiment": "workflow",
             "market": v["market"],
+            "path": run_path or "",
             "params": params,
             "data": run_data,
             "has_full_data": run_path is not None and report_normal is not None,
