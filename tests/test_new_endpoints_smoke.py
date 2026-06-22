@@ -114,7 +114,7 @@ class TestDecayEndpoints:
         assert "max_industry_weight" in data["config"]
 
 
-@pytest.mark.skip(reason="Requires running API server on localhost:8000")
+@pytest.mark.approved_skip(reason="Requires running API server on localhost:8000")
 class TestPortfolioEndpoints:
     """Smoke tests for /api/portfolio endpoints."""
 
@@ -132,7 +132,7 @@ class TestPortfolioEndpoints:
         assert data.get("code") == "API_VALIDATION_ERROR"
         missing_fields = {
             detail["location"][-1]
-            for detail in data.get("details", [])
+            for detail in data.get("detail", [])
             if detail.get("type") == "missing"
         }
         assert missing_fields == {

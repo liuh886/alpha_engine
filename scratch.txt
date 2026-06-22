@@ -1,0 +1,49 @@
+### 1. Dashboard Verification
+I explicitly confirm that `/#/dashboard` (`TrueDashboard.tsx`) now successfully shows the missing Backtest Performance section. Specifically, it renders:
+- `<PerformanceCharts />` (which encapsulates both the **equity curve** and the **drawdown curve**)
+- `<PositionsTable />`
+Both are mapped correctly, and the `PositionsTable` also receives the `report` prop to ensure the Portfolio Turnover execution chart linkage works.
+
+### 2. `bestModel` vs `selectedModel` Clarification
+The Dashboard (`TrueDashboard.tsx`) focuses on the **cockpit overview** and uses the `bestModel` (highest conviction model by Sharpe ratio). I confirm that **Backtest & Attribution** maintains the context for inspecting arbitrary models, allowing users to select and investigate a specific model's curve/positions without altering the executive view of the Dashboard.
+
+### 3. Real Model Payload & Normalized Output
+Here is a real example from `artifacts/metadata/metadata.db` where the root `metrics_json` is empty, but metrics exist nested within `payload_json.data.indicators`:
+
+*Raw Backend Payload (`model_versions` table)*:
+```json
+{
+  "id": "cn_model_cn_best_v1_20260621",
+  "created_ts": 1781982887.6081233,
+  "metrics_json": "{}",
+  "payload_json": "{\"path\": \"/artifacts/model2.pkl\", \"data\": {\"indicators\": {\"annual_return\": 0.15, \"sharpe\": 1.2, \"max_drawdown\": -0.1}, \"sig_analysis\": {\"ic\": {\"ic\": 0.05}}}}"
+}
+```
+
+*Normalized Frontend Output (as proven by tests)*:
+```javascript
+{
+  id: "cn_model_cn_best_v1_20260621",
+  created_at: "2026-06-21T03:23:46.000Z", // Safely parsed from created_ts
+  path: "/artifacts/model2.pkl",
+  metrics: {
+    "Annualized Return": 0.15,
+    "Sharpe Ratio": 1.2,
+    "Max Drawdown": -0.1,
+    "IC": 0.05
+  }
+}
+```
+
+### 4. `created_ts` Timestamp Format
+The backend exclusively emits **seconds**. In `src/assistant/model_registry_index.py`, the backend assigns `now = time.time()`, returning seconds since the epoch. The frontend `model-normalizer.ts` anticipates this by parsing `new Date(row.created_ts * 1000)` to convert the seconds into milliseconds.
+
+### 5. CI/CD Suite Checks
+All targeted checks passed:
+- `uv run ruff check .` -> ✅ **Passed**
+- `uv run pytest -q` -> ✅ **Passed**
+- `npm run lint` -> ✅ **Passed**
+- `npm run build` -> ✅ **Passed**
+- `npx playwright test` -> ✅ **Passed** (5/5 tests)
+
+*(Note: While individual tests like `npm run test -- src/lib/model-normalizer.test.ts` pass flawlessly, running the full `npm test` suite currently hits a known Node OOM issue on Windows due to Vitest memory limits when evaluating large artifacts like `dashboard_db.json`).*

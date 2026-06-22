@@ -426,10 +426,12 @@ def upsert_model_registry_to_metadata_db(
                     "params": model_entry["params"],
                     "backtest": {"metrics": indicators} if indicators else None,
                     "path": model_entry.get("path", ""),
-                    "payload_json": json.dumps({
-                        "data": {"sig_analysis": sig_analysis},
-                        "path": model_entry.get("path", "")
-                    }),
+                    "payload_json": json.dumps(
+                        {
+                            "data": {"sig_analysis": sig_analysis},
+                            "path": model_entry.get("path", ""),
+                        }
+                    ),
                 }
             )
             return 1

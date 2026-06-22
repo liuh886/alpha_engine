@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, Suspense } from 'react';
 import { HashRouter, Routes, Route, useLocation, Outlet, Link } from 'react-router-dom';
 import { ModelData } from './lib/data-parser';
 import { ModelSelector } from './components/ModelSelector';

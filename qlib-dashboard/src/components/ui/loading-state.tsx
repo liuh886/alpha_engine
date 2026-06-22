@@ -18,7 +18,6 @@ export interface LoadingSpinnerProps extends React.HTMLAttributes<HTMLDivElement
 
 export function LoadingSpinner({
   message,
-  size = 24,
   className,
   ...props
 }: LoadingSpinnerProps) {
