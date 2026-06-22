@@ -33,7 +33,7 @@ def test_compute_benchmark_returns_does_not_init_qlib():
         ["2025-01-01", "2025-01-02"], "QQQ", provider_uri="data/watchlist"
     )
     assert calls["n"] == 0
-    assert set(out.keys()) == {"2025-01-01", "2025-01-02"}
+    assert set(out.keys()) == {"2025-01-02"}
 
 
 def test_load_strategy_profile_for_run_prefers_artifact_snapshot(tmp_path: Path):

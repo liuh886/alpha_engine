@@ -48,7 +48,14 @@ def test_job_coordinator_persists_then_starts_job(monkeypatch):
 
     response = coordinator.submit_response(job)
 
-    assert response == {"ok": True, "job_id": "job-123456789"}
+    assert response == {
+        "job_id": "job-123456789",
+        "status": "queued",
+        "started_at": 0.0,
+        "source": "api",
+        "intent": "backtest",
+        "next_action": "poll_status",
+    }
     assert service.created_jobs == [job]
     assert service.run_ids == ["job-123456789"]
     assert ImmediateThread.created[0].daemon is True
