@@ -271,7 +271,7 @@ function JobProgressPanel({
               {status === "succeeded" && <CheckCircle2 className="h-3 w-3 mr-1" />}
               {status === "succeeded_with_warnings" && <AlertTriangle className="h-3 w-3 mr-1" />}
               {status === "failed" && <XCircle className="h-3 w-3 mr-1" />}
-              {status === "succeeded_with_warnings" ? "succeeded (warnings)" : status}
+              {status === "succeeded_with_warnings" ? "Completed with warnings" : status}
             </Badge>
           </CardTitle>
           <span className="text-[10px] font-mono text-muted-foreground">{jobId.slice(0, 12)}...</span>

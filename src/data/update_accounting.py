@@ -124,7 +124,7 @@ class UpdateAccountingReport:
             configured_set = set(symbols)
             terminal: set[str] = set()
             for state_name in ("updated", "reused", "excluded", "failed", "stale"):
-                terminal |= getattr(self, state_name).get(market, set())
+                terminal |= set(getattr(self, state_name).get(market, set()))
             if configured_set - terminal:
                 return False
         return True
@@ -191,13 +191,20 @@ class UpdateAccountingReport:
 
     # -- publish gate -----------------------------------------------------------
 
-    def validate_for_publish(self, *, selected_markets: set[str], strict: bool = False, max_missing_pct: float = 0.05) -> list[str]:
+    def validate_for_publish(
+        self, 
+        *, 
+        selected_markets: set[str], 
+        strict: bool = False, 
+        max_missing_pct: float = 0.05,
+        max_missing_count: int = 20
+    ) -> list[str]:
         """Raise ``DataUpdateFailure`` when the accounting does not permit publish.
 
         This is the primary gate that prevents unconditional success: if
         any configured symbol for *selected_markets* is not in a terminal
         success state (updated or reused), publish is refused unless
-        the missing percentage is within the allowed threshold.
+        the missing percentage and absolute count are within allowed thresholds.
         Returns a list of warnings if partial update is accepted.
         """
         warnings = []
@@ -229,16 +236,20 @@ class UpdateAccountingReport:
         }
         if attempted != selected_symbols or failed or accounted != selected_symbols:
             missing = sorted(selected_symbols - accounted)
-            missing_pct = len(missing) / max(1, len(selected_symbols)) if selected_symbols else 0.0
-            if strict or missing_pct > max_missing_pct:
+            missing_count = len(missing)
+            missing_pct = missing_count / max(1, len(selected_symbols)) if selected_symbols else 0.0
+            
+            is_within_threshold = missing_pct <= max_missing_pct and missing_count <= max_missing_count
+            
+            if strict or not is_within_threshold:
                 raise DataUpdateFailure(
-                    f"partial update failed (strict={strict}, max_missing={max_missing_pct:.1%}): "
+                    f"partial update failed (strict={strict}, max_missing={max_missing_pct:.1%}, max_count={max_missing_count}): "
                     f"failed={sorted(failed)} missing={missing} "
                     f"attempted={len(attempted)}/{len(selected_symbols)} "
-                    f"(missing_pct={missing_pct:.1%})"
+                    f"(missing_pct={missing_pct:.1%}, count={missing_count})"
                 )
             else:
-                msg = f"Partial update accepted: missing_pct={missing_pct:.1%} <= {max_missing_pct:.1%}. Missing symbols: {missing}"
+                msg = f"Partial update accepted: missing_pct={missing_pct:.1%} <= {max_missing_pct:.1%} AND missing_count={missing_count} <= {max_missing_count}. Missing symbols: {missing}"
                 warnings.append(msg)
 
         updated_count = sum(

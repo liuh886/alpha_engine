@@ -92,12 +92,14 @@ def publish_provider_snapshot(
     frequency: str = "day",
     strict: bool = False,
     max_missing_pct: float = 0.05,
+    max_missing_count: int = 20,
 ) -> DataSnapshot:
     """Persist all mandatory evidence and move the authoritative pointer last."""
     warnings = accounting.validate_for_publish(
         selected_markets=selected_markets,
         strict=strict,
         max_missing_pct=max_missing_pct,
+        max_missing_count=max_missing_count,
     )
     if warnings:
         quality_report.setdefault("warnings", []).extend(warnings)
@@ -561,6 +563,7 @@ def run_data_update(args) -> DataSnapshot:
         accounting=accounting,
         strict=getattr(args, "strict", False),
         max_missing_pct=getattr(args, "max_missing_pct", 0.05),
+        max_missing_count=getattr(args, "max_missing_count", 20),
     )
 
     print(f"\n[published] snapshot_id={snapshot.snapshot_id}")
@@ -605,6 +608,12 @@ def main(argv=None):
         type=float,
         default=0.05,
         help="Fraction of missing symbols allowed without failing the job. Default: 0.05",
+    )
+    parser.add_argument(
+        "--max-missing-count",
+        type=int,
+        default=20,
+        help="Maximum absolute number of missing symbols allowed without failing the job. Default: 20",
     )
     args = parser.parse_args(argv)
 

@@ -288,6 +288,7 @@ class JobService:
             log_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
+            had_warnings = False
             for cmd in job.get("commands") or []:
                 cmd_str = " ".join([str(x) for x in cmd])
 
@@ -322,15 +323,9 @@ class JobService:
 
                 if proc.returncode != 0:
                     if proc.returncode == 2:
-                        # Job succeeded but had warnings
-                        self.update_job(
-                            str(job_id),
-                            status="succeeded_with_warnings",
-                            exit_code=proc.returncode,
-                            error=None,  # Not a fatal error
-                            finished_at=time.time(),
-                        )
-                        return
+                        # Job succeeded but had warnings, continue to next commands
+                        had_warnings = True
+                        continue
 
                     # Check if it was killed by panic
                     current = self.get_job(str(job_id))
@@ -355,8 +350,8 @@ class JobService:
 
             self.update_job(
                 str(job_id),
-                status="succeeded",
-                exit_code=0,
+                status="succeeded_with_warnings" if had_warnings else "succeeded",
+                exit_code=2 if had_warnings else 0,
                 finished_at=time.time(),
             )
         except Exception as e:
