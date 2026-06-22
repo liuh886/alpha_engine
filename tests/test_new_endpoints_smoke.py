@@ -114,7 +114,7 @@ class TestDecayEndpoints:
         assert "max_industry_weight" in data["config"]
 
 
-@pytest.mark.approved_skip(reason="Requires running API server on localhost:8000")
+@pytest.mark.skip(reason="Requires running API server on localhost:8000")
 class TestPortfolioEndpoints:
     """Smoke tests for /api/portfolio endpoints."""
 
