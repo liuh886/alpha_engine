@@ -99,7 +99,7 @@ function DataStatusCard({ refreshKey = 0 }: { refreshKey?: number }) {
   const outcome = loading && !data
     ? { state: "loading" as const, reason: "Checking published snapshot identity." }
     : error
-      ? { state: "failed" as const, reason: error }
+      ? { state: "failed" as const, reason: error as string }
       : classifyDataOutcome(data?.data ?? null);
 
   return (
