@@ -59,7 +59,7 @@ import { lazy } from 'react';
 
 // Lazy-loaded pages (code splitting)
 const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
-const TrueDashboard = lazy(() => import('./components/TrueDashboard').then(m => ({ default: m.TrueDashboard })));
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const StrategyPage = lazy(() => import('./pages/StrategyPage').then(m => ({ default: m.StrategyPage })));
 const ComparePage = lazy(() => import('./pages/ComparePage').then(m => ({ default: m.ComparePage })));
 const ArenaPage = lazy(() => import('./pages/ArenaPage').then(m => ({ default: m.ArenaPage })));
@@ -84,7 +84,7 @@ const SystemPage = lazy(() => import('./pages/SystemPage').then(m => ({ default:
 export const routes: RouteDefinition[] = [
   // -- Daily Research --------------------------------------------------------
   { path: '',            title: 'System Home',     label: 'Home',            releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard, component: HomePage },
-  { path: 'dashboard',   title: 'Model Dashboard', label: 'Model Dashboard', releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard, component: TrueDashboard },
+  { path: 'dashboard',   title: 'Model Dashboard', label: 'Model Dashboard', releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard, component: DashboardPage },
   { path: 'terminal',    title: 'Stock Terminal',   label: 'Stock Terminal',  releaseLevel: 'experimental', navGroup: 'Daily Research',      icon: Terminal, component: StockTerminal },
 
   // -- Model Lab -------------------------------------------------------------

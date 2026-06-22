@@ -78,7 +78,7 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
 
         <header className="h-11 border-b bg-card sticky top-0 z-40 px-5 flex items-center justify-between">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <h2 className="font-semibold">{viewTitle}</h2>
+            <span className="font-semibold">{viewTitle}</span>
             {(currentPath === 'dashboard' || currentPath === '') && selectedModel && (
               <>
                 <div className="h-3.5 w-px bg-border" />
