@@ -72,22 +72,25 @@ export function EmptyState({
 export interface ErrorStateProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Error message to display. */
   message: string;
+  /** Optional title to display above the message. */
+  title?: string;
   /** Called when the user clicks the retry button. Omit to hide the button. */
   onRetry?: () => void;
 }
 
 export function ErrorState({
+  title,
   message,
   onRetry,
   className,
   ...props
 }: ErrorStateProps) {
   return (
-    <div className={className} {...props}>
+    <div className={className} data-outcome="error" {...props}>
       <Placeholder 
         className="border-none bg-transparent"
         icon={AlertCircle} 
-        title="Error" 
+        title={title || "Error"} 
         description={message} 
         variant="error"
         action={onRetry ? (
