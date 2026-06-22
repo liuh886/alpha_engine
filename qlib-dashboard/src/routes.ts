@@ -116,8 +116,6 @@ export const routes: RouteDefinition[] = [
 /** Map from path to title — used by the header bar. */
 export const VIEW_TITLES: Record<string, string> = {
   ...Object.fromEntries(routes.map((r) => [r.path, r.title])),
-  // Legacy alias: /dashboard renders the same view as /
-  dashboard: 'Dashboard',
 };
 
 /** Group routes by navGroup, preserving declaration order. */
