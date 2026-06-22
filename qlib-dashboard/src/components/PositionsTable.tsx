@@ -90,7 +90,7 @@ export function PositionsTable({ positions, report }: { positions: Position[], r
       <Card className="border-none shadow-xl overflow-hidden bg-card">
         <CardHeader className="bg-muted/20 border-b py-4">
           <CardTitle className="flex justify-between items-center text-sm font-black uppercase tracking-tight text-left">
-            <span>Holdings Snapshot: <span className="text-primary font-mono ml-2">{currentDate}</span></span>
+            <span>Positions Snapshot: <span className="text-primary font-mono ml-2">{currentDate}</span></span>
             <Badge variant="secondary" className="text-[10px] font-bold">{currentPositions.length} Assets</Badge>
           </CardTitle>
         </CardHeader>
