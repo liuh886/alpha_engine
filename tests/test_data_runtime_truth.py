@@ -429,3 +429,68 @@ def test_validate_for_publish_raises_when_symbols_unaccounted():
 
     with pytest.raises(update_data.DataUpdateFailure, match="partial update"):
         accounting.validate_for_publish(selected_markets={"us"})
+
+
+def test_partial_missing_below_threshold_warns_without_strict():
+    # 2 out of 100 missing -> 2% missing_pct, count = 2.
+    # threshold = 5%, count = 20
+    configured = {"us": [f"SYM{i}" for i in range(100)]}
+    accounting = update_data.UpdateAccounting(configured=configured)
+    for i in range(100):
+        accounting.add("attempted", "us", f"SYM{i}")
+        if i < 98:
+            accounting.add("updated", "us", f"SYM{i}")
+        else:
+            accounting.add("failed", "us", f"SYM{i}")
+
+    # Should not raise, should return warnings
+    warnings = accounting.validate_for_publish(
+        selected_markets={"us"},
+        strict=False,
+        max_missing_pct=0.05,
+        max_missing_count=20,
+    )
+    assert len(warnings) > 0
+    assert "Partial update accepted" in warnings[0]
+
+
+def test_partial_missing_below_threshold_fails_with_strict():
+    # 2 out of 100 missing, exactly the same as above
+    configured = {"us": [f"SYM{i}" for i in range(100)]}
+    accounting = update_data.UpdateAccounting(configured=configured)
+    for i in range(100):
+        accounting.add("attempted", "us", f"SYM{i}")
+        if i < 98:
+            accounting.add("updated", "us", f"SYM{i}")
+        else:
+            accounting.add("failed", "us", f"SYM{i}")
+
+    # strict=True should raise DataUpdateFailure unconditionally
+    with pytest.raises(update_data.DataUpdateFailure, match="partial update failed.*strict=True"):
+        accounting.validate_for_publish(
+            selected_markets={"us"},
+            strict=True,
+            max_missing_pct=0.05,
+            max_missing_count=20,
+        )
+
+
+def test_partial_missing_above_count_threshold_fails():
+    # 25 missing out of 1000 -> 2.5% missing_pct, count = 25.
+    # threshold = 5%, count = 20. Fails because 25 > 20.
+    configured = {"us": [f"SYM{i}" for i in range(1000)]}
+    accounting = update_data.UpdateAccounting(configured=configured)
+    for i in range(1000):
+        accounting.add("attempted", "us", f"SYM{i}")
+        if i < 975:
+            accounting.add("updated", "us", f"SYM{i}")
+        else:
+            accounting.add("failed", "us", f"SYM{i}")
+
+    with pytest.raises(update_data.DataUpdateFailure, match="partial update failed.*max_count=20"):
+        accounting.validate_for_publish(
+            selected_markets={"us"},
+            strict=False,
+            max_missing_pct=0.05,
+            max_missing_count=20,
+        )

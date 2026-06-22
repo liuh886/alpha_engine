@@ -241,12 +241,12 @@ function JobProgressPanel({
   }, [jobId, jobQuery.refetch]);
 
   const status = job?.status?.toLowerCase() || "running";
-  const isTerminal = status === "succeeded" || status === "failed";
+  const isTerminal = status === "succeeded" || status === "failed" || status === "succeeded_with_warnings";
 
   useEffect(() => {
     if (isTerminal && !doneRef.current) {
       doneRef.current = true;
-      onDoneRef.current(status === "succeeded");
+      onDoneRef.current(status === "succeeded" || status === "succeeded_with_warnings");
     }
   }, [doneRef, isTerminal, onDoneRef, status]);
 
@@ -263,13 +263,15 @@ function JobProgressPanel({
                 "text-[10px] ml-1",
                 status === "running" && "bg-blue-500/10 text-blue-600 border-blue-500/30",
                 status === "succeeded" && "bg-green-500/10 text-green-600 border-green-500/30",
+                status === "succeeded_with_warnings" && "bg-yellow-500/10 text-yellow-600 border-yellow-500/30",
                 status === "failed" && "bg-red-500/10 text-red-600 border-red-500/30",
               )}
             >
               {status === "running" && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
               {status === "succeeded" && <CheckCircle2 className="h-3 w-3 mr-1" />}
+              {status === "succeeded_with_warnings" && <AlertTriangle className="h-3 w-3 mr-1" />}
               {status === "failed" && <XCircle className="h-3 w-3 mr-1" />}
-              {status}
+              {status === "succeeded_with_warnings" ? "Completed with warnings" : status}
             </Badge>
           </CardTitle>
           <span className="text-[10px] font-mono text-muted-foreground">{jobId.slice(0, 12)}...</span>
@@ -280,8 +282,8 @@ function JobProgressPanel({
         {jobQuery.error && <ReleaseOutcome state="failed" reason={jobQuery.error} />}
         {job && (
           <ReleaseOutcome
-            state={status === "succeeded" ? "success" : status === "failed" ? "failed" : "loading"}
-            reason={status === "succeeded" ? "Data update published." : status === "failed" ? (job.error || "Data update failed.") : "Data update is running."}
+            state={status.startsWith("succeeded") ? "success" : status === "failed" ? "failed" : "loading"}
+            reason={status === "succeeded" ? "Data update published." : status === "succeeded_with_warnings" ? "Data update published with missing symbols." : status === "failed" ? (job.error || "Data update failed.") : "Data update is running."}
           />
         )}
         {isTerminal && status === "failed" && job?.error && (

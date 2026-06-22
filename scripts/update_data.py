@@ -92,13 +92,17 @@ def publish_provider_snapshot(
     frequency: str = "day",
     strict: bool = False,
     max_missing_pct: float = 0.05,
+    max_missing_count: int = 20,
 ) -> DataSnapshot:
     """Persist all mandatory evidence and move the authoritative pointer last."""
-    accounting.validate_for_publish(
+    warnings = accounting.validate_for_publish(
         selected_markets=selected_markets,
         strict=strict,
         max_missing_pct=max_missing_pct,
+        max_missing_count=max_missing_count,
     )
+    if warnings:
+        quality_report.setdefault("warnings", []).extend(warnings)
     _validate_quality_report(quality_report, universe=universe, quality_policy=quality_policy)
     provider_dir = Path(provider_dir)
     calendar_path = provider_dir / "calendars" / f"{frequency}.txt"
@@ -559,6 +563,7 @@ def run_data_update(args) -> DataSnapshot:
         accounting=accounting,
         strict=getattr(args, "strict", False),
         max_missing_pct=getattr(args, "max_missing_pct", 0.05),
+        max_missing_count=getattr(args, "max_missing_count", 20),
     )
 
     print(f"\n[published] snapshot_id={snapshot.snapshot_id}")
@@ -604,11 +609,27 @@ def main(argv=None):
         default=0.05,
         help="Fraction of missing symbols allowed without failing the job. Default: 0.05",
     )
+    parser.add_argument(
+        "--max-missing-count",
+        type=int,
+        default=20,
+        help="Maximum absolute number of missing symbols allowed without failing the job. Default: 20",
+    )
     args = parser.parse_args(argv)
 
     try:
-        run_data_update(args)
+        snapshot = run_data_update(args)
         print("\nUpdate Complete.")
+
+        # Check if we succeeded but had warnings
+        warnings = []
+        if hasattr(snapshot, "manifest") and snapshot.manifest:
+            warnings = snapshot.manifest.quality_report.get("warnings") or []
+
+        if warnings:
+            print("\n[!] Exiting with warnings (Exit code 2).")
+            return 2
+
         return 0
     except DataUpdateFailure as exc:
         print(f"\n[!] Data update failed: {exc}")
