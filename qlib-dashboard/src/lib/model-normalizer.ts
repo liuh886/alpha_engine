@@ -19,8 +19,9 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
   const params = safeJson<Record<string, unknown>>(row.params ?? row.params_json, {});
   const payload = safeJson<Record<string, any>>(row.payload ?? row.payload_json, {});
 
-  // Initialize metrics with existing values
-  const metrics: Record<string, number> = { ...metricsRaw };
+  // Initialize metrics with existing values, falling back to payload.backtest.metrics if metrics_json was empty
+  const payloadMetrics = payload?.backtest?.metrics ?? {};
+  const metrics: Record<string, number> = { ...payloadMetrics, ...metricsRaw };
 
   // Attempt to extract IC/Rank IC from payload if not present in metrics
   const sigAnalysis = payload?.data?.sig_analysis;

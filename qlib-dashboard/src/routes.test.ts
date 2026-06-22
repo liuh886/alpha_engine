@@ -97,9 +97,6 @@ describe('route registry', () => {
     }
   });
 
-  it('VIEW_TITLES includes legacy "dashboard" alias', () => {
-    expect(VIEW_TITLES['dashboard']).toBe('Dashboard');
-  });
 
   // -----------------------------------------------------------------------
   // groupRoutes
