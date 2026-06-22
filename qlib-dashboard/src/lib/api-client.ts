@@ -144,8 +144,9 @@ class ApiClient {
           detail = errBody?.detail ?? errBody;
           if (typeof detail === 'string') {
             message = detail;
-          } else if (detail && typeof detail === 'object' && 'message' in detail) {
-            message = String((detail as { message: string }).message);
+          } else if (detail && typeof detail === 'object') {
+            if ('message' in detail) message = String((detail as { message: string }).message);
+            else if ('error' in detail) message = String((detail as { error: string }).error);
           }
         } catch {
           // Body not JSON — fall back to status text.

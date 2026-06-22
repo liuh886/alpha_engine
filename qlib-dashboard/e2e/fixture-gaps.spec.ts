@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-// Helper to log in
 async function login(page: import("@playwright/test").Page) {
   await page.getByLabel("Username").fill("release-user");
   await page.getByLabel("Password").fill("release-pass");
   await page.getByRole("button", { name: "Sign In" }).click();
+  // Wait for login to complete and navigate to home/dashboard
+  await expect(page.getByText(/System Home|Model Dashboard|Readiness/i).first()).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe("Fixture Smoke Gaps: Strict Assertions on Error and Edge States", () => {
@@ -45,13 +46,13 @@ test.describe("Fixture Smoke Gaps: Strict Assertions on Error and Edge States", 
     await page.route("**/api/models*", async (route) => {
       await route.fulfill({
         status: 500,
-        json: { detail: "Internal Server Error" }
+        json: { error: "Internal Server Error" }
       });
     });
 
     await page.goto("/#/models");
     // We should see an error message instead of an infinite spinner or blank page
-    await expect(page.getByText(/Internal Server Error|Error/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Internal Server Error|Error/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("3. Refresh persistence retains job status on Data page", async ({ page }) => {
@@ -70,7 +71,7 @@ test.describe("Fixture Smoke Gaps: Strict Assertions on Error and Edge States", 
     await page.route("**/api/data/status", async (route) => {
       await route.fulfill({
         status: 401,
-        json: { detail: "Invalid credentials" }
+        json: { error: "Invalid credentials" }
       });
     });
 
@@ -121,6 +122,20 @@ test.describe("Fixture Smoke Gaps: Strict Assertions on Error and Edge States", 
     // Actually, in the dashboard, the report download might be in the model comparison.
     // I'll just check if the Reports navigation works and has a title.
     await expect(page.getByRole("heading", { name: /Reports|Dashboard/i }).first()).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("7. Dashboard research contract: curve, drawdown, positions", async ({ page }) => {
+    // Navigate to the research dashboard
+    await page.goto("/#/dashboard");
+    
+    // Assert the presence of equity curve / cumulative return
+    await expect(page.getByText(/Cumulative Return|Equity Curve/i).first()).toBeVisible({ timeout: 10_000 });
+    
+    // Assert the presence of drawdown curve
+    await expect(page.getByText(/Drawdown/i).first()).toBeVisible({ timeout: 10_000 });
+    
+    // Assert the presence of positions/holdings table
+    await expect(page.getByText(/Top Active Positions|Positions/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
 });
