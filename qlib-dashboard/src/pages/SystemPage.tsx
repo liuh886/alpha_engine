@@ -850,7 +850,7 @@ function JobCenterTab() {
       acc[s] = (acc[s] || 0) + 1;
       return acc;
     },
-    { queued: 0, running: 0, succeeded: 0, failed: 0, cancelled: 0, unknown: 0 },
+    { queued: 0, running: 0, succeeded: 0, succeeded_with_warnings: 0, failed: 0, cancelled: 0, unknown: 0 },
   );
 
   // -- Backend unavailable state --------------------------------------------
