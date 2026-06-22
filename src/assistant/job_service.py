@@ -321,6 +321,17 @@ class JobService:
                         f.flush()
 
                 if proc.returncode != 0:
+                    if proc.returncode == 2:
+                        # Job succeeded but had warnings
+                        self.update_job(
+                            str(job_id),
+                            status="succeeded_with_warnings",
+                            exit_code=proc.returncode,
+                            error=None,  # Not a fatal error
+                            finished_at=time.time(),
+                        )
+                        return
+
                     # Check if it was killed by panic
                     current = self.get_job(str(job_id))
                     if (

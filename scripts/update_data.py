@@ -94,11 +94,13 @@ def publish_provider_snapshot(
     max_missing_pct: float = 0.05,
 ) -> DataSnapshot:
     """Persist all mandatory evidence and move the authoritative pointer last."""
-    accounting.validate_for_publish(
+    warnings = accounting.validate_for_publish(
         selected_markets=selected_markets,
         strict=strict,
         max_missing_pct=max_missing_pct,
     )
+    if warnings:
+        quality_report.setdefault("warnings", []).extend(warnings)
     _validate_quality_report(quality_report, universe=universe, quality_policy=quality_policy)
     provider_dir = Path(provider_dir)
     calendar_path = provider_dir / "calendars" / f"{frequency}.txt"
@@ -607,8 +609,18 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     try:
-        run_data_update(args)
+        snapshot = run_data_update(args)
         print("\nUpdate Complete.")
+
+        # Check if we succeeded but had warnings
+        warnings = []
+        if hasattr(snapshot, "manifest") and snapshot.manifest:
+            warnings = snapshot.manifest.quality_report.get("warnings") or []
+
+        if warnings:
+            print("\n[!] Exiting with warnings (Exit code 2).")
+            return 2
+
         return 0
     except DataUpdateFailure as exc:
         print(f"\n[!] Data update failed: {exc}")
