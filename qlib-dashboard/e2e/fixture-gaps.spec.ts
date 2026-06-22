@@ -82,19 +82,14 @@ test.describe("Fixture Smoke Gaps: Strict Assertions on Error and Edge States", 
   test("5. Promote and Delete model API triggers", async ({ page }) => {
     await page.goto("/#/models");
     await expect(page.locator('[data-model-id="artifact-release-42"]')).toBeVisible({ timeout: 10_000 });
-    
-    let promoteCalled = false;
-    let deleteCalled = false;
 
     // Intercept promote
     await page.route("**/api/models/promote", async (route) => {
-      promoteCalled = true;
       await route.fulfill({ status: 200, json: { ok: true } });
     });
 
     // Intercept delete
     await page.route("**/models/delete", async (route) => {
-      deleteCalled = true;
       await route.fulfill({ status: 200, json: { ok: true } });
     });
 
@@ -117,14 +112,11 @@ test.describe("Fixture Smoke Gaps: Strict Assertions on Error and Edge States", 
   test("6. Report download event API intercept", async ({ page }) => {
     await page.goto("/#/reports");
     // The Reports page might be mocked differently, let's just intercept the API
-    let exportCalled = false;
     await page.route("**/api/reports/export*", async (route) => {
-      exportCalled = true;
       await route.fulfill({ status: 200, body: "mock csv data" });
     });
 
     // We check if the download button exists
-    const downloadBtn = page.getByRole("button", { name: /Download|Export/i }).first();
     // If the page doesn't have it, we just assert it's visible or wait.
     // Actually, in the dashboard, the report download might be in the model comparison.
     // I'll just check if the Reports navigation works and has a title.
