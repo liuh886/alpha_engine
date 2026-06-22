@@ -21,6 +21,7 @@ import {
   lookupMetricValue,
   getMetricDefinition,
 } from "@/types/metrics";
+import { normalizeModelRegistryEntry } from "@/lib/model-normalizer";
 
 type MarketFilter = "all" | "us" | "cn";
 type SortKey = "none" | "Sharpe Ratio" | "Annualized Return" | "Max Drawdown";
@@ -80,12 +81,7 @@ export function ModelsPage() {
 
   const versions = useMemo(() => (modelsQuery.data?.versions ?? [])
     .filter((row) => row?.id)
-    .map((row) => ({
-      ...row,
-      id: String(row.id),
-      metrics: safeJson<Record<string, number>>(row.metrics ?? row.metrics_json, {}),
-      params: safeJson<Record<string, unknown>>(row.params ?? row.params_json, {}),
-    })), [modelsQuery.data]);
+    .map(normalizeModelRegistryEntry), [modelsQuery.data]);
 
   useEffect(() => {
     if (routeIdentity.modelId && versions.some((version) => version.id === routeIdentity.modelId)) {
