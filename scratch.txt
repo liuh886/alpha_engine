@@ -1,49 +1,75 @@
-### 1. Dashboard Verification
-I explicitly confirm that `/#/dashboard` (`TrueDashboard.tsx`) now successfully shows the missing Backtest Performance section. Specifically, it renders:
-- `<PerformanceCharts />` (which encapsulates both the **equity curve** and the **drawdown curve**)
-- `<PositionsTable />`
-Both are mapped correctly, and the `PositionsTable` also receives the `report` prop to ensure the Portfolio Turnover execution chart linkage works.
+All CI fixes applied. Local command outputs confirm a green baseline:
 
-### 2. `bestModel` vs `selectedModel` Clarification
-The Dashboard (`TrueDashboard.tsx`) focuses on the **cockpit overview** and uses the `bestModel` (highest conviction model by Sharpe ratio). I confirm that **Backtest & Attribution** maintains the context for inspecting arbitrary models, allowing users to select and investigate a specific model's curve/positions without altering the executive view of the Dashboard.
+### Backend Checks
 
-### 3. Real Model Payload & Normalized Output
-Here is a real example from `artifacts/metadata/metadata.db` where the root `metrics_json` is empty, but metrics exist nested within `payload_json.data.indicators`:
+**`uv run ruff check . --fix` & `uv run ruff format .` & `uv run ruff check .`**:
+No output (zero errors). Formatted successfully.
 
-*Raw Backend Payload (`model_versions` table)*:
-```json
-{
-  "id": "cn_model_cn_best_v1_20260621",
-  "created_ts": 1781982887.6081233,
-  "metrics_json": "{}",
-  "payload_json": "{\"path\": \"/artifacts/model2.pkl\", \"data\": {\"indicators\": {\"annual_return\": 0.15, \"sharpe\": 1.2, \"max_drawdown\": -0.1}, \"sig_analysis\": {\"ic\": {\"ic\": 0.05}}}}"
-}
+**`uv run pytest -q`**:
+```
+1034 passed, 9 skipped, 25 warnings in 69.03s (0:01:09)
 ```
 
-*Normalized Frontend Output (as proven by tests)*:
-```javascript
-{
-  id: "cn_model_cn_best_v1_20260621",
-  created_at: "2026-06-21T03:23:46.000Z", // Safely parsed from created_ts
-  path: "/artifacts/model2.pkl",
-  metrics: {
-    "Annualized Return": 0.15,
-    "Sharpe Ratio": 1.2,
-    "Max Drawdown": -0.1,
-    "IC": 0.05
-  }
-}
+### Frontend Checks
+
+**`npm run lint`**:
+```
+> qlib-dashboard@0.0.0 lint
+> eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0
+```
+(No errors reported).
+
+**`npm run build`**:
+```
+> qlib-dashboard@0.0.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 2982 modules transformed.
+rendering chunks...
+[plugin vite:singlefile] 
+
+[plugin vite:singlefile] Inlining: index-DvGMaP7s.js
+[plugin vite:singlefile] Inlining: style-CApejMBM.css
+computing gzip size...
+dist/index.html  1,451.57 kB │ gzip: 402.97 kB
+✓ built in 13.00s
 ```
 
-### 4. `created_ts` Timestamp Format
-The backend exclusively emits **seconds**. In `src/assistant/model_registry_index.py`, the backend assigns `now = time.time()`, returning seconds since the epoch. The frontend `model-normalizer.ts` anticipates this by parsing `new Date(row.created_ts * 1000)` to convert the seconds into milliseconds.
+**`npm test`**:
+```
+ RUN  v2.1.9 D:/Documents/GitHub/alpha_engine/qlib-dashboard
+...
+ Test Files  18 passed (18)
+      Tests  156 passed (156)
+   Start at  15:46:38
+   Duration  33.95s (transform 5.86s, setup 53.81s, collect 40.73s, tests 6.22s, environment 292.77s, prepare 8.57s)
+```
 
-### 5. CI/CD Suite Checks
-All targeted checks passed:
-- `uv run ruff check .` -> ✅ **Passed**
-- `uv run pytest -q` -> ✅ **Passed**
-- `npm run lint` -> ✅ **Passed**
-- `npm run build` -> ✅ **Passed**
-- `npx playwright test` -> ✅ **Passed** (5/5 tests)
+**`npx playwright test`**:
+```
+Running 5 tests using 1 worker
+  ✓  1 [chromium] › e2e\release-journey.spec.ts:18:1 › production release journey preserves snapshot, workflow, run, model, and evidence identity (1.8s)
+  ✓  2 [chromium] › e2e\release-journey.spec.ts:52:1 › Models page shows identity fields (snapshot, run, stage) in the table (683ms)
+  ✓  3 [chromium] › e2e\release-journey.spec.ts:71:1 › Models page shows provenance chain on expand (683ms)
+  ✓  4 [chromium] › e2e\release-journey.spec.ts:95:1 › Data page shows snapshot identity and quality verdict (572ms)
+  ✓  5 [chromium] › e2e\release-journey.spec.ts:116:1 › fixture backend rejects invalid credentials (356ms)
 
-*(Note: While individual tests like `npm run test -- src/lib/model-normalizer.test.ts` pass flawlessly, running the full `npm test` suite currently hits a known Node OOM issue on Windows due to Vitest memory limits when evaluating large artifacts like `dashboard_db.json`).*
+  5 passed (6.6s)
+```
+
+**`npm run check:bundle-budget`**:
+```
+> qlib-dashboard@0.0.0 check:bundle-budget
+> node scripts/check-bundle-budget.mjs
+...
+  Single-file mode: extracted 1 inline <script> block(s):
+    inline-script-1  raw 1365.9 KB  gzip 383.8 KB
+
+  Total JS raw:  1365.87 KB
+  Total JS gzip: 383.79 KB
+  Budget:         450 KB
+
+✔ Within budget (66.21 KB headroom)
+```
