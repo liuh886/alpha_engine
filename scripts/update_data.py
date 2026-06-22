@@ -90,9 +90,15 @@ def publish_provider_snapshot(
     quality_report: dict,
     accounting: UpdateAccounting,
     frequency: str = "day",
+    strict: bool = False,
+    max_missing_pct: float = 0.05,
 ) -> DataSnapshot:
     """Persist all mandatory evidence and move the authoritative pointer last."""
-    accounting.validate_for_publish(selected_markets=selected_markets)
+    accounting.validate_for_publish(
+        selected_markets=selected_markets,
+        strict=strict,
+        max_missing_pct=max_missing_pct,
+    )
     _validate_quality_report(quality_report, universe=universe, quality_policy=quality_policy)
     provider_dir = Path(provider_dir)
     calendar_path = provider_dir / "calendars" / f"{frequency}.txt"
@@ -551,6 +557,8 @@ def run_data_update(args) -> DataSnapshot:
         quality_policy={"max_stale_pct": 0.1, "max_csv_parse_errors": 0},
         quality_report=q,
         accounting=accounting,
+        strict=getattr(args, "strict", False),
+        max_missing_pct=getattr(args, "max_missing_pct", 0.05),
     )
 
     print(f"\n[published] snapshot_id={snapshot.snapshot_id}")
@@ -584,6 +592,17 @@ def main(argv=None):
         default="all",
         choices=["all", "cn", "us", "hk"],
         help="Limit updates to a single market (default: all).",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Strict mode: fail if any selected symbol fails or is missing.",
+    )
+    parser.add_argument(
+        "--max-missing-pct",
+        type=float,
+        default=0.05,
+        help="Fraction of missing symbols allowed without failing the job. Default: 0.05",
     )
     args = parser.parse_args(argv)
 

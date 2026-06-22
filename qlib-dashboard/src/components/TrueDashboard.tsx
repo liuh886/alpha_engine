@@ -1,7 +1,9 @@
 import { useAppBootstrap } from '@/hooks/useAppBootstrap';
 import { useGlobalStore } from '@/store/globalStore';
 import { useJobs } from '@/hooks/useJobs';
+import { lookupMetricValueByKey } from "@/types/metrics";
 import { dataApi } from '@/api/dataApi';
+import { PerformanceCharts } from '@/components/PerformanceCharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Placeholder } from '@/components/Placeholder';
 import { Badge } from '@/components/ui/badge';
@@ -125,13 +127,13 @@ export function TrueDashboard() {
                   <div>
                     <span className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider block">Return</span>
                     <span className="font-mono text-lg font-black text-green-500">
-                      {(bestModel.backtest.metrics.annualized_return * 100).toFixed(1)}%
+                      {((lookupMetricValueByKey(bestModel.backtest.metrics, "Annualized Return") ?? 0) * 100).toFixed(1)}%
                     </span>
                   </div>
                   <div>
                     <span className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider block">Sharpe</span>
                     <span className="font-mono text-lg font-black">
-                      {bestModel.backtest.metrics.information_ratio.toFixed(2)}
+                      {(lookupMetricValueByKey(bestModel.backtest.metrics, "Sharpe Ratio") ?? 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -154,7 +156,7 @@ export function TrueDashboard() {
                 <div>
                   <span className="text-xs text-muted-foreground uppercase font-bold tracking-widest block mb-1">Win Rate</span>
                   <span className="font-mono text-lg font-black">
-                    {(bestModel.backtest.metrics.win_rate * 100).toFixed(1)}%
+                    {((lookupMetricValueByKey(bestModel.backtest.metrics, "Win Rate") ?? 0) * 100).toFixed(1)}%
                   </span>
                 </div>
                 <div>
@@ -180,13 +182,13 @@ export function TrueDashboard() {
                 <div>
                   <span className="text-xs text-muted-foreground uppercase font-bold tracking-widest block mb-1">Max Drawdown</span>
                   <span className="font-mono text-lg font-black text-red-500">
-                    {(bestModel.backtest.metrics.max_drawdown * 100).toFixed(1)}%
+                    {((lookupMetricValueByKey(bestModel.backtest.metrics, "Max Drawdown") ?? 0) * 100).toFixed(1)}%
                   </span>
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground uppercase font-bold tracking-widest block mb-1">Annual Volatility</span>
                   <span className="font-mono text-lg font-black">
-                    {(bestModel.backtest.metrics.annualized_volatility * 100).toFixed(1)}%
+                    {((lookupMetricValueByKey(bestModel.backtest.metrics, "Annualized Volatility") ?? 0) * 100).toFixed(1)}%
                   </span>
                 </div>
               </>
@@ -196,6 +198,14 @@ export function TrueDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* BACKTEST PERFORMANCE LAYER */}
+      {bestModel && bestModel.backtest && bestModel.backtest.report && bestModel.backtest.report.length > 0 && (
+        <>
+          <h2 className="text-lg font-bold uppercase tracking-widest text-muted-foreground mt-8 mb-4">Backtest Performance</h2>
+          <PerformanceCharts report={bestModel.backtest.report} />
+        </>
+      )}
 
       {/* BOTTOM LAYER: Actions */}
       <h2 className="text-lg font-bold uppercase tracking-widest text-muted-foreground mt-8 mb-4">Workbench Actions</h2>
