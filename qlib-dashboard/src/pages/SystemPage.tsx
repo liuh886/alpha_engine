@@ -399,34 +399,37 @@ function PortfolioRiskTab() {
 // ---------------------------------------------------------------------------
 
 /** Canonical job states used for filtering and display. */
-type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "unknown";
+type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "unknown" | "succeeded_with_warnings";
 
 function normaliseJobStatus(raw: string): JobStatus {
-  const s = raw.trim().toLowerCase();
+  const s = String(raw || "").toLowerCase();
+  if (s === "running" || s === "in_progress" || s === "started") return "running";
   if (s === "queued" || s === "pending") return "queued";
-  if (s === "running") return "running";
-  if (s === "succeeded" || s === "completed") return "succeeded";
-  if (s === "failed") return "failed";
-  if (s === "cancelled" || s === "canceled") return "cancelled";
+  if (s === "succeeded" || s === "success" || s === "completed" || s === "done") return "succeeded";
+  if (s === "failed" || s === "error" || s === "killed") return "failed";
+  if (s === "cancelled" || s === "aborted") return "cancelled";
+  if (s === "succeeded_with_warnings") return "succeeded_with_warnings";
   return "unknown";
 }
 
 const STATUS_STYLES: Record<JobStatus, string> = {
-  queued: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
-  running: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-  succeeded: "text-green-400 bg-green-500/10 border-green-500/20",
-  failed: "text-red-400 bg-red-500/10 border-red-500/20",
-  cancelled: "text-orange-400 bg-orange-500/10 border-orange-500/20",
-  unknown: "text-muted-foreground bg-muted/30 border-border",
+  queued: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  running: "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse",
+  succeeded: "bg-green-500/10 text-green-500 border-green-500/20",
+  succeeded_with_warnings: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+  failed: "bg-red-500/10 text-red-500 border-red-500/20",
+  cancelled: "bg-muted text-muted-foreground border-border",
+  unknown: "bg-muted text-muted-foreground border-border"
 };
 
 const STATUS_ICONS: Record<JobStatus, React.ReactNode> = {
-  queued: <Clock className="h-3 w-3" />,
-  running: <Loader2 className="h-3 w-3 animate-spin" />,
-  succeeded: <CheckCircle className="h-3 w-3" />,
-  failed: <XCircle className="h-3 w-3" />,
-  cancelled: <Square className="h-3 w-3" />,
-  unknown: <AlertTriangle className="h-3 w-3" />,
+  queued: <Clock className="h-3 w-3 mr-1" />,
+  running: <Loader2 className="h-3 w-3 mr-1 animate-spin" />,
+  succeeded: <CheckCircle className="h-3 w-3 mr-1" />,
+  succeeded_with_warnings: <AlertTriangle className="h-3 w-3 mr-1" />,
+  failed: <XCircle className="h-3 w-3 mr-1" />,
+  cancelled: <Square className="h-3 w-3 mr-1" />,
+  unknown: <AlertTriangle className="h-3 w-3 mr-1" />
 };
 
 function formatDuration(seconds: number | null): string {
