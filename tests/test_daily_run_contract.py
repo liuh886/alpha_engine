@@ -11,6 +11,11 @@ from scripts import daily_run
 
 
 def test_daily_run_fails_fast_when_inference_output_contains_failure(monkeypatch, capsys):
+    class FakeResearchAssistant:
+        def self_heal(self, event):
+            return False
+
+    monkeypatch.setattr(daily_run, "ResearchAssistant", FakeResearchAssistant)
     def fake_run_data_update(market):
         return {"success": True}
 
@@ -30,6 +35,11 @@ def test_daily_run_fails_fast_when_inference_output_contains_failure(monkeypatch
 
 
 def test_daily_run_continues_when_inference_output_is_success(monkeypatch):
+    class FakeResearchAssistant:
+        def self_heal(self, event):
+            return False
+
+    monkeypatch.setattr(daily_run, "ResearchAssistant", FakeResearchAssistant)
     calls = []
 
     def fake_run_data_update(market):
@@ -57,6 +67,11 @@ def test_daily_run_continues_when_inference_output_is_success(monkeypatch):
 
 
 def test_daily_run_reports_task_status_and_reliability_failure(monkeypatch):
+    class FakeResearchAssistant:
+        def self_heal(self, event):
+            return False
+
+    monkeypatch.setattr(daily_run, "ResearchAssistant", FakeResearchAssistant)
     class FakeGovernanceService:
         instances = []
 
