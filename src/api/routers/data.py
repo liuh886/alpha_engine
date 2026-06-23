@@ -99,9 +99,9 @@ def list_available_features():
 
 
 @router.get("/integrity")
-def check_data_integrity(market: str = Query("us")):
+def check_data_integrity(market: str = Query("us"), strict: bool = Query(False)):
     """Run data integrity checks: instrument sync, binary alignment, temporal gaps."""
-    return get_data_service().validate_data_integrity(market=market)
+    return get_data_service().validate_data_integrity(market=market, strict=strict)
 
 
 @router.get("/name-map")
