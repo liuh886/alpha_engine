@@ -126,7 +126,7 @@ if DEMO_MODE:
             "status": "online",
             "demo_mode": True,
             "timestamp": time.time(),
-            "uptime": time.monotonic()
+            "uptime": time.monotonic(),
         }
 
     @app.get("/api/models")
@@ -151,7 +151,7 @@ if DEMO_MODE:
                 "symbols_updated": 1,
                 "symbols_failed": 0,
                 "symbols_stale": 0,
-            }
+            },
         }
 
     @app.get("/api/system/me")
@@ -162,17 +162,20 @@ if DEMO_MODE:
     def demo_jobs():
         return {"ok": True, "jobs": []}
 
+
 @app.get("/artifacts/dashboard.json")
 def get_dashboard_json():
     import json
+
     if DEMO_MODE:
         db_path = PROJECT_ROOT / "artifacts" / "demo" / "dashboard_db.json"
     else:
         db_path = PROJECT_ROOT / "artifacts" / "dashboard" / "dashboard_db.json"
-    
+
     if db_path.exists():
         return json.loads(db_path.read_text(encoding="utf-8"))
     return {"models": []}
+
 
 app.include_router(
     system.router, prefix="/api/system", tags=["system"], dependencies=[Depends(get_current_user)]
@@ -274,6 +277,7 @@ app.include_router(
 
 # 2. Authenticated identity endpoint
 if not DEMO_MODE:
+
     @app.get("/api/system/me")
     def whoami(username: str = Depends(get_current_user)):
         """Return the authenticated user's username."""
