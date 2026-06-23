@@ -23,6 +23,7 @@ export function OverviewCards({ metrics }: { metrics: Record<string, number | nu
       sub: annualReturn !== null ? `Ann: ${formatPercent(annualReturn)}` : null,
       icon: isPositive ? TrendingUp : TrendingDown,
       color: totalReturn === null ? "text-muted-foreground" : isPositive ? "text-green-500" : "text-red-500",
+      testid: "metric-return"
     },
     {
       title: "Sharpe Ratio",
@@ -30,6 +31,7 @@ export function OverviewCards({ metrics }: { metrics: Record<string, number | nu
       sub: metrics["Information Ratio"] !== null ? `IR: ${formatNumber(metrics["Information Ratio"])}` : null,
       icon: Zap,
       color: "text-blue-500",
+      testid: "metric-sharpe"
     },
     {
       title: "Max Drawdown",
@@ -37,6 +39,7 @@ export function OverviewCards({ metrics }: { metrics: Record<string, number | nu
       sub: null,
       icon: AlertCircle,
       color: "text-orange-500",
+      testid: "metric-drawdown"
     },
     {
       title: "Volatility",
@@ -44,13 +47,14 @@ export function OverviewCards({ metrics }: { metrics: Record<string, number | nu
       sub: null,
       icon: Activity,
       color: "text-purple-500",
+      testid: "metric-volatility"
     },
   ];
 
   return (
     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat, i) => (
-        <Card key={i}>
+        <Card key={i} data-testid={stat.testid}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5">
             <CardTitle className="text-xs font-medium text-muted-foreground">
               {stat.title}

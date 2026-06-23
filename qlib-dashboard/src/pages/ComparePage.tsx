@@ -121,7 +121,7 @@ export function ComparePage({ models, preselectedIds: propIds, compact = false }
 
   const selectedModels = useMemo(() => availableModels.filter(m => selectedIds.includes(m.id)), [availableModels, selectedIds]);
   const equitySeries = useMemo(() => buildEquitySeries(selectedModels), [selectedModels]);
-  const compatWarnings = useMemo(() => checkModelCompatibility(selectedModels), [selectedModels]);
+  const compatWarnings = useMemo(() => checkModelCompatibility(selectedModels as any), [selectedModels]);
 
   const toggleModel = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < MAX_COMPARE ? [...prev, id] : prev);
@@ -369,7 +369,7 @@ export function ComparePage({ models, preselectedIds: propIds, compact = false }
                       </div>
                       <div className="flex flex-col items-start min-w-0 flex-1 text-left">
                         <span className="text-xs font-bold truncate w-full">{m.name || shortId(m.id)}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase font-black">{m.market} &bull; {m.date}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase font-black">{m.market} &bull; {m.created_at ? m.created_at.split('T')[0] : 'N/A'}</span>
                       </div>
                       {isActive && colorIdx >= 0 && (
                         <div className="h-1.5 w-6 rounded-full" style={{ backgroundColor: COLORS[colorIdx % COLORS.length] }} />
