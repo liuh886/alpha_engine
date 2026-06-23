@@ -129,7 +129,7 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
           ) : (
             <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
-                <Outlet />
+                <Outlet context={{ models, selectedModelId }} />
               </Suspense>
             </ErrorBoundary>
           )}
