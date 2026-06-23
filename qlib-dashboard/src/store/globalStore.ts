@@ -37,6 +37,9 @@ interface GlobalState {
     setSelectedModelId: (id: string) => void;
     selectedModelMarket: string;
     setSelectedModelMarket: (market: string) => void;
+
+    demoMode: boolean;
+    setDemoMode: (demo: boolean) => void;
 }
 
 export const useGlobalStore = create<GlobalState>((set) => ({
@@ -75,4 +78,7 @@ export const useGlobalStore = create<GlobalState>((set) => ({
     setSelectedModelId: (id) => set({ selectedModelId: id }),
     selectedModelMarket: "us",
     setSelectedModelMarket: (market) => set({ selectedModelMarket: market }),
+
+    demoMode: false,
+    setDemoMode: (demo) => set({ demoMode: demo }),
 }));

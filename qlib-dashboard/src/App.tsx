@@ -47,7 +47,7 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
   loading: boolean;
 }) {
   const location = useLocation();
-  const { latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, dataGeneratedAt, apiError, theme, setTheme, username } = useGlobalStore();
+  const { latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, dataGeneratedAt, apiError, theme, setTheme, username, demoMode } = useGlobalStore();
   const { logout } = useAuth();
 
   const currentPath = location.pathname.replace(/^\//, '');
@@ -79,6 +79,11 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
         <header className="h-11 border-b bg-card sticky top-0 z-40 px-5 flex items-center justify-between">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span className="font-semibold">{viewTitle}</span>
+            {demoMode && (
+              <span className="text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                Demo Mode
+              </span>
+            )}
             {(currentPath === 'dashboard' || currentPath === '') && selectedModel && (
               <>
                 <div className="h-3.5 w-px bg-border" />
