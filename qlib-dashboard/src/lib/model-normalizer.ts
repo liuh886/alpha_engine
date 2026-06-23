@@ -58,6 +58,31 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
     }
   }
 
+  // Map report_normal to report array
+  const report: any[] = [];
+  if (payload?.data?.report_normal?.columns && payload?.data?.report_normal?.index) {
+    const cols = payload.data.report_normal.columns;
+    const data = payload.data.report_normal.data;
+    const index = payload.data.report_normal.index;
+
+    index.forEach((date: string, i: number) => {
+      const row: any = { date: date.split('T')[0] };
+      cols.forEach((col: string, j: number) => {
+        row[col] = data[i][j];
+      });
+      report.push(row);
+    });
+  }
+
+  // Map positions_normal
+  const positions = payload?.data?.positions_normal || [];
+
+  const backtest = {
+    metrics,
+    report,
+    positions
+  };
+
   // Ensure created_at uses created_ts if created_at string is empty
   let created_at = row.created_at || "";
   if (!created_at && row.created_ts) {
@@ -78,5 +103,6 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
     snapshot_id: row.snapshot_id || (params as any)?.data_snapshot_id || "",
     metrics,
     params,
+    backtest,
   };
 }
