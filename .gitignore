@@ -49,7 +49,7 @@ htmlcov/
 coverage.xml
 
 # Project specific
-data/
+/data/
 artifacts/
 mlruns/
 output/
