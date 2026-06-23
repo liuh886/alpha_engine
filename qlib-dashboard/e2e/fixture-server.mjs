@@ -40,6 +40,9 @@ const dashboardArtifact = {
         positions_normal: [
           { date: "2026-06-19", instrument: "SH600000", weight: 0.05 }
         ],
+        attribution_normal: [
+          { instrument: "SH600000", pnl: 0.12, net_pnl: 0.12, yield: 0.12 }
+        ],
       },
     },
     {
