@@ -7,6 +7,7 @@ sys.path.append(str(ROOT))
 
 def test_build_qlib_init_cfg_sets_region_and_windows_defaults():
     import unittest.mock
+
     from src.common.qlib_init import build_qlib_init_cfg
 
     with unittest.mock.patch("os.name", "nt"):
