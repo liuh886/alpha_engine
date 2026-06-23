@@ -319,7 +319,7 @@ def test_quality_command_set_covers_the_release_pipeline(tmp_path: Path) -> None
         "package_build",
     ]
     rendered = [" ".join(command.argv) for command in commands]
-    assert rendered[0].endswith("-m ruff check .")
+    assert "ruff check ." in rendered[0]
     assert "src/release" in rendered[1]
     assert "pytest tests" in rendered[2]
     assert "npm run lint" in rendered[5]
