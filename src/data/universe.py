@@ -1,7 +1,10 @@
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 from qlib.data import D
+
 from src.common.market import resolve_start_date
+
 
 def get_base_tickers(market: str, project_root: Path) -> list[str]:
     market_file = project_root / f"data/watchlist/instruments/{market}.txt"
