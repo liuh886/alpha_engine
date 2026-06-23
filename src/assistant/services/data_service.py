@@ -252,7 +252,7 @@ class DataService:
 
         return {"symbols": valid_symbols, "dates": dates, "values": values}
 
-    def validate_data_integrity(self, market: str = "us") -> dict:
+    def validate_data_integrity(self, market: str = "us", strict: bool = False) -> dict:
         """Run data integrity checks and return a report.
 
         Checks:
@@ -304,8 +304,8 @@ class DataService:
         
         if ghosts:
             msg = f"{len(ghosts)} symbols ({missing_pct*100:.1f}%) in instruments but no features: {sorted(ghosts)[:5]}"
-            if missing_pct > 0.05:
-                report["errors"].append(f"CRITICAL: Universe coverage too low. {msg}")
+            if missing_pct > 0.05 or strict:
+                report["errors"].append(f"CRITICAL: Universe coverage too low. {msg}" if missing_pct > 0.05 else f"STRICT: Missing {len(ghosts)} symbols. {msg}")
                 report["ok"] = False
             else:
                 report["warnings"].append(msg)
