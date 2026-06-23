@@ -215,7 +215,7 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
   return (
     <div className="space-y-5">
       {/* 1. Equity Curve */}
-      <Card>
+      <Card data-testid="equity-curve-container">
         <CardHeader className="pb-3 border-b">
           <CardTitle className="text-sm font-semibold">Equity Curve</CardTitle>
         </CardHeader>
@@ -243,7 +243,7 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
 
       {/* 2. T5: Drawdown Chart */}
       {drawdownData.length > 0 && (
-        <Card>
+        <Card data-testid="drawdown-container">
           <CardHeader className="pb-3 border-b">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold">Drawdown</CardTitle>

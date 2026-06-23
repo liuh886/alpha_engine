@@ -38,13 +38,13 @@ export function TrueDashboard({ model, report, positions }: { model: any, report
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider block">Return</span>
-                    <span className="font-mono text-lg font-black text-green-500">
+                    <span data-testid="metric-return" className="font-mono text-lg font-black text-green-500">
                       {((lookupMetricValueByKey(bestModel.backtest.metrics, "Annualized Return") ?? 0) * 100).toFixed(1)}%
                     </span>
                   </div>
                   <div>
                     <span className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider block">Sharpe</span>
-                    <span className="font-mono text-lg font-black">
+                    <span data-testid="metric-sharpe" className="font-mono text-lg font-black">
                       {(lookupMetricValueByKey(bestModel.backtest.metrics, "Sharpe Ratio") ?? 0).toFixed(2)}
                     </span>
                   </div>
@@ -93,7 +93,7 @@ export function TrueDashboard({ model, report, positions }: { model: any, report
               <>
                 <div>
                   <span className="text-xs text-muted-foreground uppercase font-bold tracking-widest block mb-1">Max Drawdown</span>
-                  <span className="font-mono text-lg font-black text-red-500">
+                  <span data-testid="metric-drawdown" className="font-mono text-lg font-black text-red-500">
                     {((lookupMetricValueByKey(bestModel.backtest.metrics, "Max Drawdown") ?? 0) * 100).toFixed(1)}%
                   </span>
                 </div>
@@ -113,7 +113,7 @@ export function TrueDashboard({ model, report, positions }: { model: any, report
 
       {/* BACKTEST PERFORMANCE LAYER */}
       {report && report.length > 0 && (
-        <>
+        <section data-testid="backtest-performance-section">
           <h2 className="text-lg font-bold uppercase tracking-widest text-muted-foreground mt-8 mb-4">Backtest Performance</h2>
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
             <div className="xl:col-span-2">
@@ -129,7 +129,7 @@ export function TrueDashboard({ model, report, positions }: { model: any, report
               )}
             </div>
           </div>
-        </>
+        </section>
       )}
     </div>
   );

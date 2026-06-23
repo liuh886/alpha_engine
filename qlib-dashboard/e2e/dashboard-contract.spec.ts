@@ -18,26 +18,26 @@ test.describe("Dashboard Product Contract", () => {
 
     // 1. Verify Return Indicators
     // The fixture 'Release Candidate 42' has annual_return = 0.18
-    await expect(page.getByText("Return", { exact: true })).toBeVisible();
-    await expect(page.getByText("18.0%", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("metric-return")).toContainText("18.0%");
 
     // 2. Verify Drawdown Indicators
     // max_drawdown = -0.08
-    await expect(page.getByText("Max Drawdown", { exact: true })).toBeVisible();
-    await expect(page.getByText("-8.0%", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("metric-drawdown")).toContainText("-8.0%");
 
     // Verify other key risk metrics
-    await expect(page.getByText("Sharpe", { exact: true })).toBeVisible();
-    await expect(page.getByText("1.42", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("metric-sharpe")).toContainText("1.42");
 
     // 3. Verify Equity/Performance Chart existence
-    // The chart container should be present if data was loaded
-    await expect(page.locator('.recharts-wrapper').first()).toBeVisible();
+    await expect(page.getByTestId("backtest-performance-section")).toBeVisible();
+    await expect(page.getByTestId("equity-curve-container")).toBeVisible();
+    await expect(page.getByTestId("drawdown-container")).toBeVisible();
 
     // 4. Verify Positions Data
     // Ensure the specific holding from the fixture is rendered
     // fixture: instrument: "SH600000", weight: 0.05
-    await expect(page.getByText("SH600000").first()).toBeVisible();
-    await expect(page.getByText("5.00%").first()).toBeVisible();
+    const rows = page.getByTestId("positions-table-row");
+    await expect(rows.first()).toBeVisible();
+    await expect(rows.filter({ hasText: "SH600000" }).first()).toBeVisible();
+    await expect(rows.filter({ hasText: "SH600000" }).first()).toContainText("5.00%");
   });
 });

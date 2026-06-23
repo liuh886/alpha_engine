@@ -131,6 +131,7 @@ export function PositionsTable({ positions, report }: { positions: Position[], r
                   return (
                     <tr
                       key={pos.instrument}
+                      data-testid="positions-table-row"
                       className="group hover:bg-muted/20 transition-all border-b last:border-0 flex w-full absolute top-0 left-0"
                       style={{
                         height: `${virtualRow.size}px`,
