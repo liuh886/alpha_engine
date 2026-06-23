@@ -77,6 +77,7 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
   // Map positions_normal
   const positions = payload?.data?.positions_normal || [];
 
+  // Construct backtest object
   const backtest = {
     metrics,
     report,

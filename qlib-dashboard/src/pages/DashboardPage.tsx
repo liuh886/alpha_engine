@@ -1,12 +1,15 @@
 import { TrueDashboard } from '@/components/TrueDashboard';
-import { ModelData } from '@/lib/data-parser';
+import { useModels } from '@/hooks/useModels';
 
-export function DashboardPage({ model, report, positions }: { model?: ModelData | null, report?: any, positions?: any }) {
+export function DashboardPage() {
+  const { models, selectedModelId } = useModels();
+  const selectedModel = models.find(m => m.id === selectedModelId) || models[0];
+
   return (
     <TrueDashboard 
-      model={model} 
-      report={report} 
-      positions={positions} 
+      model={selectedModel} 
+      report={selectedModel?.backtest?.report} 
+      positions={selectedModel?.backtest?.positions} 
     />
   );
 }
