@@ -61,6 +61,7 @@ test.describe("Dashboard Product Contract", () => {
     await page.getByRole("tab", { name: "Attribution" }).click();
     const attributionSection = page.getByTestId("attribution-section");
     await expect(attributionSection).toBeVisible();
-    await expect(attributionSection.getByText(/Attribution unavailable: missing payload.attribution_normal|Asset Execution/)).toBeVisible();
+    await expect(attributionSection.getByRole("heading", { name: /Asset Execution/i })).toBeVisible();
+    await expect(attributionSection.getByText("SH600000").first()).toBeVisible();
   });
 });
