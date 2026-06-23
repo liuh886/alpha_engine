@@ -62,6 +62,9 @@ target-version = "py310"
 select = ["E", "F", "I", "UP"]
 ignore = ["E501"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["src", "scripts", "tests"]
+
 [tool.ruff.lint.per-file-ignores]
 # Scripts and agents use sys.path manipulation before imports (E402 deferred).
 "scripts/*" = ["E402"]
