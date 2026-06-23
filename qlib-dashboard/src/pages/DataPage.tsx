@@ -193,6 +193,17 @@ function DataStatusCard({ refreshKey = 0 }: { refreshKey?: number }) {
                     <span className="text-[10px] text-muted-foreground">stale</span>
                   </div>
                 )}
+                {status?.universe_coverage_pct !== undefined && (
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Coverage</span>
+                    <span className={cn(
+                      "text-xs font-mono font-bold",
+                      Number(status.universe_coverage_pct) < 95 ? "text-destructive" : "text-green-600"
+                    )}>
+                      {(Number(status.universe_coverage_pct)).toFixed(1)}%
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}

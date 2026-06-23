@@ -152,6 +152,9 @@ class DataService:
         else:
             status = "ok"
 
+        # Extract universe coverage if available
+        universe_coverage_pct = detailed_issues.get("instrument_sync", {}).get("universe_coverage_pct")
+
         return {
             "latest_calendar_day": latest_cal,
             "dashboard_db_generated_at": dashboard_generated_at,
@@ -161,10 +164,14 @@ class DataService:
             "quality_status": quality_status,
             "quality_error": quality_error,
             "quality_warnings": quality_warnings,
-            "detailed_issues": detailed_issues,
             "readiness": readiness,
             "status": status,
-            "updated_at": datetime.datetime.now().isoformat(),
+            "detailed_issues": detailed_issues,
+            "symbols_configured": len(self.get_instruments("all")),
+            "universe_coverage_pct": universe_coverage_pct,
+            # The updater normally writes job metrics, but we can't reliably
+            # fetch "symbols_updated" from just the database without the last job.
+            # We'll rely on the dashboard parsing the quality_warnings if needed.
         }
 
     def get_completeness_matrix(self, market: str = "us", feature: str = "close") -> dict:
@@ -245,7 +252,7 @@ class DataService:
 
         return {"symbols": valid_symbols, "dates": dates, "values": values}
 
-    def validate_data_integrity(self, market: str = "us") -> dict:
+    def validate_data_integrity(self, market: str = "us", strict: bool = False) -> dict:
         """Run data integrity checks and return a report.
 
         Checks:
@@ -280,16 +287,29 @@ class DataService:
 
         ghosts = inst_syms - feature_syms
         missing = feature_syms - inst_syms
+        
+        # Calculate universe coverage
+        total_inst = len(inst_syms)
+        coverage_pct = (total_inst - len(ghosts)) / total_inst if total_inst > 0 else 0.0
+        missing_pct = 1.0 - coverage_pct
+        
         report["checks"]["instrument_sync"] = {
-            "instruments": len(inst_syms),
+            "instruments": total_inst,
             "feature_dirs": len(feature_syms),
             "ghosts": sorted(ghosts),
             "missing": sorted(missing),
+            "universe_coverage_pct": coverage_pct,
+            "missing_pct": missing_pct,
         }
+        
         if ghosts:
-            report["warnings"].append(
-                f"{len(ghosts)} symbols in instruments but no features: {sorted(ghosts)[:5]}"
-            )
+            msg = f"{len(ghosts)} symbols ({missing_pct*100:.1f}%) in instruments but no features: {sorted(ghosts)[:5]}"
+            if missing_pct > 0.05 or strict:
+                report["errors"].append(f"CRITICAL: Universe coverage too low. {msg}" if missing_pct > 0.05 else f"STRICT: Missing {len(ghosts)} symbols. {msg}")
+                report["ok"] = False
+            else:
+                report["warnings"].append(msg)
+                
         if missing:
             report["warnings"].append(
                 f"{len(missing)} symbols with features but not in instruments: {sorted(missing)[:5]}"
