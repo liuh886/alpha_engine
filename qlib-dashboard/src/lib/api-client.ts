@@ -144,6 +144,9 @@ class ApiClient {
           detail = errBody?.detail ?? errBody;
           if (typeof detail === 'string') {
             message = detail;
+          } else if (Array.isArray(detail)) {
+            // Handle FastAPI 422 array details
+            message = detail.map(d => d.msg || JSON.stringify(d)).join(', ');
           } else if (detail && typeof detail === 'object') {
             if ('message' in detail) message = String((detail as { message: string }).message);
             else if ('error' in detail) message = String((detail as { error: string }).error);
@@ -155,7 +158,12 @@ class ApiClient {
         throw new ApiError(resp.status, message, detail);
       }
 
-      const json: T = await resp.json();
+      // Handle 204 No Content or empty responses safely
+      if (resp.status === 204) return {} as T;
+      const text = await resp.text();
+      if (!text) return {} as T;
+      
+      const json: T = JSON.parse(text);
       return json;
     } catch (err) {
       if (err instanceof ApiError) throw err;
