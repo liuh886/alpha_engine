@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, Star, Trash2, ExternalLink, AlertTriangle, Layers, GitBranch, ChevronDown, ChevronRight, Link2, Cpu } from "lucide-react";
 import { Placeholder } from "@/components/Placeholder";
+import { ErrorState } from "@/components/ui/loading-state";
 import { cn } from "@/lib/utils";
 import { shortId, useSort } from "@/lib/format";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -378,7 +379,17 @@ export function ModelsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {displayed.length === 0 ? (
+              {modelsQuery.error ? (
+                <TableRow>
+                  <TableCell colSpan={12} className="p-0">
+                    <ErrorState 
+                      title="Failed to load registry" 
+                      message={modelsQuery.error} 
+                      className="m-8 border rounded-lg" 
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : displayed.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={12} className="p-0">
                     <Placeholder 

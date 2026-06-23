@@ -36,7 +36,9 @@ const dashboardArtifact = {
           annual_volatility: 0.16,
         },
         report_normal: report("2026-01-02T00:00:00", "2026-06-19T00:00:00"),
-        positions_normal: [],
+        positions_normal: [
+          { date: "2026-06-19", instrument: "SH600000", weight: 0.05 }
+        ],
       },
     },
     {
@@ -192,6 +194,7 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url || "/", `http://${request.headers.host}`);
     if (url.pathname.startsWith("/api/")) await handleApi(request, response, url);
+    else if (url.pathname === "/artifacts/dashboard.json") json(response, 200, dashboardArtifact);
     else await handleStatic(response, url.pathname);
   } catch (error) {
     json(response, 500, { detail: error instanceof Error ? error.message : String(error) });

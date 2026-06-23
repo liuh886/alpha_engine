@@ -49,7 +49,7 @@ class _JobCoordinator:
     def submit_response(self, job: dict) -> dict:
         return {
             "job_id": job.get("id", "test-job"),
-            "status": "pending",
+            "status": "queued",
             "started_at": 123456789.0,
             "source": "test",
             "intent": "test",

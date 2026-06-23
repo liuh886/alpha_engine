@@ -23,6 +23,7 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     statusText: status === 200 ? 'OK' : 'Error',
     json: () => Promise.resolve(body),
+    text: () => Promise.resolve(typeof body === 'string' ? body : JSON.stringify(body)),
     headers: new Headers({ 'Content-Type': 'application/json' }),
   } as unknown as Response;
 }
@@ -120,6 +121,7 @@ describe('ApiClient', () => {
         status: 502,
         statusText: 'Bad Gateway',
         json: () => Promise.reject(new Error('not json')),
+        text: () => Promise.resolve('<html>502 Bad Gateway</html>'),
       } as unknown as Response;
       mockApiFetch.mockResolvedValueOnce(badResp);
 
@@ -135,6 +137,7 @@ describe('ApiClient', () => {
         status: 503,
         statusText: '',
         json: () => Promise.reject(new Error('nope')),
+        text: () => Promise.resolve(''),
       } as unknown as Response;
       mockApiFetch.mockResolvedValueOnce(badResp);
 
