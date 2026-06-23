@@ -103,12 +103,12 @@ export function Attribution({ positions, report, attribution }: { positions: Pos
 
   const contributionRows = useMemo(() => {
     if (attribution && attribution.length > 0) {
-        // Compute from attribution data if present
+        // Compute from normalized attribution data (instrument, name, value)
         const instrumentPnL = new Map<string, number>();
         for (const row of attribution) {
-            const inst = row.instrument || row.code;
+            const inst = row.instrument;
             if (!inst) continue;
-            const pnl = Number(row.pnl || row.net_pnl || row.yield || 0);
+            const pnl = Number(row.value || 0);
             instrumentPnL.set(inst, (instrumentPnL.get(inst) || 0) + pnl);
         }
         const rows = Array.from(instrumentPnL.entries()).map(([inst, val]) => ({

@@ -1,5 +1,6 @@
 import { useGlobalStore } from '@/store/globalStore';
 import { dataApi } from '@/api/dataApi';
+import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,9 +17,17 @@ interface AppContext {
   submitAndPoll: (submitFn: () => Promise<JobEnvelope>, onComplete?: (status: string) => void) => Promise<JobEnvelope>;
 }
 
+const HEALTH_BADGE: Record<string, { label: string; className: string }> = {
+  online: { label: 'Online', className: 'text-green-500 bg-green-500/10' },
+  checking: { label: 'Checking', className: 'text-muted-foreground bg-muted animate-pulse' },
+  unavailable: { label: 'Unavailable', className: 'text-red-500 bg-red-500/10 animate-pulse' },
+  degraded: { label: 'Degraded', className: 'text-yellow-500 bg-yellow-500/10' },
+};
+
 export function HomePage() {
   const { qualityStatus, latestCalendarDay, activeJobsCount, dataGeneratedAt } = useGlobalStore();
   const { refreshModels, refreshDataStatus, submitAndPoll } = useOutletContext<AppContext>();
+  const { state: healthState } = useSystemHealth();
   const navigate = useNavigate();
 
   const startUpdateData = async () => {
@@ -93,7 +102,9 @@ export function HomePage() {
             <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider text-muted-foreground">
               <CheckCircle2 className="h-4 w-4" /> System Health
             </CardTitle>
-            <Badge variant="secondary" className="font-mono text-[10px] uppercase text-green-500 bg-green-500/10 border-none">Online</Badge>
+            <Badge variant="secondary" className={`font-mono text-[10px] uppercase border-none ${HEALTH_BADGE[healthState].className}`}>
+              {HEALTH_BADGE[healthState].label}
+            </Badge>
           </CardHeader>
           <CardContent className="pt-5 space-y-4">
             <div>

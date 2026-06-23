@@ -23,7 +23,9 @@ export function OverviewCards({ metrics }: { metrics: Record<string, number | nu
       sub: annualReturn !== null ? `Ann: ${formatPercent(annualReturn)}` : null,
       icon: isPositive ? TrendingUp : TrendingDown,
       color: totalReturn === null ? "text-muted-foreground" : isPositive ? "text-green-500" : "text-red-500",
-      testid: "metric-return"
+      testid: "metric-return",
+      valueTestid: "metric-total-return-value",
+      subTestid: "metric-annual-return-sub"
     },
     {
       title: "Sharpe Ratio",
@@ -65,12 +67,12 @@ export function OverviewCards({ metrics }: { metrics: Record<string, number | nu
             {stat.value === null ? (
               <div className="text-xl font-semibold text-muted-foreground/40">N/A</div>
             ) : (
-              <div className={cn("text-xl font-semibold tabular-nums", stat.color)}>
+              <div className={cn("text-xl font-semibold tabular-nums", stat.color)} data-testid={stat.valueTestid}>
                 {stat.value}
               </div>
             )}
             {stat.sub && (
-              <p className="text-xs text-muted-foreground mt-0.5">{stat.sub}</p>
+              <p className="text-xs text-muted-foreground mt-0.5" data-testid={stat.subTestid}>{stat.sub}</p>
             )}
           </CardContent>
         </Card>

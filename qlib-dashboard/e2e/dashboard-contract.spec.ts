@@ -24,8 +24,9 @@ test.describe("Dashboard Product Contract", () => {
     await expect(page.getByRole("tab", { name: "Alpha" })).toBeVisible();
 
     // 1. Verify Return Indicators
-    // The fixture 'Release Candidate 42' has annual_return = 0.18
-    await expect(page.getByTestId("metric-return")).toContainText("18.00%");
+    // The fixture 'Release Candidate 42' has total_return = 0.12, annual_return = 0.18
+    await expect(page.getByTestId("metric-total-return-value")).toContainText("12.00%");
+    await expect(page.getByTestId("metric-annual-return-sub")).toContainText("18.00%");
 
     // 2. Verify Drawdown Indicators
     // max_drawdown = -0.08
