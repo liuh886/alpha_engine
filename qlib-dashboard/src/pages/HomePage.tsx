@@ -1,17 +1,24 @@
-import { useAppBootstrap } from '@/hooks/useAppBootstrap';
 import { useGlobalStore } from '@/store/globalStore';
-import { useJobs } from '@/hooks/useJobs';
 import { dataApi } from '@/api/dataApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Play, Database, Activity, CheckCircle2, Target, ClipboardList, ScrollText, ArrowRight, BarChart3 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
+import type { ModelData } from '@/lib/data-parser';
+import type { JobEnvelope } from '@/api/jobsApi';
+
+interface AppContext {
+  models: ModelData[];
+  selectedModelId: string;
+  refreshModels: (opts?: { selectLatest?: boolean }) => Promise<ModelData[] | null>;
+  refreshDataStatus: () => Promise<void>;
+  submitAndPoll: (submitFn: () => Promise<JobEnvelope>, onComplete?: (status: string) => void) => Promise<JobEnvelope>;
+}
 
 export function HomePage() {
   const { qualityStatus, latestCalendarDay, activeJobsCount, dataGeneratedAt } = useGlobalStore();
-  const { fetchModels, loadDataStatus } = useAppBootstrap();
-  const { submitAndPoll } = useJobs();
+  const { refreshModels, refreshDataStatus, submitAndPoll } = useOutletContext<AppContext>();
   const navigate = useNavigate();
 
   const startUpdateData = async () => {
@@ -19,8 +26,8 @@ export function HomePage() {
       await submitAndPoll(
         () => dataApi.updateData(false, 30),
         async () => {
-          await fetchModels();
-          await loadDataStatus();
+          await refreshModels();
+          await refreshDataStatus();
         }
       );
     } catch {

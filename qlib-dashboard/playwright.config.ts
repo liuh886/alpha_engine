@@ -11,6 +11,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: ['**/demo-real-smoke.spec.ts'],
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, Suspense } from 'react';
 import { HashRouter, Routes, Route, useLocation, Outlet, Link } from 'react-router-dom';
 import { ModelData } from './lib/data-parser';
+import type { JobEnvelope } from './api/jobsApi';
 import { ModelSelector } from './components/ModelSelector';
 import { GlobalStatusBar } from './components/GlobalStatusBar';
 import { Sidebar } from './components/Sidebar';
@@ -35,7 +36,7 @@ function NotFound() {
   );
 }
 
-function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, setSelectorOpen, consoleOpen, setConsoleOpen, handleDeleteModel, loading }: {
+function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, setSelectorOpen, consoleOpen, setConsoleOpen, handleDeleteModel, loading, refreshModels, refreshDataStatus, submitAndPoll }: {
   models: ModelData[];
   selectedModelId: string;
   setSelectedModelId: (id: string) => void;
@@ -45,6 +46,9 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
   setConsoleOpen: (open: boolean) => void;
   handleDeleteModel: (id: string) => Promise<void>;
   loading: boolean;
+  refreshModels: (opts?: { selectLatest?: boolean }) => Promise<ModelData[] | null>;
+  refreshDataStatus: () => Promise<void>;
+  submitAndPoll: (submitFn: () => Promise<JobEnvelope>, onComplete?: (status: string) => void) => Promise<JobEnvelope>;
 }) {
   const location = useLocation();
   const { latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, dataGeneratedAt, apiError, theme, setTheme, username, demoMode } = useGlobalStore();
@@ -134,7 +138,7 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
           ) : (
             <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
-                <Outlet context={{ models, selectedModelId }} />
+                <Outlet context={{ models, selectedModelId, refreshModels, refreshDataStatus, submitAndPoll }} />
               </Suspense>
             </ErrorBoundary>
           )}
@@ -181,6 +185,9 @@ function AuthenticatedApp() {
     selectedModelId,
     setSelectedModelId,
     deleteModel,
+    fetchModels,
+    loadDataStatus,
+    jobs,
   } = useAppBootstrap();
 
   const handleDeleteModel = async (id: string) => {
@@ -201,6 +208,9 @@ function AuthenticatedApp() {
             setConsoleOpen={setConsoleOpen}
             handleDeleteModel={handleDeleteModel}
             loading={loading}
+            refreshModels={fetchModels}
+            refreshDataStatus={loadDataStatus}
+            submitAndPoll={jobs.submitAndPoll}
           />
         }>
           {routes.map(r => {
