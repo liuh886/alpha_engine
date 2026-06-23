@@ -4,7 +4,9 @@ import { PositionsTable } from '@/components/PositionsTable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Placeholder } from '@/components/Placeholder';
 import { Badge } from '@/components/ui/badge';
-import { Cpu, FlaskConical, ShieldAlert } from 'lucide-react';
+import { Cpu, FlaskConical, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Attribution } from '@/components/Attribution';
+import { HoldingsSummary } from '@/components/HoldingsSummary';
 
 export function TrueDashboard({ model, report, positions }: { model: any, report: any[], positions: any[] }) {
   const bestModel = model;
@@ -119,18 +121,48 @@ export function TrueDashboard({ model, report, positions }: { model: any, report
             <div className="xl:col-span-2">
               <PerformanceCharts report={report} />
             </div>
-            <div>
-              {positions && positions.length > 0 ? (
-                <PositionsTable positions={positions} report={report} />
-              ) : (
-                <Card className="h-full flex items-center justify-center border-dashed">
-                  <span className="text-muted-foreground text-sm">No position data</span>
-                </Card>
-              )}
+            <div className="grid grid-cols-1 gap-5">
+              <section data-testid="current-holdings-section">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Current Holdings</h3>
+                {positions && positions.length > 0 ? (
+                  <HoldingsSummary positions={positions} title="Current Holdings" />
+                ) : (
+                  <Card className="flex items-center justify-center border-dashed py-8">
+                    <span className="text-muted-foreground text-sm">No position data</span>
+                  </Card>
+                )}
+              </section>
+              <section data-testid="position-history-section">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Position History</h3>
+                {positions && positions.length > 0 ? (
+                  <PositionsTable positions={positions} report={report} />
+                ) : (
+                  <Card className="flex items-center justify-center border-dashed py-8">
+                    <span className="text-muted-foreground text-sm">No position data</span>
+                  </Card>
+                )}
+              </section>
             </div>
           </div>
         </section>
       )}
+
+      {/* ATTRIBUTION LAYER */}
+      <section data-testid="attribution-section" className="mt-8">
+        <h2 className="text-lg font-bold uppercase tracking-widest text-muted-foreground mb-4">Attribution & Decomposition</h2>
+        {bestModel?.backtest?.attribution ? (
+          <Attribution positions={positions} report={report} />
+        ) : (
+          <Card className="border-dashed bg-muted/20 border-yellow-500/50">
+            <CardContent className="flex flex-col items-center justify-center py-10 space-y-3">
+              <AlertTriangle className="h-8 w-8 text-yellow-500/70" />
+              <p className="text-sm font-bold text-yellow-600/90 text-center">
+                Attribution unavailable: missing payload.attribution_normal
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </section>
     </div>
   );
 }

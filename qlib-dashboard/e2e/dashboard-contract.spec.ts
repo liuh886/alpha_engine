@@ -32,12 +32,27 @@ test.describe("Dashboard Product Contract", () => {
     await expect(page.getByTestId("equity-curve-container")).toBeVisible();
     await expect(page.getByTestId("drawdown-container")).toBeVisible();
 
+    // Assert equity chart has non-empty point count
+    const equityChart = page.getByTestId("equity-curve-container");
+    const paths = equityChart.locator("path.recharts-line-curve");
+    await expect(paths.first()).toBeVisible({ timeout: 10_000 });
+    const dAttribute = await paths.first().getAttribute("d");
+    expect(dAttribute?.length).toBeGreaterThan(10);
+
     // 4. Verify Positions Data
     // Ensure the specific holding from the fixture is rendered
     // fixture: instrument: "SH600000", weight: 0.05
-    const rows = page.getByTestId("positions-table-row");
+    await expect(page.getByTestId("current-holdings-section")).toBeVisible();
+    await expect(page.getByTestId("position-history-section")).toBeVisible();
+    
+    const rows = page.getByTestId("position-history-section").getByTestId("positions-table-row");
     await expect(rows.first()).toBeVisible();
     await expect(rows.filter({ hasText: "SH600000" }).first()).toBeVisible();
     await expect(rows.filter({ hasText: "SH600000" }).first()).toContainText("5.00%");
+
+    // 5. Verify Attribution / Return Decomposition or explicit missing data diagnostic
+    const attributionSection = page.getByTestId("attribution-section");
+    await expect(attributionSection).toBeVisible();
+    await expect(attributionSection.getByText(/Attribution unavailable: missing payload.attribution_normal|Asset Execution/)).toBeVisible();
   });
 });
