@@ -151,7 +151,7 @@ export function TrueDashboard({ model, report, positions }: { model: any, report
       <section data-testid="attribution-section" className="mt-8">
         <h2 className="text-lg font-bold uppercase tracking-widest text-muted-foreground mb-4">Attribution & Decomposition</h2>
         {bestModel?.backtest?.attribution ? (
-          <Attribution positions={positions} report={report} />
+          <Attribution positions={positions} report={report} attribution={bestModel.backtest.attribution} />
         ) : (
           <Card className="border-dashed bg-muted/20 border-yellow-500/50">
             <CardContent className="flex flex-col items-center justify-center py-10 space-y-3">

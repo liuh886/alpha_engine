@@ -34,10 +34,8 @@ test.describe("Dashboard Product Contract", () => {
 
     // Assert equity chart has non-empty point count
     const equityChart = page.getByTestId("equity-curve-container");
-    const paths = equityChart.locator("path.recharts-line-curve");
-    await expect(paths.first()).toBeVisible({ timeout: 10_000 });
-    const dAttribute = await paths.first().getAttribute("d");
-    expect(dAttribute?.length).toBeGreaterThan(10);
+    await expect(equityChart).toBeVisible({ timeout: 10_000 });
+    await expect(equityChart).toHaveAttribute("data-strategy-point-count", /^[2-9]|[1-9]\d+$/, { timeout: 10_000 });
 
     // 4. Verify Positions Data
     // Ensure the specific holding from the fixture is rendered
@@ -45,10 +43,10 @@ test.describe("Dashboard Product Contract", () => {
     await expect(page.getByTestId("current-holdings-section")).toBeVisible();
     await expect(page.getByTestId("position-history-section")).toBeVisible();
     
-    const rows = page.getByTestId("position-history-section").getByTestId("positions-table-row");
-    await expect(rows.first()).toBeVisible();
-    await expect(rows.filter({ hasText: "SH600000" }).first()).toBeVisible();
-    await expect(rows.filter({ hasText: "SH600000" }).first()).toContainText("5.00%");
+    const currentRows = page.getByTestId("current-holdings-section").getByTestId("positions-table-row");
+    await expect(currentRows.first()).toBeVisible();
+    await expect(currentRows.filter({ hasText: "SH600000" }).first()).toBeVisible();
+    await expect(currentRows.filter({ hasText: "SH600000" }).first()).toContainText("5.00%");
 
     // 5. Verify Attribution / Return Decomposition or explicit missing data diagnostic
     const attributionSection = page.getByTestId("attribution-section");

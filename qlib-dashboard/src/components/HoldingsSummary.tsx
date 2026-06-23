@@ -1,4 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import type { Position } from "@/lib/types";
 
 export function HoldingsSummary({
@@ -43,7 +45,7 @@ export function HoldingsSummary({
         <CardTitle>{title || "Holdings Summary"}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-6 pb-6 border-b">
           <div className="flex flex-col">
             <span className="text-muted-foreground">Last Date</span>
             <span className="font-medium">{lastDate}</span>
@@ -68,6 +70,36 @@ export function HoldingsSummary({
             <span className="text-muted-foreground">Turnover (approx)</span>
             <span className="font-medium">{(turnover ?? 0).toFixed(2)}</span>
           </div>
+        </div>
+        
+        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Positions as of {lastDate}</h3>
+        <div className="border rounded-md max-h-[300px] overflow-y-auto">
+          <Table>
+            <TableHeader className="bg-muted/50 sticky top-0">
+              <TableRow>
+                <TableHead className="font-black uppercase text-[10px] tracking-wider">Instrument</TableHead>
+                <TableHead className="font-black uppercase text-[10px] tracking-wider text-right">Weight</TableHead>
+                <TableHead className="font-black uppercase text-[10px] tracking-wider text-right">Price</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lastPositions.sort((a, b) => (b.weight || 0) - (a.weight || 0)).map((p, idx) => (
+                <TableRow key={`${p.instrument}-${idx}`} data-testid="positions-table-row">
+                  <TableCell className="font-mono text-xs font-bold">
+                    {p.instrument}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs">
+                    <Badge variant="outline" className="font-black">
+                      {((p.weight || 0) * 100).toFixed(2)}%
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                    {p.price ? p.price.toFixed(2) : '-'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </CardContent>
     </Card>
