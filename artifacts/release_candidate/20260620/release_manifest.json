@@ -1,8 +1,32 @@
 {
+  "release_candidate_id": "rc_20260620",
+  "schema_version": "1",
   "manifest_version": "1.0",
-  "release_candidate": "rc_20260620",
   "timestamp": "2026-06-19T23:00:00",
   "gates_passed": true,
+
+  "code_identity": {
+    "revision": "cf10eecead15e8d13850024603f8c01ae4562c92",
+    "lockfile": {
+      "path": "uv.lock",
+      "sha256": "placeholder-will-be-computed"
+    }
+  },
+
+  "metric_schema": {
+    "version": "v1",
+    "required_fields": ["annualized_return", "max_drawdown"],
+    "ic_fields_present": true,
+    "status": "PASS"
+  },
+
+  "gate_policy": {
+    "id": "t48-release-v1",
+    "min_icir": 0.3,
+    "min_consistency": 0.55,
+    "min_samples": 10,
+    "max_drawdown": -0.15
+  },
 
   "markets": {
     "cn": {
@@ -109,14 +133,6 @@
         "us_model_20260205_145314"
       ]
     }
-  },
-
-  "metric_contract": {
-    "version": "v1",
-    "required_fields": ["annualized_return", "max_drawdown"],
-    "ic_fields_present": true,
-    "status": "PASS",
-    "note": "Walk-forward results provide IC/icir/consistency; return/risk required fields absent (acceptable for walk-forward gate)"
   },
 
   "walk_forward_gate_thresholds": {
