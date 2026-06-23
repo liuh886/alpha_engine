@@ -56,6 +56,19 @@ def get_system_paths():
     }
 
 
+@router.get("/health")
+def system_health_check():
+    """Fast, explicit check to verify backend API is responsive.
+    Returns basic service health immediately without hitting the database.
+    """
+    return {
+        "ok": True,
+        "status": "online",
+        "timestamp": time.time(),
+        "uptime": time.monotonic()
+    }
+
+
 @router.get("/docs/main")
 def get_main_system_doc():
     """
