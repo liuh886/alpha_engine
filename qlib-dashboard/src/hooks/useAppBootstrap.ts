@@ -7,23 +7,23 @@ import { useDataStatus } from './useDataStatus';
 
 export function useAppBootstrap() {
   const [loading, setLoading] = useState(true);
-  const { setApiError, setUsername } = useGlobalStore();
+  const { setApiError, setUsername, setDemoMode } = useGlobalStore();
   
   const { models, selectedModelId, setSelectedModelId, fetchModels, deleteModel } = useModels();
   const { activeJobId, isPolling, startPolling, submitAndPoll, pollActiveJobsCount } = useJobs();
   const { loadDataStatus } = useDataStatus();
 
   // Keep stable references to callbacks so they don't trigger re-renders or get stale
-  const callbacksRef = useRef({ loadDataStatus, fetchModels, pollActiveJobsCount, setUsername, setApiError });
+  const callbacksRef = useRef({ loadDataStatus, fetchModels, pollActiveJobsCount, setUsername, setApiError, setDemoMode });
   useEffect(() => {
-    callbacksRef.current = { loadDataStatus, fetchModels, pollActiveJobsCount, setUsername, setApiError };
+    callbacksRef.current = { loadDataStatus, fetchModels, pollActiveJobsCount, setUsername, setApiError, setDemoMode };
   });
 
   useEffect(() => {
     const bootstrap = async () => {
       try {
         setLoading(true);
-        const { loadDataStatus: loadData, fetchModels: fetchM, pollActiveJobsCount: pollJobs, setUsername: setU, setApiError: setErr } = callbacksRef.current;
+        const { loadDataStatus: loadData, fetchModels: fetchM, pollActiveJobsCount: pollJobs, setUsername: setU, setApiError: setErr, setDemoMode: setDemo } = callbacksRef.current;
         // Load data status and models in parallel
         await Promise.all([
           loadData(),
@@ -31,6 +31,9 @@ export function useAppBootstrap() {
           pollJobs(),
           apiClient.get<{ username: string }>('/api/system/me').then(data => {
             if (data?.username) setU(data.username);
+          }).catch(() => {}),
+          apiClient.get<{ demo_mode: boolean }>('/api/system/health').then(data => {
+            if (data?.demo_mode) setDemo(true);
           }).catch(() => {})
         ]);
         setErr(null);
