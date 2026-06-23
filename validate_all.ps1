@@ -23,6 +23,10 @@ if ($LASTEXITCODE -ne 0) { throw "uv build failed" }
 Write-Host "`n=== Gate 6: npm install ===" -ForegroundColor Cyan
 Push-Location qlib-dashboard
 try {
+    # Mitigate Windows EPERM lock issues from previous steps by cleaning up lingering processes
+    Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process esbuild -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
     npm ci
     if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
 
