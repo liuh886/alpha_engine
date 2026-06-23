@@ -50,7 +50,7 @@ class TestResearchEndpoints:
 
     def test_list_runs_returns_schema(self, client, auth_headers):
         resp = client.get("/api/research/runs", headers=auth_headers)
-        assert resp.status_code == 200
+        assert resp.status_code == 200, resp.text
         data = resp.json()
         assert "ok" in data
         assert "runs" in data
@@ -71,7 +71,7 @@ class TestResearchEndpoints:
             json={"market": "cn", "goal": "test", "model_type": "lgbm"},
             headers=auth_headers,
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["ok"] is True
         assert "run_id" in data
@@ -86,7 +86,7 @@ class TestDecayEndpoints:
 
     def test_check_decay_returns_schema(self, client, auth_headers):
         resp = client.get("/api/decay/check?market=cn", headers=auth_headers)
-        assert resp.status_code == 200
+        assert resp.status_code == 200, resp.text
         data = resp.json()
         assert "ok" in data
         assert "total_factors" in data
@@ -102,10 +102,10 @@ class TestPortfolioEndpoints:
 
     def test_get_config_returns_schema(self, client, auth_headers):
         resp = client.get("/api/portfolio/config", headers=auth_headers)
-        assert resp.status_code == 200
+        assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert "ok" in data
-        assert "config" in data
+        assert "ok" in data, f"Response missing 'ok': {data}"
+        assert "config" in data, f"Response missing 'config': {data}"
         assert "max_industry_weight" in data["config"]
 
     def test_check_portfolio_requires_artifact_identities(self, client, auth_headers):

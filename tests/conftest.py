@@ -45,6 +45,10 @@ def _isolate_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     artifact_root = tmp_path / "artifacts"
     artifact_root.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("TRADING_ARTIFACTS_DIR", str(artifact_root))
+    
+    # Set default auth credentials so authenticated endpoints don't fail with 500
+    monkeypatch.setenv("TRADING_UI_USER", "admin")
+    monkeypatch.setenv("TRADING_UI_PASSWORD", "alpha2026")
 
     # Patch module-level static path variables that were evaluated at import
     # time and may still point to the production tree.
