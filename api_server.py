@@ -1,5 +1,6 @@
 import secrets
 import sys
+import time
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -9,6 +10,9 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+# Check for demo mode flag early
+DEMO_MODE = "--demo" in sys.argv
 
 # Ensure PROJECT_ROOT is in sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -111,6 +115,65 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
 
 
 # 1. API Routers (Must come BEFORE static mount)
+
+if DEMO_MODE:
+    import json
+
+    @app.get("/api/system/health")
+    def demo_health():
+        return {
+            "ok": True,
+            "status": "online",
+            "demo_mode": True,
+            "timestamp": time.time(),
+            "uptime": time.monotonic()
+        }
+
+    @app.get("/api/models")
+    def demo_models():
+        demo_path = PROJECT_ROOT / "artifacts" / "demo" / "demo_models.json"
+        if demo_path.exists():
+            return json.loads(demo_path.read_text(encoding="utf-8"))
+        return {"ok": True, "versions": []}
+
+    @app.get("/api/data/status")
+    def demo_data_status():
+        return {
+            "ok": True,
+            "data": {
+                "latest_calendar_date": "2026-06-20",
+                "latest_calendar_day": "2026-06-20",
+                "dashboard_generated_at": "2026-06-20T08:00:00Z",
+                "latest_snapshot_id": "snapshot-cn-20260620",
+                "quality_status": "ok",
+                "quality_warnings": [],
+                "symbols_configured": 1,
+                "symbols_updated": 1,
+                "symbols_failed": 0,
+                "symbols_stale": 0,
+            }
+        }
+
+    @app.get("/api/system/me")
+    def demo_whoami():
+        return {"username": "demo-user"}
+
+    @app.get("/api/jobs")
+    def demo_jobs():
+        return {"ok": True, "jobs": []}
+
+@app.get("/artifacts/dashboard.json")
+def get_dashboard_json():
+    import json
+    if DEMO_MODE:
+        db_path = PROJECT_ROOT / "artifacts" / "demo" / "dashboard_db.json"
+    else:
+        db_path = PROJECT_ROOT / "artifacts" / "dashboard" / "dashboard_db.json"
+    
+    if db_path.exists():
+        return json.loads(db_path.read_text(encoding="utf-8"))
+    return {"models": []}
+
 app.include_router(
     system.router, prefix="/api/system", tags=["system"], dependencies=[Depends(get_current_user)]
 )
@@ -210,10 +273,11 @@ app.include_router(
 
 
 # 2. Authenticated identity endpoint
-@app.get("/api/system/me")
-def whoami(username: str = Depends(get_current_user)):
-    """Return the authenticated user's username."""
-    return {"username": username}
+if not DEMO_MODE:
+    @app.get("/api/system/me")
+    def whoami(username: str = Depends(get_current_user)):
+        """Return the authenticated user's username."""
+        return {"username": username}
 
 
 # 3. Public Endpoints
