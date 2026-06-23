@@ -7,7 +7,7 @@ import { useNameMap } from '@/lib/useNameMap';
 import { apiFetch } from '@/lib/api';
 import type { Position, ReportRow } from '@/lib/types';
 
-export function Attribution({ positions, report }: { positions: Position[]; report?: ReportRow[] }) {
+export function Attribution({ positions, report, attribution }: { positions: Position[]; report?: ReportRow[]; attribution?: any }) {
   const [selectedInstrument, setSelectedInstrument] = useState<string | null>(null);
   const [fullPriceHistory, setFullPriceHistory] = useState<Record<string, number>>({});
   const [loadingPrice, setLoadingPrice] = useState(false);
@@ -102,6 +102,24 @@ export function Attribution({ positions, report }: { positions: Position[]; repo
   };
 
   const contributionRows = useMemo(() => {
+    if (attribution && attribution.length > 0) {
+        // Compute from attribution data if present
+        const instrumentPnL = new Map<string, number>();
+        for (const row of attribution) {
+            const inst = row.instrument || row.code;
+            if (!inst) continue;
+            const pnl = Number(row.pnl || row.net_pnl || row.yield || 0);
+            instrumentPnL.set(inst, (instrumentPnL.get(inst) || 0) + pnl);
+        }
+        const rows = Array.from(instrumentPnL.entries()).map(([inst, val]) => ({
+            instrument: inst,
+            name: labelByInstrument.get(inst) || inst,
+            value: val
+        }));
+        if (rows.length > 0) return rows;
+    }
+
+    // Fallback to estimation
     if (!positions.length) return [];
     const instruments = Array.from(new Set(positions.map(p => p.instrument)));
     return instruments.map(inst => {
@@ -112,7 +130,7 @@ export function Attribution({ positions, report }: { positions: Position[]; repo
             value: val
         };
     });
-  }, [positions, accountByDate, labelByInstrument, report, fullPriceHistory]);
+  }, [positions, accountByDate, labelByInstrument, report, fullPriceHistory, attribution]);
 
   const topContributors = useMemo(() => contributionRows.filter(d => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 10), [contributionRows]);
   const topLosers = useMemo(() => contributionRows.filter(d => d.value < 0).sort((a, b) => a.value - b.value).slice(0, 10), [contributionRows]);

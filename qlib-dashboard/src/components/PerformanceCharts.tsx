@@ -212,10 +212,12 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
     return v >= 0 ? `rgba(34,197,94,${intensity})` : `rgba(239,68,68,${intensity})`;
   };
 
+  const strategyPointCount = chartData.filter(d => Number.isFinite(d.strategy)).length;
+
   return (
     <div className="space-y-5">
       {/* 1. Equity Curve */}
-      <Card data-testid="equity-curve-container">
+      <Card data-testid="equity-curve-container" data-strategy-point-count={String(strategyPointCount)}>
         <CardHeader className="pb-3 border-b">
           <CardTitle className="text-sm font-semibold">Equity Curve</CardTitle>
         </CardHeader>

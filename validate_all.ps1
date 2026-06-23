@@ -20,11 +20,28 @@ Write-Host "`n=== Gate 5: Package build ===" -ForegroundColor Cyan
 uv build
 if ($LASTEXITCODE -ne 0) { throw "uv build failed" }
 
-Write-Host "`n=== Gate 6: npm install ===" -ForegroundColor Cyan
+Write-Host "`n=== Gate 6: npm ci ===" -ForegroundColor Cyan
 Push-Location qlib-dashboard
 try {
-    npm ci
-    if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
+    # Windows EPERM mitigation: stop lingering processes
+    Stop-Process -Name "node", "esbuild" -ErrorAction SilentlyContinue -Force
+    Start-Sleep -Seconds 1
+    
+    # Retry logic for npm ci
+    $maxRetries = 3
+    $retryCount = 0
+    $success = $false
+    while (-not $success -and $retryCount -lt $maxRetries) {
+        npm ci
+        if ($LASTEXITCODE -eq 0) {
+            $success = $true
+        } else {
+            $retryCount++
+            Write-Host "npm ci failed, retrying ($retryCount/$maxRetries)..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
+        }
+    }
+    if (-not $success) { throw "npm ci failed after $maxRetries retries" }
 
     Write-Host "`n=== Gate 7: TypeScript type check ===" -ForegroundColor Cyan
     npx tsc --noEmit

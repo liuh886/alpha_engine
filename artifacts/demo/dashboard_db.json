@@ -2,7 +2,8 @@
   "generated_at": "2026-06-20T08:00:00Z",
   "models": [
     {
-      "id": "run-release-42",
+      "id": "artifact-release-42",
+      "run_id": "run-release-42",
       "name": "Release Candidate 42",
       "market": "cn",
       "date": "2026-06-20",
