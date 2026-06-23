@@ -23,7 +23,13 @@ function normalizeTimestampSecondsOrMs(value: unknown): string | null {
 export function normalizeModelRegistryEntry(row: any): ModelVersion {
   const metricsRaw = safeJson<Record<string, number>>(row.metrics ?? row.metrics_json, {});
   const params = safeJson<Record<string, unknown>>(row.params ?? row.params_json, {});
-  const payload = safeJson<Record<string, any>>(row.payload ?? row.payload_json, {});
+  
+  let payload = safeJson<Record<string, any>>(row.payload ?? row.payload_json, null as any);
+  if (!payload && (row.data || row.backtest)) {
+    payload = { data: row.data, backtest: row.backtest };
+  } else if (!payload) {
+    payload = {};
+  }
 
   // Initialize metrics with existing values, falling back to payload.backtest.metrics if metrics_json was empty
   const payloadMetrics = payload?.backtest?.metrics ?? {};
@@ -77,11 +83,24 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
   // Map positions_normal
   const positions = payload?.data?.positions_normal || [];
 
+  // Map attribution
+  const attribution = payload?.data?.attribution_normal || null;
+
   // Construct backtest object
   const backtest = {
+    meta: {
+      start: report.length > 0 ? report[0].date : "N/A",
+      end: report.length > 0 ? report[report.length - 1].date : "N/A",
+      benchmark: row.market === "us" ? "Nasdaq 100" : "CSI 300",
+      market: row.market || "",
+      generated_at: row.created_at || ""
+    },
     metrics,
     report,
-    positions
+    positions,
+    attribution,
+    featureImportance: payload?.data?.sig_analysis?.feature_importance || {},
+    indicators: payload?.data?.indicators || {}
   };
 
   // Ensure created_at uses created_ts if created_at string is empty

@@ -21,7 +21,8 @@ const dashboardArtifact = {
   generated_at: "2026-06-20T08:00:00Z",
   models: [
     {
-      id: runId,
+      id: modelId,
+      run_id: runId,
       name: "Release Candidate 42",
       market: "cn",
       date: "2026-06-20",
@@ -42,7 +43,8 @@ const dashboardArtifact = {
       },
     },
     {
-      id: "run-baseline-01",
+      id: "artifact-baseline-01",
+      run_id: "run-baseline-01",
       name: "Baseline Comparator",
       market: "cn",
       date: "2026-06-19",
