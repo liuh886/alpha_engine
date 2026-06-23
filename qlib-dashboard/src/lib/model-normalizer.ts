@@ -10,6 +10,12 @@ function safeJson<T>(value: unknown, fallback: T): T {
   }
 }
 
+function normalizeTimestampSecondsOrMs(value: unknown): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const ms = value < 10_000_000_000 ? value * 1000 : value;
+  return new Date(ms).toISOString();
+}
+
 /**
  * Normalizes backend model payload into a consistent ModelVersion frontend shape.
  * Ensures metrics like IC/Rank IC and paths are correctly extracted.
@@ -55,7 +61,7 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
   // Ensure created_at uses created_ts if created_at string is empty
   let created_at = row.created_at || "";
   if (!created_at && row.created_ts) {
-    created_at = new Date(row.created_ts * 1000).toISOString();
+    created_at = normalizeTimestampSecondsOrMs(row.created_ts) || "";
   }
 
   return {
