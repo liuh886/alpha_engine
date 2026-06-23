@@ -136,7 +136,7 @@ export function ModelsPage() {
 
   const registryOutcome = useMemo<OutcomeSummary>(() => {
     if (modelsQuery.loading && !modelsQuery.data) return { state: "loading", reason: "Loading the model registry." };
-    if (modelsQuery.error) return { state: "failed", reason: modelsQuery.error };
+    if (modelsQuery.error) return { state: "failed", reason: modelsQuery.error instanceof Error ? modelsQuery.error.message : String(modelsQuery.error) };
     if (versions.length === 0) return { state: "empty", reason: "No registered model artifacts are available." };
     if (!routeIdentity.modelId) return { state: "success", reason: `${versions.length} model artifacts are available.` };
 

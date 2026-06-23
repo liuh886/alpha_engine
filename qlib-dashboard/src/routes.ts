@@ -58,6 +58,7 @@ export interface RouteDefinition {
 import { lazy } from 'react';
 
 // Lazy-loaded pages (code splitting)
+const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
 const TrueDashboard = lazy(() => import('./components/TrueDashboard').then(m => ({ default: m.TrueDashboard })));
 const StrategyPage = lazy(() => import('./pages/StrategyPage').then(m => ({ default: m.StrategyPage })));
 const ComparePage = lazy(() => import('./pages/ComparePage').then(m => ({ default: m.ComparePage })));
@@ -82,8 +83,8 @@ const SystemPage = lazy(() => import('./pages/SystemPage').then(m => ({ default:
 
 export const routes: RouteDefinition[] = [
   // -- Daily Research --------------------------------------------------------
-  { path: '',            title: 'Dashboard',       label: 'Dashboard',       releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard, component: TrueDashboard },
-  { path: 'dashboard',   title: 'Dashboard',       label: 'Dashboard',       releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard, component: TrueDashboard },
+  { path: '',            title: 'System Home',     label: 'Home',            releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard, component: HomePage },
+  { path: 'dashboard',   title: 'Model Dashboard', label: 'Model Dashboard', releaseLevel: 'release',      navGroup: 'Daily Research',      icon: LayoutDashboard, component: TrueDashboard },
   { path: 'terminal',    title: 'Stock Terminal',   label: 'Stock Terminal',  releaseLevel: 'experimental', navGroup: 'Daily Research',      icon: Terminal, component: StockTerminal },
 
   // -- Model Lab -------------------------------------------------------------
@@ -115,8 +116,6 @@ export const routes: RouteDefinition[] = [
 /** Map from path to title — used by the header bar. */
 export const VIEW_TITLES: Record<string, string> = {
   ...Object.fromEntries(routes.map((r) => [r.path, r.title])),
-  // Legacy alias: /dashboard renders the same view as /
-  dashboard: 'Dashboard',
 };
 
 /** Group routes by navGroup, preserving declaration order. */

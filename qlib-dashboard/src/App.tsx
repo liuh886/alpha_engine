@@ -200,6 +200,10 @@ function AuthenticatedApp() {
         }>
           {routes.map(r => {
             const Component = r.component;
+            if (r.path === 'dashboard') {
+              const selectedModel = models.find(m => m.id === selectedModelId) || (models.length > 0 ? models[0] : null);
+              return <Route key={r.path} path={r.path} element={<Component model={selectedModel} report={selectedModel?.backtest?.report} positions={selectedModel?.backtest?.positions} />} />
+            }
             return <Route key={r.path} path={r.path} element={<Component models={models} />} />
           })}
           <Route path="*" element={<NotFound />} />

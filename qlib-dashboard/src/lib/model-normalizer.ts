@@ -10,6 +10,12 @@ function safeJson<T>(value: unknown, fallback: T): T {
   }
 }
 
+function normalizeTimestampSecondsOrMs(value: unknown): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const ms = value < 10_000_000_000 ? value * 1000 : value;
+  return new Date(ms).toISOString();
+}
+
 /**
  * Normalizes backend model payload into a consistent ModelVersion frontend shape.
  * Ensures metrics like IC/Rank IC and paths are correctly extracted.
@@ -19,8 +25,9 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
   const params = safeJson<Record<string, unknown>>(row.params ?? row.params_json, {});
   const payload = safeJson<Record<string, any>>(row.payload ?? row.payload_json, {});
 
-  // Initialize metrics with existing values
-  const metrics: Record<string, number> = { ...metricsRaw };
+  // Initialize metrics with existing values, falling back to payload.backtest.metrics if metrics_json was empty
+  const payloadMetrics = payload?.backtest?.metrics ?? {};
+  const metrics: Record<string, number> = { ...payloadMetrics, ...metricsRaw };
 
   // Attempt to extract IC/Rank IC from payload if not present in metrics
   const sigAnalysis = payload?.data?.sig_analysis;
@@ -51,10 +58,35 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
     }
   }
 
+  // Map report_normal to report array
+  const report: any[] = [];
+  if (payload?.data?.report_normal?.columns && payload?.data?.report_normal?.index) {
+    const cols = payload.data.report_normal.columns;
+    const data = payload.data.report_normal.data;
+    const index = payload.data.report_normal.index;
+
+    index.forEach((date: string, i: number) => {
+      const row: any = { date: date.split('T')[0] };
+      cols.forEach((col: string, j: number) => {
+        row[col] = data[i][j];
+      });
+      report.push(row);
+    });
+  }
+
+  // Map positions_normal
+  const positions = payload?.data?.positions_normal || [];
+
+  const backtest = {
+    metrics,
+    report,
+    positions
+  };
+
   // Ensure created_at uses created_ts if created_at string is empty
   let created_at = row.created_at || "";
   if (!created_at && row.created_ts) {
-    created_at = new Date(row.created_ts * 1000).toISOString();
+    created_at = normalizeTimestampSecondsOrMs(row.created_ts) || "";
   }
 
   return {
@@ -71,5 +103,6 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
     snapshot_id: row.snapshot_id || (params as any)?.data_snapshot_id || "",
     metrics,
     params,
+    backtest,
   };
 }

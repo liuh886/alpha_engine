@@ -17,14 +17,15 @@ import { ApiError } from './api-types';
 
 const mockApiFetch = apiFetch as Mock;
 
-function jsonResponse(body: unknown, status = 200): Response {
+function jsonResponse(body: unknown, status = 200, isJson = true): Response {
+  const textBody = isJson ? JSON.stringify(body) : (body as string);
   return {
     ok: status >= 200 && status < 300,
     status,
     statusText: status === 200 ? 'OK' : 'Error',
-    json: () => Promise.resolve(body),
-    text: () => Promise.resolve(typeof body === 'string' ? body : JSON.stringify(body)),
-    headers: new Headers({ 'Content-Type': 'application/json' }),
+    json: () => Promise.resolve(isJson ? body : JSON.parse(textBody)),
+    text: () => Promise.resolve(textBody),
+    headers: new Headers({ 'Content-Type': isJson ? 'application/json' : 'text/plain' }),
   } as unknown as Response;
 }
 

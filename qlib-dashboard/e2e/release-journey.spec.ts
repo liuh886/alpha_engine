@@ -13,6 +13,7 @@ async function login(page: import("@playwright/test").Page) {
   await page.getByLabel("Username").fill("release-user");
   await page.getByLabel("Password").fill("release-pass");
   await page.getByRole("button", { name: "Sign In" }).click();
+  await expect(page.getByText(/System Home|Model Dashboard|Data Management/i).first()).toBeVisible({ timeout: 10_000 });
 }
 
 test("production release journey preserves snapshot, workflow, run, model, and evidence identity", async ({ page }) => {
