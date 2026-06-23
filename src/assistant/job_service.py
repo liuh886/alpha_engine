@@ -64,6 +64,8 @@ class JobService:
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_started_at ON jobs(started_at DESC)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at DESC)")
             # Migrate: add column if missing (existing DBs)
             try:
                 conn.execute("ALTER TABLE jobs ADD COLUMN command_envelope_json TEXT")
