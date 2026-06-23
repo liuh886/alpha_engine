@@ -173,6 +173,7 @@ export interface ModelVersion {
   metrics_json?: string;
   params?: Record<string, unknown>;
   params_json?: string;
+  backtest?: any;
 }
 
 export interface ModelListResponse extends Ok {
