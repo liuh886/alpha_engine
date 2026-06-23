@@ -57,29 +57,41 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
               </div>
 
               <TabsContent value="performance" className="mt-0 focus-visible:ring-0">
-                <PerformanceCharts report={data.report} />
+                <section data-testid="backtest-performance-section">
+                  <PerformanceCharts report={data.report} />
+                </section>
               </TabsContent>
 
               <TabsContent value="positions" className="mt-0 focus-visible:ring-0">
-                <PositionsTable positions={data.positions} report={data.report} />
+                <section data-testid="position-history-section">
+                  <PositionsTable positions={data.positions} report={data.report} />
+                </section>
               </TabsContent>
 
               <TabsContent value="attribution" className="mt-0 focus-visible:ring-0">
-                <Attribution positions={data.positions} report={data.report} />
+                <section data-testid="attribution-section">
+                  <Attribution positions={data.positions} report={data.report} attribution={data.attribution} />
+                </section>
               </TabsContent>
 
               <TabsContent value="trades" className="mt-0 focus-visible:ring-0">
-                {runId ? <TradeLedger runId={runId} /> : <p className="text-sm text-muted-foreground py-8 text-center">No run ID available</p>}
+                <section data-testid="trades-section">
+                  {runId ? <TradeLedger runId={runId} /> : <p className="text-sm text-muted-foreground py-8 text-center">No run ID available</p>}
+                </section>
               </TabsContent>
 
               <TabsContent value="alpha" className="mt-0 focus-visible:ring-0">
-                {runId ? <AlphaDecomposition runId={runId} /> : <p className="text-sm text-muted-foreground py-8 text-center">No run ID available</p>}
+                <section data-testid="alpha-section">
+                  {runId ? <AlphaDecomposition runId={runId} /> : <p className="text-sm text-muted-foreground py-8 text-center">No run ID available</p>}
+                </section>
               </TabsContent>
             </Tabs>
           </div>
 
           <div className="space-y-5">
-            <HoldingsSummary positions={data.positions} />
+            <section data-testid="current-holdings-section">
+              <HoldingsSummary positions={data.positions} />
+            </section>
             <AttributionInterpretation positions={data.positions} report={data.report} />
             <ModelExplainability featureImportance={data.featureImportance} />
             <MetricsExpanded metrics={data.metrics} indicators={data.indicators} />

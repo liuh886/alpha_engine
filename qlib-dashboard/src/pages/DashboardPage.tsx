@@ -1,4 +1,4 @@
-import { TrueDashboard } from '@/components/TrueDashboard';
+import { Dashboard } from '@/components/Dashboard';
 import { useOutletContext } from 'react-router-dom';
 import type { ModelData } from '@/lib/data-parser';
 
@@ -7,10 +7,9 @@ export function DashboardPage() {
   const selectedModel = models.find(m => m.id === selectedModelId) || models[0];
 
   return (
-    <TrueDashboard 
-      model={selectedModel} 
-      report={selectedModel?.backtest?.report || []} 
-      positions={selectedModel?.backtest?.positions || []} 
+    <Dashboard 
+      data={selectedModel?.backtest} 
+      params={{ ...selectedModel?.params, id: selectedModel?.run_id || selectedModel?.id }}
     />
   );
 }

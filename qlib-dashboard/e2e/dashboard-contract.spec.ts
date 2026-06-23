@@ -14,15 +14,22 @@ test.describe("Dashboard Product Contract", () => {
     await login(page);
 
     // Wait for the Dashboard to load and verify the heading
-    await expect(page.getByRole("heading", { name: "Model Dashboard" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible({ timeout: 10_000 });
+
+    // Assert tabs exist
+    await expect(page.getByRole("tab", { name: "Performance" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Holdings" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Attribution" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Trades" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Alpha" })).toBeVisible();
 
     // 1. Verify Return Indicators
     // The fixture 'Release Candidate 42' has annual_return = 0.18
-    await expect(page.getByTestId("metric-return")).toContainText("18.0%");
+    await expect(page.getByTestId("metric-return")).toContainText("18.00%");
 
     // 2. Verify Drawdown Indicators
     // max_drawdown = -0.08
-    await expect(page.getByTestId("metric-drawdown")).toContainText("-8.0%");
+    await expect(page.getByTestId("metric-drawdown")).toContainText("-8.00%");
 
     // Verify other key risk metrics
     await expect(page.getByTestId("metric-sharpe")).toContainText("1.42");
@@ -41,6 +48,8 @@ test.describe("Dashboard Product Contract", () => {
     // Ensure the specific holding from the fixture is rendered
     // fixture: instrument: "SH600000", weight: 0.05
     await expect(page.getByTestId("current-holdings-section")).toBeVisible();
+    
+    await page.getByRole("tab", { name: "Holdings" }).click();
     await expect(page.getByTestId("position-history-section")).toBeVisible();
     
     const currentRows = page.getByTestId("current-holdings-section").getByTestId("positions-table-row");
@@ -49,6 +58,7 @@ test.describe("Dashboard Product Contract", () => {
     await expect(currentRows.filter({ hasText: "SH600000" }).first()).toContainText("5.00%");
 
     // 5. Verify Attribution / Return Decomposition or explicit missing data diagnostic
+    await page.getByRole("tab", { name: "Attribution" }).click();
     const attributionSection = page.getByTestId("attribution-section");
     await expect(attributionSection).toBeVisible();
     await expect(attributionSection.getByText(/Attribution unavailable: missing payload.attribution_normal|Asset Execution/)).toBeVisible();
