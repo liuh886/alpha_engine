@@ -27,6 +27,17 @@ uv run python api_server.py --demo
 - ✅ Holdings 标签页显示 SH600000 持仓
 - ✅ Attribution 标签页显示归因数据
 
+### Screenshots
+
+**System Home** — Onboarding console with mode badge, data freshness, and recommended actions:
+![System Home](docs/images/home-placeholder.svg)
+
+**Research Dashboard** — Model performance with equity curve, metrics, and identity chain:
+![Research Dashboard](docs/images/dashboard-placeholder.svg)
+
+**Model Registry** — Model versions with provenance chain, stage tracking, and identity fields:
+![Model Registry](docs/images/models-placeholder.svg)
+
 ### 2. 本地开发 (Full Mode)
 
 ```bash

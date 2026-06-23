@@ -25,10 +25,12 @@ const HEALTH_BADGE: Record<string, { label: string; className: string }> = {
 };
 
 export function HomePage() {
-  const { qualityStatus, latestCalendarDay, activeJobsCount, dataGeneratedAt } = useGlobalStore();
-  const { refreshModels, refreshDataStatus, submitAndPoll } = useOutletContext<AppContext>();
+  const { qualityStatus, latestCalendarDay, activeJobsCount, dataGeneratedAt, demoMode } = useGlobalStore();
+  const { models, refreshModels, refreshDataStatus, submitAndPoll } = useOutletContext<AppContext>();
   const { state: healthState } = useSystemHealth();
   const navigate = useNavigate();
+
+  const latestModel = models.length > 0 ? models[0] : null;
 
   const startUpdateData = async () => {
     try {
@@ -47,8 +49,18 @@ export function HomePage() {
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto pb-16">
       <div className="border-b pb-4">
-        <h1 className="text-4xl font-black tracking-tight text-foreground">System Home</h1>
-        <p className="text-muted-foreground mt-2 font-medium">Daily system readiness and operations snapshot.</p>
+        <div className="flex items-center gap-3">
+          <h1 className="text-4xl font-black tracking-tight text-foreground">System Home</h1>
+          <Badge variant="secondary" className={`font-mono text-[10px] uppercase border-none ${demoMode ? 'text-blue-500 bg-blue-500/10' : 'text-green-500 bg-green-500/10'}`}>
+            {demoMode ? 'Demo Mode' : 'Live Mode'}
+          </Badge>
+        </div>
+        <p className="text-muted-foreground mt-2 font-medium">
+          {demoMode
+            ? 'Explore the dashboard with sample data. No real trades or data updates.'
+            : 'Daily system readiness and operations snapshot.'
+          }
+        </p>
       </div>
 
       <h2 className="text-lg font-bold uppercase tracking-widest text-muted-foreground mt-8 mb-4">Readiness & Jobs</h2>
@@ -123,18 +135,46 @@ export function HomePage() {
         <Card className="bg-card shadow-md border-primary/20 bg-primary/5">
           <CardHeader className="pb-3 border-b border-primary/10 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider text-primary">
-              <Target className="h-4 w-4" /> Recommended Action
+              <Target className="h-4 w-4" /> {demoMode ? 'Explore Demo' : 'Recommended Action'}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-5 space-y-4 flex flex-col justify-between">
-            {qualityStatus !== 'ok' ? (
-              <div className="text-sm text-destructive font-medium mb-2">Data is stale. Your next step is to run a data sync.</div>
+            {demoMode ? (
+              <>
+                <div className="text-sm text-blue-600 font-medium mb-2">
+                  You are viewing sample data. Explore the dashboard, model registry, and data pages.
+                </div>
+                {latestModel && (
+                  <div className="text-xs text-muted-foreground">
+                    Latest model: <span className="font-mono font-bold">{latestModel.name}</span>
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <Button onClick={() => navigate('/dashboard')} className="w-full text-xs font-bold uppercase tracking-widest">
+                    <Play className="h-3 w-3 mr-2" /> Explore Demo Dashboard
+                  </Button>
+                  <Button onClick={() => navigate('/models')} variant="outline" className="w-full text-xs font-bold uppercase tracking-widest">
+                    <Database className="h-3 w-3 mr-2" /> View Model Registry
+                  </Button>
+                </div>
+              </>
             ) : (
-              <div className="text-sm text-green-600 font-medium mb-2">System ready. Time to research new factors or run a backtest.</div>
+              <>
+                {qualityStatus !== 'ok' ? (
+                  <div className="text-sm text-destructive font-medium mb-2">Data is stale. Your next step is to run a data sync.</div>
+                ) : (
+                  <div className="text-sm text-green-600 font-medium mb-2">System ready. Time to research new factors or run a backtest.</div>
+                )}
+                {latestModel && (
+                  <div className="text-xs text-muted-foreground">
+                    Latest model: <span className="font-mono font-bold">{latestModel.name}</span>
+                  </div>
+                )}
+                <Button onClick={() => navigate(qualityStatus !== 'ok' ? '/data' : '/backtest')} className="w-full text-xs font-bold uppercase tracking-widest mt-auto">
+                  <Play className="h-3 w-3 mr-2" /> {qualityStatus !== 'ok' ? 'Go to Data Manager' : 'Start Backtest'}
+                </Button>
+              </>
             )}
-            <Button onClick={() => navigate(qualityStatus !== 'ok' ? '/data' : '/backtest')} className="w-full text-xs font-bold uppercase tracking-widest mt-auto">
-              <Play className="h-3 w-3 mr-2" /> {qualityStatus !== 'ok' ? 'Go to Data Manager' : 'Start Backtest'}
-            </Button>
           </CardContent>
         </Card>
 

@@ -1,0 +1,10 @@
+{
+  "snapshot_id": "snapshot-cn-20260620",
+  "workflow_id": "workflow.run.cn",
+  "run_id": "run-release-42",
+  "model_id": "artifact-release-42",
+  "baseline_model_id": "artifact-baseline-01",
+  "baseline_run_id": "run-baseline-01",
+  "generated_at": "2026-06-20T08:00:00Z",
+  "calendar_date": "2026-06-20"
+}
