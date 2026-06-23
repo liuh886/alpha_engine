@@ -143,6 +143,11 @@ export function Sidebar() {
             {!collapsed && <span className="ml-2 text-xs font-bold">Panic</span>}
           </button>
         )}
+        {!collapsed && (
+          <div className="pt-2 pb-1 text-center text-[10px] text-muted-foreground/40 font-mono">
+            v1.0.0 - {import.meta.env.VITE_GIT_COMMIT_SHA || 'unknown'}
+          </div>
+        )}
       </div>
     </div>
   );
