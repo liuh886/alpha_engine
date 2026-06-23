@@ -12,12 +12,26 @@ import { LoadingSpinner, EmptyState, ErrorState } from "@/components/ui/loading-
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import type { Job, JobListResponse, Ok } from "@/lib/api-types";
-import {
-  Loader2, RefreshCw, Activity, Shield, FlaskConical,
+import { Loader2, RefreshCw, Activity, Shield, FlaskConical,
   CheckCircle, AlertTriangle, XCircle, Briefcase,
   Square, RotateCcw, FileText, Copy, Check,
   Clock, ChevronDown, ChevronUp
 } from "lucide-react";
+
+export function SystemHealthBadge() {
+  const { data, error } = useQuery<{ ok: boolean, status: string }>({
+    queryKey: 'system_health',
+    fetcher: async (signal) => apiClient.get('/api/health', { signal, timeout: 3000 }),
+  });
+  
+  if (error) {
+    return <Badge variant="destructive" className="font-mono text-[10px] uppercase border-none animate-pulse">Unavailable</Badge>;
+  }
+  if (!data) {
+    return <Badge variant="secondary" className="font-mono text-[10px] uppercase bg-muted text-muted-foreground border-none animate-pulse">Checking</Badge>;
+  }
+  return <Badge variant="secondary" className="font-mono text-[10px] uppercase text-green-500 bg-green-500/10 border-none">Online</Badge>;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -877,7 +891,10 @@ function JobCenterTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm text-muted-foreground">Job Center</div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-muted-foreground">Job Center</div>
+            <SystemHealthBadge />
+          </div>
           {hasActiveJobs && (
             <div className="flex items-center gap-1.5 mt-1">
               <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />

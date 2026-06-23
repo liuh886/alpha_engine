@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGlobalStore } from '@/store/globalStore';
 import { apiClient } from '@/lib/api-client';
 import { useModels } from './useModels';
@@ -13,29 +13,36 @@ export function useAppBootstrap() {
   const { activeJobId, isPolling, startPolling, submitAndPoll, pollActiveJobsCount } = useJobs();
   const { loadDataStatus } = useDataStatus();
 
+  // Keep stable references to callbacks so they don't trigger re-renders or get stale
+  const callbacksRef = useRef({ loadDataStatus, fetchModels, pollActiveJobsCount, setUsername, setApiError });
+  useEffect(() => {
+    callbacksRef.current = { loadDataStatus, fetchModels, pollActiveJobsCount, setUsername, setApiError };
+  });
+
   useEffect(() => {
     const bootstrap = async () => {
       try {
         setLoading(true);
+        const { loadDataStatus: loadData, fetchModels: fetchM, pollActiveJobsCount: pollJobs, setUsername: setU, setApiError: setErr } = callbacksRef.current;
         // Load data status and models in parallel
         await Promise.all([
-          loadDataStatus(),
-          fetchModels(),
-          pollActiveJobsCount(),
+          loadData(),
+          fetchM(),
+          pollJobs(),
           apiClient.get<{ username: string }>('/api/system/me').then(data => {
-            if (data?.username) setUsername(data.username);
+            if (data?.username) setU(data.username);
           }).catch(() => {})
         ]);
-        setApiError(null);
+        setErr(null);
       } catch (err) {
-        setApiError("Cannot reach server. Check if the backend is running.");
+        callbacksRef.current.setApiError("Cannot reach server. Check if the backend is running.");
       } finally {
         setLoading(false);
       }
     };
     
     bootstrap();
-  }, [loadDataStatus, fetchModels, pollActiveJobsCount, setApiError, setUsername]);
+  }, []);
 
   return {
     loading,
