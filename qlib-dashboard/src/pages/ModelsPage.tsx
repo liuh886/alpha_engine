@@ -33,15 +33,6 @@ const STALE_THRESHOLD_DAYS = 14;
 const STAGE_ORDER = ["CANDIDATE", "STAGING", "RECOMMENDED"] as const;
 type Stage = (typeof STAGE_ORDER)[number];
 
-function parseStage(description: string | undefined): Stage {
-  if (!description) return "CANDIDATE";
-  const upper = description.toUpperCase();
-  for (const stage of STAGE_ORDER) {
-    if (upper.includes(stage)) return stage;
-  }
-  return "CANDIDATE";
-}
-
 const STAGE_BADGE: Record<Stage, { variant: "default" | "secondary" | "outline"; className: string }> = {
   CANDIDATE: { variant: "outline", className: "text-[10px] text-muted-foreground border-muted-foreground/30" },
   STAGING: { variant: "secondary", className: "text-[10px] bg-blue-500/10 text-blue-600 border-blue-500/30" },
@@ -223,7 +214,8 @@ export function ModelsPage() {
   };
 
   const togglePromote = async (v: ModelVersion) => {
-    const isRecommended = String(v.description).includes("RECOMMENDED");
+    const currentStage = (v.stage || "CANDIDATE").toUpperCase();
+    const isRecommended = currentStage === "RECOMMENDED";
     const newStage = isRecommended ? "STAGING" : "RECOMMENDED";
 
     const ok = await confirm({
@@ -408,7 +400,7 @@ export function ModelsPage() {
                   const sharpe = getModelMetric(v, "Sharpe Ratio");
                   const annRet = getModelMetric(v, "Annualized Return");
                   const mdd = getModelMetric(v, "Max Drawdown");
-                  const stage = parseStage(v.description);
+                  const stage = (v.stage || "CANDIDATE").toUpperCase() as Stage;
                   const isRecommended = stage === "RECOMMENDED";
                   const isDoing = actionId === v.id;
                   const age = modelAgeDays(v.created_at);
@@ -524,7 +516,7 @@ export function ModelsPage() {
               {displayed.map((v) => {
                 if (expandedId !== v.id) return null;
                 const snapshotId = String(v.snapshot_id || (v.params as Record<string, unknown>)?.data_snapshot_id || "");
-                const stage = parseStage(v.description);
+                const stage = (v.stage || "CANDIDATE").toUpperCase() as Stage;
                 const failures = gateFailures[v.id];
 
                 return (
