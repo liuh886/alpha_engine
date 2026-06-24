@@ -17,6 +17,28 @@ function normalizeTimestampSecondsOrMs(value: unknown): string | null {
 }
 
 /**
+ * Normalizes a single attribution row from various backend field name conventions
+ * into a consistent { instrument, name, value } shape.
+ */
+export function normalizeAttributionRow(row: any): { instrument: string; name: string; value: number } {
+  return {
+    instrument: row.instrument ?? row.code ?? row.symbol ?? "",
+    name: row.name ?? row.instrument_label ?? row.instrument ?? row.code ?? "",
+    value: Number(
+      row.pnl ??
+      row.net_pnl ??
+      row.yield ??
+      row.contribution ??
+      row.return_contribution ??
+      row.pnl_contribution ??
+      row.excess_contribution ??
+      row.asset_contribution ??
+      0
+    ),
+  };
+}
+
+/**
  * Normalizes backend model payload into a consistent ModelVersion frontend shape.
  * Ensures metrics like IC/Rank IC and paths are correctly extracted.
  */
@@ -83,8 +105,11 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
   // Map positions_normal
   const positions = payload?.data?.positions_normal || [];
 
-  // Map attribution
-  const attribution = payload?.data?.attribution_normal || null;
+  // Map attribution (normalize field names from various backend conventions)
+  const rawAttribution = payload?.data?.attribution_normal || null;
+  const attribution = rawAttribution
+    ? rawAttribution.map((row: any) => normalizeAttributionRow(row))
+    : null;
 
   // Construct backtest object
   const backtest = {

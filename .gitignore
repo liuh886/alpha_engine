@@ -51,6 +51,7 @@ coverage.xml
 # Project specific
 /data/
 artifacts/
+!artifacts/release_candidate/
 mlruns/
 output/
 site/data/
