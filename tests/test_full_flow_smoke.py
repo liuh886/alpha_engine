@@ -240,6 +240,7 @@ class TestFullFlowSmoke:
     def test_api_bridge_returns_dashboard_data(self, tmp_path, monkeypatch):
         """Verify /api/artifacts/dashboard-db returns dashboard_db.json content."""
         import importlib
+
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
