@@ -215,17 +215,41 @@ export function ModelsPage() {
 
   const togglePromote = async (v: ModelVersion) => {
     const currentStage = (v.stage || "CANDIDATE").toUpperCase();
-    const isRecommended = currentStage === "RECOMMENDED";
-    const newStage = isRecommended ? "STAGING" : "RECOMMENDED";
+
+    // Determine next stage based on current stage
+    // CANDIDATE -> STAGING -> RECOMMENDED -> STAGING
+    let newStage: string;
+    let actionLabel: string;
+    let impactText: string;
+
+    switch (currentStage) {
+      case "CANDIDATE":
+        newStage = "STAGING";
+        actionLabel = "Promote";
+        impactText = "This model will be promoted to STAGING. No promotion gates are checked at this step.";
+        break;
+      case "STAGING":
+        newStage = "RECOMMENDED";
+        actionLabel = "Promote";
+        impactText = "This model will be promoted to RECOMMENDED. Promotion gates will be checked. If gates fail, the model stays in STAGING.";
+        break;
+      case "RECOMMENDED":
+        newStage = "STAGING";
+        actionLabel = "Demote";
+        impactText = "This model will be demoted back to STAGING.";
+        break;
+      default:
+        newStage = "STAGING";
+        actionLabel = "Promote";
+        impactText = "This model will be promoted to STAGING.";
+    }
 
     const ok = await confirm({
-      title: `Promote to ${newStage}`,
-      description: `Mark "${v.tag || v.name || shortId(v.id)}" as ${newStage}?`,
-      impact: newStage === "RECOMMENDED"
-        ? "This model will be marked as recommended for production use. Promotion gates will be checked."
-        : "This model will be moved back to STAGING.",
-      confirmLabel: newStage === "RECOMMENDED" ? "Promote" : "Demote",
-      destructive: false,
+      title: `${actionLabel} to ${newStage}`,
+      description: `${actionLabel} "${v.tag || v.name || shortId(v.id)}" to ${newStage}?`,
+      impact: impactText,
+      confirmLabel: actionLabel,
+      destructive: currentStage === "RECOMMENDED",
     });
     if (!ok) return;
 
@@ -499,8 +523,8 @@ export function ModelsPage() {
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className={cn("h-7 w-7", isRecommended ? "text-amber-500" : "text-muted-foreground")} aria-label={isRecommended ? "Demote model to staging" : "Promote model to recommended"} onClick={() => togglePromote(v)} disabled={isDoing}>
-                            {isDoing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className={cn("h-3.5 w-3.5", isRecommended && "fill-current")} />}
+                          <Button size="icon" variant="ghost" className={cn("h-7 w-7", stage === "RECOMMENDED" ? "text-amber-500" : stage === "STAGING" ? "text-blue-500" : "text-muted-foreground")} aria-label={stage === "CANDIDATE" ? "Promote to staging" : stage === "STAGING" ? "Promote to recommended" : "Demote to staging"} onClick={() => togglePromote(v)} disabled={isDoing}>
+                            {isDoing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className={cn("h-3.5 w-3.5", stage === "RECOMMENDED" && "fill-current")} />}
                           </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" aria-label={`Delete model ${v.tag || v.name || shortId(v.id)}`} onClick={() => deleteModel(v)} disabled={isDoing}>
                             <Trash2 className="h-3.5 w-3.5" />

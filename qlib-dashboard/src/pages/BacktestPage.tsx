@@ -272,7 +272,7 @@ export function BacktestPage() {
 
   const validate = (): string | null => {
     if (!snapshotId) return "An approved snapshot identity is required. Start from the Data page.";
-    if (!tag.trim()) return "Tag is required (used to identify this run).";
+    if (!tag.trim()) return "Tag is required to identify this training/backtest run. Enter a descriptive label.";
     if (!market) return "Market is required.";
     if (!modelType.trim()) return "Model type is required.";
     return null;
@@ -346,7 +346,7 @@ export function BacktestPage() {
       <div className="border-b pb-4">
         <h1 className="text-2xl font-bold tracking-tight">Backtest Workbench</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Execute backtests and analyze results.
+          Train snapshot-bound models, run backtests, and analyze results.
         </p>
       </div>
 
@@ -473,7 +473,7 @@ export function BacktestPage() {
               ) : (
                 <Play className="h-3 w-3 fill-current" />
               )}
-              {workflowStatus === "running" ? "Running..." : !snapshotId ? "Awaiting Snapshot" : "Execute"}
+              {workflowStatus === "running" ? "Running..." : !snapshotId ? "Awaiting Snapshot" : "Train + Backtest"}
             </Button>
 
             {workflowStatus !== "idle" && (
