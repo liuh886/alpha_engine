@@ -57,16 +57,15 @@ def promote_model(payload: ModelPromotionRequestV1):
 
         result = get_model_service().promote_model(artifact_id, payload.stage.value)
         if not result.get("ok"):
-            return error_response(
-                status_code=409,
-                code="MODEL_PROMOTION_CONFLICT",
-                message="Model artifact cannot transition to the requested stage",
-                details={
-                    "artifact_id": artifact_id,
-                    "stage": payload.stage.value,
-                    "gate_failures": result.get("gate_failures", []),
-                },
-            )
+            return {
+                "ok": False,
+                "schema_version": "v1",
+                "artifact_id": artifact_id,
+                "stage": payload.stage.value,
+                "code": "MODEL_PROMOTION_CONFLICT",
+                "message": "Model artifact cannot transition to the requested stage",
+                "gate_failures": result.get("gate_failures", []),
+            }
         return {
             "ok": True,
             "schema_version": "v1",
