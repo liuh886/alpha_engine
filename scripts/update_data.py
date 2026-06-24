@@ -633,10 +633,59 @@ def main(argv=None):
         return 0
     except DataUpdateFailure as exc:
         print(f"\n[!] Data update failed: {exc}")
+        # Print provider diagnostics if accounting is available
+        try:
+            # Try to access the accounting from the exception context
+            if hasattr(exc, 'accounting'):
+                print_provider_diagnostic(exc.accounting)
+        except Exception:
+            pass
         return 1
     except Exception as exc:
         print(f"\n[!] Unexpected error: {exc}")
         return 1
+
+
+def print_provider_diagnostic(accounting: UpdateAccounting) -> None:
+    """Print per-symbol provider attempt diagnostics."""
+    print("\n" + "=" * 60)
+    print("PROVIDER DIAGNOSTIC REPORT")
+    print("=" * 60)
+
+    for market, symbols in accounting.configured.items():
+        market_upper = market.upper()
+        print(f"\n[{market_upper}]")
+
+        for symbol in symbols:
+            # Determine status
+            if symbol in accounting.updated.get(market, set()):
+                status = "UPDATED"
+            elif symbol in accounting.reused.get(market, set()):
+                status = "REUSED"
+            elif symbol in accounting.failed.get(market, set()):
+                status = "FAILED"
+            elif symbol in accounting.excluded.get(market, set()):
+                status = "EXCLUDED"
+            elif symbol in accounting.stale.get(market, set()):
+                status = "STALE"
+            else:
+                status = "NOT ATTEMPTED"
+
+            # Get failure reason if any
+            reason = accounting.reasons.get("failed", {}).get(f"{market}:{symbol}", "")
+            if reason:
+                print(f"  {symbol}: {status} (error={reason})")
+            else:
+                print(f"  {symbol}: {status}")
+
+    # Summary
+    summary = accounting.summary_dict()
+    print(f"\n{'=' * 60}")
+    for market, counts in summary.get("markets", {}).items():
+        print(f"[{market.upper()}] {counts.get('updated', 0)} updated, "
+              f"{counts.get('failed', 0)} failed, "
+              f"{counts.get('reused', 0)} reused")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
