@@ -93,15 +93,37 @@ class TestModelPromotionGates:
 class TestFrontendStageDetection:
     """Test that frontend stage detection is correct."""
 
-    def test_parse_stage_uses_description_field(self):
-        """The frontend parseStage function parses stage from description field."""
-        # Read the actual frontend source
+    def test_parse_stage_function_removed(self):
+        """The frontend should NOT use parseStage(description) to derive stage."""
         models_page = Path(PROJECT_ROOT) / "qlib-dashboard" / "src" / "pages" / "ModelsPage.tsx"
         content = models_page.read_text(encoding="utf-8")
 
-        # Check that parseStage function exists and uses description
-        assert "function parseStage" in content
-        assert "description" in content
+        # parseStage function should be removed
+        assert "function parseStage" not in content, (
+            "ModelsPage still has parseStage function that derives stage from description. "
+            "Use v.stage field instead."
+        )
+
+    def test_models_page_uses_stage_field(self):
+        """ModelsPage should use v.stage field, not description parsing."""
+        models_page = Path(PROJECT_ROOT) / "qlib-dashboard" / "src" / "pages" / "ModelsPage.tsx"
+        content = models_page.read_text(encoding="utf-8")
+
+        # Should use v.stage for stage detection
+        assert "v.stage" in content, (
+            "ModelsPage should use v.stage field for stage detection"
+        )
+
+    def test_toggle_promote_uses_stage_field(self):
+        """togglePromote should use v.stage, not description.includes('RECOMMENDED')."""
+        models_page = Path(PROJECT_ROOT) / "qlib-dashboard" / "src" / "pages" / "ModelsPage.tsx"
+        content = models_page.read_text(encoding="utf-8")
+
+        # Should NOT use description.includes for RECOMMENDED detection
+        assert 'description").includes("RECOMMENDED")' not in content, (
+            "togglePromote still uses description.includes('RECOMMENDED'). "
+            "Use v.stage field instead."
+        )
 
     def test_model_version_has_stage_field(self):
         """The ModelVersion type should have a stage field."""
