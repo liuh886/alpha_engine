@@ -26,7 +26,7 @@ test("production release journey preserves snapshot, workflow, run, model, and e
   await expect(page).toHaveURL(new RegExp(`snapshot_id=${identity.snapshotId}`));
 
   await page.getByLabel("Tag").fill("release-candidate-42");
-  await page.getByRole("button", { name: "Execute" }).click();
+  await page.getByRole("button", { name: "Train + Backtest" }).click();
 
   await expect(page.getByText("Results: Release Candidate 42")).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('[data-outcome="success"]')).toContainText("Evidence identity is bound");
