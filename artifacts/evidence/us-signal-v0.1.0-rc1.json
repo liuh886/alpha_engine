@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-06-24T03:41:59Z",
+  "evidence_type": "signal",
+  "id": "us-signal-v0.1.0-rc1",
+  "metric_schema_version": "v1",
+  "metrics": {
+    "consistency": 0.62,
+    "coverage": 0.91,
+    "ic": 0.015,
+    "icir": 0.42,
+    "rank_ic": 0.013,
+    "sample_count": 18
+  },
+  "model_artifact_id": "us-model-v1",
+  "snapshot_id": "efb65b8b46ce593c",
+  "status": "pass"
+}

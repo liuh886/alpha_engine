@@ -1,0 +1,60 @@
+{
+  "benchmark": "sp500",
+  "checksums": {
+    "diagnostics.json": "613d51f866da11c7f6a4166577dd2dd266188c406ff1c5ebb6fe6e66cc484d28",
+    "labels.csv": "a612ae6432ec8cc5b7599948a42f75ddfa543ba182f95fc213801085075419d0",
+    "model.pkl": "cd6cd4f96118dcd93226bf4dcf61fbc5208f5704175bd0d7e5e565edb9843bf0",
+    "predictions.csv": "2db25dde636fb17ccd0c022a8abacde7267bc9d8bc09e24f1de2d133ec604285"
+  },
+  "code_revision": "dc25ea191c23f3ea6420591409316de98609f5a0",
+  "config": {
+    "market": "us",
+    "model": "LGBModel",
+    "n_estimators": 800
+  },
+  "costs": {
+    "close_cost": 0.0015,
+    "open_cost": 0.0005
+  },
+  "diagnostics_path": "diagnostics.json",
+  "features": [
+    "RSI_14",
+    "BB_upper",
+    "BB_lower",
+    "MACD",
+    "ATR_14",
+    "MFI_14",
+    "Stoch_K",
+    "vol_ratio_20_60",
+    "price_accel_20",
+    "momentum_20",
+    "mean_reversion_20"
+  ],
+  "id": "us-model-v1",
+  "label_schema": {
+    "horizon": 5,
+    "name": "return_5d"
+  },
+  "labels_path": "labels.csv",
+  "model_binary_path": "model.pkl",
+  "predictions_path": "predictions.csv",
+  "python_version": "3.12.0",
+  "seeds": {
+    "lightgbm": 7,
+    "numpy": 42
+  },
+  "snapshot_id": "efb65b8b46ce593c",
+  "test_window": [
+    "2025-07-01",
+    "2026-06-20"
+  ],
+  "train_window": [
+    "2020-01-01",
+    "2024-12-31"
+  ],
+  "uv_lock_hash": "3fa9cabffaa4fbc36ea0442fbaff3540bd604d0a4a2fecca644c40bdc02be21a",
+  "valid_window": [
+    "2025-01-01",
+    "2025-06-30"
+  ]
+}

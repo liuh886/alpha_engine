@@ -1,0 +1,19 @@
+{
+  "content_hash": "efb65b8b46ce593cd17a1285de141cbcde3b26b304684295c80948f8009eb064",
+  "created_at": "2026-06-24T03:41:59Z",
+  "date_range": {
+    "end": "2026-06-20",
+    "start": "2020-01-01"
+  },
+  "file_checksums": {
+    "calendar.txt": "9a66c1c8ac72ab2cc4ec14db820b767d334d7c5cdc2e1c0ed7bbea166c8caf91",
+    "universe.txt": "ad37e27ef1411cbd548b2a8163a5b28a1fbc70072de482f02629fe7891e53793"
+  },
+  "frequency": "day",
+  "quality_verdict": "pass",
+  "schema_version": "1",
+  "snapshot_id": "efb65b8b46ce593c",
+  "source_adapter": "alpha_engine.local_csv",
+  "storage_uri": "data/snapshots/us/efb65b8b46ce593c",
+  "universe": "us-sp500"
+}
