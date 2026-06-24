@@ -74,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
             "tests/test_signal_pipeline.py::TestAPIEndpoints::test_signal_grade_endpoint",
             "tests/test_signal_pipeline.py::TestAPIEndpoints::test_signal_performance_endpoint",
             "tests/test_signal_pipeline.py::TestAPIEndpoints::test_watchlist_summary_endpoint",
+            "tests/test_signal_pipeline.py::TestEndToEndPipeline::test_pipeline_produces_signals",
             "tests/test_signal_pipeline.py::TestWalkForward::test_walk_forward_positive_ic",
             "tests/test_signal_pipeline.py::TestWalkForward::test_walk_forward_runs",
         }
