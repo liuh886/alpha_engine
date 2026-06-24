@@ -20,6 +20,7 @@ class WorkflowRequest(BaseModel):
     model_type: str = "lgbm"
     profile: str = ""
     tag: str = ""
+    snapshot_id: str = ""
     details: dict[str, Any] | None = None
 
 
@@ -45,12 +46,16 @@ def run_train_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks):
             status_code=409, detail=f"Workflow already running: {active[0]['workflow_id']}"
         )
 
+    # Extract snapshot_id from top-level field or nested details
+    snapshot_id = payload.snapshot_id or (payload.details or {}).get("snapshot_id", "")
+
     background_tasks.add_task(
         run_training_pipeline,
         market=payload.market,
         model_type=payload.model_type,
         profile=payload.profile,
         tag=payload.tag,
+        snapshot_id=snapshot_id,
         details=payload.details,
     )
     return {

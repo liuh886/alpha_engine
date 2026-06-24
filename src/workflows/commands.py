@@ -21,6 +21,7 @@ class WorkflowCommandEnvelope:
     tag: str | None = None
     strategy_template: str | None = None
     cost_params: dict[str, Any] | str | None = None
+    snapshot_id: str | None = None
 
     @classmethod
     def from_backtest_request(
@@ -36,6 +37,7 @@ class WorkflowCommandEnvelope:
         tag: str | None = None,
         strategy_template: str | None = None,
         cost_params: dict[str, Any] | str | None = None,
+        snapshot_id: str | None = None,
     ) -> WorkflowCommandEnvelope:
         market = _require_market(market)
         profile_path = _require_profile_path(profile_path)
@@ -53,6 +55,7 @@ class WorkflowCommandEnvelope:
             tag=str(tag) if tag else None,
             strategy_template=str(strategy_template) if strategy_template else None,
             cost_params=cost_params,
+            snapshot_id=str(snapshot_id) if snapshot_id else None,
         )
 
     def to_argv(self, *, python_exe: str | list[str]) -> list[str]:
@@ -86,6 +89,7 @@ class WorkflowCommandEnvelope:
                 tag=self.tag,
                 strategy_template=self.strategy_template,
                 cost_params=self.cost_params,
+                snapshot_id=self.snapshot_id,
             )
 
         if self.action == "rebacktest":
@@ -114,6 +118,7 @@ class WorkflowCommandEnvelope:
                 tag=self.tag,
                 strategy_template=self.strategy_template,
                 cost_params=self.cost_params,
+                snapshot_id=self.snapshot_id,
             )
 
         raise ValueError(f"unsupported workflow command action: {self.action}")
@@ -130,6 +135,7 @@ class WorkflowCommandEnvelope:
             "tag": self.tag,
             "strategy_template": self.strategy_template,
             "cost_params": self.cost_params,
+            "snapshot_id": self.snapshot_id,
         }
 
 
@@ -164,6 +170,7 @@ def build_backtest_command_envelopes(
     tag: str | None = None,
     strategy_template: str | None = None,
     cost_params: dict[str, Any] | str | None = None,
+    snapshot_id: str | None = None,
 ) -> list[WorkflowCommandEnvelope]:
     return [
         WorkflowCommandEnvelope.from_backtest_request(
@@ -177,6 +184,7 @@ def build_backtest_command_envelopes(
             tag=tag,
             strategy_template=strategy_template,
             cost_params=cost_params,
+            snapshot_id=snapshot_id,
         )
     ]
 
@@ -194,6 +202,7 @@ def build_backtest_commands(
     tag: str | None = None,
     strategy_template: str | None = None,
     cost_params: dict[str, Any] | str | None = None,
+    snapshot_id: str | None = None,
 ) -> list[list[str]]:
     envelopes = build_backtest_command_envelopes(
         market=market,
@@ -206,6 +215,7 @@ def build_backtest_commands(
         tag=tag,
         strategy_template=strategy_template,
         cost_params=cost_params,
+        snapshot_id=snapshot_id,
     )
     return build_workflow_commands(python_exe=python_exe, envelopes=envelopes)
 
@@ -230,6 +240,7 @@ def _append_optional_flags(
     tag: str | None,
     strategy_template: str | None,
     cost_params: dict[str, Any] | str | None,
+    snapshot_id: str | None = None,
 ) -> list[str]:
     if tag:
         cmd += ["--tag", str(tag)]
@@ -240,4 +251,6 @@ def _append_optional_flags(
             cmd += ["--cost_params", json.dumps(cost_params)]
         else:
             cmd += ["--cost_params", str(cost_params)]
+    if snapshot_id:
+        cmd += ["--snapshot_id", str(snapshot_id)]
     return cmd
