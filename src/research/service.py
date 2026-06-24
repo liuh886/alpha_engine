@@ -39,9 +39,10 @@ class ResearchService:
 
     def resolve_snapshot_binding(self, snapshot_id: str = "") -> dict[str, str]:
         """Resolve an immutable snapshot ID to the exact staged provider path."""
+        from src.common.paths import SNAPSHOT_STORE
         from src.data.snapshot import DataSnapshot
 
-        store = self.project_root / "data" / "snapshots"
+        store = SNAPSHOT_STORE
         snapshot = (
             DataSnapshot.resolve_snapshot(snapshot_id, store=store)
             if snapshot_id
