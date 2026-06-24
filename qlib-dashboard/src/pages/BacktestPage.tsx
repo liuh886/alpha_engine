@@ -123,6 +123,25 @@ export function BacktestPage() {
     }
   }, []);
 
+  // Auto-resolve latest snapshot when none is provided
+  useEffect(() => {
+    if (snapshotId) return; // Already have a snapshot
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await releaseApi.getDataStatus();
+        const latestId = status?.data?.latest_snapshot_id;
+        if (!cancelled && latestId) {
+          setSnapshotId(latestId);
+          setWorkflowOutcome({ state: "success", reason: `Auto-resolved latest snapshot: ${latestId}` });
+        }
+      } catch {
+        // Silently fail — user can still navigate to Data page
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [snapshotId]);
+
   // Fetch stock ranking
   const fetchRanking = useCallback(async () => {
     setRankingLoading(true);
