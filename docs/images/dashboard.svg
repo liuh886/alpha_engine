@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#0f172a" rx="8"/>
+  <!-- Header -->
+  <rect x="0" y="0" width="960" height="56" fill="#1e293b"/>
+  <text x="24" y="36" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="600" fill="#f8fafc">AlphaEngine</text>
+  <text x="780" y="36" font-family="Inter, system-ui, sans-serif" font-size="13" fill="#94a3b8">Research Dashboard</text>
+  <!-- Metric Cards -->
+  <rect x="24" y="76" width="220" height="100" rx="8" fill="#1e293b"/>
+  <text x="44" y="106" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#64748b">Annual Return</text>
+  <text x="44" y="140" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="#22c55e">+32.4%</text>
+  <rect x="260" y="76" width="220" height="100" rx="8" fill="#1e293b"/>
+  <text x="280" y="106" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#64748b">Sharpe Ratio</text>
+  <text x="280" y="140" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="#38bdf8">1.82</text>
+  <rect x="496" y="76" width="220" height="100" rx="8" fill="#1e293b"/>
+  <text x="516" y="106" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#64748b">Max Drawdown</text>
+  <text x="516" y="140" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="#ef4444">-8.7%</text>
+  <rect x="732" y="76" width="204" height="100" rx="8" fill="#1e293b"/>
+  <text x="752" y="106" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#64748b">Win Rate</text>
+  <text x="752" y="140" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="#a78bfa">61.3%</text>
+  <!-- Equity Curve Area -->
+  <rect x="24" y="196" width="680" height="310" rx="8" fill="#1e293b"/>
+  <text x="44" y="226" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="600" fill="#f8fafc">Equity Curve</text>
+  <!-- Grid lines -->
+  <line x1="60" y1="250" x2="680" y2="250" stroke="#334155" stroke-width="0.5"/>
+  <line x1="60" y1="300" x2="680" y2="300" stroke="#334155" stroke-width="0.5"/>
+  <line x1="60" y1="350" x2="680" y2="350" stroke="#334155" stroke-width="0.5"/>
+  <line x1="60" y1="400" x2="680" y2="400" stroke="#334155" stroke-width="0.5"/>
+  <line x1="60" y1="450" x2="680" y2="450" stroke="#334155" stroke-width="0.5"/>
+  <!-- Equity curve path (placeholder) -->
+  <path d="M60 440 L120 430 L180 435 L240 410 L300 390 L360 370 L420 340 L480 320 L540 300 L600 280 L660 260"
+        fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M60 440 L120 430 L180 435 L240 410 L300 390 L360 370 L420 340 L480 320 L540 300 L600 280 L660 260 L660 480 L60 480 Z"
+        fill="#22c55e" opacity="0.08"/>
+  <!-- Benchmark line -->
+  <path d="M60 440 L120 438 L180 436 L240 430 L300 425 L360 420 L420 415 L480 410 L540 405 L600 400 L660 395"
+        fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 3"/>
+  <text x="580" y="250" font-family="Inter, system-ui, sans-serif" font-size="11" fill="#22c55e">Strategy</text>
+  <text x="580" y="268" font-family="Inter, system-ui, sans-serif" font-size="11" fill="#64748b">Benchmark (CSI300)</text>
+  <!-- Holdings Panel -->
+  <rect x="720" y="196" width="216" height="310" rx="8" fill="#1e293b"/>
+  <text x="740" y="226" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="600" fill="#f8fafc">Top Holdings</text>
+  <text x="740" y="260" font-family="monospace" font-size="12" fill="#e2e8f0">600519.SH  <tspan fill="#22c55e">+2.1%</tspan></text>
+  <text x="740" y="284" font-family="monospace" font-size="12" fill="#e2e8f0">000858.SZ  <tspan fill="#22c55e">+1.8%</tspan></text>
+  <text x="740" y="308" font-family="monospace" font-size="12" fill="#e2e8f0">601318.SH  <tspan fill="#ef4444">-0.5%</tspan></text>
+  <text x="740" y="332" font-family="monospace" font-size="12" fill="#e2e8f0">000333.SZ  <tspan fill="#22c55e">+3.2%</tspan></text>
+  <text x="740" y="356" font-family="monospace" font-size="12" fill="#e2e8f0">002415.SZ  <tspan fill="#22c55e">+0.9%</tspan></text>
+  <!-- Placeholder watermark -->
+  <text x="480" y="520" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" fill="#334155">[ Placeholder — replace with actual screenshot ]</text>
+</svg>
