@@ -528,7 +528,7 @@ def build_db(model_id: str = "", sync_yaml: bool = False):
                 if not m_dir.exists():
                     continue
                 for exp_dir in m_dir.iterdir():
-                    if not exp_dir.is_dir() or exp_dir.name in ["0", ".trash"]:
+                    if not exp_dir.is_dir() or exp_dir.name == ".trash":
                         continue
                     cand = exp_dir / run_id
                     if cand.exists():

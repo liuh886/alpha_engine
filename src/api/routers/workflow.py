@@ -1,3 +1,4 @@
+import time
 from typing import Any
 
 import structlog
@@ -11,6 +12,9 @@ from src.research.workflow_types import ResearchWorkflowRequest
 from src.workflows.hooks import get_task_slug, run_rebacktest_pipeline, run_training_pipeline
 
 logger = structlog.get_logger()
+
+# Stale lock threshold: 4 hours
+_STALE_LOCK_SECONDS = 14400
 
 router = APIRouter(tags=["workflows"])
 
@@ -30,21 +34,40 @@ class ResearchCycleRequest(BaseModel):
     auto_promote: bool = True
 
 
+def _check_workflow_mutex(gov: GovernanceService, market: str, name_pattern: str) -> None:
+    """Check for running workflows with stale-lock override."""
+    now = time.time()
+    active = [
+        w
+        for w in gov.query_workflows(status="RUNNING")
+        if w["market"] == str(market).upper() and name_pattern in str(w["name"])
+    ]
+    if not active:
+        return
+
+    # Check if the running workflow is stale (older than 4 hours)
+    for w in active:
+        updated_at = w.get("updated_at", 0)
+        if now - updated_at > _STALE_LOCK_SECONDS:
+            logger.warning(
+                "Workflow is RUNNING but stale, overriding lock",
+                workflow_id=w["workflow_id"],
+                age_seconds=int(now - updated_at),
+            )
+            gov.update_workflow_status(w["workflow_id"], "FAILED")
+        else:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Workflow already running: {w['workflow_id']}",
+            )
+
+
 @router.post("/train")
 def run_train_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks):
     gov = GovernanceService(PROJECT_ROOT)
     workflow_id = get_task_slug("run", payload.market)
 
-    # Check if already running (mutex)
-    active = [
-        w
-        for w in gov.query_workflows(status="RUNNING")
-        if w["market"] == str(payload.market).upper() and "Pipeline Run" in str(w["name"])
-    ]
-    if active:
-        raise HTTPException(
-            status_code=409, detail=f"Workflow already running: {active[0]['workflow_id']}"
-        )
+    _check_workflow_mutex(gov, payload.market, "Pipeline Run")
 
     # Extract snapshot_id from top-level field or nested details
     snapshot_id = payload.snapshot_id or (payload.details or {}).get("snapshot_id", "")
@@ -70,15 +93,7 @@ def run_backtest_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks)
     gov = GovernanceService(PROJECT_ROOT)
     workflow_id = get_task_slug("rebacktest", payload.market)
 
-    active = [
-        w
-        for w in gov.query_workflows(status="RUNNING")
-        if w["market"] == str(payload.market).upper() and "Rebacktest" in str(w["name"])
-    ]
-    if active:
-        raise HTTPException(
-            status_code=409, detail=f"Workflow already running: {active[0]['workflow_id']}"
-        )
+    _check_workflow_mutex(gov, payload.market, "Rebacktest")
 
     background_tasks.add_task(
         run_rebacktest_pipeline,
@@ -104,17 +119,7 @@ def run_research_cycle_wf(payload: ResearchCycleRequest, background_tasks: Backg
     gov = GovernanceService(PROJECT_ROOT)
     get_task_slug("research-cycle", payload.market)
 
-    # Mutex check
-    active = [
-        w
-        for w in gov.query_workflows(status="RUNNING")
-        if w["market"] == str(payload.market).upper() and "Research Cycle" in str(w["name"])
-    ]
-    if active:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Research cycle already running: {active[0]['workflow_id']}",
-        )
+    _check_workflow_mutex(gov, payload.market, "Research Cycle")
 
     def _run():
         try:
