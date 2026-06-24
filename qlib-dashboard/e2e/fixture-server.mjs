@@ -36,6 +36,7 @@ async function handleApi(request, response, url) {
       ? json(response, 200, { ok: true, username: "release-user" })
       : json(response, 401, { detail: "Invalid credentials" });
   }
+  if (url.pathname === "/api/system/health") return json(response, 200, { ok: true, status: "online", demo_mode: true, timestamp: Date.now() / 1000, uptime: 9999 });
   if (url.pathname === "/artifacts/dashboard.json" || url.pathname === "/api/artifacts/dashboard-db") {
     return json(response, 200, dashboardArtifact);
   }

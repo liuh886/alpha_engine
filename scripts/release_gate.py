@@ -95,11 +95,7 @@ def main(argv: list[str] | None = None) -> int:
         verdict_path = (PROJECT_ROOT / args.evidence_dir).resolve() / "release_gate_verdict.json"
         verdict_path.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
     _emit(result, output=args.output)
-    if result["status"] == "pass":
-        return 0
-    if args.allow_verification_failure and quality_report and quality_report.get("status") == "pass":
-        return 0
-    return 1
+    return 0 if result["status"] == "pass" else 1
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -120,11 +116,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Project-relative directory for command logs and machine-readable evidence.",
     )
     parser.add_argument("--output", help="Optional path for the final JSON verdict.")
-    parser.add_argument(
-        "--allow-verification-failure",
-        action="store_true",
-        help="Exit 0 even if candidate verification fails (quality gates still checked).",
-    )
     return parser
 
 
