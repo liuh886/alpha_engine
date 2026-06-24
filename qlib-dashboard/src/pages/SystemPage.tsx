@@ -21,7 +21,7 @@ import { Loader2, RefreshCw, Activity, Shield, FlaskConical,
 export function SystemHealthBadge() {
   const { data, error } = useQuery<{ ok: boolean, status: string }>({
     queryKey: 'system_health',
-    fetcher: async (signal) => apiClient.get('/api/health', { signal, timeout: 3000 }),
+    fetcher: async (signal) => apiClient.get('/api/system/health', { signal, timeout: 3000 }),
   });
   
   if (error) {
