@@ -308,7 +308,7 @@ describe("ModelsPage", () => {
     // Find the promote button for the staging model (not the recommended one)
     const row = getRowContaining("release-candidate-42");
     expect(row).toBeTruthy();
-    const promoteButton = within(row!).getByLabelText(/Promote model to recommended/i);
+    const promoteButton = within(row!).getByLabelText(/Promote to recommended/i);
     fireEvent.click(promoteButton);
 
     await waitFor(() => {
