@@ -454,15 +454,16 @@ export function BacktestPage() {
 
             <Button
               onClick={startBacktest}
-              disabled={workflowStatus === "running"}
+              disabled={workflowStatus === "running" || !snapshotId}
               className="h-7 gap-1.5 px-4 text-xs"
+              title={!snapshotId ? "Waiting for snapshot resolution..." : undefined}
             >
               {workflowStatus === "running" ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
                 <Play className="h-3 w-3 fill-current" />
               )}
-              {workflowStatus === "running" ? "Running..." : "Execute"}
+              {workflowStatus === "running" ? "Running..." : !snapshotId ? "Awaiting Snapshot" : "Execute"}
             </Button>
 
             {workflowStatus !== "idle" && (
@@ -489,8 +490,16 @@ export function BacktestPage() {
 
           {/* Validation error */}
           {validationError && (
-            <div className="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-600">
-              {validationError}
+            <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded text-sm text-amber-700 font-medium">
+              ⚠️ {validationError}
+            </div>
+          )}
+
+          {/* Snapshot loading indicator */}
+          {!snapshotId && !validationError && (
+            <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-600">
+              <Loader2 className="h-3 w-3 animate-spin inline mr-2" />
+              Resolving latest data snapshot...
             </div>
           )}
 
