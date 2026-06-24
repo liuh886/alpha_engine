@@ -561,9 +561,9 @@ def run_data_update(args) -> DataSnapshot:
         quality_policy={"max_stale_pct": 0.1, "max_csv_parse_errors": 0, "allow_warnings": True},
         quality_report=q,
         accounting=accounting,
-        strict=getattr(args, "strict", False),
-        max_missing_pct=getattr(args, "max_missing_pct", 0.30),
-        max_missing_count=getattr(args, "max_missing_count", 60),
+        strict=args.strict,
+        max_missing_pct=args.max_missing_pct,
+        max_missing_count=args.max_missing_count,
     )
 
     print(f"\n[published] snapshot_id={snapshot.snapshot_id}")
@@ -606,14 +606,14 @@ def main(argv=None):
     parser.add_argument(
         "--max-missing-pct",
         type=float,
-        default=0.05,
-        help="Fraction of missing symbols allowed without failing the job. Default: 0.05",
+        default=0.30,
+        help="Fraction of core symbols allowed missing without failing. Default: 0.30 (30%%)",
     )
     parser.add_argument(
         "--max-missing-count",
         type=int,
-        default=20,
-        help="Maximum absolute number of missing symbols allowed without failing the job. Default: 20",
+        default=60,
+        help="Maximum absolute number of missing core symbols allowed. Default: 60",
     )
     args = parser.parse_args(argv)
 

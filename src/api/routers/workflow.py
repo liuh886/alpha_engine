@@ -1,4 +1,3 @@
-import time
 from typing import Any
 
 import structlog
@@ -36,7 +35,9 @@ class ResearchCycleRequest(BaseModel):
 
 def _check_workflow_mutex(gov: GovernanceService, market: str, name_pattern: str) -> None:
     """Check for running workflows with stale-lock override."""
-    now = time.time()
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
     active = [
         w
         for w in gov.query_workflows(status="RUNNING")
@@ -47,14 +48,23 @@ def _check_workflow_mutex(gov: GovernanceService, market: str, name_pattern: str
 
     # Check if the running workflow is stale (older than 4 hours)
     for w in active:
-        updated_at = w.get("updated_at", 0)
-        if now - updated_at > _STALE_LOCK_SECONDS:
+        updated_at_str = w.get("updated_at")
+        if updated_at_str:
+            try:
+                updated_at = datetime.fromisoformat(updated_at_str)
+                age_seconds = (now - updated_at).total_seconds()
+            except (ValueError, TypeError):
+                age_seconds = 0
+        else:
+            age_seconds = 0
+
+        if age_seconds > _STALE_LOCK_SECONDS:
             logger.warning(
                 "Workflow is RUNNING but stale, overriding lock",
                 workflow_id=w["workflow_id"],
-                age_seconds=int(now - updated_at),
+                age_seconds=int(age_seconds),
             )
-            gov.update_workflow_status(w["workflow_id"], "FAILED")
+            gov.update_workflow_status(w["workflow_id"], status="FAILED")
         else:
             raise HTTPException(
                 status_code=409,
