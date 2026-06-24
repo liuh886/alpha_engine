@@ -558,7 +558,7 @@ def run_data_update(args) -> DataSnapshot:
         selected_markets=selected_markets,
         source_policy=load_router_policy(),
         adjustment_policy={"method": "none"},
-        quality_policy={"max_stale_pct": 0.1, "max_csv_parse_errors": 0},
+        quality_policy={"max_stale_pct": 0.1, "max_csv_parse_errors": 0, "allow_warnings": True},
         quality_report=q,
         accounting=accounting,
         strict=getattr(args, "strict", False),

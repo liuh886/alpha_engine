@@ -75,7 +75,7 @@ class DataSnapshot:
         cls,
         data_dir: str | Path,
         *,
-        store: str | Path = "data/snapshots",
+        store: str | Path | None = None,
         source_adapter: str = "",
         source_policy: dict[str, Any] | None = None,
         schema_version: str = "1",
@@ -89,6 +89,8 @@ class DataSnapshot:
         update_summary: dict[str, Any] | None = None,
         quality_verdict: str = "pass",
     ) -> DataSnapshot:
+        from src.common.paths import SNAPSHOT_STORE
+
         data_dir = Path(data_dir).resolve()
         if not data_dir.is_dir():
             raise FileNotFoundError(f"data_dir not found: {data_dir}")
@@ -99,7 +101,7 @@ class DataSnapshot:
 
         file_checksums = _checksums(data_dir, data_files)
         content_hash = _compute_aggregate_hash(file_checksums)
-        store = Path(store).resolve()
+        store = Path(store if store is not None else SNAPSHOT_STORE).resolve()
         provisional = SnapshotManifest(
             content_hash=content_hash,
             file_checksums=file_checksums,
@@ -182,10 +184,12 @@ class DataSnapshot:
 
     @classmethod
     def resolve_snapshot(
-        cls, snapshot_id: str, *, store: str | Path = "data/snapshots"
+        cls, snapshot_id: str, *, store: str | Path | None = None
     ) -> DataSnapshot:
+        from src.common.paths import SNAPSHOT_STORE
+
         snapshot_id = str(snapshot_id or "").strip()
-        store = Path(store).resolve()
+        store = Path(store if store is not None else SNAPSHOT_STORE).resolve()
         snapshot_dir = store / _SNAPSHOTS_DIR / snapshot_id
         manifest_path = snapshot_dir / _MANIFEST_NAME
         if not manifest_path.exists():
@@ -196,9 +200,11 @@ class DataSnapshot:
 
     @classmethod
     def publish_snapshot(
-        cls, snapshot_id: str, *, store: str | Path = "data/snapshots"
+        cls, snapshot_id: str, *, store: str | Path | None = None
     ) -> None:
-        store = Path(store).resolve()
+        from src.common.paths import SNAPSHOT_STORE
+
+        store = Path(store if store is not None else SNAPSHOT_STORE).resolve()
         snapshot = cls.resolve_snapshot(snapshot_id, store=store)
         if snapshot.manifest.quality_verdict != "pass":
             raise ValueError(
@@ -213,9 +219,11 @@ class DataSnapshot:
 
     @classmethod
     def get_latest_snapshot(
-        cls, *, store: str | Path = "data/snapshots"
+        cls, *, store: str | Path | None = None
     ) -> DataSnapshot | None:
-        store = Path(store).resolve()
+        from src.common.paths import SNAPSHOT_STORE
+
+        store = Path(store if store is not None else SNAPSHOT_STORE).resolve()
         latest_path = store / _LATEST_NAME
         if not latest_path.exists():
             return None

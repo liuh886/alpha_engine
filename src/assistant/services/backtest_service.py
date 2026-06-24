@@ -37,6 +37,7 @@ class BacktestService:
         start = str(payload.get("start") or "2025-01-01").strip() or "2025-01-01"
         end = str(payload.get("end") or "latest").strip() or "latest"
         tag = str(payload.get("tag") or "").strip() or None
+        snapshot_id = str(payload.get("snapshot_id") or "").strip() or None
 
         strategy_template = payload.get("strategy_template")
         cost_params = payload.get("cost_params")
@@ -87,6 +88,7 @@ class BacktestService:
             tag=tag,
             strategy_template=strategy_template,
             cost_params=cost_params,
+            snapshot_id=snapshot_id,
         )
         commands = build_workflow_commands(python_exe=self._python_exe, envelopes=command_envelopes)
 
