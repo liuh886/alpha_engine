@@ -304,7 +304,7 @@ def test_model_promotion_requires_existing_artifact(model_client, monkeypatch):
     assert response.json()["code"] == "MODEL_ARTIFACT_NOT_FOUND"
 
 
-def test_model_promotion_gate_failure_is_conflict(model_client, monkeypatch):
+def test_model_promotion_gate_failure_returns_ok_false(model_client, monkeypatch):
     artifact = {"id": "model-1"}
     service = _ModelService(promotion={"ok": False, "gate_failures": ["missing metrics"]})
     monkeypatch.setattr(models, "get_model_index", lambda: _ModelIndex(artifact))
@@ -315,9 +315,10 @@ def test_model_promotion_gate_failure_is_conflict(model_client, monkeypatch):
         json={"schema_version": "v1", "artifact_id": "model-1", "stage": "RECOMMENDED"},
     )
 
-    assert response.status_code == 409
+    assert response.status_code == 200
+    assert response.json()["ok"] is False
     assert response.json()["code"] == "MODEL_PROMOTION_CONFLICT"
-    assert response.json()["detail"]["gate_failures"] == ["missing metrics"]
+    assert response.json()["gate_failures"] == ["missing metrics"]
 
 
 def test_model_promotion_success_uses_exact_artifact(model_client, monkeypatch):
