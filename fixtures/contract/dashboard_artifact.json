@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-06-20T08:00:00Z",
+  "models": [
+    {
+      "id": "artifact-release-42",
+      "run_id": "run-release-42",
+      "name": "Release Candidate 42",
+      "market": "cn",
+      "date": "2026-06-20",
+      "params": { "model_path": "/fixtures/release-42.pkl", "data_snapshot_id": "snapshot-cn-20260620" },
+      "data": {
+        "indicators": {
+          "total_return": 0.12,
+          "annual_return": 0.18,
+          "sharpe": 1.42,
+          "information_ratio": 0.91,
+          "max_drawdown": -0.08,
+          "annual_volatility": 0.16
+        },
+        "report_normal": {
+          "columns": ["account", "return", "bench"],
+          "index": ["2026-01-02T00:00:00", "2026-06-19T00:00:00"],
+          "data": [[1, 0, 0], [1.12, 0.12, 0.05]]
+        },
+        "positions_normal": [
+          { "date": "2026-06-19", "instrument": "SH600000", "weight": 0.05 }
+        ],
+        "attribution_normal": [
+          { "instrument": "SH600000", "pnl": 0.12, "net_pnl": 0.12, "yield": 0.12 }
+        ]
+      }
+    },
+    {
+      "id": "artifact-baseline-01",
+      "run_id": "run-baseline-01",
+      "name": "Baseline Comparator",
+      "market": "cn",
+      "date": "2026-06-19",
+      "params": { "model_path": "/fixtures/baseline.pkl", "data_snapshot_id": "snapshot-cn-20260620" },
+      "data": {
+        "indicators": {
+          "total_return": 0.08,
+          "annual_return": 0.11,
+          "sharpe": 0.88,
+          "information_ratio": 0.54,
+          "max_drawdown": -0.11,
+          "annual_volatility": 0.18
+        },
+        "report_normal": {
+          "columns": ["account", "return", "bench"],
+          "index": ["2026-01-02T00:00:00", "2026-06-19T00:00:00"],
+          "data": [[1, 0, 0], [1.12, 0.12, 0.05]]
+        },
+        "positions_normal": []
+      }
+    }
+  ]
+}

@@ -5,99 +5,16 @@ import { fileURLToPath } from "node:url";
 
 const port = Number(process.env.PORT || 43173);
 const root = fileURLToPath(new URL("../dist/", import.meta.url));
+const fixturesDir = fileURLToPath(new URL("../../fixtures/contract/", import.meta.url));
 const expectedAuth = `Basic ${Buffer.from("release-user:release-pass").toString("base64")}`;
-const snapshotId = "snapshot-cn-20260620";
-const workflowId = "workflow.run.cn";
-const runId = "run-release-42";
-const modelId = "artifact-release-42";
 
-const report = (start, end) => ({
-  columns: ["account", "return", "bench"],
-  index: [start, end],
-  data: [[1, 0, 0], [1.12, 0.12, 0.05]],
-});
+// Load contract fixtures (single source of truth for E2E, demo mode, and tests)
+const identity = JSON.parse(await readFile(join(fixturesDir, "identity.json"), "utf8"));
+const dashboardArtifact = JSON.parse(await readFile(join(fixturesDir, "dashboard_artifact.json"), "utf8"));
+const modelVersionsResponse = JSON.parse(await readFile(join(fixturesDir, "model_versions.json"), "utf8"));
+const modelVersions = modelVersionsResponse.versions || modelVersionsResponse;
 
-const dashboardArtifact = {
-  generated_at: "2026-06-20T08:00:00Z",
-  models: [
-    {
-      id: modelId,
-      run_id: runId,
-      name: "Release Candidate 42",
-      market: "cn",
-      date: "2026-06-20",
-      params: { model_path: "/fixtures/release-42.pkl", data_snapshot_id: snapshotId },
-      data: {
-        indicators: {
-          total_return: 0.12,
-          annual_return: 0.18,
-          sharpe: 1.42,
-          information_ratio: 0.91,
-          max_drawdown: -0.08,
-          annual_volatility: 0.16,
-        },
-        report_normal: report("2026-01-02T00:00:00", "2026-06-19T00:00:00"),
-        positions_normal: [
-          { date: "2026-06-19", instrument: "SH600000", weight: 0.05 }
-        ],
-        attribution_normal: [
-          { instrument: "SH600000", pnl: 0.12, net_pnl: 0.12, yield: 0.12 }
-        ],
-      },
-    },
-    {
-      id: "artifact-baseline-01",
-      run_id: "run-baseline-01",
-      name: "Baseline Comparator",
-      market: "cn",
-      date: "2026-06-19",
-      params: { model_path: "/fixtures/baseline.pkl", data_snapshot_id: snapshotId },
-      data: {
-        indicators: {
-          total_return: 0.08,
-          annual_return: 0.11,
-          sharpe: 0.88,
-          information_ratio: 0.54,
-          max_drawdown: -0.11,
-          annual_volatility: 0.18,
-        },
-        report_normal: report("2026-01-02T00:00:00", "2026-06-19T00:00:00"),
-        positions_normal: [],
-      },
-    },
-  ],
-};
-
-const modelVersions = [
-  {
-    id: modelId,
-    tag: "release-candidate-42",
-    name: "Release Candidate 42",
-    market: "cn",
-    model_type: "lgbm",
-    run_id: runId,
-    snapshot_id: snapshotId,
-    evidence_id: modelId,
-    created_at: "2026-06-20T07:55:00Z",
-    description: "Stage: STAGING",
-    params: { data_snapshot_id: snapshotId },
-    metrics: { sharpe: 1.42, annualized_return: 0.18, max_drawdown: -0.08 },
-  },
-  {
-    id: "artifact-baseline-01",
-    tag: "baseline-comparator",
-    name: "Baseline Comparator",
-    market: "cn",
-    model_type: "lgbm",
-    run_id: "run-baseline-01",
-    snapshot_id: snapshotId,
-    evidence_id: "artifact-baseline-01",
-    created_at: "2026-06-19T07:55:00Z",
-    description: "Stage: STAGING",
-    params: { data_snapshot_id: snapshotId },
-    metrics: { sharpe: 0.88, annualized_return: 0.11, max_drawdown: -0.11 },
-  },
-];
+const { snapshot_id: snapshotId, workflow_id: workflowId, run_id: runId, model_id: modelId } = identity;
 
 function json(response, status, payload) {
   response.writeHead(status, {
@@ -119,6 +36,7 @@ async function handleApi(request, response, url) {
       ? json(response, 200, { ok: true, username: "release-user" })
       : json(response, 401, { detail: "Invalid credentials" });
   }
+  if (url.pathname === "/api/system/health") return json(response, 200, { ok: true, status: "online", demo_mode: true, timestamp: Date.now() / 1000, uptime: 9999 });
   if (url.pathname === "/artifacts/dashboard.json" || url.pathname === "/api/artifacts/dashboard-db") {
     return json(response, 200, dashboardArtifact);
   }

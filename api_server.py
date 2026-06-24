@@ -116,6 +116,8 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
 
 # 1. API Routers (Must come BEFORE static mount)
 
+FIXTURES_DIR = PROJECT_ROOT / "fixtures" / "contract"
+
 if DEMO_MODE:
     import json
 
@@ -131,9 +133,9 @@ if DEMO_MODE:
 
     @app.get("/api/models")
     def demo_models():
-        demo_path = PROJECT_ROOT / "artifacts" / "demo" / "demo_models.json"
-        if demo_path.exists():
-            return json.loads(demo_path.read_text(encoding="utf-8"))
+        fixture_path = FIXTURES_DIR / "model_versions.json"
+        if fixture_path.exists():
+            return json.loads(fixture_path.read_text(encoding="utf-8"))
         return {"ok": True, "versions": []}
 
     @app.get("/api/data/status")
@@ -162,13 +164,20 @@ if DEMO_MODE:
     def demo_jobs():
         return {"ok": True, "jobs": []}
 
+    @app.get("/api/artifacts/dashboard-db")
+    def demo_dashboard_db():
+        fixture_path = FIXTURES_DIR / "dashboard_artifact.json"
+        if fixture_path.exists():
+            return json.loads(fixture_path.read_text(encoding="utf-8"))
+        return {"models": []}
+
 
 @app.get("/artifacts/dashboard.json")
 def get_dashboard_json():
     import json
 
     if DEMO_MODE:
-        db_path = PROJECT_ROOT / "artifacts" / "demo" / "dashboard_db.json"
+        db_path = FIXTURES_DIR / "dashboard_artifact.json"
     else:
         db_path = PROJECT_ROOT / "artifacts" / "dashboard" / "dashboard_db.json"
 

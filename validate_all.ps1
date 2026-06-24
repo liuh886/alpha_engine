@@ -23,11 +23,7 @@ if ($LASTEXITCODE -ne 0) { throw "uv build failed" }
 Write-Host "`n=== Gate 6: npm ci ===" -ForegroundColor Cyan
 Push-Location qlib-dashboard
 try {
-    # Windows EPERM mitigation: stop lingering processes
-    Stop-Process -Name "node", "esbuild" -ErrorAction SilentlyContinue -Force
-    Start-Sleep -Seconds 1
-    
-    # Retry logic for npm ci
+    # Retry logic for npm ci — only kill processes after first failure
     $maxRetries = 3
     $retryCount = 0
     $success = $false
@@ -37,6 +33,20 @@ try {
             $success = $true
         } else {
             $retryCount++
+            if ($retryCount -eq 1) {
+                # First failure: targeted cleanup of qlib-dashboard-related processes only
+                Write-Host "npm ci failed; attempting targeted cleanup of qlib-dashboard processes..." -ForegroundColor Yellow
+                Get-CimInstance Win32_Process |
+                    Where-Object {
+                        ($_.Name -match "node|esbuild") -and
+                        ($_.CommandLine -match "qlib-dashboard|esbuild")
+                    } |
+                    ForEach-Object {
+                        Write-Host "  Stopping PID $($_.ProcessId): $($_.Name)" -ForegroundColor DarkYellow
+                        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+                    }
+                Start-Sleep -Seconds 2
+            }
             Write-Host "npm ci failed, retrying ($retryCount/$maxRetries)..." -ForegroundColor Yellow
             Start-Sleep -Seconds 2
         }

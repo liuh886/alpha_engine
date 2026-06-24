@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "e2e": "npm run build && playwright test",
+    "e2e:demo-real": "npx playwright test --config=playwright.demo.config.ts",
     "check:bundle-budget": "node scripts/check-bundle-budget.mjs"
   },
   "dependencies": {
