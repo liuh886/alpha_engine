@@ -179,6 +179,27 @@ def _run_playwright(
     spec: CommandSpec, output_dir: Path, environment: dict[str, str]
 ) -> CommandResult:
     started = time.perf_counter()
+
+    # Install Playwright browsers if not already present
+    install_result = subprocess.run(
+        _executable_argv(("npx", "playwright", "install", "chromium")),
+        cwd=spec.cwd,
+        env=environment,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if install_result.returncode != 0:
+        return _capture_result(
+            spec,
+            output_dir,
+            started,
+            install_result.returncode,
+            "Playwright browser install failed.\n" + install_result.stdout + install_result.stderr,
+        )
+
     preview_argv = _executable_argv(
         ("npm", "run", "preview", "--", "--host", "127.0.0.1", "--port", "8000", "--strictPort")
     )
