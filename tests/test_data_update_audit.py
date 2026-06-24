@@ -22,25 +22,17 @@ class TestUpdateThresholds:
 
     def test_argparse_default_max_missing_pct(self):
         """--max-missing-pct default should be 0.30 (30%)."""
-        import argparse
+        # Use the actual update_data.py parser
+        import sys
+        sys.path.insert(0, str(PROJECT_ROOT))
 
-        # Parse empty argv to get defaults
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--max-missing-pct", type=float, default=0.30)
-        parser.add_argument("--max-missing-count", type=int, default=60)
-        parser.add_argument("--strict", action="store_true")
-        parser.add_argument("--market", default="all")
-        parser.add_argument("--lookback-days", type=int, default=30)
-        parser.add_argument("--full", action="store_true")
-        parser.add_argument("--start", default="2020-01-01")
+        # Read the actual argparse defaults from the source
+        source_file = PROJECT_ROOT / "scripts" / "update_data.py"
+        content = source_file.read_text(encoding="utf-8")
 
-        args = parser.parse_args([])
-        assert args.max_missing_pct == 0.30, (
-            f"Expected max_missing_pct=0.30, got {args.max_missing_pct}"
-        )
-        assert args.max_missing_count == 60, (
-            f"Expected max_missing_count=60, got {args.max_missing_count}"
-        )
+        # Check that the defaults are set correctly in the argparse definition
+        assert "default=0.30" in content, "update_data.py should have default=0.30 for max_missing_pct"
+        assert "default=60" in content, "update_data.py should have default=60 for max_missing_count"
 
     def test_strict_mode_flag_exists(self):
         """--strict flag should be available."""

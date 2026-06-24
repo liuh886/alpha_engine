@@ -27,7 +27,7 @@ import {
 import { ReleaseOutcome } from "@/components/ReleaseOutcome";
 import type { WorkflowStatusEntry } from "@/lib/api-types";
 
-type WorkflowStatus = "idle" | "running" | "succeeded" | "failed";
+type WorkflowStatus = "idle" | "running" | "succeeded" | "failed" | "research_candidate";
 
 const SESSION_KEY = "alpha_engine_active_workflow";
 
@@ -243,6 +243,16 @@ export function BacktestPage() {
       completionRef.current = `${workflow.workflow_id}:${workflow.status}`;
       saveWorkflowState(null);
       setWorkflowStatus("succeeded");
+      void loadExactResult(workflow);
+    } else if (status === "RESEARCH_CANDIDATE") {
+      // Terminal partial result: model trained but promotion gates did not pass
+      completionRef.current = `${workflow.workflow_id}:${workflow.status}`;
+      saveWorkflowState(null);
+      setWorkflowStatus("research_candidate");
+      setWorkflowOutcome({
+        state: "success",
+        reason: "Model trained and backtested, but promotion gates did not pass. Model is available as a research candidate.",
+      });
       void loadExactResult(workflow);
     } else if (status === "FAILED") {
       completionRef.current = `${workflow.workflow_id}:${workflow.status}`;
@@ -470,18 +480,19 @@ export function BacktestPage() {
               <Badge
                 variant={
                   workflowStatus === "succeeded" ? "default" :
-                  workflowStatus === "failed" ? "destructive" : "outline"
+                  workflowStatus === "failed" ? "destructive" :
+                  workflowStatus === "research_candidate" ? "secondary" : "outline"
                 }
                 className="gap-1 text-xs"
               >
                 {workflowStatus === "running" && <Loader2 className="h-3 w-3 animate-spin" />}
                 {workflowStatus === "succeeded" && <CheckCircle2 className="h-3 w-3" />}
                 {workflowStatus === "failed" && <XCircle className="h-3 w-3" />}
-                {workflowStatus}
+                {workflowStatus === "research_candidate" ? "Research Candidate" : workflowStatus}
               </Badge>
             )}
 
-            {(workflowStatus === "succeeded" || workflowStatus === "failed") && (
+            {(workflowStatus === "succeeded" || workflowStatus === "failed" || workflowStatus === "research_candidate") && (
               <Button variant="ghost" size="sm" onClick={resetToIdle} className="h-7 text-xs text-muted-foreground">
                 New Run
               </Button>

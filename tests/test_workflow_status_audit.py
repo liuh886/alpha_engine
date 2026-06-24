@@ -169,3 +169,50 @@ class TestWorkflowApiEndpoint:
 
         routes = [r.path for r in router.routes]
         assert "/status" in routes
+
+
+class TestBacktestPageTerminalHandling:
+    """Test that BacktestPage handles all terminal workflow statuses."""
+
+    def test_backtest_page_handles_research_candidate(self):
+        """BacktestPage must handle RESEARCH_CANDIDATE as a terminal state."""
+        backtest_page = Path(PROJECT_ROOT) / "qlib-dashboard" / "src" / "pages" / "BacktestPage.tsx"
+        content = backtest_page.read_text(encoding="utf-8")
+
+        # Must have RESEARCH_CANDIDATE handling
+        assert "RESEARCH_CANDIDATE" in content, (
+            "BacktestPage does not handle RESEARCH_CANDIDATE status. "
+            "RESEARCH_CANDIDATE workflows will appear stuck in running state."
+        )
+
+        # Must call loadExactResult for RESEARCH_CANDIDATE (like SUCCESS)
+        # Find the RESEARCH_CANDIDATE block and check it calls loadExactResult
+        rc_match = content.find("RESEARCH_CANDIDATE")
+        if rc_match != -1:
+            # Check the surrounding context for loadExactResult
+            context_start = max(0, rc_match - 200)
+            context_end = min(len(content), rc_match + 500)
+            context = content[context_start:context_end]
+            assert "loadExactResult" in context, (
+                "BacktestPage RESEARCH_CANDIDATE handler should call loadExactResult "
+                "to resolve the model/run/dashboard artifact."
+            )
+
+    def test_backtest_page_shows_research_candidate_badge(self):
+        """BacktestPage should display 'Research Candidate' badge for RESEARCH_CANDIDATE status."""
+        backtest_page = Path(PROJECT_ROOT) / "qlib-dashboard" / "src" / "pages" / "BacktestPage.tsx"
+        content = backtest_page.read_text(encoding="utf-8")
+
+        # Check that the badge displays "Research Candidate" text
+        assert "Research Candidate" in content, (
+            "BacktestPage should display 'Research Candidate' badge text"
+        )
+
+    def test_backtest_page_workflow_status_includes_research_candidate(self):
+        """WorkflowStatus type must include research_candidate."""
+        backtest_page = Path(PROJECT_ROOT) / "qlib-dashboard" / "src" / "pages" / "BacktestPage.tsx"
+        content = backtest_page.read_text(encoding="utf-8")
+
+        assert '"research_candidate"' in content, (
+            "WorkflowStatus type must include 'research_candidate'"
+        )
