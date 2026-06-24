@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -133,7 +132,8 @@ def _infer_market_segments(symbols: list[str]) -> dict[str, str]:
 
 
 def _snapshot_store() -> Path:
-    return Path(os.environ.get("TRADING_DATA_SNAPSHOT_STORE", "data/snapshots"))
+    from src.common.paths import SNAPSHOT_STORE
+    return SNAPSHOT_STORE
 
 
 def _coverage_status(

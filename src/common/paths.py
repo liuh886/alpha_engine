@@ -62,6 +62,9 @@ def __getattr__(name):
     if name == "DASHBOARD_DB_PATH":
         return get_artifacts_dir() / "dashboard" / "dashboard_db.json"
 
+    if name == "SNAPSHOT_STORE":
+        return get_artifacts_dir() / "snapshots"
+
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
@@ -74,3 +77,4 @@ ARCHIVES_DIR = ARTIFACTS_DIR / "archives"
 QLIB_DEMO_DATA_DIR = ARCHIVES_DIR / "qlib_demo_data"
 DASHBOARD_DIR = ARTIFACTS_DIR / "dashboard"
 DASHBOARD_DB_PATH = DASHBOARD_DIR / "dashboard_db.json"
+SNAPSHOT_STORE = ARTIFACTS_DIR / "snapshots"
