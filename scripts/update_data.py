@@ -332,6 +332,34 @@ def build_provider_stage(
     (cal_dir / "day.txt").write_text("\n".join(sorted_dates) + "\n", encoding="utf-8")
 
 
+def _write_provider_diagnostics(diagnostics: list[dict], artifacts_dir: Path) -> None:
+    """Write per-symbol provider attempt diagnostics to JSON file."""
+    import json
+    from datetime import datetime, timezone
+
+    diag_dir = artifacts_dir / "data_update_diagnostics"
+    diag_dir.mkdir(parents=True, exist_ok=True)
+
+    output = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "total_symbols": len(diagnostics),
+        "succeeded": sum(1 for d in diagnostics if d["ok"]),
+        "failed": sum(1 for d in diagnostics if not d["ok"]),
+        "symbols": diagnostics,
+    }
+
+    # Write to latest_provider_attempts.json
+    latest_path = diag_dir / "latest_provider_attempts.json"
+    latest_path.write_text(json.dumps(output, indent=2, encoding="utf-8"))
+
+    # Also write timestamped copy
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamped_path = diag_dir / f"provider_attempts_{timestamp}.json"
+    timestamped_path.write_text(json.dumps(output, indent=2, encoding="utf-8"))
+
+    print(f"\n[diagnostic] Provider attempts written to {latest_path}")
+
+
 def run_data_update(args) -> DataSnapshot:
     """Execute a full data-update cycle with accounting and immutable publish.
 
@@ -340,6 +368,9 @@ def run_data_update(args) -> DataSnapshot:
     from src.common.paths import ARTIFACTS_DIR, DATA_DIR, SCRIPTS_DIR
 
     print("=== Updating Data via router (providers + fallback) ===")
+
+    # Provider diagnostics collector
+    provider_diagnostics = []
 
     watchlist = load_watchlist()
     source_dir = DATA_DIR / "csv_source"
@@ -426,6 +457,23 @@ def run_data_update(args) -> DataSnapshot:
                 resp = router.fetch_daily_bars(
                     symbol=qlib_ticker, market=reg, start=start, end=None
                 )
+
+                # Record provider diagnostics
+                symbol_diag = {
+                    "symbol": qlib_ticker,
+                    "market": reg,
+                    "ok": resp.ok,
+                    "final_state": "updated" if resp.ok else "failed",
+                    "attempts": [
+                        {
+                            "provider": a.provider,
+                            "ok": a.ok,
+                            "error": a.error or None,
+                        }
+                        for a in resp.attempts
+                    ],
+                }
+                provider_diagnostics.append(symbol_diag)
 
                 # Record provenance
                 try:
@@ -548,25 +596,34 @@ def run_data_update(args) -> DataSnapshot:
     # ------------------------------------------------------------------
     # 4. Publish immutable snapshot (replaces lightweight marker)
     # ------------------------------------------------------------------
-    snapshot = publish_provider_snapshot(
-        provider_dir=qlib_dir,
-        snapshot_store=ARTIFACTS_DIR / "snapshots",
-        marker_path=ARTIFACTS_DIR / "snapshots" / "watchlist_latest.json",
-        db_path=resolve_metadata_db_path(PROJECT_ROOT),
-        dataset_key="watchlist",
-        universe=universe,
-        selected_markets=selected_markets,
-        source_policy=load_router_policy(),
-        adjustment_policy={"method": "none"},
-        quality_policy={"max_stale_pct": 0.1, "max_csv_parse_errors": 0, "allow_warnings": True},
-        quality_report=q,
-        accounting=accounting,
-        strict=args.strict,
-        max_missing_pct=args.max_missing_pct,
-        max_missing_count=args.max_missing_count,
-    )
+    try:
+        snapshot = publish_provider_snapshot(
+            provider_dir=qlib_dir,
+            snapshot_store=ARTIFACTS_DIR / "snapshots",
+            marker_path=ARTIFACTS_DIR / "snapshots" / "watchlist_latest.json",
+            db_path=resolve_metadata_db_path(PROJECT_ROOT),
+            dataset_key="watchlist",
+            universe=universe,
+            selected_markets=selected_markets,
+            source_policy=load_router_policy(),
+            adjustment_policy={"method": "none"},
+            quality_policy={"max_stale_pct": 0.1, "max_csv_parse_errors": 0, "allow_warnings": True},
+            quality_report=q,
+            accounting=accounting,
+            strict=args.strict,
+            max_missing_pct=args.max_missing_pct,
+            max_missing_count=args.max_missing_count,
+        )
+    except DataUpdateFailure:
+        # Write diagnostics even on failure
+        _write_provider_diagnostics(provider_diagnostics, ARTIFACTS_DIR)
+        raise
 
     print(f"\n[published] snapshot_id={snapshot.snapshot_id}")
+
+    # Write provider diagnostics
+    _write_provider_diagnostics(provider_diagnostics, ARTIFACTS_DIR)
+
     return snapshot
 
 
