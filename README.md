@@ -2,12 +2,33 @@
 
 ## 极简、优雅、自包含的量化策略研究引擎
 
-### 1. 快速启动 (API Server & Dashboard)
-AlphaEngine 现在通过单一的 FastAPI 后端和现代化的 Vite 前端提供服务。
+### 1. Quick Start: Demo Mode
+
+最快体验 AlphaEngine 的方式是启动 Demo Mode，无需真实数据即可查看完整 Dashboard。
 
 > **Note:** This project uses [Astral `uv`](https://astral.sh/uv/) for dependency management. `uv.lock` is the source of truth.
 
-**本地开发:**
+```bash
+# 安装 Python 依赖
+uv sync
+
+# 安装前端依赖
+cd qlib-dashboard && npm ci && cd ..
+
+# 启动 Demo 模式
+uv run python api_server.py --demo
+```
+
+打开 http://localhost:8000，任意用户名/密码登录即可。
+
+**你应该看到：**
+- ✅ **Demo Mode** 标签显示在页面顶部
+- ✅ Dashboard 展示 Equity Curve 图表
+- ✅ Holdings 标签页显示 SH600000 持仓
+- ✅ Attribution 标签页显示归因数据
+
+### 2. 本地开发 (Full Mode)
+
 ```bash
 # 启动后端 (默认端口 8000)
 uv run python api_server.py
@@ -16,7 +37,6 @@ uv run python api_server.py
 cd qlib-dashboard && npm run dev
 ```
 
-**现代化 UI:**
 访问 `http://localhost:5173` (开发模式) 或 `http://localhost:8000` (生产模式) 查看策略看板。
 
 ### 2. 核心架构

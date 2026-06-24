@@ -11,13 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ModelSpec } from "./ModelSpec";
 import { MetricsExpanded } from "./MetricsExpanded";
 import { HoldingsSummary } from "./HoldingsSummary";
-import { Calendar, Tag, Info } from "lucide-react";
+import { Calendar, Tag, Info, Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { ModelParams } from "@/lib/types";
+import { useGlobalStore } from "@/store/globalStore";
 
 export function Dashboard({ data, params }: { data: BacktestData; params?: ModelParams }) {
   const meta = data.meta;
   const runId = String(params?.id || "");
+  const demoMode = useGlobalStore(s => s.demoMode);
+  const snapshotId = (params as any)?.data_snapshot_id || "";
 
   return (
     <div className="space-y-5 max-w-[1400px] mx-auto pb-16">
@@ -28,6 +31,10 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
             <span className="flex items-center gap-1 font-mono"><Calendar className="h-3 w-3" /> {meta.start} → {meta.end}</span>
             <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> {meta.benchmark}</span>
             {params?.id != null && <Badge variant="outline" className="font-mono text-[10px] py-0">{String(params.id)}</Badge>}
+            {snapshotId && <Badge variant="secondary" className="font-mono text-[10px] py-0 gap-1"><Database className="h-2.5 w-2.5" /> {snapshotId.slice(0, 16)}</Badge>}
+            <Badge variant="secondary" className={`font-mono text-[10px] py-0 ${demoMode ? 'text-blue-500 bg-blue-500/10' : 'text-green-500 bg-green-500/10'}`}>
+              {demoMode ? 'Demo' : 'Live'}
+            </Badge>
           </div>
         </div>
       </div>
