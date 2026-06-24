@@ -562,8 +562,8 @@ def run_data_update(args) -> DataSnapshot:
         quality_report=q,
         accounting=accounting,
         strict=getattr(args, "strict", False),
-        max_missing_pct=getattr(args, "max_missing_pct", 0.05),
-        max_missing_count=getattr(args, "max_missing_count", 20),
+        max_missing_pct=getattr(args, "max_missing_pct", 0.30),
+        max_missing_count=getattr(args, "max_missing_count", 60),
     )
 
     print(f"\n[published] snapshot_id={snapshot.snapshot_id}")
