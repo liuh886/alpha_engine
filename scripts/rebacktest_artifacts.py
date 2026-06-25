@@ -45,72 +45,61 @@ def _save_report_normal(
     labels: pd.DataFrame,
     market: str,
 ) -> None:
-    """Save equity curve and positions as report_normal_1day.pkl for dashboard.
+    """Save equity curve as report_normal_1day.pkl for dashboard.
 
-    The backtest produces portfolio values at rebalance intervals (e.g. every
-    10 trading days).  To give the dashboard a richer daily curve we repeat
-    each portfolio value across the calendar days of its rebalance window.
+    With layered backtest (non_overlapping=False), portfolio_values already
+    has one entry per trading day — no expansion needed.
     """
 
-    # Build trading-day dates from predictions index
     trade_dates = sorted(
         predictions.index.get_level_values("datetime").unique().tolist()
     )
 
     portfolio = list(result.portfolio_values) if result.portfolio_values else []
     benchmark_vals = list(result.benchmark_values) if result.benchmark_values else []
-    n_pts = min(len(trade_dates), len(portfolio))
-    if n_pts == 0:
+    n = min(len(trade_dates), len(portfolio), len(benchmark_vals))
+    if n == 0:
         return
 
-    rebalance_days = getattr(result, "rebalance_days", 10)
-    if rebalance_days <= 0:
-        rebalance_days = 10
+    # Skip the initial capital entry (index 0) if present
+    if len(portfolio) == len(trade_dates) + 1:
+        portfolio = portfolio[1:]
+    if len(benchmark_vals) == len(trade_dates) + 1:
+        benchmark_vals = benchmark_vals[1:]
 
-    # Expand each portfolio value to cover calendar days in its window
-    expanded_dates: list = []
-    expanded_account: list[float] = []
-    expanded_bench: list[float] = []
+    n = min(len(trade_dates), len(portfolio), len(benchmark_vals))
+    if n == 0:
+        return
 
-    for i in range(n_pts):
-        dt = pd.Timestamp(trade_dates[i])
-        account_val = float(portfolio[i])
-        bench_val = float(benchmark_vals[i]) if i < len(benchmark_vals) else account_val
-        # Always expand to fill a full rebalance window (10 business days),
-        # regardless of how close the next rebalance date is.
-        end_dt = dt + pd.offsets.BDay(rebalance_days - 1)
-        bus_days = pd.bdate_range(start=dt, end=end_dt)
-        for bd in bus_days:
-            expanded_dates.append(bd)
-            expanded_account.append(account_val)
-            expanded_bench.append(bench_val)
+    trade_dates = trade_dates[:n]
+    portfolio = portfolio[:n]
+    benchmark_vals = benchmark_vals[:n]
 
-    n_exp = len(expanded_dates)
     daily_rets = [0.0]
-    for i in range(1, n_exp):
-        prev = expanded_account[i - 1]
-        curr = expanded_account[i]
+    for i in range(1, n):
+        prev = portfolio[i - 1]
+        curr = portfolio[i]
         daily_rets.append(float((curr - prev) / prev) if prev > 0 else 0.0)
 
     df = pd.DataFrame(
         {
-            "account": expanded_account,
+            "account": [float(v) for v in portfolio],
             "return": daily_rets,
-            "total_turnover": [0.0] * n_exp,
-            "turnover": [0.0] * n_exp,
-            "total_cost": [0.0] * n_exp,
-            "cost": [0.0] * n_exp,
-            "value": expanded_account,
-            "cash": [0.0] * n_exp,
-            "bench": expanded_bench,
+            "total_turnover": [0.0] * n,
+            "turnover": [0.0] * n,
+            "total_cost": [0.0] * n,
+            "cost": [0.0] * n,
+            "value": [float(v) for v in portfolio],
+            "cash": [0.0] * n,
+            "bench": [float(v) for v in benchmark_vals],
         },
-        index=expanded_dates,
+        index=pd.to_datetime(trade_dates),
     )
 
     artifacts_subdir = artifact_dir / "artifacts"
     artifacts_subdir.mkdir(exist_ok=True)
     df.to_pickle(artifacts_subdir / "report_normal_1day.pkl")
-    print(f"    Saved report_normal: {n_exp} daily points (from {n_pts} rebalance periods)")
+    print(f"    Saved report_normal: {n} daily points")
 
 
 def load_artifact_data(artifact_dir: Path):
@@ -224,7 +213,7 @@ def run_rebacktest(
         rebalance_days=10,
         initial_capital=10000.0,
         cost_bps=20.0,
-        non_overlapping=True,
+        non_overlapping=False,  # Layered: each day opens 1/10 position held 10 days
     )
 
     # Save metrics

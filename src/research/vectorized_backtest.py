@@ -466,93 +466,147 @@ def run_vectorized_backtest(
     # Compute IC (always on full set)
     mean_ic, ic_ir, pos_ratio, ic_series = compute_ic_vectorized(predictions, returns)
 
-    # Select rebalance dates
-    if non_overlapping:
-        rebalance_dates = common_dates[::rebalance_days]
-    else:
-        rebalance_dates = common_dates
-
     # Get benchmark returns as series
     bench_series = None
     if benchmark_returns is not None:
         bench_col = benchmark_returns.columns[0]
         bench_series = benchmark_returns[bench_col]
 
-    # Run TOP N strategy
-    portfolio_values = [initial_capital]
-    benchmark_values = [initial_capital]
-    returns_list = []
-    current_holdings: dict[str, float] = {}
-
-    for date in rebalance_dates:
-        # Get predictions for this date
+    # Build a date→return map for O(1) lookup
+    ret_map: dict[str, dict[str, float]] = {}
+    for d in common_dates:
         try:
-            day_pred = predictions.loc[date]["score"]
-        except KeyError:
-            portfolio_values.append(portfolio_values[-1])
-            benchmark_values.append(benchmark_values[-1])
-            returns_list.append(0.0)
-            continue
+            r = returns.loc[d]
+            if isinstance(r, pd.DataFrame):
+                r = r.iloc[:, 0]
+            ret_map[str(d)[:10]] = {str(k): float(v) for k, v in r.items() if not np.isnan(v)}
+        except (KeyError, TypeError):
+            ret_map[str(d)[:10]] = {}
 
-        # Select TOP N stocks
-        if len(day_pred) >= topk:
-            top_stocks = day_pred.nlargest(topk)
-            new_holdings = {s: 1.0 / topk for s in top_stocks.index}
+    if non_overlapping:
+        # ── Non-overlapping: independent 10-day windows ──
+        rebalance_dates = common_dates[::rebalance_days]
+        portfolio_values = [initial_capital]
+        benchmark_values = [initial_capital]
+        returns_list: list[float] = []
+        current_holdings: dict[str, float] = {}
 
-            # Compute turnover cost
-            all_symbols = set(current_holdings.keys()) | set(new_holdings.keys())
-            turnover = (
-                sum(abs(new_holdings.get(s, 0) - current_holdings.get(s, 0)) for s in all_symbols)
-                / 2
-            )
-            cost = turnover * cost_bps / 10000
-
-            current_holdings = new_holdings
-        else:
-            cost = 0.0
-
-        # Compute portfolio return
-        if current_holdings and date in returns.index:
+        for date in rebalance_dates:
             try:
-                ret_day = returns.loc[date]
-                if isinstance(ret_day, pd.DataFrame):
-                    ret_day = ret_day.iloc[:, 0]
-                # Filter out NaN returns and compute weighted average
-                valid_returns = {}
-                for s, weight in current_holdings.items():
-                    if s in ret_day.index:
-                        val = ret_day[s]
-                        if not np.isnan(val):
-                            valid_returns[s] = val
-                if valid_returns:
-                    # Re-normalize weights
-                    total_weight = sum(current_holdings[s] for s in valid_returns)
+                day_pred = predictions.loc[date]["score"]
+            except KeyError:
+                portfolio_values.append(portfolio_values[-1])
+                benchmark_values.append(benchmark_values[-1])
+                returns_list.append(0.0)
+                continue
+
+            if len(day_pred) >= topk:
+                top_stocks = day_pred.nlargest(topk)
+                new_holdings = {s: 1.0 / topk for s in top_stocks.index}
+                all_symbols = set(current_holdings.keys()) | set(new_holdings.keys())
+                turnover = (
+                    sum(abs(new_holdings.get(s, 0) - current_holdings.get(s, 0)) for s in all_symbols)
+                    / 2
+                )
+                cost = turnover * cost_bps / 10000
+                current_holdings = new_holdings
+            else:
+                cost = 0.0
+
+            date_key = str(date)[:10]
+            ret_lookup = ret_map.get(date_key, {})
+            if current_holdings and ret_lookup:
+                valid_weights = {s: w for s, w in current_holdings.items() if s in ret_lookup}
+                if valid_weights:
+                    total_w = sum(valid_weights.values())
                     port_ret = (
-                        sum(
-                            (current_holdings[s] / total_weight) * valid_returns[s]
-                            for s in valid_returns
-                        )
+                        sum((valid_weights[s] / total_w) * ret_lookup[s] for s in valid_weights)
                         - cost
                     )
                 else:
                     port_ret = 0.0
-            except (KeyError, TypeError):
+            else:
                 port_ret = 0.0
-        else:
-            port_ret = 0.0
 
-        # Update portfolio value
-        portfolio_values.append(portfolio_values[-1] * (1 + port_ret))
-        returns_list.append(port_ret)
+            portfolio_values.append(portfolio_values[-1] * (1 + port_ret))
+            returns_list.append(port_ret)
 
-        # Update benchmark
-        if bench_series is not None and date in bench_series.index:
-            bench_ret = float(bench_series.loc[date])
-            if np.isnan(bench_ret):
-                bench_ret = 0.0
-        else:
-            bench_ret = 0.0
-        benchmark_values.append(benchmark_values[-1] * (1 + bench_ret))
+            if bench_series is not None and date in bench_series.index:
+                b = float(bench_series.loc[date])
+                benchmark_values.append(benchmark_values[-1] * (1 + (0.0 if np.isnan(b) else b)))
+            else:
+                benchmark_values.append(benchmark_values[-1])
+
+    else:
+        # ── Overlapping (layered): each day opens a 1/N position held N days ──
+        # Each layer = 1/rebalance_days of capital, invested for exactly
+        # rebalance_days days.  The portfolio holds up to rebalance_days
+        # concurrent layers, producing smooth daily curves.
+        layer_capital = initial_capital / rebalance_days
+        # active_layers: list of [(entry_value, holdings_dict, maturity_idx), ...]
+        active_layers: list[tuple[float, dict[str, float], int]] = []
+        portfolio_values = [initial_capital]
+        benchmark_values = [initial_capital]
+        returns_list = []
+
+        for day_idx, date in enumerate(common_dates):
+            date_key = str(date)[:10]
+            ret_lookup = ret_map.get(date_key, {})
+
+            # 1. Collect matured layers → return to cash
+            matured_cash = 0.0
+            surviving: list[tuple[float, dict[str, float], int]] = []
+            for layer_val, h, mat_idx in active_layers:
+                if day_idx >= mat_idx:
+                    matured_cash += layer_val
+                else:
+                    surviving.append((layer_val, h, mat_idx))
+            active_layers = surviving
+
+            # 2. Grow all surviving layers by today's return
+            for i in range(len(active_layers)):
+                lv, h, mi = active_layers[i]
+                growth = 0.0
+                valid_w = {s: w for s, w in h.items() if s in ret_lookup}
+                if valid_w:
+                    total_w = sum(valid_w.values())
+                    growth = sum(
+                        (valid_w[s] / total_w) * ret_lookup[s] for s in valid_w
+                    )
+                active_layers[i] = (lv * (1 + growth), h, mi)
+
+            # 3. Open new layer (if we have predictions for today)
+            try:
+                day_pred = predictions.loc[date]["score"]
+                if len(day_pred) >= topk:
+                    top_stocks = day_pred.nlargest(topk)
+                    new_h = {str(k): 1.0 / topk for k in top_stocks.index}
+                    # Deduct transaction cost
+                    cost_ratio = cost_bps / 10000
+                    new_entry = layer_capital * (1 - cost_ratio)
+                    active_layers.append((new_entry, new_h, day_idx + rebalance_days))
+            except KeyError:
+                pass
+
+            # 4. Portfolio value = cash + sum of active layers
+            total_active = sum(lv for lv, _, _ in active_layers)
+            cash = initial_capital - layer_capital * len(active_layers)  # uninvested remainder
+            total_value = matured_cash + cash + total_active
+            portfolio_values.append(total_value)
+
+            # Daily return
+            prev = portfolio_values[-2] if len(portfolio_values) >= 2 else initial_capital
+            daily_ret = (total_value / prev) - 1 if prev > 0 else 0.0
+            returns_list.append(daily_ret)
+
+            # Benchmark
+            if bench_series is not None and date in bench_series.index:
+                b = float(bench_series.loc[date])
+                benchmark_values.append(
+                    benchmark_values[-1] * (1 + (0.0 if np.isnan(b) else b))
+                )
+            else:
+                benchmark_values.append(benchmark_values[-1])
 
     # Compute metrics
     total_return = portfolio_values[-1] / portfolio_values[0] - 1
