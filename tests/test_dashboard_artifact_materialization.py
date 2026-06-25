@@ -98,6 +98,168 @@ class TestLoadArtifactBundleRunData:
         assert result["report_normal"] is None
         assert result["indicators"]["total_return"] == 0.3123
 
+    def test_nested_vectorized_backtest_priority(self, tmp_path):
+        """vectorized_backtest takes priority over grade_regime and flat keys."""
+        from scripts.build_dashboard_db import load_artifact_bundle_run_data
+
+        bundle = tmp_path / "nested_run"
+        bundle.mkdir()
+        metrics = {
+            "total_return": 0.1,  # flat, should be ignored
+            "vectorized_backtest": {
+                "total_return": 0.9568,
+                "sharpe_ratio": 1.527,
+                "max_drawdown": -0.2782,
+                "annual_return": 0.5608,
+                "volatility": 0.3287,
+                "mean_ic": 0.0074,
+                "ic_ir": 0.0915,
+            },
+            "grade_regime_backtest": {
+                "total_return": 0.4,
+                "sharpe_ratio": 0.8,
+            },
+        }
+        (bundle / "metrics.json").write_text(json.dumps(metrics))
+
+        result = load_artifact_bundle_run_data(bundle)
+
+        # Should use vectorized_backtest values, not flat or grade_regime
+        assert result["indicators"]["total_return"] == 0.9568
+        assert result["indicators"]["sharpe"] == 1.527
+        assert result["indicators"]["max_drawdown"] == -0.2782
+        assert result["indicators"]["annual_return"] == 0.5608
+        assert result["sig_analysis"]["ic"]["ic"] == 0.0074
+
+    def test_nested_grade_regime_fallback(self, tmp_path):
+        """grade_regime_backtest is used when vectorized_backtest is missing."""
+        from scripts.build_dashboard_db import load_artifact_bundle_run_data
+
+        bundle = tmp_path / "grade_only_run"
+        bundle.mkdir()
+        metrics = {
+            "grade_regime_backtest": {
+                "total_return": 0.3928,
+                "sharpe_ratio": 1.9496,
+                "max_drawdown": -0.0311,
+                "annual_return": 0.2457,
+                "volatility": 0.117,
+                "mean_ic": 0.0226,
+                "ic_ir": 0.1663,
+            },
+        }
+        (bundle / "metrics.json").write_text(json.dumps(metrics))
+
+        result = load_artifact_bundle_run_data(bundle)
+
+        assert result["indicators"]["total_return"] == 0.3928
+        assert result["indicators"]["sharpe"] == 1.9496
+        assert result["indicators"]["max_drawdown"] == -0.0311
+
+    def test_nested_string_values_coerced(self, tmp_path):
+        """String metric values are coerced to float."""
+        from scripts.build_dashboard_db import load_artifact_bundle_run_data
+
+        bundle = tmp_path / "string_metrics_run"
+        bundle.mkdir()
+        metrics = {
+            "grade_regime_backtest": {
+                "total_return": "0.4012",
+                "excess_return": "0.3051",
+                "sharpe_ratio": 1.6454,
+            },
+        }
+        (bundle / "metrics.json").write_text(json.dumps(metrics))
+
+        result = load_artifact_bundle_run_data(bundle)
+
+        assert result["indicators"]["total_return"] == 0.4012
+        assert result["indicators"]["sharpe"] == 1.6454
+
+    def test_empty_nested_section_falls_back_to_flat(self, tmp_path):
+        """Empty nested section is skipped; flat keys are used instead."""
+        from scripts.build_dashboard_db import load_artifact_bundle_run_data
+
+        bundle = tmp_path / "empty_nested_run"
+        bundle.mkdir()
+        metrics = {
+            "vectorized_backtest": {},  # empty, skipped
+            "grade_regime_backtest": {},  # empty, skipped
+            "total_return": 0.25,
+            "sharpe_ratio": 0.9,
+        }
+        (bundle / "metrics.json").write_text(json.dumps(metrics))
+
+        result = load_artifact_bundle_run_data(bundle)
+
+        assert result["indicators"]["total_return"] == 0.25
+        assert result["indicators"]["sharpe"] == 0.9
+
+
+class TestResolveBestMetricsSection:
+    """Test the nested metrics priority resolver."""
+
+    def test_priority_vectorized_over_grade_regime(self):
+        from scripts.build_dashboard_db import _resolve_best_metrics_section
+
+        raw = {
+            "vectorized_backtest": {"total_return": 0.9},
+            "grade_regime_backtest": {"total_return": 0.5},
+        }
+        result = _resolve_best_metrics_section(raw)
+        assert result["total_return"] == 0.9
+
+    def test_fallback_to_grade_regime(self):
+        from scripts.build_dashboard_db import _resolve_best_metrics_section
+
+        raw = {
+            "grade_regime_backtest": {"total_return": 0.5},
+        }
+        result = _resolve_best_metrics_section(raw)
+        assert result["total_return"] == 0.5
+
+    def test_fallback_to_flat(self):
+        from scripts.build_dashboard_db import _resolve_best_metrics_section
+
+        raw = {"total_return": 0.3, "sharpe_ratio": 1.0}
+        result = _resolve_best_metrics_section(raw)
+        assert result["total_return"] == 0.3
+
+    def test_skips_empty_nested(self):
+        from scripts.build_dashboard_db import _resolve_best_metrics_section
+
+        raw = {
+            "vectorized_backtest": {},
+            "grade_regime_backtest": None,
+            "total_return": 0.42,
+        }
+        result = _resolve_best_metrics_section(raw)
+        assert result["total_return"] == 0.42
+
+
+class TestToFloat:
+    """Test the value coercion helper."""
+
+    def test_int(self):
+        from scripts.build_dashboard_db import _to_float
+        assert _to_float(42) == 42.0
+
+    def test_float(self):
+        from scripts.build_dashboard_db import _to_float
+        assert _to_float(3.14) == 3.14
+
+    def test_string_number(self):
+        from scripts.build_dashboard_db import _to_float
+        assert _to_float("0.9568") == 0.9568
+
+    def test_invalid_string(self):
+        from scripts.build_dashboard_db import _to_float
+        assert _to_float("not_a_number") == 0.0
+
+    def test_none(self):
+        from scripts.build_dashboard_db import _to_float
+        assert _to_float(None) == 0.0
+
 
 # ---------------------------------------------------------------------------
 # _is_placeholder_entry tests
