@@ -45,56 +45,74 @@ def _save_report_normal(
     labels: pd.DataFrame,
     market: str,
 ) -> None:
-    """Save equity curve and positions as report_normal_1day.pkl for dashboard."""
+    """Save equity curve and positions as report_normal_1day.pkl for dashboard.
 
-    # Build dates from predictions index
-    dates = sorted(
+    The backtest produces portfolio values at rebalance intervals (e.g. every
+    10 trading days).  To give the dashboard a richer daily curve we repeat
+    each portfolio value across the calendar days of its rebalance window.
+    """
+
+    # Build trading-day dates from predictions index
+    trade_dates = sorted(
         predictions.index.get_level_values("datetime").unique().tolist()
     )
-    date_strings = [pd.Timestamp(d).strftime("%Y-%m-%dT%H:%M:%S.000") for d in dates]
 
-    # Build account values from portfolio_values
     portfolio = list(result.portfolio_values) if result.portfolio_values else []
-    benchmark = list(result.benchmark_values) if result.benchmark_values else []
-    n = min(len(dates), len(portfolio))
-
-    if n == 0:
+    benchmark_vals = list(result.benchmark_values) if result.benchmark_values else []
+    n_pts = min(len(trade_dates), len(portfolio))
+    if n_pts == 0:
         return
 
-    # Pad shorter arrays
-    portfolio = portfolio[:n]
-    benchmark = benchmark[:n]
-    date_strings = date_strings[:n]
+    rebalance_days = getattr(result, "rebalance_days", 10)
+    if rebalance_days <= 0:
+        rebalance_days = 10
 
-    # Compute daily returns
+    # Expand each portfolio value to cover calendar days in its window
+    expanded_dates: list = []
+    expanded_account: list[float] = []
+    expanded_bench: list[float] = []
+
+    for i in range(n_pts):
+        dt = pd.Timestamp(trade_dates[i])
+        account_val = float(portfolio[i])
+        bench_val = float(benchmark_vals[i]) if i < len(benchmark_vals) else account_val
+        next_dt = (
+            pd.Timestamp(trade_dates[i + 1])
+            if i + 1 < n_pts
+            else dt + pd.offsets.BDay(rebalance_days)
+        )
+        bus_days = pd.bdate_range(start=dt, end=next_dt - pd.offsets.BDay(1))
+        for bd in bus_days:
+            expanded_dates.append(bd)
+            expanded_account.append(account_val)
+            expanded_bench.append(bench_val)
+
+    n_exp = len(expanded_dates)
     daily_rets = [0.0]
-    for i in range(1, n):
-        if portfolio[i - 1] != 0:
-            daily_rets.append(float(portfolio[i] / portfolio[i - 1] - 1))
-        else:
-            daily_rets.append(0.0)
+    for i in range(1, n_exp):
+        prev = expanded_account[i - 1]
+        curr = expanded_account[i]
+        daily_rets.append(float((curr - prev) / prev) if prev > 0 else 0.0)
 
-    # Build report_normal DataFrame
     df = pd.DataFrame(
         {
-            "account": portfolio,
+            "account": expanded_account,
             "return": daily_rets,
-            "total_turnover": [0.0] * n,
-            "turnover": [0.0] * n,
-            "total_cost": [0.0] * n,
-            "cost": [0.0] * n,
-            "value": portfolio,
-            "cash": [0.0] * n,
-            "bench": benchmark if benchmark else [0.0] * n,
+            "total_turnover": [0.0] * n_exp,
+            "turnover": [0.0] * n_exp,
+            "total_cost": [0.0] * n_exp,
+            "cost": [0.0] * n_exp,
+            "value": expanded_account,
+            "cash": [0.0] * n_exp,
+            "bench": expanded_bench,
         },
-        index=pd.to_datetime(dates[:n]),
+        index=expanded_dates,
     )
 
-    # Save as pickle (same format as mlruns models)
     artifacts_subdir = artifact_dir / "artifacts"
     artifacts_subdir.mkdir(exist_ok=True)
     df.to_pickle(artifacts_subdir / "report_normal_1day.pkl")
-    print(f"    Saved report_normal: {n} data points")
+    print(f"    Saved report_normal: {n_exp} daily points (from {n_pts} rebalance periods)")
 
 
 def load_artifact_data(artifact_dir: Path):
