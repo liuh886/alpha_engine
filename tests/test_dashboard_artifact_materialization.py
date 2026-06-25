@@ -175,9 +175,7 @@ class TestBuildDbWithArtifactBundle:
 
     def test_bundle_discovery(self, tmp_path, monkeypatch):
         """build_db finds artifact bundle under ARTIFACTS_DIR/artifacts/<run_id>."""
-        from unittest.mock import MagicMock
 
-        import yaml
 
         from scripts import build_dashboard_db as bdd
 
@@ -296,7 +294,6 @@ class TestBuildDbWithArtifactBundle:
         art_dir.mkdir()
         # Write report_normal_1day as pickle — use a simple dict since
         # pd.DataFrame pickle would require pandas at read time
-        import pickle
         import pandas as pd
 
         # Create a simple report_normal as a DataFrame pickle
