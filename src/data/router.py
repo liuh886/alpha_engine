@@ -42,7 +42,16 @@ class MarketDataRouter:
         # Default: try all adapters in stable order
         return sorted(self._adapters.keys())
 
-    def fetch_daily_bars(self, *, symbol: str, market: str, start: str, end: str | None = None) -> RouterResponse:
+    def fetch_daily_bars(
+        self, *, symbol: str, market: str, start: str, end: str | None = None,
+        validate: bool = False,
+    ) -> RouterResponse:
+        """Fetch daily bars with optional schema validation fallback.
+
+        When ``validate=True``, each successful response is checked against
+        the OHLCV schema.  If validation fails, the router *continues* to
+        the next provider instead of returning bad data immediately.
+        """
         req = FetchRequest(symbol=symbol, market=market, start=start, end=end)
         attempts: list[RouterAttempt] = []
         for provider in self.providers_for_market(market):
@@ -52,6 +61,19 @@ class MarketDataRouter:
                 continue
             try:
                 res = adapter.fetch_daily_bars(req)
+
+                # Optional: validate the response before accepting it
+                if validate and res.df is not None and not res.df.empty:
+                    try:
+                        from src.data.validation.schema import validate_market_data
+                        ok, _, errs = validate_market_data(res.df, symbol)
+                        if not ok:
+                            msg = "schema validation failed: " + "; ".join(errs[:2])
+                            attempts.append(RouterAttempt(provider=provider, ok=False, error=msg))
+                            continue  # try next provider
+                    except ImportError:
+                        pass  # validation not available — accept as-is
+
                 attempts.append(RouterAttempt(provider=provider, ok=True, error=None))
                 return RouterResponse(result=res, attempts=attempts)
             except DataFetchError as e:

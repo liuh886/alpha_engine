@@ -461,7 +461,8 @@ def run_data_update(args) -> DataSnapshot:
                         spot_check_done = True
 
                 resp = router.fetch_daily_bars(
-                    symbol=qlib_ticker, market=reg, start=start, end=None
+                    symbol=qlib_ticker, market=reg, start=start, end=None,
+                    validate=True,  # trigger fallback if data fails OHLCV schema
                 )
 
                 # Record provider diagnostics
