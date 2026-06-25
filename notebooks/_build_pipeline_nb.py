@@ -143,7 +143,24 @@ for sym in SYMBOLS:
     results["ok"].append(sym)
     print(f"  ✅ {sym}: {len(validated_df)} rows  {validated_df['date'].min().date()}→{validated_df['date'].max().date()}")
 
-print(f"\\n数据下载完成: ✅{len(results['ok'])}  ❌{len(results['failed'])}  ⚠️Schema{len(results['schema_rejected'])}")"""
+print(f"\\n数据下载完成: ✅{len(results['ok'])}  ❌{len(results['failed'])}  ⚠️Schema{len(results['schema_rejected'])}")
+
+# ── 可视化 ─────────────────────────────────────────
+import matplotlib.pyplot as plt
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+# Left: success/failure bar
+axes[0].bar(["OK", "Failed", "Schema Rej"], [len(results["ok"]), len(results["failed"]), len(results["schema_rejected"])],
+            color=["#22c55e", "#ef4444", "#f59e0b"])
+axes[0].set_title("Download Results", fontweight="bold")
+axes[0].set_ylabel("Count")
+# Right: sample OHLCV
+if results["ok"]:
+    sym = results["ok"][0]
+    df = pd.read_csv(csv_dir / f"{sym}.csv", parse_dates=["date"])
+    df.set_index("date")[["close","open","high","low"]].tail(60).plot(ax=axes[1], title=f"{sym} — Last 60 Days")
+    axes[1].legend(fontsize=8)
+plt.tight_layout()
+plt.show()"""
 )
 
 # ── 2. Factor Preparation ──
@@ -190,7 +207,30 @@ X_train = X_train.fillna(0).replace([np.inf, -np.inf], 0)
 X_test  = X_test.fillna(0).replace([np.inf, -np.inf], 0)
 y_train = y_train.fillna(0)
 y_test  = y_test.fillna(0)
-print("✅ 因子准备完成")"""
+print("✅ 因子准备完成")
+
+# ── 可视化 ─────────────────────────────────────────
+fig, axes = plt.subplots(1, 3, figsize=(16, 4))
+# Left: label distribution
+axes[0].hist(y_train, bins=80, color="#6366f1", alpha=0.7, edgecolor="white")
+axes[0].axvline(0, color="red", linestyle="--", linewidth=0.8)
+axes[0].set_title("Training Label Distribution", fontweight="bold")
+# Middle: feature coverage
+valid_pct = (X_train != 0).sum(axis=0) / len(X_train) * 100
+axes[1].bar(range(min(30, len(valid_pct))), sorted(valid_pct, reverse=True)[:30], color="#10b981")
+axes[1].set_title("Top 30 Feature Coverage %", fontweight="bold")
+axes[1].set_ylabel("% non-zero")
+# Right: correlation of top features with label
+top10 = X_train.columns[:10]
+corrs = [np.corrcoef(X_train[c].fillna(0), y_train)[0,1] for c in top10]
+colors = ["#10b981" if c > 0 else "#ef4444" for c in corrs]
+axes[2].barh(range(len(top10)), corrs, color=colors)
+axes[2].set_yticks(range(len(top10)))
+axes[2].set_yticklabels(top10, fontsize=7)
+axes[2].axvline(0, color="black", linewidth=0.5)
+axes[2].set_title("Feature-Label Correlation (Top 10)", fontweight="bold")
+plt.tight_layout()
+plt.show()"""
 )
 
 # ── 3. Model Training ──
@@ -271,7 +311,31 @@ model_path = ARTIFACTS_DIR / "models" / f"{MARKET}_model_{LABEL_TYPE}.pkl"
 model_path.parent.mkdir(parents=True, exist_ok=True)
 with open(model_path, "wb") as f:
     pickle.dump(booster, f)
-print(f"模型已保存: {model_path}")"""
+print(f"模型已保存: {model_path}")
+
+# ── 可视化 ─────────────────────────────────────────
+fig, axes = plt.subplots(1, 3, figsize=(16, 4))
+# Left: learning curve
+evals = booster.evals_result_ or {}
+if "valid" in evals and "rmse" in evals["valid"]:
+    axes[0].plot(evals["valid"]["rmse"], color="#6366f1", linewidth=1)
+    axes[0].axvline(booster.best_iteration, color="red", linestyle="--", label=f"Best={booster.best_iteration}")
+    axes[0].legend(fontsize=8)
+axes[0].set_title("Learning Curve (Validation RMSE)", fontweight="bold")
+# Middle: feature importance
+imp = booster.feature_importance(importance_type="gain")
+top_n = min(30, len(feature_names))
+idx = np.argsort(imp)[-top_n:]
+axes[1].barh(range(top_n), imp[idx], color="#8b5cf6")
+axes[1].set_yticks(range(top_n))
+axes[1].set_yticklabels([feature_names[i] for i in idx], fontsize=6)
+axes[1].set_title(f"Feature Importance (Top {top_n})", fontweight="bold")
+# Right: prediction distribution
+axes[2].hist(y_pred, bins=80, color="#f59e0b", alpha=0.7, edgecolor="white")
+axes[2].axvline(0, color="red", linestyle="--", linewidth=0.8)
+axes[2].set_title("Prediction Score Distribution", fontweight="bold")
+plt.tight_layout()
+plt.show()"""
 )
 
 # ── 4. Strategy ──
@@ -392,7 +456,57 @@ for k in [5, 10, 15, 20]:
 # ── 汇总 ───────────────────────────────────────────
 print("\\n═══════════════════════════════════════════")
 print(f"  最终: sharpe={r2.sharpe_ratio:.2f}  ic={r2.mean_ic:.4f}  spread={r1.total_return - _bot.total_return:.1%}")
-print("═══════════════════════════════════════════")"""
+print("═══════════════════════════════════════════")
+
+# ── 可视化 ─────────────────────────────────────────
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+# Top-left: equity curve (layered)
+if r2.portfolio_values and len(r2.portfolio_values) > 1:
+    pv = r2.portfolio_values[1:] if len(r2.portfolio_values) > len(pred_df) else r2.portfolio_values
+    bv = r2.benchmark_values[1:] if r2.benchmark_values else None
+    x_vals = list(range(len(pv)))
+    axes[0,0].plot(x_vals, [v/10000 for v in pv], color="#6366f1", linewidth=1.5, label="Strategy")
+    if bv and len(bv) == len(pv):
+        axes[0,0].plot(x_vals, [v/10000 for v in bv], color="#f59e0b", linewidth=1, linestyle="--", label="Benchmark")
+    axes[0,0].axhline(1.0, color="gray", linewidth=0.5, linestyle=":")
+    axes[0,0].set_title("Equity Curve (Layered Daily)", fontweight="bold")
+    axes[0,0].legend(fontsize=8)
+# Top-right: TOP vs BOTTOM bar chart
+ks = [5, 10, 15, 20]
+top_rets = [top_vals[k] for k in ks] if "top_vals" in dir() else []
+bot_rets = [bot_vals[k] for k in ks] if "bot_vals" in dir() else []
+if "top_vals" not in dir():
+    top_rets, bot_rets = [], []
+    for k in ks:
+        t = run_vectorized_backtest(pred_df, real_returns, bench, topk=k, rebalance_days=10, initial_capital=10000, cost_bps=20, non_overlapping=False)
+        n = pred_df.copy(); n["score"] = -n["score"]
+        b = run_vectorized_backtest(n, real_returns, bench, topk=k, rebalance_days=10, initial_capital=10000, cost_bps=20, non_overlapping=False)
+        top_rets.append(t.total_return); bot_rets.append(b.total_return)
+x = np.arange(len(ks))
+w = 0.35
+axes[0,1].bar(x-w/2, top_rets, w, color="#22c55e", label="TOP K")
+axes[0,1].bar(x+w/2, bot_rets, w, color="#ef4444", label="BOTTOM K")
+axes[0,1].set_xticks(x); axes[0,1].set_xticklabels([f"K={k}" for k in ks])
+axes[0,1].set_title("TOP vs BOTTOM K Returns", fontweight="bold")
+axes[0,1].legend(fontsize=8)
+axes[0,1].axhline(0, color="black", linewidth=0.5)
+# Bottom-left: drawdown
+if r2.portfolio_values:
+    pv_arr = np.array(r2.portfolio_values)
+    peak = np.maximum.accumulate(pv_arr)
+    dd = (pv_arr - peak) / peak
+    axes[1,0].fill_between(range(len(dd)), 0, dd, color="#ef4444", alpha=0.3)
+    axes[1,0].plot(dd, color="#ef4444", linewidth=1)
+    axes[1,0].set_title("Drawdown (Layered)", fontweight="bold")
+# Bottom-right: IC distribution
+if r2.ic_series:
+    axes[1,1].hist(r2.ic_series, bins=30, color="#8b5cf6", alpha=0.7, edgecolor="white")
+    axes[1,1].axvline(r2.mean_ic, color="red", linestyle="--", label=f"Mean={r2.mean_ic:.4f}")
+    axes[1,1].axvline(0, color="black", linewidth=0.5)
+    axes[1,1].set_title(f"IC Distribution (Sharpe={r2.sharpe_ratio:.2f})", fontweight="bold")
+    axes[1,1].legend(fontsize=8)
+plt.tight_layout()
+plt.show()"""
 )
 
 # ── 6. Registration ──
@@ -484,7 +598,36 @@ print("每日权益曲线已生成")
 from scripts.build_dashboard_db import build_db
 build_db()
 print(f"Dashboard 已重建 → {DASHBOARD_DB_PATH}")
-print("\\n✅ 注册完成！新模型可在 Dashboard 查看")"""
+print("\\n✅ 注册完成！新模型可在 Dashboard 查看")
+
+# ── 最终仪表板 ─────────────────────────────────────
+fig, axes = plt.subplots(2, 2, figsize=(14, 8))
+fig.suptitle(f"Pipeline Summary — {MARKET.upper()} {LABEL_TYPE.upper()}", fontsize=14, fontweight="bold")
+# Top-left: key metrics
+metrics_labels = ["Total Return", "Annual Return", "Sharpe", "Max DD", "IC Mean"]
+metrics_vals = [r2.total_return, r2.annual_return, r2.sharpe_ratio, r2.max_drawdown, r2.mean_ic]
+colors = ["#22c55e" if (i!=3 and v>0) or (i==3 and v>-0.2) else "#ef4444" for i,v in enumerate(metrics_vals)]
+axes[0,0].barh(metrics_labels, metrics_vals, color=colors)
+axes[0,0].set_title("Key Metrics", fontweight="bold")
+for i, v in enumerate(metrics_vals):
+    axes[0,0].text(v, i, f" {v:.4f}" if abs(v)<1 else f" {v:.2%}", va="center", fontsize=9)
+# Top-right: WF IC
+axes[0,1].bar(["mean_ic","ic_ir","consistency"], [wf.mean_ic, wf.ic_ir, wf.consistency_score], color=["#6366f1","#8b5cf6","#10b981"])
+axes[0,1].set_title("Walk-Forward Validation", fontweight="bold")
+# Bottom-left: TOP/BOTTOM summary
+axes[1,0].bar(["TOP5","TOP10","TOP15","TOP20","BOT5","BOT10","BOT15","BOT20"],
+              top_rets + bot_rets,
+              color=["#22c55e"]*4 + ["#ef4444"]*4)
+axes[1,0].axhline(0, color="black", linewidth=0.5)
+axes[1,0].set_title("TOP vs BOTTOM Returns", fontweight="bold")
+# Bottom-right: equity preview
+if r2.portfolio_values:
+    pv = r2.portfolio_values
+    axes[1,1].plot(pv, color="#6366f1", linewidth=1.5)
+    axes[1,1].fill_between(range(len(pv)), pv, pv[0], alpha=0.1, color="#6366f1")
+    axes[1,1].set_title(f"Portfolio: {pv[0]:.0f} → {pv[-1]:.0f} ({r2.total_return:.1%})", fontweight="bold")
+plt.tight_layout()
+plt.show()"""
 )
 
 # ── 7. Frontend ──
