@@ -20,7 +20,7 @@ from qlib.data import D
 from src.assistant.backtest_equity_curve_index import BacktestEquityCurveIndex
 from src.assistant.metadata_db import resolve_metadata_db_path
 from src.assistant.model_registry_index import ModelRegistryIndex
-from src.common.paths import CONFIG_DIR, DASHBOARD_DB_PATH, MLRUNS_DIR
+from src.common.paths import ARTIFACTS_DIR, CONFIG_DIR, DASHBOARD_DB_PATH, MLRUNS_DIR
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -353,6 +353,66 @@ def load_run_data(run_dir: Path) -> dict:
     }
 
 
+def load_artifact_bundle_run_data(artifact_dir: Path) -> dict:
+    """Load artifacts from a flat bundle directory (artifacts/artifacts/<run_id>/).
+
+    Reads metrics.json, predictions.csv, labels.csv, and manifest.json.
+    Returns a normalized run_data dict matching the dashboard contract.
+    If report/positions cannot be computed, they stay None/empty so
+    has_full_data remains false.
+    """
+    run_data: dict = {
+        "report_normal": None,
+        "positions_normal": [],
+        "indicators": {},
+        "sig_analysis": {},
+    }
+
+    # Load metrics
+    metrics_path = artifact_dir / "metrics.json"
+    if metrics_path.exists():
+        try:
+            raw_metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            run_data["indicators"] = {
+                "total_return": raw_metrics.get("total_return", 0),
+                "annual_return": raw_metrics.get("annual_return", 0),
+                "sharpe": raw_metrics.get("sharpe_ratio", 0),
+                "information_ratio": raw_metrics.get("ic_ir", 0),
+                "max_drawdown": raw_metrics.get("max_drawdown", 0),
+                "annual_volatility": raw_metrics.get("volatility", 0),
+            }
+            run_data["sig_analysis"] = {
+                "ic": {"ic": raw_metrics.get("mean_ic", 0)},
+                "ric": {"ric": raw_metrics.get("mean_ic", 0)},
+            }
+        except Exception as e:
+            print(f"  Warning: Failed to load metrics.json: {e}")
+
+    # Load predictions (for potential future report generation)
+    # predictions_path = artifact_dir / "predictions.csv"
+    # labels_path = artifact_dir / "labels.csv"
+    # (predictions + labels exist but report_normal_1day generation
+    # requires a full backtest run — skip for now)
+
+    return run_data
+
+
+def _is_placeholder_entry(v: dict) -> bool:
+    """Return True if a registry entry is a placeholder without useful data."""
+    run_id = (v.get("run_id") or "").strip()
+    path = (v.get("path") or "").strip()
+    metrics_raw = v.get("metrics_json")
+    if metrics_raw:
+        try:
+            metrics = json.loads(metrics_raw) if isinstance(metrics_raw, str) else metrics_raw
+        except Exception:
+            metrics = {}
+    else:
+        metrics = {}
+    # Placeholder: no run_id, no path, no metrics
+    return not run_id and not path and not metrics
+
+
 def compute_benchmark_returns(dates: list[str], symbol: str, provider_uri: str):
     """Fetch benchmark daily returns from Qlib.
 
@@ -484,6 +544,7 @@ def build_db(model_id: str = "", sync_yaml: bool = False):
         to repair any drift between the two.
     """
     mlruns_dirs = [MLRUNS_DIR, PROJECT_ROOT / "mlruns", PROJECT_ROOT / "artifacts" / "mlruns"]
+    artifact_bundle_dir = ARTIFACTS_DIR / "artifacts"
     dashboard_db_path = DASHBOARD_DB_PATH
     dashboard_db_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -522,8 +583,17 @@ def build_db(model_id: str = "", sync_yaml: bool = False):
     for v in versions:
         run_id = v.get("run_id")
         run_path = None
+        source_layout = "mlruns"  # Default
+
+        # --- Filter invalid placeholder entries ---
+        if _is_placeholder_entry(v):
+            rid = run_id or ""
+            pth = (v.get("path") or "").strip()
+            print(f"  SKIP placeholder: {v['id']} (run_id='{rid}', path='{pth}', metrics empty)")
+            continue
 
         if run_id:
+            # Phase 1: search standard mlruns directories
             for m_dir in mlruns_dirs:
                 if not m_dir.exists():
                     continue
@@ -536,6 +606,13 @@ def build_db(model_id: str = "", sync_yaml: bool = False):
                         break
                 if run_path:
                     break
+
+            # Phase 2: fallback to flat artifact bundle
+            if not run_path:
+                bundle_cand = artifact_bundle_dir / run_id
+                if bundle_cand.exists() and bundle_cand.is_dir():
+                    run_path = bundle_cand
+                    source_layout = "artifact_bundle"
 
         print(f"  Processing Run {run_id or 'NO_RUN_ID'} (Model: {v['id']}) ...")
 
@@ -555,8 +632,12 @@ def build_db(model_id: str = "", sync_yaml: bool = False):
         }
 
         if run_path:
-            strategy_profile = load_strategy_profile_for_run(run_path, params, PROJECT_ROOT)
-            run_data = load_run_data(run_path)
+            if source_layout == "artifact_bundle":
+                strategy_profile = {}
+                run_data = load_artifact_bundle_run_data(run_path)
+            else:
+                strategy_profile = load_strategy_profile_for_run(run_path, params, PROJECT_ROOT)
+                run_data = load_run_data(run_path)
 
         report_normal = run_data.get("report_normal")
         if report_normal:
@@ -607,6 +688,7 @@ def build_db(model_id: str = "", sync_yaml: bool = False):
             "experiment": "workflow",
             "market": v["market"],
             "path": run_path or "",
+            "source_layout": source_layout,
             "params": params,
             "data": run_data,
             "has_full_data": run_path is not None and report_normal is not None,

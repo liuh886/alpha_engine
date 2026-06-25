@@ -303,7 +303,7 @@ def main():
                     },
                     "benchmarks": {},
                 },
-                "has_full_data": True,
+                "has_full_data": False,  # No report_normal — metrics-only
             }
             db["models"].append(entry)
             print(f"  Dashboard entry added: {model_id}")
