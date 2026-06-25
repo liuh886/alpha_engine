@@ -208,7 +208,7 @@ def run_rebacktest(
         rebalance_days=10,
         initial_capital=10000.0,
         cost_bps=20.0,
-        non_overlapping=True,
+        non_overlapping=False,  # Overlapping periods for richer data points
     )
 
     # Save metrics
