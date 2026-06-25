@@ -11,13 +11,16 @@ router = APIRouter(tags=["artifacts"])
 @router.get("/top-bottom-analysis")
 def get_top_bottom_analysis():
     """Return TOP/BOTTOM 5/10/15/20 backtest comparison for all models."""
-    analysis_path = DASHBOARD_DB_PATH.parent / "top_bottom_analysis.json"
+    from pathlib import Path as _Path
+
+    analysis_path = _Path(__file__).resolve().parents[3] / "artifacts" / "dashboard" / "top_bottom_analysis.json"
     try:
         if not analysis_path.exists():
             return {"ok": True, "models": [], "generated_at": ""}
         return json.loads(analysis_path.read_text(encoding="utf-8"))
     except Exception:
-        return {"ok": True, "models": [], "generated_at": ""}
+        import traceback
+        return {"ok": False, "error": traceback.format_exc()}
 
 
 @router.get("/dashboard-db")
