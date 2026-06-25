@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Line, ComposedChart, ReferenceLine } from 'recharts';
+import { Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Line, ComposedChart, ReferenceLine, Brush } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -238,6 +238,7 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
               <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity={0.3} />
               <Area hide={hiddenSeries['strategy']} type="monotone" dataKey="strategy" stroke="hsl(var(--primary))" strokeWidth={2} fillOpacity={1} fill="url(#gradStrategy)" name="Alpha Engine" />
               {hasBenchmark && <Line hide={hiddenSeries['benchmark']} type="monotone" dataKey="benchmark" stroke="#f59e0b" dot={false} strokeWidth={1.5} strokeDasharray="5 5" name="Benchmark" />}
+              <Brush dataKey="date" height={28} stroke="hsl(var(--primary))" fill="hsl(var(--background))" tickFormatter={d => format(parseISO(d), 'MMM yy')} />
             </ComposedChart>
           </ResponsiveContainer>
         </CardContent>

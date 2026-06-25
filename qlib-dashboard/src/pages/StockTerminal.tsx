@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useOutletContext } from "react-router-dom";
 import { createChart, ColorType, CandlestickSeries, HistogramSeries, createSeriesMarkers } from "lightweight-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { formatNum, formatCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useGlobalStore } from "@/store/globalStore";
 import { useNameMap } from "@/lib/useNameMap";
+import type { ModelData } from "@/lib/data-parser";
 import {
   Search, ShieldAlert, Activity, Zap, Compass,
   ArrowUpRight, ArrowDownRight, Loader2,
@@ -162,9 +164,15 @@ export function StockTerminal() {
   const [market, setMarket] = useState<"us" | "cn">("us");
   const [loading, setLoading] = useState(false);
   // Get selected model from global store
-  const { selectedModelId } = useGlobalStore();
+  const { selectedModelId, selectedModelMarket } = useGlobalStore();
   // Get name map for Chinese company names
   const { getName } = useNameMap();
+  // Get models from outlet context for display name lookup
+  const { models } = useOutletContext<{ models: ModelData[] }>() || { models: [] as ModelData[] };
+  const selectedModel = models.find(m => m.id === selectedModelId || m.run_id === selectedModelId);
+  const modelLabel = selectedModel
+    ? (selectedModel.name || selectedModel.tag || selectedModelId?.slice(0, 16) || "No model")
+    : (selectedModelId ? selectedModelId.slice(0, 16) + '...' : "No model selected");
   const [error, setError] = useState<string>("");
   const [view, setView] = useState<"analysis" | "watchlist" | "screener">("analysis");
 
@@ -693,6 +701,33 @@ export function StockTerminal() {
           <p className="text-muted-foreground text-sm max-w-md">
             Individual stock analysis with model-driven BUY / HOLD / SELL signals, factor exposure, and risk guardrails.
           </p>
+          {/* Active model indicator */}
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Signal Source:</span>
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs font-mono gap-1.5 py-1",
+                selectedModelId
+                  ? "bg-primary/5 text-primary border-primary/30"
+                  : "bg-muted/30 text-muted-foreground border-dashed"
+              )}
+              title={selectedModelId || "Select a model from the top-left dropdown"}
+            >
+              <Activity className="h-3 w-3" />
+              {modelLabel}
+            </Badge>
+            {selectedModelMarket && (
+              <Badge variant="outline" className="text-[9px] uppercase bg-muted/20 font-bold">
+                {selectedModelMarket}
+              </Badge>
+            )}
+            {!selectedModelId && (
+              <span className="text-[10px] text-yellow-500/80 font-medium ml-1">
+                ⚠ Use model selector (top-left) to choose a model for signals
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 items-end">
