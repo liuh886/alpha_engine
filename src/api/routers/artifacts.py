@@ -8,6 +8,18 @@ from src.common.paths import DASHBOARD_DB_PATH
 router = APIRouter(tags=["artifacts"])
 
 
+@router.get("/top-bottom-analysis")
+def get_top_bottom_analysis():
+    """Return TOP/BOTTOM 5/10/15/20 backtest comparison for all models."""
+    analysis_path = DASHBOARD_DB_PATH.parent / "top_bottom_analysis.json"
+    try:
+        if not analysis_path.exists():
+            return {"ok": True, "models": [], "generated_at": ""}
+        return json.loads(analysis_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"ok": True, "models": [], "generated_at": ""}
+
+
 @router.get("/dashboard-db")
 def get_dashboard_db():
     """Return the full dashboard database for frontend comparison/display."""
