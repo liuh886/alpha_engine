@@ -405,20 +405,35 @@ def load_artifact_bundle_run_data(artifact_dir: Path) -> dict:
 
 def _resolve_best_metrics_section(raw: dict) -> dict:
     """Extract the best available metrics section with priority:
-    1. vectorized_backtest
+    1. vectorized_backtest (if non-zero data)
     2. grade_regime_backtest
     3. flat top-level keys
+
     Returns a flat dict with the selected metrics.
+    Skips sections where total_return is 0.0 when a better alternative exists.
     """
+    candidates: list[dict] = []
     for section in ("vectorized_backtest", "grade_regime_backtest"):
         nested = raw.get(section)
         if isinstance(nested, dict) and nested:
-            # Verify it has at least one metric we care about
             if any(
                 k in nested
                 for k in ("total_return", "excess_return", "sharpe_ratio", "annual_return")
             ):
-                return nested
+                candidates.append(nested)
+
+    # Prefer the non-zero candidate (vectorized may contain zero placeholders)
+    if len(candidates) >= 2:
+        first_val = abs(_to_float(candidates[0].get("total_return", 0)))
+        second_val = abs(_to_float(candidates[1].get("total_return", 0)))
+        if first_val == 0.0 and second_val != 0.0:
+            return candidates[1]  # vectorized was zero; use grade_regime
+        if first_val != 0.0:
+            return candidates[0]  # vectorized has real data
+
+    if candidates:
+        return candidates[0]
+
     # Fallback: use top-level keys directly
     return raw
 

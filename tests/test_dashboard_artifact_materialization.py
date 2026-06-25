@@ -196,6 +196,46 @@ class TestLoadArtifactBundleRunData:
         assert result["indicators"]["sharpe"] == 0.9
 
 
+    def test_vectorized_zero_skipped_for_grade_regime(self, tmp_path):
+        """When vectorized_backtest has zeros, grade_regime is used instead."""
+        from scripts.build_dashboard_db import load_artifact_bundle_run_data
+
+        bundle = tmp_path / "zero_vec_run"
+        bundle.mkdir()
+        # This matches the real pipeline: vectorized is placeholder zeros,
+        # grade_regime has real backtest results
+        metrics = {
+            "vectorized_backtest": {
+                "total_return": 0.0,
+                "excess_return": 0.0,
+                "sharpe_ratio": 0.0,
+                "max_drawdown": 0.0,
+                "annual_return": 0.0,
+                "volatility": 0.0,
+                "mean_ic": 0.0,
+                "ic_ir": 0.0,
+            },
+            "grade_regime_backtest": {
+                "total_return": 0.9568,
+                "benchmark_return": 0.2893,
+                "excess_return": 0.6674,
+                "max_drawdown": -0.2782,
+                "sharpe_ratio": 1.527,
+                "annual_return": 0.5608,
+                "volatility": 0.3287,
+            },
+        }
+        (bundle / "metrics.json").write_text(json.dumps(metrics))
+
+        result = load_artifact_bundle_run_data(bundle)
+
+        # Should use grade_regime values (vectorized is all zeros)
+        assert result["indicators"]["total_return"] == 0.9568
+        assert result["indicators"]["sharpe"] == 1.527
+        assert result["indicators"]["max_drawdown"] == -0.2782
+        assert result["indicators"]["annual_return"] == 0.5608
+
+
 class TestResolveBestMetricsSection:
     """Test the nested metrics priority resolver."""
 
@@ -235,6 +275,25 @@ class TestResolveBestMetricsSection:
         }
         result = _resolve_best_metrics_section(raw)
         assert result["total_return"] == 0.42
+
+    def test_vectorized_zeros_falls_back_to_grade_regime(self):
+        """When vectorized_backtest has all zeros, grade_regime is selected."""
+        from scripts.build_dashboard_db import _resolve_best_metrics_section
+
+        raw = {
+            "vectorized_backtest": {
+                "total_return": 0.0,
+                "excess_return": 0.0,
+                "sharpe_ratio": 0.0,
+            },
+            "grade_regime_backtest": {
+                "total_return": 0.9568,
+                "sharpe_ratio": 1.527,
+            },
+        }
+        result = _resolve_best_metrics_section(raw)
+        assert result["total_return"] == 0.9568
+        assert result["sharpe_ratio"] == 1.527
 
 
 class TestToFloat:
