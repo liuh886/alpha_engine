@@ -38,6 +38,65 @@ def _normalize_instrument(raw: str) -> str:
         return raw.upper()
 
 
+def _save_report_normal(
+    artifact_dir: Path,
+    result,
+    predictions: pd.DataFrame,
+    labels: pd.DataFrame,
+    market: str,
+) -> None:
+    """Save equity curve and positions as report_normal_1day.pkl for dashboard."""
+
+    # Build dates from predictions index
+    dates = sorted(
+        predictions.index.get_level_values("datetime").unique().tolist()
+    )
+    date_strings = [pd.Timestamp(d).strftime("%Y-%m-%dT%H:%M:%S.000") for d in dates]
+
+    # Build account values from portfolio_values
+    portfolio = list(result.portfolio_values) if result.portfolio_values else []
+    benchmark = list(result.benchmark_values) if result.benchmark_values else []
+    n = min(len(dates), len(portfolio))
+
+    if n == 0:
+        return
+
+    # Pad shorter arrays
+    portfolio = portfolio[:n]
+    benchmark = benchmark[:n]
+    date_strings = date_strings[:n]
+
+    # Compute daily returns
+    daily_rets = [0.0]
+    for i in range(1, n):
+        if portfolio[i - 1] != 0:
+            daily_rets.append(float(portfolio[i] / portfolio[i - 1] - 1))
+        else:
+            daily_rets.append(0.0)
+
+    # Build report_normal DataFrame
+    df = pd.DataFrame(
+        {
+            "account": portfolio,
+            "return": daily_rets,
+            "total_turnover": [0.0] * n,
+            "turnover": [0.0] * n,
+            "total_cost": [0.0] * n,
+            "cost": [0.0] * n,
+            "value": portfolio,
+            "cash": [0.0] * n,
+            "bench": benchmark if benchmark else [0.0] * n,
+        },
+        index=pd.to_datetime(dates[:n]),
+    )
+
+    # Save as pickle (same format as mlruns models)
+    artifacts_subdir = artifact_dir / "artifacts"
+    artifacts_subdir.mkdir(exist_ok=True)
+    df.to_pickle(artifacts_subdir / "report_normal_1day.pkl")
+    print(f"    Saved report_normal: {n} data points")
+
+
 def load_artifact_data(artifact_dir: Path):
     """Load predictions, labels, and config from an artifact directory."""
     pred_path = artifact_dir / "predictions.csv"
@@ -160,6 +219,9 @@ def run_rebacktest(
     )
     metrics_path = artifact_dir / "metrics.json"
     metrics_path.write_text(json.dumps(metrics, indent=2))
+
+    # Save report_normal (equity curve) so dashboard shows full curves
+    _save_report_normal(artifact_dir, result, predictions, labels, market)
 
     print(
         f"  {artifact_dir.name}: excess={result.excess_return:.2%} "
