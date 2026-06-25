@@ -547,6 +547,10 @@ def run_data_update(args) -> DataSnapshot:
                 print(f"    [!] Failed: {e}")
                 accounting.add("failed", reg, qlib_ticker, reason=str(e))
 
+    # Write provider diagnostics immediately after the download loop,
+    # before dump_bin, so diagnostics are available even if dump_bin fails.
+    _write_provider_diagnostics(provider_diagnostics, ARTIFACTS_DIR)
+
     # ------------------------------------------------------------------
     # 2. Dump to Qlib Binary
     # ------------------------------------------------------------------
