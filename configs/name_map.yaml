@@ -139,7 +139,7 @@
 '300476': 胜宏科技
 '300498': 温氏股份
 '300502': 新易盛
-'300548': 博创科技
+'300548': 长芯博创 (EverProX)
 '300628': 亿联网络
 '300661': 圣邦股份
 '300750': 宁德时代 CATL
@@ -155,7 +155,10 @@
 '301236': 软通动力
 '301269': 华大九天
 '301291': 明阳电气 (Mingyang Electric)
-'301666': 赛维时代
+'301308': 江波龙
+'301309': 德明利
+'301666': 大普微 (DapuStor)
+'301381': 赛维时代
 '302132': 中航成飞
 '399006': 创业板指 (ChiNext)
 '510050': 上证50ETF
@@ -375,6 +378,8 @@
 '688472': 阿特斯
 '688506': 百利天恒
 '688521': 芯原股份
+'688525': 佰维存储
+'688676': 金盘科技
 '688561': 奇安信
 '688599': 天合光能
 '688678': 福立旺
@@ -389,6 +394,7 @@ ADP: Automatic Data Processing
 ADSK: Autodesk
 AEP: American Electric Power
 ALNY: Alnylam Pharmaceuticals
+ALAB: Astera Labs
 AMAT: Applied Materials
 AMD: AMD
 AMGN: Amgen
@@ -436,6 +442,7 @@ GEHC: GE HealthCare
 GILD: Gilead Sciences
 GOOG: Alphabet Inc. (Class C)
 GOOGL: Alphabet (Google)
+HIMS: Hims & Hers Health
 HON: Honeywell
 HOOD: Robinhood
 IDXX: Idexx Laboratories
@@ -483,11 +490,14 @@ ROST: Ross Stores
 SBGSY: Schneider Electric (ADR)
 SBUX: Starbucks
 SHOP: Shopify
+SNDK: SanDisk
 SNPS: Synopsys
 SPY: SPDR S&P 500
+SPCX: SPAC & New Issue ETF
 STX: Seagate Technology
 TEAM: Atlassian
 TEM: Tempus AI
+TIGO: Millicom
 TYGO: Tigo Energy
 TMUS: T-Mobile US
 TRI: Thomson Reuters
