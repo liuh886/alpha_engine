@@ -350,12 +350,18 @@ def _write_provider_diagnostics(diagnostics: list[dict], artifacts_dir: Path) ->
 
     # Write to latest_provider_attempts.json
     latest_path = diag_dir / "latest_provider_attempts.json"
-    latest_path.write_text(json.dumps(output, indent=2, encoding="utf-8"))
+    latest_path.write_text(
+        json.dumps(output, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
     # Also write timestamped copy
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     timestamped_path = diag_dir / f"provider_attempts_{timestamp}.json"
-    timestamped_path.write_text(json.dumps(output, indent=2, encoding="utf-8"))
+    timestamped_path.write_text(
+        json.dumps(output, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
     print(f"\n[diagnostic] Provider attempts written to {latest_path}")
 
@@ -525,6 +531,11 @@ def run_data_update(args) -> DataSnapshot:
                     )
                     for e in schema_errors:
                         print(f"        -> {e}")
+                    # Update provider diagnostics with schema failure
+                    symbol_diag["final_state"] = "schema_failed"
+                    symbol_diag["ok"] = False
+                    symbol_diag["validation_error"] = "schema validation failed"
+                    symbol_diag["schema_errors"] = schema_errors
                     accounting.add("failed", reg, qlib_ticker, reason="schema validation failed")
                     continue
 
@@ -535,6 +546,10 @@ def run_data_update(args) -> DataSnapshot:
             except Exception as e:
                 print(f"    [!] Failed: {e}")
                 accounting.add("failed", reg, qlib_ticker, reason=str(e))
+
+    # Write provider diagnostics immediately after the download loop,
+    # before dump_bin, so diagnostics are available even if dump_bin fails.
+    _write_provider_diagnostics(provider_diagnostics, ARTIFACTS_DIR)
 
     # ------------------------------------------------------------------
     # 2. Dump to Qlib Binary
