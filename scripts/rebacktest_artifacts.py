@@ -259,66 +259,26 @@ def main():
     for art_id, m in all_metrics.items():
         print(f"  {art_id[:16]}... excess={m['excess_return']:.2%} sharpe={m['sharpe_ratio']:.2f}")
 
-    # Rebuild dashboard DB and add artifact entries
+    # Rebuild dashboard DB — build_dashboard_db.py already discovers
+    # artifact_bundle run dirs under artifacts/artifacts/<run_id> and
+    # loads metrics via load_artifact_bundle_run_data(), so we do NOT
+    # append entries manually (that would create duplicates).
     print("\nRebuilding dashboard DB...")
     import subprocess
 
     subprocess.run([sys.executable, str(ROOT / "scripts" / "build_dashboard_db.py")], check=True)
 
-    # Add artifact entries directly to dashboard DB
+    # Also sync YAML to repair any drift between SQLite and model_list.yaml
+    subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "build_dashboard_db.py"), "--sync-yaml"],
+        check=True,
+    )
+
+    # Report final dashboard state
     db_path = DASHBOARD_DB_PATH
-    if db_path.exists() and all_metrics:
+    if db_path.exists():
         db = json.loads(db_path.read_text())
-        {m["id"] for m in db.get("models", [])}
-
-        for art_id, metrics in all_metrics.items():
-            # Read manifest for metadata
-            art_dir = artifacts_root / art_id
-            manifest = {}
-            manifest_path = art_dir / "manifest.json"
-            if manifest_path.exists():
-                try:
-                    manifest = json.loads(manifest_path.read_text())
-                except Exception:
-                    pass
-
-            model_id = manifest.get("model_id", f"artifact_{art_id[:16]}")
-            market = manifest.get("market", "cn")
-            tag = manifest.get("tag", manifest.get("model_tag", "unknown"))
-            created = manifest.get("created_at", datetime.now().isoformat())
-
-            entry = {
-                "id": model_id,
-                "run_id": art_id,
-                "name": f"{market}_{tag}_{art_id[:8]}",
-                "date": created[:10],
-                "experiment": "artifact_rebacktest",
-                "market": market,
-                "params": manifest.get("model_params", {}),
-                "data": {
-                    "report_normal": None,
-                    "positions_normal": [],
-                    "indicators": {
-                        "total_return": metrics.get("total_return", 0),
-                        "annual_return": metrics.get("annual_return", 0),
-                        "sharpe": metrics.get("sharpe_ratio", 0),
-                        "information_ratio": metrics.get("ic_ir", 0),
-                        "max_drawdown": metrics.get("max_drawdown", 0),
-                        "annual_volatility": metrics.get("volatility", 0),
-                    },
-                    "sig_analysis": {
-                        "ic": {"ic": metrics.get("mean_ic", 0)},
-                        "ric": {"ric": metrics.get("mean_ic", 0)},
-                    },
-                    "benchmarks": {},
-                },
-                "has_full_data": False,  # No report_normal — metrics-only
-            }
-            db["models"].append(entry)
-            print(f"  Dashboard entry added: {model_id}")
-
-        db_path.write_text(json.dumps(db, indent=2, ensure_ascii=False))
-        print(f"Dashboard: {len(db['models'])} models total")
+        print(f"Dashboard: {len(db.get('models', []))} models total")
 
     print("Done.")
 
