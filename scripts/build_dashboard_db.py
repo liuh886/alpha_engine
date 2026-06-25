@@ -372,18 +372,24 @@ def load_artifact_bundle_run_data(artifact_dir: Path) -> dict:
     metrics_path = artifact_dir / "metrics.json"
     if metrics_path.exists():
         try:
-            raw_metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            raw = json.loads(metrics_path.read_text(encoding="utf-8"))
+
+            # Resolve best metrics source with priority:
+            #   1. vectorized_backtest  (clean, reproducible)
+            #   2. grade_regime_backtest (regime-labelled)
+            #   3. flat top-level keys
+            best = _resolve_best_metrics_section(raw)
             run_data["indicators"] = {
-                "total_return": raw_metrics.get("total_return", 0),
-                "annual_return": raw_metrics.get("annual_return", 0),
-                "sharpe": raw_metrics.get("sharpe_ratio", 0),
-                "information_ratio": raw_metrics.get("ic_ir", 0),
-                "max_drawdown": raw_metrics.get("max_drawdown", 0),
-                "annual_volatility": raw_metrics.get("volatility", 0),
+                "total_return": _to_float(best.get("total_return", 0)),
+                "annual_return": _to_float(best.get("annual_return", 0)),
+                "sharpe": _to_float(best.get("sharpe_ratio", 0)),
+                "information_ratio": _to_float(best.get("ic_ir", 0)),
+                "max_drawdown": _to_float(best.get("max_drawdown", 0)),
+                "annual_volatility": _to_float(best.get("volatility", 0)),
             }
             run_data["sig_analysis"] = {
-                "ic": {"ic": raw_metrics.get("mean_ic", 0)},
-                "ric": {"ric": raw_metrics.get("mean_ic", 0)},
+                "ic": {"ic": _to_float(best.get("mean_ic", 0))},
+                "ric": {"ric": _to_float(best.get("mean_ic", 0))},
             }
         except Exception as e:
             print(f"  Warning: Failed to load metrics.json: {e}")
@@ -395,6 +401,38 @@ def load_artifact_bundle_run_data(artifact_dir: Path) -> dict:
     # requires a full backtest run — skip for now)
 
     return run_data
+
+
+def _resolve_best_metrics_section(raw: dict) -> dict:
+    """Extract the best available metrics section with priority:
+    1. vectorized_backtest
+    2. grade_regime_backtest
+    3. flat top-level keys
+    Returns a flat dict with the selected metrics.
+    """
+    for section in ("vectorized_backtest", "grade_regime_backtest"):
+        nested = raw.get(section)
+        if isinstance(nested, dict) and nested:
+            # Verify it has at least one metric we care about
+            if any(
+                k in nested
+                for k in ("total_return", "excess_return", "sharpe_ratio", "annual_return")
+            ):
+                return nested
+    # Fallback: use top-level keys directly
+    return raw
+
+
+def _to_float(value) -> float:
+    """Coerce a value to float, handling string types."""
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return 0.0
+    return 0.0
 
 
 def _is_placeholder_entry(v: dict) -> bool:
