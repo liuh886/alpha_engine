@@ -76,12 +76,10 @@ def _save_report_normal(
         dt = pd.Timestamp(trade_dates[i])
         account_val = float(portfolio[i])
         bench_val = float(benchmark_vals[i]) if i < len(benchmark_vals) else account_val
-        next_dt = (
-            pd.Timestamp(trade_dates[i + 1])
-            if i + 1 < n_pts
-            else dt + pd.offsets.BDay(rebalance_days)
-        )
-        bus_days = pd.bdate_range(start=dt, end=next_dt - pd.offsets.BDay(1))
+        # Always expand to fill a full rebalance window (10 business days),
+        # regardless of how close the next rebalance date is.
+        end_dt = dt + pd.offsets.BDay(rebalance_days - 1)
+        bus_days = pd.bdate_range(start=dt, end=end_dt)
         for bd in bus_days:
             expanded_dates.append(bd)
             expanded_account.append(account_val)
