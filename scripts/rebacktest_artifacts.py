@@ -28,6 +28,16 @@ from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 from src.research.vectorized_backtest import run_vectorized_backtest
 
 
+def _normalize_instrument(raw: str) -> str:
+    """Convert numeric instrument IDs to zero-padded strings; keep tickers as-is."""
+    raw = str(raw).strip()
+    try:
+        return str(int(raw)).zfill(6)
+    except ValueError:
+        # Non-numeric ticker (e.g. AAPL, NVDA, AAOI) — keep as-is
+        return raw.upper()
+
+
 def load_artifact_data(artifact_dir: Path):
     """Load predictions, labels, and config from an artifact directory."""
     pred_path = artifact_dir / "predictions.csv"
@@ -40,14 +50,13 @@ def load_artifact_data(artifact_dir: Path):
 
     # Load predictions
     pred_df = pd.read_csv(pred_path)
-    # Convert numeric instrument IDs to zero-padded strings
-    pred_df["instrument"] = pred_df["instrument"].apply(lambda x: str(int(x)).zfill(6))
+    pred_df["instrument"] = pred_df["instrument"].apply(_normalize_instrument)
     pred_df["datetime"] = pd.to_datetime(pred_df["datetime"])
     predictions = pred_df.set_index(["datetime", "instrument"]).sort_index()
 
     # Load labels
     labels_df = pd.read_csv(labels_path)
-    labels_df["instrument"] = labels_df["instrument"].apply(lambda x: str(int(x)).zfill(6))
+    labels_df["instrument"] = labels_df["instrument"].apply(_normalize_instrument)
     labels_df["datetime"] = pd.to_datetime(labels_df["datetime"])
     labels = labels_df.set_index(["datetime", "instrument"]).sort_index()
     # Rename label column to "return" for vectorized backtest
