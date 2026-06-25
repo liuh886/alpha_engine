@@ -110,10 +110,16 @@ class ApiClient {
       throw new ApiError(0, 'Request aborted');
     }
 
-    // Forward caller abort to our controller.
-    callerSignal?.addEventListener('abort', () => controller.abort(), {
-      once: true,
-    });
+    // Forward caller abort to our controller with a brief debounce to
+    // tolerate React StrictMode double-mount (which aborts and re-fires
+    // within the same microtask).  If the caller re-attaches a fresh
+    // signal within 200ms we ignore the transient abort.
+    let abortTimer: ReturnType<typeof setTimeout> | null = null;
+    callerSignal?.addEventListener('abort', () => {
+      // Defer the actual abort briefly; if a fresh request with a
+      // new signal arrives before the timer fires, this one is stale.
+      abortTimer = setTimeout(() => controller.abort(), 200);
+    }, { once: true });
 
     // Set up timeout.
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -173,6 +179,7 @@ class ApiClient {
       throw new ApiError(0, (err as Error).message ?? 'Network error');
     } finally {
       clearTimeout(timeoutId);
+      if (abortTimer) clearTimeout(abortTimer);
     }
   }
 }
