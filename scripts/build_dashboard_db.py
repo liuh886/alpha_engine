@@ -196,8 +196,13 @@ def compute_indicators_from_report(report_normal) -> dict:
         daily_returns = np.diff(arr) / arr[:-1]
         daily_returns = daily_returns[np.isfinite(daily_returns)]
 
-        annual_return = float(np.mean(daily_returns) * 252) if len(daily_returns) > 0 else 0.0
-        vol = float(np.std(daily_returns, ddof=1) * np.sqrt(252)) if len(daily_returns) > 1 else 0.0
+        # Compound annualization (matching vectorized_backtest.py)
+        years = len(daily_returns) / 252.0 if len(daily_returns) > 0 else 0.0
+        if years > 0 and total_return > -1.0:
+            annual_return = float((1.0 + total_return) ** (1.0 / years) - 1.0)
+        else:
+            annual_return = 0.0
+        vol = float(np.std(daily_returns, ddof=0) * np.sqrt(252)) if len(daily_returns) > 1 else 0.0
         sharpe = annual_return / vol if vol > 0 else 0.0
 
         rolling_max = np.maximum.accumulate(arr)
