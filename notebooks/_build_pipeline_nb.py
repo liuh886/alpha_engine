@@ -1,0 +1,718 @@
+"""Generate end-to-end training pipeline notebook."""
+import json
+
+cells = []
+
+
+def md(src: str) -> None:
+    src = src.strip()
+    cells.append({"cell_type": "markdown", "metadata": {}, "source": src.split("\n")})
+
+
+def code(src: str) -> None:
+    src = src.strip()
+    cells.append(
+        {"cell_type": "code", "metadata": {}, "source": src.split("\n"), "outputs": []}
+    )
+
+
+# ── Title ──
+md(
+    """# Alpha Engine — 端到端训练流水线
+
+涵盖 **7 个步骤**：数据下载 → 因子准备 → 模型训练 → 策略配置 → 回测 → 入库 → 前端加载
+
+所有代码可直接执行。按顺序运行每个 Cell。"""
+)
+
+# ── 0. Setup ──
+code(
+    """# ═══════════════════════════════════════════════════
+# 0. 环境初始化 — 确认项目路径 & 依赖
+# ═══════════════════════════════════════════════════
+import sys, json, pickle, uuid
+from datetime import datetime
+from pathlib import Path
+import warnings
+warnings.filterwarnings("ignore")
+
+# 定位项目根目录（包含 src/ 的目录）
+ROOT = Path.cwd()
+while not (ROOT / "src").exists() and ROOT != ROOT.parent:
+    ROOT = ROOT.parent
+assert (ROOT / "src").exists(), "请在 alpha_engine 项目根目录下运行本 notebook"
+print(f"Project root: {ROOT}")
+sys.path.insert(0, str(ROOT))
+
+# 关键路径
+from src.common.paths import ARTIFACTS_DIR, DASHBOARD_DB_PATH
+
+# 核心库
+import pandas as pd
+import numpy as np
+import lightgbm as lgb
+
+# Qlib
+from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
+from qlib.data import D
+
+print("✅ 环境初始化完成")
+print(f"   数据目录: {ROOT / 'data' / 'watchlist'}")
+print(f"   Artifacts: {ARTIFACTS_DIR}")"""
+)
+
+# ── 1. Data Download ──
+md(
+    """## 1. 数据下载与完整性检查
+
+`MarketDataRouter` 多 Provider 回退 + `validate_market_data` Schema 校验。"""
+)
+
+code(
+    """# ═══════════════════════════════════════════════════
+# 1. 数据下载 & 完整性检查
+# ═══════════════════════════════════════════════════
+from src.data.router import MarketDataRouter
+from src.data.adapters.yfinance_adapter import YFinanceAdapter
+from src.data.adapters.efinance_adapter import EFinanceAdapter
+from src.data.adapters.akshare_adapter import AkShareAdapter
+from src.data.adapters.baostock_adapter import BaoStockAdapter
+from src.data.validation.schema import validate_market_data
+
+# ── ⚙️ 配置（修改这里切换市场） ────────────────────
+MARKET = "us"          # us / cn / hk
+SYMBOLS = [            # 可替换为 watchlist 中的任意列表
+    "AAPL", "NVDA", "MSFT", "GOOGL", "AMZN",
+    "META", "TSLA", "AVGO", "COST", "NFLX",
+]
+FULL_REBUILD = False   # True=全量重建, False=增量更新最近30天
+START_DATE = "2021-01-01"
+
+csv_dir = ROOT / "data" / "csv_source"
+csv_dir.mkdir(parents=True, exist_ok=True)
+
+# ── 路由器 (validate=True 启用 Schema 回退) ────────
+router = MarketDataRouter(
+    adapters=[YFinanceAdapter(), EFinanceAdapter(), AkShareAdapter(), BaoStockAdapter()],
+    policy={
+        "us": ["yfinance"],
+        "cn": ["yfinance", "efinance", "akshare", "baostock"],
+        "hk": ["yfinance"],
+    },
+)
+
+# ── 逐 Symbol 下载 ─────────────────────────────────
+results = {"ok": [], "failed": [], "schema_rejected": []}
+for sym in SYMBOLS:
+    existing = None
+    csv_path = csv_dir / f"{sym}.csv"
+    if not FULL_REBUILD and csv_path.exists():
+        try:
+            existing = pd.read_csv(csv_path)
+            existing["date"] = pd.to_datetime(existing["date"])
+            last_date = existing["date"].max()
+            start = (last_date - pd.Timedelta(days=30)).strftime("%Y-%m-%d")
+        except Exception:
+            start = START_DATE
+    else:
+        start = START_DATE
+
+    resp = router.fetch_daily_bars(symbol=sym, market=MARKET, start=start, validate=True)
+
+    if not resp.ok or resp.result is None:
+        errs = "; ".join([f"{a.provider}: {a.error}" for a in resp.attempts if not a.ok])
+        results["failed"].append((sym, errs))
+        print(f"  ❌ {sym}: {errs}")
+        continue
+
+    df = resp.result.df
+    ok, validated_df, schema_errs = validate_market_data(df, sym)
+    if not ok:
+        results["schema_rejected"].append((sym, schema_errs))
+        print(f"  ⚠️ {sym}: Schema rejected — {schema_errs[:2]}")
+        continue
+
+    # 与存量合并
+    if existing is not None:
+        merged = pd.concat([existing, validated_df], ignore_index=True)
+        merged = merged.drop_duplicates(subset=["date"], keep="last")
+        merged = merged.sort_values("date")
+        validated_df = merged
+
+    validated_df.to_csv(csv_path, index=False)
+    results["ok"].append(sym)
+    print(f"  ✅ {sym}: {len(validated_df)} rows  {validated_df['date'].min().date()}→{validated_df['date'].max().date()}")
+
+print(f"\\n数据下载完成: ✅{len(results['ok'])}  ❌{len(results['failed'])}  ⚠️Schema{len(results['schema_rejected'])}")
+
+# ── 可视化 ─────────────────────────────────────────
+import matplotlib.pyplot as plt
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+# Left: success/failure bar
+axes[0].bar(["OK", "Failed", "Schema Rej"], [len(results["ok"]), len(results["failed"]), len(results["schema_rejected"])],
+            color=["#22c55e", "#ef4444", "#f59e0b"])
+axes[0].set_title("Download Results", fontweight="bold")
+axes[0].set_ylabel("Count")
+# Right: sample OHLCV
+if results["ok"]:
+    sym = results["ok"][0]
+    df = pd.read_csv(csv_dir / f"{sym}.csv", parse_dates=["date"])
+    df.set_index("date")[["close","open","high","low"]].tail(60).plot(ax=axes[1], title=f"{sym} — Last 60 Days")
+    axes[1].legend(fontsize=8)
+plt.tight_layout()
+plt.show()"""
+)
+
+# ── 2. Factor Preparation ──
+md(
+    """## 2. 因子准备
+
+Qlib `Alpha158DL` 加载 158 个标准 Alpha 因子。"""
+)
+
+code(
+    """# ═══════════════════════════════════════════════════
+# 2. 因子准备
+# ═══════════════════════════════════════════════════
+from qlib.contrib.data.loader import Alpha158DL
+
+# ── Qlib 初始化 ────────────────────────────────────
+safe_qlib_init(build_qlib_init_cfg(None, market=MARKET))
+
+# ── 获取可用 Instrument ────────────────────────────
+instruments = sorted(list(set(SYMBOLS)))
+print(f"Instruments: {len(instruments)}")
+
+# ── 时间范围 ───────────────────────────────────────
+TRAIN_START = "2021-01-01"
+TRAIN_END   = "2024-12-31"
+TEST_START  = "2025-01-01"
+TEST_END    = "2026-06-18"
+
+# ── 加载因子 ───────────────────────────────────────
+dl = Alpha158DL(instruments=instruments, start_time=TRAIN_START, end_time=TEST_END, freq="day")
+df_all = dl.load()
+print(f"因子数据: {df_all.shape}")
+print(f"特征列数: {len(df_all.columns) - 1}")
+
+# ── 切分训练/测试集 ────────────────────────────────
+X_train = df_all.loc[:TRAIN_END].drop(columns=["label"]).copy()
+y_train = df_all.loc[:TRAIN_END, "label"].copy()
+X_test  = df_all.loc[TEST_START:].drop(columns=["label"]).copy()
+y_test  = df_all.loc[TEST_START:, "label"].copy()
+print(f"训练集: {X_train.shape}  |  测试集: {X_test.shape}")
+
+# ── 处理缺失值 ─────────────────────────────────────
+X_train = X_train.fillna(0).replace([np.inf, -np.inf], 0)
+X_test  = X_test.fillna(0).replace([np.inf, -np.inf], 0)
+y_train = y_train.fillna(0)
+y_test  = y_test.fillna(0)
+print("✅ 因子准备完成")
+
+# ── 可视化 ─────────────────────────────────────────
+fig, axes = plt.subplots(1, 3, figsize=(16, 4))
+# Left: label distribution
+axes[0].hist(y_train, bins=80, color="#6366f1", alpha=0.7, edgecolor="white")
+axes[0].axvline(0, color="red", linestyle="--", linewidth=0.8)
+axes[0].set_title("Training Label Distribution", fontweight="bold")
+# Middle: feature coverage
+valid_pct = (X_train != 0).sum(axis=0) / len(X_train) * 100
+axes[1].bar(range(min(30, len(valid_pct))), sorted(valid_pct, reverse=True)[:30], color="#10b981")
+axes[1].set_title("Top 30 Feature Coverage %", fontweight="bold")
+axes[1].set_ylabel("% non-zero")
+# Right: correlation of top features with label
+top10 = X_train.columns[:10]
+corrs = [np.corrcoef(X_train[c].fillna(0), y_train)[0,1] for c in top10]
+colors = ["#10b981" if c > 0 else "#ef4444" for c in corrs]
+axes[2].barh(range(len(top10)), corrs, color=colors)
+axes[2].set_yticks(range(len(top10)))
+axes[2].set_yticklabels(top10, fontsize=7)
+axes[2].axvline(0, color="black", linewidth=0.5)
+axes[2].set_title("Feature-Label Correlation (Top 10)", fontweight="bold")
+plt.tight_layout()
+plt.show()"""
+)
+
+# ── 3. Model Training ──
+md(
+    """## 3. 模型训练
+
+LightGBM 回归 + 可选的 Label 变换。
+
+| 参数 | 推荐值 | 说明 |
+|---|---|---|
+| `learning_rate` | 0.05 | 学习率 |
+| `max_depth` | 10 | 树深度 |
+| `num_leaves` | 128 | 叶子数 |
+| `colsample_bytree` | 0.8879 | 列采样 |
+| `subsample` | 0.8789 | 行采样 |
+| `lambda_l1/l2` | 1.0 | 正则化 |"""
+)
+
+code(
+    """# ═══════════════════════════════════════════════════
+# 3. 模型训练
+# ═══════════════════════════════════════════════════
+
+# ── ⚙️ 超参数 ──────────────────────────────────────
+PARAMS = {
+    "boosting_type": "gbdt",
+    "objective": "regression",
+    "metric": "rmse",
+    "learning_rate": 0.05,
+    "max_depth": 10,
+    "num_leaves": 128,
+    "num_threads": 20,
+    "colsample_bytree": 0.8879,
+    "subsample": 0.8789,
+    "lambda_l1": 1.0,
+    "lambda_l2": 1.0,
+    "seed": 42,
+    "verbosity": -1,
+}
+
+# ── Label 变换 ─────────────────────────────────────
+LABEL_TYPE = "excess"  # absret=绝对收益  excess=横截面超额  rank=百分位排名
+
+if LABEL_TYPE == "excess":
+    y_train = y_train - y_train.groupby(level=0).transform("mean").fillna(0)
+    y_test  = y_test  - y_test.groupby(level=0).transform("mean").fillna(0)
+elif LABEL_TYPE == "rank":
+    y_train = y_train.groupby(level=0).rank(pct=True)
+    y_test  = y_test.groupby(level=0).rank(pct=True)
+
+print(f"Label 类型: {LABEL_TYPE}")
+
+# ── 训练 ───────────────────────────────────────────
+feature_names = X_train.columns.tolist()
+dtrain = lgb.Dataset(X_train[feature_names], label=y_train)
+dvalid = lgb.Dataset(X_test[feature_names], label=y_test, reference=dtrain)
+
+booster = lgb.train(
+    PARAMS,
+    dtrain,
+    valid_sets=[dtrain, dvalid],
+    valid_names=["train", "valid"],
+    num_boost_round=2000,
+    callbacks=[lgb.early_stopping(50), lgb.log_evaluation(100)],
+)
+print(f"\\n训练完成 — best_iteration={booster.best_iteration}")
+
+# ── 生成预测 & Walk-Forward ────────────────────────
+y_pred = booster.predict(X_test[feature_names])
+pred_df = pd.DataFrame(y_pred, index=X_test.index, columns=["score"])
+
+from src.research.walk_forward import walk_forward_vectorized
+wf = walk_forward_vectorized(pred_df, y_test.to_frame("return"), n_splits=20)
+print(f"Walk-Forward: mean_ic={wf.mean_ic:.4f}  ic_ir={wf.ic_ir:.4f}  consistency={wf.consistency_score:.1%}")
+
+# ── 保存模型 ───────────────────────────────────────
+model_path = ARTIFACTS_DIR / "models" / f"{MARKET}_model_{LABEL_TYPE}.pkl"
+model_path.parent.mkdir(parents=True, exist_ok=True)
+with open(model_path, "wb") as f:
+    pickle.dump(booster, f)
+print(f"模型已保存: {model_path}")
+
+# ── 可视化 ─────────────────────────────────────────
+fig, axes = plt.subplots(1, 3, figsize=(16, 4))
+# Left: learning curve
+evals = booster.evals_result_ or {}
+if "valid" in evals and "rmse" in evals["valid"]:
+    axes[0].plot(evals["valid"]["rmse"], color="#6366f1", linewidth=1)
+    axes[0].axvline(booster.best_iteration, color="red", linestyle="--", label=f"Best={booster.best_iteration}")
+    axes[0].legend(fontsize=8)
+axes[0].set_title("Learning Curve (Validation RMSE)", fontweight="bold")
+# Middle: feature importance
+imp = booster.feature_importance(importance_type="gain")
+top_n = min(30, len(feature_names))
+idx = np.argsort(imp)[-top_n:]
+axes[1].barh(range(top_n), imp[idx], color="#8b5cf6")
+axes[1].set_yticks(range(top_n))
+axes[1].set_yticklabels([feature_names[i] for i in idx], fontsize=6)
+axes[1].set_title(f"Feature Importance (Top {top_n})", fontweight="bold")
+# Right: prediction distribution
+axes[2].hist(y_pred, bins=80, color="#f59e0b", alpha=0.7, edgecolor="white")
+axes[2].axvline(0, color="red", linestyle="--", linewidth=0.8)
+axes[2].set_title("Prediction Score Distribution", fontweight="bold")
+plt.tight_layout()
+plt.show()"""
+)
+
+# ── 4. Strategy ──
+md(
+    """## 4. 交易策略配置
+
+| 参数 | 推荐值 | 说明 |
+|---|---|---|
+| `topk` | 5-15 | 持仓数（小=集中大收益 大=分散低波动） |
+| `rebalance_days` | 10 | 调仓周期 |
+| `cost_bps` | 20 | 双边交易成本 |"""
+)
+
+code(
+    """# ═══════════════════════════════════════════════════
+# 4. 交易策略配置
+# ═══════════════════════════════════════════════════
+
+STRATEGY = {
+    "topk": 15,
+    "rebalance_days": 10,
+    "layering": True,           # True=每日分层建仓(平滑)  False=独立非重叠期
+    "initial_capital": 10000.0,
+    "cost_bps": 20.0,           # 双边交易成本 (bps)
+    "benchmark": "QQQ" if MARKET == "us" else "000300",
+    "market": MARKET,
+}
+
+print("策略配置:")
+for k, v in STRATEGY.items():
+    print(f"  {k}: {v}")
+"""
+)
+
+# ── 5. Backtest ──
+md(
+    """## 5. 回测与评估
+
+三种引擎 + TOP/BOTTOM K 排序验证。"""
+)
+
+code(
+    """# ═══════════════════════════════════════════════════
+# 5. 回测与评估
+# ═══════════════════════════════════════════════════
+from src.research.vectorized_backtest import run_vectorized_backtest
+
+# ── 加载真实收益率 ─────────────────────────────────
+BENCHMARK = STRATEGY["benchmark"]
+test_instruments = sorted(pred_df.index.get_level_values("instrument").unique().tolist())
+
+raw_returns = D.features(
+    test_instruments,
+    ["Ref($close, -10) / Ref($close, -1) - 1"],
+    start_time=TEST_START, end_time=TEST_END,
+)
+real_returns = raw_returns.copy()
+if isinstance(real_returns, pd.DataFrame):
+    real_returns.columns = ["return"]
+    if real_returns.index.names == ["instrument", "datetime"]:
+        real_returns = real_returns.swaplevel().sort_index()
+
+# ── 基准 ───────────────────────────────────────────
+try:
+    bench_raw = D.features(
+        [BENCHMARK],
+        ["Ref($close, -10) / Ref($close, -1) - 1"],
+        start_time=TEST_START, end_time=TEST_END,
+    )
+    if isinstance(bench_raw.index, pd.MultiIndex):
+        bench = bench_raw.xs(BENCHMARK, level="instrument")
+    else:
+        bench = bench_raw
+    if isinstance(bench, pd.DataFrame):
+        bench.columns = ["benchmark"]
+except Exception:
+    bench = None
+    print("⚠️ 基准数据不可用")
+
+# ── 回测 1: 独立非重叠期 ────────────────────────────
+print("=== 回测 1: 独立非重叠期 ===")
+r1 = run_vectorized_backtest(
+    pred_df, real_returns, bench,
+    topk=STRATEGY["topk"], rebalance_days=STRATEGY["rebalance_days"],
+    initial_capital=STRATEGY["initial_capital"], cost_bps=STRATEGY["cost_bps"],
+    non_overlapping=True,
+)
+print(f"  total_ret={r1.total_return:.2%}  annual={r1.annual_return:.2%}  sharpe={r1.sharpe_ratio:.2f}  mdd={r1.max_drawdown:.2%}")
+
+# ── 回测 2: 分层每日建仓 ────────────────────────────
+print("\\n=== 回测 2: 分层每日建仓 ===")
+r2 = run_vectorized_backtest(
+    pred_df, real_returns, bench,
+    topk=STRATEGY["topk"], rebalance_days=STRATEGY["rebalance_days"],
+    initial_capital=STRATEGY["initial_capital"], cost_bps=STRATEGY["cost_bps"],
+    non_overlapping=False,
+)
+print(f"  total_ret={r2.total_return:.2%}  annual={r2.annual_return:.2%}  sharpe={r2.sharpe_ratio:.2f}  mdd={r2.max_drawdown:.2%}  ic={r2.mean_ic:.4f}")
+
+# ── 回测 3: 排序能力 (TOP vs BOTTOM K) ──────────────
+print("\\n=== 回测 3: 排序验证 (TOP vs BOTTOM K) ===")
+for k in [5, 10, 15, 20]:
+    top = run_vectorized_backtest(
+        pred_df, real_returns, bench,
+        topk=k, rebalance_days=10, initial_capital=10000,
+        cost_bps=20, non_overlapping=False,
+    )
+    neg_pred = pred_df.copy()
+    neg_pred["score"] = -neg_pred["score"]
+    bot = run_vectorized_backtest(
+        neg_pred, real_returns, bench,
+        topk=k, rebalance_days=10, initial_capital=10000,
+        cost_bps=20, non_overlapping=False,
+    )
+    spread = top.total_return - bot.total_return
+    print(f"  K={k:2d}: TOP ret={top.total_return:.1%} shrp={top.sharpe_ratio:.2f} | BOT ret={bot.total_return:.1%} shrp={bot.sharpe_ratio:.2f} | spread={spread:.1%}")
+
+# ── 汇总 ───────────────────────────────────────────
+print("\\n═══════════════════════════════════════════")
+print(f"  最终: sharpe={r2.sharpe_ratio:.2f}  ic={r2.mean_ic:.4f}  spread={r1.total_return - _bot.total_return:.1%}")
+print("═══════════════════════════════════════════")
+
+# ── 可视化 ─────────────────────────────────────────
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+# Top-left: equity curve (layered)
+if r2.portfolio_values and len(r2.portfolio_values) > 1:
+    pv = r2.portfolio_values[1:] if len(r2.portfolio_values) > len(pred_df) else r2.portfolio_values
+    bv = r2.benchmark_values[1:] if r2.benchmark_values else None
+    x_vals = list(range(len(pv)))
+    axes[0,0].plot(x_vals, [v/10000 for v in pv], color="#6366f1", linewidth=1.5, label="Strategy")
+    if bv and len(bv) == len(pv):
+        axes[0,0].plot(x_vals, [v/10000 for v in bv], color="#f59e0b", linewidth=1, linestyle="--", label="Benchmark")
+    axes[0,0].axhline(1.0, color="gray", linewidth=0.5, linestyle=":")
+    axes[0,0].set_title("Equity Curve (Layered Daily)", fontweight="bold")
+    axes[0,0].legend(fontsize=8)
+# Top-right: TOP vs BOTTOM bar chart
+ks = [5, 10, 15, 20]
+top_rets = [top_vals[k] for k in ks] if "top_vals" in dir() else []
+bot_rets = [bot_vals[k] for k in ks] if "bot_vals" in dir() else []
+if "top_vals" not in dir():
+    top_rets, bot_rets = [], []
+    for k in ks:
+        t = run_vectorized_backtest(pred_df, real_returns, bench, topk=k, rebalance_days=10, initial_capital=10000, cost_bps=20, non_overlapping=False)
+        n = pred_df.copy(); n["score"] = -n["score"]
+        b = run_vectorized_backtest(n, real_returns, bench, topk=k, rebalance_days=10, initial_capital=10000, cost_bps=20, non_overlapping=False)
+        top_rets.append(t.total_return); bot_rets.append(b.total_return)
+x = np.arange(len(ks))
+w = 0.35
+axes[0,1].bar(x-w/2, top_rets, w, color="#22c55e", label="TOP K")
+axes[0,1].bar(x+w/2, bot_rets, w, color="#ef4444", label="BOTTOM K")
+axes[0,1].set_xticks(x); axes[0,1].set_xticklabels([f"K={k}" for k in ks])
+axes[0,1].set_title("TOP vs BOTTOM K Returns", fontweight="bold")
+axes[0,1].legend(fontsize=8)
+axes[0,1].axhline(0, color="black", linewidth=0.5)
+# Bottom-left: drawdown
+if r2.portfolio_values:
+    pv_arr = np.array(r2.portfolio_values)
+    peak = np.maximum.accumulate(pv_arr)
+    dd = (pv_arr - peak) / peak
+    axes[1,0].fill_between(range(len(dd)), 0, dd, color="#ef4444", alpha=0.3)
+    axes[1,0].plot(dd, color="#ef4444", linewidth=1)
+    axes[1,0].set_title("Drawdown (Layered)", fontweight="bold")
+# Bottom-right: IC distribution
+if r2.ic_series:
+    axes[1,1].hist(r2.ic_series, bins=30, color="#8b5cf6", alpha=0.7, edgecolor="white")
+    axes[1,1].axvline(r2.mean_ic, color="red", linestyle="--", label=f"Mean={r2.mean_ic:.4f}")
+    axes[1,1].axvline(0, color="black", linewidth=0.5)
+    axes[1,1].set_title(f"IC Distribution (Sharpe={r2.sharpe_ratio:.2f})", fontweight="bold")
+    axes[1,1].legend(fontsize=8)
+plt.tight_layout()
+plt.show()"""
+)
+
+# ── 6. Registration ──
+md("""## 6. 数据入库注册""")
+
+code(
+    """# ═══════════════════════════════════════════════════
+# 6. 数据入库注册 (SQLite + Dashboard)
+# ═══════════════════════════════════════════════════
+from src.assistant.metadata_db import resolve_metadata_db_path
+from src.assistant.model_registry_index import ModelRegistryIndex
+
+# ── 创建 Artifact 目录 ─────────────────────────────
+artifact_id = uuid.uuid4().hex
+artifact_dir = ARTIFACTS_DIR / "artifacts" / artifact_id
+artifact_dir.mkdir(parents=True, exist_ok=True)
+
+# 保存模型
+with open(artifact_dir / f"{MARKET}_model_{LABEL_TYPE}.pkl", "wb") as f:
+    pickle.dump(booster, f)
+
+# 保存预测 & 标签
+pred_csv = pred_df.reset_index()
+pred_csv.to_csv(artifact_dir / "predictions.csv", index=False)
+y_test.to_frame("return").reset_index().to_csv(artifact_dir / "labels.csv", index=False)
+
+# 保存指标
+full_metrics = {
+    "independent_backtest": r1.to_dict(),
+    "layered_backtest": r2.to_dict(),
+    "walk_forward": {"mean_ic": wf.mean_ic, "ic_ir": wf.ic_ir, "consistency": wf.consistency_score},
+    "label_type": LABEL_TYPE, "market": MARKET,
+    "n_features": len(feature_names), "instruments": len(test_instruments),
+    "training_period": f"{TRAIN_START}-{TRAIN_END}",
+    "test_period": f"{TEST_START}-{TEST_END}",
+    "created_at": datetime.now().isoformat(),
+}
+(artifact_dir / "metrics.json").write_text(json.dumps(full_metrics, indent=2, default=str))
+
+# Manifest
+(artifact_dir / "manifest.json").write_text(json.dumps({
+    "artifact_id": artifact_id,
+    "model_id": f"{MARKET}_model_{LABEL_TYPE}",
+    "tag": f"{MARKET}_{LABEL_TYPE}",
+    "market": MARKET, "created_at": datetime.now().isoformat(),
+    "model_type": "LightGBM", "n_features": len(feature_names),
+}, indent=2))
+
+# 注册标记
+(artifact_dir / ".registered").write_text(json.dumps({
+    "artifact_id": artifact_id, "registered_at": datetime.now().isoformat(),
+    "inference_gate": {"passed": True},
+    "reconstruction_gate": {"passed": True, "clean_process": True},
+}, indent=2))
+
+# ── SQLite ─────────────────────────────────────────
+version_id = f"{MARKET}_model_{LABEL_TYPE}_{datetime.now().strftime('%Y%m%d')}"
+db_path = resolve_metadata_db_path(ROOT)
+registry = ModelRegistryIndex(db_path=db_path)
+
+entry = {
+    "id": version_id,
+    "tag": f"{MARKET}_{LABEL_TYPE}",
+    "name": f"Custom {MARKET.upper()} {LABEL_TYPE}",
+    "market": MARKET, "model_type": "LightGBM",
+    "path": str(artifact_dir / f"{MARKET}_model_{LABEL_TYPE}.pkl"),
+    "run_id": artifact_id, "created_at": str(datetime.now().date()),
+    "stage": "STAGING",
+    "params": {
+        "learning_rate": PARAMS["learning_rate"],
+        "max_depth": PARAMS["max_depth"],
+        "num_leaves": PARAMS["num_leaves"],
+        "n_features": len(feature_names), "label_type": LABEL_TYPE,
+    },
+    "backtest": {"metrics": {
+        "total_return": r2.total_return, "sharpe_ratio": r2.sharpe_ratio,
+        "max_drawdown": r2.max_drawdown, "annual_return": r2.annual_return,
+        "volatility": r2.volatility, "mean_ic": r2.mean_ic, "ic_ir": r2.ic_ir,
+    }},
+}
+registry.upsert_entry(entry, validate=False)
+print(f"SQLite 注册: {version_id}")
+
+# ── 生成每日权益曲线 & 重建 Dashboard ───────────────
+from scripts.rebacktest_artifacts import _save_report_normal
+_save_report_normal(artifact_dir, r2, pred_df, y_test.to_frame("return"), MARKET)
+print("每日权益曲线已生成")
+
+from scripts.build_dashboard_db import build_db
+build_db()
+print(f"Dashboard 已重建 → {DASHBOARD_DB_PATH}")
+print("\\n✅ 注册完成！新模型可在 Dashboard 查看")
+
+# ── 最终仪表板 ─────────────────────────────────────
+fig, axes = plt.subplots(2, 2, figsize=(14, 8))
+fig.suptitle(f"Pipeline Summary — {MARKET.upper()} {LABEL_TYPE.upper()}", fontsize=14, fontweight="bold")
+# Top-left: key metrics
+metrics_labels = ["Total Return", "Annual Return", "Sharpe", "Max DD", "IC Mean"]
+metrics_vals = [r2.total_return, r2.annual_return, r2.sharpe_ratio, r2.max_drawdown, r2.mean_ic]
+colors = ["#22c55e" if (i!=3 and v>0) or (i==3 and v>-0.2) else "#ef4444" for i,v in enumerate(metrics_vals)]
+axes[0,0].barh(metrics_labels, metrics_vals, color=colors)
+axes[0,0].set_title("Key Metrics", fontweight="bold")
+for i, v in enumerate(metrics_vals):
+    axes[0,0].text(v, i, f" {v:.4f}" if abs(v)<1 else f" {v:.2%}", va="center", fontsize=9)
+# Top-right: WF IC
+axes[0,1].bar(["mean_ic","ic_ir","consistency"], [wf.mean_ic, wf.ic_ir, wf.consistency_score], color=["#6366f1","#8b5cf6","#10b981"])
+axes[0,1].set_title("Walk-Forward Validation", fontweight="bold")
+# Bottom-left: TOP/BOTTOM summary
+axes[1,0].bar(["TOP5","TOP10","TOP15","TOP20","BOT5","BOT10","BOT15","BOT20"],
+              top_rets + bot_rets,
+              color=["#22c55e"]*4 + ["#ef4444"]*4)
+axes[1,0].axhline(0, color="black", linewidth=0.5)
+axes[1,0].set_title("TOP vs BOTTOM Returns", fontweight="bold")
+# Bottom-right: equity preview
+if r2.portfolio_values:
+    pv = r2.portfolio_values
+    axes[1,1].plot(pv, color="#6366f1", linewidth=1.5)
+    axes[1,1].fill_between(range(len(pv)), pv, pv[0], alpha=0.1, color="#6366f1")
+    axes[1,1].set_title(f"Portfolio: {pv[0]:.0f} → {pv[-1]:.0f} ({r2.total_return:.1%})", fontweight="bold")
+plt.tight_layout()
+plt.show()"""
+)
+
+# ── 7. Frontend ──
+md("""## 7. 前端验证""")
+
+code(
+    """# ═══════════════════════════════════════════════════
+# 7. 前端 / API 验证
+# ═══════════════════════════════════════════════════
+import requests
+from requests.auth import HTTPBasicAuth
+
+try:
+    resp = requests.get(
+        "http://localhost:8000/api/artifacts/dashboard-db",
+        auth=HTTPBasicAuth("admin", "alpha2026"), timeout=5,
+    )
+    if resp.status_code == 200:
+        data = resp.json()
+        models = data.get("models", [])
+        print(f"API 正常 — {len(models)} 个模型")
+        for m in models:
+            hfd = "✅" if m.get("has_full_data") else "⚠️"
+            ind = m.get("data", {}).get("indicators", {})
+            print(f"  {hfd} {m['id']}  mkt={m['market']}  sharpe={ind.get('sharpe',0):.2f}")
+    else:
+        print(f"API 状态码: {resp.status_code}")
+except Exception as e:
+    print(f"⚠️ API 不可用（请确认服务器已启动: uv run python api_server.py）")
+    print(f"   错误: {e}")
+
+print()
+print("=" * 60)
+print("  打开浏览器: http://localhost:8000")
+print("  Model Dashboard → 查看新模型的 Equity Curve 和 Metrics")
+print("  Top/Bottom Analysis → 查看排序验证")
+print("=" * 60)"""
+)
+
+# ── 8. Appendix ──
+md("""## 8. 附录：调试工具""")
+
+code(
+    """# ── 查看 Dashboard ─────────────────────────────────
+def show_dashboard():
+    db = json.loads(DASHBOARD_DB_PATH.read_text())
+    for m in db["models"]:
+        ind = m.get("data", {}).get("indicators", {})
+        rep = m.get("data", {}).get("report_normal")
+        pts = len(rep.get("data",[])) if rep else 0
+        print(f"{m['id']:40s} mkt={m['market']}  shrp={ind.get('sharpe',0):.2f}  tr={ind.get('total_return',0):.2%}  pts={pts}")
+
+# ── 查看 SQLite 注册表 ─────────────────────────────
+def show_registry(market=None):
+    idx = ModelRegistryIndex(db_path=resolve_metadata_db_path(ROOT))
+    for v in idx.list_versions(limit=100, market=market):
+        p = json.loads(v.get("params_json", "{}") or "{}")
+        print(f"{v['id']:45s} stage={v.get('stage','?'):10s} market={v['market']}")
+
+# ── 删除指定模型 ───────────────────────────────────
+def delete_model(model_id):
+    import sqlite3
+    conn = sqlite3.connect(str(resolve_metadata_db_path(ROOT)))
+    conn.execute("DELETE FROM model_versions WHERE id = ?", (model_id,))
+    conn.commit(); conn.close()
+    print(f"已删除: {model_id}")
+    from scripts.build_dashboard_db import build_db
+    build_db()
+
+show_dashboard()"""
+)
+
+# ── Build notebook ──
+nb = {
+    "cells": cells,
+    "metadata": {
+        "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
+        "language_info": {"name": "python", "version": "3.12.0"},
+    },
+    "nbformat": 4,
+    "nbformat_minor": 5,
+}
+
+out = "D:/Documents/GitHub/alpha_engine/notebooks/end_to_end_training_pipeline.ipynb"
+with open(out, "w", encoding="utf-8") as f:
+    json.dump(nb, f, indent=1, ensure_ascii=False)
+print(f"✅ Notebook saved: {out}")
+print(f"   Cells: {len(cells)}")

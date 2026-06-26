@@ -79,7 +79,7 @@ export function HomePage() {
               <span className="text-xs text-muted-foreground uppercase font-bold tracking-widest block mb-1">Calendar Day</span>
               <span className="text-2xl font-mono font-black">{latestCalendarDay || 'N/A'}</span>
             </div>
-            {qualityStatus !== 'ok' && (
+            {qualityStatus !== 'ok' && !demoMode && (
               <Button onClick={startUpdateData} variant="outline" size="sm" className="w-full text-xs font-bold uppercase tracking-wider">
                 <Play className="h-3 w-3 mr-2" /> Sync Data
               </Button>

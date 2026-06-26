@@ -27,7 +27,7 @@ import {
 import { ReleaseOutcome } from "@/components/ReleaseOutcome";
 import type { WorkflowStatusEntry } from "@/lib/api-types";
 
-type WorkflowStatus = "idle" | "running" | "succeeded" | "failed";
+type WorkflowStatus = "idle" | "running" | "succeeded" | "failed" | "research_candidate";
 
 const SESSION_KEY = "alpha_engine_active_workflow";
 
@@ -122,6 +122,25 @@ export function BacktestPage() {
       setWorkflowStatus("running");
     }
   }, []);
+
+  // Auto-resolve latest snapshot when none is provided
+  useEffect(() => {
+    if (snapshotId) return; // Already have a snapshot
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await releaseApi.getDataStatus();
+        const latestId = status?.data?.latest_snapshot_id;
+        if (!cancelled && latestId) {
+          setSnapshotId(latestId);
+          setWorkflowOutcome({ state: "success", reason: `Auto-resolved latest snapshot: ${latestId}` });
+        }
+      } catch {
+        // Silently fail — user can still navigate to Data page
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [snapshotId]);
 
   // Fetch stock ranking
   const fetchRanking = useCallback(async () => {
@@ -225,6 +244,16 @@ export function BacktestPage() {
       saveWorkflowState(null);
       setWorkflowStatus("succeeded");
       void loadExactResult(workflow);
+    } else if (status === "RESEARCH_CANDIDATE") {
+      // Terminal partial result: model trained but promotion gates did not pass
+      completionRef.current = `${workflow.workflow_id}:${workflow.status}`;
+      saveWorkflowState(null);
+      setWorkflowStatus("research_candidate");
+      setWorkflowOutcome({
+        state: "success",
+        reason: "Model trained and backtested, but promotion gates did not pass. Model is available as a research candidate.",
+      });
+      void loadExactResult(workflow);
     } else if (status === "FAILED") {
       completionRef.current = `${workflow.workflow_id}:${workflow.status}`;
       saveWorkflowState(null);
@@ -243,7 +272,7 @@ export function BacktestPage() {
 
   const validate = (): string | null => {
     if (!snapshotId) return "An approved snapshot identity is required. Start from the Data page.";
-    if (!tag.trim()) return "Tag is required (used to identify this run).";
+    if (!tag.trim()) return "Tag is required to identify this training/backtest run. Enter a descriptive label.";
     if (!market) return "Market is required.";
     if (!modelType.trim()) return "Model type is required.";
     return null;
@@ -317,7 +346,7 @@ export function BacktestPage() {
       <div className="border-b pb-4">
         <h1 className="text-2xl font-bold tracking-tight">Backtest Workbench</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Execute backtests and analyze results.
+          Train snapshot-bound models, run backtests, and analyze results.
         </p>
       </div>
 
@@ -435,33 +464,35 @@ export function BacktestPage() {
 
             <Button
               onClick={startBacktest}
-              disabled={workflowStatus === "running"}
+              disabled={workflowStatus === "running" || !snapshotId}
               className="h-7 gap-1.5 px-4 text-xs"
+              title={!snapshotId ? "Waiting for snapshot resolution..." : undefined}
             >
               {workflowStatus === "running" ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
                 <Play className="h-3 w-3 fill-current" />
               )}
-              {workflowStatus === "running" ? "Running..." : "Execute"}
+              {workflowStatus === "running" ? "Running..." : !snapshotId ? "Awaiting Snapshot" : "Train + Backtest"}
             </Button>
 
             {workflowStatus !== "idle" && (
               <Badge
                 variant={
                   workflowStatus === "succeeded" ? "default" :
-                  workflowStatus === "failed" ? "destructive" : "outline"
+                  workflowStatus === "failed" ? "destructive" :
+                  workflowStatus === "research_candidate" ? "secondary" : "outline"
                 }
                 className="gap-1 text-xs"
               >
                 {workflowStatus === "running" && <Loader2 className="h-3 w-3 animate-spin" />}
                 {workflowStatus === "succeeded" && <CheckCircle2 className="h-3 w-3" />}
                 {workflowStatus === "failed" && <XCircle className="h-3 w-3" />}
-                {workflowStatus}
+                {workflowStatus === "research_candidate" ? "Research Candidate" : workflowStatus}
               </Badge>
             )}
 
-            {(workflowStatus === "succeeded" || workflowStatus === "failed") && (
+            {(workflowStatus === "succeeded" || workflowStatus === "failed" || workflowStatus === "research_candidate") && (
               <Button variant="ghost" size="sm" onClick={resetToIdle} className="h-7 text-xs text-muted-foreground">
                 New Run
               </Button>
@@ -470,8 +501,16 @@ export function BacktestPage() {
 
           {/* Validation error */}
           {validationError && (
-            <div className="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-600">
-              {validationError}
+            <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded text-sm text-amber-700 font-medium">
+              ⚠️ {validationError}
+            </div>
+          )}
+
+          {/* Snapshot loading indicator */}
+          {!snapshotId && !validationError && (
+            <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-600">
+              <Loader2 className="h-3 w-3 animate-spin inline mr-2" />
+              Resolving latest data snapshot...
             </div>
           )}
 

@@ -11,7 +11,8 @@ const expectedAuth = `Basic ${Buffer.from("release-user:release-pass").toString(
 // Load contract fixtures (single source of truth for E2E, demo mode, and tests)
 const identity = JSON.parse(await readFile(join(fixturesDir, "identity.json"), "utf8"));
 const dashboardArtifact = JSON.parse(await readFile(join(fixturesDir, "dashboard_artifact.json"), "utf8"));
-const modelVersions = JSON.parse(await readFile(join(fixturesDir, "model_versions.json"), "utf8"));
+const modelVersionsResponse = JSON.parse(await readFile(join(fixturesDir, "model_versions.json"), "utf8"));
+const modelVersions = modelVersionsResponse.versions || modelVersionsResponse;
 
 const { snapshot_id: snapshotId, workflow_id: workflowId, run_id: runId, model_id: modelId } = identity;
 
@@ -95,6 +96,40 @@ async function handleApi(request, response, url) {
     },
   });
   if (url.pathname === "/api/arena/list") return json(response, 200, { ok: true, arenas: [] });
+
+  // Model promote/delete endpoints
+  if (url.pathname === "/api/models/promote" && request.method === "POST") {
+    const body = await readJson(request);
+    return json(response, 200, { ok: true, schema_version: "v1", artifact_id: body.artifact_id, stage: body.stage });
+  }
+  if (url.pathname === "/api/models/delete" && request.method === "POST") {
+    return json(response, 200, { ok: true });
+  }
+
+  // Data update endpoint
+  if (url.pathname === "/api/data/update" && request.method === "POST") {
+    return json(response, 200, { ok: true, job_id: "job-data-update-001", message: "Data update started" });
+  }
+
+  // Individual job status endpoint
+  if (url.pathname.startsWith("/api/jobs/") && request.method === "GET") {
+    const jobId = url.pathname.split("/").pop();
+    return json(response, 200, { ok: true, job: { id: jobId, status: "succeeded", progress: 100 } });
+  }
+
+  // Data instruments endpoints
+  if (url.pathname === "/api/data/instruments/add" && request.method === "POST") {
+    return json(response, 200, { ok: true, added: 1 });
+  }
+  if (url.pathname === "/api/data/instruments/remove" && request.method === "POST") {
+    return json(response, 200, { ok: true, removed: 1 });
+  }
+
+  // Strategy compile endpoint
+  if (url.pathname === "/api/strategy/compile" && request.method === "POST") {
+    return json(response, 200, { ok: true, yaml_path: "configs/compiled_strategy.yaml", summary: {} });
+  }
+
   return json(response, 404, { detail: `No fixture for ${request.method} ${url.pathname}` });
 }
 

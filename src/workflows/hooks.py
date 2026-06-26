@@ -170,9 +170,13 @@ def _repair_data(market: str, lookback_days: int = 60) -> bool:
             "--lookback-days",
             str(lookback_days),
         ]
-        subprocess.run(cmd, check=True, cwd=str(PROJECT_ROOT))
-        logger.info("Data repair successful", market=market.upper())
-        return True
+        result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
+        # Exit code 0 = success, 2 = succeeded with warnings (snapshot published)
+        if result.returncode in (0, 2):
+            logger.info("Data repair successful", market=market.upper(), exit_code=result.returncode)
+            return True
+        logger.error("Data repair failed", market=market.upper(), exit_code=result.returncode)
+        return False
     except Exception as e:
         logger.error("Data repair failed", market=market.upper(), error=str(e))
         return False

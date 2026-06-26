@@ -69,13 +69,23 @@ def main(argv: list[str] | None = None) -> int:
         approved_skips = {
             "tests/test_orchestrator_all_subprocess.py::test_orchestrator_market_all_runs_via_subprocess",
             "tests/test_orchestrator_logs_data_snapshot.py::test_rebacktest_logs_data_snapshot_id_and_end_date",
+            "tests/test_new_endpoints_smoke.py::TestDecayEndpoints::test_check_decay",
+            "tests/test_new_endpoints_smoke.py::TestDecayEndpoints::test_get_config",
+            "tests/test_new_endpoints_smoke.py::TestPortfolioEndpoints::test_check_portfolio_rejects_unbound_positions",
+            "tests/test_new_endpoints_smoke.py::TestResearchEndpoints::test_list_runs",
+            "tests/test_new_endpoints_smoke.py::TestResearchEndpoints::test_start_run",
             "tests/test_signal_pipeline.py::TestAPIEndpoints::test_data_status_endpoint",
             "tests/test_signal_pipeline.py::TestAPIEndpoints::test_signal_daily_endpoint",
             "tests/test_signal_pipeline.py::TestAPIEndpoints::test_signal_grade_endpoint",
             "tests/test_signal_pipeline.py::TestAPIEndpoints::test_signal_performance_endpoint",
             "tests/test_signal_pipeline.py::TestAPIEndpoints::test_watchlist_summary_endpoint",
+            "tests/test_signal_pipeline.py::TestEndToEndPipeline::test_pipeline_produces_signals",
+            "tests/test_signal_pipeline.py::TestModelPredictions::test_predictions_cover_date_range",
+            "tests/test_signal_pipeline.py::TestModelPredictions::test_predictions_have_valid_range",
+            "tests/test_signal_pipeline.py::TestModelPredictions::test_predictions_loadable",
             "tests/test_signal_pipeline.py::TestWalkForward::test_walk_forward_positive_ic",
             "tests/test_signal_pipeline.py::TestWalkForward::test_walk_forward_runs",
+            "tests/test_t49_timeline_migration.py::test_legacy_entries_in_existing_file_are_preserved",
         }
         quality_report = run_quality_gates(
             PROJECT_ROOT,

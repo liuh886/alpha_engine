@@ -42,7 +42,7 @@ try {
                         ($_.CommandLine -match "qlib-dashboard|esbuild")
                     } |
                     ForEach-Object {
-                        Write-Host "  Stopping PID $($_.ProcessId): $($_.Name) - $($_.CommandLine.Substring(0, [Math]::Min(80, $_.CommandLine.Length)))" -ForegroundColor DarkYellow
+                        Write-Host "  Stopping PID $($_.ProcessId): $($_.Name)" -ForegroundColor DarkYellow
                         Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
                     }
                 Start-Sleep -Seconds 2

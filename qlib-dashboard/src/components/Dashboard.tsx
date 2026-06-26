@@ -44,10 +44,16 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
       {!data.report || data.report.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-lg bg-muted/30">
           <Info className="h-8 w-8 text-muted-foreground/30 mb-2" />
-          <p className="text-muted-foreground text-sm mb-3">No backtest data available for this model.</p>
-          <button className="px-3 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:opacity-90" onClick={() => window.location.hash = '#/models'}>
-            Go to Model Registry
-          </button>
+          <p className="text-muted-foreground text-sm mb-1">No backtest report data available for this model.</p>
+          <p className="text-muted-foreground text-xs mb-4">Model metrics are shown above. Run a backtest to generate equity curve and position data.</p>
+          <div className="flex gap-2">
+            <button className="px-3 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:opacity-90" onClick={() => window.location.hash = '#/backtest'}>
+              Run Backtest
+            </button>
+            <button className="px-3 py-1.5 border border-border rounded text-xs hover:bg-muted" onClick={() => window.location.hash = '#/models'}>
+              Model Registry
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">

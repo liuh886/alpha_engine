@@ -54,6 +54,7 @@ const FIXTURE_MODELS = {
       snapshot_id: "snapshot-cn-20260620",
       evidence_id: "artifact-release-42",
       created_at: "2026-06-20T07:55:00Z",
+      stage: "STAGING",
       description: "Stage: STAGING",
       params: { data_snapshot_id: "snapshot-cn-20260620" },
       metrics: { "Sharpe Ratio": 1.42, "Annualized Return": 0.18, "Max Drawdown": -0.08 },
@@ -68,6 +69,7 @@ const FIXTURE_MODELS = {
       snapshot_id: "snapshot-us-20260619",
       evidence_id: "artifact-recommended-99",
       created_at: "2026-06-19T10:00:00Z",
+      stage: "RECOMMENDED",
       description: "Stage: RECOMMENDED",
       params: {},
       metrics: { "Sharpe Ratio": 2.1, "Annualized Return": 0.25, "Max Drawdown": -0.05 },
@@ -80,6 +82,7 @@ const FIXTURE_MODELS = {
       model_type: "lgbm",
       run_id: "run-old-01",
       created_at: "2026-05-01T00:00:00Z",
+      stage: "CANDIDATE",
       description: "",
       params: {},
       metrics: { "Sharpe Ratio": 0.5, "Annualized Return": 0.05, "Max Drawdown": -0.15 },
@@ -305,7 +308,7 @@ describe("ModelsPage", () => {
     // Find the promote button for the staging model (not the recommended one)
     const row = getRowContaining("release-candidate-42");
     expect(row).toBeTruthy();
-    const promoteButton = within(row!).getByLabelText(/Promote model to recommended/i);
+    const promoteButton = within(row!).getByLabelText(/Promote to recommended/i);
     fireEvent.click(promoteButton);
 
     await waitFor(() => {

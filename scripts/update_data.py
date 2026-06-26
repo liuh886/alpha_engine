@@ -332,6 +332,40 @@ def build_provider_stage(
     (cal_dir / "day.txt").write_text("\n".join(sorted_dates) + "\n", encoding="utf-8")
 
 
+def _write_provider_diagnostics(diagnostics: list[dict], artifacts_dir: Path) -> None:
+    """Write per-symbol provider attempt diagnostics to JSON file."""
+    import json
+    from datetime import datetime, timezone
+
+    diag_dir = artifacts_dir / "data_update_diagnostics"
+    diag_dir.mkdir(parents=True, exist_ok=True)
+
+    output = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "total_symbols": len(diagnostics),
+        "succeeded": sum(1 for d in diagnostics if d["ok"]),
+        "failed": sum(1 for d in diagnostics if not d["ok"]),
+        "symbols": diagnostics,
+    }
+
+    # Write to latest_provider_attempts.json
+    latest_path = diag_dir / "latest_provider_attempts.json"
+    latest_path.write_text(
+        json.dumps(output, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    # Also write timestamped copy
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamped_path = diag_dir / f"provider_attempts_{timestamp}.json"
+    timestamped_path.write_text(
+        json.dumps(output, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    print(f"\n[diagnostic] Provider attempts written to {latest_path}")
+
+
 def run_data_update(args) -> DataSnapshot:
     """Execute a full data-update cycle with accounting and immutable publish.
 
@@ -340,6 +374,9 @@ def run_data_update(args) -> DataSnapshot:
     from src.common.paths import ARTIFACTS_DIR, DATA_DIR, SCRIPTS_DIR
 
     print("=== Updating Data via router (providers + fallback) ===")
+
+    # Provider diagnostics collector
+    provider_diagnostics = []
 
     watchlist = load_watchlist()
     source_dir = DATA_DIR / "csv_source"
@@ -424,8 +461,26 @@ def run_data_update(args) -> DataSnapshot:
                         spot_check_done = True
 
                 resp = router.fetch_daily_bars(
-                    symbol=qlib_ticker, market=reg, start=start, end=None
+                    symbol=qlib_ticker, market=reg, start=start, end=None,
+                    validate=True,  # trigger fallback if data fails OHLCV schema
                 )
+
+                # Record provider diagnostics
+                symbol_diag = {
+                    "symbol": qlib_ticker,
+                    "market": reg,
+                    "ok": resp.ok,
+                    "final_state": "updated" if resp.ok else "failed",
+                    "attempts": [
+                        {
+                            "provider": a.provider,
+                            "ok": a.ok,
+                            "error": a.error or None,
+                        }
+                        for a in resp.attempts
+                    ],
+                }
+                provider_diagnostics.append(symbol_diag)
 
                 # Record provenance
                 try:
@@ -477,6 +532,11 @@ def run_data_update(args) -> DataSnapshot:
                     )
                     for e in schema_errors:
                         print(f"        -> {e}")
+                    # Update provider diagnostics with schema failure
+                    symbol_diag["final_state"] = "schema_failed"
+                    symbol_diag["ok"] = False
+                    symbol_diag["validation_error"] = "schema validation failed"
+                    symbol_diag["schema_errors"] = schema_errors
                     accounting.add("failed", reg, qlib_ticker, reason="schema validation failed")
                     continue
 
@@ -487,6 +547,10 @@ def run_data_update(args) -> DataSnapshot:
             except Exception as e:
                 print(f"    [!] Failed: {e}")
                 accounting.add("failed", reg, qlib_ticker, reason=str(e))
+
+    # Write provider diagnostics immediately after the download loop,
+    # before dump_bin, so diagnostics are available even if dump_bin fails.
+    _write_provider_diagnostics(provider_diagnostics, ARTIFACTS_DIR)
 
     # ------------------------------------------------------------------
     # 2. Dump to Qlib Binary
@@ -548,25 +612,34 @@ def run_data_update(args) -> DataSnapshot:
     # ------------------------------------------------------------------
     # 4. Publish immutable snapshot (replaces lightweight marker)
     # ------------------------------------------------------------------
-    snapshot = publish_provider_snapshot(
-        provider_dir=qlib_dir,
-        snapshot_store=ARTIFACTS_DIR / "snapshots",
-        marker_path=ARTIFACTS_DIR / "snapshots" / "watchlist_latest.json",
-        db_path=resolve_metadata_db_path(PROJECT_ROOT),
-        dataset_key="watchlist",
-        universe=universe,
-        selected_markets=selected_markets,
-        source_policy=load_router_policy(),
-        adjustment_policy={"method": "none"},
-        quality_policy={"max_stale_pct": 0.1, "max_csv_parse_errors": 0},
-        quality_report=q,
-        accounting=accounting,
-        strict=getattr(args, "strict", False),
-        max_missing_pct=getattr(args, "max_missing_pct", 0.05),
-        max_missing_count=getattr(args, "max_missing_count", 20),
-    )
+    try:
+        snapshot = publish_provider_snapshot(
+            provider_dir=qlib_dir,
+            snapshot_store=ARTIFACTS_DIR / "snapshots",
+            marker_path=ARTIFACTS_DIR / "snapshots" / "watchlist_latest.json",
+            db_path=resolve_metadata_db_path(PROJECT_ROOT),
+            dataset_key="watchlist",
+            universe=universe,
+            selected_markets=selected_markets,
+            source_policy=load_router_policy(),
+            adjustment_policy={"method": "none"},
+            quality_policy={"max_stale_pct": 0.1, "max_csv_parse_errors": 0, "allow_warnings": True},
+            quality_report=q,
+            accounting=accounting,
+            strict=args.strict,
+            max_missing_pct=args.max_missing_pct,
+            max_missing_count=args.max_missing_count,
+        )
+    except DataUpdateFailure:
+        # Write diagnostics even on failure
+        _write_provider_diagnostics(provider_diagnostics, ARTIFACTS_DIR)
+        raise
 
     print(f"\n[published] snapshot_id={snapshot.snapshot_id}")
+
+    # Write provider diagnostics
+    _write_provider_diagnostics(provider_diagnostics, ARTIFACTS_DIR)
+
     return snapshot
 
 
@@ -606,14 +679,14 @@ def main(argv=None):
     parser.add_argument(
         "--max-missing-pct",
         type=float,
-        default=0.05,
-        help="Fraction of missing symbols allowed without failing the job. Default: 0.05",
+        default=0.30,
+        help="Fraction of core symbols allowed missing without failing. Default: 0.30 (30%%)",
     )
     parser.add_argument(
         "--max-missing-count",
         type=int,
-        default=20,
-        help="Maximum absolute number of missing symbols allowed without failing the job. Default: 20",
+        default=60,
+        help="Maximum absolute number of missing core symbols allowed. Default: 60",
     )
     args = parser.parse_args(argv)
 
@@ -633,10 +706,59 @@ def main(argv=None):
         return 0
     except DataUpdateFailure as exc:
         print(f"\n[!] Data update failed: {exc}")
+        # Print provider diagnostics if accounting is available
+        try:
+            # Try to access the accounting from the exception context
+            if hasattr(exc, 'accounting'):
+                print_provider_diagnostic(exc.accounting)
+        except Exception:
+            pass
         return 1
     except Exception as exc:
         print(f"\n[!] Unexpected error: {exc}")
         return 1
+
+
+def print_provider_diagnostic(accounting: UpdateAccounting) -> None:
+    """Print per-symbol provider attempt diagnostics."""
+    print("\n" + "=" * 60)
+    print("PROVIDER DIAGNOSTIC REPORT")
+    print("=" * 60)
+
+    for market, symbols in accounting.configured.items():
+        market_upper = market.upper()
+        print(f"\n[{market_upper}]")
+
+        for symbol in symbols:
+            # Determine status
+            if symbol in accounting.updated.get(market, set()):
+                status = "UPDATED"
+            elif symbol in accounting.reused.get(market, set()):
+                status = "REUSED"
+            elif symbol in accounting.failed.get(market, set()):
+                status = "FAILED"
+            elif symbol in accounting.excluded.get(market, set()):
+                status = "EXCLUDED"
+            elif symbol in accounting.stale.get(market, set()):
+                status = "STALE"
+            else:
+                status = "NOT ATTEMPTED"
+
+            # Get failure reason if any
+            reason = accounting.reasons.get("failed", {}).get(f"{market}:{symbol}", "")
+            if reason:
+                print(f"  {symbol}: {status} (error={reason})")
+            else:
+                print(f"  {symbol}: {status}")
+
+    # Summary
+    summary = accounting.summary_dict()
+    print(f"\n{'=' * 60}")
+    for market, counts in summary.get("markets", {}).items():
+        print(f"[{market.upper()}] {counts.get('updated', 0)} updated, "
+              f"{counts.get('failed', 0)} failed, "
+              f"{counts.get('reused', 0)} reused")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

@@ -28,6 +28,80 @@ from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 from src.research.vectorized_backtest import run_vectorized_backtest
 
 
+def _normalize_instrument(raw: str) -> str:
+    """Convert numeric instrument IDs to zero-padded strings; keep tickers as-is."""
+    raw = str(raw).strip()
+    try:
+        return str(int(raw)).zfill(6)
+    except ValueError:
+        # Non-numeric ticker (e.g. AAPL, NVDA, AAOI) — keep as-is
+        return raw.upper()
+
+
+def _save_report_normal(
+    artifact_dir: Path,
+    result,
+    predictions: pd.DataFrame,
+    labels: pd.DataFrame,
+    market: str,
+) -> None:
+    """Save equity curve as report_normal_1day.pkl for dashboard.
+
+    With layered backtest (non_overlapping=False), portfolio_values already
+    has one entry per trading day — no expansion needed.
+    """
+
+    trade_dates = sorted(
+        predictions.index.get_level_values("datetime").unique().tolist()
+    )
+
+    portfolio = list(result.portfolio_values) if result.portfolio_values else []
+    benchmark_vals = list(result.benchmark_values) if result.benchmark_values else []
+    n = min(len(trade_dates), len(portfolio), len(benchmark_vals))
+    if n == 0:
+        return
+
+    # Skip the initial capital entry (index 0) if present
+    if len(portfolio) == len(trade_dates) + 1:
+        portfolio = portfolio[1:]
+    if len(benchmark_vals) == len(trade_dates) + 1:
+        benchmark_vals = benchmark_vals[1:]
+
+    n = min(len(trade_dates), len(portfolio), len(benchmark_vals))
+    if n == 0:
+        return
+
+    trade_dates = trade_dates[:n]
+    portfolio = portfolio[:n]
+    benchmark_vals = benchmark_vals[:n]
+
+    daily_rets = [0.0]
+    for i in range(1, n):
+        prev = portfolio[i - 1]
+        curr = portfolio[i]
+        daily_rets.append(float((curr - prev) / prev) if prev > 0 else 0.0)
+
+    df = pd.DataFrame(
+        {
+            "account": [float(v) for v in portfolio],
+            "return": daily_rets,
+            "total_turnover": [0.0] * n,
+            "turnover": [0.0] * n,
+            "total_cost": [0.0] * n,
+            "cost": [0.0] * n,
+            "value": [float(v) for v in portfolio],
+            "cash": [0.0] * n,
+            "bench": [float(v) for v in benchmark_vals],
+        },
+        index=pd.to_datetime(trade_dates),
+    )
+
+    artifacts_subdir = artifact_dir / "artifacts"
+    artifacts_subdir.mkdir(exist_ok=True)
+    df.to_pickle(artifacts_subdir / "report_normal_1day.pkl")
+    print(f"    Saved report_normal: {n} daily points")
+
+
 def load_artifact_data(artifact_dir: Path):
     """Load predictions, labels, and config from an artifact directory."""
     pred_path = artifact_dir / "predictions.csv"
@@ -40,14 +114,13 @@ def load_artifact_data(artifact_dir: Path):
 
     # Load predictions
     pred_df = pd.read_csv(pred_path)
-    # Convert numeric instrument IDs to zero-padded strings
-    pred_df["instrument"] = pred_df["instrument"].apply(lambda x: str(int(x)).zfill(6))
+    pred_df["instrument"] = pred_df["instrument"].apply(_normalize_instrument)
     pred_df["datetime"] = pd.to_datetime(pred_df["datetime"])
     predictions = pred_df.set_index(["datetime", "instrument"]).sort_index()
 
     # Load labels
     labels_df = pd.read_csv(labels_path)
-    labels_df["instrument"] = labels_df["instrument"].apply(lambda x: str(int(x)).zfill(6))
+    labels_df["instrument"] = labels_df["instrument"].apply(_normalize_instrument)
     labels_df["datetime"] = pd.to_datetime(labels_df["datetime"])
     labels = labels_df.set_index(["datetime", "instrument"]).sort_index()
     # Rename label column to "return" for vectorized backtest
@@ -140,7 +213,7 @@ def run_rebacktest(
         rebalance_days=10,
         initial_capital=10000.0,
         cost_bps=20.0,
-        non_overlapping=True,
+        non_overlapping=False,  # Layered: each day opens 1/10 position held 10 days
     )
 
     # Save metrics
@@ -151,6 +224,9 @@ def run_rebacktest(
     )
     metrics_path = artifact_dir / "metrics.json"
     metrics_path.write_text(json.dumps(metrics, indent=2))
+
+    # Save report_normal (equity curve) so dashboard shows full curves
+    _save_report_normal(artifact_dir, result, predictions, labels, market)
 
     print(
         f"  {artifact_dir.name}: excess={result.excess_return:.2%} "
@@ -250,66 +326,26 @@ def main():
     for art_id, m in all_metrics.items():
         print(f"  {art_id[:16]}... excess={m['excess_return']:.2%} sharpe={m['sharpe_ratio']:.2f}")
 
-    # Rebuild dashboard DB and add artifact entries
+    # Rebuild dashboard DB — build_dashboard_db.py already discovers
+    # artifact_bundle run dirs under artifacts/artifacts/<run_id> and
+    # loads metrics via load_artifact_bundle_run_data(), so we do NOT
+    # append entries manually (that would create duplicates).
     print("\nRebuilding dashboard DB...")
     import subprocess
 
     subprocess.run([sys.executable, str(ROOT / "scripts" / "build_dashboard_db.py")], check=True)
 
-    # Add artifact entries directly to dashboard DB
+    # Also sync YAML to repair any drift between SQLite and model_list.yaml
+    subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "build_dashboard_db.py"), "--sync-yaml"],
+        check=True,
+    )
+
+    # Report final dashboard state
     db_path = DASHBOARD_DB_PATH
-    if db_path.exists() and all_metrics:
+    if db_path.exists():
         db = json.loads(db_path.read_text())
-        {m["id"] for m in db.get("models", [])}
-
-        for art_id, metrics in all_metrics.items():
-            # Read manifest for metadata
-            art_dir = artifacts_root / art_id
-            manifest = {}
-            manifest_path = art_dir / "manifest.json"
-            if manifest_path.exists():
-                try:
-                    manifest = json.loads(manifest_path.read_text())
-                except Exception:
-                    pass
-
-            model_id = manifest.get("model_id", f"artifact_{art_id[:16]}")
-            market = manifest.get("market", "cn")
-            tag = manifest.get("tag", manifest.get("model_tag", "unknown"))
-            created = manifest.get("created_at", datetime.now().isoformat())
-
-            entry = {
-                "id": model_id,
-                "run_id": art_id,
-                "name": f"{market}_{tag}_{art_id[:8]}",
-                "date": created[:10],
-                "experiment": "artifact_rebacktest",
-                "market": market,
-                "params": manifest.get("model_params", {}),
-                "data": {
-                    "report_normal": None,
-                    "positions_normal": [],
-                    "indicators": {
-                        "total_return": metrics.get("total_return", 0),
-                        "annual_return": metrics.get("annual_return", 0),
-                        "sharpe": metrics.get("sharpe_ratio", 0),
-                        "information_ratio": metrics.get("ic_ir", 0),
-                        "max_drawdown": metrics.get("max_drawdown", 0),
-                        "annual_volatility": metrics.get("volatility", 0),
-                    },
-                    "sig_analysis": {
-                        "ic": {"ic": metrics.get("mean_ic", 0)},
-                        "ric": {"ric": metrics.get("mean_ic", 0)},
-                    },
-                    "benchmarks": {},
-                },
-                "has_full_data": True,
-            }
-            db["models"].append(entry)
-            print(f"  Dashboard entry added: {model_id}")
-
-        db_path.write_text(json.dumps(db, indent=2, ensure_ascii=False))
-        print(f"Dashboard: {len(db['models'])} models total")
+        print(f"Dashboard: {len(db.get('models', []))} models total")
 
     print("Done.")
 

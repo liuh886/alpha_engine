@@ -116,6 +116,12 @@ alpha_hub_service.js
 sweep_results/
 experiment_*/
 
+# Temporary verification / scratch files
+scratch.txt
+pr_verification.md
+diff_proof.md
+scripts/temp_server_edit.txt
+
 # Exclude specific files from ignore if needed
 # !artifacts/site/
 

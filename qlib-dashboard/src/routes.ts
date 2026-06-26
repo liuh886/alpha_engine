@@ -76,6 +76,7 @@ const DocsPage = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.D
 const BacktestPage = lazy(() => import('./pages/BacktestPage').then(m => ({ default: m.BacktestPage })));
 const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then(m => ({ default: m.MethodologyPage })));
 const SystemPage = lazy(() => import('./pages/SystemPage').then(m => ({ default: m.SystemPage })));
+const TopBottomPage = lazy(() => import('./components/TopBottomAnalysis').then(m => ({ default: m.TopBottomAnalysis })));
 
 // ---------------------------------------------------------------------------
 // Registry
@@ -97,6 +98,7 @@ export const routes: RouteDefinition[] = [
 
   // -- Backtest & Attribution ------------------------------------------------
   { path: 'backtest',    title: 'Backtest',         label: 'Backtest',        releaseLevel: 'release',      navGroup: 'Backtest & Attribution',      icon: FlaskConical, component: BacktestPage },
+  { path: 'top-bottom',  title: 'Top/Bottom Analysis', label: 'Top/Bottom Analysis', releaseLevel: 'experimental', navGroup: 'Backtest & Attribution', icon: BarChart3, component: TopBottomPage },
   { path: 'attribution',     title: 'Factor Attribution', label: 'Attribution',     releaseLevel: 'experimental', navGroup: 'Backtest & Attribution',  icon: PieChart, component: AttributionPage },
   { path: 'compare',         title: 'Compare',           label: 'Compare',          releaseLevel: 'release',      navGroup: 'Backtest & Attribution',  icon: Layers, component: ComparePage },
   { path: 'reports',   title: 'Reports',       label: 'Reports',       releaseLevel: 'release',      navGroup: 'Backtest & Attribution',  icon: ScrollText, component: ReportsPage },

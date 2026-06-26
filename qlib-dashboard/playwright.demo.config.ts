@@ -9,6 +9,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  testMatch: '**/demo-real-smoke.spec.ts',
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,
@@ -22,7 +23,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: 'uv run python api_server.py --demo',
+    command: 'cd .. && uv run python api_server.py --demo',
     url: 'http://127.0.0.1:8000',
     reuseExistingServer: false,
     timeout: 30_000,

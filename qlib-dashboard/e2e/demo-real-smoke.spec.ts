@@ -4,8 +4,7 @@ import { test, expect } from '@playwright/test';
  * Smoke tests against the real FastAPI backend in demo mode.
  *
  * These tests validate that `uv run python api_server.py --demo` serves
- * a working dashboard. They are intentionally lightweight — the full
- * contract suite runs against the fixture server.
+ * a working dashboard using the contract fixtures from fixtures/contract/.
  *
  * Run with: npm run e2e:demo-real
  */
@@ -26,31 +25,36 @@ async function login(page: import('@playwright/test').Page) {
 }
 
 test.describe('Demo Real Backend Smoke', () => {
-  test('dashboard loads', async ({ page }) => {
+  test('dashboard loads with contract fixture data', async ({ page }) => {
     await login(page);
     await page.goto('/#/dashboard');
+
+    // Dashboard heading visible
     await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({ timeout: 15_000 });
-  });
 
-  test('Demo Mode badge visible', async ({ page }) => {
-    await login(page);
-    await page.goto('/#/dashboard');
-    await expect(page.getByText(/demo mode/i)).toBeVisible({ timeout: 10_000 });
-  });
+    // Demo Mode badge visible
+    await expect(page.getByText(/demo mode/i).first()).toBeVisible({ timeout: 10_000 });
 
-  test('dashboard tabs visible', async ({ page }) => {
-    await login(page);
-    await page.goto('/#/dashboard');
+    // All five tabs visible
     for (const tab of ['Performance', 'Holdings', 'Attribution', 'Trades', 'Alpha']) {
       await expect(page.getByRole('tab', { name: tab })).toBeVisible({ timeout: 10_000 });
     }
-  });
 
-  test('at least one model in selector', async ({ page }) => {
-    await login(page);
-    await page.goto('/#/dashboard');
-    // The model selector button should show a model name
-    const selectorButton = page.getByRole('button').filter({ hasText: /release|baseline|candidate/i });
-    await expect(selectorButton.first()).toBeVisible({ timeout: 10_000 });
+    // SH600000 visible (from contract fixture positions_normal)
+    await page.getByRole('tab', { name: 'Holdings' }).click();
+    await expect(page.getByText('SH600000').first()).toBeVisible({ timeout: 10_000 });
+
+    // 5.00% visible (from contract fixture weight)
+    await expect(page.getByText('5.00%').first()).toBeVisible({ timeout: 10_000 });
+
+    // Attribution tab contains SH600000
+    await page.getByRole('tab', { name: 'Attribution' }).click();
+    await expect(page.getByText('SH600000').first()).toBeVisible({ timeout: 10_000 });
+
+    // Equity curve container has data-strategy-point-count >= 2
+    await page.getByRole('tab', { name: 'Performance' }).click();
+    const equityChart = page.getByTestId('equity-curve-container');
+    await expect(equityChart).toBeVisible({ timeout: 10_000 });
+    await expect(equityChart).toHaveAttribute('data-strategy-point-count', /^[2-9]|[1-9]\d+$/, { timeout: 10_000 });
   });
 });
