@@ -26,7 +26,7 @@ task:
         module_path: qlib.data.dataset.handler
         kwargs:
           start_time: '2021-01-01'
-          end_time: '2026-04-03'
+          end_time: '2026-06-25'
           instruments: cn
           learn_processors:
           - class: ProcessInf
@@ -253,7 +253,7 @@ task:
         - '2025-12-31'
         test:
         - '2026-01-01'
-        - '2026-04-03'
+        - '2026-06-25'
 port_analysis_config:
   strategy:
     class: BiweeklyTrendStrategy
@@ -267,7 +267,7 @@ port_analysis_config:
       sell_rank_threshold: 20
   backtest:
     start_time: '2026-01-01'
-    end_time: '2026-04-03'
+    end_time: '2026-06-25'
     account: 10000
     benchmark: '000300'
     exchange_kwargs:
