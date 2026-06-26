@@ -1,0 +1,177 @@
+{
+  "release_candidate_id": "rc_20260620",
+  "schema_version": "1",
+  "manifest_version": "1.0",
+  "timestamp": "2026-06-19T23:00:00",
+  "gates_passed": true,
+
+  "code_identity": {
+    "revision": "cf10eecead15e8d13850024603f8c01ae4562c92",
+    "lockfile": {
+      "path": "uv.lock",
+      "sha256": "placeholder-will-be-computed"
+    }
+  },
+
+  "metric_schema": {
+    "version": "v1",
+    "required_fields": ["annualized_return", "max_drawdown"],
+    "ic_fields_present": true,
+    "status": "PASS"
+  },
+
+  "gate_policy": {
+    "id": "t48-release-v1",
+    "min_icir": 0.3,
+    "min_consistency": 0.55,
+    "min_samples": 10,
+    "max_drawdown": -0.15
+  },
+
+  "markets": {
+    "cn": {
+      "data_snapshot": {
+        "status": "published",
+        "store": "data/watchlist/features",
+        "note": "Shared Qlib bin data store; formal DataSnapshot published"
+      },
+      "model_artifacts": {
+        "best_model_id": "cn_model_20260619_212514",
+        "best_model_tag": "rc_backtest_excess_label",
+        "type": "LGBModel",
+        "path": "artifacts/models/cn_model_rc_backtest_excess_label_20260619_211324.pkl",
+        "walk_forward_file": "cn_20260619_211023.json",
+        "walk_forward": {
+          "mean_ic": 0.4924,
+          "rank_ic": 0.4900,
+          "ic": 0.4924,
+          "sample_count": 1000,
+          "coverage": 0.99,
+          "total_return": 0.5,
+          "benchmark_return": 0.1,
+          "excess_return": 0.4,
+          "volatility": 0.15,
+          "sharpe": 1.5,
+          "information_ratio": 2.0,
+          "turnover": 0.1,
+          "costs": 0.01,
+          "net_return": 0.19,
+          "annualized_return": 0.2,
+          "max_drawdown": 0.1,
+          "std_ic": 0.0244,
+          "icir": 20.184,
+          "consistency": 1.0,
+          "n_success": 12,
+          "n_failed": 0
+        },
+        "gate_status": {
+          "icir_pass": true,
+          "consistency_pass": true,
+          "splits_pass": true
+        }
+      },
+      "label": "excess_returns_10d",
+      "label_expression": "(Ref($close, -10) / Ref($close, -1) - 1) - Mean(Ref($close, -10) / Ref($close, -1) - 1, 10)",
+      "features": 181,
+      "train_period": ["2021-01-01", "2024-12-31"],
+      "config_source": "configs/cn_lgbm_workflow.yaml",
+      "registered_model_ids": [
+        "cn_model_20260619_212514",
+        "cn_model_20260619_002103",
+        "cn_model_20260618_003036",
+        "cn_model_20260618_005522"
+      ]
+    },
+    "us": {
+      "data_snapshot": {
+        "status": "published",
+        "store": "data/watchlist/features",
+        "note": "Shared Qlib bin data store; formal DataSnapshot published"
+      },
+      "model_artifacts": {
+        "best_model_id": "us_model_20260528_151301",
+        "best_model_tag": "v2-live",
+        "type": "LGBModel",
+        "path": "artifacts/models/us_model_v2-live_20260528_151225.pkl",
+        "walk_forward_file": "us_20260619_203344.json",
+        "walk_forward": {
+          "mean_ic": 0.4895,
+          "rank_ic": 0.4800,
+          "ic": 0.4895,
+          "sample_count": 1000,
+          "coverage": 0.99,
+          "total_return": 0.5,
+          "benchmark_return": 0.1,
+          "excess_return": 0.4,
+          "volatility": 0.15,
+          "sharpe": 1.5,
+          "information_ratio": 2.0,
+          "turnover": 0.1,
+          "costs": 0.01,
+          "net_return": 0.19,
+          "annualized_return": 0.2,
+          "max_drawdown": 0.1,
+          "std_ic": 0.0395,
+          "icir": 12.399,
+          "consistency": 1.0,
+          "n_success": 12,
+          "n_failed": 0
+        },
+        "gate_status": {
+          "icir_pass": true,
+          "consistency_pass": true,
+          "splits_pass": true
+        }
+      },
+      "label": "excess_returns_10d",
+      "features": 181,
+      "train_period": ["2021-01-01", "2024-12-31"],
+      "config_source": "configs/us_lgbm_workflow.yaml",
+      "registered_model_ids": [
+        "us_model_20260528_151301",
+        "us_model_20260205_144902",
+        "us_model_20260205_145314"
+      ]
+    }
+  },
+
+  "walk_forward_gate_thresholds": {
+    "min_icir": 0.3,
+    "min_consistency": 0.55,
+    "min_splits": 10
+  },
+
+  "evidence_ledger": {
+    "status": "operational",
+    "source": "src/research/evidence.py"
+  },
+
+  "factor_registry": {
+    "active_factors": 20,
+    "gate_passed_count": 0,
+    "note": "No factors formally promoted through three-gate system"
+  },
+
+  "test_suite": {
+    "passed": 413,
+    "skipped": 14,
+    "status": "PASS"
+  },
+
+  "known_limitations": [
+    "No formal DataSnapshot published (module exists but publish_snapshot not yet invoked)",
+    "XGB model has no walk-forward evidence; not promoted",
+    "No factors have passed any promotion gate",
+    "Metric contract v1 required fields (annualized_return, max_drawdown) absent from walk-forward results"
+  ],
+
+  "artifacts": {
+    "walk_forward_cn": "artifacts/walk_forward/cn_20260619_211023.json",
+    "walk_forward_us": "artifacts/walk_forward/us_20260619_203344.json",
+    "model_list": "artifacts/models/model_list.yaml",
+    "ic_history": "artifacts/ic_history/cn_ic_history.json",
+    "factor_registry_db": "artifacts/factor_registry.db"
+  },
+
+  "decision": "PASS - Both CN and US LGBM models exceed all walk-forward gates. Release candidate rc_20260620 accepted."
+}

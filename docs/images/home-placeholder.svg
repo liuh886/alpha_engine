@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#1a1a2e"/>
+  <rect x="50" y="50" width="1100" height="700" rx="8" fill="#16213e"/>
+  <text x="600" y="200" text-anchor="middle" fill="#e2e8f0" font-family="sans-serif" font-size="48" font-weight="bold">System Home</text>
+  <text x="600" y="260" text-anchor="middle" fill="#94a3b8" font-family="sans-serif" font-size="24">Demo Mode</text>
+  <rect x="100" y="320" width="300" height="180" rx="8" fill="#1e3a5f"/>
+  <text x="250" y="380" text-anchor="middle" fill="#e2e8f0" font-family="sans-serif" font-size="18">Data Freshness</text>
+  <text x="250" y="420" text-anchor="middle" fill="#22c55e" font-family="monospace" font-size="36" font-weight="bold">2026-06-20</text>
+  <rect x="450" y="320" width="300" height="180" rx="8" fill="#1e3a5f"/>
+  <text x="600" y="380" text-anchor="middle" fill="#e2e8f0" font-family="sans-serif" font-size="18">Active Jobs</text>
+  <text x="600" y="420" text-anchor="middle" fill="#60a5fa" font-family="monospace" font-size="36" font-weight="bold">0</text>
+  <rect x="800" y="320" width="300" height="180" rx="8" fill="#1e3a5f"/>
+  <text x="950" y="380" text-anchor="middle" fill="#e2e8f0" font-family="sans-serif" font-size="18">System Health</text>
+  <text x="950" y="420" text-anchor="middle" fill="#22c55e" font-family="monospace" font-size="36" font-weight="bold">Online</text>
+  <rect x="100" y="540" width="450" height="180" rx="8" fill="#1e40af"/>
+  <text x="325" y="600" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="20" font-weight="bold">Explore Demo Dashboard</text>
+  <text x="325" y="640" text-anchor="middle" fill="#bfdbfe" font-family="sans-serif" font-size="16">View sample model performance</text>
+  <rect x="650" y="540" width="450" height="180" rx="8" fill="#1e3a5f"/>
+  <text x="875" y="600" text-anchor="middle" fill="#e2e8f0" font-family="sans-serif" font-size="20" font-weight="bold">View Model Registry</text>
+  <text x="875" y="640" text-anchor="middle" fill="#94a3b8" font-family="sans-serif" font-size="16">Browse model versions</text>
+</svg>
