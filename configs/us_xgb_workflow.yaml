@@ -24,7 +24,7 @@ task:
         module_path: qlib.data.dataset.handler
         kwargs:
           start_time: '2021-01-01'
-          end_time: '2026-04-03'
+          end_time: '2026-06-25'
           instruments: us
           learn_processors:
           - class: DropnaLabel
@@ -249,7 +249,7 @@ task:
         - '2025-06-30'
         test:
         - '2025-07-01'
-        - '2026-06-18'
+        - '2026-06-25'
 port_analysis_config:
   strategy:
     class: BiweeklyTrendStrategy
@@ -272,7 +272,7 @@ port_analysis_config:
         target_portfolio_vol: 0.15
   backtest:
     start_time: '2026-01-01'
-    end_time: '2026-04-03'
+    end_time: '2026-06-25'
     account: 10000
     benchmark: QQQ
     exchange_kwargs:
