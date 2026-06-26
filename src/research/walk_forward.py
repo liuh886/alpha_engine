@@ -230,11 +230,19 @@ def _run_single_split(
 
     # Update train/valid/test segments
     segments = cfg["task"]["dataset"]["kwargs"]["segments"]
-    # Validation is the last 6 months of training period.
+    # Validation window: proportional to training duration.
+    # Short training windows get a smaller validation hold-out to preserve
+    # training data. Minimum 3 months, maximum 6 months, ~20% of training.
+    train_start_dt = datetime.strptime(train_start, "%Y-%m-%d")
     train_end_dt = datetime.strptime(train_end, "%Y-%m-%d")
-    val_start_dt = _add_months(train_end_dt, -6)
-    segments["train"] = [train_start, val_start_dt.strftime("%Y-%m-%d")]
-    segments["valid"] = [val_start_dt.strftime("%Y-%m-%d"), train_end]
+    train_months = max(
+        1, (train_end_dt.year - train_start_dt.year) * 12
+        + (train_end_dt.month - train_start_dt.month)
+    )
+    val_months = max(3, min(6, int(train_months * 0.2)))
+    val_start_dt = _add_months(train_end_dt, -val_months)
+    segments["train"] = [train_start, train_end_dt.strftime("%Y-%m-%d")]
+    segments["valid"] = [val_start_dt.strftime("%Y-%m-%d"), train_end_dt.strftime("%Y-%m-%d")]
     segments["test"] = [test_start, test_end]
 
     log.info(
@@ -342,6 +350,7 @@ def walk_forward_validate(
     train_end: str = None,
     test_window_months: int = 6,
     step_months: int = 3,
+    config: dict | None = None,
 ) -> WalkForwardResult:
     """Run expanding-window walk-forward validation.
 
@@ -353,6 +362,11 @@ def walk_forward_validate(
         market: ``"us"`` or ``"cn"``.
         model_type: Config suffix (``"lgbm"``, ``"xgb"``, etc.).
         train_start: Start of the first training window.
+        config: Optional pre-compiled workflow config dict. When provided,
+            used directly instead of loading the raw YAML from disk. This
+            ensures walk-forward uses the same compiled features and
+            settings as the main training pipeline (e.g. profile-compiled
+            feature expressions instead of raw template placeholders).
 
     Note:
         Qlib must be initialized before calling this function. The caller
@@ -374,17 +388,22 @@ def walk_forward_validate(
 
     from src.common.paths import CONFIG_DIR
 
-    config_name = (
-        f"{market}_workflow.yaml"
-        if model_type == "linear"
-        else f"{market}_{model_type}_workflow.yaml"
-    )
-    config_path = CONFIG_DIR / config_name
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config not found: {config_path}")
+    if config is not None:
+        base_config = copy.deepcopy(config)
+        log.info("walk_forward_using_passed_config", market=market)
+    else:
+        config_name = (
+            f"{market}_workflow.yaml"
+            if model_type == "linear"
+            else f"{market}_{model_type}_workflow.yaml"
+        )
+        config_path = CONFIG_DIR / config_name
+        if not config_path.exists():
+            raise FileNotFoundError(f"Config not found: {config_path}")
 
-    with open(config_path) as f:
-        base_config = yaml.safe_load(f)
+        with open(config_path) as f:
+            base_config = yaml.safe_load(f)
+        log.info("walk_forward_loaded_config_from_disk", path=str(config_path))
 
     splits = generate_splits(
         train_start=train_start,
