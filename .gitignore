@@ -54,13 +54,11 @@ artifacts/
 !artifacts/release_candidate/
 mlruns/
 output/
-site/data/
-site/reports/
+site/
 node_modules/
 *.log
+*.pid
 .env
-api_server_v2.log
-startup.log
 
 # Qlib dashboard build output
 qlib-dashboard/dist/
@@ -102,10 +100,7 @@ scripts/t01_*.txt
 # Backtest reports (regenerated)
 reports/backtests/
 
-# Static site generated files
-site/app.js
-site/styles.css
-site/data/
+# Static site generated files (covered by site/ above)
 
 # Backup files
 *.bak
@@ -148,6 +143,5 @@ qlib_cache/
 *.db-journal
 *.db-wal
 
-# PM2 logs and PID
+# PM2 logs
 logs/
-*.pid
