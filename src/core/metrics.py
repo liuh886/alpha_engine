@@ -5,16 +5,20 @@ from __future__ import annotations
 import pandas as pd
 
 
-
 def compute_spread_metrics(
     long_returns: pd.Series,
     short_returns: pd.Series,
     benchmark_returns: pd.Series | None = None,
 ) -> dict[str, object]:
     """Compute spread and benchmark-relative summary metrics."""
-    long_returns = long_returns.fillna(0.0)
-    short_returns = short_returns.fillna(0.0)
-    spread_series = (long_returns - short_returns).rename("spread")
+    returns = pd.concat(
+        [
+            long_returns.rename("long"),
+            short_returns.rename("short"),
+        ],
+        axis=1,
+    ).fillna(0.0)
+    spread_series = (returns["long"] - returns["short"]).rename("spread")
 
     result: dict[str, object] = {
         "spread_mean": float(spread_series.mean()),
@@ -24,9 +28,16 @@ def compute_spread_metrics(
     }
 
     if benchmark_returns is not None:
-        benchmark_returns = benchmark_returns.fillna(0.0)
-        alpha_long = (long_returns - benchmark_returns).rename("alpha_long")
-        alpha_short = (benchmark_returns - short_returns).rename("alpha_short")
+        aligned = pd.concat(
+            [
+                returns["long"],
+                returns["short"],
+                benchmark_returns.rename("benchmark"),
+            ],
+            axis=1,
+        ).fillna(0.0)
+        alpha_long = (aligned["long"] - aligned["benchmark"]).rename("alpha_long")
+        alpha_short = (aligned["benchmark"] - aligned["short"]).rename("alpha_short")
         result.update(
             {
                 "alpha_long_mean": float(alpha_long.mean()),
