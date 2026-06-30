@@ -1,3 +1,15 @@
+/**
+ * @deprecated TrueDashboard is deprecated and will be removed in a follow-up
+ * cleanup PR once all consumers have been updated.
+ *
+ * This component originally maintained its own layout with duplicate
+ * PerformanceCharts / PositionsTable / Attribution rendering.  All of that
+ * logic now lives in Dashboard.tsx which is the single source of truth.
+ *
+ * Migration: replace <TrueDashboard model={m} report={r} positions={p} />
+ * with <Dashboard data={backtestData} params={modelParams} />
+ * where `backtestData` is the fully-parsed BacktestData object.
+ */
 import { lookupMetricValueByKey } from "@/types/metrics";
 import { PerformanceCharts } from '@/components/PerformanceCharts';
 import { PositionsTable } from '@/components/PositionsTable';
@@ -16,9 +28,10 @@ export function TrueDashboard({ model, report, positions }: { model: any, report
       <div className="border-b pb-4">
         <h1 className="text-4xl font-black tracking-tight text-foreground">Model Dashboard</h1>
         <p className="text-muted-foreground mt-2 font-medium">Detailed performance metrics for {bestModel?.name || 'Selected Model'}.</p>
+        <p className="mt-1 text-xs text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded px-2 py-1 inline-block">
+          ⚠️ This view is deprecated — use the Model Dashboard instead.
+        </p>
       </div>
-
-
 
       {/* MIDDLE LAYER: Model & Risk Snapshot */}
       <h2 className="text-lg font-bold uppercase tracking-widest text-muted-foreground mt-8 mb-4">Model & Risk</h2>
