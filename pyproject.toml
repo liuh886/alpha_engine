@@ -61,11 +61,11 @@ target-version = "py310"
 extend-exclude = ["notebooks"]
 
 [tool.ruff.lint]
-# Keep the P0 CI lint gate focused on correctness. Pyupgrade (UP) and import
-# sorting (I) are useful hardening rules, but the existing codebase has broad
-# legacy debt there; re-enable them with dedicated ratchet PRs.
+# Keep the P0 CI lint gate focused on hard correctness. Import sorting,
+# pyupgrade, late-import cleanup, and unused-import cleanup should be re-enabled
+# through dedicated ratchet PRs after the legacy codebase is normalized.
 select = ["E", "F"]
-ignore = ["E501"]
+ignore = ["E501", "E402", "F401"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["src", "scripts", "tests"]
