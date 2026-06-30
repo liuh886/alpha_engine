@@ -140,6 +140,75 @@ class TestPipelineStepContracts:
         # Verify it has a default of None (optional)
         assert sig.parameters["existing_run"].default is None
 
+    def test_pipeline_passes_compiled_config_to_walk_forward(self, tmp_path, monkeypatch):
+        """Walk-forward should validate the same compiled config used by the pipeline."""
+        import yaml
+
+        from src.research.pipeline import ResearchRun, run_research_pipeline
+
+        compiled_config = {
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "handler": {
+                            "kwargs": {
+                                "start_time": "2021-01-01",
+                                "end_time": "2026-06-25",
+                            }
+                        },
+                        "segments": {
+                            "train": ["2021-01-01", "2024-12-31"],
+                            "valid": ["2025-01-01", "2025-12-31"],
+                            "test": ["2026-01-01", "2026-06-25"],
+                        },
+                    }
+                }
+            }
+        }
+        compiled_path = tmp_path / "compiled.yaml"
+        compiled_path.write_text(yaml.safe_dump(compiled_config), encoding="utf-8")
+        captured = {}
+
+        class FakeRegistry:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def list_factors(self, *args, **kwargs):
+                return []
+
+        def fake_walk_forward_validate(**kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(
+                mean_ic=0.02,
+                ic_ir=0.4,
+                consistency_score=0.75,
+                splits=[SimpleNamespace(status="success")],
+            )
+
+        monkeypatch.setattr("src.research.factor_registry.FactorRegistry", FakeRegistry)
+        monkeypatch.setattr(
+            "src.workflows.profile_compiler.compile_strategy_profile",
+            lambda market, profile_path: compiled_path,
+        )
+        monkeypatch.setattr("src.common.qlib_init.build_qlib_init_cfg", lambda *a, **k: {})
+        monkeypatch.setattr("src.common.qlib_init.safe_qlib_init", lambda *a, **k: None)
+        monkeypatch.setattr(
+            "src.research.walk_forward.walk_forward_validate", fake_walk_forward_validate
+        )
+        monkeypatch.setattr(
+            ResearchRun,
+            "save",
+            lambda self, path=None: tmp_path / f"{self.run_id}.json",
+        )
+
+        run_research_pipeline(
+            market="cn",
+            model_type="lgbm",
+            _train_fn=lambda **kwargs: {"metrics": {"information_ratio": 0.1}},
+        )
+
+        assert captured["config"] == compiled_config
+
     def test_pipeline_step_sequence(self):
         """Pipeline should execute steps in defined order."""
         from src.research.pipeline import ResearchRun, StepStatus

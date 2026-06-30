@@ -27,7 +27,7 @@ task:
         module_path: qlib.data.dataset.handler
         kwargs:
           start_time: '2021-01-01'
-          end_time: '2026-04-03'
+          end_time: '2026-06-25'
           instruments: cn
           learn_processors:
           - class: DropnaLabel
@@ -43,164 +43,117 @@ task:
             kwargs:
               config:
                 feature:
-                - alpha0
-                - alpha1
-                - alpha2
-                - alpha3
-                - alpha4
-                - alpha5
-                - alpha6
-                - alpha7
-                - alpha8
-                - alpha9
-                - alpha10
-                - alpha11
-                - alpha12
-                - alpha13
-                - alpha14
-                - alpha15
-                - alpha16
-                - alpha17
-                - alpha18
-                - alpha19
-                - alpha20
-                - alpha21
-                - alpha22
-                - alpha23
-                - alpha24
-                - alpha25
-                - alpha26
-                - alpha27
-                - alpha28
-                - alpha29
-                - alpha30
-                - alpha31
-                - alpha32
-                - alpha33
-                - alpha34
-                - alpha35
-                - alpha36
-                - alpha37
-                - alpha38
-                - alpha39
-                - alpha40
-                - alpha41
-                - alpha42
-                - alpha43
-                - alpha44
-                - alpha45
-                - alpha46
-                - alpha47
-                - alpha48
-                - alpha49
-                - alpha50
-                - alpha51
-                - alpha52
-                - alpha53
-                - alpha54
-                - alpha55
-                - alpha56
-                - alpha57
-                - alpha58
-                - alpha59
-                - alpha60
-                - alpha61
-                - alpha62
-                - alpha63
-                - alpha64
-                - alpha65
-                - alpha66
-                - alpha67
-                - alpha68
-                - alpha69
-                - alpha70
-                - alpha71
-                - alpha72
-                - alpha73
-                - alpha74
-                - alpha75
-                - alpha76
-                - alpha77
-                - alpha78
-                - alpha79
-                - alpha80
-                - alpha81
-                - alpha82
-                - alpha83
-                - alpha84
-                - alpha85
-                - alpha86
-                - alpha87
-                - alpha88
-                - alpha89
-                - alpha90
-                - alpha91
-                - alpha92
-                - alpha93
-                - alpha94
-                - alpha95
-                - alpha96
-                - alpha97
-                - alpha98
-                - alpha99
-                - alpha100
-                - alpha101
-                - alpha102
-                - alpha103
-                - alpha104
-                - alpha105
-                - alpha106
-                - alpha107
-                - alpha108
-                - alpha109
-                - alpha110
-                - alpha111
-                - alpha112
-                - alpha113
-                - alpha114
-                - alpha115
-                - alpha116
-                - alpha117
-                - alpha118
-                - alpha119
-                - alpha120
-                - alpha121
-                - alpha122
-                - alpha123
-                - alpha124
-                - alpha125
-                - alpha126
-                - alpha127
-                - alpha128
-                - alpha129
-                - alpha130
-                - alpha131
-                - alpha132
-                - alpha133
-                - alpha134
-                - alpha135
-                - alpha136
-                - alpha137
-                - alpha138
-                - alpha139
-                - alpha140
-                - alpha141
-                - alpha142
-                - alpha143
-                - alpha144
-                - alpha145
-                - alpha146
-                - alpha147
-                - alpha148
-                - alpha149
-                - alpha150
-                - alpha151
-                - alpha152
-                - alpha153
-                - alpha154
-                - alpha155
-                - alpha156
-                - alpha157
+                # === Alpha158 base features (K-bar) ===
+                - ($close-$open)/$open
+                - ($high-$low)/$open
+                - ($close-$open)/($high-$low+1e-12)
+                - ($high-Greater($open, $close))/$open
+                - (Less($open, $close)-$low)/$open
+                - (2*$close-$high-$low)/$open
+                - $open/$close
+                - $high/$close
+                - $low/$close
+                - $vwap/$close
+                # === Momentum ===
+                - $close/Ref($close, 1)-1
+                - $close/Ref($close, 5)-1
+                - $close/Ref($close, 10)-1
+                - $close/Ref($close, 20)-1
+                - $close/Ref($close, 60)-1
+                - Ref($close, 5)/$close
+                - Ref($close, 10)/$close
+                - Ref($close, 20)/$close
+                - Ref($close, 60)/$close
+                # === Moving average deviation ===
+                - $close/Mean($close, 5)-1
+                - $close/Mean($close, 10)-1
+                - $close/Mean($close, 20)-1
+                - $close/Mean($close, 60)-1
+                - Mean($close, 5)/$close
+                - Mean($close, 10)/$close
+                - Mean($close, 20)/$close
+                - Mean($close, 60)/$close
+                # === Volatility ===
+                - Std($close, 5)/$close
+                - Std($close, 10)/$close
+                - Std($close, 20)/$close
+                - Std($close, 60)/$close
+                - Std($close/Ref($close,1)-1, 5)
+                - Std($close/Ref($close,1)-1, 10)
+                - Std($close/Ref($close,1)-1, 20)
+                - Std($close/Ref($close,1)-1, 60)
+                # === Trend strength ===
+                - Slope($close, 5)/$close
+                - Slope($close, 10)/$close
+                - Slope($close, 20)/$close
+                - Slope($close, 60)/$close
+                - Rsquare($close, 5)
+                - Rsquare($close, 10)
+                - Rsquare($close, 20)
+                - Rsquare($close, 60)
+                # === Volume ===
+                - $volume/Mean($volume, 5)
+                - $volume/Mean($volume, 10)
+                - $volume/Mean($volume, 20)
+                - $volume/Mean($volume, 60)
+                - Mean($volume, 5)/$volume
+                - Mean($volume, 10)/$volume
+                - Mean($volume, 20)/$volume
+                - Mean($volume, 60)/$volume
+                - Corr($close, $volume, 5)
+                - Corr($close, $volume, 10)
+                - Corr($close, $volume, 20)
+                # === Price position (Stochastic) ===
+                - ($close-Min($low, 5))/(Max($high, 5)-Min($low, 5)+1e-12)
+                - ($close-Min($low, 10))/(Max($high, 10)-Min($low, 10)+1e-12)
+                - ($close-Min($low, 20))/(Max($high, 20)-Min($low, 20)+1e-12)
+                - ($close-Min($low, 60))/(Max($high, 60)-Min($low, 60)+1e-12)
+                # === Extreme position ===
+                - Max($high, 5)/$close
+                - Max($high, 10)/$close
+                - Max($high, 20)/$close
+                - Max($high, 60)/$close
+                - Min($low, 5)/$close
+                - Min($low, 10)/$close
+                - Min($low, 20)/$close
+                - Min($low, 60)/$close
+                # === Quantile ===
+                - Quantile($close, 5, 0.8)/$close
+                - Quantile($close, 10, 0.8)/$close
+                - Quantile($close, 20, 0.8)/$close
+                - Quantile($close, 60, 0.8)/$close
+                - Quantile($close, 5, 0.2)/$close
+                - Quantile($close, 10, 0.2)/$close
+                - Quantile($close, 20, 0.2)/$close
+                - Quantile($close, 60, 0.2)/$close
+                # === Rank ===
+                - Rank($close, 5)
+                - Rank($close, 10)
+                - Rank($close, 20)
+                - Rank($close, 60)
+                # === Residual ===
+                - Resi($close, 5)/$close
+                - Resi($close, 10)/$close
+                - Resi($close, 20)/$close
+                - Resi($close, 60)/$close
+                # === ATR (Average True Range) ===
+                - Mean(Max($high-$low, Abs($high-Ref($close,1)), Abs($low-Ref($close,1))), 5)/$close
+                - Mean(Max($high-$low, Abs($high-Ref($close,1)), Abs($low-Ref($close,1))), 10)/$close
+                - Mean(Max($high-$low, Abs($high-Ref($close,1)), Abs($low-Ref($close,1))), 20)/$close
+                # === Momentum acceleration ===
+                - ($close/Ref($close,5)-1) - Ref($close/Ref($close,5)-1, 5)
+                - ($close/Ref($close,10)-1) - Ref($close/Ref($close,10)-1, 10)
+                - ($close/Ref($close,20)-1) - Ref($close/Ref($close,20)-1, 20)
+                # === Price-volume divergence ===
+                - ($close/Ref($close,5)-1) / ($volume/Ref($volume,5)-1+1e-12)
+                - ($close/Ref($close,10)-1) / ($volume/Ref($volume,10)-1+1e-12)
+                # === RSI-like ===
+                - Sum(Greater($close-Ref($close, 1), 0), 5)/(Sum(Abs($close-Ref($close, 1)), 5)+1e-12)
+                - Sum(Greater($close-Ref($close, 1), 0), 10)/(Sum(Abs($close-Ref($close, 1)), 10)+1e-12)
+                # === Volatility change ===
+                - Std($close/Ref($close,1)-1, 5) / Std($close/Ref($close,1)-1, 20)
+                - Std($close/Ref($close,1)-1, 10) / Std($close/Ref($close,1)-1, 60)
+                # === Extra features (from strategy profile) ===
                 - $close/Ref($close, 5)-1
                 - $close/Ref($close, 10)-1
                 - $close/Ref($close, 20)-1
@@ -217,7 +170,7 @@ task:
         - '2025-12-31'
         test:
         - '2026-01-01'
-        - '2026-04-03'
+        - '2026-06-25'
 port_analysis_config:
   strategy:
     class: BiweeklyTrendStrategy
@@ -240,7 +193,7 @@ port_analysis_config:
       sell_score_threshold: 0.0
   backtest:
     start_time: '2026-01-01'
-    end_time: '2026-04-03'
+    end_time: '2026-06-25'
     account: 10000
     benchmark: '000300'
     exchange_kwargs:

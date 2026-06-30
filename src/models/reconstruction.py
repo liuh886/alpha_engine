@@ -239,8 +239,9 @@ def reconstruct_model(
     fresh_values = np.asarray(fresh_preds, dtype=np.float64).flatten()
     # Compare against the last numeric column (the score/prediction column)
     # when stored predictions have multiple numeric columns (features + score).
-    if len(numeric_cols) >= 2:
-        stored_values = stored_preds[numeric_cols[-1]].values.astype(np.float64)
+    prediction_cols = [col for col in numeric_cols if col not in manifest.features]
+    if prediction_cols:
+        stored_values = stored_preds[prediction_cols[-1]].values.astype(np.float64)
     elif numeric_cols:
         stored_values = stored_preds[numeric_cols[0]].values.astype(np.float64)
     else:
@@ -385,22 +386,28 @@ def validate_inference(
     max_samples = min(n_samples or len(stored_preds), 500, len(stored_preds))
     sampled = stored_preds.head(max_samples)
 
-    # Extract numeric columns as features (all except the last, which is the
-    # prediction column -- convention: last column is the score/prediction).
+    # Prefer the manifest schema. Numeric instrument identifiers (common for
+    # A-shares) must never be inferred as model features.
     numeric_cols = sampled.select_dtypes(include=[np.number]).columns.tolist()
-    if len(numeric_cols) < 2:
+    manifest_features = [col for col in manifest.features if col in sampled.columns]
+    if manifest_features:
+        feature_cols = manifest_features
+        prediction_cols = [col for col in numeric_cols if col not in feature_cols]
+    else:
+        feature_cols = numeric_cols[:-1]
+        prediction_cols = numeric_cols[-1:]
+    if not feature_cols or not prediction_cols:
         return InferenceResult(
             artifact_id=artifact_id,
             passed=False,
             n_samples=max_samples,
             error=(
-                f"Need at least 2 numeric columns for inference validation, "
-                f"got {len(numeric_cols)}: {numeric_cols}"
+                "Could not resolve both manifest features and a prediction column; "
+                f"features={feature_cols}, numeric_columns={numeric_cols}"
             ),
         )
 
-    feature_cols = numeric_cols[:-1]
-    pred_col = numeric_cols[-1]
+    pred_col = prediction_cols[-1]
 
     features = sampled[feature_cols].values
     stored_values = sampled[pred_col].values
