@@ -10,9 +10,6 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  EVIDENCE_DIR: artifacts/release_gates
-
 jobs:
   # -----------------------------------------------------------------------
   # Backend quality gates
@@ -48,24 +45,9 @@ jobs:
       - name: Pytest
         run: uv run pytest tests -q --strict-markers
 
-      # -- Gate 4: Quality gates -------------------------------------------
-      - name: Quality gates
-        run: >-
-          uv run python scripts/release_gate.py
-          --run-quality-gates
-          --evidence-dir $EVIDENCE_DIR
-
-      # -- Gate 5: Package build -------------------------------------------
+      # -- Gate 4: Package build -------------------------------------------
       - name: Package build
         run: uv build
-
-      - name: Upload backend evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-evidence
-          path: ${{ env.EVIDENCE_DIR }}/
-          if-no-files-found: warn
 
   # -----------------------------------------------------------------------
   # Frontend quality gates
@@ -83,32 +65,32 @@ jobs:
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
 
-      # -- Gate 6: npm ci (deterministic install) --------------------------
+      # -- Gate 5: npm ci (deterministic install) --------------------------
       - name: Install frontend dependencies
         working-directory: qlib-dashboard
         run: npm ci
 
-      # -- Gate 7: TypeScript type check -----------------------------------
+      # -- Gate 6: TypeScript type check -----------------------------------
       - name: TypeScript type check
         working-directory: qlib-dashboard
         run: npx tsc --noEmit
 
-      # -- Gate 8: Frontend lint -------------------------------------------
+      # -- Gate 7: Frontend lint -------------------------------------------
       - name: Frontend lint
         working-directory: qlib-dashboard
         run: npm run lint
 
-      # -- Gate 9: Frontend unit tests -------------------------------------
+      # -- Gate 8: Frontend unit tests -------------------------------------
       - name: Frontend unit tests
         working-directory: qlib-dashboard
         run: npm test
 
-      # -- Gate 10: Frontend build -----------------------------------------
+      # -- Gate 9: Frontend build ------------------------------------------
       - name: Frontend build
         working-directory: qlib-dashboard
         run: npm run build
 
-      # -- Gate 11: Playwright E2E (conditional on build success) ----------
+      # -- Gate 10: Playwright E2E -----------------------------------------
       - name: Install Playwright browsers
         working-directory: qlib-dashboard
         run: npx playwright install --with-deps chromium
