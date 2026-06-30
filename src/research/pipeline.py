@@ -38,6 +38,7 @@ from typing import Any
 
 import numpy as np
 import structlog
+import yaml
 
 logger = structlog.get_logger()
 
@@ -366,12 +367,16 @@ def run_research_pipeline(
         }
     run.save()
 
+    compiled_config: dict[str, Any] | None = None
+
     # Step 2: Compile profile
     with run.step("compile", {"market": market, "model_type": model_type}) as step:
         from src.workflows.profile_compiler import compile_strategy_profile
 
         profile_path = f"configs/strategy_profile_{market}.json"
         config_path = compile_strategy_profile(market=market, profile_path=profile_path)
+        with open(config_path, encoding="utf-8") as f:
+            compiled_config = yaml.safe_load(f)
         step.output = {"config_path": str(config_path)}
     run.save()
 
@@ -401,6 +406,7 @@ def run_research_pipeline(
             train_end="2025-01-01",
             test_window_months=6,
             step_months=3,
+            config=compiled_config,
         )
         step.output = {
             "mean_ic": wf_result.mean_ic,

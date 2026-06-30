@@ -549,6 +549,7 @@ def run_training_pipeline(
                     model_type=model_type,
                     train_start=train_start,
                     train_end=train_end,
+                    config=config,
                 )
                 walk_forward_data = {
                     "mean_ic": wf_result.mean_ic,
@@ -626,7 +627,13 @@ def run_training_pipeline(
             try:
                 from src.research.model_fdr import compute_model_p_value
 
-                sharpe = walk_forward_data.get("sharpe") or results.get("sharpe", 0)
+                # Extract sharpe-like metric: check walk_forward_data first,
+                # then results.metrics (Qlib records "information_ratio" as
+                # the closest proxy to Sharpe ratio for backtest results).
+                sharpe = walk_forward_data.get("sharpe")
+                if not sharpe:
+                    results_metrics = results.get("metrics", {})
+                    sharpe = results_metrics.get("sharpe", results_metrics.get("information_ratio", 0))
                 mean_ic = walk_forward_data.get("mean_ic", 0)
                 if sharpe and mean_ic:
                     p_val = compute_model_p_value(

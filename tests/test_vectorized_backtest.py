@@ -67,6 +67,47 @@ class TestComputeICVectorized:
         mean_ic, ic_ir, pos_ratio, ic_series = compute_ic_vectorized(pred, returns)
         assert len(ic_series) == 0  # Not enough stocks
 
+    def test_negated_predictions_produce_negative_ic(self):
+        """Label-direction contract: negating predictions flips IC sign.
+
+        When a model is trained with NEGATED forward-return labels
+        (the bug fixed 2026-06-27 in scripts/train_optimal.py and
+        scripts/train_us_optimal.py), the model learns to predict the
+        OPPOSITE of future returns. High scores mean low returns.
+
+        For a long-only backtest that buys high-score stocks, this
+        produces negative IC and harms performance. This test
+        demonstrates the harm by comparing normal vs. negated
+        predictions against the same returns.
+
+        NOTE: This tests the IC-computation layer.  For a direct
+        regression guard that exercises the actual training-script
+        loaders with known-positive synthetic labels, see
+        tests/test_training_label_direction.py.
+        """
+        pred = _make_predictions(n_dates=30, n_stocks=50, seed=42)
+        # Returns positively correlated with predictions
+        returns = _make_returns(pred, noise_std=0.05, seed=42)
+
+        # Normal (correct): high predictions mean high returns.
+        mean_ic, _, pos_ratio, _ = compute_ic_vectorized(pred, returns)
+        assert mean_ic > 0.5, f"Expected positive IC, got {mean_ic:.4f}"
+        assert pos_ratio > 0.8, f"Expected high positive ratio, got {pos_ratio:.2%}"
+
+        # Negated (bug): high predictions mean low returns (model trained
+        # with -y is anti-predictive for long-only)
+        negated = pred.copy()
+        negated["score"] = -negated["score"]
+        neg_ic, _, neg_pos_ratio, _ = compute_ic_vectorized(negated, returns)
+        assert neg_ic < -0.5, (
+            f"Negated predictions must produce negative IC (got {neg_ic:.4f}). "
+            "This confirms that negating future-return labels trains an "
+            "anti-predictive model for long-only strategies."
+        )
+        assert neg_pos_ratio < 0.2, (
+            f"Negated predictions should have low positive ratio, got {neg_pos_ratio:.2%}"
+        )
+
 
 class TestRunVectorizedBacktest:
     """Tests for the full backtest."""

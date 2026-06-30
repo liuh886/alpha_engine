@@ -369,6 +369,36 @@ class TestValidateInference:
         assert result.n_predictions > 0
         assert result.prediction_correlation == pytest.approx(1.0, abs=1e-6)
 
+    def test_numeric_instrument_index_is_not_treated_as_feature(
+        self, artifacts_root, synthetic_model_dir, sample_config, synthetic_model
+    ):
+        feat_df, score_df = _make_synthetic_data(
+            synthetic_model, n_rows=60, n_features=3, seed=101
+        )
+        index = pd.MultiIndex.from_arrays(
+            [pd.date_range("2025-01-01", periods=60), range(600000, 600060)],
+            names=["datetime", "instrument"],
+        )
+        feat_df.index = index
+        score_df.index = index
+        combined = feat_df.copy()
+        combined["score"] = score_df["score"]
+        labels = _make_labels(n_rows=60, seed=7)
+        labels.index = index
+
+        manifest = create_artifact(
+            model_dir=synthetic_model_dir,
+            config=sample_config,
+            predictions=combined,
+            labels=labels,
+            features=list(feat_df.columns),
+            snapshot_id="test_snap",
+        )
+
+        result = validate_inference(manifest.id)
+        assert result.passed is True
+        assert result.details["feature_cols"] == list(feat_df.columns)
+
     def test_inference_rejects_corrupted_binary(
         self, artifacts_root, synthetic_model_dir, sample_config, sample_predictions, sample_labels
     ):

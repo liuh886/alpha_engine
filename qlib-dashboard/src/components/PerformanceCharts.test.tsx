@@ -10,6 +10,7 @@ vi.mock("recharts", () => ({
     <div data-testid="chart-data" data-chart={JSON.stringify(data)} />
   ),
   Area: () => null,
+  Brush: () => null,
   CartesianGrid: () => null,
   Legend: () => null,
   Line: () => null,

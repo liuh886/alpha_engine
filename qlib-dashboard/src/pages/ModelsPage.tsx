@@ -9,7 +9,7 @@ import { Loader2, RefreshCw, Star, Trash2, ExternalLink, AlertTriangle, Layers, 
 import { Placeholder } from "@/components/Placeholder";
 import { ErrorState } from "@/components/ui/loading-state";
 import { cn } from "@/lib/utils";
-import { shortId, useSort } from "@/lib/format";
+import { formatNum, formatPct, shortId, useSort } from "@/lib/format";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ReleaseOutcome } from "@/components/ReleaseOutcome";
 import { useMutation } from "@/hooks/useMutation";
@@ -542,6 +542,21 @@ export function ModelsPage() {
                 const snapshotId = String(v.snapshot_id || (v.params as Record<string, unknown>)?.data_snapshot_id || "");
                 const stage = (v.stage || "CANDIDATE").toUpperCase() as Stage;
                 const failures = gateFailures[v.id];
+                const detailMetrics = [
+                  ["Total Return", formatPct(v.metrics?.["Total Return"])],
+                  ["Benchmark Return", formatPct(v.metrics?.["Benchmark Return"])],
+                  ["Excess Return", formatPct(v.metrics?.["Excess Return"])],
+                  ["Max Drawdown", formatPct(v.metrics?.["Max Drawdown"])],
+                  ["Sharpe Ratio", formatNum(v.metrics?.["Sharpe Ratio"], 3)],
+                  ["Mean IC", formatNum(v.metrics?.["IC"], 4)],
+                  ["ICIR", formatNum(v.metrics?.["ICIR"], 3)],
+                  ["Positive IC Ratio", formatPct(v.metrics?.["Positive IC Ratio"])],
+                  ["Consistency", formatPct(v.metrics?.["Consistency"])],
+                  [
+                    "WF Splits",
+                    `${v.metrics?.["WF Successful Splits"] ?? "--"}/${v.metrics?.["WF Total Splits"] ?? "--"}`,
+                  ],
+                ];
 
                 return (
                   <TableRow key={`${v.id}-provenance`} className="bg-muted/20">
@@ -624,6 +639,17 @@ export function ModelsPage() {
                           <div><span className="font-bold text-muted-foreground">Market:</span> <span className="font-mono uppercase">{v.market || "—"}</span></div>
                           <div><span className="font-bold text-muted-foreground">Type:</span> <span className="font-mono">{v.model_type || "LGBModel"}</span></div>
                           <div><span className="font-bold text-muted-foreground">Created:</span> <span className="font-mono">{v.created_at?.slice(0, 10) || "—"}</span></div>
+                        </div>
+
+                        <div aria-label="Model effectiveness metrics" className="border-t pt-3">
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-x-4 gap-y-2">
+                            {detailMetrics.map(([label, value]) => (
+                              <div key={label} className="min-w-0">
+                                <div className="text-[10px] text-muted-foreground">{label}</div>
+                                <div className="font-mono text-xs font-medium break-words">{value}</div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
