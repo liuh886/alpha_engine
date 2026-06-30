@@ -57,7 +57,20 @@ const FIXTURE_MODELS = {
       stage: "STAGING",
       description: "Stage: STAGING",
       params: { data_snapshot_id: "snapshot-cn-20260620" },
-      metrics: { "Sharpe Ratio": 1.42, "Annualized Return": 0.18, "Max Drawdown": -0.08 },
+      metrics: {
+        "Total Return": 0.3365,
+        "Benchmark Return": 0.2899,
+        "Excess Return": 0.0466,
+        "Sharpe Ratio": 1.42,
+        "Annualized Return": 0.18,
+        "Max Drawdown": -0.08,
+        "IC": 0.0176,
+        "ICIR": 0.5761,
+        "Positive IC Ratio": 0.7692,
+        "Consistency": 0.7692,
+        "WF Successful Splits": 13,
+        "WF Total Splits": 16,
+      },
     },
     {
       id: "artifact-recommended-99",
@@ -235,6 +248,29 @@ describe("ModelsPage", () => {
     // Verify stage progress indicators (CANDIDATE, STAGING, RECOMMENDED are in the progress bar)
     const provenanceSection = screen.getByText("Provenance Chain").closest("td");
     expect(provenanceSection).toBeTruthy();
+  });
+
+  it("shows complete effectiveness metrics in the expanded model row", async () => {
+    renderModelsPage();
+    await screen.findByText("release-candidate-42");
+    fireEvent.click(screen.getByLabelText(/Show provenance for.*release-candidate-42/i));
+
+    const metrics = screen.getByLabelText("Model effectiveness metrics");
+    for (const label of [
+      "Total Return",
+      "Benchmark Return",
+      "Excess Return",
+      "Max Drawdown",
+      "Sharpe Ratio",
+      "Mean IC",
+      "ICIR",
+      "Positive IC Ratio",
+      "Consistency",
+      "WF Splits",
+    ]) {
+      expect(within(metrics).getByText(label)).toBeVisible();
+    }
+    expect(within(metrics).getByText("13/16")).toBeVisible();
   });
 
   it("collapses provenance chain on second click", async () => {
