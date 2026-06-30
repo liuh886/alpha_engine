@@ -6,6 +6,13 @@
  *   - `'loading'`         — session check in progress; UI should show a spinner
  *   - `'authenticated'`   — credentials verified; safe to render protected content
  *   - `'unauthenticated'` — no valid session; show login page
+ *
+ * ## Two-phase initialisation
+ * On mount we compute the initial status **synchronously** from sessionStorage
+ * (via `computeInitialStatus`).  If credentials are stored we show a loading
+ * spinner immediately instead of flashing the login page, then verify against
+ * the server asynchronously.  Do NOT collapse this into a single async flow
+ * or the flash-of-login-page will return.
  */
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { setUnauthorizedHandler } from './api';
@@ -59,6 +66,10 @@ function getStoredCredentials(): { username: string; password: string } | null {
 /**
  * Compute the initial status synchronously so we avoid a flash of the login
  * page when stored credentials exist but haven't been verified yet.
+ *
+ * Returns `'loading'` when credentials are present (async verification
+ * will follow in the useEffect below) or `'unauthenticated'` when there
+ * is nothing in storage.
  */
 function computeInitialStatus(): AuthStatus {
   return getStoredCredentials() ? 'loading' : 'unauthenticated';
@@ -80,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Verify credentials are still valid
+    // Verify credentials are still valid against the server.
     fetch('/api/system/me', {
       headers: { Authorization: encodeBasicAuth(stored.username, stored.password) },
     })
@@ -95,7 +106,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
-        // Server might not be running — keep credentials for retry
+        // Intentional: if the server is unreachable (e.g. backend not yet
+        // started, or network blip) we keep the stored credentials and
+        // optimistically set status to 'authenticated'.  The user will
+        // see a connection error from the data-fetching hooks rather than
+        // being kicked to the login page unexpectedly.
+        // The 401 handler registered below will clear credentials if the
+        // server later rejects them.
+        console.warn('[auth] Session verification failed — server unreachable, keeping credentials for retry.');
         setStatus('authenticated');
         setUsername(stored.username);
         setCredentials(stored);
