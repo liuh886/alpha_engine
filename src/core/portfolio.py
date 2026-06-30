@@ -15,12 +15,10 @@ class SleeveEntry:
     weight: float
 
 
-
 def build_fixed_rebalance_schedule(trading_days: list[pd.Timestamp], holding_days: int) -> list[pd.Timestamp]:
     if holding_days <= 0:
         raise ValueError("holding_days must be positive")
     return list(trading_days[::holding_days])
-
 
 
 def build_rolling_portfolio(
@@ -28,11 +26,7 @@ def build_rolling_portfolio(
     holding_days: int = 10,
     sleeve_weight: float | None = None,
 ) -> pd.DataFrame:
-    """Build rolling holdings where each daily signal forms one sleeve.
-
-    Each sleeve is held for ``holding_days`` sessions. If ``sleeve_weight`` is not
-    provided, it defaults to ``1 / holding_days``.
-    """
+    """Build rolling holdings where each daily signal forms one sleeve."""
     if holding_days <= 0:
         raise ValueError("holding_days must be positive")
     if sleeve_weight is None:
