@@ -5,21 +5,26 @@ import { create } from 'zustand';
 // (localStorage is blocked in sandboxed iframes; sessionStorage is not)
 // ---------------------------------------------------------------------------
 function readSession<T>(key: string, fallback: T): T {
-  try {
-    const raw = sessionStorage.getItem(key);
-    if (raw === null) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+    try {
+        const raw = sessionStorage.getItem(key);
+        if (raw === null) return fallback;
+        return JSON.parse(raw) as T;
+    } catch {
+        return fallback;
+    }
 }
+
 function writeSession(key: string, value: unknown): void {
-  try { sessionStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+    try {
+        sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        // Ignore unavailable sessionStorage in sandboxed or non-browser contexts.
+    }
 }
 
 interface GlobalState {
-    theme: "dark" | "light";
-    setTheme: (theme: "dark" | "light") => void;
+    theme: 'dark' | 'light';
+    setTheme: (theme: 'dark' | 'light') => void;
 
     /** When true, internal routes are visible in the sidebar. */
     operatorMode: boolean;
@@ -34,8 +39,8 @@ interface GlobalState {
     latestCalendarDay: string;
     setLatestCalendarDay: (day: string) => void;
 
-    qualityStatus: "ok" | "warning" | "error";
-    setQualityStatus: (status: "ok" | "warning" | "error") => void;
+    qualityStatus: 'ok' | 'warning' | 'error';
+    setQualityStatus: (status: 'ok' | 'warning' | 'error') => void;
 
     activeJobsCount: number;
     setActiveJobsCount: (count: number) => void;
@@ -60,7 +65,7 @@ interface GlobalState {
 }
 
 export const useGlobalStore = create<GlobalState>((set) => ({
-    theme: "light",
+    theme: 'light',
     setTheme: (t) => set({ theme: t }),
 
     // operatorMode: persisted in sessionStorage so refresh doesn't reset it
