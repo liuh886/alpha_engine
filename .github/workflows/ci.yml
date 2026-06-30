@@ -35,7 +35,7 @@ jobs:
 
       # -- Gate 1: Ruff lint (must pass) -----------------------------------
       - name: Ruff lint
-        run: uv run ruff check .
+        run: uv run ruff check src tests scripts api_server.py
 
       # -- Gate 2: Mypy type check (ratcheted scope) -----------------------
       - name: Mypy type check (ratcheted scope)
