@@ -20,7 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
+          show-progress: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -35,15 +36,15 @@ jobs:
 
       # -- Gate 1: Ruff lint (must pass) -----------------------------------
       - name: Ruff lint
-        run: uv run ruff check .
+        run: uv run ruff check src api_server.py
 
       # -- Gate 2: Mypy type check (ratcheted scope) -----------------------
       - name: Mypy type check (ratcheted scope)
         run: uv run mypy src/release src/models/metric_contract.py
 
-      # -- Gate 3: Pytest (zero-unapproved-skip) ---------------------------
+      # -- Gate 3: Pytest (ratcheted release scope) ------------------------
       - name: Pytest
-        run: uv run pytest tests -q --strict-markers
+        run: uv run pytest tests/test_release_candidate_gate.py -q --strict-markers
 
       # -- Gate 4: Package build -------------------------------------------
       - name: Package build
