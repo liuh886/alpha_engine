@@ -1,8 +1,30 @@
 import { create } from 'zustand';
 
+// ---------------------------------------------------------------------------
+// sessionStorage helpers for lightweight persistence
+// (localStorage is blocked in sandboxed iframes; sessionStorage is not)
+// ---------------------------------------------------------------------------
+function readSession<T>(key: string, fallback: T): T {
+    try {
+        const raw = sessionStorage.getItem(key);
+        if (raw === null) return fallback;
+        return JSON.parse(raw) as T;
+    } catch {
+        return fallback;
+    }
+}
+
+function writeSession(key: string, value: unknown): void {
+    try {
+        sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        // Ignore unavailable sessionStorage in sandboxed or non-browser contexts.
+    }
+}
+
 interface GlobalState {
-    theme: "dark" | "light";
-    setTheme: (theme: "dark" | "light") => void;
+    theme: 'dark' | 'light';
+    setTheme: (theme: 'dark' | 'light') => void;
 
     /** When true, internal routes are visible in the sidebar. */
     operatorMode: boolean;
@@ -17,8 +39,8 @@ interface GlobalState {
     latestCalendarDay: string;
     setLatestCalendarDay: (day: string) => void;
 
-    qualityStatus: "ok" | "warning" | "error";
-    setQualityStatus: (status: "ok" | "warning" | "error") => void;
+    qualityStatus: 'ok' | 'warning' | 'error';
+    setQualityStatus: (status: 'ok' | 'warning' | 'error') => void;
 
     activeJobsCount: number;
     setActiveJobsCount: (count: number) => void;
@@ -43,40 +65,48 @@ interface GlobalState {
 }
 
 export const useGlobalStore = create<GlobalState>((set) => ({
-    theme: "light",
+    theme: 'light',
     setTheme: (t) => set({ theme: t }),
 
-    operatorMode: false,
-    setOperatorMode: (on) => set({ operatorMode: on }),
+    // operatorMode: persisted in sessionStorage so refresh doesn't reset it
+    operatorMode: readSession<boolean>('operatorMode', false),
+    setOperatorMode: (on) => {
+        writeSession('operatorMode', on);
+        set({ operatorMode: on });
+    },
 
-    sidebarCollapsed: false,
-    setSidebarCollapsed: (col) => set({ sidebarCollapsed: col }),
+    // sidebarCollapsed: persisted in sessionStorage
+    sidebarCollapsed: readSession<boolean>('sidebarCollapsed', false),
+    setSidebarCollapsed: (col) => {
+        writeSession('sidebarCollapsed', col);
+        set({ sidebarCollapsed: col });
+    },
 
     qualityWarnings: [],
     setQualityWarnings: (warnings) => set({ qualityWarnings: warnings }),
 
-    latestCalendarDay: "",
+    latestCalendarDay: '',
     setLatestCalendarDay: (day) => set({ latestCalendarDay: day }),
 
-    qualityStatus: "ok",
+    qualityStatus: 'ok',
     setQualityStatus: (status) => set({ qualityStatus: status }),
 
     activeJobsCount: 0,
     setActiveJobsCount: (count) => set({ activeJobsCount: count }),
 
-    dataGeneratedAt: "",
+    dataGeneratedAt: '',
     setDataGeneratedAt: (ts) => set({ dataGeneratedAt: ts }),
 
     apiError: null,
     setApiError: (err) => set({ apiError: err }),
 
-    username: "User",
+    username: 'User',
     setUsername: (name) => set({ username: name }),
 
     // Model selection
-    selectedModelId: "",
+    selectedModelId: '',
     setSelectedModelId: (id) => set({ selectedModelId: id }),
-    selectedModelMarket: "us",
+    selectedModelMarket: 'us',
     setSelectedModelMarket: (market) => set({ selectedModelMarket: market }),
 
     demoMode: false,
