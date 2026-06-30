@@ -1,68 +1,136 @@
-"""Selection utilities for TopN/BottomN portfolio construction."""
+"""Stock selection — pure functions.
 
+All functions accept a ``pd.Series`` of scores (index = instrument ticker)
+and return a plain ``list`` of selected tickers.  No I/O, no state.
+"""
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import pandas as pd
+from typing import Optional
 
 
-@dataclass(slots=True)
-class GuardrailInputs:
-    """Optional long-side guardrail inputs."""
-
-    prices: pd.Series | None = None
-    moving_average: pd.Series | None = None
-    require_positive_score: bool = True
-
-
-def _passes_long_guardrail(
-    ticker: str,
-    score: float,
-    guardrail: GuardrailInputs | None,
-) -> bool:
-    if guardrail is None:
-        return True
-
-    if guardrail.require_positive_score and score <= 0:
-        return False
-
-    if guardrail.prices is None or guardrail.moving_average is None:
-        return True
-
-    if ticker not in guardrail.prices.index or ticker not in guardrail.moving_average.index:
-        return False
-
-    price = guardrail.prices.loc[ticker]
-    moving_average = guardrail.moving_average.loc[ticker]
-    if pd.isna(price) or pd.isna(moving_average):
-        return False
-    return bool(price > moving_average)
-
-
-def select_topn(
+def select_topk(
     scores: pd.Series,
-    n: int,
-    guardrail: GuardrailInputs | None = None,
-    buffer_multiplier: int = 3,
+    k: int,
+    guardrail: bool = True,
+    prices: Optional[pd.Series] = None,
+    ma: Optional[pd.Series] = None,
+    min_score: float = 0.0,
+    candidate_multiplier: int = 3,
 ) -> list[str]:
-    """Select top-N symbols with optional long-side guardrail filtering."""
-    if n <= 0 or scores.empty:
-        return []
+    """Select top-K tickers by score with an optional guardrail filter.
 
-    del buffer_multiplier  # Kept for backward-compatible call sites.
-    ranked = scores.dropna().sort_values(ascending=False)
+    The guardrail rejects tickers where *either* of the following is true:
+      - score <= ``min_score``  (typically 0, filtering negative expected-return signals)
+      - ``prices[ticker] < ma[ticker]``  (price below its moving average)
+
+    When ``guardrail=True`` but ``prices`` or ``ma`` is None, only the
+    score threshold filter is applied.
+
+    Parameters
+    ----------
+    scores:
+        Cross-sectional scores, index = ticker symbol.
+    k:
+        Target number of tickers to return.
+    guardrail:
+        Enable guardrail filtering (default True).
+    prices:
+        Latest closing prices keyed by ticker.
+    ma:
+        Moving-average prices keyed by ticker (e.g. MA60).
+    min_score:
+        Minimum score threshold for the guardrail (default 0.0).
+    candidate_multiplier:
+        How many extra candidates to pre-screen before applying the guardrail
+        (default 3 × k, so up to 3k candidates are evaluated).
+
+    Returns
+    -------
+    list[str]
+        Up to ``k`` ticker symbols, ordered by descending score.
+
+    Examples
+    --------
+    >>> top10 = select_topk(scores, k=10, guardrail=True, prices=close_ser, ma=ma60_ser)
+    >>> top10_no_guard = select_topk(scores, k=10, guardrail=False)
+    """
+    # Pre-screen: take k * multiplier candidates so guardrail has room to reject
+    candidates = scores.nlargest(k * candidate_multiplier)
+
+    if not guardrail:
+        return candidates.index[:k].tolist()
+
     selected: list[str] = []
-    for ticker, score in ranked.items():
-        if _passes_long_guardrail(str(ticker), float(score), guardrail):
-            selected.append(str(ticker))
-        if len(selected) >= n:
+    for ticker in candidates.index:
+        if len(selected) >= k:
             break
+
+        # Score threshold
+        if candidates[ticker] <= min_score:
+            continue
+
+        # Price vs MA filter (only when both series provided)
+        if prices is not None and ma is not None:
+            price = prices.get(ticker) if hasattr(prices, "get") else prices.get(ticker, None)
+            moving_avg = ma.get(ticker) if hasattr(ma, "get") else ma.get(ticker, None)
+            if price is not None and moving_avg is not None:
+                if price < moving_avg:
+                    continue
+
+        selected.append(ticker)
+
     return selected
 
 
-def select_bottomn(scores: pd.Series, n: int) -> list[str]:
-    """Select bottom-N symbols with no guardrail filtering."""
-    if n <= 0 or scores.empty:
-        return []
-    return [str(ticker) for ticker in scores.dropna().sort_values(ascending=True).head(n).index]
+def select_bottomk(
+    scores: pd.Series,
+    k: int,
+) -> list[str]:
+    """Select bottom-K tickers by score — **no guardrail applied**.
+
+    BottomN represents the short leg of a long-short strategy.  No guardrail
+    is applied because we *want* the weakest names, including negative-score ones.
+
+    Parameters
+    ----------
+    scores:
+        Cross-sectional scores, index = ticker symbol.
+    k:
+        Number of tickers to return.
+
+    Returns
+    -------
+    list[str]
+        Exactly ``k`` ticker symbols, ordered by ascending score.
+
+    Examples
+    --------
+    >>> bot10 = select_bottomk(scores, k=10)
+    """
+    return scores.nsmallest(k).index.tolist()
+
+
+def select_topk_bottomk(
+    scores: pd.Series,
+    k_long: int,
+    k_short: int,
+    guardrail: bool = True,
+    prices: Optional[pd.Series] = None,
+    ma: Optional[pd.Series] = None,
+) -> dict[str, list[str]]:
+    """Convenience wrapper: select both long and short legs in one call.
+
+    Returns
+    -------
+    dict with keys ``"long"`` and ``"short"``.
+
+    Examples
+    --------
+    >>> portfolio = select_topk_bottomk(scores, k_long=10, k_short=10)
+    >>> portfolio["long"], portfolio["short"]
+    """
+    return {
+        "long": select_topk(scores, k_long, guardrail=guardrail, prices=prices, ma=ma),
+        "short": select_bottomk(scores, k_short),
+    }
