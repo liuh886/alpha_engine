@@ -120,5 +120,12 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "--strict-markers"
 markers = [
+    "unit: fast pure unit tests that do not require external services or real market artifacts",
+    "contract: API/schema/artifact contract tests using local fakes or TestClient",
+    "integration: tests crossing service/module boundaries or requiring heavier fixtures",
+    "slow: tests that are valid but too slow for the default PR feedback loop",
+    "e2e: browser or live-server end-to-end tests",
+    "benchmark: performance or baseline measurement tests; not required for PR correctness",
+    "manual: tests requiring local services, real data, credentials, or manual setup",
     "approved_skip(reason): marks a test that is approved to be skipped with a documented reason",
 ]
