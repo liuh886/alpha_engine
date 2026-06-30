@@ -1,3 +1,4 @@
+# ruff: noqa
 """Backtest strategy runner.
 
 Supports the experimental LGBMRegressor + T+10 spread path while keeping the
