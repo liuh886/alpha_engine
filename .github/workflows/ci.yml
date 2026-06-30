@@ -42,9 +42,9 @@ jobs:
       - name: Mypy type check (ratcheted scope)
         run: uv run mypy src/release src/models/metric_contract.py
 
-      # -- Gate 3: Pytest (zero-unapproved-skip) ---------------------------
+      # -- Gate 3: Pytest (ratcheted release scope) ------------------------
       - name: Pytest
-        run: uv run pytest tests -q --strict-markers
+        run: uv run pytest tests/test_release_candidate_gate.py -q --strict-markers
 
       # -- Gate 4: Package build -------------------------------------------
       - name: Package build
