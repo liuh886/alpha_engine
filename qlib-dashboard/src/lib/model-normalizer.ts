@@ -56,6 +56,19 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
   // Initialize metrics with existing values, falling back to payload.backtest.metrics if metrics_json was empty
   const payloadMetrics = payload?.backtest?.metrics ?? {};
   const metrics: Record<string, number> = { ...payloadMetrics, ...metricsRaw };
+  const metricAliases: Record<string, string[]> = {
+    "Total Return": ["total_return"],
+    "Benchmark Return": ["benchmark_return"],
+    "Excess Return": ["excess_return", "excess_return_with_cost"],
+    "Annualized Return": ["annual_return", "annualized_return"],
+    "Sharpe Ratio": ["sharpe_ratio", "sharpe"],
+    "Max Drawdown": ["max_drawdown", "mdd"],
+    "Annualized Volatility": ["volatility", "annual_volatility"],
+  };
+  for (const [canonical, aliases] of Object.entries(metricAliases)) {
+    const alias = aliases.find((key) => metrics[key] !== undefined);
+    if (metrics[canonical] === undefined && alias) metrics[canonical] = Number(metrics[alias]);
+  }
 
   // Attempt to extract IC/Rank IC from payload if not present in metrics
   const sigAnalysis = payload?.data?.sig_analysis;
@@ -68,6 +81,23 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
     }
   }
 
+  const walkForward = payload?.walk_forward;
+  if (walkForward) {
+    const wfMap: Record<string, string> = {
+      "IC": "mean_ic",
+      "ICIR": "ic_ir",
+      "Positive IC Ratio": "positive_ic_ratio",
+      "Consistency": "consistency",
+      "WF Successful Splits": "n_success",
+      "WF Total Splits": "n_total_splits",
+    };
+    for (const [canonical, source] of Object.entries(wfMap)) {
+      if (metrics[canonical] === undefined && walkForward[source] !== undefined) {
+        metrics[canonical] = Number(walkForward[source]);
+      }
+    }
+  }
+
   // Attempt to extract standard metrics from payload.data.indicators if not present in metrics
   const indicators = payload?.data?.indicators;
   if (indicators) {
@@ -77,12 +107,38 @@ export function normalizeModelRegistryEntry(row: any): ModelVersion {
       "Information Ratio": "information_ratio",
       "Max Drawdown": "max_drawdown",
       "Annualized Volatility": "annual_volatility",
-      "Total Return": "total_return"
+      "Total Return": "total_return",
+      "Excess Return": "excess_return",
+      "Benchmark Return": "benchmark_return",
     };
     for (const [frontendKey, backendKey] of Object.entries(map)) {
       if (indicators[backendKey] !== undefined && metrics[frontendKey] === undefined) {
         metrics[frontendKey] = Number(indicators[backendKey]);
       }
+    }
+    // Also capture numeric excess_return with cost as fallback
+    if (metrics["Excess Return"] === undefined && indicators["excess_return_with_cost"] !== undefined) {
+      metrics["Excess Return"] = Number(indicators["excess_return_with_cost"]);
+    }
+  }
+
+  // Extract walk-forward metrics from payload.data.sig_analysis
+  if (sigAnalysis) {
+    if (sigAnalysis.icir?.icir !== undefined && metrics["ICIR"] === undefined) {
+      metrics["ICIR"] = Number(sigAnalysis.icir.icir);
+    }
+    if (sigAnalysis.positive_ic_ratio !== undefined && metrics["Positive IC Ratio"] === undefined) {
+      metrics["Positive IC Ratio"] = Number(sigAnalysis.positive_ic_ratio);
+    }
+    if (sigAnalysis.consistency !== undefined && metrics["Consistency"] === undefined) {
+      metrics["Consistency"] = Number(sigAnalysis.consistency);
+    }
+    // WF split counts for display
+    if (sigAnalysis.wf_successful_splits !== undefined) {
+      metrics["WF Successful Splits"] = Number(sigAnalysis.wf_successful_splits);
+    }
+    if (sigAnalysis.wf_total_splits !== undefined) {
+      metrics["WF Total Splits"] = Number(sigAnalysis.wf_total_splits);
     }
   }
 

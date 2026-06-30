@@ -242,8 +242,7 @@ task:
                 - Std($close, 10)
                 - $volume/Ref($volume, 10)-1
                 label:
-                - (Ref($close, -10) / Ref($close, -1) - 1) - Mean(Ref($close, -10)
-                  / Ref($close, -1) - 1, 10)
+                - Ref($close, -10) / Ref($close, -1) - 1
       segments:
         train:
         - '2021-01-01'

@@ -12,7 +12,7 @@ from src.common.market import resolve_start_date
 from src.common.paths import CONFIG_DIR, PROJECT_ROOT
 
 logger = get_logger(__name__)
-from src.common.workflow_config import apply_backtest_and_test_window
+from src.common.workflow_config import apply_backtest_and_test_window, apply_label_horizon_purge
 from src.data.universe import apply_liquidity_filter, clean_universe
 from src.models.artifact import create_artifact
 from src.models.reconstruction import validate_inference
@@ -91,10 +91,16 @@ class ResearchService:
         if not valid_tickers:
             raise RuntimeError("No valid tickers found in universe after cleaning and filtering!")
 
-        config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["instruments"] = valid_tickers
+        # apply_backtest_and_test_window deep-copies the config; mutate the
+        # copy so the caller's dict is never touched.
         config = apply_backtest_and_test_window(
             config, calendar, start_time=start_resolved, end_time=end_time
         )
+        config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["instruments"] = valid_tickers
+
+        # Purge label-bearing segment ends to prevent forward-label leakage.
+        config = apply_label_horizon_purge(config, calendar)
+
         return config
 
     def run_training_pipeline(

@@ -236,3 +236,60 @@ class FeatureCache:
 - PyTorch for batch inference
 - Estimated: additional 5-10x on top of Phase 1
 - Requires NVIDIA GPU with CUDA support
+
+---
+
+## 2026-06-29: PR53 Training-Effectiveness Decisions
+
+These decisions map to Phase 2 (research validity), Phase 3 (governance), and Phase 4
+(production integration):
+
+- Qlib negative `Ref` offsets are future-looking. The standard ten-session label is
+  trained without sign inversion because execution buys the highest model scores.
+- Every label-bearing segment is purged by the observed trading-session horizon at
+  both train/validation and validation/test boundaries.
+- Predictions and labels are aligned only by `(datetime, instrument)` and evaluated
+  by mean daily cross-sectional IC.
+- US benchmark-excess targets are computed explicitly as stock return minus same-date
+  QQQ return; persisted artifact inputs must equal backtest inputs.
+- Feature selection is train/validation-only and deterministic; inference artifacts
+  include the selected schema, normalization, and monotonic constraints.
+- Alpha158 LambdaRank with the 10-session target failed historical mean IC,
+  consistency, and ICIR gates; changing the objective alone is not sufficient.
+- The validated US profile uses 10 predeclared momentum/volatility/volume features,
+  a 20-session excess-return target, LambdaRank, and a matching 20-session execution
+  horizon. It passes 11-split historical WF and the 2025-2026 holdout.
+- A strong recent holdout never overrides failed historical WF. Candidate selection
+  requires at least eight successful splits, positive mean IC, ICIR above 0.3,
+  consistency of at least 0.6, and positive after-cost holdout excess.
+
+### 2026-06-29: CN Model Training Fixes
+
+- Fixed `scripts/train_optimal.py`:
+  - Walk-forward now uses **separate historical source** `WF_TRAIN_START=2018-01-01` (not
+    `TRAIN_START=2021-01-01`) so label-horizon purge + validation hold-out can produce >= 8
+    evaluable splits with 36-month minimum training history.
+  - `.registered` marker written only after effectiveness, inference, and clean-process
+    reconstruction gates pass. Verification data (correlation and match percentage)
+    is recorded in the marker.
+  - Failed candidates use **`CANDIDATE`** stage (not the illegal `DEV` stage) with a
+    `gate_failed` marker explaining why.
+  - Candidate matrix expanded from 2 to 8 entries: Alpha158 vs curated momentum profile,
+    10 vs 20 session horizon, regression vs lambdarank.  Selection uses only historical
+    WF; holdout is single confirmation not selection.
+  - Artifact params, feature_profile, objective, and label_horizon written from **actual
+    training configuration**, never hardcoded.
+  - Dashboard payload enriched with: `excess_return`, `benchmark_return`, `wf_mean_ic`,
+    `icir`, `positive_ic_ratio`, `consistency`, `wf_successful_splits`, `wf_total_splits`.
+  - Registration skipped entirely when gates fail (no SQLite entry, no dashboard entry).
+- Frontend `model-normalizer.ts` updated to map new fields (`Excess Return`, `Benchmark Return`,
+  `ICIR`, `Positive IC Ratio`, `Consistency`, `WF Successful Splits`, `WF Total Splits`) and
+  `MetricsExpanded.tsx` now renders a Walk-Forward / Signal Quality section when WF data is
+  available alongside core performance metrics.  New frontend tests cover all mappings.
+- The selected CN model is the curated 20-session LambdaRank candidate. Historical WF
+  produced mean IC 0.0176, ICIR 0.5761, 76.9% consistency, and 13 successful splits.
+  Its single final holdout produced 33.65% total return, 4.66% excess over CSI 300,
+  Sharpe 1.3063, and -4.54% maximum drawdown.
+- Formal artifact `9cd7e27bd300453eb706db2bda89645e` passed all three gates and
+  was registered as STAGING. The frontend model view exposes performance and
+  walk-forward metrics from the registry payload.
