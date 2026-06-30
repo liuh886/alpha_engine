@@ -28,6 +28,8 @@ export interface UseQueryResult<T> {
  *   or when `fetcher` / `enabled` changes.
  * - Preserves the last valid `data` during background refetches so the UI
  *   never flashes to an empty state on refresh.
+ * - Clears stale `data` to `null` when `enabled` becomes false, preventing
+ *   a previous query's data from leaking into a subsequent render cycle.
  */
 export function useQuery<T>({
   fetcher,
@@ -53,6 +55,10 @@ export function useQuery<T>({
   useEffect(() => {
     if (!enabled) {
       setLoading(false);
+      // Clear stale data so the next enabled=true cycle starts clean.
+      // Without this, the previous model's data would remain visible
+      // during the transition between query keys.
+      setData(null);
       return;
     }
 
