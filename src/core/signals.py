@@ -13,15 +13,8 @@ class ScoreGenerationError(RuntimeError):
     """Raised when model score generation fails."""
 
 
-
 def load_model(model_path: str | Path) -> Any:
-    """Load a serialized sklearn/lightgbm model from disk.
-
-    Parameters
-    ----------
-    model_path:
-        Path to pickle model artifact.
-    """
+    """Load a serialized model from disk."""
     path = Path(model_path)
     if not path.exists():
         raise FileNotFoundError(f"Model file not found: {path}")
@@ -29,34 +22,26 @@ def load_model(model_path: str | Path) -> Any:
         return pickle.load(f)
 
 
-
 def generate_scores(model: Any, feature_df: pd.DataFrame) -> pd.Series:
-    """Generate per-instrument scores from a fitted model.
-
-    This function is notebook-friendly and intentionally side-effect free.
-    It supports regressors via ``predict`` and classifiers via ``predict_proba``
-    as a fallback for legacy models.
-    """
+    """Generate model scores while preserving the input index."""
     if feature_df.empty:
-        return pd.Series(dtype=float, name="score")
-
-    if isinstance(feature_df.index, pd.MultiIndex):
-        score_index = feature_df.index
-    else:
-        score_index = feature_df.index
+        return pd.Series(dtype=float, name="score", index=feature_df.index)
 
     try:
-        if hasattr(model, "predict"):
-            values = model.predict(feature_df.values)
-            scores = pd.Series(values, index=score_index, name="score", dtype=float)
-            return scores
         if hasattr(model, "predict_proba"):
-            values = model.predict_proba(feature_df.values)[:, 1]
-            scores = pd.Series(values, index=score_index, name="score", dtype=float)
-            return scores
+            values = model.predict_proba(feature_df)
+            if len(values.shape) != 2 or values.shape[1] < 2:
+                raise ScoreGenerationError("predict_proba() must return class probabilities")
+            return pd.Series(values[:, 1], index=feature_df.index, name="score", dtype=float)
+
+        if hasattr(model, "predict"):
+            values = model.predict(feature_df)
+            return pd.Series(values, index=feature_df.index, name="score", dtype=float)
+    except ScoreGenerationError:
+        raise
     except Exception as exc:
         raise ScoreGenerationError(f"Failed to generate scores: {exc}") from exc
 
     raise ScoreGenerationError(
-        f"Unsupported model type: {type(model)!r}. Expected predict() or predict_proba()."
+        f"Unsupported model type: {type(model)!r}. Expected predict_proba() or predict()."
     )
