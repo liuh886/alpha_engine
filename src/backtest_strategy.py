@@ -1,4 +1,3 @@
-# ruff: noqa
 """Backtest strategy runner.
 
 Supports the experimental LGBMRegressor + T+10 spread path while keeping the
@@ -10,6 +9,7 @@ from __future__ import annotations
 
 import pickle
 from pathlib import Path
+from typing import Any
 
 import fire
 import numpy as np
@@ -17,6 +17,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import qlib
 from plotly.subplots import make_subplots
+from qlib.contrib.data.handler import Alpha158
 from qlib.data import D
 
 from src.common.config_utils import load_watchlist
@@ -26,13 +27,13 @@ from src.core import compute_spread, generate_scores, select_bottomk, select_top
 logger = get_logger(__name__)
 
 
-def _load_pickle_model(model_path: str | Path):
+def _load_pickle_model(model_path: str | Path) -> Any:
     path = Path(model_path)
     with path.open("rb") as f:
         return pickle.load(f)
 
 
-def _score_slice(scores: pd.Series, date) -> pd.Series:
+def _score_slice(scores: pd.Series, date: Any) -> pd.Series:
     date_level = "datetime" if "datetime" in scores.index.names else 0
     return scores.xs(date, level=date_level).dropna()
 
@@ -42,8 +43,8 @@ def generate_interactive_report(
     benchmark: str,
     prices: pd.DataFrame,
     ticker_profits: dict[str, float],
-    trade_logs: dict,
-    model_info: dict | None = None,
+    trade_logs: dict[Any, list[str]],
+    model_info: dict[str, Any] | None = None,
     spread_series: pd.Series | None = None,
     report_path: str = "reports/backtest_report.html",
 ) -> None:
@@ -162,10 +163,10 @@ def generate_interactive_report(
             if not held_days:
                 continue
 
-            buys_x: list = []
-            buys_y: list = []
-            sells_x: list = []
-            sells_y: list = []
+            buys_x: list[Any] = []
+            buys_y: list[float] = []
+            sells_x: list[Any] = []
+            sells_y: list[float] = []
             all_days = sorted(hist_df.index)
             in_position = False
             for pos, current_day in enumerate(all_days):
@@ -232,7 +233,7 @@ def run_backtest(
     benchmark: str = "QQQ",
     model_path: str = "models/us_regressor.pkl",
     report_path: str = "reports/backtest_report.html",
-) -> dict:
+) -> dict[str, Any]:
     """Run a TopK long strategy plus BottomK spread diagnostic path."""
     logger.info("Starting backtest", start_date=start_date, end_date=end_date)
     logger.info("Parameters", topk=topk, bottomk=bottomk, holding_days=holding_days)
@@ -262,8 +263,6 @@ def run_backtest(
 
     model = _load_pickle_model(model_path)
     logger.info("Loaded model", model_type=type(model).__name__)
-
-    from qlib.contrib.data.handler import Alpha158
 
     handler_kwargs = {
         "start_time": start_date,
@@ -298,15 +297,15 @@ def run_backtest(
     bench_ret = daily_rets[benchmark] if benchmark in daily_rets.columns else pd.Series(0.0, index=daily_rets.index)
 
     portfolio_value = float(initial_cash)
-    history: list[dict] = []
+    history: list[dict[str, Any]] = []
     trading_days = sorted(daily_rets.index)
     current_long: list[str] = []
     current_short: list[str] = []
 
     ticker_profits = {ticker: 0.0 for ticker in strategy_instruments}
-    trade_logs: dict = {}
-    long_ret_daily: dict = {}
-    short_ret_daily: dict = {}
+    trade_logs: dict[Any, list[str]] = {}
+    long_ret_daily: dict[Any, float] = {}
+    short_ret_daily: dict[Any, float] = {}
 
     for i, date in enumerate(trading_days):
         trade_logs[date] = list(current_long)
