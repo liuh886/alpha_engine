@@ -9,10 +9,11 @@ import pandas as pd
 
 @dataclass(slots=True)
 class GuardrailInputs:
+    """Optional long-side guardrail inputs."""
+
     prices: pd.Series | None = None
     moving_average: pd.Series | None = None
     require_positive_score: bool = True
-
 
 
 def _passes_long_guardrail(
@@ -33,11 +34,10 @@ def _passes_long_guardrail(
         return False
 
     price = guardrail.prices.loc[ticker]
-    ma = guardrail.moving_average.loc[ticker]
-    if pd.isna(price) or pd.isna(ma):
+    moving_average = guardrail.moving_average.loc[ticker]
+    if pd.isna(price) or pd.isna(moving_average):
         return False
-    return bool(price > ma)
-
+    return bool(price > moving_average)
 
 
 def select_topn(
@@ -50,10 +50,10 @@ def select_topn(
     if n <= 0 or scores.empty:
         return []
 
-    ranked = scores.sort_values(ascending=False)
-    candidates = ranked.head(max(n * buffer_multiplier, n))
+    del buffer_multiplier  # Kept for backward-compatible call sites.
+    ranked = scores.dropna().sort_values(ascending=False)
     selected: list[str] = []
-    for ticker, score in candidates.items():
+    for ticker, score in ranked.items():
         if _passes_long_guardrail(str(ticker), float(score), guardrail):
             selected.append(str(ticker))
         if len(selected) >= n:
@@ -61,9 +61,8 @@ def select_topn(
     return selected
 
 
-
 def select_bottomn(scores: pd.Series, n: int) -> list[str]:
     """Select bottom-N symbols with no guardrail filtering."""
     if n <= 0 or scores.empty:
         return []
-    return [str(ticker) for ticker in scores.sort_values(ascending=True).head(n).index.tolist()]
+    return [str(ticker) for ticker in scores.dropna().sort_values(ascending=True).head(n).index]
