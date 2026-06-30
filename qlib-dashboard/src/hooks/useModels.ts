@@ -20,9 +20,7 @@ export function useModels() {
   const setSelectedModelId = useCallback(
     (id: string) => {
       setGlobalModelId(id);
-      const selected = useGlobalStore.getState().__models?.find((m: ModelData) => m.id === id);
-      // Fall back to searching local models list (populated by fetchModels)
-      const m = selected ?? models.find((m) => m.id === id);
+      const m = models.find((m) => m.id === id);
       if (m?.market) {
         setSelectedModelMarket(m.market.toLowerCase());
       }
