@@ -39,16 +39,7 @@ class BacktestSummary:
 
 
 def select_top_n(signal_df: pd.DataFrame, score_col: str, top_n: int) -> pd.DataFrame:
-    """Select top-N names per date from a scored universe.
-
-    Args:
-        signal_df: Long DataFrame with at least [date, ticker, score_col].
-        score_col: Column used for descending sort.
-        top_n: Number of names per date.
-
-    Returns:
-        Long DataFrame of selected rows.
-    """
+    """Select top-N names per date from a scored universe."""
     required = {"date", "ticker", score_col}
     missing = required - set(signal_df.columns)
     if missing:
@@ -59,16 +50,7 @@ def select_top_n(signal_df: pd.DataFrame, score_col: str, top_n: int) -> pd.Data
 
 
 def build_daily_sleeves(selected_df: pd.DataFrame, holding_days: int = 10) -> pd.DataFrame:
-    """Expand each selected trade into a sleeve active over its holding window.
-
-    Input semantics:
-        - `selected_df['date']` is the signal / entry date.
-        - Output `active_date` spans [date, date + holding_days - 1] in trading-day offsets
-          using observed date ordering from the input universe.
-
-    Required columns:
-        [date, ticker]
-    """
+    """Expand each selected trade into a sleeve active over its holding window."""
     if not {"date", "ticker"}.issubset(selected_df.columns):
         raise ValueError("selected_df must contain date and ticker")
 
@@ -99,17 +81,7 @@ def compute_portfolio_returns(
     realized_returns: pd.DataFrame,
     bench_returns: pd.Series | None = None,
 ) -> pd.DataFrame:
-    """Compute equal-weighted daily portfolio returns from active sleeves.
-
-    Args:
-        sleeves_df: Output of `build_daily_sleeves` with [entry_date, active_date, ticker].
-        realized_returns: Wide DataFrame (dates x tickers) of *daily* realised returns.
-        bench_returns: Optional Series of daily benchmark returns.
-
-    Returns:
-        DataFrame indexed by active_date with columns:
-            portfolio_return, bench_return, excess_alpha, n_positions
-    """
+    """Compute equal-weighted daily portfolio returns from active sleeves."""
     if sleeves_df.empty:
         raise ValueError("sleeves_df is empty")
 
@@ -138,14 +110,8 @@ def compute_portfolio_returns(
 
 
 def compute_turnover(selected_df: pd.DataFrame) -> pd.Series:
-    """Approximate daily one-way turnover from selection overlap.
-
-    Turnover_t = 1 - overlap(prev, curr) / len(curr)
-    """
-    baskets = {
-        d: set(g["ticker"].tolist())
-        for d, g in selected_df.groupby("date")
-    }
+    """Approximate daily one-way turnover from selection overlap."""
+    baskets = {d: set(g["ticker"].tolist()) for d, g in selected_df.groupby("date")}
     dates = sorted(baskets)
     turnover = {}
     prev = None
@@ -182,7 +148,11 @@ def summarize_backtest(
     ann_factor = 252
     mean_alpha = float(alpha.mean()) if not alpha.empty else np.nan
     mean_ret = float(ret.mean()) if not ret.empty else np.nan
-    sharpe = float((ret.mean() / (ret.std() + 1e-12)) * np.sqrt(ann_factor)) if not ret.empty else np.nan
+    sharpe = (
+        float((ret.mean() / (ret.std() + 1e-12)) * np.sqrt(ann_factor))
+        if not ret.empty
+        else np.nan
+    )
 
     return BacktestSummary(
         top_n=top_n,
@@ -194,7 +164,9 @@ def summarize_backtest(
         avg_daily_turnover=float(turnover.dropna().mean()) if not turnover.dropna().empty else np.nan,
         hit_rate=float((alpha > 0).mean()) if not alpha.empty else np.nan,
         mean_daily_alpha=mean_alpha,
-        mean_daily_spread=float(spread_series.mean()) if spread_series is not None and not spread_series.empty else None,
+        mean_daily_spread=float(spread_series.mean())
+        if spread_series is not None and not spread_series.empty
+        else None,
     )
 
 
@@ -207,27 +179,12 @@ def run_topn_rolling_backtest(
     holding_days: int = 10,
     bottom_signal_df: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, BacktestSummary]:
-    """End-to-end TopN rolling backtest.
-
-    Args:
-        signal_df: Long DataFrame [date, ticker, score_col]
-        realized_returns: Wide daily return matrix (dates x tickers)
-        bench_returns: Daily benchmark return series
-        score_col: Signal column for ranking
-        top_n: Top-N basket size
-        holding_days: Fixed holding horizon in trading days
-        bottom_signal_df: Optional scored universe for bottom-N spread calculation.
-            If omitted, the same signal is used but sorted ascending.
-
-    Returns:
-        (portfolio_df, summary)
-    """
+    """End-to-end TopN rolling backtest."""
     top_sel = select_top_n(signal_df, score_col=score_col, top_n=top_n)
     sleeves = build_daily_sleeves(top_sel, holding_days=holding_days)
     portfolio_df = compute_portfolio_returns(sleeves, realized_returns, bench_returns)
     turnover = compute_turnover(top_sel)
 
-    spread_series = None
     if bottom_signal_df is None:
         tmp = signal_df.copy()
         tmp["_neg_score"] = -tmp[score_col]
