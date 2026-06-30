@@ -120,6 +120,20 @@ export const VIEW_TITLES: Record<string, string> = {
   ...Object.fromEntries(routes.map((r) => [r.path, r.title])),
 };
 
+/**
+ * Navigate to an internal hash route.
+ *
+ * This is the single place that writes `window.location.hash`.
+ * Components must never mutate the hash directly — import this helper instead.
+ *
+ * @example
+ *   import { navigateTo } from '@/routes';
+ *   navigateTo('backtest');  // → #/backtest
+ */
+export function navigateTo(path: string): void {
+  window.location.hash = path ? `#/${path}` : '#/';
+}
+
 /** Group routes by navGroup, preserving declaration order. */
 export function groupRoutes(filterFn?: (r: RouteDefinition) => boolean): Map<NavGroupTitle, RouteDefinition[]> {
   const groups = new Map<NavGroupTitle, RouteDefinition[]>();
