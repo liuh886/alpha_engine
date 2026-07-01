@@ -210,6 +210,17 @@ def _load_raw_forward_returns(
         )
     horizon = abs(int(m.group(1)))
 
+    # Determine date range from test segment
+    segments = config["task"]["dataset"]["kwargs"].get("segments", {})
+    test_seg: list[str] | None = segments.get("test")
+    if not test_seg or len(test_seg) < 2:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="MissingTestSegment",
+            message="Workflow config has no valid test segment.",
+        )
+    start_time, end_time = test_seg[0], test_seg[1]
+
     # Resolve instruments
     instr_key = handler_kwargs.get("instruments", market)
     try:
@@ -226,17 +237,6 @@ def _load_raw_forward_returns(
             error_type="NoInstruments",
             message=f"No instruments found for {instr_key!r}.",
         )
-
-    # Determine date range from test segment
-    segments = config["task"]["dataset"]["kwargs"].get("segments", {})
-    test_seg: list[str] | None = segments.get("test")
-    if not test_seg or len(test_seg) < 2:
-        raise StageFailure(
-            stage="load_raw_returns",
-            error_type="MissingTestSegment",
-            message="Workflow config has no valid test segment.",
-        )
-    start_time, end_time = test_seg[0], test_seg[1]
 
     # Load raw expression directly (no DropnaLabel / CSRankNorm)
     try:
