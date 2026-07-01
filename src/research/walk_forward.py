@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import structlog
 import yaml
+from qlib.data import D
 from qlib.utils import init_instance_by_config
 
 log = structlog.get_logger()
@@ -491,6 +492,61 @@ def _forward_return_expression(label_horizon: int) -> str:
     return f"Ref($close, -{target_horizon}) / Ref($close, -1) - 1"
 
 
+def _load_raw_labels(
+    config: dict,
+    test_start: str,
+    test_end: str,
+) -> pd.Series:
+    """Load raw forward returns for the test period directly from Qlib data.
+
+    Reads the exact configured label expression (e.g.
+    ``Ref($close, -10) / $close - 1``) from Qlib data without applying any
+    learn processors.  Instruments are resolved from the handler kwargs, not
+    from the top-level config key.
+
+    Args:
+        config: Workflow config dict.
+        test_start: Test period start date (YYYY-MM-DD).
+        test_end: Test period end date (YYYY-MM-DD).
+
+    Returns:
+        ``pd.Series`` with raw forward returns, indexed by ``(datetime, instrument)``.
+
+    Raises:
+        RuntimeError: If the label expression is missing or data loading fails.
+    """
+    handler_kwargs = config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+    label_exprs: list[str] = list(handler_kwargs.get("label", []))
+    if not label_exprs:
+        raise RuntimeError(
+            "No label expression in handler kwargs. "
+            "Cannot load raw forward returns."
+        )
+    label_expr = label_exprs[0]
+    instr_key = handler_kwargs.get("instruments", "us")
+    symbols = D.list_instruments(D.instruments(instr_key), as_list=True)
+    raw = D.features(symbols, [label_expr], start_time=test_start, end_time=test_end)
+    if raw.empty:
+        raise RuntimeError(
+            f"Raw labels DataFrame is empty for expression {label_expr!r} "
+            f"over period {test_start} to {test_end}. "
+            "No data available — check Qlib data coverage."
+        )
+    if raw.shape[1] == 0:
+        raise RuntimeError(
+            f"Raw labels DataFrame has no columns for expression {label_expr!r}."
+        )
+    col = raw.iloc[:, 0]
+    n_finite = int(np.sum(np.isfinite(col.values)))
+    if n_finite == 0:
+        raise RuntimeError(
+            f"Raw labels contain zero finite values for expression {label_expr!r} "
+            f"over period {test_start} to {test_end}. "
+            "All values are NaN, inf, or missing."
+        )
+    return col
+
+
 # ---------------------------------------------------------------------------
 # Native estimator adapter (lightgbm.LGBMRegressor etc.)
 # ---------------------------------------------------------------------------
@@ -768,40 +824,15 @@ def _run_single_split(
     dataset = init_instance_by_config(cfg["task"]["dataset"])
     model = init_instance_by_config(cfg["task"]["model"])
 
-    # Detect native estimator (e.g. lightgbm.LGBMRegressor) vs Qlib model wrapper.
     # Native estimators need X/y DataFrames from DatasetH, not DatasetH itself.
     segments = cfg["task"]["dataset"]["kwargs"]["segments"]
 
     if _is_native_estimator_config(cfg):
-        from qlib.data.dataset.handler import DataHandler
-
         model, predictions = _fit_native_estimator(model, dataset, segments)
-        # Get actual labels for test (canonical DataHandler.DK_L key)
-        try:
-            label_data = dataset.prepare(
-                segments="test",
-                col_set="label",
-                data_key=DataHandler.DK_L,
-            )
-            actuals = label_data.iloc[:, 0]
-        except Exception:
-            from qlib.data import D
-
-            instruments = D.instruments(cfg.get("instruments", "us"))
-            label_expr = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"][
-                "kwargs"
-            ]["config"].get("label", ["Ref($close, -1) / $close - 1"])
-            label_df = D.features(
-                D.list_instruments(instruments, as_list=True),
-                label_expr,
-                start_time=test_start,
-                end_time=test_end,
-            )
-            actuals = label_df.iloc[:, 0]
     else:
         model.fit(dataset)
 
-        # Qlib model.predict(dataset) — standard pattern.
+        # Qlib model.predict(dataset) -- standard pattern.
         # fit() may mutate the dataset, so handle the case where
         # prepare() is no longer available.
         try:
@@ -809,24 +840,9 @@ def _run_single_split(
         except (AttributeError, TypeError):
             predictions = model.predict(dataset)
 
-        # Get actual labels
-        try:
-            label_data = dataset.prepare(segments="test", col_set="label", data_key="infer")
-            actuals = label_data.iloc[:, 0]
-        except (AttributeError, Exception):
-            from qlib.data import D
-
-            instruments = D.instruments(cfg.get("instruments", "us"))
-            label_expr = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"][
-                "kwargs"
-            ]["config"].get("label", ["Ref($close, -1) / $close - 1"])
-            label_df = D.features(
-                D.list_instruments(instruments, as_list=True),
-                label_expr,
-                start_time=test_start,
-                end_time=test_end,
-            )
-            actuals = label_df.iloc[:, 0]
+    # IC evaluation uses RAW forward returns (no learn processors).
+    # Training still uses processed labels inside the model.
+    actuals = _load_raw_labels(cfg, test_start, test_end)
 
     # Align by (datetime, instrument) MultiIndex — never positional.
     try:

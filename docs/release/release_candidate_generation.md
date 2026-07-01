@@ -141,3 +141,12 @@ valid (CN market is not required). Historical evidence is never substituted.
 3. **Single-market invocation.** The script generates artifacts for exactly one
    market per invocation. To build a multi-market candidate, run once per
    market and combine manifests.
+
+## Release Policy
+
+This PR changes the release gate from requiring both CN and US markets to
+accepting a non-empty subset of supported markets (`us`, `cn`), enabling
+US-only candidates while keeping future CN support.  Historical evidence is
+never substituted.  See ``src/release/candidate.py`` for the current policy
+thresholds and ``test_release_candidate_gate.py`` for US-only verification
+tests.

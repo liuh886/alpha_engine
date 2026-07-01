@@ -153,6 +153,257 @@ def _load_workflow_config(config_name: str, project_root: Path) -> dict[str, Any
     return config
 
 
+# ---------------------------------------------------------------------------
+# Raw forward return loader (bypasses learn processors)
+# ---------------------------------------------------------------------------
+
+
+def _load_raw_forward_returns(
+    config: dict[str, Any],
+    market: str,
+) -> pd.DataFrame:
+    """Load raw forward returns directly from Qlib/provider data.
+
+    Reads the exact configured label expression (e.g.
+    ``Ref($close, -10) / $close - 1``) from Qlib data **without** applying
+    DropnaLabel / CSRankNorm or any other learn processors.  The result is
+    tagged with provenance metadata in ``.attrs``.
+
+    Raises ``StageFailure`` on: missing/invalid label expression, empty
+    result, non-finite data, or alignment failure.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with ``(datetime, instrument)`` MultiIndex, a ``"return"``
+        column, and provenance attrs.
+    """
+    from qlib.data import D
+
+    handler_kwargs = config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+    label_exprs: list[str] = handler_kwargs.get("label", [])
+    if not label_exprs:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="MissingLabelExpression",
+            message="No label expression found in workflow config.  "
+            "Expected e.g. [\"Ref($close, -10) / $close - 1\"].",
+        )
+    label_expr = label_exprs[0]
+    if "Ref($close, -" not in label_expr:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="UnsupportedLabelExpression",
+            message=f"Unsupported label expression: {label_expr!r}. Expected a Ref($close, -N) forward-return expression.",
+        )
+
+    # Derive horizon from expression
+    import re
+
+    m = re.search(r"Ref\(\$close,\s*(-\d+)\)", label_expr)
+    if not m:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="UnsupportedLabelExpression",
+            message=f"Cannot extract horizon from label expression: {label_expr!r}. "
+            "Expected a Ref($close, -N) pattern.",
+        )
+    horizon = abs(int(m.group(1)))
+
+    # Resolve instruments
+    instr_key = handler_kwargs.get("instruments", market)
+    try:
+        symbols = D.list_instruments(D.instruments(instr_key), as_list=True)
+    except Exception as exc:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="InstrumentResolutionError",
+            message=f"Failed to resolve instruments for {instr_key!r}: {exc}",
+        ) from exc
+    if not symbols:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="NoInstruments",
+            message=f"No instruments found for {instr_key!r}.",
+        )
+
+    # Determine date range from test segment
+    segments = config["task"]["dataset"]["kwargs"].get("segments", {})
+    test_seg: list[str] | None = segments.get("test")
+    if not test_seg or len(test_seg) < 2:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="MissingTestSegment",
+            message="Workflow config has no valid test segment.",
+        )
+    start_time, end_time = test_seg[0], test_seg[1]
+
+    # Load raw expression directly (no DropnaLabel / CSRankNorm)
+    try:
+        raw = D.features(symbols, [label_expr], start_time=start_time, end_time=end_time)
+    except Exception as exc:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="QlibFeatureError",
+            message=f"Failed to load raw forward returns: {exc}",
+        ) from exc
+
+    if raw.empty:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="EmptyRawReturns",
+            message="Raw forward returns DataFrame is empty.",
+        )
+    # Normalise to (datetime, instrument) MultiIndex
+    if isinstance(raw.index, pd.MultiIndex):
+        raw = raw.reorder_levels(["datetime", "instrument"]).sort_index()
+    result = raw.rename(columns={raw.columns[0]: "return"})
+
+    # Detect non-finite values
+    n_non_finite = int(np.sum(~np.isfinite(result["return"].values)))
+    if n_non_finite > 0:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="NonFiniteRawReturns",
+            message=f"Raw forward returns contain {n_non_finite} non-finite value(s).",
+        )
+    # Tag provenance so downstream consumers can distinguish raw from processed
+    result.attrs["provenance"] = "raw_forward_return"
+    result.attrs["label_expression"] = label_expr
+    result.attrs["horizon"] = horizon
+    return result
+
+
+def _validate_return_provenance(returns: pd.DataFrame) -> None:
+    """Assert that *returns* is a raw-forward-return DataFrame, not processed labels.
+
+    Checks:
+    1.  ``.attrs["provenance"] == "raw_forward_return"`` (set by
+        ``_load_raw_forward_returns``).
+    2.  Column name is ``"return"`` (not ``"training_label"`` or other).
+
+    Raises ``StageFailure`` on any violation.
+
+    Note:
+        All-zero raw returns (valid forward return values) pass provenance
+        validation — they are rejected only by schema boundary, not by
+        numeric magnitude heuristics.
+    """
+    stage = "backtest"
+    if returns.attrs.get("provenance") != "raw_forward_return":
+        raise StageFailure(
+            stage=stage,
+            error_type="InvalidReturnProvenance",
+            message=f"Expected returns with attrs provenance='raw_forward_return', "
+            f"got {returns.attrs.get('provenance')!r}. "
+            "Only raw forward returns (loaded via _load_raw_forward_returns) "
+            "may enter the economic backtest.",
+        )
+    col = returns.columns[0]
+    if col != "return":
+        raise StageFailure(
+            stage=stage,
+            error_type="InvalidReturnColumn",
+            message=f"Expected column 'return', got {col!r}. "
+            "Processed labels (e.g. 'training_label') cannot be used as economic returns.",
+        )
+    vals = returns.iloc[:, 0].dropna().values
+    if len(vals) == 0:
+        raise StageFailure(
+            stage=stage,
+            error_type="EmptyReturns",
+            message="Returns data is empty after dropping NaN.",
+        )
+
+
+def _compute_score_diagnostics(
+    predictions: pd.DataFrame,
+    raw_returns: pd.DataFrame,
+) -> dict[str, Any]:
+    """Compute score-direction diagnostics from aligned predictions and raw returns.
+
+    Uses only dates present in both DataFrames.  Reports:
+
+    - ``raw_pearson_ic`` — cross-sectional daily-mean Pearson IC
+    - ``raw_rank_ic`` — cross-sectional daily-mean Spearman rank IC
+    - ``top_decile_mean_return`` — mean raw return of the top decile by score
+    - ``bottom_decile_mean_return`` — mean raw return of the bottom decile by score
+    - ``top_minus_bottom`` — *top_decile_mean_return - bottom_decile_mean_return*
+    - ``bottom_minus_top`` — *bottom_decile_mean_return - top_decile_mean_return*
+    - ``recommendation`` — one of ``keep_score`` / ``invert_score`` /
+      ``no_signal`` / ``inconclusive``
+
+    Decision rule (deterministic):
+        If ``top_minus_bottom > 0`` AND ``raw_rank_ic > 0`` → ``keep_score``
+        If ``top_minus_bottom < 0`` AND ``raw_rank_ic < 0`` → ``invert_score``
+        If ``abs(top_minus_bottom) < 1e-12`` → ``no_signal``
+        Otherwise → ``inconclusive``
+    """
+    # Guard: reject processed / rank-like data even if column is renamed to "return"
+    _validate_return_provenance(raw_returns)
+
+    from src.research.walk_forward import _align_multiindex, _compute_mean_daily_ic
+
+    pred_aligned, ret_aligned = _align_multiindex(predictions["score"], raw_returns["return"])
+    p_vals = pred_aligned.values
+    r_vals = ret_aligned.values
+
+    pearson_ic, rank_ic = _compute_mean_daily_ic(p_vals, ret_aligned)
+
+    # Decile analysis by date: compute top/bottom decile means cross-sectionally
+    # per datetime, then average the per-date means across valid dates.
+    # This avoids global pooling which can be dominated by dates with many
+    # stocks or systematically different return levels.
+    df = pd.DataFrame({"score": p_vals, "return": r_vals}, index=ret_aligned.index).dropna()
+    if df.empty:
+        return {
+            "raw_pearson_ic": 0.0,
+            "raw_rank_ic": 0.0,
+            "top_decile_mean_return": 0.0,
+            "bottom_decile_mean_return": 0.0,
+            "top_minus_bottom": 0.0,
+            "bottom_minus_top": 0.0,
+            "recommendation": "no_signal",
+            "n_samples": 0,
+            "n_dates": 0,
+        }
+    per_date_tops: list[float] = []
+    per_date_bottoms: list[float] = []
+    for _date, group in df.groupby(level="datetime"):
+        sg = group.sort_values("score", ascending=False)
+        n_stocks = len(sg)
+        n_decile = max(1, n_stocks // 10)
+        per_date_tops.append(float(sg["return"].iloc[:n_decile].mean()))
+        per_date_bottoms.append(float(sg["return"].iloc[-n_decile:].mean()))
+    top = float(np.mean(per_date_tops)) if per_date_tops else 0.0
+    bottom = float(np.mean(per_date_bottoms)) if per_date_bottoms else 0.0
+    tmb = top - bottom
+    bmt = float(bottom - top)
+    n_dates = len(per_date_tops)
+
+    # Decision rule
+    if tmb > 0 and rank_ic > 0:
+        rec = "keep_score"
+    elif tmb < 0 and rank_ic < 0:
+        rec = "invert_score"
+    elif abs(tmb) < 1e-12:
+        rec = "no_signal"
+    else:
+        rec = "inconclusive"
+
+    return {
+        "raw_pearson_ic": round(float(pearson_ic), 6),
+        "raw_rank_ic": round(float(rank_ic), 6),
+        "top_decile_mean_return": round(float(top), 8),
+        "bottom_decile_mean_return": round(float(bottom), 8),
+        "top_minus_bottom": round(tmb, 8),
+        "bottom_minus_top": round(bmt, 8),
+        "recommendation": rec,
+        "n_samples": len(df),
+        "n_dates": n_dates,
+    }
+
+
 def _validate_predictions_labels(
     predictions: pd.DataFrame,
     labels: pd.DataFrame,
@@ -369,16 +620,21 @@ def _stage_train(
 ) -> tuple[Any, pd.DataFrame, pd.DataFrame]:
     """Train final LGBMRegressor on full data, produce test predictions and labels.
 
-    Uses Qlib's canonical DataHandler.DK_L learning-label data key.  Predictions
-    and labels are aligned on their common MultiIndex; rows with non-finite
-    prediction or label are dropped and counted in diagnostics.  Raises
-    StageFailure if nothing remains or alignment coverage is inadequate.
+    Uses Qlib's canonical DataHandler.DK_L learning-label data key (processed
+    by DropnaLabel + CSRankNorm).  Predictions and labels are aligned on their
+    common MultiIndex; rows with non-finite prediction or label are dropped
+    and counted in diagnostics.  Raises StageFailure if nothing remains or
+    alignment coverage is inadequate.
+
+    The returned labels_df has a ``"training_label"`` column (the DK_L processed
+    label), **not** ``"return"`` — economic returns for backtesting and
+    evaluation are loaded separately via ``_load_raw_forward_returns``.
 
     Returns
     -------
     tuple[object, pd.DataFrame, pd.DataFrame]
         (trained_model, predictions_df, labels_df).
-        predictions_df has a 'score' column; labels_df has a 'return' column.
+        predictions_df has a 'score' column; labels_df has a 'training_label' column.
     """
     from qlib.data.dataset.handler import DataHandler
     from qlib.utils import init_instance_by_config
@@ -431,12 +687,12 @@ def _stage_train(
             message=f"Model.predict returned unexpected type: {type(pred)}.",
         )
 
-    # Normalise labels to a DataFrame with a 'return' column
+    # Normalise labels to a DataFrame with a 'training_label' column
     if isinstance(labels, pd.Series):
-        labels_df = labels.to_frame("return")
+        labels_df = labels.to_frame("training_label")
     elif isinstance(labels, pd.DataFrame):
-        if "return" not in labels.columns:
-            labels_df = labels.rename(columns={labels.columns[0]: "return"})
+        if "training_label" not in labels.columns:
+            labels_df = labels.rename(columns={labels.columns[0]: "training_label"})
         else:
             labels_df = labels
     else:
@@ -493,21 +749,29 @@ def _stage_train(
 def _stage_backtest(
     market: str,
     pred_df: pd.DataFrame,
-    labels_df: pd.DataFrame,
+    raw_returns: pd.DataFrame,
     *,
     topk: int = 15,
     rebalance_days: int = 10,
     cost_bps: int = 20,
 ) -> dict[str, Any]:
-    """Run vectorized backtest with real predictions and forward returns.
+    """Run vectorized backtest with real predictions and raw forward returns.
 
-    Uses T+10 benchmark returns aligned to the configured label horizon (10 days).
-    Computes genuine top-bottom spread by running a second backtest with negated
-    predictions.  If benchmark is absent the metric is omitted (not silently zero).
+    *raw_returns* must be a DataFrame loaded by ``_load_raw_forward_returns``
+    — provenance is validated via ``_validate_return_provenance`` so processed
+    / rank-like labels cannot silently enter the economic backtest.
+
+    Uses T+10 benchmark returns (QQQ) aligned to the configured label horizon.
+    Computes genuine top-bottom spread by running a second backtest with
+    negated predictions.  If benchmark is absent the metric is omitted (not
+    silently zero).
 
     Returns a dict of backtest metrics, or raises StageFailure.
     """
     from src.research.vectorized_backtest import run_vectorized_backtest
+
+    # Guard: reject processed / rank-like labels
+    _validate_return_provenance(raw_returns)
 
     # Load T+10 benchmark returns (QQQ) for the test period if available
     benchmark_returns: pd.DataFrame | None = None
@@ -538,7 +802,7 @@ def _stage_backtest(
     try:
         bt_result = run_vectorized_backtest(
             predictions=pred_df,
-            returns=labels_df,
+            returns=raw_returns,
             benchmark_returns=benchmark_returns,
             topk=topk,
             rebalance_days=rebalance_days,
@@ -606,7 +870,7 @@ def _stage_backtest(
 
     # Genuine top-bottom spread via negated-predictions backtest
     spread = _compute_spread_evidence(
-        bt_result, pred_df, labels_df, topk=topk, rebalance_days=rebalance_days, cost_bps=cost_bps
+        bt_result, pred_df, raw_returns, topk=topk, rebalance_days=rebalance_days, cost_bps=cost_bps
     )
     if spread.get("status") == "ok":
         metrics["top_bottom_spread"] = spread["total_spread"]
@@ -617,7 +881,7 @@ def _stage_backtest(
 def _compute_spread_evidence(
     bt_result: Any,
     pred_df: pd.DataFrame,
-    labels_df: pd.DataFrame,
+    raw_returns: pd.DataFrame,
     *,
     topk: int = 15,
     rebalance_days: int = 10,
@@ -631,11 +895,11 @@ def _compute_spread_evidence(
     """
     from src.research.vectorized_backtest import run_vectorized_backtest
 
-    if pred_df.empty or labels_df.empty or "score" not in pred_df.columns:
+    if pred_df.empty or raw_returns.empty or "score" not in pred_df.columns:
         raise StageFailure(
             stage="backtest",
             error_type="SpreadComputationFailed",
-            message="Top-bottom spread requires non-empty predictions and labels.",
+            message="Top-bottom spread requires non-empty predictions and raw returns.",
         )
 
     # Bottom portfolio via negated predictions
@@ -644,7 +908,7 @@ def _compute_spread_evidence(
     try:
         bt_bottom = run_vectorized_backtest(
             predictions=neg_pred,
-            returns=labels_df,
+            returns=raw_returns,
             benchmark_returns=None,
             topk=topk,
             rebalance_days=rebalance_days,
@@ -804,6 +1068,8 @@ def _build_artifacts(
     model: Any,
     pred_df: pd.DataFrame,
     labels_df: pd.DataFrame,
+    raw_returns: pd.DataFrame,
+    score_diagnostics: dict[str, Any] | None = None,
     project_root: Path,
     snapshot_ref: dict[str, Any],
 ) -> dict[str, Any]:
@@ -828,14 +1094,45 @@ def _build_artifacts(
     pred_path = model_dir / "predictions.csv"
     pred_df.to_csv(pred_path)
 
-    # Write labels CSV
+    # Write labels CSV (processed training labels)
     labels_path = model_dir / "labels.csv"
     labels_df.to_csv(labels_path)
+
+    # Write raw returns CSV (economic evaluation returns)
+    raw_returns_path = model_dir / "raw_returns.csv"
+    raw_returns.to_csv(raw_returns_path)
+
+    # Derive label expression and horizon from config
+    handler_kwargs = config.get("task", {}).get("dataset", {}).get("kwargs", {}).get("handler", {}).get("kwargs", {})
+    label_expr = str(handler_kwargs.get("label", ["Ref($close, -10) / $close - 1"])[0])
+    import re as _re
+    _horizon_match = _re.search(r"Ref\(\$close,\s*(-\d+)\)", label_expr)
+    label_horizon = abs(int(_horizon_match.group(1))) if _horizon_match else 10
 
     diagnostics: dict[str, Any] = {
         "candidate": candidate,
         "market": market,
         "revision": revision,
+        "training_label": {
+            "source": "DataHandler.DK_L",
+            "processors": ["DropnaLabel", "CSRankNorm"],
+            "horizon_days": label_horizon,
+            "expression": label_expr,
+            "column": "training_label",
+        },
+        "evaluation_return": {
+            "source": "qlib.data.D.features (raw, no learn processors)",
+            "horizon_days": label_horizon,
+            "expression": label_expr,
+            "column": "return",
+        },
+        "backtest_return": {
+            "source": "qlib.data.D.features (raw, no learn processors)",
+            "horizon_days": label_horizon,
+            "expression": label_expr,
+            "column": "return",
+        },
+        "score_direction": score_diagnostics or {},
         "walk_forward": {
             "mean_ic": wf_meta.get("mean_ic"),
             "ic_ir": wf_meta.get("ic_ir"),
@@ -856,6 +1153,7 @@ def _build_artifacts(
         "model.pkl": model_path,
         "predictions.csv": pred_path,
         "labels.csv": labels_path,
+        "raw_returns.csv": raw_returns_path,
         "diagnostics.json": diagnostics_path,
     }
     checksums: dict[str, str] = {}
@@ -897,6 +1195,7 @@ def _build_artifacts(
         "seeds": {"numpy": 42, "random": 42},
         "predictions_path": "predictions.csv",
         "labels_path": "labels.csv",
+        "raw_returns_path": "raw_returns.csv",
         "diagnostics_path": "diagnostics.json",
         "checksums": checksums,
     }
@@ -1347,9 +1646,53 @@ def generate_release_candidate(
         )
         return ({"status": "fail", "error": exc.message}, 1)
 
-    # ---- Stage 6: Backtest (T+10 benchmark, genuine spread) ----
+    # ---- Load raw forward returns (economic evaluation returns, no learn processors) ----
     try:
-        bt_metrics = _stage_backtest(market, pred_df, labels_df)
+        raw_returns = _load_raw_forward_returns(config, market)
+    except StageFailure as exc:
+        _write_failure_report(
+            candidate=candidate,
+            market=market,
+            stage=exc.stage,
+            error_type=exc.error_type,
+            message=exc.message,
+            missing_files=exc.missing_files,
+            suggested_fix=exc.suggested_fix,
+            project_root=project_root,
+        )
+        return ({"status": "fail", "error": exc.message}, 1)
+
+    # ---- Score-direction diagnostics (predictions vs raw forward returns) ----
+    score_diagnostics: dict[str, Any] | None = None
+    try:
+        score_diagnostics = _compute_score_diagnostics(pred_df, raw_returns)
+    except StageFailure as exc:
+        _write_failure_report(
+            candidate=candidate,
+            market=market,
+            stage=exc.stage,
+            error_type=exc.error_type,
+            message=exc.message,
+            missing_files=exc.missing_files,
+            suggested_fix=exc.suggested_fix or "Verify data alignment and content.",
+            project_root=project_root,
+        )
+        return ({"status": "fail", "error": exc.message}, 1)
+    except (ValueError, TypeError, RuntimeError, KeyError) as exc:
+        _write_failure_report(
+            candidate=candidate,
+            market=market,
+            stage="score_diagnostics",
+            error_type="ScoreDiagnosticsFailed",
+            message=_bounded_message(f"Score diagnostics computation failed: {exc}"),
+            suggested_fix="Verify predictions and raw returns are aligned and non-empty.",
+            project_root=project_root,
+        )
+        return ({"status": "fail", "error": str(exc)}, 1)
+
+    # ---- Stage 6: Backtest (T+10 benchmark, genuine spread, raw returns only) ----
+    try:
+        bt_metrics = _stage_backtest(market, pred_df, raw_returns)
     except StageFailure as exc:
         _write_failure_report(
             candidate=candidate,
@@ -1376,6 +1719,8 @@ def generate_release_candidate(
             model=model,
             pred_df=pred_df,
             labels_df=labels_df,
+            raw_returns=raw_returns,
+            score_diagnostics=score_diagnostics,
             project_root=project_root,
             snapshot_ref=snapshot_ref,
         )

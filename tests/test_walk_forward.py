@@ -496,6 +496,13 @@ class TestRunSingleSplitBackwardCompat:
         monkeypatch.setattr(
             "src.research.walk_forward.init_instance_by_config", fake_init)
 
+        monkeypatch.setattr(
+            "src.research.walk_forward._load_raw_labels",
+            lambda cfg, ts, te: pd.Series(
+                np.arange(len(_FAKE_IDX), dtype=float), index=_FAKE_IDX
+            ),
+        )
+
         base_config = {
             "task": {
                 "dataset": {
@@ -504,6 +511,7 @@ class TestRunSingleSplitBackwardCompat:
                             "kwargs": {
                                 "start_time": "2021-01-01",
                                 "end_time": "2026-06-25",
+                                "label": ["Ref($close, -1) / $close - 1"],
                                 "data_loader": {
                                     "kwargs": {"config": {"label": ["Ref($close, -1) / $close - 1"]}}
                                 },
@@ -563,6 +571,7 @@ def _make_base_config():
                         "kwargs": {
                             "start_time": "2021-01-01",
                             "end_time": "2026-06-25",
+                            "label": ["Ref($close, -1) / $close - 1"],
                             "data_loader": {
                                 "kwargs": {"config": {"label": ["Ref($close, -1) / $close - 1"]}}
                             },
@@ -629,6 +638,12 @@ class TestDefaultHorizonGap:
         monkeypatch.setattr(
             "src.research.walk_forward.init_instance_by_config",
             _fake_init_instance_by_config(captured),
+        )
+        monkeypatch.setattr(
+            "src.research.walk_forward._load_raw_labels",
+            lambda cfg, ts, te: pd.Series(
+                np.arange(len(_FAKE_IDX), dtype=float), index=_FAKE_IDX
+            ),
         )
 
         # Irregular DatetimeIndex with holiday gaps + boundary absent

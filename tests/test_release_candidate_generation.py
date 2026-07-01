@@ -547,7 +547,9 @@ def test_backtest_failure_cannot_produce_manifest(
         names=["datetime", "instrument"],
     )
     pred_df = pd.DataFrame({"score": [0.2, 0.3]}, index=idx)
-    labels_df = pd.DataFrame({"return": [0.1, 0.05]}, index=idx)
+    labels_df = pd.DataFrame({"training_label": [0.1, 0.05]}, index=idx)
+    raw_ret = pd.DataFrame({"return": [0.15, 0.03]}, index=idx)
+    raw_ret.attrs["provenance"] = "raw_forward_return"
 
     snapshot_ref = {
         "id": "test-snapshot-id",
@@ -560,6 +562,7 @@ def test_backtest_failure_cannot_produce_manifest(
         mock.patch.object(gen_module, "_find_data_snapshot", return_value=snapshot_ref),
         mock.patch.object(gen_module, "_stage_walk_forward", return_value=wf_meta),
         mock.patch.object(gen_module, "_stage_train", return_value=(object(), pred_df, labels_df)),
+        mock.patch.object(gen_module, "_load_raw_forward_returns", return_value=raw_ret),
         mock.patch.object(
             gen_module,
             "_stage_backtest",
@@ -666,32 +669,19 @@ def test_stale_failure_report_removed_on_success(
         ],
     }
 
-    idx = pd.MultiIndex.from_tuples(
-        [("2024-07-01", "AAPL"), ("2024-07-01", "MSFT")],
+    idx = pd.MultiIndex.from_arrays(
+        [pd.to_datetime(["2024-07-01", "2024-07-01"]), ["AAPL", "MSFT"]],
         names=["datetime", "instrument"],
     )
     pred_df = pd.DataFrame({"score": [0.2, 0.3]}, index=idx)
-    labels_df = pd.DataFrame({"return": [0.1, 0.05]}, index=idx)
+    labels_df = pd.DataFrame({"training_label": [0.1, 0.05]}, index=idx)
+    raw_ret = pd.DataFrame({"return": [0.15, 0.03]}, index=idx)
+    raw_ret.attrs["provenance"] = "raw_forward_return"
 
     snapshot_ref = {
         "id": "test-snapshot-id",
         "manifest": "artifacts/snapshots/test/manifest.json",
         "sha256": "a" * 64,
-    }
-
-    bt_metrics = {
-        "metrics": {
-            "annualized_return": 0.15,
-            "total_return": 0.30,
-            "sharpe": 1.5,
-            "max_drawdown": -0.1,
-            "mean_ic": 0.05,
-            "ic_ir": 0.4,
-            "positive_ic_ratio": 0.6,
-            "top_bottom_spread": 0.25,
-        },
-        "raw": {},
-        "spread": {"status": "ok", "total_spread": 0.25},
     }
 
     # Create a stale failure report from a prior run
@@ -706,7 +696,7 @@ def test_stale_failure_report_removed_on_success(
         mock.patch.object(gen_module, "_find_data_snapshot", return_value=snapshot_ref),
         mock.patch.object(gen_module, "_stage_walk_forward", return_value=wf_meta),
         mock.patch.object(gen_module, "_stage_train", return_value=(object(), pred_df, labels_df)),
-        mock.patch.object(gen_module, "_stage_backtest", return_value=bt_metrics),
+        mock.patch.object(gen_module, "_load_raw_forward_returns", return_value=raw_ret),
         mock.patch.object(
             gen_module,
             "_load_frontend_evidence",
@@ -775,6 +765,448 @@ def test_us_workflow_binds_alpha158_to_us_universe() -> None:
     assert handler_kwargs["instruments"] == "us"
     assert config["start_time"] == "2021-04-05"
     assert config["fit_start_time"] == "2021-04-05"
+
+
+# ---------------------------------------------------------------------------
+# Raw-forward-return loader and provenance guard tests
+# ---------------------------------------------------------------------------
+
+
+def test_load_raw_forward_returns_rejects_missing_label(gen_module: Any) -> None:
+    """_load_raw_forward_returns raises StageFailure when label is missing."""
+    config: dict[str, Any] = {
+        "task": {
+            "dataset": {
+                "kwargs": {
+                    "handler": {"kwargs": {}},
+                    "segments": {"test": ["2024-07-01", "2024-12-31"]},
+                }
+            }
+        }
+    }
+    with pytest.raises(gen_module.StageFailure, match=r"(?i)no.*label"):
+        gen_module._load_raw_forward_returns(config, "us")
+
+
+def test_load_raw_forward_returns_rejects_non_forward_expression(
+    gen_module: Any,
+) -> None:
+    """_load_raw_forward_returns raises StageFailure for non-forward expressions."""
+    config: dict[str, Any] = {
+        "task": {
+            "dataset": {
+                "kwargs": {
+                    "handler": {"kwargs": {"label": ["$close"]}},
+                    "segments": {"test": ["2024-07-01", "2024-12-31"]},
+                }
+            }
+        }
+    }
+    with pytest.raises(gen_module.StageFailure, match=r"(?i)unsupported.*expression"):
+        gen_module._load_raw_forward_returns(config, "us")
+
+
+def test_load_raw_forward_returns_rejects_missing_test_segment(
+    gen_module: Any,
+) -> None:
+    """_load_raw_forward_returns raises StageFailure when test segment is missing."""
+    config: dict[str, Any] = {
+        "task": {
+            "dataset": {
+                "kwargs": {
+                    "handler": {
+                        "kwargs": {"label": ["Ref($close, -10) / $close - 1"]}
+                    },
+                }
+            }
+        }
+    }
+    with pytest.raises(gen_module.StageFailure, match=r"(?i)test.segment"):
+        gen_module._load_raw_forward_returns(config, "us")
+
+
+def test_provenance_guard_rejects_missing_provenance(gen_module: Any) -> None:
+    """_validate_return_provenance rejects DataFrames without provenance tag."""
+    idx = pd.MultiIndex.from_tuples(
+        [("2024-07-01", "AAPL"), ("2024-07-01", "MSFT")],
+        names=["datetime", "instrument"],
+    )
+    bad = pd.DataFrame({"return": [0.1, 0.05]}, index=idx)
+    with pytest.raises(gen_module.StageFailure, match=r"(?i)provenance"):
+        gen_module._validate_return_provenance(bad)
+
+
+def test_provenance_guard_rejects_training_label_column(gen_module: Any) -> None:
+    """_validate_return_provenance rejects a 'training_label' column."""
+    idx = pd.MultiIndex.from_tuples(
+        [("2024-07-01", "AAPL"), ("2024-07-01", "MSFT")],
+        names=["datetime", "instrument"],
+    )
+    bad = pd.DataFrame({"training_label": [0.1, 0.05]}, index=idx)
+    bad.attrs["provenance"] = "raw_forward_return"
+    with pytest.raises(gen_module.StageFailure, match=r"(?i)column"):
+        gen_module._validate_return_provenance(bad)
+
+
+def test_provenance_guard_accepts_valid_raw_returns(gen_module: Any) -> None:
+    """_validate_return_provenance accepts a properly tagged raw-return DataFrame."""
+    idx = pd.MultiIndex.from_tuples(
+        [("2024-07-01", "AAPL"), ("2024-07-01", "MSFT")],
+        names=["datetime", "instrument"],
+    )
+    valid = pd.DataFrame({"return": [0.1, 0.05]}, index=idx)
+    valid.attrs["provenance"] = "raw_forward_return"
+    # Should not raise
+    gen_module._validate_return_provenance(valid)
+
+
+def test_provenance_guard_accepts_zero_returns(gen_module: Any) -> None:
+    """_validate_return_provenance accepts all-zero raw returns (valid provenance)."""
+    idx = pd.MultiIndex.from_tuples(
+        [("2024-07-01", "AAPL"), ("2024-07-01", "MSFT")],
+        names=["datetime", "instrument"],
+    )
+    zero = pd.DataFrame({"return": [0.0, 0.0]}, index=idx)
+    zero.attrs["provenance"] = "raw_forward_return"
+    # Should not raise -- all-zero raw returns are valid (spread=0)
+    gen_module._validate_return_provenance(zero)
+
+
+# ---------------------------------------------------------------------------
+# Score-direction diagnostics tests
+# ---------------------------------------------------------------------------
+
+
+def _make_pred_ret_pair(
+    scores: list[float],
+    returns: list[float],
+    dates: list[str] | None = None,
+    instruments: list[str] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Build aligned predictions and raw-returns DataFrames for testing."""
+    if dates is None:
+        dates = ["2024-07-01"] * len(scores)
+    if instruments is None:
+        instruments = [f"STK{i:04d}" for i in range(len(scores))]
+    idx = pd.MultiIndex.from_arrays(
+        [pd.to_datetime(dates), instruments],
+        names=["datetime", "instrument"],
+    )
+    pred = pd.DataFrame({"score": scores}, index=idx)
+    ret = pd.DataFrame({"return": returns}, index=idx)
+    ret.attrs["provenance"] = "raw_forward_return"
+    return pred, ret
+
+
+def test_score_diagnostics_positive_ordering_tmb_positive(gen_module: Any) -> None:
+    """Positive score ordering yields top_minus_bottom > 0 and keep_score."""
+    pred, ret = _make_pred_ret_pair(
+        scores=[5.0, 4.0, 3.0, 2.0, 1.0],
+        returns=[0.10, 0.08, 0.05, 0.01, -0.02],
+    )
+    diag = gen_module._compute_score_diagnostics(pred, ret)
+    assert diag["top_minus_bottom"] > 0, f"Expected tmb > 0, got {diag['top_minus_bottom']}"
+    assert diag["recommendation"] == "keep_score"
+
+
+def test_score_diagnostics_reversed_ordering_tmb_negative(gen_module: Any) -> None:
+    """Reversed score ordering yields top_minus_bottom < 0 and invert_score."""
+    pred, ret = _make_pred_ret_pair(
+        scores=[1.0, 2.0, 3.0, 4.0, 5.0],
+        returns=[0.10, 0.08, 0.05, 0.01, -0.02],
+    )
+    diag = gen_module._compute_score_diagnostics(pred, ret)
+    assert diag["top_minus_bottom"] < 0, f"Expected tmb < 0, got {diag['top_minus_bottom']}"
+    assert diag["recommendation"] == "invert_score"
+
+
+def test_score_diagnostics_all_zero_returns(gen_module: Any) -> None:
+    """All-zero raw returns produce top_minus_bottom == 0 and no_signal."""
+    pred, ret = _make_pred_ret_pair(
+        scores=[5.0, 4.0, 3.0, 2.0, 1.0],
+        returns=[0.0, 0.0, 0.0, 0.0, 0.0],
+    )
+    diag = gen_module._compute_score_diagnostics(pred, ret)
+    assert abs(diag["top_minus_bottom"]) < 1e-12
+    assert diag["recommendation"] == "no_signal"
+
+
+def test_score_diagnostics_n_samples_reported(gen_module: Any) -> None:
+    """Score diagnostics reports n_samples correctly."""
+    pred, ret = _make_pred_ret_pair(
+        scores=list(range(100, 0, -1)),
+        returns=[v * 0.01 for v in range(100, 0, -1)],
+    )
+    diag = gen_module._compute_score_diagnostics(pred, ret)
+    assert diag["n_samples"] == 100
+    assert diag["recommendation"] in ("keep_score", "invert_score", "inconclusive", "no_signal")
+
+
+def test_score_diagnostics_per_date_decile_means(gen_module: Any) -> None:
+    """Prove decile means are computed per-date then averaged, not globally pooled.
+
+    Two dates each with 10 stocks and identical positive score-return
+    correlation, but date 2 has systematically higher return levels.
+    Per-date averaging yields tmb=0.09 (each date's decile gap equals 0.09).
+    Global pooling would select all top-decile stocks from date 2 (higher
+    returns) and all bottom-decile from date 1 (lower returns), producing
+    a much larger tmb (~1.08).  Per-date grouping avoids this bias.
+    """
+    pred, ret = _make_pred_ret_pair(
+        scores=list(range(1, 11)) + list(range(1001, 1011)),
+        returns=[0.01 * i for i in range(1, 11)] + [1.00 + 0.01 * i for i in range(1, 11)],
+        dates=["2024-01-02"] * 10 + ["2024-01-03"] * 10,
+    )
+    diag = gen_module._compute_score_diagnostics(pred, ret)
+
+    assert diag["n_dates"] == 2, f"Expected n_dates=2, got {diag['n_dates']}"
+    assert diag["n_samples"] == 20
+
+    # Per-date: day1 top=0.10, day2 top=1.10 → avg=0.60
+    # Per-date: day1 bottom=0.01, day2 bottom=1.01 → avg=0.51
+    # tmb = 0.60 - 0.51 = 0.09
+    assert abs(diag["top_decile_mean_return"] - 0.60) < 1e-8, (
+        f"Expected top_decile_mean=0.60, got {diag['top_decile_mean_return']}"
+    )
+    assert abs(diag["bottom_decile_mean_return"] - 0.51) < 1e-8, (
+        f"Expected bottom_decile_mean=0.51, got {diag['bottom_decile_mean_return']}"
+    )
+    assert abs(diag["top_minus_bottom"] - 0.09) < 1e-8, (
+        f"Expected tmb=0.09, got {diag['top_minus_bottom']}"
+    )
+    assert diag["recommendation"] == "keep_score"
+
+
+# ---------------------------------------------------------------------------
+# Score diagnostics uses raw returns, not processed labels
+# ---------------------------------------------------------------------------
+
+
+def test_score_diagnostics_computed_on_raw_returns_not_processed_labels(
+    gen_module: Any,
+) -> None:
+    """_compute_score_diagnostics must reject non-raw provenance.
+
+    Pass a DataFrame with 'return' column (correct column name) but
+    explicitly non-raw provenance to prove column renaming cannot
+    bypass the provenance guard.
+    """
+    pred, _ = _make_pred_ret_pair(
+        scores=[5.0, 4.0, 3.0, 2.0, 1.0],
+        returns=[0.10, 0.08, 0.05, 0.01, -0.02],
+    )
+    # "return" column (correct name) but explicitly wrong provenance
+    idx = pred.index
+    processed = pd.DataFrame({"return": [0.1, 0.08, 0.05, 0.01, -0.02]}, index=idx)
+    processed.attrs["provenance"] = "processed_label"
+    with pytest.raises(gen_module.StageFailure, match=r"(?i)provenance"):
+        gen_module._compute_score_diagnostics(pred, processed)
+
+
+# ---------------------------------------------------------------------------
+# Walk-forward raw IC test
+# ---------------------------------------------------------------------------
+
+
+def test_walk_forward_raw_ic_uses_raw_returns(gen_module: Any, monkeypatch):
+    """_run_single_split must compute IC against raw forward returns, not DK_L.
+
+    Monkey-patch D.features to return raw returns (not processed labels)
+    and verify the IC values reflect the raw-return signal, not CSRankNorm.
+    """
+    from src.research.walk_forward import _run_single_split
+
+    # Build a minimal config with known label expression
+    config = {
+        "task": {
+            "model": {"kwargs": {}},
+            "dataset": {
+                "kwargs": {
+                    "handler": {
+                        "kwargs": {
+                            "start_time": "2021-01-01",
+                            "end_time": "2026-06-25",
+                            "label": ["Ref($close, -10) / $close - 1"],
+                            "instruments": "us",
+                        }
+                    },
+                    "segments": {
+                        "train": ["2021-01-01", "2024-12-31"],
+                        "valid": ["2025-01-01", "2025-12-31"],
+                        "test": ["2026-01-01", "2026-06-25"],
+                    },
+                }
+            },
+        }
+    }
+
+    # Build fake index and data
+    dates = pd.bdate_range("2026-01-05", periods=2)
+    instruments = ["A", "B", "C", "D", "E"]
+    _FAKE_IDX = pd.MultiIndex.from_product(
+        [dates, instruments], names=["datetime", "instrument"]
+    )
+
+    class FakeDataset:
+        def prepare(self, segments, col_set, data_key):
+            return pd.DataFrame(
+                {"label": np.arange(len(_FAKE_IDX), dtype=float)},
+                index=_FAKE_IDX,
+            )
+
+    class FakeModel:
+        def fit(self, dataset):
+            return None
+        def predict(self, dataset, segment="test"):
+            return pd.Series(
+                np.arange(len(_FAKE_IDX), dtype=float), index=_FAKE_IDX,
+            )
+
+    def _fake_init(cfg):
+        if "handler" in cfg.get("kwargs", {}):
+            return FakeDataset()
+        return FakeModel()
+
+    # Track which label expression was fetched
+    fetched_exprs = []
+    raw_idx = _FAKE_IDX
+    rng = np.random.default_rng(42)
+
+    class _FakeD:
+        @staticmethod
+        def features(symbols, expressions, start_time=None, end_time=None):
+            fetched_exprs.append(expressions)
+            return pd.DataFrame(
+                {"return": rng.standard_normal(len(raw_idx))},
+                index=raw_idx,
+            )
+        @staticmethod
+        def instruments(name):
+            return name
+        @staticmethod
+        def list_instruments(instruments, as_list=True):
+            return instruments if isinstance(instruments, list) else ["A", "B", "C", "D", "E"]
+
+    monkeypatch.setattr(
+        "src.research.walk_forward.init_instance_by_config", _fake_init,
+    )
+    import src.research.walk_forward as wf_mod
+    monkeypatch.setattr(wf_mod, "D", _FakeD())
+
+    # The calendar must be available
+    cal = pd.bdate_range("2020-01-01", "2026-12-31")
+    monkeypatch.setattr(
+        "src.research.walk_forward._get_trading_calendar",
+        lambda start, end: cal,
+    )
+
+    result = _run_single_split(
+        base_config=config, split_id=0,
+        train_start="2021-01-01", train_end="2025-12-31",
+        test_start="2026-01-01", test_end="2026-06-25",
+        label_horizon=0,
+    )
+
+    assert len(fetched_exprs) >= 1, "D.features should have been called for raw returns"
+    raw_expr = fetched_exprs[0]
+    assert "Ref($close, -10) / $close - 1" in str(raw_expr), (
+        f"Expected raw expression, got {raw_expr}"
+    )
+    assert result.ic is not None
+    assert result.rank_ic is not None
+
+
+# ---------------------------------------------------------------------------
+# Walk-forward: vectorized path uses raw returns for IC
+# ---------------------------------------------------------------------------
+
+
+def test_vectorized_wf_uses_raw_label_expression(
+    monkeypatch, tmp_path,
+):
+    """Vectorized walk-forward loads raw label expression for IC computation."""
+    import importlib
+    import sys
+    from types import ModuleType
+
+    from src.research.walk_forward import walk_forward_vectorized
+
+    cal = pd.bdate_range("2024-01-01", periods=800)
+
+    monkeypatch.setattr(
+        "src.common.qlib_init.safe_qlib_init", lambda cfg: None)
+    monkeypatch.setattr(
+        "src.common.qlib_init.build_qlib_init_cfg", lambda uri, market: {})
+    monkeypatch.setattr(
+        "src.research.walk_forward._get_trading_calendar",
+        lambda start, end: cal)
+
+    instr_dir = tmp_path / "data" / "watchlist" / "instruments"
+    instr_dir.mkdir(parents=True)
+    (instr_dir / "cn.txt").write_text("A\nB\nC\n")
+    monkeypatch.chdir(tmp_path)
+
+    instruments = ["A", "B", "C"]
+    dates = cal[cal >= pd.Timestamp("2024-01-01")]
+    idx = pd.MultiIndex.from_product(
+        [dates, instruments], names=["datetime", "instrument"])
+    rng = np.random.default_rng(42)
+    base = rng.standard_normal((len(idx), 1))
+    X_df = pd.DataFrame(
+        np.column_stack([base, base * 0.9 + 0.1, base * 1.1 - 0.1]),
+        index=idx, columns=["feat_a", "feat_b", "feat_c"],
+    )
+    y_df = pd.DataFrame(base * 0.5 + 0.05, index=idx, columns=["label"])
+
+    _feat_call = [0]
+    _fetched_exprs: list[Any] = []
+
+    class _FakeD:
+        @staticmethod
+        def features(symbols, expressions, start_time=None, end_time=None):
+            _feat_call[0] += 1
+            _fetched_exprs.append(expressions)
+            return X_df if _feat_call[0] == 1 else y_df
+
+    fake_data_module = ModuleType("qlib.data")
+    fake_data_module.D = _FakeD
+
+    loader_module = importlib.import_module("qlib.contrib.data.loader")
+    monkeypatch.setitem(sys.modules, "qlib.data", fake_data_module)
+
+    class _FakeAlpha:
+        @staticmethod
+        def get_feature_config(cfg):
+            return (["$close"], {})
+
+    monkeypatch.setattr(loader_module, "Alpha158DL", _FakeAlpha)
+
+    class _FakeBooster:
+        def predict(self, X):
+            return np.zeros(len(X))
+
+    lightgbm_module = importlib.import_module("lightgbm")
+    monkeypatch.setattr(
+        lightgbm_module, "train",
+        lambda params, train_set, num_boost_round: _FakeBooster(),
+    )
+
+    result = walk_forward_vectorized(
+        market="cn", train_start="2024-01-01", train_end="2025-12-15",
+        test_window_months=1, step_months=1, n_estimators=1,
+    )
+
+    # The vectorized path loads raw label expression at index 1+ (after features)
+    _fetched_exprs_at_1 = _fetched_exprs[1] if len(_fetched_exprs) > 1 else []
+    expr_str = str(_fetched_exprs_at_1)
+    assert "Ref($close, -10)" in expr_str or "Ref($close, -1)" in expr_str, (
+        f"Expected raw label expression, got {_fetched_exprs}"
+    )
+    # IC should be computed and finite
+    for sr in result.splits:
+        if sr.status == "success":
+            assert sr.ic is not None, "IC must not be None for successful splits"
+            assert sr.rank_ic is not None, "Rank IC must not be None for successful splits"
 
 
 # ---------------------------------------------------------------------------
