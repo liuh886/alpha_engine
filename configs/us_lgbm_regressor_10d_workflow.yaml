@@ -13,9 +13,11 @@ qlib_init:
   region: us
 
 market: &market us
-start_time: &start_time "2018-01-01"
+# The published US watchlist snapshot has broad universe coverage from
+# 2021-04-05.  Starting in 2018 produces empty Alpha158 training segments.
+start_time: &start_time "2021-04-05"
 end_time: &end_time "2024-12-31"
-fit_start_time: &fit_start_time "2018-01-01"
+fit_start_time: &fit_start_time "2021-04-05"
 fit_end_time: &fit_end_time "2023-12-31"
 
 task:
@@ -46,6 +48,7 @@ task:
         class: Alpha158
         module_path: qlib.contrib.data.handler
         kwargs:
+          instruments: *market
           start_time: *start_time
           end_time: *end_time
           fit_start_time: *fit_start_time

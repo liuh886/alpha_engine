@@ -314,6 +314,12 @@ class BacktestResult:
     test_start: str = ""
     test_end: str = ""
 
+    # Exposed engine economics (set during run_vectorized_backtest)
+    turnover: float = 0.0
+    costs: float = 0.0
+    net_return: float | None = None
+    information_ratio: float = 0.0
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "total_return": round(self.total_return, 4),
@@ -326,6 +332,13 @@ class BacktestResult:
             "mean_ic": round(self.mean_ic, 4),
             "ic_ir": round(self.ic_ir, 4),
             "positive_ic_ratio": round(self.positive_ic_ratio, 4),
+            "turnover": round(self.turnover, 4),
+            "costs": round(self.costs, 6),
+            "net_return": round(
+                self.total_return if self.net_return is None else self.net_return,
+                4,
+            ),
+            "information_ratio": round(self.information_ratio, 4),
             "topk": self.topk,
             "rebalance_days": self.rebalance_days,
             "n_periods": self.n_periods,
@@ -483,6 +496,11 @@ def run_vectorized_backtest(
         except (KeyError, TypeError):
             ret_map[str(d)[:10]] = {}
 
+    # Initialize engine economics accumulators (may be updated in non_overlapping)
+    total_turnover = 0.0
+    total_cost = 0.0
+    bench_per_period: list[float] = []
+
     if non_overlapping:
         # ── Non-overlapping: independent 10-day windows ──
         rebalance_dates = common_dates[::rebalance_days]
@@ -498,20 +516,23 @@ def run_vectorized_backtest(
                 portfolio_values.append(portfolio_values[-1])
                 benchmark_values.append(benchmark_values[-1])
                 returns_list.append(0.0)
+                bench_per_period.append(0.0)
                 continue
 
+            period_turnover = 0.0
+            cost = 0.0
             if len(day_pred) >= topk:
                 top_stocks = day_pred.nlargest(topk)
                 new_holdings = {s: 1.0 / topk for s in top_stocks.index}
                 all_symbols = set(current_holdings.keys()) | set(new_holdings.keys())
-                turnover = (
+                period_turnover = (
                     sum(abs(new_holdings.get(s, 0) - current_holdings.get(s, 0)) for s in all_symbols)
                     / 2
                 )
-                cost = turnover * cost_bps / 10000
+                cost = period_turnover * cost_bps / 10000
                 current_holdings = new_holdings
-            else:
-                cost = 0.0
+            total_turnover += period_turnover
+            total_cost += cost
 
             date_key = str(date)[:10]
             ret_lookup = ret_map.get(date_key, {})
@@ -534,8 +555,10 @@ def run_vectorized_backtest(
             if bench_series is not None and date in bench_series.index:
                 b = float(bench_series.loc[date])
                 benchmark_values.append(benchmark_values[-1] * (1 + (0.0 if np.isnan(b) else b)))
+                bench_per_period.append(0.0 if np.isnan(b) else b)
             else:
                 benchmark_values.append(benchmark_values[-1])
+                bench_per_period.append(0.0)
 
     else:
         # ── Overlapping (layered): each day opens a 1/N position held N days ──
@@ -629,6 +652,18 @@ def run_vectorized_backtest(
     annual_ret = float((1 + total_return) ** (1 / years) - 1) if years > 0 else 0.0
     volatility = float(ret_arr.std() * np.sqrt(periods_per_year)) if n_periods > 0 else 0.0
 
+    # Engine economics (costs already subtracted in port_ret → net_return == total_return)
+    net_return_val = total_return
+
+    # Information ratio (annualized)
+    information_ratio_val = 0.0
+    if non_overlapping and bench_per_period and len(bench_per_period) == len(returns_list):
+        excess_arr = np.array(returns_list) - np.array(bench_per_period)
+        tracking_error = float(excess_arr.std() * np.sqrt(periods_per_year))
+        annual_excess = annual_ret - (float((1 + benchmark_return) ** (1 / years) - 1) if years > 0 else 0.0)
+        if tracking_error > 1e-10:
+            information_ratio_val = annual_excess / tracking_error
+
     return BacktestResult(
         total_return=total_return,
         benchmark_return=benchmark_return,
@@ -649,6 +684,10 @@ def run_vectorized_backtest(
         n_periods=n_periods,
         test_start=str(common_dates[0].date()),
         test_end=str(common_dates[-1].date()),
+        turnover=total_turnover,
+        costs=total_cost,
+        net_return=net_return_val,
+        information_ratio=information_ratio_val,
     )
 
 

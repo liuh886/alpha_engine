@@ -11,6 +11,9 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from src.data.snapshot import compute_aggregate_hash
+from src.data.snapshot_manifest import SnapshotManifest
+
 REQUIRED_RELEASE_METRICS: tuple[str, ...] = (
     "ic",
     "rank_ic",
@@ -52,15 +55,16 @@ _MODEL_REQUIRED_FIELDS = (
     "diagnostics_path",
     "checksums",
 )
-_POLICY: dict[str, Any] = {
+POLICY: dict[str, Any] = {
     "id": "t48-release-v1",
     "min_icir": 0.3,
     "min_consistency": 0.55,
     "min_samples": 10,
     "max_drawdown": -0.15,
 }
+_POLICY = POLICY  # backward-compat alias for internal verifier use
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-_CANDIDATE_ID_RE = re.compile(r"^rc_[A-Za-z0-9_.-]+$")
+_CANDIDATE_ID_RE = re.compile(r"^(?:rc_)?(?:v?\d[\w.-]*|\d{8})$")
 
 
 @dataclass(frozen=True)
@@ -194,14 +198,30 @@ def verify_release_candidate(
             "markets_missing", False, report.candidate_manifest, "markets object is required"
         )
         markets = {}
+    valid_markets = {"cn", "us"}
     market_names = set(markets)
-    report.add(
-        "market_scope",
-        market_names == {"cn", "us"},
-        report.candidate_manifest,
-        f"markets={sorted(market_names)}; expected=['cn', 'us']",
-    )
-    for market in ("cn", "us"):
+    if not market_names:
+        report.add(
+            "market_scope",
+            False,
+            report.candidate_manifest,
+            "at least one market is required",
+        )
+    elif not market_names.issubset(valid_markets):
+        report.add(
+            "market_scope",
+            False,
+            report.candidate_manifest,
+            f"markets={sorted(market_names)}; valid={sorted(valid_markets)}",
+        )
+    else:
+        report.add(
+            "market_scope",
+            True,
+            report.candidate_manifest,
+            f"markets={sorted(market_names)}",
+        )
+    for market in sorted(market_names & valid_markets):
         value = markets.get(market)
         if not isinstance(value, dict):
             report.add("market_manifest_missing", False, market, "market object is required")
@@ -386,21 +406,21 @@ def _verify_snapshot(
     if not isinstance(checksums, dict) or not checksums:
         report.add("snapshot_files_missing", False, subject, "file_checksums must be non-empty")
         return payload
-    aggregate = hashlib.sha256()
+    content_hash = compute_aggregate_hash(checksums)
     files_ok = True
     manifest_path = root / subject
     for relative in sorted(checksums):
         expected = checksums[relative]
-        aggregate.update(relative.encode("utf-8"))
-        aggregate.update(str(expected).encode("utf-8"))
         file_path = _child_path(manifest_path.parent, relative)
         if file_path is None or not file_path.is_file() or not _valid_hash(expected):
             files_ok = False
             continue
         if _sha256(file_path) != expected:
             files_ok = False
-    content_hash = aggregate.hexdigest()
-    identity_ok = payload.get("content_hash") == content_hash and snapshot_id == content_hash[:16]
+    identity_ok = (
+        payload.get("content_hash") == content_hash
+        and SnapshotManifest.from_dict(payload).computed_snapshot_id() == snapshot_id
+    )
     report.add(
         "snapshot_file_checksums",
         files_ok,
@@ -577,6 +597,14 @@ def _verify_metric_thresholds(
 
 
 def _verify_frontend(value: Any, root: Path, revision: Any, report: VerificationReport) -> None:
+    if value is None:
+        report.add(
+            "frontend_build_missing",
+            False,
+            "frontend_build",
+            "frontend-build evidence is required for this release track",
+        )
+        return
     payload, subject = _load_reference(value, "path", root, report, "frontend_build")
     if payload is None:
         return
