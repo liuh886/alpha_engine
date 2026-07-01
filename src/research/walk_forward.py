@@ -540,13 +540,20 @@ def _load_raw_labels(
             f"Raw labels DataFrame has no columns for expression {label_expr!r}."
         )
     col = raw.iloc[:, 0]
-    n_finite = int(np.sum(np.isfinite(col.values)))
+    # Replace inf with NaN, then drop non-finite rows
+    col = col.replace([np.inf, -np.inf], np.nan)
+    n_raw = len(col)
+    n_finite = int(col.notna().sum())
     if n_finite == 0:
         raise RuntimeError(
             f"Raw labels contain zero finite values for expression {label_expr!r} "
             f"over period {test_start} to {test_end}. "
             "All values are NaN, inf, or missing."
         )
+    col = col.dropna()
+    col.attrs["n_raw_rows"] = n_raw
+    col.attrs["n_dropped_non_finite"] = n_raw - n_finite
+    col.attrs["n_valid_rows"] = n_finite
     return col
 
 

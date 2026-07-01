@@ -2757,3 +2757,93 @@ class TestLoadRawLabelsIndexOrder:
 
         with pytest.raises(ValueError, match=r"(?i)datetime|instrument"):
             _load_raw_labels(config, "2024-01-02", "2024-01-03")
+
+
+# ---------------------------------------------------------------------------
+# Load raw labels NaN filtering
+# ---------------------------------------------------------------------------
+
+
+class TestLoadRawLabelsNanFiltering:
+    """_load_raw_labels drops non-finite values and records attrs."""
+
+    def _fake_d(self, raw_series: pd.Series):
+        """Return a fake D class whose features returns a DataFrame built from *raw_series*."""
+        instruments = list(raw_series.index.get_level_values("instrument").unique())
+
+        class _FakeD:
+            @staticmethod
+            def list_instruments(inst, as_list=True):
+                return instruments
+
+            @staticmethod
+            def instruments(key):
+                return key
+
+            @staticmethod
+            def features(symbols, expressions, start_time=None, end_time=None):
+                return raw_series.to_frame(expressions[0])
+
+        return _FakeD
+
+    def test_drops_partial_nan(self, monkeypatch):
+        """Partial NaN/inf values are dropped and attrs recorded."""
+        dates = pd.bdate_range("2024-01-02", periods=3)
+        instruments = ["A", "B"]
+        idx = pd.MultiIndex.from_product(
+            [dates, instruments], names=["datetime", "instrument"],
+        )
+        vals = [0.01, np.nan, np.inf, -0.01, -np.inf, 0.02]
+        raw = pd.Series(vals, index=idx, name="label")
+
+        monkeypatch.setattr(
+            "src.research.walk_forward.D",
+            self._fake_d(raw),
+        )
+        result = _load_raw_labels(
+            self._raw_config(),
+            "2024-01-02",
+            "2024-01-04",
+        )
+
+        assert isinstance(result, pd.Series)
+        assert len(result) == 3  # 6 - 3 non-finite
+        assert result.attrs["n_raw_rows"] == 6
+        assert result.attrs["n_dropped_non_finite"] == 3
+        assert result.attrs["n_valid_rows"] == 3
+
+    def test_fails_on_all_nan(self, monkeypatch):
+        """All-non-finite raises RuntimeError."""
+        dates = pd.bdate_range("2024-01-02", periods=2)
+        instruments = ["A"]
+        idx = pd.MultiIndex.from_product(
+            [dates, instruments], names=["datetime", "instrument"],
+        )
+        raw = pd.Series([np.nan, np.inf], index=idx, name="label")
+
+        monkeypatch.setattr(
+            "src.research.walk_forward.D",
+            self._fake_d(raw),
+        )
+        with pytest.raises(RuntimeError, match=r"(?i)zero finite"):
+            _load_raw_labels(
+                self._raw_config(),
+                "2024-01-02",
+                "2024-01-03",
+            )
+
+    def _raw_config(self) -> dict:
+        return {
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "handler": {
+                            "kwargs": {
+                                "label": ["Ref($close, -10) / Ref($close, -1) - 1"],
+                                "instruments": "us",
+                            },
+                        },
+                    },
+                },
+            },
+        }
