@@ -25,7 +25,14 @@ def _hash_file(path: Path, *, chunk_size: int = 65_536) -> str:
     return digest.hexdigest()
 
 
-def _compute_aggregate_hash(file_checksums: dict[str, str]) -> str:
+def compute_aggregate_hash(file_checksums: dict[str, str]) -> str:
+    """Canonical content-hash over the sorted (path, sha256) pairs.
+
+    Each entry is encoded as ``path\\0hash\\n`` so that the hash inputs are
+    unambiguous — a null byte separates the relative path from its SHA-256,
+    and a newline separates entries.  This is the canonical computation
+    consumed by the release-candidate gate verifier.
+    """
     digest = hashlib.sha256()
     for relative_path in sorted(file_checksums):
         digest.update(relative_path.encode("utf-8"))
@@ -33,6 +40,9 @@ def _compute_aggregate_hash(file_checksums: dict[str, str]) -> str:
         digest.update(file_checksums[relative_path].encode("ascii"))
         digest.update(b"\n")
     return digest.hexdigest()
+
+
+_compute_aggregate_hash = compute_aggregate_hash  # backward compat
 
 
 def _list_data_files(data_dir: Path) -> list[Path]:

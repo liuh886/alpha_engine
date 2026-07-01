@@ -1,6 +1,7 @@
 """Tests for walk-forward validation logic and API."""
 
 from datetime import datetime
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -18,7 +19,10 @@ from src.research.walk_forward import (
     _align_multiindex,
     _compute_ic,
     _compute_mean_daily_ic,
+    _fit_native_estimator,
     _forward_return_expression,
+    _is_native_estimator_config,
+    _prepare_native_dataset,
     _run_single_split,
     _subtract_benchmark_by_date,
     _validate_calendar,
@@ -2276,3 +2280,334 @@ class TestWFEightPlusSplits:
             f"got {n_success} (total={n_total}, skipped={n_skipped}). "
             f"Split statuses: {[(s.split_id, s.status, s.train_end, s.test_start) for s in result.splits]}"
         )
+
+
+# ===================================================================
+# Native estimator adapter tests
+# ===================================================================
+
+
+class TestIsNativeEstimatorConfig:
+    """Prove ``_is_native_estimator_config`` correctly detects native
+    sklearn-style estimators vs Qlib model wrappers."""
+
+    def test_native_lightgbm_detected(self):
+        cfg = {
+            "task": {
+                "model": {
+                    "class": "LGBMRegressor",
+                    "module_path": "lightgbm",
+                    "kwargs": {},
+                },
+            },
+        }
+        assert _is_native_estimator_config(cfg) is True
+
+    def test_qlib_wrapper_not_detected(self):
+        cfg = {
+            "task": {
+                "model": {
+                    "class": "LGBModel",
+                    "module_path": "qlib.contrib.model.gbdt",
+                    "kwargs": {},
+                },
+            },
+        }
+        assert _is_native_estimator_config(cfg) is False
+
+    def test_missing_module_path(self):
+        cfg = {"task": {"model": {"class": "LGBMRegressor"}}}
+        assert _is_native_estimator_config(cfg) is False
+
+    def test_empty_task(self):
+        assert _is_native_estimator_config({}) is False
+
+
+class TestPrepareNativeDataset:
+    """Prove ``_prepare_native_dataset`` extracts aligned X/y from a mock
+    DatasetH, drops non-finite rows, and handles missing segments."""
+
+    @staticmethod
+    def _make_idx(dates, instruments):
+        return pd.MultiIndex.from_product(
+            [pd.DatetimeIndex(dates), instruments],
+            names=["datetime", "instrument"],
+        )
+
+    def test_extracts_all_segments(self):
+        """All three segments (train/valid/test) are extracted and aligned."""
+        idx_train = self._make_idx(["2024-01-02", "2024-01-03"], ["A", "B"])
+        idx_valid = self._make_idx(["2024-04-01", "2024-04-02"], ["A", "B"])
+        idx_test = self._make_idx(["2024-07-01", "2024-07-02"], ["A", "B"])
+
+        class FakeDataset:
+            def prepare(self, segments, col_set, data_key=None):
+                if col_set == "feature":
+                    if segments == ["2024-01-01", "2024-06-30"]:
+                        return pd.DataFrame(
+                            {"feat1": [1.0, 2.0, 3.0, 4.0]}, index=idx_train,
+                        )
+                    if segments == ["2024-04-01", "2024-06-30"]:
+                        return pd.DataFrame(
+                            {"feat1": [5.0, 6.0, 7.0, 8.0]}, index=idx_valid,
+                        )
+                    return pd.DataFrame(
+                        {"feat1": [9.0, 10.0, 11.0, 12.0]}, index=idx_test,
+                    )
+                # label
+                if segments == ["2024-01-01", "2024-06-30"]:
+                    return pd.DataFrame({"label": [0.1, 0.2, 0.3, 0.4]}, index=idx_train)
+                if segments == ["2024-04-01", "2024-06-30"]:
+                    return pd.DataFrame({"label": [0.5, 0.6, 0.7, 0.8]}, index=idx_valid)
+                return pd.DataFrame({"label": [0.9, 1.0, 1.1, 1.2]}, index=idx_test)
+
+        segments = {
+            "train": ["2024-01-01", "2024-06-30"],
+            "valid": ["2024-04-01", "2024-06-30"],
+            "test": ["2024-07-01", "2024-12-31"],
+        }
+
+        result = _prepare_native_dataset(FakeDataset(), segments)
+
+        assert "train" in result
+        assert "valid" in result
+        assert "test" in result
+        assert result["train"][0].shape == (4, 1)
+        assert result["test"][1].iloc[0] == pytest.approx(0.9)
+
+    def test_drops_non_finite_rows(self):
+        """Rows with NaN in X or y are dropped."""
+        idx = self._make_idx(["2024-01-02"], ["A", "B", "C", "D"])
+
+        class FakeDataset:
+            def prepare(self, segments, col_set, data_key=None):
+                if col_set == "feature":
+                    return pd.DataFrame(
+                        {"f1": [1.0, 2.0, float("nan"), 4.0]}, index=idx,
+                    )
+                return pd.DataFrame(
+                    {"label": [0.1, 0.2, 0.3, float("nan")]}, index=idx,
+                )
+
+        segments = {"train": ["2024-01-01", "2024-06-30"]}
+        result = _prepare_native_dataset(FakeDataset(), segments)
+
+        assert "train" in result
+        X, y = result["train"]
+        assert len(X) == 2  # only rows 0, 1 are fully finite
+        assert list(X.index.get_level_values("instrument")) == ["A", "B"]
+        assert list(y.values) == [0.1, 0.2]
+
+    def test_missing_segment_omitted(self):
+        """Segment not in the dict is simply omitted from the result."""
+        result = _prepare_native_dataset(object(), {"train": ["2024-01-01", "2024-06-30"]})
+        assert "train" not in result  # No data, object() raises on .prepare
+        assert "valid" not in result
+        assert "test" not in result
+
+
+class TestFitNativeEstimator:
+    """Prove ``_fit_native_estimator`` calls fit(X,y) and predict(X) on a
+    sklearn-style estimator using data extracted from a mock DatasetH."""
+
+    @staticmethod
+    def _make_idx(dates, instruments):
+        return pd.MultiIndex.from_product(
+            [pd.DatetimeIndex(dates), instruments],
+            names=["datetime", "instrument"],
+        )
+
+    def test_fits_and_predicts(self):
+        """Model is fitted on X/y and predicts on test data."""
+        idx_train = self._make_idx(["2024-01-02"], ["A", "B", "C"])
+        idx_valid = self._make_idx(["2024-04-01"], ["A", "B", "C"])
+        idx_test = self._make_idx(["2024-07-01"], ["A", "B", "C"])
+
+        class FakeDataset:
+            def prepare(self, segments, col_set, data_key=None):
+                if col_set == "feature":
+                    if "01-01" in str(segments[0]):
+                        return pd.DataFrame(
+                            {"f1": [1.0, 2.0, 3.0]}, index=idx_train,
+                        )
+                    if "04" in str(segments[0]):
+                        return pd.DataFrame(
+                            {"f1": [4.0, 5.0, 6.0]}, index=idx_valid,
+                        )
+                    return pd.DataFrame(
+                        {"f1": [7.0, 8.0, 9.0]}, index=idx_test,
+                    )
+                if "01-01" in str(segments[0]):
+                    return pd.DataFrame({"label": [0.1, 0.2, 0.3]}, index=idx_train)
+                if "04" in str(segments[0]):
+                    return pd.DataFrame({"label": [0.4, 0.5, 0.6]}, index=idx_valid)
+                return pd.DataFrame({"label": [0.7, 0.8, 0.9]}, index=idx_test)
+
+        segments = {
+            "train": ["2024-01-01", "2024-03-31"],
+            "valid": ["2024-04-01", "2024-06-30"],
+            "test": ["2024-07-01", "2024-12-31"],
+        }
+
+        class FakeEstimator:
+            def __init__(self):
+                self.fitted_X = None
+                self.fitted_y = None
+                self.eval_set = None
+
+            def fit(self, X, y, eval_set=None):
+                self.fitted_X = X
+                self.fitted_y = y
+                self.eval_set = eval_set
+                return self
+
+            def predict(self, X):
+                return np.ones(len(X)) * 0.5
+
+        model = FakeEstimator()
+        fitted, predictions = _fit_native_estimator(model, FakeDataset(), segments)
+
+        assert fitted is model
+        assert len(predictions) == 3
+        assert list(predictions.values) == [0.5, 0.5, 0.5]
+        assert fitted.fitted_X is not None
+        assert len(fitted.fitted_X) == 3
+        # eval_set should contain valid as monitoring
+        assert fitted.eval_set is not None
+        X_va, y_va = fitted.eval_set[0]
+        assert len(X_va) == 3
+
+    def test_raises_on_no_train(self):
+        """RuntimeError when train data unavailable."""
+        with pytest.raises(RuntimeError, match=r"(?i)no training data"):
+            _fit_native_estimator(
+                object(), object(), {"test": ["2024-07-01", "2024-12-31"]},
+            )
+
+
+class TestWalkForwardZeroSuccess:
+    """Prove walk_forward_validate / _stage_walk_forward fail when no splits
+    succeed."""
+
+    def test_validate_raises_on_all_failed(self, monkeypatch, tmp_path):
+        """walk_forward_validate raises RuntimeError when all splits fail."""
+        monkeypatch.setattr(
+            "src.common.qlib_init.safe_qlib_init", lambda cfg: None,
+        )
+        monkeypatch.setattr(
+            "src.common.qlib_init.build_qlib_init_cfg", lambda uri, market: {},
+        )
+
+        def _fail_all(*args, **kwargs):
+            raise RuntimeError("Simulated split failure")
+
+        monkeypatch.setattr(
+            "src.research.walk_forward._run_single_split", _fail_all,
+        )
+
+        config_path = tmp_path / "us_lgbm_workflow.yaml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("task:\n  model:\n    kwargs: {}\n", encoding="utf-8")
+        monkeypatch.setattr("src.common.paths.CONFIG_DIR", config_path.parent)
+
+        with pytest.raises(RuntimeError, match=r"(?i)zero successful"):
+            walk_forward_validate(
+                market="us", model_type="lgbm",
+                train_start="2021-01-01", train_end="2022-06-30",
+            )
+
+
+class TestStageWalkForwardConfigWindows:
+    """Prove _stage_walk_forward passes config-derived training windows to
+    walk_forward_validate."""
+
+    def test_uses_config_end_time(self, monkeypatch):
+        """The end_time from config is used as train_end for walk-forward,
+        preventing evaluation beyond the configured range."""
+        from scripts.generate_release_candidate import _stage_walk_forward
+
+        captured = {}
+
+        def fake_validate(market, model_type, train_start, train_end,
+                          config, label_horizon):
+            captured["train_start"] = train_start
+            captured["train_end"] = train_end
+            result = WalkForwardResult(market="us", model_type="lgbm_regressor")
+            # Add a placeholder split so _stage_walk_forward doesn't abort
+            result.splits.append(
+                SplitResult(
+                    split_id=0, train_start="2018-01-01", train_end="2023-12-31",
+                    test_start="2024-01-01", test_end="2024-06-30",
+                    ic=0.05, rank_ic=0.04,
+                )
+            )
+            return result
+
+        monkeypatch.setattr(
+            "src.research.walk_forward.walk_forward_validate",
+            fake_validate,
+        )
+
+        config = {
+            "fit_start_time": "2018-01-01",
+            "start_time": "2018-01-01",
+            "end_time": "2024-12-31",
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "segments": {
+                            "train": ["2018-01-01", "2023-12-31"],
+                        },
+                    },
+                },
+                "model": {"kwargs": {}},
+            },
+        }
+
+        _stage_walk_forward(config, "us", Path("."))
+
+        assert captured["train_start"] == "2018-01-01"
+        assert captured["train_end"] == "2024-12-31"
+
+    def test_uses_config_start_time_fallback(self, monkeypatch):
+        """When fit_start_time is missing, uses start_time as train_start."""
+        from scripts.generate_release_candidate import _stage_walk_forward
+
+        captured = {}
+
+        def fake_validate(market, model_type, train_start, train_end,
+                          config, label_horizon):
+            captured["train_start"] = train_start
+            result = WalkForwardResult(market="us", model_type="lgbm_regressor")
+            result.splits.append(
+                SplitResult(
+                    split_id=0, train_start="2019-06-01", train_end="2023-12-31",
+                    test_start="2024-01-01", test_end="2024-06-30",
+                    ic=0.05, rank_ic=0.04,
+                )
+            )
+            return result
+
+        monkeypatch.setattr(
+            "src.research.walk_forward.walk_forward_validate",
+            fake_validate,
+        )
+
+        config = {
+            "start_time": "2019-06-01",
+            "end_time": "2024-12-31",
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "segments": {
+                            "train": ["2019-06-01", "2023-12-31"],
+                        },
+                    },
+                },
+                "model": {"kwargs": {}},
+            },
+        }
+
+        _stage_walk_forward(config, "us", Path("."))
+
+        assert captured["train_start"] == "2019-06-01"
