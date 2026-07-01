@@ -526,6 +526,9 @@ def _load_raw_labels(
     instr_key = handler_kwargs.get("instruments", "us")
     symbols = D.list_instruments(D.instruments(instr_key), as_list=True)
     raw = D.features(symbols, [label_expr], start_time=test_start, end_time=test_end)
+    # Normalize to canonical (datetime, instrument) order — D.features
+    # may return MultiIndex ordered as (instrument, datetime).
+    raw = _normalize_qlib_index(raw)
     if raw.empty:
         raise RuntimeError(
             f"Raw labels DataFrame is empty for expression {label_expr!r} "
