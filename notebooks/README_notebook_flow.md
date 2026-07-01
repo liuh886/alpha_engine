@@ -62,3 +62,33 @@ SYMBOLS = ["600519.SH"]
 BENCHMARK = "000300"
 MODEL_TAG = f"{MARKET}_baseline"
 ```
+
+## Release 产物契约
+
+正式发布的运行路径是 `scripts/generate_release_candidate.py`（而非 notebook）。Notebook 链路用于研究和原型验证，其产物结构与 release 脚本保持一致：
+
+| 产物 | 位置 | 用途 |
+|---|---|---|
+| `session_config.json` | `data/session_config.json` | 全局共享配置（市场、标的、基准、时间段） |
+| `validated_scores.parquet` | `data/validated_scores.parquet` | 信号验证分数，供 spread 分析直接消费 |
+| `release_manifest.json` | `artifacts/release_candidate/{candidate}/release_manifest.json` | Release 成功后的完整清单 |
+| `release_failure_report.json` | `artifacts/release_candidate/{candidate}/release_failure_report.json` | Release 失败时的诊断报告 |
+
+### 一条烟雾路径：config → spread
+
+```
+session_config.json  ──→  end_to_end_training_pipeline.ipynb
+                              │
+                              ├── 训练（LGBMRegressor, Alpha158 特征）
+                              └── 输出 model.pkl / predictions.csv / labels.csv
+                                   │
+                                   ↓
+02_signal_validation.ipynb  ──→  validated_scores.parquet
+                                   │
+                                   ↓
+03_topn_spread_research.ipynb  ──→  spread_scan_results.csv
+```
+
+### Notebook 不应重复核心逻辑
+
+`scripts/generate_release_candidate.py` 是唯一完整的 release pipeline 入口。Notebook 应直接引用其产物（`validated_scores.parquet`、`diagnostics.json`）而非重新实现 Qlib 初始化、walk-forward、backtest 等流程。研究期的 notebook 可以跳过 release 的门禁检查（snapshot quality、frontend build），但最终的正式运行必须通过 `generate_release_candidate.py` 完成。如需在 notebook 中快速回查 release 结果，读取 `release_manifest.json` 中 `walk_forward` 和 `backtest` 摘要段即可。
