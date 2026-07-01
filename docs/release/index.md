@@ -23,3 +23,4 @@ Release candidate documentation index.
 ## Release
 
 - [RC Signoff](rc_signoff.md) — Release candidate acceptance
+- [Release Candidate Generation](release_candidate_generation.md) — Artifact generation and failure semantics

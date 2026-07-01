@@ -1,6 +1,7 @@
 """Tests for walk-forward validation logic and API."""
 
 from datetime import datetime
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -18,7 +19,11 @@ from src.research.walk_forward import (
     _align_multiindex,
     _compute_ic,
     _compute_mean_daily_ic,
+    _fit_native_estimator,
     _forward_return_expression,
+    _is_native_estimator_config,
+    _load_raw_labels,
+    _prepare_native_dataset,
     _run_single_split,
     _subtract_benchmark_by_date,
     _validate_calendar,
@@ -492,6 +497,13 @@ class TestRunSingleSplitBackwardCompat:
         monkeypatch.setattr(
             "src.research.walk_forward.init_instance_by_config", fake_init)
 
+        monkeypatch.setattr(
+            "src.research.walk_forward._load_raw_labels",
+            lambda cfg, ts, te: pd.Series(
+                np.arange(len(_FAKE_IDX), dtype=float), index=_FAKE_IDX
+            ),
+        )
+
         base_config = {
             "task": {
                 "dataset": {
@@ -500,6 +512,7 @@ class TestRunSingleSplitBackwardCompat:
                             "kwargs": {
                                 "start_time": "2021-01-01",
                                 "end_time": "2026-06-25",
+                                "label": ["Ref($close, -1) / $close - 1"],
                                 "data_loader": {
                                     "kwargs": {"config": {"label": ["Ref($close, -1) / $close - 1"]}}
                                 },
@@ -559,6 +572,7 @@ def _make_base_config():
                         "kwargs": {
                             "start_time": "2021-01-01",
                             "end_time": "2026-06-25",
+                            "label": ["Ref($close, -1) / $close - 1"],
                             "data_loader": {
                                 "kwargs": {"config": {"label": ["Ref($close, -1) / $close - 1"]}}
                             },
@@ -625,6 +639,12 @@ class TestDefaultHorizonGap:
         monkeypatch.setattr(
             "src.research.walk_forward.init_instance_by_config",
             _fake_init_instance_by_config(captured),
+        )
+        monkeypatch.setattr(
+            "src.research.walk_forward._load_raw_labels",
+            lambda cfg, ts, te: pd.Series(
+                np.arange(len(_FAKE_IDX), dtype=float), index=_FAKE_IDX
+            ),
         )
 
         # Irregular DatetimeIndex with holiday gaps + boundary absent
@@ -2276,3 +2296,554 @@ class TestWFEightPlusSplits:
             f"got {n_success} (total={n_total}, skipped={n_skipped}). "
             f"Split statuses: {[(s.split_id, s.status, s.train_end, s.test_start) for s in result.splits]}"
         )
+
+
+# ===================================================================
+# Native estimator adapter tests
+# ===================================================================
+
+
+class TestIsNativeEstimatorConfig:
+    """Prove ``_is_native_estimator_config`` correctly detects native
+    sklearn-style estimators vs Qlib model wrappers."""
+
+    def test_native_lightgbm_detected(self):
+        cfg = {
+            "task": {
+                "model": {
+                    "class": "LGBMRegressor",
+                    "module_path": "lightgbm",
+                    "kwargs": {},
+                },
+            },
+        }
+        assert _is_native_estimator_config(cfg) is True
+
+    def test_qlib_wrapper_not_detected(self):
+        cfg = {
+            "task": {
+                "model": {
+                    "class": "LGBModel",
+                    "module_path": "qlib.contrib.model.gbdt",
+                    "kwargs": {},
+                },
+            },
+        }
+        assert _is_native_estimator_config(cfg) is False
+
+    def test_missing_module_path(self):
+        cfg = {"task": {"model": {"class": "LGBMRegressor"}}}
+        assert _is_native_estimator_config(cfg) is False
+
+    def test_empty_task(self):
+        assert _is_native_estimator_config({}) is False
+
+
+class TestPrepareNativeDataset:
+    """Prove ``_prepare_native_dataset`` extracts aligned X/y from a mock
+    DatasetH, drops non-finite rows, and handles missing segments."""
+
+    @staticmethod
+    def _make_idx(dates, instruments):
+        return pd.MultiIndex.from_product(
+            [pd.DatetimeIndex(dates), instruments],
+            names=["datetime", "instrument"],
+        )
+
+    def test_extracts_all_segments(self):
+        """All three segments (train/valid/test) are extracted and aligned."""
+        idx_train = self._make_idx(["2024-01-02", "2024-01-03"], ["A", "B"])
+        idx_valid = self._make_idx(["2024-04-01", "2024-04-02"], ["A", "B"])
+        idx_test = self._make_idx(["2024-07-01", "2024-07-02"], ["A", "B"])
+
+        class FakeDataset:
+            def prepare(self, segments, col_set, data_key=None):
+                if col_set == "feature":
+                    if segments == ["2024-01-01", "2024-06-30"]:
+                        return pd.DataFrame(
+                            {"feat1": [1.0, 2.0, 3.0, 4.0]}, index=idx_train,
+                        )
+                    if segments == ["2024-04-01", "2024-06-30"]:
+                        return pd.DataFrame(
+                            {"feat1": [5.0, 6.0, 7.0, 8.0]}, index=idx_valid,
+                        )
+                    return pd.DataFrame(
+                        {"feat1": [9.0, 10.0, 11.0, 12.0]}, index=idx_test,
+                    )
+                # label
+                if segments == ["2024-01-01", "2024-06-30"]:
+                    return pd.DataFrame({"label": [0.1, 0.2, 0.3, 0.4]}, index=idx_train)
+                if segments == ["2024-04-01", "2024-06-30"]:
+                    return pd.DataFrame({"label": [0.5, 0.6, 0.7, 0.8]}, index=idx_valid)
+                return pd.DataFrame({"label": [0.9, 1.0, 1.1, 1.2]}, index=idx_test)
+
+        segments = {
+            "train": ["2024-01-01", "2024-06-30"],
+            "valid": ["2024-04-01", "2024-06-30"],
+            "test": ["2024-07-01", "2024-12-31"],
+        }
+
+        result = _prepare_native_dataset(FakeDataset(), segments)
+
+        assert "train" in result
+        assert "valid" in result
+        assert "test" in result
+        assert result["train"][0].shape == (4, 1)
+        assert result["test"][1].iloc[0] == pytest.approx(0.9)
+
+    def test_drops_non_finite_rows(self):
+        """Rows with NaN in X or y are dropped."""
+        idx = self._make_idx(["2024-01-02"], ["A", "B", "C", "D"])
+
+        class FakeDataset:
+            def prepare(self, segments, col_set, data_key=None):
+                if col_set == "feature":
+                    return pd.DataFrame(
+                        {"f1": [1.0, 2.0, float("nan"), 4.0]}, index=idx,
+                    )
+                return pd.DataFrame(
+                    {"label": [0.1, 0.2, 0.3, float("nan")]}, index=idx,
+                )
+
+        segments = {"train": ["2024-01-01", "2024-06-30"]}
+        result = _prepare_native_dataset(FakeDataset(), segments)
+
+        assert "train" in result
+        X, y = result["train"]
+        assert len(X) == 2  # only rows 0, 1 are fully finite
+        assert list(X.index.get_level_values("instrument")) == ["A", "B"]
+        assert list(y.values) == [0.1, 0.2]
+
+    def test_missing_segment_omitted(self):
+        """Segment not in the dict is simply omitted from the result."""
+        result = _prepare_native_dataset(object(), {"train": ["2024-01-01", "2024-06-30"]})
+        assert "train" not in result  # No data, object() raises on .prepare
+        assert "valid" not in result
+        assert "test" not in result
+
+
+class TestFitNativeEstimator:
+    """Prove ``_fit_native_estimator`` calls fit(X,y) and predict(X) on a
+    sklearn-style estimator using data extracted from a mock DatasetH."""
+
+    @staticmethod
+    def _make_idx(dates, instruments):
+        return pd.MultiIndex.from_product(
+            [pd.DatetimeIndex(dates), instruments],
+            names=["datetime", "instrument"],
+        )
+
+    def test_fits_and_predicts(self):
+        """Model is fitted on X/y and predicts on test data."""
+        idx_train = self._make_idx(["2024-01-02"], ["A", "B", "C"])
+        idx_valid = self._make_idx(["2024-04-01"], ["A", "B", "C"])
+        idx_test = self._make_idx(["2024-07-01"], ["A", "B", "C"])
+
+        class FakeDataset:
+            def prepare(self, segments, col_set, data_key=None):
+                if col_set == "feature":
+                    if "01-01" in str(segments[0]):
+                        return pd.DataFrame(
+                            {"f1": [1.0, 2.0, 3.0]}, index=idx_train,
+                        )
+                    if "04" in str(segments[0]):
+                        return pd.DataFrame(
+                            {"f1": [4.0, 5.0, 6.0]}, index=idx_valid,
+                        )
+                    return pd.DataFrame(
+                        {"f1": [7.0, 8.0, 9.0]}, index=idx_test,
+                    )
+                if "01-01" in str(segments[0]):
+                    return pd.DataFrame({"label": [0.1, 0.2, 0.3]}, index=idx_train)
+                if "04" in str(segments[0]):
+                    return pd.DataFrame({"label": [0.4, 0.5, 0.6]}, index=idx_valid)
+                return pd.DataFrame({"label": [0.7, 0.8, 0.9]}, index=idx_test)
+
+        segments = {
+            "train": ["2024-01-01", "2024-03-31"],
+            "valid": ["2024-04-01", "2024-06-30"],
+            "test": ["2024-07-01", "2024-12-31"],
+        }
+
+        class FakeEstimator:
+            def __init__(self):
+                self.fitted_X = None
+                self.fitted_y = None
+                self.eval_set = None
+
+            def fit(self, X, y, eval_set=None):
+                self.fitted_X = X
+                self.fitted_y = y
+                self.eval_set = eval_set
+                return self
+
+            def predict(self, X):
+                return np.ones(len(X)) * 0.5
+
+        model = FakeEstimator()
+        fitted, predictions = _fit_native_estimator(model, FakeDataset(), segments)
+
+        assert fitted is model
+        assert len(predictions) == 3
+        assert list(predictions.values) == [0.5, 0.5, 0.5]
+        assert fitted.fitted_X is not None
+        assert len(fitted.fitted_X) == 3
+        # eval_set should contain valid as monitoring
+        assert fitted.eval_set is not None
+        X_va, y_va = fitted.eval_set[0]
+        assert len(X_va) == 3
+
+    def test_raises_on_no_train(self):
+        """RuntimeError when train data unavailable."""
+        with pytest.raises(RuntimeError, match=r"(?i)no training data"):
+            _fit_native_estimator(
+                object(), object(), {"test": ["2024-07-01", "2024-12-31"]},
+            )
+
+
+class TestWalkForwardZeroSuccess:
+    """Prove walk_forward_validate / _stage_walk_forward fail when no splits
+    succeed."""
+
+    def test_validate_raises_on_all_failed(self, monkeypatch, tmp_path):
+        """walk_forward_validate raises RuntimeError when all splits fail."""
+        monkeypatch.setattr(
+            "src.common.qlib_init.safe_qlib_init", lambda cfg: None,
+        )
+        monkeypatch.setattr(
+            "src.common.qlib_init.build_qlib_init_cfg", lambda uri, market: {},
+        )
+
+        def _fail_all(*args, **kwargs):
+            raise RuntimeError("Simulated split failure")
+
+        monkeypatch.setattr(
+            "src.research.walk_forward._run_single_split", _fail_all,
+        )
+
+        config_path = tmp_path / "us_lgbm_workflow.yaml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("task:\n  model:\n    kwargs: {}\n", encoding="utf-8")
+        monkeypatch.setattr("src.common.paths.CONFIG_DIR", config_path.parent)
+
+        with pytest.raises(RuntimeError, match=r"(?i)zero successful"):
+            walk_forward_validate(
+                market="us", model_type="lgbm",
+                train_start="2021-01-01", train_end="2022-06-30",
+            )
+
+
+class TestStageWalkForwardConfigWindows:
+    """Prove _stage_walk_forward passes config-derived training windows to
+    walk_forward_validate."""
+
+    def test_uses_config_end_time(self, monkeypatch):
+        """The end_time from config is used as train_end for walk-forward,
+        preventing evaluation beyond the configured range."""
+        from scripts.generate_release_candidate import _stage_walk_forward
+
+        captured = {}
+
+        def fake_validate(market, model_type, train_start, train_end,
+                          config, label_horizon):
+            captured["train_start"] = train_start
+            captured["train_end"] = train_end
+            result = WalkForwardResult(market="us", model_type="lgbm_regressor")
+            # Add a placeholder split so _stage_walk_forward doesn't abort
+            result.splits.append(
+                SplitResult(
+                    split_id=0, train_start="2018-01-01", train_end="2023-12-31",
+                    test_start="2024-01-01", test_end="2024-06-30",
+                    ic=0.05, rank_ic=0.04,
+                )
+            )
+            return result
+
+        monkeypatch.setattr(
+            "src.research.walk_forward.walk_forward_validate",
+            fake_validate,
+        )
+
+        config = {
+            "fit_start_time": "2018-01-01",
+            "start_time": "2018-01-01",
+            "end_time": "2024-12-31",
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "segments": {
+                            "train": ["2018-01-01", "2023-12-31"],
+                        },
+                    },
+                },
+                "model": {"kwargs": {}},
+            },
+        }
+
+        _stage_walk_forward(config, "us", Path("."))
+
+        assert captured["train_start"] == "2018-01-01"
+        assert captured["train_end"] == "2024-12-31"
+
+    def test_uses_config_start_time_fallback(self, monkeypatch):
+        """When fit_start_time is missing, uses start_time as train_start."""
+        from scripts.generate_release_candidate import _stage_walk_forward
+
+        captured = {}
+
+        def fake_validate(market, model_type, train_start, train_end,
+                          config, label_horizon):
+            captured["train_start"] = train_start
+            result = WalkForwardResult(market="us", model_type="lgbm_regressor")
+            result.splits.append(
+                SplitResult(
+                    split_id=0, train_start="2019-06-01", train_end="2023-12-31",
+                    test_start="2024-01-01", test_end="2024-06-30",
+                    ic=0.05, rank_ic=0.04,
+                )
+            )
+            return result
+
+        monkeypatch.setattr(
+            "src.research.walk_forward.walk_forward_validate",
+            fake_validate,
+        )
+
+        config = {
+            "start_time": "2019-06-01",
+            "end_time": "2024-12-31",
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "segments": {
+                            "train": ["2019-06-01", "2023-12-31"],
+                        },
+                    },
+                },
+                "model": {"kwargs": {}},
+            },
+        }
+
+        _stage_walk_forward(config, "us", Path("."))
+
+        assert captured["train_start"] == "2019-06-01"
+
+
+# ---------------------------------------------------------------------------
+# Load raw labels index normalization
+# ---------------------------------------------------------------------------
+
+
+class TestLoadRawLabelsIndexOrder:
+    """_load_raw_labels must always return a Series with (datetime, instrument)
+    MultiIndex order, even when D.features returns the native qlib order
+    (instrument, datetime)."""
+
+    def test_normalizes_instrument_datetime_to_datetime_instrument(
+        self, monkeypatch,
+    ):
+        """Simulate D.features returning (instrument, datetime) order and
+        assert _load_raw_labels returns (datetime, instrument) order."""
+        from src.research.walk_forward import _normalize_qlib_index
+
+        instruments = ["AAPL", "MSFT", "GOOG"]
+        dates = pd.DatetimeIndex(["2024-01-02", "2024-01-03", "2024-01-04"], name="datetime")
+
+        # Build the index in Qlib's native order: (instrument, datetime)
+        native_idx = pd.MultiIndex.from_product(
+            [instruments, dates], names=["instrument", "datetime"],
+        )
+        raw_df = pd.DataFrame(
+            np.array([0.01, 0.02, 0.03, -0.01, -0.02, -0.03, 0.00, 0.01, 0.02],
+                     dtype=float),
+            index=native_idx,
+            columns=["Ref($close, -10) / Ref($close, -1) - 1"],
+        )
+
+        class _FakeD:
+            @staticmethod
+            def list_instruments(inst, as_list=True):
+                return instruments
+
+            @staticmethod
+            def instruments(key):
+                return key
+
+            @staticmethod
+            def features(symbols, expressions, start_time=None, end_time=None):
+                # Return in qlib native order: (instrument, datetime)
+                return raw_df
+
+        monkeypatch.setattr(
+            "src.research.walk_forward.D", _FakeD,
+        )
+
+        config = {
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "handler": {
+                            "kwargs": {
+                                "label": ["Ref($close, -10) / Ref($close, -1) - 1"],
+                                "instruments": "us",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+
+        result = _load_raw_labels(config, "2024-01-02", "2024-01-04")
+
+        # Must be a Series
+        assert isinstance(result, pd.Series), f"Expected Series, got {type(result)}"
+        # Index must be MultiIndex
+        assert isinstance(result.index, pd.MultiIndex), (
+            f"Expected MultiIndex, got {type(result.index)}"
+        )
+        # Level order must be (datetime, instrument)
+        assert result.index.names == ["datetime", "instrument"], (
+            f"Expected names ['datetime', 'instrument'], got {result.index.names}"
+        )
+        # Must be sorted so datetime is the first level
+        first_level = result.index.get_level_values(0)
+        assert first_level.is_monotonic_increasing, (
+            "Result index must be sorted by (datetime, instrument)"
+        )
+        # Values preserved: check a specific pair
+        aapl_idx = result.index.get_loc(("2024-01-02", "AAPL"))
+        assert result.iloc[aapl_idx] == 0.01, (
+            f"Expected 0.01 for (2024-01-02, AAPL), got {result.iloc[aapl_idx]}"
+        )
+
+    def test_preserves_correct_level_names(self, monkeypatch):
+        """Only exact 'datetime'/'instrument' level names accepted."""
+        # Build index with wrong level name
+        wrong_idx = pd.MultiIndex.from_product(
+            [["A", "B"], pd.DatetimeIndex(["2024-01-02", "2024-01-03"])],
+            names=["instrument", "date"],  # 'date' not 'datetime'
+        )
+        raw_df = pd.DataFrame([0.01, 0.02, 0.03, 0.04], index=wrong_idx, columns=["label"])
+
+        class _BadD:
+            @staticmethod
+            def list_instruments(inst, as_list=True):
+                return ["A", "B"]
+
+            @staticmethod
+            def instruments(key):
+                return key
+
+            @staticmethod
+            def features(symbols, expressions, start_time=None, end_time=None):
+                return raw_df
+
+        monkeypatch.setattr("src.research.walk_forward.D", _BadD)
+
+        config = {
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "handler": {
+                            "kwargs": {
+                                "label": ["label"],
+                                "instruments": "us",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+
+        with pytest.raises(ValueError, match=r"(?i)datetime|instrument"):
+            _load_raw_labels(config, "2024-01-02", "2024-01-03")
+
+
+# ---------------------------------------------------------------------------
+# Load raw labels NaN filtering
+# ---------------------------------------------------------------------------
+
+
+class TestLoadRawLabelsNanFiltering:
+    """_load_raw_labels drops non-finite values and records attrs."""
+
+    def _fake_d(self, raw_series: pd.Series):
+        """Return a fake D class whose features returns a DataFrame built from *raw_series*."""
+        instruments = list(raw_series.index.get_level_values("instrument").unique())
+
+        class _FakeD:
+            @staticmethod
+            def list_instruments(inst, as_list=True):
+                return instruments
+
+            @staticmethod
+            def instruments(key):
+                return key
+
+            @staticmethod
+            def features(symbols, expressions, start_time=None, end_time=None):
+                return raw_series.to_frame(expressions[0])
+
+        return _FakeD
+
+    def test_drops_partial_nan(self, monkeypatch):
+        """Partial NaN/inf values are dropped and attrs recorded."""
+        dates = pd.bdate_range("2024-01-02", periods=3)
+        instruments = ["A", "B"]
+        idx = pd.MultiIndex.from_product(
+            [dates, instruments], names=["datetime", "instrument"],
+        )
+        vals = [0.01, np.nan, np.inf, -0.01, -np.inf, 0.02]
+        raw = pd.Series(vals, index=idx, name="label")
+
+        monkeypatch.setattr(
+            "src.research.walk_forward.D",
+            self._fake_d(raw),
+        )
+        result = _load_raw_labels(
+            self._raw_config(),
+            "2024-01-02",
+            "2024-01-04",
+        )
+
+        assert isinstance(result, pd.Series)
+        assert len(result) == 3  # 6 - 3 non-finite
+        assert result.attrs["n_raw_rows"] == 6
+        assert result.attrs["n_dropped_non_finite"] == 3
+        assert result.attrs["n_valid_rows"] == 3
+
+    def test_fails_on_all_nan(self, monkeypatch):
+        """All-non-finite raises RuntimeError."""
+        dates = pd.bdate_range("2024-01-02", periods=2)
+        instruments = ["A"]
+        idx = pd.MultiIndex.from_product(
+            [dates, instruments], names=["datetime", "instrument"],
+        )
+        raw = pd.Series([np.nan, np.inf], index=idx, name="label")
+
+        monkeypatch.setattr(
+            "src.research.walk_forward.D",
+            self._fake_d(raw),
+        )
+        with pytest.raises(RuntimeError, match=r"(?i)zero finite"):
+            _load_raw_labels(
+                self._raw_config(),
+                "2024-01-02",
+                "2024-01-03",
+            )
+
+    def _raw_config(self) -> dict:
+        return {
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "handler": {
+                            "kwargs": {
+                                "label": ["Ref($close, -10) / Ref($close, -1) - 1"],
+                                "instruments": "us",
+                            },
+                        },
+                    },
+                },
+            },
+        }

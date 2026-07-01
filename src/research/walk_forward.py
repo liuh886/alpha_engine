@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import structlog
 import yaml
+from qlib.data import D
 from qlib.utils import init_instance_by_config
 
 log = structlog.get_logger()
@@ -491,6 +492,245 @@ def _forward_return_expression(label_horizon: int) -> str:
     return f"Ref($close, -{target_horizon}) / Ref($close, -1) - 1"
 
 
+def _load_raw_labels(
+    config: dict,
+    test_start: str,
+    test_end: str,
+) -> pd.Series:
+    """Load raw forward returns for the test period directly from Qlib data.
+
+    Reads the exact configured label expression (e.g.
+    ``Ref($close, -10) / $close - 1``) from Qlib data without applying any
+    learn processors.  Instruments are resolved from the handler kwargs, not
+    from the top-level config key.
+
+    Args:
+        config: Workflow config dict.
+        test_start: Test period start date (YYYY-MM-DD).
+        test_end: Test period end date (YYYY-MM-DD).
+
+    Returns:
+        ``pd.Series`` with raw forward returns, indexed by ``(datetime, instrument)``.
+
+    Raises:
+        RuntimeError: If the label expression is missing or data loading fails.
+    """
+    handler_kwargs = config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+    label_exprs: list[str] = list(handler_kwargs.get("label", []))
+    if not label_exprs:
+        raise RuntimeError(
+            "No label expression in handler kwargs. "
+            "Cannot load raw forward returns."
+        )
+    label_expr = label_exprs[0]
+    instr_key = handler_kwargs.get("instruments", "us")
+    symbols = D.list_instruments(D.instruments(instr_key), as_list=True)
+    raw = D.features(symbols, [label_expr], start_time=test_start, end_time=test_end)
+    # Normalize to canonical (datetime, instrument) order — D.features
+    # may return MultiIndex ordered as (instrument, datetime).
+    raw = _normalize_qlib_index(raw)
+    if raw.empty:
+        raise RuntimeError(
+            f"Raw labels DataFrame is empty for expression {label_expr!r} "
+            f"over period {test_start} to {test_end}. "
+            "No data available — check Qlib data coverage."
+        )
+    if raw.shape[1] == 0:
+        raise RuntimeError(
+            f"Raw labels DataFrame has no columns for expression {label_expr!r}."
+        )
+    col = raw.iloc[:, 0]
+    # Replace inf with NaN, then drop non-finite rows
+    col = col.replace([np.inf, -np.inf], np.nan)
+    n_raw = len(col)
+    n_finite = int(col.notna().sum())
+    if n_finite == 0:
+        raise RuntimeError(
+            f"Raw labels contain zero finite values for expression {label_expr!r} "
+            f"over period {test_start} to {test_end}. "
+            "All values are NaN, inf, or missing."
+        )
+    col = col.dropna()
+    col.attrs["n_raw_rows"] = n_raw
+    col.attrs["n_dropped_non_finite"] = n_raw - n_finite
+    col.attrs["n_valid_rows"] = n_finite
+    return col
+
+
+# ---------------------------------------------------------------------------
+# Native estimator adapter (lightgbm.LGBMRegressor etc.)
+# ---------------------------------------------------------------------------
+
+
+def _is_native_estimator_config(cfg: dict) -> bool:
+    """Return True if the model config creates a native sklearn estimator (e.g.
+    ``lightgbm.LGBMRegressor``) rather than a Qlib model wrapper (e.g.
+    ``qlib.contrib.model.gbdt.LGBModel``).
+
+    The check inspects ``module_path``: native if it contains ``lightgbm``
+    without a ``qlib`` prefix.
+    """
+    model_cfg = cfg.get("task", {}).get("model", {})
+    module_path: str = model_cfg.get("module_path", "")
+    return bool(module_path and "lightgbm" in module_path and "qlib" not in module_path)
+
+
+def _prepare_native_dataset(
+    dataset,
+    segments: dict[str, list[str]],
+) -> dict[str, tuple[pd.DataFrame, pd.Series]]:
+    """Extract aligned features (X) and learning labels (y) from a DatasetH
+    for native sklearn-style estimators.
+
+    For each of ``"train"``, ``"valid"``, ``"test"`` in *segments* the returned
+    dict has an entry whose value is ``(X_df, y_series)`` with:
+
+    - A common ``(datetime, instrument)`` MultiIndex (intersection of feature
+      and label rows).
+    - Only fully-finite rows — non-finite values in either X or y are dropped
+      and counted.
+
+    Args:
+        dataset: A Qlib ``DatasetH`` instance that has already been configured
+            and can respond to ``.prepare()``.
+        segments: Dict mapping segment name to ``[start, end]`` date lists,
+            e.g. ``{"train": ["2021-01-01", "2023-12-31"], ...}``.  The
+            format matches what ``DatasetH.prepare(segments=...)`` accepts
+            as an explicit date range.
+
+    Returns:
+        Dict with keys ``"train"``, ``"valid"``, ``"test"`` (when present).
+        Segments missing from *segments* are omitted from the result.
+    """
+    from qlib.data.dataset.handler import DataHandler
+
+    result: dict[str, tuple[pd.DataFrame, pd.Series]] = {}
+    for seg_name in ("train", "valid", "test"):
+        seg = segments.get(seg_name)
+        if not seg or not isinstance(seg, (list, tuple)) or len(seg) != 2:
+            continue
+
+        try:
+            X = dataset.prepare(segments=seg_name, col_set="feature")
+            y = dataset.prepare(
+                segments=seg_name, col_set="label", data_key=DataHandler.DK_L
+            )
+        except Exception:
+            log.warning("Cannot prepare native dataset segment", segment=seg_name)
+            continue
+
+        if X is None or y is None or X.empty or y.empty:
+            log.warning(
+                "Empty native dataset segment",
+                segment=seg_name,
+                X_empty=X.empty if X is not None else True,
+                y_empty=y.empty if y is not None else True,
+            )
+            continue
+
+        # y may be a DataFrame with one column — squeeze to Series
+        if isinstance(y, pd.DataFrame):
+            y = y.iloc[:, 0]
+
+        # Align by common (datetime, instrument) MultiIndex
+        try:
+            X, y = _align_multiindex(X, y)  # type: ignore[assignment]
+        except (TypeError, ValueError) as exc:
+            log.warning(
+                "Native dataset segment index alignment failed",
+                segment=seg_name,
+                error=str(exc),
+            )
+            continue
+
+        # Drop rows where any feature or label is non-finite
+        X_vals = X.values
+        y_vals = y.values
+        if not np.issubdtype(X_vals.dtype, np.floating):
+            X_vals = X_vals.astype(np.float64)
+        if not np.issubdtype(y_vals.dtype, np.floating):
+            y_vals = y_vals.astype(np.float64)
+
+        finite_X = np.isfinite(X_vals).all(axis=1)
+        finite_y = np.isfinite(y_vals)
+        both_finite = finite_X & finite_y
+        n_dropped = len(both_finite) - int(both_finite.sum())
+        if n_dropped > 0:
+            log.debug(
+                "Dropped non-finite rows in native dataset",
+                segment=seg_name,
+                n_dropped=n_dropped,
+            )
+
+        X = X.loc[both_finite]
+        y = y.loc[both_finite]
+
+        if X.empty or y.empty:
+            log.warning("Empty after finite check in native dataset", segment=seg_name)
+            continue
+
+        result[seg_name] = (X, y)
+
+    return result
+
+
+def _fit_native_estimator(
+    model,
+    dataset,
+    segments: dict[str, list[str]],
+) -> tuple:
+    """Fit a native sklearn-style estimator with features/labels from a DatasetH.
+
+    Steps:
+    1. Extract train/valid/test features and labels via
+       ``_prepare_native_dataset``.
+    2. Fit the model on ``(X_train, y_train)``, optionally passing
+       ``eval_set=[(X_valid, y_valid)]`` for early-stopping / monitoring.
+    3. Predict on ``X_test``, returning predictions as a ``pd.Series``
+       with the test MultiIndex.
+
+    Args:
+        model: A native sklearn-style estimator (e.g. ``lightgbm.LGBMRegressor``)
+            that implements ``fit(X, y)`` and optionally supports
+            ``eval_set=``.
+        dataset: A Qlib ``DatasetH`` instance with configured segments.
+        segments: Dict mapping segment name to ``[start, end]`` date lists.
+
+    Returns:
+        ``(fitted_model, predictions_series)`` where *predictions_series*
+        is a ``pd.Series`` with ``(datetime, instrument)`` MultiIndex and
+        name ``"prediction"``.
+
+    Raises:
+        RuntimeError: If train or test data is unavailable after preparation.
+    """
+    data = _prepare_native_dataset(dataset, segments)
+
+    train_entry = data.get("train")
+    test_entry = data.get("test")
+    valid_entry = data.get("valid")
+
+    if train_entry is None:
+        raise RuntimeError("No training data available for native estimator fit")
+    if test_entry is None:
+        raise RuntimeError("No test data available for native estimator prediction")
+
+    X_tr, y_tr = train_entry
+    X_te, y_te = test_entry
+
+    fit_kw: dict = {}
+    if valid_entry is not None:
+        X_va, y_va = valid_entry
+        if len(X_va) > 0:
+            fit_kw["eval_set"] = [(X_va, y_va)]
+
+    model.fit(X_tr, y_tr, **fit_kw)
+
+    pred_arr = model.predict(X_te)
+    predictions = pd.Series(pred_arr, index=X_te.index, name="prediction")
+    return model, predictions
+
+
 def _run_single_split(
     base_config: dict,
     split_id: int,
@@ -593,37 +833,26 @@ def _run_single_split(
 
     dataset = init_instance_by_config(cfg["task"]["dataset"])
     model = init_instance_by_config(cfg["task"]["model"])
-    model.fit(dataset)
 
-    # Use model.predict(dataset) — Qlib's standard pattern.
-    # model.fit() may mutate the dataset, so we handle the case where
-    # prepare() is no longer available.
-    try:
-        # Try the standard approach first
-        predictions = model.predict(dataset, segment="test")
-    except (AttributeError, TypeError):
-        # Fallback: predict on the full dataset and filter to test period
-        predictions = model.predict(dataset)
+    # Native estimators need X/y DataFrames from DatasetH, not DatasetH itself.
+    segments = cfg["task"]["dataset"]["kwargs"]["segments"]
 
-    # Get actual labels
-    try:
-        label_data = dataset.prepare(segments="test", col_set="label", data_key="infer")
-        actuals = label_data.iloc[:, 0]  # Keep Series with MultiIndex for index-aligned IC
-    except (AttributeError, Exception):
-        # Fallback: use handler to fetch labels
-        from qlib.data import D
+    if _is_native_estimator_config(cfg):
+        model, predictions = _fit_native_estimator(model, dataset, segments)
+    else:
+        model.fit(dataset)
 
-        instruments = D.instruments(cfg.get("instruments", "us"))
-        label_expr = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["data_loader"]["kwargs"][
-            "config"
-        ].get("label", ["Ref($close, -1) / $close - 1"])
-        label_df = D.features(
-            D.list_instruments(instruments, as_list=True),
-            label_expr,
-            start_time=test_start,
-            end_time=test_end,
-        )
-        actuals = label_df.iloc[:, 0]  # Keep Series with MultiIndex for index-aligned IC
+        # Qlib model.predict(dataset) -- standard pattern.
+        # fit() may mutate the dataset, so handle the case where
+        # prepare() is no longer available.
+        try:
+            predictions = model.predict(dataset, segment="test")
+        except (AttributeError, TypeError):
+            predictions = model.predict(dataset)
+
+    # IC evaluation uses RAW forward returns (no learn processors).
+    # Training still uses processed labels inside the model.
+    actuals = _load_raw_labels(cfg, test_start, test_end)
 
     # Align by (datetime, instrument) MultiIndex — never positional.
     try:
@@ -790,6 +1019,14 @@ def walk_forward_validate(
     n_success = sum(1 for s in result.splits if s.status == "success" and s.ic is not None)
     n_failed = sum(1 for s in result.splits if s.status == "failed")
     n_total = len(result.splits)
+
+    # Fail closed when zero splits succeeded — no metrics to report.
+    if n_total > 0 and n_success == 0:
+        raise RuntimeError(
+            f"Walk-forward produced {n_failed} failed splits and zero successful. "
+            f"No valid metrics to aggregate. Check data coverage, label horizon, "
+            f"and date ranges."
+        )
 
     log.info(
         "Walk-forward validation complete",
