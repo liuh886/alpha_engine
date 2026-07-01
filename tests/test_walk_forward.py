@@ -22,6 +22,7 @@ from src.research.walk_forward import (
     _fit_native_estimator,
     _forward_return_expression,
     _is_native_estimator_config,
+    _load_raw_labels,
     _prepare_native_dataset,
     _run_single_split,
     _subtract_benchmark_by_date,
@@ -2626,3 +2627,133 @@ class TestStageWalkForwardConfigWindows:
         _stage_walk_forward(config, "us", Path("."))
 
         assert captured["train_start"] == "2019-06-01"
+
+
+# ---------------------------------------------------------------------------
+# Load raw labels index normalization
+# ---------------------------------------------------------------------------
+
+
+class TestLoadRawLabelsIndexOrder:
+    """_load_raw_labels must always return a Series with (datetime, instrument)
+    MultiIndex order, even when D.features returns the native qlib order
+    (instrument, datetime)."""
+
+    def test_normalizes_instrument_datetime_to_datetime_instrument(
+        self, monkeypatch,
+    ):
+        """Simulate D.features returning (instrument, datetime) order and
+        assert _load_raw_labels returns (datetime, instrument) order."""
+        from src.research.walk_forward import _normalize_qlib_index
+
+        instruments = ["AAPL", "MSFT", "GOOG"]
+        dates = pd.DatetimeIndex(["2024-01-02", "2024-01-03", "2024-01-04"], name="datetime")
+
+        # Build the index in Qlib's native order: (instrument, datetime)
+        native_idx = pd.MultiIndex.from_product(
+            [instruments, dates], names=["instrument", "datetime"],
+        )
+        raw_df = pd.DataFrame(
+            np.array([0.01, 0.02, 0.03, -0.01, -0.02, -0.03, 0.00, 0.01, 0.02],
+                     dtype=float),
+            index=native_idx,
+            columns=["Ref($close, -10) / Ref($close, -1) - 1"],
+        )
+
+        class _FakeD:
+            @staticmethod
+            def list_instruments(inst, as_list=True):
+                return instruments
+
+            @staticmethod
+            def instruments(key):
+                return key
+
+            @staticmethod
+            def features(symbols, expressions, start_time=None, end_time=None):
+                # Return in qlib native order: (instrument, datetime)
+                return raw_df
+
+        monkeypatch.setattr(
+            "src.research.walk_forward.D", _FakeD,
+        )
+
+        config = {
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "handler": {
+                            "kwargs": {
+                                "label": ["Ref($close, -10) / Ref($close, -1) - 1"],
+                                "instruments": "us",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+
+        result = _load_raw_labels(config, "2024-01-02", "2024-01-04")
+
+        # Must be a Series
+        assert isinstance(result, pd.Series), f"Expected Series, got {type(result)}"
+        # Index must be MultiIndex
+        assert isinstance(result.index, pd.MultiIndex), (
+            f"Expected MultiIndex, got {type(result.index)}"
+        )
+        # Level order must be (datetime, instrument)
+        assert result.index.names == ["datetime", "instrument"], (
+            f"Expected names ['datetime', 'instrument'], got {result.index.names}"
+        )
+        # Must be sorted so datetime is the first level
+        first_level = result.index.get_level_values(0)
+        assert first_level.is_monotonic_increasing, (
+            "Result index must be sorted by (datetime, instrument)"
+        )
+        # Values preserved: check a specific pair
+        aapl_idx = result.index.get_loc(("2024-01-02", "AAPL"))
+        assert result.iloc[aapl_idx] == 0.01, (
+            f"Expected 0.01 for (2024-01-02, AAPL), got {result.iloc[aapl_idx]}"
+        )
+
+    def test_preserves_correct_level_names(self, monkeypatch):
+        """Only exact 'datetime'/'instrument' level names accepted."""
+        # Build index with wrong level name
+        wrong_idx = pd.MultiIndex.from_product(
+            [["A", "B"], pd.DatetimeIndex(["2024-01-02", "2024-01-03"])],
+            names=["instrument", "date"],  # 'date' not 'datetime'
+        )
+        raw_df = pd.DataFrame([0.01, 0.02, 0.03, 0.04], index=wrong_idx, columns=["label"])
+
+        class _BadD:
+            @staticmethod
+            def list_instruments(inst, as_list=True):
+                return ["A", "B"]
+
+            @staticmethod
+            def instruments(key):
+                return key
+
+            @staticmethod
+            def features(symbols, expressions, start_time=None, end_time=None):
+                return raw_df
+
+        monkeypatch.setattr("src.research.walk_forward.D", _BadD)
+
+        config = {
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "handler": {
+                            "kwargs": {
+                                "label": ["label"],
+                                "instruments": "us",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+
+        with pytest.raises(ValueError, match=r"(?i)datetime|instrument"):
+            _load_raw_labels(config, "2024-01-02", "2024-01-03")
