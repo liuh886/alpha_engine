@@ -259,14 +259,42 @@ def _load_raw_forward_returns(
         raw = raw.reorder_levels(["datetime", "instrument"]).sort_index()
     result = raw.rename(columns={raw.columns[0]: "return"})
 
-    # Detect non-finite values
-    n_non_finite = int(np.sum(~np.isfinite(result["return"].values)))
-    if n_non_finite > 0:
+    # Replace +/-inf with NaN, then drop non-finite rows
+    result["return"] = result["return"].replace([np.inf, -np.inf], np.nan)
+    n_raw_rows = len(result)
+    n_dropped = int(result["return"].isna().sum())
+    n_valid_rows = n_raw_rows - n_dropped
+    coverage_ratio = n_valid_rows / max(n_raw_rows, 1)
+    result = result.dropna(subset=["return"])
+
+    if n_valid_rows == 0:
         raise StageFailure(
             stage="load_raw_returns",
-            error_type="NonFiniteRawReturns",
-            message=f"Raw forward returns contain {n_non_finite} non-finite value(s).",
+            error_type="EmptyValidReturns",
+            message=f"All {n_raw_rows} raw forward return rows are non-finite. "
+            "No valid data remains.",
         )
+    # Conservative threshold: in cross-sectional Qlib data some symbols lack
+    # future-price coverage, so a small fraction of NaN rows is expected.
+    # Require at least 80 % coverage — consistent with the data-quality bar
+    # in training alignment (50%) but tighter since raw-return ingestion has
+    # no downstream processor fallback.
+    MIN_RAW_RETURN_COVERAGE = 0.80
+    if coverage_ratio < MIN_RAW_RETURN_COVERAGE:
+        raise StageFailure(
+            stage="load_raw_returns",
+            error_type="InsufficientReturnCoverage",
+            message=f"Only {n_valid_rows}/{n_raw_rows} raw forward return rows are finite "
+            f"(coverage={coverage_ratio:.1%}). Minimum "
+            f"{MIN_RAW_RETURN_COVERAGE:.0%} required.",
+        )
+
+    # Record filtering provenance so downstream consumers can inspect coverage
+    result.attrs["n_raw_rows"] = n_raw_rows
+    result.attrs["n_dropped_non_finite"] = n_dropped
+    result.attrs["n_valid_rows"] = n_valid_rows
+    result.attrs["coverage_ratio"] = coverage_ratio
+
     # Tag provenance so downstream consumers can distinguish raw from processed
     result.attrs["provenance"] = "raw_forward_return"
     result.attrs["label_expression"] = label_expr
@@ -1144,6 +1172,12 @@ def _build_artifacts(
             "n_after_filter": pred_df.attrs.get("n_after_filter", len(pred_df)),
             "coverage_ratio": pred_df.attrs.get("coverage_ratio", 1.0),
         },
+        "raw_returns_filter": {
+            "n_raw_rows": raw_returns.attrs.get("n_raw_rows", len(raw_returns)),
+            "n_dropped_non_finite": raw_returns.attrs.get("n_dropped_non_finite", 0),
+            "n_valid_rows": raw_returns.attrs.get("n_valid_rows", len(raw_returns)),
+            "coverage_ratio": raw_returns.attrs.get("coverage_ratio", 1.0),
+        },
     }
     diagnostics_path = model_dir / "diagnostics.json"
     _write_json(diagnostics_path, diagnostics)
@@ -1584,6 +1618,7 @@ def generate_release_candidate(
     pred_df: pd.DataFrame | None = None
     labels_df: pd.DataFrame | None = None
     snapshot_ref: dict[str, Any] | None = None
+    raw_returns: pd.DataFrame | None = None
     try:
         _stage_qlib_init(config, market, project_root)
     except StageFailure as exc:
@@ -1615,7 +1650,26 @@ def generate_release_candidate(
         )
         return ({"status": "fail", "error": exc.message}, 1)
 
-    # ---- Stage 4: Walk-forward ----
+    # ---- Stage 4: Load raw forward returns (economic evaluation data contract) ----
+    # Load before expensive walk-forward/training so data-contract failures
+    # fail fast.  The loaded DataFrame is reused downstream for score
+    # diagnostics and backtest — no second load.
+    try:
+        raw_returns = _load_raw_forward_returns(config, market)
+    except StageFailure as exc:
+        _write_failure_report(
+            candidate=candidate,
+            market=market,
+            stage=exc.stage,
+            error_type=exc.error_type,
+            message=exc.message,
+            missing_files=exc.missing_files,
+            suggested_fix=exc.suggested_fix,
+            project_root=project_root,
+        )
+        return ({"status": "fail", "error": exc.message}, 1)
+
+    # ---- Stage 5: Walk-forward ----
     try:
         wf_meta = _stage_walk_forward(config, market, project_root)
     except StageFailure as exc:
@@ -1630,25 +1684,9 @@ def generate_release_candidate(
         )
         return ({"status": "fail", "error": exc.message}, 1)
 
-    # ---- Stage 5: Final model training and prediction ----
+    # ---- Stage 6: Final model training and prediction ----
     try:
         model, pred_df, labels_df = _stage_train(config, market)
-    except StageFailure as exc:
-        _write_failure_report(
-            candidate=candidate,
-            market=market,
-            stage=exc.stage,
-            error_type=exc.error_type,
-            message=exc.message,
-            missing_files=exc.missing_files,
-            suggested_fix=exc.suggested_fix,
-            project_root=project_root,
-        )
-        return ({"status": "fail", "error": exc.message}, 1)
-
-    # ---- Load raw forward returns (economic evaluation returns, no learn processors) ----
-    try:
-        raw_returns = _load_raw_forward_returns(config, market)
     except StageFailure as exc:
         _write_failure_report(
             candidate=candidate,
@@ -1690,7 +1728,7 @@ def generate_release_candidate(
         )
         return ({"status": "fail", "error": str(exc)}, 1)
 
-    # ---- Stage 6: Backtest (T+10 benchmark, genuine spread, raw returns only) ----
+    # ---- Stage 7: Backtest (T+10 benchmark, genuine spread, raw returns only) ----
     try:
         bt_metrics = _stage_backtest(market, pred_df, raw_returns)
     except StageFailure as exc:
@@ -1706,7 +1744,7 @@ def generate_release_candidate(
         )
         return ({"status": "fail", "error": exc.message}, 1)
 
-    # ---- Stage 7: Build model/evidence artifacts (no frontend param) ----
+    # ---- Stage 8: Build model/evidence artifacts (no frontend param) ----
     try:
         market_section = _build_artifacts(
             candidate=candidate,
@@ -1735,7 +1773,7 @@ def generate_release_candidate(
         )
         return ({"status": "fail", "error": str(exc)}, 1)
 
-    # ---- Stage 8: Frontend evidence (checked after model artifacts built) ----
+    # ---- Stage 9: Frontend evidence (checked after model artifacts built) ----
     try:
         frontend_ref = _load_frontend_evidence(
             frontend_evidence, candidate, revision, project_root
@@ -1753,7 +1791,7 @@ def generate_release_candidate(
         )
         return ({"status": "fail", "error": exc.message}, 1)
 
-    # ---- Stage 9: Write manifest (only when ALL checks pass) ----
+    # ---- Stage 10: Write manifest (only when ALL checks pass) ----
 
     # Remove any stale failure report from a prior unsuccessful run
     stale_failure = (project_root / "artifacts" / "release_candidate" / candidate

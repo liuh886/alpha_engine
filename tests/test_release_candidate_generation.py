@@ -873,6 +873,130 @@ def test_provenance_guard_accepts_zero_returns(gen_module: Any) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Raw-forward-return NaN filtering tests
+# ---------------------------------------------------------------------------
+
+
+def _raw_return_config() -> dict[str, Any]:
+    """Return a minimal config valid for _load_raw_forward_returns pre-D checks."""
+    return {
+        "task": {
+            "dataset": {
+                "kwargs": {
+                    "handler": {
+                        "kwargs": {
+                            "label": ["Ref($close, -10) / $close - 1"],
+                            "instruments": "us",
+                        }
+                    },
+                    "segments": {
+                        "test": ["2024-07-01", "2024-12-31"],
+                    },
+                }
+            }
+        }
+    }
+
+
+def _mock_qlib_d(monkeypatch: Any, raw_df: pd.DataFrame) -> None:
+    """Replace qlib.data.D with a fake that returns *raw_df* from D.features."""
+    from types import ModuleType
+    import sys
+
+    instruments = ["AAPL", "MSFT", "GOOG"]
+
+    class _MockD:
+        @staticmethod
+        def list_instruments(inst: Any, as_list: bool = True) -> list[str]:
+            return instruments
+
+        @staticmethod
+        def instruments(key: str) -> str:
+            return key
+
+        @staticmethod
+        def features(
+            symbols: Any,
+            expressions: list[str],
+            start_time: str | None = None,
+            end_time: str | None = None,
+        ) -> pd.DataFrame:
+            return raw_df
+
+    if "qlib" not in sys.modules:
+        sys.modules["qlib"] = ModuleType("qlib")
+    fake_data = ModuleType("qlib.data")
+    fake_data.D = _MockD
+    monkeypatch.setitem(sys.modules, "qlib.data", fake_data)
+
+
+def test_raw_forward_returns_drops_partial_nan(
+    gen_module: Any, monkeypatch: Any,
+) -> None:
+    """Partial NaN/inf rows are dropped and coverage stats recorded."""
+    dates = pd.bdate_range("2024-07-01", periods=3)
+    instruments = ["AAPL", "MSFT", "GOOG"]
+    idx = pd.MultiIndex.from_product(
+        [dates, instruments], names=["datetime", "instrument"],
+    )
+    vals = [0.01, 0.02, np.nan, 0.03, 0.05, -0.01, -0.02, 0.04, 0.06]
+    raw_df = pd.DataFrame(
+        vals, index=idx, columns=["Ref($close, -10) / $close - 1"],
+    )
+
+    _mock_qlib_d(monkeypatch, raw_df)
+    result = gen_module._load_raw_forward_returns(_raw_return_config(), "us")
+
+    assert "return" in result.columns
+    assert len(result) == 8  # 9 - 1 non-finite
+    assert result.attrs["n_raw_rows"] == 9
+    assert result.attrs["n_dropped_non_finite"] == 1
+    assert result.attrs["n_valid_rows"] == 8
+    assert abs(result.attrs["coverage_ratio"] - 8.0 / 9.0) < 1e-10
+    assert result.attrs["provenance"] == "raw_forward_return"
+
+
+def test_raw_forward_returns_fails_on_all_nan(
+    gen_module: Any, monkeypatch: Any,
+) -> None:
+    """All-NaN/inf raw returns raise StageFailure."""
+    dates = pd.bdate_range("2024-07-01", periods=2)
+    instruments = ["AAPL", "MSFT"]
+    idx = pd.MultiIndex.from_product(
+        [dates, instruments], names=["datetime", "instrument"],
+    )
+    raw_df = pd.DataFrame(
+        [np.nan, np.inf, -np.inf, np.nan],
+        index=idx,
+        columns=["Ref($close, -10) / $close - 1"],
+    )
+
+    _mock_qlib_d(monkeypatch, raw_df)
+    with pytest.raises(gen_module.StageFailure, match=r"(?i)empty.*valid|all.*non.finite"):
+        gen_module._load_raw_forward_returns(_raw_return_config(), "us")
+
+
+def test_raw_forward_returns_fails_on_low_coverage(
+    gen_module: Any, monkeypatch: Any,
+) -> None:
+    """Coverage below 80% raises InsufficientReturnCoverage."""
+    dates = pd.bdate_range("2024-07-01", periods=5)
+    instruments = ["A", "B"]
+    idx = pd.MultiIndex.from_product(
+        [dates, instruments], names=["datetime", "instrument"],
+    )
+    vals = [0.01, np.nan, np.nan, np.nan, np.nan,
+            np.nan, 0.02, np.nan, np.nan, 0.03]
+    raw_df = pd.DataFrame(
+        vals, index=idx, columns=["Ref($close, -10) / $close - 1"],
+    )
+
+    _mock_qlib_d(monkeypatch, raw_df)
+    with pytest.raises(gen_module.StageFailure, match=r"(?i)insufficient.*coverage|coverage"):
+        gen_module._load_raw_forward_returns(_raw_return_config(), "us")
+
+
+# ---------------------------------------------------------------------------
 # Score-direction diagnostics tests
 # ---------------------------------------------------------------------------
 
