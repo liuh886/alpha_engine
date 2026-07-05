@@ -293,3 +293,19 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
 - Formal artifact `9cd7e27bd300453eb706db2bda89645e` passed all three gates and
   was registered as STAGING. The frontend model view exposes performance and
   walk-forward metrics from the registry payload.
+
+### 2026-07-05: Canonical 10D Signal Discovery
+
+- Phase 2 research validity: fixed the primary discovery horizon at 10 trading
+  sessions for both holding and rebalance. Training/processed labels are
+  explicitly excluded from economic evaluation; the backtest boundary can
+  require `raw_forward_return` provenance with `horizon=10`.
+- Phase 2 direction research: every candidate is compared in original and
+  inverted orientation with deterministic rank IC and top/bottom bucket
+  diagnostics. Model outputs are never silently inverted.
+- Phase 3 governance: comparison evidence records all weak candidates and
+  promotion blockers. Research-candidate status is independent of promotion,
+  and missing/failed candidates cannot be promoted.
+- Phase 4 integration: CLI, release evidence, API, notebook, and dashboard use
+  the same `run_signal_discovery_comparison` report contract at
+  `artifacts/evidence/10d_signal_discovery/us_signal_discovery_report.json`.

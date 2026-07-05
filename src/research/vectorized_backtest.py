@@ -429,6 +429,7 @@ def run_vectorized_backtest(
     initial_capital: float = 10000.0,
     cost_bps: float = 20.0,
     non_overlapping: bool = True,
+    require_raw_10d_returns: bool = False,
 ) -> BacktestResult:
     """Run a vectorized backtest using TOP N equal-weight strategy.
 
@@ -457,6 +458,17 @@ def run_vectorized_backtest(
     BacktestResult
         Backtest results with all metrics.
     """
+    if require_raw_10d_returns:
+        if list(returns.columns) != ["return"]:
+            raise ValueError("Economic evaluation requires a single 'return' column")
+        if returns.attrs.get("provenance") != "raw_forward_return":
+            raise ValueError(
+                "Economic evaluation requires provenance='raw_forward_return'; "
+                "processed training labels are not valid returns"
+            )
+        if returns.attrs.get("horizon") != 10:
+            raise ValueError("Canonical 10D evaluation requires returns attrs horizon=10")
+
     # Get sorted dates
     pred_dates = sorted(predictions.index.get_level_values("datetime").unique())
     ret_dates = sorted(returns.index.get_level_values("datetime").unique())

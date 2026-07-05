@@ -14,6 +14,7 @@ import type {
   ModelPromoteResponse,
   NLCompileResponse,
   RemoveSymbolsResponse,
+  SignalDiscoveryResponse,
   StockRankingResponse,
   WatchlistResponse,
   WorkflowStatusEntry,
@@ -98,6 +99,13 @@ export const releaseApi = {
   },
   getModelEvidence(modelId: string) {
     return apiClient.get<EvidenceBundleResponse>(`/api/evidence/model/${encodeURIComponent(modelId)}`);
+  },
+  getLatestSignalDiscovery(market = "us", signal?: AbortSignal) {
+    return apiClient.get<SignalDiscoveryResponse>("/api/evidence/signal-discovery/latest", {
+      signal,
+      params: { market },
+      init: { cache: "no-store" },
+    });
   },
   listArenas(signal?: AbortSignal) {
     return apiClient.get<ArenaListResponse>("/api/arena/list", { signal });
