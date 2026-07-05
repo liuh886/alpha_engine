@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { shortId, formatPct } from "@/lib/format";
 import { format, parseISO } from "date-fns";
 import { ReleaseOutcome } from "@/components/ReleaseOutcome";
+import { SignalDiscoveryPanel } from "@/components/SignalDiscoveryPanel";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@/hooks/useQuery";
 import { releaseApi } from "@/lib/release-api";
@@ -80,6 +81,10 @@ export function ComparePage({ models, preselectedIds: propIds, compact = false }
   });
   const availableModels = compact ? models : comparisonQuery.data?.models ?? [];
   const registry = compact ? [] : comparisonQuery.data?.registry ?? [];
+  const signalDiscoveryQuery = useQuery({
+    enabled: !compact,
+    fetcher: (signal) => releaseApi.getLatestSignalDiscovery("us", signal),
+  });
 
   const arenasQuery = useQuery({
     enabled: !compact && activeTab === "leaderboard",
@@ -202,6 +207,14 @@ export function ComparePage({ models, preselectedIds: propIds, compact = false }
       )}
 
       {!compact && <ReleaseOutcome state={comparisonOutcome.state} reason={comparisonOutcome.reason} />}
+
+      {!compact && (
+        <SignalDiscoveryPanel
+          report={signalDiscoveryQuery.data?.report}
+          loading={signalDiscoveryQuery.loading}
+          error={signalDiscoveryQuery.error}
+        />
+      )}
 
       {/* Tab bar (only in full mode) */}
       {!compact && (
