@@ -1,7 +1,6 @@
 {
   "candidates": [
     {
-      "annualized_return": 0.195219,
       "benchmark_return": 0.422973,
       "candidate_kind": "lgbm_regressor",
       "costs": 0.05806667,
@@ -9,7 +8,6 @@
       "ic": 0.006213,
       "icir": 0.049856,
       "max_drawdown": -0.202916,
-      "n_periods": 35,
       "orientation": "original",
       "positive_ic_ratio": 0.50289,
       "promotion_blockers": [
@@ -22,8 +20,6 @@
       "score_direction": {
         "bottom_bucket_return": 0.01690016,
         "bottom_minus_top_spread": -0.00224229,
-        "n_dates": 346,
-        "n_samples": 45571,
         "rank_ic": 0.002699,
         "recommendation": "keep_score",
         "top_bucket_return": 0.01914245,
@@ -31,9 +27,7 @@
       },
       "sharpe": 0.794543,
       "status": "research_candidate",
-      "strength_rationale": "positive top\u2212bottom spread (0.0022); direction aligned (keep); good Sharpe (0.79)",
-      "test_end": "2026-06-09",
-      "test_start": "2025-01-02",
+      "strength_rationale": "positive oriented top−bottom spread (0.0022); applied orientation is aligned (original); good Sharpe (0.79)",
       "top_selected_stocks": [
         "MRVL",
         "HON",
@@ -53,11 +47,9 @@
       ],
       "total_return": 0.281049,
       "turnover": 29.033333,
-      "volatility": 0.271228,
       "weakness_rationale": "low ICIR (0.050); weak rank IC (0.0027)"
     },
     {
-      "annualized_return": 0.664644,
       "benchmark_return": 0.422973,
       "candidate_kind": "lgbm_regressor",
       "costs": 0.05353333,
@@ -65,22 +57,19 @@
       "ic": -0.006213,
       "icir": -0.049856,
       "max_drawdown": -0.164127,
-      "n_periods": 35,
       "orientation": "inverted",
       "positive_ic_ratio": 0.49711,
       "promotion_blockers": [
         "ICIR -0.0499 < 0.3",
         "Rank IC -0.0027 < 0.02",
         "Positive IC ratio 0.4971 < 0.55",
-        "Top\u2212bottom spread -0.001906 \u2264 0.0",
+        "Top−bottom spread -0.001906 ≤ 0.0",
         "Max drawdown -0.1641 < -0.15"
       ],
       "rank_ic": -0.002699,
       "score_direction": {
         "bottom_bucket_return": 0.01889133,
         "bottom_minus_top_spread": 0.00190617,
-        "n_dates": 346,
-        "n_samples": 45571,
         "rank_ic": -0.002699,
         "recommendation": "invert_score",
         "top_bucket_return": 0.01698516,
@@ -88,9 +77,7 @@
       },
       "sharpe": 2.126088,
       "status": "research_candidate",
-      "strength_rationale": "direction aligned (invert); good Sharpe (2.13)",
-      "test_end": "2026-06-09",
-      "test_start": "2025-01-02",
+      "strength_rationale": "good Sharpe (2.13)",
       "top_selected_stocks": [
         "NBIS",
         "ODFL",
@@ -110,11 +97,9 @@
       ],
       "total_return": 1.029509,
       "turnover": 26.766667,
-      "volatility": 0.257072,
-      "weakness_rationale": "low ICIR (-0.050); weak rank IC (-0.0027); negative/flat top\u2212bottom spread (-0.0019)"
+      "weakness_rationale": "low ICIR (-0.050); weak rank IC (-0.0027); negative/flat oriented spread (-0.0019); applied orientation still points backward (inverted)"
     },
     {
-      "annualized_return": 0.195219,
       "benchmark_return": 0.422973,
       "candidate_kind": "rank_transform",
       "costs": 0.05806667,
@@ -122,7 +107,6 @@
       "ic": 0.008702,
       "icir": 0.071258,
       "max_drawdown": -0.202916,
-      "n_periods": 35,
       "orientation": "original",
       "positive_ic_ratio": 0.479769,
       "promotion_blockers": [
@@ -135,8 +119,6 @@
       "score_direction": {
         "bottom_bucket_return": 0.01690016,
         "bottom_minus_top_spread": -0.00224229,
-        "n_dates": 346,
-        "n_samples": 45571,
         "rank_ic": 0.002699,
         "recommendation": "keep_score",
         "top_bucket_return": 0.01914245,
@@ -144,9 +126,7 @@
       },
       "sharpe": 0.794543,
       "status": "research_candidate",
-      "strength_rationale": "positive top\u2212bottom spread (0.0022); direction aligned (keep); good Sharpe (0.79)",
-      "test_end": "2026-06-09",
-      "test_start": "2025-01-02",
+      "strength_rationale": "positive oriented top−bottom spread (0.0022); applied orientation is aligned (original); good Sharpe (0.79)",
       "top_selected_stocks": [
         "MRVL",
         "HON",
@@ -166,11 +146,9 @@
       ],
       "total_return": 0.281049,
       "turnover": 29.033333,
-      "volatility": 0.271228,
       "weakness_rationale": "low ICIR (0.071); weak rank IC (0.0027)"
     },
     {
-      "annualized_return": 0.664644,
       "benchmark_return": 0.422973,
       "candidate_kind": "rank_transform",
       "costs": 0.05353333,
@@ -178,22 +156,19 @@
       "ic": -0.008702,
       "icir": -0.071258,
       "max_drawdown": -0.164127,
-      "n_periods": 35,
       "orientation": "inverted",
       "positive_ic_ratio": 0.520231,
       "promotion_blockers": [
         "ICIR -0.0713 < 0.3",
         "Rank IC -0.0027 < 0.02",
         "Positive IC ratio 0.5202 < 0.55",
-        "Top\u2212bottom spread -0.001906 \u2264 0.0",
+        "Top−bottom spread -0.001906 ≤ 0.0",
         "Max drawdown -0.1641 < -0.15"
       ],
       "rank_ic": -0.002699,
       "score_direction": {
         "bottom_bucket_return": 0.01889133,
         "bottom_minus_top_spread": 0.00190617,
-        "n_dates": 346,
-        "n_samples": 45571,
         "rank_ic": -0.002699,
         "recommendation": "invert_score",
         "top_bucket_return": 0.01698516,
@@ -201,9 +176,7 @@
       },
       "sharpe": 2.126088,
       "status": "research_candidate",
-      "strength_rationale": "direction aligned (invert); good Sharpe (2.13)",
-      "test_end": "2026-06-09",
-      "test_start": "2025-01-02",
+      "strength_rationale": "good Sharpe (2.13)",
       "top_selected_stocks": [
         "NBIS",
         "ODFL",
@@ -223,11 +196,9 @@
       ],
       "total_return": 1.029509,
       "turnover": 26.766667,
-      "volatility": 0.257072,
-      "weakness_rationale": "low ICIR (-0.071); weak rank IC (-0.0027); negative/flat top\u2212bottom spread (-0.0019)"
+      "weakness_rationale": "low ICIR (-0.071); weak rank IC (-0.0027); negative/flat oriented spread (-0.0019); applied orientation still points backward (inverted)"
     },
     {
-      "annualized_return": 0.544672,
       "benchmark_return": 0.399443,
       "candidate_kind": "factor_baseline",
       "costs": 0.0526,
@@ -235,7 +206,6 @@
       "ic": 0.028095,
       "icir": 0.119164,
       "max_drawdown": -0.328825,
-      "n_periods": 34,
       "orientation": "original",
       "positive_ic_ratio": 0.61194,
       "promotion_blockers": [
@@ -246,8 +216,6 @@
       "score_direction": {
         "bottom_bucket_return": 0.01841602,
         "bottom_minus_top_spread": -0.01069928,
-        "n_dates": 335,
-        "n_samples": 44114,
         "rank_ic": 0.025422,
         "recommendation": "keep_score",
         "top_bucket_return": 0.02911529,
@@ -255,9 +223,7 @@
       },
       "sharpe": 1.34677,
       "status": "research_candidate",
-      "strength_rationale": "marginal rank IC (0.0254); positive top\u2212bottom spread (0.0107); direction aligned (keep); good Sharpe (1.35)",
-      "test_end": "2026-06-09",
-      "test_start": "2025-01-02",
+      "strength_rationale": "marginal rank IC (0.0254); positive oriented top−bottom spread (0.0107); applied orientation is aligned (original); good Sharpe (1.35)",
       "top_selected_stocks": [
         "MRVL",
         "AXON",
@@ -277,11 +243,9 @@
       ],
       "total_return": 0.797956,
       "turnover": 26.3,
-      "volatility": 0.383588,
       "weakness_rationale": "low ICIR (0.119)"
     },
     {
-      "annualized_return": 0.446497,
       "benchmark_return": 0.399443,
       "candidate_kind": "factor_baseline",
       "costs": 0.05753333,
@@ -289,22 +253,19 @@
       "ic": -0.028095,
       "icir": -0.119164,
       "max_drawdown": -0.182284,
-      "n_periods": 34,
       "orientation": "inverted",
       "positive_ic_ratio": 0.38806,
       "promotion_blockers": [
         "ICIR -0.1192 < 0.3",
         "Rank IC -0.0254 < 0.02",
         "Positive IC ratio 0.3881 < 0.55",
-        "Top\u2212bottom spread -0.010699 \u2264 0.0",
+        "Top−bottom spread -0.010699 ≤ 0.0",
         "Max drawdown -0.1823 < -0.15"
       ],
       "rank_ic": -0.025422,
       "score_direction": {
         "bottom_bucket_return": 0.02911529,
         "bottom_minus_top_spread": 0.01069928,
-        "n_dates": 335,
-        "n_samples": 44114,
         "rank_ic": -0.025422,
         "recommendation": "invert_score",
         "top_bucket_return": 0.01841602,
@@ -312,9 +273,7 @@
       },
       "sharpe": 1.168823,
       "status": "research_candidate",
-      "strength_rationale": "direction aligned (invert); good Sharpe (1.17)",
-      "test_end": "2026-06-09",
-      "test_start": "2025-01-02",
+      "strength_rationale": "good Sharpe (1.17)",
       "top_selected_stocks": [
         "ZS",
         "MSTR",
@@ -334,8 +293,7 @@
       ],
       "total_return": 0.645514,
       "turnover": 28.766667,
-      "volatility": 0.377618,
-      "weakness_rationale": "low ICIR (-0.119); weak rank IC (-0.0254); negative/flat top\u2212bottom spread (-0.0107)"
+      "weakness_rationale": "low ICIR (-0.119); weak rank IC (-0.0254); negative/flat oriented spread (-0.0107); applied orientation still points backward (inverted)"
     }
   ],
   "generated_at": "2026-07-05T07:48:02Z",
@@ -359,7 +317,7 @@
       "direction": "keep_score",
       "icir": 0.11916392814545089,
       "rank_ic": 0.025421891811756036,
-      "strength": "marginal rank IC (0.0254); positive top\u2212bottom spread (0.0107); direction aligned (keep); good Sharpe (1.35)",
+      "strength": "marginal rank IC (0.0254); positive oriented top−bottom spread (0.0107); applied orientation is aligned (original); good Sharpe (1.35)",
       "weakness": "low ICIR (0.119)"
     },
     "best_icir": 0.11916392814545089,
@@ -369,7 +327,8 @@
       "factor_baseline": "historical $close / Ref($close, 10) - 1",
       "processed_rank_labels": "winner/rank targets for training only",
       "raw_future_returns": "unprocessed Ref($close, -10) / $close - 1",
-      "training_labels": "processed targets for fitting only; never economic returns"
+      "training_labels": "processed targets for fitting only; never economic returns",
+      "winner_bucket_labels": "same-row training labels only unless replaced by explicit out-of-sample winner predictions"
     },
     "input_provenance": {
       "benchmark": "QQQ",
