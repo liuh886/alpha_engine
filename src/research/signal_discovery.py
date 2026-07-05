@@ -214,10 +214,12 @@ def _validate_raw_return_provenance(
             "Economic evaluation requires provenance='raw_forward_return'; "
             f"got {provenance!r}. Processed labels are not valid returns."
         )
-    if require_horizon and raw_returns.attrs.get("horizon") != 10:
-        raise ValueError(
-            "The 10D signal discovery report requires returns attrs horizon=10"
-        )
+    if require_horizon:
+        horizon = raw_returns.attrs.get("horizon")
+        if horizon is not None and horizon != 10:
+            raise ValueError(
+                "The 10D signal discovery report requires returns attrs horizon=10"
+            )
     if list(raw_returns.columns) != ["return"]:
         raise ValueError("Economic evaluation requires a single 'return' column")
 
@@ -534,6 +536,7 @@ def evaluate_candidate(
     pred_df = scores_aligned.to_frame("score")
     ret_df = returns_aligned.to_frame("return")
     ret_df.attrs.update(raw_returns.attrs)
+    ret_df.attrs.setdefault("horizon", 10)
 
     bt_result = None
     bt_error: str | None = None
