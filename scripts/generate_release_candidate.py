@@ -61,6 +61,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.release.candidate import POLICY, REQUIRED_RELEASE_METRICS  # noqa: E402
+from src.research.signal_discovery import (  # noqa: E402
+    canonical_output_dir,
+    compute_direction_diagnostics,
+    run_signal_discovery_comparison,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -344,92 +349,97 @@ def _validate_return_provenance(returns: pd.DataFrame) -> None:
         )
 
 
+def _load_factor_baseline_from_qlib(
+    config: dict[str, Any],
+    market: str,
+    pred_df: pd.DataFrame,
+) -> pd.DataFrame | None:
+    """Load a historical-price factor baseline from Qlib.
+
+    Uses the expression ``$close / Ref($close, 10) - 1`` — a 10-day
+    *backward*-looking momentum factor computed from historical prices only.
+    This is NOT a forward-return expression: ``Ref($close, 10)`` looks back
+    10 days, so the factor uses only information known at each point in time.
+
+    The factor is loaded over the same test interval as *pred_df* and
+    returned with a ``(datetime, instrument)`` MultiIndex and a ``"score"``
+    column.
+
+    Returns None if Qlib is unavailable or the expression cannot be evaluated.
+    """
+    try:
+        from qlib.data import D
+    except ImportError:
+        return None
+
+    # Historical-price momentum: (close_today / close_10d_ago) - 1
+    factor_expr = "$close / Ref($close, 10) - 1"
+
+    handler_kwargs = config["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+    instr_key = handler_kwargs.get("instruments", market)
+
+    try:
+        symbols = D.list_instruments(D.instruments(instr_key), as_list=True)
+    except Exception:
+        return None
+    if not symbols:
+        return None
+
+    test_start = str(pred_df.index.get_level_values(0).min())
+    test_end = str(pred_df.index.get_level_values(0).max())
+
+    try:
+        raw = D.features(symbols, [factor_expr], start_time=test_start, end_time=test_end)
+    except Exception:
+        return None
+
+    if raw.empty:
+        return None
+
+    # Normalise to (datetime, instrument) MultiIndex
+    if isinstance(raw.index, pd.MultiIndex):
+        raw = raw.reorder_levels(["datetime", "instrument"]).sort_index()
+
+    result = raw.rename(columns={raw.columns[0]: "score"})
+    result["score"] = result["score"].replace([np.inf, -np.inf], np.nan)
+    result = result.dropna(subset=["score"])
+
+    if result.empty:
+        return None
+
+    return result
+
+
 def _compute_score_diagnostics(
     predictions: pd.DataFrame,
     raw_returns: pd.DataFrame,
 ) -> dict[str, Any]:
     """Compute score-direction diagnostics from aligned predictions and raw returns.
 
-    Uses only dates present in both DataFrames.  Reports:
+    Delegates to the canonical ``compute_direction_diagnostics`` from
+    ``src.research.signal_discovery`` to avoid maintaining divergent logic.
 
-    - ``raw_pearson_ic`` — cross-sectional daily-mean Pearson IC
-    - ``raw_rank_ic`` — cross-sectional daily-mean Spearman rank IC
-    - ``top_decile_mean_return`` — mean raw return of the top decile by score
-    - ``bottom_decile_mean_return`` — mean raw return of the bottom decile by score
-    - ``top_minus_bottom`` — *top_decile_mean_return - bottom_decile_mean_return*
-    - ``bottom_minus_top`` — *bottom_decile_mean_return - top_decile_mean_return*
-    - ``recommendation`` — one of ``keep_score`` / ``invert_score`` /
-      ``no_signal`` / ``inconclusive``
-
-    Decision rule (deterministic):
-        If ``top_minus_bottom > 0`` AND ``raw_rank_ic > 0`` → ``keep_score``
-        If ``top_minus_bottom < 0`` AND ``raw_rank_ic < 0`` → ``invert_score``
-        If ``abs(top_minus_bottom) < 1e-12`` → ``no_signal``
-        Otherwise → ``inconclusive``
+    Returns a dict with the canonical ``DirectionDiagnostics`` naming
+    convention.
     """
     # Guard: reject processed / rank-like data even if column is renamed to "return"
     _validate_return_provenance(raw_returns)
 
-    from src.research.walk_forward import _align_multiindex, _compute_mean_daily_ic
+    diag = compute_direction_diagnostics(
+        predictions["score"],
+        raw_returns["return"],
+        top_fraction=0.10,
+    )
 
-    pred_aligned, ret_aligned = _align_multiindex(predictions["score"], raw_returns["return"])
-    p_vals = pred_aligned.values
-    r_vals = ret_aligned.values
+    # Canonical dict from DirectionDiagnostics
+    result = diag.to_dict()
 
-    pearson_ic, rank_ic = _compute_mean_daily_ic(p_vals, ret_aligned)
+    # Add backward-compatible aliases for existing artifact consumers
+    result["raw_rank_ic"] = result["rank_ic"]
+    result["top_minus_bottom"] = result["top_minus_bottom_spread"]
+    result["bottom_minus_top"] = result["bottom_minus_top_spread"]
 
-    # Decile analysis by date: compute top/bottom decile means cross-sectionally
-    # per datetime, then average the per-date means across valid dates.
-    # This avoids global pooling which can be dominated by dates with many
-    # stocks or systematically different return levels.
-    df = pd.DataFrame({"score": p_vals, "return": r_vals}, index=ret_aligned.index).dropna()
-    if df.empty:
-        return {
-            "raw_pearson_ic": 0.0,
-            "raw_rank_ic": 0.0,
-            "top_decile_mean_return": 0.0,
-            "bottom_decile_mean_return": 0.0,
-            "top_minus_bottom": 0.0,
-            "bottom_minus_top": 0.0,
-            "recommendation": "no_signal",
-            "n_samples": 0,
-            "n_dates": 0,
-        }
-    per_date_tops: list[float] = []
-    per_date_bottoms: list[float] = []
-    for _date, group in df.groupby(level="datetime"):
-        sg = group.sort_values("score", ascending=False)
-        n_stocks = len(sg)
-        n_decile = max(1, n_stocks // 10)
-        per_date_tops.append(float(sg["return"].iloc[:n_decile].mean()))
-        per_date_bottoms.append(float(sg["return"].iloc[-n_decile:].mean()))
-    top = float(np.mean(per_date_tops)) if per_date_tops else 0.0
-    bottom = float(np.mean(per_date_bottoms)) if per_date_bottoms else 0.0
-    tmb = top - bottom
-    bmt = float(bottom - top)
-    n_dates = len(per_date_tops)
-
-    # Decision rule
-    if tmb > 0 and rank_ic > 0:
-        rec = "keep_score"
-    elif tmb < 0 and rank_ic < 0:
-        rec = "invert_score"
-    elif abs(tmb) < 1e-12:
-        rec = "no_signal"
-    else:
-        rec = "inconclusive"
-
-    return {
-        "raw_pearson_ic": round(float(pearson_ic), 6),
-        "raw_rank_ic": round(float(rank_ic), 6),
-        "top_decile_mean_return": round(float(top), 8),
-        "bottom_decile_mean_return": round(float(bottom), 8),
-        "top_minus_bottom": round(tmb, 8),
-        "bottom_minus_top": round(bmt, 8),
-        "recommendation": rec,
-        "n_samples": len(df),
-        "n_dates": n_dates,
-    }
+    return result
 
 
 def _validate_predictions_labels(
@@ -836,6 +846,7 @@ def _stage_backtest(
             rebalance_days=rebalance_days,
             cost_bps=cost_bps,
             non_overlapping=True,
+            require_raw_10d_returns=True,
         )
     except Exception as exc:
         raise StageFailure(
@@ -942,6 +953,7 @@ def _compute_spread_evidence(
             rebalance_days=rebalance_days,
             cost_bps=cost_bps,
             non_overlapping=True,
+            require_raw_10d_returns=True,
         )
     except Exception as exc:
         raise StageFailure(
@@ -963,6 +975,69 @@ def _compute_spread_evidence(
         "rebalance_days": rebalance_days,
         "n_periods": bt_result.n_periods,
         "status": "ok",
+    }
+
+
+def _stage_signal_discovery_comparison(
+    market: str,
+    pred_df: pd.DataFrame,
+    raw_returns: pd.DataFrame,
+    benchmark_returns: pd.DataFrame | None = None,
+    project_root: Path | None = None,
+    config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Run the fixed-10D signal discovery comparison and write the report.
+
+    Loads the factor baseline from Qlib historical price (``$close /
+    Ref($close, 10) - 1``) and passes it as explicit *factor_baseline_predictions*
+    input.  Evaluates LGBM regressor + rank transform + factor baseline in
+    both original and inverted orientations, and writes the canonical report.
+
+    Returns the report dict and path, or raises StageFailure.
+    """
+    # Load factor baseline from Qlib historical price (not from raw returns)
+    factor_pred: pd.DataFrame | None = None
+    if config is not None:
+        factor_pred = _load_factor_baseline_from_qlib(config, market, pred_df)
+    if factor_pred is None:
+        # Factor baseline will be skipped with a warning in the comparison
+        pass
+
+    # Determine output directory
+    output_dir = canonical_output_dir(project_root) if project_root else None
+
+    # Run comparison — no winner_labels; uses explicit factor_baseline_predictions
+    try:
+        report = run_signal_discovery_comparison(
+            market=market,
+            lgbm_predictions=pred_df,
+            raw_returns=raw_returns,
+            factor_baseline_predictions=factor_pred,
+            benchmark_returns=benchmark_returns,
+            topk=15,
+            rebalance_days=10,
+            cost_bps=20,
+            output_dir=output_dir,
+        )
+    except Exception as exc:
+        raise StageFailure(
+            stage="signal_discovery",
+            error_type="ComparisonFailed",
+            message=_bounded_message(f"Signal discovery comparison failed: {exc}"),
+        ) from exc
+
+    report_dict = report.to_dict()
+
+    # Use the canonical relative path from the report summary
+    _report_path = report.summary.get("report_path", "")
+
+    return {
+        "report": report_dict,
+        "report_path": _report_path,
+        "n_candidates": len(report.candidates),
+        "n_promoted": len(report.promoted),
+        "promoted": report.promoted,
+        "research_only": report.research_only,
     }
 
 
@@ -1098,6 +1173,7 @@ def _build_artifacts(
     labels_df: pd.DataFrame,
     raw_returns: pd.DataFrame,
     score_diagnostics: dict[str, Any] | None = None,
+    signal_discovery: dict[str, Any] | None = None,
     project_root: Path,
     snapshot_ref: dict[str, Any],
 ) -> dict[str, Any]:
@@ -1310,6 +1386,18 @@ def _build_artifacts(
         "evidence": evidence_ref,
         "missing_metrics": missing_metrics,
     }
+
+    # --- Signal discovery report reference (canonical 10D comparison) ---
+    if signal_discovery and signal_discovery.get("report_path"):
+        sd_report_path = project_root / signal_discovery["report_path"]
+        if sd_report_path.is_file():
+            market_section["signal_discovery"] = {
+                "report_path": signal_discovery["report_path"],
+                "sha256": _sha256(sd_report_path),
+                "n_candidates": signal_discovery.get("n_candidates", 0),
+                "n_promoted": signal_discovery.get("n_promoted", 0),
+            }
+
     return market_section
 
 
@@ -1468,6 +1556,7 @@ def _build_manifest(
     bt_metrics: dict[str, Any] | None,
     market_section: dict[str, Any],
     frontend_ref: dict[str, Any],
+    signal_discovery: dict[str, Any] | None = None,
     project_root: Path,
 ) -> dict[str, Any]:
     """Assemble the top-level release manifest."""
@@ -1519,6 +1608,17 @@ def _build_manifest(
         "backtest": backtest_summary,
         "spread": spread_data,
         "frontend_build": frontend_ref,
+        "10d_signal_discovery": (
+            {
+                "report_path": signal_discovery.get("report_path", ""),
+                "n_candidates": signal_discovery.get("n_candidates", 0),
+                "n_promoted": signal_discovery.get("n_promoted", 0),
+                "promoted": signal_discovery.get("promoted", []),
+                "research_only": signal_discovery.get("research_only", []),
+            }
+            if signal_discovery
+            else None
+        ),
         "artifact_paths": {
             "release_manifest": f"artifacts/release_candidate/{candidate}/release_manifest.json",
             "model_artifact_dir": f"artifacts/model_artifacts/{market}-{candidate}",
@@ -1614,6 +1714,7 @@ def generate_release_candidate(
     # ---- Stage 2: Qlib init ----
     wf_meta: dict[str, Any] = {}
     bt_metrics: dict[str, Any] | None = None
+    signal_discovery_result: dict[str, Any] | None = None
     model: Any = None
     pred_df: pd.DataFrame | None = None
     labels_df: pd.DataFrame | None = None
@@ -1744,6 +1845,55 @@ def generate_release_candidate(
         )
         return ({"status": "fail", "error": exc.message}, 1)
 
+    # ---- Stage 7b: 10D Signal Discovery Comparison Report ----
+    # Runs the canonical fixed-10D comparison across LGBM regressor,
+    # ranking-style transform, and factor baseline in both original
+    # and inverted orientations.  The report is written to
+    # artifacts/evidence/10d_signal_discovery/{market}_signal_discovery_report.json
+    # and referenced in the release manifest.
+    _benchmark_for_sd: pd.DataFrame | None = None
+    try:
+        from qlib.data import D
+
+        _sd_test_start = str(pred_df.index.get_level_values(0).min())
+        _sd_test_end = str(pred_df.index.get_level_values(0).max())
+        _bench_raw = D.features(
+            ["QQQ"],
+            ["Ref($close, -10) / $close - 1"],
+            start_time=_sd_test_start,
+            end_time=_sd_test_end,
+        )
+        _benchmark_for_sd = (
+            _bench_raw.droplevel("instrument")
+            .iloc[:, [0]]
+            .rename(columns={_bench_raw.columns[0]: "return"})
+            .sort_index()
+        )
+    except Exception:
+        _benchmark_for_sd = None
+
+    try:
+        signal_discovery_result = _stage_signal_discovery_comparison(
+            market=market,
+            pred_df=pred_df,
+            raw_returns=raw_returns,
+            benchmark_returns=_benchmark_for_sd,
+            project_root=project_root,
+            config=config,
+        )
+    except StageFailure as exc:
+        _write_failure_report(
+            candidate=candidate,
+            market=market,
+            stage=exc.stage,
+            error_type=exc.error_type,
+            message=exc.message,
+            missing_files=exc.missing_files,
+            suggested_fix=exc.suggested_fix,
+            project_root=project_root,
+        )
+        return ({"status": "fail", "error": exc.message}, 1)
+
     # ---- Stage 8: Build model/evidence artifacts (no frontend param) ----
     try:
         market_section = _build_artifacts(
@@ -1759,6 +1909,7 @@ def generate_release_candidate(
             labels_df=labels_df,
             raw_returns=raw_returns,
             score_diagnostics=score_diagnostics,
+            signal_discovery=signal_discovery_result,
             project_root=project_root,
             snapshot_ref=snapshot_ref,
         )
@@ -1810,6 +1961,7 @@ def generate_release_candidate(
         bt_metrics=bt_metrics,
         market_section=market_section,
         frontend_ref=frontend_ref,
+        signal_discovery=signal_discovery_result,
         project_root=project_root,
     )
     manifest_dir = project_root / "artifacts" / "release_candidate" / candidate
