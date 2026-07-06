@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import pytest
+import pandas as pd
 
-from src.research.rolling_windows import filter_windows_by_available_range, half_year_rolling_windows
+from scripts.run_rolling_daily_ranker_evidence import MIN_STABILITY_WINDOWS
+from src.research.rolling_windows import (
+    filter_windows_by_available_range,
+    half_year_rolling_windows,
+    purge_training_tail,
+)
 
 
 def test_half_year_rolling_windows_use_expanding_train_history() -> None:
@@ -22,6 +28,8 @@ def test_half_year_rolling_windows_use_expanding_train_history() -> None:
 def test_half_year_rolling_windows_reject_invalid_ranges() -> None:
     with pytest.raises(ValueError, match="first_test_year"):
         half_year_rolling_windows(start_year=2025, first_test_year=2024, last_test_year=2026)
+    with pytest.raises(ValueError, match="first_test_year"):
+        half_year_rolling_windows(start_year=2025, first_test_year=2025, last_test_year=2026)
     with pytest.raises(ValueError, match="last_test_year"):
         half_year_rolling_windows(start_year=2021, first_test_year=2026, last_test_year=2025)
 
@@ -37,3 +45,28 @@ def test_filter_windows_by_available_range_keeps_fully_covered_windows() -> None
 
     assert [window.label for window in kept] == ["2024H1", "2024H2", "2025H1"]
     assert all(window.test_end <= "2025-06-30" for window in kept)
+
+
+def test_rolling_runner_keeps_three_window_stability_minimum() -> None:
+    assert MIN_STABILITY_WINDOWS == 3
+
+
+def test_purge_training_tail_removes_holding_period_and_preserves_return_attrs() -> None:
+    dates = pd.date_range("2023-12-01", periods=15, freq="B")
+    index = pd.MultiIndex.from_product([dates, ["A", "B"]], names=["datetime", "instrument"])
+    features = pd.DataFrame({"feature": range(len(index))}, index=index)
+    returns = pd.DataFrame({"return": [0.01] * len(index)}, index=index)
+    returns.attrs.update(
+        {
+            "provenance": "raw_forward_return",
+            "horizon": 10,
+            "expression": "Ref($close, -10) / $close - 1",
+        }
+    )
+
+    purged_features, purged_returns = purge_training_tail(features, returns, holding_days=10)
+
+    expected_dates = set(dates[:5])
+    assert set(purged_features.index.get_level_values("datetime")) == expected_dates
+    assert set(purged_returns.index.get_level_values("datetime")) == expected_dates
+    assert purged_returns.attrs == returns.attrs
