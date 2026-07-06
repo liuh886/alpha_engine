@@ -11,7 +11,7 @@ import pandas as pd
 
 
 def sanitize_factor_name(expression: Any, *, max_length: int = 60) -> str:
-    """Create a stable notebook/display-safe factor name from a Qlib expression."""
+    """Create the same feature-name form used by the training notebook."""
 
     text = str(expression)
     replacements = {
@@ -21,8 +21,6 @@ def sanitize_factor_name(expression: Any, *, max_length: int = 60) -> str:
         ")": "",
         ",": "_",
         " ": "_",
-        "-": "neg",
-        "+": "plus",
     }
     for old, new in replacements.items():
         text = text.replace(old, new)
