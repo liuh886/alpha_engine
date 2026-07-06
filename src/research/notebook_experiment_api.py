@@ -32,6 +32,14 @@ def _as_score_frame(series_or_frame: pd.Series | pd.DataFrame) -> pd.DataFrame:
     return frame
 
 
+def _candidate_kind_from_name(name: str) -> CandidateKind:
+    if name.startswith("lgbm:daily_ranker"):
+        return CandidateKind.LGBM_LAMBDARANK
+    if name.startswith("factor:"):
+        return CandidateKind.FACTOR_BASELINE
+    return CandidateKind.LGBM_REGRESSOR
+
+
 def compare_10d_candidates(
     candidates: dict[str, pd.Series | pd.DataFrame],
     raw_returns: pd.DataFrame,
@@ -44,12 +52,7 @@ def compare_10d_candidates(
     results = []
     for name, values in candidates.items():
         frame = _as_score_frame(values)
-        if name == "lgbm:daily_ranker":
-            kind = CandidateKind.LGBM_LAMBDARANK
-        elif name.startswith("factor:"):
-            kind = CandidateKind.FACTOR_BASELINE
-        else:
-            kind = CandidateKind.LGBM_REGRESSOR
+        kind = _candidate_kind_from_name(name)
         for orientation in (ScoreOrientation.ORIGINAL, ScoreOrientation.INVERTED):
             result = evaluate_candidate(
                 frame,
