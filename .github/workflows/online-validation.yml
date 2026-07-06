@@ -53,6 +53,9 @@ jobs:
           uv run jupyter nbconvert --to notebook --execute notebooks/00_data_download_and_sync.ipynb --output /tmp/00_data_download_and_sync.out.ipynb --ExecutePreprocessor.timeout=1800
           uv run jupyter nbconvert --to notebook --execute notebooks/01_factor_research.ipynb --output /tmp/01_factor_research.out.ipynb --ExecutePreprocessor.timeout=1800
           uv run jupyter nbconvert --to notebook --execute notebooks/end_to_end_training_pipeline.ipynb --output /tmp/end_to_end_training_pipeline.out.ipynb --ExecutePreprocessor.timeout=1800
+          if [ -f notebooks/06_risk_controlled_momentum_grid.ipynb ]; then
+            uv run jupyter nbconvert --to notebook --execute notebooks/06_risk_controlled_momentum_grid.ipynb --output /tmp/06_risk_controlled_momentum_grid.out.ipynb --ExecutePreprocessor.timeout=1800
+          fi
           test -f data/factor_selection.json
           ls artifacts/evidence/notebook_10d_lab/*.json
 
