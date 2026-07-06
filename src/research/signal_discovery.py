@@ -25,6 +25,7 @@ class CandidateKind(str, Enum):
     LGBM_LAMBDARANK = "lgbm_lambdarank"
     RANK_TRANSFORM = "rank_transform"
     FACTOR_BASELINE = "factor_baseline"
+    SIGNAL_BLEND = "signal_blend"
     WINNER_BUCKET_CLASSIFIER = "winner_bucket_classifier"
 
 

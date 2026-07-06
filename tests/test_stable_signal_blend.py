@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
+from scripts.run_stable_signal_blend_evidence import MIN_STABILITY_WINDOWS, TARGET_RANKER_NAMES
 from src.research.notebook_experiment_api import run_10d_experiment
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR, ResearchSessionConfig
 from src.research.stable_signal_blend import (
@@ -64,6 +66,13 @@ def test_build_two_signal_blend_records_weights() -> None:
     assert blend.attrs["momentum_inverted"] is True
 
 
+def test_blend_weights_reject_invalid_combinations() -> None:
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        BlendWeight(ranker_weight=-0.1, momentum_weight=1.1)
+    with pytest.raises(ValueError, match="sum to 1"):
+        BlendWeight(ranker_weight=0.4, momentum_weight=0.5)
+
+
 def test_build_blend_candidates_names_weights_and_preserves_count() -> None:
     ranker = {"lgbm:daily_ranker:momentum:gain5": pd.DataFrame({"score": range(6)}, index=_index())}
     momentum = pd.DataFrame({"score": [6, 5, 4, 3, 2, 1]}, index=_index())
@@ -78,7 +87,13 @@ def test_build_blend_candidates_names_weights_and_preserves_count() -> None:
     assert all(frame.attrs["provenance"] == "stable_signal_blend" for frame in candidates.values())
 
 
-def test_blend_candidates_map_to_factor_baseline_kind_in_10d_experiment() -> None:
+def test_runner_keeps_two_rankers_three_weights_and_three_window_minimum() -> None:
+    assert len(TARGET_RANKER_NAMES) == 2
+    assert len(default_blend_weights()) == 3
+    assert MIN_STABILITY_WINDOWS == 3
+
+
+def test_blend_candidates_map_to_signal_blend_kind_in_10d_experiment() -> None:
     raw = pd.DataFrame({"return": [0.01, 0.02, 0.03, -0.01, 0.01, 0.04]}, index=_index())
     raw.attrs["provenance"] = "raw_forward_return"
     raw.attrs["horizon"] = 10
@@ -103,4 +118,4 @@ def test_blend_candidates_map_to_factor_baseline_kind_in_10d_experiment() -> Non
     )
 
     kinds = {candidate["candidate_kind"] for candidate in payload["comparison_report"]["candidates"]}
-    assert kinds == {"factor_baseline"}
+    assert kinds == {"signal_blend"}
