@@ -294,6 +294,20 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
   was registered as STAGING. The frontend model view exposes performance and
   walk-forward metrics from the registry payload.
 
+### 2026-07-06: True Daily Ranker Lab — Phase 2/3 Integration
+
+- Phase 2 research: notebook 07 upgraded from skeleton to executable true LightGBM
+  LambdaRank OOS experiment. Fits daily cross-sectional ranker (`fit_lgbm_daily_ranker`)
+  on train period only, predicts OOS scores via `predict_lgbm_daily_ranker`, and evaluates
+  against raw 10D forward returns with provenance `raw_forward_return`. Processed rank
+  targets are training-only; economic evaluation always uses raw unprocessed returns.
+- Phase 3 governance: evidence JSON written to `artifacts/evidence/notebook_10d_lab/`
+  with both `lgbm:daily_ranker` and `factor:historical_momentum_10d` comparison candidates.
+  ICIR, Rank IC, spread, drawdown, and gates present. Promotion is not required.
+- Phase 4 integration: online-validation.yml executes notebook 07 when `run_notebooks=true`
+  with 1800s timeout. Contract tests cover candidate names, canonical return attrs, true
+  ranker training/prediction, experiment output path, and CI wiring.
+
 ### 2026-07-05: Canonical 10D Signal Discovery
 
 - Phase 2 research validity: fixed the primary discovery horizon at 10 trading
