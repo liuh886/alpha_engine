@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -11,8 +12,10 @@ import pandas as pd
 from src.research.notebook_lab_contracts import ResearchSessionConfig
 from src.research.signal_discovery import (
     CandidateKind,
+    CandidateStatus,
+    ComparisonReport,
+    PROMOTION_THRESHOLDS,
     ScoreOrientation,
-    build_comparison_report,
     evaluate_candidate,
 )
 
@@ -54,7 +57,40 @@ def compare_10d_candidates(
             )
             result.strength_rationale = f"{name}: {result.strength_rationale}"
             results.append(result)
-    return build_comparison_report(config.market, results).to_dict()
+
+    report = ComparisonReport(
+        market=config.market,
+        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        label_horizon=10,
+        rebalance_days=config.rebalance_days,
+        candidates=results,
+    )
+    for candidate in results:
+        label = f"{candidate.candidate_kind.value}/{candidate.orientation.value}"
+        if candidate.status == CandidateStatus.PROMOTED:
+            report.promoted.append(label)
+        else:
+            report.research_only.append(label)
+    eligible = [candidate for candidate in results if candidate.n_periods > 0]
+    if eligible:
+        best = max(eligible, key=lambda candidate: (candidate.icir, candidate.rank_ic, candidate.excess_return))
+        report.summary = {
+            "n_candidates": len(results),
+            "n_promoted": len(report.promoted),
+            "n_research_only": len(report.research_only),
+            "best_candidate": f"{best.candidate_kind.value}/{best.orientation.value}",
+            "best_icir": best.icir,
+            "best_candidate_summary": {
+                "rank_ic": best.rank_ic,
+                "direction": best.score_direction.recommendation,
+                "strength": best.strength_rationale,
+                "weakness": best.weakness_rationale,
+            },
+            "promotion_thresholds": PROMOTION_THRESHOLDS,
+        }
+    else:
+        report.summary = {"n_candidates": len(results), "n_promoted": 0, "n_research_only": len(results)}
+    return report.to_dict()
 
 
 def run_10d_experiment(
