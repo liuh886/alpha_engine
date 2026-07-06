@@ -81,17 +81,18 @@ def default_ranker_feature_groups() -> list[RankerFeatureGroup]:
         f"{dollar}close/Ref({dollar}close,10)-1",
         f"{dollar}close/Ref({dollar}close,20)-1",
     )
+    daily_return = f"{dollar}close/Ref({dollar}close,1)-1"
     volatility = (
-        "Std($ret,10)",
-        "Std($ret,20)",
+        f"Std({daily_return},10)",
+        f"Std({daily_return},20)",
     )
     volume = (
         f"{dollar}volume/Ref({dollar}volume,10)-1",
         f"{dollar}volume/Mean({dollar}volume,20)-1",
     )
     risk_controlled = (
-        f"({dollar}close/Ref({dollar}close,10)-1)/Std({dollar}ret,10)",
-        f"({dollar}close/Ref({dollar}close,20)-1)/Std({dollar}ret,20)",
+        f"({dollar}close/Ref({dollar}close,10)-1)/(Std({daily_return},10)+1e-12)",
+        f"({dollar}close/Ref({dollar}close,20)-1)/(Std({daily_return},20)+1e-12)",
     )
     return [
         RankerFeatureGroup("momentum", momentum),

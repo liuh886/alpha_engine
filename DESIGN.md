@@ -308,6 +308,18 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
   with 1800s timeout. Contract tests cover candidate names, canonical return attrs, true
   ranker training/prediction, experiment output path, and CI wiring.
 
+### 2026-07-07: Rolling Ranker Calibration Evidence
+
+- Phase 2 research: 16 independently trained LambdaRank feature/calibration candidates
+  are evaluated across four expanding-history half-year OOS windows against canonical
+  raw 10D returns. Missing feature expressions fail closed instead of becoming zero columns.
+- The strongest grid candidate improved mean ICIR from the prior daily-ranker baseline
+  `0.0833` to `0.2027`; a lower-drawdown alternative reached mean ICIR `0.1723` with
+  worst drawdown `-10.4%`.
+- Phase 3 governance: stability still requires at least three windows. All ranker
+  candidates had `ready_ratio=0`, so these results remain research evidence and are
+  not trade-ready or authorization for automated execution.
+
 ### 2026-07-05: Canonical 10D Signal Discovery
 
 - Phase 2 research validity: fixed the primary discovery horizon at 10 trading
