@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from src.research.notebook_lab_contracts import ResearchSessionConfig
 from src.research.notebook_research_api import sanitize_factor_name
+from src.research.ten_day_model_gates import evaluate_model_gates
 
 
 def test_research_session_config_defaults_to_fixed_10d() -> None:
@@ -21,3 +22,21 @@ def test_research_session_config_defaults_to_fixed_10d() -> None:
 
 def test_sanitize_factor_name_matches_training_notebook_convention() -> None:
     assert sanitize_factor_name("close/Ref(close,10)-1") == "close_d_Ref_close_10-1"
+
+
+def test_model_gate_blocks_low_icir_and_large_drawdown() -> None:
+    gate = evaluate_model_gates(
+        {
+            "icir": 0.12,
+            "rank_ic": 0.03,
+            "positive_ic_ratio": 0.60,
+            "sharpe": 1.2,
+            "max_drawdown": -0.30,
+            "score_direction": {
+                "top_minus_bottom_spread": 0.01,
+                "recommendation": "keep_score",
+            },
+        }
+    )
+    assert gate["ready_for_trade_guidance"] is False
+    assert gate["failed_gates"] == ["icir", "drawdown"]
