@@ -85,6 +85,7 @@ def summarize_walk_forward_reports(
         n_windows = len(candidates)
         positive_spread_ratio = sum(1 for value in spreads if value > 0.0) / n_windows if n_windows else 0.0
         positive_icir_ratio = sum(1 for value in icirs if value > 0.0) / n_windows if n_windows else 0.0
+        positive_rank_ic_ratio = sum(1 for value in rank_ics if value > 0.0) / n_windows if n_windows else 0.0
         ready_ratio = (
             sum(1 for gate in gate_rows if gate["ready_for_trade_guidance"]) / n_windows if n_windows else 0.0
         )
@@ -98,6 +99,7 @@ def summarize_walk_forward_reports(
             and mean_rank_ic > 0.0
             and positive_spread_ratio >= 0.60
             and positive_icir_ratio >= 0.60
+            and positive_rank_ic_ratio >= 0.60
             and worst_drawdown >= -0.20
         )
         rows.append(
@@ -108,6 +110,7 @@ def summarize_walk_forward_reports(
                 "mean_rank_ic": mean_rank_ic,
                 "mean_spread": mean_spread,
                 "positive_icir_ratio": positive_icir_ratio,
+                "positive_rank_ic_ratio": positive_rank_ic_ratio,
                 "positive_spread_ratio": positive_spread_ratio,
                 "worst_drawdown": worst_drawdown,
                 "ready_ratio": ready_ratio,
@@ -124,11 +127,12 @@ def summarize_walk_forward_reports(
         ),
         reverse=True,
     )
+    stable_rows = [row for row in rows if row["stable_research_candidate"]]
     return {
         "schema_version": "1.0",
         "min_windows": min_windows,
         "n_reports": len(reports),
         "n_candidates": len(rows),
         "candidates": rows,
-        "best_candidate": rows[0]["candidate"] if rows else None,
+        "best_candidate": stable_rows[0]["candidate"] if stable_rows else None,
     }
