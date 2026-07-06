@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import numpy as np
 import pandas as pd
 
@@ -41,3 +43,31 @@ def build_volatility_adjusted_momentum(
     result.attrs["provenance"] = "risk_controlled_momentum_score"
     result.attrs["max_volatility_quantile"] = max_volatility_quantile
     return result
+
+
+def build_risk_controlled_momentum_grid(
+    momentum: pd.DataFrame,
+    volatility: pd.DataFrame,
+    *,
+    volatility_quantiles: Iterable[float] = (0.50, 0.60, 0.70, 0.80, 0.90),
+    name_prefix: str = "factor:risk_controlled_momentum",
+) -> dict[str, pd.DataFrame]:
+    """Build a small candidate grid for ICIR/drawdown search.
+
+    The grid deliberately stays simple: each candidate is historical momentum
+    divided by same-date volatility, with a different daily volatility cutoff.
+    This targets the current evidence problem: momentum has signal, but the
+    drawdown gate fails.
+    """
+
+    candidates: dict[str, pd.DataFrame] = {}
+    for quantile in volatility_quantiles:
+        score = build_volatility_adjusted_momentum(
+            momentum,
+            volatility,
+            max_volatility_quantile=float(quantile),
+        )
+        key = f"{name_prefix}_volq{int(round(float(quantile) * 100)):02d}"
+        score.attrs["candidate_name"] = key
+        candidates[key] = score
+    return candidates
