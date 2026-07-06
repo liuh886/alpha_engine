@@ -1,4 +1,4 @@
-"""Reusable factor research helpers for notebooks."""
+"""Compatibility shim for notebook factor research imports."""
 
 from __future__ import annotations
 
