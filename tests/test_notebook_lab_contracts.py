@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.research.daily_ranker import make_daily_rank_groups, make_daily_rank_target
 from src.research.notebook_lab_contracts import ResearchSessionConfig
 from src.research.notebook_research_api import sanitize_factor_name
 from src.research.risk_controlled_momentum import (
@@ -78,3 +79,21 @@ def test_risk_controlled_momentum_grid_builds_named_candidates() -> None:
         "factor:risk_controlled_momentum_volq75",
     ]
     assert all(list(frame.columns) == ["score"] for frame in grid.values())
+
+
+def test_daily_ranker_builds_same_date_percentile_targets_and_groups() -> None:
+    index = pd.MultiIndex.from_product(
+        [pd.to_datetime(["2025-01-01", "2025-01-02"]), ["A", "B", "C"]],
+        names=["datetime", "instrument"],
+    )
+    raw_returns = pd.DataFrame({"return": [0.1, 0.2, 0.3, -0.2, 0.0, 0.2]}, index=index)
+    raw_returns.attrs["provenance"] = "raw_forward_return"
+    raw_returns.attrs["horizon"] = 10
+
+    rank_target = make_daily_rank_target(raw_returns)
+
+    assert rank_target.attrs["provenance"] == "processed_daily_rank_target"
+    assert rank_target.attrs["source"] == "raw_forward_return"
+    assert rank_target.attrs["horizon"] == 10
+    assert rank_target.loc[(pd.Timestamp("2025-01-01"), "C")] == 1.0
+    assert make_daily_rank_groups(index) == [3, 3]
