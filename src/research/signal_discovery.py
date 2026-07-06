@@ -22,6 +22,7 @@ class CandidateKind(str, Enum):
     """Kinds of candidates that can be evaluated in a 10D discovery run."""
 
     LGBM_REGRESSOR = "lgbm_regressor"
+    LGBM_LAMBDARANK = "lgbm_lambdarank"
     RANK_TRANSFORM = "rank_transform"
     FACTOR_BASELINE = "factor_baseline"
     WINNER_BUCKET_CLASSIFIER = "winner_bucket_classifier"
@@ -135,6 +136,7 @@ class CandidateResult:
     top_selected_stocks: list[str] = field(default_factory=list)
     strength_rationale: str = ""
     weakness_rationale: str = ""
+    candidate_name: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -162,6 +164,7 @@ class CandidateResult:
             "top_selected_stocks": list(self.top_selected_stocks),
             "strength_rationale": self.strength_rationale,
             "weakness_rationale": self.weakness_rationale,
+            "candidate_name": self.candidate_name,
         }
 
 
