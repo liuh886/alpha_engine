@@ -21,7 +21,7 @@ def format_thought_stream_for_report(agent_name, level, message):
         try:
             with open(stream_path) as f:
                 data = json.load(f)
-        except:
+        except (OSError, json.JSONDecodeError):
             data = []
 
     data.append(entry)

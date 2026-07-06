@@ -785,6 +785,64 @@ export interface EvidenceBundleResponse extends Ok {
   bundle: Record<string, unknown>;
 }
 
+export interface SignalDirectionDiagnostics {
+  top_bucket_return: number;
+  bottom_bucket_return: number;
+  top_minus_bottom_spread: number;
+  rank_ic: number;
+  recommendation: "keep_score" | "invert_score" | "no_signal" | "inconclusive";
+}
+
+export interface SignalDiscoveryCandidate {
+  candidate_kind: string;
+  orientation: "original" | "inverted";
+  ic: number;
+  rank_ic: number;
+  icir: number;
+  positive_ic_ratio: number;
+  total_return: number;
+  benchmark_return: number;
+  excess_return: number;
+  sharpe: number;
+  max_drawdown: number;
+  turnover: number;
+  costs: number;
+  score_direction: SignalDirectionDiagnostics;
+  status: "research_candidate" | "promoted_candidate" | "rejected";
+  promotion_blockers: string[];
+  top_selected_stocks: string[];
+  strength_rationale: string;
+  weakness_rationale: string;
+}
+
+export interface SignalDiscoveryReport {
+  schema_version: string;
+  market: string;
+  generated_at: string;
+  label_horizon: number;
+  rebalance_days: number;
+  candidates: SignalDiscoveryCandidate[];
+  promoted: string[];
+  research_only: string[];
+  summary: {
+    best_candidate?: string | null;
+    best_icir?: number | null;
+    best_candidate_summary?: {
+      candidate?: string;
+      direction?: string;
+      strength?: string;
+      weakness?: string;
+    };
+    n_promoted?: number;
+  };
+  warnings: string[];
+}
+
+export interface SignalDiscoveryResponse extends Ok {
+  report: SignalDiscoveryReport;
+  artifact_path: string;
+}
+
 // ---------------------------------------------------------------------------
 // Tools
 // ---------------------------------------------------------------------------

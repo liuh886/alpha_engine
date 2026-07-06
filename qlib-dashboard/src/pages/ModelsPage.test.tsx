@@ -323,7 +323,9 @@ describe("ModelsPage", () => {
     renderModelsPage();
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Stale: model is.*days old/i)).toBeVisible();
+      const staleWarnings = screen.getAllByLabelText(/Stale: model is.*days old/i);
+      expect(staleWarnings.length).toBeGreaterThan(0);
+      expect(staleWarnings[0]).toBeVisible();
     });
   });
 

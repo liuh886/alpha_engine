@@ -53,6 +53,18 @@ describe("releaseApi", () => {
     expect(apiClient.get).toHaveBeenCalledWith("/api/evidence/model/model-42");
   });
 
+  it("loads the latest fixed-10D signal discovery report for a market", async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ ok: true, report: {}, artifact_path: "report.json" });
+
+    await releaseApi.getLatestSignalDiscovery("us");
+
+    expect(apiClient.get).toHaveBeenCalledWith("/api/evidence/signal-discovery/latest", {
+      signal: undefined,
+      params: { market: "us" },
+      init: { cache: "no-store" },
+    });
+  });
+
   it("promotes and deletes by the backend artifact identity", async () => {
     vi.mocked(apiClient.post)
       .mockResolvedValueOnce({ ok: true })
