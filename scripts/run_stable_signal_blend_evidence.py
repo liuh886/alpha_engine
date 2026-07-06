@@ -70,7 +70,12 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, o
     session = _load_session(root)
     market = str(session["market"])
     symbols = list(session["symbols"])
-    topk = min(int(session.get("topk", 3)), len(symbols) - 1)
+    if len(symbols) < 2:
+        raise ValueError("stable signal blend requires at least two symbols")
+    requested_topk = int(session.get("topk", 3))
+    if requested_topk <= 0:
+        raise ValueError("topk must be positive")
+    topk = min(requested_topk, len(symbols) - 1)
     ranker_grid = _selected_ranker_grid()
     feature_exprs = _unique_expressions(ranker_grid)
     expression_columns = {expression: sanitize_factor_name(expression) for expression in feature_exprs}
@@ -123,8 +128,16 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, o
         )
         features_all = D.features(symbols, feature_exprs, start_time=window.train_start, end_time=window.test_end)
         raw_all = D.features(symbols, [config.return_expression], start_time=window.train_start, end_time=window.test_end)
-        features_all = _normalize_index(features_all).fillna(0.0).replace([np.inf, -np.inf], 0.0)
+        features_all = _normalize_index(features_all).replace([np.inf, -np.inf], np.nan)
         features_all.columns = [expression_columns[expression] for expression in feature_exprs]
+        missing_expressions = [
+            expression
+            for expression, column in expression_columns.items()
+            if features_all[column].notna().sum() == 0
+        ]
+        if missing_expressions:
+            raise ValueError(f"ranker feature expressions produced no values: {missing_expressions}")
+        features_all = features_all.fillna(0.0)
         raw_all = _normalize_index(raw_all)
         raw_all.columns = ["return"]
         raw_all.attrs["provenance"] = "raw_forward_return"

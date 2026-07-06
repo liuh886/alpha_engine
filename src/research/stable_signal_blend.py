@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isclose
 from typing import Iterable
 
 import pandas as pd
@@ -14,6 +15,12 @@ class BlendWeight:
 
     ranker_weight: float
     momentum_weight: float
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.ranker_weight <= 1.0 or not 0.0 <= self.momentum_weight <= 1.0:
+            raise ValueError("blend weights must be between 0 and 1")
+        if not isclose(self.ranker_weight + self.momentum_weight, 1.0, abs_tol=1e-9):
+            raise ValueError("blend weights must sum to 1")
 
     @property
     def name(self) -> str:
@@ -34,13 +41,11 @@ def daily_cross_sectional_zscore(score: pd.DataFrame) -> pd.DataFrame:
             raise ValueError("score frame must have exactly one column")
         frame.columns = ["score"]
 
-    def _z(day: pd.Series) -> pd.Series:
-        std = day.std(ddof=0)
-        if std == 0 or pd.isna(std):
-            return day * 0.0
-        return (day - day.mean()) / std
-
-    values = frame["score"].astype(float).groupby(level="datetime", group_keys=False).apply(_z)
+    values = frame["score"].astype(float)
+    grouped = values.groupby(level="datetime")
+    means = grouped.transform("mean")
+    stds = grouped.transform(lambda day: day.std(ddof=0))
+    values = ((values - means) / stds.where(stds != 0.0)).fillna(0.0)
     result = values.to_frame("score")
     result.attrs.update(frame.attrs)
     result.attrs["transform"] = "daily_cross_sectional_zscore"
