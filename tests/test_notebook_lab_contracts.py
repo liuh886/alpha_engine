@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from src.research.daily_ranker import make_daily_rank_groups, make_daily_rank_target
+from src.research.daily_ranker_model import percentile_rank_to_gain
 from src.research.notebook_lab_contracts import ResearchSessionConfig
 from src.research.notebook_research_api import sanitize_factor_name
 from src.research.risk_controlled_momentum import (
@@ -97,3 +98,15 @@ def test_daily_ranker_builds_same_date_percentile_targets_and_groups() -> None:
     assert rank_target.attrs["horizon"] == 10
     assert rank_target.loc[(pd.Timestamp("2025-01-01"), "C")] == 1.0
     assert make_daily_rank_groups(index) == [3, 3]
+
+
+def test_percentile_rank_to_gain_builds_integer_ranker_labels() -> None:
+    target = pd.Series([0.0, 0.2, 0.5, 0.99, 1.0], name="rank_target")
+    target.attrs["provenance"] = "processed_daily_rank_target"
+
+    gains = percentile_rank_to_gain(target, n_bins=5)
+
+    assert gains.tolist() == [0, 1, 2, 4, 4]
+    assert gains.attrs["provenance"] == "processed_daily_rank_gain_target"
+    assert gains.attrs["source"] == "processed_daily_rank_target"
+    assert gains.attrs["n_bins"] == 5
