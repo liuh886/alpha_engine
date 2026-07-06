@@ -10,6 +10,25 @@ import numpy as np
 import pandas as pd
 
 
+def sanitize_factor_name(expression: Any, *, max_length: int = 60) -> str:
+    """Create a stable notebook/display-safe factor name from a Qlib expression."""
+
+    text = str(expression)
+    replacements = {
+        "$": "D",
+        "/": "_d_",
+        "(": "_",
+        ")": "",
+        ",": "_",
+        " ": "_",
+        "-": "neg",
+        "+": "plus",
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    return text[:max_length]
+
+
 def daily_correlation_table(
     values: pd.DataFrame,
     target: pd.DataFrame,
