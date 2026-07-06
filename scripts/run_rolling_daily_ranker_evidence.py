@@ -15,8 +15,14 @@ from src.research.daily_ranker_model import fit_lgbm_daily_ranker, predict_lgbm_
 from src.research.notebook_experiment_api import run_10d_experiment
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR, ResearchSessionConfig
 from src.research.notebook_research_api import sanitize_factor_name
-from src.research.rolling_windows import filter_windows_by_available_range, half_year_rolling_windows
+from src.research.rolling_windows import (
+    filter_windows_by_available_range,
+    half_year_rolling_windows,
+    purge_training_tail,
+)
 from src.research.walk_forward_stability import summarize_walk_forward_reports
+
+MIN_STABILITY_WINDOWS = 3
 
 
 def _default_feature_exprs() -> list[str]:
@@ -52,27 +58,6 @@ def _normalize_index(frame: pd.DataFrame) -> pd.DataFrame:
     return frame
 
 
-def _purge_training_tail(
-    features_train: pd.DataFrame,
-    returns_train: pd.DataFrame,
-    *,
-    holding_days: int,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    common_dates = sorted(
-        set(features_train.index.get_level_values("datetime"))
-        & set(returns_train.index.get_level_values("datetime"))
-    )
-    if len(common_dates) <= holding_days:
-        raise ValueError("not enough training dates for holding-period embargo")
-    purge_dates = set(common_dates[-holding_days:])
-    keep_features = ~features_train.index.get_level_values("datetime").isin(purge_dates)
-    keep_returns = ~returns_train.index.get_level_values("datetime").isin(purge_dates)
-    purged_features = features_train.loc[keep_features].copy()
-    purged_returns = returns_train.loc[keep_returns].copy()
-    purged_returns.attrs.update(returns_train.attrs)
-    return purged_features, purged_returns
-
-
 def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, object]:
     session = _load_session(root)
     symbols = list(session["symbols"])
@@ -95,15 +80,33 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, o
     )
     from qlib.data import D
 
+    calendar = pd.DatetimeIndex(
+        D.calendar(
+            start_time=str(session["train_start"]),
+            end_time=str(session["test_end"]),
+            freq="day",
+        )
+    )
+    if calendar.empty:
+        raise ValueError("Qlib calendar has no data in the configured session range")
+    # The configured boundary may fall on a weekend before the first trading
+    # session. Treat that as covered; use the actual calendar to cap the end.
+    available_start = str(session["train_start"])
+    available_end = min(pd.Timestamp(session["test_end"]), calendar.max()).strftime("%Y-%m-%d")
     windows = filter_windows_by_available_range(
         half_year_rolling_windows(
             start_year=int(str(session["train_start"])[:4]),
             first_test_year=first_test_year,
             last_test_year=last_test_year,
         ),
-        available_start=str(session["train_start"]),
-        available_end=str(session["test_end"]),
+        available_start=available_start,
+        available_end=available_end,
     )
+    if not windows:
+        raise ValueError(
+            "no complete rolling windows are covered by the available Qlib range "
+            f"{available_start}..{available_end}"
+        )
     feature_exprs = _default_feature_exprs()
     reports = []
     out_dir = root / "artifacts" / "evidence" / "rolling_10d_lab"
@@ -131,7 +134,7 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, o
         dates = features_all.index.get_level_values("datetime")
         train_mask = (dates >= pd.Timestamp(window.train_start)) & (dates <= pd.Timestamp(window.train_end))
         test_mask = (dates >= pd.Timestamp(window.test_start)) & (dates <= pd.Timestamp(window.test_end))
-        features_train, returns_train = _purge_training_tail(
+        features_train, returns_train = purge_training_tail(
             features_all.loc[train_mask].copy(),
             raw_all.loc[train_mask].copy(),
             holding_days=config.holding_days,
@@ -161,7 +164,7 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, o
         )
         reports.append(experiment)
 
-    summary = summarize_walk_forward_reports(reports, min_windows=min(3, len(reports) or 3))
+    summary = summarize_walk_forward_reports(reports, min_windows=MIN_STABILITY_WINDOWS)
     summary_path = out_dir / "walk_forward_stability.json"
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     return {"windows": [window.to_dict() for window in windows], "summary_path": str(summary_path), "summary": summary}

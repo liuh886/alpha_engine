@@ -27,6 +27,29 @@ class RollingResearchWindow:
         }
 
 
+def purge_training_tail(
+    features_train: pd.DataFrame,
+    returns_train: pd.DataFrame,
+    *,
+    holding_days: int,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Remove labels whose forward horizon would cross into the OOS window."""
+
+    common_dates = sorted(
+        set(features_train.index.get_level_values("datetime"))
+        & set(returns_train.index.get_level_values("datetime"))
+    )
+    if len(common_dates) <= holding_days:
+        raise ValueError("not enough training dates for holding-period embargo")
+    purge_dates = set(common_dates[-holding_days:])
+    keep_features = ~features_train.index.get_level_values("datetime").isin(purge_dates)
+    keep_returns = ~returns_train.index.get_level_values("datetime").isin(purge_dates)
+    purged_features = features_train.loc[keep_features].copy()
+    purged_returns = returns_train.loc[keep_returns].copy()
+    purged_returns.attrs.update(returns_train.attrs)
+    return purged_features, purged_returns
+
+
 def half_year_rolling_windows(
     *,
     start_year: int = 2021,
@@ -35,8 +58,8 @@ def half_year_rolling_windows(
 ) -> list[RollingResearchWindow]:
     """Build simple half-year OOS windows with expanding training history."""
 
-    if first_test_year < start_year:
-        raise ValueError("first_test_year must be >= start_year")
+    if first_test_year <= start_year:
+        raise ValueError("first_test_year must be > start_year")
     if last_test_year < first_test_year:
         raise ValueError("last_test_year must be >= first_test_year")
 
