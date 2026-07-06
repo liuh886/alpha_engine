@@ -18,7 +18,7 @@ def make_daily_rank_target(
     """
 
     target = raw_returns.iloc[:, 0].astype(float)
-    ascending = not higher_is_better
+    ascending = higher_is_better
     ranks = target.groupby(level="datetime").rank(method="average", pct=True, ascending=ascending)
     ranks.name = "rank_target"
     ranks.attrs["provenance"] = "processed_daily_rank_target"

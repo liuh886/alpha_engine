@@ -32,14 +32,14 @@ def build_volatility_adjusted_momentum(
         result.attrs["provenance"] = "risk_controlled_momentum_score"
         return result
 
-    def _score_day(day: pd.DataFrame) -> pd.Series:
-        cutoff = day["volatility"].quantile(max_volatility_quantile)
-        kept = day["volatility"] <= cutoff
-        score = day["momentum"] / day["volatility"]
-        return score.where(kept)
-
-    scores = frame.groupby(level="datetime", group_keys=False).apply(_score_day)
-    result = scores.to_frame("score")
+    # Compute per-datetime volatility cutoff via groupby transform/broadcast
+    # to avoid pandas-version-dependent groupby.apply shape behavior.
+    cutoff = frame.groupby(level="datetime")["volatility"].transform(
+        lambda x: x.quantile(max_volatility_quantile)
+    )
+    score = (frame["momentum"] / frame["volatility"]).where(frame["volatility"] <= cutoff)
+    score.name = "score"
+    result = score.to_frame()
     result.attrs["provenance"] = "risk_controlled_momentum_score"
     result.attrs["max_volatility_quantile"] = max_volatility_quantile
     return result

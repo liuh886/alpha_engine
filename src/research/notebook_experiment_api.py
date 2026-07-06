@@ -44,7 +44,12 @@ def compare_10d_candidates(
     results = []
     for name, values in candidates.items():
         frame = _as_score_frame(values)
-        kind = CandidateKind.FACTOR_BASELINE if name.startswith("factor:") else CandidateKind.LGBM_REGRESSOR
+        if name == "lgbm:daily_ranker":
+            kind = CandidateKind.LGBM_LAMBDARANK
+        elif name.startswith("factor:"):
+            kind = CandidateKind.FACTOR_BASELINE
+        else:
+            kind = CandidateKind.LGBM_REGRESSOR
         for orientation in (ScoreOrientation.ORIGINAL, ScoreOrientation.INVERTED):
             result = evaluate_candidate(
                 frame,
@@ -55,6 +60,7 @@ def compare_10d_candidates(
                 topk=config.topk,
                 rebalance_days=config.rebalance_days,
             )
+            result.candidate_name = name
             result.strength_rationale = f"{name}: {result.strength_rationale}"
             results.append(result)
 
@@ -66,7 +72,7 @@ def compare_10d_candidates(
         candidates=results,
     )
     for candidate in results:
-        label = f"{candidate.candidate_kind.value}/{candidate.orientation.value}"
+        label = f"{candidate.candidate_name}/{candidate.candidate_kind.value}/{candidate.orientation.value}"
         if candidate.status == CandidateStatus.PROMOTED:
             report.promoted.append(label)
         else:
@@ -78,9 +84,10 @@ def compare_10d_candidates(
             "n_candidates": len(results),
             "n_promoted": len(report.promoted),
             "n_research_only": len(report.research_only),
-            "best_candidate": f"{best.candidate_kind.value}/{best.orientation.value}",
+            "best_candidate": f"{best.candidate_name}/{best.candidate_kind.value}/{best.orientation.value}",
             "best_icir": best.icir,
             "best_candidate_summary": {
+                "candidate_name": best.candidate_name,
                 "rank_ic": best.rank_ic,
                 "direction": best.score_direction.recommendation,
                 "strength": best.strength_rationale,
