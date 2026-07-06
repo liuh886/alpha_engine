@@ -71,6 +71,7 @@ def test_walk_forward_summary_rejects_single_window_promotion_as_unstable() -> N
     assert row["n_windows"] == 1
     assert row["ready_ratio"] == 1.0
     assert row["stable_research_candidate"] is False
+    assert summary["best_candidate"] is None
 
 
 def test_walk_forward_summary_promotes_only_stable_research_candidates() -> None:
@@ -98,6 +99,7 @@ def test_walk_forward_summary_promotes_only_stable_research_candidates() -> None
 
     assert ranker["n_windows"] == 3
     assert ranker["positive_icir_ratio"] == 1.0
+    assert ranker["positive_rank_ic_ratio"] == 1.0
     assert ranker["positive_spread_ratio"] == 1.0
     assert ranker["worst_drawdown"] >= -0.20
     assert ranker["stable_research_candidate"] is True
@@ -106,3 +108,20 @@ def test_walk_forward_summary_promotes_only_stable_research_candidates() -> None
     assert momentum["worst_drawdown"] < -0.20
     assert momentum["stable_research_candidate"] is False
     assert summary["best_candidate"] == "lgbm:daily_ranker/lgbm_lambdarank/original"
+
+
+def test_walk_forward_summary_requires_rank_ic_positive_in_most_windows() -> None:
+    summary = summarize_walk_forward_reports(
+        [
+            _report(_candidate("lgbm:daily_ranker", icir=0.20, rank_ic=-0.01, spread=0.01, drawdown=-0.10)),
+            _report(_candidate("lgbm:daily_ranker", icir=0.20, rank_ic=-0.01, spread=0.01, drawdown=-0.10)),
+            _report(_candidate("lgbm:daily_ranker", icir=0.20, rank_ic=0.10, spread=0.01, drawdown=-0.10)),
+        ],
+        min_windows=3,
+    )
+
+    row = summary["candidates"][0]
+    assert row["mean_rank_ic"] > 0.0
+    assert row["positive_rank_ic_ratio"] == 1 / 3
+    assert row["stable_research_candidate"] is False
+    assert summary["best_candidate"] is None
