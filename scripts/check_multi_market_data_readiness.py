@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
+from src.research.market_data_alignment import build_aligned_market_readiness
 from src.research.multi_market_readiness import (
-    check_market_data_coverage,
     default_market_specs,
     render_readiness_markdown,
     summarize_multi_market_readiness,
@@ -30,28 +30,37 @@ def _try_init_market(root: Path, market: str) -> str | None:
         return f"{market} skipped because Qlib init failed: {exc}"
 
 
-def run(root: Path, *, train_start: str, test_end: str) -> dict[str, Any]:
+def run(root: Path, *, train_start: str, test_end: str, alignment_mode: str = "strict") -> dict[str, Any]:
     specs = default_market_specs(train_start=train_start, test_end=test_end, watchlist_path=root / "configs" / "watchlist.yaml")
     reports: dict[str, dict[str, Any]] = {}
+
+    # Init Qlib for each market so date coverage can be loaded
     for spec in specs:
-        init_error = _try_init_market(root, spec.market)
-        if init_error:
-            reports[spec.market] = {
-                "market": spec.market,
+        _try_init_market(root, spec.market)
+
+    # Use alignment-aware readiness check
+    aligned_reports = build_aligned_market_readiness(specs, alignment_mode=alignment_mode)
+
+    for spec in specs:
+        market = spec.market
+        if market in aligned_reports:
+            reports[market] = aligned_reports[market]
+        else:
+            reports[market] = {
+                "market": market,
                 "benchmark": spec.benchmark,
-                "train_start": spec.train_start,
-                "test_end": spec.test_end,
+                "requested_train_start": spec.train_start,
+                "aligned_train_start": spec.train_start,
+                "alignment_mode": alignment_mode,
                 "requested_symbols": list(spec.symbols),
                 "retained_symbols": [],
                 "dropped_symbols": list(spec.symbols),
                 "coverage_ratio": 0.0,
                 "sufficient": False,
                 "skipped": True,
-                "skip_reason": init_error,
+                "skip_reason": f"{market} alignment not produced",
                 "normalization": [],
             }
-            continue
-        reports[spec.market] = check_market_data_coverage(spec)
 
     summary = summarize_multi_market_readiness(reports)
     out_dir = root / "artifacts" / "evidence" / "multi_market_readiness"
@@ -69,8 +78,10 @@ def main() -> None:
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--train-start", default="2021-01-01")
     parser.add_argument("--test-end", default="2026-06-18")
+    parser.add_argument("--alignment-mode", choices=["strict", "auto"], default="strict",
+                        help="Train-start alignment mode (default: strict)")
     args = parser.parse_args()
-    print(json.dumps(run(args.root, train_start=args.train_start, test_end=args.test_end), indent=2))
+    print(json.dumps(run(args.root, train_start=args.train_start, test_end=args.test_end, alignment_mode=args.alignment_mode), indent=2))
 
 
 if __name__ == "__main__":
