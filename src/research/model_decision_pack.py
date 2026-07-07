@@ -30,7 +30,28 @@ def _candidate_rows(stability_summary: dict[str, Any]) -> list[dict[str, Any]]:
     rows = stability_summary.get("candidates", [])
     if not isinstance(rows, list):
         raise ValueError("stability_summary['candidates'] must be a list")
+    if not all(isinstance(row, dict) for row in rows):
+        raise ValueError("stability_summary candidates must be objects")
     return [dict(row) for row in rows]
+
+
+def _validate_stability_summary(stability_summary: dict[str, Any], rows: list[dict[str, Any]]) -> int:
+    if stability_summary.get("schema_version") != "1.0":
+        raise ValueError("stability_summary schema_version must be '1.0'")
+    min_windows = int(stability_summary.get("min_windows", 0))
+    n_reports = int(stability_summary.get("n_reports", 0))
+    if min_windows < 3:
+        raise ValueError("stability_summary min_windows must be at least 3")
+    if n_reports < min_windows:
+        raise ValueError("stability_summary must contain at least min_windows reports")
+    inconsistent = [
+        row.get("candidate", "unknown")
+        for row in rows
+        if bool(row.get("stable_research_candidate")) and int(row.get("n_windows", 0)) < min_windows
+    ]
+    if inconsistent:
+        raise ValueError(f"stable candidates have insufficient windows: {inconsistent}")
+    return min_windows
 
 
 def _select_best_research_candidate(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -97,6 +118,7 @@ def build_model_decision_pack(
     """Build a model decision pack from a walk-forward stability summary."""
 
     rows = _candidate_rows(stability_summary)
+    _validate_stability_summary(stability_summary, rows)
     best = _select_best_research_candidate(rows)
     decision = evaluate_decision_status(best, thresholds=thresholds)
     stable = [row for row in rows if bool(row.get("stable_research_candidate"))]
@@ -126,17 +148,20 @@ def build_model_decision_pack(
 
 def _recommended_next_step(candidate: dict[str, Any] | None, decision: dict[str, Any]) -> str:
     if candidate is None:
-        return "Generate more rolling evidence or expand the candidate set before model selection."
+        return "Expand the universe and run robustness validation before model selection."
     if decision["trade_ready"]:
-        return "Prepare a guarded paper-trading or manual-review plan; do not add live execution."
+        return "Run independent universe-expansion and robustness validation before any operational use."
     failed = set(decision.get("failed_trade_gates", []))
     if "mean_icir" in failed and "ready_ratio" in failed:
-        return "Improve signal quality or expand the universe; current candidate is stronger research-only."
+        return (
+            "Expand the universe and run robustness validation; do not continue small blend-weight tuning. "
+            "The current candidate remains stronger research-only."
+        )
     if "ready_ratio" in failed:
-        return "Improve cross-window gate consistency before any trade-guidance claim."
+        return "Expand the universe and validate cross-window robustness before any trade-guidance claim."
     if "worst_drawdown" in failed:
-        return "Add drawdown controls before further ICIR optimization."
-    return "Continue focused research validation before promotion."
+        return "Stress drawdown under universe expansion and robustness validation before promotion."
+    return "Run universe expansion and robustness validation before promotion."
 
 
 def render_model_decision_markdown(pack: dict[str, Any]) -> str:
