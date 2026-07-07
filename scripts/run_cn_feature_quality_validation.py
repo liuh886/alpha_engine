@@ -24,6 +24,7 @@ from src.research.multi_market_readiness import MarketReadinessSpec, check_marke
 from src.research.notebook_experiment_api import run_10d_experiment
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR, ResearchSessionConfig
 from src.research.notebook_research_api import sanitize_factor_name
+from src.research.rolling_windows import purge_training_tail
 from src.research.universe_robustness import load_symbol_date_coverage, validate_no_nan_inputs
 from src.research.walk_forward_stability import summarize_walk_forward_reports
 
