@@ -320,6 +320,16 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
   candidates had `ready_ratio=0`, so these results remain research evidence and are
   not trade-ready or authorization for automated execution.
 
+### 2026-07-07: Stable Ranker-Momentum Blend Evidence
+
+- Phase 2 research: daily cross-sectional z-score blends combine the two strongest
+  ranker-grid candidates with inverted historical momentum across four OOS windows.
+- The best 50/50 blend improved mean ICIR from `0.2027` to `0.2551` while improving
+  worst drawdown from `-19.6%` to `-11.2%`. Positive ICIR remained `1.0`.
+- Phase 3 governance: the best blend's ready ratio is only `0.25`; no blend passed
+  trade-guidance gates consistently across windows. It is a stronger stable research
+  candidate, not trade-ready and not authorization for automated execution.
+
 ### 2026-07-05: Canonical 10D Signal Discovery
 
 - Phase 2 research validity: fixed the primary discovery horizon at 10 trading
