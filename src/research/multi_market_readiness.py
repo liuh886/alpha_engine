@@ -43,7 +43,7 @@ class MarketReadinessSpec:
 
 @dataclass(frozen=True)
 class NormalizedSymbol:
-    """A raw symbol and its selected market-specific normalized representation."""
+    """Raw and selected market-specific symbol representation."""
 
     original_symbol: str
     normalized_symbol: str
@@ -67,14 +67,17 @@ def _dedupe_keep_order(items: list[str]) -> list[str]:
     return result
 
 
+def _safe_min_symbols(count: int, preferred: int) -> int:
+    return min(count, max(2, preferred))
+
+
 def load_market_watchlist(market: str, *, watchlist_path: str | Path = "configs/watchlist.yaml") -> list[str]:
-    """Load raw market symbols from watchlist YAML without silently dropping numeric-looking CN codes."""
+    """Load raw market symbols from watchlist YAML."""
 
     try:
         import yaml
 
-        path = Path(watchlist_path)
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = yaml.safe_load(Path(watchlist_path).read_text(encoding="utf-8"))
     except Exception:
         return []
     if not isinstance(data, dict):
@@ -94,7 +97,7 @@ def _cn_exchange_for_code(code: str) -> str | None:
 
 
 def cn_symbol_candidates(raw_symbol: object) -> tuple[str, ...]:
-    """Return explicit CN symbol-format candidates while preserving six-digit code semantics."""
+    """Return explicit CN symbol-format candidates while preserving six-digit codes."""
 
     raw = str(raw_symbol).strip().upper()
     if not raw:
@@ -106,16 +109,12 @@ def cn_symbol_candidates(raw_symbol: object) -> tuple[str, ...]:
     for suffix in (".SZ", ".SH"):
         if cleaned.endswith(suffix):
             cleaned = cleaned[: -len(suffix)]
-    if cleaned.isdigit():
-        code = cleaned.zfill(6)[-6:]
-    else:
-        code = cleaned
+    code = cleaned.zfill(6)[-6:] if cleaned.isdigit() else cleaned
     exchange = _cn_exchange_for_code(code)
     candidates = [code]
-    if exchange is not None:
-        candidates.extend([f"{code}.{exchange}", f"{exchange}{code}"])
+    if exchange:
         qlib_prefix = "sh" if exchange == "SH" else "sz"
-        candidates.append(f"{qlib_prefix}.{code}")
+        candidates.extend([f"{code}.{exchange}", f"{exchange}{code}", f"{qlib_prefix}.{code}"])
     return tuple(_dedupe_keep_order(candidates))
 
 
@@ -125,13 +124,8 @@ def normalize_market_symbol(
     *,
     available_symbols: set[str] | None = None,
 ) -> NormalizedSymbol:
-    """Normalize one symbol for a market, selecting a real available format when known."""
-
     original = str(raw_symbol).strip()
-    if market == "cn":
-        candidates = cn_symbol_candidates(raw_symbol)
-    else:
-        candidates = (original.upper(),)
+    candidates = cn_symbol_candidates(raw_symbol) if market == "cn" else (original.upper(),)
     if not candidates:
         raise ValueError("cannot normalize empty symbol")
     normalized = candidates[0]
@@ -150,8 +144,6 @@ def normalize_market_symbols(
     *,
     available_symbols: set[str] | None = None,
 ) -> list[NormalizedSymbol]:
-    """Normalize and dedupe market symbols while preserving raw-to-normalized mapping."""
-
     rows: list[NormalizedSymbol] = []
     seen: set[str] = set()
     for raw in symbols:
@@ -168,14 +160,10 @@ def default_market_specs(
     test_end: str = "2026-06-18",
     watchlist_path: str | Path = "configs/watchlist.yaml",
 ) -> list[MarketReadinessSpec]:
-    """Build standard US and CN readiness specs from local watchlists."""
-
-    us = load_market_watchlist("us", watchlist_path=watchlist_path)
-    cn = load_market_watchlist("cn", watchlist_path=watchlist_path)
-    us_norm = [row.normalized_symbol for row in normalize_market_symbols("us", us)]
-    cn_norm = [row.normalized_symbol for row in normalize_market_symbols("cn", cn)]
+    us_norm = [row.normalized_symbol for row in normalize_market_symbols("us", load_market_watchlist("us", watchlist_path=watchlist_path))]
+    cn_norm = [row.normalized_symbol for row in normalize_market_symbols("cn", load_market_watchlist("cn", watchlist_path=watchlist_path))]
     specs: list[MarketReadinessSpec] = []
-    if us_norm:
+    if len(us_norm) >= 2:
         specs.append(
             MarketReadinessSpec(
                 market="us",
@@ -183,10 +171,10 @@ def default_market_specs(
                 benchmark="QQQ",
                 train_start=train_start,
                 test_end=test_end,
-                min_symbols=min(50, max(8, len(us_norm))),
+                min_symbols=_safe_min_symbols(len(us_norm), 50),
             )
         )
-    if cn_norm:
+    if len(cn_norm) >= 2:
         specs.append(
             MarketReadinessSpec(
                 market="cn",
@@ -194,7 +182,7 @@ def default_market_specs(
                 benchmark="000300",
                 train_start=train_start,
                 test_end=test_end,
-                min_symbols=min(50, max(20, len(cn_norm))),
+                min_symbols=_safe_min_symbols(len(cn_norm), 50),
             )
         )
     return specs
@@ -206,8 +194,6 @@ def check_market_data_coverage(
     available_symbols: set[str] | None = None,
     date_coverage_data: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Return a fail-closed readiness report for one market."""
-
     normalized_rows = normalize_market_symbols(spec.market, list(spec.symbols), available_symbols=available_symbols)
     normalized_symbols = tuple(row.normalized_symbol for row in normalized_rows)
     if date_coverage_data is None:
@@ -235,8 +221,6 @@ def check_market_data_coverage(
 
 
 def summarize_multi_market_readiness(reports: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    """Summarize readiness across markets without manufacturing model conclusions."""
-
     market_rows = []
     for market, report in reports.items():
         market_rows.append(
@@ -260,8 +244,6 @@ def summarize_multi_market_readiness(reports: dict[str, dict[str, Any]]) -> dict
 
 
 def render_readiness_markdown(reports: dict[str, dict[str, Any]], summary: dict[str, Any]) -> str:
-    """Render a compact multi-market readiness report."""
-
     lines = [
         "# AlphaEngine Multi-Market Data Readiness",
         "",
@@ -277,16 +259,7 @@ def render_readiness_markdown(reports: dict[str, dict[str, Any]], summary: dict[
             f"| {row['market']} | {row['requested']} | {row['retained']} | "
             f"{float(row['coverage_ratio']):.3f} | {status} | {row.get('skip_reason') or ''} |"
         )
-    lines.extend(
-        [
-            "",
-            "## Notes",
-            "",
-            "Coverage is fail-closed. A skipped market produces no model evidence.",
-            "CN symbols are normalized explicitly and leading zeroes are preserved.",
-            "",
-        ]
-    )
+    lines.extend(["", "## Notes", "", "Coverage is fail-closed. A skipped market produces no model evidence.", "CN symbols are normalized explicitly and leading zeroes are preserved.", ""])
     for market, report in reports.items():
         lines.extend(
             [
