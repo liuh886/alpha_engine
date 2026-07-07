@@ -22,12 +22,14 @@ import pandas as pd
 
 from src.research.daily_ranker import prepare_ranker_frame
 from src.research.daily_ranker_model import fit_lgbm_daily_ranker, predict_lgbm_daily_ranker
+from src.research.market_data_alignment import align_train_start_to_coverage, get_aligned_windows
 from src.research.model_decision_pack import build_model_decision_pack
+from src.research.multi_market_readiness import MarketReadinessSpec
 from src.research.notebook_experiment_api import run_10d_experiment
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR, ResearchSessionConfig
 from src.research.notebook_research_api import sanitize_factor_name
 from src.research.ranker_calibration_grid import RankerCalibration, RankerFeatureGroup, RankerGridCandidate
-from src.research.rolling_windows import filter_windows_by_available_range, half_year_rolling_windows, purge_training_tail
+from src.research.rolling_windows import purge_training_tail
 from src.research.stable_signal_blend import BlendWeight, build_blend_candidates
 from src.research.universe_robustness import (
     UniverseSpec,
@@ -100,7 +102,7 @@ def _build_universe_specs(
     return default_universe_specs(session_symbols, market=market)
 
 
-def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, Any]:
+def run(root: Path, *, first_test_year: int, last_test_year: int, alignment_mode: str = "strict") -> dict[str, Any]:
     session = _load_session(root)
     market = str(session["market"])
     benchmark = str(session["benchmark"])
@@ -136,8 +138,11 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, A
         qlib_available = False
         calendar = pd.DatetimeIndex([])
 
-    # ── coverage check ─────────────────────────────────────────────────
+    # ── coverage check with alignment ────────────────────────────────────
     coverage_reports: dict[str, dict[str, Any]] = {}
+    alignment_results: dict[str, Any] = {}
+    effective_train_starts: dict[str, str] = {}
+
     for universe in universes:
         if qlib_available:
             date_coverage = load_symbol_date_coverage(
@@ -145,14 +150,58 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, A
             )
         else:
             date_coverage = {}
+
+        # Run alignment for this universe
+        universe_spec = MarketReadinessSpec(
+            market=market,
+            symbols=universe.symbols,
+            benchmark=benchmark,
+            train_start=train_start,
+            test_end=test_end,
+            min_symbols=universe.min_symbols,
+        )
+        alignment = align_train_start_to_coverage(
+            universe_spec, date_coverage, alignment_mode=alignment_mode,
+            first_test_year=first_test_year, last_test_year=last_test_year,
+        )
+        alignment_results[universe.name] = alignment.to_dict()
+
+        # Use aligned start for this universe when auto mode
+        effective_start = alignment.aligned_start
+
         coverage = filter_universe_by_coverage(
             universe.symbols,
             min_symbols=universe.min_symbols,
-            date_range=(train_start, test_end),
+            date_range=(effective_start, test_end),
             date_coverage_data=date_coverage,
         )
         coverage["universe_name"] = universe.name
+        coverage["alignment_mode"] = alignment_mode
+        coverage["requested_train_start"] = train_start
+        coverage["aligned_train_start"] = effective_start
+        # Alignment decision is the authoritative downstream gate for execution.
+        if alignment.skipped:
+            coverage["skipped"] = True
+            coverage["sufficient"] = False
+            coverage["retained_symbols"] = []
+            coverage["skip_reason"] = alignment.skip_reason
+        elif alignment_mode == "auto":
+            # Auto mode: alignment success overrides strict date-coverage report.
+            # The alignment's retained/dropped symbols, skip state, and coverage
+            # ratio become authoritative — the strict sufficient_coverage gate
+            # that may have flagged symbols is superseded.
+            coverage["skipped"] = False
+            coverage["sufficient"] = True
+            coverage["retained_symbols"] = list(alignment.retained_symbols)
+            coverage["dropped_symbols"] = list(alignment.dropped_symbols)
+            coverage["skip_reason"] = None
+            n_total = len(universe.symbols) or 1
+            coverage["coverage_ratio"] = round(
+                len(alignment.retained_symbols) / n_total, 4
+            )
+
         coverage_reports[universe.name] = coverage
+        effective_train_starts[universe.name] = effective_start
 
     coverage_path = base_out / "coverage_report.json"
     coverage_path.write_text(json.dumps(coverage_reports, indent=2, sort_keys=True), encoding="utf-8")
@@ -172,6 +221,8 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, A
 
     for universe in universes:
         coverage = coverage_reports[universe.name]
+        effective_start = effective_train_starts.get(universe.name, train_start)
+
         if coverage["skipped"]:
             per_universe_summaries[universe.name] = None
             per_universe_decision_packs[universe.name] = None
@@ -194,14 +245,11 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, A
             per_universe_decision_packs[universe.name] = None
             continue
 
-        windows = filter_windows_by_available_range(
-            half_year_rolling_windows(
-                start_year=int(train_start[:4]),
-                first_test_year=first_test_year,
-                last_test_year=last_test_year,
-            ),
-            available_start=train_start,
-            available_end=available_end,
+        windows = get_aligned_windows(
+            effective_start,
+            available_end,
+            first_test_year=first_test_year,
+            last_test_year=last_test_year,
         )
 
         if not windows:
@@ -332,7 +380,16 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, A
         per_universe_decision_packs[universe.name] = decision_pack
 
     # ── universe robustness summary ─────────────────────────────────────
-    robustness_summary = summarize_universe_robustness(per_universe_summaries)
+    valid_summaries = {k: v for k, v in per_universe_summaries.items() if v is not None}
+    if not valid_summaries:
+        robustness_summary = {
+            "skipped": True,
+            "reason": "no universe produced sufficient stability reports",
+            "alignment_mode": alignment_mode,
+            "requested_train_start": train_start,
+        }
+    else:
+        robustness_summary = summarize_universe_robustness(valid_summaries)
     summary_path = base_out / "universe_robustness_summary.json"
     summary_path.write_text(json.dumps(robustness_summary, indent=2, sort_keys=True), encoding="utf-8")
 
@@ -349,6 +406,8 @@ def run(root: Path, *, first_test_year: int, last_test_year: int) -> dict[str, A
         "packs_path": str(packs_path),
         "coverage": coverage_reports,
         "summary": robustness_summary,
+        "alignment_mode": alignment_mode,
+        "alignment": alignment_results,
     }
 
 
@@ -357,11 +416,14 @@ def main() -> None:
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="Project root directory")
     parser.add_argument("--first-test-year", type=int, default=2024, help="First OOS test year")
     parser.add_argument("--last-test-year", type=int, default=2026, help="Last OOS test year")
+    parser.add_argument("--alignment-mode", choices=["strict", "auto"], default="strict",
+                        help="Train-start alignment mode (default: strict)")
     args = parser.parse_args()
     result = run(
         args.root,
         first_test_year=args.first_test_year,
         last_test_year=args.last_test_year,
+        alignment_mode=args.alignment_mode,
     )
     print(json.dumps(result, indent=2, default=str))
 

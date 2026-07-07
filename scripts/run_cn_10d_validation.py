@@ -13,14 +13,16 @@ import pandas as pd
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 from src.research.daily_ranker import prepare_ranker_frame
 from src.research.daily_ranker_model import fit_lgbm_daily_ranker, predict_lgbm_daily_ranker
+from src.research.market_data_alignment import align_train_start_to_coverage, get_aligned_windows
 from src.research.model_decision_pack import build_model_decision_pack, render_model_decision_markdown
 from src.research.multi_market_readiness import MarketReadinessSpec, check_market_data_coverage, load_market_watchlist, normalize_market_symbols
 from src.research.notebook_experiment_api import run_10d_experiment
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR, ResearchSessionConfig
 from src.research.notebook_research_api import sanitize_factor_name
 from src.research.ranker_calibration_grid import RankerCalibration, RankerFeatureGroup, RankerGridCandidate
-from src.research.rolling_windows import filter_windows_by_available_range, half_year_rolling_windows, purge_training_tail
+from src.research.rolling_windows import purge_training_tail
 from src.research.stable_signal_blend import BlendWeight, build_blend_candidates
+from src.research.universe_robustness import load_symbol_date_coverage, validate_no_nan_inputs
 from src.research.walk_forward_stability import summarize_walk_forward_reports
 
 FROZEN_FEATURE_GROUP = RankerFeatureGroup(
@@ -76,7 +78,7 @@ def _cn_spec(root: Path, *, train_start: str, test_end: str) -> MarketReadinessS
     )
 
 
-def run(root: Path, *, first_test_year: int, last_test_year: int, train_start: str, test_end: str) -> dict[str, Any]:
+def run(root: Path, *, first_test_year: int, last_test_year: int, train_start: str, test_end: str, alignment_mode: str = "strict") -> dict[str, Any]:
     safe_qlib_init(
         build_qlib_init_cfg(None, market="cn", provider_uri_default=str(root / "data" / "watchlist"))
     )
@@ -84,28 +86,60 @@ def run(root: Path, *, first_test_year: int, last_test_year: int, train_start: s
 
     available = _available_symbols()
     spec = _cn_spec(root, train_start=train_start, test_end=test_end)
-    readiness = check_market_data_coverage(spec, available_symbols=available or None)
     out_dir = root / "artifacts" / "evidence" / "cn_10d_validation"
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── alignment-aware readiness ──────────────────────────────────────────
+    date_coverage = load_symbol_date_coverage(list(spec.symbols), train_start, test_end)
+    alignment = align_train_start_to_coverage(
+        spec, date_coverage, alignment_mode=alignment_mode,
+        first_test_year=first_test_year, last_test_year=last_test_year,
+    )
+
+    # Build readiness report enriched with alignment fields
+    readiness = check_market_data_coverage(spec, available_symbols=available or None, date_coverage_data=date_coverage)
+    readiness["alignment_mode"] = alignment.alignment_mode
+    readiness["requested_train_start"] = alignment.requested_train_start
+    readiness["aligned_train_start"] = alignment.aligned_train_start
+
     (out_dir / "readiness.json").write_text(json.dumps(readiness, indent=2, sort_keys=True), encoding="utf-8")
-    if readiness.get("skipped"):
-        payload = {"status": "skipped", "reason": readiness.get("skip_reason"), "readiness": readiness}
+
+    if alignment.skipped:
+        payload = {
+            "status": "skipped",
+            "reason": alignment.skip_reason,
+            "alignment_mode": alignment.alignment_mode,
+            "requested_train_start": alignment.requested_train_start,
+            "aligned_train_start": alignment.aligned_train_start,
+            "readiness": readiness,
+        }
         (out_dir / "cn_validation_skipped.json").write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
         return payload
 
-    symbols = list(readiness["retained_symbols"])
+    symbols = list(alignment.retained_symbols)
+    effective_start = alignment.aligned_start
     topk = min(3, len(symbols) - 1)
-    calendar = pd.DatetimeIndex(D.calendar(start_time=train_start, end_time=test_end, freq="day"))
+    calendar = pd.DatetimeIndex(D.calendar(start_time=effective_start, end_time=test_end, freq="day"))
     if calendar.empty:
         raise ValueError("CN Qlib calendar has no data in configured range")
     available_end = min(pd.Timestamp(test_end), calendar.max()).strftime("%Y-%m-%d")
-    windows = filter_windows_by_available_range(
-        half_year_rolling_windows(start_year=int(train_start[:4]), first_test_year=first_test_year, last_test_year=last_test_year),
-        available_start=train_start,
-        available_end=available_end,
+    windows = get_aligned_windows(
+        effective_start,
+        available_end,
+        first_test_year=first_test_year,
+        last_test_year=last_test_year,
     )
     if not windows:
-        raise ValueError("no complete CN rolling windows are covered by available data")
+        payload = {
+            "status": "skipped",
+            "reason": f"no complete aligned windows for {effective_start} through {available_end}",
+            "alignment_mode": alignment.alignment_mode,
+            "requested_train_start": alignment.requested_train_start,
+            "aligned_train_start": alignment.aligned_train_start,
+            "readiness": readiness,
+        }
+        (out_dir / "cn_validation_skipped.json").write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return payload
 
     feature_exprs = list(FROZEN_FEATURE_GROUP.expressions)
     expression_columns = {expr: sanitize_factor_name(expr) for expr in feature_exprs}
@@ -127,7 +161,7 @@ def run(root: Path, *, first_test_year: int, last_test_year: int, train_start: s
         )
         features_all = D.features(symbols, feature_exprs, start_time=window.train_start, end_time=window.test_end)
         raw_all = D.features(symbols, [config.return_expression], start_time=window.train_start, end_time=window.test_end)
-        features_all = _normalize_index(features_all).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        features_all = _normalize_index(features_all).replace([np.inf, -np.inf], np.nan)
         features_all.columns = [expression_columns[expr] for expr in feature_exprs]
         raw_all = _normalize_index(raw_all)
         raw_all.columns = ["return"]
@@ -136,6 +170,12 @@ def run(root: Path, *, first_test_year: int, last_test_year: int, train_start: s
         train_mask = (dates >= pd.Timestamp(window.train_start)) & (dates <= pd.Timestamp(window.train_end))
         test_mask = (dates >= pd.Timestamp(window.test_start)) & (dates <= pd.Timestamp(window.test_end))
         features_train, returns_train = purge_training_tail(features_all.loc[train_mask].copy(), raw_all.loc[train_mask].copy(), holding_days=config.holding_days)
+
+        ok, reason = validate_no_nan_inputs(features_train, context=f"features train/{window.label}")
+        if not ok:
+            print(f"Skipping window {window.label}: {reason}")
+            continue
+
         features_test = features_all.loc[test_mask].copy()
         returns_test = raw_all.loc[test_mask].copy()
         returns_test.attrs.update(raw_all.attrs)
@@ -150,6 +190,18 @@ def run(root: Path, *, first_test_year: int, last_test_year: int, train_start: s
         candidates = {FROZEN_RANKER.name: ranker_scores, "factor:historical_momentum_10d": baseline}
         candidates.update(build_blend_candidates({FROZEN_RANKER.name: ranker_scores}, baseline, weights=[FROZEN_BLEND_WEIGHT]))
         reports.append(run_10d_experiment(config=config, candidates=candidates, raw_returns=returns_test, output_dir=out_dir))
+
+    if len(reports) < MIN_STABILITY_WINDOWS:
+        payload = {
+            "status": "skipped",
+            "reason": f"only {len(reports)} reports survived validation (need ≥ {MIN_STABILITY_WINDOWS})",
+            "alignment_mode": alignment.alignment_mode,
+            "requested_train_start": alignment.requested_train_start,
+            "aligned_train_start": alignment.aligned_train_start,
+            "readiness": readiness,
+        }
+        (out_dir / "cn_validation_skipped.json").write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return payload
 
     summary = summarize_walk_forward_reports(reports, min_windows=MIN_STABILITY_WINDOWS)
     (out_dir / "walk_forward_stability.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
@@ -166,8 +218,10 @@ def main() -> None:
     parser.add_argument("--last-test-year", type=int, default=2026)
     parser.add_argument("--train-start", default="2021-01-01")
     parser.add_argument("--test-end", default="2026-06-18")
+    parser.add_argument("--alignment-mode", choices=["strict", "auto"], default="strict",
+                        help="Train-start alignment mode (default: strict)")
     args = parser.parse_args()
-    print(json.dumps(run(args.root, first_test_year=args.first_test_year, last_test_year=args.last_test_year, train_start=args.train_start, test_end=args.test_end), indent=2, default=str))
+    print(json.dumps(run(args.root, first_test_year=args.first_test_year, last_test_year=args.last_test_year, train_start=args.train_start, test_end=args.test_end, alignment_mode=args.alignment_mode), indent=2, default=str))
 
 
 if __name__ == "__main__":
