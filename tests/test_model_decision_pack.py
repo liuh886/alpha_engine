@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import pytest
+
 from src.research.model_decision_pack import build_model_decision_pack, render_model_decision_markdown
 
 
 def _summary(mean_icir: float, worst_drawdown: float, ready_ratio: float) -> dict[str, object]:
     return {
+        "schema_version": "1.0",
+        "min_windows": 3,
         "n_reports": 4,
         "n_candidates": 10,
         "candidates": [
@@ -50,7 +54,7 @@ def test_model_decision_pack_marks_blend_as_stronger_research_not_trade_ready() 
 def test_model_decision_pack_requires_ready_ratio_for_trade_guidance() -> None:
     pack = build_model_decision_pack(_summary(mean_icir=0.35, worst_drawdown=-0.10, ready_ratio=0.25))
 
-    assert pack["decision"]["status"] == "research_candidate"
+    assert pack["decision"]["status"] == "stronger_research_candidate"
     assert pack["decision"]["trade_ready"] is False
     assert pack["decision"]["failed_trade_gates"] == ["ready_ratio"]
 
@@ -64,7 +68,9 @@ def test_model_decision_pack_marks_trade_guidance_only_when_all_decision_gates_p
 
 
 def test_model_decision_pack_handles_no_stable_candidate() -> None:
-    pack = build_model_decision_pack({"n_reports": 4, "n_candidates": 1, "candidates": []})
+    pack = build_model_decision_pack(
+        {"schema_version": "1.0", "min_windows": 3, "n_reports": 4, "n_candidates": 1, "candidates": []}
+    )
 
     assert pack["current_best_candidate"] is None
     assert pack["decision"]["status"] == "no_stable_candidate"
@@ -79,3 +85,20 @@ def test_render_model_decision_markdown_includes_status_and_warning() -> None:
     assert "stronger_research_candidate" in text
     assert "Trade ready: **False**" in text
     assert "Research evidence is not authorization" in text
+
+
+def test_model_decision_pack_rejects_single_window_stability_sources() -> None:
+    summary = _summary(mean_icir=0.2551, worst_drawdown=-0.112, ready_ratio=0.25)
+    summary["min_windows"] = 1
+    summary["n_reports"] = 1
+
+    with pytest.raises(ValueError, match="min_windows"):
+        build_model_decision_pack(summary)
+
+
+def test_model_decision_pack_recommends_universe_expansion_not_more_weight_tuning() -> None:
+    pack = build_model_decision_pack(_summary(mean_icir=0.2551, worst_drawdown=-0.112, ready_ratio=0.25))
+
+    assert "Expand the universe" in pack["recommended_next_step"]
+    assert "robustness validation" in pack["recommended_next_step"]
+    assert "do not continue small blend-weight tuning" in pack["recommended_next_step"]
