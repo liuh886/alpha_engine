@@ -7,7 +7,7 @@ calibration/blend on every eligible universe and produces:
 - ``coverage_report.json``
 - per-universe folders under ``artifacts/evidence/universe_robustness/``
 - ``universe_robustness_summary.json``
-- ``model_decision_pack_by_universe.json``
+- ``universe_diagnostic_manifest.json``
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ import pandas as pd
 from src.research.daily_ranker import prepare_ranker_frame
 from src.research.daily_ranker_model import fit_lgbm_daily_ranker, predict_lgbm_daily_ranker
 from src.research.market_data_alignment import align_train_start_to_coverage, get_aligned_windows
-from src.research.model_decision_pack import build_model_decision_pack
 from src.research.multi_market_readiness import MarketReadinessSpec
 from src.research.notebook_experiment_api import run_10d_experiment
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR, ResearchSessionConfig
@@ -217,7 +216,6 @@ def run(root: Path, *, first_test_year: int, last_test_year: int, alignment_mode
     baseline_expr = f"{dollar}close/Ref({dollar}close,10)-1"
 
     per_universe_summaries: dict[str, Any] = {}
-    per_universe_decision_packs: dict[str, Any] = {}
 
     for universe in universes:
         coverage = coverage_reports[universe.name]
@@ -225,24 +223,20 @@ def run(root: Path, *, first_test_year: int, last_test_year: int, alignment_mode
 
         if coverage["skipped"]:
             per_universe_summaries[universe.name] = None
-            per_universe_decision_packs[universe.name] = None
             continue
 
         symbols = coverage["retained_symbols"]
         if len(symbols) < 2:
             per_universe_summaries[universe.name] = None
-            per_universe_decision_packs[universe.name] = None
             continue
 
         topk = min(requested_topk, len(symbols) - 1)
         if topk <= 0:
             per_universe_summaries[universe.name] = None
-            per_universe_decision_packs[universe.name] = None
             continue
 
         if not qlib_available:
             per_universe_summaries[universe.name] = None
-            per_universe_decision_packs[universe.name] = None
             continue
 
         windows = get_aligned_windows(
@@ -254,7 +248,6 @@ def run(root: Path, *, first_test_year: int, last_test_year: int, alignment_mode
 
         if not windows:
             per_universe_summaries[universe.name] = None
-            per_universe_decision_packs[universe.name] = None
             continue
 
         universe_out = base_out / universe.name
@@ -372,13 +365,6 @@ def run(root: Path, *, first_test_year: int, last_test_year: int, alignment_mode
         summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
         per_universe_summaries[universe.name] = summary
 
-        # Build decision pack per universe
-        try:
-            decision_pack = build_model_decision_pack(summary)
-        except ValueError:
-            decision_pack = None
-        per_universe_decision_packs[universe.name] = decision_pack
-
     # ── universe robustness summary ─────────────────────────────────────
     valid_summaries = {k: v for k, v in per_universe_summaries.items() if v is not None}
     if not valid_summaries:
@@ -393,19 +379,41 @@ def run(root: Path, *, first_test_year: int, last_test_year: int, alignment_mode
     summary_path = base_out / "universe_robustness_summary.json"
     summary_path.write_text(json.dumps(robustness_summary, indent=2, sort_keys=True), encoding="utf-8")
 
-    # ── model decision pack by universe ─────────────────────────────────
-    packs_path = base_out / "model_decision_pack_by_universe.json"
-    packs_path.write_text(
-        json.dumps(per_universe_decision_packs, indent=2, sort_keys=True, default=str),
+    # ── diagnostic-only manifest ───────────────────────────────────────
+    diagnostic_manifest = {
+        "schema_version": "1.0",
+        "diagnostic_type": "frozen_blend_universe_robustness",
+        "diagnostic_only": True,
+        "research_only": True,
+        "promotion_eligible": False,
+        "trade_ready": False,
+        "rationale": (
+            "Historical universe-robustness analysis may compare coverage and "
+            "stability, but lifecycle promotion requires a spec-bound run and "
+            "canonical PromotionDecision."
+        ),
+        "universe_status": {
+            name: {
+                "evaluated": summary is not None,
+                "n_reports": (summary or {}).get("n_reports", 0),
+                "n_candidates": (summary or {}).get("n_candidates", 0),
+            }
+            for name, summary in per_universe_summaries.items()
+        },
+    }
+    diagnostic_path = base_out / "universe_diagnostic_manifest.json"
+    diagnostic_path.write_text(
+        json.dumps(diagnostic_manifest, indent=2, sort_keys=True),
         encoding="utf-8",
     )
 
     return {
         "coverage_path": str(coverage_path),
         "summary_path": str(summary_path),
-        "packs_path": str(packs_path),
+        "diagnostic_manifest_path": str(diagnostic_path),
         "coverage": coverage_reports,
         "summary": robustness_summary,
+        "diagnostic_manifest": diagnostic_manifest,
         "alignment_mode": alignment_mode,
         "alignment": alignment_results,
     }
