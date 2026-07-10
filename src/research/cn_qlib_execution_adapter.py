@@ -28,10 +28,6 @@ from src.research.market_data_alignment import (
     align_train_start_to_coverage,
     get_aligned_windows,
 )
-from src.research.model_decision_pack import (
-    build_model_decision_pack,
-    render_model_decision_markdown,
-)
 from src.research.multi_market_readiness import (
     MarketReadinessSpec,
     check_market_data_coverage,
@@ -653,31 +649,16 @@ def execute_cn_qlib_plan(
 
     stability = summarize_walk_forward_reports(reports, min_windows=min_windows)
     write_json(paths.walk_forward_stability, stability)
-    decision_pack = build_model_decision_pack(stability)
-    write_json(paths.model_decision_pack, decision_pack)
-    paths.model_decision_markdown.write_text(
-        render_model_decision_markdown(decision_pack),
-        encoding="utf-8",
-    )
     metrics_summary = {
         "schema_version": "1.0",
         "experiment_id": plan.spec.experiment_id,
         "n_reports": stability.get("n_reports"),
         "n_candidates": stability.get("n_candidates"),
         "best_candidate": stability.get("best_candidate"),
-        "current_best_candidate": decision_pack.get("current_best_candidate"),
-        "decision": decision_pack.get("decision"),
     }
     write_json(paths.metrics_summary, metrics_summary)
 
-    runtime_metadata.update(
-        {
-            "report_count": len(reports),
-            "decision_status": (
-                decision_pack.get("decision", {}) or {}
-            ).get("status"),
-        }
-    )
+    runtime_metadata["report_count"] = len(reports)
     return SpecBoundExecutionResult(
         status="passed",
         effective_contract=effective_contract,
@@ -685,8 +666,6 @@ def execute_cn_qlib_plan(
         evidence_paths={
             **evidence_with_windows,
             "walk_forward_stability": str(paths.walk_forward_stability),
-            "model_decision_pack": str(paths.model_decision_pack),
-            "model_decision_markdown": str(paths.model_decision_markdown),
             "metrics_summary": str(paths.metrics_summary),
         },
     )
