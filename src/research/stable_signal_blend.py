@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from math import isclose
 from typing import Iterable
 
+import numpy as np
 import pandas as pd
 
 
@@ -27,11 +28,19 @@ class BlendWeight:
         return f"ranker{self.ranker_weight:g}_momentum{self.momentum_weight:g}"
 
     def to_dict(self) -> dict[str, float]:
-        return {"ranker_weight": self.ranker_weight, "momentum_weight": self.momentum_weight}
+        return {
+            "ranker_weight": self.ranker_weight,
+            "momentum_weight": self.momentum_weight,
+        }
 
 
 def daily_cross_sectional_zscore(score: pd.DataFrame) -> pd.DataFrame:
-    """Normalize scores within each date to reduce scale mismatch before blending."""
+    """Normalize valid scores within each date without manufacturing values.
+
+    Missing/non-finite rows and dates with fewer than two valid instruments are
+    removed. A valid constant cross-section has no relative signal and is
+    represented by explicit zeros.
+    """
 
     if "datetime" not in score.index.names:
         raise ValueError("score index must include a datetime level")
@@ -41,12 +50,44 @@ def daily_cross_sectional_zscore(score: pd.DataFrame) -> pd.DataFrame:
             raise ValueError("score frame must have exactly one column")
         frame.columns = ["score"]
 
-    values = frame["score"].astype(float)
-    grouped = values.groupby(level="datetime")
-    means = grouped.transform("mean")
-    stds = grouped.transform(lambda day: day.std(ddof=0))
-    values = ((values - means) / stds.where(stds != 0.0)).fillna(0.0)
-    result = values.to_frame("score")
+    values = (
+        frame["score"]
+        .astype(float)
+        .replace([np.inf, -np.inf], np.nan)
+        .dropna()
+        .sort_index()
+    )
+    if values.empty:
+        result = values.to_frame("score")
+        result.attrs.update(frame.attrs)
+        result.attrs["transform"] = "daily_cross_sectional_zscore"
+        return result
+
+    sizes = values.groupby(level="datetime", sort=True).size()
+    valid_dates = sizes[sizes >= 2].index
+    values = values.loc[
+        values.index.get_level_values("datetime").isin(valid_dates)
+    ]
+
+    normalized_parts: list[pd.Series] = []
+    for _, day in values.groupby(level="datetime", sort=True):
+        standard_deviation = float(day.std(ddof=0))
+        if standard_deviation == 0.0:
+            normalized = pd.Series(0.0, index=day.index, name="score")
+        else:
+            normalized = ((day - float(day.mean())) / standard_deviation).rename(
+                "score"
+            )
+        normalized_parts.append(normalized)
+
+    if normalized_parts:
+        normalized_values = pd.concat(normalized_parts).sort_index()
+    else:
+        normalized_values = values.iloc[0:0].rename("score")
+    if not np.isfinite(normalized_values.to_numpy()).all():
+        raise ValueError("cross-sectional z-score produced non-finite values")
+
+    result = normalized_values.to_frame("score")
     result.attrs.update(frame.attrs)
     result.attrs["transform"] = "daily_cross_sectional_zscore"
     return result
