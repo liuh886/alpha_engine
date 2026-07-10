@@ -12,80 +12,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  apply-diagnostic-boundary:
-    if: github.event_name == 'pull_request' && github.head_ref == 'refactor/universe-robustness-diagnostic-only' && github.actor != 'github-actions[bot]'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: refactor/universe-robustness-diagnostic-only
-          fetch-depth: 0
-
-      - name: Remove independent lifecycle decisions
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('scripts/run_best_blend_universe_robustness.py')
-          text = path.read_text(encoding='utf-8')
-          text = text.replace(
-              'from src.research.model_decision_pack import build_model_decision_pack\n',
-              '',
-              1,
-          )
-          text = text.replace(
-              '- ``model_decision_pack_by_universe.json``\n',
-              '- ``universe_diagnostic_manifest.json``\n',
-              1,
-          )
-          text = text.replace(
-              '    per_universe_decision_packs: dict[str, Any] = {}\n',
-              '',
-              1,
-          )
-          text = text.replace(
-              '            per_universe_decision_packs[universe.name] = None\n',
-              '',
-          )
-          decision_start = text.find('        # Build decision pack per universe\n')
-          robustness_marker = text.find(
-              '    # ── universe robustness summary', decision_start
-          )
-          if decision_start < 0 or robustness_marker < 0:
-              raise SystemExit('per-universe decision block not found')
-          text = text[:decision_start] + text[robustness_marker:]
-
-          output_start = text.find(
-              '    # ── model decision pack by universe'
-          )
-          return_start = text.find('    return {', output_start)
-          if output_start < 0 or return_start < 0:
-              raise SystemExit('decision-pack output block not found')
-          diagnostic_block = '''    # ── diagnostic-only manifest ───────────────────────────────────────\n    diagnostic_manifest = {\n        "schema_version": "1.0",\n        "diagnostic_type": "frozen_blend_universe_robustness",\n        "diagnostic_only": True,\n        "research_only": True,\n        "promotion_eligible": False,\n        "trade_ready": False,\n        "rationale": (\n            "Historical universe-robustness analysis may compare coverage and "\n            "stability, but lifecycle promotion requires a spec-bound run and "\n            "canonical PromotionDecision."\n        ),\n        "universe_status": {\n            name: {\n                "evaluated": summary is not None,\n                "n_reports": (summary or {}).get("n_reports", 0),\n                "n_candidates": (summary or {}).get("n_candidates", 0),\n            }\n            for name, summary in per_universe_summaries.items()\n        },\n    }\n    diagnostic_path = base_out / "universe_diagnostic_manifest.json"\n    diagnostic_path.write_text(\n        json.dumps(diagnostic_manifest, indent=2, sort_keys=True),\n        encoding="utf-8",\n    )\n\n'''
-          text = text[:output_start] + diagnostic_block + text[return_start:]
-          text = text.replace(
-              '        "packs_path": str(packs_path),\n',
-              '        "diagnostic_manifest_path": str(diagnostic_path),\n',
-              1,
-          )
-          text = text.replace(
-              '        "summary": robustness_summary,\n',
-              '        "summary": robustness_summary,\n'
-              '        "diagnostic_manifest": diagnostic_manifest,\n',
-              1,
-          )
-          path.write_text(text, encoding='utf-8')
-          PY
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/run_best_blend_universe_robustness.py
-          git commit -m "refactor(research): make universe robustness diagnostic-only"
-          git push origin HEAD:refactor/universe-robustness-diagnostic-only
-
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -114,7 +40,7 @@ jobs:
 
       - name: Fast PR pytest
         if: github.event_name == 'pull_request'
-        run: uv run pytest tests/test_labels.py tests/test_training_label_direction.py tests/test_model_signal_identity.py tests/test_api_contract.py tests/test_walk_forward_stability.py tests/test_rolling_windows.py tests/test_ranker_calibration_grid.py tests/test_ranker_grid_experiment_contract.py tests/test_stable_signal_blend.py tests/test_model_decision_pack.py tests/test_universe_robustness.py tests/test_multi_market_readiness.py tests/test_market_data_alignment.py tests/test_cn_feature_quality.py tests/test_factor_library.py tests/test_research_paradigm.py tests/test_research_artifacts.py tests/test_spec_bound_execution.py tests/test_cn_qlib_execution_adapter.py tests/test_us_qlib_execution_adapter.py tests/test_portfolio_intent.py tests/test_vectorized_backtest_intent_wrapper.py tests/test_promotion_decision.py tests/test_promotion_consumers.py tests/test_post_identity_promotion.py tests/test_synthetic_evidence_scope.py tests/test_decision_pack_cli_consumer.py tests/test_legacy_cn_runner_wrapper.py tests/test_legacy_rolling_ranker_wrapper.py tests/test_legacy_ranker_grid_wrapper.py tests/test_qlib_adapter_decision_boundary.py tests/test_qlib_execution_common.py tests/test_evaluation_context_boundary.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+        run: uv run pytest tests/test_labels.py tests/test_training_label_direction.py tests/test_model_signal_identity.py tests/test_api_contract.py tests/test_walk_forward_stability.py tests/test_rolling_windows.py tests/test_ranker_calibration_grid.py tests/test_ranker_grid_experiment_contract.py tests/test_stable_signal_blend.py tests/test_model_decision_pack.py tests/test_universe_robustness.py tests/test_multi_market_readiness.py tests/test_market_data_alignment.py tests/test_cn_feature_quality.py tests/test_factor_library.py tests/test_research_paradigm.py tests/test_research_artifacts.py tests/test_spec_bound_execution.py tests/test_cn_qlib_execution_adapter.py tests/test_us_qlib_execution_adapter.py tests/test_portfolio_intent.py tests/test_vectorized_backtest_intent_wrapper.py tests/test_promotion_decision.py tests/test_promotion_consumers.py tests/test_post_identity_promotion.py tests/test_synthetic_evidence_scope.py tests/test_decision_pack_cli_consumer.py tests/test_legacy_cn_runner_wrapper.py tests/test_legacy_rolling_ranker_wrapper.py tests/test_legacy_ranker_grid_wrapper.py tests/test_qlib_adapter_decision_boundary.py tests/test_qlib_execution_common.py tests/test_evaluation_context_boundary.py tests/test_universe_robustness_diagnostic_boundary.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: CN Qlib fixture integration
         if: github.event_name == 'pull_request'
