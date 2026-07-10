@@ -39,7 +39,7 @@ from src.research.multi_market_readiness import (
     normalize_market_symbols,
 )
 from src.research.notebook_experiment_api import run_10d_experiment
-from src.research.notebook_lab_contracts import ResearchSessionConfig
+from src.research.evaluation_context import SpecBoundEvaluationContext
 from src.research.notebook_research_api import sanitize_factor_name
 from src.research.research_artifacts import ResearchRunPaths, write_json
 from src.research.rolling_windows import purge_training_tail
@@ -399,9 +399,9 @@ def execute_us_qlib_plan(
     skipped_windows: list[dict[str, str | None]] = []
     window_output_dir = paths.run_dir / "windows"
     for window in windows:
-        config = ResearchSessionConfig(
+        config = SpecBoundEvaluationContext(
             market="us",
-            symbols=retained_symbols,
+            symbols=tuple(retained_symbols),
             benchmark=plan.spec.benchmark,
             train_start=window.train_start,
             train_end=window.train_end,
@@ -411,7 +411,7 @@ def execute_us_qlib_plan(
             rebalance_days=int(strategy["rebalance_days"]),
             topk=top_n,
             model_type="spec_bound_us_daily_ranker",
-            factor_expressions=feature_expressions,
+            factor_expressions=tuple(feature_expressions),
             return_expression=str(strategy["return_expression"]),
             experiment_id=f"{plan.spec.experiment_id}_{window.label}",
         )
