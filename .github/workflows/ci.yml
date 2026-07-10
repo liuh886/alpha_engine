@@ -40,7 +40,11 @@ jobs:
 
       - name: Fast PR pytest
         if: github.event_name == 'pull_request'
-        run: uv run pytest tests/test_labels.py tests/test_training_label_direction.py tests/test_model_signal_identity.py tests/test_api_contract.py tests/test_walk_forward_stability.py tests/test_rolling_windows.py tests/test_ranker_calibration_grid.py tests/test_ranker_grid_experiment_contract.py tests/test_stable_signal_blend.py tests/test_model_decision_pack.py tests/test_universe_robustness.py tests/test_multi_market_readiness.py tests/test_market_data_alignment.py tests/test_cn_feature_quality.py tests/test_factor_library.py tests/test_research_paradigm.py tests/test_research_artifacts.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+        run: uv run pytest tests/test_labels.py tests/test_training_label_direction.py tests/test_model_signal_identity.py tests/test_api_contract.py tests/test_walk_forward_stability.py tests/test_rolling_windows.py tests/test_ranker_calibration_grid.py tests/test_ranker_grid_experiment_contract.py tests/test_stable_signal_blend.py tests/test_model_decision_pack.py tests/test_universe_robustness.py tests/test_multi_market_readiness.py tests/test_market_data_alignment.py tests/test_cn_feature_quality.py tests/test_factor_library.py tests/test_research_paradigm.py tests/test_research_artifacts.py tests/test_spec_bound_execution.py tests/test_cn_qlib_execution_adapter.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+      - name: CN Qlib fixture integration
+        if: github.event_name == 'pull_request'
+        run: uv run pytest tests/test_cn_qlib_ci_integration.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Full release pytest
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
