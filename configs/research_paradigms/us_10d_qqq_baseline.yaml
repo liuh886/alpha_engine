@@ -1,5 +1,4 @@
-# US 10D QQQ Baseline Research Paradigm
-# Schema 1.0 — structured research paradigm for fixed-10D US baseline.
+# Canonical US fixed-10D research preparation contract.
 schema_version: "1.0"
 experiment_id: "us_10d_qqq_baseline"
 market: "us"
@@ -57,6 +56,8 @@ strategy:
   research_only: true
 
 walk_forward:
+  requested_train_start: "2021-01-01"
+  test_end: "2026-06-18"
   first_test_year: 2024
   last_test_year: 2026
   min_windows: 3
@@ -72,16 +73,7 @@ evaluation:
     - "ready_ratio"
     - "positive_icir_ratio"
     - "positive_spread_ratio"
-  gates:
-    mean_icir: 0.30
-    worst_drawdown: -0.15
-    ready_ratio: 0.75
+  gate_profile: "ten_day_model_gates_v1"
 
 outputs:
-  write_readiness: true
-  write_factor_manifest: true
-  write_candidate_manifest: true
-  write_walk_forward_stability: true
-  write_decision_pack: true
-  write_top_bottom_signals: true
-  write_frontend_payload: true
+  artifact_profile: "research_run_v1"
