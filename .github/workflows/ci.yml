@@ -46,26 +46,12 @@ jobs:
               text = text[: text.index(marker)] + replacement_tail
               path.write_text(text, encoding='utf-8')
 
-          test = Path('tests/test_qlib_adapter_decision_boundary.py')
-          test.write_text('''"""Architecture guard: adapters emit evidence, never lifecycle decisions."""\n\nfrom __future__ import annotations\n\nfrom pathlib import Path\n\nimport pytest\n\n\n@pytest.mark.parametrize(\n    "path",\n    [\n        Path("src/research/cn_qlib_execution_adapter.py"),\n        Path("src/research/us_qlib_execution_adapter.py"),\n    ],\n)\ndef test_qlib_adapters_do_not_build_decision_surfaces(path: Path) -> None:\n    source = path.read_text(encoding="utf-8")\n\n    assert "build_model_decision_pack" not in source\n    assert "render_model_decision_markdown" not in source\n    assert "decision_status" not in source\n    assert '"model_decision_pack":' not in source\n    assert '"model_decision_markdown":' not in source\n    assert '"walk_forward_stability":' in source\n    assert '"metrics_summary":' in source\n''', encoding='utf-8')
+          Path('tests/test_qlib_adapter_decision_boundary.py').write_text('''"""Architecture guard: adapters emit evidence, never lifecycle decisions."""\n\nfrom __future__ import annotations\n\nfrom pathlib import Path\n\nimport pytest\n\n\n@pytest.mark.parametrize(\n    "path",\n    [\n        Path("src/research/cn_qlib_execution_adapter.py"),\n        Path("src/research/us_qlib_execution_adapter.py"),\n    ],\n)\ndef test_qlib_adapters_do_not_build_decision_surfaces(path: Path) -> None:\n    source = path.read_text(encoding="utf-8")\n\n    assert "build_model_decision_pack" not in source\n    assert "render_model_decision_markdown" not in source\n    assert "decision_status" not in source\n    assert '"model_decision_pack":' not in source\n    assert '"model_decision_markdown":' not in source\n    assert '"walk_forward_stability":' in source\n    assert '"metrics_summary":' in source\n''', encoding='utf-8')
           PY
-
-          git show origin/main:.github/workflows/ci.yml > /tmp/ci.yml
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('/tmp/ci.yml')
-          text = path.read_text(encoding='utf-8')
-          old = 'tests/test_legacy_ranker_grid_wrapper.py -q'
-          new = 'tests/test_legacy_ranker_grid_wrapper.py tests/test_qlib_adapter_decision_boundary.py -q'
-          if old not in text:
-              raise SystemExit('permanent CI insertion marker not found')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
-          PY
-          mv /tmp/ci.yml .github/workflows/ci.yml
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/research/cn_qlib_execution_adapter.py src/research/us_qlib_execution_adapter.py tests/test_qlib_adapter_decision_boundary.py .github/workflows/ci.yml
+          git add src/research/cn_qlib_execution_adapter.py src/research/us_qlib_execution_adapter.py tests/test_qlib_adapter_decision_boundary.py
           git commit -m "refactor(research): make Qlib adapters evidence-only"
           git push origin HEAD:refactor/thin-qlib-adapter-evidence
 
