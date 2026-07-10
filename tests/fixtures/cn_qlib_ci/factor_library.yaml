@@ -1,0 +1,26 @@
+schema_version: "1.0"
+
+groups:
+  ci_compact_ohlcv:
+    description: "Small deterministic factor group for real-Qlib CI smoke tests"
+    factors:
+      - id: "ci:momentum:ret5"
+        expression: "$close/Ref($close,5)-1"
+        family: "momentum"
+        description: "Five-session momentum"
+      - id: "ci:volatility:std5"
+        expression: "Std($close/Ref($close,1)-1,5)"
+        family: "volatility"
+        description: "Five-session return volatility"
+      - id: "ci:liquidity:vol5"
+        expression: "$volume/Mean($volume,5)-1"
+        family: "liquidity"
+        description: "Five-session relative volume"
+
+  factor_baselines:
+    description: "Single CI baseline"
+    factors:
+      - id: "factor:ci_momentum_10d"
+        expression: "$close/Ref($close,10)-1"
+        family: "baseline"
+        description: "Ten-session momentum baseline"
