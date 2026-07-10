@@ -21,12 +21,13 @@ import numpy as np
 import pandas as pd
 
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
-from src.research.cn_qlib_execution_adapter import (
-    _candidates_from_plan,
-    _effective_contract,
-    _fit_ranker_scores,
-    _normalize_index,
-    _skip_result,
+from src.research.qlib_execution_common import (
+    build_effective_execution_contract,
+    build_skip_result,
+    fit_ranker_scores,
+    materialize_ranker_candidates,
+    normalize_qlib_frame_index,
+    resolve_repository_root,
 )
 from src.research.market_data_alignment import (
     align_train_start_to_coverage,
@@ -161,15 +162,6 @@ class QlibUSExecutionRuntime:
         }
 
 
-def _repository_root(plan: SpecBoundExecutionPlan) -> Path:
-    spec_path = Path(plan.spec.spec_path).resolve() if plan.spec.spec_path else None
-    if spec_path is not None:
-        for parent in spec_path.parents:
-            if (parent / "configs").is_dir() and (parent / "src").is_dir():
-                return parent
-    return Path.cwd()
-
-
 def execute_us_qlib_plan(
     plan: SpecBoundExecutionPlan,
     run_dir: Path,
@@ -189,12 +181,12 @@ def execute_us_qlib_plan(
             "asymmetric portfolio intent belongs to the PortfolioIntent stage"
         )
 
-    candidates = _candidates_from_plan(plan)
+    candidates = materialize_ranker_candidates(plan)
     baselines = dict(plan.baseline_factors)
     requested_symbols = [
         str(item) for item in plan.declared_contract["universe"]["requested_symbols"]
     ]
-    effective_contract = _effective_contract(
+    effective_contract = build_effective_execution_contract(
         plan,
         candidates=candidates,
         baselines=baselines,
@@ -203,7 +195,7 @@ def execute_us_qlib_plan(
 
     paths = ResearchRunPaths(run_dir)
     paths.ensure_dir()
-    repository_root = _repository_root(plan)
+    repository_root = resolve_repository_root(plan)
     market_runtime = runtime or QlibUSExecutionRuntime()
     market_runtime.initialize(repository_root)
 
@@ -254,7 +246,7 @@ def execute_us_qlib_plan(
         }
         write_json(paths.data_readiness, readiness)
         write_json(paths.universe_report, readiness)
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
@@ -322,7 +314,7 @@ def execute_us_qlib_plan(
     }
 
     if alignment.skipped:
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
@@ -333,7 +325,7 @@ def execute_us_qlib_plan(
 
     retained_symbols = list(alignment.retained_symbols)
     if len(retained_symbols) <= max(top_n, bottom_n):
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
@@ -347,7 +339,7 @@ def execute_us_qlib_plan(
 
     calendar = market_runtime.calendar(alignment.aligned_train_start, test_end)
     if calendar.empty:
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
@@ -376,7 +368,7 @@ def execute_us_qlib_plan(
         "walk_forward_windows": str(paths.walk_forward_windows),
     }
     if len(windows) < min_windows:
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
@@ -435,14 +427,14 @@ def execute_us_qlib_plan(
             window.train_start,
             window.test_end,
         )
-        features_all = _normalize_index(features_all).replace(
+        features_all = normalize_qlib_frame_index(features_all).replace(
             [np.inf, -np.inf],
             np.nan,
         )
         features_all.columns = [
             expression_columns[expression] for expression in feature_expressions
         ]
-        raw_returns_all = _normalize_index(raw_returns_all)
+        raw_returns_all = normalize_qlib_frame_index(raw_returns_all)
         raw_returns_all.columns = ["return"]
         raw_returns_all.attrs.update(
             {
@@ -477,7 +469,7 @@ def execute_us_qlib_plan(
         returns_test.attrs.update(raw_returns_all.attrs)
         candidate_scores: dict[str, pd.DataFrame] = {}
         for candidate in candidates:
-            candidate_scores[candidate.name] = _fit_ranker_scores(
+            candidate_scores[candidate.name] = fit_ranker_scores(
                 candidate,
                 features_train,
                 returns_train,
@@ -491,7 +483,7 @@ def execute_us_qlib_plan(
                 window.test_start,
                 window.test_end,
             )
-            baseline = _normalize_index(baseline)
+            baseline = normalize_qlib_frame_index(baseline)
             baseline.columns = ["score"]
             baseline.attrs.update(
                 {
@@ -514,7 +506,7 @@ def execute_us_qlib_plan(
     runtime_metadata["survived_windows"] = survived_windows
     runtime_metadata["skipped_windows"] = skipped_windows
     if len(reports) < min_windows:
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
