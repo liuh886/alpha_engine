@@ -1,15 +1,16 @@
-"""Research Paradigm Spec and dry-run / execution dispatcher.
+"""Validated fixed-10D research contract and Qlib-free preparation workflow.
 
-Loads a structured research paradigm from YAML, validates strictly,
-and provides both a Qlib-free dry-run mode (manifests + small JSON
-artifacts only) and a fail-closed execution dispatch that can invoke
-the existing #91 CN feature-quality runner.
+This module deliberately stops at contract validation and artifact preparation.
+It does not dispatch model training or reuse a runner whose effective inputs
+cannot be proven identical to the declared paradigm spec.
 """
 
 from __future__ import annotations
 
-import json
+import hashlib
+import re
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -26,204 +27,38 @@ from src.research.factor_library import (
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR
 from src.research.ranker_calibration_grid import (
     RankerCalibration,
-    RankerFeatureGroup,
     RankerGridCandidate,
     build_ranker_calibration_grid,
 )
 from src.research.research_artifacts import (
     build_frontend_payload,
     build_research_run_paths,
-    build_research_signals_payload,
+    validate_artifact_completeness,
     write_frontend_payload,
     write_json,
     write_run_status,
-    write_skipped_run,
     write_top_bottom_signals_csv,
 )
+from src.research.ten_day_model_gates import GATE_THRESHOLDS
 
 PARADIGM_SCHEMA_VERSION = "1.0"
-
-
-# ── Validation ────────────────────────────────────────────────────────────────
-
-
-def _check_source_exists(source: str, spec_path: str) -> None:
-    """Verify *source* exists relative to the spec dir or project root."""
-    spec_dir = Path(spec_path).parent if spec_path else Path.cwd()
-    candidate = spec_dir / source
-    if candidate.exists():
-        return
-    cwd_candidate = Path.cwd() / source
-    if cwd_candidate.exists():
-        return
-    raise FileNotFoundError(
-        f"Source '{source}' not found relative to spec dir ({spec_dir}) or cwd"
-    )
-
-
-def validate_research_paradigm_spec(spec: ResearchParadigmSpec) -> None:
-    """Validate a ``ResearchParadigmSpec`` against the exact contract.
-
-    Raises ValueError or FileNotFoundError on any violation.
-
-    Parameters
-    ----------
-    spec:
-        A ``ResearchParadigmSpec`` instance (not a raw dict).
-    """
-    if spec.schema_version != PARADIGM_SCHEMA_VERSION:
-        raise ValueError(
-            f"Unsupported paradigm schema_version '{spec.schema_version}' "
-            f"(expected '{PARADIGM_SCHEMA_VERSION}')"
-        )
-
-    if not spec.experiment_id:
-        raise ValueError("experiment_id must be non-empty")
-
-    if spec.market not in ("cn", "us"):
-        raise ValueError(f"market must be 'cn' or 'us', got '{spec.market}'")
-
-    if not spec.benchmark:
-        raise ValueError("benchmark must be non-empty")
-
-    # ── Universe ──────────────────────────────────────────────────────────
-    universe = spec.universe
-    uni_source = str(universe.get("source", ""))
-    if not uni_source:
-        raise ValueError("universe.source must be non-empty")
-    _check_source_exists(uni_source, spec.spec_path)
-
-    min_symbols = int(universe.get("min_symbols", 0))
-    if min_symbols < 2:
-        raise ValueError(f"universe.min_symbols must be >= 2, got {min_symbols}")
-
-    alignment = str(universe.get("alignment_mode", ""))
-    if alignment not in ("strict", "auto"):
-        raise ValueError(
-            f"universe.alignment_mode must be 'strict' or 'auto', got '{alignment}'"
-        )
-
-    # ── Factor library ────────────────────────────────────────────────────
-    fl = spec.factor_library
-    fl_source = str(fl.get("source", ""))
-    if not fl_source:
-        raise ValueError("factor_library.source must be non-empty")
-    _check_source_exists(fl_source, spec.spec_path)
-
-    fl_groups = fl.get("groups", [])
-    if not isinstance(fl_groups, list) or len(fl_groups) == 0:
-        raise ValueError("factor_library.groups must be a non-empty list")
-
-    # ── Candidate grid ────────────────────────────────────────────────────
-    cg = spec.candidate_grid
-    ranker = cg.get("ranker")
-    if not isinstance(ranker, dict):
-        raise ValueError("candidate_grid.ranker must be a mapping")
-
-    cals = ranker.get("calibrations", [])
-    if not isinstance(cals, list) or len(cals) == 0:
-        raise ValueError("candidate_grid.ranker.calibrations must be a non-empty list")
-
-    baselines = cg.get("factor_baselines", [])
-    if not isinstance(baselines, list):
-        raise ValueError("candidate_grid.factor_baselines must be a list")
-
-    # ── Strategy ──────────────────────────────────────────────────────────
-    strategy = spec.strategy
-    horizon = int(strategy.get("horizon_days", 0))
-    if horizon != 10:
-        raise ValueError(f"strategy.horizon_days must be 10, got {horizon}")
-
-    holding = int(strategy.get("holding_days", 0))
-    if holding != 10:
-        raise ValueError(f"strategy.holding_days must be 10, got {holding}")
-
-    rebalance = int(strategy.get("rebalance_days", 0))
-    if rebalance != 10:
-        raise ValueError(f"strategy.rebalance_days must be 10, got {rebalance}")
-
-    ret_expr = str(strategy.get("return_expression", ""))
-    if ret_expr != CANONICAL_10D_RETURN_EXPR:
-        raise ValueError(
-            f"strategy.return_expression must be canonical 10D expression, "
-            f"got '{ret_expr}'"
-        )
-
-    provenance = str(strategy.get("return_provenance", ""))
-    if provenance != "raw_forward_return":
-        raise ValueError(
-            f"strategy.return_provenance must be 'raw_forward_return', "
-            f"got '{provenance}'"
-        )
-
-    research_only = strategy.get("research_only")
-    if research_only is not True:
-        raise ValueError("strategy.research_only must be True")
-
-    # ── Walk-forward ──────────────────────────────────────────────────────
-    wf = spec.walk_forward
-    min_w = int(wf.get("min_windows", 0))
-    if min_w < 3:
-        raise ValueError(f"walk_forward.min_windows must be >= 3, got {min_w}")
-
-    embargo = int(wf.get("train_embargo_sessions", 0))
-    if embargo != 10:
-        raise ValueError(
-            f"walk_forward.train_embargo_sessions must be 10, got {embargo}"
-        )
-
-    # ── Evaluation / gates ────────────────────────────────────────────────
-    evaluation = spec.evaluation
-    gates = evaluation.get("gates")
-    if not isinstance(gates, dict):
-        raise ValueError("evaluation.gates must be a mapping")
-
-    mean_icir = float(gates.get("mean_icir", 0.0))
-    if mean_icir < 0.30:
-        raise ValueError(
-            f"evaluation.gates.mean_icir must be >= 0.30 (non-lowered), got {mean_icir}"
-        )
-
-    worst_dd = float(gates.get("worst_drawdown", -1.0))
-    if worst_dd < -0.15:
-        raise ValueError(
-            f"evaluation.gates.worst_drawdown must be >= -0.15 (non-lowered), "
-            f"got {worst_dd}"
-        )
-
-    ready_ratio = float(gates.get("ready_ratio", 0.0))
-    if ready_ratio < 0.75:
-        raise ValueError(
-            f"evaluation.gates.ready_ratio must be >= 0.75 (non-lowered), "
-            f"got {ready_ratio}"
-        )
-
-    # ── Outputs ───────────────────────────────────────────────────────────
-    outputs = spec.outputs
-    if not outputs.get("write_frontend_payload"):
-        raise ValueError("outputs.write_frontend_payload must be True")
-
-
-# ── Compatibility: old dict-based validation ───────────────────────────────────
-
-
-def _validate_research_paradigm_dict(data: dict[str, Any], spec_path: str = "") -> None:
-    """Validate a raw paradigm dict.  Compatibility wrapper."""
-    spec = ResearchParadigmSpec.from_dict(data, spec_path=spec_path)
-    validate_research_paradigm_spec(spec)
-
-
-# ── Spec ──────────────────────────────────────────────────────────────────────
+GATE_PROFILE = "ten_day_model_gates_v1"
+ARTIFACT_PROFILE = "research_run_v1"
+REQUIRED_METRICS: tuple[str, ...] = (
+    "mean_icir",
+    "mean_rank_ic",
+    "mean_spread",
+    "worst_drawdown",
+    "ready_ratio",
+    "positive_icir_ratio",
+    "positive_spread_ratio",
+)
+_SAFE_EXPERIMENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 @dataclass(frozen=True)
 class ResearchParadigmSpec:
-    """One validated research paradigm loaded from YAML.
-
-    Frozen fields: schema_version, experiment_id, market, benchmark,
-    and seven dict sections — universe, factor_library, candidate_grid,
-    strategy, walk_forward, evaluation, outputs.
-    """
+    """One validated, serializable fixed-10D research contract."""
 
     schema_version: str
     experiment_id: str
@@ -240,35 +75,20 @@ class ResearchParadigmSpec:
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "ResearchParadigmSpec":
-        """Load and validate a research paradigm spec from YAML."""
         yaml_path = Path(path).resolve()
-        if not yaml_path.exists():
+        if not yaml_path.is_file():
             raise FileNotFoundError(f"Research paradigm spec not found: {yaml_path}")
-
-        with open(yaml_path, encoding="utf-8") as fh:
-            data = yaml.safe_load(fh)
-
-        # Validate before constructing
-        _validate_research_paradigm_dict(data, str(yaml_path))
-
-        return cls(
-            schema_version=str(data["schema_version"]),
-            experiment_id=str(data["experiment_id"]),
-            market=str(data["market"]),
-            benchmark=str(data["benchmark"]),
-            universe=dict(data["universe"]),
-            factor_library=dict(data["factor_library"]),
-            candidate_grid=dict(data["candidate_grid"]),
-            strategy=dict(data["strategy"]),
-            walk_forward=dict(data["walk_forward"]),
-            evaluation=dict(data["evaluation"]),
-            outputs=dict(data["outputs"]),
-            spec_path=str(yaml_path),
-        )
+        data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("Research paradigm YAML must be a mapping")
+        spec = cls.from_dict(data, spec_path=str(yaml_path))
+        validate_research_paradigm_spec(spec)
+        return spec
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any], spec_path: str = "") -> "ResearchParadigmSpec":
-        """Construct from an already-loaded dict (used by compat validators)."""
+    def from_dict(
+        cls, data: dict[str, Any], spec_path: str = ""
+    ) -> "ResearchParadigmSpec":
         return cls(
             schema_version=str(data.get("schema_version", "")),
             experiment_id=str(data.get("experiment_id", "")),
@@ -300,130 +120,235 @@ class ResearchParadigmSpec:
         }
 
 
-# ── Notebook API ──────────────────────────────────────────────────────────────
+def _resolve_relative_path(spec: ResearchParadigmSpec, source: str) -> Path:
+    """Resolve a source from the spec directory or repository working directory."""
+    spec_dir = Path(spec.spec_path).parent if spec.spec_path else Path.cwd()
+    candidates = (spec_dir / source, Path.cwd() / source)
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    raise FileNotFoundError(
+        f"Source '{source}' not found relative to spec dir ({spec_dir}) or cwd"
+    )
+
+
+def _require_mapping(value: Any, name: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError(f"{name} must be a mapping")
+    return value
+
+
+def _require_non_empty_list(value: Any, name: str) -> list[Any]:
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"{name} must be a non-empty list")
+    return value
+
+
+def _parse_iso_date(value: Any, name: str) -> date:
+    try:
+        return date.fromisoformat(str(value))
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an ISO date (YYYY-MM-DD)") from exc
+
+
+def _validate_calibrations(calibrations: list[Any]) -> None:
+    required = (
+        "n_gain_bins",
+        "num_boost_round",
+        "num_leaves",
+        "min_data_in_leaf",
+    )
+    seen: set[tuple[int, int, int, int, float]] = set()
+    for index, raw in enumerate(calibrations):
+        item = _require_mapping(raw, f"candidate_grid.ranker.calibrations[{index}]")
+        missing = [key for key in required if key not in item]
+        if missing:
+            raise ValueError(
+                f"candidate_grid.ranker.calibrations[{index}] missing {missing}"
+            )
+        values = (
+            int(item["n_gain_bins"]),
+            int(item["num_boost_round"]),
+            int(item["num_leaves"]),
+            int(item["min_data_in_leaf"]),
+            float(item.get("learning_rate", 0.05)),
+        )
+        if any(value <= 0 for value in values):
+            raise ValueError("ranker calibration values must be positive")
+        if values in seen:
+            raise ValueError("ranker calibrations must be unique")
+        seen.add(values)
+
+
+def validate_research_paradigm_spec(spec: ResearchParadigmSpec) -> None:
+    """Validate the complete fixed-10D preparation contract, failing closed."""
+    if spec.schema_version != PARADIGM_SCHEMA_VERSION:
+        raise ValueError(
+            f"Unsupported paradigm schema_version '{spec.schema_version}' "
+            f"(expected '{PARADIGM_SCHEMA_VERSION}')"
+        )
+    if not _SAFE_EXPERIMENT_ID.fullmatch(spec.experiment_id):
+        raise ValueError(
+            "experiment_id must be a safe slug containing only letters, numbers, "
+            "dot, underscore, and hyphen"
+        )
+    if spec.market not in {"cn", "us"}:
+        raise ValueError("market must be 'cn' or 'us'")
+    if not spec.benchmark.strip():
+        raise ValueError("benchmark must be non-empty")
+
+    universe = _require_mapping(spec.universe, "universe")
+    source = str(universe.get("source", ""))
+    if not source:
+        raise ValueError("universe.source must be non-empty")
+    _resolve_relative_path(spec, source)
+    if str(universe.get("market_key", "")) != spec.market:
+        raise ValueError("universe.market_key must match top-level market")
+    if int(universe.get("min_symbols", 0)) < 2:
+        raise ValueError("universe.min_symbols must be >= 2")
+    if str(universe.get("alignment_mode", "")) not in {"strict", "auto"}:
+        raise ValueError("universe.alignment_mode must be 'strict' or 'auto'")
+
+    factor_library = _require_mapping(spec.factor_library, "factor_library")
+    factor_source = str(factor_library.get("source", ""))
+    if not factor_source:
+        raise ValueError("factor_library.source must be non-empty")
+    _resolve_relative_path(spec, factor_source)
+    groups = [str(item) for item in _require_non_empty_list(
+        factor_library.get("groups"), "factor_library.groups"
+    )]
+    if len(groups) != len(set(groups)):
+        raise ValueError("factor_library.groups must be unique")
+
+    candidate_grid = _require_mapping(spec.candidate_grid, "candidate_grid")
+    ranker = _require_mapping(candidate_grid.get("ranker"), "candidate_grid.ranker")
+    calibrations = _require_non_empty_list(
+        ranker.get("calibrations"),
+        "candidate_grid.ranker.calibrations",
+    )
+    _validate_calibrations(calibrations)
+    baselines = candidate_grid.get("factor_baselines", [])
+    if not isinstance(baselines, list):
+        raise ValueError("candidate_grid.factor_baselines must be a list")
+    baseline_ids = [str(item) for item in baselines]
+    if len(baseline_ids) != len(set(baseline_ids)):
+        raise ValueError("candidate_grid.factor_baselines must be unique")
+
+    strategy = _require_mapping(spec.strategy, "strategy")
+    for field in ("horizon_days", "holding_days", "rebalance_days"):
+        if int(strategy.get(field, 0)) != 10:
+            raise ValueError(f"strategy.{field} must be 10")
+    for field in ("top_n", "bottom_n"):
+        if int(strategy.get(field, 0)) <= 0:
+            raise ValueError(f"strategy.{field} must be positive")
+    if str(strategy.get("return_expression", "")) != CANONICAL_10D_RETURN_EXPR:
+        raise ValueError("strategy.return_expression must be the canonical 10D expression")
+    if str(strategy.get("return_provenance", "")) != "raw_forward_return":
+        raise ValueError("strategy.return_provenance must be 'raw_forward_return'")
+    if strategy.get("research_only") is not True:
+        raise ValueError("strategy.research_only must be True")
+
+    walk_forward = _require_mapping(spec.walk_forward, "walk_forward")
+    requested_start = _parse_iso_date(
+        walk_forward.get("requested_train_start"),
+        "walk_forward.requested_train_start",
+    )
+    test_end = _parse_iso_date(walk_forward.get("test_end"), "walk_forward.test_end")
+    if requested_start >= test_end:
+        raise ValueError("walk_forward.requested_train_start must be before test_end")
+    first_year = int(walk_forward.get("first_test_year", 0))
+    last_year = int(walk_forward.get("last_test_year", 0))
+    if first_year > last_year:
+        raise ValueError("walk_forward.first_test_year must be <= last_test_year")
+    if int(walk_forward.get("min_windows", 0)) < 3:
+        raise ValueError("walk_forward.min_windows must be >= 3")
+    if int(walk_forward.get("train_embargo_sessions", 0)) != 10:
+        raise ValueError("walk_forward.train_embargo_sessions must be 10")
+
+    evaluation = _require_mapping(spec.evaluation, "evaluation")
+    if str(evaluation.get("benchmark_mode", "")) != "reference_only":
+        raise ValueError("evaluation.benchmark_mode must be 'reference_only'")
+    metrics = [
+        str(item)
+        for item in _require_non_empty_list(
+            evaluation.get("metrics"), "evaluation.metrics"
+        )
+    ]
+    if tuple(metrics) != REQUIRED_METRICS:
+        raise ValueError(
+            "evaluation.metrics must exactly match the canonical ordered metric set"
+        )
+    if str(evaluation.get("gate_profile", "")) != GATE_PROFILE:
+        raise ValueError(f"evaluation.gate_profile must be '{GATE_PROFILE}'")
+    if "gates" in evaluation:
+        raise ValueError(
+            "evaluation.gates must not duplicate thresholds; use gate_profile"
+        )
+
+    outputs = _require_mapping(spec.outputs, "outputs")
+    if str(outputs.get("artifact_profile", "")) != ARTIFACT_PROFILE:
+        raise ValueError(f"outputs.artifact_profile must be '{ARTIFACT_PROFILE}'")
+    if set(outputs) != {"artifact_profile"}:
+        raise ValueError("outputs may only contain artifact_profile")
 
 
 def load_research_paradigm_spec(path: str | Path) -> ResearchParadigmSpec:
-    """Notebook-friendly loader. Returns a validated ResearchParadigmSpec."""
+    """Load and validate a paradigm spec for notebooks or scripts."""
     return ResearchParadigmSpec.from_yaml(path)
 
 
-# ── Path resolution ────────────────────────────────────────────────────────────
-
-
-def _resolve_relative_path(spec: ResearchParadigmSpec, rel: str) -> Path:
-    """Resolve a config reference relative to the spec file or project root."""
-    spec_dir = Path(spec.spec_path).parent if spec.spec_path else Path.cwd()
-    candidate = spec_dir / rel
-    if candidate.exists():
-        return candidate.resolve()
-    cwd_candidate = Path.cwd() / rel
-    if cwd_candidate.exists():
-        return cwd_candidate.resolve()
-    raise FileNotFoundError(
-        f"Cannot resolve '{rel}' from spec dir ({spec_dir}) or cwd"
-    )
-
-
-# ── Helpers: extract structured data from spec dicts ──────────────────────────
-
-
-def _parse_calibrations(candidate_grid: dict[str, Any]) -> tuple[RankerCalibration, ...]:
-    """Parse RankerCalibration list from candidate_grid.ranker.calibrations."""
-    ranker = candidate_grid.get("ranker", {})
-    cal_list: list[dict[str, Any]] = ranker.get("calibrations", [])
+def _parse_calibrations(
+    candidate_grid: dict[str, Any],
+) -> tuple[RankerCalibration, ...]:
+    raw_items = candidate_grid["ranker"]["calibrations"]
     return tuple(
         RankerCalibration(
-            n_gain_bins=int(c["n_gain_bins"]),
-            num_boost_round=int(c["num_boost_round"]),
-            num_leaves=int(c["num_leaves"]),
-            min_data_in_leaf=int(c["min_data_in_leaf"]),
-            learning_rate=float(c.get("learning_rate", 0.05)),
+            n_gain_bins=int(item["n_gain_bins"]),
+            num_boost_round=int(item["num_boost_round"]),
+            num_leaves=int(item["num_leaves"]),
+            min_data_in_leaf=int(item["min_data_in_leaf"]),
+            learning_rate=float(item.get("learning_rate", 0.05)),
         )
-        for c in cal_list
+        for item in raw_items
     )
 
 
-def _factor_baseline_ids(candidate_grid: dict[str, Any]) -> list[str]:
-    """Extract factor_baselines from candidate_grid."""
-    return [str(b) for b in candidate_grid.get("factor_baselines", [])]
-
-
-def _group_names(factor_library: dict[str, Any]) -> list[str]:
-    """Extract group names from factor_library.groups."""
-    return [str(g) for g in factor_library.get("groups", [])]
-
-
-def _min_symbols(universe: dict[str, Any]) -> int:
-    return int(universe.get("min_symbols", 20))
-
-
-# ── Build helpers (public API) ────────────────────────────────────────────────
+def _selected_factor_groups(
+    spec: ResearchParadigmSpec,
+) -> tuple[Path, dict[str, FactorGroup], list[FactorGroup]]:
+    library_path = _resolve_relative_path(spec, str(spec.factor_library["source"]))
+    library = load_factor_library(library_path)
+    selected = select_factor_groups(
+        library, [str(name) for name in spec.factor_library["groups"]]
+    )
+    return library_path, library, selected
 
 
 def build_ranker_candidates_from_spec(
-    spec: ResearchParadigmSpec, root: str | Path | None = None
+    spec: ResearchParadigmSpec,
 ) -> list[RankerGridCandidate]:
-    """Build the ranker candidate grid from a validated spec.
-
-    Loads the factor library, selects the configured groups, converts
-    them to ``RankerFeatureGroup``, and builds the calibration grid.
-
-    Parameters
-    ----------
-    spec:
-        Validated research paradigm spec.
-    root:
-        Project root for resolving relative paths (auto-detected if omitted).
-
-    Returns
-    -------
-    list[RankerGridCandidate]
-    """
-    lib_source = spec.factor_library["source"]
-    lib_path = _resolve_relative_path(spec, lib_source)
-    library = load_factor_library(lib_path)
-    gnames = _group_names(spec.factor_library)
-    groups = select_factor_groups(library, gnames)
-    rfgroups = factor_groups_to_ranker_feature_groups(groups)
-    calibrations = _parse_calibrations(spec.candidate_grid)
+    """Build the declared candidate grid without loading market data."""
+    validate_research_paradigm_spec(spec)
+    _, _, selected = _selected_factor_groups(spec)
     return build_ranker_calibration_grid(
-        feature_groups=rfgroups,
-        calibrations=list(calibrations),
+        feature_groups=factor_groups_to_ranker_feature_groups(selected),
+        calibrations=list(_parse_calibrations(spec.candidate_grid)),
     )
 
 
 def build_factor_baselines_from_spec(
-    spec: ResearchParadigmSpec, root: str | Path | None = None
+    spec: ResearchParadigmSpec,
 ) -> dict[str, str]:
-    """Resolve baseline factor ids to expressions from the factor library.
-
-    Parameters
-    ----------
-    spec:
-        Validated research paradigm spec.
-    root:
-        Project root for resolving relative paths (auto-detected if omitted).
-
-    Returns
-    -------
-    dict[str, str]
-        Mapping from baseline factor id to its expression.
-    """
-    baseline_ids = _factor_baseline_ids(spec.candidate_grid)
-    if not baseline_ids:
-        return {}
-
-    lib_source = spec.factor_library["source"]
-    lib_path = _resolve_relative_path(spec, lib_source)
-    library = load_factor_library(lib_path)
-    return {
-        fid: resolve_factor_expressions([fid], library)[0]
-        for fid in baseline_ids
-    }
+    """Resolve every declared baseline id, failing closed if one is unknown."""
+    validate_research_paradigm_spec(spec)
+    _, library, _ = _selected_factor_groups(spec)
+    baseline_ids = [str(item) for item in spec.candidate_grid["factor_baselines"]]
+    expressions = resolve_factor_expressions(baseline_ids, library)
+    return dict(zip(baseline_ids, expressions, strict=True))
 
 
-# ── Dry-run (Qlib-free) ──────────────────────────────────────────────────────
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def dry_run_paradigm(
@@ -432,315 +357,108 @@ def dry_run_paradigm(
     root: str | Path | None = None,
     output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Execute a Qlib-free dry run of the paradigm.
+    """Validate and materialize the research contract without Qlib or training."""
+    validate_research_paradigm_spec(spec)
+    paths = build_research_run_paths(root, spec.experiment_id, output_dir=output_dir)
+    paths.ensure_dir()
 
-    Validates all configuration, builds factor/candidate manifests and
-    the frontend payload, and writes small schema artifacts to the
-    standard run directory.  Does **not** import or initialize Qlib.
-    """
-    if output_dir:
-        paths = build_research_run_paths(None, spec.experiment_id, output_dir=output_dir)
-    else:
-        paths = build_research_run_paths(root, spec.experiment_id)
-    run_dir = paths.run_dir
-
-    # Resolve and load factor library
-    lib_source = spec.factor_library["source"]
-    lib_path = _resolve_relative_path(spec, lib_source)
-    library = load_factor_library(lib_path)
-
-    # Build factor manifest
-    fmanifest = factor_library_manifest(list(library.values()))
-    if spec.outputs.get("write_factor_manifest", True):
-        paths.ensure_dir()
-        write_json(paths.factor_manifest, fmanifest)
-
-    # Build candidates
+    library_path, library, selected_groups = _selected_factor_groups(spec)
+    baselines = build_factor_baselines_from_spec(spec)
+    candidates = build_ranker_candidates_from_spec(spec)
     calibrations = _parse_calibrations(spec.candidate_grid)
-    gnames = _group_names(spec.factor_library)
-    groups = select_factor_groups(library, gnames)
-    rfgroups = factor_groups_to_ranker_feature_groups(groups)
-    candidates = build_ranker_calibration_grid(
-        feature_groups=rfgroups,
-        calibrations=list(calibrations),
-    )
 
-    cmanifest: dict[str, object] = {
-        "schema_version": "1.0",
-        "n_candidates": len(candidates),
-        "n_feature_groups": len(rfgroups),
-        "n_calibrations": len(calibrations),
-        "candidates": [c.to_dict() for c in candidates],
-    }
-    if spec.outputs.get("write_candidate_manifest", True):
-        paths.ensure_dir()
-        write_json(paths.candidate_manifest, cmanifest)
-
-    # Resolve baseline factor expressions
-    baseline_ids = _factor_baseline_ids(spec.candidate_grid)
-    baseline_exprs: dict[str, str] = {}
-    if baseline_ids:
-        baseline_exprs = {
-            fid: resolve_factor_expressions([fid], library)[0]
-            for fid in baseline_ids
+    factor_manifest = factor_library_manifest(selected_groups)
+    factor_manifest.update(
+        {
+            "source": str(library_path),
+            "source_sha256": _sha256(library_path),
+            "selected_group_names": [group.name for group in selected_groups],
+            "baseline_factors": baselines,
+            "n_library_groups": len(library),
         }
+    )
+    candidate_manifest = {
+        "schema_version": "1.0",
+        "experiment_id": spec.experiment_id,
+        "n_candidates": len(candidates),
+        "n_feature_groups": len(selected_groups),
+        "n_calibrations": len(calibrations),
+        "candidates": [candidate.to_dict() for candidate in candidates],
+        "gate_profile": GATE_PROFILE,
+        "resolved_gate_thresholds": dict(GATE_THRESHOLDS),
+    }
 
-    # Write run_status (always)
+    write_json(paths.experiment_spec, spec.to_dict())
+    write_json(paths.factor_manifest, factor_manifest)
+    write_json(paths.candidate_manifest, candidate_manifest)
+    write_json(paths.signals_latest, {"schema_version": "1.0", "signals": []})
+    write_top_bottom_signals_csv(
+        paths,
+        [],
+        market=spec.market,
+        experiment_id=spec.experiment_id,
+        holding_horizon_days=10,
+    )
     write_run_status(
         paths,
         experiment_id=spec.experiment_id,
-        status="dry_run_complete",
-        reason="Qlib-free dry run — no model training or data loading performed",
+        status="prepared",
+        reason="Contract validated; no Qlib initialization or model execution performed",
         extra={
-            "n_factors": fmanifest["n_factors"],
-            "n_groups": fmanifest["n_groups"],
-            "n_candidates": cmanifest["n_candidates"],
+            "artifact_profile": ARTIFACT_PROFILE,
+            "gate_profile": GATE_PROFILE,
+            "n_candidates": len(candidates),
         },
     )
 
-    # Write experiment spec (experiment_spec.json — NOT paradigm_spec.json)
-    paths.ensure_dir()
-    write_json(paths.experiment_spec, spec.to_dict())
-
-    # Write empty signals_latest when requested
-    if spec.outputs.get("write_top_bottom_signals", True):
-        write_top_bottom_signals_csv(
-            paths,
-            [],
-            market=spec.market,
-            experiment_id=spec.experiment_id,
-            holding_horizon_days=int(spec.strategy.get("holding_days", 10)),
-        )
-        # Write empty signals_latest.json
-        paths.ensure_dir()
-        write_json(paths.signals_latest, {"signals": [], "schema_version": "1.0"})
-
-    # Build fixed frontend payload
+    artifact_paths = paths.artifact_paths(existing_only=True)
+    artifact_paths["frontend_payload"] = str(paths.frontend_payload)
     frontend = build_frontend_payload(
-        experiment_id=spec.experiment_id,
+        spec.experiment_id,
         market=spec.market,
         benchmark=spec.benchmark,
-        run_status="dry_run_complete",
-        artifact_paths=paths.artifact_paths(),
+        run_status="prepared",
+        metrics={},
+        gates=dict(GATE_THRESHOLDS),
+        readiness={},
+        artifact_paths=artifact_paths,
         metadata={
-            "n_factors": fmanifest["n_factors"],
-            "n_groups": fmanifest["n_groups"],
-            "n_candidates": cmanifest["n_candidates"],
-            "n_feature_groups": len(rfgroups),
-            "n_calibrations": len(calibrations),
-            "n_baseline_factors": len(baseline_exprs),
-            "baseline_factor_ids": list(baseline_ids),
-            "group_names": list(gnames),
+            "contract_only": True,
             "dry_run": True,
+            "n_feature_factors": int(factor_manifest["n_factors"]),
+            "n_candidates": len(candidates),
+            "n_baseline_factors": len(baselines),
+            "group_names": [group.name for group in selected_groups],
         },
     )
-    if spec.outputs.get("write_frontend_payload", True):
-        write_frontend_payload(paths, frontend)
+    write_frontend_payload(paths, frontend)
+    validate_artifact_completeness(paths, profile=ARTIFACT_PROFILE)
 
     return {
-        "status": "dry_run_complete",
-        "run_dir": str(run_dir),
-        "n_factors": fmanifest["n_factors"],
-        "n_groups": fmanifest["n_groups"],
-        "n_candidates": cmanifest["n_candidates"],
-        "n_baseline_factors": len(baseline_exprs),
-        "group_names": list(gnames),
+        "status": "prepared",
+        "run_dir": str(paths.run_dir),
+        "n_feature_factors": int(factor_manifest["n_factors"]),
+        "n_candidates": len(candidates),
+        "n_baseline_factors": len(baselines),
+        "group_names": [group.name for group in selected_groups],
+        "contract_only": True,
     }
-
-
-# ── Notebook execution entry point ───────────────────────────────────────────
 
 
 def run_research_paradigm(
     spec: ResearchParadigmSpec,
     root: str | Path | None = None,
     *,
-    dry_run: bool = False,
-    execution_mode: str | None = None,
+    dry_run: bool = True,
     output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Notebook-friendly execution entry point.
+    """Notebook-friendly contract preparation entry point.
 
-    Parameters
-    ----------
-    spec:
-        Validated research paradigm spec.
-    root:
-        Project root directory (auto-detected if omitted).
-    dry_run:
-        If True, run Qlib-free dry-run only.
-    execution_mode:
-        Named execution mode (currently supports ``"cn"`` for the #91 runner).
-        Required when ``dry_run`` is False.
-    output_dir:
-        Override the standard run output directory.
-
-    Returns
-    -------
-    dict
-        Result with at least ``status`` and ``run_dir`` keys.
-
-    Raises
-    ------
-    ValueError
-        If ``dry_run=False`` and ``execution_mode`` is not provided.
+    Real model execution is intentionally not supported in this PR. A later
+    spec-bound runner must prove that declared and effective inputs are identical.
     """
-    if dry_run:
-        return dry_run_paradigm(spec, root=root, output_dir=output_dir)
-    if execution_mode:
-        return execute_paradigm(
-            spec, root=root, output_dir=output_dir, execution_mode=execution_mode
-        )
-    raise ValueError(
-        "run_research_paradigm requires dry_run=True or an explicit execution_mode"
-    )
-
-
-# ── Execution dispatch ───────────────────────────────────────────────────────
-
-
-def execute_paradigm(
-    spec: ResearchParadigmSpec,
-    *,
-    root: str | Path | None = None,
-    output_dir: str | Path | None = None,
-    execution_mode: str = "",
-) -> dict[str, Any]:
-    """Execute a research paradigm.
-
-    Requires an explicit execution mode.  Currently supports
-    ``execution_mode="cn"`` which invokes the existing #91
-    CN feature-quality flow and normalizes its outputs into the
-    standard artifact schema.
-    """
-    if not execution_mode:
+    if dry_run is not True:
         raise ValueError(
-            "execute_paradigm requires an explicit execution_mode. "
-            "Use --execute-existing-runner or run with --dry-run first."
+            "Only dry_run=True is supported; spec-bound model execution is not implemented"
         )
-
-    mode = execution_mode.lower()
-
-    if mode == "cn":
-        return _execute_cn_baseline(spec, root=root, output_dir=output_dir)
-    else:
-        raise ValueError(
-            f"Unsupported execution_mode '{execution_mode}'. "
-            f"Supported modes: cn"
-        )
-
-
-def _execute_cn_baseline(
-    spec: ResearchParadigmSpec,
-    *,
-    root: str | Path | None = None,
-    output_dir: str | Path | None = None,
-) -> dict[str, Any]:
-    """Reuse the existing #91 CN feature-quality runner and normalize artifacts.
-
-    This calls ``scripts/run_cn_10d_validation.py`` (imported, not
-    subprocessed) and copies/normalizes its outputs into the standard
-    ``artifacts/research_runs/`` schema.
-    """
-    import shutil
-
-    root_path = Path(root) if root else Path.cwd()
-
-    if output_dir:
-        paths = build_research_run_paths(None, spec.experiment_id, output_dir=output_dir)
-    else:
-        paths = build_research_run_paths(root, spec.experiment_id)
-    paths.ensure_dir()
-
-    # Run the existing #91 validation
-    try:
-        from scripts.run_cn_10d_validation import run as run_cn_10d
-    except ImportError:
-        raise RuntimeError(
-            "Cannot import scripts.run_cn_10d_validation — ensure the module is on PYTHONPATH"
-        )
-
-    first_test_year = int(spec.walk_forward.get("first_test_year", 2024))
-    last_test_year = int(spec.walk_forward.get("last_test_year", 2026))
-
-    result = run_cn_10d(
-        root_path,
-        first_test_year=first_test_year,
-        last_test_year=last_test_year,
-        train_start="",
-        test_end="",
-    )
-
-    # Normalize: copy/reference outputs from the existing evidence dir
-    evidence_dir = root_path / "artifacts" / "evidence" / "cn_10d_validation"
-
-    # Write experiment spec
-    write_json(paths.experiment_spec, spec.to_dict())
-
-    status = result.get("status", "unknown")
-
-    if status == "skipped":
-        write_skipped_run(
-            paths,
-            experiment_id=spec.experiment_id,
-            reason=result.get("reason", "CN validation skipped"),
-            market=spec.market,
-            benchmark=spec.benchmark,
-        )
-        return {
-            "status": "skipped",
-            "run_dir": str(paths.run_dir),
-            "reason": result.get("reason", ""),
-        }
-
-    # Copy stability summary
-    stability_src = evidence_dir / "walk_forward_stability.json"
-    if stability_src.exists():
-        shutil.copy2(stability_src, paths.walk_forward_stability)
-
-    # Copy decision pack
-    pack_src = evidence_dir / "model_decision_pack.json"
-    if pack_src.exists():
-        shutil.copy2(pack_src, paths.model_decision_pack)
-        pack_data = json.loads(pack_src.read_text(encoding="utf-8"))
-        decision = pack_data.get("decision", {})
-        trade_ready = bool(decision.get("trade_ready", False))
-    else:
-        trade_ready = False
-
-    # Copy readiness
-    readiness_src = evidence_dir / "readiness.json"
-    if readiness_src.exists():
-        shutil.copy2(readiness_src, paths.data_readiness)
-
-    # Write run status
-    write_run_status(
-        paths,
-        experiment_id=spec.experiment_id,
-        status=status,
-        reason=f"Executed via existing #91 CN runner; result={status}",
-        trade_ready=trade_ready,
-        extra={"evidence_dir": str(evidence_dir)},
-    )
-
-    # Write frontend payload with trade_ready from decision pack only
-    frontend = build_frontend_payload(
-        experiment_id=spec.experiment_id,
-        market=spec.market,
-        benchmark=spec.benchmark,
-        run_status=status,
-        trade_ready=trade_ready,
-        artifact_paths=paths.artifact_paths(),
-        metadata={
-            "runner": "cn_10d_validation",
-            "evidence_dir": str(evidence_dir),
-        },
-    )
-    write_frontend_payload(paths, frontend)
-
-    return {
-        "status": status,
-        "run_dir": str(paths.run_dir),
-        "result": result,
-        "trade_ready": trade_ready,
-    }
+    return dry_run_paradigm(spec, root=root, output_dir=output_dir)
