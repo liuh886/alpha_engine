@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from functools import partial
 from pathlib import Path
@@ -10,8 +11,13 @@ from typing import Any, Sequence
 import pandas as pd
 import pytest
 
+from scripts.run_cn_feature_quality_validation import _record_unhandled_failure
 from src.research.cn_qlib_execution_adapter import execute_cn_qlib_plan
 from src.research.paradigm import ResearchParadigmSpec, load_research_paradigm_spec
+from src.research.research_artifacts import (
+    build_research_run_paths,
+    write_run_status,
+)
 from src.research.spec_bound_execution import (
     assert_execution_contract_identity,
     build_spec_bound_execution_plan,
@@ -53,7 +59,9 @@ class SkippedFakeRuntime:
         }
 
     def calendar(self, start: str, end: str) -> pd.DatetimeIndex:
-        raise AssertionError(f"calendar must not be called for skipped coverage: {start}, {end}")
+        raise AssertionError(
+            f"calendar must not be called for skipped coverage: {start}, {end}"
+        )
 
     def features(
         self,
@@ -139,6 +147,49 @@ def test_cn_adapter_integrates_with_identity_gate_on_skip(tmp_path: Path) -> Non
     assert (run_dir / "effective_execution_contract.json").is_file()
     assert (run_dir / "execution_identity.json").is_file()
     assert (run_dir / "run_status.json").is_file()
+
+
+def test_unhandled_cli_failure_replaces_stale_prepared_status(tmp_path: Path) -> None:
+    experiment_id = "cn_failure_test"
+    paths = build_research_run_paths(None, experiment_id, output_dir=tmp_path)
+    write_run_status(
+        paths,
+        experiment_id=experiment_id,
+        status="prepared",
+        reason="contract prepared",
+    )
+    _record_unhandled_failure(
+        root=Path.cwd(),
+        output_dir=tmp_path,
+        experiment_id=experiment_id,
+        exc=RuntimeError("provider failed"),
+    )
+    payload = json.loads(paths.run_status.read_text(encoding="utf-8"))
+    assert payload["status"] == "failed"
+    assert payload["failed_stage"] == "cn_qlib_execution"
+    assert payload["trade_ready"] is False
+    assert payload["exception_type"] == "RuntimeError"
+
+
+def test_unhandled_cli_failure_preserves_identity_failure(tmp_path: Path) -> None:
+    experiment_id = "cn_identity_failure_test"
+    paths = build_research_run_paths(None, experiment_id, output_dir=tmp_path)
+    write_run_status(
+        paths,
+        experiment_id=experiment_id,
+        status="failed",
+        failed_stage="execution_identity",
+        reason="contract mismatch",
+    )
+    _record_unhandled_failure(
+        root=Path.cwd(),
+        output_dir=tmp_path,
+        experiment_id=experiment_id,
+        exc=RuntimeError("secondary failure"),
+    )
+    payload = json.loads(paths.run_status.read_text(encoding="utf-8"))
+    assert payload["failed_stage"] == "execution_identity"
+    assert payload["reason"] == "contract mismatch"
 
 
 def test_cn_adapter_rejects_asymmetric_top_bottom_contract(tmp_path: Path) -> None:
