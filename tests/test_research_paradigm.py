@@ -22,7 +22,68 @@ from src.research.paradigm import (
     validate_research_paradigm_spec,
 )
 
-MINIMAL_YAML = '# Canonical CN fixed-10D research preparation contract.\nschema_version: "1.0"\nexperiment_id: "test_contract"\nmarket: "cn"\nbenchmark: "000300"\n\nuniverse:\n  source: "configs/watchlist.yaml"\n  market_key: "cn"\n  min_symbols: 50\n  alignment_mode: "auto"\n\nfactor_library:\n  source: "configs/factor_libraries/cn_ohlcv.yaml"\n  groups:\n    - "cn_balanced_ohlcv"\n\ncandidate_grid:\n  ranker:\n    calibrations:\n      - n_gain_bins: 3\n        num_boost_round: 100\n        num_leaves: 15\n        min_data_in_leaf: 10\n        learning_rate: 0.05\n  factor_baselines:\n    - "factor:cn_momentum_10d"\n\nstrategy:\n  horizon_days: 10\n  holding_days: 10\n  rebalance_days: 10\n  top_n: 15\n  bottom_n: 15\n  return_expression: "Ref($close, -10) / $close - 1"\n  return_provenance: "raw_forward_return"\n  research_only: true\n\nwalk_forward:\n  requested_train_start: "2021-01-01"\n  test_end: "2026-06-18"\n  first_test_year: 2024\n  last_test_year: 2026\n  min_windows: 3\n  train_embargo_sessions: 10\n\nevaluation:\n  benchmark_mode: "reference_only"\n  metrics:\n    - "mean_icir"\n    - "mean_rank_ic"\n    - "mean_spread"\n    - "worst_drawdown"\n    - "ready_ratio"\n    - "positive_icir_ratio"\n    - "positive_spread_ratio"\n  gate_profile: "ten_day_model_gates_v1"\n\noutputs:\n  artifact_profile: "research_run_v1"\n'
+MINIMAL_YAML = """\
+# Canonical CN fixed-10D research preparation contract.
+schema_version: "1.0"
+experiment_id: "test_contract"
+market: "cn"
+benchmark: "000300"
+
+universe:
+  source: "configs/watchlist.yaml"
+  market_key: "cn"
+  min_symbols: 50
+  alignment_mode: "auto"
+
+factor_library:
+  source: "configs/factor_libraries/cn_ohlcv.yaml"
+  groups:
+    - "cn_balanced_ohlcv"
+
+candidate_grid:
+  ranker:
+    calibrations:
+      - n_gain_bins: 3
+        num_boost_round: 100
+        num_leaves: 15
+        min_data_in_leaf: 10
+        learning_rate: 0.05
+  factor_baselines:
+    - "factor:cn_momentum_10d"
+
+strategy:
+  horizon_days: 10
+  holding_days: 10
+  rebalance_days: 10
+  top_n: 15
+  bottom_n: 15
+  return_expression: "Ref($close, -10) / $close - 1"
+  return_provenance: "raw_forward_return"
+  research_only: true
+
+walk_forward:
+  requested_train_start: "2021-01-01"
+  test_end: "2026-06-18"
+  first_test_year: 2024
+  last_test_year: 2026
+  min_windows: 3
+  train_embargo_sessions: 10
+
+evaluation:
+  benchmark_mode: "reference_only"
+  metrics:
+    - "mean_icir"
+    - "mean_rank_ic"
+    - "mean_spread"
+    - "worst_drawdown"
+    - "ready_ratio"
+    - "positive_icir_ratio"
+    - "positive_spread_ratio"
+  gate_profile: "ten_day_model_gates_v1"
+
+outputs:
+  artifact_profile: "research_run_v1"
+"""
 
 
 def _write_spec(tmp_path: Path, data: dict | None = None) -> Path:
@@ -107,13 +168,13 @@ def test_contract_uses_profiles_not_duplicate_thresholds() -> None:
 
 def test_dry_run_writes_only_preparation_artifacts(tmp_path: Path) -> None:
     spec = load_research_paradigm_spec(_write_spec(tmp_path))
-    qlib_before = set(
+    qlib_before = {
         name for name in sys.modules if name == "qlib" or name.startswith("qlib.")
-    )
+    }
     result = dry_run_paradigm(spec, output_dir=tmp_path / "out")
-    qlib_after = set(
+    qlib_after = {
         name for name in sys.modules if name == "qlib" or name.startswith("qlib.")
-    )
+    }
     assert qlib_after == qlib_before
     assert result["status"] == "prepared"
     assert result["contract_only"] is True
