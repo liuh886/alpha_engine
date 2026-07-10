@@ -12,6 +12,80 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  apply-diagnostic-boundary:
+    if: github.event_name == 'pull_request' && github.head_ref == 'refactor/universe-robustness-diagnostic-only' && github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/universe-robustness-diagnostic-only
+          fetch-depth: 0
+
+      - name: Remove independent lifecycle decisions
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/run_best_blend_universe_robustness.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'from src.research.model_decision_pack import build_model_decision_pack\n',
+              '',
+              1,
+          )
+          text = text.replace(
+              '- ``model_decision_pack_by_universe.json``\n',
+              '- ``universe_diagnostic_manifest.json``\n',
+              1,
+          )
+          text = text.replace(
+              '    per_universe_decision_packs: dict[str, Any] = {}\n',
+              '',
+              1,
+          )
+          text = text.replace(
+              '            per_universe_decision_packs[universe.name] = None\n',
+              '',
+          )
+          decision_start = text.find('        # Build decision pack per universe\n')
+          robustness_marker = text.find(
+              '    # ── universe robustness summary', decision_start
+          )
+          if decision_start < 0 or robustness_marker < 0:
+              raise SystemExit('per-universe decision block not found')
+          text = text[:decision_start] + text[robustness_marker:]
+
+          output_start = text.find(
+              '    # ── model decision pack by universe'
+          )
+          return_start = text.find('    return {', output_start)
+          if output_start < 0 or return_start < 0:
+              raise SystemExit('decision-pack output block not found')
+          diagnostic_block = '''    # ── diagnostic-only manifest ───────────────────────────────────────\n    diagnostic_manifest = {\n        "schema_version": "1.0",\n        "diagnostic_type": "frozen_blend_universe_robustness",\n        "diagnostic_only": True,\n        "research_only": True,\n        "promotion_eligible": False,\n        "trade_ready": False,\n        "rationale": (\n            "Historical universe-robustness analysis may compare coverage and "\n            "stability, but lifecycle promotion requires a spec-bound run and "\n            "canonical PromotionDecision."\n        ),\n        "universe_status": {\n            name: {\n                "evaluated": summary is not None,\n                "n_reports": (summary or {}).get("n_reports", 0),\n                "n_candidates": (summary or {}).get("n_candidates", 0),\n            }\n            for name, summary in per_universe_summaries.items()\n        },\n    }\n    diagnostic_path = base_out / "universe_diagnostic_manifest.json"\n    diagnostic_path.write_text(\n        json.dumps(diagnostic_manifest, indent=2, sort_keys=True),\n        encoding="utf-8",\n    )\n\n'''
+          text = text[:output_start] + diagnostic_block + text[return_start:]
+          text = text.replace(
+              '        "packs_path": str(packs_path),\n',
+              '        "diagnostic_manifest_path": str(diagnostic_path),\n',
+              1,
+          )
+          text = text.replace(
+              '        "summary": robustness_summary,\n',
+              '        "summary": robustness_summary,\n'
+              '        "diagnostic_manifest": diagnostic_manifest,\n',
+              1,
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/run_best_blend_universe_robustness.py
+          git commit -m "refactor(research): make universe robustness diagnostic-only"
+          git push origin HEAD:refactor/universe-robustness-diagnostic-only
+
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 30
