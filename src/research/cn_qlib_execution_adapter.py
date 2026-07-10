@@ -19,11 +19,6 @@ import numpy as np
 import pandas as pd
 
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
-from src.research.daily_ranker import prepare_ranker_frame
-from src.research.daily_ranker_model import (
-    fit_lgbm_daily_ranker,
-    predict_lgbm_daily_ranker,
-)
 from src.research.market_data_alignment import (
     align_train_start_to_coverage,
     get_aligned_windows,
@@ -36,10 +31,13 @@ from src.research.multi_market_readiness import (
 from src.research.notebook_experiment_api import run_10d_experiment
 from src.research.notebook_lab_contracts import ResearchSessionConfig
 from src.research.notebook_research_api import sanitize_factor_name
-from src.research.ranker_calibration_grid import (
-    RankerCalibration,
-    RankerFeatureGroup,
-    RankerGridCandidate,
+from src.research.qlib_execution_common import (
+    build_effective_execution_contract,
+    build_skip_result,
+    fit_ranker_scores,
+    materialize_ranker_candidates,
+    normalize_qlib_frame_index,
+    resolve_repository_root,
 )
 from src.research.research_artifacts import ResearchRunPaths, write_json
 from src.research.rolling_windows import purge_training_tail
@@ -151,145 +149,6 @@ class QlibCNExecutionRuntime:
         }
 
 
-def _repository_root(plan: SpecBoundExecutionPlan) -> Path:
-    spec_path = Path(plan.spec.spec_path).resolve() if plan.spec.spec_path else None
-    if spec_path is not None:
-        for parent in spec_path.parents:
-            if (parent / "configs").is_dir() and (parent / "src").is_dir():
-                return parent
-    return Path.cwd()
-
-
-def _normalize_index(frame: pd.DataFrame) -> pd.DataFrame:
-    if frame.index.names == ["instrument", "datetime"]:
-        return frame.swaplevel().sort_index()
-    return frame.sort_index()
-
-
-def _candidates_from_plan(
-    plan: SpecBoundExecutionPlan,
-) -> tuple[RankerGridCandidate, ...]:
-    candidates: list[RankerGridCandidate] = []
-    for raw in plan.candidates:
-        feature_raw = dict(raw["feature_group"])
-        calibration_raw = dict(raw["calibration"])
-        candidate = RankerGridCandidate(
-            feature_group=RankerFeatureGroup(
-                name=str(feature_raw["name"]),
-                expressions=tuple(str(item) for item in feature_raw["expressions"]),
-            ),
-            calibration=RankerCalibration(
-                n_gain_bins=int(calibration_raw["n_gain_bins"]),
-                num_boost_round=int(calibration_raw["num_boost_round"]),
-                num_leaves=int(calibration_raw["num_leaves"]),
-                min_data_in_leaf=int(calibration_raw["min_data_in_leaf"]),
-                learning_rate=float(calibration_raw.get("learning_rate", 0.05)),
-            ),
-        )
-        if candidate.name != str(raw["name"]):
-            raise ValueError(
-                "Candidate identity changed while materializing execution plan: "
-                f"{raw['name']!r} != {candidate.name!r}"
-            )
-        candidates.append(candidate)
-    return tuple(candidates)
-
-
-def _effective_contract(
-    plan: SpecBoundExecutionPlan,
-    *,
-    candidates: Sequence[RankerGridCandidate],
-    baselines: dict[str, str],
-    requested_symbols: Sequence[str],
-) -> dict[str, Any]:
-    """Rebuild the contract from the exact values consumed by the adapter."""
-
-    declared = plan.declared_contract
-    return {
-        "schema_version": declared["schema_version"],
-        "experiment_id": plan.spec.experiment_id,
-        "market": plan.spec.market,
-        "benchmark": plan.spec.benchmark,
-        "universe": {
-            "source": declared["universe"]["source"],
-            "source_sha256": declared["universe"]["source_sha256"],
-            "market_key": plan.spec.universe["market_key"],
-            "requested_symbols": list(requested_symbols),
-            "min_symbols": int(plan.spec.universe["min_symbols"]),
-            "alignment_mode": str(plan.spec.universe["alignment_mode"]),
-        },
-        "factors": {
-            "source": declared["factors"]["source"],
-            "source_sha256": declared["factors"]["source_sha256"],
-            "selected_groups": [
-                str(item) for item in plan.spec.factor_library["groups"]
-            ],
-            "candidates": [candidate.to_dict() for candidate in candidates],
-            "baseline_factors": dict(sorted(baselines.items())),
-        },
-        "strategy": dict(plan.spec.strategy),
-        "walk_forward": dict(plan.spec.walk_forward),
-        "evaluation": dict(plan.spec.evaluation),
-        "outputs": dict(plan.spec.outputs),
-    }
-
-
-def _fit_ranker_scores(
-    candidate: RankerGridCandidate,
-    features_train: pd.DataFrame,
-    returns_train: pd.DataFrame,
-    features_test: pd.DataFrame,
-    expression_columns: dict[str, str],
-) -> pd.DataFrame:
-    columns = [expression_columns[item] for item in candidate.feature_group.expressions]
-    x_rank, y_rank, groups = prepare_ranker_frame(
-        features_train.loc[:, columns],
-        returns_train,
-    )
-    ranker = fit_lgbm_daily_ranker(
-        x_rank,
-        y_rank,
-        groups,
-        n_gain_bins=candidate.calibration.n_gain_bins,
-        params=candidate.calibration.params(),
-        num_boost_round=candidate.calibration.num_boost_round,
-    )
-    return predict_lgbm_daily_ranker(
-        ranker,
-        features_test.loc[:, columns],
-    )
-
-
-def _skip_result(
-    plan: SpecBoundExecutionPlan,
-    *,
-    paths: ResearchRunPaths,
-    effective_contract: dict[str, Any],
-    reason: str,
-    runtime_metadata: dict[str, Any],
-    evidence_paths: dict[str, str],
-) -> SpecBoundExecutionResult:
-    skip_path = paths.run_dir / "execution_skipped.json"
-    write_json(
-        skip_path,
-        {
-            "schema_version": "1.0",
-            "experiment_id": plan.spec.experiment_id,
-            "status": "skipped",
-            "reason": reason,
-            "research_only": True,
-            "trade_ready": False,
-            "runtime_metadata": runtime_metadata,
-        },
-    )
-    return SpecBoundExecutionResult(
-        status="skipped",
-        effective_contract=effective_contract,
-        runtime_metadata={**runtime_metadata, "skip_reason": reason},
-        evidence_paths={**evidence_paths, "execution_skipped": str(skip_path)},
-    )
-
-
 def execute_cn_qlib_plan(
     plan: SpecBoundExecutionPlan,
     run_dir: Path,
@@ -310,12 +169,12 @@ def execute_cn_qlib_plan(
             "asymmetric portfolio intent belongs to the PortfolioIntent stage"
         )
 
-    candidates = _candidates_from_plan(plan)
+    candidates = materialize_ranker_candidates(plan)
     baselines = dict(plan.baseline_factors)
     requested_symbols = [
         str(item) for item in plan.declared_contract["universe"]["requested_symbols"]
     ]
-    effective_contract = _effective_contract(
+    effective_contract = build_effective_execution_contract(
         plan,
         candidates=candidates,
         baselines=baselines,
@@ -324,7 +183,7 @@ def execute_cn_qlib_plan(
 
     paths = ResearchRunPaths(run_dir)
     paths.ensure_dir()
-    repository_root = _repository_root(plan)
+    repository_root = resolve_repository_root(plan)
     market_runtime = runtime or QlibCNExecutionRuntime()
     market_runtime.initialize(repository_root)
 
@@ -375,7 +234,7 @@ def execute_cn_qlib_plan(
         }
         write_json(paths.data_readiness, readiness)
         write_json(paths.universe_report, readiness)
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
@@ -443,7 +302,7 @@ def execute_cn_qlib_plan(
     }
 
     if alignment.skipped:
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
@@ -454,7 +313,7 @@ def execute_cn_qlib_plan(
 
     retained_symbols = list(alignment.retained_symbols)
     if len(retained_symbols) <= max(top_n, bottom_n):
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
@@ -468,7 +327,7 @@ def execute_cn_qlib_plan(
 
     calendar = market_runtime.calendar(alignment.aligned_train_start, test_end)
     if calendar.empty:
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
@@ -497,7 +356,7 @@ def execute_cn_qlib_plan(
         "walk_forward_windows": str(paths.walk_forward_windows),
     }
     if len(windows) < min_windows:
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
@@ -556,14 +415,14 @@ def execute_cn_qlib_plan(
             window.train_start,
             window.test_end,
         )
-        features_all = _normalize_index(features_all).replace(
+        features_all = normalize_qlib_frame_index(features_all).replace(
             [np.inf, -np.inf],
             np.nan,
         )
         features_all.columns = [
             expression_columns[expression] for expression in feature_expressions
         ]
-        raw_returns_all = _normalize_index(raw_returns_all)
+        raw_returns_all = normalize_qlib_frame_index(raw_returns_all)
         raw_returns_all.columns = ["return"]
         raw_returns_all.attrs.update(
             {
@@ -598,7 +457,7 @@ def execute_cn_qlib_plan(
         returns_test.attrs.update(raw_returns_all.attrs)
         candidate_scores: dict[str, pd.DataFrame] = {}
         for candidate in candidates:
-            candidate_scores[candidate.name] = _fit_ranker_scores(
+            candidate_scores[candidate.name] = fit_ranker_scores(
                 candidate,
                 features_train,
                 returns_train,
@@ -612,7 +471,7 @@ def execute_cn_qlib_plan(
                 window.test_start,
                 window.test_end,
             )
-            baseline = _normalize_index(baseline)
+            baseline = normalize_qlib_frame_index(baseline)
             baseline.columns = ["score"]
             baseline.attrs.update(
                 {
@@ -635,7 +494,7 @@ def execute_cn_qlib_plan(
     runtime_metadata["survived_windows"] = survived_windows
     runtime_metadata["skipped_windows"] = skipped_windows
     if len(reports) < min_windows:
-        return _skip_result(
+        return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
