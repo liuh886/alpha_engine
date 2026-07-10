@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - refactor/portfolio-intent-wrapper-v2
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -28,7 +31,7 @@ jobs:
           text = path.read_text(encoding='utf-8')
 
           anchor = '''    if require_raw_10d_returns:\n'''
-          wrapper = '''    if non_overlapping:\n        # Compatibility boundary: canonical fixed-horizon evaluation is now\n        # owned by SignalFrame -> PortfolioIntent -> EvaluationReport.  Keep\n        # this public function as a schema-compatible entry point.\n        from src.research.portfolio_intent import (  # noqa: PLC0415\n            run_score_backtest_via_intent,\n        )\n\n        return run_score_backtest_via_intent(\n            predictions,\n            returns,\n            benchmark_returns=benchmark_returns,\n            top_n=topk,\n            rebalance_days=rebalance_days,\n            initial_capital=initial_capital,\n            cost_bps=cost_bps,\n            require_raw_10d_returns=require_raw_10d_returns,\n        )\n\n'''
+          wrapper = '''    if non_overlapping:\n        # Compatibility boundary: canonical fixed-horizon evaluation is now\n        # owned by SignalFrame -> PortfolioIntent -> EvaluationReport. Keep\n        # this public function as a schema-compatible entry point.\n        from src.research.portfolio_intent import (  # noqa: PLC0415\n            run_score_backtest_via_intent,\n        )\n\n        return run_score_backtest_via_intent(\n            predictions,\n            returns,\n            benchmark_returns=benchmark_returns,\n            top_n=topk,\n            rebalance_days=rebalance_days,\n            initial_capital=initial_capital,\n            cost_bps=cost_bps,\n            require_raw_10d_returns=require_raw_10d_returns,\n        )\n\n'''
           if wrapper not in text:
               if anchor not in text:
                   raise SystemExit('raw-return gate anchor not found')
