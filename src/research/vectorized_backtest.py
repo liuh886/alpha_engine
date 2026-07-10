@@ -285,36 +285,25 @@ def benchmark_adapter_paths(
 class BacktestResult:
     """Results from a vectorized backtest."""
 
-    # Cumulative returns
     total_return: float
     benchmark_return: float
     excess_return: float
-
-    # Risk metrics
     max_drawdown: float
     sharpe_ratio: float
     annual_return: float
     volatility: float
-
-    # Signal quality
     mean_ic: float
     ic_ir: float
     positive_ic_ratio: float
-
-    # Time series
     portfolio_values: list[float] = field(default_factory=list)
     benchmark_values: list[float] = field(default_factory=list)
     daily_returns: list[float] = field(default_factory=list)
     ic_series: list[float] = field(default_factory=list)
-
-    # Metadata
     topk: int = 0
     rebalance_days: int = 0
     n_periods: int = 0
     test_start: str = ""
     test_end: str = ""
-
-    # Exposed engine economics (set during run_vectorized_backtest)
     turnover: float = 0.0
     costs: float = 0.0
     net_return: float | None = None
@@ -351,21 +340,7 @@ def compute_ic_vectorized(
     predictions: pd.DataFrame,
     returns: pd.DataFrame,
 ) -> tuple[float, float, float, list[float]]:
-    """Compute IC between predictions and returns using vectorized operations.
-
-    Parameters
-    ----------
-    predictions : pd.DataFrame
-        Prediction scores, index=(datetime, instrument), columns=['score'].
-    returns : pd.DataFrame
-        Actual returns, index=(datetime, instrument), columns=['return'].
-
-    Returns
-    -------
-    tuple[float, float, float, list[float]]
-        (mean_ic, ic_ir, positive_ic_ratio, ic_series)
-    """
-    # Align on common dates and instruments
+    """Compute IC between predictions and returns using vectorized operations."""
     common_dates = sorted(
         set(predictions.index.get_level_values("datetime"))
         & set(returns.index.get_level_values("datetime"))
@@ -381,27 +356,20 @@ def compute_ic_vectorized(
         except KeyError:
             continue
 
-        # Align on common instruments
         common_inst = pred_day.index.intersection(ret_day.index)
         if len(common_inst) < 10:
             continue
 
         p = pred_day.loc[common_inst].values
         r = ret_day.loc[common_inst].values
-
-        # Remove NaN
         mask = ~(np.isnan(p) | np.isnan(r))
         if mask.sum() < 10:
             continue
 
-        # Vectorized Pearson correlation
         p_clean = p[mask]
         r_clean = r[mask]
-        p_clean.mean()
-        r_clean.mean()
         p_std = p_clean.std()
         r_std = r_clean.std()
-
         if p_std < 1e-10 or r_std < 1e-10:
             continue
 
@@ -416,7 +384,6 @@ def compute_ic_vectorized(
     ic_std = float(np.std(ics))
     ic_ir = mean_ic / ic_std if ic_std > 1e-10 else 0.0
     positive_ratio = sum(1 for ic in ics if ic > 0) / len(ics)
-
     return mean_ic, ic_ir, positive_ratio, ics
 
 
@@ -431,33 +398,28 @@ def run_vectorized_backtest(
     non_overlapping: bool = True,
     require_raw_10d_returns: bool = False,
 ) -> BacktestResult:
-    """Run a vectorized backtest using TOP N equal-weight strategy.
+    """Run a TOP-N equal-weight research backtest.
 
-    Parameters
-    ----------
-    predictions : pd.DataFrame
-        Prediction scores, index=(datetime, instrument), columns=['score'].
-    returns : pd.DataFrame
-        Actual returns, index=(datetime, instrument), columns=['return'].
-    benchmark_returns : pd.DataFrame, optional
-        Benchmark returns, index=(datetime,), columns=['return'].
-    topk : int
-        Number of top stocks to hold.
-    rebalance_days : int
-        Rebalance every N days.
-    initial_capital : float
-        Starting capital.
-    cost_bps : float
-        Transaction cost in basis points (round-trip).
-    non_overlapping : bool
-        If True, use non-overlapping returns (rebalance_days intervals).
-        This avoids inflated cumulative returns from overlapping periods.
-
-    Returns
-    -------
-    BacktestResult
-        Backtest results with all metrics.
+    Canonical ``non_overlapping=True`` evaluation delegates to the explicit
+    ``SignalFrame -> PortfolioIntent -> EvaluationReport`` path. The layered
+    ``non_overlapping=False`` implementation remains a compatibility surface.
     """
+    if non_overlapping:
+        from src.research.portfolio_intent import (  # noqa: PLC0415
+            run_score_backtest_via_intent,
+        )
+
+        return run_score_backtest_via_intent(
+            predictions,
+            returns,
+            benchmark_returns=benchmark_returns,
+            top_n=topk,
+            rebalance_days=rebalance_days,
+            initial_capital=initial_capital,
+            cost_bps=cost_bps,
+            require_raw_10d_returns=require_raw_10d_returns,
+        )
+
     if require_raw_10d_returns:
         if list(returns.columns) != ["return"]:
             raise ValueError("Economic evaluation requires a single 'return' column")
@@ -469,11 +431,9 @@ def run_vectorized_backtest(
         if returns.attrs.get("horizon") != 10:
             raise ValueError("Canonical 10D evaluation requires returns attrs horizon=10")
 
-    # Get sorted dates
     pred_dates = sorted(predictions.index.get_level_values("datetime").unique())
     ret_dates = sorted(returns.index.get_level_values("datetime").unique())
     common_dates = sorted(set(pred_dates) & set(ret_dates))
-
     if not common_dates:
         return BacktestResult(
             total_return=0,
@@ -488,201 +448,121 @@ def run_vectorized_backtest(
             positive_ic_ratio=0,
         )
 
-    # Compute IC (always on full set)
     mean_ic, ic_ir, pos_ratio, ic_series = compute_ic_vectorized(predictions, returns)
-
-    # Get benchmark returns as series
     bench_series = None
     if benchmark_returns is not None:
-        bench_col = benchmark_returns.columns[0]
-        bench_series = benchmark_returns[bench_col]
+        bench_series = benchmark_returns[benchmark_returns.columns[0]]
 
-    # Build a date→return map for O(1) lookup
     ret_map: dict[str, dict[str, float]] = {}
-    for d in common_dates:
+    for date in common_dates:
         try:
-            r = returns.loc[d]
-            if isinstance(r, pd.DataFrame):
-                r = r.iloc[:, 0]
-            ret_map[str(d)[:10]] = {str(k): float(v) for k, v in r.items() if not np.isnan(v)}
+            row = returns.loc[date]
+            if isinstance(row, pd.DataFrame):
+                row = row.iloc[:, 0]
+            ret_map[str(date)[:10]] = {
+                str(symbol): float(value)
+                for symbol, value in row.items()
+                if not np.isnan(value)
+            }
         except (KeyError, TypeError):
-            ret_map[str(d)[:10]] = {}
+            ret_map[str(date)[:10]] = {}
 
-    # Initialize engine economics accumulators (may be updated in non_overlapping)
-    total_turnover = 0.0
-    total_cost = 0.0
-    bench_per_period: list[float] = []
+    layer_capital = initial_capital / rebalance_days
+    active_layers: list[tuple[float, dict[str, float], int]] = []
+    portfolio_values = [initial_capital]
+    benchmark_values = [initial_capital]
+    returns_list: list[float] = []
 
-    if non_overlapping:
-        # ── Non-overlapping: independent 10-day windows ──
-        rebalance_dates = common_dates[::rebalance_days]
-        portfolio_values = [initial_capital]
-        benchmark_values = [initial_capital]
-        returns_list: list[float] = []
-        current_holdings: dict[str, float] = {}
+    for day_idx, date in enumerate(common_dates):
+        ret_lookup = ret_map.get(str(date)[:10], {})
 
-        for date in rebalance_dates:
-            try:
-                day_pred = predictions.loc[date]["score"]
-            except KeyError:
-                portfolio_values.append(portfolio_values[-1])
-                benchmark_values.append(benchmark_values[-1])
-                returns_list.append(0.0)
-                bench_per_period.append(0.0)
-                continue
+        matured_cash = 0.0
+        surviving: list[tuple[float, dict[str, float], int]] = []
+        for layer_value, holdings, maturity_idx in active_layers:
+            if day_idx >= maturity_idx:
+                matured_cash += layer_value
+            else:
+                surviving.append((layer_value, holdings, maturity_idx))
+        active_layers = surviving
 
-            period_turnover = 0.0
-            cost = 0.0
-            if len(day_pred) >= topk:
-                top_stocks = day_pred.nlargest(topk)
-                new_holdings = {s: 1.0 / topk for s in top_stocks.index}
-                all_symbols = set(current_holdings.keys()) | set(new_holdings.keys())
-                period_turnover = (
-                    sum(abs(new_holdings.get(s, 0) - current_holdings.get(s, 0)) for s in all_symbols)
-                    / 2
+        for index in range(len(active_layers)):
+            layer_value, holdings, maturity_idx = active_layers[index]
+            valid_weights = {
+                symbol: weight
+                for symbol, weight in holdings.items()
+                if symbol in ret_lookup
+            }
+            growth = 0.0
+            if valid_weights:
+                total_weight = sum(valid_weights.values())
+                growth = sum(
+                    (valid_weights[symbol] / total_weight) * ret_lookup[symbol]
+                    for symbol in valid_weights
                 )
-                cost = period_turnover * cost_bps / 10000
-                current_holdings = new_holdings
-            total_turnover += period_turnover
-            total_cost += cost
+            active_layers[index] = (
+                layer_value * (1 + growth),
+                holdings,
+                maturity_idx,
+            )
 
-            date_key = str(date)[:10]
-            ret_lookup = ret_map.get(date_key, {})
-            if current_holdings and ret_lookup:
-                valid_weights = {s: w for s, w in current_holdings.items() if s in ret_lookup}
-                if valid_weights:
-                    total_w = sum(valid_weights.values())
-                    port_ret = (
-                        sum((valid_weights[s] / total_w) * ret_lookup[s] for s in valid_weights)
-                        - cost
-                    )
-                else:
-                    port_ret = 0.0
-            else:
-                port_ret = 0.0
+        try:
+            daily_scores = predictions.loc[date]["score"]
+            if len(daily_scores) >= topk:
+                selected = daily_scores.nlargest(topk)
+                holdings = {str(symbol): 1.0 / topk for symbol in selected.index}
+                entry_value = layer_capital * (1 - cost_bps / 10_000)
+                active_layers.append((entry_value, holdings, day_idx + rebalance_days))
+        except KeyError:
+            pass
 
-            portfolio_values.append(portfolio_values[-1] * (1 + port_ret))
-            returns_list.append(port_ret)
+        total_active = sum(value for value, _, _ in active_layers)
+        cash = initial_capital - layer_capital * len(active_layers)
+        total_value = matured_cash + cash + total_active
+        portfolio_values.append(total_value)
 
-            if bench_series is not None and date in bench_series.index:
-                b = float(bench_series.loc[date])
-                benchmark_values.append(benchmark_values[-1] * (1 + (0.0 if np.isnan(b) else b)))
-                bench_per_period.append(0.0 if np.isnan(b) else b)
-            else:
-                benchmark_values.append(benchmark_values[-1])
-                bench_per_period.append(0.0)
+        previous = portfolio_values[-2] if len(portfolio_values) >= 2 else initial_capital
+        returns_list.append((total_value / previous) - 1 if previous > 0 else 0.0)
 
-    else:
-        # ── Overlapping (layered): each day opens a 1/N position held N days ──
-        # Each layer = 1/rebalance_days of capital, invested for exactly
-        # rebalance_days days.  The portfolio holds up to rebalance_days
-        # concurrent layers, producing smooth daily curves.
-        layer_capital = initial_capital / rebalance_days
-        # active_layers: list of [(entry_value, holdings_dict, maturity_idx), ...]
-        active_layers: list[tuple[float, dict[str, float], int]] = []
-        portfolio_values = [initial_capital]
-        benchmark_values = [initial_capital]
-        returns_list = []
+        if bench_series is not None and date in bench_series.index:
+            benchmark_value = float(bench_series.loc[date])
+            benchmark_values.append(
+                benchmark_values[-1]
+                * (1 + (0.0 if np.isnan(benchmark_value) else benchmark_value))
+            )
+        else:
+            benchmark_values.append(benchmark_values[-1])
 
-        for day_idx, date in enumerate(common_dates):
-            date_key = str(date)[:10]
-            ret_lookup = ret_map.get(date_key, {})
-
-            # 1. Collect matured layers → return to cash
-            matured_cash = 0.0
-            surviving: list[tuple[float, dict[str, float], int]] = []
-            for layer_val, h, mat_idx in active_layers:
-                if day_idx >= mat_idx:
-                    matured_cash += layer_val
-                else:
-                    surviving.append((layer_val, h, mat_idx))
-            active_layers = surviving
-
-            # 2. Grow all surviving layers by today's return
-            for i in range(len(active_layers)):
-                lv, h, mi = active_layers[i]
-                growth = 0.0
-                valid_w = {s: w for s, w in h.items() if s in ret_lookup}
-                if valid_w:
-                    total_w = sum(valid_w.values())
-                    growth = sum(
-                        (valid_w[s] / total_w) * ret_lookup[s] for s in valid_w
-                    )
-                active_layers[i] = (lv * (1 + growth), h, mi)
-
-            # 3. Open new layer (if we have predictions for today)
-            try:
-                day_pred = predictions.loc[date]["score"]
-                if len(day_pred) >= topk:
-                    top_stocks = day_pred.nlargest(topk)
-                    new_h = {str(k): 1.0 / topk for k in top_stocks.index}
-                    # Deduct transaction cost
-                    cost_ratio = cost_bps / 10000
-                    new_entry = layer_capital * (1 - cost_ratio)
-                    active_layers.append((new_entry, new_h, day_idx + rebalance_days))
-            except KeyError:
-                pass
-
-            # 4. Portfolio value = cash + sum of active layers
-            total_active = sum(lv for lv, _, _ in active_layers)
-            cash = initial_capital - layer_capital * len(active_layers)  # uninvested remainder
-            total_value = matured_cash + cash + total_active
-            portfolio_values.append(total_value)
-
-            # Daily return
-            prev = portfolio_values[-2] if len(portfolio_values) >= 2 else initial_capital
-            daily_ret = (total_value / prev) - 1 if prev > 0 else 0.0
-            returns_list.append(daily_ret)
-
-            # Benchmark
-            if bench_series is not None and date in bench_series.index:
-                b = float(bench_series.loc[date])
-                benchmark_values.append(
-                    benchmark_values[-1] * (1 + (0.0 if np.isnan(b) else b))
-                )
-            else:
-                benchmark_values.append(benchmark_values[-1])
-
-    # Compute metrics
     total_return = portfolio_values[-1] / portfolio_values[0] - 1
     benchmark_return = benchmark_values[-1] / benchmark_values[0] - 1
     excess_return = total_return - benchmark_return
-
-    # Max drawdown
-    port_arr = np.array(portfolio_values)
-    max_dd = float((port_arr / np.maximum.accumulate(port_arr) - 1).min())
-
-    # Sharpe ratio (annualized)
-    ret_arr = np.array(returns_list)
-    ret_std = float(ret_arr.std())
+    portfolio_array = np.array(portfolio_values)
+    max_drawdown = float(
+        (portfolio_array / np.maximum.accumulate(portfolio_array) - 1).min()
+    )
+    return_array = np.array(returns_list)
+    return_std = float(return_array.std())
     periods_per_year = 252 / rebalance_days if rebalance_days > 0 else 252
-    sharpe = float(ret_arr.mean() / ret_std * np.sqrt(periods_per_year)) if ret_std > 1e-10 else 0.0
-
-    # Annual return
+    sharpe_ratio = (
+        float(return_array.mean() / return_std * np.sqrt(periods_per_year))
+        if return_std > 1e-10
+        else 0.0
+    )
     n_periods = len(returns_list)
     years = n_periods * rebalance_days / 252 if rebalance_days > 0 else n_periods / 252
-    annual_ret = float((1 + total_return) ** (1 / years) - 1) if years > 0 else 0.0
-    volatility = float(ret_arr.std() * np.sqrt(periods_per_year)) if n_periods > 0 else 0.0
-
-    # Engine economics (costs already subtracted in port_ret → net_return == total_return)
-    net_return_val = total_return
-
-    # Information ratio (annualized)
-    information_ratio_val = 0.0
-    if non_overlapping and bench_per_period and len(bench_per_period) == len(returns_list):
-        excess_arr = np.array(returns_list) - np.array(bench_per_period)
-        tracking_error = float(excess_arr.std() * np.sqrt(periods_per_year))
-        annual_excess = annual_ret - (float((1 + benchmark_return) ** (1 / years) - 1) if years > 0 else 0.0)
-        if tracking_error > 1e-10:
-            information_ratio_val = annual_excess / tracking_error
+    annual_return = (
+        float((1 + total_return) ** (1 / years) - 1) if years > 0 else 0.0
+    )
+    volatility = (
+        float(return_array.std() * np.sqrt(periods_per_year)) if n_periods > 0 else 0.0
+    )
 
     return BacktestResult(
         total_return=total_return,
         benchmark_return=benchmark_return,
         excess_return=excess_return,
-        max_drawdown=max_dd,
-        sharpe_ratio=sharpe,
-        annual_return=annual_ret,
+        max_drawdown=max_drawdown,
+        sharpe_ratio=sharpe_ratio,
+        annual_return=annual_return,
         volatility=volatility,
         mean_ic=mean_ic,
         ic_ir=ic_ir,
@@ -696,17 +576,17 @@ def run_vectorized_backtest(
         n_periods=n_periods,
         test_start=str(common_dates[0].date()),
         test_end=str(common_dates[-1].date()),
-        turnover=total_turnover,
-        costs=total_cost,
-        net_return=net_return_val,
-        information_ratio=information_ratio_val,
+        turnover=0.0,
+        costs=0.0,
+        net_return=total_return,
+        information_ratio=0.0,
     )
 
 
 def load_predictions(pred_path: str | Path) -> pd.DataFrame:
     """Load predictions from a pickle file."""
-    with open(pred_path, "rb") as f:
-        return pickle.load(f)
+    with open(pred_path, "rb") as file:
+        return pickle.load(file)
 
 
 def load_returns(
@@ -718,10 +598,10 @@ def load_returns(
     """Load returns using Qlib."""
     from qlib.data import D
 
-    df = D.features(symbols, [label_expr], start_time=start_time, end_time=end_time)
-    df = df.unstack(level="instrument")
-    df.columns = [c[1] for c in df.columns]
-    return df
+    frame = D.features(symbols, [label_expr], start_time=start_time, end_time=end_time)
+    frame = frame.unstack(level="instrument")
+    frame.columns = [column[1] for column in frame.columns]
+    return frame
 
 
 def load_benchmark(
@@ -730,14 +610,10 @@ def load_benchmark(
     start_time: str = "2025-01-01",
     end_time: str = "2026-06-18",
 ) -> pd.DataFrame:
-    """Load benchmark returns using Qlib.
-
-    Returns DataFrame with datetime index and single column of returns.
-    """
+    """Load benchmark returns using Qlib."""
     from qlib.data import D
 
-    df = D.features([symbol], [label_expr], start_time=start_time, end_time=end_time)
-    # Flatten MultiIndex to just datetime
-    if isinstance(df.index, pd.MultiIndex):
-        df = df.xs(symbol, level="instrument")
-    return df
+    frame = D.features([symbol], [label_expr], start_time=start_time, end_time=end_time)
+    if isinstance(frame.index, pd.MultiIndex):
+        frame = frame.xs(symbol, level="instrument")
+    return frame
