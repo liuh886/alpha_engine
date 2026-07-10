@@ -12,6 +12,65 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  apply-evaluation-context:
+    if: github.event_name == 'pull_request' && github.head_ref == 'refactor/evaluation-context-boundary' && github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/evaluation-context-boundary
+          fetch-depth: 0
+
+      - name: Remove notebook session config from adapters
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          for path in (
+              Path('src/research/cn_qlib_execution_adapter.py'),
+              Path('src/research/us_qlib_execution_adapter.py'),
+          ):
+              text = path.read_text(encoding='utf-8')
+              old_import = (
+                  'from src.research.notebook_lab_contracts import '
+                  'ResearchSessionConfig\n'
+              )
+              new_import = (
+                  'from src.research.evaluation_context import '
+                  'SpecBoundEvaluationContext\n'
+              )
+              if old_import not in text:
+                  raise SystemExit(f'ResearchSessionConfig import not found: {path}')
+              text = text.replace(old_import, new_import, 1)
+              if 'config = ResearchSessionConfig(' not in text:
+                  raise SystemExit(f'ResearchSessionConfig construction not found: {path}')
+              text = text.replace(
+                  'config = ResearchSessionConfig(',
+                  'config = SpecBoundEvaluationContext(',
+                  1,
+              )
+              text = text.replace(
+                  'symbols=retained_symbols,',
+                  'symbols=tuple(retained_symbols),',
+                  1,
+              )
+              text = text.replace(
+                  'factor_expressions=feature_expressions,',
+                  'factor_expressions=tuple(feature_expressions),',
+                  1,
+              )
+              path.write_text(text, encoding='utf-8')
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/research/cn_qlib_execution_adapter.py src/research/us_qlib_execution_adapter.py
+          git commit -m "refactor(research): use spec-bound evaluation contexts"
+          git push origin HEAD:refactor/evaluation-context-boundary
+
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 30
