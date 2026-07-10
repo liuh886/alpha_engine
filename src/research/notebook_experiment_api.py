@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.research.notebook_lab_contracts import ResearchSessionConfig
+from src.research.evaluation_context import TenDayEvaluationConfig
 from src.research.signal_discovery import (
     CandidateKind,
     CandidateStatus,
@@ -46,10 +46,10 @@ def compare_10d_candidates(
     candidates: dict[str, pd.Series | pd.DataFrame],
     raw_returns: pd.DataFrame,
     *,
-    config: ResearchSessionConfig,
+    config: TenDayEvaluationConfig,
     benchmark_returns: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
-    """Compare notebook candidate score series with original/inverted orientation."""
+    """Compare candidate score series with original/inverted orientation."""
 
     results = []
     for name, values in candidates.items():
@@ -77,19 +77,34 @@ def compare_10d_candidates(
         candidates=results,
     )
     for candidate in results:
-        label = f"{candidate.candidate_name}/{candidate.candidate_kind.value}/{candidate.orientation.value}"
+        label = (
+            f"{candidate.candidate_name}/"
+            f"{candidate.candidate_kind.value}/"
+            f"{candidate.orientation.value}"
+        )
         if candidate.status == CandidateStatus.PROMOTED:
             report.promoted.append(label)
         else:
             report.research_only.append(label)
     eligible = [candidate for candidate in results if candidate.n_periods > 0]
     if eligible:
-        best = max(eligible, key=lambda candidate: (candidate.icir, candidate.rank_ic, candidate.excess_return))
+        best = max(
+            eligible,
+            key=lambda candidate: (
+                candidate.icir,
+                candidate.rank_ic,
+                candidate.excess_return,
+            ),
+        )
         report.summary = {
             "n_candidates": len(results),
             "n_promoted": len(report.promoted),
             "n_research_only": len(report.research_only),
-            "best_candidate": f"{best.candidate_name}/{best.candidate_kind.value}/{best.orientation.value}",
+            "best_candidate": (
+                f"{best.candidate_name}/"
+                f"{best.candidate_kind.value}/"
+                f"{best.orientation.value}"
+            ),
             "best_icir": best.icir,
             "best_candidate_summary": {
                 "candidate_name": best.candidate_name,
@@ -101,19 +116,23 @@ def compare_10d_candidates(
             "promotion_thresholds": PROMOTION_THRESHOLDS,
         }
     else:
-        report.summary = {"n_candidates": len(results), "n_promoted": 0, "n_research_only": len(results)}
+        report.summary = {
+            "n_candidates": len(results),
+            "n_promoted": 0,
+            "n_research_only": len(results),
+        }
     return report.to_dict()
 
 
 def run_10d_experiment(
     *,
-    config: ResearchSessionConfig,
+    config: TenDayEvaluationConfig,
     candidates: dict[str, pd.Series | pd.DataFrame],
     raw_returns: pd.DataFrame,
     benchmark_returns: pd.DataFrame | None = None,
     output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Run one fixed-10D notebook experiment and optionally write a JSON artifact."""
+    """Run one fixed-10D experiment and optionally write a JSON artifact."""
 
     report = compare_10d_candidates(
         candidates,
@@ -121,12 +140,19 @@ def run_10d_experiment(
         config=config,
         benchmark_returns=benchmark_returns,
     )
-    payload = {"schema_version": "1.0", "config": config.to_dict(), "comparison_report": report}
+    payload = {
+        "schema_version": "1.0",
+        "config": config.to_dict(),
+        "comparison_report": report,
+    }
     if output_dir is not None:
         out_dir = Path(output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         name = config.experiment_id or f"{config.market}_10d_experiment"
         path = out_dir / f"{name}.json"
-        path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
         payload["artifact_path"] = str(path)
     return payload
