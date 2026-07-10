@@ -1,8 +1,5 @@
 # US OHLCV Factor Library
-# Schema 1.0 — factors nested within groups.
-# Every factor id is globally unique within this library.
-# Mirrors the four groups from default_ranker_feature_groups() in
-# src/research/ranker_calibration_grid.py.
+# Schema 1.0 — canonical grouped OHLCV definitions for contract preparation.
 schema_version: "1.0"
 
 groups:
@@ -72,7 +69,7 @@ groups:
       - id: "us:volume:vol_mom_10d"
         expression: "$volume/Ref($volume,10)-1"
         family: "volume"
-        description: "10-day volume momentum (volume relative to 10-day-ago volume)"
+        description: "10-day volume momentum"
       - id: "us:volume:vol_vs_ma20"
         expression: "$volume/Mean($volume,20)-1"
         family: "volume"
@@ -104,11 +101,11 @@ groups:
       - id: "us:risk_controlled:ret10_per_vol10"
         expression: "($close/Ref($close,10)-1)/(Std($close/Ref($close,1)-1,10)+1e-12)"
         family: "risk_controlled"
-        description: "10-day return divided by 10-day volatility (risk-controlled momentum)"
+        description: "10-day return divided by 10-day volatility"
       - id: "us:risk_controlled:ret20_per_vol20"
         expression: "($close/Ref($close,20)-1)/(Std($close/Ref($close,1)-1,20)+1e-12)"
         family: "risk_controlled"
-        description: "20-day return divided by 20-day volatility (risk-controlled momentum)"
+        description: "20-day return divided by 20-day volatility"
 
   factor_baselines:
     description: "Single-factor baselines for direction diagnostics"
@@ -116,7 +113,7 @@ groups:
       - id: "factor:us_momentum_10d"
         expression: "$close/Ref($close,10)-1"
         family: "baseline"
-        description: "10-day raw momentum baseline (canonical direction check)"
+        description: "10-day raw momentum baseline"
       - id: "factor:us_risk_controlled_10d"
         expression: "($close/Ref($close,10)-1)/(Std($close/Ref($close,1)-1,10)+1e-12)"
         family: "baseline"
