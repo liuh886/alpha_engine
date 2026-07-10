@@ -6,6 +6,7 @@ strategy, split, or evaluation semantics.
 
 The adapter must return the effective contract it actually used. Evidence may be
 attached only when the canonical declared and effective contracts are identical.
+Promotion is finalized only after that identity proof succeeds.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from src.research.model_decision_pack import render_model_decision_markdown
 from src.research.multi_market_readiness import load_market_watchlist
 from src.research.paradigm import (
     ResearchParadigmSpec,
@@ -24,6 +26,11 @@ from src.research.paradigm import (
     build_ranker_candidates_from_spec,
     validate_research_paradigm_spec,
 )
+from src.research.promotion_consumers import (
+    build_frontend_promotion_view,
+    build_model_decision_pack_view,
+)
+from src.research.promotion_decision import finalize_promotion_decision
 from src.research.research_artifacts import (
     ResearchRunPaths,
     build_research_run_paths,
@@ -239,6 +246,75 @@ def _resolve_evidence_paths(
     return resolved
 
 
+def _read_optional_json(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return dict(payload) if isinstance(payload, dict) else {}
+
+
+def _finalize_promotion_outputs(
+    spec: ResearchParadigmSpec,
+    paths: ResearchRunPaths,
+    *,
+    run_status: str,
+    resolved_evidence_paths: dict[str, str],
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """Write every decision surface from one post-identity promotion result."""
+
+    promotion = finalize_promotion_decision(
+        paths.run_dir,
+        subject_id=spec.experiment_id,
+    )
+    promotion_path = Path(str(promotion["artifact_path"]))
+
+    decision_pack = build_model_decision_pack_view(promotion)
+    write_json(paths.model_decision_pack, decision_pack)
+    paths.model_decision_markdown.write_text(
+        render_model_decision_markdown(decision_pack),
+        encoding="utf-8",
+    )
+
+    metrics = _read_optional_json(paths.metrics_summary)
+    if metrics:
+        metrics["current_best_candidate"] = promotion.get("candidate")
+        metrics["decision"] = dict(decision_pack["decision"])
+        metrics["decision_source"] = "promotion_decision"
+        metrics["promotion_contract_sha256"] = str(
+            promotion.get("contract_sha256", "")
+        )
+        write_json(paths.metrics_summary, metrics)
+
+    readiness = _read_optional_json(paths.data_readiness)
+    artifact_paths = {
+        **resolved_evidence_paths,
+        "execution_identity": str(
+            paths.run_dir / EXECUTION_IDENTITY_FILENAME
+        ),
+        "promotion_decision": str(promotion_path),
+        "model_decision_pack": str(paths.model_decision_pack),
+        "model_decision_markdown": str(paths.model_decision_markdown),
+    }
+    if paths.metrics_summary.is_file():
+        artifact_paths["metrics_summary"] = str(paths.metrics_summary)
+
+    frontend = build_frontend_promotion_view(
+        promotion,
+        market=spec.market,
+        benchmark=spec.benchmark,
+        run_status=run_status,
+        metrics=metrics,
+        readiness=readiness,
+        artifact_paths=artifact_paths,
+    )
+    write_json(paths.frontend_payload, frontend)
+    artifact_paths["frontend_payload"] = str(paths.frontend_payload)
+    return promotion, artifact_paths
+
+
 def execute_spec_bound_research(
     spec: ResearchParadigmSpec,
     executor: SpecBoundExecutor,
@@ -246,7 +322,7 @@ def execute_spec_bound_research(
     root: str | Path | None = None,
     output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Execute through an adapter and accept evidence only after identity proof."""
+    """Execute, prove identity, then finalize one canonical decision surface."""
 
     plan = build_spec_bound_execution_plan(spec)
     paths: ResearchRunPaths = build_research_run_paths(
@@ -308,17 +384,34 @@ def execute_spec_bound_research(
         result.evidence_paths,
         paths.run_dir,
     )
+    promotion, finalized_paths = _finalize_promotion_outputs(
+        spec,
+        paths,
+        run_status=result.status,
+        resolved_evidence_paths=resolved_evidence_paths,
+    )
+    runtime_metadata = {
+        **dict(result.runtime_metadata),
+        "decision_source": "promotion_decision",
+        "decision_status": str(promotion["status"]),
+    }
+    decision_view = {
+        "status": str(promotion["status"]),
+        "trade_ready": bool(promotion["trade_ready"]),
+    }
     write_run_status(
         paths,
         experiment_id=spec.experiment_id,
         status=result.status,
         reason="Spec-bound execution contract identity verified",
+        decision=decision_view,
         extra={
             "declared_contract_sha256": declared_sha,
             "effective_contract_sha256": effective_sha,
             "execution_identity": str(identity_path),
-            "runtime_metadata": dict(result.runtime_metadata),
-            "evidence_paths": resolved_evidence_paths,
+            "runtime_metadata": runtime_metadata,
+            "evidence_paths": finalized_paths,
+            "promotion_decision": promotion,
         },
     )
 
@@ -328,6 +421,7 @@ def execute_spec_bound_research(
         "contract_identity_verified": True,
         "declared_contract_sha256": declared_sha,
         "effective_contract_sha256": effective_sha,
-        "runtime_metadata": dict(result.runtime_metadata),
-        "evidence_paths": resolved_evidence_paths,
+        "runtime_metadata": runtime_metadata,
+        "evidence_paths": finalized_paths,
+        "promotion_decision": promotion,
     }
