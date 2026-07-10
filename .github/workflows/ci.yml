@@ -38,43 +38,9 @@ jobs:
       - name: Mypy type check (ratcheted scope)
         run: uv run mypy src/release src/models/metric_contract.py
 
-      - name: Focused rolling-wrapper pytest
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set +e
-          uv run pytest tests/test_legacy_rolling_ranker_wrapper.py -vv --tb=long > rolling_wrapper.log 2>&1
-          status=$?
-          cat rolling_wrapper.log
-          exit $status
-
-      - name: Upload rolling-wrapper log
-        if: always() && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: rolling-wrapper-log
-          path: rolling_wrapper.log
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Fast PR pytest
         if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set +e
-          uv run pytest tests/test_labels.py tests/test_training_label_direction.py tests/test_model_signal_identity.py tests/test_api_contract.py tests/test_walk_forward_stability.py tests/test_rolling_windows.py tests/test_ranker_calibration_grid.py tests/test_ranker_grid_experiment_contract.py tests/test_stable_signal_blend.py tests/test_model_decision_pack.py tests/test_universe_robustness.py tests/test_multi_market_readiness.py tests/test_market_data_alignment.py tests/test_cn_feature_quality.py tests/test_factor_library.py tests/test_research_paradigm.py tests/test_research_artifacts.py tests/test_spec_bound_execution.py tests/test_cn_qlib_execution_adapter.py tests/test_us_qlib_execution_adapter.py tests/test_portfolio_intent.py tests/test_vectorized_backtest_intent_wrapper.py tests/test_promotion_decision.py tests/test_promotion_consumers.py tests/test_post_identity_promotion.py tests/test_synthetic_evidence_scope.py tests/test_decision_pack_cli_consumer.py tests/test_legacy_cn_runner_wrapper.py tests/test_legacy_rolling_ranker_wrapper.py -q --strict-markers --tb=long --disable-warnings --maxfail=1 > fast_pr.log 2>&1
-          status=$?
-          cat fast_pr.log
-          exit $status
-
-      - name: Upload fast PR log
-        if: always() && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: fast-pr-log
-          path: fast_pr.log
-          if-no-files-found: error
-          retention-days: 7
+        run: uv run pytest tests/test_labels.py tests/test_training_label_direction.py tests/test_model_signal_identity.py tests/test_api_contract.py tests/test_walk_forward_stability.py tests/test_rolling_windows.py tests/test_ranker_calibration_grid.py tests/test_ranker_grid_experiment_contract.py tests/test_stable_signal_blend.py tests/test_model_decision_pack.py tests/test_universe_robustness.py tests/test_multi_market_readiness.py tests/test_market_data_alignment.py tests/test_cn_feature_quality.py tests/test_factor_library.py tests/test_research_paradigm.py tests/test_research_artifacts.py tests/test_spec_bound_execution.py tests/test_cn_qlib_execution_adapter.py tests/test_us_qlib_execution_adapter.py tests/test_portfolio_intent.py tests/test_vectorized_backtest_intent_wrapper.py tests/test_promotion_decision.py tests/test_promotion_consumers.py tests/test_post_identity_promotion.py tests/test_synthetic_evidence_scope.py tests/test_decision_pack_cli_consumer.py tests/test_legacy_cn_runner_wrapper.py tests/test_legacy_rolling_ranker_wrapper.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: CN Qlib fixture integration
         if: github.event_name == 'pull_request'
