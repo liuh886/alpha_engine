@@ -1,4 +1,10 @@
-"""Notebook-first research lab contracts."""
+"""Notebook compatibility contracts for the fixed-10D research lab.
+
+New spec-bound execution must derive semantics from ResearchParadigmSpec and
+SpecBoundExecutionPlan. ``ResearchSessionConfig`` remains a notebook/evaluator
+compatibility view and must not load files, define candidate grids, or own
+promotion decisions.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +16,8 @@ CANONICAL_10D_RETURN_EXPR = "Ref($close, -10) / $close - 1"
 
 @dataclass(frozen=True)
 class ResearchSessionConfig:
+    """Legacy notebook configuration compatible with TenDayEvaluationConfig."""
+
     market: str
     symbols: list[str]
     benchmark: str
