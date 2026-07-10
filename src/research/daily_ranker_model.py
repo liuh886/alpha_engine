@@ -19,12 +19,25 @@ class DailyRankerResult:
     n_gain_bins: int
 
 
-def percentile_rank_to_gain(rank_target: pd.Series, *, n_bins: int = 5) -> pd.Series:
-    """Convert percentile ranks into integer gain labels for ranking objectives."""
+def percentile_rank_to_gain(
+    rank_target: pd.Series,
+    *,
+    n_bins: int = 5,
+) -> pd.Series:
+    """Convert valid percentile ranks into integer LambdaRank gain labels."""
 
     if n_bins < 2:
         raise ValueError("n_bins must be at least 2")
-    clipped = rank_target.astype(float).clip(0.0, 1.0).fillna(0.5)
+    if rank_target.empty:
+        raise ValueError("rank_target must not be empty")
+
+    values = rank_target.astype(float)
+    if not np.isfinite(values.to_numpy()).all():
+        raise ValueError(
+            "rank_target contains missing or non-finite values; invalid rows "
+            "must be removed before gain conversion"
+        )
+    clipped = values.clip(0.0, 1.0)
     gains = np.floor(clipped * n_bins).clip(0, n_bins - 1).astype(int)
     gains.name = "rank_gain"
     gains.attrs["provenance"] = "processed_daily_rank_gain_target"
@@ -44,8 +57,22 @@ def fit_lgbm_daily_ranker(
 ) -> DailyRankerResult:
     """Fit a LightGBM LambdaRank model with explicit daily groups."""
 
+    if features.empty:
+        raise ValueError("features must not be empty")
+    if not features.index.equals(rank_target.index):
+        raise ValueError("features and rank_target must have identical indices")
+    if not groups:
+        raise ValueError("groups must not be empty")
+    if any(size < 2 for size in groups):
+        raise ValueError("each ranker group must contain at least two rows")
     if sum(groups) != len(features):
         raise ValueError("sum(groups) must equal the number of training rows")
+    feature_values = features.astype(float).to_numpy()
+    if not np.isfinite(feature_values).all():
+        raise ValueError(
+            "features contain missing or non-finite values; invalid rows must "
+            "be removed before model fitting"
+        )
 
     import lightgbm as lgb
 
@@ -62,8 +89,16 @@ def fit_lgbm_daily_ranker(
     if params:
         model_params.update(params)
 
-    dataset = lgb.Dataset(features, label=gains.loc[features.index], group=groups)
-    model = lgb.train(model_params, dataset, num_boost_round=num_boost_round)
+    dataset = lgb.Dataset(
+        features,
+        label=gains.loc[features.index],
+        group=groups,
+    )
+    model = lgb.train(
+        model_params,
+        dataset,
+        num_boost_round=num_boost_round,
+    )
     return DailyRankerResult(
         model=model,
         feature_names=[str(item) for item in features.columns],
@@ -72,11 +107,18 @@ def fit_lgbm_daily_ranker(
     )
 
 
-def predict_lgbm_daily_ranker(result: DailyRankerResult, features: pd.DataFrame) -> pd.DataFrame:
+def predict_lgbm_daily_ranker(
+    result: DailyRankerResult,
+    features: pd.DataFrame,
+) -> pd.DataFrame:
     """Predict ranker scores as a one-column candidate frame."""
 
     matrix = features.loc[:, result.feature_names]
-    scores = pd.DataFrame(result.model.predict(matrix), index=matrix.index, columns=["score"])
+    scores = pd.DataFrame(
+        result.model.predict(matrix),
+        index=matrix.index,
+        columns=["score"],
+    )
     scores.attrs["provenance"] = "out_of_sample_daily_ranker_prediction"
     scores.attrs["model_type"] = "lgbm_lambdarank"
     scores.attrs["n_gain_bins"] = result.n_gain_bins
