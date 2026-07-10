@@ -1,0 +1,87 @@
+# US 10D QQQ Baseline Research Paradigm
+# Schema 1.0 — structured research paradigm for fixed-10D US baseline.
+schema_version: "1.0"
+experiment_id: "us_10d_qqq_baseline"
+market: "us"
+benchmark: "QQQ"
+
+universe:
+  source: "configs/watchlist.yaml"
+  market_key: "us"
+  min_symbols: 30
+  alignment_mode: "strict"
+
+factor_library:
+  source: "configs/factor_libraries/us_ohlcv.yaml"
+  groups:
+    - "momentum"
+    - "momentum_volatility"
+    - "momentum_volatility_volume"
+    - "risk_controlled_momentum"
+
+candidate_grid:
+  ranker:
+    calibrations:
+      - n_gain_bins: 3
+        num_boost_round: 100
+        num_leaves: 15
+        min_data_in_leaf: 5
+        learning_rate: 0.05
+      - n_gain_bins: 5
+        num_boost_round: 100
+        num_leaves: 31
+        min_data_in_leaf: 10
+        learning_rate: 0.05
+      - n_gain_bins: 7
+        num_boost_round: 200
+        num_leaves: 31
+        min_data_in_leaf: 10
+        learning_rate: 0.05
+      - n_gain_bins: 10
+        num_boost_round: 200
+        num_leaves: 63
+        min_data_in_leaf: 20
+        learning_rate: 0.05
+  factor_baselines:
+    - "factor:us_momentum_10d"
+    - "factor:us_risk_controlled_10d"
+
+strategy:
+  horizon_days: 10
+  holding_days: 10
+  rebalance_days: 10
+  top_n: 15
+  bottom_n: 15
+  return_expression: "Ref($close, -10) / $close - 1"
+  return_provenance: "raw_forward_return"
+  research_only: true
+
+walk_forward:
+  first_test_year: 2024
+  last_test_year: 2026
+  min_windows: 3
+  train_embargo_sessions: 10
+
+evaluation:
+  benchmark_mode: "reference_only"
+  metrics:
+    - "mean_icir"
+    - "mean_rank_ic"
+    - "mean_spread"
+    - "worst_drawdown"
+    - "ready_ratio"
+    - "positive_icir_ratio"
+    - "positive_spread_ratio"
+  gates:
+    mean_icir: 0.30
+    worst_drawdown: -0.15
+    ready_ratio: 0.75
+
+outputs:
+  write_readiness: true
+  write_factor_manifest: true
+  write_candidate_manifest: true
+  write_walk_forward_stability: true
+  write_decision_pack: true
+  write_top_bottom_signals: true
+  write_frontend_payload: true

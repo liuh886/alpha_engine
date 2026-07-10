@@ -1,20 +1,384 @@
-"""Combinatorial Factor Library.
+"""Structured Factor Library.
 
-Loads factor expressions from ``configs/factor_pool.yaml`` by default.
-Falls back to programmatic generation via combinatorial enumeration of
-base fields, transformations, and lookback windows when the YAML file
-is not found.
+Provides two complementary factor systems:
 
-The resulting list is suitable for ``scan_factor_pool`` in factor_scanner.
+1. **Structured Factor Specs** — ``FactorSpec``, ``FactorGroup`` loaded
+   from ``configs/factor_libraries/*.yaml`` with schema validation, globally
+   unique ids, group selection that fails closed, and conversion to the
+   existing ``RankerFeatureGroup`` type.  No Qlib dependency.
+
+2. **Combinatorial Factor Library** (legacy) — loads factor expressions from
+   ``configs/factor_pool.yaml`` by default, falling back to programmatic
+   generation.  Suitable for ``scan_factor_pool`` in factor_scanner.
 """
 
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
+from yaml import SafeLoader, MappingNode
+
+if TYPE_CHECKING:
+    from src.research.ranker_calibration_grid import RankerFeatureGroup
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Structured Factor Specs — no Qlib dependency
+# ═══════════════════════════════════════════════════════════════════════════════
+
+STRUCTURED_FACTOR_LIBRARY_SCHEMA = "1.0"
+
+
+@dataclass(frozen=True)
+class FactorSpec:
+    """One factor definition with globally unique id."""
+
+    id: str
+    expression: str
+    family: str
+    description: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.id:
+            raise ValueError("FactorSpec.id must be non-empty")
+        if not self.expression:
+            raise ValueError("FactorSpec.expression must be non-empty")
+        if not self.family:
+            raise ValueError("FactorSpec.family must be non-empty")
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "id": self.id,
+            "expression": self.expression,
+            "family": self.family,
+            "description": self.description,
+        }
+
+
+@dataclass(frozen=True)
+class FactorGroup:
+    """Named collection of factor specs (factors nested within each group)."""
+
+    name: str
+    description: str
+    factors: tuple[FactorSpec, ...]
+
+    def __post_init__(self) -> None:
+        if not self.name:
+            raise ValueError("FactorGroup.name must be non-empty")
+        if not self.factors:
+            raise ValueError(
+                f"FactorGroup '{self.name}' must contain at least one factor"
+            )
+
+    @property
+    def factor_ids(self) -> tuple[str, ...]:
+        """Factor ids in this group, for backward compatibility."""
+        return tuple(f.id for f in self.factors)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "factors": [f.to_dict() for f in self.factors],
+        }
+
+
+# ── Core public API ────────────────────────────────────────────────────────────
+
+
+def _validate_factor_ids_unique(all_factors: list[FactorSpec]) -> None:
+    """Raise ValueError if any factor id is duplicated across all groups."""
+    seen: dict[str, str] = {}  # id → group_name
+    for f in all_factors:
+        if f.id in seen:
+            raise ValueError(
+                f"Duplicate factor id '{f.id}' (first seen in group '{seen[f.id]}')"
+            )
+        seen[f.id] = "detected"
+
+
+def load_factor_library(path: str | Path) -> dict[str, FactorGroup]:
+    """Load a structured factor library from a YAML file.
+
+    The canonical schema (1.0) uses ``schema_version`` and a ``groups``
+    mapping.  Each group has a ``description`` and a ``factors`` list
+    where each factor has ``id``, ``expression``, ``family``, and
+    optional ``description``.
+
+    Parameters
+    ----------
+    path:
+        Path to a YAML file following the ``configs/factor_libraries/`` schema.
+
+    Returns
+    -------
+    dict[str, FactorGroup]
+        Mapping from group name to ``FactorGroup``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If *path* does not exist.
+    ValueError
+        If the schema version is unsupported, factor ids are duplicated
+        globally, any expression is missing or empty, group names are
+        duplicated, or a referenced factor id is unknown.
+    """
+    yaml_path = Path(path)
+    if not yaml_path.exists():
+        raise FileNotFoundError(f"Factor library not found: {yaml_path}")
+
+    with open(yaml_path, encoding="utf-8") as fh:
+        raw_text = fh.read()
+
+    # First pass: detect duplicate group keys in the YAML node tree
+    # before yaml.safe_load silently overwrites them.
+    composed = yaml.compose(raw_text, Loader=SafeLoader)
+    if isinstance(composed, MappingNode):
+        for key_node, value_node in composed.value:
+            if key_node.value == "groups" and isinstance(value_node, MappingNode):
+                seen_group: set[str] = set()
+                for gkey_node, _ in value_node.value:
+                    if gkey_node.value in seen_group:
+                        raise ValueError(
+                            f"Duplicate group name '{gkey_node.value}' "
+                            "in factor library YAML"
+                        )
+                    seen_group.add(gkey_node.value)
+
+    # Second pass: actual data load
+    data = yaml.safe_load(raw_text)
+
+    if not isinstance(data, dict):
+        raise ValueError("Factor library YAML must be a mapping")
+
+    # ── Schema version ────────────────────────────────────────────────────
+    sv = data.get("schema_version")
+    if sv != STRUCTURED_FACTOR_LIBRARY_SCHEMA:
+        raise ValueError(
+            f"Unsupported factor library schema_version '{sv}' "
+            f"(expected '{STRUCTURED_FACTOR_LIBRARY_SCHEMA}')"
+        )
+
+    # ── Groups mapping ────────────────────────────────────────────────────
+    raw_groups: dict[str, Any] = data.get("groups", {})
+    if not isinstance(raw_groups, dict) or not raw_groups:
+        raise ValueError("'groups' must be a non-empty mapping")
+
+    seen_group_names: set[str] = set()
+    library: dict[str, FactorGroup] = {}
+    all_factor_ids: list[tuple[str, str]] = []  # (id, group_name) pairs
+
+    for gname, gdata in raw_groups.items():
+        gname_str = str(gname)
+        if gname_str in seen_group_names:
+            raise ValueError(f"Duplicate group name '{gname_str}'")
+        seen_group_names.add(gname_str)
+
+        if not isinstance(gdata, dict):
+            raise ValueError(f"Group '{gname_str}' must be a mapping")
+
+        description = str(gdata.get("description", ""))
+        raw_factors: list[dict[str, Any]] = gdata.get("factors", [])
+        if not isinstance(raw_factors, list) or not raw_factors:
+            raise ValueError(
+                f"Group '{gname_str}' must have a non-empty 'factors' list"
+            )
+
+        factors: list[FactorSpec] = []
+        for item in raw_factors:
+            fid = str(item.get("id", ""))
+            expr = str(item.get("expression", ""))
+            family = str(item.get("family", ""))
+            desc = str(item.get("description", ""))
+
+            if not fid:
+                raise ValueError(
+                    f"Factor in group '{gname_str}' has empty or missing 'id'"
+                )
+            if not expr:
+                raise ValueError(
+                    f"Factor '{fid}' in group '{gname_str}' has empty or missing 'expression'"
+                )
+
+            factors.append(FactorSpec(id=fid, expression=expr, family=family, description=desc))
+            all_factor_ids.append((fid, gname_str))
+
+        library[gname_str] = FactorGroup(
+            name=gname_str,
+            description=description,
+            factors=tuple(factors),
+        )
+
+    # ── Validate global uniqueness ────────────────────────────────────────
+    seen_ids: set[str] = set()
+    for fid, gname in all_factor_ids:
+        if fid in seen_ids:
+            raise ValueError(
+                f"Duplicate factor id '{fid}' across groups "
+                f"(first occurrence in library)"
+            )
+        seen_ids.add(fid)
+
+    return library
+
+
+def select_factor_groups(
+    library: dict[str, FactorGroup], group_names: list[str]
+) -> list[FactorGroup]:
+    """Select factor groups by name, failing closed if any is missing.
+
+    Parameters
+    ----------
+    library:
+        Mapping from group name to ``FactorGroup`` (from ``load_factor_library``).
+    group_names:
+        Ordered list of group names to select.
+
+    Returns
+    -------
+    list[FactorGroup]
+        The selected groups in the requested order.
+
+    Raises
+    ------
+    ValueError
+        If any *group_name* is not in *library*.
+    """
+    result: list[FactorGroup] = []
+    available = sorted(library.keys())
+    for name in group_names:
+        if name not in library:
+            raise ValueError(
+                f"FactorGroup '{name}' not found. Available: {available}"
+            )
+        result.append(library[name])
+    return result
+
+
+def factor_groups_to_ranker_feature_groups(
+    groups: list[FactorGroup],
+) -> list[RankerFeatureGroup]:
+    """Convert a list of ``FactorGroup`` to the existing ``RankerFeatureGroup`` type.
+
+    Factor expressions within each group are ordered by factor id for determinism.
+    Does not require a separate factors list — each group carries its own factors.
+    """
+    from src.research.ranker_calibration_grid import RankerFeatureGroup  # noqa: E402
+
+    result: list[RankerFeatureGroup] = []
+    for group in groups:
+        expressions = tuple(
+            f.expression for f in sorted(group.factors, key=lambda fs: fs.id)
+        )
+        result.append(RankerFeatureGroup(name=group.name, expressions=expressions))
+    return result
+
+
+def factor_library_manifest(groups: list[FactorGroup]) -> dict[str, object]:
+    """Return a JSON-serializable manifest of the factor library groups.
+
+    Parameters
+    ----------
+    groups:
+        List of ``FactorGroup`` instances.
+
+    Returns
+    -------
+    dict
+        Manifest with ``schema_version``, ``n_groups``, ``group_names``,
+        and per-group ``groups`` list.
+    """
+    all_factors: list[dict[str, str]] = []
+    for g in groups:
+        all_factors.extend(f.to_dict() for f in g.factors)
+
+    return {
+        "schema_version": STRUCTURED_FACTOR_LIBRARY_SCHEMA,
+        "n_groups": len(groups),
+        "n_factors": len(all_factors),
+        "group_names": sorted(g.name for g in groups),
+        "groups": [g.to_dict() for g in groups],
+    }
+
+
+def resolve_factor_expressions(
+    factor_ids: list[str], library: dict[str, FactorGroup]
+) -> list[str]:
+    """Resolve a list of factor ids to their expressions.
+
+    Searches across all groups in the library.
+
+    Raises ValueError if any id is unknown (fail closed).
+    """
+    id_to_expr: dict[str, str] = {}
+    for group in library.values():
+        for f in group.factors:
+            id_to_expr[f.id] = f.expression
+
+    result: list[str] = []
+    for fid in factor_ids:
+        if fid not in id_to_expr:
+            raise ValueError(f"Unknown factor id '{fid}'")
+        result.append(id_to_expr[fid])
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Compatibility wrappers — map old API to new
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def load_structured_factor_library(
+    path: str | Path,
+) -> tuple[list[FactorSpec], list[FactorGroup]]:
+    """Compatibility wrapper.  Use ``load_factor_library`` in new code.
+
+    Returns the old ``(factors, groups)`` tuple format.
+    """
+    library = load_factor_library(path)
+    # Build deduplicated factors list preserving first-occurrence order
+    all_factors: list[FactorSpec] = []
+    seen: set[str] = set()
+    for g in library.values():
+        for f in g.factors:
+            if f.id not in seen:
+                all_factors.append(f)
+                seen.add(f.id)
+    groups_list = list(library.values())
+    return all_factors, groups_list
+
+
+def select_factor_group(
+    group_name: str, groups: list[FactorGroup], factors: list[FactorSpec]
+) -> FactorGroup:
+    """Compatibility wrapper for single-group selection.
+
+    Prefer ``select_factor_groups(library, [group_name])[0]`` in new code.
+    """
+    # Build temp library from the flat list for fail-closed lookup
+    temp_lib = {g.name: g for g in groups}
+    return select_factor_groups(temp_lib, [group_name])[0]
+
+
+def factor_group_to_ranker_feature_group(
+    group: FactorGroup, factors: list[FactorSpec]
+) -> RankerFeatureGroup:
+    """Compatibility wrapper.  Prefer ``factor_groups_to_ranker_feature_groups``.
+
+    The *factors* argument is ignored — the group carries its own factors.
+    """
+    result = factor_groups_to_ranker_feature_groups([group])
+    return result[0]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Combinatorial Factor Library (legacy — preserved for backward compatibility)
+# ═══════════════════════════════════════════════════════════════════════════════
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -410,6 +774,7 @@ def _gen_composite(factors: list[dict], seen: set[str]) -> None:
 # ---------------------------------------------------------------------------
 # YAML loading
 # ---------------------------------------------------------------------------
+
 
 # Default path relative to project root
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]

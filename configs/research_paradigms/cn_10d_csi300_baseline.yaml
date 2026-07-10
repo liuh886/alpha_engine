@@ -1,0 +1,79 @@
+# CN 10D CSI300 Baseline Research Paradigm
+# Schema 1.0 — structured research paradigm for fixed-10D CN baseline.
+schema_version: "1.0"
+experiment_id: "cn_10d_csi300_baseline"
+market: "cn"
+benchmark: "000300"
+
+universe:
+  source: "configs/watchlist.yaml"
+  market_key: "cn"
+  min_symbols: 50
+  alignment_mode: "auto"
+
+factor_library:
+  source: "configs/factor_libraries/cn_ohlcv.yaml"
+  groups:
+    - "cn_short_reversal_liquidity"
+    - "cn_volatility_reversal"
+    - "cn_price_volume_pressure"
+    - "cn_balanced_ohlcv"
+
+candidate_grid:
+  ranker:
+    calibrations:
+      - n_gain_bins: 3
+        num_boost_round: 100
+        num_leaves: 15
+        min_data_in_leaf: 10
+        learning_rate: 0.05
+      - n_gain_bins: 5
+        num_boost_round: 100
+        num_leaves: 31
+        min_data_in_leaf: 20
+        learning_rate: 0.05
+  factor_baselines:
+    - "factor:cn_momentum_10d"
+    - "factor:cn_reversal_5d"
+    - "factor:cn_volatility_10d"
+    - "factor:cn_volume_shock_10d"
+
+strategy:
+  horizon_days: 10
+  holding_days: 10
+  rebalance_days: 10
+  top_n: 15
+  bottom_n: 15
+  return_expression: "Ref($close, -10) / $close - 1"
+  return_provenance: "raw_forward_return"
+  research_only: true
+
+walk_forward:
+  first_test_year: 2024
+  last_test_year: 2026
+  min_windows: 3
+  train_embargo_sessions: 10
+
+evaluation:
+  benchmark_mode: "reference_only"
+  metrics:
+    - "mean_icir"
+    - "mean_rank_ic"
+    - "mean_spread"
+    - "worst_drawdown"
+    - "ready_ratio"
+    - "positive_icir_ratio"
+    - "positive_spread_ratio"
+  gates:
+    mean_icir: 0.30
+    worst_drawdown: -0.15
+    ready_ratio: 0.75
+
+outputs:
+  write_readiness: true
+  write_factor_manifest: true
+  write_candidate_manifest: true
+  write_walk_forward_stability: true
+  write_decision_pack: true
+  write_top_bottom_signals: true
+  write_frontend_payload: true
