@@ -12,80 +12,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  apply-common-qlib-core:
-    if: github.event_name == 'pull_request' && github.head_ref == 'refactor/common-qlib-execution-core' && github.actor != 'github-actions[bot]'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: refactor/common-qlib-execution-core
-          fetch-depth: 0
-
-      - name: Move shared helpers out of market adapters
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          cn_path = Path('src/research/cn_qlib_execution_adapter.py')
-          cn = cn_path.read_text(encoding='utf-8')
-          cn = cn.replace(
-              '''from src.research.daily_ranker import prepare_ranker_frame\nfrom src.research.daily_ranker_model import (\n    fit_lgbm_daily_ranker,\n    predict_lgbm_daily_ranker,\n)\n''',
-              '',
-              1,
-          )
-          cn = cn.replace(
-              '''from src.research.ranker_calibration_grid import (\n    RankerCalibration,\n    RankerFeatureGroup,\n    RankerGridCandidate,\n)\n''',
-              '',
-              1,
-          )
-          common_import = '''from src.research.qlib_execution_common import (\n    build_effective_execution_contract,\n    build_skip_result,\n    fit_ranker_scores,\n    materialize_ranker_candidates,\n    normalize_qlib_frame_index,\n    resolve_repository_root,\n)\n'''
-          anchor = 'from src.research.notebook_research_api import sanitize_factor_name\n'
-          if common_import not in cn:
-              if anchor not in cn:
-                  raise SystemExit('CN import anchor not found')
-              cn = cn.replace(anchor, anchor + common_import, 1)
-          start = cn.find('def _repository_root(plan: SpecBoundExecutionPlan) -> Path:\n')
-          end = cn.find('def execute_cn_qlib_plan(', start)
-          if start < 0 or end < 0:
-              raise SystemExit('CN shared helper block not found')
-          cn = cn[:start] + cn[end:]
-          replacements = {
-              '_repository_root(': 'resolve_repository_root(',
-              '_normalize_index(': 'normalize_qlib_frame_index(',
-              '_candidates_from_plan(': 'materialize_ranker_candidates(',
-              '_effective_contract(': 'build_effective_execution_contract(',
-              '_fit_ranker_scores(': 'fit_ranker_scores(',
-              '_skip_result(': 'build_skip_result(',
-          }
-          for old, new in replacements.items():
-              cn = cn.replace(old, new)
-          cn_path.write_text(cn, encoding='utf-8')
-
-          us_path = Path('src/research/us_qlib_execution_adapter.py')
-          us = us_path.read_text(encoding='utf-8')
-          old_import = '''from src.research.cn_qlib_execution_adapter import (\n    _candidates_from_plan,\n    _effective_contract,\n    _fit_ranker_scores,\n    _normalize_index,\n    _skip_result,\n)\n'''
-          if old_import not in us:
-              raise SystemExit('US private CN import block not found')
-          us = us.replace(old_import, common_import, 1)
-          start = us.find('def _repository_root(plan: SpecBoundExecutionPlan) -> Path:\n')
-          end = us.find('def execute_us_qlib_plan(', start)
-          if start < 0 or end < 0:
-              raise SystemExit('US repository-root helper not found')
-          us = us[:start] + us[end:]
-          for old, new in replacements.items():
-              us = us.replace(old, new)
-          us_path.write_text(us, encoding='utf-8')
-          PY
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/research/cn_qlib_execution_adapter.py src/research/us_qlib_execution_adapter.py
-          git commit -m "refactor(research): use common Qlib execution helpers"
-          git push origin HEAD:refactor/common-qlib-execution-core
-
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -114,7 +40,7 @@ jobs:
 
       - name: Fast PR pytest
         if: github.event_name == 'pull_request'
-        run: uv run pytest tests/test_labels.py tests/test_training_label_direction.py tests/test_model_signal_identity.py tests/test_api_contract.py tests/test_walk_forward_stability.py tests/test_rolling_windows.py tests/test_ranker_calibration_grid.py tests/test_ranker_grid_experiment_contract.py tests/test_stable_signal_blend.py tests/test_model_decision_pack.py tests/test_universe_robustness.py tests/test_multi_market_readiness.py tests/test_market_data_alignment.py tests/test_cn_feature_quality.py tests/test_factor_library.py tests/test_research_paradigm.py tests/test_research_artifacts.py tests/test_spec_bound_execution.py tests/test_cn_qlib_execution_adapter.py tests/test_us_qlib_execution_adapter.py tests/test_portfolio_intent.py tests/test_vectorized_backtest_intent_wrapper.py tests/test_promotion_decision.py tests/test_promotion_consumers.py tests/test_post_identity_promotion.py tests/test_synthetic_evidence_scope.py tests/test_decision_pack_cli_consumer.py tests/test_legacy_cn_runner_wrapper.py tests/test_legacy_rolling_ranker_wrapper.py tests/test_legacy_ranker_grid_wrapper.py tests/test_qlib_adapter_decision_boundary.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+        run: uv run pytest tests/test_labels.py tests/test_training_label_direction.py tests/test_model_signal_identity.py tests/test_api_contract.py tests/test_walk_forward_stability.py tests/test_rolling_windows.py tests/test_ranker_calibration_grid.py tests/test_ranker_grid_experiment_contract.py tests/test_stable_signal_blend.py tests/test_model_decision_pack.py tests/test_universe_robustness.py tests/test_multi_market_readiness.py tests/test_market_data_alignment.py tests/test_cn_feature_quality.py tests/test_factor_library.py tests/test_research_paradigm.py tests/test_research_artifacts.py tests/test_spec_bound_execution.py tests/test_cn_qlib_execution_adapter.py tests/test_us_qlib_execution_adapter.py tests/test_portfolio_intent.py tests/test_vectorized_backtest_intent_wrapper.py tests/test_promotion_decision.py tests/test_promotion_consumers.py tests/test_post_identity_promotion.py tests/test_synthetic_evidence_scope.py tests/test_decision_pack_cli_consumer.py tests/test_legacy_cn_runner_wrapper.py tests/test_legacy_rolling_ranker_wrapper.py tests/test_legacy_ranker_grid_wrapper.py tests/test_qlib_adapter_decision_boundary.py tests/test_qlib_execution_common.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: CN Qlib fixture integration
         if: github.event_name == 'pull_request'
