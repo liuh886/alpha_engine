@@ -17,9 +17,47 @@ from src.research.cn_qlib_execution_adapter import (
     execute_cn_qlib_plan,
 )
 from src.research.paradigm import dry_run_paradigm, load_research_paradigm_spec
+from src.research.research_artifacts import (
+    build_research_run_paths,
+    write_run_status,
+)
 from src.research.spec_bound_execution import execute_spec_bound_research
 
 DEFAULT_SPEC = Path("configs/research_paradigms/cn_10d_csi300_baseline.yaml")
+
+
+def _record_unhandled_failure(
+    *,
+    root: Path,
+    output_dir: str | Path | None,
+    experiment_id: str,
+    exc: Exception,
+) -> None:
+    """Write an auditable failure unless a more specific gate already did so."""
+
+    paths = build_research_run_paths(
+        root,
+        experiment_id,
+        output_dir=output_dir,
+    )
+    existing: dict[str, Any] = {}
+    if paths.run_status.is_file():
+        try:
+            payload = json.loads(paths.run_status.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                existing = payload
+        except (OSError, json.JSONDecodeError):
+            existing = {}
+    if existing.get("status") == "failed":
+        return
+    write_run_status(
+        paths,
+        experiment_id=experiment_id,
+        status="failed",
+        failed_stage="cn_qlib_execution",
+        reason=f"{type(exc).__name__}: {exc}",
+        extra={"exception_type": type(exc).__name__},
+    )
 
 
 def run(
@@ -43,12 +81,21 @@ def run(
     dry_run_paradigm(spec, root=root, output_dir=output_dir)
     runtime = QlibCNExecutionRuntime(provider_uri=provider_uri)
     executor = partial(execute_cn_qlib_plan, runtime=runtime)
-    return execute_spec_bound_research(
-        spec,
-        executor,
-        root=root,
-        output_dir=output_dir,
-    )
+    try:
+        return execute_spec_bound_research(
+            spec,
+            executor,
+            root=root,
+            output_dir=output_dir,
+        )
+    except Exception as exc:
+        _record_unhandled_failure(
+            root=root,
+            output_dir=output_dir,
+            experiment_id=spec.experiment_id,
+            exc=exc,
+        )
+        raise
 
 
 def main() -> None:
