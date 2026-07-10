@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-import pandas as pd
+from pathlib import Path
 
-from scripts.run_ranker_calibration_grid_evidence import _available_windows
+from src.research.paradigm import (
+    build_ranker_candidates_from_spec,
+    load_research_paradigm_spec,
+)
 from src.research.ranker_calibration_grid import (
     build_ranker_calibration_grid,
     default_ranker_calibrations,
@@ -22,8 +25,15 @@ def test_default_ranker_feature_groups_are_compact_and_named() -> None:
     ]
     assert all(group.expressions for group in groups)
     assert len(groups[-1].expressions) > len(groups[0].expressions)
-    assert all("$ret" not in expression for group in groups for expression in group.expressions)
-    assert any("Std($close/Ref($close,1)-1,10)" in expression for expression in groups[1].expressions)
+    assert all(
+        "$ret" not in expression
+        for group in groups
+        for expression in group.expressions
+    )
+    assert any(
+        "Std($close/Ref($close,1)-1,10)" in expression
+        for expression in groups[1].expressions
+    )
 
 
 def test_default_ranker_calibrations_cover_gain_and_complexity_grid() -> None:
@@ -31,8 +41,14 @@ def test_default_ranker_calibrations_cover_gain_and_complexity_grid() -> None:
 
     assert [item.n_gain_bins for item in calibrations] == [3, 5, 7, 10]
     assert {item.num_boost_round for item in calibrations} == {100, 200}
-    assert all(item.params()["min_data_in_leaf"] == item.min_data_in_leaf for item in calibrations)
-    assert all(item.params()["learning_rate"] == item.learning_rate for item in calibrations)
+    assert all(
+        item.params()["min_data_in_leaf"] == item.min_data_in_leaf
+        for item in calibrations
+    )
+    assert all(
+        item.params()["learning_rate"] == item.learning_rate
+        for item in calibrations
+    )
 
 
 def test_ranker_calibration_grid_builds_unique_lgbm_candidates() -> None:
@@ -56,17 +72,14 @@ def test_grid_manifest_is_serializable_and_rejects_duplicate_names() -> None:
     assert manifest["candidates"][0]["calibration"]["name"]
 
 
-def test_grid_runner_filters_to_complete_half_years_from_calendar() -> None:
-    class DataProvider:
-        @staticmethod
-        def calendar(**_: object) -> pd.DatetimeIndex:
-            return pd.date_range("2021-01-04", "2026-06-18", freq="B")
-
-    windows = _available_windows(
-        DataProvider(),
-        {"train_start": "2021-01-01", "test_end": "2026-06-18"},
-        first_test_year=2024,
-        last_test_year=2026,
+def test_canonical_us_spec_owns_the_full_ranker_grid() -> None:
+    spec = load_research_paradigm_spec(
+        Path("configs/research_paradigms/us_10d_qqq_baseline.yaml")
     )
+    candidates = build_ranker_candidates_from_spec(spec)
+    names = [candidate.name for candidate in candidates]
 
-    assert [window.label for window in windows] == ["2024H1", "2024H2", "2025H1", "2025H2"]
+    assert len(spec.factor_library["groups"]) == 4
+    assert len(spec.candidate_grid["ranker"]["calibrations"]) == 4
+    assert len(candidates) == 16
+    assert len(names) == len(set(names))
