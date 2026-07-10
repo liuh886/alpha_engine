@@ -1,0 +1,14 @@
+# Synthetic CI-only CN universe. No market-data or investment meaning.
+cn:
+  - SH600001
+  - SH600002
+  - SH600003
+  - SH600004
+  - SH600005
+  - SH600006
+  - SZ000001
+  - SZ000002
+  - SZ000003
+  - SZ000004
+  - SZ000005
+  - SZ000006
