@@ -111,10 +111,26 @@ def test_explicit_intent_matches_legacy_non_overlapping_backtest() -> None:
     _assert_legacy_parity(legacy, explicit)
 
 
-def test_intent_preserves_legacy_hold_on_missing_rebalance_scores() -> None:
+def test_intent_preserves_legacy_hold_on_partial_rebalance_scores() -> None:
     predictions, returns, benchmark = _fixture()
     dates = sorted(predictions.index.get_level_values("datetime").unique())
-    predictions = predictions.drop(index=dates[10], level="datetime")
+    partial_date = dates[10]
+    all_symbols = predictions.index.get_level_values("instrument")
+    all_dates = predictions.index.get_level_values("datetime")
+    keep_symbols = sorted(
+        predictions.xs(partial_date, level="datetime").index.astype(str)
+    )[:3]
+    keep_mask = (all_dates != partial_date) | all_symbols.isin(keep_symbols)
+    predictions = predictions.loc[keep_mask]
+
+    signal = SignalFrame(scores=predictions, rebalance_days=10)
+    intent = score_to_equal_weight_intent(
+        signal,
+        top_n=4,
+        evaluation_dates=tuple(dates),
+    )
+    assert partial_date in intent.rebalance_dates
+    assert intent.weights_for(partial_date) is None
 
     legacy = run_vectorized_backtest(
         predictions,
