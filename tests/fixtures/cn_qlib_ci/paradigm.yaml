@@ -1,0 +1,60 @@
+# Synthetic CI-only fixed-10D contract. It validates mechanics, not model quality.
+schema_version: "1.0"
+experiment_id: "cn_10d_ci_fixture"
+market: "cn"
+benchmark: "000300"
+
+universe:
+  source: "tests/fixtures/cn_qlib_ci/watchlist.yaml"
+  market_key: "cn"
+  min_symbols: 8
+  alignment_mode: "strict"
+
+factor_library:
+  source: "tests/fixtures/cn_qlib_ci/factor_library.yaml"
+  groups:
+    - "ci_compact_ohlcv"
+
+candidate_grid:
+  ranker:
+    calibrations:
+      - n_gain_bins: 3
+        num_boost_round: 10
+        num_leaves: 7
+        min_data_in_leaf: 5
+        learning_rate: 0.05
+  factor_baselines:
+    - "factor:ci_momentum_10d"
+
+strategy:
+  horizon_days: 10
+  holding_days: 10
+  rebalance_days: 10
+  top_n: 3
+  bottom_n: 3
+  return_expression: "Ref($close, -10) / $close - 1"
+  return_provenance: "raw_forward_return"
+  research_only: true
+
+walk_forward:
+  requested_train_start: "2022-01-03"
+  test_end: "2024-12-31"
+  first_test_year: 2023
+  last_test_year: 2024
+  min_windows: 3
+  train_embargo_sessions: 10
+
+evaluation:
+  benchmark_mode: "reference_only"
+  metrics:
+    - "mean_icir"
+    - "mean_rank_ic"
+    - "mean_spread"
+    - "worst_drawdown"
+    - "ready_ratio"
+    - "positive_icir_ratio"
+    - "positive_spread_ratio"
+  gate_profile: "ten_day_model_gates_v1"
+
+outputs:
+  artifact_profile: "research_run_v1"
