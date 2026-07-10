@@ -30,7 +30,12 @@ from src.research.promotion_consumers import (
     build_frontend_promotion_view,
     build_model_decision_pack_view,
 )
-from src.research.promotion_decision import finalize_promotion_decision
+from src.research.promotion_decision import (
+    PromotionDecision,
+    PromotionStatus,
+    build_promotion_decision_from_run,
+    write_promotion_decision,
+)
 from src.research.research_artifacts import (
     ResearchRunPaths,
     build_research_run_paths,
@@ -256,6 +261,63 @@ def _read_optional_json(path: Path) -> dict[str, Any]:
     return dict(payload) if isinstance(payload, dict) else {}
 
 
+def _mark_test_only_evidence(
+    paths: ResearchRunPaths,
+    runtime_metadata: dict[str, Any],
+) -> None:
+    """Persist an auditable scope marker for generated CI providers."""
+
+    provider_uri = str(runtime_metadata.get("provider_uri", "")).strip()
+    if not provider_uri:
+        return
+    fixture_manifest = Path(provider_uri) / "fixture_manifest.json"
+    if not fixture_manifest.is_file():
+        return
+    readiness = _read_optional_json(paths.data_readiness)
+    if not readiness:
+        return
+    readiness.update(
+        {
+            "evidence_scope": "synthetic_ci",
+            "test_only": True,
+            "fixture_manifest": str(fixture_manifest.resolve()),
+        }
+    )
+    write_json(paths.data_readiness, readiness)
+
+
+def _build_scoped_promotion(
+    spec: ResearchParadigmSpec,
+    paths: ResearchRunPaths,
+) -> dict[str, Any]:
+    """Build one promotion result and reject explicitly test-only evidence."""
+
+    decision = build_promotion_decision_from_run(
+        paths.run_dir,
+        subject_id=spec.experiment_id,
+    )
+    readiness = _read_optional_json(paths.data_readiness)
+    if bool(readiness.get("test_only")) and not decision.missing_evidence:
+        decision = PromotionDecision(
+            subject_id=decision.subject_id,
+            status=PromotionStatus.REJECTED,
+            trade_ready=False,
+            candidate=decision.candidate,
+            failed_gates=("evidence_scope",),
+            evidence_refs=decision.evidence_refs,
+            contract_sha256=decision.contract_sha256,
+            thresholds=decision.thresholds,
+            rationale=(
+                "Synthetic or test-only provider evidence may validate execution "
+                "mechanics but cannot support research promotion."
+            ),
+        )
+    promotion_path = write_promotion_decision(paths.run_dir, decision)
+    payload = decision.to_dict()
+    payload["artifact_path"] = str(promotion_path)
+    return payload
+
+
 def _finalize_promotion_outputs(
     spec: ResearchParadigmSpec,
     paths: ResearchRunPaths,
@@ -265,10 +327,7 @@ def _finalize_promotion_outputs(
 ) -> tuple[dict[str, Any], dict[str, str]]:
     """Write every decision surface from one post-identity promotion result."""
 
-    promotion = finalize_promotion_decision(
-        paths.run_dir,
-        subject_id=spec.experiment_id,
-    )
+    promotion = _build_scoped_promotion(spec, paths)
     promotion_path = Path(str(promotion["artifact_path"]))
 
     decision_pack = build_model_decision_pack_view(promotion)
@@ -384,6 +443,7 @@ def execute_spec_bound_research(
         result.evidence_paths,
         paths.run_dir,
     )
+    _mark_test_only_evidence(paths, dict(result.runtime_metadata))
     promotion, finalized_paths = _finalize_promotion_outputs(
         spec,
         paths,
