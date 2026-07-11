@@ -65,7 +65,7 @@ class FakeFactorRuntime:
         )
 
         for expression in expressions:
-            if expression == "RAW_10D_RETURN":
+            if expression == "Ref($close, -10) / $close - 1":
                 rows[expression] = return_values
             elif expression == "POSITIVE_SIGNAL":
                 rows[expression] = positive_values
@@ -190,7 +190,7 @@ def _write_spec(tmp_path: Path) -> tuple[Path, list[str]]:
                     "rebalance_days": 10,
                     "top_n": 5,
                     "bottom_n": 5,
-                    "return_expression": "RAW_10D_RETURN",
+                    "return_expression": "Ref($close, -10) / $close - 1",
                     "return_provenance": "raw_forward_return",
                     "research_only": True,
                 },
