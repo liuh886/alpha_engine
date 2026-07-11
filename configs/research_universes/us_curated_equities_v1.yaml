@@ -1,6 +1,12 @@
 # Versioned static US equity research universe.
 # Operational watchlist remains separate and may include benchmarks/ETFs for data supply.
 # Membership is current/static and therefore subject to survivorship bias.
+metadata:
+  universe_id: "us_curated_equities_v1"
+  membership_mode: "static_curated"
+  membership_as_of: "2026-07-11"
+  asset_type: "equity"
+  survivorship_bias: true
 us:
   - AAOI
   - AAPL
