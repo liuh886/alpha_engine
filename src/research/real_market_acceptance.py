@@ -24,7 +24,10 @@ from src.research.multi_market_readiness import (
     normalize_market_symbols,
 )
 from src.research.paradigm import ResearchParadigmSpec, load_research_paradigm_spec
-from src.research.spec_bound_execution import build_declared_execution_contract
+from src.research.spec_bound_execution import (
+    build_declared_execution_contract,
+    contract_sha256,
+)
 
 ACCEPTANCE_SCHEMA_VERSION = "1.0"
 _REQUIRED_UNIVERSE_METADATA = (
@@ -468,7 +471,8 @@ def evaluate_real_market_acceptance(
             "universe_source": str(source_path),
             "provider_dir": str(provider_path),
             "csv_dir": str(csv_path),
-            "declared_contract_sha256": contract.get("universe", {}).get("source_sha256"),
+            "universe_source_sha256": contract.get("universe", {}).get("source_sha256"),
+            "declared_contract_sha256": contract_sha256(contract),
         },
         "checks": [check.to_dict() for check in checks],
     }
