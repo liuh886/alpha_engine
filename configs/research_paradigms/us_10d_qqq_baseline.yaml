@@ -5,8 +5,13 @@ market: "us"
 benchmark: "QQQ"
 
 universe:
-  source: "configs/watchlist.yaml"
+  source: "configs/research_universes/us_curated_equities_v1.yaml"
   market_key: "us"
+  universe_id: "us_curated_equities_v1"
+  membership_mode: "static_curated"
+  membership_as_of: "2026-07-11"
+  asset_type: "equity"
+  survivorship_bias: true
   min_symbols: 30
   alignment_mode: "strict"
 
