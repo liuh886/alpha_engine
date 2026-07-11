@@ -5,8 +5,13 @@ market: "cn"
 benchmark: "000300"
 
 universe:
-  source: "configs/watchlist.yaml"
+  source: "configs/research_universes/cn_curated_equities_v1.yaml"
   market_key: "cn"
+  universe_id: "cn_curated_a_share_equities_v1"
+  membership_mode: "static_curated"
+  membership_as_of: "2026-07-11"
+  asset_type: "equity"
+  survivorship_bias: true
   min_symbols: 50
   alignment_mode: "auto"
 
