@@ -1,6 +1,12 @@
 # Versioned static CN A-share equity research universe.
 # Benchmarks, broad indices, and ETF instruments are intentionally excluded.
 # Membership is current/static and therefore subject to survivorship bias.
+metadata:
+  universe_id: "cn_curated_a_share_equities_v1"
+  membership_mode: "static_curated"
+  membership_as_of: "2026-07-11"
+  asset_type: "equity"
+  survivorship_bias: true
 cn:
   - '000001'
   - '000002'
