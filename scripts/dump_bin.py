@@ -5,6 +5,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.data.symbol_identity import infer_data_market, normalize_data_symbol
+
 
 def _parse_fields(include_fields) -> list[str]:
     if include_fields is None:
@@ -45,23 +47,33 @@ def dump_all(
 
     all_dates: set[pd.Timestamp] = set()
     data_cache: dict[str, pd.DataFrame] = {}
+    market_by_symbol: dict[str, str] = {}
 
     for csv_file in csv_files:
-        symbol = csv_file.stem
-        df = pd.read_csv(csv_file)
-        df.columns = [str(c).strip().lower() for c in df.columns]
+        source_symbol = csv_file.stem
+        market = infer_data_market(source_symbol)
+        symbol = normalize_data_symbol(market, source_symbol)
+        if symbol in data_cache:
+            raise ValueError(
+                "CSV symbol identities collide after normalization: "
+                f"{source_symbol} -> {symbol}"
+            )
 
-        if date_col not in df.columns:
+        df = pd.read_csv(csv_file)
+        df.columns = [str(column).strip().lower() for column in df.columns]
+
+        selected_date_col = date_col
+        if selected_date_col not in df.columns:
             if "date" in df.columns:
-                date_col = "date"
+                selected_date_col = "date"
             elif "datetime" in df.columns:
-                date_col = "datetime"
+                selected_date_col = "datetime"
             elif "day" in df.columns:
-                date_col = "day"
+                selected_date_col = "day"
             else:
                 raise ValueError(f"Missing date column '{date_field_name}' in {csv_file}")
 
-        df = df.rename(columns={date_col: "date"})
+        df = df.rename(columns={selected_date_col: "date"})
         df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=True).dt.tz_localize(None)
         df = (
             df.dropna(subset=["date"])
@@ -72,7 +84,7 @@ def dump_all(
         if df.empty:
             continue
 
-        # Normalize amount/money for guardrails compatibility
+        # Normalize amount/money for guardrails compatibility.
         if "amount" not in df.columns:
             if "money" in df.columns:
                 df["amount"] = df["money"]
@@ -88,72 +100,89 @@ def dump_all(
                         df[field] = 1.0
                     else:
                         df[field] = np.nan
-            keep_cols = ["date"] + [f for f in desired_fields if f != "date"]
+            keep_cols = ["date"] + [field for field in desired_fields if field != "date"]
             df = df[keep_cols]
         else:
-            # Default: keep everything except a symbol column if present
+            # Default: keep everything except a symbol column if present.
             df = df.drop(columns=[symbol_field_name], errors="ignore")
 
         all_dates.update(df["date"].tolist())
         data_cache[symbol] = df
+        market_by_symbol[symbol] = market
 
     if not data_cache:
         raise RuntimeError(f"No valid CSV content found under: {csv_dir}")
 
     sorted_dates = sorted(all_dates)
-    date_map = {d: i for i, d in enumerate(sorted_dates)}
+    date_map = {date: index for index, date in enumerate(sorted_dates)}
     n_days = len(sorted_dates)
 
-    # Calendar
-    with open(calendars_dir / "day.txt", "w", encoding="utf-8") as f:
-        for d in sorted_dates:
-            f.write(f"{d.strftime('%Y-%m-%d')}\n")
+    # Calendar.
+    with open(calendars_dir / "day.txt", "w", encoding="utf-8") as calendar_file:
+        for date in sorted_dates:
+            calendar_file.write(f"{date.strftime('%Y-%m-%d')}\n")
 
     # Qlib uses `future=True` calendars for backtests and requires an extra boundary day.
-    # We generate a minimal `day_future.txt` by appending one extra calendar day.
+    # Generate a minimal `day_future.txt` by appending one extra calendar day.
     if sorted_dates:
         future_last = sorted_dates[-1] + pd.Timedelta(days=1)
-        with open(calendars_dir / "day_future.txt", "w", encoding="utf-8") as f:
-            for d in sorted_dates:
-                f.write(f"{d.strftime('%Y-%m-%d')}\n")
-            f.write(f"{future_last.strftime('%Y-%m-%d')}\n")
+        with open(calendars_dir / "day_future.txt", "w", encoding="utf-8") as future_file:
+            for date in sorted_dates:
+                future_file.write(f"{date.strftime('%Y-%m-%d')}\n")
+            future_file.write(f"{future_last.strftime('%Y-%m-%d')}\n")
 
-    # Instruments + Features
-    with open(instruments_dir / "all.txt", "w", encoding="utf-8") as f_inst:
-        for symbol, df in data_cache.items():
-            start_date = df["date"].iloc[0]
-            end_date = df["date"].iloc[-1]
-            f_inst.write(
-                f"{symbol}\t{start_date.strftime('%Y-%m-%d')}\t{end_date.strftime('%Y-%m-%d')}\n"
+    instrument_rows: dict[str, list[str]] = {"all": []}
+
+    # Instruments + features.
+    for symbol, df in data_cache.items():
+        start_date = df["date"].iloc[0]
+        end_date = df["date"].iloc[-1]
+        row = f"{symbol}\t{start_date.strftime('%Y-%m-%d')}\t{end_date.strftime('%Y-%m-%d')}"
+        instrument_rows["all"].append(row)
+        instrument_rows.setdefault(market_by_symbol[symbol], []).append(row)
+
+        feature_dir = output_dir / "features" / symbol
+        feature_dir.mkdir(parents=True, exist_ok=True)
+        df_by_date = df.set_index("date")
+
+        fields = [column for column in df.columns if column != "date"]
+        for field in fields:
+            full_arr = np.full(n_days, np.nan, dtype=np.float32)
+            series = df_by_date[field]
+            for timestamp, value in series.items():
+                if timestamp not in date_map:
+                    continue
+                index = date_map[timestamp]
+                if pd.isna(value):
+                    continue
+                try:
+                    full_arr[index] = float(value)
+                except Exception:
+                    continue
+
+            bin_path = feature_dir / f"{field}.day.bin"
+            with open(bin_path, "wb") as binary_file:
+                # Qlib expects a 4-byte header start_index (int32). Using 0 since
+                # the dump is aligned to the complete generated calendar.
+                np.array([0], dtype=np.int32).tofile(binary_file)
+                full_arr.tofile(binary_file)
+
+    for market, rows in sorted(instrument_rows.items()):
+        if rows:
+            (instruments_dir / f"{market}.txt").write_text(
+                "\n".join(rows) + "\n",
+                encoding="utf-8",
             )
 
-            feature_dir = output_dir / "features" / symbol
-            feature_dir.mkdir(parents=True, exist_ok=True)
-
-            df_by_date = df.set_index("date")
-
-            fields = [c for c in df.columns if c != "date"]
-            for field in fields:
-                full_arr = np.full(n_days, np.nan, dtype=np.float32)
-                series = df_by_date[field]
-                for ts, value in series.items():
-                    if ts not in date_map:
-                        continue
-                    idx = date_map[ts]
-                    if pd.isna(value):
-                        continue
-                    try:
-                        full_arr[idx] = float(value)
-                    except Exception:
-                        continue
-
-                bin_path = feature_dir / f"{field}.day.bin"
-                with open(bin_path, "wb") as f_bin:
-                    # Qlib expects a 4-byte header start_index (int32). Using 0 since we dump full calendar.
-                    np.array([0], dtype=np.int32).tofile(f_bin)
-                    full_arr.tofile(f_bin)
-
-    print(f"Dump complete: {len(data_cache)} instruments -> {output_dir}")
+    market_counts = {
+        market: len(rows)
+        for market, rows in instrument_rows.items()
+        if market != "all" and rows
+    }
+    print(
+        f"Dump complete: {len(data_cache)} instruments -> {output_dir} "
+        f"(markets={market_counts})"
+    )
 
 
 if __name__ == "__main__":
