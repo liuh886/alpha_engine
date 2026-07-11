@@ -1,0 +1,159 @@
+name: Apply real-data boundary migration
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  apply:
+    if: github.head_ref == 'fix/real-data-provider-boundaries-v2' && github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/real-data-provider-boundaries-v2
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Apply ingestion and provider fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import sys
+          import yaml
+
+          sys.path.insert(0, str(Path.cwd()))
+
+          update_path = Path('scripts/update_data.py')
+          text = update_path.read_text(encoding='utf-8')
+          import_anchor = 'from src.data.snapshot import DataSnapshot\n'
+          import_line = (
+              'from src.data.symbol_identity import '
+              'normalize_data_symbol, normalize_data_symbols\n'
+          )
+          if import_line not in text:
+              if import_anchor not in text:
+                  raise SystemExit('update_data import anchor not found')
+              text = text.replace(import_anchor, import_anchor + import_line, 1)
+
+          old_builder = '''def build_selected_universe(regions: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Return only markets that contain symbols after market filtering."""
+    return {
+        market: [str(symbol).upper() for symbol in symbols]
+        for market, symbols in regions.items()
+        if symbols
+    }
+'''
+          new_builder = '''def build_selected_universe(regions: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Return stable, de-duplicated identities for selected market symbols."""
+    universe: dict[str, list[str]] = {}
+    for market, symbols in regions.items():
+        normalized = normalize_data_symbols(market, symbols)
+        if normalized:
+            universe[market] = normalized
+    return universe
+'''
+          if old_builder not in text:
+              raise SystemExit('build_selected_universe block not found')
+          text = text.replace(old_builder, new_builder, 1)
+
+          region_anchor = '    regions = filter_regions_for_market(regions, args.market)\n\n'
+          region_replacement = (
+              '    regions = filter_regions_for_market(regions, args.market)\n'
+              '    regions = {\n'
+              '        market: normalize_data_symbols(market, symbols)\n'
+              '        for market, symbols in regions.items()\n'
+              '    }\n\n'
+          )
+          if region_anchor not in text:
+              raise SystemExit('region normalization anchor not found')
+          text = text.replace(region_anchor, region_replacement, 1)
+          if '            qlib_ticker = str(t).upper()\n' not in text:
+              raise SystemExit('qlib_ticker assignment not found')
+          text = text.replace(
+              '            qlib_ticker = str(t).upper()\n',
+              '            qlib_ticker = normalize_data_symbol(reg, t)\n',
+              1,
+          )
+          old_values = '                    values = df[field].fillna(0).values.astype("float32")\n'
+          new_values = (
+              '                    values = (\n'
+              '                        pd.to_numeric(df[field], errors="coerce")\n'
+              '                        .astype("float32")\n'
+              '                        .to_numpy()\n'
+              '                    )\n'
+          )
+          if old_values not in text:
+              raise SystemExit('compatibility zero-fill line not found')
+          text = text.replace(old_values, new_values, 1)
+          update_path.write_text(text, encoding='utf-8')
+
+          acceptance_path = Path('src/research/real_market_acceptance.py')
+          text = acceptance_path.read_text(encoding='utf-8')
+          parse_anchor = 'def _parse_instruments(path: Path) -> dict[str, tuple[pd.Timestamp, pd.Timestamp]]:\n'
+          resolver = '''def _resolve_instrument_file(provider_path: Path, market: str) -> Path:
+    """Resolve instrument metadata across market-specific and dump_all layouts."""
+
+    instruments_dir = provider_path / "instruments"
+    for filename in (f"{market}.txt", "all.txt"):
+        candidate = instruments_dir / filename
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(
+        f"instrument metadata is missing for market={market}: "
+        f"expected {market}.txt or all.txt under {instruments_dir}"
+    )
+
+
+'''
+          if resolver not in text:
+              if parse_anchor not in text:
+                  raise SystemExit('instrument parser anchor not found')
+              text = text.replace(parse_anchor, resolver + parse_anchor, 1)
+          old_instrument = '''    instrument_rows: dict[str, tuple[pd.Timestamp, pd.Timestamp]] = {}
+    instrument_error: str | None = None
+    instrument_file = provider_path / "instruments" / f"{spec.market}.txt"
+    try:
+        instrument_rows = _parse_instruments(instrument_file)
+    except Exception as exc:  # noqa: BLE001
+        instrument_error = str(exc)
+'''
+          new_instrument = '''    instrument_rows: dict[str, tuple[pd.Timestamp, pd.Timestamp]] = {}
+    instrument_error: str | None = None
+    instrument_file = provider_path / "instruments" / f"{spec.market}.txt"
+    try:
+        instrument_file = _resolve_instrument_file(provider_path, spec.market)
+        instrument_rows = _parse_instruments(instrument_file)
+    except Exception as exc:  # noqa: BLE001
+        instrument_error = str(exc)
+'''
+          if old_instrument not in text:
+              raise SystemExit('acceptance instrument block not found')
+          text = text.replace(old_instrument, new_instrument, 1)
+          acceptance_path.write_text(text, encoding='utf-8')
+
+          watchlist_path = Path('configs/watchlist.yaml')
+          payload = yaml.safe_load(watchlist_path.read_text(encoding='utf-8')) or {}
+          if not isinstance(payload, dict):
+              raise SystemExit('watchlist must be a mapping')
+          from src.data.symbol_identity import normalize_data_symbols
+          normalized_payload = {
+              market: normalize_data_symbols(market, symbols or [])
+              for market, symbols in payload.items()
+          }
+          watchlist_path.write_text(
+              yaml.safe_dump(normalized_payload, sort_keys=False),
+              encoding='utf-8',
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/update_data.py src/research/real_market_acceptance.py configs/watchlist.yaml
+          git commit -m "fix(data): preserve provider and symbol identity"
+          git push origin HEAD:fix/real-data-provider-boundaries-v2
