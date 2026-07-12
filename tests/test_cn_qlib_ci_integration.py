@@ -127,6 +127,18 @@ frame = runtime.features(
 )
 frame.columns = ["forward_return"]
 rows = frame.reset_index().dropna(subset=["forward_return"])
+if rows.empty:
+    raw = runtime.features([symbol], ["$close"], start, end)
+    raw.columns = ["close"]
+    print(json.dumps({
+        "error": "no_forward_return_rows",
+        "provider": runtime.metadata(),
+        "available_symbols": sorted(runtime.available_symbols()),
+        "calendar": [str(item.date()) for item in runtime.calendar(start, end)],
+        "raw_rows": raw.reset_index().to_dict(orient="records"),
+        "forward_rows": frame.reset_index().to_dict(orient="records"),
+    }, default=str))
+    raise SystemExit(2)
 first = rows.iloc[0]
 print(json.dumps({
     "date": str(first["datetime"].date()),
