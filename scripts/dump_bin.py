@@ -141,7 +141,9 @@ def dump_all(
         instrument_rows["all"].append(row)
         instrument_rows.setdefault(market_by_symbol[symbol], []).append(row)
 
-        feature_dir = output_dir / "features" / symbol
+        # Qlib's file storage resolves instrument feature keys in lowercase even
+        # when the public instrument identity remains uppercase in instruments/*.txt.
+        feature_dir = output_dir / "features" / symbol.lower()
         feature_dir.mkdir(parents=True, exist_ok=True)
         df_by_date = df.set_index("date")
 
