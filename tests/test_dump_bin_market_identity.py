@@ -82,6 +82,8 @@ def test_dump_all_writes_all_and_market_specific_instruments(tmp_path: Path) -> 
     assert us_text.startswith("AAPL\t")
     assert hk_text.startswith("00700.HK\t")
     assert (provider / "features" / "000069" / "open.day.bin").is_file()
+    assert (provider / "features" / "aapl" / "close.day.bin").is_file()
+    assert not (provider / "features" / "AAPL").exists()
 
     values = np.fromfile(
         provider / "features" / "000069" / "open.day.bin",
@@ -166,7 +168,7 @@ def test_market_providers_use_only_their_own_sessions_and_symbols(
         cn_provider / "features" / "000069" / "close.day.bin"
     )
     us_values = _read_qlib_values(
-        us_provider / "features" / "AAPL" / "close.day.bin"
+        us_provider / "features" / "aapl" / "close.day.bin"
     )
     assert cn_dates[10] == "2026-01-19"
     assert us_dates[10] == "2026-01-20"
@@ -189,7 +191,7 @@ def test_provider_manifest_detects_feature_mutation(tmp_path: Path) -> None:
     provider = market_provider_path(tmp_path, "us")
     assert load_provider_manifest(provider, expected_market="us") is not None
 
-    feature = provider / "features" / "AAPL" / "close.day.bin"
+    feature = provider / "features" / "aapl" / "close.day.bin"
     feature.write_bytes(feature.read_bytes() + b"mutation")
     with pytest.raises(ValueError, match="feature-tree hash mismatch"):
         load_provider_manifest(provider, expected_market="us")
