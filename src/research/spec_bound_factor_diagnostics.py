@@ -31,7 +31,7 @@ from src.research.spec_bound_execution import (
     contract_sha256,
 )
 
-FACTOR_DIAGNOSTICS_SCHEMA_VERSION = "1.0"
+FACTOR_DIAGNOSTICS_SCHEMA_VERSION = "1.1"
 _REQUIRED_ACCEPTANCE_CHECKS = {
     "real_provider_scope",
     "calendar_coverage",
@@ -227,6 +227,13 @@ def _window_date_map(
     available_dates: pd.DatetimeIndex,
     spec: ResearchParadigmSpec,
 ) -> tuple[dict[pd.Timestamp, str], list[dict[str, Any]]]:
+    """Build non-overlapping rebalance dates whose labels stay inside each OOS window.
+
+    A forward ``horizon_days`` return observed near a window boundary must not use
+    prices from the next window.  The final horizon-sized tail of every window is
+    therefore excluded before applying the declared rebalance cadence.
+    """
+
     walk = spec.walk_forward
     windows = get_aligned_windows(
         str(walk["requested_train_start"]),
@@ -238,26 +245,36 @@ def _window_date_map(
         raise ValueError("declared walk-forward contract has too few diagnostic windows")
 
     cadence = int(spec.strategy["rebalance_days"])
+    horizon = int(spec.strategy["horizon_days"])
+    if cadence <= 0 or horizon <= 0:
+        raise ValueError("diagnostic cadence and horizon must be positive")
+
     date_map: dict[pd.Timestamp, str] = {}
     window_rows: list[dict[str, Any]] = []
     for window in windows:
         start = pd.Timestamp(window.test_start)
         end = pd.Timestamp(window.test_end)
         dates = available_dates[(available_dates >= start) & (available_dates <= end)]
-        sampled = dates[::cadence]
+        if len(dates) > horizon:
+            horizon_eligible = dates[:-horizon]
+        else:
+            horizon_eligible = dates[:0]
+        sampled = horizon_eligible[::cadence]
         for date in sampled:
             date_map[pd.Timestamp(date)] = window.label
         window_rows.append(
             {
                 **window.to_dict(),
                 "available_sessions": int(len(dates)),
+                "horizon_eligible_sessions": int(len(horizon_eligible)),
+                "excluded_tail_sessions": int(len(dates) - len(horizon_eligible)),
+                "label_horizon_sessions": horizon,
                 "sampled_sessions": int(len(sampled)),
             }
         )
     if not date_map:
-        raise ValueError("no rebalance dates are available for factor diagnostics")
+        raise ValueError("no horizon-contained rebalance dates are available for factor diagnostics")
     return date_map, window_rows
-
 
 def _daily_factor_rows(
     factor: pd.Series,
