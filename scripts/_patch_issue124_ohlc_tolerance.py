@@ -152,7 +152,7 @@ def patch_tests() -> None:
     assert result["invalid_ohlc_order_rows"] == 0
     evidence = result["ohlc_order_evidence"]
     assert evidence["violation_count"] == 0
-    assert evidence["ignored_roundoff_count"] == 2
+    assert evidence["ignored_roundoff_count"] == 4
     assert evidence["max_ignored_roundoff"] is not None
     assert evidence["comparison_tolerance"] == {
         "absolute": 1e-12,
