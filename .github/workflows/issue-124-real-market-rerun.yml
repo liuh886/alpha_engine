@@ -3,6 +3,8 @@ name: Issue 124 real-market rerun
 on:
   push:
     branches: [research/issue-124-rerun]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
