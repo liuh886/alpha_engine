@@ -134,12 +134,13 @@ def patch_tests() -> None:
     addition = '''\n\ndef test_ohlc_order_tolerates_machine_precision_roundoff(tmp_path: Path) -> None:
     path = tmp_path / "roundoff-bars.csv"
     exact = 100.0
+    sub_tolerance_delta = 5e-11
     frame = pd.DataFrame(
         {
             "date": ["2026-01-05", "2026-01-06"],
             "open": [exact, exact],
-            "high": [np.nextafter(exact, 0.0), exact + 1.0],
-            "low": [exact - 1.0, np.nextafter(exact, np.inf)],
+            "high": [exact - sub_tolerance_delta, exact + 1.0],
+            "low": [exact - 1.0, exact + sub_tolerance_delta],
             "close": [exact, exact],
             "volume": [1000.0, 1000.0],
         }
