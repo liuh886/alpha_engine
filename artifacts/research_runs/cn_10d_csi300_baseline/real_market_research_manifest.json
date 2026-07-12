@@ -1,0 +1,28 @@
+{
+  "acceptance_sha256": "5a12ab2e6342a72da239b7e6f5375a200b30d6d8fb095e08b13120c307b8bf95",
+  "acceptance_summary": {
+    "failed": 3,
+    "passed": 6,
+    "warnings": 1
+  },
+  "artifacts": {
+    "acceptance": "D:\\Documents\\GitHub\\alpha_engine_issue124\\artifacts\\research_runs\\cn_10d_csi300_baseline\\real_market_acceptance.json",
+    "factor_diagnostics": "D:\\Documents\\GitHub\\alpha_engine_issue124\\artifacts\\research_runs\\cn_10d_csi300_baseline\\factor_diagnostics.json",
+    "manifest": "D:\\Documents\\GitHub\\alpha_engine_issue124\\artifacts\\research_runs\\cn_10d_csi300_baseline\\real_market_research_manifest.json"
+  },
+  "blocking_stage": "real_market_acceptance",
+  "diagnostic_only": true,
+  "experiment_id": "cn_10d_csi300_baseline",
+  "generated_at": "2026-07-12T03:31:21.703806+00:00",
+  "market": "cn",
+  "promotion_eligible": false,
+  "promotion_evaluated": false,
+  "research_only": true,
+  "schema_version": "1.0",
+  "stages": {
+    "factor_diagnostics": "not_run",
+    "real_market_acceptance": "rejected"
+  },
+  "status": "blocked",
+  "trade_ready": false
+}

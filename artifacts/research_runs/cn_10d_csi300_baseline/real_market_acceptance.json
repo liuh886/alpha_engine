@@ -1,0 +1,3554 @@
+{
+  "accepted": false,
+  "checks": [
+    {
+      "details": {
+        "missing_fields": []
+      },
+      "message": "Research universe has explicit identity and survivorship metadata",
+      "name": "universe_metadata",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "non_string_count": 0,
+        "non_string_indices": []
+      },
+      "message": "All source symbols are explicit YAML strings",
+      "name": "source_symbol_types",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "canonical_count": 223,
+        "duplicates": [],
+        "requested_count": 223
+      },
+      "message": "Universe symbols are unique after market normalization",
+      "name": "canonical_symbol_identity",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "benchmark": "000300"
+      },
+      "message": "Benchmark is reference-only and excluded from candidate ranking",
+      "name": "benchmark_exclusion",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "fixture_markers": [],
+        "provider_dir": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\watchlist"
+      },
+      "message": "Provider exists and has no synthetic/test fixture marker",
+      "name": "real_provider_scope",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "calendar_file": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\watchlist\\calendars\\day.txt",
+        "error": null,
+        "first_day": "2021-01-04",
+        "last_day": "2026-07-10",
+        "requested_end": "2026-06-18",
+        "requested_start": "2021-01-01"
+      },
+      "message": "Provider calendar does not cover the declared research interval",
+      "name": "calendar_coverage",
+      "status": "fail"
+    },
+    {
+      "details": {
+        "boundary_failures": [
+          {
+            "first": "2022-08-05",
+            "last": "2026-07-10",
+            "provider_symbol": "301308",
+            "symbol": "301308"
+          },
+          {
+            "first": "2022-09-19",
+            "last": "2026-07-10",
+            "provider_symbol": "301309",
+            "symbol": "301309"
+          },
+          {
+            "first": "2026-04-16",
+            "last": "2026-07-10",
+            "provider_symbol": "301666",
+            "symbol": "301666"
+          },
+          {
+            "first": "2022-04-21",
+            "last": "2026-07-10",
+            "provider_symbol": "600938",
+            "symbol": "600938"
+          },
+          {
+            "first": "2022-12-30",
+            "last": "2026-07-10",
+            "provider_symbol": "688525",
+            "symbol": "688525"
+          },
+          {
+            "first": "2021-03-09",
+            "last": "2026-07-10",
+            "provider_symbol": "688676",
+            "symbol": "688676"
+          }
+        ],
+        "covered": 166,
+        "error": null,
+        "instrument_file": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\watchlist\\instruments\\cn.txt",
+        "minimum_symbols": 50,
+        "requested": 223,
+        "unavailable": [
+          "000166",
+          "000408",
+          "000617",
+          "000725",
+          "000768",
+          "000786",
+          "000800",
+          "000999",
+          "001979",
+          "002007",
+          "002027",
+          "002032",
+          "002120",
+          "002142",
+          "002180",
+          "002222",
+          "002236",
+          "002252",
+          "002311",
+          "002415",
+          "002456",
+          "002600",
+          "002714",
+          "002736",
+          "300017",
+          "300782",
+          "301291",
+          "600009",
+          "600026",
+          "600050",
+          "600184",
+          "600487",
+          "600837",
+          "600893",
+          "601006",
+          "601009",
+          "601336",
+          "601390",
+          "601618",
+          "601688",
+          "601727",
+          "601728",
+          "601766",
+          "601788",
+          "601818",
+          "601857",
+          "601878",
+          "601881",
+          "601989",
+          "603160"
+        ]
+      },
+      "message": "Provider contains enough fully covered research symbols",
+      "name": "universe_provider_coverage",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "benchmark": "000300"
+      },
+      "message": "Reference benchmark is missing or lacks full coverage",
+      "name": "benchmark_provider_coverage",
+      "status": "fail"
+    },
+    {
+      "details": {
+        "csv_dir": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source",
+        "inspected": 166,
+        "invalid": [
+          "000333",
+          "002304",
+          "002555",
+          "002558",
+          "600000",
+          "600016",
+          "600028",
+          "601166",
+          "601169",
+          "601225",
+          "601229",
+          "601328",
+          "601600",
+          "601658",
+          "601668",
+          "601800",
+          "601808",
+          "601919",
+          "601998",
+          "603833"
+        ],
+        "minimum_rows": 252,
+        "missing": [],
+        "results": {
+          "000001": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000001.csv",
+            "rows": 1336
+          },
+          "000002": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000002.csv",
+            "rows": 1336
+          },
+          "000063": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000063.csv",
+            "rows": 1335
+          },
+          "000069": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000069.csv",
+            "rows": 1336
+          },
+          "000100": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000100.csv",
+            "rows": 1336
+          },
+          "000157": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000157.csv",
+            "rows": 1336
+          },
+          "000333": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000333.csv",
+            "rows": 1336
+          },
+          "000338": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000338.csv",
+            "rows": 1336
+          },
+          "000425": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000425.csv",
+            "rows": 1336
+          },
+          "000538": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000538.csv",
+            "rows": 1336
+          },
+          "000568": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000568.csv",
+            "rows": 1336
+          },
+          "000596": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000596.csv",
+            "rows": 1336
+          },
+          "000625": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000625.csv",
+            "rows": 1336
+          },
+          "000651": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000651.csv",
+            "rows": 1336
+          },
+          "000656": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000656.csv",
+            "rows": 1336
+          },
+          "000661": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000661.csv",
+            "rows": 1336
+          },
+          "000703": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000703.csv",
+            "rows": 1336
+          },
+          "000708": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000708.csv",
+            "rows": 1336
+          },
+          "000723": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000723.csv",
+            "rows": 1336
+          },
+          "000776": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000776.csv",
+            "rows": 1336
+          },
+          "000783": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000783.csv",
+            "rows": 1336
+          },
+          "000858": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000858.csv",
+            "rows": 1336
+          },
+          "000876": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000876.csv",
+            "rows": 1336
+          },
+          "000895": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000895.csv",
+            "rows": 1336
+          },
+          "000938": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000938.csv",
+            "rows": 1336
+          },
+          "000963": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000963.csv",
+            "rows": 1336
+          },
+          "000977": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\000977.csv",
+            "rows": 1336
+          },
+          "002001": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002001.csv",
+            "rows": 1336
+          },
+          "002049": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002049.csv",
+            "rows": 1336
+          },
+          "002050": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002050.csv",
+            "rows": 1336
+          },
+          "002064": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002064.csv",
+            "rows": 1336
+          },
+          "002074": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002074.csv",
+            "rows": 1336
+          },
+          "002129": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002129.csv",
+            "rows": 1336
+          },
+          "002146": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002146.csv",
+            "rows": 1336
+          },
+          "002153": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002153.csv",
+            "rows": 1336
+          },
+          "002157": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002157.csv",
+            "rows": 1336
+          },
+          "002179": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002179.csv",
+            "rows": 1336
+          },
+          "002202": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002202.csv",
+            "rows": 1336
+          },
+          "002230": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002230.csv",
+            "rows": 1336
+          },
+          "002241": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002241.csv",
+            "rows": 1336
+          },
+          "002271": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002271.csv",
+            "rows": 1336
+          },
+          "002304": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002304.csv",
+            "rows": 1336
+          },
+          "002352": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002352.csv",
+            "rows": 1336
+          },
+          "002371": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002371.csv",
+            "rows": 1336
+          },
+          "002410": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002410.csv",
+            "rows": 1336
+          },
+          "002460": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002460.csv",
+            "rows": 1336
+          },
+          "002463": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002463.csv",
+            "rows": 1336
+          },
+          "002466": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002466.csv",
+            "rows": 1336
+          },
+          "002475": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002475.csv",
+            "rows": 1336
+          },
+          "002493": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002493.csv",
+            "rows": 1336
+          },
+          "002508": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002508.csv",
+            "rows": 1336
+          },
+          "002518": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002518.csv",
+            "rows": 1336
+          },
+          "002555": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002555.csv",
+            "rows": 1336
+          },
+          "002558": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002558.csv",
+            "rows": 1336
+          },
+          "002594": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002594.csv",
+            "rows": 1336
+          },
+          "002601": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002601.csv",
+            "rows": 1336
+          },
+          "002602": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002602.csv",
+            "rows": 1336
+          },
+          "002607": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002607.csv",
+            "rows": 1336
+          },
+          "002624": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002624.csv",
+            "rows": 1336
+          },
+          "002648": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002648.csv",
+            "rows": 1336
+          },
+          "002673": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002673.csv",
+            "rows": 1336
+          },
+          "002709": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002709.csv",
+            "rows": 1336
+          },
+          "002739": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002739.csv",
+            "rows": 1336
+          },
+          "002837": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\002837.csv",
+            "rows": 1336
+          },
+          "300015": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\300015.csv",
+            "rows": 1336
+          },
+          "300033": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\300033.csv",
+            "rows": 1336
+          },
+          "300059": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\300059.csv",
+            "rows": 1336
+          },
+          "300124": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\300124.csv",
+            "rows": 1336
+          },
+          "300133": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\300133.csv",
+            "rows": 1336
+          },
+          "300408": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\300408.csv",
+            "rows": 1336
+          },
+          "300548": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\300548.csv",
+            "rows": 1336
+          },
+          "300750": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\300750.csv",
+            "rows": 1336
+          },
+          "600000": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 4,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600000.csv",
+            "rows": 1336
+          },
+          "600016": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 3,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600016.csv",
+            "rows": 1336
+          },
+          "600019": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600019.csv",
+            "rows": 1336
+          },
+          "600028": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600028.csv",
+            "rows": 1336
+          },
+          "600030": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600030.csv",
+            "rows": 1336
+          },
+          "600031": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600031.csv",
+            "rows": 1336
+          },
+          "600036": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600036.csv",
+            "rows": 1336
+          },
+          "600048": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600048.csv",
+            "rows": 1336
+          },
+          "600104": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600104.csv",
+            "rows": 1336
+          },
+          "600150": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600150.csv",
+            "rows": 1336
+          },
+          "600170": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600170.csv",
+            "rows": 1336
+          },
+          "600196": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600196.csv",
+            "rows": 1336
+          },
+          "600276": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600276.csv",
+            "rows": 1336
+          },
+          "600309": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600309.csv",
+            "rows": 1336
+          },
+          "600406": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600406.csv",
+            "rows": 1336
+          },
+          "600426": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600426.csv",
+            "rows": 1336
+          },
+          "600428": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600428.csv",
+            "rows": 1336
+          },
+          "600436": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600436.csv",
+            "rows": 1336
+          },
+          "600438": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600438.csv",
+            "rows": 1336
+          },
+          "600519": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600519.csv",
+            "rows": 1336
+          },
+          "600522": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600522.csv",
+            "rows": 1336
+          },
+          "600547": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600547.csv",
+            "rows": 1336
+          },
+          "600570": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600570.csv",
+            "rows": 1336
+          },
+          "600585": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600585.csv",
+            "rows": 1336
+          },
+          "600588": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600588.csv",
+            "rows": 1336
+          },
+          "600600": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600600.csv",
+            "rows": 1336
+          },
+          "600690": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600690.csv",
+            "rows": 1336
+          },
+          "600741": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600741.csv",
+            "rows": 1336
+          },
+          "600760": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600760.csv",
+            "rows": 1336
+          },
+          "600809": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600809.csv",
+            "rows": 1336
+          },
+          "600845": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600845.csv",
+            "rows": 1336
+          },
+          "600875": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600875.csv",
+            "rows": 1336
+          },
+          "600887": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600887.csv",
+            "rows": 1336
+          },
+          "600900": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600900.csv",
+            "rows": 1336
+          },
+          "600919": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600919.csv",
+            "rows": 1336
+          },
+          "600958": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600958.csv",
+            "rows": 1336
+          },
+          "600999": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\600999.csv",
+            "rows": 1336
+          },
+          "601012": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601012.csv",
+            "rows": 1336
+          },
+          "601066": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601066.csv",
+            "rows": 1336
+          },
+          "601088": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601088.csv",
+            "rows": 1336
+          },
+          "601111": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601111.csv",
+            "rows": 1336
+          },
+          "601138": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601138.csv",
+            "rows": 1336
+          },
+          "601166": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601166.csv",
+            "rows": 1336
+          },
+          "601169": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 6,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601169.csv",
+            "rows": 1336
+          },
+          "601186": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601186.csv",
+            "rows": 1336
+          },
+          "601211": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601211.csv",
+            "rows": 1336
+          },
+          "601225": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601225.csv",
+            "rows": 1336
+          },
+          "601229": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601229.csv",
+            "rows": 1336
+          },
+          "601238": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601238.csv",
+            "rows": 1336
+          },
+          "601288": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601288.csv",
+            "rows": 1336
+          },
+          "601318": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601318.csv",
+            "rows": 1336
+          },
+          "601319": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601319.csv",
+            "rows": 1336
+          },
+          "601328": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 15,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601328.csv",
+            "rows": 1336
+          },
+          "601360": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601360.csv",
+            "rows": 1336
+          },
+          "601377": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601377.csv",
+            "rows": 1336
+          },
+          "601398": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601398.csv",
+            "rows": 1336
+          },
+          "601600": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601600.csv",
+            "rows": 1336
+          },
+          "601601": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601601.csv",
+            "rows": 1336
+          },
+          "601628": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601628.csv",
+            "rows": 1336
+          },
+          "601633": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601633.csv",
+            "rows": 1336
+          },
+          "601658": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 2,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601658.csv",
+            "rows": 1336
+          },
+          "601668": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 3,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601668.csv",
+            "rows": 1336
+          },
+          "601698": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601698.csv",
+            "rows": 1336
+          },
+          "601800": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601800.csv",
+            "rows": 1336
+          },
+          "601808": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601808.csv",
+            "rows": 1336
+          },
+          "601816": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601816.csv",
+            "rows": 1336
+          },
+          "601838": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601838.csv",
+            "rows": 1336
+          },
+          "601872": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601872.csv",
+            "rows": 1336
+          },
+          "601877": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601877.csv",
+            "rows": 1336
+          },
+          "601888": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601888.csv",
+            "rows": 1336
+          },
+          "601898": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601898.csv",
+            "rows": 1336
+          },
+          "601899": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601899.csv",
+            "rows": 1336
+          },
+          "601901": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601901.csv",
+            "rows": 1336
+          },
+          "601919": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 4,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601919.csv",
+            "rows": 1336
+          },
+          "601933": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601933.csv",
+            "rows": 1336
+          },
+          "601939": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601939.csv",
+            "rows": 1336
+          },
+          "601985": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601985.csv",
+            "rows": 1336
+          },
+          "601988": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601988.csv",
+            "rows": 1336
+          },
+          "601998": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 5,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\601998.csv",
+            "rows": 1336
+          },
+          "603259": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603259.csv",
+            "rows": 1336
+          },
+          "603260": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603260.csv",
+            "rows": 1336
+          },
+          "603288": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603288.csv",
+            "rows": 1336
+          },
+          "603369": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603369.csv",
+            "rows": 1336
+          },
+          "603392": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603392.csv",
+            "rows": 1336
+          },
+          "603501": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603501.csv",
+            "rows": 1336
+          },
+          "603629": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603629.csv",
+            "rows": 1336
+          },
+          "603658": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603658.csv",
+            "rows": 1336
+          },
+          "603799": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603799.csv",
+            "rows": 1336
+          },
+          "603806": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603806.csv",
+            "rows": 1336
+          },
+          "603833": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 1,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": false,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603833.csv",
+            "rows": 1336
+          },
+          "603899": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603899.csv",
+            "rows": 1336
+          },
+          "603986": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603986.csv",
+            "rows": 1336
+          },
+          "603993": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\603993.csv",
+            "rows": 1336
+          },
+          "688008": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ok": true,
+            "path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source\\688008.csv",
+            "rows": 1336
+          }
+        },
+        "too_short": []
+      },
+      "message": "CSV source is missing, malformed, too short, or contains invalid OHLCV values",
+      "name": "source_csv_integrity",
+      "status": "fail"
+    },
+    {
+      "details": {
+        "membership_as_of": "2026-07-11",
+        "membership_mode": "static_curated"
+      },
+      "message": "Static current-membership universe is acceptable for exploratory research but not an unbiased historical estimate",
+      "name": "survivorship_bias",
+      "status": "warn"
+    }
+  ],
+  "experiment_id": "cn_10d_csi300_baseline",
+  "generated_at": "2026-07-12T03:31:27.629104+00:00",
+  "inputs": {
+    "csv_dir": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\csv_source",
+    "declared_contract_sha256": "03f3ebd0143ecf35c8101873cdcb29b790924af574a6590c83c94881f242ec64",
+    "provider_dir": "D:\\Documents\\GitHub\\alpha_engine_issue124\\data\\watchlist",
+    "spec_path": "D:\\Documents\\GitHub\\alpha_engine_issue124\\configs\\research_paradigms\\cn_10d_csi300_baseline.yaml",
+    "universe_source": "D:\\Documents\\GitHub\\alpha_engine_issue124\\configs\\research_universes\\cn_curated_equities_v1.yaml",
+    "universe_source_sha256": "5b5ba466266f8c7ae4a174207c89381e8658ff7e726bc136d1f856f2abf22215"
+  },
+  "market": "cn",
+  "schema_version": "1.0",
+  "summary": {
+    "failed": 3,
+    "passed": 6,
+    "warnings": 1
+  }
+}
