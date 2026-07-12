@@ -145,9 +145,14 @@ print(json.dumps({
             start,
             end,
         ],
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
+    )
+    assert completed.returncode == 0, (
+        f"market={market} subprocess failed\n"
+        f"stdout:\n{completed.stdout}\n"
+        f"stderr:\n{completed.stderr}"
     )
     lines = [line for line in completed.stdout.splitlines() if line.strip()]
     return json.loads(lines[-1])
