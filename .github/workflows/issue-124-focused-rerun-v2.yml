@@ -1,0 +1,271 @@
+name: Issue 124 focused real-market rerun v2
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-market-rerun:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - market: cn
+            benchmark: "000300"
+            universe_file: configs/research_universes/cn_curated_equities_v1.yaml
+            spec_file: configs/research_paradigms/cn_10d_csi300_baseline.yaml
+            experiment_id: cn_10d_csi300_baseline
+          - market: us
+            benchmark: QQQ
+            universe_file: configs/research_universes/us_curated_equities_v1.yaml
+            spec_file: configs/research_paradigms/us_10d_qqq_baseline.yaml
+            experiment_id: us_10d_qqq_baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RESEARCH_MARKET: ${{ matrix.market }}
+      RESEARCH_BENCHMARK: ${{ matrix.benchmark }}
+      RESEARCH_UNIVERSE_FILE: ${{ matrix.universe_file }}
+      RESEARCH_SPEC_FILE: ${{ matrix.spec_file }}
+      RESEARCH_EXPERIMENT_ID: ${{ matrix.experiment_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          show-progress: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Materialize exact declared data input
+        shell: bash
+        run: |
+          uv run python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          import yaml
+
+          market = os.environ["RESEARCH_MARKET"]
+          benchmark = os.environ["RESEARCH_BENCHMARK"]
+          universe_path = Path(os.environ["RESEARCH_UNIVERSE_FILE"])
+          source = yaml.safe_load(universe_path.read_text(encoding="utf-8"))
+          raw_symbols = source.get(market)
+          if not isinstance(raw_symbols, list) or not raw_symbols:
+              raise SystemExit(f"missing declared universe for market={market}")
+
+          symbols = []
+          for item in raw_symbols:
+              symbol = str(item).strip().upper()
+              if symbol and symbol not in symbols:
+                  symbols.append(symbol)
+          if benchmark not in symbols:
+              symbols.append(benchmark)
+
+          watchlist = {"cn": [], "us": [], "hk": []}
+          watchlist[market] = symbols
+          watchlist_path = Path("configs/watchlist.yaml")
+          watchlist_path.write_text(
+              yaml.safe_dump(watchlist, sort_keys=False, allow_unicode=True),
+              encoding="utf-8",
+          )
+          encoded = watchlist_path.read_bytes()
+          evidence = {
+              "schema_version": "1.0",
+              "market": market,
+              "benchmark": benchmark,
+              "universe_source": str(universe_path),
+              "spec_source": os.environ["RESEARCH_SPEC_FILE"],
+              "equity_symbol_count": len(symbols) - 1,
+              "effective_input_count": len(symbols),
+              "symbols": symbols,
+              "watchlist_sha256": hashlib.sha256(encoded).hexdigest(),
+          }
+          Path("focused_input.json").write_text(
+              json.dumps(evidence, indent=2, ensure_ascii=False, sort_keys=True),
+              encoding="utf-8",
+          )
+          print(json.dumps({
+              "market": market,
+              "equity_symbol_count": evidence["equity_symbol_count"],
+              "effective_input_count": evidence["effective_input_count"],
+              "watchlist_sha256": evidence["watchlist_sha256"],
+          }, indent=2, sort_keys=True))
+          PY
+
+      - name: Refresh exact real-market inputs
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/update_data.py \
+            --full \
+            --start 2021-01-01 \
+            --market "$RESEARCH_MARKET" \
+            > focused_update.log 2>&1
+          status=$?
+          echo "$status" > focused_update.exit
+          cat focused_update.log
+          exit 0
+
+      - name: Build market-specific provider
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/build_market_providers.py \
+            --root . \
+            --markets "$RESEARCH_MARKET" \
+            > focused_provider.log 2>&1
+          status=$?
+          echo "$status" > focused_provider.exit
+          cat focused_provider.log
+          exit 0
+
+      - name: Run canonical acceptance and diagnostics
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/run_real_market_research.py \
+            --root . \
+            --spec "$RESEARCH_SPEC_FILE" \
+            > focused_pipeline.log 2>&1
+          status=$?
+          echo "$status" > focused_pipeline.exit
+          cat focused_pipeline.log
+          exit 0
+
+      - name: Build focused evidence summary
+        if: always()
+        shell: bash
+        run: |
+          uv run python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          market = os.environ["RESEARCH_MARKET"]
+          experiment_id = os.environ["RESEARCH_EXPERIMENT_ID"]
+
+          def code(path: str) -> int | None:
+              item = Path(path)
+              if not item.is_file():
+                  return None
+              try:
+                  return int(item.read_text(encoding="utf-8").strip())
+              except Exception:
+                  return None
+
+          def digest(path: Path) -> str | None:
+              if not path.is_file():
+                  return None
+              value = hashlib.sha256()
+              with path.open("rb") as handle:
+                  for chunk in iter(lambda: handle.read(65536), b""):
+                      value.update(chunk)
+              return value.hexdigest()
+
+          def payload(path: Path):
+              if not path.is_file():
+                  return None
+              try:
+                  return json.loads(path.read_text(encoding="utf-8"))
+              except Exception as exc:
+                  return {"parse_error": str(exc)}
+
+          run_dir = Path("artifacts/research_runs") / experiment_id
+          provider_manifest = (
+              Path("data/providers") / market / "provider_manifest.json"
+          )
+          attempts = Path(
+              "artifacts/data_update_diagnostics/latest_provider_attempts.json"
+          )
+          paths = {
+              "focused_input": Path("focused_input.json"),
+              "provider_manifest": provider_manifest,
+              "provider_attempts": attempts,
+              "acceptance": run_dir / "real_market_acceptance.json",
+              "diagnostics": run_dir / "factor_diagnostics.json",
+              "research_manifest": run_dir / "real_market_research_manifest.json",
+          }
+          summary = {
+              "schema_version": "1.1",
+              "market": market,
+              "experiment_id": experiment_id,
+              "exit_codes": {
+                  "update": code("focused_update.exit"),
+                  "provider": code("focused_provider.exit"),
+                  "pipeline": code("focused_pipeline.exit"),
+              },
+              "evidence": {
+                  name: {
+                      "path": str(path),
+                      "exists": path.is_file(),
+                      "sha256": digest(path),
+                      "payload": payload(path),
+                  }
+                  for name, path in paths.items()
+              },
+          }
+          Path("focused_status.json").write_text(
+              json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True),
+              encoding="utf-8",
+          )
+          print(json.dumps(summary["exit_codes"], indent=2, sort_keys=True))
+          PY
+
+      - name: Upload focused market evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-124-focused-v2-${{ matrix.market }}
+          path: |
+            focused_input.json
+            focused_status.json
+            focused_*.log
+            focused_*.exit
+            artifacts/research_runs/${{ matrix.experiment_id }}/
+            artifacts/data_update_diagnostics/
+            artifacts/snapshots/watchlist_latest.json
+            data/providers/${{ matrix.market }}/provider_manifest.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Evaluate focused execution infrastructure
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          summary = json.loads(
+              Path("focused_status.json").read_text(encoding="utf-8")
+          )
+          codes = summary["exit_codes"]
+          failures = []
+          if codes["update"] not in {0, 2}:
+              failures.append(f"update={codes['update']}")
+          if codes["provider"] != 0:
+              failures.append(f"provider={codes['provider']}")
+          if codes["pipeline"] not in {0, 2}:
+              failures.append(f"pipeline={codes['pipeline']}")
+          if failures:
+              raise SystemExit("focused execution failed: " + ", ".join(failures))
+          print("focused real-market execution completed")
+          PY
