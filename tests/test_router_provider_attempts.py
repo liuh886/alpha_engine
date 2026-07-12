@@ -101,3 +101,61 @@ def test_router_records_failed_schema_and_selected_benchmark_source() -> None:
         "error": None,
         "schema_errors": [],
     }
+
+
+def test_symbol_policy_overrides_market_default_without_affecting_other_symbols() -> None:
+    router = MarketDataRouter(
+        adapters=[
+            FakeAdapter("yfinance", "000300.SS", valid=True),
+            FakeAdapter("akshare", "sh000300", valid=True),
+        ],
+        policy={
+            "cn": ["yfinance", "akshare"],
+            "cn:000300": ["akshare", "yfinance"],
+        },
+    )
+
+    benchmark = router.fetch_daily_bars(
+        symbol="000300",
+        market="CN",
+        start="2021-01-01",
+        validate=True,
+    )
+    stock = router.fetch_daily_bars(
+        symbol="600519",
+        market="cn",
+        start="2021-01-01",
+        validate=True,
+    )
+
+    assert router.providers_for_request("CN", "000300") == ["akshare", "yfinance"]
+    assert benchmark.result is not None
+    assert benchmark.result.provider == "akshare"
+    assert benchmark.attempts[0].provider == "akshare"
+
+    assert router.providers_for_request("cn", "600519") == ["yfinance", "akshare"]
+    assert stock.result is not None
+    assert stock.result.provider == "yfinance"
+    assert stock.attempts[0].provider == "yfinance"
+
+
+def test_multi_source_consistency_uses_symbol_override_order() -> None:
+    router = MarketDataRouter(
+        adapters=[
+            FakeAdapter("yfinance", "000300.SS", valid=True),
+            FakeAdapter("akshare", "sh000300", valid=True),
+        ],
+        policy={
+            "cn": ["yfinance", "akshare"],
+            "cn:000300": ["akshare", "yfinance"],
+        },
+    )
+
+    results = router.fetch_multi_source_bars(
+        symbol="000300",
+        market="cn",
+        start="2021-01-01",
+        limit=2,
+    )
+
+    assert list(results) == ["akshare", "yfinance"]

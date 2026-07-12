@@ -6,5 +6,10 @@ policy:
     - efinance
     - akshare
     - baostock
+  "cn:000300":
+    - akshare
+    - yfinance
+    - efinance
+    - baostock
   hk:
     - yfinance
