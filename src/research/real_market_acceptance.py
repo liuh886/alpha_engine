@@ -17,6 +17,7 @@ from typing import Any
 import pandas as pd
 import yaml
 
+from src.data.market_provider import load_provider_manifest, market_provider_path
 from src.research.multi_market_readiness import (
     cn_symbol_candidates,
     load_market_watchlist,
@@ -28,7 +29,7 @@ from src.research.spec_bound_execution import (
     contract_sha256,
 )
 
-ACCEPTANCE_SCHEMA_VERSION = "1.1"
+ACCEPTANCE_SCHEMA_VERSION = "1.2"
 _REQUIRED_UNIVERSE_METADATA = (
     "universe_id",
     "membership_mode",
@@ -371,7 +372,11 @@ def evaluate_real_market_acceptance(
     """Evaluate whether local data are acceptable for real-market factor research."""
 
     root_path = Path(root).resolve()
-    provider_path = Path(provider_dir).resolve() if provider_dir else root_path / "data" / "watchlist"
+    provider_path = (
+        Path(provider_dir).resolve()
+        if provider_dir
+        else market_provider_path(root_path, spec.market)
+    )
     csv_path = Path(csv_dir).resolve() if csv_dir else root_path / "data" / "csv_source"
     checks: list[AcceptanceCheck] = []
 
@@ -443,6 +448,36 @@ def evaluate_real_market_acceptance(
             else "Provider is missing or marked synthetic/test-only",
             provider_dir=str(provider_path),
             fixture_markers=fixture_markers,
+        )
+    )
+
+    provider_manifest: dict[str, Any] | None = None
+    provider_manifest_error: str | None = None
+    try:
+        provider_manifest = load_provider_manifest(
+            provider_path,
+            expected_market=spec.market,
+            required=True,
+            verify_files=True,
+        )
+    except Exception as exc:  # noqa: BLE001 - identity failures are evidence
+        provider_manifest_error = str(exc)
+    provider_identity = (
+        None
+        if provider_manifest is None
+        else provider_manifest.get("provider_identity_sha256")
+    )
+    checks.append(
+        _check(
+            "market_provider_identity",
+            provider_manifest is not None and provider_manifest_error is None,
+            "Provider has a verified market-specific identity manifest"
+            if provider_manifest is not None and provider_manifest_error is None
+            else "Provider market identity is missing, mismatched, or stale",
+            provider_dir=str(provider_path),
+            expected_market=spec.market,
+            provider_identity_sha256=provider_identity,
+            error=provider_manifest_error,
         )
     )
 
@@ -618,6 +653,7 @@ def evaluate_real_market_acceptance(
             "spec_path": spec.spec_path,
             "universe_source": str(source_path),
             "provider_dir": str(provider_path),
+            "provider_identity_sha256": provider_identity,
             "csv_dir": str(csv_path),
             "boundary_gap_days": int(boundary_gap_days),
             "universe_source_sha256": contract.get("universe", {}).get("source_sha256"),

@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
+from src.data.market_provider import load_provider_manifest, market_provider_path
 from src.research.market_data_alignment import (
     align_train_start_to_coverage,
     get_aligned_windows,
@@ -91,9 +92,23 @@ class QlibCNExecutionRuntime:
 
     provider_uri: str | Path | None = None
     _resolved_provider_uri: str = ""
+    _provider_identity_sha256: str = ""
 
     def initialize(self, repository_root: Path) -> None:
-        provider = Path(self.provider_uri) if self.provider_uri else repository_root / "data" / "watchlist"
+        provider = (
+            Path(self.provider_uri)
+            if self.provider_uri is not None
+            else market_provider_path(repository_root, "cn")
+        )
+        manifest = load_provider_manifest(
+            provider,
+            expected_market="cn",
+            required=self.provider_uri is None,
+            verify_files=True,
+        )
+        self._provider_identity_sha256 = (
+            "" if manifest is None else str(manifest["provider_identity_sha256"])
+        )
         self._resolved_provider_uri = str(provider.resolve())
         safe_qlib_init(
             build_qlib_init_cfg(
@@ -145,6 +160,7 @@ class QlibCNExecutionRuntime:
         return {
             "provider": "qlib",
             "provider_uri": self._resolved_provider_uri,
+            "provider_identity_sha256": self._provider_identity_sha256,
             "market": "cn",
         }
 
