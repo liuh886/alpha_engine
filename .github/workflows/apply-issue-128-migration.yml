@@ -16,7 +16,21 @@ jobs:
           ref: fix/issue-128-partial-snapshot-benchmark
           fetch-depth: 0
       - name: Apply migration
-        run: python scripts/apply_issue_128_migration.py
+        shell: bash
+        run: |
+          set +e
+          python scripts/apply_issue_128_migration.py > issue128_migration.log 2>&1
+          status=$?
+          cat issue128_migration.log
+          exit $status
+      - name: Upload migration log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-128-migration-log
+          path: issue128_migration.log
+          if-no-files-found: error
+          retention-days: 2
       - name: Commit migration
         run: |
           git config user.name "github-actions[bot]"
