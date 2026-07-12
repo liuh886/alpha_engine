@@ -23,6 +23,11 @@ from src.data.adapters.baostock_adapter import BaoStockAdapter
 from src.data.adapters.efinance_adapter import EFinanceAdapter
 from src.data.adapters.yfinance_adapter import YFinanceAdapter
 from src.data.quality import generate_data_quality_summary
+from src.data.provider_evidence import (
+    build_universe_evidence,
+    provider_attempts_evidence,
+    read_effective_provider_universe,
+)
 from src.data.router import MarketDataRouter
 from src.data.snapshot import DataSnapshot
 from src.data.update_accounting import (
@@ -35,8 +40,14 @@ from src.data.validation.schema import validate_market_data
 
 
 def _validate_quality_report(
-    quality_report: dict, *, universe: dict[str, list[str]], quality_policy: dict
+    quality_report: dict,
+    *,
+    configured_universe: dict[str, list[str]],
+    effective_universe: dict[str, list[str]],
+    quality_policy: dict,
 ) -> None:
+    """Validate quality against actual provider membership, not configured intent."""
+
     if not isinstance(quality_report, dict) or not quality_report.get("ok"):
         raise DataUpdateFailure(
             str((quality_report or {}).get("error") or "quality validation failed")
@@ -47,14 +58,21 @@ def _validate_quality_report(
     markets = quality_report.get("markets")
     if not isinstance(markets, dict):
         raise DataUpdateFailure("quality report markets are missing")
-    for market, symbols in universe.items():
+
+    for market, configured_symbols in configured_universe.items():
         report = markets.get(market)
         if not isinstance(report, dict) or report.get("error"):
             raise DataUpdateFailure(f"quality report missing for market={market}")
-        if int(report.get("instruments", -1)) != len(symbols):
+        effective_symbols = effective_universe.get(market, [])
+        if int(report.get("instruments", -1)) != len(effective_symbols):
             raise DataUpdateFailure(
-                f"quality coverage mismatch for market={market}: "
-                f"expected={len(symbols)} actual={report.get('instruments')}"
+                f"quality/provider mismatch for market={market}: "
+                f"effective={len(effective_symbols)} reported={report.get('instruments')}"
+            )
+        extra = sorted(set(effective_symbols) - set(configured_symbols))
+        if extra:
+            raise DataUpdateFailure(
+                f"provider contains unconfigured symbols for market={market}: {extra[:20]}"
             )
         for field_name in (
             "stale_instruments",
@@ -93,6 +111,7 @@ def publish_provider_snapshot(
     strict: bool = False,
     max_missing_pct: float = 0.05,
     max_missing_count: int = 20,
+    provider_attempts_path: str | Path | None = None,
 ) -> DataSnapshot:
     """Persist all mandatory evidence and move the authoritative pointer last."""
     warnings = accounting.validate_for_publish(
@@ -103,8 +122,39 @@ def publish_provider_snapshot(
     )
     if warnings:
         quality_report.setdefault("warnings", []).extend(warnings)
-    _validate_quality_report(quality_report, universe=universe, quality_policy=quality_policy)
     provider_dir = Path(provider_dir)
+    effective_universe = read_effective_provider_universe(
+        provider_dir,
+        list(universe),
+    )
+    universe_evidence = build_universe_evidence(
+        configured=universe,
+        effective=effective_universe,
+    )
+    attempts_evidence = provider_attempts_evidence(provider_attempts_path)
+    quality_report["universe"] = universe_evidence
+    quality_report["provider_attempts"] = attempts_evidence
+    _validate_quality_report(
+        quality_report,
+        configured_universe=universe,
+        effective_universe=effective_universe,
+        quality_policy=quality_policy,
+    )
+    has_missing = any(
+        universe_evidence["missing"].get(market)
+        for market in selected_markets
+    )
+    quality_verdict = (
+        "pass_with_warnings"
+        if has_missing or bool(quality_report.get("warnings"))
+        else "pass"
+    )
+    update_summary = accounting.to_dict()
+    update_summary["provider_attempts"] = attempts_evidence
+    update_summary["universe_identity"] = {
+        "configured_sha256": universe_evidence["configured_sha256"],
+        "effective_sha256": universe_evidence["effective_sha256"],
+    }
     calendar_path = provider_dir / "calendars" / f"{frequency}.txt"
     if not calendar_path.exists():
         raise DataUpdateFailure(f"calendar is missing: {calendar_path}")
@@ -122,7 +172,7 @@ def publish_provider_snapshot(
         source_adapter="market_data_router",
         source_policy=source_policy,
         schema_version="qlib-provider-v1",
-        universe=universe,
+        universe=universe_evidence,
         calendar={
             "frequency": frequency,
             "path": f"calendars/{frequency}.txt",
@@ -134,8 +184,8 @@ def publish_provider_snapshot(
         adjustment_policy=adjustment_policy,
         quality_policy=quality_policy,
         quality_report=_quality_identity_payload(quality_report),
-        update_summary=accounting.to_dict(),
-        quality_verdict="pass",
+        update_summary=update_summary,
+        quality_verdict=quality_verdict,
     )
 
     persisted_quality = copy.deepcopy(quality_report)
@@ -332,38 +382,31 @@ def build_provider_stage(
     (cal_dir / "day.txt").write_text("\n".join(sorted_dates) + "\n", encoding="utf-8")
 
 
-def _write_provider_diagnostics(diagnostics: list[dict], artifacts_dir: Path) -> None:
-    """Write per-symbol provider attempt diagnostics to JSON file."""
+def _write_provider_diagnostics(diagnostics: list[dict], artifacts_dir: Path) -> Path:
+    """Write immutable and latest per-symbol provider attempt evidence."""
+
     import json
     from datetime import datetime, timezone
 
     diag_dir = artifacts_dir / "data_update_diagnostics"
     diag_dir.mkdir(parents=True, exist_ok=True)
-
+    generated_at = datetime.now(timezone.utc)
     output = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "schema_version": "2.0",
+        "generated_at": generated_at.isoformat(),
         "total_symbols": len(diagnostics),
-        "succeeded": sum(1 for d in diagnostics if d["ok"]),
-        "failed": sum(1 for d in diagnostics if not d["ok"]),
+        "succeeded": sum(1 for item in diagnostics if item["ok"]),
+        "failed": sum(1 for item in diagnostics if not item["ok"]),
         "symbols": diagnostics,
     }
-
-    # Write to latest_provider_attempts.json
+    encoded = json.dumps(output, indent=2, ensure_ascii=False)
+    timestamp = generated_at.strftime("%Y%m%d_%H%M%S_%f")
+    immutable_path = diag_dir / f"provider_attempts_{timestamp}.json"
+    immutable_path.write_text(encoded, encoding="utf-8")
     latest_path = diag_dir / "latest_provider_attempts.json"
-    latest_path.write_text(
-        json.dumps(output, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-
-    # Also write timestamped copy
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    timestamped_path = diag_dir / f"provider_attempts_{timestamp}.json"
-    timestamped_path.write_text(
-        json.dumps(output, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-
-    print(f"\n[diagnostic] Provider attempts written to {latest_path}")
+    latest_path.write_text(encoded, encoding="utf-8")
+    print(f"\n[diagnostic] Provider attempts written to {immutable_path}")
+    return immutable_path
 
 
 def run_data_update(args) -> DataSnapshot:
@@ -466,19 +509,26 @@ def run_data_update(args) -> DataSnapshot:
                 )
 
                 # Record provider diagnostics
+                selected_attempt = resp.attempts[-1] if resp.ok and resp.attempts else None
                 symbol_diag = {
                     "symbol": qlib_ticker,
                     "market": reg,
                     "ok": resp.ok,
                     "final_state": "updated" if resp.ok else "failed",
-                    "attempts": [
-                        {
-                            "provider": a.provider,
-                            "ok": a.ok,
-                            "error": a.error or None,
-                        }
-                        for a in resp.attempts
-                    ],
+                    "selected_provider": (
+                        None if resp.result is None else resp.result.provider
+                    ),
+                    "selected_provider_symbol": (
+                        None if resp.result is None else resp.result.provider_symbol
+                    ),
+                    "selected_rows": 0 if selected_attempt is None else selected_attempt.rows,
+                    "selected_first_date": (
+                        None if selected_attempt is None else selected_attempt.first_date
+                    ),
+                    "selected_last_date": (
+                        None if selected_attempt is None else selected_attempt.last_date
+                    ),
+                    "attempts": [attempt.to_dict() for attempt in resp.attempts],
                 }
                 provider_diagnostics.append(symbol_diag)
 
@@ -550,7 +600,9 @@ def run_data_update(args) -> DataSnapshot:
 
     # Write provider diagnostics immediately after the download loop,
     # before dump_bin, so diagnostics are available even if dump_bin fails.
-    _write_provider_diagnostics(provider_diagnostics, ARTIFACTS_DIR)
+    provider_attempts_path = _write_provider_diagnostics(
+        provider_diagnostics, ARTIFACTS_DIR
+    )
 
     # ------------------------------------------------------------------
     # 2. Dump to Qlib Binary
@@ -629,10 +681,9 @@ def run_data_update(args) -> DataSnapshot:
             strict=args.strict,
             max_missing_pct=args.max_missing_pct,
             max_missing_count=args.max_missing_count,
+            provider_attempts_path=provider_attempts_path,
         )
     except DataUpdateFailure:
-        # Write diagnostics even on failure
-        _write_provider_diagnostics(provider_diagnostics, ARTIFACTS_DIR)
         raise
 
     print(f"\n[published] snapshot_id={snapshot.snapshot_id}")

@@ -13,10 +13,23 @@ from src.data.snapshot import DataSnapshot
 
 def _provider(root: Path, value: bytes = b"provider") -> Path:
     provider = root / "provider"
-    (provider / "features" / "AAPL").mkdir(parents=True)
-    (provider / "features" / "AAPL" / "close.day.bin").write_bytes(value)
+    for symbol in ("AAPL", "MSFT", "SH600000"):
+        (provider / "features" / symbol).mkdir(parents=True)
+        (provider / "features" / symbol / "close.day.bin").write_bytes(value)
     (provider / "calendars").mkdir()
-    (provider / "calendars" / "day.txt").write_text("2026-06-19\n", encoding="utf-8")
+    (provider / "calendars" / "day.txt").write_text(
+        "2026-06-19\n", encoding="utf-8"
+    )
+    (provider / "instruments").mkdir()
+    (provider / "instruments" / "us.txt").write_text(
+        "AAPL\t2026-06-19\t2026-06-19\n"
+        "MSFT\t2026-06-19\t2026-06-19\n",
+        encoding="utf-8",
+    )
+    (provider / "instruments" / "cn.txt").write_text(
+        "SH600000\t2026-06-19\t2026-06-19\n",
+        encoding="utf-8",
+    )
     return provider
 
 
