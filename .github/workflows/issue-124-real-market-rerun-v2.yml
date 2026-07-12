@@ -1,0 +1,221 @@
+name: Issue 124 real-market rerun v2
+
+on:
+  push:
+    branches: [research/issue-124-rerun-v2]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-market-rerun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          show-progress: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Refresh real market data
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/update_data.py --full --start 2021-01-01 --market all > issue124_update_data.log 2>&1
+          status=$?
+          echo "$status" > issue124_update_data.exit
+          cat issue124_update_data.log
+          exit 0
+
+      - name: Build market-specific providers
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/build_market_providers.py --root . --markets cn us > issue124_build_providers.log 2>&1
+          status=$?
+          echo "$status" > issue124_build_providers.exit
+          cat issue124_build_providers.log
+          exit 0
+
+      - name: Run CN acceptance and diagnostics
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/run_real_market_research.py \
+            --root . \
+            --spec configs/research_paradigms/cn_10d_csi300_baseline.yaml \
+            > issue124_cn.log 2>&1
+          status=$?
+          echo "$status" > issue124_cn.exit
+          cat issue124_cn.log
+          exit 0
+
+      - name: Run US acceptance and diagnostics
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/run_real_market_research.py \
+            --root . \
+            --spec configs/research_paradigms/us_10d_qqq_baseline.yaml \
+            > issue124_us.log 2>&1
+          status=$?
+          echo "$status" > issue124_us.exit
+          cat issue124_us.log
+          exit 0
+
+      - name: Build auditable rerun summary
+        if: always()
+        shell: bash
+        run: |
+          uv run python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          def exit_code(name: str) -> int | None:
+              path = Path(name)
+              if not path.is_file():
+                  return None
+              try:
+                  return int(path.read_text(encoding="utf-8").strip())
+              except Exception:
+                  return None
+
+          def sha256(path: Path) -> str | None:
+              if not path.is_file():
+                  return None
+              digest = hashlib.sha256()
+              with path.open("rb") as handle:
+                  for chunk in iter(lambda: handle.read(65536), b""):
+                      digest.update(chunk)
+              return digest.hexdigest()
+
+          def load_json(path: Path):
+              if not path.is_file():
+                  return None
+              try:
+                  return json.loads(path.read_text(encoding="utf-8"))
+              except Exception as exc:
+                  return {"parse_error": str(exc)}
+
+          summary = {
+              "schema_version": "2.0",
+              "github_sha": os.environ.get("GITHUB_SHA"),
+              "exit_codes": {
+                  "update_data": exit_code("issue124_update_data.exit"),
+                  "build_market_providers": exit_code("issue124_build_providers.exit"),
+                  "cn_pipeline": exit_code("issue124_cn.exit"),
+                  "us_pipeline": exit_code("issue124_us.exit"),
+              },
+              "providers": {},
+              "markets": {},
+          }
+
+          for market in ("cn", "us"):
+              provider_manifest = Path("data/providers") / market / "provider_manifest.json"
+              summary["providers"][market] = {
+                  "path": str(provider_manifest),
+                  "exists": provider_manifest.is_file(),
+                  "sha256": sha256(provider_manifest),
+                  "manifest": load_json(provider_manifest),
+              }
+
+              experiment_id = (
+                  "cn_10d_csi300_baseline"
+                  if market == "cn"
+                  else "us_10d_qqq_baseline"
+              )
+              run_dir = Path("artifacts/research_runs") / experiment_id
+              files = {
+                  "acceptance": run_dir / "real_market_acceptance.json",
+                  "diagnostics": run_dir / "factor_diagnostics.json",
+                  "manifest": run_dir / "real_market_research_manifest.json",
+              }
+              summary["markets"][market] = {
+                  key: {
+                      "path": str(path),
+                      "exists": path.is_file(),
+                      "sha256": sha256(path),
+                      "payload": load_json(path),
+                  }
+                  for key, path in files.items()
+              }
+
+          attempts = Path(
+              "artifacts/data_update_diagnostics/latest_provider_attempts.json"
+          )
+          summary["provider_attempts"] = {
+              "path": str(attempts),
+              "exists": attempts.is_file(),
+              "sha256": sha256(attempts),
+              "payload": load_json(attempts),
+          }
+
+          Path("issue124_rerun_status.json").write_text(
+              json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True),
+              encoding="utf-8",
+          )
+          print(json.dumps(summary["exit_codes"], indent=2, sort_keys=True))
+          PY
+
+      - name: Upload issue 124 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-124-real-market-rerun-v2
+          path: |
+            issue124_rerun_status.json
+            issue124_*.log
+            issue124_*.exit
+            artifacts/research_runs/cn_10d_csi300_baseline/
+            artifacts/research_runs/us_10d_qqq_baseline/
+            artifacts/data_update_diagnostics/
+            artifacts/snapshots/watchlist_latest.json
+            data/providers/cn/provider_manifest.json
+            data/providers/us/provider_manifest.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Evaluate execution infrastructure
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(
+              Path("issue124_rerun_status.json").read_text(encoding="utf-8")
+          )
+          codes = payload["exit_codes"]
+          failures = []
+          if codes["update_data"] not in {0, 2}:
+              failures.append(f"update_data={codes['update_data']}")
+          if codes["build_market_providers"] != 0:
+              failures.append(
+                  f"build_market_providers={codes['build_market_providers']}"
+              )
+          for market in ("cn", "us"):
+              code = codes[f"{market}_pipeline"]
+              if code not in {0, 2}:
+                  failures.append(f"{market}_pipeline={code}")
+          if failures:
+              raise SystemExit("infrastructure execution failed: " + ", ".join(failures))
+          print("issue 124 execution completed; inspect acceptance status in artifact")
+          PY
