@@ -37,22 +37,39 @@ class RouterResponse:
 
 
 class MarketDataRouter:
-    """
-    A tiny router with fallback across providers.
+    """Route market-data requests through auditable provider fallback.
 
-    Policy is provided as: {market: [provider_name, ...]}.
+    Market defaults use ``{market: [provider, ...]}``. A single logical symbol can
+    override that order with ``{"market:SYMBOL": [provider, ...]}`` without
+    changing the provider preference for the rest of the market.
     """
 
     def __init__(self, *, adapters: Iterable[MarketDataAdapter], policy: dict | None = None):
         self._adapters = {adapter.name: adapter for adapter in adapters}
         self._policy = policy or {}
 
+    @staticmethod
+    def _provider_list(value: object) -> list[str] | None:
+        if not isinstance(value, list) or not value:
+            return None
+        providers = [str(item).strip() for item in value if str(item).strip()]
+        return providers or None
+
     def providers_for_market(self, market: str) -> list[str]:
         market = str(market or "").strip().lower()
-        raw = self._policy.get(market)
-        if isinstance(raw, list) and raw:
-            return [str(item) for item in raw if str(item).strip()]
+        providers = self._provider_list(self._policy.get(market))
+        if providers is not None:
+            return providers
         return sorted(self._adapters.keys())
+
+    def providers_for_request(self, market: str, symbol: str) -> list[str]:
+        normalized_market = str(market or "").strip().lower()
+        normalized_symbol = str(symbol or "").strip().upper()
+        symbol_key = f"{normalized_market}:{normalized_symbol}"
+        providers = self._provider_list(self._policy.get(symbol_key))
+        if providers is not None:
+            return providers
+        return self.providers_for_market(normalized_market)
 
     @staticmethod
     def _provider_symbol(adapter: MarketDataAdapter, req: FetchRequest) -> str:
@@ -91,7 +108,7 @@ class MarketDataRouter:
 
         req = FetchRequest(symbol=symbol, market=market, start=start, end=end)
         attempts: list[RouterAttempt] = []
-        for provider in self.providers_for_market(market):
+        for provider in self.providers_for_request(market, symbol):
             adapter = self._adapters.get(provider)
             if adapter is None:
                 attempts.append(
@@ -176,7 +193,7 @@ class MarketDataRouter:
 
         req = FetchRequest(symbol=symbol, market=market, start=start, end=end)
         results: dict[str, FetchResult] = {}
-        for provider in self.providers_for_market(market):
+        for provider in self.providers_for_request(market, symbol):
             if len(results) >= limit:
                 break
             adapter = self._adapters.get(provider)
