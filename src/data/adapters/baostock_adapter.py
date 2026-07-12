@@ -24,6 +24,7 @@ class _FailClosedSocket(socket.socket):
 @contextmanager
 def _baostock_socket_guard(timeout_seconds: float = BAOSTOCK_SOCKET_TIMEOUT_SECONDS):
     """Bound the third-party client's unbounded connect/recv implementation."""
+
     import baostock.common.contants as constants  # type: ignore
     import baostock.common.context as context  # type: ignore
     import baostock.util.socketutil as socketutil  # type: ignore
@@ -57,14 +58,15 @@ def _baostock_socket_guard(timeout_seconds: float = BAOSTOCK_SOCKET_TIMEOUT_SECO
 
 
 def _to_baostock_code(symbol: str) -> str:
-    """
-    Convert 6-digit A-share code into baostock code: sh.600519 / sz.000001
-    """
+    """Convert a public CN identity to BaoStock's exchange-qualified code."""
+
     symbol = str(symbol or "").strip()
     if not symbol:
         return ""
     if symbol.lower().startswith(("sh.", "sz.")):
         return symbol.lower()
+    if symbol == "000300":
+        return "sh.000300"
     if symbol.startswith(("60", "68", "51", "50", "52", "56", "58", "90")):
         return f"sh.{symbol}"
     return f"sz.{symbol}"
@@ -77,6 +79,9 @@ class BaoStockAdapter:
     @property
     def name(self) -> str:
         return self._name
+
+    def provider_symbol(self, req: FetchRequest) -> str:
+        return _to_baostock_code(req.symbol)
 
     def fetch_daily_bars(self, req: FetchRequest) -> FetchResult:
         symbol = str(req.symbol or "").strip()
@@ -92,23 +97,23 @@ class BaoStockAdapter:
 
         try:
             import baostock as bs  # type: ignore
-        except Exception as e:
-            raise DataFetchError(f"baostock import failed: {e}") from e
+        except Exception as exc:
+            raise DataFetchError(f"baostock import failed: {exc}") from exc
 
-        code = _to_baostock_code(symbol)
+        code = self.provider_symbol(req)
         if not code:
             raise DataFetchError("invalid symbol")
 
         with _baostock_socket_guard():
-            lg = bs.login()
-            if getattr(lg, "error_code", "0") != "0":
+            login = bs.login()
+            if getattr(login, "error_code", "0") != "0":
                 raise DataFetchError(
-                    f"baostock login failed: {getattr(lg, 'error_msg', '')}"
+                    f"baostock login failed: {getattr(login, 'error_msg', '')}"
                 )
 
             try:
                 fields = "date,open,high,low,close,volume,amount"
-                rs = bs.query_history_k_data_plus(
+                result = bs.query_history_k_data_plus(
                     code,
                     fields,
                     start_date=start,
@@ -116,36 +121,43 @@ class BaoStockAdapter:
                     frequency="d",
                     adjustflag="3",
                 )
-                if getattr(rs, "error_code", "0") != "0":
+                if getattr(result, "error_code", "0") != "0":
                     raise DataFetchError(
-                        f"baostock query failed: {getattr(rs, 'error_msg', '')}"
+                        f"baostock query failed: {getattr(result, 'error_msg', '')}"
                     )
 
                 rows = []
-                while rs.next():
-                    rows.append(rs.get_row_data())
-                df = pd.DataFrame(rows, columns=rs.fields if hasattr(rs, "fields") else None)
+                while result.next():
+                    rows.append(result.get_row_data())
+                frame = pd.DataFrame(
+                    rows,
+                    columns=result.fields if hasattr(result, "fields") else None,
+                )
             finally:
                 try:
                     bs.logout()
                 except Exception:
                     pass
 
-        if df is None or df.empty:
+        if frame is None or frame.empty:
             raise DataFetchError(f"empty data for {code}")
 
-        for col in ["open", "high", "low", "close", "volume", "amount"]:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"], errors="coerce")
-        df = df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
-        if df.empty:
+        for column in ["open", "high", "low", "close", "volume", "amount"]:
+            if column in frame.columns:
+                frame[column] = pd.to_numeric(frame[column], errors="coerce")
+        if "date" in frame.columns:
+            frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
+        frame = frame.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+        if frame.empty:
             raise DataFetchError(f"empty data for {code}")
 
-        df["factor"] = 1.0
-        out = df[["date", "open", "high", "low", "close", "volume", "amount", "factor"]].copy()
-        out = out.dropna(subset=["date", "open", "high", "low", "close"]).reset_index(drop=True)
+        frame["factor"] = 1.0
+        out = frame[
+            ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
+        ].copy()
+        out = out.dropna(subset=["date", "open", "high", "low", "close"]).reset_index(
+            drop=True
+        )
         if out.empty:
             raise DataFetchError(f"empty usable bars for {code}")
 
@@ -156,4 +168,5 @@ class BaoStockAdapter:
             start=start,
             end=req.end,
             df=out,
+            provider_symbol=code,
         )

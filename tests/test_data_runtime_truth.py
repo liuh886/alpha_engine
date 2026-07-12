@@ -13,10 +13,23 @@ from src.data.snapshot import DataSnapshot
 
 def _provider(root: Path, value: bytes = b"provider") -> Path:
     provider = root / "provider"
-    (provider / "features" / "AAPL").mkdir(parents=True)
-    (provider / "features" / "AAPL" / "close.day.bin").write_bytes(value)
+    for symbol in ("AAPL", "MSFT", "SH600000"):
+        (provider / "features" / symbol).mkdir(parents=True)
+        (provider / "features" / symbol / "close.day.bin").write_bytes(value)
     (provider / "calendars").mkdir()
-    (provider / "calendars" / "day.txt").write_text("2026-06-19\n", encoding="utf-8")
+    (provider / "calendars" / "day.txt").write_text(
+        "2026-06-19\n", encoding="utf-8"
+    )
+    (provider / "instruments").mkdir()
+    (provider / "instruments" / "us.txt").write_text(
+        "AAPL\t2026-06-19\t2026-06-19\n"
+        "MSFT\t2026-06-19\t2026-06-19\n",
+        encoding="utf-8",
+    )
+    (provider / "instruments" / "cn.txt").write_text(
+        "SH600000\t2026-06-19\t2026-06-19\n",
+        encoding="utf-8",
+    )
     return provider
 
 
@@ -377,14 +390,14 @@ def test_publish_provider_snapshot_different_data_yields_different_id(tmp_path: 
     provider_a = _provider(tmp_path / "a", value=b"alpha-data")
     provider_b = _provider(tmp_path / "b", value=b"beta-data")
 
-    # Quality report matching the 1-symbol universe used here.
+    # Quality report matching the two-symbol provider fixture used here.
     qr = {
         "ok": True,
         "latest_calendar_day": "2026-06-19",
         "warnings": [],
         "markets": {
             "us": {
-                "instruments": 1,
+                "instruments": 2,
                 "stale_instruments": 0,
                 "csv_missing": 0,
                 "csv_parse_errors": 0,
@@ -392,9 +405,10 @@ def test_publish_provider_snapshot_different_data_yields_different_id(tmp_path: 
             },
         },
     }
-    acct = update_data.UpdateAccounting(configured={"us": ["AAPL"]})
-    acct.add("attempted", "us", "AAPL")
-    acct.add("updated", "us", "AAPL")
+    acct = update_data.UpdateAccounting(configured={"us": ["AAPL", "MSFT"]})
+    for symbol in ("AAPL", "MSFT"):
+        acct.add("attempted", "us", symbol)
+        acct.add("updated", "us", symbol)
 
     def _publish(provider: Path, label: str) -> DataSnapshot:
         db = tmp_path / f"db_{label}.db"
@@ -404,7 +418,7 @@ def test_publish_provider_snapshot_different_data_yields_different_id(tmp_path: 
             marker_path=tmp_path / f"latest_{label}.json",
             db_path=db,
             dataset_key="watchlist",
-            universe={"us": ["AAPL"]},
+            universe={"us": ["AAPL", "MSFT"]},
             selected_markets={"us"},
             source_policy={"us": ["yfinance"]},
             adjustment_policy={"method": "none"},
