@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from src.data.market_provider import write_provider_manifest
 from src.research.paradigm import load_research_paradigm_spec
 from src.research.real_market_acceptance import (
     _calendar_coverage_evidence,
@@ -152,7 +153,7 @@ def _write_market_data(
     start: str = "2021-01-04",
     end: str = "2026-06-18",
 ) -> tuple[Path, Path]:
-    provider = root / "data" / "watchlist"
+    provider = root / "data" / "providers" / "us"
     csv_dir = root / "data" / "csv_source"
     (provider / "calendars").mkdir(parents=True)
     (provider / "instruments").mkdir(parents=True)
@@ -160,6 +161,10 @@ def _write_market_data(
 
     dates = pd.bdate_range(start, end)
     (provider / "calendars" / "day.txt").write_text(
+        "\n".join(date.strftime("%Y-%m-%d") for date in dates) + "\n",
+        encoding="utf-8",
+    )
+    (provider / "calendars" / "day_future.txt").write_text(
         "\n".join(date.strftime("%Y-%m-%d") for date in dates) + "\n",
         encoding="utf-8",
     )
@@ -173,6 +178,7 @@ def _write_market_data(
         encoding="utf-8",
     )
 
+    source_files: list[Path] = []
     for offset, symbol in enumerate(symbols):
         close = 100.0 + offset + np.linspace(0.0, 20.0, len(dates))
         frame = pd.DataFrame(
@@ -185,7 +191,10 @@ def _write_market_data(
                 "volume": 1_000_000 + offset,
             }
         )
-        frame.to_csv(csv_dir / f"{symbol}.csv", index=False)
+        path = csv_dir / f"{symbol}.csv"
+        frame.to_csv(path, index=False)
+        source_files.append(path)
+    write_provider_manifest(provider, market="us", source_csv_files=source_files)
     return provider, csv_dir
 
 
@@ -217,6 +226,8 @@ def test_real_market_acceptance_passes_complete_non_synthetic_data(
     assert report["accepted"] is True
     assert report["summary"]["failed"] == 0
     assert _statuses(report)["survivorship_bias"] == "warn"
+    assert _statuses(report)["market_provider_identity"] == "pass"
+    assert len(report["inputs"]["provider_identity_sha256"]) == 64
     calendar = _check(report, "calendar_coverage")
     assert calendar["status"] == "pass"
     assert calendar["details"]["requested_start"] == "2021-01-01"
@@ -294,6 +305,41 @@ def test_acceptance_rejects_fabricated_or_invalid_ohlcv(tmp_path: Path) -> None:
     assert evidence["invalid_row_count"] == 2
     assert evidence["examples"]
     assert evidence["max_violation"]["absolute_magnitude"] > 0.0
+
+
+def test_acceptance_rejects_missing_or_stale_provider_manifest(tmp_path: Path) -> None:
+    spec_path = _write_spec(tmp_path, symbols=["AAPL", "MSFT", "NVDA"])
+    provider, csv_dir = _write_market_data(
+        tmp_path,
+        ["AAPL", "MSFT", "NVDA", "QQQ"],
+    )
+    spec = load_research_paradigm_spec(spec_path)
+
+    (provider / "provider_manifest.json").unlink()
+    missing = evaluate_real_market_acceptance(
+        spec,
+        root=tmp_path,
+        provider_dir=provider,
+        csv_dir=csv_dir,
+    )
+    assert _statuses(missing)["market_provider_identity"] == "fail"
+
+    source_files = sorted(csv_dir.glob("*.csv"))
+    write_provider_manifest(provider, market="us", source_csv_files=source_files)
+    calendar = provider / "calendars" / "day.txt"
+    calendar.write_text(
+        calendar.read_text(encoding="utf-8") + "2026-06-19\n",
+        encoding="utf-8",
+    )
+    stale = evaluate_real_market_acceptance(
+        spec,
+        root=tmp_path,
+        provider_dir=provider,
+        csv_dir=csv_dir,
+    )
+    identity = _check(stale, "market_provider_identity")
+    assert identity["status"] == "fail"
+    assert "calendar hash mismatch" in identity["details"]["error"]
 
 
 def test_calendar_rejects_materially_truncated_provider() -> None:

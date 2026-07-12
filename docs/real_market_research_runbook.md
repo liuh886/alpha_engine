@@ -19,11 +19,37 @@ validation:
 uv run python scripts/update_data.py --full --start 2021-01-01 --market all
 ```
 
-The updater writes source CSV files under `data/csv_source/` and the Qlib
-provider under `data/watchlist/`. It also publishes an immutable data snapshot.
-A warning or partial update is not equivalent to research acceptance.
+The updater writes source CSV files under `data/csv_source/` and retains the
+aggregate compatibility provider under `data/watchlist/`. A warning or partial
+update is not equivalent to research acceptance.
 
-## 3. Run the canonical pipeline
+## 3. Build canonical market-specific providers
+
+CN and US research must not use the aggregate union calendar. Build independent
+providers from the same source CSV evidence:
+
+```bash
+uv run python scripts/build_market_providers.py \
+  --root . \
+  --markets cn us
+```
+
+Canonical provider locations are:
+
+```text
+data/providers/cn/
+data/providers/us/
+```
+
+Each provider contains only its own market sessions, instruments, features, and
+`provider_manifest.json`. The manifest binds the calendar, instruments, feature
+tree, and source CSV hashes into `provider_identity_sha256`. Missing, stale, or
+cross-market manifests fail real-market acceptance.
+
+`data/watchlist/` remains a temporary compatibility surface for older consumers;
+it is not the canonical provider for fixed-10D CN or US research.
+
+## 4. Run the canonical pipeline
 
 CN:
 
@@ -50,7 +76,7 @@ real-market acceptance
 
 Factor diagnostics are not executed when acceptance fails.
 
-## 4. Review the evidence
+## 5. Review the evidence
 
 For each experiment, inspect:
 
@@ -61,8 +87,9 @@ artifacts/research_runs/{experiment_id}/real_market_research_manifest.json
 ```
 
 The acceptance report is the source of truth for data blockers. Common blockers
-include incomplete calendar coverage, insufficient fully covered stocks, missing
-benchmark history, invalid source OHLCV, and synthetic/test provider markers.
+include an invalid provider identity, incomplete market calendar coverage,
+insufficient fully covered stocks, missing benchmark history, invalid source
+OHLCV, and synthetic/test provider markers.
 
 The factor diagnostic report is descriptive research evidence only. Review:
 
@@ -73,7 +100,7 @@ The factor diagnostic report is descriptive research evidence only. Review:
 - per-window consistency;
 - explicit static-universe survivorship bias.
 
-## 5. Interpretation boundary
+## 6. Interpretation boundary
 
 A completed factor-diagnostic run still has:
 
