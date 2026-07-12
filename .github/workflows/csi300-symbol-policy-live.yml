@@ -1,0 +1,115 @@
+name: Live CSI300 symbol policy
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  live-symbol-policy:
+    if: github.head_ref == 'fix/issue-124-symbol-provider-policy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Execute configured router
+        shell: bash
+        run: |
+          set +e
+          timeout 600 uv run python - <<'PY' > csi300_policy.log 2>&1
+          from __future__ import annotations
+
+          import json
+          from pathlib import Path
+
+          from scripts.update_data import load_router_policy
+          from src.data.adapters.akshare_adapter import AkShareAdapter
+          from src.data.adapters.baostock_adapter import BaoStockAdapter
+          from src.data.adapters.efinance_adapter import EFinanceAdapter
+          from src.data.adapters.yfinance_adapter import YFinanceAdapter
+          from src.data.router import MarketDataRouter
+
+          policy = load_router_policy()
+          router = MarketDataRouter(
+              adapters=[
+                  EFinanceAdapter(),
+                  AkShareAdapter(),
+                  BaoStockAdapter(),
+                  YFinanceAdapter(),
+              ],
+              policy=policy,
+          )
+          response = router.fetch_daily_bars(
+              symbol="000300",
+              market="cn",
+              start="2021-01-01",
+              end="2026-07-12",
+              validate=True,
+          )
+          payload = {
+              "configured_market_order": policy.get("cn"),
+              "configured_symbol_order": policy.get("cn:000300"),
+              "resolved_order": router.providers_for_request("cn", "000300"),
+              "ok": response.ok,
+              "selected_provider": (
+                  None if response.result is None else response.result.provider
+              ),
+              "selected_provider_symbol": (
+                  None if response.result is None else response.result.provider_symbol
+              ),
+              "selected_rows": (
+                  0 if response.result is None else int(len(response.result.df))
+              ),
+              "selected_first_date": (
+                  None
+                  if response.result is None or response.result.df.empty
+                  else response.result.df["date"].min().strftime("%Y-%m-%d")
+              ),
+              "selected_last_date": (
+                  None
+                  if response.result is None or response.result.df.empty
+                  else response.result.df["date"].max().strftime("%Y-%m-%d")
+              ),
+              "attempts": [attempt.to_dict() for attempt in response.attempts],
+          }
+          Path("csi300_policy.json").write_text(
+              json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True),
+              encoding="utf-8",
+          )
+          print(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
+          assert payload["configured_market_order"][0] == "yfinance"
+          assert payload["configured_symbol_order"][0] == "akshare"
+          assert payload["resolved_order"][0] == "akshare"
+          assert response.ok
+          assert response.result is not None
+          assert response.result.provider == "akshare"
+          assert response.result.provider_symbol == "sh000300"
+          assert payload["selected_first_date"] == "2021-01-04"
+          assert response.attempts[0].provider == "akshare"
+          assert response.attempts[0].ok is True
+          PY
+          status=$?
+          echo "$status" > csi300_policy.exit
+          cat csi300_policy.log
+          exit $status
+      - name: Upload live policy evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: csi300-symbol-policy-live
+          path: |
+            csi300_policy.json
+            csi300_policy.log
+            csi300_policy.exit
+          if-no-files-found: warn
+          retention-days: 7
