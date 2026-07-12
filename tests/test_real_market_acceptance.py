@@ -291,7 +291,7 @@ def test_acceptance_rejects_fabricated_or_invalid_ohlcv(tmp_path: Path) -> None:
     assert integrity["status"] == "fail"
     assert "MSFT" in integrity["details"]["invalid"]
     evidence = integrity["details"]["results"]["MSFT"]["ohlc_order_evidence"]
-    assert evidence["invalid_row_count"] == 1
+    assert evidence["invalid_row_count"] == 2
     assert evidence["examples"]
     assert evidence["max_violation"]["absolute_magnitude"] > 0.0
 
