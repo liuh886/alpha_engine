@@ -1,7 +1,7 @@
 """Fail-closed acceptance checks for real-market research data.
 
 This module does not download data, train a model, or infer that a provider is real
-from good-looking metrics.  It verifies the declared research universe, local CSV
+from good-looking metrics. It verifies the declared research universe, local CSV
 source, and Qlib provider metadata before factor research is allowed to proceed.
 """
 
@@ -12,7 +12,7 @@ import math
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import pandas as pd
 import yaml
@@ -21,7 +21,6 @@ from src.research.multi_market_readiness import (
     cn_symbol_candidates,
     load_market_watchlist,
     normalize_market_symbol,
-    normalize_market_symbols,
 )
 from src.research.paradigm import ResearchParadigmSpec, load_research_paradigm_spec
 from src.research.spec_bound_execution import (
@@ -29,7 +28,7 @@ from src.research.spec_bound_execution import (
     contract_sha256,
 )
 
-ACCEPTANCE_SCHEMA_VERSION = "1.0"
+ACCEPTANCE_SCHEMA_VERSION = "1.1"
 _REQUIRED_UNIVERSE_METADATA = (
     "universe_id",
     "membership_mode",
@@ -38,6 +37,8 @@ _REQUIRED_UNIVERSE_METADATA = (
     "survivorship_bias",
 )
 _REQUIRED_CSV_COLUMNS = ("date", "open", "high", "low", "close", "volume")
+_OHLC_COLUMNS = ("open", "high", "low", "close")
+_MAX_VIOLATION_EXAMPLES = 20
 
 
 @dataclass(frozen=True)
@@ -157,6 +158,94 @@ def _finite(series: pd.Series) -> pd.Series:
     return numeric.map(math.isfinite)
 
 
+def _iso_date(value: Any) -> str | None:
+    parsed = pd.to_datetime(value, errors="coerce")
+    if pd.isna(parsed):
+        return None
+    return pd.Timestamp(parsed).strftime("%Y-%m-%d")
+
+
+def _violation_record(
+    *,
+    row_index: int,
+    date: Any,
+    violation_type: str,
+    numeric_row: pd.Series,
+    absolute_magnitude: float,
+) -> dict[str, Any]:
+    scale = max(
+        *(abs(float(numeric_row[column])) for column in _OHLC_COLUMNS),
+        1e-12,
+    )
+    return {
+        "row_index": int(row_index),
+        "date": _iso_date(date),
+        "type": violation_type,
+        "open": float(numeric_row["open"]),
+        "high": float(numeric_row["high"]),
+        "low": float(numeric_row["low"]),
+        "close": float(numeric_row["close"]),
+        "absolute_magnitude": float(absolute_magnitude),
+        "relative_magnitude": float(absolute_magnitude / scale),
+    }
+
+
+def _ohlc_order_evidence(
+    dates: pd.Series,
+    numeric: pd.DataFrame,
+) -> dict[str, Any]:
+    """Return row-level OHLC-order evidence without repairing source values."""
+
+    violations: list[dict[str, Any]] = []
+    invalid_rows: set[int] = set()
+    comparisons = (
+        ("high_below_open", "high", "open"),
+        ("high_below_low", "high", "low"),
+        ("high_below_close", "high", "close"),
+        ("low_above_open", "open", "low"),
+        ("low_above_close", "close", "low"),
+    )
+
+    for position, (_, row) in enumerate(numeric.iterrows()):
+        if not all(math.isfinite(float(row[column])) for column in _OHLC_COLUMNS):
+            continue
+        for violation_type, upper_column, lower_column in comparisons:
+            upper = float(row[upper_column])
+            lower = float(row[lower_column])
+            if upper >= lower:
+                continue
+            invalid_rows.add(position)
+            violations.append(
+                _violation_record(
+                    row_index=position,
+                    date=dates.iloc[position] if position < len(dates) else None,
+                    violation_type=violation_type,
+                    numeric_row=row,
+                    absolute_magnitude=lower - upper,
+                )
+            )
+
+    violations.sort(key=lambda item: (int(item["row_index"]), str(item["type"])))
+    max_violation = (
+        max(
+            violations,
+            key=lambda item: (
+                float(item["absolute_magnitude"]),
+                float(item["relative_magnitude"]),
+            ),
+        )
+        if violations
+        else None
+    )
+    return {
+        "invalid_row_count": len(invalid_rows),
+        "violation_count": len(violations),
+        "examples": violations[:_MAX_VIOLATION_EXAMPLES],
+        "examples_truncated": len(violations) > _MAX_VIOLATION_EXAMPLES,
+        "max_violation": max_violation,
+    }
+
+
 def _inspect_csv(path: Path) -> dict[str, Any]:
     frame = pd.read_csv(path)
     missing_columns = [column for column in _REQUIRED_CSV_COLUMNS if column not in frame.columns]
@@ -177,14 +266,10 @@ def _inspect_csv(path: Path) -> dict[str, Any]:
     numeric = frame.loc[:, ["open", "high", "low", "close", "volume"]].apply(
         pd.to_numeric, errors="coerce"
     )
-    nonpositive_ohlc = int((numeric[["open", "high", "low", "close"]] <= 0).any(axis=1).sum())
+    nonpositive_ohlc = int((numeric[list(_OHLC_COLUMNS)] <= 0).any(axis=1).sum())
     negative_volume = int((numeric["volume"] < 0).sum())
-    invalid_ohlc_order = int(
-        (
-            (numeric["high"] < numeric[["open", "low", "close"]].max(axis=1))
-            | (numeric["low"] > numeric[["open", "high", "close"]].min(axis=1))
-        ).sum()
-    )
+    ohlc_evidence = _ohlc_order_evidence(dates, numeric)
+    invalid_ohlc_order = int(ohlc_evidence["invalid_row_count"])
 
     ok = not any(
         (
@@ -209,11 +294,65 @@ def _inspect_csv(path: Path) -> dict[str, Any]:
         "nonpositive_ohlc_rows": nonpositive_ohlc,
         "negative_volume_rows": negative_volume,
         "invalid_ohlc_order_rows": invalid_ohlc_order,
+        "ohlc_order_evidence": ohlc_evidence,
+    }
+
+
+def _calendar_coverage_evidence(
+    calendar: list[pd.Timestamp],
+    requested_start: pd.Timestamp,
+    requested_end: pd.Timestamp,
+    *,
+    boundary_gap_days: int,
+) -> dict[str, Any]:
+    """Evaluate requested date boundaries against effective provider sessions."""
+
+    gap = pd.Timedelta(days=int(boundary_gap_days))
+    if not calendar:
+        return {
+            "ok": False,
+            "first_day": None,
+            "last_day": None,
+            "effective_start_session": None,
+            "effective_end_session": None,
+            "start_boundary_gap_days": None,
+            "end_boundary_gap_days": None,
+            "boundary_gap_days": int(boundary_gap_days),
+        }
+
+    first = calendar[0]
+    last = calendar[-1]
+    start_sessions = [session for session in calendar if session >= requested_start]
+    end_sessions = [session for session in calendar if session <= requested_end]
+    effective_start = start_sessions[0] if start_sessions else None
+    effective_end = end_sessions[-1] if end_sessions else None
+    start_gap_days = max(0, int((first - requested_start).days))
+    end_gap_days = max(0, int((requested_end - last).days))
+    ok = first <= requested_start + gap and last >= requested_end - gap
+
+    return {
+        "ok": bool(ok),
+        "first_day": first.strftime("%Y-%m-%d"),
+        "last_day": last.strftime("%Y-%m-%d"),
+        "effective_start_session": (
+            None if effective_start is None else effective_start.strftime("%Y-%m-%d")
+        ),
+        "effective_end_session": (
+            None if effective_end is None else effective_end.strftime("%Y-%m-%d")
+        ),
+        "start_boundary_gap_days": start_gap_days,
+        "end_boundary_gap_days": end_gap_days,
+        "boundary_gap_days": int(boundary_gap_days),
     }
 
 
 def _check(name: str, passed: bool, message: str, **details: Any) -> AcceptanceCheck:
-    return AcceptanceCheck(name=name, status="pass" if passed else "fail", message=message, details=details)
+    return AcceptanceCheck(
+        name=name,
+        status="pass" if passed else "fail",
+        message=message,
+        details=details,
+    )
 
 
 def _warning(name: str, message: str, **details: Any) -> AcceptanceCheck:
@@ -290,7 +429,11 @@ def evaluate_real_market_acceptance(
         )
     )
 
-    fixture_markers = sorted(str(path.relative_to(provider_path)) for path in provider_path.rglob("fixture_manifest.json")) if provider_path.is_dir() else []
+    fixture_markers = (
+        sorted(str(path.relative_to(provider_path)) for path in provider_path.rglob("fixture_manifest.json"))
+        if provider_path.is_dir()
+        else []
+    )
     checks.append(
         _check(
             "real_provider_scope",
@@ -312,20 +455,25 @@ def evaluate_real_market_acceptance(
         calendar_error = str(exc)
     requested_start = pd.Timestamp(str(spec.walk_forward["requested_train_start"]))
     requested_end = pd.Timestamp(str(spec.walk_forward["test_end"]))
-    calendar_ok = bool(calendar) and calendar[0] <= requested_start and calendar[-1] >= requested_end
+    calendar_evidence = _calendar_coverage_evidence(
+        calendar,
+        requested_start,
+        requested_end,
+        boundary_gap_days=boundary_gap_days,
+    )
+    calendar_ok = calendar_error is None and bool(calendar_evidence["ok"])
     checks.append(
         _check(
             "calendar_coverage",
             calendar_ok,
-            "Provider calendar covers the complete declared research interval"
+            "Provider calendar covers the declared interval using effective market sessions"
             if calendar_ok
             else "Provider calendar does not cover the declared research interval",
             calendar_file=str(calendar_file),
-            first_day=None if not calendar else calendar[0].strftime("%Y-%m-%d"),
-            last_day=None if not calendar else calendar[-1].strftime("%Y-%m-%d"),
             requested_start=str(requested_start.date()),
             requested_end=str(requested_end.date()),
             error=calendar_error,
+            **{key: value for key, value in calendar_evidence.items() if key != "ok"},
         )
     )
 
@@ -471,6 +619,7 @@ def evaluate_real_market_acceptance(
             "universe_source": str(source_path),
             "provider_dir": str(provider_path),
             "csv_dir": str(csv_path),
+            "boundary_gap_days": int(boundary_gap_days),
             "universe_source_sha256": contract.get("universe", {}).get("source_sha256"),
             "declared_contract_sha256": contract_sha256(contract),
         },
