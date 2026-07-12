@@ -15,6 +15,7 @@ from src.research.spec_bound_execution import (
     contract_sha256,
 )
 from src.research.spec_bound_factor_diagnostics import (
+    _window_date_map,
     run_factor_diagnostics,
     run_factor_diagnostics_from_files,
 )
@@ -274,7 +275,9 @@ def test_factor_diagnostics_are_spec_bound_and_diagnostic_only(tmp_path: Path) -
     assert report["trade_ready"] is False
     assert report["return_contract"]["rebalance_days"] == 10
     assert report["return_contract"]["horizon_days"] == 10
-    assert report["sampled_rebalance_dates"] > 50
+    assert report["sampled_rebalance_dates"] >= 40
+    assert all(row["excluded_tail_sessions"] == 10 for row in report["windows"])
+    assert all(row["label_horizon_sessions"] == 10 for row in report["windows"])
     assert report["factor_count"] == 4
 
     assert factors["test:positive"]["recommended_orientation"] == "keep_score"
@@ -345,3 +348,34 @@ def test_file_entrypoint_binds_acceptance_hash_and_provider(tmp_path: Path) -> N
             provider_dir=other_provider,
             runtime=FakeFactorRuntime(symbols),
         )
+
+def test_window_sampling_contains_forward_labels_within_oos_window(
+    tmp_path: Path,
+) -> None:
+    spec_path, _ = _write_spec(tmp_path)
+    spec = load_research_paradigm_spec(spec_path)
+    available_dates = pd.bdate_range("2024-01-01", "2025-12-31")
+
+    date_map, windows = _window_date_map(available_dates, spec)
+    positions = {pd.Timestamp(date): i for i, date in enumerate(available_dates)}
+    by_label = {row["label"]: row for row in windows}
+    selected = sorted(date_map)
+
+    assert selected
+    for date in selected:
+        window = by_label[date_map[date]]
+        future_date = available_dates[positions[date] + 10]
+        assert future_date <= pd.Timestamp(window["test_end"])
+
+    selected_positions = [positions[date] for date in selected]
+    assert all(
+        right - left >= 10
+        for left, right in zip(selected_positions, selected_positions[1:])
+    )
+    assert all(row["excluded_tail_sessions"] == 10 for row in windows)
+    assert all(
+        row["horizon_eligible_sessions"]
+        == row["available_sessions"] - row["excluded_tail_sessions"]
+        for row in windows
+    )
+
