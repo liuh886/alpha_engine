@@ -391,3 +391,34 @@ def test_ohlc_order_evidence_records_minor_and_material_violations(
     )
     assert evidence["max_violation"]["absolute_magnitude"] >= 1.0
     json.dumps(result, allow_nan=False)
+
+def test_ohlc_order_tolerates_machine_precision_roundoff(tmp_path: Path) -> None:
+    path = tmp_path / "roundoff-bars.csv"
+    exact = 100.0
+    sub_tolerance_delta = 5e-11
+    frame = pd.DataFrame(
+        {
+            "date": ["2026-01-05", "2026-01-06"],
+            "open": [exact, exact],
+            "high": [exact - sub_tolerance_delta, exact + 1.0],
+            "low": [exact - 1.0, exact + sub_tolerance_delta],
+            "close": [exact, exact],
+            "volume": [1000.0, 1000.0],
+        }
+    )
+    frame.to_csv(path, index=False)
+
+    result = _inspect_csv(path)
+
+    assert result["ok"] is True
+    assert result["invalid_ohlc_order_rows"] == 0
+    evidence = result["ohlc_order_evidence"]
+    assert evidence["violation_count"] == 0
+    assert evidence["ignored_roundoff_count"] == 4
+    assert evidence["max_ignored_roundoff"] is not None
+    assert evidence["comparison_tolerance"] == {
+        "absolute": 1e-12,
+        "relative": 1e-12,
+    }
+    json.dumps(result, allow_nan=False)
+
