@@ -1,0 +1,159 @@
+name: Issue 124 CSI300 source probe
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        method:
+          - yfinance_download_max
+          - yfinance_ticker_max
+          - akshare_stock_zh_index_daily
+          - akshare_stock_zh_index_daily_em
+          - akshare_index_zh_a_hist
+          - akshare_stock_zh_index_daily_tx
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Probe source
+        shell: bash
+        env:
+          PROBE_METHOD: ${{ matrix.method }}
+        run: |
+          cat > source_probe.json <<EOF
+          {"status":"started","method":"${PROBE_METHOD}"}
+          EOF
+          set +e
+          timeout 300 uv run python - <<'PY' > source_probe.log 2>&1
+          from __future__ import annotations
+
+          import json
+          import os
+          import warnings
+          from pathlib import Path
+
+          import pandas as pd
+
+          method = os.environ["PROBE_METHOD"]
+          payload: dict[str, object] = {
+              "status": "completed",
+              "method": method,
+              "ok": False,
+          }
+
+          try:
+              if method.startswith("yfinance_"):
+                  import yfinance as yf
+
+                  with warnings.catch_warnings():
+                      warnings.simplefilter("ignore")
+                      if method == "yfinance_download_max":
+                          frame = yf.download(
+                              "000300.SS",
+                              period="max",
+                              progress=False,
+                              auto_adjust=True,
+                          )
+                      else:
+                          frame = yf.Ticker("000300.SS").history(
+                              period="max",
+                              auto_adjust=True,
+                          )
+              else:
+                  import akshare as ak
+
+                  function_name = method.removeprefix("akshare_")
+                  function = getattr(ak, function_name, None)
+                  if function is None:
+                      raise AttributeError(
+                          f"akshare has no function {function_name!r}"
+                      )
+                  if function_name in {
+                      "stock_zh_index_daily",
+                      "stock_zh_index_daily_em",
+                      "stock_zh_index_daily_tx",
+                  }:
+                      frame = function(symbol="sh000300")
+                  elif function_name == "index_zh_a_hist":
+                      frame = function(
+                          symbol="000300",
+                          period="daily",
+                          start_date="20050101",
+                          end_date="20260712",
+                      )
+                  else:
+                      raise ValueError(f"unsupported probe function: {function_name}")
+
+              if frame is None:
+                  raise ValueError("source returned None")
+              if not isinstance(frame, pd.DataFrame):
+                  frame = pd.DataFrame(frame)
+              payload["columns"] = [str(item) for item in frame.columns]
+              payload["rows"] = int(len(frame))
+              if frame.empty:
+                  raise ValueError("source returned an empty dataframe")
+
+              dates = None
+              for column in frame.columns:
+                  normalized = str(column).strip().lower()
+                  if normalized in {"date", "日期", "day", "datetime"}:
+                      dates = pd.to_datetime(frame[column], errors="coerce")
+                      break
+              if dates is None:
+                  dates = pd.to_datetime(frame.index, errors="coerce")
+              dates = pd.Series(dates).dropna()
+              if dates.empty:
+                  raise ValueError("no parseable date axis")
+
+              payload.update(
+                  {
+                      "ok": True,
+                      "first_date": pd.Timestamp(dates.min()).strftime("%Y-%m-%d"),
+                      "last_date": pd.Timestamp(dates.max()).strftime("%Y-%m-%d"),
+                      "covers_declared_start": bool(
+                          pd.Timestamp(dates.min()) <= pd.Timestamp("2021-01-04")
+                      ),
+                  }
+              )
+          except Exception as exc:
+              payload["error_type"] = type(exc).__name__
+              payload["error"] = str(exc)
+
+          Path("source_probe.json").write_text(
+              json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True),
+              encoding="utf-8",
+          )
+          print(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
+          PY
+          status=$?
+          echo "$status" > source_probe.exit
+          cat source_probe.log
+          exit 0
+      - name: Upload source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: csi300-source-${{ matrix.method }}
+          path: |
+            source_probe.json
+            source_probe.log
+            source_probe.exit
+          if-no-files-found: warn
+          retention-days: 7
