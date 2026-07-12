@@ -1,0 +1,26 @@
+name: Apply market-provider runtime migration on PR
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  apply:
+    if: github.head_ref == 'feat/issue-127-market-providers' && github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/issue-127-market-providers
+          fetch-depth: 0
+      - name: Apply canonical runtime migration
+        run: python scripts/apply_market_provider_runtime_migration.py
+      - name: Commit migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/research/cn_qlib_execution_adapter.py src/research/us_qlib_execution_adapter.py
+          git commit -m "feat(research): use canonical market-specific providers"
+          git push origin HEAD:feat/issue-127-market-providers
