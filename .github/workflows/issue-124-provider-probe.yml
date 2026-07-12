@@ -1,0 +1,126 @@
+name: Issue 124 provider probe
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provider-probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - market: cn
+            symbol: "000300"
+          - market: us
+            symbol: FER
+          - market: us
+            symbol: KDP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Probe provider fallback
+        shell: bash
+        env:
+          PROBE_MARKET: ${{ matrix.market }}
+          PROBE_SYMBOL: ${{ matrix.symbol }}
+        run: |
+          cat > probe_status.json <<EOF
+          {"status":"started","market":"${PROBE_MARKET}","symbol":"${PROBE_SYMBOL}"}
+          EOF
+          set +e
+          timeout 600 uv run python - <<'PY' > probe.log 2>&1
+          from __future__ import annotations
+
+          import json
+          import os
+          from pathlib import Path
+
+          from src.data.adapters.akshare_adapter import AkShareAdapter
+          from src.data.adapters.baostock_adapter import BaoStockAdapter
+          from src.data.adapters.efinance_adapter import EFinanceAdapter
+          from src.data.adapters.yfinance_adapter import YFinanceAdapter
+          from src.data.router import MarketDataRouter
+
+          market = os.environ["PROBE_MARKET"]
+          symbol = os.environ["PROBE_SYMBOL"]
+          policy = {
+              "cn": ["efinance", "akshare", "baostock", "yfinance"],
+              "us": ["yfinance"],
+          }
+          router = MarketDataRouter(
+              adapters=[
+                  EFinanceAdapter(),
+                  AkShareAdapter(),
+                  BaoStockAdapter(),
+                  YFinanceAdapter(),
+              ],
+              policy=policy,
+          )
+          response = router.fetch_daily_bars(
+              symbol=symbol,
+              market=market,
+              start="2021-01-01",
+              end=None,
+              validate=True,
+          )
+          payload = {
+              "status": "completed",
+              "market": market,
+              "symbol": symbol,
+              "ok": response.ok,
+              "selected_provider": (
+                  None if response.result is None else response.result.provider
+              ),
+              "selected_provider_symbol": (
+                  None if response.result is None else response.result.provider_symbol
+              ),
+              "selected_rows": (
+                  0 if response.result is None else int(len(response.result.df))
+              ),
+              "selected_first_date": (
+                  None
+                  if response.result is None or response.result.df.empty
+                  else str(response.result.df["date"].min())
+              ),
+              "selected_last_date": (
+                  None
+                  if response.result is None or response.result.df.empty
+                  else str(response.result.df["date"].max())
+              ),
+              "attempts": [attempt.to_dict() for attempt in response.attempts],
+          }
+          Path("probe_status.json").write_text(
+              json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True),
+              encoding="utf-8",
+          )
+          print(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
+          PY
+          status=$?
+          echo "$status" > probe.exit
+          cat probe.log
+          exit 0
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-124-probe-${{ matrix.market }}-${{ matrix.symbol }}
+          path: |
+            probe_status.json
+            probe.log
+            probe.exit
+          if-no-files-found: warn
+          retention-days: 7
