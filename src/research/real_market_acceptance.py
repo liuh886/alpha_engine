@@ -29,7 +29,7 @@ from src.research.spec_bound_execution import (
     contract_sha256,
 )
 
-ACCEPTANCE_SCHEMA_VERSION = "1.2"
+ACCEPTANCE_SCHEMA_VERSION = "1.3"
 _REQUIRED_UNIVERSE_METADATA = (
     "universe_id",
     "membership_mode",
@@ -40,6 +40,8 @@ _REQUIRED_UNIVERSE_METADATA = (
 _REQUIRED_CSV_COLUMNS = ("date", "open", "high", "low", "close", "volume")
 _OHLC_COLUMNS = ("open", "high", "low", "close")
 _MAX_VIOLATION_EXAMPLES = 20
+_OHLC_ORDER_ABS_TOLERANCE = 1e-12
+_OHLC_ORDER_REL_TOLERANCE = 1e-12
 
 
 @dataclass(frozen=True)
@@ -195,10 +197,18 @@ def _ohlc_order_evidence(
     dates: pd.Series,
     numeric: pd.DataFrame,
 ) -> dict[str, Any]:
-    """Return row-level OHLC-order evidence without repairing source values."""
+    """Return material OHLC-order evidence without repairing source values.
+
+    Adjusted market data can differ by a few floating-point ULPs after provider
+    normalization and CSV serialization. Comparisons therefore ignore only
+    deltas within a strict absolute/relative tolerance and continue to reject
+    any material ordering violation.
+    """
 
     violations: list[dict[str, Any]] = []
     invalid_rows: set[int] = set()
+    ignored_roundoff_count = 0
+    max_ignored_roundoff: dict[str, Any] | None = None
     comparisons = (
         ("high_below_open", "high", "open"),
         ("high_below_low", "high", "low"),
@@ -213,18 +223,38 @@ def _ohlc_order_evidence(
         for violation_type, upper_column, lower_column in comparisons:
             upper = float(row[upper_column])
             lower = float(row[lower_column])
-            if upper >= lower:
+            absolute_magnitude = lower - upper
+            if absolute_magnitude <= 0.0:
                 continue
-            invalid_rows.add(position)
-            violations.append(
-                _violation_record(
-                    row_index=position,
-                    date=dates.iloc[position] if position < len(dates) else None,
-                    violation_type=violation_type,
-                    numeric_row=row,
-                    absolute_magnitude=lower - upper,
-                )
+
+            scale = max(abs(upper), abs(lower), 1.0)
+            tolerance = max(
+                _OHLC_ORDER_ABS_TOLERANCE,
+                _OHLC_ORDER_REL_TOLERANCE * scale,
             )
+            record = _violation_record(
+                row_index=position,
+                date=dates.iloc[position] if position < len(dates) else None,
+                violation_type=violation_type,
+                numeric_row=row,
+                absolute_magnitude=absolute_magnitude,
+            )
+            record["comparison_tolerance"] = float(tolerance)
+
+            if absolute_magnitude <= tolerance:
+                ignored_roundoff_count += 1
+                if max_ignored_roundoff is None or (
+                    float(record["absolute_magnitude"]),
+                    float(record["relative_magnitude"]),
+                ) > (
+                    float(max_ignored_roundoff["absolute_magnitude"]),
+                    float(max_ignored_roundoff["relative_magnitude"]),
+                ):
+                    max_ignored_roundoff = record
+                continue
+
+            invalid_rows.add(position)
+            violations.append(record)
 
     violations.sort(key=lambda item: (int(item["row_index"]), str(item["type"])))
     max_violation = (
@@ -244,8 +274,13 @@ def _ohlc_order_evidence(
         "examples": violations[:_MAX_VIOLATION_EXAMPLES],
         "examples_truncated": len(violations) > _MAX_VIOLATION_EXAMPLES,
         "max_violation": max_violation,
+        "comparison_tolerance": {
+            "absolute": _OHLC_ORDER_ABS_TOLERANCE,
+            "relative": _OHLC_ORDER_REL_TOLERANCE,
+        },
+        "ignored_roundoff_count": ignored_roundoff_count,
+        "max_ignored_roundoff": max_ignored_roundoff,
     }
-
 
 def _inspect_csv(path: Path) -> dict[str, Any]:
     frame = pd.read_csv(path)
