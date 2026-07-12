@@ -1,0 +1,171 @@
+name: Apply market-provider runtime migration
+
+on:
+  push:
+    branches: [feat/issue-127-market-providers]
+
+concurrency:
+  group: apply-market-provider-runtime
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/issue-127-market-providers
+          fetch-depth: 0
+      - name: Patch canonical Qlib runtimes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def patch_cn() -> None:
+              path = Path('src/research/cn_qlib_execution_adapter.py')
+              text = path.read_text(encoding='utf-8')
+              import_anchor = 'from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init\n'
+              import_line = (
+                  'from src.data.market_provider import '
+                  'load_provider_manifest, market_provider_path\n'
+              )
+              if import_line not in text:
+                  if import_anchor not in text:
+                      raise SystemExit('CN import anchor not found')
+                  text = text.replace(import_anchor, import_anchor + import_line, 1)
+
+              old_fields = '''    provider_uri: str | Path | None = None
+    _resolved_provider_uri: str = ""
+'''
+              new_fields = '''    provider_uri: str | Path | None = None
+    _resolved_provider_uri: str = ""
+    _provider_identity_sha256: str = ""
+'''
+              if new_fields not in text:
+                  if old_fields not in text:
+                      raise SystemExit('CN dataclass fields not found')
+                  text = text.replace(old_fields, new_fields, 1)
+
+              old_initialize = '''    def initialize(self, repository_root: Path) -> None:
+        provider = Path(self.provider_uri) if self.provider_uri else repository_root / "data" / "watchlist"
+        self._resolved_provider_uri = str(provider.resolve())
+        safe_qlib_init(
+'''
+              new_initialize = '''    def initialize(self, repository_root: Path) -> None:
+        provider = (
+            Path(self.provider_uri)
+            if self.provider_uri is not None
+            else market_provider_path(repository_root, "cn")
+        )
+        manifest = load_provider_manifest(
+            provider,
+            expected_market="cn",
+            required=self.provider_uri is None,
+            verify_files=True,
+        )
+        self._provider_identity_sha256 = (
+            "" if manifest is None else str(manifest["provider_identity_sha256"])
+        )
+        self._resolved_provider_uri = str(provider.resolve())
+        safe_qlib_init(
+'''
+              if new_initialize not in text:
+                  if old_initialize not in text:
+                      raise SystemExit('CN initialize block not found')
+                  text = text.replace(old_initialize, new_initialize, 1)
+
+              old_metadata = '''            "provider_uri": self._resolved_provider_uri,
+            "market": "cn",
+'''
+              new_metadata = '''            "provider_uri": self._resolved_provider_uri,
+            "provider_identity_sha256": self._provider_identity_sha256,
+            "market": "cn",
+'''
+              if new_metadata not in text:
+                  if old_metadata not in text:
+                      raise SystemExit('CN metadata block not found')
+                  text = text.replace(old_metadata, new_metadata, 1)
+              path.write_text(text, encoding='utf-8')
+
+          def patch_us() -> None:
+              path = Path('src/research/us_qlib_execution_adapter.py')
+              text = path.read_text(encoding='utf-8')
+              import_anchor = 'from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init\n'
+              import_line = (
+                  'from src.data.market_provider import '
+                  'load_provider_manifest, market_provider_path\n'
+              )
+              if import_line not in text:
+                  if import_anchor not in text:
+                      raise SystemExit('US import anchor not found')
+                  text = text.replace(import_anchor, import_anchor + import_line, 1)
+
+              old_fields = '''    provider_uri: str | Path | None = None
+    _resolved_provider_uri: str = ""
+'''
+              new_fields = '''    provider_uri: str | Path | None = None
+    _resolved_provider_uri: str = ""
+    _provider_identity_sha256: str = ""
+'''
+              if new_fields not in text:
+                  if old_fields not in text:
+                      raise SystemExit('US dataclass fields not found')
+                  text = text.replace(old_fields, new_fields, 1)
+
+              old_initialize = '''    def initialize(self, repository_root: Path) -> None:
+        provider = (
+            Path(self.provider_uri)
+            if self.provider_uri is not None
+            else repository_root / "data" / "watchlist"
+        )
+        self._resolved_provider_uri = str(provider.resolve())
+        safe_qlib_init(
+'''
+              new_initialize = '''    def initialize(self, repository_root: Path) -> None:
+        provider = (
+            Path(self.provider_uri)
+            if self.provider_uri is not None
+            else market_provider_path(repository_root, "us")
+        )
+        manifest = load_provider_manifest(
+            provider,
+            expected_market="us",
+            required=self.provider_uri is None,
+            verify_files=True,
+        )
+        self._provider_identity_sha256 = (
+            "" if manifest is None else str(manifest["provider_identity_sha256"])
+        )
+        self._resolved_provider_uri = str(provider.resolve())
+        safe_qlib_init(
+'''
+              if new_initialize not in text:
+                  if old_initialize not in text:
+                      raise SystemExit('US initialize block not found')
+                  text = text.replace(old_initialize, new_initialize, 1)
+
+              old_metadata = '''            "provider_uri": self._resolved_provider_uri,
+            "market": "us",
+'''
+              new_metadata = '''            "provider_uri": self._resolved_provider_uri,
+            "provider_identity_sha256": self._provider_identity_sha256,
+            "market": "us",
+'''
+              if new_metadata not in text:
+                  if old_metadata not in text:
+                      raise SystemExit('US metadata block not found')
+                  text = text.replace(old_metadata, new_metadata, 1)
+              path.write_text(text, encoding='utf-8')
+
+          patch_cn()
+          patch_us()
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/research/cn_qlib_execution_adapter.py src/research/us_qlib_execution_adapter.py
+          git commit -m "feat(research): use canonical market-specific providers"
+          git push origin HEAD:feat/issue-127-market-providers
