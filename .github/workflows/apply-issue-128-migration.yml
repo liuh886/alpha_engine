@@ -19,8 +19,12 @@ jobs:
         shell: bash
         run: |
           set +e
-          python scripts/apply_issue_128_migration.py > issue128_migration.log 2>&1
+          python scripts/prepare_issue_128_fixture.py > issue128_migration.log 2>&1
           status=$?
+          if [ "$status" -eq 0 ]; then
+            python scripts/apply_issue_128_migration.py >> issue128_migration.log 2>&1
+            status=$?
+          fi
           cat issue128_migration.log
           exit $status
       - name: Upload migration log
