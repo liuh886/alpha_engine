@@ -216,7 +216,8 @@ class DataSnapshot:
 
         store = Path(store if store is not None else SNAPSHOT_STORE).resolve()
         snapshot = cls.resolve_snapshot(snapshot_id, store=store)
-        if snapshot.manifest.quality_verdict != "pass":
+        publishable_verdicts = {"pass", "pass_with_warnings"}
+        if snapshot.manifest.quality_verdict not in publishable_verdicts:
             raise ValueError(
                 f"Cannot publish snapshot {snapshot_id}: "
                 f"quality_verdict={snapshot.manifest.quality_verdict!r}"

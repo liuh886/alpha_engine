@@ -26,6 +26,7 @@ class FetchResult:
     start: str
     end: str | None
     df: pd.DataFrame
+    provider_symbol: str | None = None
 
 
 class MarketDataAdapter(Protocol):
@@ -40,4 +41,3 @@ class MarketDataAdapter(Protocol):
     def name(self) -> str: ...
 
     def fetch_daily_bars(self, req: FetchRequest) -> FetchResult: ...
-
