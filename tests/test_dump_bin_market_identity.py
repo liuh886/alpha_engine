@@ -7,24 +7,47 @@ import pandas as pd
 import pytest
 import yaml
 
+from scripts.build_market_providers import build_market_providers
 from scripts.dump_bin import dump_all
+from src.data.market_provider import (
+    load_provider_manifest,
+    market_provider_path,
+)
 from src.data.symbol_identity import infer_data_market, normalize_data_symbol
 
 
-def _write_csv(path: Path, *, missing_second_open: bool = False) -> None:
+def _write_csv(
+    path: Path,
+    *,
+    dates: list[str] | None = None,
+    closes: list[float] | None = None,
+    missing_second_open: bool = False,
+) -> None:
+    selected_dates = dates or ["2026-06-18", "2026-06-19"]
+    selected_closes = closes or [10.5, 11.0]
+    if len(selected_dates) != len(selected_closes):
+        raise ValueError("dates and closes must have the same length")
+    close = np.asarray(selected_closes, dtype=float)
     frame = pd.DataFrame(
         {
-            "date": ["2026-06-18", "2026-06-19"],
-            "open": [10.0, np.nan if missing_second_open else 11.0],
-            "high": [11.0, 12.0],
-            "low": [9.0, 10.0],
-            "close": [10.5, 11.0],
-            "volume": [100.0, 110.0],
-            "amount": [1050.0, 1210.0],
-            "factor": [1.0, 1.0],
+            "date": selected_dates,
+            "open": close - 0.5,
+            "high": close + 0.5,
+            "low": close - 1.0,
+            "close": close,
+            "volume": np.arange(len(close), dtype=float) + 100.0,
+            "amount": close * (np.arange(len(close), dtype=float) + 100.0),
+            "factor": np.ones(len(close), dtype=float),
         }
     )
+    if missing_second_open and len(frame) > 1:
+        frame.loc[1, "open"] = np.nan
     frame.to_csv(path, index=False)
+
+
+def _read_qlib_values(path: Path) -> np.ndarray:
+    values = np.fromfile(path, dtype=np.float32)
+    return values[1:]  # drop the int32 start-index header viewed as float32
 
 
 def test_symbol_identity_normalizes_legacy_cn_numeric_names() -> None:
@@ -77,6 +100,99 @@ def test_dump_all_rejects_normalized_symbol_collisions(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="collide after normalization"):
         dump_all(str(csv_dir), str(tmp_path / "provider"), include_fields="close")
+
+
+def test_market_providers_use_only_their_own_sessions_and_symbols(
+    tmp_path: Path,
+) -> None:
+    csv_dir = tmp_path / "data" / "csv_source"
+    csv_dir.mkdir(parents=True)
+
+    cn_dates = [
+        "2026-01-05",
+        "2026-01-06",
+        "2026-01-07",
+        "2026-01-08",
+        "2026-01-09",
+        "2026-01-12",
+        "2026-01-13",
+        "2026-01-14",
+        "2026-01-15",
+        "2026-01-16",
+        "2026-01-19",
+        "2026-01-20",
+    ]
+    us_dates = [
+        "2026-01-05",
+        "2026-01-06",
+        "2026-01-07",
+        "2026-01-08",
+        "2026-01-09",
+        "2026-01-12",
+        "2026-01-13",
+        "2026-01-14",
+        "2026-01-15",
+        "2026-01-16",
+        "2026-01-20",
+        "2026-01-21",
+    ]
+    cn_close = [100.0 + index for index in range(len(cn_dates))]
+    us_close = [200.0 + index for index in range(len(us_dates))]
+    _write_csv(csv_dir / "000069.csv", dates=cn_dates, closes=cn_close)
+    _write_csv(csv_dir / "AAPL.csv", dates=us_dates, closes=us_close)
+
+    manifests = build_market_providers(
+        repository_root=tmp_path,
+        csv_dir=csv_dir,
+        markets=["cn", "us"],
+    )
+
+    cn_provider = market_provider_path(tmp_path, "cn")
+    us_provider = market_provider_path(tmp_path, "us")
+    assert (cn_provider / "calendars" / "day.txt").read_text(
+        encoding="utf-8"
+    ).splitlines() == cn_dates
+    assert (us_provider / "calendars" / "day.txt").read_text(
+        encoding="utf-8"
+    ).splitlines() == us_dates
+    assert "AAPL" not in (cn_provider / "instruments" / "cn.txt").read_text(
+        encoding="utf-8"
+    )
+    assert "000069" not in (us_provider / "instruments" / "us.txt").read_text(
+        encoding="utf-8"
+    )
+
+    cn_values = _read_qlib_values(
+        cn_provider / "features" / "000069" / "close.day.bin"
+    )
+    us_values = _read_qlib_values(
+        us_provider / "features" / "AAPL" / "close.day.bin"
+    )
+    assert cn_dates[10] == "2026-01-19"
+    assert us_dates[10] == "2026-01-20"
+    assert np.isclose(cn_values[10] / cn_values[0] - 1.0, cn_close[10] / cn_close[0] - 1.0)
+    assert np.isclose(us_values[10] / us_values[0] - 1.0, us_close[10] / us_close[0] - 1.0)
+    assert manifests["cn"]["provider_identity_sha256"] != manifests["us"][
+        "provider_identity_sha256"
+    ]
+
+
+def test_provider_manifest_detects_feature_mutation(tmp_path: Path) -> None:
+    csv_dir = tmp_path / "data" / "csv_source"
+    csv_dir.mkdir(parents=True)
+    _write_csv(csv_dir / "AAPL.csv")
+    build_market_providers(
+        repository_root=tmp_path,
+        csv_dir=csv_dir,
+        markets=["us"],
+    )
+    provider = market_provider_path(tmp_path, "us")
+    assert load_provider_manifest(provider, expected_market="us") is not None
+
+    feature = provider / "features" / "AAPL" / "close.day.bin"
+    feature.write_bytes(feature.read_bytes() + b"mutation")
+    with pytest.raises(ValueError, match="feature-tree hash mismatch"):
+        load_provider_manifest(provider, expected_market="us")
 
 
 def test_operational_watchlist_has_explicit_cn_strings() -> None:
