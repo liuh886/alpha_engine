@@ -1,0 +1,26 @@
+{
+  "acceptance_sha256": "4d427c9aa2f834b154792add30ce7e1bbbe4bb6d5af5afa24466dbb62fc01c75",
+  "artifacts": {
+    "acceptance": "/home/runner/work/alpha_engine/alpha_engine/artifacts/research_runs/us_10d_qqq_baseline/real_market_acceptance.json",
+    "factor_diagnostics": "/home/runner/work/alpha_engine/alpha_engine/artifacts/research_runs/us_10d_qqq_baseline/factor_diagnostics.json",
+    "manifest": "/home/runner/work/alpha_engine/alpha_engine/artifacts/research_runs/us_10d_qqq_baseline/real_market_research_manifest.json"
+  },
+  "diagnostic_only": true,
+  "experiment_id": "us_10d_qqq_baseline",
+  "factor_count": 24,
+  "factor_diagnostics_sha256": "fc52db50a15a55006a190623d434db8298d5d145e4e5d6245ab6232643c9b776",
+  "generated_at": "2026-07-12T18:02:00.383271+00:00",
+  "market": "us",
+  "next_step": "Review factor_diagnostics.json. Updating factor libraries or running model research requires a separate reviewed change; this pipeline never promotes.",
+  "promotion_eligible": false,
+  "promotion_evaluated": false,
+  "research_only": true,
+  "sampled_rebalance_dates": 48,
+  "schema_version": "1.0",
+  "stages": {
+    "factor_diagnostics": "passed",
+    "real_market_acceptance": "passed"
+  },
+  "status": "completed",
+  "trade_ready": false
+}

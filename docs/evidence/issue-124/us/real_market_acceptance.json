@@ -1,0 +1,4229 @@
+{
+  "accepted": true,
+  "checks": [
+    {
+      "details": {
+        "missing_fields": []
+      },
+      "message": "Research universe has explicit identity and survivorship metadata",
+      "name": "universe_metadata",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "non_string_count": 0,
+        "non_string_indices": []
+      },
+      "message": "All source symbols are explicit YAML strings",
+      "name": "source_symbol_types",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "canonical_count": 133,
+        "duplicates": [],
+        "requested_count": 133
+      },
+      "message": "Universe symbols are unique after market normalization",
+      "name": "canonical_symbol_identity",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "benchmark": "QQQ"
+      },
+      "message": "Benchmark is reference-only and excluded from candidate ranking",
+      "name": "benchmark_exclusion",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "fixture_markers": [],
+        "provider_dir": "/home/runner/work/alpha_engine/alpha_engine/data/providers/us"
+      },
+      "message": "Provider exists and has no synthetic/test fixture marker",
+      "name": "real_provider_scope",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "error": null,
+        "expected_market": "us",
+        "provider_dir": "/home/runner/work/alpha_engine/alpha_engine/data/providers/us",
+        "provider_identity_sha256": "b12a0e04b9e48f83fb404fd073f18573d76665846482426205aefead32cb09c1"
+      },
+      "message": "Provider has a verified market-specific identity manifest",
+      "name": "market_provider_identity",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "boundary_gap_days": 14,
+        "calendar_file": "/home/runner/work/alpha_engine/alpha_engine/data/providers/us/calendars/day.txt",
+        "effective_end_session": "2026-06-18",
+        "effective_start_session": "2021-01-04",
+        "end_boundary_gap_days": 0,
+        "error": null,
+        "first_day": "2021-01-04",
+        "last_day": "2026-07-10",
+        "requested_end": "2026-06-18",
+        "requested_start": "2021-01-01",
+        "start_boundary_gap_days": 3
+      },
+      "message": "Provider calendar covers the declared interval using effective market sessions",
+      "name": "calendar_coverage",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "boundary_failures": [
+          {
+            "first": "2024-03-20",
+            "last": "2026-07-10",
+            "provider_symbol": "ALAB",
+            "symbol": "ALAB"
+          },
+          {
+            "first": "2021-04-15",
+            "last": "2026-07-10",
+            "provider_symbol": "APP",
+            "symbol": "APP"
+          },
+          {
+            "first": "2023-09-14",
+            "last": "2026-07-10",
+            "provider_symbol": "ARM",
+            "symbol": "ARM"
+          },
+          {
+            "first": "2022-01-19",
+            "last": "2026-07-10",
+            "provider_symbol": "CEG",
+            "symbol": "CEG"
+          },
+          {
+            "first": "2025-06-05",
+            "last": "2026-07-10",
+            "provider_symbol": "CRCL",
+            "symbol": "CRCL"
+          },
+          {
+            "first": "2022-12-15",
+            "last": "2026-07-10",
+            "provider_symbol": "GEHC",
+            "symbol": "GEHC"
+          },
+          {
+            "first": "2021-07-29",
+            "last": "2026-07-10",
+            "provider_symbol": "HOOD",
+            "symbol": "HOOD"
+          },
+          {
+            "first": "2021-11-17",
+            "last": "2026-07-10",
+            "provider_symbol": "IREN",
+            "symbol": "IREN"
+          },
+          {
+            "first": "2024-10-21",
+            "last": "2026-07-10",
+            "provider_symbol": "NBIS",
+            "symbol": "NBIS"
+          },
+          {
+            "first": "2025-02-13",
+            "last": "2026-07-10",
+            "provider_symbol": "SNDK",
+            "symbol": "SNDK"
+          },
+          {
+            "first": "2024-06-14",
+            "last": "2026-07-10",
+            "provider_symbol": "TEM",
+            "symbol": "TEM"
+          },
+          {
+            "first": "2021-09-03",
+            "last": "2026-07-10",
+            "provider_symbol": "TYGO",
+            "symbol": "TYGO"
+          },
+          {
+            "first": "2022-01-27",
+            "last": "2026-07-10",
+            "provider_symbol": "CRDO",
+            "symbol": "CRDO"
+          }
+        ],
+        "covered": 120,
+        "error": null,
+        "instrument_file": "/home/runner/work/alpha_engine/alpha_engine/data/providers/us/instruments/us.txt",
+        "minimum_symbols": 30,
+        "requested": 133,
+        "unavailable": []
+      },
+      "message": "Provider contains enough fully covered research symbols",
+      "name": "universe_provider_coverage",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "benchmark": "QQQ",
+        "first": "2021-01-04",
+        "last": "2026-07-10",
+        "provider_symbol": "QQQ"
+      },
+      "message": "Reference benchmark is available across the declared interval",
+      "name": "benchmark_provider_coverage",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "csv_dir": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source",
+        "inspected": 121,
+        "invalid": [],
+        "minimum_rows": 252,
+        "missing": [],
+        "results": {
+          "AAOI": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/AAOI.csv",
+            "rows": 1385
+          },
+          "AAPL": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/AAPL.csv",
+            "rows": 1385
+          },
+          "ABBNY": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ABBNY.csv",
+            "rows": 1385
+          },
+          "ABNB": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ABNB.csv",
+            "rows": 1385
+          },
+          "ADBE": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ADBE.csv",
+            "rows": 1385
+          },
+          "ADI": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ADI.csv",
+            "rows": 1385
+          },
+          "ADP": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ADP.csv",
+            "rows": 1385
+          },
+          "ADSK": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ADSK.csv",
+            "rows": 1385
+          },
+          "AEHR": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/AEHR.csv",
+            "rows": 1385
+          },
+          "AEP": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/AEP.csv",
+            "rows": 1385
+          },
+          "ALNY": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ALNY.csv",
+            "rows": 1385
+          },
+          "AMAT": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/AMAT.csv",
+            "rows": 1385
+          },
+          "AMD": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/AMD.csv",
+            "rows": 1385
+          },
+          "AMGN": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/AMGN.csv",
+            "rows": 1385
+          },
+          "AMZN": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/AMZN.csv",
+            "rows": 1385
+          },
+          "ANET": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ANET.csv",
+            "rows": 1385
+          },
+          "ASML": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ASML.csv",
+            "rows": 1385
+          },
+          "AVGO": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/AVGO.csv",
+            "rows": 1385
+          },
+          "AXON": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/AXON.csv",
+            "rows": 1385
+          },
+          "BABA": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/BABA.csv",
+            "rows": 1385
+          },
+          "BE": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/BE.csv",
+            "rows": 1385
+          },
+          "BIDU": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/BIDU.csv",
+            "rows": 1385
+          },
+          "BKNG": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/BKNG.csv",
+            "rows": 1385
+          },
+          "BKR": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/BKR.csv",
+            "rows": 1385
+          },
+          "CCEP": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CCEP.csv",
+            "rows": 1385
+          },
+          "CDNS": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CDNS.csv",
+            "rows": 1385
+          },
+          "CHTR": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CHTR.csv",
+            "rows": 1385
+          },
+          "CMCSA": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CMCSA.csv",
+            "rows": 1385
+          },
+          "COHR": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/COHR.csv",
+            "rows": 1385
+          },
+          "COST": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/COST.csv",
+            "rows": 1385
+          },
+          "CPRT": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CPRT.csv",
+            "rows": 1385
+          },
+          "CRWD": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CRWD.csv",
+            "rows": 1385
+          },
+          "CSCO": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CSCO.csv",
+            "rows": 1385
+          },
+          "CSGP": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CSGP.csv",
+            "rows": 1385
+          },
+          "CSX": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CSX.csv",
+            "rows": 1385
+          },
+          "CTAS": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CTAS.csv",
+            "rows": 1385
+          },
+          "CTSH": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/CTSH.csv",
+            "rows": 1385
+          },
+          "DASH": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/DASH.csv",
+            "rows": 1385
+          },
+          "DDOG": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/DDOG.csv",
+            "rows": 1385
+          },
+          "DXCM": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/DXCM.csv",
+            "rows": 1385
+          },
+          "EA": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/EA.csv",
+            "rows": 1385
+          },
+          "EME": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/EME.csv",
+            "rows": 1385
+          },
+          "ETN": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ETN.csv",
+            "rows": 1385
+          },
+          "EXC": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/EXC.csv",
+            "rows": 1385
+          },
+          "FANG": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/FANG.csv",
+            "rows": 1385
+          },
+          "FAST": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/FAST.csv",
+            "rows": 1385
+          },
+          "FER": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/FER.csv",
+            "rows": 1385
+          },
+          "FIX": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/FIX.csv",
+            "rows": 1385
+          },
+          "FN": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/FN.csv",
+            "rows": 1385
+          },
+          "FTNT": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/FTNT.csv",
+            "rows": 1385
+          },
+          "GILD": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/GILD.csv",
+            "rows": 1385
+          },
+          "GOOG": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/GOOG.csv",
+            "rows": 1385
+          },
+          "GOOGL": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/GOOGL.csv",
+            "rows": 1385
+          },
+          "HIMS": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/HIMS.csv",
+            "rows": 1385
+          },
+          "HIMX": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/HIMX.csv",
+            "rows": 1385
+          },
+          "HON": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/HON.csv",
+            "rows": 1385
+          },
+          "IDXX": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/IDXX.csv",
+            "rows": 1385
+          },
+          "INSM": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/INSM.csv",
+            "rows": 1385
+          },
+          "INTC": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/INTC.csv",
+            "rows": 1385
+          },
+          "INTU": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/INTU.csv",
+            "rows": 1385
+          },
+          "ISRG": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ISRG.csv",
+            "rows": 1385
+          },
+          "KDP": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 1,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": {
+                "absolute_magnitude": 3.552713678800501e-15,
+                "close": 30.739526748657227,
+                "comparison_tolerance": 3.073952674865723e-11,
+                "date": "2021-06-11",
+                "high": 30.739526748657223,
+                "low": 30.355611059448144,
+                "open": 30.55629448756674,
+                "relative_magnitude": 1.1557476820802687e-16,
+                "row_index": 110,
+                "type": "high_below_close"
+              },
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/KDP.csv",
+            "rows": 1385
+          },
+          "KHC": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/KHC.csv",
+            "rows": 1385
+          },
+          "KLAC": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/KLAC.csv",
+            "rows": 1385
+          },
+          "LIN": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/LIN.csv",
+            "rows": 1385
+          },
+          "LITE": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/LITE.csv",
+            "rows": 1385
+          },
+          "LRCX": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/LRCX.csv",
+            "rows": 1385
+          },
+          "MAR": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/MAR.csv",
+            "rows": 1385
+          },
+          "MCHP": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/MCHP.csv",
+            "rows": 1385
+          },
+          "MDLZ": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/MDLZ.csv",
+            "rows": 1385
+          },
+          "MELI": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/MELI.csv",
+            "rows": 1385
+          },
+          "META": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/META.csv",
+            "rows": 1385
+          },
+          "MNST": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/MNST.csv",
+            "rows": 1385
+          },
+          "MPWR": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/MPWR.csv",
+            "rows": 1385
+          },
+          "MRVL": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/MRVL.csv",
+            "rows": 1385
+          },
+          "MSFT": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/MSFT.csv",
+            "rows": 1385
+          },
+          "MSTR": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/MSTR.csv",
+            "rows": 1385
+          },
+          "MU": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/MU.csv",
+            "rows": 1385
+          },
+          "NFLX": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/NFLX.csv",
+            "rows": 1385
+          },
+          "NOK": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/NOK.csv",
+            "rows": 1385
+          },
+          "NVDA": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/NVDA.csv",
+            "rows": 1385
+          },
+          "NXPI": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/NXPI.csv",
+            "rows": 1385
+          },
+          "ODFL": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ODFL.csv",
+            "rows": 1385
+          },
+          "ORCL": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ORCL.csv",
+            "rows": 1385
+          },
+          "ORLY": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ORLY.csv",
+            "rows": 1385
+          },
+          "PANW": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/PANW.csv",
+            "rows": 1385
+          },
+          "PAYX": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/PAYX.csv",
+            "rows": 1385
+          },
+          "PCAR": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/PCAR.csv",
+            "rows": 1385
+          },
+          "PDD": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/PDD.csv",
+            "rows": 1385
+          },
+          "PEP": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/PEP.csv",
+            "rows": 1385
+          },
+          "PLTR": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/PLTR.csv",
+            "rows": 1385
+          },
+          "POET": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/POET.csv",
+            "rows": 1385
+          },
+          "PWR": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/PWR.csv",
+            "rows": 1385
+          },
+          "PYPL": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/PYPL.csv",
+            "rows": 1385
+          },
+          "QCOM": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/QCOM.csv",
+            "rows": 1385
+          },
+          "QQQ": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/QQQ.csv",
+            "rows": 1385
+          },
+          "REGN": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/REGN.csv",
+            "rows": 1385
+          },
+          "ROP": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ROP.csv",
+            "rows": 1385
+          },
+          "ROST": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ROST.csv",
+            "rows": 1385
+          },
+          "SBGSY": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/SBGSY.csv",
+            "rows": 1385
+          },
+          "SBUX": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/SBUX.csv",
+            "rows": 1385
+          },
+          "SHOP": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/SHOP.csv",
+            "rows": 1385
+          },
+          "SNPS": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/SNPS.csv",
+            "rows": 1385
+          },
+          "STX": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/STX.csv",
+            "rows": 1385
+          },
+          "TEAM": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/TEAM.csv",
+            "rows": 1385
+          },
+          "TIGO": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/TIGO.csv",
+            "rows": 1385
+          },
+          "TMUS": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/TMUS.csv",
+            "rows": 1385
+          },
+          "TRI": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/TRI.csv",
+            "rows": 1385
+          },
+          "TSLA": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/TSLA.csv",
+            "rows": 1385
+          },
+          "TSM": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/TSM.csv",
+            "rows": 1385
+          },
+          "TTWO": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/TTWO.csv",
+            "rows": 1385
+          },
+          "TXN": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/TXN.csv",
+            "rows": 1385
+          },
+          "VRSK": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/VRSK.csv",
+            "rows": 1385
+          },
+          "VRT": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/VRT.csv",
+            "rows": 1385
+          },
+          "VRTX": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/VRTX.csv",
+            "rows": 1385
+          },
+          "WBD": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/WBD.csv",
+            "rows": 1385
+          },
+          "WDAY": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/WDAY.csv",
+            "rows": 1385
+          },
+          "WDC": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/WDC.csv",
+            "rows": 1385
+          },
+          "WMT": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/WMT.csv",
+            "rows": 1385
+          },
+          "XEL": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/XEL.csv",
+            "rows": 1385
+          },
+          "ZS": {
+            "dates_monotonic": true,
+            "duplicate_dates": 0,
+            "first_date": "2021-01-04",
+            "invalid_dates": 0,
+            "invalid_ohlc_order_rows": 0,
+            "last_date": "2026-07-10",
+            "negative_volume_rows": 0,
+            "nonfinite_values": {
+              "close": 0,
+              "high": 0,
+              "low": 0,
+              "open": 0,
+              "volume": 0
+            },
+            "nonpositive_ohlc_rows": 0,
+            "ohlc_order_evidence": {
+              "comparison_tolerance": {
+                "absolute": 1e-12,
+                "relative": 1e-12
+              },
+              "examples": [],
+              "examples_truncated": false,
+              "ignored_roundoff_count": 0,
+              "invalid_row_count": 0,
+              "max_ignored_roundoff": null,
+              "max_violation": null,
+              "violation_count": 0
+            },
+            "ok": true,
+            "path": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source/ZS.csv",
+            "rows": 1385
+          }
+        },
+        "too_short": []
+      },
+      "message": "All retained symbols and benchmark have valid, non-fabricated OHLCV CSV history",
+      "name": "source_csv_integrity",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "membership_as_of": "2026-07-11",
+        "membership_mode": "static_curated"
+      },
+      "message": "Static current-membership universe is acceptable for exploratory research but not an unbiased historical estimate",
+      "name": "survivorship_bias",
+      "status": "warn"
+    }
+  ],
+  "experiment_id": "us_10d_qqq_baseline",
+  "generated_at": "2026-07-12T18:02:06.857767+00:00",
+  "inputs": {
+    "boundary_gap_days": 14,
+    "csv_dir": "/home/runner/work/alpha_engine/alpha_engine/data/csv_source",
+    "declared_contract_sha256": "46a288e84efe9f0d57cec5777116b62b61181d80bf2333cc33d3a6b174297cda",
+    "provider_dir": "/home/runner/work/alpha_engine/alpha_engine/data/providers/us",
+    "provider_identity_sha256": "b12a0e04b9e48f83fb404fd073f18573d76665846482426205aefead32cb09c1",
+    "spec_path": "/home/runner/work/alpha_engine/alpha_engine/configs/research_paradigms/us_10d_qqq_baseline.yaml",
+    "universe_source": "/home/runner/work/alpha_engine/alpha_engine/configs/research_universes/us_curated_equities_v1.yaml",
+    "universe_source_sha256": "cb311655be341213f70cd0753d88aa33f2afd594691c4704c0ad3b206ef75fd2"
+  },
+  "market": "us",
+  "schema_version": "1.3",
+  "summary": {
+    "failed": 0,
+    "passed": 10,
+    "warnings": 1
+  }
+}
