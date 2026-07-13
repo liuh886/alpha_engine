@@ -12,7 +12,7 @@ from src.research.paradigm import load_research_paradigm_spec
 from src.research.real_market_acceptance import run_real_market_acceptance
 from src.research.spec_bound_factor_diagnostics import run_factor_diagnostics_from_files
 
-PIPELINE_SCHEMA_VERSION = "1.0"
+PIPELINE_SCHEMA_VERSION = "1.1"
 AcceptanceRunner = Callable[..., dict[str, Any]]
 DiagnosticsRunner = Callable[..., dict[str, Any]]
 
@@ -133,6 +133,15 @@ def run_real_market_research_pipeline(
     manifest["stages"]["factor_diagnostics"] = "passed"
     manifest["factor_diagnostics_sha256"] = _sha256(diagnostics_path)
     manifest["factor_count"] = diagnostics.get("factor_count")
+    manifest["factor_id_count"] = diagnostics.get(
+        "factor_id_count", diagnostics.get("factor_count")
+    )
+    manifest["unique_expression_count"] = diagnostics.get(
+        "unique_expression_count"
+    )
+    manifest["canonical_factor_count"] = diagnostics.get(
+        "canonical_factor_count", diagnostics.get("unique_expression_count")
+    )
     manifest["sampled_rebalance_dates"] = diagnostics.get("sampled_rebalance_dates")
     manifest["next_step"] = (
         "Review factor_diagnostics.json. Updating factor libraries or running model "

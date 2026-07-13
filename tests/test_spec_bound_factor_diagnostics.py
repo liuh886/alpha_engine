@@ -9,12 +9,17 @@ import pandas as pd
 import pytest
 import yaml
 
+from src.research.factor_identity import (
+    canonical_expression_identity,
+    validate_alias_metric_consistency,
+)
 from src.research.paradigm import load_research_paradigm_spec
 from src.research.spec_bound_execution import (
     build_declared_execution_contract,
     contract_sha256,
 )
 from src.research.spec_bound_factor_diagnostics import (
+    _selected_factor_specs,
     _window_date_map,
     run_factor_diagnostics,
     run_factor_diagnostics_from_files,
@@ -119,6 +124,11 @@ def _write_spec(tmp_path: Path) -> tuple[Path, list[str]]:
                                 "id": "test:positive",
                                 "expression": "POSITIVE_SIGNAL",
                                 "family": "signal",
+                            },
+                            {
+                                "id": "test:positive_alias",
+                                "expression": " POSITIVE_SIGNAL ",
+                                "family": "alias",
                             },
                             {
                                 "id": "test:negative",
@@ -278,10 +288,29 @@ def test_factor_diagnostics_are_spec_bound_and_diagnostic_only(tmp_path: Path) -
     assert report["sampled_rebalance_dates"] >= 40
     assert all(row["excluded_tail_sessions"] == 10 for row in report["windows"])
     assert all(row["label_horizon_sessions"] == 10 for row in report["windows"])
-    assert report["factor_count"] == 4
+    assert report["schema_version"] == "1.2"
+    assert report["factor_count"] == 5
+    assert report["factor_id_count"] == 5
+    assert report["unique_expression_count"] == 4
+    assert report["canonical_factor_count"] == 4
+    assert len(report["canonical_factors"]) == 4
+    assert report["ranking_subject"] == "canonical_expression"
+    assert report["factor_identity"]["scheme"] == "qlib_expression_text_v1"
+    assert (
+        report["factor_alias_map"]["test:positive"]
+        == report["factor_alias_map"]["test:positive_alias"]
+    )
 
     assert factors["test:positive"]["recommended_orientation"] == "keep_score"
     assert factors["test:positive"]["oriented_mean_rank_ic"] > 0.8
+    assert (
+        factors["test:positive"]["canonical_expression_id"]
+        == factors["test:positive_alias"]["canonical_expression_id"]
+    )
+    assert (
+        factors["test:positive"]["oriented_rank_icir"]
+        == factors["test:positive_alias"]["oriented_rank_icir"]
+    )
     assert factors["test:positive"]["oriented_mean_top_bottom_spread"] > 0.0
     assert factors["test:negative"]["recommended_orientation"] == "invert_score"
     assert factors["test:negative"]["oriented_mean_rank_ic"] > 0.8
@@ -289,6 +318,62 @@ def test_factor_diagnostics_are_spec_bound_and_diagnostic_only(tmp_path: Path) -
     assert factors["test:sparse"]["coverage_ratio"] < factors["test:positive"]["coverage_ratio"]
     assert len(factors["test:positive"]["window_metrics"]) >= 3
 
+
+
+def test_factor_expression_identity_is_deterministic_and_conservative() -> None:
+    compact = canonical_expression_identity("POSITIVE_SIGNAL")
+    spaced = canonical_expression_identity("  POSITIVE_SIGNAL\n")
+    parenthesized = canonical_expression_identity("(POSITIVE_SIGNAL)")
+
+    assert compact == spaced
+    assert compact["scheme"] == "qlib_expression_text_v1"
+    assert compact["normalized_expression"] == "POSITIVE_SIGNAL"
+    assert compact["canonical_expression_id"].startswith("qlib-expression:")
+    assert compact != parenthesized
+
+
+def test_alias_metric_divergence_fails_closed(tmp_path: Path) -> None:
+    spec_path, symbols = _write_spec(tmp_path)
+    report = run_factor_diagnostics(
+        load_research_paradigm_spec(spec_path),
+        _acceptance(tmp_path, spec_path),
+        repository_root=tmp_path,
+        runtime=FakeFactorRuntime(symbols),
+    )
+    factors = _by_id(report)
+    rows = [dict(factors["test:positive"]), dict(factors["test:positive_alias"])]
+    rows[1]["oriented_rank_icir"] = float(rows[1]["oriented_rank_icir"]) + 0.01
+
+    with pytest.raises(ValueError, match="alias metrics diverged"):
+        validate_alias_metric_consistency(rows)
+
+
+@pytest.mark.parametrize(
+    ("spec_name", "factor_id_count", "unique_expression_count"),
+    [
+        ("cn_10d_csi300_baseline.yaml", 47, 23),
+        ("us_10d_qqq_baseline.yaml", 24, 9),
+    ],
+)
+def test_production_factor_libraries_have_expected_alias_counts(
+    spec_name: str,
+    factor_id_count: int,
+    unique_expression_count: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository_root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(repository_root)
+    spec = load_research_paradigm_spec(
+        repository_root / "configs" / "research_paradigms" / spec_name
+    )
+    factor_specs = _selected_factor_specs(spec)
+    canonical = {
+        canonical_expression_identity(factor.expression)["canonical_expression_id"]
+        for _, factor in factor_specs
+    }
+
+    assert len(factor_specs) == factor_id_count
+    assert len(canonical) == unique_expression_count
 
 def test_factor_diagnostics_fail_closed_on_rejected_or_stale_acceptance(
     tmp_path: Path,
