@@ -1,0 +1,197 @@
+{
+  "acceptance": {
+    "accepted": true,
+    "failed": 0,
+    "passed": 10,
+    "schema_version": "1.3",
+    "sha256": "eec4169772a0bd723136d3c7e30d4829d6a6b82de0e0c194669444c3ee29ebb8",
+    "warnings": 1
+  },
+  "closure_verdict": "passed",
+  "declared_interval_quality": {
+    "calendar_session_count": 1321,
+    "csv_end_max": "2026-06-18",
+    "csv_end_min": "2026-06-18",
+    "csv_missing": 0,
+    "csv_parse_errors": 0,
+    "csv_stale": 0,
+    "effective_calendar_end": "2026-06-18",
+    "effective_calendar_start": "2021-01-04",
+    "instrument_end_max": "2026-06-18",
+    "instrument_end_min": "2026-06-18",
+    "mode": "declared_interval",
+    "ok": true,
+    "requested_end": "2026-06-18",
+    "requested_start": "2021-01-01",
+    "retained_instruments": 171,
+    "stale_instruments": 0
+  },
+  "evidence_type": "post_160_declared_end_cn_closure",
+  "execution": {
+    "exit_codes": {
+      "pipeline": 0,
+      "provider": 0,
+      "update": 2
+    },
+    "provider_attempts": {
+      "failed": 53,
+      "failed_symbols": [
+        "000063",
+        "000157",
+        "000166",
+        "000408",
+        "000617",
+        "000725",
+        "000768",
+        "000786",
+        "000800",
+        "000999",
+        "001979",
+        "002007",
+        "002027",
+        "002032",
+        "002120",
+        "002142",
+        "002180",
+        "002222",
+        "002236",
+        "002252",
+        "002311",
+        "002415",
+        "002456",
+        "002600",
+        "002714",
+        "002736",
+        "300017",
+        "300782",
+        "301291",
+        "600009",
+        "600026",
+        "600050",
+        "600184",
+        "600487",
+        "600837",
+        "600893",
+        "601006",
+        "601009",
+        "601336",
+        "601390",
+        "601618",
+        "601688",
+        "601727",
+        "601728",
+        "601766",
+        "601788",
+        "601818",
+        "601857",
+        "601878",
+        "601881",
+        "601989",
+        "603160",
+        "688521"
+      ],
+      "failure_policy": "visible_and_excluded; no stale-cache reuse, zero-fill, synthetic substitution, or silent imputation",
+      "succeeded": 171,
+      "total": 224
+    }
+  },
+  "factor_diagnostics": {
+    "complete_window_count": 4,
+    "factor_count": 23,
+    "factor_id_count": 47,
+    "partial_window_policy": "complete_windows_only",
+    "ranking_subject": "canonical_expression",
+    "sampled_rebalance_dates": 46,
+    "schema_version": "1.3",
+    "sha256": "abf0064330c7e359898b74e79c42d3862c6a791cb4071d7701eb20df01a2b836",
+    "status": "passed",
+    "unique_expression_count": 23
+  },
+  "final_state": {
+    "acceptance_stage": "passed",
+    "diagnostic_only": true,
+    "factor_diagnostics_stage": "passed",
+    "pipeline_status": "completed",
+    "promotion_eligible": false,
+    "promotion_evaluated": false,
+    "research_only": true,
+    "trade_ready": false
+  },
+  "fixed_contract": {
+    "benchmark": "000300",
+    "cadence_sessions": 10,
+    "configured_symbols_including_benchmark": 224,
+    "horizon_sessions": 10,
+    "market": "cn",
+    "partial_window_policy": "complete_windows_only",
+    "requested_end_inclusive": "2026-06-18",
+    "requested_start": "2021-01-01",
+    "research_spec": "configs/research_paradigms/cn_10d_csi300_baseline.yaml",
+    "universe": "configs/research_universes/cn_curated_equities_v1.yaml"
+  },
+  "generated_at": "2026-07-13T15:40:11.503149+00:00",
+  "provider": {
+    "calendar_first_day": "2021-01-04",
+    "calendar_last_day": "2026-06-18",
+    "calendar_session_count": 1321,
+    "calendar_sha256": "f8bc13ca669848836292dbfd993026130a775b3e09724194653d0660e418d480",
+    "instrument_count": 171,
+    "instrument_file_sha256": "ed29f8b28184ec4cd2021539e9803dc4572f587cfa6a076747fcb7050c99e8cf",
+    "market": "cn",
+    "provider_identity_sha256": "ae2c990b0ef094b3a91bfdf63ce123c277904a8ea72001f2d065101251ccb37a"
+  },
+  "raw_artifact_inventory": {
+    "declared_end_cn_summary.json": {
+      "sha256": "52f681aa3486a17fd82b418889f15c0a04f91b195b4e3f113a563f89ab1d6132",
+      "size_bytes": 709061
+    },
+    "declared_pipeline.log": {
+      "sha256": "5a9bb87071845889284d721e8475d70923aee6d83879efbd211b3bff90ec914d",
+      "size_bytes": 1782
+    },
+    "declared_provider.log": {
+      "sha256": "849c686a859c3daa36bdcc0ccf0d56eb500512a80e0cb8a0b11b49fcd6516273",
+      "size_bytes": 291
+    },
+    "declared_update.log": {
+      "sha256": "5c48d881dab11303e0a8d61f2b77cc30222c6090d7ce0252de0350071ff44c3e",
+      "size_bytes": 47462
+    },
+    "factor_diagnostics.json": {
+      "sha256": "abf0064330c7e359898b74e79c42d3862c6a791cb4071d7701eb20df01a2b836",
+      "size_bytes": 255088
+    },
+    "provider_attempts.json": {
+      "sha256": "04beac3e92f1abcfea6b6fc1b700cd8a216ade334811390cbfeeb93867413b89",
+      "size_bytes": 214349
+    },
+    "provider_manifest.json": {
+      "sha256": "5d1ea22681e295f4a2007c531211c797b307a002979698b8db5d324def8d793c",
+      "size_bytes": 21841
+    },
+    "real_market_acceptance.json": {
+      "sha256": "eec4169772a0bd723136d3c7e30d4829d6a6b82de0e0c194669444c3ee29ebb8",
+      "size_bytes": 203271
+    },
+    "real_market_research_manifest.json": {
+      "sha256": "0c9a558b9b8f552233a4362966400b5ccd72991b817f0c85572f8d033fab005b",
+      "size_bytes": 1326
+    },
+    "watchlist_latest.json": {
+      "sha256": "6794b1c1b9e7e35c20d30421a725adcc1b0dc2cd124f2add5384392d55cebcf9",
+      "size_bytes": 206199
+    }
+  },
+  "schema_version": "1.0",
+  "source": {
+    "execution_only_pr": 161,
+    "merged_pr": 160,
+    "production_commit": "10a3bb3d61e57b74b37c6deecfbdcad9769e6427",
+    "repository": "liuh886/alpha_engine",
+    "successful_workflow_run_id": 29261434173,
+    "tracking_issue": 156,
+    "workflow_artifact_digest": "sha256:0a79235b05f8ea2e2425671a6446e589336ff730f72095efff59620336a6c79f",
+    "workflow_artifact_expires_at": "2026-07-20T15:40:35Z",
+    "workflow_artifact_id": 8284264097
+  }
+}
