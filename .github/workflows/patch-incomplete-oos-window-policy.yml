@@ -76,6 +76,14 @@ jobs:
               diagnostic_text = diagnostic_text.replace(old_schema, new_schema, 1)
           elif new_schema not in diagnostic_text:
               raise SystemExit('diagnostic schema assertion not found')
+          old_window_end = 'pd.Timestamp(window["test_end"])'
+          new_window_end = 'pd.Timestamp(window["effective_test_end"])'
+          if old_window_end in diagnostic_text:
+              diagnostic_text = diagnostic_text.replace(
+                  old_window_end, new_window_end, 1
+              )
+          elif new_window_end not in diagnostic_text:
+              raise SystemExit('effective window-end assertion anchor not found')
           diagnostic_path.write_text(diagnostic_text, encoding='utf-8')
           PY
 
