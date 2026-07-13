@@ -1,0 +1,26 @@
+{
+  "acceptance_sha256": "52e008b381c389e4a01c2f82124fcc33f1c683d74c64583c71c1778c4597d623",
+  "artifacts": {
+    "acceptance": "/home/runner/work/alpha_engine/alpha_engine/artifacts/research_runs/cn_10d_csi300_baseline/real_market_acceptance.json",
+    "factor_diagnostics": "/home/runner/work/alpha_engine/alpha_engine/artifacts/research_runs/cn_10d_csi300_baseline/factor_diagnostics.json",
+    "manifest": "/home/runner/work/alpha_engine/alpha_engine/artifacts/research_runs/cn_10d_csi300_baseline/real_market_research_manifest.json"
+  },
+  "diagnostic_only": true,
+  "experiment_id": "cn_10d_csi300_baseline",
+  "factor_count": 47,
+  "factor_diagnostics_sha256": "60d2b0d10cd90bbed68aa362416c2cd03eb553f3cd6e26039628ff81706f6b71",
+  "generated_at": "2026-07-12T19:09:17.940267+00:00",
+  "market": "cn",
+  "next_step": "Review factor_diagnostics.json. Updating factor libraries or running model research requires a separate reviewed change; this pipeline never promotes.",
+  "promotion_eligible": false,
+  "promotion_evaluated": false,
+  "research_only": true,
+  "sampled_rebalance_dates": 46,
+  "schema_version": "1.0",
+  "stages": {
+    "factor_diagnostics": "passed",
+    "real_market_acceptance": "passed"
+  },
+  "status": "completed",
+  "trade_ready": false
+}
