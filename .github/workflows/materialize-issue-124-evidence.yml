@@ -76,7 +76,7 @@ jobs:
       - name: Commit durable evidence
         shell: bash
         run: |
-          if git diff --quiet -- docs/evidence/issue-124; then
+          if [[ -z "$(git status --porcelain -- docs/evidence/issue-124)" ]]; then
             echo 'Evidence already materialized'
             exit 0
           fi
