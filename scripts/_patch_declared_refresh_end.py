@@ -1,0 +1,148 @@
+from pathlib import Path
+
+path = Path("scripts/update_data.py")
+text = path.read_text(encoding="utf-8")
+
+import_anchor = "from src.data.validation.schema import validate_market_data\n\n\n"
+helper = '''from src.data.validation.schema import validate_market_data
+
+
+def _normalise_cli_date(value: object, *, field_name: str) -> str:
+    try:
+        return pd.Timestamp(value).normalize().strftime("%Y-%m-%d")
+    except Exception as exc:
+        raise DataUpdateFailure(f"invalid {field_name}: {value!r}") from exc
+
+
+def _resolve_requested_interval(args: object) -> tuple[str, str | None]:
+    start = _normalise_cli_date(getattr(args, "start", None), field_name="--start")
+    raw_end = getattr(args, "end", None)
+    end = (
+        _normalise_cli_date(raw_end, field_name="--end")
+        if raw_end is not None and str(raw_end).strip()
+        else None
+    )
+    if end is not None and not bool(getattr(args, "full", False)):
+        raise DataUpdateFailure("--end requires --full so the provider is rebuilt to the declared interval")
+    if end is not None and end < start:
+        raise DataUpdateFailure("--end must be on or after --start")
+    return start, end
+
+
+'''
+if text.count(import_anchor) != 1:
+    raise SystemExit("update-data import anchor not found exactly once")
+text = text.replace(import_anchor, helper, 1)
+
+run_anchor = '''    print("=== Updating Data via router (providers + fallback) ===")
+
+    # Provider diagnostics collector
+'''
+run_replacement = '''    print("=== Updating Data via router (providers + fallback) ===")
+
+    requested_start, requested_end = _resolve_requested_interval(args)
+    args.start = requested_start
+    args.end = requested_end
+
+    # Provider diagnostics collector
+'''
+if text.count(run_anchor) != 1:
+    raise SystemExit("run-data interval anchor not found exactly once")
+text = text.replace(run_anchor, run_replacement, 1)
+
+multi_anchor = '''                    multi_res = router.fetch_multi_source_bars(
+                        symbol=qlib_ticker, market=reg, start=start, limit=2
+                    )
+'''
+multi_replacement = '''                    multi_res = router.fetch_multi_source_bars(
+                        symbol=qlib_ticker,
+                        market=reg,
+                        start=start,
+                        end=args.end,
+                        limit=2,
+                    )
+'''
+if text.count(multi_anchor) != 1:
+    raise SystemExit("multi-source end anchor not found exactly once")
+text = text.replace(multi_anchor, multi_replacement, 1)
+
+daily_anchor = '''                resp = router.fetch_daily_bars(
+                    symbol=qlib_ticker, market=reg, start=start, end=None,
+                    validate=True,  # trigger fallback if data fails OHLCV schema
+                )
+'''
+daily_replacement = '''                resp = router.fetch_daily_bars(
+                    symbol=qlib_ticker,
+                    market=reg,
+                    start=start,
+                    end=args.end,
+                    validate=True,  # trigger fallback if data fails OHLCV schema
+                )
+'''
+if text.count(daily_anchor) != 1:
+    raise SystemExit("daily end anchor not found exactly once")
+text = text.replace(daily_anchor, daily_replacement, 1)
+
+merge_anchor = '''                merged = _merge_existing(existing, validated_df)
+                merged.to_csv(csv_path, index=False)
+'''
+merge_replacement = '''                if args.full:
+                    dates = pd.to_datetime(validated_df["date"], errors="coerce")
+                    interval_mask = dates >= pd.Timestamp(args.start)
+                    if args.end is not None:
+                        interval_mask &= dates <= pd.Timestamp(args.end)
+                    validated_df = validated_df.loc[interval_mask].copy()
+                    if validated_df.empty:
+                        raise DataUpdateFailure(
+                            f"{qlib_ticker} has no valid rows inside the declared interval"
+                        )
+
+                merged = _merge_existing(existing, validated_df)
+                merged.to_csv(csv_path, index=False)
+'''
+if text.count(merge_anchor) != 1:
+    raise SystemExit("interval clipping anchor not found exactly once")
+text = text.replace(merge_anchor, merge_replacement, 1)
+
+quality_anchor = '''    q = generate_data_quality_summary(
+        dataset_key="watchlist",
+        freq="day",
+        provider_uri=qlib_dir,
+        csv_dir=source_dir,
+        markets=[k for k, v in regions.items() if v],
+    )
+'''
+quality_replacement = '''    q = generate_data_quality_summary(
+        dataset_key="watchlist",
+        freq="day",
+        provider_uri=qlib_dir,
+        csv_dir=source_dir,
+        markets=[k for k, v in regions.items() if v],
+        requested_start=args.start if args.full else None,
+        requested_end=args.end,
+    )
+'''
+if text.count(quality_anchor) != 1:
+    raise SystemExit("quality interval anchor not found exactly once")
+text = text.replace(quality_anchor, quality_replacement, 1)
+
+parser_anchor = '''    parser.add_argument(
+        "--lookback-days",
+'''
+parser_replacement = '''    parser.add_argument(
+        "--end",
+        type=str,
+        default=None,
+        help=(
+            "Optional inclusive end date for a reproducible historical rebuild. "
+            "Requires --full; current-snapshot mode remains the default."
+        ),
+    )
+    parser.add_argument(
+        "--lookback-days",
+'''
+if text.count(parser_anchor) != 1:
+    raise SystemExit("CLI end anchor not found exactly once")
+text = text.replace(parser_anchor, parser_replacement, 1)
+
+path.write_text(text, encoding="utf-8")
