@@ -1,0 +1,67 @@
+name: Patch canonical factor identities
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'fix/canonical-factor-identities'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Apply deterministic patch
+        run: python scripts/_patch_canonical_factor_identities.py
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Validate focused change
+        run: |
+          uv run ruff check \
+            src/research/factor_identity.py \
+            src/research/spec_bound_factor_diagnostics.py \
+            src/research/real_market_research_pipeline.py \
+            tests/test_spec_bound_factor_diagnostics.py \
+            tests/test_real_market_research_pipeline.py
+          uv run mypy \
+            src/research/factor_identity.py \
+            src/research/spec_bound_factor_diagnostics.py \
+            src/research/real_market_research_pipeline.py
+          uv run pytest \
+            tests/test_spec_bound_factor_diagnostics.py \
+            tests/test_real_market_research_pipeline.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'Patch already applied'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            src/research/factor_identity.py \
+            src/research/spec_bound_factor_diagnostics.py \
+            src/research/real_market_research_pipeline.py \
+            tests/test_spec_bound_factor_diagnostics.py \
+            tests/test_real_market_research_pipeline.py
+          git commit -m 'fix(research): separate canonical factors from aliases'
+          git push origin HEAD:${{ github.head_ref }}
