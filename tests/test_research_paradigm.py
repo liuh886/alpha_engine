@@ -24,7 +24,7 @@ from src.research.paradigm import (
 
 MINIMAL_YAML = """\
 # Canonical CN fixed-10D research preparation contract.
-schema_version: "1.0"
+schema_version: "1.1"
 experiment_id: "test_contract"
 market: "cn"
 benchmark: "000300"
@@ -68,6 +68,7 @@ walk_forward:
   last_test_year: 2026
   min_windows: 3
   train_embargo_sessions: 10
+  partial_window_policy: "complete_windows_only"
 
 evaluation:
   benchmark_mode: "reference_only"
@@ -125,6 +126,18 @@ def test_valid_spec_loads_and_builds_declared_candidates(tmp_path: Path) -> None
             "must be before test_end",
         ),
         (
+            lambda data: data["walk_forward"].update(
+                partial_window_policy="implicit_or_unknown"
+            ),
+            "partial_window_policy",
+        ),
+        (
+            lambda data: data["walk_forward"].update(
+                min_partial_window_eligible_sessions=20
+            ),
+            "must be omitted",
+        ),
+        (
             lambda data: data["evaluation"].update(benchmark_mode="active"),
             "benchmark_mode",
         ),
@@ -157,6 +170,19 @@ def test_invalid_contracts_fail_closed(
     with pytest.raises((ValueError, FileNotFoundError), match=message):
         validate_research_paradigm_spec(spec)
 
+
+
+def test_partial_final_window_contract_requires_session_minimum() -> None:
+    data = _spec_dict()
+    data["walk_forward"]["partial_window_policy"] = (
+        "allow_horizon_contained_partial_final_window"
+    )
+    spec = ResearchParadigmSpec.from_dict(data)
+    with pytest.raises(ValueError, match="is required"):
+        validate_research_paradigm_spec(spec)
+
+    data["walk_forward"]["min_partial_window_eligible_sessions"] = 20
+    validate_research_paradigm_spec(ResearchParadigmSpec.from_dict(data))
 
 def test_contract_uses_profiles_not_duplicate_thresholds() -> None:
     data = _spec_dict()

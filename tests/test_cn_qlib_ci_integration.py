@@ -63,7 +63,30 @@ def test_cn_spec_bound_adapter_with_real_qlib_provider(tmp_path: Path) -> None:
     assert status["trade_ready"] is False
     assert readiness["sufficient"] is True
     assert len(readiness["retained_symbols"]) >= 8
-    assert len(windows["windows"]) >= 3
+    included_windows = [
+        row for row in windows["windows"] if row["status"] == "included"
+    ]
+    assert len(included_windows) >= 3
+    assert windows["complete_minimum_satisfied"] is True
+    assert windows["partial_windows_count_toward_min"] is False
+    assert windows["sampled_rebalance_dates"] == sum(
+        row["sampled_sessions"] for row in included_windows
+    )
+    for row in included_windows:
+        artifact = run_dir / "windows" / (
+            f"{spec.experiment_id}_{row['label']}.json"
+        )
+        payload = json.loads(artifact.read_text(encoding="utf-8"))
+        candidates = payload["comparison_report"]["candidates"]
+        assert candidates
+        assert all(
+            int(candidate["n_periods"]) <= int(row["sampled_sessions"])
+            for candidate in candidates
+        )
+        assert max(int(candidate["n_periods"]) for candidate in candidates) == int(
+            row["sampled_sessions"]
+        )
+        assert payload["config"]["test_end"] <= row["effective_test_end"]
     assert (run_dir / "walk_forward_stability.json").is_file()
     assert (run_dir / "model_decision_pack.json").is_file()
     assert (run_dir / "metrics_summary.json").is_file()
