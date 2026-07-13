@@ -25,13 +25,13 @@ The current helper excludes 2026H1 because its natural end date is 2026-06-30 wh
 
 | Expression | Alias IDs | Orientation | Oriented ICIR | Oriented Rank IC | Oriented Top-Bottom spread | Positive-window ratio | Direction agreement |
 |---|---:|---|---:|---:|---:|---:|---:|
-| `$close/Ref($close,5)-1 `| 2 | invert_score | 0.2149 | 0.0427 | 0.0055 | 0.50 | true |
-| `Ref($close,5)/$close-1 `| 4 | keep_score | 0.2149 | 0.0427 | 0.0056 | 0.50 | true |
-| `($high/$low-1) `| 1 | invert_score | 0.2013 | 0.0446 | 0.0069 | 0.75 | true |
-| `Std($close/Ref($close,1)-1,5) `| 2 | invert_score | 0.2004 | 0.0487 | -0.0014 | 0.75 | false |
-| `($high-$low)/($close+1e-12) `| 2 | invert_score | 0.1992 | 0.0442 | 0.0073 | 0.75 | true |
-| `($close/Ref($close,5)-1)/(Std($close/Ref($close,1)-1,5)+1e-12) `| 1 | invert_score | 0.1242 | 0.0222 | -0.0021 | 0.50 | false |
-| `$volume/Mean($volume,10)-1 `| 4 | invert_score | 0.1105 | 0.0149 | 0.0035 | 0.50 | true |
+| `$close/Ref($close,5)-1` | 2 | invert_score | 0.2149 | 0.0427 | 0.0055 | 0.50 | true |
+| `Ref($close,5)/$close-1` | 4 | keep_score | 0.2149 | 0.0427 | 0.0056 | 0.50 | true |
+| `($high/$low-1)` | 1 | invert_score | 0.2013 | 0.0446 | 0.0069 | 0.75 | true |
+| `Std($close/Ref($close,1)-1,5)` | 2 | invert_score | 0.2004 | 0.0487 | -0.0014 | 0.75 | false |
+| `($high-$low)/($close+1e-12)` | 2 | invert_score | 0.1992 | 0.0442 | 0.0073 | 0.75 | true |
+| `($close/Ref($close,5)-1)/(Std($close/Ref($close,1)-1,5)+1e-12)` | 1 | invert_score | 0.1242 | 0.0222 | -0.0021 | 0.50 | false |
+| `$volume/Mean($volume,10)-1` | 4 | invert_score | 0.1105 | 0.0149 | 0.0035 | 0.50 | true |
 
 The strongest CN unique expression has oriented ICIR around 0.215 and only 50% window-direction consistency. Several volatility expressions show positive oriented IC but negative oriented spread, so they are not coherent promotion candidates.
 
@@ -39,13 +39,13 @@ The strongest CN unique expression has oriented ICIR around 0.215 and only 50% w
 
 | Expression | Alias IDs | Orientation | Oriented ICIR | Oriented Rank IC | Oriented Top-Bottom spread | Positive-window ratio | Direction agreement |
 |---|---:|---|---:|---:|---:|---:|---:|
-| `($close/Ref($close,20)-1)/(Std($close/Ref($close,1)-1,20)+1e-12) `| 1 | keep_score | 0.2869 | 0.0435 | 0.0104 | 0.50 | true |
-| `$close/Ref($close,20)-1 `| 4 | keep_score | 0.2842 | 0.0485 | 0.0111 | 0.75 | true |
-| `Std($close/Ref($close,1)-1,20) `| 3 | keep_score | 0.1682 | 0.0509 | 0.0344 | 1.00 | true |
-| `Std($close/Ref($close,1)-1,10) `| 3 | keep_score | 0.1607 | 0.0458 | 0.0268 | 1.00 | true |
-| `$close/Ref($close,5)-1 `| 4 | keep_score | 0.1505 | 0.0284 | 0.0094 | 0.75 | true |
-| `($close/Ref($close,10)-1)/(Std($close/Ref($close,1)-1,10)+1e-12) `| 2 | keep_score | 0.1411 | 0.0235 | 0.0032 | 0.75 | true |
-| `$close/Ref($close,10)-1 `| 5 | keep_score | 0.0797 | 0.0155 | 0.0044 | 0.75 | true |
+| `($close/Ref($close,20)-1)/(Std($close/Ref($close,1)-1,20)+1e-12)` | 1 | keep_score | 0.2869 | 0.0435 | 0.0104 | 0.50 | true |
+| `$close/Ref($close,20)-1` | 4 | keep_score | 0.2842 | 0.0485 | 0.0111 | 0.75 | true |
+| `Std($close/Ref($close,1)-1,20)` | 3 | keep_score | 0.1682 | 0.0509 | 0.0344 | 1.00 | true |
+| `Std($close/Ref($close,1)-1,10)` | 3 | keep_score | 0.1607 | 0.0458 | 0.0268 | 1.00 | true |
+| `$close/Ref($close,5)-1` | 4 | keep_score | 0.1505 | 0.0284 | 0.0094 | 0.75 | true |
+| `($close/Ref($close,10)-1)/(Std($close/Ref($close,1)-1,10)+1e-12)` | 2 | keep_score | 0.1411 | 0.0235 | 0.0032 | 0.75 | true |
+| `$close/Ref($close,10)-1` | 5 | keep_score | 0.0797 | 0.0155 | 0.0044 | 0.75 | true |
 
 20-day momentum and risk-controlled momentum lead the US library, but the best ICIR remains below 0.30. The risk-controlled leader is positive in only half of the OOS windows. Volatility is more directionally stable but remains weak in absolute ICIR terms.
 
@@ -59,7 +59,6 @@ The strongest CN unique expression has oriented ICIR around 0.215 and only 50% w
 | `us/real_market_acceptance.json` | `4d427c9aa2f834b154792add30ce7e1bbbe4bb6d5af5afa24466dbb62fc01c75` |
 | `us/factor_diagnostics.json` | `fc52db50a15a55006a190623d434db8298d5d145e4e5d6245ab6232643c9b776` |
 | `us/real_market_research_manifest.json` | `c9baad0ce4042b010df57bc5e6b8e6f87d835944ca147ff13f0c0e3e64b617d5` |
-
 
 The acceptance and diagnostic hashes match the values recorded inside each market manifest.
 
