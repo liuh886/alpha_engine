@@ -111,6 +111,43 @@ def _lag_sessions(
     return sum(series_end < day <= required_end for day in quality_calendar_days)
 
 
+def _attempts_by_symbol(
+    provider_attempts: list[dict[str, Any]] | None,
+) -> dict[str, dict[str, Any]]:
+    output: dict[str, dict[str, Any]] = {}
+    for row in provider_attempts or []:
+        symbol = str(row.get("symbol") or "").strip().upper()
+        if symbol:
+            output[symbol] = row
+    return output
+
+
+def _classify_terminal_gap(
+    *,
+    symbol: str,
+    benchmark_symbols: set[str],
+    provider_attempt: dict[str, Any] | None,
+) -> tuple[str, str, list[str]]:
+    role = "benchmark" if symbol.upper() in benchmark_symbols else "equity"
+    if provider_attempt is not None and not bool(provider_attempt.get("ok")):
+        return (
+            role,
+            "provider_failure_with_retained_data",
+            ["provider_failure"],
+        )
+    if role == "benchmark":
+        return (
+            role,
+            "benchmark_or_market_calendar_divergence",
+            ["benchmark_calendar_lag", "provider_delay"],
+        )
+    return (
+        role,
+        "unresolved_equity_terminal_gap",
+        ["provider_failure", "suspension_or_non_trading_status"],
+    )
+
+
 def compute_market_quality(
     *,
     market: str,
@@ -119,12 +156,16 @@ def compute_market_quality(
     latest_calendar_day: str,
     freshness_mode: str = "current_snapshot",
     quality_calendar_days: list[str] | None = None,
+    benchmark_symbols: set[str] | None = None,
+    provider_attempts_by_symbol: dict[str, dict[str, Any]] | None = None,
     stale_sample_limit: int = 20,
 ) -> MarketQuality:
     market = str(market or "").strip().lower()
     inst_path = provider_dir / "instruments" / f"{market}.txt"
     inst_rows = _parse_instruments_file(inst_path)
     quality_calendar_days = quality_calendar_days or [str(latest_calendar_day)]
+    benchmark_symbols = {str(value).upper() for value in (benchmark_symbols or set())}
+    provider_attempts_by_symbol = provider_attempts_by_symbol or {}
 
     ends = [row.get("end") or "" for row in inst_rows]
     end_max = _safe_max(ends)
@@ -132,20 +173,26 @@ def compute_market_quality(
 
     stale: list[tuple[str, str]] = []
     stale_details: list[dict[str, Any]] = []
-    classification = (
+    scope_classification = (
         "missing_declared_interval_terminal_coverage"
         if freshness_mode == "declared_interval"
         else "current_snapshot_lag"
     )
     for row in inst_rows:
         end = str(row.get("end") or "").strip()
-        symbol = str(row.get("symbol") or "").strip()
+        symbol = str(row.get("symbol") or "").strip().upper()
         if not end or not symbol or end >= str(latest_calendar_day):
             continue
         stale.append((end, symbol))
+        role, cause, possible_causes = _classify_terminal_gap(
+            symbol=symbol,
+            benchmark_symbols=benchmark_symbols,
+            provider_attempt=provider_attempts_by_symbol.get(symbol),
+        )
         stale_details.append(
             {
                 "symbol": symbol,
+                "instrument_role": role,
                 "series_end": end,
                 "required_calendar_end": str(latest_calendar_day),
                 "lag_sessions": _lag_sessions(
@@ -153,13 +200,9 @@ def compute_market_quality(
                     required_end=str(latest_calendar_day),
                     quality_calendar_days=quality_calendar_days,
                 ),
-                "scope_classification": classification,
-                "cause_classification": "unresolved_provider_or_market_status",
-                "possible_causes": [
-                    "provider_failure",
-                    "benchmark_or_market_calendar_divergence",
-                    "suspension_or_non_trading_status",
-                ],
+                "scope_classification": scope_classification,
+                "cause_classification": cause,
+                "possible_causes": possible_causes,
             }
         )
     stale.sort(key=lambda item: item[0])
@@ -171,7 +214,7 @@ def compute_market_quality(
     csv_last_dates: list[str] = []
     csv_stale_symbols: list[str] = []
     for row in inst_rows:
-        symbol = str(row.get("symbol") or "").strip()
+        symbol = str(row.get("symbol") or "").strip().upper()
         if not symbol:
             continue
         csv_path = csv_dir / f"{symbol}.csv"
@@ -213,12 +256,18 @@ def generate_data_quality_summary(
     markets: list[str] | None = None,
     requested_start: str | None = None,
     requested_end: str | None = None,
+    benchmark_symbols: set[str] | None = None,
+    provider_attempts: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     dataset_key = str(dataset_key or "").strip() or "watchlist"
     freq = str(freq or "").strip() or "day"
     provider_dir = Path(provider_uri)
     csv_dir = Path(csv_dir)
     markets = markets or ["cn", "us"]
+    benchmark_symbols = {
+        str(value).strip().upper() for value in (benchmark_symbols or set()) if str(value).strip()
+    }
+    attempts = _attempts_by_symbol(provider_attempts)
 
     try:
         requested_start = _normalise_boundary(
@@ -292,6 +341,8 @@ def generate_data_quality_summary(
                 latest_calendar_day=quality_latest,
                 freshness_mode=freshness_mode,
                 quality_calendar_days=scoped_calendar,
+                benchmark_symbols=benchmark_symbols,
+                provider_attempts_by_symbol=attempts,
             )
             per_market[market] = {
                 "market": quality.market,
@@ -348,6 +399,7 @@ def generate_data_quality_summary(
             "effective_calendar_end": quality_latest,
             "provider_calendar_latest": provider_latest,
             "calendar_session_count": len(scoped_calendar),
+            "benchmark_symbols": sorted(benchmark_symbols),
         },
         "markets": per_market,
         "warnings": warnings,
