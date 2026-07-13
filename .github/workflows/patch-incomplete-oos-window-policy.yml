@@ -39,7 +39,28 @@ jobs:
               raise SystemExit(
                   f'expected one ambiguous fixture literal block, found {text.count(old)}'
               )
-          patcher.write_text(text.replace(old, new, 1), encoding='utf-8')
+          text = text.replace(old, new, 1)
+
+          old_payload = '''    window_payload = {
+              **window_plan.to_dict(),
+              "experiment_id": plan.spec.experiment_id,
+              "available_end": available_end,
+          }
+          '''
+          new_payload = '''    window_payload = {
+              **window_plan.to_dict(),
+              "experiment_id": plan.spec.experiment_id,
+              "available_end": available_end,
+              "partial_windows_count_toward_min": False,
+          }
+          '''
+          if text.count(old_payload) != 1:
+              raise SystemExit(
+                  f'expected one adapter payload block, found {text.count(old_payload)}'
+              )
+          patcher.write_text(
+              text.replace(old_payload, new_payload, 1), encoding='utf-8'
+          )
 
           test_path = Path('tests/test_window_policy.py')
           test_text = test_path.read_text(encoding='utf-8')
@@ -105,6 +126,14 @@ jobs:
               r'(?!(?P=indent)"partial_window_policy":)',
               re.MULTILINE,
           )
+          duplicate_policy_pattern = re.compile(
+              r'(?P<indent>^[ \t]*)"partial_window_policy": '
+              r'"complete_windows_only",\n'
+              r'(?P=indent)"train_embargo_sessions": 10,\n'
+              r'(?P=indent)"partial_window_policy": '
+              r'"complete_windows_only",\n',
+              re.MULTILINE,
+          )
 
           def migrate_schema(match: re.Match[str]) -> str:
               indent = match.group('indent')
@@ -122,24 +151,38 @@ jobs:
                   '"complete_windows_only",\n'
               )
 
+          def dedupe_policy(match: re.Match[str]) -> str:
+              indent = match.group('indent')
+              return (
+                  f'{indent}"partial_window_policy": '
+                  '"complete_windows_only",\n'
+                  f'{indent}"train_embargo_sessions": 10,\n'
+              )
+
           schema_updates = 0
           policy_updates = 0
+          duplicate_removals = 0
           changed_paths = []
           for path in sorted(Path('tests').rglob('*.py')):
               original = path.read_text(encoding='utf-8')
               text, schema_count = schema_pattern.subn(migrate_schema, original)
               text, policy_count = policy_pattern.subn(add_policy, text)
+              text, duplicate_count = duplicate_policy_pattern.subn(
+                  dedupe_policy, text
+              )
               if text != original:
                   path.write_text(text, encoding='utf-8')
                   changed_paths.append(str(path))
               schema_updates += schema_count
               policy_updates += policy_count
+              duplicate_removals += duplicate_count
 
           if schema_updates == 0:
               raise SystemExit('no remaining embedded paradigm schema fixtures migrated')
           print(
-              f'migrated {schema_updates} schema entries and '
-              f'{policy_updates} policy entries across {len(changed_paths)} files'
+              f'migrated {schema_updates} schema entries, added '
+              f'{policy_updates} policy entries, and removed '
+              f'{duplicate_removals} duplicates across {len(changed_paths)} files'
           )
           for path in changed_paths:
               print(path)
