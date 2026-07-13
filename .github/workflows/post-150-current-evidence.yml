@@ -1,0 +1,200 @@
+name: Post-150 current real-market evidence
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  current-market-evidence:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - market: cn
+            benchmark: "000300"
+            universe_file: configs/research_universes/cn_curated_equities_v1.yaml
+            spec_file: configs/research_paradigms/cn_10d_csi300_baseline.yaml
+            experiment_id: cn_10d_csi300_baseline
+          - market: us
+            benchmark: QQQ
+            universe_file: configs/research_universes/us_curated_equities_v1.yaml
+            spec_file: configs/research_paradigms/us_10d_qqq_baseline.yaml
+            experiment_id: us_10d_qqq_baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RESEARCH_MARKET: ${{ matrix.market }}
+      RESEARCH_BENCHMARK: ${{ matrix.benchmark }}
+      RESEARCH_UNIVERSE_FILE: ${{ matrix.universe_file }}
+      RESEARCH_SPEC_FILE: ${{ matrix.spec_file }}
+      RESEARCH_EXPERIMENT_ID: ${{ matrix.experiment_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          show-progress: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Materialize exact declared input
+        run: |
+          uv run python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          import yaml
+
+          market = os.environ["RESEARCH_MARKET"]
+          benchmark = os.environ["RESEARCH_BENCHMARK"]
+          source_path = Path(os.environ["RESEARCH_UNIVERSE_FILE"])
+          spec_path = Path(os.environ["RESEARCH_SPEC_FILE"])
+          source = yaml.safe_load(source_path.read_text(encoding="utf-8"))
+          spec = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+          symbols = []
+          for value in source.get(market, []):
+              symbol = str(value).strip().upper()
+              if symbol and symbol not in symbols:
+                  symbols.append(symbol)
+          if not symbols:
+              raise SystemExit(f"missing declared universe for {market}")
+          equities = list(symbols)
+          if benchmark not in symbols:
+              symbols.append(benchmark)
+          watchlist = {"cn": [], "us": [], "hk": []}
+          watchlist[market] = symbols
+          path = Path("configs/watchlist.yaml")
+          path.write_text(yaml.safe_dump(watchlist, sort_keys=False), encoding="utf-8")
+          payload = {
+              "market": market,
+              "benchmark": benchmark,
+              "universe_source": str(source_path),
+              "universe_source_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
+              "spec_source": str(spec_path),
+              "spec_source_sha256": hashlib.sha256(spec_path.read_bytes()).hexdigest(),
+              "paradigm_schema_version": str(spec.get("schema_version")),
+              "partial_window_policy": spec.get("walk_forward", {}).get(
+                  "partial_window_policy"
+              ),
+              "test_end": spec.get("walk_forward", {}).get("test_end"),
+              "equity_symbol_count": len(equities),
+              "effective_input_count": len(symbols),
+              "watchlist_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+          }
+          Path("current_input.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+          )
+          print(json.dumps(payload, indent=2, sort_keys=True))
+          PY
+
+      - name: Refresh exact real-market inputs
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/update_data.py --full --start 2021-01-01 \
+            --market "$RESEARCH_MARKET" > current_update.log 2>&1
+          echo "$?" > current_update.exit
+          cat current_update.log
+          exit 0
+
+      - name: Build market-specific provider
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/build_market_providers.py --root . \
+            --markets "$RESEARCH_MARKET" > current_provider.log 2>&1
+          echo "$?" > current_provider.exit
+          cat current_provider.log
+          exit 0
+
+      - name: Run canonical current-contract research
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/run_real_market_research.py --root . \
+            --spec "$RESEARCH_SPEC_FILE" > current_pipeline.log 2>&1
+          echo "$?" > current_pipeline.exit
+          cat current_pipeline.log
+          exit 0
+
+      - name: Summarize execution
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          experiment = os.environ["RESEARCH_EXPERIMENT_ID"]
+          run_dir = Path("artifacts/research_runs") / experiment
+          summary = {
+              "market": os.environ["RESEARCH_MARKET"],
+              "experiment_id": experiment,
+              "exit_codes": {},
+              "artifacts": {},
+          }
+          for stage in ("update", "provider", "pipeline"):
+              path = Path(f"current_{stage}.exit")
+              summary["exit_codes"][stage] = (
+                  int(path.read_text(encoding="utf-8").strip())
+                  if path.exists()
+                  else None
+              )
+          for name in (
+              "real_market_acceptance.json",
+              "factor_diagnostics.json",
+              "real_market_research_manifest.json",
+          ):
+              path = run_dir / name
+              if path.exists():
+                  summary["artifacts"][name] = {
+                      "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                      "size_bytes": path.stat().st_size,
+                  }
+          Path("current_execution_summary.json").write_text(
+              json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
+          )
+          print(json.dumps(summary, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload current evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-150-current-${{ matrix.market }}
+          path: |
+            current_input.json
+            current_execution_summary.json
+            current_*.log
+            current_*.exit
+            artifacts/research_runs/${{ matrix.experiment_id }}/
+            artifacts/data_update_diagnostics/
+            artifacts/snapshots/watchlist_latest.json
+            data/providers/${{ matrix.market }}/provider_manifest.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Validate execution infrastructure
+        if: always()
+        shell: bash
+        run: |
+          update=$(cat current_update.exit 2>/dev/null || echo 99)
+          provider=$(cat current_provider.exit 2>/dev/null || echo 99)
+          pipeline=$(cat current_pipeline.exit 2>/dev/null || echo 99)
+          echo "update=$update provider=$provider pipeline=$pipeline"
+          [[ "$update" == "0" || "$update" == "2" ]]
+          [[ "$provider" == "0" ]]
+          [[ "$pipeline" == "0" || "$pipeline" == "2" ]]
