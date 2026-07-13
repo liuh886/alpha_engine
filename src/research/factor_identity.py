@@ -1,8 +1,9 @@
 """Canonical factor-expression identity and alias accounting.
 
-The identity scheme is intentionally conservative.  Version 1 removes Unicode
-whitespace from Qlib expression text and hashes the remaining text.  It does not
-claim algebraic equivalence between differently written expressions.
+The identity scheme is intentionally conservative. Version 1 removes Unicode
+whitespace outside quoted literals and hashes the normalized Qlib expression
+text. It does not claim algebraic equivalence between differently written
+expressions.
 """
 
 from __future__ import annotations
@@ -59,7 +60,7 @@ class CanonicalFactorSpec:
     """One independently evaluated expression with its configured aliases."""
 
     canonical_expression_id: str
-    expression_sha256: str
+    canonical_expression_sha256: str
     normalized_expression: str
     evaluation_expression: str
     aliases: tuple[FactorAlias, ...]
@@ -68,15 +69,38 @@ class CanonicalFactorSpec:
 def normalize_factor_expression(expression: str) -> str:
     """Normalize Qlib expression text for identity scheme version 1.
 
-    Only Unicode whitespace is removed.  Parentheses, operator ordering,
-    constants, and function names remain significant so the system never
-    silently claims algebraic equivalence.
+    Unicode whitespace outside quoted literals is removed. Whitespace inside
+    single- or double-quoted literals is preserved. Parentheses, operator
+    ordering, constants, function names, and literal contents remain
+    significant, so this scheme never claims algebraic equivalence.
     """
 
-    normalized = "".join(str(expression).split())
-    if not normalized:
+    normalized: list[str] = []
+    active_quote: str | None = None
+    escaped = False
+    for character in str(expression):
+        if active_quote is not None:
+            normalized.append(character)
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == active_quote:
+                active_quote = None
+            continue
+
+        if character in {"'", '"'}:
+            active_quote = character
+            normalized.append(character)
+        elif not character.isspace():
+            normalized.append(character)
+
+    if active_quote is not None:
+        raise ValueError("factor expression contains an unterminated quoted literal")
+    result = "".join(normalized)
+    if not result:
         raise ValueError("factor expression must remain non-empty after normalization")
-    return normalized
+    return result
 
 
 def canonical_expression_identity(expression: str) -> dict[str, str]:
@@ -87,7 +111,7 @@ def canonical_expression_identity(expression: str) -> dict[str, str]:
     return {
         "scheme": FACTOR_EXPRESSION_IDENTITY_SCHEME,
         "canonical_expression_id": f"qlib-expression:{digest}",
-        "expression_sha256": digest,
+        "canonical_expression_sha256": digest,
         "normalized_expression": normalized,
     }
 
@@ -98,7 +122,7 @@ def factor_identity_metadata() -> dict[str, str]:
     return {
         "scheme": FACTOR_EXPRESSION_IDENTITY_SCHEME,
         "digest": "sha256",
-        "normalization": "remove_unicode_whitespace_only",
+        "normalization": "remove_unicode_whitespace_outside_quoted_literals",
         "equivalence_scope": "textual_not_algebraic",
     }
 
@@ -127,7 +151,9 @@ def group_factor_specs_by_expression(
     return [
         CanonicalFactorSpec(
             canonical_expression_id=str(record["canonical_expression_id"]),
-            expression_sha256=str(record["expression_sha256"]),
+            canonical_expression_sha256=str(
+                record["canonical_expression_sha256"]
+            ),
             normalized_expression=str(record["normalized_expression"]),
             evaluation_expression=str(record["evaluation_expression"]),
             aliases=tuple(record["aliases"]),
@@ -155,7 +181,9 @@ def build_canonical_factor_row(
     return {
         "canonical_expression_id": canonical_spec.canonical_expression_id,
         "identity_scheme": FACTOR_EXPRESSION_IDENTITY_SCHEME,
-        "expression_sha256": canonical_spec.expression_sha256,
+        "canonical_expression_sha256": (
+            canonical_spec.canonical_expression_sha256
+        ),
         "expression": canonical_spec.evaluation_expression,
         "normalized_expression": canonical_spec.normalized_expression,
         "alias_count": len(aliases),
@@ -168,7 +196,7 @@ def build_canonical_factor_row(
 
 
 def expand_alias_rows(canonical_row: dict[str, Any]) -> list[dict[str, Any]]:
-    """Expand a canonical metric row into backward-compatible per-id rows."""
+    """Expand a canonical metric row into auditable per-id alias rows."""
 
     metrics = _metric_payload(canonical_row)
     canonical_rank = canonical_row.get("canonical_rank")
@@ -187,7 +215,9 @@ def expand_alias_rows(canonical_row: dict[str, Any]) -> list[dict[str, Any]]:
                     canonical_row["canonical_expression_id"]
                 ),
                 "identity_scheme": str(canonical_row["identity_scheme"]),
-                "expression_sha256": str(canonical_row["expression_sha256"]),
+                "canonical_expression_sha256": str(
+                    canonical_row["canonical_expression_sha256"]
+                ),
                 "canonical_rank": canonical_rank,
                 **metrics,
             }
@@ -206,7 +236,9 @@ def validate_alias_metric_consistency(alias_rows: list[dict[str, Any]]) -> None:
         grouped.setdefault(canonical_id, []).append(row)
 
     for canonical_id, rows in grouped.items():
-        expected = json.dumps(_metric_payload(rows[0]), sort_keys=True, separators=(",", ":"))
+        expected = json.dumps(
+            _metric_payload(rows[0]), sort_keys=True, separators=(",", ":")
+        )
         for row in rows[1:]:
             observed = json.dumps(
                 _metric_payload(row), sort_keys=True, separators=(",", ":")
