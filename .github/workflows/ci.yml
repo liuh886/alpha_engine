@@ -7,43 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  patch_declared_refresh_end:
-    if: github.event_name == 'pull_request' && github.head_ref == 'fix/declared-refresh-end'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Apply deterministic patch
-        run: python scripts/_patch_declared_refresh_end.py
-
-      - name: Commit permanent implementation
-        run: |
-          if git diff --quiet; then
-            echo "Patch already applied"
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add scripts/update_data.py
-          git commit -m 'fix(data): bind refresh requests to declared end'
-          git push origin HEAD:${{ github.head_ref }}
-
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 30
