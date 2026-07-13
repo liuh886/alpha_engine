@@ -51,6 +51,7 @@ def test_declared_interval_does_not_require_data_after_requested_end(tmp_path: P
         provider_uri=provider,
         csv_dir=csv_dir,
         markets=["cn"],
+        benchmark_symbols={"000300"},
     )
     historical = generate_data_quality_summary(
         dataset_key="watchlist",
@@ -60,10 +61,17 @@ def test_declared_interval_does_not_require_data_after_requested_end(tmp_path: P
         markets=["cn"],
         requested_start="2026-06-17",
         requested_end="2026-06-18",
+        benchmark_symbols={"000300"},
     )
 
     assert current["freshness_scope"]["mode"] == "current_snapshot"
     assert current["markets"]["cn"]["stale_instruments"] == 1
+    current_detail = current["markets"]["cn"]["stale_details_sample"][0]
+    assert current_detail["instrument_role"] == "benchmark"
+    assert (
+        current_detail["cause_classification"]
+        == "benchmark_or_market_calendar_divergence"
+    )
     assert historical["freshness_scope"] == {
         "mode": "declared_interval",
         "requested_start": "2026-06-17",
@@ -72,6 +80,7 @@ def test_declared_interval_does_not_require_data_after_requested_end(tmp_path: P
         "effective_calendar_end": "2026-06-18",
         "provider_calendar_latest": "2026-06-30",
         "calendar_session_count": 2,
+        "benchmark_symbols": ["000300"],
     }
     assert historical["markets"]["cn"]["stale_instruments"] == 0
     assert historical["markets"]["cn"]["csv_stale"] == 0
@@ -92,6 +101,7 @@ def test_declared_interval_still_fails_closed_inside_requested_scope(tmp_path: P
         csv_dir=csv_dir,
         markets=["cn"],
         requested_end="2026-06-19",
+        benchmark_symbols={"000300"},
     )
 
     market = report["markets"]["cn"]
@@ -101,21 +111,60 @@ def test_declared_interval_still_fails_closed_inside_requested_scope(tmp_path: P
     assert market["stale_details_sample"] == [
         {
             "symbol": "000300",
+            "instrument_role": "benchmark",
             "series_end": "2026-06-18",
             "required_calendar_end": "2026-06-19",
             "lag_sessions": 1,
             "scope_classification": "missing_declared_interval_terminal_coverage",
-            "cause_classification": "unresolved_provider_or_market_status",
-            "possible_causes": [
-                "provider_failure",
-                "benchmark_or_market_calendar_divergence",
-                "suspension_or_non_trading_status",
-            ],
+            "cause_classification": "benchmark_or_market_calendar_divergence",
+            "possible_causes": ["benchmark_calendar_lag", "provider_delay"],
         }
     ]
     assert report["warnings"] == [
         "market=cn: 1 missing declared interval terminal coverage (end < 2026-06-19)"
     ]
+
+
+def test_provider_failure_and_non_trading_gap_are_separately_classified(
+    tmp_path: Path,
+):
+    provider, csv_dir = _write_provider(
+        tmp_path,
+        calendar=["2026-06-17", "2026-06-18", "2026-06-19"],
+        instrument_ends={
+            "000002": "2026-06-18",
+            "000003": "2026-06-18",
+            "000001": "2026-06-19",
+        },
+    )
+
+    report = generate_data_quality_summary(
+        dataset_key="watchlist",
+        freq="day",
+        provider_uri=provider,
+        csv_dir=csv_dir,
+        markets=["cn"],
+        requested_end="2026-06-19",
+        provider_attempts=[
+            {"symbol": "000002", "market": "cn", "ok": False},
+            {"symbol": "000003", "market": "cn", "ok": True},
+        ],
+    )
+
+    details = {
+        row["symbol"]: row for row in report["markets"]["cn"]["stale_details_sample"]
+    }
+    assert details["000002"]["cause_classification"] == (
+        "provider_failure_with_retained_data"
+    )
+    assert details["000002"]["possible_causes"] == ["provider_failure"]
+    assert details["000003"]["cause_classification"] == (
+        "unresolved_equity_terminal_gap"
+    )
+    assert "suspension_or_non_trading_status" in details["000003"][
+        "possible_causes"
+    ]
+    assert report["markets"]["cn"]["stale_instruments"] == 2
 
 
 def test_requested_interval_validation_is_fail_closed():
@@ -138,3 +187,20 @@ def test_requested_interval_is_normalised_for_router_requests():
         "2026-01-02",
         "2026-06-18",
     )
+
+
+def test_declared_interval_uses_a_clean_staging_directory(tmp_path: Path):
+    current = tmp_path / "csv_source"
+    historical = tmp_path / "csv_source_declared_interval"
+    current.mkdir()
+    historical.mkdir()
+    (current / "keep.csv").write_text("current", encoding="utf-8")
+    (historical / "stale_failed_symbol.csv").write_text("old", encoding="utf-8")
+
+    selected = update_data._prepare_source_dir(
+        tmp_path, requested_end="2026-06-18"
+    )
+
+    assert selected == historical
+    assert list(historical.iterdir()) == []
+    assert (current / "keep.csv").read_text(encoding="utf-8") == "current"
