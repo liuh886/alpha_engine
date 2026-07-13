@@ -1,0 +1,318 @@
+artifact_digests:
+  cn: sha256:a07bd75f4ec226dc6dafdec9e7126988f8c982546b38712b42124463924e3dd2
+  us: sha256:82a6db3484ead846dc4260962468a72e2c4ff77e75365e5815e894343f8b06b6
+contract:
+  factor_diagnostics_schema_version: '1.3'
+  min_windows_count_policy: complete_windows_only
+  paradigm_schema_version: '1.1'
+  partial_window_policy: complete_windows_only
+  test_end: '2026-06-18'
+evidence_id: post-150-current-2026-07-13
+generated_from_execution_pr: 153
+generated_from_workflow_run: 29225709306
+markets:
+  cn:
+    acceptance:
+      accepted: true
+      checks:
+      - universe_metadata:pass
+      - source_symbol_types:pass
+      - canonical_symbol_identity:pass
+      - benchmark_exclusion:pass
+      - real_provider_scope:pass
+      - market_provider_identity:pass
+      - calendar_coverage:pass
+      - universe_provider_coverage:pass
+      - benchmark_provider_coverage:pass
+      - source_csv_integrity:pass
+      - survivorship_bias:warn
+      schema_version: '1.3'
+      summary:
+        failed: 0
+        passed: 10
+        warnings: 1
+    diagnostics:
+      excluded_windows:
+      - boundary_status: excluded_partial_by_policy
+        counts_toward_min_windows: false
+        effective_test_end: '2026-06-18'
+        horizon_eligible_sessions: 99
+        inclusion_reason: partial final window excluded by complete_windows_only policy
+        label: 2026H1
+        natural_test_end: '2026-06-30'
+      - boundary_status: excluded_not_started
+        counts_toward_min_windows: false
+        effective_test_end: null
+        horizon_eligible_sessions: 0
+        inclusion_reason: test_start is after requested_test_end
+        label: 2026H2
+        natural_test_end: '2026-12-31'
+      factor_count: 23
+      factor_id_count: 47
+      included_windows:
+      - 2024H1
+      - 2024H2
+      - 2025H1
+      - 2025H2
+      sampled_rebalance_dates: 46
+      schema_version: '1.3'
+      top_factors:
+      - alias_ids:
+        - cn:volatility:std_ret1_5d
+        - cn:volatility:std_ret1_5d@cn_balanced_ohlcv
+        canonical_expression_id: qlib-expression:48cda789be16931a34f3c96598dc990b084363c18b986470b5dbe37de6214368
+        canonical_rank: 1
+        expression: Std($close/Ref($close,1)-1,5)
+        oriented_mean_rank_ic: 0.05155194407786482
+        oriented_mean_top_bottom_spread: 0.0011916035791332631
+        oriented_rank_icir: 0.2151739961847838
+        positive_oriented_window_ratio: 0.75
+        recommended_orientation: invert_score
+      - alias_ids:
+        - cn:momentum:ret_5d
+        - cn:momentum:ret_5d@cn_balanced_ohlcv
+        canonical_expression_id: qlib-expression:4dd687435954ec3a3d2389d1b65d83c964a1bac0bc34edc758c7282e4b7278cf
+        canonical_rank: 2
+        expression: $close/Ref($close,5)-1
+        oriented_mean_rank_ic: 0.042775814930754504
+        oriented_mean_top_bottom_spread: 0.011310474668710453
+        oriented_rank_icir: 0.20997697078186853
+        positive_oriented_window_ratio: 0.75
+        recommended_orientation: invert_score
+      - alias_ids:
+        - cn:reversal:ref5_close_inv
+        - cn:reversal:ref5_close_inv@cn_volatility_reversal
+        - cn:reversal:ref5_close_inv@cn_balanced_ohlcv
+        - factor:cn_reversal_5d
+        canonical_expression_id: qlib-expression:649b2f5328c462fb1bd85fef30a37a090d6ddeb3adeccae3374f37aff900e2a2
+        canonical_rank: 3
+        expression: Ref($close,5)/$close-1
+        oriented_mean_rank_ic: 0.04277578292974615
+        oriented_mean_top_bottom_spread: 0.011310475640525312
+        oriented_rank_icir: 0.2099761584509685
+        positive_oriented_window_ratio: 0.75
+        recommended_orientation: keep_score
+      unique_expression_count: 23
+      window_policy:
+        cadence_sessions: 10
+        complete_minimum_satisfied: true
+        complete_window_count: 4
+        horizon_sessions: 10
+        min_partial_window_eligible_sessions: null
+        min_windows_count_policy: complete_windows_only
+        partial_window_count: 0
+        partial_window_policy: complete_windows_only
+        requested_min_complete_windows: 3
+        requested_test_end: '2026-06-18'
+        sampled_rebalance_dates: 46
+        schema_version: '1.0'
+    exit_codes:
+      pipeline: 0
+      provider: 0
+      update: 1
+    inputs:
+      benchmark: '000300'
+      effective_input_count: 224
+      equity_symbol_count: 223
+      market: cn
+      paradigm_schema_version: '1.1'
+      partial_window_policy: complete_windows_only
+      spec_source_sha256: 802ec7a8c989ace538a24ae715363f865c3c3c170018ca3c78d63a6c9ef60ded
+      test_end: '2026-06-18'
+      universe_source_sha256: 5b5ba466266f8c7ae4a174207c89381e8658ff7e726bc136d1f856f2abf22215
+    manifest:
+      acceptance_sha256: c45325062352dfc3cd27ef0e89a197577ce390dc8beb1060cf0b517964b9006b
+      diagnostic_only: true
+      factor_diagnostics_sha256: 8267263b83ed47f9554676fcbb9af5a13169b071bd92ea4973f13802c2795212
+      promotion_eligible: false
+      promotion_evaluated: false
+      status: completed
+      trade_ready: false
+    market: cn
+    refresh:
+      failed: 27
+      failed_symbols:
+      - '000166'
+      - 000338
+      - 000408
+      - 000708
+      - '000725'
+      - 000768
+      - 000938
+      - 000963
+      - 000999
+      - '002064'
+      - '002074'
+      - '002120'
+      - 002179
+      - '002415'
+      - '002460'
+      - '002600'
+      - '002601'
+      - '300033'
+      - '300059'
+      - '301666'
+      - '600009'
+      - '600837'
+      - '600893'
+      - '601390'
+      - '601618'
+      - '601989'
+      - '688521'
+      quality_warnings:
+      - 'market=cn: 1 stale instruments (end < calendar latest)'
+      - '[000002] volume difference too high: 99.00%'
+      research_validity_note: The CN update command returned 1 because current-day snapshot quality found one stale instrument. The market-specific
+        provider was built, fixed test_end=2026-06-18 acceptance passed, and diagnostics returned 0.
+      succeeded: 197
+      total_symbols: 224
+    source_artifact_digest: sha256:a07bd75f4ec226dc6dafdec9e7126988f8c982546b38712b42124463924e3dd2
+    source_run_id: 29225709306
+  us:
+    acceptance:
+      accepted: true
+      checks:
+      - universe_metadata:pass
+      - source_symbol_types:pass
+      - canonical_symbol_identity:pass
+      - benchmark_exclusion:pass
+      - real_provider_scope:pass
+      - market_provider_identity:pass
+      - calendar_coverage:pass
+      - universe_provider_coverage:pass
+      - benchmark_provider_coverage:pass
+      - source_csv_integrity:pass
+      - survivorship_bias:warn
+      schema_version: '1.3'
+      summary:
+        failed: 0
+        passed: 10
+        warnings: 1
+    diagnostics:
+      excluded_windows:
+      - boundary_status: excluded_partial_by_policy
+        counts_toward_min_windows: false
+        effective_test_end: '2026-06-18'
+        horizon_eligible_sessions: 106
+        inclusion_reason: partial final window excluded by complete_windows_only policy
+        label: 2026H1
+        natural_test_end: '2026-06-30'
+      - boundary_status: excluded_not_started
+        counts_toward_min_windows: false
+        effective_test_end: null
+        horizon_eligible_sessions: 0
+        inclusion_reason: test_start is after requested_test_end
+        label: 2026H2
+        natural_test_end: '2026-12-31'
+      factor_count: 9
+      factor_id_count: 24
+      included_windows:
+      - 2024H1
+      - 2024H2
+      - 2025H1
+      - 2025H2
+      sampled_rebalance_dates: 48
+      schema_version: '1.3'
+      top_factors:
+      - alias_ids:
+        - us:risk_controlled:ret20_per_vol20
+        canonical_expression_id: qlib-expression:e7cd69e2619a89f10d317253929779124fe923417081caceed2209972698fbfe
+        canonical_rank: 1
+        expression: ($close/Ref($close,20)-1)/(Std($close/Ref($close,1)-1,20)+1e-12)
+        oriented_mean_rank_ic: 0.04349538432814093
+        oriented_mean_top_bottom_spread: 0.010407470000548832
+        oriented_rank_icir: 0.28694890218856267
+        positive_oriented_window_ratio: 0.5
+        recommended_orientation: keep_score
+      - alias_ids:
+        - us:momentum:ret_20d
+        - us:momentum:ret_20d@momentum_volatility
+        - us:momentum:ret_20d@momentum_volatility_volume
+        - us:momentum:ret_20d@risk_controlled_momentum
+        canonical_expression_id: qlib-expression:d2c000e4acd9f83942bf68828f297ebbc1b749b0ba9a6b67c8c2204ee2bb2755
+        canonical_rank: 2
+        expression: $close/Ref($close,20)-1
+        oriented_mean_rank_ic: 0.04848491659715728
+        oriented_mean_top_bottom_spread: 0.011093337299977671
+        oriented_rank_icir: 0.28422881794811594
+        positive_oriented_window_ratio: 0.75
+        recommended_orientation: keep_score
+      - alias_ids:
+        - us:volatility:std_ret1_20d
+        - us:volatility:std_ret1_20d@momentum_volatility_volume
+        - us:volatility:std_ret1_20d@risk_controlled_momentum
+        canonical_expression_id: qlib-expression:3edd215b1efbd8925908cf8898fbd874023ab9f126f5bab5751e10ab09c56b99
+        canonical_rank: 3
+        expression: Std($close/Ref($close,1)-1,20)
+        oriented_mean_rank_ic: 0.05090312422052174
+        oriented_mean_top_bottom_spread: 0.034372539314574624
+        oriented_rank_icir: 0.16816010198434755
+        positive_oriented_window_ratio: 1.0
+        recommended_orientation: keep_score
+      unique_expression_count: 9
+      window_policy:
+        cadence_sessions: 10
+        complete_minimum_satisfied: true
+        complete_window_count: 4
+        horizon_sessions: 10
+        min_partial_window_eligible_sessions: null
+        min_windows_count_policy: complete_windows_only
+        partial_window_count: 0
+        partial_window_policy: complete_windows_only
+        requested_min_complete_windows: 3
+        requested_test_end: '2026-06-18'
+        sampled_rebalance_dates: 48
+        schema_version: '1.0'
+    exit_codes:
+      pipeline: 0
+      provider: 0
+      update: 0
+    inputs:
+      benchmark: QQQ
+      effective_input_count: 134
+      equity_symbol_count: 133
+      market: us
+      paradigm_schema_version: '1.1'
+      partial_window_policy: complete_windows_only
+      spec_source_sha256: c26b6bd7b8f99f083a0cd78ce7e1ac0da85f70d1f55a531fc27906b871081e5e
+      test_end: '2026-06-18'
+      universe_source_sha256: cb311655be341213f70cd0753d88aa33f2afd594691c4704c0ad3b206ef75fd2
+    manifest:
+      acceptance_sha256: 72692b848cf5c05080ab1a5a349f3206a19eef96381e303fecb170f614e8176b
+      diagnostic_only: true
+      factor_diagnostics_sha256: 62b5673557cbeae16a81de3bfb485d0deb5a560378d430e536292494d654cbed
+      promotion_eligible: false
+      promotion_evaluated: false
+      status: completed
+      trade_ready: false
+    market: us
+    refresh:
+      failed: 0
+      failed_symbols: []
+      quality_warnings: []
+      research_validity_note: The update, provider, and research chain returned 0.
+      succeeded: 134
+      total_symbols: 134
+    source_artifact_digest: sha256:82a6db3484ead846dc4260962468a72e2c4ff77e75365e5815e894343f8b06b6
+    source_run_id: 29225709306
+preservation_scope: Compact durable evidence index; complete raw reports are identified by workflow run, artifact digests, and per-file SHA-256
+  hashes.
+schema_version: '1.0'
+source_file_hashes:
+  cn:
+    current_execution_summary.json: c5e667ba946551ef5ca5c4a5d0f2442e0746603db4318543c5defa3aaf0f3ccd
+    current_input.json: 034fed5d65533e804ca9831cedb41f34ef80b6199dc8169eae548b7177408bb5
+    factor_diagnostics.json: 8267263b83ed47f9554676fcbb9af5a13169b071bd92ea4973f13802c2795212
+    latest_provider_attempts.json: 87eb69d6dce8f6d7ca89202dd9db3a65f565287e97ebdddecbeb046320187ff7
+    provider_manifest.json: 090655784b690c9ece5f00e555e03b77c07a46f56c3649bff66bdd9b32516421
+    real_market_acceptance.json: c45325062352dfc3cd27ef0e89a197577ce390dc8beb1060cf0b517964b9006b
+    real_market_research_manifest.json: b49842447e3d61117c2d04320983b1700ab5793c037656c66bdcc22a59d35e96
+  us:
+    current_execution_summary.json: 4bf307adbba85f75933021cc9973072a0ab2d61ae6f613a25aef02f8f88aad5a
+    current_input.json: 673f4622fee19e90a54baa0e27434669221209f79cc64c44fe1efb4ecbf05482
+    factor_diagnostics.json: 62b5673557cbeae16a81de3bfb485d0deb5a560378d430e536292494d654cbed
+    latest_provider_attempts.json: 2f88b6a44bf6eca8826bfdd78fcd097538bb7ca2f572ef5c41473a06e31ebe84
+    provider_manifest.json: c5be06fbcc17f8af534cf31795d6d180b184516a7e378eb5b338fcf68ffcdf69
+    real_market_acceptance.json: 72692b848cf5c05080ab1a5a349f3206a19eef96381e303fecb170f614e8176b
+    real_market_research_manifest.json: 6d4f8300e8939a1bea46a124ad3e9b9b2d56b10a6877a08a3ea263aed02ccd4c
+source_main_commit: 5e5fa5d1bc43ee55a79a87943b2a9ab188d4374f
