@@ -82,7 +82,7 @@ def _write_spec(
         )
 
     payload = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "experiment_id": "test_real_market_acceptance",
         "market": "us",
         "benchmark": "QQQ",
@@ -121,6 +121,7 @@ def _write_spec(
             "first_test_year": 2024,
             "last_test_year": 2026,
             "min_windows": 3,
+            "partial_window_policy": "complete_windows_only",
             "train_embargo_sessions": 10,
         },
         "evaluation": {

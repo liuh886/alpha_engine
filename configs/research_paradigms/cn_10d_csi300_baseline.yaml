@@ -1,5 +1,5 @@
 # Canonical CN fixed-10D research preparation contract.
-schema_version: "1.0"
+schema_version: "1.1"
 experiment_id: "cn_10d_csi300_baseline"
 market: "cn"
 benchmark: "000300"
@@ -59,6 +59,7 @@ walk_forward:
   last_test_year: 2026
   min_windows: 3
   train_embargo_sessions: 10
+  partial_window_policy: "complete_windows_only"
 
 evaluation:
   benchmark_mode: "reference_only"

@@ -162,7 +162,7 @@ def _write_spec(tmp_path: Path) -> tuple[Path, list[str]]:
     spec_path.write_text(
         yaml.safe_dump(
             {
-                "schema_version": "1.0",
+                "schema_version": "1.1",
                 "experiment_id": "test_factor_diagnostics",
                 "market": "us",
                 "benchmark": "QQQ",
@@ -211,6 +211,7 @@ def _write_spec(tmp_path: Path) -> tuple[Path, list[str]]:
                     "first_test_year": 2024,
                     "last_test_year": 2026,
                     "min_windows": 3,
+                    "partial_window_policy": "complete_windows_only",
                     "train_embargo_sessions": 10,
                 },
                 "evaluation": {
@@ -241,7 +242,7 @@ def _acceptance(tmp_path: Path, spec_path: Path) -> dict[str, Any]:
     spec = load_research_paradigm_spec(spec_path)
     contract = build_declared_execution_contract(spec)
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "experiment_id": spec.experiment_id,
         "market": spec.market,
         "accepted": True,
@@ -286,9 +287,11 @@ def test_factor_diagnostics_are_spec_bound_and_diagnostic_only(tmp_path: Path) -
     assert report["return_contract"]["rebalance_days"] == 10
     assert report["return_contract"]["horizon_days"] == 10
     assert report["sampled_rebalance_dates"] >= 40
-    assert all(row["excluded_tail_sessions"] == 10 for row in report["windows"])
+    included_windows = [row for row in report["windows"] if row["status"] == "included"]
+    assert included_windows
+    assert all(row["excluded_tail_sessions"] == 10 for row in included_windows)
     assert all(row["label_horizon_sessions"] == 10 for row in report["windows"])
-    assert report["schema_version"] == "1.2"
+    assert report["schema_version"] == "1.3"
     assert report["factor_count"] == 4
     assert report["factor_id_count"] == 5
     assert report["unique_expression_count"] == 4
@@ -445,23 +448,36 @@ def test_window_sampling_contains_forward_labels_within_oos_window(
     spec = load_research_paradigm_spec(spec_path)
     available_dates = pd.bdate_range("2024-01-01", "2025-12-31")
 
-    date_map, windows = _window_date_map(available_dates, spec)
+    date_map, windows, policy = _window_date_map(
+        available_dates, spec
+    )
     positions = {pd.Timestamp(date): i for i, date in enumerate(available_dates)}
     by_label = {row["label"]: row for row in windows}
     selected = sorted(date_map)
 
     assert selected
+    assert policy["partial_window_policy"] == "complete_windows_only"
+    assert policy["complete_window_count"] == 4
+    partial = next(row for row in windows if row["label"] == "2026H1")
+    assert partial["status"] == "excluded"
+    assert partial["boundary_status"] == "excluded_partial_by_policy"
+    assert partial["natural_test_end"] == "2026-06-30"
+    assert partial["effective_test_end"] == "2026-06-18"
     for date in selected:
         window = by_label[date_map[date]]
         future_date = available_dates[positions[date] + 10]
-        assert future_date <= pd.Timestamp(window["test_end"])
+        assert future_date <= pd.Timestamp(window["effective_test_end"])
 
     selected_positions = [positions[date] for date in selected]
     assert all(
         right - left >= 10
         for left, right in zip(selected_positions, selected_positions[1:])
     )
-    assert all(row["excluded_tail_sessions"] == 10 for row in windows)
+    assert all(
+        row["excluded_tail_sessions"] == 10
+        for row in windows
+        if row["status"] == "included"
+    )
     assert all(
         row["horizon_eligible_sessions"]
         == row["available_sessions"] - row["excluded_tail_sessions"]

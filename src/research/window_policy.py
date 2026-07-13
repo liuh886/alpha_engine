@@ -329,7 +329,16 @@ def build_window_sampling_plan(
     for decision in decisions:
         row = decision.to_dict()
         selected = decision.selected_window()
-        if selected is None:
+        evidence_window = selected
+        if evidence_window is None and decision.effective_test_end is not None:
+            evidence_window = RollingResearchWindow(
+                label=decision.label,
+                train_start=decision.train_start,
+                train_end=decision.train_end,
+                test_start=decision.test_start,
+                test_end=decision.effective_test_end,
+            )
+        if evidence_window is None:
             row.update(
                 {
                     "status": "excluded",
@@ -344,24 +353,28 @@ def build_window_sampling_plan(
             window_rows.append(row)
             continue
 
-        start = pd.Timestamp(selected.test_start)
-        end = pd.Timestamp(selected.test_end)
-        window_dates = dates_index[(dates_index >= start) & (dates_index <= end)]
+        start_date = pd.Timestamp(evidence_window.test_start)
+        end_date = pd.Timestamp(evidence_window.test_end)
+        window_dates = dates_index[
+            (dates_index >= start_date) & (dates_index <= end_date)
+        ]
         horizon_eligible = (
             window_dates[:-horizon_sessions]
             if len(window_dates) > horizon_sessions
             else window_dates[:0]
         )
         sampled = horizon_eligible[::cadence_sessions]
-        include = len(sampled) > 0
-        reason = "horizon-contained sessions available"
+        include = False
+        reason = decision.boundary_reason
 
-        if decision.complete:
+        if decision.boundary_status == "candidate_complete":
+            include = len(sampled) > 0
             if include:
                 complete_count += 1
+                reason = "horizon-contained sessions available"
             else:
                 reason = "complete window has no horizon-contained sampled sessions"
-        else:
+        elif decision.boundary_status == "candidate_partial_final":
             minimum = int(min_partial_window_eligible_sessions or 0)
             include = len(horizon_eligible) >= minimum and len(sampled) > 0
             if include:
@@ -391,6 +404,10 @@ def build_window_sampling_plan(
             }
         )
         if include:
+            if selected is None:
+                raise ValueError(
+                    f"included window {decision.label} has no selected boundary"
+                )
             selected_windows.append(selected)
             sampled_date_labels.extend(
                 (pd.Timestamp(date).strftime("%Y-%m-%d"), decision.label)
@@ -422,3 +439,70 @@ def build_window_sampling_plan(
         selected_windows=tuple(selected_windows),
         sampled_date_labels=tuple(sampled_date_labels),
     )
+
+def horizon_eligible_dates_by_window(
+    plan: WindowSamplingPlan,
+    available_dates: pd.DatetimeIndex,
+) -> dict[str, pd.DatetimeIndex]:
+    """Return daily evaluation dates for every included window.
+
+    Adapters must pass these daily horizon-eligible dates to the fixed-cadence
+    evaluator. Passing the already sampled dates would apply ``::cadence`` a
+    second time and silently change a 10-session strategy into a much slower
+    strategy.
+
+    The helper recomputes dates from the immutable plan evidence and verifies
+    that applying the declared cadence reproduces the plan's sampled dates
+    exactly. Any divergence fails closed.
+    """
+
+    dates_index = _normalized_dates(available_dates)
+    dates_index = dates_index[
+        dates_index <= pd.Timestamp(plan.requested_test_end)
+    ]
+    planned_sampled: dict[str, tuple[pd.Timestamp, ...]] = {}
+    for date, label in plan.sampled_date_labels:
+        planned_sampled.setdefault(label, tuple())
+        planned_sampled[label] = (
+            *planned_sampled[label],
+            pd.Timestamp(date),
+        )
+
+    result: dict[str, pd.DatetimeIndex] = {}
+    for row in plan.window_rows:
+        if row.get("status") != "included":
+            continue
+        label = str(row["label"])
+        effective_end = row.get("effective_test_end")
+        if effective_end is None:
+            raise ValueError(f"included window {label} has no effective_test_end")
+        start = pd.Timestamp(str(row["test_start"]))
+        end = pd.Timestamp(str(effective_end))
+        window_dates = dates_index[
+            (dates_index >= start) & (dates_index <= end)
+        ]
+        eligible = (
+            window_dates[: -plan.horizon_sessions]
+            if len(window_dates) > plan.horizon_sessions
+            else window_dates[:0]
+        )
+        if len(eligible) != int(row["horizon_eligible_sessions"]):
+            raise ValueError(
+                f"window {label} horizon-eligible date count diverged from plan"
+            )
+        sampled = tuple(
+            pd.Timestamp(value)
+            for value in eligible[:: plan.cadence_sessions]
+        )
+        if sampled != planned_sampled.get(label, tuple()):
+            raise ValueError(
+                f"window {label} sampled dates diverged from shared plan"
+            )
+        if eligible.empty:
+            raise ValueError(f"included window {label} has no evaluation dates")
+        result[label] = eligible
+
+    if set(result) != {window.label for window in plan.selected_windows}:
+        raise ValueError("selected windows and horizon-eligible dates diverged")
+    return result
+
