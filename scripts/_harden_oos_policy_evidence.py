@@ -12,21 +12,14 @@ WINDOW_TESTS = Path("tests/test_window_policy.py")
 DIAGNOSTIC_TESTS = Path("tests/test_spec_bound_factor_diagnostics.py")
 
 
-def replace_once(text: str, old: str, new: str, label: str) -> str:
-    count = text.count(old)
-    if count != 1:
-        raise RuntimeError(f"{label}: expected one anchor, found {count}")
-    return text.replace(old, new, 1)
-
-
 def patch_policy() -> None:
     text = WINDOW_POLICY.read_text(encoding="utf-8")
-    start_marker = "    for decision in decisions:\n"
-    end_marker = "\n    sampled_date_labels.sort(key=lambda item: item[0])"
-    if text.count(start_marker) != 1 or text.count(end_marker) != 1:
-        raise RuntimeError("session evidence structural boundaries are not unique")
-    start = text.index(start_marker)
-    end = text.index(end_marker, start)
+    function_start = text.index("def build_window_sampling_plan(")
+    start = text.index("    for decision in decisions:\n", function_start)
+    end = text.index(
+        "\n    sampled_date_labels.sort(key=lambda item: item[0])",
+        start,
+    )
     replacement = '''    for decision in decisions:
         row = decision.to_dict()
         selected = decision.selected_window()
@@ -122,16 +115,17 @@ def patch_policy() -> None:
 
 def patch_tests() -> None:
     text = WINDOW_TESTS.read_text(encoding="utf-8")
-    anchor = '''    assert partial["counts_toward_min_windows"] is False
-'''
-    addition = '''    assert partial["counts_toward_min_windows"] is False
-    assert partial["available_sessions"] > 10
-    assert partial["horizon_eligible_sessions"] > 0
-    assert partial["excluded_tail_sessions"] == 10
-    assert partial["sampled_sessions"] == 0
-'''
-    if 'assert partial["available_sessions"] > 10' not in text:
-        text = replace_once(text, anchor, addition, "partial evidence assertions")
+    anchor = '    assert partial["counts_toward_min_windows"] is False\n'
+    assertions = (
+        '    assert partial["available_sessions"] > 10\n'
+        '    assert partial["horizon_eligible_sessions"] > 0\n'
+        '    assert partial["excluded_tail_sessions"] == 10\n'
+        '    assert partial["sampled_sessions"] == 0\n'
+    )
+    if assertions not in text:
+        if anchor not in text:
+            raise RuntimeError("partial evidence test anchor not found")
+        text = text.replace(anchor, anchor + assertions, 1)
     WINDOW_TESTS.write_text(text, encoding="utf-8")
 
     diagnostic = DIAGNOSTIC_TESTS.read_text(encoding="utf-8")
