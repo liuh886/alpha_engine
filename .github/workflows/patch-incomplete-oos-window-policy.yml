@@ -84,7 +84,6 @@ jobs:
           PY
 
       - name: Apply deterministic contract patch
-        shell: bash
         run: python scripts/_patch_incomplete_oos_window_policy.py
 
       - name: Apply reviewed adapter-sampling hardening
@@ -97,40 +96,68 @@ jobs:
           uv sync --frozen --extra dev
 
       - name: Validate focused change
+        shell: bash
         run: |
-          uv run ruff check \
-            src/research/window_policy.py \
-            src/research/paradigm.py \
-            src/research/market_data_alignment.py \
-            src/research/spec_bound_factor_diagnostics.py \
-            src/research/spec_bound_execution.py \
-            src/research/cn_qlib_execution_adapter.py \
-            src/research/us_qlib_execution_adapter.py \
-            tests/test_window_policy.py \
-            tests/test_research_paradigm.py \
-            tests/test_market_data_alignment.py \
-            tests/test_spec_bound_factor_diagnostics.py \
-            tests/test_cn_qlib_ci_integration.py
-          uv run mypy \
-            src/research/window_policy.py \
-            src/research/paradigm.py \
-            src/research/market_data_alignment.py \
-            src/research/spec_bound_factor_diagnostics.py \
-            src/research/spec_bound_execution.py \
-            src/research/cn_qlib_execution_adapter.py \
-            src/research/us_qlib_execution_adapter.py
-          uv run pytest \
-            tests/test_window_policy.py \
-            tests/test_research_paradigm.py \
-            tests/test_market_data_alignment.py \
-            tests/test_spec_bound_factor_diagnostics.py \
-            tests/test_real_market_acceptance.py \
-            tests/test_real_market_research_pipeline.py \
-            tests/test_spec_bound_execution.py \
-            tests/test_cn_qlib_execution_adapter.py \
-            tests/test_us_qlib_execution_adapter.py \
-            tests/test_cn_qlib_ci_integration.py \
-            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+          set +e
+          {
+            uv run ruff check \
+              src/research/window_policy.py \
+              src/research/paradigm.py \
+              src/research/market_data_alignment.py \
+              src/research/spec_bound_factor_diagnostics.py \
+              src/research/spec_bound_execution.py \
+              src/research/cn_qlib_execution_adapter.py \
+              src/research/us_qlib_execution_adapter.py \
+              tests/test_window_policy.py \
+              tests/test_research_paradigm.py \
+              tests/test_market_data_alignment.py \
+              tests/test_spec_bound_factor_diagnostics.py \
+              tests/test_cn_qlib_ci_integration.py
+            ruff_status=$?
+            echo "RUFF_STATUS=$ruff_status"
+
+            uv run mypy \
+              src/research/window_policy.py \
+              src/research/paradigm.py \
+              src/research/market_data_alignment.py \
+              src/research/spec_bound_factor_diagnostics.py \
+              src/research/spec_bound_execution.py \
+              src/research/cn_qlib_execution_adapter.py \
+              src/research/us_qlib_execution_adapter.py
+            mypy_status=$?
+            echo "MYPY_STATUS=$mypy_status"
+
+            uv run pytest \
+              tests/test_window_policy.py \
+              tests/test_research_paradigm.py \
+              tests/test_market_data_alignment.py \
+              tests/test_spec_bound_factor_diagnostics.py \
+              tests/test_real_market_acceptance.py \
+              tests/test_real_market_research_pipeline.py \
+              tests/test_spec_bound_execution.py \
+              tests/test_cn_qlib_execution_adapter.py \
+              tests/test_us_qlib_execution_adapter.py \
+              tests/test_cn_qlib_ci_integration.py \
+              -q --strict-markers --tb=short --disable-warnings --maxfail=1
+            pytest_status=$?
+            echo "PYTEST_STATUS=$pytest_status"
+
+            if (( ruff_status || mypy_status || pytest_status )); then
+              exit 1
+            fi
+          } > validation-output.log 2>&1
+          status=$?
+          cat validation-output.log
+          exit "$status"
+
+      - name: Upload focused validation output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: incomplete-oos-validation-log
+          path: validation-output.log
+          if-no-files-found: warn
+          retention-days: 1
 
       - name: Commit patch
         shell: bash
