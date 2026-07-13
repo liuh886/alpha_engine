@@ -1,0 +1,333 @@
+name: Materialize post-150 current evidence
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  materialize:
+    if: github.head_ref == 'docs/post-150-current-evidence'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN_ID: "29225709306"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Download immutable source artifacts
+        run: |
+          rm -rf /tmp/post150-cn /tmp/post150-us
+          mkdir -p /tmp/post150-cn /tmp/post150-us
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name post-150-current-cn --dir /tmp/post150-cn
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name post-150-current-us --dir /tmp/post150-us
+
+      - name: Build durable evidence package
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import shutil
+          from pathlib import Path
+
+          evidence_root = Path("docs/evidence/post-150-current-2026-07-13")
+          if evidence_root.exists():
+              shutil.rmtree(evidence_root)
+          evidence_root.mkdir(parents=True)
+
+          source_run = 29225709306
+          source_pr = 153
+          source_main_commit = "5e5fa5d1bc43ee55a79a87943b2a9ab188d4374f"
+          artifact_digests = {
+              "cn": "sha256:a07bd75f4ec226dc6dafdec9e7126988f8c982546b38712b42124463924e3dd2",
+              "us": "sha256:82a6db3484ead846dc4260962468a72e2c4ff77e75365e5815e894343f8b06b6",
+          }
+          configs = {
+              "cn": {
+                  "source": Path("/tmp/post150-cn"),
+                  "experiment": "cn_10d_csi300_baseline",
+              },
+              "us": {
+                  "source": Path("/tmp/post150-us"),
+                  "experiment": "us_10d_qqq_baseline",
+              },
+          }
+
+          market_summaries: dict[str, dict] = {}
+          evidence_files: dict[str, dict[str, dict[str, object]]] = {}
+
+          for market, cfg in configs.items():
+              source = cfg["source"]
+              experiment = cfg["experiment"]
+              run_dir = source / "artifacts" / "research_runs" / experiment
+              target = evidence_root / market
+              target.mkdir()
+
+              selected = {
+                  "current_input.json": source / "current_input.json",
+                  "current_execution_summary.json": source / "current_execution_summary.json",
+                  "real_market_acceptance.json": run_dir / "real_market_acceptance.json",
+                  "factor_diagnostics.json": run_dir / "factor_diagnostics.json",
+                  "real_market_research_manifest.json": run_dir / "real_market_research_manifest.json",
+                  "provider_manifest.json": source / "data" / "providers" / market / "provider_manifest.json",
+              }
+              for name, path in selected.items():
+                  if not path.exists():
+                      raise SystemExit(f"missing source evidence: {path}")
+                  shutil.copy2(path, target / name)
+
+              inputs = json.loads((source / "current_input.json").read_text(encoding="utf-8"))
+              execution = json.loads(
+                  (source / "current_execution_summary.json").read_text(encoding="utf-8")
+              )
+              acceptance = json.loads(
+                  (run_dir / "real_market_acceptance.json").read_text(encoding="utf-8")
+              )
+              diagnostics = json.loads(
+                  (run_dir / "factor_diagnostics.json").read_text(encoding="utf-8")
+              )
+              manifest = json.loads(
+                  (run_dir / "real_market_research_manifest.json").read_text(encoding="utf-8")
+              )
+              attempts_path = (
+                  source
+                  / "artifacts"
+                  / "data_update_diagnostics"
+                  / "latest_provider_attempts.json"
+              )
+              attempts = json.loads(attempts_path.read_text(encoding="utf-8"))
+              update_log = (source / "current_update.log").read_text(
+                  encoding="utf-8", errors="replace"
+              )
+              failed_symbols = [
+                  item["symbol"] for item in attempts.get("symbols", []) if not item.get("ok")
+              ]
+              warnings = []
+              capture = False
+              for raw_line in update_log.splitlines():
+                  line = raw_line.strip()
+                  if line == "[!] DATA QUALITY WARNINGS DETECTED:":
+                      capture = True
+                      continue
+                  if capture and line.startswith("-"):
+                      warnings.append(line[1:].strip())
+                  elif capture and line and not line.startswith("-"):
+                      capture = False
+
+              window_rows = diagnostics.get("windows", [])
+              included = [row["label"] for row in window_rows if row.get("status") == "included"]
+              excluded = [
+                  {
+                      "label": row.get("label"),
+                      "boundary_status": row.get("boundary_status"),
+                      "reason": row.get("inclusion_reason"),
+                      "effective_test_end": row.get("effective_test_end"),
+                      "natural_test_end": row.get("natural_test_end"),
+                      "horizon_eligible_sessions": row.get("horizon_eligible_sessions"),
+                  }
+                  for row in window_rows
+                  if row.get("status") == "excluded"
+              ]
+              top_factors = [
+                  {
+                      "canonical_rank": row.get("canonical_rank"),
+                      "canonical_expression_id": row.get("canonical_expression_id"),
+                      "expression": row.get("expression"),
+                      "alias_ids": row.get("alias_ids"),
+                      "recommended_orientation": row.get("recommended_orientation"),
+                      "oriented_rank_icir": row.get("oriented_rank_icir"),
+                      "oriented_mean_rank_ic": row.get("oriented_mean_rank_ic"),
+                      "oriented_mean_top_bottom_spread": row.get(
+                          "oriented_mean_top_bottom_spread"
+                      ),
+                      "positive_oriented_window_ratio": row.get(
+                          "positive_oriented_window_ratio"
+                      ),
+                  }
+                  for row in diagnostics.get("factors", [])[:10]
+              ]
+
+              summary = {
+                  "market": market,
+                  "source_run_id": source_run,
+                  "source_artifact_digest": artifact_digests[market],
+                  "inputs": inputs,
+                  "exit_codes": execution.get("exit_codes"),
+                  "refresh": {
+                      "total_symbols": attempts.get("total_symbols"),
+                      "succeeded": attempts.get("succeeded"),
+                      "failed": attempts.get("failed"),
+                      "failed_symbols": failed_symbols,
+                      "quality_warnings": warnings,
+                      "research_validity_note": (
+                          "The CN update command returned 1 because the current-day quality "
+                          "report found one stale instrument. The market-specific provider "
+                          "was built, the fixed test_end=2026-06-18 acceptance suite passed, "
+                          "and the diagnostics pipeline returned 0."
+                          if market == "cn"
+                          else "The complete update, provider, and research chain returned 0."
+                      ),
+                  },
+                  "acceptance": {
+                      "accepted": acceptance.get("accepted"),
+                      "schema_version": acceptance.get("schema_version"),
+                      "summary": acceptance.get("summary"),
+                      "checks": [
+                          {"name": row.get("name"), "status": row.get("status")}
+                          for row in acceptance.get("checks", [])
+                      ],
+                  },
+                  "diagnostics": {
+                      "schema_version": diagnostics.get("schema_version"),
+                      "factor_count": diagnostics.get("factor_count"),
+                      "factor_id_count": diagnostics.get("factor_id_count"),
+                      "unique_expression_count": diagnostics.get(
+                          "unique_expression_count"
+                      ),
+                      "sampled_rebalance_dates": diagnostics.get(
+                          "sampled_rebalance_dates"
+                      ),
+                      "window_policy": diagnostics.get("window_policy"),
+                      "included_windows": included,
+                      "excluded_windows": excluded,
+                      "top_factors": top_factors,
+                  },
+                  "manifest": {
+                      key: manifest.get(key)
+                      for key in (
+                          "schema_version",
+                          "status",
+                          "diagnostic_only",
+                          "promotion_eligible",
+                          "promotion_evaluated",
+                          "trade_ready",
+                          "stages",
+                          "acceptance_sha256",
+                          "factor_diagnostics_sha256",
+                      )
+                  },
+              }
+              (target / "evidence_summary.json").write_text(
+                  json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+                  encoding="utf-8",
+              )
+              market_summaries[market] = summary
+
+              evidence_files[market] = {}
+              for path in sorted(target.iterdir()):
+                  evidence_files[market][path.name] = {
+                      "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                      "size_bytes": path.stat().st_size,
+                  }
+
+          index = {
+              "schema_version": "1.0",
+              "evidence_id": "post-150-current-2026-07-13",
+              "generated_from_workflow_run": source_run,
+              "generated_from_execution_pr": source_pr,
+              "source_main_commit": source_main_commit,
+              "artifact_digests": artifact_digests,
+              "contract": {
+                  "paradigm_schema_version": "1.1",
+                  "factor_diagnostics_schema_version": "1.3",
+                  "test_end": "2026-06-18",
+                  "partial_window_policy": "complete_windows_only",
+                  "min_windows_count_policy": "complete_windows_only",
+              },
+              "markets": market_summaries,
+              "files": evidence_files,
+          }
+          (evidence_root / "evidence_index.json").write_text(
+              json.dumps(index, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+
+          cn = market_summaries["cn"]
+          us = market_summaries["us"]
+          readme = f"""# Post-#150 current-contract real-market evidence
+
+This package preserves the CN and US rerun performed on 2026-07-13 after PR #150 made incomplete OOS-window treatment an explicit versioned contract.
+
+## Provenance
+
+- source main commit: `{source_main_commit}`;
+- execution-only PR: #{source_pr};
+- workflow run: `{source_run}`;
+- CN artifact digest: `{artifact_digests['cn']}`;
+- US artifact digest: `{artifact_digests['us']}`;
+- canonical `test_end`: `2026-06-18`;
+- paradigm schema: `1.1`;
+- diagnostics schema: `1.3`;
+- partial-window policy: `complete_windows_only`;
+- `min_windows` counts complete windows only.
+
+The historical Issue #124 evidence is not overwritten.
+
+## Results
+
+| Market | Update / provider / pipeline | Acceptance | Canonical expressions / IDs | Rebalance dates | Included OOS windows | Promotion / trade |
+|---|---|---|---:|---:|---|---|
+| CN | `{cn['exit_codes']['update']} / {cn['exit_codes']['provider']} / {cn['exit_codes']['pipeline']}` | `{cn['acceptance']['summary']['passed']} pass / {cn['acceptance']['summary']['warnings']} warn / {cn['acceptance']['summary']['failed']} fail` | `{cn['diagnostics']['unique_expression_count']} / {cn['diagnostics']['factor_id_count']}` | `{cn['diagnostics']['sampled_rebalance_dates']}` | `{', '.join(cn['diagnostics']['included_windows'])}` | `false / false` |
+| US | `{us['exit_codes']['update']} / {us['exit_codes']['provider']} / {us['exit_codes']['pipeline']}` | `{us['acceptance']['summary']['passed']} pass / {us['acceptance']['summary']['warnings']} warn / {us['acceptance']['summary']['failed']} fail` | `{us['diagnostics']['unique_expression_count']} / {us['diagnostics']['factor_id_count']}` | `{us['diagnostics']['sampled_rebalance_dates']}` | `{', '.join(us['diagnostics']['included_windows'])}` | `false / false` |
+
+Both markets accepted the real provider and completed factor diagnostics. Both remain diagnostic-only: `promotion_eligible=false`, `promotion_evaluated=false`, and `trade_ready=false`.
+
+## Window-policy verification
+
+Both markets used four complete windows: `2024H1`, `2024H2`, `2025H1`, and `2025H2`. `2026H1` is now present in evidence as an excluded partial final window with `effective_test_end=2026-06-18`, `natural_test_end=2026-06-30`, and `counts_toward_min_windows=false`. `2026H2` is excluded because it had not started by the requested end date.
+
+No sampled 10-session label crosses the effective window end or the declared `test_end`.
+
+## CN refresh caveat
+
+The CN update command returned `1`, while provider construction and the fixed-contract research pipeline both returned `0`.
+
+- configured input: `{cn['inputs']['effective_input_count']}` symbols including benchmark;
+- successfully refreshed: `{cn['refresh']['succeeded']}`;
+- failed and fail-closed: `{cn['refresh']['failed']}`;
+- acceptance result: `{cn['acceptance']['summary']['passed']} pass / {cn['acceptance']['summary']['warnings']} warn / {cn['acceptance']['summary']['failed']} fail`;
+- quality warnings: `{'; '.join(cn['refresh']['quality_warnings'])}`.
+
+The update failure is a current-day snapshot publication issue, not a failure of the declared research interval. The retained provider covers the fixed interval through `2026-06-18`, the acceptance suite passed, and factor diagnostics completed. The refresh-quality behavior is tracked separately and must not be interpreted as promotion readiness.
+
+## Interpretation boundary
+
+These outputs are factor diagnostics, not a deployable model or trading signal. Factor-library changes, orientation changes, combination research, model fitting, promotion, or trade readiness require separate reviewed work.
+
+See `evidence_index.json` for exact hashes and `cn/evidence_summary.json` / `us/evidence_summary.json` for compact machine-readable summaries.
+"""
+          (evidence_root / "README.md").write_text(readme, encoding="utf-8")
+          PY
+
+      - name: Validate durable evidence
+        run: |
+          test -f docs/evidence/post-150-current-2026-07-13/README.md
+          test -f docs/evidence/post-150-current-2026-07-13/evidence_index.json
+          test -f docs/evidence/post-150-current-2026-07-13/cn/factor_diagnostics.json
+          test -f docs/evidence/post-150-current-2026-07-13/us/factor_diagnostics.json
+          python -m json.tool docs/evidence/post-150-current-2026-07-13/evidence_index.json >/dev/null
+          python -m json.tool docs/evidence/post-150-current-2026-07-13/cn/evidence_summary.json >/dev/null
+          python -m json.tool docs/evidence/post-150-current-2026-07-13/us/evidence_summary.json >/dev/null
+
+      - name: Commit durable evidence
+        run: |
+          if git diff --quiet; then
+            echo "Evidence already materialized"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/evidence/post-150-current-2026-07-13
+          git commit -m 'docs(evidence): preserve post-150 CN and US rerun'
+          git push origin HEAD:${{ github.head_ref }}
