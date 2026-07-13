@@ -1,0 +1,82 @@
+name: Materialize issue 124 final evidence
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  materialize:
+    if: github.head_ref == 'docs/issue-124-final-evidence'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download final CN evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: issue-124-final-cn
+          path: .evidence-input/cn
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 29203030333
+
+      - name: Download final US evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: issue-124-final-us
+          path: .evidence-input/us
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 29203030333
+
+      - name: Materialize and validate durable evidence
+        run: python scripts/_materialize_issue124_evidence.py
+
+      - name: Verify exact evidence hashes
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path('docs/evidence/issue-124')
+          index = json.loads((root / 'evidence_index.json').read_text(encoding='utf-8'))
+          for relative, record in index['files'].items():
+              path = root / relative
+              actual = hashlib.sha256(path.read_bytes()).hexdigest()
+              assert actual == record['sha256'], (relative, actual, record['sha256'])
+          assert index['decision'] == {
+              'diagnostic_only': True,
+              'issue_124_acceptance_complete': True,
+              'promotion_eligible': False,
+              'trade_ready': False,
+          }
+          print('durable evidence hashes verified')
+          PY
+          git diff --check
+
+      - name: Commit durable evidence
+        shell: bash
+        run: |
+          if git diff --quiet -- docs/evidence/issue-124; then
+            echo 'Evidence already materialized'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/evidence/issue-124
+          git commit -m 'docs(research): preserve issue 124 final evidence'
+          git push origin HEAD:${{ github.head_ref }}
