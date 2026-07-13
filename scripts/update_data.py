@@ -1,5 +1,6 @@
 import argparse
 import copy
+import shutil
 import sys
 from pathlib import Path
 
@@ -37,6 +38,55 @@ from src.data.update_accounting import (
     UpdateAccountingReport as UpdateAccounting,
 )
 from src.data.validation.schema import validate_market_data
+
+
+def _normalise_cli_date(value: object, *, field_name: str) -> str:
+    try:
+        return pd.Timestamp(value).normalize().strftime("%Y-%m-%d")
+    except Exception as exc:
+        raise DataUpdateFailure(f"invalid {field_name}: {value!r}") from exc
+
+
+def _resolve_requested_interval(args: object) -> tuple[str, str | None]:
+    start = _normalise_cli_date(getattr(args, "start", None), field_name="--start")
+    raw_end = getattr(args, "end", None)
+    end = (
+        _normalise_cli_date(raw_end, field_name="--end")
+        if raw_end is not None and str(raw_end).strip()
+        else None
+    )
+    if end is not None and not bool(getattr(args, "full", False)):
+        raise DataUpdateFailure("--end requires --full so the provider is rebuilt to the declared interval")
+    if end is not None and end < start:
+        raise DataUpdateFailure("--end must be on or after --start")
+    return start, end
+
+
+_CANONICAL_BENCHMARKS = {
+    "cn": {"000300"},
+    "us": {"QQQ"},
+    "hk": set(),
+}
+
+
+def _benchmark_symbols_for_markets(markets: set[str]) -> set[str]:
+    return {
+        symbol
+        for market in markets
+        for symbol in _CANONICAL_BENCHMARKS.get(market, set())
+    }
+
+
+def _prepare_source_dir(data_dir: Path, *, requested_end: str | None) -> Path:
+    if requested_end is None:
+        source_dir = data_dir / "csv_source"
+        source_dir.mkdir(parents=True, exist_ok=True)
+        return source_dir
+
+    source_dir = data_dir / "csv_source_declared_interval"
+    shutil.rmtree(source_dir, ignore_errors=True)
+    source_dir.mkdir(parents=True, exist_ok=True)
+    return source_dir
 
 
 def _validate_quality_report(
@@ -418,12 +468,14 @@ def run_data_update(args) -> DataSnapshot:
 
     print("=== Updating Data via router (providers + fallback) ===")
 
+    requested_start, requested_end = _resolve_requested_interval(args)
+    args.start = requested_start
+    args.end = requested_end
+
     # Provider diagnostics collector
     provider_diagnostics = []
 
     watchlist = load_watchlist()
-    source_dir = DATA_DIR / "csv_source"
-    source_dir.mkdir(parents=True, exist_ok=True)
 
     policy = load_router_policy()
     router = MarketDataRouter(
@@ -443,6 +495,7 @@ def run_data_update(args) -> DataSnapshot:
 
     selected_markets = {k for k, v in regions.items() if v}
     universe = build_selected_universe(regions)
+    source_dir = _prepare_source_dir(DATA_DIR, requested_end=args.end)
 
     accounting = UpdateAccounting(configured=universe)
 
@@ -484,7 +537,11 @@ def run_data_update(args) -> DataSnapshot:
                 # Spot consistency check
                 if not spot_check_done:
                     multi_res = router.fetch_multi_source_bars(
-                        symbol=qlib_ticker, market=reg, start=start, limit=2
+                        symbol=qlib_ticker,
+                        market=reg,
+                        start=start,
+                        end=args.end,
+                        limit=2,
                     )
                     if len(multi_res) >= 2:
                         p_name, f_name = list(multi_res.keys())[:2]
@@ -504,7 +561,10 @@ def run_data_update(args) -> DataSnapshot:
                         spot_check_done = True
 
                 resp = router.fetch_daily_bars(
-                    symbol=qlib_ticker, market=reg, start=start, end=None,
+                    symbol=qlib_ticker,
+                    market=reg,
+                    start=start,
+                    end=args.end,
                     validate=True,  # trigger fallback if data fails OHLCV schema
                 )
 
@@ -590,6 +650,17 @@ def run_data_update(args) -> DataSnapshot:
                     accounting.add("failed", reg, qlib_ticker, reason="schema validation failed")
                     continue
 
+                if args.full:
+                    dates = pd.to_datetime(validated_df["date"], errors="coerce")
+                    interval_mask = dates >= pd.Timestamp(args.start)
+                    if args.end is not None:
+                        interval_mask &= dates <= pd.Timestamp(args.end)
+                    validated_df = validated_df.loc[interval_mask].copy()
+                    if validated_df.empty:
+                        raise DataUpdateFailure(
+                            f"{qlib_ticker} has no valid rows inside the declared interval"
+                        )
+
                 merged = _merge_existing(existing, validated_df)
                 merged.to_csv(csv_path, index=False)
                 accounting.add("updated", reg, qlib_ticker)
@@ -641,6 +712,10 @@ def run_data_update(args) -> DataSnapshot:
         provider_uri=qlib_dir,
         csv_dir=source_dir,
         markets=[k for k, v in regions.items() if v],
+        requested_start=args.start if args.full else None,
+        requested_end=args.end,
+        benchmark_symbols=_benchmark_symbols_for_markets(selected_markets),
+        provider_attempts=provider_diagnostics,
     )
 
     # Merge consistency warnings into quality report
@@ -708,6 +783,15 @@ def main(argv=None):
         type=str,
         default="2020-01-01",
         help="Start date for full rebuild (default: 2020-01-01).",
+    )
+    parser.add_argument(
+        "--end",
+        type=str,
+        default=None,
+        help=(
+            "Optional inclusive end date for a reproducible historical rebuild. "
+            "Requires --full; current-snapshot mode remains the default."
+        ),
     )
     parser.add_argument(
         "--lookback-days",
