@@ -89,6 +89,39 @@ jobs:
       - name: Preserve excluded partial-window evidence
         run: python scripts/_harden_oos_policy_evidence.py
 
+      - name: Migrate remaining acceptance fixture
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/test_real_market_acceptance.py')
+          text = path.read_text(encoding='utf-8')
+          old_schema = (
+              '        "schema_version": "1.0",\n'
+              '        "experiment_id": "test_real_market_acceptance",\n'
+          )
+          new_schema = (
+              '        "schema_version": "1.1",\n'
+              '        "experiment_id": "test_real_market_acceptance",\n'
+          )
+          old_policy = (
+              '            "min_windows": 3,\n'
+              '            "train_embargo_sessions": 10,\n'
+          )
+          new_policy = (
+              '            "min_windows": 3,\n'
+              '            "partial_window_policy": "complete_windows_only",\n'
+              '            "train_embargo_sessions": 10,\n'
+          )
+          if text.count(old_schema) != 1:
+              raise SystemExit('acceptance schema anchor not found exactly once')
+          if text.count(old_policy) != 1:
+              raise SystemExit('acceptance policy anchor not found exactly once')
+          text = text.replace(old_schema, new_schema, 1)
+          text = text.replace(old_policy, new_policy, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Install locked environment
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -112,6 +145,7 @@ jobs:
               tests/test_research_paradigm.py \
               tests/test_market_data_alignment.py \
               tests/test_spec_bound_factor_diagnostics.py \
+              tests/test_real_market_acceptance.py \
               tests/test_cn_qlib_ci_integration.py
             ruff_status=$?
             echo "RUFF_STATUS=$ruff_status"
@@ -182,6 +216,7 @@ jobs:
             tests/test_window_policy.py \
             tests/test_research_paradigm.py \
             tests/test_spec_bound_factor_diagnostics.py \
+            tests/test_real_market_acceptance.py \
             tests/test_cn_qlib_ci_integration.py
           git commit -m 'fix(research): make incomplete OOS window policy explicit'
           git push origin HEAD:${{ github.head_ref }}
