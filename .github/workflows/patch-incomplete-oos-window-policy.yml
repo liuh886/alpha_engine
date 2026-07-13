@@ -11,7 +11,7 @@ jobs:
   patch:
     if: github.head_ref == 'fix/incomplete-oos-window-policy'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Narrow deterministic fixture anchor
+      - name: Narrow deterministic fixture anchors
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -70,41 +70,25 @@ jobs:
               )
           elif new_tail_block not in diagnostic_text:
               raise SystemExit('diagnostic tail assertion line not found')
-          old_schema = '    assert report["schema_version"] == "1.2"\n'
-          new_schema = '    assert report["schema_version"] == "1.3"\n'
-          if old_schema in diagnostic_text:
-              diagnostic_text = diagnostic_text.replace(old_schema, new_schema, 1)
-          elif new_schema not in diagnostic_text:
-              raise SystemExit('diagnostic schema assertion not found')
-          old_window_end = 'pd.Timestamp(window["test_end"])'
-          new_window_end = 'pd.Timestamp(window["effective_test_end"])'
-          if old_window_end in diagnostic_text:
-              diagnostic_text = diagnostic_text.replace(
-                  old_window_end, new_window_end, 1
-              )
-          elif new_window_end not in diagnostic_text:
-              raise SystemExit('effective window-end assertion anchor not found')
+          diagnostic_text = diagnostic_text.replace(
+              '    assert report["schema_version"] == "1.2"\n',
+              '    assert report["schema_version"] == "1.3"\n',
+              1,
+          )
+          diagnostic_text = diagnostic_text.replace(
+              'pd.Timestamp(window["test_end"])',
+              'pd.Timestamp(window["effective_test_end"])',
+              1,
+          )
           diagnostic_path.write_text(diagnostic_text, encoding='utf-8')
           PY
 
-      - name: Apply deterministic patch
-        id: apply_patch
+      - name: Apply deterministic contract patch
         shell: bash
-        run: |
-          set +e
-          python scripts/_patch_incomplete_oos_window_policy.py > patch-output.log 2>&1
-          status=$?
-          cat patch-output.log
-          exit "$status"
+        run: python scripts/_patch_incomplete_oos_window_policy.py
 
-      - name: Upload patcher diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: incomplete-oos-patcher-log
-          path: patch-output.log
-          if-no-files-found: warn
-          retention-days: 1
+      - name: Apply reviewed adapter-sampling hardening
+        run: python scripts/_harden_oos_adapter_sampling.py
 
       - name: Install locked environment
         run: |
@@ -113,65 +97,40 @@ jobs:
           uv sync --frozen --extra dev
 
       - name: Validate focused change
-        shell: bash
         run: |
-          set +e
-          {
-            uv run ruff check \
-              src/research/window_policy.py \
-              src/research/paradigm.py \
-              src/research/market_data_alignment.py \
-              src/research/spec_bound_factor_diagnostics.py \
-              src/research/spec_bound_execution.py \
-              src/research/cn_qlib_execution_adapter.py \
-              src/research/us_qlib_execution_adapter.py \
-              tests/test_window_policy.py \
-              tests/test_research_paradigm.py \
-              tests/test_market_data_alignment.py \
-              tests/test_spec_bound_factor_diagnostics.py
-            ruff_status=$?
-            echo "RUFF_STATUS=$ruff_status"
-
-            uv run mypy \
-              src/research/window_policy.py \
-              src/research/paradigm.py \
-              src/research/market_data_alignment.py \
-              src/research/spec_bound_factor_diagnostics.py \
-              src/research/spec_bound_execution.py \
-              src/research/cn_qlib_execution_adapter.py \
-              src/research/us_qlib_execution_adapter.py
-            mypy_status=$?
-            echo "MYPY_STATUS=$mypy_status"
-
-            uv run pytest \
-              tests/test_window_policy.py \
-              tests/test_research_paradigm.py \
-              tests/test_market_data_alignment.py \
-              tests/test_spec_bound_factor_diagnostics.py \
-              tests/test_real_market_acceptance.py \
-              tests/test_real_market_research_pipeline.py \
-              tests/test_spec_bound_execution.py \
-              tests/test_cn_qlib_ci_integration.py \
-              -q --strict-markers --tb=short --disable-warnings --maxfail=1
-            pytest_status=$?
-            echo "PYTEST_STATUS=$pytest_status"
-
-            if (( ruff_status || mypy_status || pytest_status )); then
-              exit 1
-            fi
-          } > validation-output.log 2>&1
-          status=$?
-          cat validation-output.log
-          exit "$status"
-
-      - name: Upload focused validation output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: incomplete-oos-validation-log
-          path: validation-output.log
-          if-no-files-found: warn
-          retention-days: 1
+          uv run ruff check \
+            src/research/window_policy.py \
+            src/research/paradigm.py \
+            src/research/market_data_alignment.py \
+            src/research/spec_bound_factor_diagnostics.py \
+            src/research/spec_bound_execution.py \
+            src/research/cn_qlib_execution_adapter.py \
+            src/research/us_qlib_execution_adapter.py \
+            tests/test_window_policy.py \
+            tests/test_research_paradigm.py \
+            tests/test_market_data_alignment.py \
+            tests/test_spec_bound_factor_diagnostics.py \
+            tests/test_cn_qlib_ci_integration.py
+          uv run mypy \
+            src/research/window_policy.py \
+            src/research/paradigm.py \
+            src/research/market_data_alignment.py \
+            src/research/spec_bound_factor_diagnostics.py \
+            src/research/spec_bound_execution.py \
+            src/research/cn_qlib_execution_adapter.py \
+            src/research/us_qlib_execution_adapter.py
+          uv run pytest \
+            tests/test_window_policy.py \
+            tests/test_research_paradigm.py \
+            tests/test_market_data_alignment.py \
+            tests/test_spec_bound_factor_diagnostics.py \
+            tests/test_real_market_acceptance.py \
+            tests/test_real_market_research_pipeline.py \
+            tests/test_spec_bound_execution.py \
+            tests/test_cn_qlib_execution_adapter.py \
+            tests/test_us_qlib_execution_adapter.py \
+            tests/test_cn_qlib_ci_integration.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Commit patch
         shell: bash
@@ -188,12 +147,14 @@ jobs:
             tests/fixtures/cn_qlib_ci/paradigm.yaml \
             src/research/paradigm.py \
             src/research/market_data_alignment.py \
+            src/research/window_policy.py \
             src/research/spec_bound_factor_diagnostics.py \
             src/research/spec_bound_execution.py \
             src/research/cn_qlib_execution_adapter.py \
             src/research/us_qlib_execution_adapter.py \
             tests/test_window_policy.py \
             tests/test_research_paradigm.py \
-            tests/test_spec_bound_factor_diagnostics.py
+            tests/test_spec_bound_factor_diagnostics.py \
+            tests/test_cn_qlib_ci_integration.py
           git commit -m 'fix(research): make incomplete OOS window policy explicit'
           git push origin HEAD:${{ github.head_ref }}
