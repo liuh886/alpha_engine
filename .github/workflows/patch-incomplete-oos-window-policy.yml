@@ -57,14 +57,13 @@ jobs:
               '    assert all(row["excluded_tail_sessions"] == 10 '
               'for row in report["windows"])\n'
           )
-          new_tail_block = '''    included_windows = [
-              row for row in report["windows"] if row["status"] == "included"
-          ]
-          assert included_windows
-          assert all(
-              row["excluded_tail_sessions"] == 10 for row in included_windows
+          new_tail_block = (
+              '    included_windows = [row for row in report["windows"] '
+              'if row["status"] == "included"]\n'
+              '    assert included_windows\n'
+              '    assert all(row["excluded_tail_sessions"] == 10 '
+              'for row in included_windows)\n'
           )
-          '''
           if old_tail_line in diagnostic_text:
               diagnostic_text = diagnostic_text.replace(
                   old_tail_line, new_tail_block, 1
