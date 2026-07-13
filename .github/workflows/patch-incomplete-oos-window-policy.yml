@@ -39,28 +39,7 @@ jobs:
               raise SystemExit(
                   f'expected one ambiguous fixture literal block, found {text.count(old)}'
               )
-          text = text.replace(old, new, 1)
-
-          old_payload = '''    window_payload = {
-              **window_plan.to_dict(),
-              "experiment_id": plan.spec.experiment_id,
-              "available_end": available_end,
-          }
-          '''
-          new_payload = '''    window_payload = {
-              **window_plan.to_dict(),
-              "experiment_id": plan.spec.experiment_id,
-              "available_end": available_end,
-              "partial_windows_count_toward_min": False,
-          }
-          '''
-          if text.count(old_payload) != 1:
-              raise SystemExit(
-                  f'expected one adapter payload block, found {text.count(old_payload)}'
-              )
-          patcher.write_text(
-              text.replace(old_payload, new_payload, 1), encoding='utf-8'
-          )
+          patcher.write_text(text.replace(old, new, 1), encoding='utf-8')
 
           test_path = Path('tests/test_window_policy.py')
           test_text = test_path.read_text(encoding='utf-8')
@@ -109,6 +88,35 @@ jobs:
 
       - name: Preserve excluded partial-window evidence
         run: python scripts/_harden_oos_policy_evidence.py
+
+      - name: Finalize adapter window evidence
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          old = (
+              '        "available_end": available_end,\n'
+              '    }\n'
+              '    readiness.update(\n'
+          )
+          new = (
+              '        "available_end": available_end,\n'
+              '        "partial_windows_count_toward_min": False,\n'
+              '    }\n'
+              '    readiness.update(\n'
+          )
+          for path in (
+              Path('src/research/cn_qlib_execution_adapter.py'),
+              Path('src/research/us_qlib_execution_adapter.py'),
+          ):
+              text = path.read_text(encoding='utf-8')
+              if text.count(old) != 1:
+                  raise SystemExit(
+                      f'{path}: expected one adapter evidence anchor, '
+                      f'found {text.count(old)}'
+                  )
+              path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
 
       - name: Migrate embedded paradigm test fixtures
         run: |
