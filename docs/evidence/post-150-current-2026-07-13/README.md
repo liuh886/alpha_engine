@@ -48,4 +48,4 @@ The update failure is a current-day snapshot publication issue, not a failure of
 
 These outputs are factor diagnostics, not a deployable model or trading signal. Factor-library changes, orientation changes, combination research, model fitting, promotion, or trade readiness require separate reviewed work.
 
-See `evidence_index.json` for compact machine-readable market summaries, factor rankings, window evidence, failed-symbol lists, artifact provenance, and exact source-file hashes.
+See `evidence_index.yaml` for compact machine-readable market summaries, factor rankings, window evidence, failed-symbol lists, artifact provenance, and exact source-file hashes.
