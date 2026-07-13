@@ -1,0 +1,46 @@
+{
+  "decision": {
+    "diagnostic_only": true,
+    "issue_124_acceptance_complete": true,
+    "promotion_eligible": false,
+    "trade_ready": false
+  },
+  "files": {
+    "cn/factor_diagnostics.json": {
+      "sha256": "60d2b0d10cd90bbed68aa362416c2cd03eb553f3cd6e26039628ff81706f6b71"
+    },
+    "cn/real_market_acceptance.json": {
+      "sha256": "52e008b381c389e4a01c2f82124fcc33f1c683d74c64583c71c1778c4597d623"
+    },
+    "cn/real_market_research_manifest.json": {
+      "sha256": "352b09587a64ddf067e813218d93043834c63464ef5b008e0a91dc4e9978f78b"
+    },
+    "us/factor_diagnostics.json": {
+      "sha256": "fc52db50a15a55006a190623d434db8298d5d145e4e5d6245ab6232643c9b776"
+    },
+    "us/real_market_acceptance.json": {
+      "sha256": "4d427c9aa2f834b154792add30ce7e1bbbe4bb6d5af5afa24466dbb62fc01c75"
+    },
+    "us/real_market_research_manifest.json": {
+      "sha256": "c9baad0ce4042b010df57bc5e6b8e6f87d835944ca147ff13f0c0e3e64b617d5"
+    }
+  },
+  "issue": 124,
+  "schema_version": "1.0",
+  "source": {
+    "artifacts": {
+      "cn": {
+        "artifact_id": 8263550974,
+        "artifact_sha256": "22a1937f0615b4a446f24b7a33e9df82ed15ba6adeb1f45de15a288b6d6497e5"
+      },
+      "us": {
+        "artifact_id": 8262955618,
+        "artifact_sha256": "5f33b73f8018d0e2e477e3877d96fc9340bc7037e5e17e7e915e5bc9072da44c"
+      }
+    },
+    "base_main_sha": "aee95750a819fa414b5e204c322772c9fe61adca",
+    "pull_request": 145,
+    "workflow_head_sha": "c53bc485647c4876b2155ac0a1bb704f1056ad72",
+    "workflow_run_id": 29203030333
+  }
+}
