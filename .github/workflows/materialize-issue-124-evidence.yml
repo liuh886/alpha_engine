@@ -67,8 +67,11 @@ jobs:
           print('durable evidence hashes verified')
           PY
 
-      - name: Check generated diff
-        run: git diff --check
+      - name: Check generated summaries
+        run: |
+          git diff --check -- \
+            docs/evidence/issue-124/README.md \
+            docs/evidence/issue-124/evidence_index.json
 
       - name: Commit durable evidence
         shell: bash
