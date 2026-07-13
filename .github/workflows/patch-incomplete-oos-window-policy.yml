@@ -106,27 +106,29 @@ jobs:
               re.MULTILINE,
           )
 
+          def migrate_schema(match: re.Match[str]) -> str:
+              indent = match.group('indent')
+              return (
+                  f'{indent}"schema_version": "1.1",\n'
+                  f'{indent}"experiment_id":'
+              )
+
+          def add_policy(match: re.Match[str]) -> str:
+              indent = match.group('indent')
+              value = match.group('value')
+              return (
+                  f'{indent}"min_windows": {value},\n'
+                  f'{indent}"partial_window_policy": '
+                  '"complete_windows_only",\n'
+              )
+
           schema_updates = 0
           policy_updates = 0
           changed_paths = []
           for path in sorted(Path('tests').rglob('*.py')):
               original = path.read_text(encoding='utf-8')
-              text, schema_count = schema_pattern.subn(
-                  lambda match: (
-                      f'{match.group("indent")}"schema_version": "1.1",\n'
-                      f'{match.group("indent")}"experiment_id":'
-                  ),
-                  original,
-              )
-              text, policy_count = policy_pattern.subn(
-                  lambda match: (
-                      f'{match.group("indent")}"min_windows": '
-                      f'{match.group("value")},\n'
-                      f'{match.group("indent")}"
-                      f'partial_window_policy": "complete_windows_only",\n'
-                  ),
-                  text,
-              )
+              text, schema_count = schema_pattern.subn(migrate_schema, original)
+              text, policy_count = policy_pattern.subn(add_policy, text)
               if text != original:
                   path.write_text(text, encoding='utf-8')
                   changed_paths.append(str(path))
