@@ -118,4 +118,4 @@ def test_yfinance_rejects_invalid_or_reversed_boundaries(monkeypatch):
                 end="2026-06-18",
             )
         )
-    assert called is True
+    assert called is False
