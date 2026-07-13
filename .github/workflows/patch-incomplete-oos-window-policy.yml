@@ -23,7 +23,13 @@ jobs:
           python-version: '3.12'
 
       - name: Apply deterministic patch
-        run: python scripts/_patch_incomplete_oos_window_policy.py
+        shell: bash
+        run: |
+          set +e
+          python scripts/_patch_incomplete_oos_window_policy.py > patch-output.log 2>&1
+          status=$?
+          cat patch-output.log
+          exit "$status"
 
       - name: Install locked environment
         run: |
