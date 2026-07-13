@@ -12,6 +12,210 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  declared_end_cn_verification:
+    if: github.event_name == 'pull_request' && github.head_ref == 'research/declared-end-cn-verification'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RESEARCH_SPEC: configs/research_paradigms/cn_10d_csi300_baseline.yaml
+      RESEARCH_UNIVERSE: configs/research_universes/cn_curated_equities_v1.yaml
+      EXPERIMENT_ID: cn_10d_csi300_baseline
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          show-progress: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Materialize exact CN input
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          source = yaml.safe_load(Path("configs/research_universes/cn_curated_equities_v1.yaml").read_text(encoding="utf-8"))
+          symbols = []
+          for value in source.get("cn", []):
+              symbol = str(value).strip().upper()
+              if symbol and symbol not in symbols:
+                  symbols.append(symbol)
+          if "000300" not in symbols:
+              symbols.append("000300")
+          Path("configs/watchlist.yaml").write_text(
+              yaml.safe_dump({"cn": symbols, "us": [], "hk": []}, sort_keys=False),
+              encoding="utf-8",
+          )
+          print(f"CN effective input: {len(symbols)} symbols including benchmark")
+          PY
+
+      - name: Run declared-end real-data refresh
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/update_data.py --full --start 2021-01-01 \
+            --end 2026-06-18 --market cn > declared_update.log 2>&1
+          echo "$?" > declared_update.exit
+          cat declared_update.log
+          exit 0
+
+      - name: Build CN market provider
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/build_market_providers.py --root . --markets cn \
+            > declared_provider.log 2>&1
+          echo "$?" > declared_provider.exit
+          cat declared_provider.log
+          exit 0
+
+      - name: Run canonical CN research
+        shell: bash
+        run: |
+          set +e
+          uv run python scripts/run_real_market_research.py --root . \
+            --spec "$RESEARCH_SPEC" > declared_pipeline.log 2>&1
+          echo "$?" > declared_pipeline.exit
+          cat declared_pipeline.log
+          exit 0
+
+      - name: Summarize declared-end verdict
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          from pathlib import Path
+          from typing import Any
+
+          def read_exit(name: str) -> int | None:
+              path = Path(name)
+              return int(path.read_text(encoding="utf-8").strip()) if path.exists() else None
+
+          def find_quality(value: Any) -> dict[str, Any] | None:
+              if isinstance(value, dict):
+                  if "freshness_scope" in value and "markets" in value:
+                      return value
+                  for child in value.values():
+                      found = find_quality(child)
+                      if found is not None:
+                          return found
+              elif isinstance(value, list):
+                  for child in value:
+                      found = find_quality(child)
+                      if found is not None:
+                          return found
+              return None
+
+          summary: dict[str, Any] = {
+              "source_commit": "0873ce08c07c99d849138705419fc68c8d5f08d9",
+              "requested_start": "2021-01-01",
+              "requested_end": "2026-06-18",
+              "exit_codes": {
+                  "update": read_exit("declared_update.exit"),
+                  "provider": read_exit("declared_provider.exit"),
+                  "pipeline": read_exit("declared_pipeline.exit"),
+              },
+          }
+
+          marker_path = Path("artifacts/snapshots/watchlist_latest.json")
+          if marker_path.exists():
+              marker = json.loads(marker_path.read_text(encoding="utf-8"))
+              summary["snapshot_marker"] = marker
+              summary["quality_report"] = find_quality(marker)
+
+          attempts_path = Path("artifacts/data_update_diagnostics/latest_provider_attempts.json")
+          if attempts_path.exists():
+              attempts = json.loads(attempts_path.read_text(encoding="utf-8"))
+              summary["provider_attempts"] = {
+                  "total_symbols": attempts.get("total_symbols"),
+                  "succeeded": attempts.get("succeeded"),
+                  "failed": attempts.get("failed"),
+                  "failed_symbols": [
+                      row.get("symbol")
+                      for row in attempts.get("symbols", [])
+                      if not row.get("ok")
+                  ],
+              }
+
+          run_dir = Path("artifacts/research_runs/cn_10d_csi300_baseline")
+          for name in (
+              "real_market_acceptance.json",
+              "factor_diagnostics.json",
+              "real_market_research_manifest.json",
+          ):
+              path = run_dir / name
+              if path.exists():
+                  summary[name] = json.loads(path.read_text(encoding="utf-8"))
+
+          Path("declared_end_cn_summary.json").write_text(
+              json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True))
+          PY
+
+      - name: Upload declared-end evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: declared-end-cn-verification
+          path: |
+            declared_*.log
+            declared_*.exit
+            declared_end_cn_summary.json
+            artifacts/snapshots/watchlist_latest.json
+            artifacts/data_update_diagnostics/
+            artifacts/research_runs/${{ env.EXPERIMENT_ID }}/
+            data/providers/cn/provider_manifest.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Validate declared-end verdict
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          summary = json.loads(Path("declared_end_cn_summary.json").read_text(encoding="utf-8"))
+          exits = summary["exit_codes"]
+          assert exits["update"] in {0, 2}, exits
+          assert exits["provider"] == 0, exits
+          assert exits["pipeline"] == 0, exits
+
+          quality = summary.get("quality_report")
+          assert isinstance(quality, dict), "quality report missing from snapshot marker"
+          scope = quality["freshness_scope"]
+          assert scope["mode"] == "declared_interval", scope
+          assert scope["requested_end"] == "2026-06-18", scope
+          assert scope["effective_calendar_end"] <= "2026-06-18", scope
+          assert quality["markets"]["cn"]["stale_instruments"] == 0, quality["markets"]["cn"]
+
+          acceptance = summary["real_market_acceptance.json"]
+          assert acceptance["accepted"] is True, acceptance
+          assert acceptance["summary"]["failed"] == 0, acceptance["summary"]
+
+          diagnostics = summary["factor_diagnostics.json"]
+          assert diagnostics["schema_version"] == "1.3", diagnostics.get("schema_version")
+          assert diagnostics["window_policy"]["partial_window_policy"] == "complete_windows_only"
+
+          manifest = summary["real_market_research_manifest.json"]
+          assert manifest["status"] == "completed", manifest
+          assert manifest["diagnostic_only"] is True, manifest
+          assert manifest["promotion_eligible"] is False, manifest
+          assert manifest["trade_ready"] is False, manifest
+          PY
+
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 30
