@@ -1,5 +1,6 @@
 import argparse
 import copy
+import shutil
 import sys
 from pathlib import Path
 
@@ -59,6 +60,33 @@ def _resolve_requested_interval(args: object) -> tuple[str, str | None]:
     if end is not None and end < start:
         raise DataUpdateFailure("--end must be on or after --start")
     return start, end
+
+
+_CANONICAL_BENCHMARKS = {
+    "cn": {"000300"},
+    "us": {"QQQ"},
+    "hk": set(),
+}
+
+
+def _benchmark_symbols_for_markets(markets: set[str]) -> set[str]:
+    return {
+        symbol
+        for market in markets
+        for symbol in _CANONICAL_BENCHMARKS.get(market, set())
+    }
+
+
+def _prepare_source_dir(data_dir: Path, *, requested_end: str | None) -> Path:
+    if requested_end is None:
+        source_dir = data_dir / "csv_source"
+        source_dir.mkdir(parents=True, exist_ok=True)
+        return source_dir
+
+    source_dir = data_dir / "csv_source_declared_interval"
+    shutil.rmtree(source_dir, ignore_errors=True)
+    source_dir.mkdir(parents=True, exist_ok=True)
+    return source_dir
 
 
 def _validate_quality_report(
@@ -448,8 +476,6 @@ def run_data_update(args) -> DataSnapshot:
     provider_diagnostics = []
 
     watchlist = load_watchlist()
-    source_dir = DATA_DIR / "csv_source"
-    source_dir.mkdir(parents=True, exist_ok=True)
 
     policy = load_router_policy()
     router = MarketDataRouter(
@@ -469,6 +495,7 @@ def run_data_update(args) -> DataSnapshot:
 
     selected_markets = {k for k, v in regions.items() if v}
     universe = build_selected_universe(regions)
+    source_dir = _prepare_source_dir(DATA_DIR, requested_end=args.end)
 
     accounting = UpdateAccounting(configured=universe)
 
@@ -687,6 +714,8 @@ def run_data_update(args) -> DataSnapshot:
         markets=[k for k, v in regions.items() if v],
         requested_start=args.start if args.full else None,
         requested_end=args.end,
+        benchmark_symbols=_benchmark_symbols_for_markets(selected_markets),
+        provider_attempts=provider_diagnostics,
     )
 
     # Merge consistency warnings into quality report
