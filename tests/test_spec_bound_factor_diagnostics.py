@@ -263,7 +263,7 @@ def _acceptance(tmp_path: Path, spec_path: Path) -> dict[str, Any]:
 
 
 def _by_id(report: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    return {row["id"]: row for row in report["factors"]}
+    return {row["id"]: row for row in report["factor_alias_rows"]}
 
 
 def test_factor_diagnostics_are_spec_bound_and_diagnostic_only(tmp_path: Path) -> None:
@@ -289,11 +289,11 @@ def test_factor_diagnostics_are_spec_bound_and_diagnostic_only(tmp_path: Path) -
     assert all(row["excluded_tail_sessions"] == 10 for row in report["windows"])
     assert all(row["label_horizon_sessions"] == 10 for row in report["windows"])
     assert report["schema_version"] == "1.2"
-    assert report["factor_count"] == 5
+    assert report["factor_count"] == 4
     assert report["factor_id_count"] == 5
     assert report["unique_expression_count"] == 4
-    assert report["canonical_factor_count"] == 4
-    assert len(report["canonical_factors"]) == 4
+    assert len(report["factors"]) == 4
+    assert len(report["factor_alias_rows"]) == 5
     assert report["ranking_subject"] == "canonical_expression"
     assert report["factor_identity"]["scheme"] == "qlib_expression_text_v1"
     assert (
@@ -311,6 +311,7 @@ def test_factor_diagnostics_are_spec_bound_and_diagnostic_only(tmp_path: Path) -
         factors["test:positive"]["oriented_rank_icir"]
         == factors["test:positive_alias"]["oriented_rank_icir"]
     )
+    assert factors["test:positive_alias"]["expression"] == " POSITIVE_SIGNAL "
     assert factors["test:positive"]["oriented_mean_top_bottom_spread"] > 0.0
     assert factors["test:negative"]["recommended_orientation"] == "invert_score"
     assert factors["test:negative"]["oriented_mean_rank_ic"] > 0.8
@@ -330,6 +331,9 @@ def test_factor_expression_identity_is_deterministic_and_conservative() -> None:
     assert compact["normalized_expression"] == "POSITIVE_SIGNAL"
     assert compact["canonical_expression_id"].startswith("qlib-expression:")
     assert compact != parenthesized
+    quoted = canonical_expression_identity('Func( "a b" )')
+    assert quoted == canonical_expression_identity('Func("a b")')
+    assert quoted != canonical_expression_identity('Func("ab")')
 
 
 def test_alias_metric_divergence_fails_closed(tmp_path: Path) -> None:

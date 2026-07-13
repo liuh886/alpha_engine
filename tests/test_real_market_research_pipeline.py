@@ -183,10 +183,9 @@ def test_pipeline_writes_bound_manifest_after_diagnostics(tmp_path: Path) -> Non
             "diagnostic_only": True,
             "promotion_eligible": False,
             "trade_ready": False,
-            "factor_count": 4,
+            "factor_count": 2,
             "factor_id_count": 4,
             "unique_expression_count": 2,
-            "canonical_factor_count": 2,
             "sampled_rebalance_dates": 60,
         }
         Path(kwargs["output_path"]).write_text(json.dumps(report), encoding="utf-8")
@@ -202,10 +201,9 @@ def test_pipeline_writes_bound_manifest_after_diagnostics(tmp_path: Path) -> Non
 
     assert manifest["status"] == "completed"
     assert manifest["schema_version"] == "1.1"
-    assert manifest["factor_count"] == 4
+    assert manifest["factor_count"] == 2
     assert manifest["factor_id_count"] == 4
     assert manifest["unique_expression_count"] == 2
-    assert manifest["canonical_factor_count"] == 2
     assert manifest["sampled_rebalance_dates"] == 60
     assert len(manifest["acceptance_sha256"]) == 64
     assert len(manifest["factor_diagnostics_sha256"]) == 64

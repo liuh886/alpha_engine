@@ -500,15 +500,15 @@ def run_factor_diagnostics(
     for canonical_rank, row in enumerate(canonical_diagnostics, start=1):
         row["canonical_rank"] = canonical_rank
 
-    diagnostics = [
+    factor_alias_rows = [
         alias_row
         for canonical_row in canonical_diagnostics
         for alias_row in expand_alias_rows(canonical_row)
     ]
-    validate_alias_metric_consistency(diagnostics)
+    validate_alias_metric_consistency(factor_alias_rows)
     factor_alias_map = {
         str(row["id"]): str(row["canonical_expression_id"])
-        for row in diagnostics
+        for row in factor_alias_rows
     }
 
 
@@ -546,10 +546,9 @@ def run_factor_diagnostics(
         "provider": runtime.metadata(),
         "windows": windows,
         "sampled_rebalance_dates": len(date_map),
-        "factor_count": len(diagnostics),
-        "factor_id_count": len(diagnostics),
+        "factor_count": len(canonical_diagnostics),
+        "factor_id_count": len(factor_alias_rows),
         "unique_expression_count": len(canonical_diagnostics),
-        "canonical_factor_count": len(canonical_diagnostics),
         "factor_identity": factor_identity_metadata(),
         "ranking_subject": "canonical_expression",
         "ranking_basis": [
@@ -557,9 +556,9 @@ def run_factor_diagnostics(
             "absolute_oriented_mean_rank_ic",
             "coverage_ratio",
         ],
-        "canonical_factors": canonical_diagnostics,
+        "factors": canonical_diagnostics,
+        "factor_alias_rows": factor_alias_rows,
         "factor_alias_map": factor_alias_map,
-        "factors": diagnostics,
     }
 
 

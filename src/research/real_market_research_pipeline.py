@@ -139,9 +139,6 @@ def run_real_market_research_pipeline(
     manifest["unique_expression_count"] = diagnostics.get(
         "unique_expression_count"
     )
-    manifest["canonical_factor_count"] = diagnostics.get(
-        "canonical_factor_count", diagnostics.get("unique_expression_count")
-    )
     manifest["sampled_rebalance_dates"] = diagnostics.get("sampled_rebalance_dates")
     manifest["next_step"] = (
         "Review factor_diagnostics.json. Updating factor libraries or running model "
