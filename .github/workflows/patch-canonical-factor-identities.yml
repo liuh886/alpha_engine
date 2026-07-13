@@ -22,8 +22,8 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Apply deterministic patch
-        run: python scripts/_patch_canonical_factor_identities.py
+      - name: Apply reviewed output hardening
+        run: python scripts/_harden_canonical_factor_output.py
 
       - name: Install locked environment
         run: |
@@ -48,11 +48,11 @@ jobs:
             tests/test_real_market_research_pipeline.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-      - name: Commit patch
+      - name: Commit hardening
         shell: bash
         run: |
           if git diff --quiet; then
-            echo 'Patch already applied'
+            echo 'Hardening already applied'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
@@ -63,5 +63,5 @@ jobs:
             src/research/real_market_research_pipeline.py \
             tests/test_spec_bound_factor_diagnostics.py \
             tests/test_real_market_research_pipeline.py
-          git commit -m 'fix(research): separate canonical factors from aliases'
+          git commit -m 'fix(research): make canonical factors the ranking surface'
           git push origin HEAD:${{ github.head_ref }}
