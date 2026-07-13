@@ -1,0 +1,89 @@
+name: Patch incomplete OOS window policy
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'fix/incomplete-oos-window-policy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Apply deterministic patch
+        run: python scripts/_patch_incomplete_oos_window_policy.py
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Validate focused change
+        run: |
+          uv run ruff check \
+            src/research/window_policy.py \
+            src/research/paradigm.py \
+            src/research/market_data_alignment.py \
+            src/research/spec_bound_factor_diagnostics.py \
+            src/research/spec_bound_execution.py \
+            src/research/cn_qlib_execution_adapter.py \
+            src/research/us_qlib_execution_adapter.py \
+            tests/test_window_policy.py \
+            tests/test_research_paradigm.py \
+            tests/test_market_data_alignment.py \
+            tests/test_spec_bound_factor_diagnostics.py
+          uv run mypy \
+            src/research/window_policy.py \
+            src/research/paradigm.py \
+            src/research/market_data_alignment.py \
+            src/research/spec_bound_factor_diagnostics.py \
+            src/research/spec_bound_execution.py \
+            src/research/cn_qlib_execution_adapter.py \
+            src/research/us_qlib_execution_adapter.py
+          uv run pytest \
+            tests/test_window_policy.py \
+            tests/test_research_paradigm.py \
+            tests/test_market_data_alignment.py \
+            tests/test_spec_bound_factor_diagnostics.py \
+            tests/test_real_market_acceptance.py \
+            tests/test_real_market_research_pipeline.py \
+            tests/test_spec_bound_execution.py \
+            tests/test_cn_qlib_ci_integration.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'Patch already applied'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            configs/research_paradigms/cn_10d_csi300_baseline.yaml \
+            configs/research_paradigms/us_10d_qqq_baseline.yaml \
+            tests/fixtures/cn_qlib_ci/paradigm.yaml \
+            src/research/paradigm.py \
+            src/research/market_data_alignment.py \
+            src/research/spec_bound_factor_diagnostics.py \
+            src/research/spec_bound_execution.py \
+            src/research/cn_qlib_execution_adapter.py \
+            src/research/us_qlib_execution_adapter.py \
+            tests/test_research_paradigm.py \
+            tests/test_spec_bound_factor_diagnostics.py
+          git commit -m 'fix(research): make incomplete OOS window policy explicit'
+          git push origin HEAD:${{ github.head_ref }}
