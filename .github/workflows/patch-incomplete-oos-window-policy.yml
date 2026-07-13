@@ -29,24 +29,16 @@ jobs:
 
           path = Path('scripts/_patch_incomplete_oos_window_policy.py')
           text = path.read_text(encoding='utf-8')
-          old = '''    text = replace_once(
-              text,
-              '                "schema_version": "1.0",',
-              '                "schema_version": "1.1",',
-              "diagnostic fixture schema",
-          )
-          '''
-          new = '''    text = replace_once(
-              text,
-              '                "schema_version": "1.0",\\n'
-              '                "experiment_id": "test_factor_diagnostics",',
-              '                "schema_version": "1.1",\\n'
-              '                "experiment_id": "test_factor_diagnostics",',
-              "diagnostic fixture schema",
-          )
-          '''
-          if old not in text:
-              raise SystemExit('ambiguous fixture anchor block not found')
+          old = '''        '                "schema_version": "1.0",',
+                  '                "schema_version": "1.1",','''
+          new = '''        '                "schema_version": "1.0",\\n'
+                  '                "experiment_id": "test_factor_diagnostics",',
+                  '                "schema_version": "1.1",\\n'
+                  '                "experiment_id": "test_factor_diagnostics",','''
+          if text.count(old) != 1:
+              raise SystemExit(
+                  f'expected one ambiguous fixture literal block, found {text.count(old)}'
+              )
           path.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
 
