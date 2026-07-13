@@ -21,79 +21,13 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
 
 def patch_policy() -> None:
     text = WINDOW_POLICY.read_text(encoding="utf-8")
-    old = '''    for decision in decisions:
-        row = decision.to_dict()
-        selected = decision.selected_window()
-        if selected is None:
-            row.update(
-                {
-                    "status": "excluded",
-                    "inclusion_reason": decision.boundary_reason,
-                    "available_sessions": 0,
-                    "horizon_eligible_sessions": 0,
-                    "excluded_tail_sessions": 0,
-                    "label_horizon_sessions": horizon_sessions,
-                    "sampled_sessions": 0,
-                }
-            )
-            window_rows.append(row)
-            continue
-
-        start = pd.Timestamp(selected.test_start)
-        end = pd.Timestamp(selected.test_end)
-        window_dates = dates_index[(dates_index >= start) & (dates_index <= end)]
-        horizon_eligible = (
-            window_dates[:-horizon_sessions]
-            if len(window_dates) > horizon_sessions
-            else window_dates[:0]
-        )
-        sampled = horizon_eligible[::cadence_sessions]
-        include = len(sampled) > 0
-        reason = "horizon-contained sessions available"
-
-        if decision.complete:
-            if include:
-                complete_count += 1
-            else:
-                reason = "complete window has no horizon-contained sampled sessions"
-        else:
-            minimum = int(min_partial_window_eligible_sessions or 0)
-            include = len(horizon_eligible) >= minimum and len(sampled) > 0
-            if include:
-                partial_count += 1
-                reason = (
-                    "partial final window meets declared horizon-eligible "
-                    "session minimum"
-                )
-            else:
-                reason = (
-                    "partial final window has "
-                    f"{len(horizon_eligible)} horizon-eligible sessions; "
-                    f"requires at least {minimum}"
-                )
-
-        row.update(
-            {
-                "status": "included" if include else "excluded",
-                "inclusion_reason": reason,
-                "available_sessions": int(len(window_dates)),
-                "horizon_eligible_sessions": int(len(horizon_eligible)),
-                "excluded_tail_sessions": int(
-                    len(window_dates) - len(horizon_eligible)
-                ),
-                "label_horizon_sessions": horizon_sessions,
-                "sampled_sessions": int(len(sampled)) if include else 0,
-            }
-        )
-        if include:
-            selected_windows.append(selected)
-            sampled_date_labels.extend(
-                (pd.Timestamp(date).strftime("%Y-%m-%d"), decision.label)
-                for date in sampled
-            )
-        window_rows.append(row)
-'''
-    new = '''    for decision in decisions:
+    start_marker = "    for decision in decisions:\n"
+    end_marker = "\n    sampled_date_labels.sort(key=lambda item: item[0])"
+    if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+        raise RuntimeError("session evidence structural boundaries are not unique")
+    start = text.index(start_marker)
+    end = text.index(end_marker, start)
+    replacement = '''    for decision in decisions:
         row = decision.to_dict()
         selected = decision.selected_window()
         evidence_window = selected
@@ -120,9 +54,11 @@ def patch_policy() -> None:
             window_rows.append(row)
             continue
 
-        start = pd.Timestamp(evidence_window.test_start)
-        end = pd.Timestamp(evidence_window.test_end)
-        window_dates = dates_index[(dates_index >= start) & (dates_index <= end)]
+        start_date = pd.Timestamp(evidence_window.test_start)
+        end_date = pd.Timestamp(evidence_window.test_end)
+        window_dates = dates_index[
+            (dates_index >= start_date) & (dates_index <= end_date)
+        ]
         horizon_eligible = (
             window_dates[:-horizon_sessions]
             if len(window_dates) > horizon_sessions
@@ -180,7 +116,7 @@ def patch_policy() -> None:
             )
         window_rows.append(row)
 '''
-    text = replace_once(text, old, new, "session evidence block")
+    text = text[:start] + replacement + text[end:]
     WINDOW_POLICY.write_text(text, encoding="utf-8")
 
 
