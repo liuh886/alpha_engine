@@ -51,8 +51,52 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
         df["amount"] = df["close"] * df["volume"]
     df["factor"] = 1.0
     out = df[["date", "open", "high", "low", "close", "volume", "amount", "factor"]].copy()
-    out["date"] = pd.to_datetime(out["date"])
+    out["date"] = pd.to_datetime(out["date"], errors="coerce")
     return out.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+
+
+def _normalise_boundary(value: object, *, field_name: str) -> pd.Timestamp:
+    try:
+        return pd.Timestamp(value).normalize()
+    except Exception as exc:
+        raise DataFetchError(f"invalid {field_name}: {value!r}") from exc
+
+
+def _exclusive_provider_end(value: str | None) -> str | None:
+    """Translate AlphaEngine's inclusive end into yfinance's exclusive end."""
+
+    if value is None or not str(value).strip():
+        return None
+    requested_end = _normalise_boundary(value, field_name="end")
+    return (requested_end + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+
+
+def _clip_to_request(
+    frame: pd.DataFrame,
+    *,
+    start: str,
+    end: str | None,
+) -> pd.DataFrame:
+    """Keep only rows inside the inclusive router request interval."""
+
+    if frame.empty:
+        return frame
+    start_ts = _normalise_boundary(start, field_name="start")
+    end_ts = _normalise_boundary(end, field_name="end") if end else None
+    if end_ts is not None and end_ts < start_ts:
+        raise DataFetchError("end must be on or after start")
+
+    dates = pd.to_datetime(frame["date"], errors="coerce")
+    if dates.dt.tz is not None:
+        dates = dates.dt.tz_localize(None)
+    dates = dates.dt.normalize()
+    mask = dates >= start_ts
+    if end_ts is not None:
+        mask &= dates <= end_ts
+
+    clipped = frame.loc[mask].copy()
+    clipped["date"] = dates.loc[mask]
+    return clipped.sort_values("date").reset_index(drop=True)
 
 
 @dataclass
@@ -82,6 +126,7 @@ class YFinanceAdapter:
         if not start:
             raise DataFetchError("start is required")
 
+        provider_end = _exclusive_provider_end(req.end)
         yf_ticker = self.provider_symbol(req)
         try:
             with warnings.catch_warnings():
@@ -89,14 +134,18 @@ class YFinanceAdapter:
                 df = yf.download(
                     yf_ticker,
                     start=start,
-                    end=req.end,
+                    end=provider_end,
                     progress=False,
                     auto_adjust=True,
                 )
         except Exception as exc:
             raise DataFetchError(f"yfinance download failed for {yf_ticker}: {exc}") from exc
 
-        out = _process_yfinance_df(df)
+        out = _clip_to_request(
+            _process_yfinance_df(df),
+            start=start,
+            end=req.end,
+        )
         if out.empty:
             raise DataFetchError(f"empty data for {yf_ticker}")
 
