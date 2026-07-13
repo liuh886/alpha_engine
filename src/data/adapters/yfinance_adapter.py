@@ -126,6 +126,11 @@ class YFinanceAdapter:
         if not start:
             raise DataFetchError("start is required")
 
+        start_ts = _normalise_boundary(start, field_name="start")
+        end_ts = _normalise_boundary(req.end, field_name="end") if req.end else None
+        if end_ts is not None and end_ts < start_ts:
+            raise DataFetchError("end must be on or after start")
+
         provider_end = _exclusive_provider_end(req.end)
         yf_ticker = self.provider_symbol(req)
         try:
