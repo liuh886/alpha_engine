@@ -22,6 +22,13 @@ import pandas as pd
 
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 from src.research.factor_library import FactorSpec, load_factor_library
+from src.research.factor_identity import (
+    build_canonical_factor_row,
+    expand_alias_rows,
+    factor_identity_metadata,
+    group_factor_specs_by_expression,
+    validate_alias_metric_consistency,
+)
 from src.research.market_data_alignment import get_aligned_windows
 from src.research.multi_market_readiness import normalize_market_symbols
 from src.research.paradigm import ResearchParadigmSpec, load_research_paradigm_spec
@@ -31,7 +38,7 @@ from src.research.spec_bound_execution import (
     contract_sha256,
 )
 
-FACTOR_DIAGNOSTICS_SCHEMA_VERSION = "1.1"
+FACTOR_DIAGNOSTICS_SCHEMA_VERSION = "1.2"
 _REQUIRED_ACCEPTANCE_CHECKS = {
     "real_provider_scope",
     "calendar_coverage",
@@ -430,7 +437,8 @@ def run_factor_diagnostics(
         )
     ]
     factor_specs = _selected_factor_specs(spec)
-    expressions = list(dict.fromkeys(factor.expression for _, factor in factor_specs))
+    canonical_specs = group_factor_specs_by_expression(factor_specs)
+    expressions = [item.evaluation_expression for item in canonical_specs]
     return_expression = str(spec.strategy["return_expression"])
     start = str(spec.walk_forward["requested_train_start"])
     end = str(spec.walk_forward["test_end"])
@@ -464,20 +472,24 @@ def run_factor_diagnostics(
     top_n = int(spec.strategy["top_n"])
     bottom_n = int(spec.strategy["bottom_n"])
 
-    diagnostics = [
-        _factor_diagnostic(
-            group_name,
-            factor_spec,
-            features[factor_spec.expression],
+    canonical_diagnostics: list[dict[str, Any]] = []
+    for canonical_spec in canonical_specs:
+        representative = canonical_spec.aliases[0]
+        diagnostic = _factor_diagnostic(
+            representative.group_name,
+            representative.factor,
+            features[canonical_spec.evaluation_expression],
             returns_series,
             date_map=date_map,
             requested_symbol_count=len(requested_symbols),
             top_n=top_n,
             bottom_n=bottom_n,
         )
-        for group_name, factor_spec in factor_specs
-    ]
-    diagnostics.sort(
+        canonical_diagnostics.append(
+            build_canonical_factor_row(canonical_spec, diagnostic)
+        )
+
+    canonical_diagnostics.sort(
         key=lambda row: (
             abs(float(row["oriented_rank_icir"] or 0.0)),
             abs(float(row["oriented_mean_rank_ic"] or 0.0)),
@@ -485,6 +497,20 @@ def run_factor_diagnostics(
         ),
         reverse=True,
     )
+    for canonical_rank, row in enumerate(canonical_diagnostics, start=1):
+        row["canonical_rank"] = canonical_rank
+
+    factor_alias_rows = [
+        alias_row
+        for canonical_row in canonical_diagnostics
+        for alias_row in expand_alias_rows(canonical_row)
+    ]
+    validate_alias_metric_consistency(factor_alias_rows)
+    factor_alias_map = {
+        str(row["id"]): str(row["canonical_expression_id"])
+        for row in factor_alias_rows
+    }
+
 
     acceptance_sha256 = ""
     if acceptance_path is not None:
@@ -520,13 +546,19 @@ def run_factor_diagnostics(
         "provider": runtime.metadata(),
         "windows": windows,
         "sampled_rebalance_dates": len(date_map),
-        "factor_count": len(diagnostics),
+        "factor_count": len(canonical_diagnostics),
+        "factor_id_count": len(factor_alias_rows),
+        "unique_expression_count": len(canonical_diagnostics),
+        "factor_identity": factor_identity_metadata(),
+        "ranking_subject": "canonical_expression",
         "ranking_basis": [
             "absolute_oriented_rank_icir",
             "absolute_oriented_mean_rank_ic",
             "coverage_ratio",
         ],
-        "factors": diagnostics,
+        "factors": canonical_diagnostics,
+        "factor_alias_rows": factor_alias_rows,
+        "factor_alias_map": factor_alias_map,
     }
 
 
