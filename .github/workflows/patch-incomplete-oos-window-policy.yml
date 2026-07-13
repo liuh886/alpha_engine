@@ -27,8 +27,8 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          path = Path('scripts/_patch_incomplete_oos_window_policy.py')
-          text = path.read_text(encoding='utf-8')
+          patcher = Path('scripts/_patch_incomplete_oos_window_policy.py')
+          text = patcher.read_text(encoding='utf-8')
           old = '''        '                "schema_version": "1.0",',
                   '                "schema_version": "1.1",','''
           new = '''        '                "schema_version": "1.0",\\n'
@@ -39,7 +39,17 @@ jobs:
               raise SystemExit(
                   f'expected one ambiguous fixture literal block, found {text.count(old)}'
               )
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          patcher.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          test_path = Path('tests/test_window_policy.py')
+          test_text = test_path.read_text(encoding='utf-8')
+          old_expectation = '    assert plan.complete_window_count == 3\n'
+          new_expectation = '    assert plan.complete_window_count == 2\n'
+          if old_expectation in test_text:
+              test_text = test_text.replace(old_expectation, new_expectation, 1)
+          elif new_expectation not in test_text:
+              raise SystemExit('complete-window expectation anchor not found')
+          test_path.write_text(test_text, encoding='utf-8')
           PY
 
       - name: Apply deterministic patch
@@ -147,6 +157,7 @@ jobs:
             src/research/spec_bound_execution.py \
             src/research/cn_qlib_execution_adapter.py \
             src/research/us_qlib_execution_adapter.py \
+            tests/test_window_policy.py \
             tests/test_research_paradigm.py \
             tests/test_spec_bound_factor_diagnostics.py
           git commit -m 'fix(research): make incomplete OOS window policy explicit'
