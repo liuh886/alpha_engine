@@ -40,8 +40,12 @@ from src.research.research_artifacts import (
     write_top_bottom_signals_csv,
 )
 from src.research.ten_day_model_gates import GATE_THRESHOLDS
+from src.research.window_policy import (
+    COMPLETE_WINDOWS_ONLY,
+    validate_partial_window_contract,
+)
 
-PARADIGM_SCHEMA_VERSION = "1.0"
+PARADIGM_SCHEMA_VERSION = "1.1"
 GATE_PROFILE = "ten_day_model_gates_v1"
 ARTIFACT_PROFILE = "research_run_v1"
 REQUIRED_METRICS: tuple[str, ...] = (
@@ -264,6 +268,24 @@ def validate_research_paradigm_spec(spec: ResearchParadigmSpec) -> None:
         raise ValueError("walk_forward.min_windows must be >= 3")
     if int(walk_forward.get("train_embargo_sessions", 0)) != 10:
         raise ValueError("walk_forward.train_embargo_sessions must be 10")
+    partial_policy = str(walk_forward.get("partial_window_policy", ""))
+    raw_partial_minimum = walk_forward.get(
+        "min_partial_window_eligible_sessions"
+    )
+    partial_minimum = (
+        None if raw_partial_minimum is None else int(raw_partial_minimum)
+    )
+    validate_partial_window_contract(
+        policy=partial_policy,
+        min_partial_window_eligible_sessions=partial_minimum,
+        cadence_sessions=int(strategy["rebalance_days"]),
+    )
+    if partial_policy == COMPLETE_WINDOWS_ONLY and (
+        "min_partial_window_eligible_sessions" in walk_forward
+    ):
+        raise ValueError(
+            "complete_windows_only must not declare a partial-window session minimum"
+        )
 
     evaluation = _require_mapping(spec.evaluation, "evaluation")
     if str(evaluation.get("benchmark_mode", "")) != "reference_only":

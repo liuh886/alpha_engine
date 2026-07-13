@@ -43,7 +43,7 @@ from src.research.research_artifacts import (
     write_run_status,
 )
 
-EXECUTION_CONTRACT_SCHEMA_VERSION = "1.0"
+EXECUTION_CONTRACT_SCHEMA_VERSION = "1.1"
 DECLARED_EXECUTION_CONTRACT_FILENAME = "declared_execution_contract.json"
 EFFECTIVE_EXECUTION_CONTRACT_FILENAME = "effective_execution_contract.json"
 EXECUTION_IDENTITY_FILENAME = "execution_identity.json"

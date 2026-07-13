@@ -561,6 +561,7 @@ def _make_summary(
     return {
         "schema_version": "1.0",
         "min_windows": 3,
+        "partial_window_policy": "complete_windows_only",
         "n_reports": n_reports,
         "n_candidates": 2,
         "candidates": [

@@ -42,6 +42,7 @@ def test_fixture_manifest_marks_evidence_test_only(tmp_path: Path) -> None:
             {
                 "schema_version": "1.0",
                 "min_windows": 3,
+                "partial_window_policy": "complete_windows_only",
                 "n_reports": 3,
                 "n_candidates": 1,
                 "candidates": [

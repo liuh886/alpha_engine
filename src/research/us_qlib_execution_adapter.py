@@ -30,10 +30,7 @@ from src.research.qlib_execution_common import (
     normalize_qlib_frame_index,
     resolve_repository_root,
 )
-from src.research.market_data_alignment import (
-    align_train_start_to_coverage,
-    get_aligned_windows,
-)
+from src.research.market_data_alignment import align_train_start_to_coverage
 from src.research.multi_market_readiness import (
     MarketReadinessSpec,
     check_market_data_coverage,
@@ -53,6 +50,10 @@ from src.research.universe_robustness import (
     validate_no_nan_inputs,
 )
 from src.research.walk_forward_stability import summarize_walk_forward_reports
+from src.research.window_policy import (
+    build_window_sampling_plan,
+    horizon_eligible_dates_by_window,
+)
 
 
 class USExecutionRuntime(Protocol):
@@ -225,6 +226,17 @@ def execute_us_qlib_plan(
     first_test_year = int(walk_forward["first_test_year"])
     last_test_year = int(walk_forward["last_test_year"])
     min_windows = int(walk_forward["min_windows"])
+    partial_window_policy = str(
+        walk_forward["partial_window_policy"]
+    )
+    raw_partial_minimum = walk_forward.get(
+        "min_partial_window_eligible_sessions"
+    )
+    min_partial_window_eligible_sessions = (
+        None
+        if raw_partial_minimum is None
+        else int(raw_partial_minimum)
+    )
 
     runtime_metadata: dict[str, Any] = {
         **market_runtime.metadata(),
@@ -360,32 +372,63 @@ def execute_us_qlib_plan(
             evidence_paths=base_evidence,
         )
     available_end = min(pd.Timestamp(test_end), calendar.max()).strftime("%Y-%m-%d")
-    windows = get_aligned_windows(
+    window_plan = build_window_sampling_plan(
+        calendar,
         alignment.aligned_train_start,
         available_end,
         first_test_year=first_test_year,
         last_test_year=last_test_year,
+        min_complete_windows=min_windows,
+        partial_window_policy=partial_window_policy,
+        min_partial_window_eligible_sessions=(
+            min_partial_window_eligible_sessions
+        ),
+        horizon_sessions=int(strategy["horizon_days"]),
+        cadence_sessions=int(strategy["rebalance_days"]),
+    )
+    windows = list(window_plan.selected_windows)
+    evaluation_dates_by_window = horizon_eligible_dates_by_window(
+        window_plan, calendar
     )
     window_payload = {
-        "schema_version": "1.0",
+        **window_plan.to_dict(),
         "experiment_id": plan.spec.experiment_id,
-        "requested_min_windows": min_windows,
         "available_end": available_end,
-        "windows": [window.to_dict() for window in windows],
+        "partial_windows_count_toward_min": False,
     }
+    readiness.update(
+        {
+            "viable_windows": window_plan.complete_window_count,
+            "viable_windows_policy": "complete_windows_only",
+            "partial_windows_count_toward_min": False,
+            "viability_evidence_scope": "session_aware",
+            "partial_window_policy": partial_window_policy,
+            "partial_window_count": window_plan.partial_window_count,
+            "complete_minimum_satisfied": (
+                window_plan.complete_minimum_satisfied
+            ),
+        }
+    )
+    write_json(paths.data_readiness, readiness)
     write_json(paths.walk_forward_windows, window_payload)
     runtime_metadata["windows"] = window_payload["windows"]
+    runtime_metadata["window_policy"] = {
+        key: value
+        for key, value in window_payload.items()
+        if key != "windows"
+    }
     evidence_with_windows = {
         **base_evidence,
         "walk_forward_windows": str(paths.walk_forward_windows),
     }
-    if len(windows) < min_windows:
+    if not window_plan.complete_minimum_satisfied:
         return build_skip_result(
             plan,
             paths=paths,
             effective_contract=effective_contract,
             reason=(
-                f"only {len(windows)} aligned windows available; "
+                f"only {window_plan.complete_window_count} complete, "
+                "session-eligible aligned windows available; "
                 f"need at least {min_windows}"
             ),
             runtime_metadata=runtime_metadata,
@@ -411,14 +454,17 @@ def execute_us_qlib_plan(
     skipped_windows: list[dict[str, str | None]] = []
     window_output_dir = paths.run_dir / "windows"
     for window in windows:
+        evaluation_dates = evaluation_dates_by_window[window.label]
+        evaluation_start = evaluation_dates.min().strftime("%Y-%m-%d")
+        evaluation_end = evaluation_dates.max().strftime("%Y-%m-%d")
         config = SpecBoundEvaluationContext(
             market="us",
             symbols=tuple(retained_symbols),
             benchmark=plan.spec.benchmark,
             train_start=window.train_start,
             train_end=window.train_end,
-            test_start=window.test_start,
-            test_end=window.test_end,
+            test_start=evaluation_start,
+            test_end=evaluation_end,
             holding_days=int(strategy["holding_days"]),
             rebalance_days=int(strategy["rebalance_days"]),
             topk=top_n,
@@ -460,9 +506,7 @@ def execute_us_qlib_plan(
         train_mask = (dates >= pd.Timestamp(window.train_start)) & (
             dates <= pd.Timestamp(window.train_end)
         )
-        test_mask = (dates >= pd.Timestamp(window.test_start)) & (
-            dates <= pd.Timestamp(window.test_end)
-        )
+        test_mask = dates.isin(evaluation_dates)
         features_train, returns_train = purge_training_tail(
             features_all.loc[train_mask].copy(),
             raw_returns_all.loc[train_mask].copy(),
@@ -496,6 +540,8 @@ def execute_us_qlib_plan(
                 window.test_end,
             )
             baseline = normalize_qlib_frame_index(baseline)
+            baseline_dates = baseline.index.get_level_values("datetime")
+            baseline = baseline.loc[baseline_dates.isin(evaluation_dates)].copy()
             baseline.columns = ["score"]
             baseline.attrs.update(
                 {
@@ -515,6 +561,10 @@ def execute_us_qlib_plan(
         )
         survived_windows.append(window.label)
 
+    runtime_metadata["evaluation_dates_by_window"] = {
+        label: [date.strftime("%Y-%m-%d") for date in dates]
+        for label, dates in evaluation_dates_by_window.items()
+    }
     runtime_metadata["survived_windows"] = survived_windows
     runtime_metadata["skipped_windows"] = skipped_windows
     if len(reports) < min_windows:

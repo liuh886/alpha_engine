@@ -8,6 +8,7 @@ from src.research.window_policy import (
     COMPLETE_WINDOWS_ONLY,
     build_window_sampling_plan,
     complete_boundary_windows,
+    horizon_eligible_dates_by_window,
     validate_partial_window_contract,
 )
 
@@ -56,6 +57,10 @@ def test_complete_windows_only_reproduces_issue_124_boundary() -> None:
     assert partial["requested_test_end"] == "2026-06-18"
     assert partial["effective_test_end"] == "2026-06-18"
     assert partial["counts_toward_min_windows"] is False
+    assert partial["available_sessions"] > 10
+    assert partial["horizon_eligible_sessions"] > 0
+    assert partial["excluded_tail_sessions"] == 10
+    assert partial["sampled_sessions"] == 0
     future = _row(plan, "2026H2")
     assert future["boundary_status"] == "excluded_not_started"
 
@@ -140,7 +145,7 @@ def test_minimum_counts_complete_windows_only() -> None:
     )
 
     assert plan.partial_window_count == 1
-    assert plan.complete_window_count == 3
+    assert plan.complete_window_count == 2
     assert plan.complete_minimum_satisfied is False
 
 
@@ -184,3 +189,30 @@ def test_partial_policy_validation_is_fail_closed() -> None:
             min_partial_window_eligible_sessions=5,
             cadence_sessions=10,
         )
+
+def test_adapter_evaluation_dates_reproduce_plan_sampling() -> None:
+    dates = pd.bdate_range("2024-01-01", "2026-06-18")
+    plan = _plan(
+        policy=ALLOW_HORIZON_CONTAINED_PARTIAL_FINAL_WINDOW,
+        min_partial=20,
+    )
+    evaluation = horizon_eligible_dates_by_window(plan, dates)
+
+    assert set(evaluation) == {
+        window.label for window in plan.selected_windows
+    }
+    for label, eligible in evaluation.items():
+        assert len(eligible) == next(
+            row["horizon_eligible_sessions"]
+            for row in plan.window_rows
+            if row["label"] == label
+        )
+        sampled = tuple(eligible[:: plan.cadence_sessions])
+        expected = tuple(
+            pd.Timestamp(date)
+            for date, sampled_label in plan.sampled_date_labels
+            if sampled_label == label
+        )
+        assert sampled == expected
+        assert eligible[-1] <= pd.Timestamp(plan.requested_test_end)
+
