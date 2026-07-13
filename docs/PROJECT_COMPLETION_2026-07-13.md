@@ -51,18 +51,74 @@ promotion_evaluated=false
 trade_ready=false
 ```
 
-## CN data-quality boundary
+## CN declared-end closure
 
-The CN update command returned `1` because the current-day snapshot quality check found one stale retained instrument and a large volume discrepancy for `000002`. Provider construction and the fixed research pipeline returned `0`; the declared interval through `2026-06-18` passed acceptance.
+The earlier CN current-snapshot caveat was resolved through Issue #156 and PRs #158 and #160.
 
-This distinction is preserved rather than hidden. Issue #156 owns the required correction to bind historical research refreshes to the declared interval while keeping current-day freshness fail-closed.
+PR #158 separated reproducible historical refreshes from current-snapshot freshness checks. PR #160 then corrected the remaining provider-boundary mismatch: AlphaEngine treats a declared `end` as inclusive, whereas yfinance treats its provider `end` as exclusive.
 
-## Follow-up responsibility gates
+The final production implementation is commit:
 
-- Issue #155: canonical-expression factor review. This is a diagnostic review gate and does not authorize factor-library, orientation, model, promotion, or trading changes.
-- Issue #156: declared-end refresh and CN freshness-classification hardening.
+```text
+10a3bb3d61e57b74b37c6deecfbdcad9769e6427
+```
 
-These are explicit next-stage work items, not omissions from the completed #148/#150 handoff.
+Post-merge verification was performed through execution-only PR #161 and workflow run `29261434173`. The temporary workflow was not merged.
+
+Durable closure evidence is preserved at:
+
+```text
+docs/evidence/post-160-cn-verification-2026-07-13/
+```
+
+### Final CN verification
+
+| Item | Result |
+|---|---|
+| Fixed interval | `2021-01-01` through inclusive `2026-06-18` |
+| Configured input | 224 symbols including `000300` |
+| Provider attempts | 171 succeeded / 53 failed and visibly excluded |
+| Retained terminal coverage | all 171 instruments end on `2026-06-18` |
+| Update / provider / pipeline | `2 / 0 / 0` |
+| Acceptance | `10 pass / 1 warn / 0 fail` |
+| Canonical expressions / factor IDs | `23 / 47` |
+| Sampled rebalance dates | 46 |
+| Final workflow assertion | passed |
+
+The quality report records:
+
+- `freshness_scope.mode=declared_interval`;
+- effective calendar `2021-01-04` through `2026-06-18`;
+- 1,321 sessions;
+- zero stale instruments;
+- zero missing, stale, or unparsable retained CSVs.
+
+The 53 provider failures remain auditable and were not replaced with stale cache bytes, synthetic data, zero fill, or silent imputation. The accepted retained universe remains well above the CN minimum coverage requirement.
+
+## Final project state
+
+The research-data and reproducible-diagnostics milestone is complete:
+
+- Issue #124 real-market evidence is preserved.
+- Canonical factor identity and alias separation are active.
+- OOS-window and forward-label boundaries are explicit and enforced.
+- Historical declared-end refresh and current-snapshot freshness are separately classified.
+- Provider failures and retained-universe identity are auditable.
+- CN and US canonical pipelines pass real-market acceptance.
+- Issue #156 is closed by successful post-merge verification.
+- No temporary execution workflow is merged into `main`.
+
+The current outputs intentionally remain:
+
+```text
+diagnostic_only=true
+research_only=true
+promotion_eligible=false
+promotion_evaluated=false
+trade_ready=false
+```
+
+This is the completed research boundary. A model promotion, production signal, or trading-readiness decision would be a new reviewed research milestone rather than unfinished work from the present milestone.
 
 ## Completion checklist
 
@@ -70,9 +126,10 @@ These are explicit next-stage work items, not omissions from the completed #148/
 - [x] Canonical factor identity is active.
 - [x] PR #150 production integration is complete.
 - [x] One-time migration infrastructure was removed.
-- [x] PR #150 final CI passed and the PR was merged.
-- [x] Issue #148 was closed.
-- [x] CN/US evidence was rerun under the new contract.
+- [x] CN/US evidence was rerun under the current contract.
 - [x] Current-contract evidence was versioned separately from Issue #124.
-- [x] An independent factor-review issue was created.
-- [x] The newly exposed CN refresh-quality problem was assigned to a separate issue.
+- [x] Canonical-expression review was completed.
+- [x] Declared historical intervals are propagated through providers.
+- [x] yfinance inclusive/exclusive end semantics are reconciled.
+- [x] Post-merge real CN verification passed.
+- [x] Issue #156 closure evidence is durably preserved.
