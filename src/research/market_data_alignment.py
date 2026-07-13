@@ -21,10 +21,11 @@ from typing import Any
 import pandas as pd
 
 from src.research.multi_market_readiness import MarketReadinessSpec
-from src.research.rolling_windows import (
-    RollingResearchWindow,
-    filter_windows_by_available_range,
-    half_year_rolling_windows,
+from src.research.rolling_windows import RollingResearchWindow
+from src.research.window_policy import (
+    COMPLETE_WINDOWS_ONLY,
+    MIN_WINDOWS_COUNT_POLICY,
+    complete_boundary_windows,
 )
 
 logger = logging.getLogger(__name__)
@@ -128,6 +129,9 @@ class CoverageAlignment:
             "skip_reason": self.skip_reason,
             "viable_windows": self.viable_windows,
             "min_viable_windows": self.min_viable_windows,
+            "viable_windows_policy": MIN_WINDOWS_COUNT_POLICY,
+            "partial_windows_count_toward_min": False,
+            "viability_evidence_scope": "boundary_only",
             # Legacy aliases for backward compatibility
             "requested_start": self.requested_train_start,
             "aligned_start": self.aligned_train_start,
@@ -219,73 +223,19 @@ def get_aligned_windows(
     first_test_year: int = _FIRST_TEST_YEAR,
     last_test_year: int = _LAST_TEST_YEAR,
 ) -> list[RollingResearchWindow]:
-    """Return adjusted half-year ``RollingResearchWindow`` objects for an aligned start.
+    """Return complete aligned windows for boundary-only readiness checks.
 
-    Each window's ``train_start`` is set to ``max(original, aligned_start)``.
-    Windows with empty training periods (train_start ≥ train_end) or with
-    ``test_end`` beyond *available_end* are dropped.
-
-    This is the **single public helper** that both runners and readiness
-    counting must use — it guarantees that the windows used for execution and
-    the viable-window count in ``CoverageAlignment`` can never diverge.
-
-    Parameters
-    ----------
-    aligned_start
-        The aligned train-start date (YYYY-MM-DD).  Generated windows whose
-        original train-start is earlier are adjusted upward.
-    available_end
-        The end of available data (YYYY-MM-DD).  Windows whose test-end
-        exceeds this boundary are excluded.
-    first_test_year / last_test_year
-        OOS test-year range forwarded to :func:`half_year_rolling_windows`.
-
-    Returns
-    -------
-    list[RollingResearchWindow]
-        Surviving windows with adjusted train-start fields.  Empty when no
-        window can be formed.
+    ``min_windows`` always counts complete half-year windows. Session-aware
+    execution and diagnostics use ``build_window_sampling_plan`` from
+    ``window_policy`` to append an optional eligible partial final window.
     """
-    aligned_ts = pd.Timestamp(aligned_start)
-    available_end_ts = pd.Timestamp(available_end)
 
-    if aligned_ts > available_end_ts:
-        return []
-
-    aligned_year = int(aligned_start[:4])
-    start_year = min(aligned_year, first_test_year - 1)
-    windows = half_year_rolling_windows(
-        start_year=start_year,
+    return complete_boundary_windows(
+        aligned_start,
+        available_end,
         first_test_year=first_test_year,
         last_test_year=last_test_year,
     )
-
-    adjusted: list[RollingResearchWindow] = []
-    for w in windows:
-        effective_train = (
-            aligned_start
-            if pd.Timestamp(w.train_start) < aligned_ts
-            else w.train_start
-        )
-        train_end_ts = pd.Timestamp(w.train_end)
-        # Drop windows with empty training period.
-        if pd.Timestamp(effective_train) >= train_end_ts:
-            continue
-        # Drop windows whose test_end exceeds the available range.
-        if pd.Timestamp(w.test_end) > available_end_ts:
-            continue
-        if effective_train != w.train_start:
-            w = RollingResearchWindow(
-                label=w.label,
-                train_start=effective_train,
-                train_end=w.train_end,
-                test_start=w.test_start,
-                test_end=w.test_end,
-            )
-        adjusted.append(w)
-
-    return adjusted
-
 
 def _count_viable_oos_windows(
     aligned_start: str,

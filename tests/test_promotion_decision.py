@@ -58,6 +58,7 @@ def _stability(*candidates: dict[str, object]) -> dict[str, object]:
     return {
         "schema_version": "1.0",
         "min_windows": 3,
+        "partial_window_policy": "complete_windows_only",
         "n_reports": 4,
         "n_candidates": len(rows),
         "candidates": rows,

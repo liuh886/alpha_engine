@@ -1,5 +1,5 @@
 # Synthetic CI-only fixed-10D contract. It validates mechanics, not model quality.
-schema_version: "1.0"
+schema_version: "1.1"
 experiment_id: "cn_10d_ci_fixture"
 market: "cn"
 benchmark: "000300"
@@ -43,6 +43,7 @@ walk_forward:
   last_test_year: 2024
   min_windows: 3
   train_embargo_sessions: 10
+  partial_window_policy: "complete_windows_only"
 
 evaluation:
   benchmark_mode: "reference_only"

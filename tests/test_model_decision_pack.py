@@ -9,6 +9,7 @@ def _summary(mean_icir: float, worst_drawdown: float, ready_ratio: float) -> dic
     return {
         "schema_version": "1.0",
         "min_windows": 3,
+        "partial_window_policy": "complete_windows_only",
         "n_reports": 4,
         "n_candidates": 10,
         "candidates": [
