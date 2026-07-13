@@ -89,37 +89,58 @@ jobs:
       - name: Preserve excluded partial-window evidence
         run: python scripts/_harden_oos_policy_evidence.py
 
-      - name: Migrate remaining acceptance fixture
+      - name: Migrate embedded paradigm test fixtures
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
-          path = Path('tests/test_real_market_acceptance.py')
-          text = path.read_text(encoding='utf-8')
-          old_schema = (
-              '        "schema_version": "1.0",\n'
-              '        "experiment_id": "test_real_market_acceptance",\n'
+          schema_pattern = re.compile(
+              r'(?P<indent>^[ \t]*)"schema_version": "1\.0",\n'
+              r'(?P=indent)"experiment_id":',
+              re.MULTILINE,
           )
-          new_schema = (
-              '        "schema_version": "1.1",\n'
-              '        "experiment_id": "test_real_market_acceptance",\n'
+          policy_pattern = re.compile(
+              r'(?P<indent>^[ \t]*)"min_windows": (?P<value>[^,\n]+),\n'
+              r'(?!(?P=indent)"partial_window_policy":)',
+              re.MULTILINE,
           )
-          old_policy = (
-              '            "min_windows": 3,\n'
-              '            "train_embargo_sessions": 10,\n'
+
+          schema_updates = 0
+          policy_updates = 0
+          changed_paths = []
+          for path in sorted(Path('tests').rglob('*.py')):
+              original = path.read_text(encoding='utf-8')
+              text, schema_count = schema_pattern.subn(
+                  lambda match: (
+                      f'{match.group("indent")}"schema_version": "1.1",\n'
+                      f'{match.group("indent")}"experiment_id":'
+                  ),
+                  original,
+              )
+              text, policy_count = policy_pattern.subn(
+                  lambda match: (
+                      f'{match.group("indent")}"min_windows": '
+                      f'{match.group("value")},\n'
+                      f'{match.group("indent")}"
+                      f'partial_window_policy": "complete_windows_only",\n'
+                  ),
+                  text,
+              )
+              if text != original:
+                  path.write_text(text, encoding='utf-8')
+                  changed_paths.append(str(path))
+              schema_updates += schema_count
+              policy_updates += policy_count
+
+          if schema_updates == 0:
+              raise SystemExit('no remaining embedded paradigm schema fixtures migrated')
+          print(
+              f'migrated {schema_updates} schema entries and '
+              f'{policy_updates} policy entries across {len(changed_paths)} files'
           )
-          new_policy = (
-              '            "min_windows": 3,\n'
-              '            "partial_window_policy": "complete_windows_only",\n'
-              '            "train_embargo_sessions": 10,\n'
-          )
-          if text.count(old_schema) != 1:
-              raise SystemExit('acceptance schema anchor not found exactly once')
-          if text.count(old_policy) != 1:
-              raise SystemExit('acceptance policy anchor not found exactly once')
-          text = text.replace(old_schema, new_schema, 1)
-          text = text.replace(old_policy, new_policy, 1)
-          path.write_text(text, encoding='utf-8')
+          for path in changed_paths:
+              print(path)
           PY
 
       - name: Install locked environment
@@ -141,12 +162,7 @@ jobs:
               src/research/spec_bound_execution.py \
               src/research/cn_qlib_execution_adapter.py \
               src/research/us_qlib_execution_adapter.py \
-              tests/test_window_policy.py \
-              tests/test_research_paradigm.py \
-              tests/test_market_data_alignment.py \
-              tests/test_spec_bound_factor_diagnostics.py \
-              tests/test_real_market_acceptance.py \
-              tests/test_cn_qlib_ci_integration.py
+              tests
             ruff_status=$?
             echo "RUFF_STATUS=$ruff_status"
 
@@ -213,10 +229,6 @@ jobs:
             src/research/spec_bound_execution.py \
             src/research/cn_qlib_execution_adapter.py \
             src/research/us_qlib_execution_adapter.py \
-            tests/test_window_policy.py \
-            tests/test_research_paradigm.py \
-            tests/test_spec_bound_factor_diagnostics.py \
-            tests/test_real_market_acceptance.py \
-            tests/test_cn_qlib_ci_integration.py
+            tests
           git commit -m 'fix(research): make incomplete OOS window policy explicit'
           git push origin HEAD:${{ github.head_ref }}
