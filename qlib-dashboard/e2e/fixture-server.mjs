@@ -12,9 +12,11 @@ const expectedAuth = `Basic ${Buffer.from("release-user:release-pass").toString(
 const identity = JSON.parse(await readFile(join(fixturesDir, "identity.json"), "utf8"));
 const dashboardArtifact = JSON.parse(await readFile(join(fixturesDir, "dashboard_artifact.json"), "utf8"));
 const modelVersionsResponse = JSON.parse(await readFile(join(fixturesDir, "model_versions.json"), "utf8"));
-const modelVersions = modelVersionsResponse.versions || modelVersionsResponse;
-
 const { snapshot_id: snapshotId, workflow_id: workflowId, run_id: runId, model_id: modelId } = identity;
+// Preserve the contract identity while making the intentionally current release model run-relative.
+const modelVersions = (modelVersionsResponse.versions || modelVersionsResponse).map((model) => (
+  model.id === modelId ? { ...model, created_at: new Date().toISOString() } : model
+));
 
 function json(response, status, payload) {
   response.writeHead(status, {

@@ -76,8 +76,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Full release pytest
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      - name: Release-contract pytest
         run: uv run pytest tests/test_release_candidate_generation.py tests/test_release_candidate_gate.py tests/test_walk_forward.py tests/test_vectorized_backtest.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Package build
