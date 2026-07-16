@@ -276,5 +276,13 @@ def test_real_qlib_forward_return_uses_each_market_own_tenth_session(
     assert us_result["provider"]["provider_identity_sha256"] == us_manifest[
         "provider_identity_sha256"
     ]
-    assert cn_result["provider"]["provider_uri"].endswith("data/providers/cn")
-    assert us_result["provider"]["provider_uri"].endswith("data/providers/us")
+    assert Path(cn_result["provider"]["provider_uri"]).parts[-3:] == (
+        "data",
+        "providers",
+        "cn",
+    )
+    assert Path(us_result["provider"]["provider_uri"]).parts[-3:] == (
+        "data",
+        "providers",
+        "us",
+    )

@@ -550,6 +550,7 @@ def test_backtest_failure_cannot_produce_manifest(
     labels_df = pd.DataFrame({"training_label": [0.1, 0.05]}, index=idx)
     raw_ret = pd.DataFrame({"return": [0.15, 0.03]}, index=idx)
     raw_ret.attrs["provenance"] = "raw_forward_return"
+    raw_ret.attrs["horizon"] = 10
 
     snapshot_ref = {
         "id": "test-snapshot-id",
@@ -677,6 +678,7 @@ def test_stale_failure_report_removed_on_success(
     labels_df = pd.DataFrame({"training_label": [0.1, 0.05]}, index=idx)
     raw_ret = pd.DataFrame({"return": [0.15, 0.03]}, index=idx)
     raw_ret.attrs["provenance"] = "raw_forward_return"
+    raw_ret.attrs["horizon"] = 10
 
     snapshot_ref = {
         "id": "test-snapshot-id",
