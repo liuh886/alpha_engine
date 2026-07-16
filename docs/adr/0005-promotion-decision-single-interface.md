@@ -1,4 +1,4 @@
-# ADR-0004: PromotionDecision Is the Single Promotion Interface
+# ADR-0005: PromotionDecision Is the Single Promotion Interface
 
 **Date:** 2026-07-16
 **Status:** Accepted
