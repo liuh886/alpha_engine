@@ -90,11 +90,15 @@ class ResearchWorkflow:
                 self.store.save(result)
                 return result
 
-        result.status = (
-            WorkflowStatus.COMPLETED
-            if all(step.status != WorkflowStatus.FAILED for step in result.steps)
-            else WorkflowStatus.FAILED
-        )
+        non_promotion_steps = [
+            step for step in result.steps if step.step is not ResearchStep.PROMOTE
+        ]
+        if non_promotion_steps and all(
+            step.status == WorkflowStatus.SKIPPED for step in non_promotion_steps
+        ):
+            result.status = WorkflowStatus.SKIPPED
+        else:
+            result.status = WorkflowStatus.COMPLETED
         result.completed_at = utc_now()
         self.store.save(result)
         return result
@@ -114,9 +118,16 @@ class ResearchWorkflow:
             if not isinstance(raw, dict):
                 raise TypeError("PROMOTE step output must be an object")
             validated = validate_promotion_payload(raw)
-            if validated["subject_id"] != result.run_id:
+            allowed_subject_ids = {result.run_id}
+            allowed_subject_ids.update(
+                str(step.output["experiment_id"])
+                for step in result.steps
+                if isinstance(step.output, dict) and step.output.get("experiment_id")
+            )
+            if validated["subject_id"] not in allowed_subject_ids:
                 raise ValueError(
-                    "promotion subject_id does not match workflow run_id"
+                    "promotion subject_id does not match the workflow run_id "
+                    "or a recorded experiment_id"
                 )
         except (ValueError, KeyError, TypeError) as exc:
             warning = (

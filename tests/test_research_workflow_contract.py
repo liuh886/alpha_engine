@@ -114,6 +114,46 @@ def test_research_workflow_store_roundtrip(tmp_path):
     assert len(loaded.steps) == len(CANONICAL_RESEARCH_STEPS)
 
 
+def test_placeholder_workflow_is_skipped_not_completed(tmp_path):
+    workflow = ResearchWorkflow(store=ResearchWorkflowStore(artifacts_dir=tmp_path))
+
+    result = workflow.run(ResearchWorkflowRequest(run_id="rw_placeholder"))
+
+    assert result.status == WorkflowStatus.SKIPPED
+
+
+def test_promotion_subject_may_match_recorded_experiment_id(tmp_path):
+    class ExperimentExecutor(RecordingExecutor):
+        def run_step(self, request, step):
+            result = super().run_step(request, step)
+            if step is ResearchStep.PROMOTE:
+                result.output = _promotion_payload("declared_experiment")
+            else:
+                result.output["experiment_id"] = "declared_experiment"
+            return result
+
+    workflow = ResearchWorkflow(
+        executor=ExperimentExecutor(),
+        store=ResearchWorkflowStore(artifacts_dir=tmp_path),
+    )
+    result = workflow.run(ResearchWorkflowRequest(run_id="rw_experiment_subject"))
+
+    assert result.status == WorkflowStatus.COMPLETED
+    assert result.promotion_decision["subject_id"] == "declared_experiment"
+
+
+def test_unrelated_promotion_subject_fails_closed(tmp_path):
+    workflow = ResearchWorkflow(
+        executor=PromotionOutputExecutor(_promotion_payload("other_experiment")),
+        store=ResearchWorkflowStore(artifacts_dir=tmp_path),
+    )
+
+    result = workflow.run(ResearchWorkflowRequest(run_id="rw_subject_mismatch"))
+
+    assert result.status == WorkflowStatus.FAILED
+    assert result.promotion_decision is None
+
+
 # ---------------------------------------------------------------------------
 # Slice 1: LegacyResearchPipelineExecutor contract tests
 # ---------------------------------------------------------------------------
