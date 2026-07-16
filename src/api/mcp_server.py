@@ -897,9 +897,10 @@ def run_research_cycle(
     2. Compiles top factors into a strategy YAML config
     3. Runs a backtest using the compiled config
     4. Attributes returns to the factors (cross-sectional OLS model)
-    5. Auto-promotes qualifying factors through validation gates
+    5. Evaluates the canonical evidence-gated promotion decision
 
-    Returns a JSON summary with metrics from each phase.
+    Workflow execution success is reported separately from promotion status and
+    never implies that a candidate is trade-ready.
     """
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
@@ -913,14 +914,18 @@ def run_research_cycle(
         result = create_research_workflow().run(request)
         result_dict = result.to_dict()
         workflow_status = result_dict.get("status", "unknown")
-        success = workflow_status != "failed"
+        execution_success = workflow_status == "completed"
+        promotion = result_dict.get("promotion_decision") or {}
 
         return json.dumps(
             {
-                "status": "success" if success else "error",
-                "success": success,
+                "status": "success" if execution_success else "error",
+                "success": execution_success,
+                "success_scope": "workflow_execution",
                 "run_id": result_dict.get("run_id"),
                 "workflow_status": workflow_status,
+                "promotion_status": promotion.get("status", "not_evaluated"),
+                "trade_ready": bool(promotion.get("trade_ready", False)),
                 "steps": result_dict.get("steps", []),
                 "summary": {
                     "market": market,

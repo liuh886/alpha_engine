@@ -14,6 +14,16 @@ from src.research.workflow_types import (
 )
 
 
+def _promotion_payload(subject_id, *, status="missing_evidence"):
+    return {
+        "schema_version": "1.0",
+        "subject_id": subject_id,
+        "status": status,
+        "trade_ready": False,
+        "evidence_refs": [],
+    }
+
+
 class RecordingExecutor:
     def __init__(self) -> None:
         self.steps: list[ResearchStep] = []
@@ -21,13 +31,28 @@ class RecordingExecutor:
     def run_step(self, request: ResearchWorkflowRequest, step: ResearchStep) -> StepResult:
         self.steps.append(step)
         now = utc_now()
+        output = {"market": request.market, "step": step.value}
+        if step is ResearchStep.PROMOTE:
+            output = _promotion_payload(request.run_id)
         return StepResult(
             step=step,
             status=WorkflowStatus.COMPLETED,
-            output={"market": request.market, "step": step.value},
+            output=output,
             started_at=now,
             completed_at=now,
         )
+
+
+class PromotionOutputExecutor(RecordingExecutor):
+    def __init__(self, output):
+        super().__init__()
+        self.output = output
+
+    def run_step(self, request, step):
+        result = super().run_step(request, step)
+        if step is ResearchStep.PROMOTE:
+            result.output = dict(self.output)
+        return result
 
 
 def test_research_workflow_runs_canonical_steps_in_order(tmp_path):
@@ -98,10 +123,44 @@ class TestLegacyPipelineExecutor:
     """Tests that workflow_legacy properly bridges research core → hooks."""
 
     def test_executor_converts_legacy_steps_to_canonical(self):
-        """Legacy step names must map to canonical ResearchStep enum."""
+        """Injected legacy output is converted once without real model/data code."""
+        from types import SimpleNamespace
+
         from src.research.workflow_legacy import LegacyResearchPipelineExecutor
 
-        executor = LegacyResearchPipelineExecutor()
+        calls = []
+
+        def training_runner(**kwargs):
+            return {}
+
+        def pipeline_runner(**kwargs):
+            calls.append(kwargs)
+            run = kwargs["existing_run"]
+            run.steps = [
+                SimpleNamespace(
+                    name=name,
+                    status=SimpleNamespace(value="completed"),
+                    output={"name": name},
+                    error=None,
+                    started_at="start",
+                    completed_at="end",
+                )
+                for name in (
+                    "factor_scan",
+                    "compile",
+                    "train",
+                    "walk_forward",
+                    "backtest",
+                    "attribution",
+                    "promote",
+                )
+            ]
+            return run
+
+        executor = LegacyResearchPipelineExecutor(
+            pipeline_runner=pipeline_runner,
+            training_runner=training_runner,
+        )
         request = ResearchWorkflowRequest(
             market="cn",
             goal="legacy contract",
@@ -109,28 +168,42 @@ class TestLegacyPipelineExecutor:
             run_id="legacy_1",
         )
 
-        # Run SCAN step — triggers the full legacy pipeline once
-        result = executor.run_step(request, ResearchStep.SCAN)
+        results = [executor.run_step(request, step) for step in CANONICAL_RESEARCH_STEPS]
 
-        assert result.step == ResearchStep.SCAN
-        assert result.status in (WorkflowStatus.COMPLETED, WorkflowStatus.FAILED)
+        assert [result.step for result in results] == list(CANONICAL_RESEARCH_STEPS)
+        assert all(result.status == WorkflowStatus.COMPLETED for result in results)
+        assert len(calls) == 1
+        assert calls[0]["_train_fn"] is training_runner
 
     def test_executor_returns_skipped_for_unknown_step(self):
         """Steps not emitted by legacy pipeline should return SKIPPED."""
+        from types import SimpleNamespace
+
         from src.research.workflow_legacy import LegacyResearchPipelineExecutor
 
-        executor = LegacyResearchPipelineExecutor()
+        def pipeline_runner(**kwargs):
+            run = kwargs["existing_run"]
+            run.steps = [
+                SimpleNamespace(
+                    name="factor_scan",
+                    status=SimpleNamespace(value="completed"),
+                    output={},
+                    error=None,
+                    started_at=None,
+                    completed_at=None,
+                )
+            ]
+            return run
+
+        executor = LegacyResearchPipelineExecutor(
+            pipeline_runner=pipeline_runner,
+            training_runner=lambda **kwargs: {},
+        )
         request = ResearchWorkflowRequest(market="cn", goal="test")
 
-        # Run pipeline first
-        executor.run_step(request, ResearchStep.SCAN)
-
-        # The legacy pipeline has 7 steps; check a step that might not be in output
-        # by requesting a step that doesn't exist in _LEGACY_STEP_MAP
-        # All canonical steps ARE in the map, so we test the fallback path
-        # by verifying skipped steps have the right structure
         result = executor.run_step(request, ResearchStep.PROMOTE)
         assert result.step == ResearchStep.PROMOTE
+        assert result.status == WorkflowStatus.SKIPPED
 
     def test_executor_preserves_error_on_failure(self):
         """When legacy pipeline raises, all steps return FAILED with error."""
@@ -159,16 +232,93 @@ class TestLegacyPipelineExecutor:
         assert "_train_fn" in sig.parameters
         assert sig.parameters["_train_fn"].default is None
 
-    def test_canonical_workflow_path_injects_train_fn(self):
-        """workflow_legacy must inject _train_fn — the hooks fallback should not fire."""
-        import inspect
+# ---------------------------------------------------------------------------
+# Promotion decision integration tests
+# ---------------------------------------------------------------------------
 
-        from src.research.workflow_legacy import LegacyResearchPipelineExecutor
 
-        executor = LegacyResearchPipelineExecutor()
+def test_invalid_legacy_payload_fails_closed_in_workflow(tmp_path):
+    """A PROMOTE step output like {recommendation: DEPLOY} must not be stored
+    as promotion_decision — it fails validation and the result stays None."""
+    workflow = ResearchWorkflow(
+        executor=PromotionOutputExecutor({"recommendation": "DEPLOY"}),
+        store=ResearchWorkflowStore(artifacts_dir=tmp_path),
+    )
+    result = workflow.run(
+        ResearchWorkflowRequest(run_id="rw_legacy_payload", requested_by="test")
+    )
 
-        # Verify the executor imports hooks directly (canonical injection path)
-        # rather than relying on pipeline.py's fallback import
-        source = inspect.getsource(executor._run_legacy_pipeline)
-        assert "from src.workflows.hooks import run_training_pipeline" in source
-        assert "_train_fn=run_training_pipeline" in source
+    assert result.status == WorkflowStatus.FAILED
+    assert result.promotion_decision is None
+    assert result.steps[-1].status == WorkflowStatus.FAILED
+    assert any("DEPLOY" in w for w in result.warnings)
+
+
+def test_canonical_decision_persists_through_store_serialization(tmp_path):
+    """A valid PromotionDecision payload must survive store save/load roundtrip."""
+    import hashlib
+
+    def sha(v: str) -> str:
+        return hashlib.sha256(v.encode()).hexdigest()
+
+    canonical = _promotion_payload(
+        "rw_persist", status="stronger_research_candidate"
+    )
+    canonical.update({
+        "candidate": {"candidate": "lgbm:test", "mean_icir": 0.25},
+        "failed_gates": ["mean_icir"],
+        "missing_evidence": [],
+        "evidence_refs": [
+            {"name": "execution_identity", "path": "execution_identity.json", "sha256": sha("id")},
+            {"name": "data_readiness", "path": "data_readiness.json", "sha256": sha("dr")},
+            {"name": "walk_forward_stability", "path": "walk_forward_stability.json", "sha256": sha("wf")},
+        ],
+        "contract_sha256": sha("contract"),
+        "thresholds": {"min_mean_icir": 0.30},
+        "rationale": "Persist test.",
+    })
+
+    store = ResearchWorkflowStore(artifacts_dir=tmp_path)
+    workflow = ResearchWorkflow(executor=PromotionOutputExecutor(canonical), store=store)
+    result = workflow.run(
+        ResearchWorkflowRequest(run_id="rw_persist", requested_by="test")
+    )
+
+    assert result.promotion_decision is not None
+    assert result.promotion_decision["status"] == "stronger_research_candidate"
+    assert result.promotion_decision["trade_ready"] is False
+
+    # Save/load roundtrip
+    loaded = workflow.load("rw_persist")
+    assert loaded.promotion_decision is not None
+    assert loaded.promotion_decision["status"] == "stronger_research_candidate"
+    assert loaded.promotion_decision["evidence_refs"] == canonical["evidence_refs"]
+
+
+def test_backward_compatible_loading_without_promotion_decision(tmp_path):
+    """Loading an older stored result without promotion_decision must return None."""
+    store = ResearchWorkflowStore(artifacts_dir=tmp_path)
+    store.runs_dir.mkdir(parents=True, exist_ok=True)
+
+    old_data = {
+        "run_id": "rw_old",
+        "request": {
+            "market": "cn",
+            "goal": "old run",
+            "model_type": "lgbm",
+            "run_id": "rw_old",
+            "requested_by": "test",
+            "metadata": {},
+        },
+        "status": "completed",
+        "steps": [],
+        "started_at": "2026-01-01T00:00:00+00:00",
+        "completed_at": "2026-01-01T00:01:00+00:00",
+        "evidence_bundle_id": None,
+        "warnings": [],
+    }
+    (store.runs_dir / "rw_old.json").write_text(json.dumps(old_data), encoding="utf-8")
+
+    loaded = store.load("rw_old")
+    assert loaded.run_id == "rw_old"
+    assert loaded.promotion_decision is None
