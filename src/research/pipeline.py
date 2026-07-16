@@ -23,7 +23,7 @@ Usage:
         result = run_backtest(...)
         step.output = {"ic": result.ic, "sharpe": result.sharpe}
 
-    run.complete(recommendation="Deploy model X")
+    run.complete()
 """
 
 from __future__ import annotations
@@ -105,8 +105,8 @@ class Step:
 class ResearchRun:
     """An observable research pipeline run.
 
-    Tracks the complete research lifecycle from factor discovery
-    to model deployment recommendation.
+    Tracks the complete research lifecycle from factor discovery to an
+    evidence-gated research promotion decision.
 
     Attributes
     ----------
@@ -121,7 +121,8 @@ class ResearchRun:
     steps : list[Step]
         Ordered list of pipeline steps.
     recommendation : str | None
-        Final recommendation from this run.
+        Legacy execution summary. Promotion authority lives in
+        ``PromotionDecision``, not this field.
     created_at : str
         ISO timestamp when run was created.
     completed_at : str | None
@@ -543,25 +544,23 @@ def run_research_pipeline(
                 step.output = {"attribution_status": "failed", "error": str(e)[:200]}
     run.save()
 
-    # Step 7: Promote recommendation
+    # Step 7: Promote — canonical evidence-gated decision (fail-closed).
+    # Never translates high mean_ic into DEPLOY.
+    # Requires execution_identity/data_readiness/walk_forward_stability evidence.
     with run.step("promote") as step:
-        wf_step = run.get_step("walk_forward")
-        if wf_step and wf_step.status == StepStatus.COMPLETED:
-            ic = wf_step.output.get("mean_ic", 0)
-            if ic > 0.1:
-                step.output = {"recommendation": "DEPLOY", "reason": f"IC={ic:.4f} > 0.1 threshold"}
-                run.complete(recommendation=f"Deploy model: IC={ic:.4f}")
-            else:
-                step.output = {
-                    "recommendation": "ITERATE",
-                    "reason": f"IC={ic:.4f} < 0.1 threshold",
-                }
-                run.complete(recommendation=f"Iterate: IC={ic:.4f} below threshold")
-        else:
-            step.output = {"recommendation": "FAILED", "reason": "Walk-forward did not complete"}
-            run.fail("Walk-forward validation failed")
+        from src.common.paths import ARTIFACTS_DIR
+        from src.research.promotion_decision import finalize_promotion_decision
+
+        run_artifact_dir = ARTIFACTS_DIR / "research_runs" / run.run_id
+        decision = finalize_promotion_decision(
+            run_artifact_dir,
+            subject_id=run.run_id,
+        )
+        step.output = decision
     run.save()
 
-    # Save run
+    # Workflow completion is NOT promotion.  The canonical decision lives on
+    # the promote step output; callers must read it explicitly.
+    run.complete()
     run.save()
     return run

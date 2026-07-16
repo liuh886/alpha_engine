@@ -80,6 +80,9 @@ class ResearchWorkflow:
         for step in CANONICAL_RESEARCH_STEPS:
             step_result = self.run_step(request, step)
             result.steps.append(step_result)
+            # Capture canonical promotion decision from the PROMOTE step
+            if step is ResearchStep.PROMOTE and step_result.status == WorkflowStatus.COMPLETED:
+                self._set_promotion_decision(result, step_result)
             self.store.save(result)
             if step_result.status == WorkflowStatus.FAILED:
                 result.status = WorkflowStatus.FAILED
@@ -95,6 +98,36 @@ class ResearchWorkflow:
         result.completed_at = utc_now()
         self.store.save(result)
         return result
+
+    def _set_promotion_decision(
+        self, result: ResearchWorkflowResult, step_result: StepResult
+    ) -> None:
+        """Validate and store a canonical promotion decision from the PROMOTE step.
+
+        Invalid legacy payloads (e.g. {recommendation: DEPLOY}) fail closed:
+        they are rejected and the workflow result is NOT marked as promoted.
+        """
+        raw = step_result.output
+        try:
+            from src.research.promotion_consumers import validate_promotion_payload
+
+            if not isinstance(raw, dict):
+                raise TypeError("PROMOTE step output must be an object")
+            validated = validate_promotion_payload(raw)
+            if validated["subject_id"] != result.run_id:
+                raise ValueError(
+                    "promotion subject_id does not match workflow run_id"
+                )
+        except (ValueError, KeyError, TypeError) as exc:
+            warning = (
+                f"PROMOTE output failed validation: {exc}. "
+                "Legacy payloads (e.g. {recommendation: DEPLOY}) are not canonical PromotionDecisions."
+            )
+            result.warnings.append(warning)
+            step_result.status = WorkflowStatus.FAILED
+            step_result.error = warning
+            return
+        result.promotion_decision = validated
 
     def run_step(self, request: ResearchWorkflowRequest, step: ResearchStep) -> StepResult:
         """Run one step while converting unexpected exceptions into failed results."""

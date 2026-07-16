@@ -44,7 +44,8 @@ def test_research_run_bundle_reads_existing_artifact(tmp_path):
     assert bundle.sources[0].status.value == "found"
     assert bundle.metrics["status"] == "completed"
     assert bundle.metrics["market"] == "us"
-    assert bundle.decision == "promote"
+    # Legacy recommendation strings ("promote") are never authoritative.
+    assert bundle.decision == "non_promoted:no_canonical_decision"
     assert bundle.warnings == []
     assert bundle.completeness_score == 1.0
     json.dumps(bundle.to_dict())
@@ -113,7 +114,8 @@ def test_research_run_bundle_has_provenance_fields(tmp_path):
 
     # Must include step metrics
     assert bundle.metrics.get("n_steps") == 2
-    assert bundle.decision == "deploy"
+    # Legacy recommendation strings ("deploy") are never authoritative.
+    assert bundle.decision == "non_promoted:no_canonical_decision"
 
 
 def test_missing_evidence_returns_explicit_status(tmp_path):
@@ -235,3 +237,117 @@ models:
     assert bundle.metrics["model"]["market"] == "us"
     assert bundle.decision == "RECOMMENDED"
     json.dumps(bundle.to_dict())
+
+
+# ---------------------------------------------------------------------------
+# EvidenceLedger ignores legacy recommendation; uses canonical decision only
+# ---------------------------------------------------------------------------
+
+
+def _write_minimal_research_run(tmp_path, run_id, *, recommendation="deploy"):
+    runs_dir = tmp_path / "research_runs"
+    runs_dir.mkdir(exist_ok=True)
+    (runs_dir / f"{run_id}.json").write_text(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "market": "us",
+                "goal": "promotion contract",
+                "status": "completed",
+                "recommendation": recommendation,
+                "steps": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return runs_dir
+
+
+def test_evidence_ledger_ignores_legacy_recommendation(tmp_path):
+    """A legacy 'deploy' recommendation string must not be treated as promoted."""
+    run_id = "rr_legacy_deploy"
+    _write_minimal_research_run(
+        tmp_path,
+        run_id,
+        recommendation="Deploy model: IC=0.2500",
+    )
+
+    ledger = EvidenceLedger(artifacts_dir=tmp_path)
+    bundle = ledger.from_research_run(run_id)
+
+    assert bundle.decision == "non_promoted:no_canonical_decision"
+    # The legacy deploy string must NOT appear as the decision.
+    assert bundle.decision != "Deploy model: IC=0.2500"
+    assert "deploy" not in str(bundle.decision).lower()
+
+
+def test_evidence_ledger_uses_canonical_promotion_when_present(tmp_path):
+    """Use a validated decision from the run-specific artifact directory."""
+    run_id = "rr_canonical"
+    runs_dir = _write_minimal_research_run(tmp_path, run_id)
+    decision_dir = runs_dir / run_id
+    decision_dir.mkdir()
+    (decision_dir / "promotion_decision.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "subject_id": run_id,
+                "status": "stronger_research_candidate",
+                "trade_ready": False,
+                "candidate": None,
+                "failed_gates": ["mean_icir"],
+                "missing_evidence": [],
+                "evidence_refs": [],
+                "contract_sha256": "",
+                "thresholds": {},
+                "rationale": "test",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    ledger = EvidenceLedger(artifacts_dir=tmp_path)
+    bundle = ledger.from_research_run(run_id)
+
+    # Must use canonical status, NOT the legacy "deploy" recommendation.
+    assert bundle.decision == "stronger_research_candidate"
+
+
+def test_evidence_ledger_corrupted_promotion_returns_explicit_status(tmp_path):
+    """Corrupted promotion_decision.json must return explicit error status."""
+    run_id = "rr_corrupted"
+    runs_dir = _write_minimal_research_run(tmp_path, run_id)
+    decision_dir = runs_dir / run_id
+    decision_dir.mkdir()
+    (decision_dir / "promotion_decision.json").write_text(
+        "not valid json{{{", encoding="utf-8"
+    )
+
+    ledger = EvidenceLedger(artifacts_dir=tmp_path)
+    bundle = ledger.from_research_run(run_id)
+
+    assert bundle.decision == "invalid_promotion_artifact"
+
+
+def test_evidence_ledger_rejects_subject_mismatch(tmp_path):
+    """A valid-shaped decision for another run cannot cross the run seam."""
+    run_id = "rr_subject"
+    runs_dir = _write_minimal_research_run(tmp_path, run_id)
+    decision_dir = runs_dir / run_id
+    decision_dir.mkdir()
+    (decision_dir / "promotion_decision.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "subject_id": "another_run",
+                "status": "missing_evidence",
+                "trade_ready": False,
+                "evidence_refs": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    bundle = EvidenceLedger(artifacts_dir=tmp_path).from_research_run(run_id)
+
+    assert bundle.decision == "invalid_promotion_artifact:subject_mismatch"
