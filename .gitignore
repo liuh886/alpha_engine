@@ -85,15 +85,7 @@ configs/us_lgbm_workflow_with_factors_*.yaml
 configs/selected_features.json
 configs/strategy_profile_cn_baseline.json
 
-# Experimental scripts
-scripts/explore_*.py
-scripts/run_*.py
-scripts/compare_*.py
-scripts/sweep_*.py
-scripts/select_*.py
-scripts/update_config_*.py
-scripts/train_*_model.py
-scripts/check_outputs.py
+# Experimental scripts use precise ignores so maintained research runners remain visible.
 scripts/t01_*.py
 scripts/t01_*.txt
 

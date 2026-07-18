@@ -47,7 +47,6 @@ The `/api/system/exec` endpoint uses a strict allowlist pattern.
 - Unknown task keys are rejected with HTTP 400.
 - Args are sanitized: any arg containing `;` or `&` is dropped.
 - Commands are executed via `subprocess.Popen(list)` (no `shell=True`), preventing shell metacharacter injection.
-- The `shell=True` usage found in `scripts/run_agents_pipeline.py` is a standalone script, not API-exposed.
 
 **Source:** `src/api/routers/system.py` lines 147-221
 
