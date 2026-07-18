@@ -1,0 +1,51 @@
+{
+  "benchmark": "QQQ",
+  "candidate": "blend:ranker_momentum:momentum_volatility_volume:gain5_round100_leaves31_leaf10_lr0.05:ranker0.5_momentum0.5",
+  "frozen_config": "#86 \u2014 50/50 ranker + inverted 10D momentum",
+  "market": "us",
+  "n_windows_evaluated": 4,
+  "n_windows_total": 4,
+  "research_only": true,
+  "schema_version": "1.0",
+  "top_k_long": {
+    "compounded_benchmark_return": 0.5023009916363921,
+    "compounded_excess_return": 0.5786555350126281,
+    "compounded_portfolio_return": 1.3716157757017502,
+    "label": "executable_style_research_portfolio",
+    "mean_excess_return": 0.13980256728112742,
+    "mean_max_drawdown": -0.08360265191779595,
+    "mean_sharpe_ratio": 2.244122048258315,
+    "positive_excess_window_ratio": 1.0,
+    "research_only": true,
+    "trade_ready": false,
+    "window_excess_returns": [
+      0.2943326417662313,
+      0.1279376182167944,
+      0.08225719651224261,
+      0.05468281262924135
+    ],
+    "worst_drawdown": -0.17004860801889188
+  },
+  "top_minus_bottom": {
+    "caveats": [
+      "Top-K-minus-Bottom-K is derived from aligned net period returns of two independent long-only legs.",
+      "It does NOT model borrow availability, borrow cost, short-sale feasibility, or margin requirements.",
+      "It is NOT trade-ready.",
+      "Top-K long-only is the stronger research candidate for any future executable path."
+    ],
+    "label": "research_only_diagnostic",
+    "mean_sharpe_ratio": 0.8258509229157969,
+    "positive_window_ratio": 0.75,
+    "research_only": true,
+    "trade_ready": false,
+    "window_sharpes": [
+      1.1083136155787083,
+      -0.06484885419348273,
+      1.0104344240389904,
+      1.2495045062389718
+    ],
+    "worst_drawdown": -0.11293799262095539
+  },
+  "topk": 3,
+  "trade_ready": false
+}
