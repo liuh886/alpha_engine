@@ -1,290 +1,230 @@
-# Model Training Methodology
+# Research Methodology
 
-This document describes the complete methodology for how AlphaEngine trains models, evaluates strategies, and controls risk. It is the authoritative reference for understanding and validating model outputs.
+> Last updated: 2026-07-18
 
----
-
-## 1. Data Preparation
-
-### Stock Pool
-
-| Market | Source | Instruments | Benchmark |
-|--------|--------|-------------|-----------|
-| US | `data/watchlist/instruments/us.txt` | 118 stocks (S&P 500 subset + growth picks) | QQQ |
-| CN | `data/watchlist/instruments/cn.txt` | 206 stocks (CSI 300 subset + watchlist) | 000300 (CSI 300) |
-
-Instruments are listed in `configs/watchlist.yaml`. Each line specifies symbol, start date, and end date.
-
-### Data Source
-
-- **Provider**: Qlib binary format stored in `data/watchlist/features/{SYMBOL}/`
-- **Frequency**: Daily (`day.txt` calendar, 1619 trading days from 2020-01-02 to 2026-04-03)
-- **Features per stock**: close, open, high, low, volume, amount, vwap, money, factor
-- **Format**: Little-endian float32 binary (`.bin`), NaN for missing data
-
-### Data Quality
-
-Before training, a data quality check runs via `src/assistant/data_quality_check.py`:
-- Stale instruments (no data in last 5 trading days)
-- Parse errors in CSV sources
-- Missing feature files
-
-Results are stored in `DataQualityIndex` (SQLite) and surfaced in the dashboard.
+This document describes the current research methodology for AlphaEngine. It is the
+authoritative reference for understanding how research is structured, what the fixed-10D
+paradigm requires, how evidence is evaluated, and what gates a candidate must pass before
+it can be considered trade-ready.
 
 ---
 
-## 2. Feature Engineering
+## 1. Core Paradigm: Fixed 10D Horizon
 
-The model uses **Alpha158** — a standard Qlib feature set of 158 technical factors derived from OHLCV data. An additional 5 custom features bring the total to **163 features**.
+Both CN and US research follow a **fixed 10-trading-day paradigm** declared in versioned
+research-paradigm specs under `configs/research_paradigms/`:
 
-### Feature Categories
+| Market | Spec file | Benchmark | Universe source |
+|--------|-----------|-----------|-----------------|
+| CN | `cn_10d_csi300_baseline.yaml` | CSI 300 (`000300`) | `configs/research_universes/cn_curated_equities_v1.yaml` |
+| US | `us_10d_qqq_baseline.yaml` | QQQ | `configs/research_universes/us_curated_equities_v1.yaml` |
 
-| Category | Count | Examples | Lookback Windows |
-|----------|-------|----------|-----------------|
-| **K-bar** | 9 | `(close-open)/open`, `(high-low)/open`, `(2*close-high-low)/open` | Current bar |
-| **Price Reference** | 5 | `open/close`, `high/close`, `low/close`, `vwap/close` | Current bar |
-| **Rolling Mean** | 5 | `Mean(close, 5)/close`, `Mean(close, 20)/close` | 5, 10, 20, 30, 60 |
-| **Rolling Std** | 5 | `Std(close, 5)/close`, `Std(close, 20)/close` | 5, 10, 20, 30, 60 |
-| **Slope** | 5 | `Slope(close, 5)/close` | 5, 10, 20, 30, 60 |
-| **R-square** | 5 | `Rsquare(close, 5)` | 5, 10, 20, 30, 60 |
-| **Residual** | 5 | `Resi(close, 5)/close` | 5, 10, 20, 30, 60 |
-| **Max/Min** | 10 | `Max(high, 5)/close`, `Min(low, 5)/close` | 5, 10, 20, 30, 60 |
-| **Quantile** | 10 | `Quantile(close, 5, 0.8)/close` | 5, 10, 20, 30, 60 (80th & 20th) |
-| **Rank** | 5 | `Rank(close, 5)` | 5, 10, 20, 30, 60 |
-| **Williams %R** | 5 | `(close-Min(low,5))/(Max(high,5)-Min(low,5))` | 5, 10, 20, 30, 60 |
-| **Index Max/Min** | 15 | `IdxMax(high, 5)/5`, `IdxMin(low, 5)/5`, `(IdxMax-IdxMin)/N` | 5, 10, 20, 30, 60 |
-| **Price-Volume Corr** | 10 | `Corr(close, Log(volume+1), 5)` | 5, 10, 20, 30, 60 |
-| **Up/Down Days** | 10 | `Mean(close>Ref(close,1), 5)` | 5, 10, 20, 30, 60 |
-| **Up-Down Balance** | 5 | `Mean(up,5) - Mean(down,5)` | 5, 10, 20, 30, 60 |
-| **RSI-like** | 15 | `Sum(gain,5)/(Sum(|change|,5)+eps)` (up, down, balance variants) | 5, 10, 20, 30, 60 |
-| **Volume Stats** | 10 | `Mean(volume,5)/volume`, `Std(volume,5)/volume` | 5, 10, 20, 30, 60 |
-| **Volume Volatility** | 5 | `Std(ret*volume, 5)/Mean(ret*volume, 5)` | 5, 10, 20, 30, 60 |
-| **Volume Momentum** | 10 | Up/down volume balance | 5, 10, 20, 30, 60 |
-| **Returns** | 3 | `close/Ref(close,5)-1`, `close/Ref(close,10)-1`, `close/Ref(close,20)-1` | 5, 10, 20 |
-| **Other** | 2 | `Std(close,10)`, `volume/Ref(volume,10)-1` | 10 |
-| **Custom MA Dev** | 4 | `mkt_{us/cn}_ma20_dev`, `mkt_{us/cn}_ma60_dev` | Market-level |
+### Paradigm invariants
 
-### Source
+| Property | Value |
+|----------|-------|
+| Horizon | 10 trading days |
+| Holding period | 10 trading days |
+| Rebalance cadence | 10 trading days |
+| Return expression | `Ref($close, -10) / $close - 1` |
+| Return provenance | `raw_forward_return` |
+| Research scope | `research_only: true` — no production or trading claim |
+| Walk-forward policy | `complete_windows_only` |
+| Train embargo | 10 sessions between each training tail and its OOS test window |
 
-Features are defined in `configs/us_lgbm_workflow.yaml` (lines 46-243) and `configs/cn_lgbm_workflow.yaml`.
+### Universes
+
+Both universes use **static curated membership** as of 2026-07-11, which introduces
+**survivorship bias**:
+- CN: ~200 A-share equities from the CSI 300 pool
+- US: ~120 NASDAQ/NYSE equities from the QQQ tracked pool
+
+This is acceptable for exploratory research but is not an unbiased historical estimate.
+No model trained on these universes should be treated as trade-ready without additional
+delisting-adjusted backtesting.
+
+### Factor libraries
+
+| Market | Library | Groups |
+|--------|---------|--------|
+| CN | `configs/factor_libraries/cn_ohlcv.yaml` | short_reversal_liquidity, volatility_reversal, price_volume_pressure, balanced_ohlcv |
+| US | `configs/factor_libraries/us_ohlcv.yaml` | momentum, momentum_volatility, momentum_volatility_volume, risk_controlled_momentum |
+
+### Candidate grid
+
+Each spec declares a ranker calibration grid (LightGBM LambdaRank with varying
+`n_gain_bins`, `num_leaves`, `min_data_in_leaf`, `learning_rate`) and factor baselines.
+The grid is evaluated identity-by-identity against the spec's declared evidence contract.
 
 ---
 
-## 3. Label Definition
+## 2. Return Concepts
 
-The prediction target is the **10-day forward return**:
+Two distinct return concepts are used for different purposes:
+
+| Concept | Expression | Provenance | Purpose |
+|---------|-----------|------------|---------|
+| **Raw canonical 10D return** | `Ref($close, -10) / $close - 1` | `raw_forward_return` | Economic evaluation, backtest scoring, spread analysis |
+| **Processed rank training target** | Same-date cross-sectional percentile rank converted to integer gains | `processed_training_target` | LightGBM LambdaRank training objective only |
+
+The raw forward return is the single economic truth. Processed targets are training
+artifacts and are **never** used for economic evaluation, backtest scoring, or promotion
+decisions.
+
+---
+
+## 3. Walk-Forward Validation
+
+Walk-forward validation uses **expanding half-year out-of-sample windows** with a
+10-session embargo between train and test periods.
+
+| Parameter | CN | US |
+|-----------|----|-----|
+| Train start | 2021-01-01 | 2021-01-01 |
+| Test end | 2026-06-18 | 2026-06-18 |
+| First test year | 2024 | 2024 |
+| Last test year | 2026 | 2026 |
+| Min windows | 3 | 3 |
+| Train embargo | 10 sessions | 10 sessions |
+| Partial window policy | `complete_windows_only` | `complete_windows_only` |
+
+### Required metrics
+
+Walk-forward results are evaluated against these metrics (defined in gate profile
+`ten_day_model_gates_v1`):
+
+| Metric | Description |
+|--------|-------------|
+| `mean_icir` | Mean information coefficient divided by its cross-window standard deviation |
+| `mean_rank_ic` | Mean rank-based information coefficient |
+| `mean_spread` | Mean spread between top and bottom quintile returns |
+| `worst_drawdown` | Worst portfolio drawdown across windows |
+| `ready_ratio` | Fraction of windows meeting all readiness criteria |
+| `positive_icir_ratio` | Fraction of windows with positive ICIR |
+| `positive_spread_ratio` | Fraction of windows with positive spread |
+
+---
+
+## 4. PromotionDecision Gates
+
+The `PromotionDecision` interface (ADR-0005) is the single canonical promotion gate.
+It is enforced by `src/research/promotion_decision.py` and evaluates three required
+evidence files **before** any promotion recommendation:
+
+| Evidence file | Purpose | Fail-closed status |
+|---------------|---------|---------------------|
+| `execution_identity.json` | Proves what ran and which contract was executed | `MISSING_EVIDENCE` if absent |
+| `data_readiness.json` | Proves data coverage completeness | `MISSING_EVIDENCE` if absent |
+| `walk_forward_stability.json` | Proves walk-forward metrics pass thresholds | `MISSING_EVIDENCE` if absent |
+
+The legacy pipeline's `mean_ic > 0.1 → DEPLOY` gate is **retired** (ADR-0007). No
+single metric can trigger a promotion decision. All three evidence files must be
+present and valid, or the decision is `MISSING_EVIDENCE`.
+
+### Status separation
+
+Execution state and promotion state are separate interfaces:
+
+| Interface | Values | Implication |
+|-----------|--------|-------------|
+| **Execution** | completed / skipped / failed | Technical outcome only; no quality claim |
+| **PromotionDecision.status** | missing_evidence / rejected / research_candidate / stronger_research_candidate / trade_guidance_candidate | Evidence-derived research status |
+| **PromotionDecision.trade_ready** | true only for `trade_guidance_candidate` | Research guidance only; never authorizes live or automated trading |
+
+The current diagnostic evidence did not evaluate promotion and contains no
+`trade_guidance_candidate` decision.
+
+---
+
+## 5. Current Evidence: 2026-07-16 Diagnostic Run
+
+The latest evidence package is at `docs/evidence/issue-124-current-2026-07-16/`.
+
+| Market | Status | Acceptance | Diagnostics | Diagnostic only |
+|--------|--------|:----------:|:-----------:|:---------------:|
+| CN | completed | passed | passed | **true** |
+| US | completed | passed | passed | **true** |
+
+Both markets completed with exit code 0. The pipeline **never promotes** — all outputs
+are factor diagnostics for review only.
+
+### Key evidence links
+
+- [CN/US evidence README](evidence/issue-124-current-2026-07-16/README.md) — full provenance, factor tables, coverage counts
+- [CN factor diagnostics](../artifacts/research_runs/cn_10d_csi300_baseline/factor_diagnostics.json) — 23 unique expressions, best oriented ICIR ~0.22 (5d volatility inverted)
+- [US factor diagnostics](../artifacts/research_runs/us_10d_qqq_baseline/factor_diagnostics.json) — 9 unique expressions, best oriented ICIR ~0.29 (20d risk-controlled momentum)
+- [CN acceptance](../artifacts/research_runs/cn_10d_csi300_baseline/real_market_acceptance.json) — 10 pass, 1 warn (survivorship bias), 0 fail
+- [US acceptance](../artifacts/research_runs/us_10d_qqq_baseline/real_market_acceptance.json) — 10 pass, 1 warn (survivorship bias), 0 fail
+
+### Diagnostic flags
+
+| Flag | CN | US |
+|------|:--:|:--:|
+| `diagnostic_only` | true | true |
+| `promotion_eligible` | false | false |
+| `trade_ready` | false | false |
+| `research_only` | true | true |
+| `promotion_evaluated` | false | false |
+
+### Interpretation boundary
+
+These outputs are factor diagnostics, not a deployable model or trading signal.
+Factor-library changes, orientation changes, combination research, model fitting,
+promotion, or trade readiness require separate reviewed work. **No model is currently
+trade-ready.**
+
+---
+
+## 6. Execution: Spec-Bound ResearchWorkflow
+
+All research execution goes through the canonical `ResearchWorkflow` backed by
+`SpecBoundResearchWorkflowExecutor` (ADR-0006, ADR-0007).
 
 ```
-label = Ref($close, -10) / Ref($close, -1) - 1
+ResearchWorkflow.run(request)
+    ↓
+SpecBoundResearchWorkflowExecutor.run_step()
+    ↓
+resolve_spec(request.market)
+    ↓
+execute_spec_bound_research(spec)
+    ↓
+execute_spec_bound_runner(spec, adapter)
+    ↓
+TRAIN → WALK_FORWARD → BACKTEST → PROMOTE
+                                     ↓
+                             PromotionDecision
+                             (evidence-gated, ADR-0005)
 ```
 
-This means: the model predicts the cumulative return from tomorrow to 10 days from now. The signal is used to rank stocks — higher predicted return = stronger buy signal.
+- Market `cn` resolves to `configs/research_paradigms/cn_10d_csi300_baseline.yaml`
+- Market `us` resolves to `configs/research_paradigms/us_10d_qqq_baseline.yaml`
+- The legacy research runtime (`LegacyResearchPipelineExecutor`) is **retired** (ADR-0007)
+- Free-text `goal` is audit metadata only; it does not change what executes
+
+### Spec resolution safety
+
+Unsupported markets, path traversal attempts, spec/market mismatches, missing files,
+and insufficient symbol coverage all fail before any model or data execution.
+
+### ATTRIBUTION step
+
+No standalone attribution artifact exists in the fixed-10D path. The `ATTRIBUTION`
+step is explicitly `SKIPPED` during spec-bound execution.
 
 ---
 
-## 4. Preprocessing
+## 7. References
 
-Two processors are applied before training:
-
-1. **DropnaLabel** — Removes rows where the label is NaN (stocks near the end of the data window that don't have 10 days of future data).
-
-2. **CSZScoreNorm (label)** — Cross-sectional z-score normalization of labels. For each date, the label values across all stocks are standardized to mean=0, std=1. This ensures the model learns relative ranking, not absolute return levels.
-
-3. **CSZScoreNorm (feature)** — Cross-sectional z-score normalization of features during inference. For each date, each feature is standardized across all stocks.
-
----
-
-## 5. Model: LightGBM
-
-### Hyperparameters
-
-| Parameter | Value | Purpose |
-|-----------|-------|---------|
-| `loss` | mse | Mean squared error objective |
-| `learning_rate` | 0.05 | Step size shrinkage |
-| `max_depth` | 10 | Maximum tree depth |
-| `num_leaves` | 128 | Maximum number of leaves per tree |
-| `subsample` | 0.8789 | Row subsampling ratio (bagging) |
-| `colsample_bytree` | 0.8879 | Feature subsampling ratio per tree |
-| `lambda_l1` | 1.0 | L1 regularization |
-| `lambda_l2` | 1.0 | L2 regularization |
-| `num_threads` | 20 | Parallelism |
-| `early_stopping_rounds` | 50 | Stop if validation loss doesn't improve for 50 rounds |
-
-### Source
-
-Defined in `configs/us_lgbm_workflow.yaml` (lines 8-20) and `configs/cn_lgbm_workflow.yaml`.
-
----
-
-## 6. Train / Validation / Test Split
-
-| Segment | Period | Purpose |
-|---------|--------|---------|
-| **Train** | 2021-01-01 to 2024-12-31 | Model learns patterns from 4 years of data |
-| **Validation** | 2025-01-01 to 2025-12-31 | Early stopping uses this to prevent overfitting |
-| **Test** | 2026-01-01 to 2026-04-03 | True holdout — model never sees this during training |
-
-Validation and test are now separated. The test period (2026 Q1) is a true out-of-sample holdout that the model never sees during training or early stopping.
-
----
-
-## 7. Evaluation Metrics
-
-### Primary Metrics
-
-| Metric | Formula | Good | Excellent | Poor |
-|--------|---------|------|-----------|------|
-| **Annualized Return** | `mean(daily_returns) × 252` | > 15% | > 25% | < 5% |
-| **Information Ratio** | `annualized_return / tracking_error` | > 0.5 | > 1.0 | < 0.3 |
-| **Max Drawdown** | `max((peak - trough) / peak)` | < 15% | < 10% | > 25% |
-
-### Derived Metrics
-
-| Metric | Calculation |
-|--------|------------|
-| **Total Return** | `(final_value / initial_value) - 1` |
-| **Annual Volatility** | `std(daily_returns) × √252` |
-| **Sharpe Ratio** | `annualized_return / annual_volatility` |
-| **Alpha (excess return)** | `strategy_return - benchmark_return` |
-
-### Benchmark Comparison
-
-Every backtest is compared against:
-- **US**: QQQ (Invesco QQQ Trust)
-- **CN**: 000300 (CSI 300 Index)
-
-The key question is: **does the strategy beat the benchmark after costs?**
-
----
-
-## 8. Overfitting Controls
-
-| Control | Implementation | Effect |
-|---------|---------------|--------|
-| **Early Stopping** | `early_stopping_rounds: 50` | Stops training when validation loss plateaus |
-| **L1 Regularization** | `lambda_l1: 1.0` | Prunes unimportant features |
-| **L2 Regularization** | `lambda_l2: 1.0` | Prevents large leaf weights |
-| **Row Subsampling** | `subsample: 0.8789` | Each tree sees ~88% of data |
-| **Feature Subsampling** | `colsample_bytree: 0.8879` | Each tree sees ~89% of features |
-| **Cross-Sectional Norm** | `CSZScoreNorm` | Model learns rankings, not levels |
-| **Immutable Metrics** | `src/common/metrics_extractor.py` | Exact metric values are frozen at compute time |
-
-### Known Weaknesses
-
-- **Single market per model**: No cross-market generalization.
-- **Point-in-time bias**: Features use `Ref()` which respects time ordering, but the instrument list may include survivorship bias.
-
----
-
-## 9. Strategy Execution: BiweeklyTrendStrategy
-
-### Parameters
-
-| Parameter | Value | Effect |
-|-----------|-------|--------|
-| `topk` | 5 | Hold top 5 ranked stocks |
-| `rebalance_steps` | 10 | Rebalance every 10 trading days (~2 weeks) |
-| `min_hold_days` | 10 | Minimum holding period before selling |
-| `sell_ma_window` | 60 | 60-day moving average for sell signal |
-| `sell_rank_threshold` | 20 | Sell if stock drops below rank 20 on rebalance day |
-| `buy_score_threshold` | None | Only buy stocks with score above this threshold (e.g., 0) |
-| `sell_score_threshold` | None | Sell stocks with score below this threshold (e.g., 0) |
-
-### Execution Logic
-
-1. **Every trading day**: Check existing positions for sell signals:
-   - Stock price < 60-day MA → sell (after min_hold_days)
-   - On rebalance days: stock rank >= 20 → sell (after min_hold_days)
-   - On rebalance days: stock score < `sell_score_threshold` → sell (after min_hold_days)
-
-2. **Every 10 trading days** (rebalance day):
-   - Sell positions that meet sell criteria
-   - Buy top-K stocks not currently held
-   - If `buy_score_threshold` is set, only buy stocks with score above threshold
-   - Position sizing: equal weight (`cash / available_slots`), capped at 15% per stock
-
-3. **Transaction costs**: 10 bps (0.1%) each way, applied by Qlib exchange simulator
-
-### Source
-
-`src/strategies/biweekly_trend_strategy.py`
-
----
-
-## 10. Risk Controls
-
-### Position-Level Guards
-
-| Guard | Rule | Source |
-|-------|------|--------|
-| **Max position size** | 15% of available cash per buy | `biweekly_trend_strategy.py:189` |
-| **Limit threshold** | 9.5% daily move blocks trade | `us_lgbm_workflow.yaml:273` |
-| **Tradability check** | Only trade liquid, non-suspended stocks | Strategy `is_stock_tradable()` |
-
-### Portfolio-Level Guards
-
-| Guard | Rule | Source |
-|-------|------|--------|
-| **MA20 Deviation** | Block trades if stock >20% above MA20 | `risk_monitor.py` extension |
-| **Volatility Regime** | Check market volatility before entry | `risk_monitor.py` extension |
-| **MDD Circuit Breaker** | 15% max drawdown triggers SYSTEM_PANIC | `risk_monitor.py:8` |
-
-### System-Level Guards
-
-| Guard | Rule | Source |
-|-------|------|--------|
-| **SYSTEM_PANIC** | Immediate halt of all agent tasks and backend jobs | `/api/system/panic` endpoint |
-| **Emergency Kill** | Manual kill switch in sidebar | `Sidebar.tsx` panic button |
-
----
-
-## 11. Model Promotion Gates
-
-Before a model can be promoted to `RECOMMENDED` stage, it must pass all gates:
-
-| Gate | Threshold | Purpose |
-|------|-----------|---------|
-| **Excess Return** | > 0% | Strategy must beat benchmark after costs |
-| **Information Ratio** | >= 0.5 | Risk-adjusted return must be meaningful |
-| **MDD Ratio** | <= 1.5x benchmark | Drawdown must not be excessive vs benchmark |
-| **Net Return** | > 0% | Return after transaction costs must be positive |
-| **Walk-Forward** | Required | Model must have walk-forward validation metadata |
-
-Gate checks are enforced in `src/assistant/services/model_service.py:_check_promotion_gates()`.
-
----
-
-## 12. Natural Language Strategy Compiler
-
-The system supports generating strategy profiles from natural language descriptions via `src/assistant/services/strategy_compiler_service.py`.
-
-### Supported Parameters
-
-| Parameter | English Keywords | Chinese Keywords |
-|-----------|-----------------|-----------------|
-| Market | us, cn, nasdaq, s&p | 美股, 中国, a股 |
-| Rebalance | weekly, biweekly, monthly | 一周, 双周, 月度 |
-| TopK | top N, hold N, pick N | 持有N只, 选N |
-| Sell MA | sell below ma(N), N-day ma | 跌破N日均线 |
-| Buy Rule | positive score, score > X | 正分, 得分大于X |
-| Sell Rule | negative score, score < X | 负分, 得分小于X |
-| Capital | capital $N, start with N | 资金N, 本金N万 |
-
-### Pipeline
-
-1. NL text → `parse_natural_language()` → `strategy_profile.json`
-2. `strategy_profile.json` → `compile_strategy_profile()` → Qlib YAML workflow
-3. YAML → Qlib backtest engine
-
-API: `POST /api/strategy/compile` with `{"text": "...", "market": "us"}`
-
----
-
-## 13. Known Limitations
-
-1. **Survivorship Bias**: Watchlist may exclude delisted stocks, inflating historical returns.
-2. **No Slippage Model**: Exchange costs are fixed at 10bps; real slippage varies with volume.
-3. **Single Model**: Only LightGBM is used. Ensemble methods (XGBoost, neural nets) are not explored.
-4. **Fixed Hyperparameters**: No Bayesian optimization or grid search for hyperparameter tuning.
-5. **Walk-Forward Not Yet Automated**: Promotion gates require walk-forward validation, but the automated rolling-window pipeline is not yet implemented.
+| Document | Purpose |
+|----------|---------|
+| `configs/research_paradigms/cn_10d_csi300_baseline.yaml` | CN fixed-10D paradigm spec |
+| `configs/research_paradigms/us_10d_qqq_baseline.yaml` | US fixed-10D paradigm spec |
+| `docs/adr/0005-promotion-decision-single-interface.md` | PromotionDecision single interface (ADR-0005) |
+| `docs/adr/0006-spec-bound-default-workflow-runtime.md` | Spec-bound default runtime (ADR-0006) |
+| `docs/adr/0007-retire-legacy-research-runtime.md` | Legacy runtime retirement (ADR-0007) |
+| `docs/evidence/issue-124-current-2026-07-16/README.md` | Latest CN/US diagnostic evidence |
+| `src/research/promotion_decision.py` | PromotionDecision implementation |
+| `src/research/spec_bound_execution.py` | Spec-bound execution implementation |
+| `src/research/workflow.py` | ResearchWorkflow protocol and runner |
+| `src/research/spec_bound_workflow_executor.py` | Default executor (ADR-0006) |
