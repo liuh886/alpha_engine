@@ -2,7 +2,7 @@
 
 Runs every week via cron/PM2:
 1. Refresh market data (US + CN)
-2. Run iterative research cycle for each market
+2. Run canonical spec-bound research cycle for each market
 3. Check for factor decay in Active factors
 4. Generate weekly report
 5. Log results to ExperimentJournal
@@ -21,9 +21,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from src.agents.research_loop import CycleResult, run_iterative_research
 from src.common.logging import get_logger
 from src.reliability.classifier import classify_failure
+from src.research.workflow_runtime import create_research_workflow
+from src.research.workflow_types import ResearchWorkflowRequest, ResearchWorkflowResult, WorkflowStatus
 
 log = get_logger(__name__)
 
@@ -52,22 +53,32 @@ def _refresh_market_data(market: str) -> bool:
     return False
 
 
-def _run_research_for_market(market: str, max_iterations: int = 3) -> list[CycleResult]:
-    """Run iterative research cycles for a market. Returns cycle results."""
-    log.info("research_cycle_start", market=market, max_iterations=max_iterations)
-    results = run_iterative_research(
-        market=market,
-        goal=f"Weekly automated research for {market.upper()}",
-        max_iterations=max_iterations,
-        target_sharpe=1.0,
-    )
-    log.info(
-        "research_cycle_complete",
-        market=market,
-        cycles=len(results),
-        best_sharpe=max((r.sharpe for r in results), default=0.0),
-    )
-    return results
+def _run_research_for_market(market: str) -> ResearchWorkflowResult | None:
+    """Run canonical spec-bound research for a market.
+
+    Uses the single canonical ``create_research_workflow().run()`` path
+    (ADR-0009).  Returns the workflow result or ``None`` on failure.
+    """
+    log.info("research_cycle_start", market=market)
+    try:
+        request = ResearchWorkflowRequest(
+            market=market,
+            goal=f"Weekly automated research for {market.upper()}",
+            requested_by="weekly_research",
+            metadata={"source": "weekly_research"},
+        )
+        wf_result = create_research_workflow().run(request)
+
+        log.info(
+            "research_cycle_complete",
+            market=market,
+            status=wf_result.status.value,
+            run_id=wf_result.run_id,
+        )
+        return wf_result
+    except Exception as exc:
+        log.error("research_cycle_failed", market=market, error=str(exc))
+        return None
 
 
 def _check_factor_decay() -> list[dict]:
@@ -86,8 +97,8 @@ def _check_factor_decay() -> list[dict]:
 
 
 def _generate_report(
-    us_results: list[CycleResult],
-    cn_results: list[CycleResult],
+    us_result: ResearchWorkflowResult | None,
+    cn_result: ResearchWorkflowResult | None,
     decay_results: list[dict],
     market_success: dict[str, bool],
 ) -> str:
@@ -95,8 +106,8 @@ def _generate_report(
     from scripts.generate_weekly_report import build_weekly_report
 
     return build_weekly_report(
-        us_results=us_results,
-        cn_results=cn_results,
+        us_result=us_result,
+        cn_result=cn_result,
         decay_results=decay_results,
         market_success=market_success,
     )
@@ -113,8 +124,8 @@ def _save_report(report_text: str) -> Path:
 
 
 def _log_to_journal(
-    us_results: list[CycleResult],
-    cn_results: list[CycleResult],
+    us_result: ResearchWorkflowResult | None,
+    cn_result: ResearchWorkflowResult | None,
     decay_results: list[dict],
 ) -> None:
     """Log weekly research summary to the experiment journal."""
@@ -130,19 +141,20 @@ def _log_to_journal(
         walk_forward_files=summary.get("walk_forward", {}).get("total_files", 0),
     )
 
-    # Log cycle results as structured events
-    for market, results in [("us", us_results), ("cn", cn_results)]:
-        for i, cycle in enumerate(results, 1):
-            log.info(
-                "weekly_cycle_result",
-                market=market,
-                iteration=i,
-                status=cycle.status,
-                sharpe=cycle.sharpe,
-                factors_scanned=cycle.factors_scanned,
-                factors_passed_fdr=cycle.factors_passed_fdr,
-                factors_promoted=cycle.factors_promoted,
-            )
+    # Log canonical workflow results as structured events
+    for market, wf_result in [("us", us_result), ("cn", cn_result)]:
+        if wf_result is None:
+            log.info("weekly_cycle_result", market=market, status="skipped")
+            continue
+        pd = wf_result.promotion_decision or {}
+        log.info(
+            "weekly_cycle_result",
+            market=market,
+            run_id=wf_result.run_id,
+            status=wf_result.status.value,
+            promotion_status=pd.get("status", "not_evaluated"),
+            trade_ready=bool(pd.get("trade_ready", False)),
+        )
 
     # Log decay results
     for dr in decay_results:
@@ -158,13 +170,26 @@ def _log_to_journal(
             )
 
 
-def run_weekly_research() -> int:
+def run_weekly_research(
+    markets: list[str] | None = None,
+    skip_data: bool = False,
+    skip_decay: bool = False,
+) -> int:
     """Main entry point for weekly research automation.
+
+    Args:
+        markets: List of markets to process (``"us"``, ``"cn"``).
+            Defaults to ``["us", "cn"]`` (equivalent to ``--market all``).
+        skip_data: If True, skip the data refresh step.
+        skip_decay: If True, skip the factor decay check.
 
     Returns:
         0 on success, 1 on partial failure, 2 on total failure.
     """
     from src.governance.service import GovernanceService
+
+    if markets is None:
+        markets = ["us", "cn"]
 
     gov = GovernanceService(PROJECT_ROOT)
     task_slug = _task_slug()
@@ -172,12 +197,17 @@ def run_weekly_research() -> int:
     print("=== Starting Weekly Research Cycle ===")
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     print(f"  Timestamp: {timestamp}")
+    print(f"  Markets: {', '.join(m.upper() for m in markets)}")
+    if skip_data:
+        print("  [skip-data] Data refresh will be skipped.")
+    if skip_decay:
+        print("  [skip-decay] Factor decay check will be skipped.")
 
     gov.update_task_status(
         task_slug,
         status="RUNNING",
         source="weekly_research",
-        details={"action": "Weekly Research Cycle"},
+        details={"action": "Weekly Research Cycle", "markets": markets},
     )
     gov.log_run_event(
         "all",
@@ -187,75 +217,92 @@ def run_weekly_research() -> int:
         source="weekly_research",
     )
 
-    markets = ["us", "cn"]
     market_success: dict[str, bool] = {}
-    all_results: dict[str, list[CycleResult]] = {}
+    all_results: dict[str, ResearchWorkflowResult | None] = {}
     decay_results: list[dict] = []
     errors: list[str] = []
 
     try:
         # ------------------------------------------------------------------
-        # Step 1: Refresh market data
+        # Step 1: Refresh market data (skipped if --skip-data)
         # ------------------------------------------------------------------
-        print("\n[1/5] Refreshing market data...")
-        for market in markets:
-            ok = _refresh_market_data(market)
-            market_success[market] = ok
-            if not ok:
-                errors.append(f"Data refresh failed for {market}")
+        if skip_data:
+            print("\n[1/5] Skipping data refresh (--skip-data).")
+            for market in markets:
+                market_success[market] = True  # absent = not failed
+        else:
+            print("\n[1/5] Refreshing market data...")
+            for market in markets:
+                ok = _refresh_market_data(market)
+                market_success[market] = ok
+                if not ok:
+                    errors.append(f"Data refresh failed for {market}")
 
         # ------------------------------------------------------------------
-        # Step 2-3: Run iterative research for each market
+        # Step 2-3: Run canonical spec-bound research for each market
         # ------------------------------------------------------------------
         for market in markets:
             step_label = "2" if market == "us" else "3"
-            print(f"\n[{step_label}/5] Running iterative research for {market.upper()}...")
+            print(f"\n[{step_label}/5] Running spec-bound research for {market.upper()}...")
             if not market_success.get(market):
                 print(f"  Skipping {market.upper()} (data refresh failed).")
-                all_results[market] = []
+                all_results[market] = None
                 continue
 
             try:
-                results = _run_research_for_market(market, max_iterations=3)
-                all_results[market] = results
-                best = max((r.sharpe for r in results), default=0.0)
-                promoted = sum(r.factors_promoted for r in results)
-                print(
-                    f"  {market.upper()}: {len(results)} cycles, "
-                    f"best Sharpe={best:.3f}, {promoted} factors promoted."
-                )
+                wf_result = _run_research_for_market(market)
+                all_results[market] = wf_result
+                if wf_result is not None:
+                    pd = wf_result.promotion_decision or {}
+                    print(
+                        f"  {market.upper()}: canonical spec-bound cycle, "
+                        f"status={wf_result.status.value}, "
+                        f"promotion={pd.get('status', 'not_evaluated')}, "
+                        f"trade_ready={pd.get('trade_ready', False)}."
+                    )
+                    if wf_result.status != WorkflowStatus.COMPLETED:
+                        status_text = wf_result.status.value
+                        errors.append(
+                            f"Research for {market} completed with status {status_text}"
+                        )
+                else:
+                    print(f"  {market.upper()}: research cycle failed (exception).")
+                    errors.append(f"Research failed for {market}")
             except Exception as exc:
-                all_results[market] = []
+                all_results[market] = None
                 errors.append(f"Research failed for {market}: {exc}")
                 log.error("research_failed", market=market, error=str(exc))
 
         # ------------------------------------------------------------------
-        # Step 4: Factor decay check
+        # Step 4: Factor decay check (skipped if --skip-decay)
         # ------------------------------------------------------------------
-        print("\n[4/5] Checking factor decay...")
-        try:
-            decay_results = _check_factor_decay()
-            n_alerts = sum(
-                1 for r in decay_results if r.get("status") in ("decaying", "critical_decay")
-            )
-            print(f"  Checked {len(decay_results)} Active factors, {n_alerts} decay alerts.")
-        except Exception as exc:
-            errors.append(f"Decay check failed: {exc}")
-            log.error("decay_check_failed", error=str(exc))
+        if skip_decay:
+            print("\n[4/5] Skipping factor decay check (--skip-decay).")
+        else:
+            print("\n[4/5] Checking factor decay...")
+            try:
+                decay_results = _check_factor_decay()
+                n_alerts = sum(
+                    1 for r in decay_results if r.get("status") in ("decaying", "critical_decay")
+                )
+                print(f"  Checked {len(decay_results)} Active factors, {n_alerts} decay alerts.")
+            except Exception as exc:
+                errors.append(f"Decay check failed: {exc}")
+                log.error("decay_check_failed", error=str(exc))
 
         # ------------------------------------------------------------------
         # Step 5: Generate and save report
         # ------------------------------------------------------------------
         print("\n[5/5] Generating weekly report...")
-        us_results = all_results.get("us", [])
-        cn_results = all_results.get("cn", [])
+        us_result = all_results.get("us")
+        cn_result = all_results.get("cn")
 
-        report_text = _generate_report(us_results, cn_results, decay_results, market_success)
+        report_text = _generate_report(us_result, cn_result, decay_results, market_success)
         report_path = _save_report(report_text)
         print(f"  Report saved: {report_path}")
 
         # Log to journal
-        _log_to_journal(us_results, cn_results, decay_results)
+        _log_to_journal(us_result, cn_result, decay_results)
 
         # ------------------------------------------------------------------
         # Finalize
@@ -324,12 +371,6 @@ def main() -> int:
         help="Market to process (default: all)",
     )
     parser.add_argument(
-        "--max-iterations",
-        type=int,
-        default=3,
-        help="Max research iterations per market (default: 3)",
-    )
-    parser.add_argument(
         "--skip-data",
         action="store_true",
         help="Skip data refresh step",
@@ -339,11 +380,19 @@ def main() -> int:
         action="store_true",
         help="Skip factor decay check",
     )
-    parser.parse_args()
+    args = parser.parse_args()
 
-    # For now, run_weekly_research handles all markets together.
-    # The --market flag can be used for future targeted runs.
-    return run_weekly_research()
+    # Convert --market flag to a list of markets
+    if args.market == "all":
+        selected_markets = ["us", "cn"]
+    else:
+        selected_markets = [args.market]
+
+    return run_weekly_research(
+        markets=selected_markets,
+        skip_data=args.skip_data,
+        skip_decay=args.skip_decay,
+    )
 
 
 if __name__ == "__main__":

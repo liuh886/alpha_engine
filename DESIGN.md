@@ -125,7 +125,7 @@ FastAPI (api_server.py) → React Dashboard (qlib-dashboard/)
 - T-06: Factor pool externalization — 261 factors moved to configs/factor_pool.yaml, load_factor_pool MCP tool
 
 #### Sprint 3: Agent Autonomy
-- T-07: Agent auto-iteration — decide_next_action() with 7 rules, run_iterative_research() loop
+- T-07 (historical — superseded by ADR-0009): Agent auto-iteration — decide_next_action() with 7 rules, run_iterative_research() loop. Both functions are retired; the canonical spec-bound workflow uses a single `run_research_cycle` call.
 - T-08: NL goal parsing — parse_research_goal() supports Chinese/English, MCP tool added
 
 #### Sprint 4: Dashboard Productization
@@ -138,7 +138,7 @@ FastAPI (api_server.py) → React Dashboard (qlib-dashboard/)
 ### 2026-06-08: Three-Layer Goal Execution
 
 #### Goal 1: Verification ✅ ALL CRITERIA MET
-- run_iterative_research MCP: function exists and executes
+- run_iterative_research MCP (historical — superseded by ADR-0009): tool was removed; callers use `run_research_cycle` for a single canonical execution
 - ≥1 factor at CANDIDATE: 58 Active factors
 - Attribution report: R²=0.28, top contributor mom_5d (25.7%)
 - ExperimentJournal: 58 factors + 2 WF files recorded
@@ -146,9 +146,9 @@ FastAPI (api_server.py) → React Dashboard (qlib-dashboard/)
 
 #### Goal 2: Close Loop ✅ ALL CRITERIA MET
 - NL parsing: "帮我找A股低波策略" → market=cn, categories=[volatility], direction=long
-- decide_next_action: 7 decision rules implemented
-- run_iterative_research: multi-cycle with auto-adjustment
-- MCP tool: parse_research_goal + run_iterative_research
+- decide_next_action (historical — superseded by ADR-0009): retired with research_loop.py; the canonical path has no adaptive iteration
+- run_iterative_research (historical — superseded by ADR-0009): retired; the canonical spec-bound workflow does not loop
+- MCP tool: parse_research_goal + run_research_cycle (run_iterative_research was removed per ADR-0009)
 
 #### Goal 3: Continuous Production ✅ INFRASTRUCTURE BUILT
 - scripts/weekly_research.py: 5-step pipeline (data refresh → research → decay check → report → journal)

@@ -1,7 +1,8 @@
 """Generate weekly alpha research report.
 
 Report includes:
-- Summary: new factors discovered, factors promoted, factors demoted
+- Summary: canonical spec-bound workflow status per market
+- Research cycles: run identity, workflow status, promotion status, trade_ready
 - Factor library status: total by stage, by category
 - Top performers: top 5 factors by ICIR
 - Decay alerts: factors with declining IC
@@ -22,6 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 from src.common.logging import get_logger
+from src.research.workflow_types import ResearchWorkflowResult, WorkflowStatus
 
 log = get_logger(__name__)
 
@@ -30,51 +32,38 @@ def _section_header(title: str) -> str:
     return f"\n## {title}\n"
 
 
-def _format_cycle_summary(
+def _format_workflow_summary(
     market: str,
-    results: list,
+    wf_result: ResearchWorkflowResult | None,
 ) -> str:
-    """Format research cycle results for one market into markdown."""
-    if not results:
-        return f"**{market.upper()}**: No research cycles run this week.\n"
+    """Format canonical workflow result for one market into markdown."""
+    if wf_result is None:
+        return f"**{market.upper()}**: No research run this week.\n"
 
-    total_scanned = sum(r.factors_scanned for r in results)
-    total_fdr_passed = sum(r.factors_passed_fdr for r in results)
-    total_promoted = sum(r.factors_promoted for r in results)
-    best_sharpe = max((r.sharpe for r in results), default=0.0)
-    best_mdd = min((r.max_drawdown for r in results), default=0.0)
-
+    pd = wf_result.promotion_decision or {}
     lines = [
-        f"**{market.upper()}** ({len(results)} cycles):",
-        f"- Factors scanned: {total_scanned}",
-        f"- FDR-significant: {total_fdr_passed}",
-        f"- Promoted: {total_promoted}",
-        f"- Best Sharpe: {best_sharpe:.3f}",
-        f"- Best Max Drawdown: {best_mdd:.4f}",
+        f"**{market.upper()}** (canonical spec-bound execution, ADR-0009):",
+        f"- Run ID: `{wf_result.run_id}`",
+        f"- Workflow status: **{wf_result.status.value}**",
+        f"- Started: {wf_result.started_at or 'N/A'}",
     ]
+    if wf_result.completed_at:
+        lines.append(f"- Completed: {wf_result.completed_at}")
 
-    # List newly promoted factors
-    new_factors = []
-    for r in results:
-        new_factors.extend(r.new_active_factors)
-    if new_factors:
-        unique_factors = sorted(set(new_factors))
-        lines.append(f"- New active factors: {', '.join(unique_factors)}")
+    lines.append(f"- Steps executed: {len(wf_result.steps)}")
+    for step in wf_result.steps:
+        status_mark = "✓" if step.status == WorkflowStatus.COMPLETED else (
+            "✗" if step.status == WorkflowStatus.FAILED else "○"
+        )
+        lines.append(f"  - {status_mark} {step.step.value}: {step.status.value}")
 
-    # Cycle status summary
-    statuses = [r.status for r in results]
-    n_success = statuses.count("success")
-    n_partial = statuses.count("partial")
-    n_failed = statuses.count("failed")
-    status_parts = []
-    if n_success:
-        status_parts.append(f"{n_success} succeeded")
-    if n_partial:
-        status_parts.append(f"{n_partial} partial")
-    if n_failed:
-        status_parts.append(f"{n_failed} failed")
-    if status_parts:
-        lines.append(f"- Cycle outcomes: {', '.join(status_parts)}")
+    lines.append(f"- Promotion status: **{pd.get('status', 'not_evaluated')}**")
+    lines.append(f"- Trade ready: **{pd.get('trade_ready', False)}**")
+
+    if wf_result.warnings:
+        lines.append(f"- Warnings: {len(wf_result.warnings)}")
+        for w in wf_result.warnings[:3]:
+            lines.append(f"  - ⚠ {w}")
 
     return "\n".join(lines) + "\n"
 
@@ -209,30 +198,30 @@ def _format_walk_forward_status() -> str:
 
 
 def _format_recommendations(
-    us_results: list,
-    cn_results: list,
+    us_result: ResearchWorkflowResult | None,
+    cn_result: ResearchWorkflowResult | None,
     decay_results: list[dict],
 ) -> str:
-    """Generate actionable recommendations based on the week's results."""
+    """Generate actionable recommendations based on workflow results and decay data."""
     recommendations: list[str] = []
 
-    # Check for failed cycles
-    all_results = us_results + cn_results
-    failed = [r for r in all_results if r.status == "failed"]
-    if failed:
-        recommendations.append(
-            f"- **Investigate failures**: {len(failed)} research cycle(s) failed. "
-            "Check logs for scan, backtest, or attribution errors."
-        )
-
-    # Check for low Sharpe
-    all_sharpes = [r.sharpe for r in all_results if r.sharpe > 0]
-    if all_sharpes and max(all_sharpes) < 0.5:
-        recommendations.append(
-            "- **Sharpe below target**: Best Sharpe this week was "
-            f"{max(all_sharpes):.3f}. Consider scanning new factor categories "
-            "or adjusting model hyperparameters."
-        )
+    # Check for failed workflows
+    for label, wf_result in [("US", us_result), ("CN", cn_result)]:
+        if wf_result is None:
+            continue
+        if wf_result.status == WorkflowStatus.FAILED:
+            recommendations.append(
+                f"- **Investigate {label} failure**: workflow {wf_result.run_id} "
+                f"failed. Check steps for errors."
+            )
+        elif wf_result.status == WorkflowStatus.COMPLETED:
+            pd = wf_result.promotion_decision or {}
+            promo_status = pd.get("status", "not_evaluated")
+            if promo_status in ("missing_evidence", "evidence_insufficient"):
+                recommendations.append(
+                    f"- **{label} promotion blocked**: status={promo_status}. "
+                    "Gather additional evidence before re-evaluation."
+                )
 
     # Check for decay
     critical = [r for r in decay_results if r.get("status") == "critical_decay"]
@@ -251,23 +240,13 @@ def _format_recommendations(
             "recent data before next promotion cycle."
         )
 
-    # Check for no new factors
-    total_promoted = sum(r.factors_promoted for r in all_results)
-    if total_promoted == 0 and all_results:
-        recommendations.append(
-            "- **No new factors promoted**: Consider expanding the factor "
-            "pool or relaxing FDR thresholds for exploration."
-        )
-
-    # Check for concentration
-    for r in all_results:
-        if r.top_contributors:
-            top = r.top_contributors[0]
-            if top.get("contribution_pct", 0) > 50:
+    # Check for trade-ready factors
+    for label, wf_result in [("US", us_result), ("CN", cn_result)]:
+        if wf_result is not None and wf_result.promotion_decision:
+            if wf_result.promotion_decision.get("trade_ready"):
                 recommendations.append(
-                    f"- **Factor concentration**: {top.get('factor_name', '?')} "
-                    f"contributes {top.get('contribution_pct', 0):.0f}% of returns. "
-                    "Scan for diversifying factors."
+                    f"- **{label} trade-ready**: workflow {wf_result.run_id} "
+                    "passed all evidence gates. Review promotion decision."
                 )
 
     if not recommendations:
@@ -279,8 +258,8 @@ def _format_recommendations(
 
 
 def build_weekly_report(
-    us_results: list,
-    cn_results: list,
+    us_result: ResearchWorkflowResult | None,
+    cn_result: ResearchWorkflowResult | None,
     decay_results: list[dict],
     market_success: dict[str, bool],
 ) -> str:
@@ -288,6 +267,18 @@ def build_weekly_report(
 
     This is the main report assembly function, called by weekly_research.py
     and also usable standalone.
+
+    Accepts canonical ``ResearchWorkflowResult`` objects (ADR-0009).  The
+    report truthfully reflects workflow status, promotion status,
+    trade-readiness, and run identity -- it does not fabricate per-factor
+    scan counts or backtest performance metrics that the spec-bound path
+    does not produce.
+
+    Args:
+        us_result: Canonical workflow result for US market, or None.
+        cn_result: Canonical workflow result for CN market, or None.
+        decay_results: Factor decay check results.
+        market_success: Whether data refresh succeeded per market.
 
     Returns:
         Complete markdown report string.
@@ -302,25 +293,35 @@ def build_weekly_report(
 
     # Executive Summary
     sections.append(_section_header("Executive Summary"))
-    all_results = us_results + cn_results
-    total_scanned = sum(r.factors_scanned for r in all_results)
-    total_promoted = sum(r.factors_promoted for r in all_results)
     n_decay_alerts = sum(
         1 for r in decay_results if r.get("status") in ("decaying", "critical_decay")
     )
-    sections.append(
-        f"Scanned **{total_scanned}** factors across "
-        f"{'US + CN' if us_results and cn_results else 'US' if us_results else 'CN'}. "
-        f"**{total_promoted}** promoted to Active. "
-        f"**{n_decay_alerts}** decay alert(s).\n"
-    )
 
-    # Research Cycle Results
+    markets_run: list[str] = []
+    promo_parts: list[str] = []
+    for label, wf_result in [("US", us_result), ("CN", cn_result)]:
+        if wf_result is not None:
+            markets_run.append(label)
+            pd = wf_result.promotion_decision or {}
+            promo_parts.append(f"{label}: {pd.get('status', 'not_evaluated')}")
+    markets_str = " + ".join(markets_run) if markets_run else "none"
+
+    summary_lines = [
+        f"Markets executed: **{markets_str}** (canonical spec-bound, ADR-0009).",
+        f"**{n_decay_alerts}** factor decay alert(s).",
+    ]
+    if promo_parts:
+        summary_lines.append(f"Promotion: {', '.join(promo_parts)}.")
+    sections.append(" ".join(summary_lines) + "\n")
+
+    # Research Cycles
     sections.append(_section_header("Research Cycles"))
     if market_success.get("us") is not None:
-        sections.append(_format_cycle_summary("us", us_results))
+        sections.append(_format_workflow_summary("us", us_result))
     if market_success.get("cn") is not None:
-        sections.append(_format_cycle_summary("cn", cn_results))
+        sections.append(_format_workflow_summary("cn", cn_result))
+    if not market_success:
+        sections.append("No research run this week.\n")
 
     # Factor Library Status
     sections.append(_section_header("Factor Library Status"))
@@ -349,7 +350,7 @@ def build_weekly_report(
 
     # Recommendations
     sections.append(_section_header("Recommendations"))
-    sections.append(_format_recommendations(us_results, cn_results, decay_results))
+    sections.append(_format_recommendations(us_result, cn_result, decay_results))
 
     # Footer
     sections.append(f"\n---\n*Generated at {now.strftime('%Y-%m-%d %H:%M:%S')}*\n")
@@ -383,8 +384,8 @@ def main() -> int:
         log.warning("decay_check_failed_standalone", error=str(exc))
 
     report = build_weekly_report(
-        us_results=[],
-        cn_results=[],
+        us_result=None,
+        cn_result=None,
         decay_results=decay_results,
         market_success={},
     )
