@@ -267,7 +267,8 @@ def test_run_research_cycle_uses_research_workflow_adapter(monkeypatch):
             sys.modules["src.api.mcp_server"] = orig_mcp_server_mod
 
 
-def test_run_iterative_research_uses_research_workflow_adapter(monkeypatch):
+def test_run_iterative_research_removed():
+    """Verify run_iterative_research is no longer an MCP tool (ADR-0009)."""
     orig_mcp = sys.modules.get("mcp")
     orig_mcp_server = sys.modules.get("mcp.server")
     orig_mcp_fastmcp = sys.modules.get("mcp.server.fastmcp")
@@ -276,42 +277,9 @@ def test_run_iterative_research_uses_research_workflow_adapter(monkeypatch):
     try:
         _install_mcp_stub()
         mcp_server = importlib.import_module("src.api.mcp_server")
-
-        from src.research.workflow_types import (
-            ResearchWorkflowResult,
-            WorkflowStatus,
+        assert not hasattr(mcp_server, "run_iterative_research"), (
+            "run_iterative_research MCP tool must be removed (ADR-0009)"
         )
-
-        captured_requests = []
-
-        class FakeWorkflow:
-            def run(self, request):
-                captured_requests.append(request)
-                return ResearchWorkflowResult(
-                    run_id=f"rw_iter_{len(captured_requests)}",
-                    request=request,
-                    status=WorkflowStatus.COMPLETED,
-                )
-
-        monkeypatch.setattr(mcp_server, "create_research_workflow", FakeWorkflow)
-        monkeypatch.setenv("ALPHA_DEVELOPER_TOKEN", "")
-        mcp_server._DEVELOPER_TOKEN = ""
-
-        response = mcp_server.run_iterative_research(
-            market="us",
-            goal="Find resilient alpha",
-            max_iterations=2,
-            target_sharpe=1.5,
-        )
-        payload = json.loads(response)
-
-        assert len(payload) == 2
-        assert len(captured_requests) == 2
-        assert captured_requests[0].requested_by == "mcp.run_iterative_research"
-        assert captured_requests[0].metadata["iteration"] == 1
-        assert captured_requests[1].metadata["iteration"] == 2
-        assert captured_requests[0].metadata["target_sharpe"] == 1.5
-
     finally:
         if orig_mcp is not None:
             sys.modules["mcp"] = orig_mcp

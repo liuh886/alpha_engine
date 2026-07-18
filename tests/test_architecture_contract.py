@@ -17,7 +17,6 @@ def test_core_research_modules_do_not_import_heavy_runtime_adapters():
         "mlflow",
         "src.api.",
         "src.workflows.hooks",
-        "src.agents.research_loop",
     )
     for rel in (
         "src/research/evidence.py",
