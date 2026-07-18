@@ -53,7 +53,7 @@ const FIXTURE_MODELS = {
       run_id: "run-release-42",
       snapshot_id: "snapshot-cn-20260620",
       evidence_id: "artifact-release-42",
-      created_at: "2026-06-20T07:55:00Z",
+      created_at: new Date().toISOString(),
       stage: "STAGING",
       description: "Stage: STAGING",
       params: { data_snapshot_id: "snapshot-cn-20260620" },
@@ -434,6 +434,16 @@ describe("ModelsPage", () => {
       const row = screen.getByText("release-candidate-42").closest("tr");
       expect(row).toBeTruthy();
       expect(row!.className).toContain("bg-primary/5");
+    });
+  });
+
+  it("shows success only when the exact release model is current", async () => {
+    renderModelsPage(
+      "?model_id=artifact-release-42&run_id=run-release-42&snapshot_id=snapshot-cn-20260620",
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Exact release model is available/)).toBeVisible();
     });
   });
 

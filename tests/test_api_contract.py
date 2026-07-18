@@ -65,7 +65,19 @@ class TestResearchEndpoints:
         resp = client.post("/api/research/run", headers=auth_headers)
         assert resp.status_code == 422  # Validation error
 
-    def test_start_run_accepts_valid_body(self, client, auth_headers):
+    def test_start_run_accepts_valid_body(self, client, auth_headers, monkeypatch):
+        captured = []
+
+        class FakeWorkflow:
+            def run(self, request):
+                captured.append(request)
+                return type("Result", (), {"run_id": request.run_id})()
+
+        monkeypatch.setattr(
+            "src.api.routers.research.create_research_workflow",
+            lambda: FakeWorkflow(),
+        )
+
         resp = client.post(
             "/api/research/run",
             json={"market": "cn", "goal": "test", "model_type": "lgbm"},
@@ -75,6 +87,10 @@ class TestResearchEndpoints:
         data = resp.json()
         assert data["ok"] is True
         assert "run_id" in data
+        assert len(captured) == 1
+        assert captured[0].market == "cn"
+        assert captured[0].goal == "test"
+        assert captured[0].model_type == "lgbm"
 
     def test_get_nonexistent_run(self, client, auth_headers):
         resp = client.get("/api/research/runs/nonexistent_id", headers=auth_headers)
