@@ -436,6 +436,8 @@ def _compute_score_diagnostics(
 
     # Add backward-compatible aliases for existing artifact consumers
     result["raw_rank_ic"] = result["rank_ic"]
+    result["top_decile_mean_return"] = result["top_bucket_return"]
+    result["bottom_decile_mean_return"] = result["bottom_bucket_return"]
     result["top_minus_bottom"] = result["top_minus_bottom_spread"]
     result["bottom_minus_top"] = result["bottom_minus_top_spread"]
 

@@ -83,7 +83,9 @@ def test_dump_all_writes_all_and_market_specific_instruments(tmp_path: Path) -> 
     assert hk_text.startswith("00700.HK\t")
     assert (provider / "features" / "000069" / "open.day.bin").is_file()
     assert (provider / "features" / "aapl" / "close.day.bin").is_file()
-    assert not (provider / "features" / "AAPL").exists()
+    feature_keys = {path.name for path in (provider / "features").iterdir()}
+    assert "aapl" in feature_keys
+    assert "AAPL" not in feature_keys
 
     values = np.fromfile(
         provider / "features" / "000069" / "open.day.bin",
