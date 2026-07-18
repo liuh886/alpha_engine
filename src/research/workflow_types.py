@@ -108,6 +108,8 @@ class ResearchWorkflowResult:
     completed_at: str | None = None
     evidence_bundle_id: str | None = None
     warnings: list[str] = field(default_factory=list)
+    # Absent for pre-Interface stored runs and runs that never reached PROMOTE.
+    promotion_decision: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -119,4 +121,5 @@ class ResearchWorkflowResult:
             "completed_at": self.completed_at,
             "evidence_bundle_id": self.evidence_bundle_id,
             "warnings": list(self.warnings),
+            "promotion_decision": self.promotion_decision,
         }

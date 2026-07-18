@@ -395,3 +395,96 @@ def test_failed_model_gates_are_research_candidates_not_operational_success():
     assert outcome["status"] == "RESEARCH_CANDIDATE"
     assert outcome["operational_success"] is False
     assert outcome["promoted"] is False
+
+
+# ---------------------------------------------------------------------------
+# Promote step contract: mean_ic must not emit DEPLOY
+# ---------------------------------------------------------------------------
+
+
+def test_promote_step_calls_canonical_decision_not_mean_ic(tmp_path, monkeypatch):
+    """The promote step must delegate to build_promotion_decision_from_run,
+    never checking mean_ic directly. High mean_ic must not produce DEPLOY."""
+    from types import SimpleNamespace
+
+    from src.research.pipeline import ResearchRun, run_research_pipeline
+    captured_dir = None
+    captured_subject = None
+    call_count = [0]
+
+    def fake_finalize(run_dir, *, subject_id=None, thresholds=None):
+        captured_dir[0] = run_dir  # type: ignore[index]
+        captured_subject[0] = subject_id  # type: ignore[index]
+        call_count[0] += 1
+        return {
+            "schema_version": "1.0",
+            "subject_id": subject_id or "unknown",
+            "status": "missing_evidence",
+            "trade_ready": False,
+            "candidate": None,
+            "failed_gates": [],
+            "missing_evidence": [
+                "execution_identity",
+                "data_readiness",
+                "walk_forward_stability",
+            ],
+            "evidence_refs": [],
+            "contract_sha256": "",
+            "thresholds": {},
+            "rationale": "Test: evidence not present.",
+            "artifact_path": str(run_dir / "promotion_decision.json"),
+        }
+
+    captured_dir = [None]
+    captured_subject = [None]
+
+    # Mock all heavy steps so they don't run real code
+    monkeypatch.setattr(
+        "src.research.promotion_decision.finalize_promotion_decision", fake_finalize
+    )
+    monkeypatch.setattr(
+        "src.research.factor_registry.FactorRegistry",
+        type("FakeRegistry", (), {"__init__": lambda s, **kw: None, "list_factors": lambda s, **kw: []}),
+    )
+    monkeypatch.setattr(
+        "src.workflows.profile_compiler.compile_strategy_profile",
+        lambda market, profile_path: tmp_path / "compiled.yaml",
+    )
+    # Create a minimal compiled config
+    import yaml
+    (tmp_path / "compiled.yaml").write_text(
+        yaml.safe_dump({"task": {"dataset": {"kwargs": {"segments": {"train": [], "valid": [], "test": []}}}}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("src.common.qlib_init.build_qlib_init_cfg", lambda *a, **k: {})
+    monkeypatch.setattr("src.common.qlib_init.safe_qlib_init", lambda *a, **k: None)
+    monkeypatch.setattr(
+        "src.research.walk_forward.walk_forward_validate",
+        lambda **kw: SimpleNamespace(mean_ic=0.25, ic_ir=1.5, consistency_score=0.9, splits=[]),
+    )
+    monkeypatch.setattr(
+        ResearchRun,
+        "save",
+        lambda self, path=None: tmp_path / f"{self.run_id}.json",
+    )
+
+    run = run_research_pipeline(
+        market="cn",
+        model_type="lgbm",
+        _train_fn=lambda **kwargs: {"metrics": {"information_ratio": 0.1}},
+    )
+
+    # The canonical function must have been called
+    assert call_count[0] == 1
+    assert captured_subject[0] == run.run_id
+    assert captured_dir[0].name == run.run_id
+
+    # The promote step output must be the canonical decision dict, NOT
+    # {"recommendation": "DEPLOY", ...}
+    promote_step = run.get_step("promote")
+    assert promote_step is not None
+    assert promote_step.status.value == "completed"
+    output = promote_step.output
+    assert output.get("status") == "missing_evidence"
+    assert output.get("trade_ready") is False
+    assert "recommendation" not in output

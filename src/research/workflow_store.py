@@ -84,4 +84,5 @@ class ResearchWorkflowStore:
             completed_at=data.get("completed_at"),
             evidence_bundle_id=data.get("evidence_bundle_id"),
             warnings=data.get("warnings", []),
+            promotion_decision=data.get("promotion_decision"),
         )
