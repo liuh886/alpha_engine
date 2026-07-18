@@ -86,11 +86,13 @@ Runs 11 quality gates: Ruff, Mypy, Pytest, TypeScript check, frontend lint, unit
 
 ### 3. 核心架构
 - **单一运行时**: 所有 API 请求都通过 `api_server.py` 路由。
-- **Agent 驱动**: 内置 Alpha, Risk, Governance, Developer 四大 Agent 协同工作。
-- **Qlib 集成**: 底层基于微软 Qlib 量化框架，支持多种市场和特征包。
-- **架构收敛交接**: Phase 1-6 重构规则与任务边界见 docs/architecture/phase_1_6_agent_handoff.md。
+- **ResearchAssistant**: 统一的 research agent，通过 `ResearchWorkflow` 执行所有研究任务。
+- **ResearchWorkflow**: 规范绑定的研究工作流，由 `SpecBoundResearchWorkflowExecutor` 驱动，执行固定的 10D 范式（见 `configs/research_paradigms/`）。
+- **研究专用范围**: 当前平台是研究专用系统，没有模型达到 `trade_ready` 状态。全部输出为诊断和研究候选，不可用于实盘交易。
+- **证据驱动**: 推广决策通过 `PromotionDecision` 接口（ADR-0005）统一执行，缺失证据则关闭失败。
 - **发布文档**: 安装、配置、运维、安全、性能、合同见 docs/release/index.md。
 - **工作成果总结**: 见 docs/release/work_summary_20260620.md。
+- **研究范式规范**: CN 和 US 各有一个固定的 10D 范式，见 `configs/research_paradigms/cn_10d_csi300_baseline.yaml` 和 `us_10d_qqq_baseline.yaml`。
 
 ### 4. 任务管理 (Makefile)
 使用 `Makefile` 快速执行常用任务：
