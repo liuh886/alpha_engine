@@ -2,6 +2,7 @@
 
 **Date:** 2026-07-16
 **Status:** Accepted
+**Amended by:** ADR-0007 retires the temporary legacy compatibility Adapter.
 **Module:** `src.research.spec_bound_workflow_executor`
 **Interface:** `SpecBoundResearchWorkflowExecutor` (implements `ResearchWorkflowExecutor` Protocol)
 
@@ -90,8 +91,10 @@ fork by making the spec-bound path the single default runtime.
    promotion is finalised.
 2. Legacy free-text-goal semantics are retired from the default path. Goal is
    audit metadata only.
-3. The legacy pipeline remains reachable via `create_legacy_research_workflow()`
-   for migration and backward compatibility.
+3. ~~The legacy pipeline remains reachable via `create_legacy_research_workflow()`
+   for migration and backward compatibility.~~ **Superseded by ADR-0007:**
+   the legacy compatibility adapter and `create_legacy_research_workflow()`
+   were retired after a production caller audit confirmed zero callers.
 4. Unsupported markets, path traversal attempts, and spec/market mismatches are
    caught at spec resolution time, before any expensive model or data work.
 5. Contract tests can inject a `SpecBoundRunner` and remain deterministic

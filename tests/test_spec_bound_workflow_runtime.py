@@ -15,10 +15,7 @@ from src.research.spec_bound_workflow_executor import (
     resolve_spec,
 )
 from src.research.workflow import ResearchWorkflow
-from src.research.workflow_runtime import (
-    create_legacy_research_workflow,
-    create_research_workflow,
-)
+from src.research.workflow_runtime import create_research_workflow
 from src.research.workflow_store import ResearchWorkflowStore
 from src.research.workflow_types import (
     CANONICAL_RESEARCH_STEPS,
@@ -442,21 +439,13 @@ class TestSpecBoundWorkflowIntegration:
 
 class TestDefaultFactory:
     def test_default_factory_uses_spec_bound_executor(self):
-        """create_research_workflow() must NOT use LegacyResearchPipelineExecutor."""
+        """create_research_workflow() uses the sole spec-bound runtime."""
         from src.research.spec_bound_workflow_executor import (
             SpecBoundResearchWorkflowExecutor,
         )
 
         wf = create_research_workflow()
         assert isinstance(wf.executor, SpecBoundResearchWorkflowExecutor)
-
-    def test_legacy_factory_still_available(self):
-        """create_legacy_research_workflow() must return a workflow backed
-        by LegacyResearchPipelineExecutor."""
-        from src.research.workflow_legacy import LegacyResearchPipelineExecutor
-
-        wf = create_legacy_research_workflow()
-        assert isinstance(wf.executor, LegacyResearchPipelineExecutor)
 
 # ---------------------------------------------------------------------------
 # CN vs US adapter routing (unit — no Qlib)

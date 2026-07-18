@@ -156,60 +156,6 @@ class TestPortfolioConstraints:
         assert len(loss_violations) > 0, "Should detect consecutive losses"
 
 
-class TestResearchPipeline:
-    """Test pipeline step execution with mocked data."""
-
-    def test_step_records_timing(self):
-        """Steps should record start/end times and duration."""
-        from src.research.pipeline import ResearchRun
-
-        run = ResearchRun(market="cn", goal="test")
-        run.start()
-
-        with run.step("test_step") as step:
-            step.output = {"result": "ok"}
-
-        s = run.steps[-1]
-        assert s.started_at is not None
-        assert s.completed_at is not None
-        assert s.duration_seconds >= 0
-        assert s.output == {"result": "ok"}
-
-    def test_step_failure_records_error(self):
-        """Failed steps should capture error message."""
-        from src.research.pipeline import ResearchRun, StepStatus
-
-        run = ResearchRun(market="cn", goal="test")
-        run.start()
-
-        with pytest.raises(ValueError):
-            with run.step("failing_step"):
-                raise ValueError("test error message")
-
-        s = run.steps[-1]
-        assert s.status == StepStatus.FAILED
-        assert "test error message" in s.error
-
-    def test_run_save_load_roundtrip(self, tmp_path):
-        """Run should persist and restore correctly."""
-        from src.research.pipeline import ResearchRun, StepStatus
-
-        run = ResearchRun(market="cn", goal="roundtrip test")
-        run.start()
-        with run.step("step1") as step:
-            step.output = {"metric": 0.42}
-        run.complete(recommendation="Deploy")
-
-        path = tmp_path / "run.json"
-        run.save(path)
-
-        loaded = ResearchRun.load(path)
-        assert loaded.run_id == run.run_id
-        assert loaded.status == StepStatus.COMPLETED
-        assert loaded.recommendation == "Deploy"
-        assert loaded.steps[0].output == {"metric": 0.42}
-
-
 class TestDecayMonitorLogic:
     """Test decay monitor with synthetic IC history."""
 
