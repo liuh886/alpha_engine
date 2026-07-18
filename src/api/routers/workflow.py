@@ -122,9 +122,11 @@ def run_backtest_wf(payload: WorkflowRequest, background_tasks: BackgroundTasks)
 
 @router.post("/research-cycle")
 def run_research_cycle_wf(payload: ResearchCycleRequest, background_tasks: BackgroundTasks):
-    """Trigger a full research cycle in the background.
+    """Trigger a spec-bound research workflow in the background.
 
-    Runs: scan -> compile -> backtest -> attribute -> promote.
+    Executes the market's fixed paradigm spec through the canonical
+    ResearchStep sequence with identity-proven execution and
+    evidence-gated promotion.
     """
     gov = GovernanceService(PROJECT_ROOT)
     get_task_slug("research-cycle", payload.market)

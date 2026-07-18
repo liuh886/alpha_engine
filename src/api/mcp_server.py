@@ -890,17 +890,16 @@ def run_research_cycle(
     goal: str = "Find alpha factors",
     token: str = "",
 ) -> str:
-    """Execute a full automated research cycle: scan -> compile -> backtest -> attribute -> promote.
+    """Execute a spec-bound research workflow against the market's fixed paradigm spec.
 
-    Runs the end-to-end research loop that:
-    1. Scans the default factor pool and registers passing factors
-    2. Compiles top factors into a strategy YAML config
-    3. Runs a backtest using the compiled config
-    4. Attributes returns to the factors (cross-sectional OLS model)
-    5. Evaluates the canonical evidence-gated promotion decision
+    The workflow runs the canonical ResearchStep sequence backed by the
+    identity-proven spec-bound execution path.  The market determines which
+    fixed paradigm spec is used (cn → csi300, us → qqq); the goal string is
+    audit metadata only and does not change what is executed.
 
-    Workflow execution success is reported separately from promotion status and
-    never implies that a candidate is trade-ready.
+    Execution success (workflow completed without error) is reported separately
+    from the evidence-gated promotion status.  ``trade_ready`` is true only when
+    all gates pass and the promotion decision is ``trade_guidance_candidate``.
     """
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
@@ -948,16 +947,14 @@ def run_iterative_research(
     target_sharpe: float = 1.0,
     token: str = "",
 ) -> str:
-    """Run multiple research cycles with automatic iteration until a target is met.
+    """Run multiple spec-bound research cycles, one per iteration.
 
-    Each cycle runs the full research loop (scan -> compile -> backtest ->
-    attribute -> promote), then analyzes results to decide the next step:
-    - scan_more: broaden factor pool if nothing passed FDR
-    - adjust_hyperparams: tweak model parameters if backtest Sharpe is low
-    - retry: try a different training window if attribution R² is low
-    - stop: target achieved, diminishing returns, or total failure
+    Each cycle executes the market's fixed paradigm spec through the canonical
+    ResearchStep sequence and returns the evidence-gated promotion decision.
+    The ``goal`` string is audit metadata only — it does not change the fixed
+    paradigm spec or its execution parameters.
 
-    Returns a JSON array of CycleResult dicts, one per iteration.
+    Returns a JSON array of result dicts, one per iteration.
     """
     if not _verify_token(token):
         return "Authentication failed: invalid or missing token."
