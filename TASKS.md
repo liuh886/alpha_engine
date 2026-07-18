@@ -81,7 +81,7 @@
 
 ## Architecture Convergence Handoff (2026-06-19)
 
-- [x] **T41: Continue Phase 1-6 convergence from handoff skeleton** — Follow `docs/architecture/phase_1_6_agent_handoff.md`.
+- [x] **T41: Continue Phase 1-6 convergence from handoff skeleton** — This convergence is documented in ADR-0006 (spec-bound runtime) and ADR-0007 (legacy runtime retired). See `docs/adr/0006-spec-bound-default-workflow-runtime.md` and `docs/adr/0007-retire-legacy-research-runtime.md`.
   - [x] T41.1: Legacy Workflow Runtime Adapter Cleanup ✅ 2026-06-19
   - [x] T41.2: System Router Command Registry ✅ 2026-06-19
   - [x] T41.3: Agent Tool Orchestrator Adapter ✅ 2026-06-19
@@ -91,7 +91,7 @@
 
 ## Architecture Hardening Sprint (2026-06-19)
 
-- [x] **T42: Architecture Hardening Sprint** — Follow `docs/architecture/sprint_architecture_hardening.md`.
+- [x] **T42: Architecture Hardening Sprint** — Completed and superseded. See current research methodology at `docs/methodology.md` and ADR chain (`docs/adr/0005`, `docs/adr/0006`, `docs/adr/0007`).
   - [x] T42.1: Command Intent Integrity ✅ 2026-06-19
   - [x] T42.2: Job Intent Persistence ✅ 2026-06-19
   - [x] T42.3: Legacy Runtime Boundary ✅ 2026-06-19
