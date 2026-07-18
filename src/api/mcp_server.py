@@ -810,7 +810,7 @@ def parse_research_goal(goal: str, token: str = "") -> str:
 
     Supports Chinese and English keywords for market, factor categories,
     direction, and quality thresholds.  Returns a ResearchGoal dict that
-    can be passed to ``run_research_cycle`` or ``run_iterative_research``.
+    can be passed to ``run_research_cycle``.
 
     Examples::
 
@@ -937,48 +937,6 @@ def run_research_cycle(
         )
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error running research cycle: {e}"})
-
-
-@mcp.tool()
-def run_iterative_research(
-    market: str = "us",
-    goal: str = "Find alpha",
-    max_iterations: int = 5,
-    target_sharpe: float = 1.0,
-    token: str = "",
-) -> str:
-    """Run multiple spec-bound research cycles, one per iteration.
-
-    Each cycle executes the market's fixed paradigm spec through the canonical
-    ResearchStep sequence and returns the evidence-gated promotion decision.
-    The ``goal`` string is audit metadata only — it does not change the fixed
-    paradigm spec or its execution parameters.
-
-    Returns a JSON array of result dicts, one per iteration.
-    """
-    if not _verify_token(token):
-        return "Authentication failed: invalid or missing token."
-    try:
-        workflow = create_research_workflow()
-        results = []
-        for iteration in range(max(1, int(max_iterations))):
-            request = ResearchWorkflowRequest(
-                market=market,
-                goal=goal,
-                requested_by="mcp.run_iterative_research",
-                metadata={
-                    "iteration": iteration + 1,
-                    "max_iterations": max_iterations,
-                    "target_sharpe": target_sharpe,
-                },
-            )
-            result = workflow.run(request)
-            results.append(result.to_dict())
-            if result.status.value == "failed":
-                break
-        return json.dumps(results, indent=2)
-    except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error running iterative research: {e}"})
 
 
 # ---------------------------------------------------------------------------

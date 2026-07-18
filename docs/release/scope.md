@@ -269,7 +269,7 @@ Server: `AlphaEngine Trading Assistant` (stdio transport).
 | `parse_research_goal` | NL goal to structured JSON task | `experimental` |
 | `query_experiments` | Query experiment journal | `experimental` |
 | `run_research_cycle` | Full automated research cycle | `experimental` |
-| `run_iterative_research` | Multi-cycle iteration to target Sharpe | `experimental` |
+| `run_iterative_research` | ~~Multi-cycle iteration to target Sharpe~~ *removed (ADR-0009)* | `retired` |
 | `compare_models_with_fdr` | FDR-corrected model comparison | `experimental` |
 | `validate_model_batch` | FDR-corrected batch validation (T-04) | `experimental` |
 
