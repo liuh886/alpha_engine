@@ -6,6 +6,23 @@
 
 # Design Decisions
 
+## Current Status (2026-07-18)
+
+Alpha Engine is a **research-only platform**. Key points:
+
+- **Paradigm**: Fixed 10D horizon, spec-bound execution (`configs/research_paradigms/`)
+- **Runtime**: `SpecBoundResearchWorkflowExecutor` is the sole runtime (ADR-0006/0007)
+- **Promotion**: `PromotionDecision` is the single promotion interface (ADR-0005), fail-closed on missing evidence
+- **Agents**: Unified `ResearchAssistant` — the four-agent architecture (Alpha, Risk, Governance, Developer) is superseded
+- **Trading**: **No model is trade-ready.** All outputs are diagnostic-only or research candidates
+- **Evidence**: Latest 2026-07-16 run at `docs/evidence/issue-124-current-2026-07-16/` — both CN/US `diagnostic_only=true`
+- **Deployment**: Not deployed for live trading. Demo mode (`--demo`) for UI exploration only
+
+Historical claims in this document (e.g., "LIVE", "PRODUCTION READY") are preserved below
+as records of prior development milestones but are superseded by the current research-only scope.
+
+---
+
 ## Architecture Overview
 
 ```
@@ -77,7 +94,7 @@ FastAPI (api_server.py) → React Dashboard (qlib-dashboard/)
 - **Dashboard DB**: Rebuilt with 35 model runs. Includes backtest data, equity curves, performance metrics.
 - **API Server**: Running on port 8000. All 14 routers registered. All new endpoints (factor registry, experiments, attribution) verified working.
 - **Smoke Test**: `/health` ✅, `/api/factors/registry` ✅, `/api/factors/experiments/summary` ✅, `/api/tools/analyze-factors` ✅, `/` (frontend) ✅.
-- **Production Status**: Platform is LIVE and serving requests. Agent can execute full research cycle via MCP tools. Human can review via dashboard.
+- **Production Status** (historical — superseded by research-only scope): Platform was LIVE and serving requests in a prior development milestone. Current scope is research-only; no model is trade-ready. Agent can execute full research cycle via MCP tools. Human can review via dashboard.
 
 ### 2026-06-08: First Live Factor Discovery
 - **Bugfix**: Fixed inverted decay gate in FactorEvaluator — was rejecting factors with persistent IC (good), now correctly rejects factors with fast-decaying IC (bad). Changed `max_ic_decay_5d_ratio` → `min_ic_decay_5d_ratio`.
@@ -91,7 +108,7 @@ FastAPI (api_server.py) → React Dashboard (qlib-dashboard/)
 - **Dashboard verified**: `/api/factors/registry` returns real factor data. Experiment journal shows 4 Active factors in 3 categories.
 - **Full 261-factor scan completed**: 53 factors passed all gates and were auto-registered. Top factor: `mean_reversion_ma_dev_5` with ICIR=6.722, t=50.75, IC=0.708.
 - **57 total factors in registry**: 4 Active + 53 Proposed across 5 categories (momentum: 22, technical: 13, mean_reversion: 9, cross_field: 8, composite: 5).
-- **Platform status**: PRODUCTION READY. Real alpha factors discovered, validated, and visible on dashboard.
+- **Platform status** (historical claim — superseded by research-only scope): PRODUCTION READY was declared during prior factor-discovery milestones. Current status: research-only, diagnostic-only evidence, no model trade-ready.
 - **Attribution results**: R²=0.2831, total return=113.18%. Top contributor: `mom_5d` (5-day momentum) with 25.66% return contribution and IC=0.7014.
 - **Bugfix**: Fixed pandas `'M'` → `'ME'` in factor_attribution.py. Fixed CSZScoreNorm column mismatch by using raw loading + manual z-scoring.
 
