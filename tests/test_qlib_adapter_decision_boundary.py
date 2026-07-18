@@ -22,5 +22,9 @@ def test_qlib_adapters_do_not_build_decision_surfaces(path: Path) -> None:
     assert "decision_status" not in source
     assert '"model_decision_pack":' not in source
     assert '"model_decision_markdown":' not in source
-    assert '"walk_forward_stability":' in source
-    assert '"metrics_summary":' in source
+    # Evidence-path strings now live in the shared execution engine.
+    common_source = Path(
+        "src/research/qlib_execution_common.py"
+    ).read_text(encoding="utf-8")
+    assert '"walk_forward_stability":' in common_source
+    assert '"metrics_summary":' in common_source
