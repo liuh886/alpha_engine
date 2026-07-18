@@ -3,9 +3,6 @@
 Default runtime adapter for the canonical ResearchWorkflow.  Maps market to a
 fixed ResearchParadigmSpec, executes the existing spec-bound research path once,
 and translates the identity-proven results into the canonical ResearchStep sequence.
-
-``LegacyResearchPipelineExecutor`` remains available as an explicit compatibility
-adapter but is no longer the default.
 """
 
 from __future__ import annotations
