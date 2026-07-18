@@ -219,6 +219,13 @@ def test_run_research_cycle_uses_research_workflow_adapter(monkeypatch):
                             output={"market": request.market},
                         )
                     ],
+                    promotion_decision={
+                        "schema_version": "1.0",
+                        "subject_id": "rw_mcp_contract",
+                        "status": "missing_evidence",
+                        "trade_ready": False,
+                        "evidence_refs": [],
+                    },
                 )
 
         monkeypatch.setattr(mcp_server, "create_research_workflow", FakeWorkflow)
@@ -236,8 +243,11 @@ def test_run_research_cycle_uses_research_workflow_adapter(monkeypatch):
         assert request.metadata["goal"] == "Find earnings alpha"
         assert payload["status"] == "success"
         assert payload["success"] is True
+        assert payload["success_scope"] == "workflow_execution"
         assert payload["run_id"] == "rw_mcp_contract"
         assert payload["workflow_status"] == "completed"
+        assert payload["promotion_status"] == "missing_evidence"
+        assert payload["trade_ready"] is False
         assert payload["steps"][0]["step"] == "scan"
 
     finally:

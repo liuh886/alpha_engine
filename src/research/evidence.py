@@ -169,7 +169,7 @@ class EvidenceLedger:
             )
         )
         bundle.metrics = self._research_run_metrics(data)
-        bundle.decision = data.get("recommendation") or data.get("status")
+        bundle.decision = self._resolve_promotion_decision(run_path)
         bundle.warnings.extend(self._research_run_warnings(data))
         bundle.completeness_score = self._score(bundle.sources, bundle.warnings)
         self._last_bundle = bundle
@@ -348,6 +348,29 @@ class EvidenceLedger:
                 name = step.get("name", "unknown")
                 warnings.append(f"Step {name} error: {step['error']}")
         return warnings
+
+    @staticmethod
+    def _resolve_promotion_decision(run_path: Path) -> str | None:
+        """Return a canonical promotion decision status, never a legacy string.
+
+        Checks the run-specific artifact directory for ``promotion_decision.json``.
+        Legacy strings such as ``"deploy"``, ``"promote"``, or ``"DEPLOY"``
+        are never treated as authoritative — they are downgraded to
+        ``"non_promoted:legacy"``.
+        """
+        promotion_path = run_path.parent / run_path.stem / "promotion_decision.json"
+        if promotion_path.is_file():
+            try:
+                from src.research.promotion_consumers import load_promotion_payload
+
+                payload = load_promotion_payload(promotion_path)
+                if payload["subject_id"] != run_path.stem:
+                    return "invalid_promotion_artifact:subject_mismatch"
+                return str(payload["status"])
+            except (OSError, json.JSONDecodeError, ValueError, TypeError):
+                return "invalid_promotion_artifact"
+        # No canonical decision found — never fall back to legacy recommendation.
+        return "non_promoted:no_canonical_decision"
 
     def _read_factor_registry(self, subject_id: str, market: str | None = None) -> dict[str, Any]:
         if not self.factor_db_path.exists():
