@@ -310,7 +310,6 @@ All scripts under `scripts/` are **internal** operator tools. None are part of t
 | `daily_run.py` | Scheduled daily data + training + backtest pipeline |
 | `collect_data.py` | Data collection from upstream sources |
 | `dump_bin.py` | Convert CSV data to Qlib binary format |
-| `run_agents_pipeline.py` | Run the full agent research pipeline |
 | `doctor.py` | Platform health diagnostics |
 | `build_dashboard_db.py` | Build dashboard SQLite database |
 | `arena_settle.py` | Arena settlement logic |
