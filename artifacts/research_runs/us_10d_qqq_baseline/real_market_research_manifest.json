@@ -1,28 +1,28 @@
 {
-  "acceptance_sha256": "862045001f59bdd5a3ca74686b1b3c2730ef756b798fbac95fe326cdcfecec27",
-  "acceptance_summary": {
-    "failed": 2,
-    "passed": 7,
-    "warnings": 1
-  },
+  "acceptance_sha256": "a2673567bfa5e3073986b20ea75af6e1206bf7f957afc804a9245ec2bd0cc1d1",
   "artifacts": {
     "acceptance": "D:\\Documents\\GitHub\\alpha_engine_issue124\\artifacts\\research_runs\\us_10d_qqq_baseline\\real_market_acceptance.json",
     "factor_diagnostics": "D:\\Documents\\GitHub\\alpha_engine_issue124\\artifacts\\research_runs\\us_10d_qqq_baseline\\factor_diagnostics.json",
     "manifest": "D:\\Documents\\GitHub\\alpha_engine_issue124\\artifacts\\research_runs\\us_10d_qqq_baseline\\real_market_research_manifest.json"
   },
-  "blocking_stage": "real_market_acceptance",
   "diagnostic_only": true,
   "experiment_id": "us_10d_qqq_baseline",
-  "generated_at": "2026-07-12T03:31:35.123251+00:00",
+  "factor_count": 9,
+  "factor_diagnostics_sha256": "f9655a7917dac97abd90fe4a47bcd466543e77389d1b828c751afc0c4800646b",
+  "factor_id_count": 24,
+  "generated_at": "2026-07-16T05:59:47.939257+00:00",
   "market": "us",
+  "next_step": "Review factor_diagnostics.json. Updating factor libraries or running model research requires a separate reviewed change; this pipeline never promotes.",
   "promotion_eligible": false,
   "promotion_evaluated": false,
   "research_only": true,
-  "schema_version": "1.0",
+  "sampled_rebalance_dates": 48,
+  "schema_version": "1.1",
   "stages": {
-    "factor_diagnostics": "not_run",
-    "real_market_acceptance": "rejected"
+    "factor_diagnostics": "passed",
+    "real_market_acceptance": "passed"
   },
-  "status": "blocked",
-  "trade_ready": false
+  "status": "completed",
+  "trade_ready": false,
+  "unique_expression_count": 9
 }
