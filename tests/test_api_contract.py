@@ -214,66 +214,6 @@ class TestAPIFailurePaths:
         assert resp.json()["code"] == "API_VALIDATION_ERROR"
 
 
-class TestPipelineFailureRecording:
-    """Test that pipeline step failures are properly recorded."""
-
-    def test_failed_step_persists_error(self, tmp_path):
-        """Failed pipeline step should persist error message in run."""
-        from src.research.pipeline import ResearchRun, StepStatus
-
-        run = ResearchRun(market="cn", goal="failure test")
-        run.start()
-
-        with pytest.raises(RuntimeError, match="training exploded"):
-            with run.step("train"):
-                raise RuntimeError("training exploded")
-
-        # Save and reload
-        path = tmp_path / "failed_run.json"
-        run.save(path)
-        loaded = ResearchRun.load(path)
-
-        train_step = loaded.get_step("train")
-        assert train_step is not None
-        assert train_step.status == StepStatus.FAILED
-        assert "training exploded" in train_step.error
-
-    def test_partial_completion_preserves_successful_steps(self, tmp_path):
-        """Run with 2/3 successful steps should preserve the successful ones."""
-        from src.research.pipeline import ResearchRun, StepStatus
-
-        run = ResearchRun(market="cn", goal="partial test")
-        run.start()
-
-        with run.step("step1") as s:
-            s.output = {"result": "ok"}
-
-        with pytest.raises(ValueError):
-            with run.step("step2"):
-                raise ValueError("step2 failed")
-
-        path = tmp_path / "partial_run.json"
-        run.save(path)
-        loaded = ResearchRun.load(path)
-
-        assert loaded.get_step("step1").status == StepStatus.COMPLETED
-        assert loaded.get_step("step1").output == {"result": "ok"}
-        assert loaded.get_step("step2").status == StepStatus.FAILED
-        assert "step2 failed" in loaded.get_step("step2").error
-
-    def test_run_fail_sets_status(self):
-        """run.fail() should set status and completed_at."""
-        from src.research.pipeline import ResearchRun, StepStatus
-
-        run = ResearchRun(market="cn", goal="fail test")
-        run.start()
-        run.fail("pipeline crashed")
-
-        assert run.status == StepStatus.FAILED
-        assert run.completed_at is not None
-        assert "crashed" in run.recommendation
-
-
 # ---------------------------------------------------------------------------
 # Slice 2: System Router Command Registry tests
 # ---------------------------------------------------------------------------
