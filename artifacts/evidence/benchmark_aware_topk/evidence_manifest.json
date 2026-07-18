@@ -1,0 +1,17 @@
+{
+  "diagnostic_only": true,
+  "evidence_type": "benchmark_aware_topk",
+  "frozen_candidate": "#86 \u2014 50/50 momentum_volatility_volume ranker + inverted 10D momentum",
+  "n_windows_evaluated": 4,
+  "n_windows_total": 4,
+  "output_labels": {
+    "bottom_k_long": "cost_aware_bottom_k_long_only",
+    "top_k_long": "executable_style_research_portfolio",
+    "top_minus_bottom": "research_only_diagnostic \u2014 NOT trade-ready"
+  },
+  "promotion_eligible": false,
+  "rationale": "Benchmark-aware Top-K evidence provides OOS portfolio economics relative to a canonical benchmark. Top-K long-only is labelled as executable-style research; Top-K-minus-Bottom-K is explicitly diagnostic-only. Lifecycle promotion requires a spec-bound run and canonical PromotionDecision.",
+  "research_only": true,
+  "schema_version": "1.0",
+  "trade_ready": false
+}
