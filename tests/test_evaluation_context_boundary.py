@@ -79,6 +79,8 @@ def test_spec_bound_context_rejects_noncanonical_return_semantics() -> None:
 
 
 def test_spec_bound_adapters_do_not_import_notebook_session_config() -> None:
+    # Thin market adapters delegate to the shared engine; they must not
+    # import the legacy notebook session config.
     for path in (
         Path("src/research/cn_qlib_execution_adapter.py"),
         Path("src/research/us_qlib_execution_adapter.py"),
@@ -86,4 +88,9 @@ def test_spec_bound_adapters_do_not_import_notebook_session_config() -> None:
         source = path.read_text(encoding="utf-8")
         assert "ResearchSessionConfig" not in source
         assert "notebook_lab_contracts" not in source
-        assert "SpecBoundEvaluationContext" in source
+
+    # The shared engine (qlib_execution_common.py) owns SpecBoundEvaluationContext.
+    common_source = Path(
+        "src/research/qlib_execution_common.py"
+    ).read_text(encoding="utf-8")
+    assert "SpecBoundEvaluationContext" in common_source
