@@ -1,0 +1,61 @@
+{
+  "baseline_id": "us_top3_blend_v1",
+  "source": {
+    "source_pr": 172,
+    "source_pr_url": "https://github.com/liuh886/alpha_engine/pull/172",
+    "source_merge_commit_sha": "882337c933fc899941283951e79425d2e24ce31d",
+    "source_evidence_paths": [
+      "artifacts/evidence/benchmark_aware_topk/aggregate_summary.json",
+      "artifacts/evidence/benchmark_aware_topk/evidence_manifest.json",
+      "artifacts/evidence/benchmark_aware_topk/per_window/*.json"
+    ],
+    "preserved_by": "codex/us-top3-baseline-v1"
+  },
+  "baseline_definition": {
+    "market": "us",
+    "benchmark": "QQQ",
+    "candidate": "50/50 daily ranker + inverted historical 10D momentum",
+    "horizon": "raw_forward_10d_return",
+    "portfolio": "top3_long_only",
+    "cost_bps": 20,
+    "oos_windows": ["2024H1", "2024H2", "2025H1", "2025H2"],
+    "window_count": 4,
+    "training_policy": "expanding_history_retraining_with_existing_10d_training_tail_purge",
+    "economics": "non_overlapping_portfolio_intent",
+    "shorting_modeled": false,
+    "borrow_costs_modeled": false,
+    "live_trading_enabled": false
+  },
+  "evidence_summary": {
+    "positive_excess_windows": 4,
+    "total_oos_windows": 4,
+    "positive_excess_ratio": 1.0,
+    "per_window_excess_return": {
+      "2024H1": 0.2943,
+      "2024H2": 0.1279,
+      "2025H1": 0.0823,
+      "2025H2": 0.0547
+    },
+    "compounded_portfolio_return": 1.3716,
+    "compounded_benchmark_return": 0.5023,
+    "compounded_relative_excess_return": 0.5787,
+    "mean_window_sharpe": 2.24,
+    "worst_window_drawdown": -0.17
+  },
+  "risk_gates": {
+    "max_drawdown_gate": -0.15,
+    "max_drawdown_passed": false,
+    "min_positive_excess_windows": 3,
+    "positive_excess_windows_passed": true,
+    "min_compounded_relative_excess_return": 0.30,
+    "relative_excess_passed": true,
+    "overall_passed": false
+  },
+  "decision": {
+    "promotion_status": "stronger_research_candidate",
+    "research_candidate": true,
+    "trade_ready": false,
+    "trade_ready_reason": "Worst window drawdown -17.00% breaches the -15.00% risk gate. Promotion lifecycle was not evaluated in the source evidence. Long-short diagnostic does not model shorting constraints.",
+    "next_required_step": "Run exactly three drawdown-control variants against this frozen baseline: top5_equal_weight, top3_inverse_vol20_weight, and top3_benchmark_trend_filter."
+  }
+}
