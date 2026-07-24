@@ -1,0 +1,21 @@
+{
+  "candidate": "blend:ranker_momentum:momentum_volatility_volume:gain5_round100_leaves31_leaf10_lr0.05:ranker0.5_momentum0.5",
+  "candidate_v2_robust": false,
+  "cost_bps": 20.0,
+  "decision": "candidate_v2_not_robust_across_expanded_universes",
+  "evidence_type": "candidate_v2_universe_robustness",
+  "frozen_from_pr": 175,
+  "n_cohorts": 3,
+  "n_cohorts_evaluated": 3,
+  "n_windows_per_cohort": {
+    "default_10_symbols": 4,
+    "expanded_100_symbols": 4,
+    "expanded_50_symbols": 4
+  },
+  "promotion_eligible": false,
+  "research_only": true,
+  "schema_version": "1.0",
+  "survivorship_bias_documented": true,
+  "trade_ready": false,
+  "turnover_model": "cash_inclusive_one_way"
+}
