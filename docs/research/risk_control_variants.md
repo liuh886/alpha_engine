@@ -37,7 +37,7 @@ The runner evaluates exactly three variants:
 3. `top3_benchmark_trend_filter`
    - Purpose: reduce drawdown during weak benchmark regimes.
    - Weighting: equal weight Top-3.
-- Gross exposure: 1.0 when QQQ 20D trend is non-negative; 0.5 when QQQ 20D trend is negative.
+   - Gross exposure: 1.0 when QQQ 20D trend is non-negative; 0.5 when QQQ 20D trend is negative.
 
 All variants charge 20 bps against cash-inclusive one-way turnover.  This counts
 the full funded entry and correctly charges exposure changes such as 1.0 to 0.5
