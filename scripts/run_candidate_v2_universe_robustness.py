@@ -46,6 +46,10 @@ from src.research.risk_control_variants import (
     VARIANT_TOP3_BENCHMARK_TREND,
     evaluate_risk_control_variant,
 )
+from src.research.selection_tail_diagnostics import (
+    compute_selection_tail_diagnostics,
+    summarize_window_diagnostics,
+)
 from src.research.rolling_windows import (
     purge_training_tail,
 )
@@ -137,8 +141,11 @@ def _exclude_benchmark_symbols(symbols: tuple[str, ...]) -> tuple[str, ...]:
 
 
 def _load_us_provider_symbols(data_root: Path) -> list[str]:
-    """Load US-only symbols from the provider's authoritative instrument file."""
-    path = data_root / "data" / "watchlist" / "instruments" / "us.txt"
+    """Load US-only symbols from the market-specific provider's instrument file."""
+    from src.data.market_provider import market_provider_path
+
+    provider_dir = market_provider_path(data_root, "us")
+    path = provider_dir / "instruments" / "us.txt"
     if not path.exists():
         raise ValueError(f"US instrument metadata not found: {path}")
     symbols: list[str] = []
@@ -150,6 +157,31 @@ def _load_us_provider_symbols(data_root: Path) -> list[str]:
     if not result:
         raise ValueError("US instrument metadata contains no tradable symbols")
     return result
+
+
+def _verify_us_provider(data_root: Path) -> dict[str, Any]:
+    """Verify the US market-specific provider and return its manifest.
+
+    Uses ``market_provider_path`` and ``load_provider_manifest`` from
+    ``src.data.market_provider`` to check that the provider directory
+    contains a valid manifest for market=us with matching file hashes.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the provider directory or manifest is missing.
+    ValueError
+        If the manifest market field is not ``us`` or file hashes mismatch.
+    """
+    from src.data.market_provider import market_provider_path, load_provider_manifest
+
+    provider_dir = market_provider_path(data_root, "us")
+    return load_provider_manifest(
+        provider_dir,
+        expected_market="us",
+        required=True,
+        verify_files=True,
+    )
 
 
 def _build_nested_cohorts(
@@ -452,11 +484,26 @@ def _evaluate_window(
     # ── Score diagnostics on blend score ──────────────────────────────────
     diagnostics = _compute_score_diagnostics(blend, returns_test)
 
+    # ── Selection tail diagnostics ────────────────────────────────────────
+    tail_diag = compute_selection_tail_diagnostics(
+        blend,
+        returns_test,
+        variant_report,
+        top_n=FROZEN_TOP_N,
+    )
+    tail_diag["window_label"] = window.label
+    variant_payload = variant_report.to_dict()
+    # The reconciled holding/portfolio period records are persisted once under
+    # selection_tail_diagnostics.periods.  Avoid duplicating the same large
+    # payload under candidate_v2.period_details in every evidence file.
+    variant_payload.pop("period_details", None)
+
     return {
         "window": window.to_dict(),
         "candidate": _candidate_id(),
-        "candidate_v2": variant_report.to_dict(),
+        "candidate_v2": variant_payload,
         "score_diagnostics": diagnostics,
+        "selection_tail_diagnostics": tail_diag,
         "skipped": False,
     }
 
@@ -571,12 +618,143 @@ def _aggregate_cohort(
             "mean_ic_pos_pct": mean_ic_pos_pct,
             "mean_top_bottom_spread": mean_spread,
         },
+        "selection_tail_diagnostics": summarize_window_diagnostics(
+            [p.get("selection_tail_diagnostics", {}) for p in valid]
+        ),
     }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Cross-universe summary with explicit robustness decision
 # ══════════════════════════════════════════════════════════════════════════════
+
+
+def _build_failure_diagnostics(
+    cohort_aggregates: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Build selection-tail diagnostic evidence across expanded-universe cohorts.
+
+    Returns a cross-cohort diagnostic report with per-cohort candidate_v2
+    metrics, enriched tail summaries, and numeric deltas vs the base
+    ``default_10_symbols`` cohort.
+    """
+    diags: dict[str, Any] = {
+        "schema_version": "1.0",
+        "evidence_type": "candidate_v2_selection_tail_diagnostics",
+        "candidate": _candidate_id(),
+        "research_only": True,
+        "promotion_eligible": False,
+        "trade_ready": False,
+        "cohorts": {},
+    }
+
+    default_agg = None
+    default_tail = None
+
+    for name in ("default_10_symbols", "expanded_50_symbols", "expanded_100_symbols"):
+        agg = cohort_aggregates.get(name, {})
+        if agg.get("skipped", False):
+            diags["cohorts"][name] = {
+                "status": "skipped",
+                "skip_reason": agg.get("skip_reason", "unknown"),
+                "deltas_vs_default_10_symbols": None,
+            }
+            continue
+
+        cv2 = agg.get("candidate_v2", {})
+        tail = agg.get("selection_tail_diagnostics", {})
+
+        cohort_entry: dict[str, Any] = {
+            "status": "evaluated",
+            # Source key names match _aggregate_cohort output keys
+            "compounded_relative_excess_return": cv2.get(
+                "compounded_relative_excess_return"
+            ),
+            "compounded_total_return": cv2.get("compounded_total_return"),
+            "compounded_benchmark_return": cv2.get("compounded_benchmark_return"),
+            "worst_drawdown": cv2.get("worst_drawdown"),
+            "tail_diagnostics": {
+                "n_windows": tail.get("n_windows", 0),
+                "n_periods_total": tail.get("n_periods_total", 0),
+                "mean_spread": tail.get("mean_spread"),
+                "mean_positive_spread_ratio": tail.get(
+                    "mean_positive_spread_ratio"
+                ),
+                "mean_selected_realized_percentile": tail.get(
+                    "mean_selected_realized_percentile"
+                ),
+                "mean_selected_above_median_ratio": tail.get(
+                    "mean_selected_above_median_ratio"
+                ),
+                "mean_selected_positive_return_ratio": tail.get(
+                    "mean_selected_positive_return_ratio"
+                ),
+                "total_turnover": tail.get("total_turnover"),
+                "total_cost": tail.get("total_cost"),
+                "worst_net_return_period": tail.get(
+                    "worst_net_return_period"
+                ),
+                "worst_relative_excess_period": tail.get(
+                    "worst_relative_excess_period"
+                ),
+                "worst_net_return_period_detail": tail.get(
+                    "worst_net_return_period_detail"
+                ),
+                "worst_relative_excess_period_detail": tail.get(
+                    "worst_relative_excess_period_detail"
+                ),
+                "symbol_contributions": tail.get("symbol_contributions"),
+                "window_breakdown": tail.get("window_breakdown"),
+            },
+        }
+
+        # Numeric deltas vs default_10_symbols
+        if name == "default_10_symbols":
+            default_agg = cv2
+            default_tail = tail
+            cohort_entry["deltas_vs_default_10_symbols"] = None
+        elif default_agg is not None and default_tail is not None:
+            deltas: dict[str, Any] = {}
+            for key in (
+                "compounded_relative_excess_return",
+                "compounded_total_return",
+                "compounded_benchmark_return",
+                "worst_drawdown",
+            ):
+                val = cv2.get(key)
+                base = default_agg.get(key)
+                if (
+                    val is not None
+                    and base is not None
+                    and np.isfinite(val)
+                    and np.isfinite(base)
+                ):
+                    deltas[key] = val - base
+                else:
+                    deltas[key] = None
+            for key in (
+                "mean_spread",
+                "mean_positive_spread_ratio",
+                "mean_selected_realized_percentile",
+                "mean_selected_above_median_ratio",
+                "mean_selected_positive_return_ratio",
+            ):
+                val = tail.get(key)
+                base = default_tail.get(key)
+                if (
+                    val is not None
+                    and base is not None
+                    and np.isfinite(val)
+                    and np.isfinite(base)
+                ):
+                    deltas[key] = val - base
+                else:
+                    deltas[key] = None
+            cohort_entry["deltas_vs_default_10_symbols"] = deltas
+
+        diags["cohorts"][name] = cohort_entry
+
+    return diags
 
 
 def _cross_universe_summary(
@@ -740,7 +918,7 @@ def run(
     last_test_year: int = 2026,
 ) -> dict[str, Any]:
     """Execute the candidate_v2 universe-robustness experiment."""
-    # Session config lives under --root. --data-root governs Qlib provider URI.
+    # Session config lives under --root. --data-root governs the Qlib provider URI.
     session = _load_session(root)
     market = str(session["market"])
     canonical_symbols = list(session["symbols"])
@@ -749,9 +927,17 @@ def run(
     test_end = str(session["test_end"])
     topk = int(session.get("topk", 3))
 
-    # ── Qlib init with data-root ──────────────────────────────────────────
+    # ── Qlib init with data-root: US-market-only provider ────────────────
     effective_data_root = data_root if data_root is not None else root
-    provider_uri = str(effective_data_root / "data" / "watchlist")
+
+    # Verify the US market-specific provider manifest before loading any data.
+    # The old data/watchlist provider mixed CN+US calendars, causing forward
+    # return Ref($close, -10) to use a union calendar that misaligned US trading
+    # sessions and corrupted selected returns.
+    provider_manifest = _verify_us_provider(effective_data_root)
+    from src.data.market_provider import market_provider_path
+
+    provider_uri = str(market_provider_path(effective_data_root, "us"))
 
     from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
     safe_qlib_init(
@@ -796,6 +982,7 @@ def run(
     print(f"  benchmark:    {benchmark}")
     print(f"  canonical:    {canonical_symbols}")
     print(f"  data-root:    {effective_data_root}")
+    print(f"  provider:     {provider_uri}")
     print(f"  output:       {base_out}")
     print("  research_only: true")
     print("  promotion_eligible: false")
@@ -853,6 +1040,22 @@ def run(
                 "cohorts": coverage_reports,
                 "canonical_symbols": canonical_symbols,
                 "provider_us_symbol_count": len(provider_symbols),
+                "provider": {
+                    "uri": provider_uri,
+                    "market": provider_manifest["market"],
+                    "identity_sha256": provider_manifest["provider_identity_sha256"],
+                    "calendar": {
+                        "session_count": provider_manifest["calendar"]["session_count"],
+                        "first_day": provider_manifest["calendar"]["first_day"],
+                        "last_day": provider_manifest["calendar"]["last_day"],
+                        "note": (
+                            "US-market-only trading calendar. "
+                            "No CN/HK holiday contamination. "
+                            "Forward-return Ref($close, -10) uses consecutive US "
+                            "trading sessions, not watchlist union calendar."
+                        ),
+                    },
+                },
                 "excluded_symbols": sorted(EXCLUDED_SYMBOLS),
                 "aligned_train_starts": aligned_starts,
                 "survivorship_bias_note": (
@@ -983,6 +1186,14 @@ def run(
         encoding="utf-8",
     )
 
+    # ── Failure diagnostics (selection tail across cohorts) ───────────────
+    failure_diags = _build_failure_diagnostics(cohort_aggregates)
+    failure_path = base_out / "failure_diagnostics.json"
+    failure_path.write_text(
+        json.dumps(failure_diags, indent=2, sort_keys=True, default=str),
+        encoding="utf-8",
+    )
+
     # ── Evidence manifest ─────────────────────────────────────────────────
     manifest = {
         "schema_version": "1.0",
@@ -999,6 +1210,14 @@ def run(
         "n_windows_per_cohort": windows_per_cohort,
         "decision": summary["decision_status"],
         "candidate_v2_robust": summary["candidate_v2_robust"],
+        "failure_diagnostics": "failure_diagnostics.json",
+        "provider_uri": provider_uri,
+        "provider_identity_sha256": provider_manifest["provider_identity_sha256"],
+        "market_session_calendar_note": (
+            "US-market-only calendar. Ref($close, -10) forward returns use "
+            "consecutive US trading sessions, avoiding CN/HK calendar "
+            "contamination from the old watchlist union calendar."
+        ),
         "survivorship_bias_documented": True,
     }
     manifest_path = base_out / "evidence_manifest.json"
@@ -1016,6 +1235,7 @@ def run(
     print(f"  per-window:  {per_window_dir}")
     print(f"  cohorts:     {cohort_agg_path}")
     print(f"  summary:     {summary_path}")
+    print(f"  failure:     {failure_path}")
     print(f"  manifest:    {manifest_path}")
 
     return {
@@ -1023,6 +1243,7 @@ def run(
         "per_window_dir": str(per_window_dir),
         "cohort_agg_path": str(cohort_agg_path),
         "summary_path": str(summary_path),
+        "failure_path": str(failure_path),
         "manifest_path": str(manifest_path),
         "coverage": coverage_reports,
         "cohort_aggregates": cohort_aggregates,
@@ -1036,7 +1257,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--root", type=Path, default=Path.cwd(),
                         help="Project root directory")
     parser.add_argument("--data-root", type=Path, default=None,
-                        help="Read-only data root (Qlib provider URI = <data-root>/data/watchlist)")
+                        help="Read-only data root (Qlib provider URI = <data-root>/data/providers/us)")
     parser.add_argument("--first-test-year", type=int, default=2024,
                         help="First OOS test year")
     parser.add_argument("--last-test-year", type=int, default=2026,

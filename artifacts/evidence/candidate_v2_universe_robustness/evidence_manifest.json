@@ -4,7 +4,9 @@
   "cost_bps": 20.0,
   "decision": "candidate_v2_not_robust_across_expanded_universes",
   "evidence_type": "candidate_v2_universe_robustness",
+  "failure_diagnostics": "failure_diagnostics.json",
   "frozen_from_pr": 175,
+  "market_session_calendar_note": "US-market-only calendar. Ref($close, -10) forward returns use consecutive US trading sessions, avoiding CN/HK calendar contamination from the old watchlist union calendar.",
   "n_cohorts": 3,
   "n_cohorts_evaluated": 3,
   "n_windows_per_cohort": {
@@ -13,6 +15,8 @@
     "expanded_50_symbols": 4
   },
   "promotion_eligible": false,
+  "provider_identity_sha256": "66129d0727beb8d7b014966651f8b72c119f99195e33553d9781c9954ef267d8",
+  "provider_uri": "D:\\Documents\\GitHub\\alpha_engine\\data\\providers\\us",
   "research_only": true,
   "schema_version": "1.0",
   "survivorship_bias_documented": true,

@@ -36,6 +36,31 @@ SUPPORTED_VARIANTS = (
 
 
 @dataclass(frozen=True)
+class HoldingDetail:
+    """One selected holding in a rebalance period."""
+
+    symbol: str
+    weight: float
+    raw_return: float
+    gross_contribution: float
+
+
+@dataclass(frozen=True)
+class PeriodDetail:
+    """Deterministic per-rebalance-period evidence."""
+
+    date: str
+    holdings: tuple[HoldingDetail, ...]
+    gross_exposure: float
+    turnover: float
+    cost: float
+    gross_return: float
+    net_return: float
+    benchmark_return: float
+    relative_excess: float
+
+
+@dataclass(frozen=True)
 class RiskVariantSpec:
     """Configuration for one portfolio-construction variant."""
 
@@ -73,6 +98,7 @@ class RiskVariantReport:
     mean_gross_exposure: float
     min_gross_exposure: float
     max_gross_exposure: float
+    period_details: tuple[PeriodDetail, ...]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -103,6 +129,28 @@ class RiskVariantReport:
             "mean_gross_exposure": self.mean_gross_exposure,
             "min_gross_exposure": self.min_gross_exposure,
             "max_gross_exposure": self.max_gross_exposure,
+            "period_details": [
+                {
+                    "date": p.date,
+                    "holdings": [
+                        {
+                            "symbol": h.symbol,
+                            "weight": h.weight,
+                            "raw_return": h.raw_return,
+                            "gross_contribution": h.gross_contribution,
+                        }
+                        for h in p.holdings
+                    ],
+                    "gross_exposure": p.gross_exposure,
+                    "turnover": p.turnover,
+                    "cost": p.cost,
+                    "gross_return": p.gross_return,
+                    "net_return": p.net_return,
+                    "benchmark_return": p.benchmark_return,
+                    "relative_excess": p.relative_excess,
+                }
+                for p in self.period_details
+            ],
         }
 
 
@@ -175,9 +223,21 @@ def _common_dates(
     score_dates = set(scores.index.get_level_values("datetime"))
     return_dates = set(returns.index.get_level_values("datetime"))
     benchmark_dates = set(benchmark_returns.index)
-    dates = tuple(sorted(score_dates & return_dates & benchmark_dates))
-    if not dates:
-        raise ValueError("no common dates across scores, returns, benchmark")
+    if not score_dates:
+        raise ValueError("scores contain no evaluation dates")
+    missing_return_dates = sorted(score_dates - return_dates)
+    if missing_return_dates:
+        raise ValueError(
+            "raw returns do not cover all score dates: "
+            f"{[str(pd.Timestamp(date).date()) for date in missing_return_dates]}"
+        )
+    missing_benchmark_dates = sorted(score_dates - benchmark_dates)
+    if missing_benchmark_dates:
+        raise ValueError(
+            "benchmark returns do not cover all score dates: "
+            f"{[str(pd.Timestamp(date).date()) for date in missing_benchmark_dates]}"
+        )
+    dates = tuple(sorted(pd.Timestamp(date) for date in score_dates))
     return dates
 
 
@@ -330,6 +390,7 @@ def evaluate_variant_weights(
     total_turnover = 0.0
     total_cost = 0.0
     gross_exposures: list[float] = []
+    period_details: list[PeriodDetail] = []
 
     for date in rebalance_dates:
         try:
@@ -357,19 +418,64 @@ def evaluate_variant_weights(
         gross_exposures.append(sum(current_holdings.values()))
 
         daily = returns_lookup.get(str(date.date()), {})
-        portfolio_return = sum(
-            weight * daily.get(symbol, 0.0)
-            for symbol, weight in current_holdings.items()
-        ) - cost
+
+        # ── Build holding details — fail closed on missing/non-finite returns ──
+        holding_details: list[HoldingDetail] = []
+        gross_return = 0.0
+        for symbol, weight in current_holdings.items():
+            raw_ret = daily.get(symbol)
+            if raw_ret is None:
+                raise ValueError(
+                    f"Selected holding {symbol} on {date.date()} has no return data"
+                )
+            if not np.isfinite(raw_ret):
+                raise ValueError(
+                    f"Selected holding {symbol} on {date.date()} has non-finite "
+                    f"raw return {raw_ret}"
+                )
+            contribution = weight * raw_ret
+            holding_details.append(HoldingDetail(
+                symbol=symbol,
+                weight=weight,
+                raw_return=raw_ret,
+                gross_contribution=contribution,
+            ))
+            gross_return += contribution
+
+        portfolio_return = gross_return - cost
         portfolio_values.append(portfolio_values[-1] * (1.0 + portfolio_return))
         period_returns.append(portfolio_return)
 
-        benchmark_return = 0.0
-        if date in benchmark_series.index:
-            raw = float(benchmark_series.loc[date])
-            benchmark_return = 0.0 if np.isnan(raw) else raw
+        if date not in benchmark_series.index:
+            raise ValueError(
+                f"Benchmark on {date.date()} has no raw return data"
+            )
+        benchmark_return = float(benchmark_series.loc[date])
+        if not np.isfinite(benchmark_return):
+            raise ValueError(
+                f"Benchmark on {date.date()} has non-finite raw return "
+                f"{benchmark_return}"
+            )
+        if benchmark_return <= -1.0:
+            raise ValueError(
+                f"Benchmark on {date.date()} has invalid raw return "
+                f"{benchmark_return}"
+            )
         benchmark_values.append(benchmark_values[-1] * (1.0 + benchmark_return))
         benchmark_period_returns.append(benchmark_return)
+
+        relative_excess = (1.0 + portfolio_return) / (1.0 + benchmark_return) - 1.0
+        period_details.append(PeriodDetail(
+            date=str(date.date()),
+            holdings=tuple(holding_details),
+            gross_exposure=float(sum(current_holdings.values())),
+            turnover=turnover,
+            cost=cost,
+            gross_return=gross_return,
+            net_return=portfolio_return,
+            benchmark_return=benchmark_return,
+            relative_excess=relative_excess,
+        ))
 
     total_return = portfolio_values[-1] / portfolio_values[0] - 1.0
     benchmark_return = benchmark_values[-1] / benchmark_values[0] - 1.0
@@ -431,6 +537,7 @@ def evaluate_variant_weights(
         mean_gross_exposure=float(np.mean(gross_exposures)) if gross_exposures else 0.0,
         min_gross_exposure=float(np.min(gross_exposures)) if gross_exposures else 0.0,
         max_gross_exposure=float(np.max(gross_exposures)) if gross_exposures else 0.0,
+        period_details=tuple(period_details),
     )
 
 

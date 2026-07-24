@@ -1853,7 +1853,18 @@
     "^GSPC",
     "^IXIC"
   ],
-  "provider_us_symbol_count": 135,
+  "provider": {
+    "calendar": {
+      "first_day": "2020-01-02",
+      "last_day": "2026-06-24",
+      "note": "US-market-only trading calendar. No CN/HK holiday contamination. Forward-return Ref($close, -10) uses consecutive US trading sessions, not watchlist union calendar.",
+      "session_count": 1627
+    },
+    "identity_sha256": "66129d0727beb8d7b014966651f8b72c119f99195e33553d9781c9954ef267d8",
+    "market": "us",
+    "uri": "D:\\Documents\\GitHub\\alpha_engine\\data\\providers\\us"
+  },
+  "provider_us_symbol_count": 130,
   "schema_version": "1.0",
   "survivorship_bias_note": "Symbol coverage is assessed against static current Qlib instrument listings. Delisted or acquired symbols are absent."
 }
