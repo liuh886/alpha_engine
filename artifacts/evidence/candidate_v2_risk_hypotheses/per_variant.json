@@ -1,0 +1,155 @@
+{
+  "evidence_type": "candidate_v2_risk_hypotheses_by_variant",
+  "gate": {
+    "max_drawdown": -0.15,
+    "min_compounded_relative_excess": 0.3,
+    "min_positive_excess_windows": 3,
+    "required_windows_per_cohort": 4
+  },
+  "promotion_eligible": false,
+  "research_only": true,
+  "schema_version": "1.0",
+  "trade_ready": false,
+  "variants": {
+    "frozen_baseline": {
+      "cohorts": {
+        "default_10_symbols": {
+          "compounded_relative_excess_return": 0.32762735360201245,
+          "mean_sharpe": 2.095548745227472,
+          "n_windows": 4,
+          "passes_gate": false,
+          "positive_relative_excess_windows": 4,
+          "status": "evaluated",
+          "worst_drawdown": -0.16146033100675872
+        },
+        "expanded_100_symbols": {
+          "compounded_relative_excess_return": 1.7668186164137896,
+          "mean_sharpe": 1.505644552459228,
+          "n_windows": 4,
+          "passes_gate": false,
+          "positive_relative_excess_windows": 4,
+          "status": "evaluated",
+          "worst_drawdown": -0.22385881388003392
+        },
+        "expanded_50_symbols": {
+          "compounded_relative_excess_return": 2.4684684452954517,
+          "mean_sharpe": 1.9252222750791272,
+          "n_windows": 4,
+          "passes_gate": false,
+          "positive_relative_excess_windows": 4,
+          "status": "evaluated",
+          "worst_drawdown": -0.24709663859027675
+        }
+      },
+      "degradation_note": "default_10_symbols: drawdown below -15%; expanded_50_symbols: drawdown below -15%; expanded_100_symbols: drawdown below -15%",
+      "research_only": true,
+      "robust_across_cohorts": false,
+      "trade_ready": false
+    },
+    "top3_inverse_vol20_normalized": {
+      "cohorts": {
+        "default_10_symbols": {
+          "compounded_relative_excess_return": 0.25392211407299947,
+          "mean_sharpe": 2.16595149188509,
+          "n_windows": 4,
+          "passes_gate": false,
+          "positive_relative_excess_windows": 4,
+          "status": "evaluated",
+          "worst_drawdown": -0.15183990442698936
+        },
+        "expanded_100_symbols": {
+          "compounded_relative_excess_return": 2.0868626028777557,
+          "mean_sharpe": 1.6541106044239249,
+          "n_windows": 4,
+          "passes_gate": false,
+          "positive_relative_excess_windows": 4,
+          "status": "evaluated",
+          "worst_drawdown": -0.20084748078602888
+        },
+        "expanded_50_symbols": {
+          "compounded_relative_excess_return": 2.0858299520085857,
+          "mean_sharpe": 1.9881861522241175,
+          "n_windows": 4,
+          "passes_gate": true,
+          "positive_relative_excess_windows": 3,
+          "status": "evaluated",
+          "worst_drawdown": -0.14853968407520024
+        }
+      },
+      "degradation_note": "default_10_symbols: relative excess <= 30%; drawdown below -15%; expanded_100_symbols: drawdown below -15%",
+      "research_only": true,
+      "robust_across_cohorts": false,
+      "trade_ready": false
+    },
+    "top3_max20pct_per_name": {
+      "cohorts": {
+        "default_10_symbols": {
+          "compounded_relative_excess_return": -0.02845714497766272,
+          "mean_sharpe": 2.0955487452274717,
+          "n_windows": 4,
+          "passes_gate": false,
+          "positive_relative_excess_windows": 2,
+          "status": "evaluated",
+          "worst_drawdown": -0.09785270578047522
+        },
+        "expanded_100_symbols": {
+          "compounded_relative_excess_return": 0.6049113696014252,
+          "mean_sharpe": 1.5056445524592277,
+          "n_windows": 4,
+          "passes_gate": true,
+          "positive_relative_excess_windows": 3,
+          "status": "evaluated",
+          "worst_drawdown": -0.13508487516839363
+        },
+        "expanded_50_symbols": {
+          "compounded_relative_excess_return": 0.8119079701293546,
+          "mean_sharpe": 1.9252222750791272,
+          "n_windows": 4,
+          "passes_gate": false,
+          "positive_relative_excess_windows": 4,
+          "status": "evaluated",
+          "worst_drawdown": -0.15330776636272447
+        }
+      },
+      "degradation_note": "default_10_symbols: insufficient positive excess windows; relative excess <= 30%; expanded_50_symbols: drawdown below -15%",
+      "research_only": true,
+      "robust_across_cohorts": false,
+      "trade_ready": false
+    },
+    "top3_positive_20d_return_only": {
+      "cohorts": {
+        "default_10_symbols": {
+          "compounded_relative_excess_return": -0.25723577065262604,
+          "mean_sharpe": 0.7757774999580833,
+          "n_windows": 4,
+          "passes_gate": false,
+          "positive_relative_excess_windows": 1,
+          "status": "evaluated",
+          "worst_drawdown": -0.08523044954304115
+        },
+        "expanded_100_symbols": {
+          "compounded_relative_excess_return": -0.5204010985100334,
+          "mean_sharpe": -0.6171349822897361,
+          "n_windows": 4,
+          "passes_gate": false,
+          "positive_relative_excess_windows": 1,
+          "status": "evaluated",
+          "worst_drawdown": -0.26772332315853786
+        },
+        "expanded_50_symbols": {
+          "compounded_relative_excess_return": -0.18379537377491428,
+          "mean_sharpe": 0.8688529633769682,
+          "n_windows": 4,
+          "passes_gate": false,
+          "positive_relative_excess_windows": 2,
+          "status": "evaluated",
+          "worst_drawdown": -0.14088580046216825
+        }
+      },
+      "degradation_note": "default_10_symbols: insufficient positive excess windows; relative excess <= 30%; expanded_50_symbols: insufficient positive excess windows; relative excess <= 30%; expanded_100_symbols: insufficient positive excess windows; relative excess <= 30%; drawdown below -15%",
+      "research_only": true,
+      "robust_across_cohorts": false,
+      "trade_ready": false
+    }
+  }
+}
