@@ -1,0 +1,34 @@
+{
+  "candidate": "blend:ranker_momentum:momentum_volatility_volume:gain5_round100_leaves31_leaf10_lr0.05:ranker0.5_momentum0.5",
+  "candidate_v2_robust_overlay": false,
+  "cohorts": [
+    "default_10_symbols",
+    "expanded_50_symbols",
+    "expanded_100_symbols"
+  ],
+  "construction": {
+    "negative_benchmark_trend_exposure": 0.5,
+    "top_n": 3
+  },
+  "cost_bps": 20.0,
+  "decision": "candidate_v2_no_robust_overlay",
+  "evidence_type": "candidate_v2_risk_hypotheses",
+  "n_cohorts": 3,
+  "n_variants": 4,
+  "n_window_files": 12,
+  "n_windows_per_variant": 4,
+  "non_trade_ready_warning": "Portfolio-risk overlay evidence is diagnostic only. No variant in this experiment has been promoted, tested in a point-in-time universe, or approved for trading. Results use static current-member cohorts from the US provider snapshot, which introduces survivorship bias.",
+  "promotion_eligible": false,
+  "provider_identity_sha256": "66129d0727beb8d7b014966651f8b72c119f99195e33553d9781c9954ef267d8",
+  "rebalance_days": 10,
+  "research_only": true,
+  "schema_version": "1.0",
+  "trade_ready": false,
+  "turnover_model": "cash_inclusive_one_way",
+  "variants": [
+    "frozen_baseline",
+    "top3_max20pct_per_name",
+    "top3_positive_20d_return_only",
+    "top3_inverse_vol20_normalized"
+  ]
+}
