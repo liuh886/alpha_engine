@@ -37,7 +37,11 @@ The runner evaluates exactly three variants:
 3. `top3_benchmark_trend_filter`
    - Purpose: reduce drawdown during weak benchmark regimes.
    - Weighting: equal weight Top-3.
-   - Gross exposure: 1.0 when QQQ 20D trend is non-negative; 0.5 when QQQ 20D trend is negative.
+- Gross exposure: 1.0 when QQQ 20D trend is non-negative; 0.5 when QQQ 20D trend is negative.
+
+All variants charge 20 bps against cash-inclusive one-way turnover.  This counts
+the full funded entry and correctly charges exposure changes such as 1.0 to 0.5
+or 0.5 to 1.0; cash is not treated as a free source or destination of exposure.
 
 ## Runner
 
@@ -65,6 +69,23 @@ A variant may become `candidate_v2` only if all conditions are true:
 - worst drawdown >= -15%
 
 The output remains research-only.  `trade_ready` must remain false.
+
+## Local OOS result
+
+The July 24, 2026 local watchlist run covered the same four half-year OOS
+windows as the baseline.
+
+| Variant | Positive excess windows | Compounded relative excess | Worst drawdown | Mean window Sharpe | Gate |
+|---|---:|---:|---:|---:|---|
+| `top5_equal_weight` | 4 / 4 | 52.02% | -22.94% | 2.52 | fail |
+| `top3_inverse_vol20_weight` | 4 / 4 | 49.16% | -15.07% | 2.14 | fail |
+| `top3_benchmark_trend_filter` | 4 / 4 | 40.61% | -14.27% | 2.09 | pass |
+
+The benchmark-trend filter is selected as `candidate_v2` because it is the only
+variant that satisfies all three gates.  Relative excess and Sharpe are lower
+than the frozen baseline, so this is a drawdown-control improvement rather than
+an alpha improvement.  It remains a stronger research candidate and is not
+trade-ready.
 
 ## Interpretation boundary
 

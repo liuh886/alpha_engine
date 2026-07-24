@@ -61,6 +61,7 @@ class RiskVariantReport:
     volatility: float
     turnover: float
     costs: float
+    cost_bps: float
     information_ratio: float
     portfolio_values: tuple[float, ...]
     benchmark_values: tuple[float, ...]
@@ -89,6 +90,8 @@ class RiskVariantReport:
             "volatility": self.volatility,
             "turnover": self.turnover,
             "costs": self.costs,
+            "cost_bps": self.cost_bps,
+            "turnover_model": "cash_inclusive_one_way",
             "information_ratio": self.information_ratio,
             "portfolio_values": list(self.portfolio_values),
             "benchmark_values": list(self.benchmark_values),
@@ -336,10 +339,17 @@ def evaluate_variant_weights(
             target = current_holdings
 
         symbols = set(current_holdings) | set(target)
-        turnover = sum(
-            abs(target.get(symbol, 0.0) - current_holdings.get(symbol, 0.0))
+        buys = sum(
+            max(target.get(symbol, 0.0) - current_holdings.get(symbol, 0.0), 0.0)
             for symbol in symbols
-        ) / 2.0
+        )
+        sells = sum(
+            max(current_holdings.get(symbol, 0.0) - target.get(symbol, 0.0), 0.0)
+            for symbol in symbols
+        )
+        # max(buys, sells) gives correct one-sided turnover even when
+        # gross exposure changes (e.g. trend filter scaling 1.0 <-> 0.5).
+        turnover = max(buys, sells)
         cost = turnover * cost_bps / 10_000.0
         total_turnover += turnover
         total_cost += cost
@@ -409,6 +419,7 @@ def evaluate_variant_weights(
         volatility=volatility,
         turnover=total_turnover,
         costs=total_cost,
+        cost_bps=cost_bps,
         information_ratio=information_ratio,
         portfolio_values=tuple(portfolio_values),
         benchmark_values=tuple(benchmark_values),
@@ -504,6 +515,9 @@ def aggregate_variant_reports(
             "mean_window_sharpe": float(np.mean([r.sharpe_ratio for r in reports])),
             "worst_drawdown": float(worst_drawdown),
             "mean_turnover": float(np.mean([r.turnover for r in reports])),
+            "mean_costs": float(np.mean([r.costs for r in reports])),
+            "cost_bps": float(reports[0].cost_bps),
+            "turnover_model": "cash_inclusive_one_way",
             "mean_gross_exposure": float(
                 np.mean([r.mean_gross_exposure for r in reports])
             ),

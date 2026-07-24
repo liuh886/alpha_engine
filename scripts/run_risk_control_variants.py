@@ -235,7 +235,9 @@ def run(
     first_test_year: int = 2024,
     last_test_year: int = 2026,
 ) -> dict[str, Any]:
-    session = _load_session(root, data_root=data_root)
+    # Session config always lives under --root.  --data-root only governs
+    # the Qlib provider URI below so the watchlist can live on a separate volume.
+    session = _load_session(root)
     market = str(session["market"])
     symbols = list(session["symbols"])
     benchmark = str(session["benchmark"])
@@ -336,6 +338,8 @@ def run(
         "research_only": True,
         "trade_ready": False,
         "promotion_eligible": False,
+        "cost_bps": 20.0,
+        "turnover_model": "cash_inclusive_one_way",
         "n_windows_evaluated": len(window_payloads),
         "n_windows_total": len(windows),
         "variants": [spec.variant_id for spec in default_variant_specs()],

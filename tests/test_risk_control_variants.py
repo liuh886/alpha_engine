@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 import pandas as pd
 
 from src.research.risk_control_variants import (
@@ -10,6 +11,7 @@ from src.research.risk_control_variants import (
     aggregate_variant_reports,
     build_variant_target_weights,
     evaluate_risk_control_variant,
+    evaluate_variant_weights,
 )
 
 
@@ -170,6 +172,8 @@ def test_evaluate_variant_reports_research_only_metrics():
     assert payload["variant_id"] == VARIANT_TOP3_BENCHMARK_TREND
     assert payload["research_only"] is True
     assert payload["trade_ready"] is False
+    assert payload["cost_bps"] == 20.0
+    assert payload["turnover_model"] == "cash_inclusive_one_way"
     assert payload["max_gross_exposure"] == 1.0
     assert payload["min_gross_exposure"] == 0.5
     assert report.n_periods == 3
@@ -218,3 +222,68 @@ def test_aggregate_variant_reports_selects_only_gate_passing_variant():
     assert summary["candidate_v2_selected"] == VARIANT_TOP5_EQUAL
     assert summary["variants"][VARIANT_TOP5_EQUAL]["passes_candidate_v2_gate"] is True
     assert summary["variants"][VARIANT_TOP3_BENCHMARK_TREND]["passes_candidate_v2_gate"] is False
+
+
+def test_turnover_correctly_handles_partial_exposure_changes():
+    """One-sided turnover must be max(buys, sells), not sum(|d|)/2.
+
+    When gross exposure changes (1.0 <-> 0.5 for the trend-filter variant),
+    sum(|delta|)/2 understates turnover by |exposure_change|/2.
+    """
+    dates = pd.to_datetime(["2025-01-02", "2025-01-13", "2025-01-24"])
+    # Exposure: 1.0, 0.5, 1.0  (trend filter pattern)
+    rows = [
+        (dates[0], "A", 1.0 / 3), (dates[0], "B", 1.0 / 3), (dates[0], "C", 1.0 / 3),
+        (dates[1], "A", 0.5 / 3), (dates[1], "B", 0.5 / 3), (dates[1], "C", 0.5 / 3),
+        (dates[2], "A", 1.0 / 3), (dates[2], "B", 1.0 / 3), (dates[2], "C", 1.0 / 3),
+    ]
+    index = pd.MultiIndex.from_tuples(
+        [(d, s) for d, s, _ in rows], names=["datetime", "instrument"]
+    )
+    target_weights = pd.DataFrame(
+        {"target_weight": [w for _, _, w in rows]}, index=index,
+    )
+
+    report = evaluate_variant_weights(
+        target_weights,
+        _returns(),
+        _benchmark(),
+        variant_id="test",
+        evaluation_dates=tuple(dates),
+        rebalance_days=1,
+    )
+    # Period 0: cash -> 1.0  → buys=1.0, sells=0.0 → turnover=1.0
+    # Period 1: 1.0  -> 0.5  → buys=0.0, sells=0.5 → turnover=0.5
+    # Period 2: 0.5  -> 1.0  → buys=0.5, sells=0.0 → turnover=0.5
+    # Total = 2.0, not 1.0 (which sum(|d|)/2 would produce)
+    assert report.turnover == pytest.approx(2.0, abs=1e-10)
+    # Costs at 20 bps: 2.0 * 20 / 10000 = 0.004 = 40 bps
+    assert report.costs == pytest.approx(2.0 * 20.0 / 10_000.0, abs=1e-12)
+    assert report.cost_bps == 20.0
+
+
+def test_turnover_zero_when_holdings_unchanged():
+    """Turnover must be zero when target equals current holdings."""
+    dates = pd.to_datetime(["2025-01-02", "2025-01-13"])
+    rows = [
+        (dates[0], "A", 0.5), (dates[0], "B", 0.5),
+        (dates[1], "A", 0.5), (dates[1], "B", 0.5),
+    ]
+    index = pd.MultiIndex.from_tuples(
+        [(d, s) for d, s, _ in rows], names=["datetime", "instrument"]
+    )
+    target_weights = pd.DataFrame(
+        {"target_weight": [w for _, _, w in rows]}, index=index,
+    )
+    report = evaluate_variant_weights(
+        target_weights,
+        _returns(),
+        _benchmark(),
+        variant_id="test",
+        evaluation_dates=tuple(dates),
+        rebalance_days=1,
+    )
+    # Period 0: cash -> 1.0  → turnover=1.0
+    # Period 1: unchanged     → turnover=0.0
+    assert report.turnover == pytest.approx(1.0, abs=1e-10)
+    assert report.costs == pytest.approx(1.0 * 20.0 / 10_000.0, abs=1e-12)
