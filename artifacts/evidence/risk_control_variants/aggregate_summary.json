@@ -1,0 +1,67 @@
+{
+  "baseline_id": "us_top3_blend_v1",
+  "candidate_v2_decision": "stronger_research_candidate",
+  "candidate_v2_selected": "top3_benchmark_trend_filter",
+  "evidence_type": "risk_control_variants",
+  "gate": {
+    "max_drawdown_gate": -0.15,
+    "min_compounded_relative_excess_return": 0.3,
+    "min_positive_excess_windows": 3
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "trade_ready": false,
+  "variants": {
+    "top3_benchmark_trend_filter": {
+      "compounded_benchmark_return": 0.5023009916363919,
+      "compounded_portfolio_return": 1.1123651615392989,
+      "compounded_relative_excess_return": 0.40608651215652225,
+      "cost_bps": 20.0,
+      "mean_costs": 0.018666666666666665,
+      "mean_gross_exposure": 0.9078525641025641,
+      "mean_turnover": 9.333333333333332,
+      "mean_window_sharpe": 2.0920283250511416,
+      "n_windows": 4,
+      "passes_candidate_v2_gate": true,
+      "positive_excess_windows": 4,
+      "research_only": true,
+      "trade_ready": false,
+      "turnover_model": "cash_inclusive_one_way",
+      "worst_drawdown": -0.14269058769119236
+    },
+    "top3_inverse_vol20_weight": {
+      "compounded_benchmark_return": 0.5023009916363919,
+      "compounded_portfolio_return": 1.2407837159915953,
+      "compounded_relative_excess_return": 0.4915677540429537,
+      "cost_bps": 20.0,
+      "mean_costs": 0.020364097947822447,
+      "mean_gross_exposure": 1.0,
+      "mean_turnover": 10.182048973911224,
+      "mean_window_sharpe": 2.140595862164822,
+      "n_windows": 4,
+      "passes_candidate_v2_gate": false,
+      "positive_excess_windows": 4,
+      "research_only": true,
+      "trade_ready": false,
+      "turnover_model": "cash_inclusive_one_way",
+      "worst_drawdown": -0.15073753411421564
+    },
+    "top5_equal_weight": {
+      "compounded_benchmark_return": 0.5023009916363919,
+      "compounded_portfolio_return": 1.2838196270923077,
+      "compounded_relative_excess_return": 0.520214417621226,
+      "cost_bps": 20.0,
+      "mean_costs": 0.013500000000000002,
+      "mean_gross_exposure": 1.0,
+      "mean_turnover": 6.75,
+      "mean_window_sharpe": 2.516377606447743,
+      "n_windows": 4,
+      "passes_candidate_v2_gate": false,
+      "positive_excess_windows": 4,
+      "research_only": true,
+      "trade_ready": false,
+      "turnover_model": "cash_inclusive_one_way",
+      "worst_drawdown": -0.22936973993606258
+    }
+  }
+}
