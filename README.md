@@ -91,7 +91,7 @@ Runs 11 quality gates: Ruff, Mypy, Pytest, TypeScript check, frontend lint, unit
 - **研究专用范围**: 当前平台是研究专用系统，没有模型达到 `trade_ready` 状态。全部输出为诊断和研究候选，不可用于实盘交易。
 - **证据驱动**: 推广决策通过 `PromotionDecision` 接口（ADR-0005）统一执行，缺失证据则关闭失败。
 - **发布文档**: 安装、配置、运维、安全、性能、合同见 docs/release/index.md。
-- **工作成果总结**: 见 docs/release/work_summary_20260620.md。
+- **当前研究依据**: 见 docs/methodology.md（方法论）和 docs/10d_universe_robustness_report.md（稳健性验证）。
 - **研究范式规范**: CN 和 US 各有一个固定的 10D 范式，见 `configs/research_paradigms/cn_10d_csi300_baseline.yaml` 和 `us_10d_qqq_baseline.yaml`。
 
 ### 4. 任务管理 (Makefile)
