@@ -1,0 +1,20 @@
+{
+  "baseline_id": "us_top3_blend_v1",
+  "candidate": "blend:ranker_momentum:momentum_volatility_volume:gain5_round100_leaves31_leaf10_lr0.05:ranker0.5_momentum0.5",
+  "candidate_v2_selected": "top3_benchmark_trend_filter",
+  "cost_bps": 20.0,
+  "decision": "stronger_research_candidate",
+  "evidence_type": "risk_control_variants",
+  "n_windows_evaluated": 4,
+  "n_windows_total": 4,
+  "promotion_eligible": false,
+  "research_only": true,
+  "schema_version": "1.0",
+  "trade_ready": false,
+  "turnover_model": "cash_inclusive_one_way",
+  "variants": [
+    "top5_equal_weight",
+    "top3_inverse_vol20_weight",
+    "top3_benchmark_trend_filter"
+  ]
+}
