@@ -113,3 +113,72 @@ The next model-quality step is point-in-time universe validation plus fixed
 concentration and adverse-regime diagnostics. It is not another blend-weight or
 LightGBM parameter search. Risk controls can limit exposure, but they cannot
 turn a survivorship-biased, drawdown-breaching result into trade guidance.
+
+## Portfolio-risk overlay
+
+The [candidate_v2 risk-hypotheses
+evaluator](../scripts/run_candidate_v2_risk_hypotheses.py) reconstructs the
+evidence from the committed per-window JSON files and evaluates four fixed
+portfolio-construction variants without re-training, re-scoring, or tuning:
+
+| Variant | Description |
+|---|---|
+| `frozen_baseline` | Top-3 equal weight with 50% gross exposure when QQQ 20D trend < 0 |
+| `top3_max20pct_per_name` | Each name capped at 20% of gross exposure before trend scaling |
+| `top3_positive_20d_return_only` | Baseline weight only when selected stock backward 20D return > 0 |
+| `top3_inverse_vol20_normalized` | Weight ∝ 1/vol20, normalised to baseline gross exposure |
+
+All four use the **same Top-3 selection** from the frozen score and the
+canonical raw 10D returns already recorded in evidence. Only the weighting
+scheme changes.
+
+The frozen gate (4 windows, ≥3 positive excess, >30% compounded relative
+excess, ≥-15% worst drawdown, all three cohorts pass) is applied per variant.
+Output is under `artifacts/evidence/candidate_v2_risk_hypotheses/`.
+
+Reproduction:
+
+```bash
+uv run python scripts/run_candidate_v2_risk_hypotheses.py \
+  --data-root D:/Documents/GitHub/alpha_engine
+```
+
+### Decision
+
+The real-data run used the verified US-only provider
+`66129d0727beb8d7b014966651f8b72c119f99195e33553d9781c9954ef267d8`.
+Every row below contains four half-year OOS windows and reports compounded
+multiplicative relative excess, worst window drawdown, positive relative-excess
+windows, and the frozen gate result.
+
+| Variant | Cohort | Relative excess | Worst drawdown | Positive windows | Gate |
+|---|---:|---:|---:|---:|---:|
+| frozen baseline | 10 | 32.76% | -16.15% | 4/4 | fail |
+| frozen baseline | 50 | 246.85% | -24.71% | 4/4 | fail |
+| frozen baseline | 100 | 176.68% | -22.39% | 4/4 | fail |
+| 20% per-name cap | 10 | -2.85% | -9.79% | 2/4 | fail |
+| 20% per-name cap | 50 | 81.19% | -15.33% | 4/4 | fail |
+| 20% per-name cap | 100 | 60.49% | -13.51% | 3/4 | pass |
+| positive 20D stock trend | 10 | -25.72% | -8.52% | 1/4 | fail |
+| positive 20D stock trend | 50 | -18.38% | -14.09% | 2/4 | fail |
+| positive 20D stock trend | 100 | -52.04% | -26.77% | 1/4 | fail |
+| inverse 20D volatility | 10 | 25.39% | -15.18% | 4/4 | fail |
+| inverse 20D volatility | 50 | 208.58% | -14.85% | 3/4 | pass |
+| inverse 20D volatility | 100 | 208.69% | -20.08% | 4/4 | fail |
+
+No overlay passes all three cohorts. The 20% cap controls drawdown in the
+100-symbol cohort but destroys the 10-symbol excess; inverse volatility fixes
+the 50-symbol drawdown but misses both the 10-symbol return/drawdown gates and
+the 100-symbol drawdown gate. The positive-stock-trend filter is decisively
+refuted and is directionally inconsistent with the frozen blend's inverted
+momentum component.
+
+The underlying selection-tail risk cannot be repaired by further portfolio
+weight tuning while retaining the same Top-3 selection and static-current-
+member cohorts. The next evidence step remains point-in-time universe
+validation, not another overlay or LightGBM parameter search.
+
+- `research_only=true`
+- `promotion_eligible=false`
+- `trade_ready=false`
+- decision: `candidate_v2_no_robust_overlay`
