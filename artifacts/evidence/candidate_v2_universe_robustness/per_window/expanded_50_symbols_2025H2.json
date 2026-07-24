@@ -1,107 +1,1011 @@
 {
   "candidate": "blend:ranker_momentum:momentum_volatility_volume:gain5_round100_leaves31_leaf10_lr0.05:ranker0.5_momentum0.5",
   "candidate_v2": {
-    "annual_return": 0.2506350838122122,
+    "annual_return": 0.5273925192547302,
     "benchmark_period_returns": [
-      0.017788171768188477,
-      0.005713820457458496,
-      0.04235577583312988,
-      -0.012020707130432129,
-      0.02850627899169922,
-      0.016722559928894043,
-      -0.003947556018829346,
-      0.058394551277160645,
-      -0.0179327130317688,
-      -0.020399928092956543,
-      0.026539921760559082,
-      -0.004582583904266357,
-      0.005257368087768555
+      0.018830299377441406,
+      0.019253849983215332,
+      0.021689414978027344,
+      -0.011803507804870605,
+      0.018465876579284668,
+      0.017357349395751953,
+      0.028928518295288086,
+      -0.0001965165138244629,
+      0.0017851591110229492,
+      -0.04250669479370117,
+      0.06797349452972412,
+      -0.013477563858032227,
+      0.011624932289123535
     ],
-    "benchmark_return": 0.14837371170792935,
+    "benchmark_return": 0.14251938944996123,
     "benchmark_values": [
       10000.0,
-      10177.881717681885,
-      10236.036306453969,
-      10669.591565669913,
-      10541.335530257666,
-      10841.829781828303,
-      11023.132930093794,
-      10979.618495349247,
-      11620.76839057958,
-      11412.376485822668,
-      11179.564826142137,
-      11476.269601945049,
-      11423.678633586154,
-      11483.737117079294
+      10188.302993774414,
+      10384.46705120009,
+      10609.70006639922,
+      10484.46838885814,
+      10678.073288126207,
+      10863.416337061659,
+      11177.678875317679,
+      11175.482276832452,
+      11195.432290839015,
+      10719.551467368774,
+      11448.196840397062,
+      11293.903036421289,
+      11425.193894499613
     ],
     "cost_bps": 20.0,
-    "costs": 0.02266666666666667,
-    "excess_return": -0.026078630433820083,
-    "information_ratio": -0.19379026423407722,
+    "costs": 0.022,
+    "excess_return": 0.10169489013799504,
+    "information_ratio": 0.579109100328631,
     "label": "research_only_risk_control_variant",
-    "max_drawdown": -0.12912728719298427,
+    "max_drawdown": -0.24709663859027675,
     "max_gross_exposure": 1.0,
     "mean_gross_exposure": 0.9615384615384616,
     "min_gross_exposure": 0.5,
     "n_periods": 13,
     "period_returns": [
-      0.06583548990885416,
-      -0.11945379368464153,
-      0.027856491724650066,
-      0.018777006944020583,
-      0.10257422335942586,
-      -0.03969453366597493,
-      0.04828421545028686,
-      0.02531490135192871,
-      -0.07031911341349285,
-      -0.06325630076726277,
-      0.07447572390238444,
-      -0.009652377764383952,
-      0.08283082056045532
+      0.0914389034907023,
+      -0.09682832749684651,
+      -0.03853912878036499,
+      0.05333139769236247,
+      0.1061643501917521,
+      0.0034281439781188973,
+      0.10169941457112629,
+      -0.036221510092417405,
+      -0.10754786523183187,
+      -0.12465939648946127,
+      0.17850935300191242,
+      0.0290746275583903,
+      0.11619636821746825
     ],
     "portfolio_values": [
       10000.0,
-      10658.354899088543,
-      9385.173971955131,
-      9646.6119930393,
-      9827.74649341887,
-      10835.819957354632,
-      10405.697137258974,
-      10908.12805974482,
-      11184.266245511466,
-      10397.798558946646,
-      9740.072285984506,
-      10465.471220344754,
-      10364.454538643698,
-      11222.950812741092
+      10914.389034907024,
+      9857.566999007056,
+      9477.664954971247,
+      9983.122073879786,
+      11042.973741738171,
+      11080.830645671436,
+      12207.744635298017,
+      11765.561689784916,
+      10500.200646795123,
+      9191.251971147392,
+      10831.976413794466,
+      11146.912093746809,
+      12442.142795879563
     ],
-    "relative_excess_return": -0.022709184447486486,
+    "relative_excess_return": 0.0890093341758984,
     "research_only": true,
-    "sharpe_ratio": 0.854978475618467,
+    "sharpe_ratio": 1.1460656330170615,
     "test_end": "2025-12-31",
     "test_start": "2025-07-01",
-    "total_return": 0.12229508127410926,
+    "total_return": 0.24421427958795627,
     "trade_ready": false,
-    "turnover": 11.333333333333334,
+    "turnover": 11.000000000000002,
     "turnover_model": "cash_inclusive_one_way",
     "variant_id": "top3_benchmark_trend_filter",
-    "volatility": 0.32551727248682777
+    "volatility": 0.4669062393172057
   },
   "score_diagnostics": {
-    "ic_ir": 0.06254687783811895,
-    "ic_mean": 0.01408413995795775,
-    "ic_n_days": 122,
-    "ic_pos_pct": 0.5081967213114754,
-    "ic_std": 0.22517734609247314,
-    "rank_ic_ir": 0.14388992195674094,
-    "rank_ic_mean": 0.027540983606557375,
-    "rank_ic_n_days": 122,
-    "rank_ic_pos_pct": 0.5573770491803278,
-    "rank_ic_std": 0.1914031450711141,
-    "top_bottom_spread_mean": 0.005487151835190102,
-    "top_bottom_spread_n_days": 124,
-    "top_bottom_spread_pos_pct": 0.5241935483870968,
-    "top_bottom_spread_std": 0.05309458750767946
+    "ic_ir": 0.1286877228021622,
+    "ic_mean": 0.03179497199875828,
+    "ic_n_days": 128,
+    "ic_pos_pct": 0.53125,
+    "ic_std": 0.2470707485253913,
+    "rank_ic_ir": 0.20250748396181986,
+    "rank_ic_mean": 0.04169267707082833,
+    "rank_ic_n_days": 128,
+    "rank_ic_pos_pct": 0.578125,
+    "rank_ic_std": 0.2058821543538062,
+    "top_bottom_spread_mean": 0.012082119777915068,
+    "top_bottom_spread_n_days": 128,
+    "top_bottom_spread_pos_pct": 0.5078125,
+    "top_bottom_spread_std": 0.06099199671209462
+  },
+  "selection_tail_diagnostics": {
+    "aggregate": {
+      "mean_selected_realized_percentile": 0.5693354264782836,
+      "mean_spread": 0.0049617168230888225,
+      "n_periods": 13,
+      "positive_spread_count": 7,
+      "positive_spread_ratio": 0.5384615384615384,
+      "selected_above_median_ratio": 0.5641025641025641,
+      "selected_positive_return_ratio": 0.5897435897435898,
+      "symbol_contributions": {
+        "AAOI": {
+          "negative_contribution_count": 1,
+          "sum_gross_contribution": 0.036298771699269615,
+          "times_selected": 2,
+          "worst_gross_contribution": -0.02441612879435221
+        },
+        "AEHR": {
+          "negative_contribution_count": 1,
+          "sum_gross_contribution": 0.043832639853159584,
+          "times_selected": 2,
+          "worst_gross_contribution": -0.0007952253023783366
+        },
+        "AEP": {
+          "negative_contribution_count": 0,
+          "sum_gross_contribution": 0.00961152712504069,
+          "times_selected": 1,
+          "worst_gross_contribution": 0.00961152712504069
+        },
+        "AMAT": {
+          "negative_contribution_count": 0,
+          "sum_gross_contribution": 0.011679530143737793,
+          "times_selected": 1,
+          "worst_gross_contribution": 0.011679530143737793
+        },
+        "AMD": {
+          "negative_contribution_count": 1,
+          "sum_gross_contribution": -0.006942868232727051,
+          "times_selected": 1,
+          "worst_gross_contribution": -0.006942868232727051
+        },
+        "AMGN": {
+          "negative_contribution_count": 1,
+          "sum_gross_contribution": -0.002536217371622721,
+          "times_selected": 1,
+          "worst_gross_contribution": -0.002536217371622721
+        },
+        "ANET": {
+          "negative_contribution_count": 0,
+          "sum_gross_contribution": 0.08109339078267415,
+          "times_selected": 2,
+          "worst_gross_contribution": 0.03164494037628174
+        },
+        "AVGO": {
+          "negative_contribution_count": 0,
+          "sum_gross_contribution": 0.008846561113993326,
+          "times_selected": 1,
+          "worst_gross_contribution": 0.008846561113993326
+        },
+        "AXON": {
+          "negative_contribution_count": 1,
+          "sum_gross_contribution": -0.03833840290705363,
+          "times_selected": 1,
+          "worst_gross_contribution": -0.03833840290705363
+        },
+        "BABA": {
+          "negative_contribution_count": 1,
+          "sum_gross_contribution": -0.0034162402153015137,
+          "times_selected": 1,
+          "worst_gross_contribution": -0.0034162402153015137
+        },
+        "BE": {
+          "negative_contribution_count": 0,
+          "sum_gross_contribution": 0.22516715526580808,
+          "times_selected": 4,
+          "worst_gross_contribution": 0.03856003284454346
+        },
+        "BIDU": {
+          "negative_contribution_count": 2,
+          "sum_gross_contribution": -0.03147745132446289,
+          "times_selected": 2,
+          "worst_gross_contribution": -0.03001004457473755
+        },
+        "CHTR": {
+          "negative_contribution_count": 2,
+          "sum_gross_contribution": -0.10035355885823567,
+          "times_selected": 3,
+          "worst_gross_contribution": -0.08757001161575317
+        },
+        "COHR": {
+          "negative_contribution_count": 0,
+          "sum_gross_contribution": 0.05689048767089843,
+          "times_selected": 2,
+          "worst_gross_contribution": 0.00985411802927653
+        },
+        "CTSH": {
+          "negative_contribution_count": 1,
+          "sum_gross_contribution": -0.005790909131368001,
+          "times_selected": 1,
+          "worst_gross_contribution": -0.005790909131368001
+        },
+        "DASH": {
+          "negative_contribution_count": 1,
+          "sum_gross_contribution": -0.014812191327412922,
+          "times_selected": 1,
+          "worst_gross_contribution": -0.014812191327412922
+        },
+        "DDOG": {
+          "negative_contribution_count": 0,
+          "sum_gross_contribution": 0.007821162541707356,
+          "times_selected": 1,
+          "worst_gross_contribution": 0.007821162541707356
+        },
+        "HIMX": {
+          "negative_contribution_count": 0,
+          "sum_gross_contribution": 0.07962743441263834,
+          "times_selected": 3,
+          "worst_gross_contribution": 0.01280510425567627
+        },
+        "NOK": {
+          "negative_contribution_count": 0,
+          "sum_gross_contribution": 0.006488243738810221,
+          "times_selected": 1,
+          "worst_gross_contribution": 0.006488243738810221
+        },
+        "ORCL": {
+          "negative_contribution_count": 1,
+          "sum_gross_contribution": -0.010866383711496988,
+          "times_selected": 2,
+          "worst_gross_contribution": -0.01789774497350057
+        },
+        "POET": {
+          "negative_contribution_count": 3,
+          "sum_gross_contribution": -0.07801028092702228,
+          "times_selected": 5,
+          "worst_gross_contribution": -0.09074326356252034
+        },
+        "TSLA": {
+          "negative_contribution_count": 0,
+          "sum_gross_contribution": 0.023233930269877114,
+          "times_selected": 1,
+          "worst_gross_contribution": 0.023233930269877114
+        }
+      },
+      "total_cost": 0.022,
+      "total_turnover": 11.0,
+      "worst_net_return_period": {
+        "date": "2025-11-06",
+        "net_return": -0.12465939648946127
+      },
+      "worst_relative_excess_period": {
+        "date": "2025-07-16",
+        "relative_excess": -0.1138893686611765
+      }
+    },
+    "bottom_leg_is_diagnostic_only": true,
+    "candidate_variant_id": "top3_benchmark_trend_filter",
+    "periods": [
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.14339256286621094,
+            "score": -2.246556992702475,
+            "symbol": "AAOI"
+          },
+          {
+            "raw_return": 0.011259794235229492,
+            "score": -0.8275596537110506,
+            "symbol": "AAPL"
+          },
+          {
+            "raw_return": 0.010537385940551758,
+            "score": -0.8261050409323645,
+            "symbol": "AEP"
+          }
+        ],
+        "date": "2025-07-01",
+        "portfolio": {
+          "benchmark_return": 0.018830299377441406,
+          "cost": 0.002,
+          "gross_exposure": 1.0,
+          "gross_return": 0.0934389034907023,
+          "net_return": 0.0914389034907023,
+          "relative_excess": 0.07126663209528483,
+          "turnover": 1.0
+        },
+        "selected_above_median_ratio": 1.0,
+        "selected_holdings": [
+          {
+            "gross_contribution": 0.03856003284454346,
+            "raw_return": 0.11568009853363037,
+            "realized_return_percentile": 0.8979591836734694,
+            "symbol": "BE",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.023233930269877114,
+            "raw_return": 0.06970179080963135,
+            "realized_return_percentile": 0.8367346938775511,
+            "symbol": "TSLA",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.03164494037628174,
+            "raw_return": 0.09493482112884521,
+            "realized_return_percentile": 0.8571428571428571,
+            "symbol": "ANET",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 1.0,
+        "top_minus_bottom_spread": 0.03837565581003825,
+        "unscaled_bottom_k_mean_raw_return": 0.05506324768066406,
+        "unscaled_top_k_mean_raw_return": 0.09343890349070232
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.12733137607574463,
+            "score": -1.1426501285898505,
+            "symbol": "ANET"
+          },
+          {
+            "raw_return": 0.12137675285339355,
+            "score": -1.0724504805033452,
+            "symbol": "AMD"
+          },
+          {
+            "raw_return": 0.09619712829589844,
+            "score": -0.9010784357241357,
+            "symbol": "COHR"
+          }
+        ],
+        "date": "2025-07-16",
+        "portfolio": {
+          "benchmark_return": 0.019253849983215332,
+          "cost": 0.002,
+          "gross_exposure": 1.0,
+          "gross_return": -0.09482832749684651,
+          "net_return": -0.09682832749684651,
+          "relative_excess": -0.1138893686611765,
+          "turnover": 1.0
+        },
+        "selected_above_median_ratio": 0.0,
+        "selected_holdings": [
+          {
+            "gross_contribution": -0.0014674067497253418,
+            "raw_return": -0.004402220249176025,
+            "realized_return_percentile": 0.3673469387755102,
+            "symbol": "BIDU",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": -0.005790909131368001,
+            "raw_return": -0.017372727394104004,
+            "realized_return_percentile": 0.22448979591836735,
+            "symbol": "CTSH",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": -0.08757001161575317,
+            "raw_return": -0.2627100348472595,
+            "realized_return_percentile": 0.0,
+            "symbol": "CHTR",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 0.0,
+        "top_minus_bottom_spread": -0.2097967465718587,
+        "unscaled_bottom_k_mean_raw_return": 0.11496841907501221,
+        "unscaled_top_k_mean_raw_return": -0.09482832749684651
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.17171728610992432,
+            "score": -1.8994886709250818,
+            "symbol": "BE"
+          },
+          {
+            "raw_return": -0.05905181169509888,
+            "score": -0.6025118470059435,
+            "symbol": "CDNS"
+          },
+          {
+            "raw_return": 0.014301538467407227,
+            "score": -0.5846587910041531,
+            "symbol": "MSFT"
+          }
+        ],
+        "date": "2025-07-30",
+        "portfolio": {
+          "benchmark_return": 0.021689414978027344,
+          "cost": 0.0013333333333333333,
+          "gross_exposure": 1.0,
+          "gross_return": -0.037205795447031655,
+          "net_return": -0.03853912878036499,
+          "relative_excess": -0.058949953748603345,
+          "turnover": 0.6666666666666666
+        },
+        "selected_above_median_ratio": 0.3333333333333333,
+        "selected_holdings": [
+          {
+            "gross_contribution": -0.01296939452489217,
+            "raw_return": -0.038908183574676514,
+            "realized_return_percentile": 0.24489795918367346,
+            "symbol": "CHTR",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.006488243738810221,
+            "raw_return": 0.019464731216430664,
+            "realized_return_percentile": 0.5510204081632653,
+            "symbol": "NOK",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": -0.030724644660949707,
+            "raw_return": -0.09217393398284912,
+            "realized_return_percentile": 0.04081632653061224,
+            "symbol": "POET",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 0.3333333333333333,
+        "top_minus_bottom_spread": -0.07952813307444254,
+        "unscaled_bottom_k_mean_raw_return": 0.04232233762741089,
+        "unscaled_top_k_mean_raw_return": -0.037205795447031655
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.050078630447387695,
+            "score": -2.019370281317872,
+            "symbol": "ALNY"
+          },
+          {
+            "raw_return": -0.029963672161102295,
+            "score": -1.0734999312815725,
+            "symbol": "COST"
+          },
+          {
+            "raw_return": 0.020146846771240234,
+            "score": -0.9167294499996946,
+            "symbol": "CPRT"
+          }
+        ],
+        "date": "2025-08-13",
+        "portfolio": {
+          "benchmark_return": -0.011803507804870605,
+          "cost": 0.0013333333333333333,
+          "gross_exposure": 1.0,
+          "gross_return": 0.0546647310256958,
+          "net_return": 0.05333139769236247,
+          "relative_excess": 0.06591290903345115,
+          "turnover": 0.6666666666666666
+        },
+        "selected_above_median_ratio": 0.6666666666666666,
+        "selected_holdings": [
+          {
+            "gross_contribution": 0.046657721201578774,
+            "raw_return": 0.13997316360473633,
+            "realized_return_percentile": 0.9591836734693877,
+            "symbol": "HIMX",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.00018584728240966797,
+            "raw_return": 0.0005575418472290039,
+            "realized_return_percentile": 0.4897959183673469,
+            "symbol": "CHTR",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.007821162541707356,
+            "raw_return": 0.02346348762512207,
+            "realized_return_percentile": 0.6938775510204082,
+            "symbol": "DDOG",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 1.0,
+        "top_minus_bottom_spread": 0.04124412933985392,
+        "unscaled_bottom_k_mean_raw_return": 0.013420601685841879,
+        "unscaled_top_k_mean_raw_return": 0.0546647310256958
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.3233039379119873,
+            "score": -1.2616232851447704,
+            "symbol": "BE"
+          },
+          {
+            "raw_return": -0.016528964042663574,
+            "score": -1.0270138965342865,
+            "symbol": "HIMX"
+          },
+          {
+            "raw_return": -0.0523681640625,
+            "score": -0.7764675204415146,
+            "symbol": "ABNB"
+          }
+        ],
+        "date": "2025-08-27",
+        "portfolio": {
+          "benchmark_return": 0.018465876579284668,
+          "cost": 0.002,
+          "gross_exposure": 1.0,
+          "gross_return": 0.1081643501917521,
+          "net_return": 0.1061643501917521,
+          "relative_excess": 0.08610840640731121,
+          "turnover": 1.0
+        },
+        "selected_above_median_ratio": 1.0,
+        "selected_holdings": [
+          {
+            "gross_contribution": 0.0470363696416219,
+            "raw_return": 0.14110910892486572,
+            "realized_return_percentile": 0.8571428571428571,
+            "symbol": "COHR",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.011679530143737793,
+            "raw_return": 0.03503859043121338,
+            "realized_return_percentile": 0.6122448979591837,
+            "symbol": "AMAT",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.04944845040639241,
+            "raw_return": 0.14834535121917725,
+            "realized_return_percentile": 0.8775510204081632,
+            "symbol": "ANET",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 1.0,
+        "top_minus_bottom_spread": 0.02336208025614421,
+        "unscaled_bottom_k_mean_raw_return": 0.08480226993560791,
+        "unscaled_top_k_mean_raw_return": 0.10816435019175212
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.1288599967956543,
+            "score": -1.300886073567551,
+            "symbol": "BABA"
+          },
+          {
+            "raw_return": 0.0208054780960083,
+            "score": -1.185881351706503,
+            "symbol": "BE"
+          },
+          {
+            "raw_return": 0.2108745574951172,
+            "score": -1.1833443718729233,
+            "symbol": "BIDU"
+          }
+        ],
+        "date": "2025-09-11",
+        "portfolio": {
+          "benchmark_return": 0.017357349395751953,
+          "cost": 0.0013333333333333333,
+          "gross_exposure": 1.0,
+          "gross_return": 0.00476147731145223,
+          "net_return": 0.0034281439781188973,
+          "relative_excess": -0.013691556291313023,
+          "turnover": 0.6666666666666666
+        },
+        "selected_above_median_ratio": 0.6666666666666666,
+        "selected_holdings": [
+          {
+            "gross_contribution": 0.00985411802927653,
+            "raw_return": 0.02956235408782959,
+            "realized_return_percentile": 0.7346938775510204,
+            "symbol": "COHR",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": -0.01789774497350057,
+            "raw_return": -0.05369323492050171,
+            "realized_return_percentile": 0.08163265306122448,
+            "symbol": "ORCL",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.01280510425567627,
+            "raw_return": 0.03841531276702881,
+            "realized_return_percentile": 0.7755102040816326,
+            "symbol": "HIMX",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 0.6666666666666666,
+        "top_minus_bottom_spread": -0.11541853348414104,
+        "unscaled_bottom_k_mean_raw_return": 0.12018001079559326,
+        "unscaled_top_k_mean_raw_return": 0.0047614773114522295
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.10370731353759766,
+            "score": -1.2217472399411395,
+            "symbol": "AMAT"
+          },
+          {
+            "raw_return": -0.022156596183776855,
+            "score": -1.1860215130583915,
+            "symbol": "BIDU"
+          },
+          {
+            "raw_return": 0.028696894645690918,
+            "score": -0.7815892897954895,
+            "symbol": "TSLA"
+          }
+        ],
+        "date": "2025-09-25",
+        "portfolio": {
+          "benchmark_return": 0.028928518295288086,
+          "cost": 0.0013333333333333333,
+          "gross_exposure": 1.0,
+          "gross_return": 0.10303274790445963,
+          "net_return": 0.10169941457112629,
+          "relative_excess": 0.07072492887689008,
+          "turnover": 0.6666666666666666
+        },
+        "selected_above_median_ratio": 0.3333333333333333,
+        "selected_holdings": [
+          {
+            "gross_contribution": 0.008846561113993326,
+            "raw_return": 0.02653968334197998,
+            "realized_return_percentile": 0.4897959183673469,
+            "symbol": "AVGO",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.00703136126200358,
+            "raw_return": 0.021094083786010742,
+            "realized_return_percentile": 0.46938775510204084,
+            "symbol": "ORCL",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.08715482552846272,
+            "raw_return": 0.2614644765853882,
+            "realized_return_percentile": 0.9591836734693877,
+            "symbol": "BE",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 1.0,
+        "top_minus_bottom_spread": 0.0662835439046224,
+        "unscaled_bottom_k_mean_raw_return": 0.03674920399983724,
+        "unscaled_top_k_mean_raw_return": 0.10303274790445964
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.009017109870910645,
+            "score": -1.0652422863709763,
+            "symbol": "AMD"
+          },
+          {
+            "raw_return": -0.045590341091156006,
+            "score": -0.9002734477383306,
+            "symbol": "DDOG"
+          },
+          {
+            "raw_return": 0.17045581340789795,
+            "score": -0.5983906450567484,
+            "symbol": "BE"
+          }
+        ],
+        "date": "2025-10-09",
+        "portfolio": {
+          "benchmark_return": -0.0001965165138244629,
+          "cost": 0.002,
+          "gross_exposure": 1.0,
+          "gross_return": -0.034221510092417404,
+          "net_return": -0.036221510092417405,
+          "relative_excess": -0.03603207447625478,
+          "turnover": 1.0
+        },
+        "selected_above_median_ratio": 0.0,
+        "selected_holdings": [
+          {
+            "gross_contribution": -0.0007952253023783366,
+            "raw_return": -0.0023856759071350098,
+            "realized_return_percentile": 0.4897959183673469,
+            "symbol": "AEHR",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": -0.03001004457473755,
+            "raw_return": -0.09003013372421265,
+            "realized_return_percentile": 0.04081632653061224,
+            "symbol": "BIDU",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": -0.0034162402153015137,
+            "raw_return": -0.010248720645904541,
+            "realized_return_percentile": 0.3673469387755102,
+            "symbol": "BABA",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 0.0,
+        "top_minus_bottom_spread": -0.07884903748830159,
+        "unscaled_bottom_k_mean_raw_return": 0.044627527395884194,
+        "unscaled_top_k_mean_raw_return": -0.0342215100924174
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.11993515491485596,
+            "score": -2.089988540410028,
+            "symbol": "NOK"
+          },
+          {
+            "raw_return": -0.053553223609924316,
+            "score": -1.0330807713300256,
+            "symbol": "ABNB"
+          },
+          {
+            "raw_return": -0.027056574821472168,
+            "score": -0.9358375823185286,
+            "symbol": "CCEP"
+          }
+        ],
+        "date": "2025-10-23",
+        "portfolio": {
+          "benchmark_return": 0.0017851591110229492,
+          "cost": 0.002,
+          "gross_exposure": 1.0,
+          "gross_return": -0.10554786523183186,
+          "net_return": -0.10754786523183187,
+          "relative_excess": -0.10913819529915592,
+          "turnover": 1.0
+        },
+        "selected_above_median_ratio": 0.3333333333333333,
+        "selected_holdings": [
+          {
+            "gross_contribution": -0.09074326356252034,
+            "raw_return": -0.27222979068756104,
+            "realized_return_percentile": 0.0,
+            "symbol": "POET",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": -0.02441612879435221,
+            "raw_return": -0.07324838638305664,
+            "realized_return_percentile": 0.24489795918367346,
+            "symbol": "AAOI",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.00961152712504069,
+            "raw_return": 0.02883458137512207,
+            "realized_return_percentile": 0.7551020408163265,
+            "symbol": "AEP",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 0.3333333333333333,
+        "top_minus_bottom_spread": -0.11865631739298502,
+        "unscaled_bottom_k_mean_raw_return": 0.013108452161153158,
+        "unscaled_top_k_mean_raw_return": -0.10554786523183186
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": -0.3176969289779663,
+            "score": -1.900876335624568,
+            "symbol": "BE"
+          },
+          {
+            "raw_return": -0.03279632329940796,
+            "score": -0.7957094135491358,
+            "symbol": "COST"
+          },
+          {
+            "raw_return": -0.10656678676605225,
+            "score": -0.7784863827398316,
+            "symbol": "AMZN"
+          }
+        ],
+        "date": "2025-11-06",
+        "portfolio": {
+          "benchmark_return": -0.04250669479370117,
+          "cost": 0.0013333333333333333,
+          "gross_exposure": 1.0,
+          "gross_return": -0.12332606315612793,
+          "net_return": -0.12465939648946127,
+          "relative_excess": -0.08579976616970675,
+          "turnover": 0.6666666666666666
+        },
+        "selected_above_median_ratio": 0.3333333333333333,
+        "selected_holdings": [
+          {
+            "gross_contribution": -0.07017546892166138,
+            "raw_return": -0.21052640676498413,
+            "realized_return_percentile": 0.04081632653061224,
+            "symbol": "POET",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": -0.014812191327412922,
+            "raw_return": -0.04443657398223877,
+            "realized_return_percentile": 0.5102040816326531,
+            "symbol": "DASH",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": -0.03833840290705363,
+            "raw_return": -0.11501520872116089,
+            "realized_return_percentile": 0.22448979591836735,
+            "symbol": "AXON",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 0.0,
+        "top_minus_bottom_spread": 0.029027283191680908,
+        "unscaled_bottom_k_mean_raw_return": -0.15235334634780884,
+        "unscaled_top_k_mean_raw_return": -0.12332606315612793
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.019377708435058594,
+            "score": -1.2885109956581853,
+            "symbol": "CTAS"
+          },
+          {
+            "raw_return": 0.04706096649169922,
+            "score": -1.2241244244243092,
+            "symbol": "AAPL"
+          },
+          {
+            "raw_return": 0.08177483081817627,
+            "score": -1.0832156105097521,
+            "symbol": "CSX"
+          }
+        ],
+        "date": "2025-11-20",
+        "portfolio": {
+          "benchmark_return": 0.06797349452972412,
+          "cost": 0.0016666666666666663,
+          "gross_exposure": 0.5,
+          "gross_return": 0.1801760196685791,
+          "net_return": 0.17850935300191242,
+          "relative_excess": 0.10350056348623338,
+          "turnover": 0.8333333333333333
+        },
+        "selected_above_median_ratio": 1.0,
+        "selected_holdings": [
+          {
+            "gross_contribution": 0.07341271638870239,
+            "raw_return": 0.44047629833221436,
+            "realized_return_percentile": 1.0,
+            "symbol": "POET",
+            "weight": 0.16666666666666666
+          },
+          {
+            "gross_contribution": 0.060714900493621826,
+            "raw_return": 0.36428940296173096,
+            "realized_return_percentile": 0.9795918367346939,
+            "symbol": "AAOI",
+            "weight": 0.16666666666666666
+          },
+          {
+            "gross_contribution": 0.04604840278625488,
+            "raw_return": 0.2762904167175293,
+            "realized_return_percentile": 0.9183673469387755,
+            "symbol": "BE",
+            "weight": 0.16666666666666666
+          }
+        ],
+        "selected_positive_return_ratio": 1.0,
+        "top_minus_bottom_spread": 0.3109475374221802,
+        "unscaled_bottom_k_mean_raw_return": 0.04940450191497803,
+        "unscaled_top_k_mean_raw_return": 0.3603520393371582
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": 0.022223472595214844,
+            "score": -1.252805604367926,
+            "symbol": "COHR"
+          },
+          {
+            "raw_return": -0.1069459319114685,
+            "score": -1.1011486253565927,
+            "symbol": "HIMX"
+          },
+          {
+            "raw_return": 0.17788636684417725,
+            "score": -1.0520970508771734,
+            "symbol": "AAOI"
+          }
+        ],
+        "date": "2025-12-05",
+        "portfolio": {
+          "benchmark_return": -0.013477563858032227,
+          "cost": 0.0016666666666666663,
+          "gross_exposure": 1.0,
+          "gross_return": 0.03074129422505697,
+          "net_return": 0.0290746275583903,
+          "relative_excess": 0.04313352627116429,
+          "turnover": 0.8333333333333333
+        },
+        "selected_above_median_ratio": 0.6666666666666666,
+        "selected_holdings": [
+          {
+            "gross_contribution": -0.002536217371622721,
+            "raw_return": -0.007608652114868164,
+            "realized_return_percentile": 0.5714285714285714,
+            "symbol": "AMGN",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.04022037982940674,
+            "raw_return": 0.12066113948822021,
+            "realized_return_percentile": 0.9795918367346939,
+            "symbol": "POET",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": -0.006942868232727051,
+            "raw_return": -0.020828604698181152,
+            "realized_return_percentile": 0.42857142857142855,
+            "symbol": "AMD",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 0.3333333333333333,
+        "top_minus_bottom_spread": -0.0003133416175842285,
+        "unscaled_bottom_k_mean_raw_return": 0.031054635842641194,
+        "unscaled_top_k_mean_raw_return": 0.030741294225056965
+      },
+      {
+        "bottom_k_diagnostic_symbols": [
+          {
+            "raw_return": -0.03554493188858032,
+            "score": -0.9455653531810717,
+            "symbol": "CSCO"
+          },
+          {
+            "raw_return": -0.0037218332290649414,
+            "score": -0.9358161951626072,
+            "symbol": "CTAS"
+          },
+          {
+            "raw_return": -0.0796167254447937,
+            "score": -0.90136959381822,
+            "symbol": "CCEP"
+          }
+        ],
+        "date": "2025-12-19",
+        "portfolio": {
+          "benchmark_return": 0.011624932289123535,
+          "cost": 0.002,
+          "gross_exposure": 1.0,
+          "gross_return": 0.11819636821746825,
+          "net_return": 0.11619636821746825,
+          "relative_excess": 0.10336976935880626,
+          "turnover": 1.0
+        },
+        "selected_above_median_ratio": 1.0,
+        "selected_holdings": [
+          {
+            "gross_contribution": 0.053403894106547035,
+            "raw_return": 0.1602116823196411,
+            "realized_return_percentile": 0.9387755102040817,
+            "symbol": "BE",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.0201646089553833,
+            "raw_return": 0.0604938268661499,
+            "realized_return_percentile": 0.7959183673469388,
+            "symbol": "HIMX",
+            "weight": 0.3333333333333333
+          },
+          {
+            "gross_contribution": 0.04462786515553792,
+            "raw_return": 0.13388359546661377,
+            "realized_return_percentile": 0.8979591836734694,
+            "symbol": "AEHR",
+            "weight": 0.3333333333333333
+          }
+        ],
+        "selected_positive_return_ratio": 1.0,
+        "top_minus_bottom_spread": 0.1578241984049479,
+        "unscaled_bottom_k_mean_raw_return": -0.03962783018747965,
+        "unscaled_top_k_mean_raw_return": 0.11819636821746826
+      }
+    ],
+    "research_only": true,
+    "top_n": 3,
+    "trade_ready": false,
+    "window_label": "2025H2"
   },
   "skipped": false,
   "window": {

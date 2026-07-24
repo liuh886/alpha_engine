@@ -117,7 +117,7 @@ def test_exclude_benchmark_symbols_removes_spx_ndx() -> None:
 
 def test_load_us_provider_symbols(tmp_path: Path) -> None:
     """Parse tab-separated instrument file and exclude benchmark symbols."""
-    instr_dir = tmp_path / "data" / "watchlist" / "instruments"
+    instr_dir = tmp_path / "data" / "providers" / "us" / "instruments"
     instr_dir.mkdir(parents=True)
     (instr_dir / "us.txt").write_text(
         "AAPL\tCommon Stock\n"
@@ -725,10 +725,10 @@ def test_data_root_is_separate_from_root() -> None:
     parser = build_parser()
     args = parser.parse_args([
         "--root", "/home/user/project",
-        "--data-root", "D:/Documents/GitHub/alpha_engine/data/watchlist",
+        "--data-root", "D:/Documents/GitHub/alpha_engine",
     ])
     assert str(args.root) != str(args.data_root)
-    assert "watchlist" in str(args.data_root)
+    assert str(args.data_root).endswith("alpha_engine")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

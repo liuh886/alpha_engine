@@ -179,6 +179,43 @@ def test_evaluate_variant_reports_research_only_metrics():
     assert report.n_periods == 3
 
 
+def test_missing_benchmark_date_fails_closed():
+    benchmark = _benchmark().drop(index=pd.Timestamp("2025-01-13"))
+    benchmark.attrs["provenance"] = "raw_forward_return"
+    benchmark.attrs["horizon"] = 10
+
+    with pytest.raises(ValueError, match="benchmark returns do not cover"):
+        evaluate_risk_control_variant(
+            _scores(),
+            _returns(),
+            benchmark,
+            spec=RiskVariantSpec(
+                variant_id=VARIANT_TOP5_EQUAL,
+                top_n=5,
+                construction="equal_weight",
+            ),
+            rebalance_days=1,
+        )
+
+
+def test_non_finite_benchmark_return_fails_closed():
+    benchmark = _benchmark()
+    benchmark.loc[pd.Timestamp("2025-01-13"), "return"] = float("nan")
+
+    with pytest.raises(ValueError, match="non-finite raw return"):
+        evaluate_risk_control_variant(
+            _scores(),
+            _returns(),
+            benchmark,
+            spec=RiskVariantSpec(
+                variant_id=VARIANT_TOP5_EQUAL,
+                top_n=5,
+                construction="equal_weight",
+            ),
+            rebalance_days=1,
+        )
+
+
 def test_aggregate_variant_reports_selects_only_gate_passing_variant():
     good = evaluate_risk_control_variant(
         _scores(),
