@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from scripts.run_candidate_v2_universe_robustness import (
+    _evaluate_window,
+    _exclude_benchmark_symbols,
     _load_us_provider_symbols,
+    _slice_evaluation_frames,
     _verify_us_provider,
 )
+from src.research.rolling_windows import RollingResearchWindow
 from src.data.market_provider import write_provider_manifest
 
 
@@ -98,3 +103,82 @@ def test_missing_manifest_fails_closed(tmp_path: Path) -> None:
 
     with pytest.raises(FileNotFoundError, match="provider manifest"):
         _verify_us_provider(tmp_path)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Shared evaluator backward-compatibility and test-symbol restriction
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def test_evaluate_window_defaults_are_backward_compatible() -> None:
+    """Calling _evaluate_window without train_symbols behaves identically."""
+    # Verify the function accepts the new keyword-only params with defaults
+    import inspect
+
+    sig = inspect.signature(_evaluate_window)
+    params = sig.parameters
+    assert "train_symbols" in params
+    assert params["train_symbols"].default is None
+    assert "asof_membership_snapshot" in params
+    assert params["asof_membership_snapshot"].default is None
+    assert "asof_provider_symbols" in params
+    assert params["asof_provider_symbols"].default is None
+
+
+def test_evaluate_window_accepts_train_symbols_keyword() -> None:
+    """_evaluate_window accepts train_symbols via keyword without error."""
+    # Verify the parameter is keyword-only (after *)
+    import inspect
+
+    sig = inspect.signature(_evaluate_window)
+    params = list(sig.parameters.items())
+    # Find the position of '*'
+    kw_only_params = [n for n, p in params if p.kind == inspect.Parameter.KEYWORD_ONLY]
+    assert "train_symbols" in kw_only_params, (
+        "train_symbols must be keyword-only to preserve backward compatibility"
+    )
+
+
+def test_exclude_benchmark_symbols_removes_qqq_spy() -> None:
+    """_exclude_benchmark_symbols strips benchmark tickers."""
+    symbols = ("AAPL", "QQQ", "MSFT", "SPY", "GOOGL", "SPX", "NDX")
+    result = _exclude_benchmark_symbols(symbols)
+    assert result == ("AAPL", "MSFT", "GOOGL")
+    assert "QQQ" not in result
+    assert "SPY" not in result
+
+
+def test_slice_evaluation_frames_separates_train_and_test_symbols() -> None:
+    """No train-only instrument can enter OOS prediction/economic rows."""
+    index = pd.MultiIndex.from_tuples(
+        [
+            (pd.Timestamp("2023-12-29"), "TRAIN"),
+            (pd.Timestamp("2023-12-29"), "TEST"),
+            (pd.Timestamp("2024-01-03"), "TRAIN"),
+            (pd.Timestamp("2024-01-03"), "TEST"),
+            (pd.Timestamp("2024-01-03"), "OTHER"),
+        ],
+        names=["datetime", "instrument"],
+    )
+    features = pd.DataFrame({"feature": range(len(index))}, index=index)
+    returns = pd.DataFrame({"return": range(len(index))}, index=index)
+    window = RollingResearchWindow(
+        label="2024H1",
+        train_start="2023-01-01",
+        train_end="2023-12-31",
+        test_start="2024-01-01",
+        test_end="2024-06-30",
+    )
+
+    train_x, train_y, test_x, test_y = _slice_evaluation_frames(
+        features,
+        returns,
+        window,
+        train_symbols=["TRAIN"],
+        test_symbols=["TEST"],
+    )
+
+    assert set(train_x.index.get_level_values("instrument")) == {"TRAIN"}
+    assert train_x.index.equals(train_y.index)
+    assert set(test_x.index.get_level_values("instrument")) == {"TEST"}
+    assert test_x.index.equals(test_y.index)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from src.research.ndx_window_start_universe import (
@@ -13,9 +14,11 @@ from src.research.ndx_window_start_universe import (
     NdxWindowStartSnapshot,
     SOURCE_URL_TEMPLATE,
     compute_membership_hash,
+    filter_training_by_asof_membership,
     get_snapshot_by_date,
     intersect_with_provider,
     load_snapshot,
+    resolve_latest_snapshot_on_or_before,
     validate_snapshot_hash,
 )
 
@@ -39,7 +42,7 @@ def snapshot() -> NdxWindowStartSnapshot:
 def test_loads_valid_snapshot(snapshot: NdxWindowStartSnapshot) -> None:
     """Committed snapshot loads with correct schema identity."""
     assert snapshot.source_url_template == SOURCE_URL_TEMPLATE
-    assert len(snapshot.snapshot_dates) == 4
+    assert len(snapshot.snapshot_dates) == 10
     for entry in snapshot.snapshot_dates:
         assert entry.date
         assert entry.count > 0
@@ -48,18 +51,35 @@ def test_loads_valid_snapshot(snapshot: NdxWindowStartSnapshot) -> None:
 
 
 def test_snapshot_dates_are_correct(snapshot: NdxWindowStartSnapshot) -> None:
-    """Required snapshot dates match the task specification."""
-    expected = {"2024-01-02", "2024-07-01", "2025-01-02", "2025-07-01"}
+    """Required snapshot dates span 2021-01-04 through 2025-07-01."""
+    expected = {
+        "2021-01-04", "2021-07-01",
+        "2022-01-03", "2022-07-01",
+        "2023-01-03", "2023-07-03",
+        "2024-01-02", "2024-07-01",
+        "2025-01-02", "2025-07-01",
+    }
     actual = {d.date for d in snapshot.snapshot_dates}
     assert actual == expected
 
 
-def test_committed_snapshots_are_distinct_and_have_expected_counts(
+def test_committed_snapshots_have_expected_counts_and_hashes(
     snapshot: NdxWindowStartSnapshot,
 ) -> None:
-    """Prevent a current/static list from masquerading as historical snapshots."""
+    """Each committed snapshot has the exact expected count and SHA-256 hash.
+
+    2021-01-04 and 2021-07-01 legitimately share the same hash (the index
+    membership was identical across both dates), so we assert per-date hashes
+    rather than requiring all distinct.
+    """
     counts = {entry.date: entry.count for entry in snapshot.snapshot_dates}
     assert counts == {
+        "2021-01-04": 102,
+        "2021-07-01": 102,
+        "2022-01-03": 101,
+        "2022-07-01": 102,
+        "2023-01-03": 101,
+        "2023-07-03": 101,
         "2024-01-02": 101,
         "2024-07-01": 102,
         "2025-01-02": 101,
@@ -70,6 +90,24 @@ def test_committed_snapshots_are_distinct_and_have_expected_counts(
         for entry in snapshot.snapshot_dates
     }
     assert hashes == {
+        "2021-01-04": (
+            "dfdb48d07e05b133c4973e6fab386901275603df261210fe101d75590e631899"
+        ),
+        "2021-07-01": (
+            "dfdb48d07e05b133c4973e6fab386901275603df261210fe101d75590e631899"
+        ),
+        "2022-01-03": (
+            "28d33393c66440f8f5ce870a0495d1c8110778f069e42281932e88dd7d1cc321"
+        ),
+        "2022-07-01": (
+            "e71e4763c3976c1c2e7c2c9707d1a5a00096908e65ba4cc5644e643cd5d321e4"
+        ),
+        "2023-01-03": (
+            "a35d2f40ba65a63951673f6fd1b944e43b9198ec870952409cbbca1c32dc5586"
+        ),
+        "2023-07-03": (
+            "5e35ad847bc39b41c21089d12eda48bf55926ef7681c129d04be52db7598c283"
+        ),
         "2024-01-02": (
             "1cc0ce082fcce3ac2380835b068606b7f0501e3d5a01fce4d13f34eecad82642"
         ),
@@ -83,6 +121,20 @@ def test_committed_snapshots_are_distinct_and_have_expected_counts(
             "785b04f69a405eed1daf7b2c5cdc260ee8808d723de1cc41038d0f1b080495af"
         ),
     }
+
+
+def test_2021_snapshots_share_hash_legitimately(
+    snapshot: NdxWindowStartSnapshot,
+) -> None:
+    """2021-01-04 and 2021-07-01 have the same hash — membership was identical."""
+    h1 = get_snapshot_by_date(snapshot, "2021-01-04").sha256_membership_hash
+    h2 = get_snapshot_by_date(snapshot, "2021-07-01").sha256_membership_hash
+    assert h1 == h2
+    # Dates and symbols are distinct entries even though hash matches
+    s1 = get_snapshot_by_date(snapshot, "2021-01-04")
+    s2 = get_snapshot_by_date(snapshot, "2021-07-01")
+    assert s1.date != s2.date
+    assert s1.symbols == s2.symbols  # same set, same order
 
 
 def test_symbols_are_sorted_unique_nonempty(snapshot: NdxWindowStartSnapshot) -> None:
@@ -282,12 +334,142 @@ def test_to_dict_round_trip(snapshot: NdxWindowStartSnapshot) -> None:
     """to_dict produces a JSON-serializable dict with all fields."""
     d = snapshot.to_dict()
     assert d["source_url_template"] == SOURCE_URL_TEMPLATE
-    assert len(d["snapshot_dates"]) == 4
+    assert len(d["snapshot_dates"]) == 10
     for entry in d["snapshot_dates"]:
         assert "date" in entry
         assert "symbols" in entry
         assert "count" in entry
         assert "sha256_membership_hash" in entry
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# resolve_latest_snapshot_on_or_before
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def test_resolve_latest_on_or_before_finds_match(
+    snapshot: NdxWindowStartSnapshot,
+) -> None:
+    """Resolves the latest snapshot on or before a given date."""
+    result = resolve_latest_snapshot_on_or_before(snapshot, "2023-06-15")
+    # Latest ≤ 2023-06-15 should be 2023-01-03
+    assert result.date == "2023-01-03"
+
+
+def test_resolve_latest_returns_exact_match(
+    snapshot: NdxWindowStartSnapshot,
+) -> None:
+    """When date exactly matches a snapshot, that snapshot is returned."""
+    result = resolve_latest_snapshot_on_or_before(snapshot, "2022-07-01")
+    assert result.date == "2022-07-01"
+
+
+def test_resolve_before_earliest_snapshot_raises(
+    snapshot: NdxWindowStartSnapshot,
+) -> None:
+    """Requesting a date before the earliest snapshot raises (fail-closed)."""
+    with pytest.raises(ValueError, match="No NDX snapshot on or before"):
+        resolve_latest_snapshot_on_or_before(snapshot, "2020-12-31")
+
+
+def test_resolve_never_uses_future_snapshot(
+    snapshot: NdxWindowStartSnapshot,
+) -> None:
+    """A date between snapshots resolves to the prior snapshot, never a future one."""
+    # 2023-05-15 is between 2023-01-03 and 2023-07-03
+    result = resolve_latest_snapshot_on_or_before(snapshot, "2023-05-15")
+    assert result.date == "2023-01-03"
+    # 2023-01-03 < 2023-07-03, proving we didn't use the future snapshot
+    assert pd.Timestamp(result.date) < pd.Timestamp("2023-07-03")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# filter_training_by_asof_membership
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def test_asof_filter_retains_members_at_snapshot_date(
+    snapshot: NdxWindowStartSnapshot,
+) -> None:
+    """Rows at a snapshot date retain only instruments in that snapshot."""
+    symbols_in_2021 = get_snapshot_by_date(snapshot, "2021-01-04").symbols
+    provider = set(symbols_in_2021)
+    # Build a frame with one date and mixed instruments
+    idx = pd.MultiIndex.from_tuples(
+        [
+            (pd.Timestamp("2021-03-15"), "AAPL"),
+            (pd.Timestamp("2021-03-15"), "MSFT"),
+            (pd.Timestamp("2021-03-15"), "ZZZZ_NOT_MEMBER"),
+        ],
+        names=["datetime", "instrument"],
+    )
+    frame = pd.DataFrame({"value": [1.0, 2.0, 3.0]}, index=idx)
+    filtered = filter_training_by_asof_membership(frame, snapshot, provider)
+    assert "ZZZZ_NOT_MEMBER" not in filtered.index.get_level_values("instrument")
+    assert "AAPL" in filtered.index.get_level_values("instrument")
+    assert "MSFT" in filtered.index.get_level_values("instrument")
+
+
+def test_asof_filter_drops_before_earliest_snapshot(
+    snapshot: NdxWindowStartSnapshot,
+) -> None:
+    """Dates before the earliest snapshot have all rows dropped."""
+    provider = set(get_snapshot_by_date(snapshot, "2021-01-04").symbols)
+    idx = pd.MultiIndex.from_tuples(
+        [(pd.Timestamp("2020-12-15"), "AAPL")],
+        names=["datetime", "instrument"],
+    )
+    frame = pd.DataFrame({"value": [1.0]}, index=idx)
+    filtered = filter_training_by_asof_membership(frame, snapshot, provider)
+    assert filtered.empty
+
+
+def test_asof_filter_never_uses_future_snapshot(
+    snapshot: NdxWindowStartSnapshot,
+) -> None:
+    """At date 2023-05-15, membership should be from 2023-01-03, not 2023-07-03."""
+    snap_202301 = get_snapshot_by_date(snapshot, "2023-01-03")
+    snap_202307 = get_snapshot_by_date(snapshot, "2023-07-03")
+    # Find a symbol that is in 2023-07-03 but NOT in 2023-01-03
+    sym_202301 = set(snap_202301.symbols)
+    sym_202307 = set(snap_202307.symbols)
+    new_in_jul = sym_202307 - sym_202301
+    if not new_in_jul:
+        pytest.skip("No symbol differs between 2023H1 and 2023H2 snapshots")
+    new_sym = sorted(new_in_jul)[0]
+    provider = sym_202301 | sym_202307
+
+    idx = pd.MultiIndex.from_tuples(
+        [(pd.Timestamp("2023-05-15"), new_sym)],
+        names=["datetime", "instrument"],
+    )
+    frame = pd.DataFrame({"value": [1.0]}, index=idx)
+    filtered = filter_training_by_asof_membership(frame, snapshot, provider)
+    # The symbol joined in 2023H2 — at 2023-05-15 it was NOT yet a member
+    assert filtered.empty, (
+        f"{new_sym} was in 2023H2 but not 2023H1; it should be filtered at "
+        f"2023-05-15 (as-of snapshot is 2023-01-03, not the future 2023-07-03)"
+    )
+
+
+def test_asof_filter_provider_excludes_unknown_symbols(
+    snapshot: NdxWindowStartSnapshot,
+) -> None:
+    """Symbols not in provider are excluded even if in snapshot."""
+    # Use a restricted provider that only has AAPL
+    tiny_provider = {"AAPL"}
+
+    idx = pd.MultiIndex.from_tuples(
+        [
+            (pd.Timestamp("2021-03-15"), "AAPL"),
+            (pd.Timestamp("2021-03-15"), "MSFT"),  # in snapshot but not provider
+        ],
+        names=["datetime", "instrument"],
+    )
+    frame = pd.DataFrame({"value": [1.0, 2.0]}, index=idx)
+    filtered = filter_training_by_asof_membership(frame, snapshot, tiny_provider)
+    instruments = set(filtered.index.get_level_values("instrument"))
+    assert instruments == {"AAPL"}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -387,3 +569,14 @@ class TestFetchNdxSymbols:
         monkeypatch.setattr(refresh_mod.requests, "post", _mock_post)
         with pytest.raises(ValueError, match="no tickers"):
             refresh_mod.fetch_ndx_symbols("2024-01-02")
+
+
+def test_refresh_defaults_cover_full_training_and_oos_history() -> None:
+    """A default refresh cannot silently discard the six training snapshots."""
+    import scripts.refresh_ndx_window_start_membership as refresh_mod
+
+    args = refresh_mod.build_parser().parse_args([])
+    assert args.dates == refresh_mod.DEFAULT_SNAPSHOT_DATES
+    assert len(args.dates) == 10
+    assert args.dates[0] == "2021-01-04"
+    assert args.dates[-1] == "2025-07-01"

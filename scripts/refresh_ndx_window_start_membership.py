@@ -30,6 +30,18 @@ SOURCE_URL_TEMPLATE = (
     "?id=NDX&tradeDate={date}T00%3A00%3A00.000&timeOfDay=SOD"
 )
 DEFAULT_OUT = Path("configs/research_universes/ndx_window_start_membership.json")
+DEFAULT_SNAPSHOT_DATES = [
+    "2021-01-04",
+    "2021-07-01",
+    "2022-01-03",
+    "2022-07-01",
+    "2023-01-03",
+    "2023-07-03",
+    "2024-01-02",
+    "2024-07-01",
+    "2025-01-02",
+    "2025-07-01",
+]
 
 
 def _sha256_symbols(symbols: list[str]) -> str:
@@ -117,7 +129,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dates",
         nargs="+",
-        default=["2024-01-02", "2024-07-01", "2025-01-02", "2025-07-01"],
+        default=DEFAULT_SNAPSHOT_DATES,
         help="Trade dates to fetch (ISO format, YYYY-MM-DD).",
     )
     parser.add_argument(

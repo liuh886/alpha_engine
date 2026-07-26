@@ -358,6 +358,59 @@ def _compute_score_diagnostics(
 # ══════════════════════════════════════════════════════════════════════════════
 
 
+def _slice_evaluation_frames(
+    features_all: pd.DataFrame,
+    raw_all: pd.DataFrame,
+    window: Any,
+    *,
+    train_symbols: list[str] | None = None,
+    test_symbols: list[str] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Slice train/test rows with explicit, independently checked universes."""
+
+    def select(
+        frame: pd.DataFrame,
+        *,
+        start: str,
+        end: str,
+        symbols: list[str] | None,
+    ) -> pd.DataFrame:
+        dates = frame.index.get_level_values("datetime")
+        mask = (dates >= pd.Timestamp(start)) & (dates <= pd.Timestamp(end))
+        if symbols is not None:
+            instruments = frame.index.get_level_values("instrument")
+            mask &= instruments.isin(set(symbols))
+        return frame.loc[mask].copy()
+
+    features_train = select(
+        features_all,
+        start=window.train_start,
+        end=window.train_end,
+        symbols=train_symbols,
+    )
+    returns_train = select(
+        raw_all,
+        start=window.train_start,
+        end=window.train_end,
+        symbols=train_symbols,
+    )
+    features_test = select(
+        features_all,
+        start=window.test_start,
+        end=window.test_end,
+        symbols=test_symbols,
+    )
+    returns_test = select(
+        raw_all,
+        start=window.test_start,
+        end=window.test_end,
+        symbols=test_symbols,
+    )
+    returns_train.attrs.update(raw_all.attrs)
+    returns_test.attrs.update(raw_all.attrs)
+    return features_train, returns_train, features_test, returns_test
+
+
 def _evaluate_window(
     window: Any,
     symbols: list[str],
@@ -365,18 +418,61 @@ def _evaluate_window(
     expression_columns: dict[str, str],
     feature_exprs: list[str],
     baseline_expr: str,
+    *,
+    train_symbols: list[str] | None = None,
+    asof_membership_snapshot: Any = None,
+    asof_provider_symbols: set[str] | None = None,
 ) -> dict[str, Any] | None:
-    """Train frozen ranker, generate blend score, evaluate candidate_v2."""
+    """Train frozen ranker, generate blend score, evaluate candidate_v2.
+
+    Parameters
+    ----------
+    window
+        Rolling research window with train/test boundaries.
+    symbols
+        OOS test symbols.  When *train_symbols* is ``None`` these are also
+        used for training (backward-compatible default).
+    train_symbols
+        Optional separate training symbols.  When provided, features and
+        raw returns are loaded for the union of *train_symbols* and *symbols*,
+        training rows are restricted to *train_symbols* instruments, and test
+        rows are restricted to *symbols* instruments.
+    asof_membership_snapshot
+        Optional :class:`~src.research.ndx_window_start_universe.NdxWindowStartSnapshot`
+        used to filter **training rows only** by as-of snapshot membership.
+        Ignored when *train_symbols* is ``None``.
+    asof_provider_symbols
+        Optional set of provider-covered symbols for the as-of membership
+        filter.  Ignored when *asof_membership_snapshot* is ``None``.
+    """
     from qlib.data import D
 
+    membership_args = (
+        asof_membership_snapshot is not None,
+        asof_provider_symbols is not None,
+    )
+    if membership_args[0] != membership_args[1]:
+        raise ValueError(
+            "asof_membership_snapshot and asof_provider_symbols must be provided together"
+        )
+    if membership_args[0] and train_symbols is None:
+        raise ValueError("as-of membership filtering requires explicit train_symbols")
+
+    use_split_symbols = train_symbols is not None
+
+    if use_split_symbols:
+        load_symbols = sorted(set(train_symbols) | set(symbols))
+    else:
+        load_symbols = list(symbols)
+
     features_all = D.features(
-        symbols,
+        load_symbols,
         feature_exprs,
         start_time=window.train_start,
         end_time=window.test_end,
     )
     raw_all = D.features(
-        symbols,
+        load_symbols,
         [CANONICAL_10D_RETURN_EXPR],
         start_time=window.train_start,
         end_time=window.test_end,
@@ -390,22 +486,38 @@ def _evaluate_window(
     raw_all.attrs["horizon"] = 10
     raw_all.attrs["expression"] = CANONICAL_10D_RETURN_EXPR
 
-    dates = features_all.index.get_level_values("datetime")
-    train_mask = (dates >= pd.Timestamp(window.train_start)) & (
-        dates <= pd.Timestamp(window.train_end)
-    )
-    test_mask = (dates >= pd.Timestamp(window.test_start)) & (
-        dates <= pd.Timestamp(window.test_end)
+    features_train_raw, returns_train_raw, features_test, returns_test = (
+        _slice_evaluation_frames(
+            features_all,
+            raw_all,
+            window,
+            train_symbols=train_symbols if use_split_symbols else None,
+            test_symbols=list(symbols) if use_split_symbols else None,
+        )
     )
 
+    # ── As-of membership filter (training rows only) ─────────────────────
+    if use_split_symbols and asof_membership_snapshot is not None and asof_provider_symbols is not None:
+        from src.research.ndx_window_start_universe import (
+            filter_training_by_asof_membership,
+        )
+        features_train_raw = filter_training_by_asof_membership(
+            features_train_raw,
+            asof_membership_snapshot,
+            asof_provider_symbols,
+        )
+        returns_train_raw = filter_training_by_asof_membership(
+            returns_train_raw,
+            asof_membership_snapshot,
+            asof_provider_symbols,
+        )
+
+    # ── Purge training tail (10D embargo) ────────────────────────────────
     features_train, returns_train = purge_training_tail(
-        features_all.loc[train_mask].copy(),
-        raw_all.loc[train_mask].copy(),
+        features_train_raw,
+        returns_train_raw,
         holding_days=10,
     )
-    features_test = features_all.loc[test_mask].copy()
-    returns_test = raw_all.loc[test_mask].copy()
-    returns_test.attrs.update(raw_all.attrs)
 
     # Validate — skip window if all-NaN or zero-filled
     ok, reason = validate_no_nan_inputs(
@@ -430,9 +542,9 @@ def _evaluate_window(
     )
     ranker_scores = predict_lgbm_daily_ranker(ranker, features_test.loc[:, cols])
 
-    # Load momentum baseline for OOS test period
+    # Load momentum baseline for OOS test period — test symbols only
     momentum = D.features(
-        symbols,
+        list(symbols),
         [baseline_expr],
         start_time=window.test_start,
         end_time=window.test_end,
