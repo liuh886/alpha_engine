@@ -49,6 +49,10 @@ This folder contains a mix of **supported entrypoints** (stable, documented) and
 - Falsify one predeclared binary-Top-3 LambdaRank objective on the
   horizon-contained 2026H1 holdout:
   `uv run python scripts/run_candidate_v2_top3_holdout_evidence.py --data-root <isolated-root> --provider-lineage-path <isolated-root>/data/provider_backfill_lineage.json`
+- Diagnose one predeclared 126-session QQQ-residual trend-quality signal,
+  skipping the most recent 10 sessions and retaining the frozen Top-3
+  portfolio:
+  `uv run python scripts/run_ndx_residual_trend_evidence.py --data-root <isolated-root>`
 
 ## Legacy
 

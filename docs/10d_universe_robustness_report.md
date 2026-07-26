@@ -501,5 +501,65 @@ uv run python scripts/run_candidate_v2_top3_holdout_evidence.py \
 
 Evidence is under `artifacts/evidence/candidate_v2_top3_holdout/`.
 
+### QQQ-residual trend-quality diagnosis
+
+The first post-ranker hypothesis changes the economic information set rather
+than another LightGBM or blend parameter. For every stock and signal date it:
+
+- uses 126 historical daily returns while skipping the most recent 10
+  sessions;
+- estimates rolling beta to QQQ;
+- divides the beta-residual mean return by residual volatility; and
+- keeps the predeclared orientation that higher residual trend quality is
+  better.
+
+It uses no future return, neutral fill, orientation search, winsorization, or
+parameter grid. Portfolio construction remains the frozen Top-3, 20 bps cost,
+and 50% exposure when QQQ's prior 20D trend is negative.
+
+The 2024H1--2025H2 windows had already been observed before this hypothesis,
+so the run is diagnostic and cannot promote a signal. Compared with the frozen
+candidate:
+
+| Complete-window metric | Frozen candidate_v2 | Residual trend quality |
+|---|---:|---:|
+| Portfolio total return | 3.84% | 19.17% |
+| QQQ total return | 70.81% | 70.81% |
+| Compounded relative excess | -39.21% | -30.23% |
+| Positive excess windows | 0/4 | 1/4 |
+| Mean Sharpe | .054 | .333 |
+| Worst drawdown | -29.64% | -27.55% |
+| Mean ICIR | .110 | .054 |
+| Mean Rank ICIR | .133 | .032 |
+| Daily 20% spread | .231% | .397% |
+| Exact Top-3 spread | .093% | 1.202% |
+| Positive Top-3 periods | 48.1% | 55.8% |
+
+The 2026H1 partial stress result was much stronger: +17.58% relative excess,
+-18.92% drawdown, +7.37% exact Top-3 spread, and positive spread in 8/11
+periods. All partial-stress comparisons beat the frozen model.
+
+That improvement is not cross-window stable. Both 2024 halves and 2025H2
+still underperform QQQ, 2025H1 draws down 27.55%, and the average ICIR falls
+below the frozen model. Selected beta also changes regime: approximately .23
+in 2024H2, 1.23 in 2025H1, and 1.75 in 2026H1. The factor is not a consistent
+low-beta or drawdown-control signal.
+
+Decision: `residual_trend_quality_not_supported`. The improved Top-3 tail is
+useful evidence that medium-term benchmark-residual information is richer than
+the rejected short-horizon ranker inputs, but it is not permission to blend or
+tune on these same windows. It may be challenged once on an independent market
+or future window with the 126/10 contract unchanged.
+`promotion_eligible=false` and `trade_ready=false`.
+
+Reproduction:
+
+```bash
+uv run python scripts/run_ndx_residual_trend_evidence.py \
+  --data-root D:/Documents/GitHub/alpha_engine_ndx_backfill_data
+```
+
+Evidence is under `artifacts/evidence/ndx_residual_trend_quality/`.
+
 A higher-grade delisted-price source can close the remaining 1-3 OOS names,
 but the current economic failure is already too large to support promotion.

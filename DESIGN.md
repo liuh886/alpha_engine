@@ -425,3 +425,26 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
   `promotion_eligible=false`, and `trade_ready=false`. Further gain-bin,
   truncation, or Top-K tuning in this model family is not an approved next
   step; a future hypothesis must change the economic information set or label.
+
+### 2026-07-26: Benchmark-Residual Trend-Quality Diagnosis
+
+- Phase 2 research validity: the first post-ranker hypothesis uses one frozen
+  transparent signal: 126 historical daily returns, a 10-session skip, rolling
+  QQQ beta removal, and residual mean divided by residual volatility. The
+  orientation is fixed and no parameter grid, future return, or neutral fill
+  is allowed.
+- Phase 2 result: versus frozen candidate_v2, complete-window total return
+  improves from 3.84% to 19.17%, compounded relative excess from -39.21% to
+  -30.23%, worst drawdown from -29.64% to -27.55%, and exact Top-3 spread from
+  .093% to 1.202%. The 2026H1 partial stress window produces +17.58% relative
+  excess and +7.37% Top-3 spread.
+- Phase 2 limitation: only one of four complete windows has positive excess,
+  mean ICIR falls to .054, the drawdown floor still fails, and selected beta
+  changes from strongly defensive to strongly aggressive across regimes.
+  The signal therefore cannot replace the rejected model.
+- Phase 3 governance: all evaluated windows were already observed, and the
+  partial window cannot compensate for cross-window failure. Decision:
+  `residual_trend_quality_not_supported`, `promotion_eligible=false`, and
+  `trade_ready=false`. The frozen 126/10 signal may receive one independent
+  market or future-window challenge; no same-window blend or parameter search
+  is approved.
