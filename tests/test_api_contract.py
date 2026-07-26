@@ -45,6 +45,19 @@ class TestHealthEndpoint:
         assert "version" in data
 
 
+class TestSystemDocsEndpoint:
+    """The API must expose the maintained guide, not retired agent docs."""
+
+    def test_main_doc_uses_current_repository_readme(self, client, auth_headers):
+        resp = client.get("/api/system/docs/main", headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["ok"] is True
+        assert data["path"] == "README.md"
+        assert "AlphaEngine" in data["content"]
+        assert "agents/developer" not in data["path"]
+
+
 class TestResearchEndpoints:
     """Test research pipeline endpoints."""
 
