@@ -448,3 +448,13 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
   `trade_ready=false`. The frozen 126/10 signal may receive one independent
   market or future-window challenge; no same-window blend or parameter search
   is approved.
+- Phase 2 independent-market result: the unchanged 126/10 formula was
+  challenged on the canonical CN/CSI300 contract with Top-15. Across four
+  complete windows it produced 25.10% versus CSI300's 39.13%, -10.08%
+  compounded relative excess, 2/4 positive windows, mean ICIR .056, -15.08%
+  worst drawdown, and 54% positive Top-15 periods.
+- Phase 3 final decision: the CN challenge also fails the excess-window,
+  compounded-excess, drawdown, and tail-consistency gates. Static current CN
+  membership additionally retains explicit survivorship bias. Decision:
+  `cn_residual_trend_quality_not_supported`; the 126/10 hypothesis is stopped
+  across both markets without tuning lookback, skip, orientation, or Top-K.

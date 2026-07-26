@@ -53,6 +53,9 @@ This folder contains a mix of **supported entrypoints** (stable, documented) and
   skipping the most recent 10 sessions and retaining the frozen Top-3
   portfolio:
   `uv run python scripts/run_ndx_residual_trend_evidence.py --data-root <isolated-root>`
+- Challenge the unchanged 126/10 residual-trend formula on the canonical
+  CN/CSI300 Top-15 contract using an isolated CN provider:
+  `uv run python scripts/run_cn_residual_trend_evidence.py --data-root <isolated-cn-root>`
 
 ## Legacy
 
