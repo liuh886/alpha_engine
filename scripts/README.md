@@ -27,7 +27,9 @@ This folder contains a mix of **supported entrypoints** (stable, documented) and
   - `python scripts/arena_settle.py --market {market} --arena-name "{arena}" --date latest`
 - **System Doctor** (P0 - Check environment health and metadata consistency.):
   - `python scripts/doctor.py`
-- **Agent Management Entry** (P0 - Start project management flow by agent identity.):
+- **Research Assistant Compatibility Entry** (P0 - Route a legacy role alias
+  into the unified `ResearchAssistant`; these aliases are not separate runtime
+  agents.):
   - `python scripts/agent_entry.py --agent {alpha|risk|governance|developer} [--market {cn|us|all}] [--topic "<topic>"]`
 
 ## Utilities (use as needed)

@@ -154,4 +154,4 @@ API 服务将运行在 `8000` 端口，前端已集成在容器内由 FastAPI �
 - Or kill the existing process: `lsof -i :8000` (Linux/macOS) / `netstat -ano | findstr :8000` (Windows).
 
 ---
-*更多细节请参考 `agents/developer/DESIGN.md` 和 `scripts/README.md`。*
+*更多细节请参考根目录 `DESIGN.md`、`AGENTS.md` 和 `scripts/README.md`。*
