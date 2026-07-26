@@ -561,5 +561,42 @@ uv run python scripts/run_ndx_residual_trend_evidence.py \
 
 Evidence is under `artifacts/evidence/ndx_residual_trend_quality/`.
 
+#### Independent CN challenge
+
+The unchanged 126/10 residual-trend formula was then challenged on the
+canonical CN spec with CSI300 as benchmark. Market-specific portfolio semantics
+use Top-15, while the 20 bps cost, 10-session cadence, and negative-benchmark
+trend exposure remain fixed. An isolated provider retained 201/223 curated
+stocks plus CSI300.
+
+| CN metric (2024H1--2025H2) | Result |
+|---|---:|
+| Portfolio total return | 25.10% |
+| CSI300 total return | 39.13% |
+| Compounded relative excess | -10.08% |
+| Positive excess windows | 2/4 |
+| Mean Sharpe | .998 |
+| Worst drawdown | -15.08% |
+| Mean ICIR | .056 |
+| Mean Rank ICIR | -.006 |
+| Daily 20% spread | .038% |
+| Exact Top-15 spread | .073% |
+| Positive Top-15 periods | 54.0% |
+
+2024H1 and 2025H2 are positive, while 2024H2 and 2025H1 underperform. The
+drawdown floor misses by eight basis points and the 55% period-consistency gate
+misses by one percentage point, but the more important failures are negative
+compounded excess and only two positive windows. These thresholds were not
+relaxed after observation.
+
+The CN universe is static current membership as of 2026-07-11 and carries
+explicit survivorship bias, so even a pass would have remained research-only.
+The observed result instead confirms
+`cn_residual_trend_quality_not_supported`. The 126/10 hypothesis is now stopped
+across both markets; no lookback, skip, orientation, or Top-K tuning is
+approved. `promotion_eligible=false` and `trade_ready=false`.
+
+Evidence is under `artifacts/evidence/cn_residual_trend_quality/`.
+
 A higher-grade delisted-price source can close the remaining 1-3 OOS names,
 but the current economic failure is already too large to support promotion.
