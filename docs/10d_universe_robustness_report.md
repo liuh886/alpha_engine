@@ -317,9 +317,18 @@ missing NDX identities:
   `ALXN`, `ANSS`, `ATVI`, `CERN`, `MXIM`, `SGEN`, `SPLK`, `WBA`, and `XLNX`.
 
 The operational provider was not mutated. The isolated provider identity is
-`9e4705965df9ee428947ed4bb917d2bdc9ffdba9add82fbea0728ae5aadeaeea`.
+`6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407`.
 Its complete source/alias/unavailable lineage is copied into the evidence as
 `provider_backfill_lineage.json` and bound to that provider identity.
+
+The first 2026 holdout attempt exposed a mixed adjusted/unadjusted `KLAC`
+history around its 10-for-1 split. It created an impossible +943% canonical
+10D return and was discarded before interpretation. The provider builder now
+scans every seeded CSV for one-session adjusted-close ratios outside
+`[1/3, 3]`, refreshes an affected symbol from adjusted Yahoo history, records
+both source hashes and the anomaly dates, and fails closed if a refreshed
+series remains discontinuous. `KLAC` was the only affected symbol; a full
+166-file rescan found no remaining adjustment discontinuity.
 
 Training coverage also now follows the actual semiannual membership interval
 for each symbol. A constituent that leaves NDX before `train_end` needs data
@@ -333,23 +342,23 @@ then produced:
 
 | Metric | Static-100 cohort | Initial NDX provider | Backfilled NDX provider |
 |---|---:|---:|---:|
-| Portfolio total return | 372.61% | 36.82% | -9.76% |
+| Portfolio total return | 372.61% | 36.82% | 3.84% |
 | QQQ total return | 70.81% | 70.81% | 70.81% |
-| Compounded relative excess | 176.68% | -19.90% | -47.17% |
-| Mean Sharpe | 1.51 | .627 | -.291 |
-| Worst drawdown | -22.39% | -21.01% | -23.67% |
-| Mean ICIR | .223 | .190 | .103 |
-| Mean Rank ICIR | .155 | .155 | .126 |
+| Compounded relative excess | 176.68% | -19.90% | -39.21% |
+| Mean Sharpe | 1.51 | .627 | .054 |
+| Worst drawdown | -22.39% | -21.01% | -29.64% |
+| Mean ICIR | .223 | .190 | .110 |
+| Mean Rank ICIR | .155 | .155 | .133 |
 | Positive excess windows | 4/4 | 1/4 | 0/4 |
 
 The final per-window evidence is:
 
 | Window | Train symbols | Test/official | Relative excess | Sharpe | Max drawdown | ICIR | Rank ICIR |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| 2024H1 | 114 | 98/101 | -34.70% | -2.33 | -21.10% | -.094 | -.025 |
+| 2024H1 | 114 | 98/101 | -30.50% | -1.36 | -17.73% | -.111 | -.045 |
 | 2024H2 | 120 | 100/102 | -3.06% | .56 | -12.91% | .070 | -.008 |
-| 2025H1 | 123 | 100/101 | -10.10% | .10 | -23.67% | .106 | .081 |
-| 2025H2 | 127 | 100/101 | -7.17% | .50 | -18.04% | .328 | .456 |
+| 2025H1 | 123 | 100/101 | -7.23% | .30 | -29.64% | .124 | .099 |
+| 2025H2 | 127 | 100/101 | -2.73% | .71 | -17.26% | .358 | .486 |
 
 All economic gates fail except the three average score diagnostics, which stay
 slightly positive. Positive ICIR does not translate into Top-3 excess return:
@@ -385,14 +394,14 @@ Top-K/Bottom-K from each factor before checking raw-return availability, and
 measures both broad daily IC and the exact 13 rebalance dates per window. It
 does not train a model, search a parameter, or select a deployable orientation.
 
-The candidate's broad daily Rank ICIR is positive at .126 and its daily
-Top-20%-minus-Bottom-20% spread is +.203%. That information does not survive
+The candidate's broad daily Rank ICIR is positive at .133 and its daily
+Top-20%-minus-Bottom-20% spread is +.231%. That information does not survive
 portfolio concentration:
 
-- exact rebalance Top-3-minus-Bottom-3 spread: -.169%;
-- positive Top-3 spread periods: 44.2%;
-- selected Top-3 mean realized percentile: .478; and
-- compounded relative excess versus QQQ: -47.17%.
+- exact rebalance Top-3-minus-Bottom-3 spread: +.093%;
+- positive Top-3 spread periods: 48.1%;
+- selected Top-3 mean realized percentile: .492; and
+- compounded relative excess versus QQQ: -39.21%.
 
 The seven frozen inputs show the same instability. The orientation below is
 the descriptively better direction on these already-observed OOS windows, so
@@ -426,10 +435,8 @@ The diagnosis also identifies a structural target/portfolio mismatch:
   [ranking parameters](https://lightgbm.readthedocs.io/en/stable/Parameters.html#lambdarank_truncation_level).
 
 This explains how the model can learn a weak broad ordering without learning
-the Top-3 tail it is asked to trade. It is a structural hypothesis, not
-permission to grid-search gain bins or Top-K on the same evidence. The next
-valid model experiment is one predeclared Top-3-aligned objective evaluated on
-untouched windows or an independent market/universe.
+the Top-3 tail it is asked to trade. It was a structural hypothesis, not
+permission to grid-search gain bins or Top-K on the same evidence.
 
 Reproduction:
 
@@ -441,6 +448,58 @@ uv run python scripts/run_candidate_v2_ndx_factor_diagnostics.py \
 Evidence is under
 `artifacts/evidence/candidate_v2_ndx_factor_diagnostics/`.
 `promotion_eligible=false` and `trade_ready=false`.
+
+### Predeclared Top-3-aligned holdout
+
+One structural variant was declared before viewing the 2026H1 result:
+
+- binary daily relevance with exactly three positive labels per date;
+- LambdaRank `label_gain=[0, 1]`, `eval_at=[3]`, and
+  `lambdarank_truncation_level=6`;
+- the same features, trees, rounds, 50/50 inverted-momentum blend, Top-3
+  portfolio, 20 bps cost, embargo, and benchmark regime control as the frozen
+  model.
+
+The isolated provider retained all 101 official NDX members at the 2026-01-02
+snapshot. Canonical 10D returns restricted the partial holdout to 109 sessions
+from 2026-01-02 through 2026-06-09 and 11 non-overlapping rebalance periods.
+This is a single-window falsification test and cannot promote a model.
+
+| Metric | Frozen gain-5 model | Top-3-aligned model | Aligned minus frozen |
+|---|---:|---:|---:|
+| Portfolio return | -22.87% | -16.66% | +6.21 pp |
+| QQQ return | 16.98% | 16.98% | — |
+| Relative excess | -34.07% | -28.76% | +5.31 pp |
+| Sharpe | -1.24 | -.74 | +.51 |
+| Max drawdown | -24.64% | -23.37% | +1.28 pp |
+| ICIR | -.134 | -.003 | +.132 |
+| Rank ICIR | -.171 | -.080 | +.091 |
+| Daily 20% spread | -.854% | -.126% | +.728 pp |
+| Exact Top-3 spread | -4.165% | -5.015% | -.849 pp |
+| Positive Top-3 periods | 3/11 | 3/11 | unchanged |
+| Selected realized percentile | .423 | .456 | +.034 |
+
+The aligned model reduced the loss and improved broad diagnostics, but the
+actual selection tail worsened: Top-3 spread became more negative, only 3/11
+periods were positive, drawdown remained above the -15% floor, and both
+variants materially underperformed QQQ. The predeclared checks therefore
+produce `top3_alignment_not_supported_on_holdout`.
+
+This refutes further gain-bin, truncation, or Top-K objective tuning within
+this model family. Any next model experiment must change the economic
+information set or label hypothesis and receive new independent evidence.
+`promotion_eligible=false` and `trade_ready=false`.
+
+Reproduction:
+
+```bash
+uv run python scripts/run_candidate_v2_top3_holdout_evidence.py \
+  --data-root D:/Documents/GitHub/alpha_engine_ndx_backfill_data \
+  --provider-lineage-path \
+    D:/Documents/GitHub/alpha_engine_ndx_backfill_data/data/provider_backfill_lineage.json
+```
+
+Evidence is under `artifacts/evidence/candidate_v2_top3_holdout/`.
 
 A higher-grade delisted-price source can close the remaining 1-3 OOS names,
 but the current economic failure is already too large to support promotion.

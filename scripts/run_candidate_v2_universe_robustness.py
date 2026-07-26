@@ -29,9 +29,13 @@ import numpy as np
 import pandas as pd
 
 from src.core.metrics import compute_ic_series
-from src.research.daily_ranker import prepare_ranker_frame
+from src.research.daily_ranker import (
+    prepare_ranker_frame,
+    prepare_topk_ranker_frame,
+)
 from src.research.daily_ranker_model import (
     fit_lgbm_daily_ranker,
+    fit_lgbm_daily_topk_ranker,
     predict_lgbm_daily_ranker,
 )
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR
@@ -88,6 +92,12 @@ FROZEN_CALIBRATION = RankerCalibration(
 )
 FROZEN_BLEND_WEIGHT = BlendWeight(ranker_weight=0.50, momentum_weight=0.50)
 FROZEN_RANKER_NAME = "lgbm:daily_ranker:momentum_volatility_volume:gain5_round100_leaves31_leaf10_lr0.05"
+RANKER_MODE_FROZEN_GAIN5 = "frozen_gain5"
+RANKER_MODE_TOP3_ALIGNED = "top3_binary_trunc6"
+TOP3_ALIGNED_RANKER_NAME = (
+    "lgbm:daily_top3_ranker:momentum_volatility_volume:"
+    "binary_relevance_trunc6_round100_leaves31_leaf10_lr0.05"
+)
 FROZEN_COST_BPS = 20.0
 FROZEN_TOP_N = 3
 FROZEN_EXPOSURE = 0.5
@@ -133,6 +143,18 @@ def _candidate_id() -> str:
         "blend:ranker_momentum:momentum_volatility_volume:"
         "gain5_round100_leaves31_leaf10_lr0.05:ranker0.5_momentum0.5"
     )
+
+
+def _candidate_id_for_ranker_mode(ranker_mode: str) -> str:
+    if ranker_mode == RANKER_MODE_FROZEN_GAIN5:
+        return _candidate_id()
+    if ranker_mode == RANKER_MODE_TOP3_ALIGNED:
+        return (
+            "blend:top3_ranker_momentum:momentum_volatility_volume:"
+            "binary_relevance_trunc6_round100_leaves31_leaf10_lr0.05:"
+            "ranker0.5_momentum0.5"
+        )
+    raise ValueError(f"unsupported ranker_mode: {ranker_mode}")
 
 
 def _exclude_benchmark_symbols(symbols: tuple[str, ...]) -> tuple[str, ...]:
@@ -422,6 +444,7 @@ def _evaluate_window(
     train_symbols: list[str] | None = None,
     asof_membership_snapshot: Any = None,
     asof_provider_symbols: set[str] | None = None,
+    ranker_mode: str = RANKER_MODE_FROZEN_GAIN5,
 ) -> dict[str, Any] | None:
     """Train frozen ranker, generate blend score, evaluate candidate_v2.
 
@@ -444,6 +467,9 @@ def _evaluate_window(
     asof_provider_symbols
         Optional set of provider-covered symbols for the as-of membership
         filter.  Ignored when *asof_membership_snapshot* is ``None``.
+    ranker_mode
+        Either the unchanged gain5 ranker or the single predeclared Top-3
+        binary-relevance/truncation-6 structural variant.
     """
     from qlib.data import D
 
@@ -457,6 +483,7 @@ def _evaluate_window(
         )
     if membership_args[0] and train_symbols is None:
         raise ValueError("as-of membership filtering requires explicit train_symbols")
+    candidate_id = _candidate_id_for_ranker_mode(ranker_mode)
 
     use_split_symbols = train_symbols is not None
 
@@ -528,18 +555,50 @@ def _evaluate_window(
 
     # Train frozen ranker with expanding history
     cols = [expression_columns[expr] for expr in feature_exprs]
-    x_rank, y_rank, groups = prepare_ranker_frame(
-        features_train.loc[:, cols],
-        returns_train,
-    )
-    ranker = fit_lgbm_daily_ranker(
-        x_rank,
-        y_rank,
-        groups,
-        n_gain_bins=FROZEN_CALIBRATION.n_gain_bins,
-        params=FROZEN_CALIBRATION.params(),
-        num_boost_round=FROZEN_CALIBRATION.num_boost_round,
-    )
+    if ranker_mode == RANKER_MODE_FROZEN_GAIN5:
+        x_rank, y_rank, groups = prepare_ranker_frame(
+            features_train.loc[:, cols],
+            returns_train,
+        )
+        ranker = fit_lgbm_daily_ranker(
+            x_rank,
+            y_rank,
+            groups,
+            n_gain_bins=FROZEN_CALIBRATION.n_gain_bins,
+            params=FROZEN_CALIBRATION.params(),
+            num_boost_round=FROZEN_CALIBRATION.num_boost_round,
+        )
+        ranker_contract = {
+            "mode": RANKER_MODE_FROZEN_GAIN5,
+            "ranker_name": FROZEN_RANKER_NAME,
+            "target": "processed_daily_percentile_rank",
+            "n_gain_bins": FROZEN_CALIBRATION.n_gain_bins,
+            "lambdarank_truncation_level": 30,
+            "truncation_level_source": "lightgbm_default",
+        }
+    else:
+        x_rank, y_rank, groups = prepare_topk_ranker_frame(
+            features_train.loc[:, cols],
+            returns_train,
+            top_k=FROZEN_TOP_N,
+        )
+        ranker = fit_lgbm_daily_topk_ranker(
+            x_rank,
+            y_rank,
+            groups,
+            top_k=FROZEN_TOP_N,
+            params=FROZEN_CALIBRATION.params(),
+            num_boost_round=FROZEN_CALIBRATION.num_boost_round,
+        )
+        ranker_contract = {
+            "mode": RANKER_MODE_TOP3_ALIGNED,
+            "ranker_name": TOP3_ALIGNED_RANKER_NAME,
+            "target": "processed_daily_topk_relevance_target",
+            "top_k": FROZEN_TOP_N,
+            "n_gain_bins": 2,
+            "lambdarank_truncation_level": FROZEN_TOP_N + 3,
+            "truncation_level_source": "predeclared_topk_plus_3",
+        }
     ranker_scores = predict_lgbm_daily_ranker(ranker, features_test.loc[:, cols])
 
     # Load momentum baseline for OOS test period — test symbols only
@@ -612,7 +671,8 @@ def _evaluate_window(
 
     return {
         "window": window.to_dict(),
-        "candidate": _candidate_id(),
+        "candidate": candidate_id,
+        "ranker_contract": ranker_contract,
         "candidate_v2": variant_payload,
         "score_diagnostics": diagnostics,
         "selection_tail_diagnostics": tail_diag,

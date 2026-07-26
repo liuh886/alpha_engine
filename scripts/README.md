@@ -38,11 +38,17 @@ This folder contains a mix of **supported entrypoints** (stable, documented) and
 - Static Site Export: `python scripts/export_static_site_data.py --market all --output site/data`
 - Build an isolated NDX research provider without mutating operational data:
   `uv run python scripts/build_ndx_window_start_provider.py --base-data-root . --output-data-root <isolated-root>`
+  The builder verifies copied source hashes, fails closed on split-like
+  adjusted-close discontinuities, and records any full-history refresh in its
+  provider lineage.
 - Re-run the frozen candidate_v2 on official NDX window-start membership:
   `uv run python scripts/run_candidate_v2_ndx_window_start_evidence.py --data-root <isolated-root> --provider-lineage-path <isolated-root>/data/provider_backfill_lineage.json --first-test-year 2024 --last-test-year 2026`
 - Diagnose broad IC versus exact Top-3 tails for the seven frozen candidate_v2
   inputs without training or tuning:
   `uv run python scripts/run_candidate_v2_ndx_factor_diagnostics.py --data-root <isolated-root>`
+- Falsify one predeclared binary-Top-3 LambdaRank objective on the
+  horizon-contained 2026H1 holdout:
+  `uv run python scripts/run_candidate_v2_top3_holdout_evidence.py --data-root <isolated-root> --provider-lineage-path <isolated-root>/data/provider_backfill_lineage.json`
 
 ## Legacy
 

@@ -386,18 +386,42 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
 - Phase 1 data validity: an isolated US provider backfilled 34 historically
   required NDX symbols without mutating the operational provider. OOS coverage
   rose from 86-93 symbols to 98-100 symbols; unavailable acquired or delisted
-  names remain explicit, so coverage still fails closed as partial.
+  names remain explicit, so coverage still fails closed as partial. A
+  mixed adjusted/unadjusted `KLAC` history was detected before holdout
+  interpretation; the builder now scans seeded close series for split-like
+  discontinuities, refreshes the full affected history, records both hashes,
+  and fails closed if the anomaly remains. The repaired isolated-provider
+  identity is
+  `6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407`.
 - Phase 2 research validity: the unchanged candidate_v2 deteriorated under the
-  broader universe. Compounded relative excess fell from `-19.90%` to
-  `-47.17%`, positive-excess windows fell from one to zero, mean ICIR fell from
-  `0.1899` to `0.1025`, and worst drawdown worsened from `-21.01%` to `-23.67%`.
+  broader universe. Repaired authoritative evidence reports `-39.21%`
+  compounded relative excess, zero positive-excess windows, mean ICIR `0.1103`,
+  and `-29.64%` worst drawdown.
   Training coverage is now checked only over each symbol's actual semiannual
   membership interval, so ticker exits are neither discarded nor rescued by
   future bars. This is evidence of prior coverage optimism, not a promotion.
 - Phase 3 governance: `promotion_eligible=false` and `trade_ready=false` remain
-  mandatory. The next model work must address cross-sectional robustness rather
-  than tune the same blend on a narrow survivor-heavy provider.
+  mandatory.
 - Phase 4 integration: WebUI's main documentation endpoint now serves the
   maintained root `README.md`. Unreferenced retired-agent plans and duplicate
   architecture documents were removed; current `README.md`, `DESIGN.md`,
   `AGENTS.md`, `evaluation.md`, and `docs/adr/` remain authoritative.
+
+### 2026-07-26: Top-3 Objective Alignment Falsification
+
+- Phase 2 research validity: one predeclared structural variant replaced the
+  five-bin daily target with exact binary Top-3 relevance and set LambdaRank
+  truncation to six. All other model, blend, portfolio, cost, embargo, and
+  benchmark controls stayed frozen.
+- Phase 1 data validity: the official 2026-01-02 NDX snapshot retained 101/101
+  symbols. Horizon-contained raw 10D returns yielded 109 sessions and 11
+  rebalance periods through 2026-06-09.
+- Phase 2 result: versus the frozen model, the aligned model improved relative
+  excess by 5.31 percentage points and drawdown by 1.28 points, but still lost
+  28.76% relative to QQQ, drew down 23.37%, and worsened exact Top-3 spread
+  from -4.17% to -5.01%. Only 3/11 Top-3 periods were positive.
+- Phase 3 governance: the single-window decision is
+  `top3_alignment_not_supported_on_holdout`. It is falsification-only,
+  `promotion_eligible=false`, and `trade_ready=false`. Further gain-bin,
+  truncation, or Top-K tuning in this model family is not an approved next
+  step; a future hypothesis must change the economic information set or label.

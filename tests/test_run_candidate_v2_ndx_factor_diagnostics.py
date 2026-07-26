@@ -101,6 +101,7 @@ def test_aggregate_exposes_broad_ic_top3_disconnect_without_promotion() -> None:
     aggregate = _aggregate_diagnostics(reports, source_aggregate=source)
 
     assert aggregate["diagnosis"]["broad_ic_tail_disconnect"] is True
+    assert aggregate["diagnosis"]["top3_economically_consistent"] is False
     assert aggregate["diagnosis"]["conclusion"] == (
         "broad_cross_section_signal_does_not_survive_top3_concentration"
     )

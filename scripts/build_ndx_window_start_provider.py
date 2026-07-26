@@ -36,6 +36,8 @@ DEFAULT_START = "2021-04-05"
 DEFAULT_END = "2026-06-24"
 ALLOWED_IDENTITY_ALIASES = {"FB": "META"}
 REQUIRED_BAR_COLUMNS = ("date", "open", "high", "low", "close", "volume")
+MIN_ADJUSTED_CLOSE_RATIO = 1.0 / 3.0
+MAX_ADJUSTED_CLOSE_RATIO = 3.0
 
 
 def _sha256_file(path: Path) -> str:
@@ -135,6 +137,57 @@ def _clean_bars(frame: pd.DataFrame, *, start: str, end: str) -> pd.DataFrame:
     return clean[
         ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
     ].reset_index(drop=True)
+
+
+def _adjusted_close_discontinuities(
+    frame: pd.DataFrame,
+) -> list[dict[str, Any]]:
+    """Find split-like discontinuities that must not exist in adjusted bars."""
+
+    if "date" not in frame.columns or "close" not in frame.columns:
+        raise ValueError("adjustment scan requires date and close columns")
+    scan = frame.loc[:, ["date", "close"]].copy()
+    scan["date"] = pd.to_datetime(scan["date"], errors="coerce").dt.tz_localize(
+        None
+    )
+    scan["close"] = pd.to_numeric(scan["close"], errors="coerce")
+    scan = (
+        scan.dropna()
+        .drop_duplicates("date", keep="last")
+        .sort_values("date")
+        .reset_index(drop=True)
+    )
+    if scan.empty:
+        raise ValueError("adjustment scan has no finite close observations")
+    ratios = scan["close"] / scan["close"].shift(1)
+    bad = ratios.lt(MIN_ADJUSTED_CLOSE_RATIO) | ratios.gt(
+        MAX_ADJUSTED_CLOSE_RATIO
+    )
+    rows: list[dict[str, Any]] = []
+    for index in bad[bad].index:
+        previous = scan.loc[index - 1]
+        current = scan.loc[index]
+        rows.append(
+            {
+                "previous_date": previous["date"].strftime("%Y-%m-%d"),
+                "previous_close": float(previous["close"]),
+                "date": current["date"].strftime("%Y-%m-%d"),
+                "close": float(current["close"]),
+                "close_ratio": float(ratios.loc[index]),
+            }
+        )
+    return rows
+
+
+def _scan_seeded_adjustment_anomalies(
+    output_csv_dir: Path,
+) -> dict[str, list[dict[str, Any]]]:
+    anomalies: dict[str, list[dict[str, Any]]] = {}
+    for path in sorted(output_csv_dir.glob("*.csv")):
+        rows = _adjusted_close_discontinuities(pd.read_csv(path))
+        if rows:
+            anomalies[path.stem.upper()] = rows
+    return anomalies
 
 
 def _assert_usable_from_first_membership(
@@ -239,7 +292,53 @@ def build_ndx_window_start_provider(
     adapter = YFinanceAdapter()
     downloaded: list[dict[str, Any]] = []
     aliased: list[dict[str, Any]] = []
+    refreshed_adjustment_anomalies: list[dict[str, Any]] = []
     unavailable: list[dict[str, str]] = []
+
+    seeded_anomalies = _scan_seeded_adjustment_anomalies(output_csv_dir)
+    for symbol, detected in sorted(seeded_anomalies.items()):
+        source_path = output_csv_dir / f"{symbol}.csv"
+        original_hash = _sha256_file(source_path)
+        try:
+            result = adapter.fetch_daily_bars(
+                FetchRequest(
+                    symbol=symbol,
+                    market="us",
+                    start=start,
+                    end=end,
+                )
+            )
+            frame = _clean_bars(result.df, start=start, end=end)
+            remaining = _adjusted_close_discontinuities(frame)
+            if remaining:
+                raise ValueError(
+                    "fresh adjusted history still contains split-like "
+                    f"discontinuities: {remaining}"
+                )
+            if symbol in _required_symbols(snapshot):
+                _assert_usable_from_first_membership(
+                    frame,
+                    snapshot=snapshot,
+                    symbol=symbol,
+                    requested_start=start,
+                )
+            _write_csv(frame, source_path)
+            refreshed_adjustment_anomalies.append(
+                {
+                    "symbol": symbol,
+                    "source": result.provider,
+                    "detected_discontinuities": detected,
+                    "original_sha256": original_hash,
+                    "refreshed_sha256": _sha256_file(source_path),
+                    "first_date": frame["date"].min().strftime("%Y-%m-%d"),
+                    "last_date": frame["date"].max().strftime("%Y-%m-%d"),
+                    "rows": int(len(frame)),
+                }
+            )
+        except (DataFetchError, ValueError) as exc:
+            raise ValueError(
+                f"cannot repair adjusted-close discontinuity for {symbol}: {exc}"
+            ) from exc
 
     for symbol in missing_symbols:
         alias_source = ALLOWED_IDENTITY_ALIASES.get(symbol)
@@ -337,6 +436,9 @@ def build_ndx_window_start_provider(
         "missing_from_base_provider": missing_symbols,
         "downloaded": downloaded,
         "aliased": aliased,
+        "refreshed_adjustment_anomalies": (
+            refreshed_adjustment_anomalies
+        ),
         "unavailable": unavailable,
         "membership_coverage": coverage,
         "policies": {
@@ -344,6 +446,7 @@ def build_ndx_window_start_provider(
             "recycled_symbols_downloaded_directly": False,
             "identity_aliases_allowlisted": ALLOWED_IDENTITY_ALIASES,
             "unavailable_symbols_fail_closed": True,
+            "adjusted_close_discontinuities_fail_closed": True,
         },
     }
     lineage_path = output_data_dir / "provider_backfill_lineage.json"
@@ -358,6 +461,9 @@ def build_ndx_window_start_provider(
         "lineage_path": str(lineage_path),
         "downloaded_count": len(downloaded),
         "aliased_count": len(aliased),
+        "refreshed_adjustment_count": len(
+            refreshed_adjustment_anomalies
+        ),
         "unavailable_count": len(unavailable),
         "lineage": lineage,
     }
@@ -393,6 +499,7 @@ def main() -> int:
             "lineage_path",
             "downloaded_count",
             "aliased_count",
+            "refreshed_adjustment_count",
             "unavailable_count",
         )
     }
