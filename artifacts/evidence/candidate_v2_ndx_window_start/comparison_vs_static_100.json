@@ -1,18 +1,18 @@
 {
   "absolute_deltas": {
-    "compounded_relative_excess_return": -1.9658,
-    "mean_ic_ir": -0.0331,
-    "mean_rank_ic_ir": 0.0005,
-    "mean_sharpe": -0.8825,
-    "worst_drawdown": 0.0138
+    "compounded_relative_excess_return": -2.2385,
+    "mean_ic_ir": -0.1205,
+    "mean_rank_ic_ir": -0.0289,
+    "mean_sharpe": -1.8005,
+    "worst_drawdown": -0.0128
   },
   "comparison_label": "NDX window-start PIT universe vs static-100 universe",
   "ndx_window_start_values": {
-    "compounded_relative_excess_return": -0.19902605671129747,
-    "mean_ic_ir": 0.1898763570566553,
-    "mean_rank_ic_ir": 0.1554542463955106,
-    "mean_sharpe": 0.6274707305102154,
-    "worst_drawdown": -0.2100546422205074
+    "compounded_relative_excess_return": -0.47170526131131796,
+    "mean_ic_ir": 0.1025350523006004,
+    "mean_rank_ic_ir": 0.12613555011644487,
+    "mean_sharpe": -0.29052283635965975,
+    "worst_drawdown": -0.23666408571165842
   },
   "note": "Comparison is informational only.  The static-100 cohort uses current Qlib instrument listings (survivorship-biased), while the NDX window-start cohort uses committed Nasdaq-100 membership at each window start.  Differences reflect both membership coverage and point-in-time methodology.",
   "schema_version": "1.0",

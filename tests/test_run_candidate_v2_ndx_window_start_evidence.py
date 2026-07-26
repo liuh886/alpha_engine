@@ -2,16 +2,28 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
+from scripts.build_ndx_window_start_provider import (
+    _alias_end_date,
+    _assert_usable_from_first_membership,
+    _clean_bars,
+    _required_symbols,
+    _validate_isolated_roots,
+    build_parser as build_provider_parser,
+)
 from scripts.run_candidate_v2_ndx_window_start_evidence import (
     MIN_WINDOW_SYMBOLS,
     WINDOW_SNAPSHOT_MAP,
     _aggregate_ndx_windows,
     _build_comparison_vs_static_100,
     _evaluate_ndx_window,
+    _filter_training_union_by_membership_coverage,
+    _load_provider_lineage,
     build_parser,
 )
 from src.research.ndx_window_start_universe import (
@@ -188,6 +200,96 @@ def test_aligned_start_is_50th_earliest_not_latest(
         ("2021-01-01", "2023-12-31"),
         ("2021-04-05", "2023-12-31"),
     ]
+
+
+def test_training_coverage_ends_at_membership_exit() -> None:
+    """A former constituent needs bars only while its snapshot is active."""
+    from src.research.ndx_window_start_universe import (
+        NdxWindowStartSnapshot,
+        SOURCE_URL_TEMPLATE,
+    )
+
+    entries = []
+    for date_str, symbols in [
+        ("2021-01-04", ["FORMER", "STAYER"]),
+        ("2021-07-01", ["FORMER", "STAYER"]),
+        ("2022-01-03", ["STAYER"]),
+        ("2022-07-01", ["STAYER"]),
+    ]:
+        entries.append(
+            NdxSnapshotDate(
+                date=date_str,
+                symbols=tuple(sorted(symbols)),
+                count=len(symbols),
+                sha256_membership_hash=compute_membership_hash(symbols),
+            )
+        )
+    snapshot = NdxWindowStartSnapshot(
+        source_url_template=SOURCE_URL_TEMPLATE,
+        snapshot_dates=tuple(entries),
+        raw={},
+    )
+    result = _filter_training_union_by_membership_coverage(
+        ["FORMER", "STAYER"],
+        snapshot=snapshot,
+        aligned_train_start="2021-04-05",
+        train_end="2022-12-31",
+        date_coverage_data={
+            "FORMER": {
+                "first_valid_date": "2021-04-05",
+                "last_valid_date": "2021-12-31",
+                "observations": 190,
+            },
+            "STAYER": {
+                "first_valid_date": "2021-04-05",
+                "last_valid_date": "2022-12-30",
+                "observations": 440,
+            },
+        },
+        min_symbols=2,
+    )
+    assert result["skipped"] is False
+    assert result["retained_symbols"] == ["FORMER", "STAYER"]
+    assert result["required_bounds"]["FORMER"]["required_end"] == "2022-01-02"
+    assert result["required_bounds"]["STAYER"]["required_end"] == "2022-12-31"
+
+
+def test_training_coverage_drops_symbol_missing_during_membership() -> None:
+    """Early data loss still fails closed even if a ticker later leaves."""
+    from src.research.ndx_window_start_universe import (
+        NdxWindowStartSnapshot,
+        SOURCE_URL_TEMPLATE,
+    )
+
+    symbols = ["FORMER"]
+    entry = NdxSnapshotDate(
+        date="2021-01-04",
+        symbols=tuple(symbols),
+        count=1,
+        sha256_membership_hash=compute_membership_hash(symbols),
+    )
+    snapshot = NdxWindowStartSnapshot(
+        source_url_template=SOURCE_URL_TEMPLATE,
+        snapshot_dates=(entry,),
+        raw={},
+    )
+    result = _filter_training_union_by_membership_coverage(
+        symbols,
+        snapshot=snapshot,
+        aligned_train_start="2021-04-05",
+        train_end="2021-12-31",
+        date_coverage_data={
+            "FORMER": {
+                "first_valid_date": "2021-04-05",
+                "last_valid_date": "2021-08-01",
+                "observations": 80,
+            }
+        },
+        min_symbols=1,
+    )
+    assert result["skipped"] is True
+    assert result["retained_symbols"] == []
+    assert "history ends" in result["dropped_reasons"]["FORMER"]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -397,6 +499,125 @@ def test_build_parser_accepts_snapshot_path() -> None:
     custom = "/data/custom_snapshot.json"
     args = parser.parse_args(["--root", "/tmp", "--snapshot-path", custom])
     assert args.snapshot_path == Path(custom)
+
+
+def test_build_parser_accepts_provider_lineage_path() -> None:
+    """CLI accepts a lineage file that is bound to the provider identity."""
+    parser = build_parser()
+    path = "/data/provider_backfill_lineage.json"
+    args = parser.parse_args(["--provider-lineage-path", path])
+    assert args.provider_lineage_path == Path(path)
+
+
+def test_provider_lineage_identity_is_verified(tmp_path: Path) -> None:
+    """Evidence cannot attach lineage from a different provider."""
+    path = tmp_path / "lineage.json"
+    path.write_text(
+        json.dumps(
+            {
+                "output_provider_identity_sha256": "provider-a",
+                "policies": {
+                    "operational_provider_mutated": False,
+                    "unavailable_symbols_fail_closed": True,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="identity mismatch"):
+        _load_provider_lineage(path, expected_provider_identity="provider-b")
+
+
+def test_provider_lineage_requires_fail_closed_policy(tmp_path: Path) -> None:
+    """A lineage record cannot hide missing-symbol fallbacks."""
+    path = tmp_path / "lineage.json"
+    path.write_text(
+        json.dumps(
+            {
+                "output_provider_identity_sha256": "provider-a",
+                "policies": {
+                    "operational_provider_mutated": False,
+                    "unavailable_symbols_fail_closed": False,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="fail closed"):
+        _load_provider_lineage(path, expected_provider_identity="provider-a")
+
+
+def test_provider_builder_requires_distinct_output_root() -> None:
+    """The backfill builder must not target the operational data root."""
+    root = Path("/tmp/alpha-engine")
+    with pytest.raises(ValueError, match="must differ"):
+        _validate_isolated_roots(root, root)
+
+
+def test_provider_builder_cli_requires_output_root() -> None:
+    """No default destination can accidentally overwrite operational data."""
+    parser = build_provider_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args([])
+    args = parser.parse_args(["--output-data-root", "/tmp/ndx-provider"])
+    assert args.output_data_root == Path("/tmp/ndx-provider")
+    assert args.overwrite is False
+
+
+def test_provider_builder_required_symbols_are_snapshot_union() -> None:
+    """Backfill scope is derived from committed membership, not a watchlist."""
+    from src.research.ndx_window_start_universe import load_snapshot
+
+    snapshot = load_snapshot()
+    required = _required_symbols(snapshot)
+    assert {"AAPL", "FB", "META", "ANSS"}.issubset(required)
+    assert "QQQ" not in required
+
+
+def test_fb_alias_stops_before_first_meta_snapshot() -> None:
+    """The recycled FB ticker is represented only through the META rename."""
+    from src.research.ndx_window_start_universe import load_snapshot
+
+    snapshot = load_snapshot()
+    end = _alias_end_date(
+        snapshot,
+        target_symbol="FB",
+        source_symbol="META",
+        requested_end="2026-06-24",
+    )
+    assert end == "2022-06-30"
+
+
+def test_clean_bars_drops_batch_union_nan_rows() -> None:
+    """Pre-IPO NaN rows from batch-shaped downloads cannot fake coverage."""
+    frame = pd.DataFrame(
+        {
+            "date": ["2021-04-05", "2021-10-28"],
+            "open": [None, 47.0],
+            "high": [None, 49.0],
+            "low": [None, 46.0],
+            "close": [None, 48.0],
+            "volume": [None, 100.0],
+        }
+    )
+    clean = _clean_bars(frame, start="2021-04-05", end="2021-12-31")
+    assert clean["date"].dt.strftime("%Y-%m-%d").tolist() == ["2021-10-28"]
+    assert clean["amount"].tolist() == [4800.0]
+    assert clean["factor"].tolist() == [1.0]
+
+
+def test_history_after_first_membership_fails_closed() -> None:
+    """A ticker cannot be retained if its bars start after it was required."""
+    from src.research.ndx_window_start_universe import load_snapshot
+
+    frame = pd.DataFrame({"date": pd.to_datetime(["2022-01-03"])})
+    with pytest.raises(ValueError, match="starts after"):
+        _assert_usable_from_first_membership(
+            frame,
+            snapshot=load_snapshot(),
+            symbol="FB",
+            requested_start="2021-04-05",
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
