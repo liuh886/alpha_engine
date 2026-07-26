@@ -10,7 +10,6 @@
   ],
   "frozen_from_pr": 175,
   "full_daily_point_in_time": false,
-  "historical_training_membership_selection_bias": true,
   "membership_coverage_complete": false,
   "membership_source": "committed_ndx_window_start_snapshot",
   "membership_source_path": "D:\\Documents\\GitHub\\alpha_engine_candidate_v2_pit_universe\\configs\\research_universes\\ndx_window_start_membership.json",
@@ -19,10 +18,11 @@
   "oos_membership_point_in_time": true,
   "passes_candidate_v2_gate": false,
   "point_in_time_notes": {
-    "full_daily_point_in_time": "Training set uses same window-start membership (no historical records)",
-    "historical_training_membership_selection_bias": "Training symbols may include non-members at training time",
-    "membership_coverage_complete": "True only if every official NDX symbol is retained by provider coverage",
-    "oos_membership_point_in_time": "OOS test set uses NDX membership frozen at window start"
+    "full_daily_point_in_time": "Membership refreshes semiannually, not daily \u2014 true daily point-in-time would require daily Nasdaq records",
+    "membership_coverage_complete": "True only if every official NDX symbol at every used snapshot is retained by provider coverage",
+    "oos_membership_point_in_time": "OOS test set uses NDX membership frozen at window start",
+    "training_membership_asof_semiannual": "Training membership is resolved from the latest semiannual NDX snapshot on or before each training date",
+    "training_uses_future_oos_snapshot": "Training never uses the future OOS-window snapshot \u2014 membership is strictly as-of each training date"
   },
   "promotion_eligible": false,
   "promotion_label": "gate_not_passed",
@@ -32,5 +32,7 @@
   "schema_version": "1.0",
   "survivorship_bias_documented": true,
   "trade_ready": false,
+  "training_membership_asof_semiannual": true,
+  "training_uses_future_oos_snapshot": false,
   "turnover_model": "cash_inclusive_one_way"
 }

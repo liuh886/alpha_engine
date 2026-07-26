@@ -367,14 +367,16 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
 
 - Phase 2 research validity: frozen candidate_v2 was retrained and evaluated
   over four half-year OOS windows using official Nasdaq-100 membership frozen
-  at each window start. The static-100 result did not replicate: compounded
-  relative excess was `-56.34%`, only one of four windows was positive, mean
-  ICIR was `0.1253`, and worst drawdown was `-31.95%`.
+  at each window start and the latest semiannual as-of membership for every
+  training row. The future OOS snapshot is never applied backwards to training.
+  The static-100 result did not replicate: compounded relative excess was
+  `-19.90%`, only one of four windows was positive, mean ICIR was `0.1899`,
+  and worst drawdown was `-21.01%`.
 - Phase 3 governance: provider coverage was incomplete at every snapshot
-  (86/101, 88/102, 92/101, and 93/101 retained). The evidence is window-start
-  point-in-time for OOS membership, not full daily point-in-time; training
-  membership still has historical selection bias.
+  (from 68/102 in 2021 to 93/101 in 2025). The evidence uses semiannual as-of
+  training membership and window-start OOS membership, not full daily PIT.
 - The frozen gate failed on positive-excess windows, compounded relative
   excess, and drawdown. `promotion_eligible=false` and `trade_ready=false`.
-- The next validity step is historical as-of training membership plus provider
-  backfill, not more blend-weight, LightGBM, or portfolio-overlay tuning.
+- As-of membership improves relative excess, ICIR, and drawdown versus applying
+  the future OOS snapshot across training, but the next validity step is
+  provider backfill, not more blend-weight, LightGBM, or overlay tuning.

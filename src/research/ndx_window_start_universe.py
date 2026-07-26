@@ -11,6 +11,10 @@ Key types
     Load the full snapshot from disk — validates schema and hashes.
 :func:`validate_snapshot_hash`
     Re-compute and verify the membership hash for one date.
+:func:`resolve_latest_snapshot_on_or_before`
+    Return the latest committed snapshot on or before a date (fail-closed).
+:func:`filter_training_by_asof_membership`
+    Filter a MultiIndex (datetime,instrument) frame by as-of snapshot membership.
 :func:`intersect_with_provider`
     Intersect snapshot symbols with actually-covered provider symbols.
 :func:`compute_membership_hash`
@@ -27,6 +31,8 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+import pandas as pd
 
 # Default path to the committed membership snapshot.
 DEFAULT_SNAPSHOT_PATH = Path("configs/research_universes/ndx_window_start_membership.json")
@@ -265,6 +271,106 @@ def get_snapshot_by_date(
         f"date {date} not found in NDX membership snapshot "
         f"(available: {sorted(d.date for d in snapshot.snapshot_dates)})"
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# As-of membership resolution
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def resolve_latest_snapshot_on_or_before(
+    snapshot: NdxWindowStartSnapshot,
+    date: str,
+) -> NdxSnapshotDate:
+    """Return the latest committed snapshot date on or before *date*.
+
+    Parameters
+    ----------
+    snapshot
+        The full snapshot container.
+    date
+        ISO date string (YYYY-MM-DD) to resolve membership for.
+
+    Returns
+    -------
+    NdxSnapshotDate
+        The latest snapshot entry whose date is ≤ *date*.
+
+    Raises
+    ------
+    ValueError
+        If no snapshot exists on or before *date* (fail-closed — never
+        silently use a future snapshot).
+    """
+    candidates = [s for s in snapshot.snapshot_dates if s.date <= date]
+    if not candidates:
+        available = sorted(s.date for s in snapshot.snapshot_dates)
+        raise ValueError(
+            f"No NDX snapshot on or before {date}. "
+            f"Earliest available: {available[0] if available else 'none'}"
+        )
+    return max(candidates, key=lambda s: s.date)
+
+
+def filter_training_by_asof_membership(
+    frame: pd.DataFrame,
+    snapshot: NdxWindowStartSnapshot,
+    provider_symbols: set[str],
+) -> pd.DataFrame:
+    """Filter a MultiIndex (datetime, instrument) frame by as-of snapshot membership.
+
+    For each unique date in *frame*, the latest snapshot on or before that date
+    is resolved, and only rows whose instrument appears in that snapshot **and**
+    in *provider_symbols* are retained.
+
+    Dates before the earliest committed snapshot have **all** rows dropped
+    (fail-closed — never silently keep rows with unknown membership).
+
+    Parameters
+    ----------
+    frame
+        DataFrame with a ``(datetime, instrument)`` MultiIndex.
+    snapshot
+        Full committed NDX membership snapshot.
+    provider_symbols
+        Set of provider-covered symbols (snapshot symbols not in this set
+        are excluded from membership for every date).
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered copy of *frame*.
+
+    Raises
+    ------
+    ValueError
+        If *frame* is empty after filtering (fail-closed).
+    """
+    if frame.empty:
+        return frame
+
+    snap_sorted = sorted(snapshot.snapshot_dates, key=lambda s: s.date)
+    dates = pd.DatetimeIndex(frame.index.get_level_values("datetime"))
+    instruments = frame.index.get_level_values("instrument")
+    mask = pd.Series(False, index=frame.index, dtype=bool)
+
+    # One vectorised scan per snapshot interval, rather than one full-frame
+    # scan per trading day.  Dates before the earliest snapshot remain False.
+    for index, entry in enumerate(snap_sorted):
+        interval_start = pd.Timestamp(entry.date)
+        interval_end = (
+            pd.Timestamp(snap_sorted[index + 1].date)
+            if index + 1 < len(snap_sorted)
+            else None
+        )
+        date_match = dates >= interval_start
+        if interval_end is not None:
+            date_match &= dates < interval_end
+        members = set(entry.symbols) & provider_symbols
+        if members:
+            mask |= date_match & instruments.isin(members)
+
+    return frame.loc[mask].copy()
 
 
 # ═══════════════════════════════════════════════════════════════════════

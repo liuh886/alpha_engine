@@ -78,45 +78,81 @@ def test_intersect_returns_expected_fields() -> None:
     assert required.issubset(result.keys())
 
 
-def test_evaluate_window_reloads_coverage_for_aligned_start(
+def test_aligned_start_is_50th_earliest_not_latest(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The derived aligned start must affect both filtering and model fitting."""
+    """One late OOS constituent must not push the fitted history to 2023."""
     import scripts.run_candidate_v2_ndx_window_start_evidence as runner
 
-    symbols = [f"S{i:03d}" for i in range(MIN_WINDOW_SYMBOLS)]
-    initial = {
-        symbol: {
-            "first_valid_date": "2021-04-05" if i == 0 else "2021-01-04",
-            "last_valid_date": "2024-07-05",
-            "observations": 800,
-            "covers_train_start": i != 0,
-            "covers_test_end": True,
-            "sufficient_coverage": i != 0,
-        }
-        for i, symbol in enumerate(symbols)
-    }
-    aligned = {
-        symbol: {
-            **record,
-            "covers_train_start": True,
-            "sufficient_coverage": True,
-        }
-        for symbol, record in initial.items()
-    }
+    early_symbols = [f"E{i:03d}" for i in range(50)]
+    late_symbol = "LATE001"
+    all_symbols = early_symbols + [late_symbol]
+    from src.research.ndx_window_start_universe import (
+        NdxWindowStartSnapshot,
+        SOURCE_URL_TEMPLATE,
+    )
+
+    snapshot_dates: list[NdxSnapshotDate] = []
+    for date_str, symbols_for_date in [
+        ("2021-01-04", all_symbols),
+        ("2021-07-01", all_symbols),
+        ("2022-01-03", all_symbols),
+        ("2022-07-01", all_symbols),
+        ("2023-01-03", all_symbols),
+        ("2023-07-03", all_symbols),
+    ]:
+        symbols_tuple = tuple(sorted(symbols_for_date))
+        snapshot_dates.append(
+            NdxSnapshotDate(
+                date=date_str,
+                symbols=symbols_tuple,
+                count=len(symbols_tuple),
+                sha256_membership_hash=compute_membership_hash(list(symbols_tuple)),
+            )
+        )
+
+    # Also include the OOS snapshot date 2024-01-02
+    snapshot_dates.append(
+        NdxSnapshotDate(
+            date="2024-01-02",
+            symbols=tuple(sorted(all_symbols)),
+            count=len(all_symbols),
+            sha256_membership_hash=compute_membership_hash(all_symbols),
+        )
+    )
+
+    snapshot = NdxWindowStartSnapshot(
+        source_url_template=SOURCE_URL_TEMPLATE,
+        snapshot_dates=tuple(snapshot_dates),
+        raw={},
+    )
+
     coverage_calls: list[tuple[str, str]] = []
 
-    def fake_load(
-        _symbols: list[str], start: str, end: str
-    ) -> dict[str, dict]:
+    def fake_load(symbols, start, end):
         coverage_calls.append((start, end))
-        return initial if len(coverage_calls) == 1 else aligned
+        is_test = start == "2024-01-01"
+        is_aligned_train = start == "2021-04-05"
+        result = {}
+        for symbol in symbols:
+            late = symbol == late_symbol
+            result[symbol] = {
+                "first_valid_date": "2023-09-14" if late else "2021-04-05",
+                "last_valid_date": end,
+                "observations": 500,
+                "covers_train_start": is_test or not late or not is_aligned_train,
+                "covers_test_end": True,
+                "sufficient_coverage": is_test or not late or not is_aligned_train,
+            }
+        return result
 
     evaluated: dict[str, object] = {}
 
-    def fake_evaluate(window, used_symbols, *_args):
+    def fake_evaluate(window, test_symbols, *_args, **kwargs):
         evaluated["window"] = window
-        evaluated["symbols"] = used_symbols
+        evaluated["test_symbols"] = test_symbols
+        evaluated["train_symbols"] = kwargs["train_symbols"]
+        evaluated["snapshot"] = kwargs["asof_membership_snapshot"]
         return {"window": window.to_dict(), "skipped": False}
 
     monkeypatch.setattr(runner, "load_symbol_date_coverage", fake_load)
@@ -129,37 +165,29 @@ def test_evaluate_window_reloads_coverage_for_aligned_start(
         test_start="2024-01-01",
         test_end="2024-06-30",
     )
-    entry = NdxSnapshotDate(
-        date="2024-01-02",
-        symbols=tuple(symbols),
-        count=len(symbols),
-        sha256_membership_hash=compute_membership_hash(symbols),
-    )
-    provider_report = intersect_with_provider(entry, set(symbols))
-
     result = _evaluate_ndx_window(
         window,
-        symbols,
         "QQQ",
         {},
         [],
         "$close/Ref($close,10)-1",
-        entry.date,
-        entry,
-        provider_report,
+        snapshot,
+        set(all_symbols),
     )
 
-    assert coverage_calls == [
-        ("2021-01-01", "2024-06-30"),
-        ("2021-04-05", "2024-06-30"),
-    ]
-    fitted_window = evaluated["window"]
-    assert isinstance(fitted_window, RollingResearchWindow)
-    assert fitted_window.train_start == "2021-04-05"
-    assert evaluated["symbols"] == symbols
     assert result is not None
     assert result["coverage_meta"]["aligned_train_start"] == "2021-04-05"
-    assert result["nominal_window"]["train_start"] == "2021-01-01"
+    assert isinstance(evaluated["window"], RollingResearchWindow)
+    assert evaluated["window"].train_start == "2021-04-05"
+    assert len(evaluated["train_symbols"]) == 50
+    assert late_symbol not in evaluated["train_symbols"]
+    assert set(evaluated["test_symbols"]) == set(all_symbols)
+    assert evaluated["snapshot"] is snapshot
+    assert coverage_calls == [
+        ("2024-01-01", "2024-06-30"),
+        ("2021-01-01", "2023-12-31"),
+        ("2021-04-05", "2023-12-31"),
+    ]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -224,19 +252,22 @@ def _make_valid_window_payload(
             "top_bottom_spread_n_days": 60,
         },
         "coverage_meta": {
-            "ndx_snapshot_date": "2024-01-02",
-            "n_official_requested": 100,
-            "n_provider_retained": 100,
-            "n_provider_missing": 0,
-            "n_date_coverage_retained": 100,
-            "n_date_coverage_dropped": 0,
-            "n_retained": 100,
-            "n_missing": 0,
-            "coverage_ratio": 1.0,
-            "membership_coverage_complete": True,
-            "oos_membership_point_in_time": True,
+            "oos_snapshot_date": "2024-01-02",
+            "n_oos_requested": 100,
+            "n_oos_test_retained": 100,
+            "n_training_snapshots": 6,
+            "training_union_requested": 120,
+            "training_union_provider_retained": 120,
+            "training_date_retained": 100,
+            "aligned_train_start": "2021-07-01",
+            "training_membership_asof_semiannual": True,
+            "training_uses_future_oos_snapshot": False,
             "full_daily_point_in_time": False,
-            "historical_training_membership_selection_bias": True,
+            "provider_coverage_incomplete": False,
+            "oos_membership_point_in_time": True,
+            "research_only": True,
+            "promotion_eligible": False,
+            "trade_ready": False,
         },
     }
 
@@ -282,12 +313,9 @@ def test_aggregate_incomplete_coverage_reporting() -> None:
     """When one window has incomplete coverage, summary reflects it."""
     payloads = [_make_valid_window_payload() for _ in range(3)]
     incomplete = _make_valid_window_payload()
-    incomplete["coverage_meta"]["membership_coverage_complete"] = False
-    incomplete["coverage_meta"]["n_date_coverage_retained"] = 95
-    incomplete["coverage_meta"]["n_date_coverage_dropped"] = 5
-    incomplete["coverage_meta"]["n_retained"] = 95
-    incomplete["coverage_meta"]["n_missing"] = 5
-    incomplete["coverage_meta"]["coverage_ratio"] = 0.95
+    incomplete["coverage_meta"]["provider_coverage_incomplete"] = True
+    incomplete["coverage_meta"]["n_oos_test_retained"] = 95
+    incomplete["coverage_meta"]["training_date_retained"] = 95
     payloads.append(incomplete)
     agg = _aggregate_ndx_windows(payloads)
     assert agg["coverage_summary"]["membership_coverage_complete"] is False
@@ -377,14 +405,16 @@ def test_build_parser_accepts_snapshot_path() -> None:
 
 
 def test_window_payload_has_coverage_meta() -> None:
-    """Every window payload includes coverage metadata."""
+    """Every window payload includes coverage metadata with as-of flags."""
     payload = _make_valid_window_payload()
     assert "coverage_meta" in payload
     cm = payload["coverage_meta"]
-    assert cm["oos_membership_point_in_time"] is True
+    assert cm["training_membership_asof_semiannual"] is True
+    assert cm["training_uses_future_oos_snapshot"] is False
     assert cm["full_daily_point_in_time"] is False
-    assert cm["historical_training_membership_selection_bias"] is True
-    assert "ndx_snapshot_date" in cm
+    assert cm["oos_membership_point_in_time"] is True
+    assert "oos_snapshot_date" in cm
+    assert "aligned_train_start" in cm
 
 
 def test_aggregate_reports_pit_flags() -> None:
@@ -394,3 +424,6 @@ def test_aggregate_reports_pit_flags() -> None:
     cov = agg["coverage_summary"]
     assert "membership_coverage_complete" in cov
     assert "snapshots_loaded" in cov
+    assert cov["training_membership_asof_semiannual"] is True
+    assert cov["training_uses_future_oos_snapshot"] is False
+    assert cov["full_daily_point_in_time"] is False

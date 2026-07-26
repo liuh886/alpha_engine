@@ -194,7 +194,7 @@ the committed snapshot under
 use the official Nasdaq endpoint
 (`https://indexes.nasdaqomx.com/Index/WeightingData?id=NDX&...`) used by
 Microsoft Qlib for index constituent data.  Required snapshot dates are exactly
-2024-01-02, 2024-07-01, 2025-01-02, and 2025-07-01.
+the ten half-year starts from 2021-01-04 through 2025-07-01.
 
 ### Method
 
@@ -202,15 +202,17 @@ Microsoft Qlib for index constituent data.  Required snapshot dates are exactly
   intersected with the actually-covered US provider symbol set.  Each window
   freezes the official NDX membership known at its start date.
 - **Training**: The frozen candidate_v2 ranker is retrained on expanding
-  history using the same window-start NDX membership (training symbols are
-  therefore also drawn from the frozen list at window start, not from
-  historical records).  The existing 10D embargo is applied.
+  history. Each training row uses the latest committed semiannual NDX snapshot
+  on or before that row's date; the future OOS-window snapshot is never applied
+  backwards to the whole training history. The existing 10D embargo is applied.
 - **Evaluation**: Identical to the static-cohort experiment: Top-3 equal-weight
   portfolio, 20 bps cash-inclusive one-way turnover, 50% gross exposure when
   QQQ 20D trend is negative, raw test-period 10D returns.
 - **Bias**: `oos_membership_point_in_time=true`,
+  `training_membership_asof_semiannual=true`,
+  `training_uses_future_oos_snapshot=false`,
   `full_daily_point_in_time=false`,
-  `historical_training_membership_selection_bias=true`.
+  and provider coverage remains incomplete.
 - **Reuse**: All model/blend/portfolio functions and constants are reused from
   `scripts/run_candidate_v2_universe_robustness.py` — no duplication.
 
@@ -221,21 +223,27 @@ The evidence is written under
 
 | Metric | Static-100 cohort | NDX PIT window-start | Delta |
 |---|---|---|---|
-| Compounded relative excess vs QQQ | 176.68% | -56.34% | -233.02 pp |
-| Mean Sharpe | 1.51 | -0.506 | -2.016 |
-| Worst drawdown | -22.39% | -31.95% | -9.56 pp |
-| Mean ICIR | .223 | .125 | -.098 |
-| Mean Rank ICIR | .155 | .100 | -.055 |
+| Compounded relative excess vs QQQ | 176.68% | -19.90% | -196.58 pp |
+| Mean Sharpe | 1.51 | .627 | -.883 |
+| Worst drawdown | -22.39% | -21.01% | +1.38 pp |
+| Mean ICIR | .223 | .190 | -.033 |
+| Mean Rank ICIR | .155 | .155 | +.0005 |
 | Positive excess windows | 4/4 | 1/4 | -3 windows |
 
 The four individual windows were:
 
-| Window | Aligned train start | Retained/official | Relative excess | Sharpe | Max drawdown | ICIR | Rank ICIR |
-|---|---|---:|---:|---:|---:|---:|---:|
-| 2024H1 | 2022-12-15 | 86/101 | -29.42% | -1.402 | -16.13% | .000 | -.023 |
-| 2024H2 | 2023-09-14 | 88/102 | -37.62% | -2.315 | -31.95% | .043 | -.070 |
-| 2025H1 | 2023-09-14 | 92/101 | 15.32% | 1.555 | -20.95% | .237 | .187 |
-| 2025H2 | 2023-09-14 | 93/101 | -14.01% | .138 | -29.43% | .221 | .305 |
+| Window | Aligned train start | Train symbols | Test/official | Relative excess | Sharpe | Max drawdown | ICIR | Rank ICIR |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| 2024H1 | 2021-04-05 | 81 | 86/101 | -19.51% | .186 | -5.07% | .032 | .031 |
+| 2024H2 | 2021-04-05 | 85 | 88/102 | -2.23% | .632 | -6.26% | .174 | .022 |
+| 2025H1 | 2021-04-05 | 86 | 92/101 | 18.99% | 1.674 | -16.53% | .255 | .117 |
+| 2025H2 | 2021-04-05 | 90 | 93/101 | -14.46% | .018 | -21.01% | .299 | .452 |
+
+As a methodology ablation, replacing the future-OOS-snapshot training set with
+semiannual as-of membership improved compounded relative excess from -56.34%
+to -19.90%, mean ICIR from .125 to .190, and worst drawdown from -31.95% to
+-21.01%. Removing that look-ahead-like universe selection debt materially
+improves the evidence, but it does not make the strategy economically robust.
 
 The comparison is informational only.  The static-100 cohort uses current Qlib
 instrument listings (survivorship-biased, approximately 100 tickers from the
@@ -244,10 +252,11 @@ each window start (~100 tickers per date from the official index).  Differences
 reflect both membership composition and point-in-time methodology.
 
 The static-100 uplift therefore does **not** replicate under official
-window-start membership.  The result cannot isolate one cause: universe
-composition changes, provider omissions, and the later aligned training starts
-all differ from the static experiment.  It is nevertheless enough to reject
-the claim that the existing static-100 result is robust trade guidance.
+window-start membership. The as-of runner now uses the same 2021-04-05 aligned
+training start across all windows, so the remaining gap is not explained by a
+single late IPO truncating history. Universe composition and provider omissions
+remain confounders. The evidence rejects the claim that the existing static-100
+result is robust trade guidance.
 
 ### Frozen gate result
 
@@ -265,8 +274,8 @@ promoted.  `promotion_eligible=false`, `trade_ready=false`.
 The actual run fails three frozen gates:
 
 - positive relative-excess windows: 1/4, below the required 3/4;
-- compounded relative excess: -56.34%, below the required +30%;
-- worst drawdown: -31.95%, worse than the -15% floor.
+- compounded relative excess: -19.90%, below the required +30%;
+- worst drawdown: -21.01%, worse than the -15% floor.
 
 Mean ICIR, mean Rank ICIR, and mean top-bottom spread remain slightly positive,
 but they do not compensate for negative economic performance.  Decision:
@@ -274,25 +283,22 @@ but they do not compensate for negative economic performance.  Decision:
 
 ### Limitations
 
-1. **No historical membership record**: The training set uses the same
-   window-start NDX symbol list as the test set.  The ranker may train on
-   symbols that were not NDX members at prior training dates.  True PIT daily
-   membership records are not available without a full historical constituent
-   file from Nasdaq.
+1. **Semiannual, not daily, membership**: Training uses the latest half-year
+   snapshot on or before each row. This removes use of the future OOS snapshot,
+   but intra-half membership changes and delistings are not represented.
 2. **Provider coverage**: The US market-specific provider may not cover all
-   NDX constituents at every snapshot date.  Symbols missing from the provider
-   are dropped from both training and testing, introducing a selection channel.
-3. **Static snapshot**: The membership is frozen at each window start and does
-   not change for intra-window rebalancing or delistings.  Daily PIT would
-   require daily membership records.
+   NDX constituents at every snapshot date. Coverage rises from 68/102 in 2021
+   to 93/101 in 2025; missing symbols are dropped and create a selection channel.
+3. **OOS membership is window-start frozen**: The test membership does not
+   change within each half-year. Daily PIT would require daily Nasdaq records.
 4. **Single-index focus**: NDX is one large-cap universe.  Results on
    mid/small-cap or non-Nasdaq universes are not tested here.
 5. **No hyperparameter tuning**: The frozen ranker calibration, blend weight,
    Top-K, and gate thresholds are carried over unchanged from the original
    candidate_v2 experiment.  No model or portfolio parameter was searched.
 
-The next useful research step is to obtain earlier official membership
-snapshots and train on as-of membership by date, while backfilling the missing
-historical constituents in the pinned provider.  That addresses the two
-largest unresolved validity problems.  Further blend-weight or overlay tuning
-on the current incomplete universe would not.
+The next useful research step is provider backfill for the 43-symbol union
+missing across the ten snapshots, prioritising symbols with obtainable
+historical prices and explicit ticker-successor mappings. Further blend-weight,
+LightGBM, or overlay tuning on the incomplete universe would not resolve the
+remaining validity problem.
