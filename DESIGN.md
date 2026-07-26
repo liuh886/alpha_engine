@@ -362,3 +362,19 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
 - Phase 4 integration: CLI, release evidence, API, notebook, and dashboard use
   the same `run_signal_discovery_comparison` report contract at
   `artifacts/evidence/10d_signal_discovery/us_signal_discovery_report.json`.
+
+### 2026-07-26: Nasdaq-100 Window-Start Universe Validation
+
+- Phase 2 research validity: frozen candidate_v2 was retrained and evaluated
+  over four half-year OOS windows using official Nasdaq-100 membership frozen
+  at each window start. The static-100 result did not replicate: compounded
+  relative excess was `-56.34%`, only one of four windows was positive, mean
+  ICIR was `0.1253`, and worst drawdown was `-31.95%`.
+- Phase 3 governance: provider coverage was incomplete at every snapshot
+  (86/101, 88/102, 92/101, and 93/101 retained). The evidence is window-start
+  point-in-time for OOS membership, not full daily point-in-time; training
+  membership still has historical selection bias.
+- The frozen gate failed on positive-excess windows, compounded relative
+  excess, and drawdown. `promotion_eligible=false` and `trade_ready=false`.
+- The next validity step is historical as-of training membership plus provider
+  backfill, not more blend-weight, LightGBM, or portfolio-overlay tuning.
