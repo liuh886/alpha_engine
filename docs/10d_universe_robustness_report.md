@@ -374,11 +374,73 @@ uv run python scripts/run_candidate_v2_ndx_window_start_evidence.py \
   --provider-lineage-path \
     D:/Documents/GitHub/alpha_engine_ndx_backfill_data/data/provider_backfill_lineage.json \
   --first-test-year 2024 \
-  --last-test-year 2025
+  --last-test-year 2026
 ```
 
-The next model-quality step is cross-sectional factor and label diagnosis on
-this broader point-in-time-like universe. It is not another search over blend
-weights, LightGBM leaves, Top-K, or risk overlays. A higher-grade delisted-price
-source can close the remaining 1-3 OOS names, but the current economic failure
-is already too large to support promotion.
+### Cross-sectional factor and Top-3 diagnosis
+
+The fixed-hypothesis diagnostic is now complete. It reloads the seven frozen
+ranker inputs for the same four OOS windows and 98-100 OOS symbols, freezes
+Top-K/Bottom-K from each factor before checking raw-return availability, and
+measures both broad daily IC and the exact 13 rebalance dates per window. It
+does not train a model, search a parameter, or select a deployable orientation.
+
+The candidate's broad daily Rank ICIR is positive at .126 and its daily
+Top-20%-minus-Bottom-20% spread is +.203%. That information does not survive
+portfolio concentration:
+
+- exact rebalance Top-3-minus-Bottom-3 spread: -.169%;
+- positive Top-3 spread periods: 44.2%;
+- selected Top-3 mean realized percentile: .478; and
+- compounded relative excess versus QQQ: -47.17%.
+
+The seven frozen inputs show the same instability. The orientation below is
+the descriptively better direction on these already-observed OOS windows, so
+it is not a deployable choice.
+
+| Frozen input | Descriptive orientation | Mean daily Rank IC | Mean Rank ICIR | Top-3 spread | Positive Top-3 windows | Positive Top-3 periods | All consistency checks |
+|---|---|---:|---:|---:|---:|---:|---|
+| 5D momentum | inverted | .0164 | .0745 | -.092% | 1/4 | 46.2% | fail |
+| 10D momentum | inverted | .0041 | .0108 | .521% | 2/4 | 51.9% | fail |
+| 20D momentum | original | .0208 | .1361 | 1.065% | 2/4 | 51.9% | fail |
+| 10D volatility | original | .0278 | .1303 | 1.062% | 3/4 | 44.2% | fail |
+| 20D volatility | original | .0275 | .1182 | .550% | 2/4 | 50.0% | fail |
+| 10D volume momentum | original | .0001 | -.0022 | .195% | 3/4 | 57.7% | fail |
+| Volume / 20D mean | inverted | .0045 | .0534 | -1.354% | 1/4 | 40.4% | fail |
+
+No factor passes the predeclared broad-direction, cross-window, broad-tail, and
+Top-3 period-consistency checks together. The apparently highest Top-3 spread,
+20D momentum, is positive in only two of four windows. The 10D volume factor
+is positive in three windows but has effectively zero Rank IC and a negative
+broad spread. Neither is a stronger research candidate.
+
+The diagnosis also identifies a structural target/portfolio mismatch:
+
+- the processed target has five gain bins, so a roughly 100-name cross-section
+  assigns about 20 names to the highest gain label while the portfolio buys
+  only three; and
+- the frozen model does not set `lambdarank_truncation_level`, so LightGBM uses
+  its default of 30, ten times the portfolio cutoff. LightGBM documents this
+  parameter as the number of top results emphasized by LambdaRank and advises
+  relating it to the desired NDCG cutoff in its
+  [ranking parameters](https://lightgbm.readthedocs.io/en/stable/Parameters.html#lambdarank_truncation_level).
+
+This explains how the model can learn a weak broad ordering without learning
+the Top-3 tail it is asked to trade. It is a structural hypothesis, not
+permission to grid-search gain bins or Top-K on the same evidence. The next
+valid model experiment is one predeclared Top-3-aligned objective evaluated on
+untouched windows or an independent market/universe.
+
+Reproduction:
+
+```bash
+uv run python scripts/run_candidate_v2_ndx_factor_diagnostics.py \
+  --data-root D:/Documents/GitHub/alpha_engine_ndx_backfill_data
+```
+
+Evidence is under
+`artifacts/evidence/candidate_v2_ndx_factor_diagnostics/`.
+`promotion_eligible=false` and `trade_ready=false`.
+
+A higher-grade delisted-price source can close the remaining 1-3 OOS names,
+but the current economic failure is already too large to support promotion.
