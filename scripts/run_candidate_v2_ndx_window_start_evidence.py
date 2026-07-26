@@ -37,6 +37,7 @@ Always:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -97,10 +98,148 @@ WINDOW_SNAPSHOT_MAP: dict[str, str] = {
 # A Nasdaq-100 validation that retains fewer than half the index is too
 # incomplete to support a useful universe-robustness conclusion.
 MIN_WINDOW_SYMBOLS = 50
+MAX_MEMBERSHIP_BOUNDARY_GAP_DAYS = 14
 
 # Training-membership approach for evidence metadata.
 TRAINING_MEMBERSHIP_APPROACH = "asof_semiannual"
 TRAINING_USES_FUTURE_OOS_SNAPSHOT = False
+
+
+def _load_provider_lineage(
+    path: Path,
+    *,
+    expected_provider_identity: str,
+) -> dict[str, Any]:
+    """Load optional backfill lineage and bind it to the verified provider."""
+
+    if not path.is_file():
+        raise FileNotFoundError(f"provider lineage not found: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("provider lineage must be a JSON object")
+    actual_identity = str(payload.get("output_provider_identity_sha256", ""))
+    if actual_identity != expected_provider_identity:
+        raise ValueError(
+            "provider lineage identity mismatch: "
+            f"expected={expected_provider_identity} actual={actual_identity}"
+        )
+    policies = payload.get("policies")
+    if not isinstance(policies, dict):
+        raise ValueError("provider lineage must contain policies")
+    if policies.get("operational_provider_mutated") is not False:
+        raise ValueError("provider lineage must prove operational provider was not mutated")
+    if policies.get("unavailable_symbols_fail_closed") is not True:
+        raise ValueError("provider lineage must fail closed on unavailable symbols")
+    return payload
+
+
+def _filter_training_union_by_membership_coverage(
+    symbols: list[str],
+    *,
+    snapshot: NdxWindowStartSnapshot,
+    aligned_train_start: str,
+    train_end: str,
+    date_coverage_data: dict[str, dict[str, Any]],
+    min_symbols: int = MIN_WINDOW_SYMBOLS,
+) -> dict[str, Any]:
+    """Retain symbols that cover only their actual as-of membership interval.
+
+    A constituent that leaves NDX before ``train_end`` must not be dropped
+    merely because it has no later bars. Conversely, bars after a ticker
+    rename or index exit must not be required to make its historical rows
+    eligible. The semiannual snapshot interval is the coverage contract.
+    """
+
+    aligned_start_ts = pd.Timestamp(aligned_train_start)
+    train_end_ts = pd.Timestamp(train_end)
+    if aligned_start_ts > train_end_ts:
+        raise ValueError("aligned_train_start must be on or before train_end")
+
+    entries = sorted(snapshot.snapshot_dates, key=lambda entry: entry.date)
+    required_bounds: dict[str, tuple[pd.Timestamp, pd.Timestamp]] = {}
+    for index, entry in enumerate(entries):
+        interval_start = pd.Timestamp(entry.date)
+        if interval_start > train_end_ts:
+            break
+        next_start = (
+            pd.Timestamp(entries[index + 1].date)
+            if index + 1 < len(entries)
+            else train_end_ts + pd.Timedelta(days=1)
+        )
+        interval_end = min(train_end_ts, next_start - pd.Timedelta(days=1))
+        active_start = max(aligned_start_ts, interval_start)
+        if active_start > interval_end:
+            continue
+        for symbol in entry.symbols:
+            if symbol not in symbols:
+                continue
+            previous = required_bounds.get(symbol)
+            if previous is None:
+                required_bounds[symbol] = (active_start, interval_end)
+            else:
+                required_bounds[symbol] = (
+                    min(previous[0], active_start),
+                    max(previous[1], interval_end),
+                )
+
+    gap = pd.Timedelta(days=MAX_MEMBERSHIP_BOUNDARY_GAP_DAYS)
+    retained: list[str] = []
+    dropped: list[str] = []
+    dropped_reasons: dict[str, str] = {}
+    serialized_bounds: dict[str, dict[str, str]] = {}
+
+    for symbol in symbols:
+        bounds = required_bounds.get(symbol)
+        if bounds is None:
+            dropped.append(symbol)
+            dropped_reasons[symbol] = "no membership interval in aligned training range"
+            continue
+        required_start, required_end = bounds
+        serialized_bounds[symbol] = {
+            "required_start": required_start.strftime("%Y-%m-%d"),
+            "required_end": required_end.strftime("%Y-%m-%d"),
+        }
+        record = date_coverage_data.get(symbol, {})
+        first_raw = record.get("first_valid_date")
+        last_raw = record.get("last_valid_date")
+        observations = int(record.get("observations", 0) or 0)
+        if first_raw is None or last_raw is None or observations <= 0:
+            dropped.append(symbol)
+            dropped_reasons[symbol] = "no valid price observations"
+            continue
+        first_valid = pd.Timestamp(first_raw)
+        last_valid = pd.Timestamp(last_raw)
+        if first_valid > required_start + gap:
+            dropped.append(symbol)
+            dropped_reasons[symbol] = (
+                f"history starts {first_valid.date()} after required "
+                f"{required_start.date()}"
+            )
+            continue
+        if last_valid < required_end - gap:
+            dropped.append(symbol)
+            dropped_reasons[symbol] = (
+                f"history ends {last_valid.date()} before required "
+                f"{required_end.date()}"
+            )
+            continue
+        retained.append(symbol)
+
+    return {
+        "skipped": len(retained) < min_symbols,
+        "skip_reason": (
+            None
+            if len(retained) >= min_symbols
+            else (
+                f"membership-interval coverage retained {len(retained)} symbols; "
+                f"minimum is {min_symbols}"
+            )
+        ),
+        "retained_symbols": retained,
+        "dropped_symbols": dropped,
+        "dropped_reasons": dropped_reasons,
+        "required_bounds": serialized_bounds,
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -125,9 +264,9 @@ def _evaluate_ndx_window(
        to build the training-symbol union.
     3. Derives an aligned training start from the 50th-earliest first-valid
        date among all training-union symbols (NOT the latest first-valid).
-    4. Retains training symbols whose provider data fully covers the aligned
-       start through train_end; retains test symbols whose data covers the
-       test window.
+    4. Retains training symbols whose provider data covers their actual
+       semiannual membership intervals; retains test symbols whose data covers
+       the complete OOS window.
     5. Delegates model fitting/backtest to the shared ``_evaluate_window``
        helper with distinct training/test symbols and an as-of membership
        snapshot so that training rows are filtered by the membership known
@@ -279,17 +418,19 @@ def _evaluate_ndx_window(
             ),
         }
 
-    # ── Retain training symbols with full coverage in aligned range ─────
+    # ── Retain symbols over their actual membership intervals ───────────
     aligned_train_coverage = load_symbol_date_coverage(
         train_union_list,
         aligned_train_start,
         window.train_end,
     )
-    train_coverage_filter = filter_universe_by_coverage(
-        tuple(train_union_list),
-        min_symbols=MIN_WINDOW_SYMBOLS,
-        date_range=(aligned_train_start, window.train_end),
+    train_coverage_filter = _filter_training_union_by_membership_coverage(
+        train_union_list,
+        snapshot=snapshot,
+        aligned_train_start=aligned_train_start,
+        train_end=window.train_end,
         date_coverage_data=aligned_train_coverage,
+        min_symbols=MIN_WINDOW_SYMBOLS,
     )
     if train_coverage_filter.get("skipped", True):
         return {
@@ -371,6 +512,8 @@ def _evaluate_ndx_window(
         "training_union_provider_retained": n_provider_train_union,
         "training_date_retained": training_date_retained,
         "training_date_dropped": train_coverage_filter["dropped_symbols"],
+        "training_date_drop_reasons": train_coverage_filter["dropped_reasons"],
+        "training_membership_required_bounds": train_coverage_filter["required_bounds"],
         "training_symbols": train_symbols,
         "per_snapshot_requested": per_snapshot_requested,
         "per_snapshot_retained": {
@@ -628,6 +771,7 @@ def run(
     first_test_year: int = 2024,
     last_test_year: int = 2026,
     snapshot_path: Path | str = DEFAULT_SNAPSHOT_PATH,
+    provider_lineage_path: Path | str | None = None,
 ) -> dict[str, Any]:
     """Execute the candidate_v2 NDX window-start evidence experiment."""
     session = _load_session(root)
@@ -643,6 +787,15 @@ def run(
     from src.data.market_provider import market_provider_path
 
     provider_uri = str(market_provider_path(effective_data_root, "us"))
+    provider_lineage: dict[str, Any] | None = None
+    if provider_lineage_path is not None:
+        resolved_lineage_path = Path(provider_lineage_path)
+        if not resolved_lineage_path.is_absolute():
+            resolved_lineage_path = root / resolved_lineage_path
+        provider_lineage = _load_provider_lineage(
+            resolved_lineage_path,
+            expected_provider_identity=provider_manifest["provider_identity_sha256"],
+        )
 
     from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
@@ -689,6 +842,22 @@ def run(
     base_out = root / "artifacts" / "evidence" / "candidate_v2_ndx_window_start"
     per_window_dir = base_out / "per_window"
     per_window_dir.mkdir(parents=True, exist_ok=True)
+    lineage_output_path = base_out / "provider_backfill_lineage.json"
+    lineage_sha256: str | None = None
+    if provider_lineage is not None:
+        lineage_bytes = (
+            json.dumps(
+                provider_lineage,
+                indent=2,
+                sort_keys=True,
+                allow_nan=False,
+            )
+            + "\n"
+        ).encode("utf-8")
+        lineage_output_path.write_bytes(lineage_bytes)
+        lineage_sha256 = hashlib.sha256(lineage_bytes).hexdigest()
+    elif lineage_output_path.exists():
+        lineage_output_path.unlink()
 
     print("\nCandidate v2 NDX Window-Start Evidence")
     print(f"  market:       {market}")
@@ -720,6 +889,13 @@ def run(
                     "uri": provider_uri,
                     "market": provider_manifest["market"],
                     "identity_sha256": provider_manifest["provider_identity_sha256"],
+                },
+                "provider_lineage": {
+                    "present": provider_lineage is not None,
+                    "artifact": (
+                        lineage_output_path.name if provider_lineage is not None else None
+                    ),
+                    "sha256": lineage_sha256,
                 },
                 "membership_coverage": membership_readiness,
                 "note": (
@@ -900,6 +1076,11 @@ def run(
         "decision_status": decision_status,
         "provider_uri": provider_uri,
         "provider_identity_sha256": provider_manifest["provider_identity_sha256"],
+        "provider_lineage_present": provider_lineage is not None,
+        "provider_lineage_artifact": (
+            lineage_output_path.name if provider_lineage is not None else None
+        ),
+        "provider_lineage_sha256": lineage_sha256,
         "membership_source": "committed_ndx_window_start_snapshot",
         "membership_source_path": str(resolved_snapshot_path),
         "survivorship_bias_documented": True,
@@ -942,6 +1123,9 @@ def run(
         "agg_path": str(agg_path),
         "comp_path": str(comp_path),
         "manifest_path": str(manifest_path),
+        "provider_lineage_path": (
+            str(lineage_output_path) if provider_lineage is not None else None
+        ),
         "aggregate": aggregate,
         "comparison": comparison,
         "manifest": manifest,
@@ -970,6 +1154,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--snapshot-path", type=Path, default=DEFAULT_SNAPSHOT_PATH,
         help="Path to committed NDX membership snapshot JSON",
     )
+    parser.add_argument(
+        "--provider-lineage-path",
+        type=Path,
+        default=None,
+        help=(
+            "Optional provider_backfill_lineage.json copied into evidence and "
+            "verified against the provider identity"
+        ),
+    )
     return parser
 
 
@@ -981,6 +1174,7 @@ def main() -> None:
         first_test_year=args.first_test_year,
         last_test_year=args.last_test_year,
         snapshot_path=args.snapshot_path,
+        provider_lineage_path=args.provider_lineage_path,
     )
     print(f"\n  readiness: {result['readiness_path']}")
     print(f"  aggregate: {result['agg_path']}")

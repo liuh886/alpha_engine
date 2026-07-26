@@ -297,8 +297,88 @@ but they do not compensate for negative economic performance.  Decision:
    Top-K, and gate thresholds are carried over unchanged from the original
    candidate_v2 experiment.  No model or portfolio parameter was searched.
 
-The next useful research step is provider backfill for the 43-symbol union
-missing across the ten snapshots, prioritising symbols with obtainable
-historical prices and explicit ticker-successor mappings. Further blend-weight,
-LightGBM, or overlay tuning on the incomplete universe would not resolve the
-remaining validity problem.
+The provider-backfill step described above has now been completed. The section
+below is the authoritative current evidence and supersedes the limited-provider
+metrics in this subsection.
+
+### Provider-backfilled result (authoritative current evidence)
+
+An isolated provider was built with
+`scripts/build_ndx_window_start_provider.py`. It copied and hash-verified the
+132 source CSVs behind the operational provider, then recovered 34 of the 43
+missing NDX identities:
+
+- 33 symbols were downloaded directly with adjusted daily Yahoo data;
+- historical `FB` was sourced only from the same-company `META` series and
+  capped at 2022-06-30, before the committed snapshots switch to `META`;
+- the current Yahoo `FB` instrument was never downloaded because that ticker
+  has been recycled for an unrelated ETF;
+- nine acquired or delisted identities remained unavailable and failed closed:
+  `ALXN`, `ANSS`, `ATVI`, `CERN`, `MXIM`, `SGEN`, `SPLK`, `WBA`, and `XLNX`.
+
+The operational provider was not mutated. The isolated provider identity is
+`9e4705965df9ee428947ed4bb917d2bdc9ffdba9add82fbea0728ae5aadeaeea`.
+Its complete source/alias/unavailable lineage is copied into the evidence as
+`provider_backfill_lineage.json` and bound to that provider identity.
+
+Training coverage also now follows the actual semiannual membership interval
+for each symbol. A constituent that leaves NDX before `train_end` needs data
+only through its last active snapshot interval. It is no longer dropped for
+lacking future bars, and future bars cannot make an incomplete historical
+interval pass.
+
+OOS coverage rose to 98/101, 100/102, 100/101, and 100/101 symbols. Training
+coverage rose from 81-90 names to 114-127 names. The unchanged frozen model
+then produced:
+
+| Metric | Static-100 cohort | Initial NDX provider | Backfilled NDX provider |
+|---|---:|---:|---:|
+| Portfolio total return | 372.61% | 36.82% | -9.76% |
+| QQQ total return | 70.81% | 70.81% | 70.81% |
+| Compounded relative excess | 176.68% | -19.90% | -47.17% |
+| Mean Sharpe | 1.51 | .627 | -.291 |
+| Worst drawdown | -22.39% | -21.01% | -23.67% |
+| Mean ICIR | .223 | .190 | .103 |
+| Mean Rank ICIR | .155 | .155 | .126 |
+| Positive excess windows | 4/4 | 1/4 | 0/4 |
+
+The final per-window evidence is:
+
+| Window | Train symbols | Test/official | Relative excess | Sharpe | Max drawdown | ICIR | Rank ICIR |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 2024H1 | 114 | 98/101 | -34.70% | -2.33 | -21.10% | -.094 | -.025 |
+| 2024H2 | 120 | 100/102 | -3.06% | .56 | -12.91% | .070 | -.008 |
+| 2025H1 | 123 | 100/101 | -10.10% | .10 | -23.67% | .106 | .081 |
+| 2025H2 | 127 | 100/101 | -7.17% | .50 | -18.04% | .328 | .456 |
+
+All economic gates fail except the three average score diagnostics, which stay
+slightly positive. Positive ICIR does not translate into Top-3 excess return:
+the broader cross-section changes both fitted ranks and selected names, and all
+four cost-aware OOS portfolios underperform QQQ.
+
+This is stronger evidence than the survivor-heavy static cohorts. It rejects
+the claim that candidate_v2 currently has reliable trade-guidance ability.
+`promotion_eligible=false` and `trade_ready=false` remain mandatory.
+
+Reproduction:
+
+```bash
+uv run python scripts/build_ndx_window_start_provider.py \
+  --base-data-root D:/Documents/GitHub/alpha_engine \
+  --output-data-root D:/Documents/GitHub/alpha_engine_ndx_backfill_data \
+  --start 2021-04-05 \
+  --end 2026-06-24
+
+uv run python scripts/run_candidate_v2_ndx_window_start_evidence.py \
+  --data-root D:/Documents/GitHub/alpha_engine_ndx_backfill_data \
+  --provider-lineage-path \
+    D:/Documents/GitHub/alpha_engine_ndx_backfill_data/data/provider_backfill_lineage.json \
+  --first-test-year 2024 \
+  --last-test-year 2025
+```
+
+The next model-quality step is cross-sectional factor and label diagnosis on
+this broader point-in-time-like universe. It is not another search over blend
+weights, LightGBM leaves, Top-K, or risk overlays. A higher-grade delisted-price
+source can close the remaining 1-3 OOS names, but the current economic failure
+is already too large to support promotion.

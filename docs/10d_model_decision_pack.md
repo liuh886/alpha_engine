@@ -1,5 +1,12 @@
 # AlphaEngine 10D Model Decision Pack
 
+> **Historical decision, superseded on 2026-07-26.** This pack records the
+> narrow-universe decision from PR #87. Near-complete NDX window-start
+> validation subsequently produced `-47.17%` compounded relative excess,
+> `0/4` positive-excess windows, mean ICIR `0.1025`, and `-23.67%` worst
+> drawdown. The blend is no longer the current stronger research candidate;
+> see `docs/10d_universe_robustness_report.md`.
+
 ## Current decision
 
 Current best research candidate:

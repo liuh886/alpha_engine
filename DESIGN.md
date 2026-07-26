@@ -380,3 +380,24 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
 - As-of membership improves relative excess, ICIR, and drawdown versus applying
   the future OOS snapshot across training, but the next validity step is
   provider backfill, not more blend-weight, LightGBM, or overlay tuning.
+
+### 2026-07-26: Near-Complete NDX Provider Backfill and Documentation Cleanup
+
+- Phase 1 data validity: an isolated US provider backfilled 34 historically
+  required NDX symbols without mutating the operational provider. OOS coverage
+  rose from 86-93 symbols to 98-100 symbols; unavailable acquired or delisted
+  names remain explicit, so coverage still fails closed as partial.
+- Phase 2 research validity: the unchanged candidate_v2 deteriorated under the
+  broader universe. Compounded relative excess fell from `-19.90%` to
+  `-47.17%`, positive-excess windows fell from one to zero, mean ICIR fell from
+  `0.1899` to `0.1025`, and worst drawdown worsened from `-21.01%` to `-23.67%`.
+  Training coverage is now checked only over each symbol's actual semiannual
+  membership interval, so ticker exits are neither discarded nor rescued by
+  future bars. This is evidence of prior coverage optimism, not a promotion.
+- Phase 3 governance: `promotion_eligible=false` and `trade_ready=false` remain
+  mandatory. The next model work must address cross-sectional robustness rather
+  than tune the same blend on a narrow survivor-heavy provider.
+- Phase 4 integration: WebUI's main documentation endpoint now serves the
+  maintained root `README.md`. Unreferenced retired-agent plans and duplicate
+  architecture documents were removed; current `README.md`, `DESIGN.md`,
+  `AGENTS.md`, `evaluation.md`, and `docs/adr/` remain authoritative.

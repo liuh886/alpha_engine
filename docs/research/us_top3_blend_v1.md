@@ -1,8 +1,16 @@
 # US Top-3 Blend Baseline v1
 
+> **Frozen historical baseline, not a current recommendation.** The broader
+> NDX window-start validation completed on 2026-07-26 and rejected robustness
+> of this selection model. Current evidence is documented in
+> `docs/10d_universe_robustness_report.md`.
+
 ## Purpose
 
-This document freezes the strongest current Alpha Engine research candidate as a canonical baseline for subsequent drawdown-control experiments. It preserves evidence from PR #172 without changing models, weights, universe, benchmark, cost assumptions, or promotion gates.
+This document freezes the former strongest Alpha Engine research candidate as
+a canonical historical baseline for subsequent robustness experiments. It
+preserves evidence from PR #172 without changing models, weights, universe,
+benchmark, cost assumptions, or promotion gates.
 
 ## Baseline identity
 
