@@ -352,8 +352,23 @@ def _aggregate_diagnostics(
     top3_spread_positive = bool(
         isinstance(model_tail.get("mean_spread"), (int, float)) and model_tail["mean_spread"] > 0.0
     )
+    positive_top3_ratio = model_tail.get("mean_positive_spread_ratio")
     selected_percentile = model_tail.get("mean_selected_realized_percentile")
-    broad_ic_tail_disconnect = broad_rank_ic_positive and not top3_spread_positive
+    relative_excess = source_aggregate.get("candidate_v2", {}).get(
+        "compounded_relative_excess_return"
+    )
+    top3_economically_consistent = bool(
+        top3_spread_positive
+        and isinstance(positive_top3_ratio, (int, float))
+        and positive_top3_ratio > 0.5
+        and isinstance(selected_percentile, (int, float))
+        and selected_percentile > 0.5
+        and isinstance(relative_excess, (int, float))
+        and relative_excess > 0.0
+    )
+    broad_ic_tail_disconnect = (
+        broad_rank_ic_positive and not top3_economically_consistent
+    )
 
     ranked = sorted(
         factors,
@@ -449,8 +464,19 @@ def _aggregate_diagnostics(
         "diagnosis": {
             "broad_rank_ic_positive": broad_rank_ic_positive,
             "rebalance_top3_spread_positive": top3_spread_positive,
+            "majority_positive_top3_periods": bool(
+                isinstance(positive_top3_ratio, (int, float))
+                and positive_top3_ratio > 0.5
+            ),
             "selected_top3_above_random": bool(
                 isinstance(selected_percentile, (int, float)) and selected_percentile > 0.5
+            ),
+            "positive_compounded_relative_excess": bool(
+                isinstance(relative_excess, (int, float))
+                and relative_excess > 0.0
+            ),
+            "top3_economically_consistent": (
+                top3_economically_consistent
             ),
             "broad_ic_tail_disconnect": broad_ic_tail_disconnect,
             "gain_resolution_mismatch": gain_resolution_mismatch,

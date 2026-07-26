@@ -130,6 +130,10 @@ def _load_provider_lineage(
         raise ValueError("provider lineage must prove operational provider was not mutated")
     if policies.get("unavailable_symbols_fail_closed") is not True:
         raise ValueError("provider lineage must fail closed on unavailable symbols")
+    if policies.get("adjusted_close_discontinuities_fail_closed") is not True:
+        raise ValueError(
+            "provider lineage must fail closed on adjusted-close discontinuities"
+        )
     return payload
 
 
@@ -255,6 +259,9 @@ def _evaluate_ndx_window(
     baseline_expr: str,
     snapshot: NdxWindowStartSnapshot,
     provider_set: set[str],
+    *,
+    oos_snapshot_date: str | None = None,
+    ranker_mode: str = "frozen_gain5",
 ) -> dict[str, Any] | None:
     """Train frozen ranker with semiannual as-of membership, evaluate on OOS window.
 
@@ -293,7 +300,11 @@ def _evaluate_ndx_window(
         coverage metadata, or ``None`` if skipped.
     """
     # ── OOS test symbols (window-start snapshot) ────────────────────────
-    oos_snapshot_date_str = WINDOW_SNAPSHOT_MAP[window.label]
+    oos_snapshot_date_str = (
+        oos_snapshot_date
+        if oos_snapshot_date is not None
+        else WINDOW_SNAPSHOT_MAP[window.label]
+    )
     oos_entry = get_snapshot_by_date(snapshot, oos_snapshot_date_str)
     oos_provider_report = intersect_with_provider(oos_entry, provider_set)
     oos_requested = oos_provider_report["requested"]
@@ -471,6 +482,7 @@ def _evaluate_ndx_window(
         train_symbols=train_symbols,
         asof_membership_snapshot=snapshot,
         asof_provider_symbols=provider_set,
+        ranker_mode=ranker_mode,
     )
     if result is None:
         return None
@@ -530,6 +542,7 @@ def _evaluate_ndx_window(
         "research_only": True,
         "promotion_eligible": False,
         "trade_ready": False,
+        "ranker_mode": ranker_mode,
         # Per-snapshot detail
         "per_snapshot_detail": {
             s.date: {

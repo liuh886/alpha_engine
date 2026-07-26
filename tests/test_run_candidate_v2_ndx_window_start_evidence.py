@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from scripts.build_ndx_window_start_provider import (
+    _adjusted_close_discontinuities,
     _alias_end_date,
     _assert_usable_from_first_membership,
     _clean_bars,
@@ -519,6 +520,7 @@ def test_provider_lineage_identity_is_verified(tmp_path: Path) -> None:
                 "policies": {
                     "operational_provider_mutated": False,
                     "unavailable_symbols_fail_closed": True,
+                    "adjusted_close_discontinuities_fail_closed": True,
                 },
             }
         ),
@@ -538,6 +540,7 @@ def test_provider_lineage_requires_fail_closed_policy(tmp_path: Path) -> None:
                 "policies": {
                     "operational_provider_mutated": False,
                     "unavailable_symbols_fail_closed": False,
+                    "adjusted_close_discontinuities_fail_closed": True,
                 },
             }
         ),
@@ -604,6 +607,43 @@ def test_clean_bars_drops_batch_union_nan_rows() -> None:
     assert clean["date"].dt.strftime("%Y-%m-%d").tolist() == ["2021-10-28"]
     assert clean["amount"].tolist() == [4800.0]
     assert clean["factor"].tolist() == [1.0]
+
+
+def test_adjustment_scan_detects_reciprocal_split_discontinuities() -> None:
+    frame = pd.DataFrame(
+        {
+            "date": pd.to_datetime(
+                [
+                    "2026-05-06",
+                    "2026-05-07",
+                    "2026-05-08",
+                    "2026-05-11",
+                ]
+            ),
+            "close": [1813.97, 176.10, 1866.81, 184.28],
+        }
+    )
+
+    anomalies = _adjusted_close_discontinuities(frame)
+
+    assert len(anomalies) == 3
+    assert anomalies[0]["previous_date"] == "2026-05-06"
+    assert anomalies[0]["date"] == "2026-05-07"
+    assert anomalies[0]["close_ratio"] < 1 / 3
+    assert anomalies[1]["close_ratio"] > 3
+
+
+def test_adjustment_scan_accepts_clean_adjusted_history() -> None:
+    frame = pd.DataFrame(
+        {
+            "date": pd.to_datetime(
+                ["2026-05-06", "2026-05-07", "2026-05-08"]
+            ),
+            "close": [181.40, 176.10, 186.68],
+        }
+    )
+
+    assert _adjusted_close_discontinuities(frame) == []
 
 
 def test_history_after_first_membership_fails_closed() -> None:

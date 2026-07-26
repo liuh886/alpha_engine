@@ -42,7 +42,7 @@ def snapshot() -> NdxWindowStartSnapshot:
 def test_loads_valid_snapshot(snapshot: NdxWindowStartSnapshot) -> None:
     """Committed snapshot loads with correct schema identity."""
     assert snapshot.source_url_template == SOURCE_URL_TEMPLATE
-    assert len(snapshot.snapshot_dates) == 10
+    assert len(snapshot.snapshot_dates) == 11
     for entry in snapshot.snapshot_dates:
         assert entry.date
         assert entry.count > 0
@@ -51,13 +51,14 @@ def test_loads_valid_snapshot(snapshot: NdxWindowStartSnapshot) -> None:
 
 
 def test_snapshot_dates_are_correct(snapshot: NdxWindowStartSnapshot) -> None:
-    """Required snapshot dates span 2021-01-04 through 2025-07-01."""
+    """Required snapshot dates span 2021-01-04 through 2026-01-02."""
     expected = {
         "2021-01-04", "2021-07-01",
         "2022-01-03", "2022-07-01",
         "2023-01-03", "2023-07-03",
         "2024-01-02", "2024-07-01",
         "2025-01-02", "2025-07-01",
+        "2026-01-02",
     }
     actual = {d.date for d in snapshot.snapshot_dates}
     assert actual == expected
@@ -84,6 +85,7 @@ def test_committed_snapshots_have_expected_counts_and_hashes(
         "2024-07-01": 102,
         "2025-01-02": 101,
         "2025-07-01": 101,
+        "2026-01-02": 101,
     }
     hashes = {
         entry.date: entry.sha256_membership_hash
@@ -119,6 +121,9 @@ def test_committed_snapshots_have_expected_counts_and_hashes(
         ),
         "2025-07-01": (
             "785b04f69a405eed1daf7b2c5cdc260ee8808d723de1cc41038d0f1b080495af"
+        ),
+        "2026-01-02": (
+            "f749e2e162bc3f712793701efa68f7ff9a9bf04137c361f5fc3aacb3b51c9fe7"
         ),
     }
 
@@ -334,7 +339,7 @@ def test_to_dict_round_trip(snapshot: NdxWindowStartSnapshot) -> None:
     """to_dict produces a JSON-serializable dict with all fields."""
     d = snapshot.to_dict()
     assert d["source_url_template"] == SOURCE_URL_TEMPLATE
-    assert len(d["snapshot_dates"]) == 10
+    assert len(d["snapshot_dates"]) == 11
     for entry in d["snapshot_dates"]:
         assert "date" in entry
         assert "symbols" in entry
@@ -577,6 +582,6 @@ def test_refresh_defaults_cover_full_training_and_oos_history() -> None:
 
     args = refresh_mod.build_parser().parse_args([])
     assert args.dates == refresh_mod.DEFAULT_SNAPSHOT_DATES
-    assert len(args.dates) == 10
+    assert len(args.dates) == 11
     assert args.dates[0] == "2021-01-04"
-    assert args.dates[-1] == "2025-07-01"
+    assert args.dates[-1] == "2026-01-02"
