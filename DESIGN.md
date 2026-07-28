@@ -461,17 +461,26 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
 
 ### 2026-07-29: Cross-Market Technical-Indicator Diagnosis
 
-- Phase 1 data validity: manifest-pinned US and CN sources pass close-only
-  continuity checks. CN contains 46 material OHLC relationship defects,
-  concentrated on 2024-03-29, so high/low-derived factors fail closed until a
-  repaired provider is versioned. US historic NDX membership remains
+- Phase 1 data validity: the original CN provider contained 46 material OHLC
+  relationship defects on 2024-03-29. Yahoo's raw and auto-adjusted payloads
+  were both internally inconsistent. An isolated fail-closed rebuild replaced
+  only those 46 full histories through EFinance qfq, preserved all 212 source
+  identities, achieved minimum 99.13% date overlap, and produced zero invalid
+  rows. The repaired provider identity is
+  `6f556a5952b220b0a92545046ffc1a738227d3b4fb216303a5b0f08762cd50f4`.
+  Calendar and instrument hashes are unchanged, so parent readiness is reused
+  only through explicit repair lineage. US historic NDX membership remains
   near-complete; CN static membership retains survivorship bias.
 - Phase 2 research validity: fixed Bollinger-reversion, MACD-histogram, and
   RSI-strength factors were evaluated on four complete 2024H1--2025H2 OOS
   windows with raw forward 10D returns. No parameter or orientation search was
-  performed. CN RSI is the strongest local clue (mean ICIR .0986, -12.20%
-  worst drawdown, +10.52% compounded relative excess), but only 2/4 windows
+  performed. CN RSI is the strongest local clue (mean ICIR .0986, -12.95%
+  worst drawdown, +9.99% compounded relative excess), but only 2/4 windows
   beat CSI300 and the factor fails completely in US.
+- Phase 2 high/low challenge: one fixed 10-session close-location-pressure
+  factor was evaluated after the repair. It produced mean ICIR -.0096 and
+  -17.04% relative excess in US, and mean ICIR .0200 with -9.34% relative
+  excess in CN. It is falsified without a window or orientation search.
 - Phase 3 governance: no candidate passes the cross-market economic gate;
   `supported_candidates=[]`, `promotion_eligible=false`, and
   `trade_ready=false`. The active factor libraries are unchanged. A precedence

@@ -9,6 +9,8 @@ import tempfile
 from pathlib import Path
 from typing import Iterable
 
+import pandas as pd
+
 from scripts.dump_bin import dump_all
 from src.data.market_provider import (
     SUPPORTED_MARKETS,
@@ -17,6 +19,7 @@ from src.data.market_provider import (
     write_provider_manifest,
 )
 from src.data.symbol_identity import infer_data_market
+from src.data.validation.schema import validate_market_data
 
 DEFAULT_FIELDS = "open,high,low,close,volume,amount,factor"
 
@@ -48,6 +51,47 @@ def build_market_provider(
         raise FileNotFoundError(
             f"no source CSVs found for market={market_key} under {source_dir}"
         )
+
+    # Preflight: validate every source CSV before touching the destination.
+    for source in source_files:
+        symbol = source.stem
+        try:
+            source_df = pd.read_csv(source)
+        except Exception as exc:
+            raise ValueError(
+                f"Cannot read source CSV {source.name} "
+                f"(symbol={symbol}, market={market_key}): {exc}"
+            ) from exc
+
+        if "date" not in source_df.columns:
+            raise ValueError(
+                f"Source CSV {source.name} "
+                f"(symbol={symbol}, market={market_key}) "
+                "is missing the required date column"
+            )
+        # Normalize date column to datetime before schema validation,
+        # matching the maintained update path in _process_yfinance_df.
+        source_df["date"] = pd.to_datetime(source_df["date"], errors="coerce")
+        bad_dates = source_df[source_df["date"].isna()]
+        if not bad_dates.empty:
+            raise ValueError(
+                f"Source CSV {source.name} (symbol={symbol}, market={market_key}) "
+                f"contains unparseable dates at indices "
+                f"{bad_dates.index.tolist()}"
+            )
+        if source_df["date"].duplicated().any():
+            raise ValueError(
+                f"Source CSV {source.name} "
+                f"(symbol={symbol}, market={market_key}) "
+                "contains duplicate dates"
+            )
+
+        ok, _, errors = validate_market_data(source_df, symbol)
+        if not ok:
+            raise ValueError(
+                f"Source CSV {source.name} (symbol={symbol}, market={market_key}) "
+                f"failed preflight validation: {'; '.join(errors)}"
+            )
 
     if destination.exists():
         shutil.rmtree(destination)

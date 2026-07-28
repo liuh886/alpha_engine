@@ -1,0 +1,113 @@
+{
+  "best_candidate": "factor:technical:rsi_strength_10/factor_baseline/original",
+  "candidates": [
+    {
+      "candidate": "factor:technical:rsi_strength_10/factor_baseline/original",
+      "mean_icir": 0.09857725,
+      "mean_rank_ic": 0.013615249999999999,
+      "mean_spread": 0.005453565,
+      "n_windows": 4,
+      "positive_icir_ratio": 0.75,
+      "positive_rank_ic_ratio": 0.75,
+      "positive_spread_ratio": 0.75,
+      "ready_ratio": 0.0,
+      "stable_research_candidate": true,
+      "worst_drawdown": -0.129499
+    },
+    {
+      "candidate": "factor:technical:macd_histogram_12_26_9/factor_baseline/original",
+      "mean_icir": 0.03645475,
+      "mean_rank_ic": 0.01207425,
+      "mean_spread": 0.0035065875,
+      "n_windows": 4,
+      "positive_icir_ratio": 0.75,
+      "positive_rank_ic_ratio": 0.75,
+      "positive_spread_ratio": 0.75,
+      "ready_ratio": 0.0,
+      "stable_research_candidate": true,
+      "worst_drawdown": -0.198696
+    },
+    {
+      "candidate": "factor:technical:bollinger_reversion_z20/factor_baseline/inverted",
+      "mean_icir": 0.03915225,
+      "mean_rank_ic": 4.3749999999999464e-05,
+      "mean_spread": 0.00272734,
+      "n_windows": 4,
+      "positive_icir_ratio": 0.75,
+      "positive_rank_ic_ratio": 0.5,
+      "positive_spread_ratio": 0.75,
+      "ready_ratio": 0.0,
+      "stable_research_candidate": false,
+      "worst_drawdown": -0.165768
+    },
+    {
+      "candidate": "factor:technical:close_location_pressure_10/factor_baseline/original",
+      "mean_icir": 0.02002275,
+      "mean_rank_ic": 0.011498999999999999,
+      "mean_spread": -0.00010106999999999997,
+      "n_windows": 4,
+      "positive_icir_ratio": 0.75,
+      "positive_rank_ic_ratio": 0.5,
+      "positive_spread_ratio": 0.75,
+      "ready_ratio": 0.0,
+      "stable_research_candidate": false,
+      "worst_drawdown": -0.134486
+    },
+    {
+      "candidate": "factor:technical:close_location_pressure_10/factor_baseline/inverted",
+      "mean_icir": -0.02002275,
+      "mean_rank_ic": -0.011498999999999999,
+      "mean_spread": 0.00010106999999999997,
+      "n_windows": 4,
+      "positive_icir_ratio": 0.25,
+      "positive_rank_ic_ratio": 0.5,
+      "positive_spread_ratio": 0.25,
+      "ready_ratio": 0.0,
+      "stable_research_candidate": false,
+      "worst_drawdown": -0.142269
+    },
+    {
+      "candidate": "factor:technical:macd_histogram_12_26_9/factor_baseline/inverted",
+      "mean_icir": -0.03645475,
+      "mean_rank_ic": -0.01207425,
+      "mean_spread": -0.0035065875,
+      "n_windows": 4,
+      "positive_icir_ratio": 0.25,
+      "positive_rank_ic_ratio": 0.25,
+      "positive_spread_ratio": 0.25,
+      "ready_ratio": 0.0,
+      "stable_research_candidate": false,
+      "worst_drawdown": -0.177859
+    },
+    {
+      "candidate": "factor:technical:bollinger_reversion_z20/factor_baseline/original",
+      "mean_icir": -0.03915225,
+      "mean_rank_ic": -4.3749999999999464e-05,
+      "mean_spread": -0.00272734,
+      "n_windows": 4,
+      "positive_icir_ratio": 0.25,
+      "positive_rank_ic_ratio": 0.5,
+      "positive_spread_ratio": 0.25,
+      "ready_ratio": 0.0,
+      "stable_research_candidate": false,
+      "worst_drawdown": -0.132095
+    },
+    {
+      "candidate": "factor:technical:rsi_strength_10/factor_baseline/inverted",
+      "mean_icir": -0.09857725,
+      "mean_rank_ic": -0.013615249999999999,
+      "mean_spread": -0.00542877,
+      "n_windows": 4,
+      "positive_icir_ratio": 0.25,
+      "positive_rank_ic_ratio": 0.25,
+      "positive_spread_ratio": 0.25,
+      "ready_ratio": 0.0,
+      "stable_research_candidate": false,
+      "worst_drawdown": -0.138278
+    }
+  ],
+  "min_windows": 3,
+  "n_candidates": 8,
+  "n_reports": 4,
+  "schema_version": "1.0"
+}

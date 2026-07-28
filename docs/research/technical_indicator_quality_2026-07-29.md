@@ -2,18 +2,18 @@
 
 ## Decision
 
-No Bollinger, MACD, or RSI candidate is approved for the active factor
-libraries. No current AlphaEngine model is trade-ready.
+No Bollinger, MACD, RSI, or close-location candidate is approved for the
+active factor libraries. No current AlphaEngine model is trade-ready.
 
 The strongest local clue is the fixed 10-session RSI-strength factor in CN:
-mean ICIR `0.0986`, mean Rank IC `0.0133`, worst drawdown `-12.20%`, and
-`+10.52%` compounded relative excess versus CSI300. It nevertheless beats the
+mean ICIR `0.0986`, mean Rank IC `0.0136`, worst drawdown `-12.95%`, and
+`+9.99%` compounded relative excess versus CSI300. It nevertheless beats the
 benchmark in only `2/4` windows, has `ready_ratio=0`, uses a static
 survivorship-biased CN universe, and fails completely in US. The result is a
 market-specific research clue, not a trading signal.
 
-The durable evidence is under
-`artifacts/evidence/technical_indicator_factor_quality/`.
+The authoritative repaired-provider evidence is under
+`artifacts/evidence/technical_indicator_factor_quality_repaired_cn/`.
 
 ## Frozen experiment contract
 
@@ -22,7 +22,8 @@ The durable evidence is under
 - CN: manifest-pinned curated static universe, Top-15, CSI300 benchmark, with
   survivorship bias declared.
 - Economic returns: raw `Ref($close, -10) / $close - 1`.
-- Candidate inputs: historical close only.
+- Candidate inputs: historical close, plus same-day high/low for the fixed
+  close-location-pressure factor.
 - Candidate parameters and economic orientations were declared before the
   run. Inverted rows are diagnostics, not an orientation search.
 - No grid search, fill, clipping, future return, model fit, or blend tuning.
@@ -37,16 +38,23 @@ compounded across four windows.
 | Candidate | Market | Mean ICIR | Mean Rank IC | Positive spread windows | Worst drawdown | Positive excess windows | Relative excess |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Bollinger reversion z20 | US | -0.0446 | -0.0060 | 1/4 | -22.97% | 1/4 | -27.45% |
-| Bollinger reversion z20 | CN | -0.0383 | 0.0006 | 1/4 | -13.03% | 1/4 | -23.10% |
+| Bollinger reversion z20 | CN | -0.0392 | -0.0000 | 1/4 | -13.21% | 1/4 | -22.65% |
 | MACD histogram 12/26/9 | US | 0.0163 | -0.0066 | 3/4 | -33.86% | 1/4 | -34.76% |
-| MACD histogram 12/26/9 | CN | 0.0402 | 0.0122 | 3/4 | -19.74% | 2/4 | -2.46% |
+| MACD histogram 12/26/9 | CN | 0.0365 | 0.0121 | 3/4 | -19.87% | 2/4 | 2.45% |
 | RSI strength 10 | US | 0.0421 | 0.0100 | 3/4 | -14.77% | 0/4 | -46.90% |
-| RSI strength 10 | CN | 0.0986 | 0.0133 | 3/4 | -12.20% | 2/4 | 10.52% |
+| RSI strength 10 | CN | 0.0986 | 0.0136 | 3/4 | -12.95% | 2/4 | 9.99% |
+| Close location pressure 10 | US | -0.0096 | -0.0028 | 2/4 | -14.61% | 2/4 | -17.04% |
+| Close location pressure 10 | CN | 0.0200 | 0.0115 | 3/4 | -13.45% | 2/4 | -9.34% |
 
 The existing broad stability rule labels CN MACD and CN RSI as stable research
 rows because their IC and spread signs are consistent. The stricter decision
 correctly rejects both: neither is economically reliable across both markets,
 and neither has a nonzero ready ratio.
+
+The high/low-derived close-location candidate is also rejected. It has
+negative mean ICIR in US and negative compounded relative excess in both
+markets. The restored high/low data enabled a valid falsification; it did not
+create alpha.
 
 The factor pool also contained a formula-precedence defect in four
 `technical_rsi_proxy_*` expressions. The positive-day indicator multiplied
@@ -80,13 +88,19 @@ The runner verifies every CSV against its provider-manifest hash and writes
 | Market | Files | Rows | Close duplicates | Nonpositive close | Split-like close jumps | Invalid OHLC | Close-only eligible | High/low eligible |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
 | US | 166 | 212,076 | 0 | 0 | 0 | 0 | yes | yes |
-| CN | 212 | 270,694 | 0 | 0 | 0 | 46 | yes | no |
+| CN, original | 212 | 270,694 | 0 | 0 | 0 | 46 | yes | no |
+| CN, isolated repair | 212 | 270,617 | 0 | 0 | 0 | 0 | yes | yes |
 
-The CN OHLC defects are concentrated on 2024-03-29 and are consistent with a
-stored adjusted-close versus OHLC alignment problem. This experiment uses only
-close, so it remains eligible. Any future range, ATR, candlestick, or other
-high/low factor must fail closed until the source is rebuilt and the report
-passes.
+The original CN defects were concentrated on 2024-03-29. A live probe proved
+that Yahoo's raw and auto-adjusted payloads were both internally inconsistent
+on those rows; scaling Adj Close alone could not repair them. The isolated
+runner copied all 212 manifest-pinned files, replaced only the 46 invalid
+histories through EFinance's qfq endpoint, required at least 95% date overlap,
+and rebuilt provider identity
+`6f556a5952b220b0a92545046ffc1a738227d3b4fb216303a5b0f08762cd50f4`.
+All replacements used EFinance, minimum date overlap was `0.991304`, and the
+new provider has zero invalid OHLC rows. The original provider remains
+untouched.
 
 The broader data foundation is not trade-grade:
 
@@ -97,8 +111,8 @@ The broader data foundation is not trade-grade:
   earnings revisions, sector history, corporate-action reference tables,
   borrow data, or richer liquidity/microstructure fields.
 
-It is sufficient for close-only exploratory evidence, not for an unbiased
-claim that a strategy can guide trading.
+It is sufficient for OHLCV exploratory evidence, not for an unbiased claim
+that a strategy can guide trading.
 
 ## LightGBM versus XGBoost
 
@@ -141,11 +155,11 @@ rolling-window feature loads—not rewrite Top-K arithmetic.
 
 ## Next approved research step
 
-Stop tuning Bollinger windows, MACD spans, RSI windows, blend weights, or
-LightGBM leaves on the observed windows. Improve the information set and data
-contract first:
+Stop tuning Bollinger windows, MACD spans, RSI windows, close-location
+windows, blend weights, or LightGBM leaves on the observed windows. Improve
+the information set and data contract first:
 
-1. repair and re-version CN OHLC before using high/low features;
-2. acquire point-in-time universe and corporate-action coverage;
-3. add economically distinct, predeclared factor families;
+1. acquire point-in-time CN membership and complete delisted US history;
+2. add corporate-action reference data and point-in-time non-price features;
+3. add only economically distinct, predeclared factor families;
 4. challenge any new hypothesis on the same cost-aware OOS economic gates.

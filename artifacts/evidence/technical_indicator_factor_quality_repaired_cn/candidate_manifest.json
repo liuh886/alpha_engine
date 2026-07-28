@@ -1,0 +1,81 @@
+{
+  "candidates": [
+    {
+      "candidate": "factor:technical:bollinger_reversion_z20",
+      "declared_orientation": "lower_price_zscore_is_better",
+      "parameter_search_performed": false,
+      "parameters": {
+        "window": 20
+      },
+      "requires_high_low": false,
+      "uses_future_returns": false
+    },
+    {
+      "candidate": "factor:technical:macd_histogram_12_26_9",
+      "declared_orientation": "higher_normalized_macd_histogram_is_better",
+      "parameter_search_performed": false,
+      "parameters": {
+        "fast_span": 12,
+        "signal_span": 9,
+        "slow_span": 26
+      },
+      "requires_high_low": false,
+      "uses_future_returns": false
+    },
+    {
+      "candidate": "factor:technical:rsi_strength_10",
+      "declared_orientation": "higher_positive_return_magnitude_share_is_better",
+      "parameter_search_performed": false,
+      "parameters": {
+        "window": 10
+      },
+      "requires_high_low": false,
+      "uses_future_returns": false
+    },
+    {
+      "candidate": "factor:technical:close_location_pressure_10",
+      "declared_orientation": "higher_rolling_close_location_is_better",
+      "parameter_search_performed": false,
+      "parameters": {
+        "window": 10
+      },
+      "requires_high_low": true,
+      "uses_future_returns": false
+    }
+  ],
+  "cn": {
+    "membership_as_of": "2026-07-11",
+    "membership_mode": "static_curated",
+    "n_loaded_symbols_including_benchmark": 202,
+    "provider_identity_sha256": "6f556a5952b220b0a92545046ffc1a738227d3b4fb216303a5b0f08762cd50f4",
+    "provider_manifest_ref": "data/providers/cn/provider_manifest.json",
+    "provider_manifest_sha256": "44855c4e711d51300821da21ef170d35b2ee7f27701f96a6b086c147500e95eb",
+    "repair_lineage": {
+      "evidence_type": "isolated_cn_ohlcv_source_repair",
+      "invalid_after": 0,
+      "invalid_before": 46,
+      "original_provider_identity_sha256": "37ceb613e382514b12f323c7a61b084be116f6ec3f5a3a8fb4ba2736a80215b6",
+      "repair_manifest_sha256": "181dddce5363ebf74affafc9f37fef4ed7ce57423a729dfd83334bd5cf962b41"
+    },
+    "survivorship_bias": true,
+    "topk": 15
+  },
+  "evidence_type": "cross_market_technical_indicator_factor_quality",
+  "promotion_eligible": false,
+  "raw_return_provenance": {
+    "expression": "Ref($close, -10) / $close - 1",
+    "horizon": 10,
+    "provenance": "raw_forward_return"
+  },
+  "research_only": true,
+  "schema_version": "1.0",
+  "trade_ready": false,
+  "us": {
+    "membership_mode": "window_start_point_in_time",
+    "n_loaded_symbols_including_benchmark": 107,
+    "provider_identity_sha256": "6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407",
+    "provider_manifest_ref": "data/providers/us/provider_manifest.json",
+    "provider_manifest_sha256": "c27934c4a2c2ece5b1999453e31d975eff44ea4cc282047d2cd63c6788b6c842",
+    "topk": 3
+  }
+}

@@ -6,7 +6,9 @@ use historical closes only and preserve their economic orientation:
 * Bollinger reversion: lower 20-session z-score is better;
 * MACD acceleration: higher 12/26/9 normalized histogram is better; and
 * RSI strength: a larger share of 10-session absolute return magnitude came
-  from positive sessions.
+  from positive sessions; and
+* close-location pressure: the 10-session mean of the close's location inside
+  each same-day high-low range.
 
 These are research scores, not training labels or trading recommendations.
 Economic evaluation must still use canonical raw forward 10D returns.
@@ -30,6 +32,7 @@ class TechnicalIndicatorSpec:
     name: str
     orientation: str
     parameters: dict[str, int]
+    requires_high_low: bool = False
 
 
 BOLLINGER_REVERSION = TechnicalIndicatorSpec(
@@ -47,10 +50,17 @@ RSI_STRENGTH = TechnicalIndicatorSpec(
     orientation="higher_positive_return_magnitude_share_is_better",
     parameters={"window": 10},
 )
+CLOSE_LOCATION_PRESSURE = TechnicalIndicatorSpec(
+    name="factor:technical:close_location_pressure_10",
+    orientation="higher_rolling_close_location_is_better",
+    parameters={"window": 10},
+    requires_high_low=True,
+)
 TECHNICAL_INDICATOR_SPECS: Final = (
     BOLLINGER_REVERSION,
     MACD_HISTOGRAM,
     RSI_STRENGTH,
+    CLOSE_LOCATION_PRESSURE,
 )
 
 
@@ -186,3 +196,64 @@ def compute_technical_indicator_scores(
             spec=RSI_STRENGTH,
         ),
     }
+
+
+def compute_ohlc_technical_indicator_scores(
+    bars: pd.DataFrame,
+) -> dict[str, pd.DataFrame]:
+    """Compute close-only factors plus fixed 10-session close location.
+
+    Close location is ``(2 * close - high - low) / (high - low)``. Its
+    10-session mean measures persistent buying or selling pressure without
+    using a future bar or selecting a window after evaluation.
+    """
+
+    required = {"high", "low", "close"}
+    if not isinstance(bars, pd.DataFrame):
+        raise TypeError("bars must be a DataFrame")
+    missing = required.difference(bars.columns)
+    if missing:
+        raise ValueError(f"bars are missing columns: {sorted(missing)}")
+
+    close = _normalise_close_frame(bars[["close"]])
+    aligned = bars.loc[close.index, ["high", "low"]].copy()
+    for column in ("high", "low"):
+        aligned[column] = pd.to_numeric(aligned[column], errors="coerce")
+    finite = aligned.replace([np.inf, -np.inf], np.nan)
+    if finite.isna().any().any():
+        raise ValueError("high and low must be finite")
+    scale = pd.concat(
+        [finite["high"].abs(), finite["low"].abs(), close["close"].abs()],
+        axis=1,
+    ).max(axis=1).clip(lower=1.0)
+    tolerance = 1e-12 + scale * 1e-10
+    invalid = (
+        finite["high"] + tolerance < finite["low"]
+    ) | (
+        finite["high"] + tolerance < close["close"]
+    ) | (
+        finite["low"] - tolerance > close["close"]
+    )
+    if invalid.any():
+        raise ValueError("bars contain invalid high/low/close relationships")
+
+    high = finite["high"].unstack(level="instrument")
+    low = finite["low"].unstack(level="instrument")
+    close_wide = close["close"].unstack(level="instrument")
+    price_range = high - low
+    daily_location = (
+        (2.0 * close_wide - high - low)
+        / price_range.where(price_range > MIN_SCALE)
+    )
+    window = CLOSE_LOCATION_PRESSURE.parameters["window"]
+    pressure = daily_location.rolling(
+        window,
+        min_periods=window,
+    ).mean()
+
+    scores = compute_technical_indicator_scores(close)
+    scores[CLOSE_LOCATION_PRESSURE.name] = _score_frame(
+        pressure,
+        spec=CLOSE_LOCATION_PRESSURE,
+    )
+    return scores

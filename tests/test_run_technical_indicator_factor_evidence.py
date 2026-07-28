@@ -6,9 +6,11 @@ import hashlib
 import json
 
 import pandas as pd
+import pytest
 
 from scripts.run_technical_indicator_factor_evidence import (
     _audit_provider_sources,
+    _cn_windows,
     _cross_market_decisions,
     _persist_window_contract,
     _raw_forward_returns,
@@ -167,3 +169,71 @@ def test_source_audit_separates_close_and_high_low_eligibility(
     assert result["invalid_ohlc_rows"] == 1
     assert result["nonpositive_volume_rows"] == 1
     assert result["survivorship_bias"] is True
+
+
+def test_cn_readiness_reuse_requires_unchanged_repair_lineage(
+    tmp_path,
+) -> None:
+    universe = tmp_path / "universe.yaml"
+    universe.write_text(
+        "\n".join(
+            (
+                "metadata:",
+                "  membership_mode: static_curated",
+                "  membership_as_of: '2026-07-11'",
+                "cn:",
+                "  - '000001'",
+            )
+        ),
+        encoding="utf-8",
+    )
+    readiness = tmp_path / "readiness.json"
+    readiness.write_text(
+        json.dumps(
+            {
+                "provider_identity_sha256": "a" * 64,
+                "survivorship_bias": True,
+                "unavailable_symbols": [],
+                "retained_symbols": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+    contract = {"sha256": "c" * 64}
+    lineage = {
+        "schema_version": "1.0",
+        "evidence_type": "isolated_cn_ohlcv_source_repair",
+        "original_provider": {
+            "provider_identity_sha256": "a" * 64,
+            "calendar": contract,
+            "instruments": contract,
+        },
+        "new_provider": {
+            "provider_identity_sha256": "b" * 64,
+            "calendar": contract,
+            "instruments": contract,
+        },
+        "invalid_before": 1,
+        "invalid_after": 0,
+        "research_only": True,
+        "promotion_eligible": False,
+        "trade_ready": False,
+    }
+
+    windows, _ = _cn_windows(
+        universe,
+        readiness,
+        provider_identity="b" * 64,
+        repair_manifest=lineage,
+    )
+
+    assert len(windows) == 4
+    changed = json.loads(json.dumps(lineage))
+    changed["new_provider"]["calendar"]["sha256"] = "d" * 64
+    with pytest.raises(ValueError, match="changed provider calendar"):
+        _cn_windows(
+            universe,
+            readiness,
+            provider_identity="b" * 64,
+            repair_manifest=changed,
+        )
