@@ -213,6 +213,19 @@ def validate_research_paradigm_spec(spec: ResearchParadigmSpec) -> None:
         raise ValueError("universe.min_symbols must be >= 2")
     if str(universe.get("alignment_mode", "")) not in {"strict", "auto"}:
         raise ValueError("universe.alignment_mode must be 'strict' or 'auto'")
+    membership_mode = str(universe.get("membership_mode", "static_curated"))
+    _VALID_MEMBERSHIP_MODES = {"static_curated", "window_start_point_in_time"}
+    if membership_mode not in _VALID_MEMBERSHIP_MODES:
+        raise ValueError(
+            f"universe.membership_mode must be one of "
+            f"{sorted(_VALID_MEMBERSHIP_MODES)}, got {membership_mode!r}"
+        )
+    if membership_mode == "window_start_point_in_time":
+        if not Path(source).suffix.lower() == ".json":
+            raise ValueError(
+                "universe.membership_mode 'window_start_point_in_time' requires "
+                "a JSON snapshot source (e.g. ndx_window_start_membership.json)"
+            )
 
     factor_library = _require_mapping(spec.factor_library, "factor_library")
     factor_source = str(factor_library.get("source", ""))

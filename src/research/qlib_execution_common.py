@@ -12,6 +12,7 @@ concrete Qlib runtime and the ``market`` discriminator.
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
@@ -27,7 +28,10 @@ from src.research.daily_ranker_model import (
     predict_xgb_daily_ranker,
 )
 from src.research.evaluation_context import SpecBoundEvaluationContext
-from src.research.market_data_alignment import align_train_start_to_coverage
+from src.research.market_data_alignment import (
+    CoverageAlignment,
+    align_train_start_to_coverage,
+)
 from src.research.multi_market_readiness import (
     MarketReadinessSpec,
     check_market_data_coverage,
@@ -169,19 +173,32 @@ def build_effective_execution_contract(
     """Rebuild the contract from the exact values consumed by an adapter."""
 
     declared = plan.declared_contract
+    universe: dict[str, Any] = {
+        "source": declared["universe"]["source"],
+        "source_sha256": declared["universe"]["source_sha256"],
+        "market_key": plan.spec.universe["market_key"],
+        "requested_symbols": list(requested_symbols),
+        "min_symbols": int(plan.spec.universe["min_symbols"]),
+        "alignment_mode": str(plan.spec.universe["alignment_mode"]),
+    }
+    # Propagate PIT-specific fields when in point-in-time mode so the
+    # effective contract matches the declared contract exactly.
+    if "membership_mode" in declared["universe"]:
+        for pit_key in (
+            "membership_mode",
+            "oos_membership_point_in_time",
+            "full_daily_point_in_time",
+            "pit_snapshot_dates",
+            "pit_window_membership",
+        ):
+            if pit_key in declared["universe"]:
+                universe[pit_key] = declared["universe"][pit_key]
     return {
         "schema_version": declared["schema_version"],
         "experiment_id": plan.spec.experiment_id,
         "market": plan.spec.market,
         "benchmark": plan.spec.benchmark,
-        "universe": {
-            "source": declared["universe"]["source"],
-            "source_sha256": declared["universe"]["source_sha256"],
-            "market_key": plan.spec.universe["market_key"],
-            "requested_symbols": list(requested_symbols),
-            "min_symbols": int(plan.spec.universe["min_symbols"]),
-            "alignment_mode": str(plan.spec.universe["alignment_mode"]),
-        },
+        "universe": universe,
         "factors": {
             "source": declared["factors"]["source"],
             "source_sha256": declared["factors"]["source_sha256"],
@@ -477,6 +494,11 @@ def execute_qlib_plan(
     requested_symbols = [
         str(item) for item in plan.declared_contract["universe"]["requested_symbols"]
     ]
+    universe_contract = plan.declared_contract["universe"]
+    pit_mode = (
+        universe_contract.get("membership_mode")
+        == "window_start_point_in_time"
+    )
     effective_contract = build_effective_execution_contract(
         plan,
         candidates=candidates,
@@ -568,24 +590,85 @@ def execute_qlib_plan(
         test_end=test_end,
         min_symbols=min_symbols,
     )
-    date_coverage = market_runtime.date_coverage(
-        normalized_symbols,
-        requested_train_start,
-        test_end,
-    )
-    alignment = align_train_start_to_coverage(
-        readiness_spec,
-        date_coverage,
-        alignment_mode=str(plan.spec.universe["alignment_mode"]),
-        min_viable_windows=min_windows,
-        first_test_year=first_test_year,
-        last_test_year=last_test_year,
-    )
-    readiness = check_market_data_coverage(
-        readiness_spec,
-        available_symbols=available_symbols or None,
-        date_coverage_data=date_coverage,
-    )
+    if pit_mode:
+        available_by_upper = {
+            symbol.upper(): symbol for symbol in available_symbols
+        }
+        retained_inventory = tuple(
+            available_by_upper[row.normalized_symbol.upper()]
+            for row in normalization
+            if row.normalized_symbol.upper() in available_by_upper
+        )
+        retained_set = set(retained_inventory)
+        dropped_inventory = tuple(
+            symbol
+            for symbol in normalized_symbols
+            if symbol not in retained_set
+        )
+        sufficient = len(retained_inventory) >= min_symbols
+        skip_reason = (
+            None
+            if sufficient
+            else (
+                f"PIT provider inventory retained {len(retained_inventory)} "
+                f"symbols; minimum is {min_symbols}"
+            )
+        )
+        alignment = CoverageAlignment(
+            alignment_mode="pit_membership_interval",
+            market=market,
+            requested_train_start=requested_train_start,
+            aligned_train_start=requested_train_start,
+            retained_symbols=retained_inventory,
+            dropped_symbols=dropped_inventory,
+            drop_reasons={
+                symbol: "not present in provider inventory"
+                for symbol in dropped_inventory
+            },
+            min_symbols=min_symbols,
+            test_end=test_end,
+            alignment_reason=(
+                "PIT coverage is validated per symbol membership interval"
+            ),
+            sufficient=sufficient,
+            skipped=not sufficient,
+            skip_reason=skip_reason,
+            viable_windows=(last_test_year - first_test_year + 1) * 2,
+            min_viable_windows=min_windows,
+        )
+        readiness = {
+            "schema_version": "1.0",
+            "market": market,
+            "benchmark": plan.spec.benchmark,
+            "requested_symbols": requested_symbols,
+            "normalized_symbols": list(normalized_symbols),
+            "retained_symbols": list(retained_inventory),
+            "dropped_symbols": list(dropped_inventory),
+            "min_symbols": min_symbols,
+            "sufficient": sufficient,
+            "skipped": not sufficient,
+            "skip_reason": skip_reason,
+            "coverage_scope": "per_membership_interval",
+        }
+    else:
+        date_coverage = market_runtime.date_coverage(
+            normalized_symbols,
+            requested_train_start,
+            test_end,
+        )
+        alignment = align_train_start_to_coverage(
+            readiness_spec,
+            date_coverage,
+            alignment_mode=str(plan.spec.universe["alignment_mode"]),
+            min_viable_windows=min_windows,
+            first_test_year=first_test_year,
+            last_test_year=last_test_year,
+        )
+        readiness = check_market_data_coverage(
+            readiness_spec,
+            available_symbols=available_symbols or None,
+            date_coverage_data=date_coverage,
+        )
     readiness.update(alignment.to_dict())
     write_json(paths.data_readiness, readiness)
 
@@ -717,6 +800,161 @@ def execute_qlib_plan(
             evidence_paths=evidence_with_windows,
         )
 
+    # ── PIT membership resolution ──────────────────────────────────────────
+    pit_window_results: dict[str, Any] = {}
+    pit_window_provenance: dict[str, dict[str, Any]] = {}
+    if pit_mode:
+        from src.research.ndx_window_start_universe import (
+            load_snapshot as load_ndx_snapshot,
+            plan_ndx_window_universe,
+        )
+
+        snapshot_source = universe_contract["source"]
+        snapshot_path = repository_root / snapshot_source
+        actual_snapshot_sha = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
+        declared_snapshot_sha = str(universe_contract["source_sha256"])
+        if actual_snapshot_sha != declared_snapshot_sha:
+            return build_skip_result(
+                plan,
+                paths=paths,
+                effective_contract=effective_contract,
+                reason=(
+                    "PIT membership snapshot changed after contract "
+                    f"materialization: declared={declared_snapshot_sha} "
+                    f"runtime={actual_snapshot_sha}"
+                ),
+                runtime_metadata=runtime_metadata,
+                evidence_paths=evidence_with_windows,
+            )
+        ndx_snapshot = load_ndx_snapshot(
+            snapshot_path, validate_hashes=True, validate_source=True,
+        )
+        declared_membership = universe_contract.get("pit_window_membership", {})
+
+        for window in windows:
+            declared_win = declared_membership.get(window.label)
+            if declared_win is None:
+                pit_window_provenance[window.label] = {
+                    "oos_membership_point_in_time": True,
+                    "full_daily_point_in_time": False,
+                    "snapshot_date": None,
+                    "snapshot_hash": None,
+                    "requested_count": 0,
+                    "retained_count": 0,
+                    "missing_count": 0,
+                    "skipped": True,
+                    "skip_reason": (
+                        f"window label {window.label!r} not declared in "
+                        f"pit_window_membership"
+                    ),
+                }
+                continue
+
+            declared_hash = declared_win.get("sha256_membership_hash", "")
+            declared_date = declared_win.get("snapshot_date", "")
+
+            result = plan_ndx_window_universe(
+                snapshot=ndx_snapshot,
+                provider_symbols=available_symbols,
+                window_label=window.label,
+                train_start=alignment.aligned_train_start,
+                train_end=window.train_end,
+                test_start=window.test_start,
+                test_end=window.test_end,
+                oos_snapshot_date=declared_date,
+                min_symbols=min_symbols,
+                coverage_loader=market_runtime.date_coverage,
+            )
+
+            # Verify the planner resolved the same snapshot (no TOCTOU fallback).
+            if not result.skipped and result.oos_snapshot_hash != declared_hash:
+                pit_window_provenance[window.label] = {
+                    "oos_membership_point_in_time": True,
+                    "full_daily_point_in_time": False,
+                    "snapshot_date": result.oos_snapshot_date,
+                    "snapshot_hash": result.oos_snapshot_hash,
+                    "requested_count": result.oos_requested_count,
+                    "retained_count": 0,
+                    "missing_count": 0,
+                    "skipped": True,
+                    "skip_reason": (
+                        f"snapshot hash mismatch: "
+                        f"planner={result.oos_snapshot_hash} "
+                        f"declared={declared_hash}"
+                    ),
+                }
+                continue
+
+            pit_window_results[window.label] = result
+            pit_window_provenance[window.label] = {
+                "oos_membership_point_in_time": True,
+                "full_daily_point_in_time": False,
+                "snapshot_date": (
+                    result.oos_snapshot_date if not result.skipped else declared_date
+                ),
+                "snapshot_hash": (
+                    result.oos_snapshot_hash if not result.skipped else declared_hash
+                ),
+                "requested_count": result.oos_requested_count,
+                "retained_count": result.oos_retained_count,
+                "missing_count": len(result.oos_missing_symbols),
+                "skipped": result.skipped,
+                "skip_reason": result.skip_reason,
+                "universe_plan": result.to_dict(),
+            }
+
+        # ── PIT aligned_train_start summary (computed BEFORE persist) ──────
+        pit_aligned_starts_by_window: dict[str, str] = {}
+        for window in windows:
+            plan_result = pit_window_results.get(window.label)
+            if plan_result is not None and not plan_result.skipped and plan_result.aligned_train_start:
+                pit_aligned_starts_by_window[window.label] = plan_result.aligned_train_start
+
+        if pit_aligned_starts_by_window:
+            unique_starts = sorted(set(pit_aligned_starts_by_window.values()))
+            if len(unique_starts) == 1:
+                pit_scalar = unique_starts[0]
+                pit_note = "all PIT windows share this aligned train start"
+            else:
+                # Latest common lower bound — the latest/max start is the only
+                # value guaranteed to cover every window's membership interval;
+                # per-window mapping remains authoritative.
+                pit_scalar = unique_starts[-1]
+                pit_note = (
+                    f"latest common lower bound across {len(unique_starts)} "
+                    f"distinct values; per-window mapping remains authoritative"
+                )
+
+            by_window_payload = dict(sorted(pit_aligned_starts_by_window.items()))
+            for target in (readiness, universe_report):
+                target["aligned_train_start_by_window"] = by_window_payload
+                target["aligned_train_start"] = pit_scalar
+                target["aligned_train_start_note"] = pit_note
+
+            runtime_metadata["aligned_train_start_by_window"] = by_window_payload
+            runtime_metadata["aligned_train_start"] = pit_scalar
+            runtime_metadata["aligned_train_start_note"] = pit_note
+
+        # ── persist PIT provenance (with aligned fields already present) ─
+        runtime_metadata["pit_window_provenance"] = pit_window_provenance
+        runtime_metadata["oos_membership_point_in_time"] = True
+        runtime_metadata["full_daily_point_in_time"] = False
+
+        readiness["pit_window_provenance"] = pit_window_provenance
+        readiness["oos_membership_point_in_time"] = True
+        readiness["full_daily_point_in_time"] = False
+        write_json(paths.data_readiness, readiness)
+        write_json(paths.universe_report, universe_report)
+
+        window_payload["pit_window_provenance"] = pit_window_provenance
+        window_payload["oos_membership_point_in_time"] = True
+        window_payload["full_daily_point_in_time"] = False
+        for row in window_payload.get("windows", []):
+            label = str(row.get("label", ""))
+            if label in pit_window_provenance:
+                row["pit_membership"] = pit_window_provenance[label]
+        write_json(paths.walk_forward_windows, window_payload)
+
     # ── feature expression preparation ───────────────────────────────────
     feature_expressions = sorted(
         {
@@ -746,14 +984,55 @@ def execute_qlib_plan(
     skipped_windows: list[dict[str, str]] = []
     window_output_dir = paths.run_dir / "windows"
     for window in windows:
+        # ── per-window symbol set (PIT or static) ─────────────────────────
+        if pit_mode:
+            plan_result = pit_window_results.get(window.label)
+            provenance = pit_window_provenance.get(window.label, {})
+            if plan_result is None or plan_result.skipped:
+                skipped_windows.append({
+                    "window": window.label,
+                    "reason": (
+                        plan_result.skip_reason
+                        if plan_result is not None
+                        else provenance.get("skip_reason", "pit_skip")
+                    ),
+                })
+                continue
+
+            oos_symbols = list(plan_result.oos_symbols)
+            train_only_symbols = list(plan_result.train_symbols)
+            if len(oos_symbols) <= max(top_n, bottom_n):
+                skipped_windows.append({
+                    "window": window.label,
+                    "reason": (
+                        f"PIT OOS membership retained {len(oos_symbols)} symbols "
+                        f"(requested={plan_result.oos_requested_count}, "
+                        f"missing={len(plan_result.oos_missing_symbols)}), "
+                        f"insufficient for Top/Bottom N={max(top_n, bottom_n)}"
+                    ),
+                })
+                continue
+
+            # Load the union of training and OOS symbols.
+            load_symbols = sorted(
+                set(train_only_symbols) | set(oos_symbols)
+            )
+            win_symbols = load_symbols
+            effective_train_start = str(plan_result.aligned_train_start)
+        else:
+            win_symbols = retained_symbols
+            oos_symbols = None
+            train_only_symbols = None
+            effective_train_start = window.train_start
+
         evaluation_dates = evaluation_dates_by_window[window.label]
         evaluation_start = evaluation_dates.min().strftime("%Y-%m-%d")
         evaluation_end = evaluation_dates.max().strftime("%Y-%m-%d")
         config = SpecBoundEvaluationContext(
             market=market,
-            symbols=tuple(retained_symbols),
+            symbols=tuple(oos_symbols if pit_mode else win_symbols),
             benchmark=plan.spec.benchmark,
-            train_start=window.train_start,
+            train_start=effective_train_start,
             train_end=window.train_end,
             test_start=evaluation_start,
             test_end=evaluation_end,
@@ -766,15 +1045,15 @@ def execute_qlib_plan(
             experiment_id=f"{plan.spec.experiment_id}_{window.label}",
         )
         features_all = market_runtime.features(
-            retained_symbols,
+            win_symbols,
             feature_expressions,
-            window.train_start,
+            effective_train_start,
             window.test_end,
         )
         raw_returns_all = market_runtime.features(
-            retained_symbols,
+            win_symbols,
             [config.return_expression],
-            window.train_start,
+            effective_train_start,
             window.test_end,
         )
         features_all = normalize_qlib_frame_index(features_all).replace(
@@ -795,13 +1074,40 @@ def execute_qlib_plan(
         )
 
         dates = features_all.index.get_level_values("datetime")
-        train_mask = (dates >= pd.Timestamp(window.train_start)) & (
+        train_mask = (dates >= pd.Timestamp(effective_train_start)) & (
             dates <= pd.Timestamp(window.train_end)
         )
         test_mask = dates.isin(evaluation_dates)
+
+        if pit_mode and train_only_symbols:
+            # Restrict training rows to planned training symbols only
+            instruments = features_all.index.get_level_values("instrument")
+            train_mask = train_mask & instruments.isin(set(train_only_symbols))
+            # Restrict test rows to planned OOS symbols
+            test_mask = test_mask & instruments.isin(set(oos_symbols))
+
+        features_train_raw = features_all.loc[train_mask].copy()
+        returns_train_raw = raw_returns_all.loc[train_mask].copy()
+
+        # ── As-of membership filter (PIT training rows only) ───────────
+        if pit_mode and train_only_symbols:
+            from src.research.ndx_window_start_universe import (
+                filter_training_by_asof_membership,
+            )
+            features_train_raw = filter_training_by_asof_membership(
+                features_train_raw,
+                ndx_snapshot,
+                available_symbols,
+            )
+            returns_train_raw = filter_training_by_asof_membership(
+                returns_train_raw,
+                ndx_snapshot,
+                available_symbols,
+            )
+
         features_train, returns_train = purge_training_tail(
-            features_all.loc[train_mask].copy(),
-            raw_returns_all.loc[train_mask].copy(),
+            features_train_raw,
+            returns_train_raw,
             holding_days=config.holding_days,
         )
         valid, reason = validate_no_nan_inputs(
@@ -826,7 +1132,7 @@ def execute_qlib_plan(
             )
         for name, expression in baselines.items():
             baseline = market_runtime.features(
-                retained_symbols,
+                oos_symbols if pit_mode else win_symbols,
                 [expression],
                 window.test_start,
                 window.test_end,
@@ -861,15 +1167,26 @@ def execute_qlib_plan(
             )
             continue
 
-        reports.append(
-            run_10d_experiment(
-                config=config,
-                candidates=candidate_scores,
-                raw_returns=returns_test,
-                benchmark_returns=window_benchmark_returns,
-                output_dir=window_output_dir,
-            )
+        report = run_10d_experiment(
+            config=config,
+            candidates=candidate_scores,
+            raw_returns=returns_test,
+            benchmark_returns=window_benchmark_returns,
+            output_dir=window_output_dir,
         )
+        if pit_mode:
+            report["pit_membership"] = plan_result.coverage_meta
+            artifact_path = report.get("artifact_path")
+            if artifact_path:
+                write_json(
+                    Path(str(artifact_path)),
+                    {
+                        key: value
+                        for key, value in report.items()
+                        if key != "artifact_path"
+                    },
+                )
+        reports.append(report)
         survived_windows.append(window.label)
 
     runtime_metadata["evaluation_dates_by_window"] = {

@@ -514,3 +514,28 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
   survivorship bias. The only approved next model-family check is the same
   frozen comparison on window-start point-in-time membership, not parameter
   tuning.
+
+### 2026-07-29: LGBM vs XGBRanker Point-in-Time Robustness
+
+- Phase 1 data validity: the frozen #183 comparison now runs through the
+  canonical spec-bound executor with each OOS half-year's first-trading-day NDX
+  snapshot. Training rows use only the latest semiannual membership known on
+  that row's date; QQQ remains benchmark-only. Snapshot bytes and per-window
+  symbol hashes are part of the execution identity. Missing mappings, hashes,
+  benchmark dates, coverage, or minimum windows fail closed.
+- Phase 4 architecture: the prior one-off NDX runner and the canonical executor
+  share `plan_ndx_window_universe`; static-universe contracts are unchanged.
+  Readiness, window evidence, and runtime metadata record actual per-window
+  aligned starts and requested/retained/missing membership counts. This is
+  window-start/semiannual PIT, not full-daily membership.
+- Phase 2 result: on four complete 2024H1--2025H2 windows, XGBoost original
+  falls from static-universe mean ICIR .3497 to .1149 and produces -34.08%
+  compounded relative QQQ excess with -25.59% worst drawdown. LightGBM original
+  falls from .3587 to .0966 and produces -20.49% relative excess with -26.11%
+  drawdown. Each beats QQQ in only 1/4 windows. The fixed algorithm-family
+  difference remains economically immaterial.
+- Phase 3 decision: no candidate is stable. The post-identity decision is
+  `rejected`, `stable_research_candidate=false`, and `trade_ready=false`.
+  The static-universe result does not survive the stricter membership test, so
+  these rankers must not guide trading. See
+  `docs/research/lgbm_xgb_ranker_pit_robustness_2026-07-29.md`.

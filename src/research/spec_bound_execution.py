@@ -114,11 +114,66 @@ def build_declared_execution_contract(
 
     universe_source = str(spec.universe["source"])
     universe_path = _source_path(spec, universe_source)
-    requested_symbols = load_market_watchlist(
-        spec.market,
-        watchlist_path=universe_path,
-    )
+    membership_mode = str(spec.universe.get("membership_mode", "static_curated"))
     min_symbols = int(spec.universe["min_symbols"])
+
+    if membership_mode == "window_start_point_in_time":
+        from src.research.ndx_window_start_universe import (
+            NDX_WINDOW_SNAPSHOT_MAP,
+            load_snapshot,
+        )
+
+        snapshot = load_snapshot(
+            universe_path, validate_hashes=True, validate_source=True
+        )
+        # Union of all snapshot-date symbols for the declared universe.
+        all_symbols: set[str] = set()
+        for entry in snapshot.snapshot_dates:
+            all_symbols.update(entry.symbols)
+        requested_symbols = sorted(all_symbols)
+        pit_snapshot_dates = [
+            {
+                "date": entry.date,
+                "count": entry.count,
+                "sha256_membership_hash": entry.sha256_membership_hash,
+                "symbols": list(entry.symbols),
+            }
+            for entry in snapshot.snapshot_dates
+        ]
+        # Embed the exact requested OOS window memberships so runtime identity
+        # covers the label-to-symbol mapping, not only the snapshot file hash.
+        pit_window_membership: dict[str, dict[str, Any]] = {}
+        first_year = int(spec.walk_forward["first_test_year"])
+        last_year = int(spec.walk_forward["last_test_year"])
+        from src.research.ndx_window_start_universe import get_snapshot_by_date
+
+        for year in range(first_year, last_year + 1):
+            for half, nominal_start in (
+                ("H1", f"{year}-01-01"),
+                ("H2", f"{year}-07-01"),
+            ):
+                window_label = f"{year}{half}"
+                if window_label not in NDX_WINDOW_SNAPSHOT_MAP:
+                    raise ValueError(
+                        "PIT research contract has no declared first-trading-"
+                        f"day snapshot for requested window {window_label}"
+                    )
+                snapshot_date_str = NDX_WINDOW_SNAPSHOT_MAP[window_label]
+                entry = get_snapshot_by_date(snapshot, snapshot_date_str)
+                pit_window_membership[window_label] = {
+                    "nominal_test_start": nominal_start,
+                    "snapshot_date": entry.date,
+                    "sha256_membership_hash": entry.sha256_membership_hash,
+                    "count": entry.count,
+                    "symbols": list(entry.symbols),
+                }
+    else:
+        requested_symbols = load_market_watchlist(
+            spec.market,
+            watchlist_path=universe_path,
+        )
+        pit_snapshot_dates = None
+
     if len(requested_symbols) < min_symbols:
         raise ValueError(
             f"Declared universe contains {len(requested_symbols)} symbols, "
@@ -130,19 +185,27 @@ def build_declared_execution_contract(
     candidates = build_ranker_candidates_from_spec(spec)
     baseline_factors = build_factor_baselines_from_spec(spec)
 
+    universe_contract: dict[str, Any] = {
+        "source": universe_source,
+        "source_sha256": _file_sha256(universe_path),
+        "market_key": str(spec.universe["market_key"]),
+        "requested_symbols": requested_symbols,
+        "min_symbols": min_symbols,
+        "alignment_mode": str(spec.universe["alignment_mode"]),
+    }
+    if membership_mode == "window_start_point_in_time":
+        universe_contract["membership_mode"] = membership_mode
+        universe_contract["full_daily_point_in_time"] = False
+        universe_contract["oos_membership_point_in_time"] = True
+        universe_contract["pit_snapshot_dates"] = pit_snapshot_dates
+        universe_contract["pit_window_membership"] = pit_window_membership
+
     return {
         "schema_version": EXECUTION_CONTRACT_SCHEMA_VERSION,
         "experiment_id": spec.experiment_id,
         "market": spec.market,
         "benchmark": spec.benchmark,
-        "universe": {
-            "source": universe_source,
-            "source_sha256": _file_sha256(universe_path),
-            "market_key": str(spec.universe["market_key"]),
-            "requested_symbols": requested_symbols,
-            "min_symbols": min_symbols,
-            "alignment_mode": str(spec.universe["alignment_mode"]),
-        },
+        "universe": universe_contract,
         "factors": {
             "source": factor_source,
             "source_sha256": _file_sha256(factor_path),
