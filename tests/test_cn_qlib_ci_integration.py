@@ -63,6 +63,7 @@ def test_cn_spec_bound_adapter_with_real_qlib_provider(tmp_path: Path) -> None:
     assert status["trade_ready"] is False
     assert readiness["sufficient"] is True
     assert len(readiness["retained_symbols"]) >= 8
+    assert "SH000300" not in readiness["retained_symbols"]
     included_windows = [
         row for row in windows["windows"] if row["status"] == "included"
     ]
@@ -86,6 +87,7 @@ def test_cn_spec_bound_adapter_with_real_qlib_provider(tmp_path: Path) -> None:
         assert max(int(candidate["n_periods"]) for candidate in candidates) == int(
             row["sampled_sessions"]
         )
+        assert all(float(candidate["benchmark_return"]) != 0.0 for candidate in candidates)
         assert payload["config"]["test_end"] <= row["effective_test_end"]
     assert (run_dir / "walk_forward_stability.json").is_file()
     assert (run_dir / "model_decision_pack.json").is_file()

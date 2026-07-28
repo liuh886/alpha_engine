@@ -1,4 +1,4 @@
-"""LightGBM daily ranker wrapper for fixed-ten-day research."""
+"""Daily ranker wrappers for fixed-ten-day research."""
 
 from __future__ import annotations
 
@@ -230,6 +230,109 @@ def predict_lgbm_daily_ranker(
     )
     scores.attrs["provenance"] = "out_of_sample_daily_ranker_prediction"
     scores.attrs["model_type"] = "lgbm_lambdarank"
+    scores.attrs["n_gain_bins"] = result.n_gain_bins
+    scores.attrs["target_type"] = result.target_type
+    scores.attrs["target_top_k"] = result.target_top_k
+    scores.attrs["lambdarank_truncation_level"] = (
+        result.lambdarank_truncation_level
+    )
+    return scores
+
+
+# ---------------------------------------------------------------------------
+# XGBoost rank:ndcg adapter  (fixed 100-estimator research configuration)
+# ---------------------------------------------------------------------------
+
+
+def fit_xgb_daily_ranker(
+    features: pd.DataFrame,
+    rank_target: pd.Series,
+    groups: list[int],
+    *,
+    n_gain_bins: int = 5,
+    params: dict[str, Any] | None = None,
+    num_boost_round: int = 100,
+) -> DailyRankerResult:
+    """Fit an XGBoost ``rank:ndcg`` model with explicit daily query groups.
+
+    This adapter mirrors the ``fit_lgbm_daily_ranker`` contract: input
+    validation, gain conversion, and the returned ``DailyRankerResult``
+    shape are identical. The model uses XGBoost's built-in ranking
+    objective with group-level NDCG.
+
+    **Structural parameters** that ensure a fair comparison against the
+    LightGBM LambdaRank baseline are **protected** — callers cannot
+    override ``objective``, ``tree_method``, ``grow_policy``,
+    ``max_leaves``, ``max_depth``, ``learning_rate``, or ``seed`` via
+    ``params``. The caller supplies ``num_boost_round`` explicitly
+    (research convention passes 100).
+    """
+
+    protected_fields = {
+        "objective",
+        "tree_method",
+        "grow_policy",
+        "max_leaves",
+        "max_depth",
+        "learning_rate",
+        "seed",
+    }
+    conflicts = sorted(protected_fields.intersection(params or {}))
+    if conflicts:
+        raise ValueError(
+            "XGBoost ranker structural parameters cannot be overridden: "
+            f"{conflicts}"
+        )
+
+    _validate_ranker_fit_inputs(features, rank_target, groups)
+
+    import xgboost as xgb
+
+    gains = percentile_rank_to_gain(rank_target, n_bins=n_gain_bins)
+    model_params: dict[str, Any] = {
+        "objective": "rank:ndcg",
+        "tree_method": "hist",
+        "grow_policy": "lossguide",
+        "max_leaves": 31,
+        "max_depth": 0,
+        "learning_rate": 0.05,
+        "seed": 42,
+        "verbosity": 0,
+    }
+    if params:
+        model_params.update(params)
+
+    dtrain = xgb.DMatrix(features, label=gains.loc[features.index])
+    dtrain.set_group(groups)
+    model = xgb.train(
+        model_params,
+        dtrain,
+        num_boost_round=num_boost_round,
+    )
+    return DailyRankerResult(
+        model=model,
+        feature_names=[str(item) for item in features.columns],
+        groups=list(groups),
+        n_gain_bins=n_gain_bins,
+    )
+
+
+def predict_xgb_daily_ranker(
+    result: DailyRankerResult,
+    features: pd.DataFrame,
+) -> pd.DataFrame:
+    """Predict ranker scores as a one-column candidate frame (XGBoost)."""
+
+    import xgboost as xgb
+
+    matrix = features.loc[:, result.feature_names]
+    scores = pd.DataFrame(
+        result.model.predict(xgb.DMatrix(matrix)),
+        index=matrix.index,
+        columns=["score"],
+    )
+    scores.attrs["provenance"] = "out_of_sample_daily_ranker_prediction"
+    scores.attrs["model_type"] = "xgb_rank_ndcg"
     scores.attrs["n_gain_bins"] = result.n_gain_bins
     scores.attrs["target_type"] = result.target_type
     scores.attrs["target_top_k"] = result.target_top_k

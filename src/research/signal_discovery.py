@@ -23,6 +23,7 @@ class CandidateKind(str, Enum):
 
     LGBM_REGRESSOR = "lgbm_regressor"
     LGBM_LAMBDARANK = "lgbm_lambdarank"
+    XGB_RANK_NDCG = "xgb_rank_ndcg"
     RANK_TRANSFORM = "rank_transform"
     FACTOR_BASELINE = "factor_baseline"
     SIGNAL_BLEND = "signal_blend"

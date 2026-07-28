@@ -23,6 +23,9 @@ def _candidate(
         "positive_ic_ratio": 0.60 if icir > 0 else 0.40,
         "sharpe": 1.0 if icir > 0 else -0.2,
         "max_drawdown": drawdown,
+        "total_return": 0.10 if icir > 0 else -0.05,
+        "benchmark_return": 0.03,
+        "excess_return": 0.07 if icir > 0 else -0.08,
         "score_direction": {
             "top_minus_bottom_spread": spread,
             "recommendation": "keep_score" if ready else "hold_for_research",
@@ -101,6 +104,8 @@ def test_walk_forward_summary_promotes_only_stable_research_candidates() -> None
     assert ranker["positive_icir_ratio"] == 1.0
     assert ranker["positive_rank_ic_ratio"] == 1.0
     assert ranker["positive_spread_ratio"] == 1.0
+    assert ranker["positive_excess_ratio"] == 1.0
+    assert ranker["compounded_relative_excess_return"] > 0.0
     assert ranker["worst_drawdown"] >= -0.20
     assert ranker["stable_research_candidate"] is True
 
@@ -125,3 +130,32 @@ def test_walk_forward_summary_requires_rank_ic_positive_in_most_windows() -> Non
     assert row["positive_rank_ic_ratio"] == 1 / 3
     assert row["stable_research_candidate"] is False
     assert summary["best_candidate"] is None
+
+
+def test_walk_forward_summary_requires_cross_window_benchmark_excess() -> None:
+    candidates = [
+        _candidate(
+            "lgbm:daily_ranker",
+            icir=0.30,
+            rank_ic=0.05,
+            spread=0.02,
+            drawdown=-0.10,
+        )
+        for _ in range(3)
+    ]
+    for candidate in candidates:
+        candidate["total_return"] = 0.01
+        candidate["benchmark_return"] = 0.05
+        candidate["excess_return"] = -0.04
+
+    summary = summarize_walk_forward_reports(
+        [_report(candidate) for candidate in candidates],
+        min_windows=3,
+    )
+
+    row = summary["candidates"][0]
+    assert row["mean_icir"] > 0.0
+    assert row["positive_spread_ratio"] == 1.0
+    assert row["positive_excess_ratio"] == 0.0
+    assert row["compounded_relative_excess_return"] < 0.0
+    assert row["stable_research_candidate"] is False

@@ -165,8 +165,12 @@ def build_research_run_paths(
     output_dir: str | Path | None = None,
 ) -> ResearchRunPaths:
     if output_dir is not None:
-        return ResearchRunPaths(Path(output_dir) / experiment_id)
-    return ResearchRunPaths(research_run_dir(root, experiment_id))
+        output_root = Path(output_dir)
+        if not output_root.is_absolute():
+            repository_root = Path(root) if root is not None else Path.cwd()
+            output_root = repository_root / output_root
+        return ResearchRunPaths(output_root.resolve() / experiment_id)
+    return ResearchRunPaths(research_run_dir(root, experiment_id).resolve())
 
 
 def resolve_run_dir(

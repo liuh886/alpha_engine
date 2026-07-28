@@ -26,6 +26,7 @@ from src.research.factor_library import (
 )
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR
 from src.research.ranker_calibration_grid import (
+    VALID_MODEL_FAMILIES,
     RankerCalibration,
     RankerGridCandidate,
     build_ranker_calibration_grid,
@@ -231,6 +232,19 @@ def validate_research_paradigm_spec(spec: ResearchParadigmSpec) -> None:
         "candidate_grid.ranker.calibrations",
     )
     _validate_calibrations(calibrations)
+    model_families = ranker.get("model_families", ["lgbm"])
+    if not isinstance(model_families, list) or not model_families:
+        raise ValueError(
+            "candidate_grid.ranker.model_families must be a non-empty list"
+        )
+    for mf in model_families:
+        if str(mf) not in VALID_MODEL_FAMILIES:
+            raise ValueError(
+                f"candidate_grid.ranker.model_families contains invalid "
+                f"family {mf!r}; allowed: {VALID_MODEL_FAMILIES}"
+            )
+    if len(set(model_families)) != len(model_families):
+        raise ValueError("candidate_grid.ranker.model_families must be unique")
     baselines = candidate_grid.get("factor_baselines", [])
     if not isinstance(baselines, list):
         raise ValueError("candidate_grid.factor_baselines must be a list")
@@ -352,9 +366,13 @@ def build_ranker_candidates_from_spec(
     """Build the declared candidate grid without loading market data."""
     validate_research_paradigm_spec(spec)
     _, _, selected = _selected_factor_groups(spec)
+    ranker = spec.candidate_grid.get("ranker", {})
+    raw_families: list[str] = ranker.get("model_families", ["lgbm"])
+    model_families: tuple[str, ...] = tuple(str(mf) for mf in raw_families)
     return build_ranker_calibration_grid(
         feature_groups=factor_groups_to_ranker_feature_groups(selected),
         calibrations=list(_parse_calibrations(spec.candidate_grid)),
+        model_families=model_families,
     )
 
 

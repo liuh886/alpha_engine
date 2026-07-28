@@ -491,3 +491,26 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
   evidence remain intact. Further indicator-window, blend-weight, or tree
   parameter tuning on the observed windows is stopped; data and information
   quality take priority.
+
+### 2026-07-29: Fixed LightGBM vs XGBRanker 10D Comparison
+
+- Phase 2 research validity: one fixed true XGBoost `rank:ndcg` candidate was
+  added beside the existing LightGBM LambdaRank candidate. Both receive the
+  same processed daily rank target, daily groups, feature set, five-gain
+  target, 100-round budget, 10-session embargo, and raw OOS 10D returns.
+- Phase 2 result: across four complete 2024H1--2025H2 windows, LightGBM
+  produces mean ICIR .3587, mean Rank IC .0488, 65.04% compounded relative
+  QQQ excess, and -27.34% worst drawdown. XGBoost produces mean ICIR .3497,
+  mean Rank IC .0406, 70.35% relative excess, and -25.63% worst drawdown.
+  XGBoost beats QQQ in 4/4 windows; LightGBM does so in 3/4. The algorithm
+  difference is modest compared with the shared drawdown problem.
+- Phase 3 governance: the canonical executor now loads complete raw benchmark
+  returns per window and fails closed on missing dates. Stability summaries
+  include compounded relative excess and require positive benchmark economics.
+  Neither ranker passes the drawdown or ready-ratio gate; the decision is
+  `rejected`, `stable_research_candidate=false`, and `trade_ready=false`.
+- Phase 1 limitation: the 126-symbol comparison uses a static curated universe
+  aligned to common coverage from 2021-04-05 and therefore retains explicit
+  survivorship bias. The only approved next model-family check is the same
+  frozen comparison on window-start point-in-time membership, not parameter
+  tuning.

@@ -34,6 +34,8 @@ SYMBOLS: tuple[str, ...] = (
     "SZ000005",
     "SZ000006",
 )
+BENCHMARK_SYMBOL = "SH000300"
+PROVIDER_SYMBOLS = SYMBOLS + (BENCHMARK_SYMBOL,)
 FIELDS: tuple[str, ...] = ("open", "close", "high", "low", "volume", "factor")
 START_DATE = "2022-01-03"
 END_DATE = "2024-12-31"
@@ -67,13 +69,13 @@ def build_cn_qlib_fixture(target_dir: str | Path) -> Path:
     (instruments_dir / "all.txt").write_text(
         "".join(
             f"{symbol}\t{dates[0]:%Y-%m-%d}\t{dates[-1]:%Y-%m-%d}\n"
-            for symbol in SYMBOLS
+            for symbol in PROVIDER_SYMBOLS
         ),
         encoding="utf-8",
     )
 
     time_index = np.arange(len(dates), dtype=float)
-    for symbol_index, symbol in enumerate(SYMBOLS):
+    for symbol_index, symbol in enumerate(PROVIDER_SYMBOLS):
         symbol_dir = features_dir / symbol.lower()
         symbol_dir.mkdir(parents=True, exist_ok=True)
 
@@ -115,7 +117,8 @@ def build_cn_qlib_fixture(target_dir: str | Path) -> Path:
         "start": dates[0].strftime("%Y-%m-%d"),
         "end": dates[-1].strftime("%Y-%m-%d"),
         "calendar_sessions": len(dates),
-        "symbols": list(SYMBOLS),
+        "symbols": list(PROVIDER_SYMBOLS),
+        "benchmark_symbol": BENCHMARK_SYMBOL,
         "fields": list(FIELDS),
     }
     (root / "fixture_manifest.json").write_text(
