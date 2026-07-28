@@ -459,16 +459,16 @@ factor_pools:
     direction: short
   technical:
   - name: technical_rsi_proxy_5
-    expression: Mean(Greater($close/Ref($close,1)-1,0)*$close/Ref($close,1)-1,5)/(Mean(Abs($close/Ref($close,1)-1),5)+1e-10)
+    expression: Mean(Greater($close/Ref($close,1)-1,0)*($close/Ref($close,1)-1),5)/(Mean(Abs($close/Ref($close,1)-1),5)+1e-10)
     direction: long
   - name: technical_rsi_proxy_10
-    expression: Mean(Greater($close/Ref($close,1)-1,0)*$close/Ref($close,1)-1,10)/(Mean(Abs($close/Ref($close,1)-1),10)+1e-10)
+    expression: Mean(Greater($close/Ref($close,1)-1,0)*($close/Ref($close,1)-1),10)/(Mean(Abs($close/Ref($close,1)-1),10)+1e-10)
     direction: long
   - name: technical_rsi_proxy_20
-    expression: Mean(Greater($close/Ref($close,1)-1,0)*$close/Ref($close,1)-1,20)/(Mean(Abs($close/Ref($close,1)-1),20)+1e-10)
+    expression: Mean(Greater($close/Ref($close,1)-1,0)*($close/Ref($close,1)-1),20)/(Mean(Abs($close/Ref($close,1)-1),20)+1e-10)
     direction: long
   - name: technical_rsi_proxy_60
-    expression: Mean(Greater($close/Ref($close,1)-1,0)*$close/Ref($close,1)-1,60)/(Mean(Abs($close/Ref($close,1)-1),60)+1e-10)
+    expression: Mean(Greater($close/Ref($close,1)-1,0)*($close/Ref($close,1)-1),60)/(Mean(Abs($close/Ref($close,1)-1),60)+1e-10)
     direction: long
   - name: technical_pos_ret_sum_5
     expression: Sum(Greater($close/Ref($close,1)-1,0),5)

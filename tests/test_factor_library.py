@@ -13,6 +13,7 @@ from src.research.factor_library import (
     factor_groups_to_ranker_feature_groups,
     factor_library_manifest,
     load_factor_library,
+    load_factor_pool_from_yaml,
     resolve_factor_expressions,
     select_factor_groups,
 )
@@ -137,3 +138,21 @@ def test_cn_corrected_formulas_are_versioned() -> None:
     )
     assert "cn:risk_adjusted:ret10_per_vol10" not in expressions
     assert "cn:pressure:ret1_x_vol_shock_5" not in expressions
+
+
+@pytest.mark.parametrize("window", (5, 10, 20, 60))
+def test_rsi_proxy_uses_positive_return_magnitude(window: int) -> None:
+    factors = {
+        factor["name"]: factor
+        for factor in load_factor_pool_from_yaml("configs/factor_pool.yaml")
+    }
+    daily_return = "($close/Ref($close,1)-1)"
+
+    assert factors[f"technical_rsi_proxy_{window}"] == {
+        "name": f"technical_rsi_proxy_{window}",
+        "expression": (
+            f"Mean(Greater($close/Ref($close,1)-1,0)*{daily_return},{window})/"
+            f"(Mean(Abs($close/Ref($close,1)-1),{window})+1e-10)"
+        ),
+        "category": "technical",
+    }
