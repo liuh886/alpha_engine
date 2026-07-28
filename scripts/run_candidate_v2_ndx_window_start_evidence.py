@@ -67,33 +67,29 @@ from scripts.run_candidate_v2_universe_robustness import (
 from src.research.market_data_alignment import get_aligned_windows
 from src.research.ndx_window_start_universe import (
     DEFAULT_SNAPSHOT_PATH,
+    NDX_WINDOW_SNAPSHOT_MAP,
     NdxSnapshotDate,
     NdxWindowStartSnapshot,
+    filter_training_union_by_membership_coverage as _filter_training_union_by_membership_coverage,
     get_snapshot_by_date,
     intersect_with_provider,
     load_snapshot,
+    plan_ndx_window_universe,
     resolve_latest_snapshot_on_or_before,
 )
 from src.research.notebook_research_api import sanitize_factor_name
 from src.research.rolling_windows import RollingResearchWindow
 from src.research.selection_tail_diagnostics import summarize_window_diagnostics
 from src.research.universe_robustness import (
-    filter_universe_by_coverage,
     load_symbol_date_coverage,
 )
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Window-start → snapshot date mapping
-# ══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════
+# Window-start → snapshot date mapping (re-exported from shared module)
+# ══════════════════════════════════════════════════════════════════════════
 
-# Which NDX snapshot to use for each OOS window label.
-# The snapshot date is the first trading day of the half-year period.
-WINDOW_SNAPSHOT_MAP: dict[str, str] = {
-    "2024H1": "2024-01-02",
-    "2024H2": "2024-07-01",
-    "2025H1": "2025-01-02",
-    "2025H2": "2025-07-01",
-}
+# Use the shared mapping from ndx_window_start_universe.
+WINDOW_SNAPSHOT_MAP: dict[str, str] = dict(NDX_WINDOW_SNAPSHOT_MAP)
 
 # A Nasdaq-100 validation that retains fewer than half the index is too
 # incomplete to support a useful universe-robustness conclusion.
@@ -137,114 +133,6 @@ def _load_provider_lineage(
     return payload
 
 
-def _filter_training_union_by_membership_coverage(
-    symbols: list[str],
-    *,
-    snapshot: NdxWindowStartSnapshot,
-    aligned_train_start: str,
-    train_end: str,
-    date_coverage_data: dict[str, dict[str, Any]],
-    min_symbols: int = MIN_WINDOW_SYMBOLS,
-) -> dict[str, Any]:
-    """Retain symbols that cover only their actual as-of membership interval.
-
-    A constituent that leaves NDX before ``train_end`` must not be dropped
-    merely because it has no later bars. Conversely, bars after a ticker
-    rename or index exit must not be required to make its historical rows
-    eligible. The semiannual snapshot interval is the coverage contract.
-    """
-
-    aligned_start_ts = pd.Timestamp(aligned_train_start)
-    train_end_ts = pd.Timestamp(train_end)
-    if aligned_start_ts > train_end_ts:
-        raise ValueError("aligned_train_start must be on or before train_end")
-
-    entries = sorted(snapshot.snapshot_dates, key=lambda entry: entry.date)
-    required_bounds: dict[str, tuple[pd.Timestamp, pd.Timestamp]] = {}
-    for index, entry in enumerate(entries):
-        interval_start = pd.Timestamp(entry.date)
-        if interval_start > train_end_ts:
-            break
-        next_start = (
-            pd.Timestamp(entries[index + 1].date)
-            if index + 1 < len(entries)
-            else train_end_ts + pd.Timedelta(days=1)
-        )
-        interval_end = min(train_end_ts, next_start - pd.Timedelta(days=1))
-        active_start = max(aligned_start_ts, interval_start)
-        if active_start > interval_end:
-            continue
-        for symbol in entry.symbols:
-            if symbol not in symbols:
-                continue
-            previous = required_bounds.get(symbol)
-            if previous is None:
-                required_bounds[symbol] = (active_start, interval_end)
-            else:
-                required_bounds[symbol] = (
-                    min(previous[0], active_start),
-                    max(previous[1], interval_end),
-                )
-
-    gap = pd.Timedelta(days=MAX_MEMBERSHIP_BOUNDARY_GAP_DAYS)
-    retained: list[str] = []
-    dropped: list[str] = []
-    dropped_reasons: dict[str, str] = {}
-    serialized_bounds: dict[str, dict[str, str]] = {}
-
-    for symbol in symbols:
-        bounds = required_bounds.get(symbol)
-        if bounds is None:
-            dropped.append(symbol)
-            dropped_reasons[symbol] = "no membership interval in aligned training range"
-            continue
-        required_start, required_end = bounds
-        serialized_bounds[symbol] = {
-            "required_start": required_start.strftime("%Y-%m-%d"),
-            "required_end": required_end.strftime("%Y-%m-%d"),
-        }
-        record = date_coverage_data.get(symbol, {})
-        first_raw = record.get("first_valid_date")
-        last_raw = record.get("last_valid_date")
-        observations = int(record.get("observations", 0) or 0)
-        if first_raw is None or last_raw is None or observations <= 0:
-            dropped.append(symbol)
-            dropped_reasons[symbol] = "no valid price observations"
-            continue
-        first_valid = pd.Timestamp(first_raw)
-        last_valid = pd.Timestamp(last_raw)
-        if first_valid > required_start + gap:
-            dropped.append(symbol)
-            dropped_reasons[symbol] = (
-                f"history starts {first_valid.date()} after required "
-                f"{required_start.date()}"
-            )
-            continue
-        if last_valid < required_end - gap:
-            dropped.append(symbol)
-            dropped_reasons[symbol] = (
-                f"history ends {last_valid.date()} before required "
-                f"{required_end.date()}"
-            )
-            continue
-        retained.append(symbol)
-
-    return {
-        "skipped": len(retained) < min_symbols,
-        "skip_reason": (
-            None
-            if len(retained) >= min_symbols
-            else (
-                f"membership-interval coverage retained {len(retained)} symbols; "
-                f"minimum is {min_symbols}"
-            )
-        ),
-        "retained_symbols": retained,
-        "dropped_symbols": dropped,
-        "dropped_reasons": dropped_reasons,
-        "required_bounds": serialized_bounds,
-    }
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Per-window evaluation
@@ -265,207 +153,36 @@ def _evaluate_ndx_window(
 ) -> dict[str, Any] | None:
     """Train frozen ranker with semiannual as-of membership, evaluate on OOS window.
 
-    This function:
-    1. Resolves the OOS test symbols from the window-start snapshot.
-    2. Collects every semiannual snapshot on or before ``window.train_end``
-       to build the training-symbol union.
-    3. Derives an aligned training start from the 50th-earliest first-valid
-       date among all training-union symbols (NOT the latest first-valid).
-    4. Retains training symbols whose provider data covers their actual
-       semiannual membership intervals; retains test symbols whose data covers
-       the complete OOS window.
-    5. Delegates model fitting/backtest to the shared ``_evaluate_window``
-       helper with distinct training/test symbols and an as-of membership
-       snapshot so that training rows are filtered by the membership known
-       on or before each training date.
-    6. Wraps the result with per-window membership coverage metadata.
-
-    Parameters
-    ----------
-    window
-        A ``RollingResearchWindow`` from ``get_aligned_windows``.
-    benchmark
-        Benchmark symbol (e.g. ``"QQQ"``).
-    expression_columns / feature_exprs / baseline_expr
-        Frozen feature configuration forwarded to ``_evaluate_window``.
-    snapshot
-        The full committed NDX membership snapshot.
-    provider_set
-        Set of US-provider-covered symbols.
-
-    Returns
-    -------
-    dict or None
-        Window payload with candidate_v2 result, score diagnostics, and
-        coverage metadata, or ``None`` if skipped.
+    Delegates universe planning to the shared
+    :func:`~src.research.ndx_window_start_universe.plan_ndx_window_universe`
+    and model fitting/backtest to the shared ``_evaluate_window`` helper.
     """
-    # ── OOS test symbols (window-start snapshot) ────────────────────────
-    oos_snapshot_date_str = (
-        oos_snapshot_date
-        if oos_snapshot_date is not None
-        else WINDOW_SNAPSHOT_MAP[window.label]
-    )
-    oos_entry = get_snapshot_by_date(snapshot, oos_snapshot_date_str)
-    oos_provider_report = intersect_with_provider(oos_entry, provider_set)
-    oos_requested = oos_provider_report["requested"]
-    oos_retained_raw = oos_provider_report["retained"]
-    oos_tradable_raw = list(_exclude_benchmark_symbols(tuple(oos_retained_raw)))
-
-    # ── Test-symbol date-coverage filter ─────────────────────────────────
-    if not oos_tradable_raw:
-        return {
-            "window": window.to_dict(),
-            "skipped": True,
-            "skip_reason": "OOS snapshot has no tradable symbols after benchmark exclusion",
-        }
-    test_coverage = load_symbol_date_coverage(
-        oos_tradable_raw,
-        window.test_start,
-        window.test_end,
-    )
-    test_coverage_filter = filter_universe_by_coverage(
-        tuple(oos_tradable_raw),
-        min_symbols=MIN_WINDOW_SYMBOLS,
-        date_range=(window.test_start, window.test_end),
-        date_coverage_data=test_coverage,
-    )
-    if test_coverage_filter.get("skipped", True):
-        return {
-            "window": window.to_dict(),
-            "skipped": True,
-            "skip_reason": test_coverage_filter.get(
-                "skip_reason", "insufficient OOS test date coverage"
-            ),
-        }
-    test_symbols = test_coverage_filter["retained_symbols"]
-    if len(test_symbols) < MIN_WINDOW_SYMBOLS:
-        return {
-            "window": window.to_dict(),
-            "skipped": True,
-            "skip_reason": (
-                f"fewer than {MIN_WINDOW_SYMBOLS} OOS test symbols retained "
-                f"({len(test_symbols)})"
-            ),
-        }
-
-    # ── Training-union symbols (all snapshots ≤ train_end) ───────────────
-    training_snapshot_entries = sorted(
-        [s for s in snapshot.snapshot_dates if s.date <= window.train_end],
-        key=lambda s: s.date,
-    )
-    if not training_snapshot_entries:
-        return {
-            "window": window.to_dict(),
-            "skipped": True,
-            "skip_reason": (
-                f"no NDX snapshots on or before train_end={window.train_end}"
-            ),
-        }
-    training_snapshot_dates = [s.date for s in training_snapshot_entries]
-
-    # Union of all provider-retained symbols across training snapshots
-    train_official_union: set[str] = set()
-    train_union: set[str] = set()
-    per_snapshot_retained: dict[str, list[str]] = {}
-    per_snapshot_requested: dict[str, int] = {}
-    per_snapshot_missing: dict[str, list[str]] = {}
-    for s in training_snapshot_entries:
-        rep = intersect_with_provider(s, provider_set)
-        train_official_union.update(_exclude_benchmark_symbols(s.symbols))
-        retained = _exclude_benchmark_symbols(tuple(rep["retained"]))
-        train_union.update(retained)
-        per_snapshot_retained[s.date] = list(retained)
-        per_snapshot_requested[s.date] = rep["n_requested"]
-        per_snapshot_missing[s.date] = rep["missing"]
-
-    train_union_list = sorted(train_union)
-    if len(train_union_list) < MIN_WINDOW_SYMBOLS:
-        return {
-            "window": window.to_dict(),
-            "skipped": True,
-            "skip_reason": (
-                f"training-union symbols ({len(train_union_list)}) below "
-                f"minimum {MIN_WINDOW_SYMBOLS}"
-            ),
-        }
-
-    # ── Aligned training start: 50th earliest first-valid date ──────────
-    # Load coverage for every training-union symbol across the full range
-    # so we can discover when each symbol's data actually begins.
-    train_union_coverage = load_symbol_date_coverage(
-        train_union_list,
-        window.train_start,
-        window.train_end,
-    )
-    first_valid_dates: list[str] = []
-    for s in train_union_list:
-        rec = train_union_coverage.get(s, {})
-        fvd = rec.get("first_valid_date")
-        if fvd is not None and int(rec.get("observations", 0)) > 0:
-            first_valid_dates.append(str(fvd))
-
-    if len(first_valid_dates) < MIN_WINDOW_SYMBOLS:
-        return {
-            "window": window.to_dict(),
-            "skipped": True,
-            "skip_reason": (
-                f"only {len(first_valid_dates)} training-union symbols have "
-                f"valid coverage data (need {MIN_WINDOW_SYMBOLS})"
-            ),
-        }
-
-    first_valid_dates_sorted = sorted(first_valid_dates)
-    aligned_train_start = first_valid_dates_sorted[MIN_WINDOW_SYMBOLS - 1]
-    # The 50th-earliest first-valid date is the earliest point at which
-    # at least 50 symbols have usable provider data.
-
-    if pd.Timestamp(aligned_train_start) > pd.Timestamp(window.train_end):
-        return {
-            "window": window.to_dict(),
-            "skipped": True,
-            "skip_reason": (
-                f"aligned training start {aligned_train_start} falls after "
-                f"train_end {window.train_end}"
-            ),
-        }
-
-    # ── Retain symbols over their actual membership intervals ───────────
-    aligned_train_coverage = load_symbol_date_coverage(
-        train_union_list,
-        aligned_train_start,
-        window.train_end,
-    )
-    train_coverage_filter = _filter_training_union_by_membership_coverage(
-        train_union_list,
+    # ── Plan the universe via the shared planner ─────────────────────────
+    universe_plan = plan_ndx_window_universe(
         snapshot=snapshot,
-        aligned_train_start=aligned_train_start,
+        provider_symbols=provider_set,
+        window_label=window.label,
+        train_start=window.train_start,
         train_end=window.train_end,
-        date_coverage_data=aligned_train_coverage,
+        test_start=window.test_start,
+        test_end=window.test_end,
+        oos_snapshot_date=oos_snapshot_date,
+        snapshot_map=WINDOW_SNAPSHOT_MAP,
         min_symbols=MIN_WINDOW_SYMBOLS,
+        coverage_loader=load_symbol_date_coverage,
     )
-    if train_coverage_filter.get("skipped", True):
+
+    if universe_plan.skipped:
         return {
             "window": window.to_dict(),
             "skipped": True,
-            "skip_reason": train_coverage_filter.get(
-                "skip_reason", "insufficient training date coverage in aligned range"
-            ),
-        }
-    train_symbols = train_coverage_filter["retained_symbols"]
-    if len(train_symbols) < MIN_WINDOW_SYMBOLS:
-        return {
-            "window": window.to_dict(),
-            "skipped": True,
-            "skip_reason": (
-                f"fewer than {MIN_WINDOW_SYMBOLS} training symbols retained "
-                f"in aligned range ({len(train_symbols)})"
-            ),
+            "skip_reason": universe_plan.skip_reason,
         }
 
     # ── Build aligned window ─────────────────────────────────────────────
     aligned_window = RollingResearchWindow(
         label=window.label,
-        train_start=aligned_train_start,
+        train_start=universe_plan.aligned_train_start,
         train_end=window.train_end,
         test_start=window.test_start,
         test_end=window.test_end,
@@ -474,12 +191,12 @@ def _evaluate_ndx_window(
     # ── Delegate model fitting / backtest with as-of membership ─────────
     result = _evaluate_window(
         aligned_window,
-        test_symbols,
+        list(universe_plan.oos_symbols),
         benchmark,
         expression_columns,
         feature_exprs,
         baseline_expr,
-        train_symbols=train_symbols,
+        train_symbols=list(universe_plan.train_symbols),
         asof_membership_snapshot=snapshot,
         asof_provider_symbols=provider_set,
         ranker_mode=ranker_mode,
@@ -487,73 +204,9 @@ def _evaluate_ndx_window(
     if result is None:
         return None
 
-    # ── Coverage metadata ────────────────────────────────────────────────
-    n_retained_train = len(train_symbols)
-    n_requested_train_union = len(train_official_union)
-    n_provider_train_union = len(train_union_list)
-    n_requested_oos = len(oos_requested)
-    n_retained_oos = len(test_symbols)
-
-    training_union_requested = n_requested_train_union
-    training_date_retained = n_retained_train
-
-    # Provider coverage may be incomplete when some snapshot symbols are
-    # missing from the provider or filtered by date coverage.
-    provider_coverage_incomplete = (
-        any(per_snapshot_missing.values())
-        or bool(oos_provider_report["missing"])
-        or bool(test_coverage_filter["dropped_symbols"])
-        or bool(train_coverage_filter["dropped_symbols"])
-    )
-
-    coverage_meta = {
-        # OOS (test) membership
-        "oos_snapshot_date": oos_snapshot_date_str,
-        "oos_requested_symbols": oos_requested,
-        "oos_provider_retained": oos_retained_raw,
-        "oos_provider_missing": oos_provider_report["missing"],
-        "oos_date_coverage_dropped": test_coverage_filter["dropped_symbols"],
-        "oos_test_symbols": test_symbols,
-        "oos_test_retained": len(test_symbols),
-        "n_oos_requested": n_requested_oos,
-        "n_oos_test_retained": n_retained_oos,
-        # Training membership
-        "training_snapshot_dates": training_snapshot_dates,
-        "n_training_snapshots": len(training_snapshot_dates),
-        "training_union_requested": training_union_requested,
-        "training_union_provider_retained": n_provider_train_union,
-        "training_date_retained": training_date_retained,
-        "training_date_dropped": train_coverage_filter["dropped_symbols"],
-        "training_date_drop_reasons": train_coverage_filter["dropped_reasons"],
-        "training_membership_required_bounds": train_coverage_filter["required_bounds"],
-        "training_symbols": train_symbols,
-        "per_snapshot_requested": per_snapshot_requested,
-        "per_snapshot_retained": {
-            d: len(v) for d, v in per_snapshot_retained.items()
-        },
-        "per_snapshot_missing": per_snapshot_missing,
-        "aligned_train_start": aligned_train_start,
-        # Flags
-        "training_membership_asof_semiannual": True,
-        "training_uses_future_oos_snapshot": False,
-        "full_daily_point_in_time": False,
-        "provider_coverage_incomplete": provider_coverage_incomplete,
-        "oos_membership_point_in_time": True,
-        "research_only": True,
-        "promotion_eligible": False,
-        "trade_ready": False,
-        "ranker_mode": ranker_mode,
-        # Per-snapshot detail
-        "per_snapshot_detail": {
-            s.date: {
-                "requested": per_snapshot_requested.get(s.date, 0),
-                "retained": len(per_snapshot_retained.get(s.date, [])),
-            }
-            for s in training_snapshot_entries
-        },
-    }
+    # ── Attach coverage metadata from the shared planner ─────────────────
     result["nominal_window"] = window.to_dict()
-    result["coverage_meta"] = coverage_meta
+    result["coverage_meta"] = universe_plan.coverage_meta
 
     return result
 

@@ -1,0 +1,71 @@
+# LGBM vs XGB ranker comparison on window-start point-in-time NDX membership.
+# Frozen #183 contract — same models, features, calibration, Top15/Bottom15,
+# 10D holding, and 20 bps-equivalent costs.  QQQ is reference-only.
+schema_version: "1.1"
+experiment_id: "us_10d_lgbm_xgb_ranker_pit_robustness"
+market: "us"
+benchmark: "QQQ"
+
+universe:
+  source: "configs/research_universes/ndx_window_start_membership.json"
+  market_key: "us"
+  universe_id: "ndx_window_start_membership"
+  membership_mode: "window_start_point_in_time"
+  membership_as_of: "window_start"
+  asset_type: "equity"
+  survivorship_bias: false
+  min_symbols: 50
+  alignment_mode: "auto"
+
+factor_library:
+  source: "configs/factor_libraries/us_ohlcv.yaml"
+  groups:
+    - "momentum_volatility_volume"
+
+candidate_grid:
+  ranker:
+    model_families:
+      - "lgbm"
+      - "xgb"
+    calibrations:
+      - n_gain_bins: 5
+        num_boost_round: 100
+        num_leaves: 31
+        min_data_in_leaf: 10
+        learning_rate: 0.05
+  factor_baselines:
+    - "factor:us_momentum_10d"
+
+strategy:
+  horizon_days: 10
+  holding_days: 10
+  rebalance_days: 10
+  top_n: 15
+  bottom_n: 15
+  return_expression: "Ref($close, -10) / $close - 1"
+  return_provenance: "raw_forward_return"
+  research_only: true
+
+walk_forward:
+  requested_train_start: "2021-01-01"
+  test_end: "2026-06-18"
+  first_test_year: 2024
+  last_test_year: 2025
+  min_windows: 3
+  train_embargo_sessions: 10
+  partial_window_policy: "complete_windows_only"
+
+evaluation:
+  benchmark_mode: "reference_only"
+  metrics:
+    - "mean_icir"
+    - "mean_rank_ic"
+    - "mean_spread"
+    - "worst_drawdown"
+    - "ready_ratio"
+    - "positive_icir_ratio"
+    - "positive_spread_ratio"
+  gate_profile: "ten_day_model_gates_v1"
+
+outputs:
+  artifact_profile: "research_run_v1"

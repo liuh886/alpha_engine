@@ -89,3 +89,66 @@ def test_versioned_universe_source_hash_binds_membership_metadata(tmp_path: Path
     assert first["universe"]["source"] == second["universe"]["source"]
     assert first["universe"]["source_sha256"] != second["universe"]["source_sha256"]
     assert contract_sha256(first) != contract_sha256(second)
+
+
+# ── PIT universe contract tests ────────────────────────────────────────────
+
+PIT_SPEC = ROOT / "configs/research_paradigms/us_10d_lgbm_xgb_ranker_pit_robustness.yaml"
+PIT_SNAPSHOT = ROOT / "configs/research_universes/ndx_window_start_membership.json"
+
+
+def test_pit_universe_uses_ndx_snapshot_source() -> None:
+    spec = load_research_paradigm_spec(PIT_SPEC)
+    assert spec.universe["membership_mode"] == "window_start_point_in_time"
+    assert spec.universe["source"] == (
+        "configs/research_universes/ndx_window_start_membership.json"
+    )
+    assert spec.universe["survivorship_bias"] is False
+
+    contract = build_declared_execution_contract(spec)
+    u = contract["universe"]
+    assert u["membership_mode"] == "window_start_point_in_time"
+    assert u["oos_membership_point_in_time"] is True
+    assert len(u["pit_snapshot_dates"]) == 11
+    # requested_symbols is the union of all snapshot-date symbols
+    assert len(u["requested_symbols"]) >= 100
+
+
+def test_pit_snapshot_hash_change_alters_contract_identity(tmp_path: Path) -> None:
+    """Modifying the NDX snapshot source changes contract SHA-256."""
+    import json as _json
+
+    from src.research.ndx_window_start_universe import (
+        compute_membership_hash,
+    )
+
+    spec = load_research_paradigm_spec(PIT_SPEC)
+    original_raw = _json.loads(PIT_SNAPSHOT.read_text(encoding="utf-8"))
+
+    copied_snapshot = tmp_path / "ndx_modified.json"
+    copied_snapshot.write_text(_json.dumps(original_raw), encoding="utf-8")
+
+    copied_universe = dict(spec.universe)
+    copied_universe["source"] = str(copied_snapshot)
+    from dataclasses import replace
+    copied_spec = replace(spec, universe=copied_universe)
+    first = build_declared_execution_contract(copied_spec)
+
+    # Alter a symbol in the first snapshot date and recompute its hash
+    # so the snapshot passes hash validation.
+    modified_raw = _json.loads(PIT_SNAPSHOT.read_text(encoding="utf-8"))
+    modified_raw["snapshot_dates"][0]["symbols"][0] = "ZZZZ_MODIFIED"
+    modified_raw["snapshot_dates"][0]["count"] = len(
+        modified_raw["snapshot_dates"][0]["symbols"]
+    )
+    modified_raw["snapshot_dates"][0]["sha256_membership_hash"] = (
+        compute_membership_hash(
+            modified_raw["snapshot_dates"][0]["symbols"]
+        )
+    )
+    copied_snapshot.write_text(_json.dumps(modified_raw), encoding="utf-8")
+    second = build_declared_execution_contract(copied_spec)
+
+    assert first["universe"]["source"] == second["universe"]["source"]
+    assert first["universe"]["source_sha256"] != second["universe"]["source_sha256"]
+    assert contract_sha256(first) != contract_sha256(second)
