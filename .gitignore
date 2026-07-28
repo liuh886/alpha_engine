@@ -91,6 +91,9 @@ scripts/t01_*.txt
 
 # Backtest reports (regenerated)
 reports/backtests/
+reports/*/latest_report.md
+reports/*/trade_tickets/
+reports/watchlist_report.md
 
 # Static site generated files (covered by site/ above)
 

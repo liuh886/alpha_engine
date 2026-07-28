@@ -458,3 +458,27 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
   membership additionally retains explicit survivorship bias. Decision:
   `cn_residual_trend_quality_not_supported`; the 126/10 hypothesis is stopped
   across both markets without tuning lookback, skip, orientation, or Top-K.
+
+### 2026-07-29: Cross-Market Technical-Indicator Diagnosis
+
+- Phase 1 data validity: manifest-pinned US and CN sources pass close-only
+  continuity checks. CN contains 46 material OHLC relationship defects,
+  concentrated on 2024-03-29, so high/low-derived factors fail closed until a
+  repaired provider is versioned. US historic NDX membership remains
+  near-complete; CN static membership retains survivorship bias.
+- Phase 2 research validity: fixed Bollinger-reversion, MACD-histogram, and
+  RSI-strength factors were evaluated on four complete 2024H1--2025H2 OOS
+  windows with raw forward 10D returns. No parameter or orientation search was
+  performed. CN RSI is the strongest local clue (mean ICIR .0986, -12.20%
+  worst drawdown, +10.52% compounded relative excess), but only 2/4 windows
+  beat CSI300 and the factor fails completely in US.
+- Phase 3 governance: no candidate passes the cross-market economic gate;
+  `supported_candidates=[]`, `promotion_eligible=false`, and
+  `trade_ready=false`. The active factor libraries are unchanged. A precedence
+  defect in the inactive RSI factor-pool formulas was corrected and locked by
+  contract tests.
+- Phase 4 integration: regenerated latest reports and trade tickets are now
+  ignored rather than tracked. Maintained decision records and historical
+  evidence remain intact. Further indicator-window, blend-weight, or tree
+  parameter tuning on the observed windows is stopped; data and information
+  quality take priority.

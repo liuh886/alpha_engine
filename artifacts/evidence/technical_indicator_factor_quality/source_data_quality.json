@@ -1,0 +1,42 @@
+{
+  "cn": {
+    "close_only_factor_evidence_eligible": true,
+    "duplicate_date_rows": 0,
+    "first_date": "2002-01-04",
+    "high_low_factor_evidence_eligible": false,
+    "invalid_ohlc_rows": 46,
+    "last_date": "2026-06-25",
+    "market": "cn",
+    "n_rows": 270694,
+    "n_source_files": 212,
+    "non_unit_factor_rows": 0,
+    "nonpositive_close_rows": 0,
+    "nonpositive_volume_rows": 1081,
+    "provider_identity_sha256": "37ceb613e382514b12f323c7a61b084be116f6ec3f5a3a8fb4ba2736a80215b6",
+    "split_like_close_jump_rows": 0,
+    "survivorship_bias": true
+  },
+  "evidence_type": "manifest_pinned_source_data_quality",
+  "promotion_eligible": false,
+  "research_only": true,
+  "schema_version": "1.0",
+  "scope": "close-only indicators may proceed when close-only eligibility passes; high/low factors require separate repaired evidence",
+  "trade_ready": false,
+  "us": {
+    "close_only_factor_evidence_eligible": true,
+    "duplicate_date_rows": 0,
+    "first_date": "2020-01-02",
+    "high_low_factor_evidence_eligible": true,
+    "invalid_ohlc_rows": 0,
+    "last_date": "2026-06-24",
+    "market": "us",
+    "n_rows": 212076,
+    "n_source_files": 166,
+    "non_unit_factor_rows": 0,
+    "nonpositive_close_rows": 0,
+    "nonpositive_volume_rows": 781,
+    "provider_identity_sha256": "6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407",
+    "split_like_close_jump_rows": 0,
+    "survivorship_bias": false
+  }
+}
