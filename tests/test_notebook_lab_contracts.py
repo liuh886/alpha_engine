@@ -16,12 +16,13 @@ from src.research.daily_ranker_model import (
     predict_lgbm_daily_ranker,
 )
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR, ResearchSessionConfig
-from src.research.notebook_experiment_api import run_10d_experiment
+from src.research.notebook_experiment_api import _candidate_kind_from_name, run_10d_experiment
 from src.research.notebook_research_api import sanitize_factor_name
 from src.research.risk_controlled_momentum import (
     build_risk_controlled_momentum_grid,
     build_volatility_adjusted_momentum,
 )
+from src.research.signal_discovery import CandidateKind
 from src.research.ten_day_model_gates import evaluate_model_gates
 
 
@@ -437,3 +438,61 @@ def test_ci_workflow_includes_notebook_07_execution() -> None:
 
     # Notebook 07 execution must be present
     assert "07_true_daily_ranker_lab" in source
+
+
+def test_xgb_daily_ranker_maps_to_xgb_rank_ndcg_not_regressor() -> None:
+    """xgb:daily_ranker names must map to XGB_RANK_NDCG, never LGBM_REGRESSOR."""
+    assert _candidate_kind_from_name("xgb:daily_ranker") == CandidateKind.XGB_RANK_NDCG
+    assert _candidate_kind_from_name("xgb:daily_ranker_v2") == CandidateKind.XGB_RANK_NDCG
+    assert _candidate_kind_from_name("xgb:daily_ranker_top30") == CandidateKind.XGB_RANK_NDCG
+    kind = _candidate_kind_from_name("xgb:daily_ranker")
+    assert kind != CandidateKind.LGBM_REGRESSOR, "xgb ranker must not fall through to default regressor"
+
+
+def test_xgb_daily_ranker_integration_maps_through_compare() -> None:
+    """xgb:daily_ranker passed as a candidate name must yield xgb_rank_ndcg in report."""
+    index = pd.MultiIndex.from_product(
+        [pd.to_datetime(["2025-01-01", "2025-01-02"]), ["A", "B", "C"]],
+        names=["datetime", "instrument"],
+    )
+    raw = pd.DataFrame({"return": [0.01] * 6}, index=index)
+    raw.attrs["provenance"] = "raw_forward_return"
+    raw.attrs["horizon"] = 10
+    raw.attrs["expression"] = CANONICAL_10D_RETURN_EXPR
+
+    score = pd.DataFrame({"score": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]}, index=index)
+
+    config = ResearchSessionConfig(
+        market="us",
+        symbols=["A", "B", "C"],
+        benchmark="SPY",
+        train_start="2024-01-01",
+        train_end="2024-12-31",
+        test_start="2025-01-01",
+        test_end="2025-01-02",
+        topk=2,
+    )
+
+    experiment = run_10d_experiment(
+        config=config,
+        candidates={
+            "xgb:daily_ranker": score,
+            "lgbm:daily_ranker": score,
+            "lgbm:regressor": score,
+        },
+        raw_returns=raw,
+    )
+
+    candidate_kinds = {
+        c["candidate_name"]: c["candidate_kind"]
+        for c in experiment["comparison_report"]["candidates"]
+    }
+    assert candidate_kinds.get("xgb:daily_ranker") == "xgb_rank_ndcg", (
+        f"xgb:daily_ranker must map to xgb_rank_ndcg, got {candidate_kinds.get('xgb:daily_ranker')}"
+    )
+    assert candidate_kinds.get("lgbm:daily_ranker") == "lgbm_lambdarank", (
+        f"lgbm:daily_ranker must stay lambdarank, got {candidate_kinds.get('lgbm:daily_ranker')}"
+    )
+    assert candidate_kinds.get("lgbm:regressor") == "lgbm_regressor", (
+        f"lgbm:regressor must stay regressor, got {candidate_kinds.get('lgbm:regressor')}"
+    )

@@ -37,6 +37,19 @@ def test_output_dir_contract(tmp_path: Path) -> None:
     assert paths.run_dir == tmp_path / "exp"
 
 
+def test_relative_output_directory_is_resolved_once_against_root(
+    tmp_path: Path,
+) -> None:
+    paths = build_research_run_paths(
+        tmp_path,
+        "exp",
+        output_dir=Path("artifacts") / "evidence",
+    )
+    assert paths.run_dir == (
+        tmp_path / "artifacts" / "evidence" / "exp"
+    ).resolve()
+
+
 def test_status_extra_cannot_override_reserved_fields(tmp_path: Path) -> None:
     paths = ResearchRunPaths(tmp_path)
     with pytest.raises(ValueError, match="reserved status fields"):

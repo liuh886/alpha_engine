@@ -53,22 +53,37 @@ class RankerCalibration:
         }
 
 
+VALID_MODEL_FAMILIES: tuple[str, ...] = ("lgbm", "xgb")
+
+
 @dataclass(frozen=True)
 class RankerGridCandidate:
     """One feature-group/calibration candidate in the ranker grid."""
 
     feature_group: RankerFeatureGroup
     calibration: RankerCalibration
+    model_family: str = "lgbm"
+
+    def __post_init__(self) -> None:
+        if self.model_family not in VALID_MODEL_FAMILIES:
+            raise ValueError(
+                f"model_family must be one of {VALID_MODEL_FAMILIES}, "
+                f"got {self.model_family!r}"
+            )
 
     @property
     def name(self) -> str:
-        return f"lgbm:daily_ranker:{self.feature_group.name}:{self.calibration.name}"
+        return (
+            f"{self.model_family}:daily_ranker:"
+            f"{self.feature_group.name}:{self.calibration.name}"
+        )
 
     def to_dict(self) -> dict[str, object]:
         return {
             "name": self.name,
             "feature_group": self.feature_group.to_dict(),
             "calibration": self.calibration.to_dict(),
+            "model_family": self.model_family,
         }
 
 
@@ -116,12 +131,29 @@ def default_ranker_calibrations() -> list[RankerCalibration]:
 def build_ranker_calibration_grid(
     feature_groups: list[RankerFeatureGroup] | None = None,
     calibrations: list[RankerCalibration] | None = None,
+    *,
+    model_families: tuple[str, ...] | None = None,
 ) -> list[RankerGridCandidate]:
-    """Build the Cartesian product of feature groups and ranker calibrations."""
+    """Build the Cartesian product of feature groups, calibrations, and model families.
+
+    Defaults to ``['lgbm']`` so every existing spec and identity is unchanged.
+    """
 
     groups = feature_groups if feature_groups is not None else default_ranker_feature_groups()
     settings = calibrations if calibrations is not None else default_ranker_calibrations()
-    return [RankerGridCandidate(group, calibration) for group, calibration in product(groups, settings)]
+    families = model_families if model_families is not None else ("lgbm",)
+    for mf in families:
+        if mf not in VALID_MODEL_FAMILIES:
+            raise ValueError(
+                f"model_families must be a subset of {VALID_MODEL_FAMILIES}, "
+                f"got {mf!r}"
+            )
+    candidates: list[RankerGridCandidate] = []
+    for group, calibration, mf in product(groups, settings, families):
+        candidates.append(
+            RankerGridCandidate(group, calibration, model_family=mf)
+        )
+    return candidates
 
 
 def grid_manifest(candidates: list[RankerGridCandidate]) -> dict[str, object]:

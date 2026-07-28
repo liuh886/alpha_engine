@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from math import prod
 from typing import Any
 
 import pandas as pd
@@ -81,11 +82,25 @@ def summarize_walk_forward_reports(
             float((item.get("score_direction") or {}).get("top_minus_bottom_spread", 0.0))
             for item in candidates
         ]
+        total_returns = [
+            float(item.get("total_return", 0.0)) for item in candidates
+        ]
+        benchmark_returns = [
+            float(item.get("benchmark_return", 0.0)) for item in candidates
+        ]
+        excess_returns = [
+            float(item.get("excess_return", 0.0)) for item in candidates
+        ]
         gate_rows = [evaluate_model_gates(item) for item in candidates]
         n_windows = len(candidates)
         positive_spread_ratio = sum(1 for value in spreads if value > 0.0) / n_windows if n_windows else 0.0
         positive_icir_ratio = sum(1 for value in icirs if value > 0.0) / n_windows if n_windows else 0.0
         positive_rank_ic_ratio = sum(1 for value in rank_ics if value > 0.0) / n_windows if n_windows else 0.0
+        positive_excess_ratio = (
+            sum(1 for value in excess_returns if value > 0.0) / n_windows
+            if n_windows
+            else 0.0
+        )
         ready_ratio = (
             sum(1 for gate in gate_rows if gate["ready_for_trade_guidance"]) / n_windows if n_windows else 0.0
         )
@@ -93,6 +108,16 @@ def summarize_walk_forward_reports(
         mean_rank_ic = sum(rank_ics) / n_windows if n_windows else 0.0
         mean_spread = sum(spreads) / n_windows if n_windows else 0.0
         worst_drawdown = min(drawdowns) if drawdowns else 0.0
+        compounded_total_return = prod(1.0 + value for value in total_returns) - 1.0
+        compounded_benchmark_return = (
+            prod(1.0 + value for value in benchmark_returns) - 1.0
+        )
+        benchmark_base = 1.0 + compounded_benchmark_return
+        compounded_relative_excess_return = (
+            (1.0 + compounded_total_return) / benchmark_base - 1.0
+            if benchmark_base > 0.0
+            else None
+        )
         stable = (
             n_windows >= min_windows
             and mean_icir > 0.0
@@ -100,6 +125,9 @@ def summarize_walk_forward_reports(
             and positive_spread_ratio >= 0.60
             and positive_icir_ratio >= 0.60
             and positive_rank_ic_ratio >= 0.60
+            and positive_excess_ratio >= 0.60
+            and compounded_relative_excess_return is not None
+            and compounded_relative_excess_return > 0.0
             and worst_drawdown >= -0.20
         )
         rows.append(
@@ -112,6 +140,12 @@ def summarize_walk_forward_reports(
                 "positive_icir_ratio": positive_icir_ratio,
                 "positive_rank_ic_ratio": positive_rank_ic_ratio,
                 "positive_spread_ratio": positive_spread_ratio,
+                "positive_excess_ratio": positive_excess_ratio,
+                "compounded_total_return": compounded_total_return,
+                "compounded_benchmark_return": compounded_benchmark_return,
+                "compounded_relative_excess_return": (
+                    compounded_relative_excess_return
+                ),
                 "worst_drawdown": worst_drawdown,
                 "ready_ratio": ready_ratio,
                 "stable_research_candidate": stable,

@@ -35,6 +35,8 @@ def _as_score_frame(series_or_frame: pd.Series | pd.DataFrame) -> pd.DataFrame:
 def _candidate_kind_from_name(name: str) -> CandidateKind:
     if name.startswith("lgbm:daily_ranker"):
         return CandidateKind.LGBM_LAMBDARANK
+    if name.startswith("xgb:daily_ranker"):
+        return CandidateKind.XGB_RANK_NDCG
     if name.startswith("blend:"):
         return CandidateKind.SIGNAL_BLEND
     if name.startswith("factor:"):

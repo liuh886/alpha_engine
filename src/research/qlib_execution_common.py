@@ -22,7 +22,9 @@ import pandas as pd
 from src.research.daily_ranker import prepare_ranker_frame
 from src.research.daily_ranker_model import (
     fit_lgbm_daily_ranker,
+    fit_xgb_daily_ranker,
     predict_lgbm_daily_ranker,
+    predict_xgb_daily_ranker,
 )
 from src.research.evaluation_context import SpecBoundEvaluationContext
 from src.research.market_data_alignment import align_train_start_to_coverage
@@ -146,6 +148,7 @@ def materialize_ranker_candidates(
                 min_data_in_leaf=int(calibration_raw["min_data_in_leaf"]),
                 learning_rate=float(calibration_raw.get("learning_rate", 0.05)),
             ),
+            model_family=str(raw.get("model_family", "lgbm")),
         )
         if candidate.name != str(raw["name"]):
             raise ValueError(
@@ -202,7 +205,15 @@ def fit_ranker_scores(
     features_test: pd.DataFrame,
     expression_columns: dict[str, str],
 ) -> pd.DataFrame:
-    """Fit one declared ranker and return test-period scores."""
+    """Fit one declared ranker and return test-period scores.
+
+    Dispatches to the LightGBM or XGBoost adapter based on the candidate's
+    ``model_family``. Both adapters receive identical processed daily rank
+    target, groups, selected feature columns, ``n_gain_bins``, and
+    ``num_boost_round``. LightGBM-specific calibration params (``num_leaves``,
+    ``min_data_in_leaf``, ``learning_rate``) are **not** translated into XGB
+    params — the XGB adapter owns its own structural configuration.
+    """
 
     columns = [
         expression_columns[item]
@@ -212,6 +223,19 @@ def fit_ranker_scores(
         features_train.loc[:, columns],
         returns_train,
     )
+    if candidate.model_family == "xgb":
+        ranker = fit_xgb_daily_ranker(
+            x_rank,
+            y_rank,
+            groups,
+            n_gain_bins=candidate.calibration.n_gain_bins,
+            params=None,
+            num_boost_round=candidate.calibration.num_boost_round,
+        )
+        return predict_xgb_daily_ranker(
+            ranker,
+            features_test.loc[:, columns],
+        )
     ranker = fit_lgbm_daily_ranker(
         x_rank,
         y_rank,
@@ -224,6 +248,155 @@ def fit_ranker_scores(
         ranker,
         features_test.loc[:, columns],
     )
+
+
+def load_window_benchmark_returns(
+    runtime: ExecutionRuntime,
+    *,
+    benchmark_instrument: str,
+    return_expression: str,
+    evaluation_dates: pd.DatetimeIndex,
+    start: str,
+    end: str,
+    provenance: str,
+    horizon: int,
+) -> pd.DataFrame:
+    """Load complete raw benchmark returns for one OOS evaluation window."""
+
+    raw = normalize_qlib_frame_index(
+        runtime.features(
+            [benchmark_instrument],
+            [return_expression],
+            start,
+            end,
+        )
+    )
+    if raw.empty:
+        raise ValueError(
+            f"Benchmark '{benchmark_instrument}' produced empty data "
+            f"in [{start}, {end}]"
+        )
+    if isinstance(raw.index, pd.MultiIndex):
+        raw = raw.xs(benchmark_instrument, level="instrument")
+    series = raw.iloc[:, 0] if isinstance(raw, pd.DataFrame) else raw
+    result = series.to_frame("return").sort_index()
+    if not result.index.is_unique:
+        raise ValueError(
+            f"Benchmark '{benchmark_instrument}' contains duplicate dates"
+        )
+
+    required_dates = pd.DatetimeIndex(evaluation_dates)
+    missing_dates = required_dates.difference(result.index)
+    if len(missing_dates) > 0:
+        raise ValueError(
+            f"Benchmark '{benchmark_instrument}' is missing "
+            f"{len(missing_dates)} of {len(required_dates)} evaluation dates "
+            f"in [{start}, {end}]"
+        )
+    result = result.loc[required_dates].copy()
+    finite = np.isfinite(result["return"].to_numpy())
+    if not finite.all():
+        raise ValueError(
+            f"Benchmark '{benchmark_instrument}' has "
+            f"{int((~finite).sum())} non-finite return value(s) on "
+            f"evaluation dates in [{start}, {end}]"
+        )
+    result.attrs.update(
+        {
+            "provenance": provenance,
+            "horizon": horizon,
+            "expression": return_expression,
+        }
+    )
+    return result
+
+
+def _resolve_benchmark_instrument(
+    market: str,
+    declared_benchmark: str,
+    available_symbols: set[str],
+) -> str:
+    """Resolve a declared benchmark to an instrument symbol available in the provider.
+
+    For CN markets, index benchmarks with ``000XXX`` codes use SH prefix even
+    though the general stock normalization maps ``000XXX`` codes to SZ. This
+    function adds CN index-aware aliases and performs case-insensitive matching.
+
+    For US markets, delegates to the general :func:`normalize_market_symbols`.
+
+    Raises
+    ------
+    ValueError
+        When no candidate resolves against the available symbols.
+    """
+
+    if market == "cn":
+        available_upper = {s.upper(): s for s in available_symbols}
+
+        # 1. Generate candidates using the general symbol rule
+        general = normalize_market_symbols(
+            market,
+            [declared_benchmark],
+            available_symbols=None,
+        )
+        candidates: list[str] = (
+            list(general[0].candidates) if general else []
+        )
+
+        # 2. For CN indexes with 000XXX codes, add SH-prefixed aliases
+        #    (000XXX indexes trade on Shanghai, unlike 000XXX stocks which are SZ)
+        raw = str(declared_benchmark).strip().upper()
+        code = raw
+        for prefix in ("SZ", "SH"):
+            if code.startswith(prefix) and code[len(prefix) :].isdigit():
+                code = code[len(prefix) :]
+                break
+        for suffix in (".SZ", ".SH"):
+            if code.endswith(suffix):
+                code = code[: -len(suffix)]
+                break
+        if code.isdigit():
+            six_digit = code.zfill(6)[-6:]
+            if six_digit.startswith("000"):
+                index_aliases = [
+                    f"SH{six_digit}",
+                    f"{six_digit}.SH",
+                    f"sh{six_digit.lower()}",
+                ]
+                for alias in index_aliases:
+                    if alias not in candidates:
+                        candidates.append(alias)
+
+        # 3. Case-insensitive match against available symbols
+        for candidate in candidates:
+            if candidate.upper() in available_upper:
+                return available_upper[candidate.upper()]
+
+        raise ValueError(
+            f"Benchmark '{declared_benchmark}' could not be resolved "
+            f"against {len(available_symbols)} available symbols. "
+            f"Tried candidates: {candidates}"
+        )
+
+    # US market: use general normalization unchanged
+    normalized = normalize_market_symbols(
+        market,
+        [declared_benchmark],
+        available_symbols=available_symbols or None,
+    )
+    if not normalized:
+        raise ValueError(
+            f"Benchmark '{declared_benchmark}' could not be normalized "
+            f"against available symbols"
+        )
+    result = normalized[0].normalized_symbol
+    if result.upper() not in {s.upper() for s in available_symbols}:
+        raise ValueError(
+            f"Benchmark '{declared_benchmark}' could not be normalized "
+            f"against available symbols — resolved to '{result}' which is "
+            f"not in the available set"
+        )
+    return result
 
 
 def build_skip_result(
@@ -559,6 +732,13 @@ def execute_qlib_plan(
     if len(set(expression_columns.values())) != len(expression_columns):
         raise ValueError("Feature expression sanitization produced duplicate columns")
 
+    # ── benchmark resolution ────────────────────────────────────────────
+    benchmark_instrument = _resolve_benchmark_instrument(
+        market,
+        plan.spec.benchmark,
+        available_symbols,
+    )
+
     # ── per-window execution ─────────────────────────────────────────────
     model_type = f"spec_bound_{market}_daily_ranker"
     reports: list[dict[str, Any]] = []
@@ -663,11 +843,30 @@ def execute_qlib_plan(
             )
             candidate_scores[name] = baseline
 
+        # ── benchmark loading (per-window, separate from tradable universe) ─
+        try:
+            window_benchmark_returns = load_window_benchmark_returns(
+                market_runtime,
+                benchmark_instrument=benchmark_instrument,
+                return_expression=config.return_expression,
+                evaluation_dates=evaluation_dates,
+                start=config.test_start,
+                end=config.test_end,
+                provenance=str(strategy["return_provenance"]),
+                horizon=int(strategy["horizon_days"]),
+            )
+        except Exception as exc:
+            skipped_windows.append(
+                {"window": window.label, "reason": str(exc)}
+            )
+            continue
+
         reports.append(
             run_10d_experiment(
                 config=config,
                 candidates=candidate_scores,
                 raw_returns=returns_test,
+                benchmark_returns=window_benchmark_returns,
                 output_dir=window_output_dir,
             )
         )
