@@ -1,11 +1,12 @@
 """Generate close-only, cross-market 10D technical-factor evidence.
 
-The runner evaluates three frozen historical factors on the already-observed
+The runner evaluates four frozen historical factors on the already-observed
 2024H1--2025H2 windows:
 
 * Bollinger 20-session mean reversion;
 * normalized MACD 12/26/9 acceleration; and
-* 10-session RSI positive-magnitude share.
+* 10-session RSI positive-magnitude share; and
+* 10-session close-location pressure from repaired high/low bars.
 
 US evaluation reuses the repaired window-start NDX membership evidence.  CN
 evaluation uses the versioned static curated universe and therefore retains an
@@ -39,7 +40,7 @@ from src.research.notebook_lab_contracts import (
 )
 from src.research.technical_indicator_factors import (
     TECHNICAL_INDICATOR_SPECS,
-    compute_technical_indicator_scores,
+    compute_ohlc_technical_indicator_scores,
 )
 from src.research.walk_forward_stability import (
     slice_multiindex_dates,
@@ -158,7 +159,7 @@ def _resolve_csv(
     )
 
 
-def _load_close_frame(
+def _load_ohlc_frame(
     symbols: list[str],
     *,
     csv_dirs: tuple[Path, ...],
@@ -174,9 +175,16 @@ def _load_close_frame(
             csv_dirs=csv_dirs,
             expected_hashes=expected_hashes,
         )
-        source = pd.read_csv(path, usecols=["date", "close"])
+        source = pd.read_csv(
+            path,
+            usecols=["date", "high", "low", "close"],
+        )
         source["date"] = pd.to_datetime(source["date"], errors="coerce")
-        source["close"] = pd.to_numeric(source["close"], errors="coerce")
+        for column in ("high", "low", "close"):
+            source[column] = pd.to_numeric(
+                source[column],
+                errors="coerce",
+            )
         source = source.dropna(subset=["date"]).sort_values("date")
         if source["date"].duplicated().any():
             raise ValueError(f"duplicate source dates for {symbol}")
@@ -197,7 +205,10 @@ def _load_close_frame(
         )
         pieces.append(
             pd.DataFrame(
-                {"close": source["close"].to_numpy(dtype=float)},
+                {
+                    column: source[column].to_numpy(dtype=float)
+                    for column in ("high", "low", "close")
+                },
                 index=index,
             )
         )
@@ -385,13 +396,43 @@ def _cn_windows(
     readiness_path: Path,
     *,
     provider_identity: str,
+    repair_manifest: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     universe = yaml.safe_load(universe_path.read_text(encoding="utf-8"))
     metadata = universe.get("metadata", {})
     requested = [str(item) for item in universe.get("cn", [])]
     readiness = _read_json(readiness_path)
-    if readiness.get("provider_identity_sha256") != provider_identity:
-        raise ValueError("CN readiness provider identity mismatch")
+    readiness_identity = str(readiness.get("provider_identity_sha256", ""))
+    if readiness_identity != provider_identity:
+        if repair_manifest is None:
+            raise ValueError("CN readiness provider identity mismatch")
+        original = repair_manifest.get("original_provider")
+        repaired = repair_manifest.get("new_provider")
+        if not isinstance(original, dict) or not isinstance(repaired, dict):
+            raise ValueError("CN repair lineage is incomplete")
+        if (
+            repair_manifest.get("schema_version") != "1.0"
+            or repair_manifest.get("evidence_type")
+            != "isolated_cn_ohlcv_source_repair"
+            or original.get("provider_identity_sha256") != readiness_identity
+            or repaired.get("provider_identity_sha256") != provider_identity
+            or repair_manifest.get("invalid_before", 0) <= 0
+            or repair_manifest.get("invalid_after") != 0
+            or repair_manifest.get("research_only") is not True
+            or repair_manifest.get("promotion_eligible") is not False
+            or repair_manifest.get("trade_ready") is not False
+        ):
+            raise ValueError("CN repair lineage does not authorize readiness reuse")
+        for field in ("calendar", "instruments"):
+            old_contract = original.get(field)
+            new_contract = repaired.get(field)
+            if not isinstance(old_contract, dict) or not isinstance(
+                new_contract,
+                dict,
+            ):
+                raise ValueError(f"CN repair lineage is missing {field}")
+            if old_contract.get("sha256") != new_contract.get("sha256"):
+                raise ValueError(f"CN repair changed provider {field}")
     if readiness.get("survivorship_bias") is not True:
         raise ValueError("CN static-universe survivorship bias must be explicit")
     unavailable = {str(item) for item in readiness.get("unavailable_symbols", [])}
@@ -527,10 +568,11 @@ def _evaluate_market(
     benchmark: str,
     topk: int,
     windows: list[dict[str, Any]],
-    close: pd.DataFrame,
+    bars: pd.DataFrame,
     output_dir: Path,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    scores = compute_technical_indicator_scores(close)
+    scores = compute_ohlc_technical_indicator_scores(bars)
+    close = bars[["close"]]
     raw_returns = _raw_forward_returns(close)
     benchmark_returns = _benchmark_forward_returns(close, benchmark)
     reports: list[dict[str, Any]] = []
@@ -628,6 +670,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_CN_READINESS,
     )
     parser.add_argument(
+        "--cn-repair-manifest",
+        type=Path,
+        help=(
+            "Optional verified parent-to-child repair lineage when readiness "
+            "was generated for the parent provider."
+        ),
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
@@ -656,27 +706,22 @@ def main() -> None:
         args.us_window_source,
         provider_identity=us_identity,
     )
+    repair_manifest = (
+        _read_json(args.cn_repair_manifest)
+        if args.cn_repair_manifest is not None
+        else None
+    )
     cn_windows, cn_metadata = _cn_windows(
         args.cn_universe,
         args.cn_readiness,
         provider_identity=cn_identity,
+        repair_manifest=repair_manifest,
     )
     us_symbols = sorted(
         {symbol for window in us_windows for symbol in window["symbols"]}
         | {"QQQ"}
     )
     cn_symbols = sorted(set(cn_windows[0]["symbols"]) | {"000300"})
-    us_close = _load_close_frame(
-        us_symbols,
-        csv_dirs=(us_csv_dir,),
-        provider_manifest=us_manifest,
-    )
-    cn_close = _load_close_frame(
-        cn_symbols,
-        csv_dirs=tuple(args.cn_csv_dir),
-        provider_manifest=cn_manifest,
-    )
-
     args.output_dir.mkdir(parents=True, exist_ok=True)
     data_quality = {
         "schema_version": SCHEMA_VERSION,
@@ -694,14 +739,30 @@ def main() -> None:
             survivorship_bias=True,
         ),
         "scope": (
-            "close-only indicators may proceed when close-only eligibility "
-            "passes; high/low factors require separate repaired evidence"
+            "close-only and high/low indicators require their corresponding "
+            "manifest-pinned eligibility checks"
         ),
         "research_only": True,
         "promotion_eligible": False,
         "trade_ready": False,
     }
     _write_json(args.output_dir / "source_data_quality.json", data_quality)
+    for market in ("us", "cn"):
+        if data_quality[market]["high_low_factor_evidence_eligible"] is not True:
+            raise ValueError(
+                f"{market.upper()} high/low factor evidence is ineligible"
+            )
+
+    us_bars = _load_ohlc_frame(
+        us_symbols,
+        csv_dirs=(us_csv_dir,),
+        provider_manifest=us_manifest,
+    )
+    cn_bars = _load_ohlc_frame(
+        cn_symbols,
+        csv_dirs=tuple(args.cn_csv_dir),
+        provider_manifest=cn_manifest,
+    )
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "evidence_type": "cross_market_technical_indicator_factor_quality",
@@ -712,6 +773,7 @@ def main() -> None:
                 "parameters": spec.parameters,
                 "uses_future_returns": False,
                 "parameter_search_performed": False,
+                "requires_high_low": spec.requires_high_low,
             }
             for spec in TECHNICAL_INDICATOR_SPECS
         ],
@@ -732,6 +794,21 @@ def main() -> None:
             "provider_identity_sha256": cn_identity,
             "provider_manifest_ref": "data/providers/cn/provider_manifest.json",
             "provider_manifest_sha256": _sha256(args.cn_provider_manifest),
+            "repair_lineage": (
+                None
+                if args.cn_repair_manifest is None
+                else {
+                    "evidence_type": repair_manifest.get("evidence_type"),
+                    "original_provider_identity_sha256": repair_manifest[
+                        "original_provider"
+                    ]["provider_identity_sha256"],
+                    "repair_manifest_sha256": _sha256(
+                        args.cn_repair_manifest
+                    ),
+                    "invalid_before": repair_manifest.get("invalid_before"),
+                    "invalid_after": repair_manifest.get("invalid_after"),
+                }
+            ),
             "membership_mode": cn_metadata.get("membership_mode"),
             "membership_as_of": cn_metadata.get("membership_as_of"),
             "survivorship_bias": True,
@@ -749,7 +826,7 @@ def main() -> None:
         benchmark="QQQ",
         topk=3,
         windows=us_windows,
-        close=us_close,
+        bars=us_bars,
         output_dir=args.output_dir,
     )
     cn_reports, cn_stability = _evaluate_market(
@@ -757,7 +834,7 @@ def main() -> None:
         benchmark="000300",
         topk=15,
         windows=cn_windows,
-        close=cn_close,
+        bars=cn_bars,
         output_dir=args.output_dir,
     )
     decisions = _cross_market_decisions(

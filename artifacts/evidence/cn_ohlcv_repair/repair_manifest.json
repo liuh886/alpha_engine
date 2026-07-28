@@ -1,0 +1,1474 @@
+{
+  "evidence_type": "isolated_cn_ohlcv_source_repair",
+  "invalid_after": 0,
+  "invalid_before": 46,
+  "new_provider": {
+    "calendar": {
+      "first_day": "2002-01-04",
+      "last_day": "2026-06-25",
+      "path": "calendars/day.txt",
+      "session_count": 5935,
+      "sha256": "402b8e051dfd77dacf93bb0cdf68ee1c290db669246056c1c3d81997170676d6"
+    },
+    "instruments": {
+      "count": 212,
+      "path": "instruments/cn.txt",
+      "sha256": "b773791fded3991a7966d05b9619cd721dccdda72ff938505626e00950ef92d8"
+    },
+    "manifest_sha256": "44855c4e711d51300821da21ef170d35b2ee7f27701f96a6b086c147500e95eb",
+    "provider_identity_sha256": "6f556a5952b220b0a92545046ffc1a738227d3b4fb216303a5b0f08762cd50f4"
+  },
+  "original_provider": {
+    "calendar": {
+      "first_day": "2002-01-04",
+      "last_day": "2026-06-25",
+      "path": "calendars/day.txt",
+      "session_count": 5935,
+      "sha256": "402b8e051dfd77dacf93bb0cdf68ee1c290db669246056c1c3d81997170676d6"
+    },
+    "instruments": {
+      "count": 212,
+      "path": "instruments/cn.txt",
+      "sha256": "b773791fded3991a7966d05b9619cd721dccdda72ff938505626e00950ef92d8"
+    },
+    "manifest_sha256": "44512864f1fab9deaaf6e691b205683a598663ea0a9a9f0f6846d6acffeac497",
+    "provider_identity_sha256": "37ceb613e382514b12f323c7a61b084be116f6ec3f5a3a8fb4ba2736a80215b6"
+  },
+  "promotion_eligible": false,
+  "repair_provider_order": [
+    "efinance",
+    "akshare"
+  ],
+  "replacements": [
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000063",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "2b0d31815f86dfa222ea61f5bbb8d24eb5d2506cdfa9aa46cc5ec9d63fc57a5e",
+      "original_validation_errors": [
+        "[000063] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "000063",
+      "repaired_sha256": "7cb13576c8f56d4777cc08690c181c4927d5bb89552633db546046228dce06b8",
+      "selected_provider": "efinance",
+      "symbol": "000063"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-22",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000157",
+          "rows": 1262,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1262,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-22",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1262,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-22"
+      },
+      "original_sha256": "795d103fbbc17af0d9d24634498ae6e11b642649e3a051b3e3c26f7dc2a4a213",
+      "original_validation_errors": [
+        "[000157] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "000157",
+      "repaired_sha256": "d001aaaa252a7236aa639a0e6f5f036712f9d9ccc9c351f2c2016b0277ae00b0",
+      "selected_provider": "efinance",
+      "symbol": "000157"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000166",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "435743a89db4c9a9f7f498222f3766687ef740805fed78dd547c50946d99aa9d",
+      "original_validation_errors": [
+        "[000166] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "000166",
+      "repaired_sha256": "5cab0f5b661c73f0a5f721cdcd152a01cbc0b09aff86b0d6457ddca1ece55b19",
+      "selected_provider": "efinance",
+      "symbol": "000166"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-22",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000408",
+          "rows": 1256,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1262,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-22",
+        "overlap_ratio": 0.995246,
+        "repaired_dates": 1256,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-22"
+      },
+      "original_sha256": "13d15c1d238a6a214c493bf21fdb0d273f24b459a3769dfbd24ebbda75f074f7",
+      "original_validation_errors": [
+        "[000408] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "000408",
+      "repaired_sha256": "be88f0dd23a635cc6dd1375b2d686a9b69d260db5bf533d77094e3d869ec5966",
+      "selected_provider": "efinance",
+      "symbol": "000408"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-22",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000617",
+          "rows": 1262,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1262,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-22",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1262,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-22"
+      },
+      "original_sha256": "9579de1171ed0b6172bdadd6bd1fd58faa72a7dcc06850b6df34982eafc4ddad",
+      "original_validation_errors": [
+        "[000617] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "000617",
+      "repaired_sha256": "198efe9c7fef5adaf1f60e4d93d7e026d404ca30d784a1e4560167087aaa2e2e",
+      "selected_provider": "efinance",
+      "symbol": "000617"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-24",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000725",
+          "rows": 1264,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1264,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-24",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1264,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-24"
+      },
+      "original_sha256": "96fec79e079ff7046a2f1117521f2f14eea9fa8d04fc0fab8e98fb33cd08c07a",
+      "original_validation_errors": [
+        "[000725] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "000725",
+      "repaired_sha256": "56d4907adf4654ae5823fbb831bb7f6f8459754d2c9b97f7556a2dd97a760a6e",
+      "selected_provider": "efinance",
+      "symbol": "000725"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-22",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000768",
+          "rows": 1262,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1262,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-22",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1262,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-22"
+      },
+      "original_sha256": "3206b213790a4696bcdc34d3df4742feeff175d50fe5c40ec212383c36c304f5",
+      "original_validation_errors": [
+        "[000768] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "000768",
+      "repaired_sha256": "b0cdcdd8e2f3f26da02727334cd07d329c74d8dd5d1883cf04db21a5b2c04cda",
+      "selected_provider": "efinance",
+      "symbol": "000768"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-18",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000786",
+          "rows": 1261,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1261,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-18",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1261,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-18"
+      },
+      "original_sha256": "5145996eaacf2de30467cfe96c190d0f77d9290bb5865f95b9fc37a738ce00d4",
+      "original_validation_errors": [
+        "[000786] Schema Error: <Check low_le_close> failed."
+      ],
+      "provider_symbol": "000786",
+      "repaired_sha256": "7d33de9f63c24585acdf67345cd996fd484669f3dec28e8e751a2bd4b8b58f46",
+      "selected_provider": "efinance",
+      "symbol": "000786"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-24",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000800",
+          "rows": 1264,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1264,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-24",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1264,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-24"
+      },
+      "original_sha256": "d7abdecad592d8493ec17cf3f1684a404b012e4c714a6607fe1bbd152ca75e78",
+      "original_validation_errors": [
+        "[000800] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "000800",
+      "repaired_sha256": "1a075d9d501588fa9ce2cca06f352522b0828f3d07dcc59c7e3d48ed92aae488",
+      "selected_provider": "efinance",
+      "symbol": "000800"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-18",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000905",
+          "rows": 1256,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1261,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-18",
+        "overlap_ratio": 0.996035,
+        "repaired_dates": 1256,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-18"
+      },
+      "original_sha256": "a6b07525505e7bb74573d9a0548d5bd4da05ef26bf3ec0b3263cc1716f4429e8",
+      "original_validation_errors": [
+        "[000905] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "000905",
+      "repaired_sha256": "60ad4a455e04b350352b433d288a7ec069a4486fcece89e0df687fbed744c3d6",
+      "selected_provider": "efinance",
+      "symbol": "000905"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-24",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "000999",
+          "rows": 1264,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1264,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-24",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1264,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-24"
+      },
+      "original_sha256": "290cde481e8fc07d3c219546affd030be89d6b5f33a5be279f83c570ab2e8c59",
+      "original_validation_errors": [
+        "[000999] Schema Error: <Check low_le_close> failed."
+      ],
+      "provider_symbol": "000999",
+      "repaired_sha256": "683035de1f683f792e8557ec7b4a65999e4ff325e6638b247dd28ea27afe920b",
+      "selected_provider": "efinance",
+      "symbol": "000999"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-18",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "001979",
+          "rows": 1251,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1261,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-18",
+        "overlap_ratio": 0.99207,
+        "repaired_dates": 1251,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-18"
+      },
+      "original_sha256": "e80704d7fe451f09445b471da0dc4722b7f82bb617cb6e9f178c732511e0f9ea",
+      "original_validation_errors": [
+        "[001979] Schema Error: <Check low_le_close> failed."
+      ],
+      "provider_symbol": "001979",
+      "repaired_sha256": "6360e1f1a8d68fd5e1524f8ef3415de9489967862636b883b71585c0272be423",
+      "selected_provider": "efinance",
+      "symbol": "001979"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-24",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002007",
+          "rows": 1264,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1264,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-24",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1264,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-24"
+      },
+      "original_sha256": "620091c60c1428531a66c0b4e20d1f840a79224d17986880be3d6ad6e707bfe4",
+      "original_validation_errors": [
+        "[002007] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002007",
+      "repaired_sha256": "6bf9a226db205d67c183d41f0f3c1b87be4f575aa2f85b58d1ec8cf67111f121",
+      "selected_provider": "efinance",
+      "symbol": "002007"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-18",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002027",
+          "rows": 1261,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1261,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-18",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1261,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-18"
+      },
+      "original_sha256": "0b4821ba8046e89e370b9edd87618ed797d7f424eade04b704f6537f437bf986",
+      "original_validation_errors": [
+        "[002027] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002027",
+      "repaired_sha256": "c24dda61676a7908d6d0dcf9af2a083f0a6ccc156eb573a379dc87e7638a2aea",
+      "selected_provider": "efinance",
+      "symbol": "002027"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-18",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002032",
+          "rows": 1261,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1261,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-18",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1261,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-18"
+      },
+      "original_sha256": "5c0c9bd2c6cc8cc6650f3cd2b0e8a96e6f97db1ad3314a1752a537fa5075cfe5",
+      "original_validation_errors": [
+        "[002032] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002032",
+      "repaired_sha256": "1822e3b8bd3813057bfcc958f303bc0d7d35b9b1503dfb67137a0f8548056d1d",
+      "selected_provider": "efinance",
+      "symbol": "002032"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002120",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "a396840101db89795f3f440993e97ac8ecf47c0edc74d5e3c04ab0055e017354",
+      "original_validation_errors": [
+        "[002120] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002120",
+      "repaired_sha256": "89ac83d73752a4e078e58f555054d7e9dbc29e7fbf5c529b9f0281d30e76ab88",
+      "selected_provider": "efinance",
+      "symbol": "002120"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002142",
+          "rows": 1259,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 0.995257,
+        "repaired_dates": 1259,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "f7847b954f1f32d537d776ec5ff7e33167114a15f60fdb677403b2bd2544bd79",
+      "original_validation_errors": [
+        "[002142] Schema Error: <Check low_le_close> failed."
+      ],
+      "provider_symbol": "002142",
+      "repaired_sha256": "41f507a2904073aaa002865757dd04f8a1106e7ff1e9f6528c57f57b862fd70d",
+      "selected_provider": "efinance",
+      "symbol": "002142"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-24",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002180",
+          "rows": 1263,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1264,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-24",
+        "overlap_ratio": 0.999209,
+        "repaired_dates": 1263,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-24"
+      },
+      "original_sha256": "806922682d37e23ad612ac1aed8ab33461787b4b1e000d28e8e4acb685c3d470",
+      "original_validation_errors": [
+        "[002180] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002180",
+      "repaired_sha256": "b01a71d56645b864093acda76901ca9cb02bb5b28bb59a74218c756bc3888ef4",
+      "selected_provider": "efinance",
+      "symbol": "002180"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002236",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "bbea3b7400c0dceed1bf7055cc1234b827ba72f4728b33e305695101fa816ef1",
+      "original_validation_errors": [
+        "[002236] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002236",
+      "repaired_sha256": "d2eb0b168995a6eaba562bccc4a6796078aad3d637584a496ddc01553f577357",
+      "selected_provider": "efinance",
+      "symbol": "002236"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-24",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002252",
+          "rows": 1254,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1264,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-24",
+        "overlap_ratio": 0.992089,
+        "repaired_dates": 1254,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-24"
+      },
+      "original_sha256": "7a93fa068b02b283e98ffc30258e0f0d5e79ca5bee02d6e2f351067d5afcadba",
+      "original_validation_errors": [
+        "[002252] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002252",
+      "repaired_sha256": "61496f75a6c9e8e4df00b7137f03a1ecde9374a0b9ea1b954842f20e2359920e",
+      "selected_provider": "efinance",
+      "symbol": "002252"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002311",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "937e9fea7cc0d996968cb4cf2cfca073547c9bbdbe0528244cfcdd5550bc08d2",
+      "original_validation_errors": [
+        "[002311] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002311",
+      "repaired_sha256": "e8204802a4c22cc6f9e58563f3e2587075b965a8266b6419c0c883e190bc8b5b",
+      "selected_provider": "efinance",
+      "symbol": "002311"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-24",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002415",
+          "rows": 1264,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1264,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-24",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1264,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-24"
+      },
+      "original_sha256": "55a418113d262761dd02bfeed9ccb09752aaac42a7502683148b942f06cac5b9",
+      "original_validation_errors": [
+        "[002415] Schema Error: <Check low_le_close> failed."
+      ],
+      "provider_symbol": "002415",
+      "repaired_sha256": "ae78f7224bfdb7d6e419b4cd00a50ab5a72431f2cd69ce411f4fadc7fc433d08",
+      "selected_provider": "efinance",
+      "symbol": "002415"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-18",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002456",
+          "rows": 1251,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1261,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-18",
+        "overlap_ratio": 0.99207,
+        "repaired_dates": 1251,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-18"
+      },
+      "original_sha256": "3024d5d2fea87c77dba0e692d4cd35c7382f22de3c78a182de567625138830ce",
+      "original_validation_errors": [
+        "[002456] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002456",
+      "repaired_sha256": "7fac8cfc952fd8f136c9c05b14dff80a1c87b432f4cb3abfeceb94ea3c8e98e6",
+      "selected_provider": "efinance",
+      "symbol": "002456"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-24",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002600",
+          "rows": 1264,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1264,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-24",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1264,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-24"
+      },
+      "original_sha256": "a9995768b7610660f403028444b15270112e7acb1c9f3a15bb0ddab74ac5ebf5",
+      "original_validation_errors": [
+        "[002600] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002600",
+      "repaired_sha256": "95fe739ba571177426fa71172cbfb9b522b27f75e53f5594342e083b06bba529",
+      "selected_provider": "efinance",
+      "symbol": "002600"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-18",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002714",
+          "rows": 1261,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1261,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-18",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1261,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-18"
+      },
+      "original_sha256": "4e11f4a700cb002af7cbb5624ce0093cd198a5a5dc9d44a23f031181769ffdf8",
+      "original_validation_errors": [
+        "[002714] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002714",
+      "repaired_sha256": "0b871bfea1809db14f3c549ac9b1fab521baf7c151ad5f43eaed077261c5ec23",
+      "selected_provider": "efinance",
+      "symbol": "002714"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "002736",
+          "rows": 1255,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 0.992095,
+        "repaired_dates": 1255,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "672465c3a0f6a9df8986e8012b581da1c72eca731d981c5b0e6296d7002e2425",
+      "original_validation_errors": [
+        "[002736] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "002736",
+      "repaired_sha256": "3c2aba53fbdfe59c963522637120203bd9e19fdc12f2c1689c22676c610b76bb",
+      "selected_provider": "efinance",
+      "symbol": "002736"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "512000",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1264,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "faa3f12faf3d8b8c38534ccb7de45aebfca8384cd137c0e00baab1ca587adad2",
+      "original_validation_errors": [
+        "[512000] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "512000",
+      "repaired_sha256": "575402c497e7941623d43d4cf43723a89dd40e235a829023688e16bd4530443a",
+      "selected_provider": "efinance",
+      "symbol": "512000"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "515000",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1264,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "ee4de1ba7ad82a9bb980b7209914fdcd4b3965a1522fda36e446eada7095c7d2",
+      "original_validation_errors": [
+        "[515000] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "515000",
+      "repaired_sha256": "07a2b8d9f1e8366f03074befbd073c56becadb0d49d74485c5ea31b57e3c13ae",
+      "selected_provider": "efinance",
+      "symbol": "515000"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "600009",
+          "rows": 1254,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 0.991304,
+        "repaired_dates": 1254,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "a8b607e8b6ced9861ec39d30e8425a86c0c959953ea1e061bde2858acda46876",
+      "original_validation_errors": [
+        "[600009] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "600009",
+      "repaired_sha256": "c0b7e4aac76b2c54ea46a2b624b8c976853acb955343251aaaffe030c19ffbf8",
+      "selected_provider": "efinance",
+      "symbol": "600009"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "600050",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "d3f3b1e2e8151d4a93841443bddcdeff788050a766fb5029c51d86ad9a6b2e9a",
+      "original_validation_errors": [
+        "[600050] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "600050",
+      "repaired_sha256": "bf3f2e35c6a606b597f5f08407c3ad6c62f852f4d7bfc6fed46e19208853afae",
+      "selected_provider": "efinance",
+      "symbol": "600050"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "600893",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "fb60b0bfcebb7cd23ab19fc02df9260ac0b1d43b549063469418122e58acaba4",
+      "original_validation_errors": [
+        "[600893] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "600893",
+      "repaired_sha256": "2e0e2c1bf31b62303ad8f5f85908667a20586c3800ac0b3fb92ec6ccaca1dc35",
+      "selected_provider": "efinance",
+      "symbol": "600893"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601006",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "2ce19051b644f5bb569012262c20a44466127c267e7318dcd5f9d6c8900f082b",
+      "original_validation_errors": [
+        "[601006] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601006",
+      "repaired_sha256": "6073f26e29a45aa8e9a965c7e382ad9a9733d8d7831291430fd02ff10b4a0bd8",
+      "selected_provider": "efinance",
+      "symbol": "601006"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601009",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "dbed63f1d37661b3925a14df60159d09e2673910a0c5b4197b6558db7826b901",
+      "original_validation_errors": [
+        "[601009] Schema Error: <Check low_le_close> failed."
+      ],
+      "provider_symbol": "601009",
+      "repaired_sha256": "e329a7406fb1943fda46aa22eba8893e474aaa2296fae02666868e5f5dcd9dab",
+      "selected_provider": "efinance",
+      "symbol": "601009"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601336",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "8466473924bf42220ee77b714ff60d462dc8db2dc22afbb291f44197a968fece",
+      "original_validation_errors": [
+        "[601336] Schema Error: <Check low_le_close> failed."
+      ],
+      "provider_symbol": "601336",
+      "repaired_sha256": "44c94be0b94fc22d4cd8bc9a17ae1e43f57b5b565f9f6c4f3ce90396e75aa094",
+      "selected_provider": "efinance",
+      "symbol": "601336"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601390",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "b093604b4570b80edb9ee5954ad9ccc952397cd94d32d6c715753b9c025a88aa",
+      "original_validation_errors": [
+        "[601390] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601390",
+      "repaired_sha256": "6420e7b691d0d00aa51e685b9f244c5ee08c817d0760dcaa37549e1502f353c6",
+      "selected_provider": "efinance",
+      "symbol": "601390"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601618",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "90c9cb71968457b07ab5c1f4653fc6b5fc4b0ad365e1aa51bc7fb7cea417481f",
+      "original_validation_errors": [
+        "[601618] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601618",
+      "repaired_sha256": "e7e8a53b49e12c5c40ea319420edf688e9a6ca1a37f73ec9e7d7577e9d0e7287",
+      "selected_provider": "efinance",
+      "symbol": "601618"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601688",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "424ee58f5799fa40de53124e5f640e053494b8300f9f5f097b68374a187ec705",
+      "original_validation_errors": [
+        "[601688] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601688",
+      "repaired_sha256": "96f248818b3bb5fe42a33bb66d82693c75344a2930d7945b275180962a6109e6",
+      "selected_provider": "efinance",
+      "symbol": "601688"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601727",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "30be1c375ebbdbc03ff8781a7656059c144bc9a8d1fd061e0b5431f9eb47452f",
+      "original_validation_errors": [
+        "[601727] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601727",
+      "repaired_sha256": "dbc130e76d2d82d160536c230accbb88d8b95535219d510fe8222c1fa457e53c",
+      "selected_provider": "efinance",
+      "symbol": "601727"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-08-20",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601728",
+          "rows": 1171,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1171,
+        "original_first": "2021-08-20",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1171,
+        "repaired_first": "2021-08-20",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "ee738cb75522d7b8f4797f9c348231cc42f4cb67de179fd695f29bd852bc1a7b",
+      "original_validation_errors": [
+        "[601728] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601728",
+      "repaired_sha256": "1e0503559cee19473e8021928251642dd2ea237a77ff0df047471fbfec93be17",
+      "selected_provider": "efinance",
+      "symbol": "601728"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601766",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "a120bc47aa6e522c63e0776d875c2d36fb5bcabe4db6b3084afd31ed19d3ff5a",
+      "original_validation_errors": [
+        "[601766] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601766",
+      "repaired_sha256": "d2326ac57e707cb267ffb469c6278f7ff0acb5ff69d1851a094215bedb330c27",
+      "selected_provider": "efinance",
+      "symbol": "601766"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601788",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "322029146f970b3e81c815ae1d5bdbf1aee5dec00cddd7131049490a86ea1705",
+      "original_validation_errors": [
+        "[601788] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601788",
+      "repaired_sha256": "d4bc1235626bb84c0c134c034e6410dd8859fc2bd13865567e237e3afba45079",
+      "selected_provider": "efinance",
+      "symbol": "601788"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601818",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "ef8f9a9ac0e57e2878d53f4424bc2a02188741ad556a98c1fcb64daa139b983a",
+      "original_validation_errors": [
+        "[601818] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601818",
+      "repaired_sha256": "9a83796e5e94acb7a30dbcde8f5952f0a61e9ad53a41fd819cca391787af94a8",
+      "selected_provider": "efinance",
+      "symbol": "601818"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601857",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "edb8886f02c820d21edf5244b5376d3fbc7deaec74d35a554dc03eeaac81b7d3",
+      "original_validation_errors": [
+        "[601857] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601857",
+      "repaired_sha256": "3040c41249c0830e9585d590e4ae116c2deefd9e85fb39eaf805a122967796dd",
+      "selected_provider": "efinance",
+      "symbol": "601857"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601878",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "06649297dc35b71144937566839b38175a5b0b70d9aee964cea2df9495fb8fe2",
+      "original_validation_errors": [
+        "[601878] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601878",
+      "repaired_sha256": "e01b853697f0d397a841994224208e81228ac3408b5ad9d7a94a8b38f3bd4d2c",
+      "selected_provider": "efinance",
+      "symbol": "601878"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "601881",
+          "rows": 1265,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 1.0,
+        "repaired_dates": 1265,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "3ef77fe513bf78ec2e0f300ce3c354ef8312b1bbec5c31cc0fec81344089b9ed",
+      "original_validation_errors": [
+        "[601881] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "601881",
+      "repaired_sha256": "f12e0f8544fba427f006919507ceaab4a82604fe861892ad36dfb65b033492d7",
+      "selected_provider": "efinance",
+      "symbol": "601881"
+    },
+    {
+      "attempts": [
+        {
+          "error": null,
+          "first_date": "2021-04-06",
+          "last_date": "2026-06-25",
+          "ok": true,
+          "provider": "efinance",
+          "provider_symbol": "603160",
+          "rows": 1255,
+          "schema_errors": []
+        }
+      ],
+      "date_coverage": {
+        "original_dates": 1265,
+        "original_first": "2021-04-06",
+        "original_last": "2026-06-25",
+        "overlap_ratio": 0.992095,
+        "repaired_dates": 1255,
+        "repaired_first": "2021-04-06",
+        "repaired_last": "2026-06-25"
+      },
+      "original_sha256": "f1a6bde97dacfeaec672690e1fd900ba7a7265f5c741c33d34787925f64245ef",
+      "original_validation_errors": [
+        "[603160] Schema Error: <Check high_ge_close> failed."
+      ],
+      "provider_symbol": "603160",
+      "repaired_sha256": "a2e43fa8aca57d8e276bc284ce7e4a98b9b6185d0d1e1c2de5396eee39fade47",
+      "selected_provider": "efinance",
+      "symbol": "603160"
+    }
+  ],
+  "research_only": true,
+  "schema_version": "1.0",
+  "source_count": 212,
+  "trade_ready": false
+}

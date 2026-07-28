@@ -1,0 +1,200 @@
+{
+  "active_library_changed": false,
+  "decisions": [
+    {
+      "candidate": "factor:technical:bollinger_reversion_z20",
+      "cn_economics": {
+        "compounded_benchmark_return": 0.39125929810636184,
+        "compounded_portfolio_return": 0.07610834415821643,
+        "compounded_relative_excess": -0.22652208281885067,
+        "n_windows": 4,
+        "positive_excess_ratio": 0.25
+      },
+      "cn_stability": {
+        "candidate": "factor:technical:bollinger_reversion_z20/factor_baseline/original",
+        "mean_icir": -0.03915225,
+        "mean_rank_ic": -4.3749999999999464e-05,
+        "mean_spread": -0.00272734,
+        "n_windows": 4,
+        "positive_icir_ratio": 0.25,
+        "positive_rank_ic_ratio": 0.5,
+        "positive_spread_ratio": 0.25,
+        "ready_ratio": 0.0,
+        "stable_research_candidate": false,
+        "worst_drawdown": -0.132095
+      },
+      "cross_market_supported": false,
+      "declared_orientation": "lower_price_zscore_is_better",
+      "eligible_for_active_library_review": false,
+      "trade_ready": false,
+      "us_economics": {
+        "compounded_benchmark_return": 0.7081208766944624,
+        "compounded_portfolio_return": 0.23924198141479147,
+        "compounded_relative_excess": -0.2744998329316368,
+        "n_windows": 4,
+        "positive_excess_ratio": 0.25
+      },
+      "us_stability": {
+        "candidate": "factor:technical:bollinger_reversion_z20/factor_baseline/original",
+        "mean_icir": -0.044638000000000004,
+        "mean_rank_ic": -0.0060244999999999995,
+        "mean_spread": -0.0036356675,
+        "n_windows": 4,
+        "positive_icir_ratio": 0.25,
+        "positive_rank_ic_ratio": 0.5,
+        "positive_spread_ratio": 0.25,
+        "ready_ratio": 0.0,
+        "stable_research_candidate": false,
+        "worst_drawdown": -0.229747
+      }
+    },
+    {
+      "candidate": "factor:technical:macd_histogram_12_26_9",
+      "cn_economics": {
+        "compounded_benchmark_return": 0.39125929810636184,
+        "compounded_portfolio_return": 0.42534073092537183,
+        "compounded_relative_excess": 0.02449682303320322,
+        "n_windows": 4,
+        "positive_excess_ratio": 0.5
+      },
+      "cn_stability": {
+        "candidate": "factor:technical:macd_histogram_12_26_9/factor_baseline/original",
+        "mean_icir": 0.03645475,
+        "mean_rank_ic": 0.01207425,
+        "mean_spread": 0.0035065875,
+        "n_windows": 4,
+        "positive_icir_ratio": 0.75,
+        "positive_rank_ic_ratio": 0.75,
+        "positive_spread_ratio": 0.75,
+        "ready_ratio": 0.0,
+        "stable_research_candidate": true,
+        "worst_drawdown": -0.198696
+      },
+      "cross_market_supported": false,
+      "declared_orientation": "higher_normalized_macd_histogram_is_better",
+      "eligible_for_active_library_review": false,
+      "trade_ready": false,
+      "us_economics": {
+        "compounded_benchmark_return": 0.7081208766944624,
+        "compounded_portfolio_return": 0.11434952353678596,
+        "compounded_relative_excess": -0.3476167063227613,
+        "n_windows": 4,
+        "positive_excess_ratio": 0.25
+      },
+      "us_stability": {
+        "candidate": "factor:technical:macd_histogram_12_26_9/factor_baseline/original",
+        "mean_icir": 0.016321750000000013,
+        "mean_rank_ic": -0.006574750000000001,
+        "mean_spread": 0.0017629100000000001,
+        "n_windows": 4,
+        "positive_icir_ratio": 0.5,
+        "positive_rank_ic_ratio": 0.5,
+        "positive_spread_ratio": 0.75,
+        "ready_ratio": 0.0,
+        "stable_research_candidate": false,
+        "worst_drawdown": -0.338636
+      }
+    },
+    {
+      "candidate": "factor:technical:rsi_strength_10",
+      "cn_economics": {
+        "compounded_benchmark_return": 0.39125929810636184,
+        "compounded_portfolio_return": 0.5302304250586702,
+        "compounded_relative_excess": 0.09988873184277125,
+        "n_windows": 4,
+        "positive_excess_ratio": 0.5
+      },
+      "cn_stability": {
+        "candidate": "factor:technical:rsi_strength_10/factor_baseline/original",
+        "mean_icir": 0.09857725,
+        "mean_rank_ic": 0.013615249999999999,
+        "mean_spread": 0.005453565,
+        "n_windows": 4,
+        "positive_icir_ratio": 0.75,
+        "positive_rank_ic_ratio": 0.75,
+        "positive_spread_ratio": 0.75,
+        "ready_ratio": 0.0,
+        "stable_research_candidate": true,
+        "worst_drawdown": -0.129499
+      },
+      "cross_market_supported": false,
+      "declared_orientation": "higher_positive_return_magnitude_share_is_better",
+      "eligible_for_active_library_review": false,
+      "trade_ready": false,
+      "us_economics": {
+        "compounded_benchmark_return": 0.7081208766944624,
+        "compounded_portfolio_return": -0.09297871441487948,
+        "compounded_relative_excess": -0.4689946724728413,
+        "n_windows": 4,
+        "positive_excess_ratio": 0.0
+      },
+      "us_stability": {
+        "candidate": "factor:technical:rsi_strength_10/factor_baseline/original",
+        "mean_icir": 0.042105750000000004,
+        "mean_rank_ic": 0.00996525,
+        "mean_spread": 0.0036409224999999997,
+        "n_windows": 4,
+        "positive_icir_ratio": 0.5,
+        "positive_rank_ic_ratio": 0.75,
+        "positive_spread_ratio": 0.75,
+        "ready_ratio": 0.0,
+        "stable_research_candidate": false,
+        "worst_drawdown": -0.147713
+      }
+    },
+    {
+      "candidate": "factor:technical:close_location_pressure_10",
+      "cn_economics": {
+        "compounded_benchmark_return": 0.39125929810636184,
+        "compounded_portfolio_return": 0.2613848520141493,
+        "compounded_relative_excess": -0.09335028076289176,
+        "n_windows": 4,
+        "positive_excess_ratio": 0.5
+      },
+      "cn_stability": {
+        "candidate": "factor:technical:close_location_pressure_10/factor_baseline/original",
+        "mean_icir": 0.02002275,
+        "mean_rank_ic": 0.011498999999999999,
+        "mean_spread": -0.00010106999999999997,
+        "n_windows": 4,
+        "positive_icir_ratio": 0.75,
+        "positive_rank_ic_ratio": 0.5,
+        "positive_spread_ratio": 0.75,
+        "ready_ratio": 0.0,
+        "stable_research_candidate": false,
+        "worst_drawdown": -0.134486
+      },
+      "cross_market_supported": false,
+      "declared_orientation": "higher_rolling_close_location_is_better",
+      "eligible_for_active_library_review": false,
+      "trade_ready": false,
+      "us_economics": {
+        "compounded_benchmark_return": 0.7081208766944624,
+        "compounded_portfolio_return": 0.41702396950244114,
+        "compounded_relative_excess": -0.17041938375892285,
+        "n_windows": 4,
+        "positive_excess_ratio": 0.5
+      },
+      "us_stability": {
+        "candidate": "factor:technical:close_location_pressure_10/factor_baseline/original",
+        "mean_icir": -0.0095795,
+        "mean_rank_ic": -0.0028057499999999997,
+        "mean_spread": 0.0013667275,
+        "n_windows": 4,
+        "positive_icir_ratio": 0.5,
+        "positive_rank_ic_ratio": 0.5,
+        "positive_spread_ratio": 0.5,
+        "ready_ratio": 0.0,
+        "stable_research_candidate": false,
+        "worst_drawdown": -0.146058
+      }
+    }
+  ],
+  "evidence_type": "cross_market_technical_indicator_decision",
+  "next_step": "stop_indicator_tuning_and_improve_information_set",
+  "promotion_eligible": false,
+  "research_only": true,
+  "schema_version": "1.0",
+  "supported_candidates": [],
+  "trade_ready": false
+}

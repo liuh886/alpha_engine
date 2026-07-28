@@ -8,8 +8,10 @@ import pytest
 
 from src.research.technical_indicator_factors import (
     BOLLINGER_REVERSION,
+    CLOSE_LOCATION_PRESSURE,
     MACD_HISTOGRAM,
     RSI_STRENGTH,
+    compute_ohlc_technical_indicator_scores,
     compute_technical_indicator_scores,
 )
 
@@ -30,6 +32,16 @@ def _close_frame(*, periods: int = 80) -> pd.DataFrame:
         [[paths[symbol][offset] for symbol in symbols] for offset in range(periods)]
     )
     return pd.DataFrame({"close": values}, index=index)
+
+
+def _ohlc_frame(*, periods: int = 80) -> pd.DataFrame:
+    frame = _close_frame(periods=periods)
+    symbols = frame.index.get_level_values("instrument")
+    high_gap = np.where(symbols == "A", 0.1, 1.0)
+    low_gap = np.where(symbols == "B", 0.1, 1.0)
+    frame["high"] = frame["close"] + high_gap
+    frame["low"] = frame["close"] - low_gap
+    return frame[["high", "low", "close"]]
 
 
 def test_fixed_indicator_contracts_and_orientations() -> None:
@@ -94,3 +106,45 @@ def test_indicator_inputs_fail_closed() -> None:
     invalid.iloc[0, 0] = 0.0
     with pytest.raises(ValueError, match="positive"):
         compute_technical_indicator_scores(invalid)
+
+
+def test_close_location_pressure_has_fixed_direction_and_no_future_use() -> None:
+    original = _ohlc_frame()
+    scores = compute_ohlc_technical_indicator_scores(original)
+    pressure = scores[CLOSE_LOCATION_PRESSURE.name]
+    latest_date = original.index.get_level_values("datetime").max()
+    latest = pressure.xs(latest_date, level="datetime")["score"]
+
+    assert latest["A"] > latest["B"]
+    assert pressure.attrs["orientation"] == (
+        "higher_rolling_close_location_is_better"
+    )
+    assert pressure.attrs["parameters"] == {"window": 10}
+    assert pressure.attrs["uses_future_returns"] is False
+    assert pressure.attrs["parameter_search_performed"] is False
+
+    cutoff = pd.Timestamp("2025-03-03")
+    changed = original.copy()
+    future = changed.index.get_level_values("datetime") > cutoff
+    changed.loc[future, "high"] *= 2.0
+    changed.loc[future, "low"] *= 0.5
+    expected = pressure.loc[
+        pressure.index.get_level_values("datetime") <= cutoff
+    ]
+    actual = compute_ohlc_technical_indicator_scores(changed)[
+        CLOSE_LOCATION_PRESSURE.name
+    ]
+    actual = actual.loc[
+        actual.index.get_level_values("datetime") <= cutoff
+    ]
+    pd.testing.assert_frame_equal(actual, expected)
+
+
+def test_close_location_pressure_rejects_invalid_ohlc() -> None:
+    invalid = _ohlc_frame()
+    invalid.iloc[0, invalid.columns.get_loc("high")] = (
+        invalid.iloc[0]["close"] - 1.0
+    )
+
+    with pytest.raises(ValueError, match="invalid high/low/close"):
+        compute_ohlc_technical_indicator_scores(invalid)

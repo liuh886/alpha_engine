@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
@@ -45,8 +46,27 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
     for column in required:
         if column not in df.columns:
             return pd.DataFrame()
+
     if "adj close" in df.columns:
-        df["close"] = df["adj close"]
+        try:
+            raw_close = df["close"].astype(float)
+            adj_close = df["adj close"].astype(float)
+        except (ValueError, TypeError):
+            return pd.DataFrame()
+        ratio = adj_close / raw_close
+        finite_positive = (ratio > 0) & np.isfinite(ratio)
+        if not finite_positive.all():
+            return pd.DataFrame()
+        try:
+            df["open"] = df["open"].astype(float) * ratio
+            df["high"] = df["high"].astype(float) * ratio
+            df["low"] = df["low"].astype(float) * ratio
+            df["close"] = adj_close
+            if "amount" in df.columns:
+                df["amount"] = df["amount"].astype(float) * ratio
+        except (ValueError, TypeError):
+            return pd.DataFrame()
+
     if "amount" not in df.columns:
         df["amount"] = df["close"] * df["volume"]
     df["factor"] = 1.0
@@ -153,6 +173,14 @@ class YFinanceAdapter:
         )
         if out.empty:
             raise DataFetchError(f"empty data for {yf_ticker}")
+        from src.data.validation.schema import validate_market_data
+
+        valid, _, errors = validate_market_data(out, symbol)
+        if not valid:
+            raise DataFetchError(
+                f"yfinance schema validation failed for {yf_ticker}: "
+                f"{'; '.join(errors)}"
+            )
 
         return FetchResult(
             provider=self.name,

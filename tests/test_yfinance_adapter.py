@@ -119,3 +119,24 @@ def test_yfinance_rejects_invalid_or_reversed_boundaries(monkeypatch):
             )
         )
     assert called is False
+
+
+def test_yfinance_rejects_provider_ohlc_inconsistency(monkeypatch):
+    frame = _frame(["2026-06-17"])
+    frame.loc[:, "High"] = 10.0
+    frame.loc[:, "Close"] = 12.0
+    monkeypatch.setitem(
+        sys.modules,
+        "yfinance",
+        SimpleNamespace(download=lambda *args, **kwargs: frame),
+    )
+
+    with pytest.raises(DataFetchError, match="schema validation failed"):
+        YFinanceAdapter().fetch_daily_bars(
+            FetchRequest(
+                symbol="000063",
+                market="cn",
+                start="2026-06-17",
+                end="2026-06-17",
+            )
+        )
