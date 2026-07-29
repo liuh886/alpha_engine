@@ -1,60 +1,127 @@
 # AlphaEngine V2
 
-## 极简、优雅、自包含的量化策略研究引擎
+## 证据驱动的量化策略研究引擎
 
-### 1. Quick Start: Demo Mode
+AlphaEngine 用固定研究契约、时间有效的数据、walk-forward 验证和
+fail-closed 决策，判断一个候选信号是否具有可信的基准相对收益。
 
-最快体验 AlphaEngine 的方式是启动 Demo Mode，无需真实数据即可查看完整 Dashboard。
+> **Current status — 2026-07-29**
+>
+> - AlphaEngine 是研究专用系统，没有模型达到 `trade_ready`。
+> - LightGBM 与 XGBoost 在静态人工股票池上的强超额，未能通过窗口起点
+>   point-in-time Nasdaq-100 成分股检验。
+> - 当前优先级是解释静态→PIT 的性能缺口、提高数据时间有效性，并寻找新的
+>   经济信息集；暂不继续调树参数、技术指标窗口、Top-K 或组合权重。
+> - 前端与交易执行不是当前阶段的主要问题。
 
-> **Note:** This project uses [Astral `uv`](https://astral.sh/uv/) for dependency management. `uv.lock` is the source of truth.
+核心结论见：
+
+- [`docs/research/static_to_pit_alpha_diagnosis_2026-07-29.md`](docs/research/static_to_pit_alpha_diagnosis_2026-07-29.md)
+- [`docs/research/lgbm_xgb_ranker_pit_robustness_2026-07-29.md`](docs/research/lgbm_xgb_ranker_pit_robustness_2026-07-29.md)
+- [`docs/10d_universe_robustness_report.md`](docs/10d_universe_robustness_report.md)
+- [`docs/methodology.md`](docs/methodology.md)
+
+## 1. Quick Start: Demo Mode
+
+The fastest way to inspect AlphaEngine is Demo Mode. It serves bundled contract
+fixtures and does not require real market data.
+
+> This project uses Astral `uv` for dependency management. `uv.lock` is the
+> dependency source of truth.
 
 ```bash
-# 安装 Python 依赖
 uv sync
-
-# 安装前端依赖
 cd qlib-dashboard && npm ci && cd ..
-
-# 启动 Demo 模式
 uv run python api_server.py --demo
 ```
 
-打开 http://localhost:8000，任意用户名/密码登录即可。
+Open `http://localhost:8000`. Any username/password works in demo mode.
 
-**Demo Mode 详细说明：**
+Demo Mode provides:
 
-Demo Mode 会自动加载 contract fixtures（bundled sample dashboard data），让你无需配置数据源即可体验完整功能：
+- bundled CN sample dashboard data;
+- prefilled backtest metrics and equity curves;
+- sample holdings and attribution output;
+- safe UI exploration with no market-data update or trading behavior.
 
-- Bundled contract fixtures / sample dashboard data for CN market.
-- 预填充回测结果和 Equity Curve，Dashboard 图表即开即用。
-- 所有 UI 页面（Home、Dashboard、Model Registry）均以真实数据样式展示。
-- Demo Mode is intended for safe UI exploration and serves bundled sample data for the main onboarding/dashboard path.
+Screenshots:
 
-> **Tip:** 如果页面左上角显示绿色 **DEMO MODE** 标签，说明已成功进入 Demo 模式。
-
-**你应该看到：**
-- ✅ **Demo Mode** 标签显示在页面顶部
-- ✅ Dashboard 展示 Equity Curve 图表
-- ✅ Holdings 标签页显示 SH600000 持仓
-- ✅ Attribution 标签页显示归因数据
-
-**Screenshots:**
-
-**System Home** — Mode badge, data freshness, and pipeline health at a glance:
+**System Home**
 
 ![System Home](docs/images/home.svg)
 
-**Research Dashboard** — Key metrics (return, Sharpe, drawdown) and equity curve:
+**Research Dashboard**
 
 ![Research Dashboard](docs/images/dashboard.svg)
 
-**Model Registry** — All trained models with status and provenance chain:
+**Model Registry**
 
 ![Model Registry](docs/images/models.svg)
 
-### 2. Local Deployment
+## 2. Research contract
 
-#### Demo Mode (recommended for first-time users)
+Both CN and US canonical research use a fixed 10-trading-day paradigm:
+
+| Property | Contract |
+| --- | --- |
+| Forecast horizon | 10 trading sessions |
+| Holding period | 10 trading sessions |
+| Rebalance cadence | 10 trading sessions |
+| Economic return | `Ref($close, -10) / $close - 1` |
+| Training/evaluation boundary | processed rank labels for fitting; raw returns for economics |
+| Validation | expanding half-year OOS windows with a 10-session embargo |
+| Benchmark | CSI 300 for CN; QQQ for US |
+| Scope | `research_only=true` |
+
+Research execution is bound to versioned specs in
+`configs/research_paradigms/`. Missing benchmark dates, universe hashes,
+provider lineage, coverage evidence, or minimum windows fail closed.
+
+## 3. Universe validity
+
+Static curated universes remain useful for exploratory diagnostics, but they are
+not unbiased historical opportunity sets.
+
+The current US robustness path uses:
+
+- official Nasdaq-100 membership at each OOS half-year start;
+- the latest semiannual membership known on each training date;
+- manifest-bound provider identity and membership hashes;
+- explicit missing-symbol reporting rather than zero filling or current-member
+  substitution.
+
+This is window-start/semiannual point-in-time research, not full daily PIT.
+China research still uses static curated membership and therefore remains
+survivorship-biased.
+
+## 4. Latest model-effectiveness finding
+
+The fixed LightGBM/XGBoost comparison uses the same features, processed daily
+rank target, 100-round budget, 10-session embargo, raw OOS returns, Top-15
+portfolio, 20 bps cost, and QQQ benchmark.
+
+| Candidate | Static curated relative excess | PIT NDX relative excess | PIT positive windows | PIT worst drawdown |
+| --- | ---: | ---: | ---: | ---: |
+| LightGBM LambdaRank | +65.04% | -20.49% | 1/4 | -26.11% |
+| XGBoost `rank:ndcg` | +70.35% | -34.08% | 1/4 | -25.59% |
+
+The algorithm-family difference is small compared with the universe-validity
+problem. The next approved experiment is a frozen static-to-PIT attribution,
+not another hyperparameter or factor-window search.
+
+## 5. Core architecture
+
+- **Single runtime**: `api_server.py` is the sole application entrypoint.
+- **ResearchAssistant**: one research agent executes through `ResearchWorkflow`.
+- **Spec-bound execution**: `SpecBoundResearchWorkflowExecutor` resolves and
+  executes declared 10D research specs.
+- **Evidence-gated decisions**: `PromotionDecision` is the canonical promotion
+  interface and fails closed when required evidence is missing.
+- **Research boundary**: no output authorizes live or automated trading.
+
+## 6. Local deployment
+
+### Demo mode
 
 ```bash
 uv sync
@@ -62,96 +129,89 @@ cd qlib-dashboard && npm ci && cd ..
 uv run python api_server.py --demo
 ```
 
-Open http://localhost:8000 — any username/password works in demo mode.
-
-#### Full Mode (with real data)
+### Full research mode
 
 ```bash
-# Terminal 1: API server
+# Terminal 1
 uv run python api_server.py
 
-# Terminal 2: Frontend dev server (hot reload)
+# Terminal 2
 cd qlib-dashboard && npm run dev
 ```
 
-Open http://localhost:5173 (dev) or http://localhost:8000 (production).
+Open `http://localhost:5173` for the development UI or `http://localhost:8000`
+for the built application. “Full mode” means real research data; it does not
+mean live trading.
 
-#### Local Validation
+### Validation
 
 ```powershell
 .\validate_all.ps1
 ```
 
-Runs 11 quality gates: Ruff, Mypy, Pytest, TypeScript check, frontend lint, unit tests, build, Playwright E2E, and more.
+The validation script runs Python lint/type/tests, frontend checks/build, and
+Playwright E2E gates.
 
-### 3. 核心架构
-- **单一运行时**: 所有 API 请求都通过 `api_server.py` 路由。
-- **ResearchAssistant**: 统一的 research agent，通过 `ResearchWorkflow` 执行所有研究任务。
-- **ResearchWorkflow**: 规范绑定的研究工作流，由 `SpecBoundResearchWorkflowExecutor` 驱动，执行固定的 10D 范式（见 `configs/research_paradigms/`）。
-- **研究专用范围**: 当前平台是研究专用系统，没有模型达到 `trade_ready` 状态。全部输出为诊断和研究候选，不可用于实盘交易。
-- **证据驱动**: 推广决策通过 `PromotionDecision` 接口（ADR-0005）统一执行，缺失证据则关闭失败。
-- **发布文档**: 安装、配置、运维、安全、性能、合同见 docs/release/index.md。
-- **当前研究依据**: 见 docs/methodology.md（方法论）和 docs/10d_universe_robustness_report.md（稳健性验证）。
-- **研究范式规范**: CN 和 US 各有一个固定的 10D 范式，见 `configs/research_paradigms/cn_10d_csi300_baseline.yaml` 和 `us_10d_qqq_baseline.yaml`。
+## 7. Common tasks
 
-### 4. 任务管理 (Makefile)
-使用 `Makefile` 快速执行常用任务：
-- `make data`: 更新市场数据。
-- `make train-us` / `make train-cn`: 训练模型。
-- `make backtest`: 运行回测流水线。
-- `make breakfast`: 生成每日晨报。
+```text
+make data       update market data
+make train-us   run the configured US training path
+make train-cn   run the configured CN training path
+make backtest   run the configured backtest path
+make breakfast  generate the daily research brief
+```
 
-### 5. 容器化部署
-推荐使用 Docker Compose 进行一键部署：
+## 8. Container deployment
+
 ```bash
 docker-compose up -d
 ```
-API 服务将运行在 `8000` 端口，前端已集成在容器内由 FastAPI 直接挂载。
 
-### 6. Environment Variables
+The API listens on port `8000`; the built React UI is served through FastAPI.
+
+## 9. Environment variables
 
 | Variable | Default | Description |
-|---|---|---|
-| `ALPHA_ENGINE_ENV` | `development` | Runtime environment (`development`, `production`). |
-| `API_PORT` / `PORT` | `8000` | API server listen port. |
-| `API_HOST` | `0.0.0.0` | API server bind address. |
-| `CORS_ORIGINS` / `ALLOWED_ORIGINS` | `localhost:5173,localhost:8000` | Comma-separated allowed CORS origins. |
-| `TRADING_UI_USER` | *(none)* | Username for live mode authentication. |
-| `TRADING_UI_PASSWORD` | *(none)* | Password for live mode authentication. |
-| `TRADING_CONFIG_DIR` | `./configs` | Configuration files directory. |
-| `TRADING_DATA_DIR` | `./data` | Market data storage directory. |
-| `TRADING_REPORTS_DIR` | `./reports` | Generated reports directory. |
-| `TRADING_ARTIFACTS_DIR` | `./artifacts` | Model artifacts directory. |
-| `TRADING_STATIC_SITE_DIR` | `./qlib-dashboard/dist` | Static site build directory. |
-| `QLIB_PROVIDER_URI` | *(auto)* | Qlib data provider URI. |
-| `TZ` | `Asia/Shanghai` | Timezone for scheduling and logging timestamps. |
+| --- | --- | --- |
+| `ALPHA_ENGINE_ENV` | `development` | Runtime environment |
+| `API_PORT` / `PORT` | `8000` | API listen port |
+| `API_HOST` | `0.0.0.0` | API bind address |
+| `CORS_ORIGINS` / `ALLOWED_ORIGINS` | `localhost:5173,localhost:8000` | Allowed origins |
+| `TRADING_UI_USER` | none | Full-mode UI username |
+| `TRADING_UI_PASSWORD` | none | Full-mode UI password |
+| `TRADING_CONFIG_DIR` | `./configs` | Configuration directory |
+| `TRADING_DATA_DIR` | `./data` | Market-data directory |
+| `TRADING_REPORTS_DIR` | `./reports` | Generated-report directory |
+| `TRADING_ARTIFACTS_DIR` | `./artifacts` | Research-artifact directory |
+| `TRADING_STATIC_SITE_DIR` | `./qlib-dashboard/dist` | Built frontend directory |
+| `QLIB_PROVIDER_URI` | auto | Qlib provider path |
+| `TZ` | `Asia/Shanghai` | Scheduling/log timezone |
 
-> **Note:** All environment variables are optional. Sensible defaults are provided; override only when needed.
+## 10. Troubleshooting
 
-### 7. Troubleshooting
+**No data**
 
-**No data / empty data directory**
-- Run `make data` to download market data. In demo mode, data is bundled — no download needed.
-- Check that `TRADING_DATA_DIR` points to a writable directory.
-- For CN market data, ensure your data source credentials are configured in `configs/`.
+- Run `make data` for a real-data environment.
+- Confirm `TRADING_DATA_DIR` is writable.
+- Demo mode uses bundled fixtures and requires no download.
 
-**Dashboard shows empty charts**
-- Make sure the API server is running (`uv run python api_server.py`) and accessible at the configured port.
-- If using demo mode, confirm you passed `--demo` when starting the server.
-- Check browser console for CORS errors — in dev mode, the frontend (port 5173) proxies to the API (port 8000).
+**Empty dashboard charts**
 
-**Auth / permission errors**
-- In demo mode, any username/password can be used. In live mode, configure `TRADING_UI_USER` and `TRADING_UI_PASSWORD`.
-- On Linux, ensure the data and model directories have correct read/write permissions for the process user.
+- Confirm the API server is reachable.
+- Confirm `--demo` was supplied when using fixtures.
+- Inspect browser CORS/network errors.
 
 **Model training fails**
-- Verify Qlib is installed and `QLIB_PROVIDER_URI` is set: `uv run python -c "import qlib; print(qlib.conf)"`
-- Check available disk space — model artifacts and intermediate data can be large.
-- Review logs in the `logs/` directory for error details.
+
+- Verify Qlib configuration:
+  `uv run python -c "import qlib; print(qlib.conf)"`.
+- Check disk space and logs.
+- Verify provider and universe readiness before interpreting model output.
 
 **Port already in use**
-- Change the port: `API_PORT=8001 uv run python api_server.py`
-- Or kill the existing process: `lsof -i :8000` (Linux/macOS) / `netstat -ano | findstr :8000` (Windows).
 
----
-*更多细节请参考根目录 `DESIGN.md`、`AGENTS.md` 和 `scripts/README.md`。*
+- Set `API_PORT=8001`, or terminate the process occupying port 8000.
+
+More detail is available in `DESIGN.md`, `AGENTS.md`, `scripts/README.md`, and
+`docs/release/index.md`.
