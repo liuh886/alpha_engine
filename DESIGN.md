@@ -362,3 +362,66 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
 - Phase 4 integration: CLI, release evidence, API, notebook, and dashboard use
   the same `run_signal_discovery_comparison` report contract at
   `artifacts/evidence/10d_signal_discovery/us_signal_discovery_report.json`.
+
+### 2026-07-26: Nasdaq-100 Window-Start Universe Validation
+
+- Phase 2 research validity: frozen candidate_v2 was retrained and evaluated
+  over four half-year OOS windows using official Nasdaq-100 membership frozen
+  at each window start and the latest semiannual as-of membership for every
+  training row. The future OOS snapshot is never applied backwards to training.
+  The static-100 result did not replicate: compounded relative excess was
+  `-19.90%`, only one of four windows was positive, mean ICIR was `0.1899`,
+  and worst drawdown was `-21.01%`.
+- Phase 3 governance: provider coverage was incomplete at every snapshot
+  (from 68/102 in 2021 to 93/101 in 2025). The evidence uses semiannual as-of
+  training membership and window-start OOS membership, not full daily PIT.
+- The frozen gate failed on positive-excess windows, compounded relative
+  excess, and drawdown. `promotion_eligible=false` and `trade_ready=false`.
+- As-of membership improves relative excess, ICIR, and drawdown versus applying
+  the future OOS snapshot across training, but the next validity step is
+  provider backfill, not more blend-weight, LightGBM, or overlay tuning.
+
+### 2026-07-26: Near-Complete NDX Provider Backfill and Documentation Cleanup
+
+- Phase 1 data validity: an isolated US provider backfilled 34 historically
+  required NDX symbols without mutating the operational provider. OOS coverage
+  rose from 86-93 symbols to 98-100 symbols; unavailable acquired or delisted
+  names remain explicit, so coverage still fails closed as partial. A
+  mixed adjusted/unadjusted `KLAC` history was detected before holdout
+  interpretation; the builder now scans seeded close series for split-like
+  discontinuities, refreshes the full affected history, records both hashes,
+  and fails closed if the anomaly remains. The repaired isolated-provider
+  identity is
+  `6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407`.
+- Phase 2 research validity: the unchanged candidate_v2 deteriorated under the
+  broader universe. Repaired authoritative evidence reports `-39.21%`
+  compounded relative excess, zero positive-excess windows, mean ICIR `0.1103`,
+  and `-29.64%` worst drawdown.
+  Training coverage is now checked only over each symbol's actual semiannual
+  membership interval, so ticker exits are neither discarded nor rescued by
+  future bars. This is evidence of prior coverage optimism, not a promotion.
+- Phase 3 governance: `promotion_eligible=false` and `trade_ready=false` remain
+  mandatory.
+- Phase 4 integration: WebUI's main documentation endpoint now serves the
+  maintained root `README.md`. Unreferenced retired-agent plans and duplicate
+  architecture documents were removed; current `README.md`, `DESIGN.md`,
+  `AGENTS.md`, `evaluation.md`, and `docs/adr/` remain authoritative.
+
+### 2026-07-26: Top-3 Objective Alignment Falsification
+
+- Phase 2 research validity: one predeclared structural variant replaced the
+  five-bin daily target with exact binary Top-3 relevance and set LambdaRank
+  truncation to six. All other model, blend, portfolio, cost, embargo, and
+  benchmark controls stayed frozen.
+- Phase 1 data validity: the official 2026-01-02 NDX snapshot retained 101/101
+  symbols. Horizon-contained raw 10D returns yielded 109 sessions and 11
+  rebalance periods through 2026-06-09.
+- Phase 2 result: versus the frozen model, the aligned model improved relative
+  excess by 5.31 percentage points and drawdown by 1.28 points, but still lost
+  28.76% relative to QQQ, drew down 23.37%, and worsened exact Top-3 spread
+  from -4.17% to -5.01%. Only 3/11 Top-3 periods were positive.
+- Phase 3 governance: the single-window decision is
+  `top3_alignment_not_supported_on_holdout`. It is falsification-only,
+  `promotion_eligible=false`, and `trade_ready=false`. Further gain-bin,
+  truncation, or Top-K tuning in this model family is not an approved next
+  step; a future hypothesis must change the economic information set or label.

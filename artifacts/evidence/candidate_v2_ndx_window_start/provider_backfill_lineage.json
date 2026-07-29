@@ -1,0 +1,574 @@
+{
+  "aliased": [
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2022-06-30",
+      "rows": 314,
+      "source": "pinned_base_alias",
+      "source_symbol": "META",
+      "symbol": "FB"
+    }
+  ],
+  "base_provider_identity_sha256": "66129d0727beb8d7b014966651f8b72c119f99195e33553d9781c9954ef267d8",
+  "downloaded": [
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "ALGN",
+      "symbol": "ALGN"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "AZN",
+      "symbol": "AZN"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "BIIB",
+      "symbol": "BIIB"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "CDW",
+      "symbol": "CDW"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "CHKP",
+      "symbol": "CHKP"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "DLTR",
+      "symbol": "DLTR"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "DOCU",
+      "symbol": "DOCU"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "EBAY",
+      "symbol": "EBAY"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "ENPH",
+      "symbol": "ENPH"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1311,
+      "source": "yfinance",
+      "source_symbol": "FISV",
+      "symbol": "FISV"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "FOX",
+      "symbol": "FOX"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "FOXA",
+      "symbol": "FOXA"
+    },
+    {
+      "first_date": "2021-10-28",
+      "last_date": "2026-06-24",
+      "rows": 1167,
+      "source": "yfinance",
+      "source_symbol": "GFS",
+      "symbol": "GFS"
+    },
+    {
+      "first_date": "2024-06-12",
+      "last_date": "2026-06-24",
+      "rows": 509,
+      "source": "yfinance",
+      "source_symbol": "GRAL",
+      "symbol": "GRAL"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "ILMN",
+      "symbol": "ILMN"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "INCY",
+      "symbol": "INCY"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "JD",
+      "symbol": "JD"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "LCID",
+      "symbol": "LCID"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "LULU",
+      "symbol": "LULU"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "MDB",
+      "symbol": "MDB"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "MRNA",
+      "symbol": "MRNA"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "MTCH",
+      "symbol": "MTCH"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "NTES",
+      "symbol": "NTES"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "OKTA",
+      "symbol": "OKTA"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "ON",
+      "symbol": "ON"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "PTON",
+      "symbol": "PTON"
+    },
+    {
+      "first_date": "2021-11-10",
+      "last_date": "2026-06-24",
+      "rows": 1158,
+      "source": "yfinance",
+      "source_symbol": "RIVN",
+      "symbol": "RIVN"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "SIRI",
+      "symbol": "SIRI"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "SWKS",
+      "symbol": "SWKS"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "TCOM",
+      "symbol": "TCOM"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "TTD",
+      "symbol": "TTD"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "VRSN",
+      "symbol": "VRSN"
+    },
+    {
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "rows": 1312,
+      "source": "yfinance",
+      "source_symbol": "ZM",
+      "symbol": "ZM"
+    }
+  ],
+  "evidence_type": "ndx_window_start_provider_backfill",
+  "membership_coverage": {
+    "2021-01-04": {
+      "complete": false,
+      "coverage_ratio": 0.9118,
+      "missing": [
+        "ALXN",
+        "ANSS",
+        "ATVI",
+        "CERN",
+        "MXIM",
+        "SGEN",
+        "SPLK",
+        "WBA",
+        "XLNX"
+      ],
+      "n_requested": 102,
+      "n_retained": 93
+    },
+    "2021-07-01": {
+      "complete": false,
+      "coverage_ratio": 0.9118,
+      "missing": [
+        "ALXN",
+        "ANSS",
+        "ATVI",
+        "CERN",
+        "MXIM",
+        "SGEN",
+        "SPLK",
+        "WBA",
+        "XLNX"
+      ],
+      "n_requested": 102,
+      "n_retained": 93
+    },
+    "2022-01-03": {
+      "complete": false,
+      "coverage_ratio": 0.9406,
+      "missing": [
+        "ANSS",
+        "ATVI",
+        "SGEN",
+        "SPLK",
+        "WBA",
+        "XLNX"
+      ],
+      "n_requested": 101,
+      "n_retained": 95
+    },
+    "2022-07-01": {
+      "complete": false,
+      "coverage_ratio": 0.951,
+      "missing": [
+        "ANSS",
+        "ATVI",
+        "SGEN",
+        "SPLK",
+        "WBA"
+      ],
+      "n_requested": 102,
+      "n_retained": 97
+    },
+    "2023-01-03": {
+      "complete": false,
+      "coverage_ratio": 0.9604,
+      "missing": [
+        "ANSS",
+        "ATVI",
+        "SGEN",
+        "WBA"
+      ],
+      "n_requested": 101,
+      "n_retained": 97
+    },
+    "2023-07-03": {
+      "complete": false,
+      "coverage_ratio": 0.9604,
+      "missing": [
+        "ANSS",
+        "ATVI",
+        "SGEN",
+        "WBA"
+      ],
+      "n_requested": 101,
+      "n_retained": 97
+    },
+    "2024-01-02": {
+      "complete": false,
+      "coverage_ratio": 0.9703,
+      "missing": [
+        "ANSS",
+        "SPLK",
+        "WBA"
+      ],
+      "n_requested": 101,
+      "n_retained": 98
+    },
+    "2024-07-01": {
+      "complete": false,
+      "coverage_ratio": 0.9804,
+      "missing": [
+        "ANSS",
+        "WBA"
+      ],
+      "n_requested": 102,
+      "n_retained": 100
+    },
+    "2025-01-02": {
+      "complete": false,
+      "coverage_ratio": 0.9901,
+      "missing": [
+        "ANSS"
+      ],
+      "n_requested": 101,
+      "n_retained": 100
+    },
+    "2025-07-01": {
+      "complete": false,
+      "coverage_ratio": 0.9901,
+      "missing": [
+        "ANSS"
+      ],
+      "n_requested": 101,
+      "n_retained": 100
+    },
+    "2026-01-02": {
+      "complete": true,
+      "coverage_ratio": 1.0,
+      "missing": [],
+      "n_requested": 101,
+      "n_retained": 101
+    }
+  },
+  "missing_from_base_provider": [
+    "ALGN",
+    "ALXN",
+    "ANSS",
+    "ATVI",
+    "AZN",
+    "BIIB",
+    "CDW",
+    "CERN",
+    "CHKP",
+    "DLTR",
+    "DOCU",
+    "EBAY",
+    "ENPH",
+    "FB",
+    "FISV",
+    "FOX",
+    "FOXA",
+    "GFS",
+    "GRAL",
+    "ILMN",
+    "INCY",
+    "JD",
+    "LCID",
+    "LULU",
+    "MDB",
+    "MRNA",
+    "MTCH",
+    "MXIM",
+    "NTES",
+    "OKTA",
+    "ON",
+    "PTON",
+    "RIVN",
+    "SGEN",
+    "SIRI",
+    "SPLK",
+    "SWKS",
+    "TCOM",
+    "TTD",
+    "VRSN",
+    "WBA",
+    "XLNX",
+    "ZM"
+  ],
+  "output_provider_identity_sha256": "6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407",
+  "policies": {
+    "adjusted_close_discontinuities_fail_closed": true,
+    "identity_aliases_allowlisted": {
+      "FB": "META"
+    },
+    "operational_provider_mutated": false,
+    "recycled_symbols_downloaded_directly": false,
+    "unavailable_symbols_fail_closed": true
+  },
+  "price_adjustment": "yfinance_auto_adjust_true",
+  "refreshed_adjustment_anomalies": [
+    {
+      "detected_discontinuities": [
+        {
+          "close": 176.10023498535156,
+          "close_ratio": 0.09707975534724506,
+          "date": "2026-05-07",
+          "previous_close": 1813.974853515625,
+          "previous_date": "2026-05-06"
+        },
+        {
+          "close": 1866.8072509765625,
+          "close_ratio": 10.600822032587566,
+          "date": "2026-05-08",
+          "previous_close": 176.10023498535156,
+          "previous_date": "2026-05-07"
+        },
+        {
+          "close": 184.2837829589844,
+          "close_ratio": 0.09871602055465664,
+          "date": "2026-05-11",
+          "previous_close": 1866.8072509765625,
+          "previous_date": "2026-05-08"
+        },
+        {
+          "close": 1927.6300048828125,
+          "close_ratio": 9.848967461470814,
+          "date": "2026-05-28",
+          "previous_close": 195.718994140625,
+          "previous_date": "2026-05-27"
+        },
+        {
+          "close": 194.0039978027344,
+          "close_ratio": 0.10095383889673454,
+          "date": "2026-06-01",
+          "previous_close": 1921.7099609375,
+          "previous_date": "2026-05-29"
+        }
+      ],
+      "first_date": "2021-04-05",
+      "last_date": "2026-06-24",
+      "original_sha256": "a5ab9ba996b0d376cd5232bccfb08288b27b2297f8aeafff6d6302a2fedcf6f2",
+      "refreshed_sha256": "d1df3f9b732b050bf03e42c73d75586ff65783bbff854cb9daaa546d1393a337",
+      "rows": 1312,
+      "source": "yfinance",
+      "symbol": "KLAC"
+    }
+  ],
+  "requested_end": "2026-06-24",
+  "requested_start": "2021-04-05",
+  "research_only": true,
+  "schema_version": "1.0",
+  "seeded_source_csvs": 132,
+  "snapshot_membership_hashes": {
+    "2021-01-04": "dfdb48d07e05b133c4973e6fab386901275603df261210fe101d75590e631899",
+    "2021-07-01": "dfdb48d07e05b133c4973e6fab386901275603df261210fe101d75590e631899",
+    "2022-01-03": "28d33393c66440f8f5ce870a0495d1c8110778f069e42281932e88dd7d1cc321",
+    "2022-07-01": "e71e4763c3976c1c2e7c2c9707d1a5a00096908e65ba4cc5644e643cd5d321e4",
+    "2023-01-03": "a35d2f40ba65a63951673f6fd1b944e43b9198ec870952409cbbca1c32dc5586",
+    "2023-07-03": "5e35ad847bc39b41c21089d12eda48bf55926ef7681c129d04be52db7598c283",
+    "2024-01-02": "1cc0ce082fcce3ac2380835b068606b7f0501e3d5a01fce4d13f34eecad82642",
+    "2024-07-01": "9284a786dbef1f27e050c6602203631a05dc87f6e3e3e9ddf5947b8777d282ab",
+    "2025-01-02": "d725cff131e339127623d2536788b7813b414fda9453d7e3a7e7da62827d162e",
+    "2025-07-01": "785b04f69a405eed1daf7b2c5cdc260ee8808d723de1cc41038d0f1b080495af",
+    "2026-01-02": "f749e2e162bc3f712793701efa68f7ff9a9bf04137c361f5fc3aacb3b51c9fe7"
+  },
+  "snapshot_path": "D:\\Documents\\GitHub\\alpha_engine_candidate_v2_pit_universe\\configs\\research_universes\\ndx_window_start_membership.json",
+  "unavailable": [
+    {
+      "reason": "DataFetchError: empty data for ALXN",
+      "symbol": "ALXN"
+    },
+    {
+      "reason": "DataFetchError: empty data for ANSS",
+      "symbol": "ANSS"
+    },
+    {
+      "reason": "DataFetchError: empty data for ATVI",
+      "symbol": "ATVI"
+    },
+    {
+      "reason": "DataFetchError: empty data for CERN",
+      "symbol": "CERN"
+    },
+    {
+      "reason": "DataFetchError: empty data for MXIM",
+      "symbol": "MXIM"
+    },
+    {
+      "reason": "DataFetchError: empty data for SGEN",
+      "symbol": "SGEN"
+    },
+    {
+      "reason": "DataFetchError: empty data for SPLK",
+      "symbol": "SPLK"
+    },
+    {
+      "reason": "DataFetchError: empty data for WBA",
+      "symbol": "WBA"
+    },
+    {
+      "reason": "DataFetchError: empty data for XLNX",
+      "symbol": "XLNX"
+    }
+  ]
+}

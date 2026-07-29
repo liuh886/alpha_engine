@@ -1,5 +1,13 @@
 # AlphaEngine 10D Model Decision Pack
 
+> **Historical decision, superseded on 2026-07-26.** This pack records the
+> narrow-universe decision from PR #87. Near-complete NDX window-start
+> validation, after adjusted-price repair, subsequently produced `-39.21%`
+> compounded relative excess, `0/4` positive-excess windows, mean ICIR
+> `0.1103`, and `-29.64%` worst drawdown. An independent 2026H1 Top-3-aligned
+> variant also failed. The blend is no longer the current stronger research
+> candidate; see `docs/10d_universe_robustness_report.md`.
+
 ## Current decision
 
 Current best research candidate:
@@ -41,13 +49,18 @@ The #86 best blend is meaningfully better than previous ranker candidates, but i
 
 ## Research conclusion
 
-The current direction is working: ranker calibration plus stable signal blending improved ICIR from `0.0833` to `0.2551` while keeping worst drawdown near `-11%`.
+At the time of this narrow-universe decision, ranker calibration plus stable
+signal blending improved ICIR from `0.0833` to `0.2551` while keeping worst
+drawdown near `-11%`.
 
-However, the model is not ready to guide trades. It should be treated as a stronger research candidate that deserves one larger validation step: expand the universe and test whether the blend remains stable outside the default 10-symbol watchlist.
+That status has since been withdrawn: official NDX window-start evidence failed
+every economic gate, and the 2026H1 structural holdout did not repair the
+selection tail. The historical blend must not guide trades or be described as
+a current stronger research candidate.
 
-## Next recommended step
+## Historical next step
 
-Do not continue opening small parameter-search PRs. The next result-oriented step should be:
+The pack originally required:
 
 ```text
 universe expansion + candidate robustness validation
@@ -60,3 +73,7 @@ Minimum requirements:
 - Compare against the current default-universe result.
 - Report mean ICIR, Rank IC, spread, worst drawdown, positive ICIR ratio, positive spread ratio, and ready ratio.
 - Do not claim trade readiness unless ICIR and ready ratio gates both pass.
+
+That expansion is complete and failed. The current decision and any future
+research boundary are maintained in
+`docs/10d_universe_robustness_report.md`.

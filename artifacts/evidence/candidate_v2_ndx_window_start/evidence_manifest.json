@@ -1,0 +1,41 @@
+{
+  "candidate": "blend:ranker_momentum:momentum_volatility_volume:gain5_round100_leaves31_leaf10_lr0.05:ranker0.5_momentum0.5",
+  "cost_bps": 20.0,
+  "decision_status": "ndx_window_start_gate_failed",
+  "evidence_type": "candidate_v2_ndx_window_start",
+  "failed_gates": [
+    "positive_excess_windows",
+    "compounded_relative_excess",
+    "worst_drawdown"
+  ],
+  "frozen_from_pr": 175,
+  "full_daily_point_in_time": false,
+  "membership_coverage_complete": false,
+  "membership_source": "committed_ndx_window_start_snapshot",
+  "membership_source_path": "D:\\Documents\\GitHub\\alpha_engine_candidate_v2_pit_universe\\configs\\research_universes\\ndx_window_start_membership.json",
+  "n_windows": 4,
+  "n_windows_evaluated": 4,
+  "oos_membership_point_in_time": true,
+  "passes_candidate_v2_gate": false,
+  "point_in_time_notes": {
+    "full_daily_point_in_time": "Membership refreshes semiannually, not daily \u2014 true daily point-in-time would require daily Nasdaq records",
+    "membership_coverage_complete": "True only if every official NDX symbol at every used snapshot is retained by provider coverage",
+    "oos_membership_point_in_time": "OOS test set uses NDX membership frozen at window start",
+    "training_membership_asof_semiannual": "Training membership is resolved from the latest semiannual NDX snapshot on or before each training date",
+    "training_uses_future_oos_snapshot": "Training never uses the future OOS-window snapshot \u2014 membership is strictly as-of each training date"
+  },
+  "promotion_eligible": false,
+  "promotion_label": "gate_not_passed",
+  "provider_identity_sha256": "6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407",
+  "provider_lineage_artifact": "provider_backfill_lineage.json",
+  "provider_lineage_present": true,
+  "provider_lineage_sha256": "41a8a049376a36b421a48297b1edd38fd6a016f9d0f5e12d22508db7452d96a1",
+  "provider_uri": "D:\\Documents\\GitHub\\alpha_engine_ndx_backfill_data_cf8c77f\\data\\providers\\us",
+  "research_only": true,
+  "schema_version": "1.0",
+  "survivorship_bias_documented": true,
+  "trade_ready": false,
+  "training_membership_asof_semiannual": true,
+  "training_uses_future_oos_snapshot": false,
+  "turnover_model": "cash_inclusive_one_way"
+}

@@ -29,9 +29,13 @@ import numpy as np
 import pandas as pd
 
 from src.core.metrics import compute_ic_series
-from src.research.daily_ranker import prepare_ranker_frame
+from src.research.daily_ranker import (
+    prepare_ranker_frame,
+    prepare_topk_ranker_frame,
+)
 from src.research.daily_ranker_model import (
     fit_lgbm_daily_ranker,
+    fit_lgbm_daily_topk_ranker,
     predict_lgbm_daily_ranker,
 )
 from src.research.notebook_lab_contracts import CANONICAL_10D_RETURN_EXPR
@@ -88,6 +92,12 @@ FROZEN_CALIBRATION = RankerCalibration(
 )
 FROZEN_BLEND_WEIGHT = BlendWeight(ranker_weight=0.50, momentum_weight=0.50)
 FROZEN_RANKER_NAME = "lgbm:daily_ranker:momentum_volatility_volume:gain5_round100_leaves31_leaf10_lr0.05"
+RANKER_MODE_FROZEN_GAIN5 = "frozen_gain5"
+RANKER_MODE_TOP3_ALIGNED = "top3_binary_trunc6"
+TOP3_ALIGNED_RANKER_NAME = (
+    "lgbm:daily_top3_ranker:momentum_volatility_volume:"
+    "binary_relevance_trunc6_round100_leaves31_leaf10_lr0.05"
+)
 FROZEN_COST_BPS = 20.0
 FROZEN_TOP_N = 3
 FROZEN_EXPOSURE = 0.5
@@ -133,6 +143,18 @@ def _candidate_id() -> str:
         "blend:ranker_momentum:momentum_volatility_volume:"
         "gain5_round100_leaves31_leaf10_lr0.05:ranker0.5_momentum0.5"
     )
+
+
+def _candidate_id_for_ranker_mode(ranker_mode: str) -> str:
+    if ranker_mode == RANKER_MODE_FROZEN_GAIN5:
+        return _candidate_id()
+    if ranker_mode == RANKER_MODE_TOP3_ALIGNED:
+        return (
+            "blend:top3_ranker_momentum:momentum_volatility_volume:"
+            "binary_relevance_trunc6_round100_leaves31_leaf10_lr0.05:"
+            "ranker0.5_momentum0.5"
+        )
+    raise ValueError(f"unsupported ranker_mode: {ranker_mode}")
 
 
 def _exclude_benchmark_symbols(symbols: tuple[str, ...]) -> tuple[str, ...]:
@@ -358,6 +380,59 @@ def _compute_score_diagnostics(
 # ══════════════════════════════════════════════════════════════════════════════
 
 
+def _slice_evaluation_frames(
+    features_all: pd.DataFrame,
+    raw_all: pd.DataFrame,
+    window: Any,
+    *,
+    train_symbols: list[str] | None = None,
+    test_symbols: list[str] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Slice train/test rows with explicit, independently checked universes."""
+
+    def select(
+        frame: pd.DataFrame,
+        *,
+        start: str,
+        end: str,
+        symbols: list[str] | None,
+    ) -> pd.DataFrame:
+        dates = frame.index.get_level_values("datetime")
+        mask = (dates >= pd.Timestamp(start)) & (dates <= pd.Timestamp(end))
+        if symbols is not None:
+            instruments = frame.index.get_level_values("instrument")
+            mask &= instruments.isin(set(symbols))
+        return frame.loc[mask].copy()
+
+    features_train = select(
+        features_all,
+        start=window.train_start,
+        end=window.train_end,
+        symbols=train_symbols,
+    )
+    returns_train = select(
+        raw_all,
+        start=window.train_start,
+        end=window.train_end,
+        symbols=train_symbols,
+    )
+    features_test = select(
+        features_all,
+        start=window.test_start,
+        end=window.test_end,
+        symbols=test_symbols,
+    )
+    returns_test = select(
+        raw_all,
+        start=window.test_start,
+        end=window.test_end,
+        symbols=test_symbols,
+    )
+    returns_train.attrs.update(raw_all.attrs)
+    returns_test.attrs.update(raw_all.attrs)
+    return features_train, returns_train, features_test, returns_test
+
+
 def _evaluate_window(
     window: Any,
     symbols: list[str],
@@ -365,18 +440,66 @@ def _evaluate_window(
     expression_columns: dict[str, str],
     feature_exprs: list[str],
     baseline_expr: str,
+    *,
+    train_symbols: list[str] | None = None,
+    asof_membership_snapshot: Any = None,
+    asof_provider_symbols: set[str] | None = None,
+    ranker_mode: str = RANKER_MODE_FROZEN_GAIN5,
 ) -> dict[str, Any] | None:
-    """Train frozen ranker, generate blend score, evaluate candidate_v2."""
+    """Train frozen ranker, generate blend score, evaluate candidate_v2.
+
+    Parameters
+    ----------
+    window
+        Rolling research window with train/test boundaries.
+    symbols
+        OOS test symbols.  When *train_symbols* is ``None`` these are also
+        used for training (backward-compatible default).
+    train_symbols
+        Optional separate training symbols.  When provided, features and
+        raw returns are loaded for the union of *train_symbols* and *symbols*,
+        training rows are restricted to *train_symbols* instruments, and test
+        rows are restricted to *symbols* instruments.
+    asof_membership_snapshot
+        Optional :class:`~src.research.ndx_window_start_universe.NdxWindowStartSnapshot`
+        used to filter **training rows only** by as-of snapshot membership.
+        Ignored when *train_symbols* is ``None``.
+    asof_provider_symbols
+        Optional set of provider-covered symbols for the as-of membership
+        filter.  Ignored when *asof_membership_snapshot* is ``None``.
+    ranker_mode
+        Either the unchanged gain5 ranker or the single predeclared Top-3
+        binary-relevance/truncation-6 structural variant.
+    """
     from qlib.data import D
 
+    membership_args = (
+        asof_membership_snapshot is not None,
+        asof_provider_symbols is not None,
+    )
+    if membership_args[0] != membership_args[1]:
+        raise ValueError(
+            "asof_membership_snapshot and asof_provider_symbols must be provided together"
+        )
+    if membership_args[0] and train_symbols is None:
+        raise ValueError("as-of membership filtering requires explicit train_symbols")
+    candidate_id = _candidate_id_for_ranker_mode(ranker_mode)
+
+    use_split_symbols = train_symbols is not None
+
+    if use_split_symbols:
+        load_symbols = sorted(set(train_symbols) | set(symbols))
+    else:
+        load_symbols = list(symbols)
+
     features_all = D.features(
-        symbols,
+        load_symbols,
         feature_exprs,
         start_time=window.train_start,
         end_time=window.test_end,
     )
     raw_all = D.features(
-        symbols,
+        load_symbols,
         [CANONICAL_10D_RETURN_EXPR],
         start_time=window.train_start,
         end_time=window.test_end,
@@ -390,22 +513,38 @@ def _evaluate_window(
     raw_all.attrs["horizon"] = 10
     raw_all.attrs["expression"] = CANONICAL_10D_RETURN_EXPR
 
-    dates = features_all.index.get_level_values("datetime")
-    train_mask = (dates >= pd.Timestamp(window.train_start)) & (
-        dates <= pd.Timestamp(window.train_end)
-    )
-    test_mask = (dates >= pd.Timestamp(window.test_start)) & (
-        dates <= pd.Timestamp(window.test_end)
+    features_train_raw, returns_train_raw, features_test, returns_test = (
+        _slice_evaluation_frames(
+            features_all,
+            raw_all,
+            window,
+            train_symbols=train_symbols if use_split_symbols else None,
+            test_symbols=list(symbols) if use_split_symbols else None,
+        )
     )
 
+    # ── As-of membership filter (training rows only) ─────────────────────
+    if use_split_symbols and asof_membership_snapshot is not None and asof_provider_symbols is not None:
+        from src.research.ndx_window_start_universe import (
+            filter_training_by_asof_membership,
+        )
+        features_train_raw = filter_training_by_asof_membership(
+            features_train_raw,
+            asof_membership_snapshot,
+            asof_provider_symbols,
+        )
+        returns_train_raw = filter_training_by_asof_membership(
+            returns_train_raw,
+            asof_membership_snapshot,
+            asof_provider_symbols,
+        )
+
+    # ── Purge training tail (10D embargo) ────────────────────────────────
     features_train, returns_train = purge_training_tail(
-        features_all.loc[train_mask].copy(),
-        raw_all.loc[train_mask].copy(),
+        features_train_raw,
+        returns_train_raw,
         holding_days=10,
     )
-    features_test = features_all.loc[test_mask].copy()
-    returns_test = raw_all.loc[test_mask].copy()
-    returns_test.attrs.update(raw_all.attrs)
 
     # Validate — skip window if all-NaN or zero-filled
     ok, reason = validate_no_nan_inputs(
@@ -416,23 +555,55 @@ def _evaluate_window(
 
     # Train frozen ranker with expanding history
     cols = [expression_columns[expr] for expr in feature_exprs]
-    x_rank, y_rank, groups = prepare_ranker_frame(
-        features_train.loc[:, cols],
-        returns_train,
-    )
-    ranker = fit_lgbm_daily_ranker(
-        x_rank,
-        y_rank,
-        groups,
-        n_gain_bins=FROZEN_CALIBRATION.n_gain_bins,
-        params=FROZEN_CALIBRATION.params(),
-        num_boost_round=FROZEN_CALIBRATION.num_boost_round,
-    )
+    if ranker_mode == RANKER_MODE_FROZEN_GAIN5:
+        x_rank, y_rank, groups = prepare_ranker_frame(
+            features_train.loc[:, cols],
+            returns_train,
+        )
+        ranker = fit_lgbm_daily_ranker(
+            x_rank,
+            y_rank,
+            groups,
+            n_gain_bins=FROZEN_CALIBRATION.n_gain_bins,
+            params=FROZEN_CALIBRATION.params(),
+            num_boost_round=FROZEN_CALIBRATION.num_boost_round,
+        )
+        ranker_contract = {
+            "mode": RANKER_MODE_FROZEN_GAIN5,
+            "ranker_name": FROZEN_RANKER_NAME,
+            "target": "processed_daily_percentile_rank",
+            "n_gain_bins": FROZEN_CALIBRATION.n_gain_bins,
+            "lambdarank_truncation_level": 30,
+            "truncation_level_source": "lightgbm_default",
+        }
+    else:
+        x_rank, y_rank, groups = prepare_topk_ranker_frame(
+            features_train.loc[:, cols],
+            returns_train,
+            top_k=FROZEN_TOP_N,
+        )
+        ranker = fit_lgbm_daily_topk_ranker(
+            x_rank,
+            y_rank,
+            groups,
+            top_k=FROZEN_TOP_N,
+            params=FROZEN_CALIBRATION.params(),
+            num_boost_round=FROZEN_CALIBRATION.num_boost_round,
+        )
+        ranker_contract = {
+            "mode": RANKER_MODE_TOP3_ALIGNED,
+            "ranker_name": TOP3_ALIGNED_RANKER_NAME,
+            "target": "processed_daily_topk_relevance_target",
+            "top_k": FROZEN_TOP_N,
+            "n_gain_bins": 2,
+            "lambdarank_truncation_level": FROZEN_TOP_N + 3,
+            "truncation_level_source": "predeclared_topk_plus_3",
+        }
     ranker_scores = predict_lgbm_daily_ranker(ranker, features_test.loc[:, cols])
 
-    # Load momentum baseline for OOS test period
+    # Load momentum baseline for OOS test period — test symbols only
     momentum = D.features(
-        symbols,
+        list(symbols),
         [baseline_expr],
         start_time=window.test_start,
         end_time=window.test_end,
@@ -500,7 +671,8 @@ def _evaluate_window(
 
     return {
         "window": window.to_dict(),
-        "candidate": _candidate_id(),
+        "candidate": candidate_id,
+        "ranker_contract": ranker_contract,
         "candidate_v2": variant_payload,
         "score_diagnostics": diagnostics,
         "selection_tail_diagnostics": tail_diag,

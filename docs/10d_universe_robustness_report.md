@@ -182,3 +182,324 @@ validation, not another overlay or LightGBM parameter search.
 - `promotion_eligible=false`
 - `trade_ready=false`
 - decision: `candidate_v2_no_robust_overlay`
+
+## Nasdaq-100 window-start PIT universe evidence
+
+The [NDX window-start
+runner](../scripts/run_candidate_v2_ndx_window_start_evidence.py) evaluates the
+frozen candidate_v2 against four half-year OOS windows where **each window
+freezes the official Nasdaq-100 membership known at that window start** from
+the committed snapshot under
+`configs/research_universes/ndx_window_start_membership.json`.  The snapshots
+use the official Nasdaq endpoint
+(`https://indexes.nasdaqomx.com/Index/WeightingData?id=NDX&...`) used by
+Microsoft Qlib for index constituent data.  Required snapshot dates are exactly
+the ten half-year starts from 2021-01-04 through 2025-07-01.
+
+### Method
+
+- **Membership**: Committed NDX window-start snapshot per OOS test window,
+  intersected with the actually-covered US provider symbol set.  Each window
+  freezes the official NDX membership known at its start date.
+- **Training**: The frozen candidate_v2 ranker is retrained on expanding
+  history. Each training row uses the latest committed semiannual NDX snapshot
+  on or before that row's date; the future OOS-window snapshot is never applied
+  backwards to the whole training history. The existing 10D embargo is applied.
+- **Evaluation**: Identical to the static-cohort experiment: Top-3 equal-weight
+  portfolio, 20 bps cash-inclusive one-way turnover, 50% gross exposure when
+  QQQ 20D trend is negative, raw test-period 10D returns.
+- **Bias**: `oos_membership_point_in_time=true`,
+  `training_membership_asof_semiannual=true`,
+  `training_uses_future_oos_snapshot=false`,
+  `full_daily_point_in_time=false`,
+  and provider coverage remains incomplete.
+- **Reuse**: All model/blend/portfolio functions and constants are reused from
+  `scripts/run_candidate_v2_universe_robustness.py` — no duplication.
+
+### OOS result
+
+The evidence is written under
+`artifacts/evidence/candidate_v2_ndx_window_start/`.
+
+| Metric | Static-100 cohort | NDX PIT window-start | Delta |
+|---|---|---|---|
+| Compounded relative excess vs QQQ | 176.68% | -19.90% | -196.58 pp |
+| Mean Sharpe | 1.51 | .627 | -.883 |
+| Worst drawdown | -22.39% | -21.01% | +1.38 pp |
+| Mean ICIR | .223 | .190 | -.033 |
+| Mean Rank ICIR | .155 | .155 | +.0005 |
+| Positive excess windows | 4/4 | 1/4 | -3 windows |
+
+The four individual windows were:
+
+| Window | Aligned train start | Train symbols | Test/official | Relative excess | Sharpe | Max drawdown | ICIR | Rank ICIR |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| 2024H1 | 2021-04-05 | 81 | 86/101 | -19.51% | .186 | -5.07% | .032 | .031 |
+| 2024H2 | 2021-04-05 | 85 | 88/102 | -2.23% | .632 | -6.26% | .174 | .022 |
+| 2025H1 | 2021-04-05 | 86 | 92/101 | 18.99% | 1.674 | -16.53% | .255 | .117 |
+| 2025H2 | 2021-04-05 | 90 | 93/101 | -14.46% | .018 | -21.01% | .299 | .452 |
+
+As a methodology ablation, replacing the future-OOS-snapshot training set with
+semiannual as-of membership improved compounded relative excess from -56.34%
+to -19.90%, mean ICIR from .125 to .190, and worst drawdown from -31.95% to
+-21.01%. Removing that look-ahead-like universe selection debt materially
+improves the evidence, but it does not make the strategy economically robust.
+
+The comparison is informational only.  The static-100 cohort uses current Qlib
+instrument listings (survivorship-biased, approximately 100 tickers from the
+US provider), while the NDX cohort uses committed Nasdaq-100 membership at
+each window start (~100 tickers per date from the official index).  Differences
+reflect both membership composition and point-in-time methodology.
+
+The static-100 uplift therefore does **not** replicate under official
+window-start membership. The as-of runner now uses the same 2021-04-05 aligned
+training start across all windows, so the remaining gap is not explained by a
+single late IPO truncating history. Universe composition and provider omissions
+remain confounders. The evidence rejects the claim that the existing static-100
+result is robust trade guidance.
+
+### Frozen gate result
+
+The existing frozen gate is applied without lowering:
+- Exactly 4 OOS windows required
+- >= 3 positive relative-excess windows
+- Compounded relative excess > 30%
+- Worst drawdown >= -15%
+- Mean ICIR, Rank ICIR, and top-bottom spread positive
+
+A model-gate pass with **incomplete coverage** (any official NDX symbol
+missing from the provider) is labelled `promising-but-incomplete` and is never
+promoted.  `promotion_eligible=false`, `trade_ready=false`.
+
+The actual run fails three frozen gates:
+
+- positive relative-excess windows: 1/4, below the required 3/4;
+- compounded relative excess: -19.90%, below the required +30%;
+- worst drawdown: -21.01%, worse than the -15% floor.
+
+Mean ICIR, mean Rank ICIR, and mean top-bottom spread remain slightly positive,
+but they do not compensate for negative economic performance.  Decision:
+`ndx_window_start_gate_failed`; no promotion and no trade-ready claim.
+
+### Limitations
+
+1. **Semiannual, not daily, membership**: Training uses the latest half-year
+   snapshot on or before each row. This removes use of the future OOS snapshot,
+   but intra-half membership changes and delistings are not represented.
+2. **Provider coverage**: The US market-specific provider may not cover all
+   NDX constituents at every snapshot date. Coverage rises from 68/102 in 2021
+   to 93/101 in 2025; missing symbols are dropped and create a selection channel.
+3. **OOS membership is window-start frozen**: The test membership does not
+   change within each half-year. Daily PIT would require daily Nasdaq records.
+4. **Single-index focus**: NDX is one large-cap universe.  Results on
+   mid/small-cap or non-Nasdaq universes are not tested here.
+5. **No hyperparameter tuning**: The frozen ranker calibration, blend weight,
+   Top-K, and gate thresholds are carried over unchanged from the original
+   candidate_v2 experiment.  No model or portfolio parameter was searched.
+
+The provider-backfill step described above has now been completed. The section
+below is the authoritative current evidence and supersedes the limited-provider
+metrics in this subsection.
+
+### Provider-backfilled result (authoritative current evidence)
+
+An isolated provider was built with
+`scripts/build_ndx_window_start_provider.py`. It copied and hash-verified the
+132 source CSVs behind the operational provider, then recovered 34 of the 43
+missing NDX identities:
+
+- 33 symbols were downloaded directly with adjusted daily Yahoo data;
+- historical `FB` was sourced only from the same-company `META` series and
+  capped at 2022-06-30, before the committed snapshots switch to `META`;
+- the current Yahoo `FB` instrument was never downloaded because that ticker
+  has been recycled for an unrelated ETF;
+- nine acquired or delisted identities remained unavailable and failed closed:
+  `ALXN`, `ANSS`, `ATVI`, `CERN`, `MXIM`, `SGEN`, `SPLK`, `WBA`, and `XLNX`.
+
+The operational provider was not mutated. The isolated provider identity is
+`6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407`.
+Its complete source/alias/unavailable lineage is copied into the evidence as
+`provider_backfill_lineage.json` and bound to that provider identity.
+
+The first 2026 holdout attempt exposed a mixed adjusted/unadjusted `KLAC`
+history around its 10-for-1 split. It created an impossible +943% canonical
+10D return and was discarded before interpretation. The provider builder now
+scans every seeded CSV for one-session adjusted-close ratios outside
+`[1/3, 3]`, refreshes an affected symbol from adjusted Yahoo history, records
+both source hashes and the anomaly dates, and fails closed if a refreshed
+series remains discontinuous. `KLAC` was the only affected symbol; a full
+166-file rescan found no remaining adjustment discontinuity.
+
+Training coverage also now follows the actual semiannual membership interval
+for each symbol. A constituent that leaves NDX before `train_end` needs data
+only through its last active snapshot interval. It is no longer dropped for
+lacking future bars, and future bars cannot make an incomplete historical
+interval pass.
+
+OOS coverage rose to 98/101, 100/102, 100/101, and 100/101 symbols. Training
+coverage rose from 81-90 names to 114-127 names. The unchanged frozen model
+then produced:
+
+| Metric | Static-100 cohort | Initial NDX provider | Backfilled NDX provider |
+|---|---:|---:|---:|
+| Portfolio total return | 372.61% | 36.82% | 3.84% |
+| QQQ total return | 70.81% | 70.81% | 70.81% |
+| Compounded relative excess | 176.68% | -19.90% | -39.21% |
+| Mean Sharpe | 1.51 | .627 | .054 |
+| Worst drawdown | -22.39% | -21.01% | -29.64% |
+| Mean ICIR | .223 | .190 | .110 |
+| Mean Rank ICIR | .155 | .155 | .133 |
+| Positive excess windows | 4/4 | 1/4 | 0/4 |
+
+The final per-window evidence is:
+
+| Window | Train symbols | Test/official | Relative excess | Sharpe | Max drawdown | ICIR | Rank ICIR |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 2024H1 | 114 | 98/101 | -30.50% | -1.36 | -17.73% | -.111 | -.045 |
+| 2024H2 | 120 | 100/102 | -3.06% | .56 | -12.91% | .070 | -.008 |
+| 2025H1 | 123 | 100/101 | -7.23% | .30 | -29.64% | .124 | .099 |
+| 2025H2 | 127 | 100/101 | -2.73% | .71 | -17.26% | .358 | .486 |
+
+All economic gates fail except the three average score diagnostics, which stay
+slightly positive. Positive ICIR does not translate into Top-3 excess return:
+the broader cross-section changes both fitted ranks and selected names, and all
+four cost-aware OOS portfolios underperform QQQ.
+
+This is stronger evidence than the survivor-heavy static cohorts. It rejects
+the claim that candidate_v2 currently has reliable trade-guidance ability.
+`promotion_eligible=false` and `trade_ready=false` remain mandatory.
+
+Reproduction:
+
+```bash
+uv run python scripts/build_ndx_window_start_provider.py \
+  --base-data-root D:/Documents/GitHub/alpha_engine \
+  --output-data-root D:/Documents/GitHub/alpha_engine_ndx_backfill_data \
+  --start 2021-04-05 \
+  --end 2026-06-24
+
+uv run python scripts/run_candidate_v2_ndx_window_start_evidence.py \
+  --data-root D:/Documents/GitHub/alpha_engine_ndx_backfill_data \
+  --provider-lineage-path \
+    D:/Documents/GitHub/alpha_engine_ndx_backfill_data/data/provider_backfill_lineage.json \
+  --first-test-year 2024 \
+  --last-test-year 2026
+```
+
+### Cross-sectional factor and Top-3 diagnosis
+
+The fixed-hypothesis diagnostic is now complete. It reloads the seven frozen
+ranker inputs for the same four OOS windows and 98-100 OOS symbols, freezes
+Top-K/Bottom-K from each factor before checking raw-return availability, and
+measures both broad daily IC and the exact 13 rebalance dates per window. It
+does not train a model, search a parameter, or select a deployable orientation.
+
+The candidate's broad daily Rank ICIR is positive at .133 and its daily
+Top-20%-minus-Bottom-20% spread is +.231%. That information does not survive
+portfolio concentration:
+
+- exact rebalance Top-3-minus-Bottom-3 spread: +.093%;
+- positive Top-3 spread periods: 48.1%;
+- selected Top-3 mean realized percentile: .492; and
+- compounded relative excess versus QQQ: -39.21%.
+
+The seven frozen inputs show the same instability. The orientation below is
+the descriptively better direction on these already-observed OOS windows, so
+it is not a deployable choice.
+
+| Frozen input | Descriptive orientation | Mean daily Rank IC | Mean Rank ICIR | Top-3 spread | Positive Top-3 windows | Positive Top-3 periods | All consistency checks |
+|---|---|---:|---:|---:|---:|---:|---|
+| 5D momentum | inverted | .0164 | .0745 | -.092% | 1/4 | 46.2% | fail |
+| 10D momentum | inverted | .0041 | .0108 | .521% | 2/4 | 51.9% | fail |
+| 20D momentum | original | .0208 | .1361 | 1.065% | 2/4 | 51.9% | fail |
+| 10D volatility | original | .0278 | .1303 | 1.062% | 3/4 | 44.2% | fail |
+| 20D volatility | original | .0275 | .1182 | .550% | 2/4 | 50.0% | fail |
+| 10D volume momentum | original | .0001 | -.0022 | .195% | 3/4 | 57.7% | fail |
+| Volume / 20D mean | inverted | .0045 | .0534 | -1.354% | 1/4 | 40.4% | fail |
+
+No factor passes the predeclared broad-direction, cross-window, broad-tail, and
+Top-3 period-consistency checks together. The apparently highest Top-3 spread,
+20D momentum, is positive in only two of four windows. The 10D volume factor
+is positive in three windows but has effectively zero Rank IC and a negative
+broad spread. Neither is a stronger research candidate.
+
+The diagnosis also identifies a structural target/portfolio mismatch:
+
+- the processed target has five gain bins, so a roughly 100-name cross-section
+  assigns about 20 names to the highest gain label while the portfolio buys
+  only three; and
+- the frozen model does not set `lambdarank_truncation_level`, so LightGBM uses
+  its default of 30, ten times the portfolio cutoff. LightGBM documents this
+  parameter as the number of top results emphasized by LambdaRank and advises
+  relating it to the desired NDCG cutoff in its
+  [ranking parameters](https://lightgbm.readthedocs.io/en/stable/Parameters.html#lambdarank_truncation_level).
+
+This explains how the model can learn a weak broad ordering without learning
+the Top-3 tail it is asked to trade. It was a structural hypothesis, not
+permission to grid-search gain bins or Top-K on the same evidence.
+
+Reproduction:
+
+```bash
+uv run python scripts/run_candidate_v2_ndx_factor_diagnostics.py \
+  --data-root D:/Documents/GitHub/alpha_engine_ndx_backfill_data
+```
+
+Evidence is under
+`artifacts/evidence/candidate_v2_ndx_factor_diagnostics/`.
+`promotion_eligible=false` and `trade_ready=false`.
+
+### Predeclared Top-3-aligned holdout
+
+One structural variant was declared before viewing the 2026H1 result:
+
+- binary daily relevance with exactly three positive labels per date;
+- LambdaRank `label_gain=[0, 1]`, `eval_at=[3]`, and
+  `lambdarank_truncation_level=6`;
+- the same features, trees, rounds, 50/50 inverted-momentum blend, Top-3
+  portfolio, 20 bps cost, embargo, and benchmark regime control as the frozen
+  model.
+
+The isolated provider retained all 101 official NDX members at the 2026-01-02
+snapshot. Canonical 10D returns restricted the partial holdout to 109 sessions
+from 2026-01-02 through 2026-06-09 and 11 non-overlapping rebalance periods.
+This is a single-window falsification test and cannot promote a model.
+
+| Metric | Frozen gain-5 model | Top-3-aligned model | Aligned minus frozen |
+|---|---:|---:|---:|
+| Portfolio return | -22.87% | -16.66% | +6.21 pp |
+| QQQ return | 16.98% | 16.98% | — |
+| Relative excess | -34.07% | -28.76% | +5.31 pp |
+| Sharpe | -1.24 | -.74 | +.51 |
+| Max drawdown | -24.64% | -23.37% | +1.28 pp |
+| ICIR | -.134 | -.003 | +.132 |
+| Rank ICIR | -.171 | -.080 | +.091 |
+| Daily 20% spread | -.854% | -.126% | +.728 pp |
+| Exact Top-3 spread | -4.165% | -5.015% | -.849 pp |
+| Positive Top-3 periods | 3/11 | 3/11 | unchanged |
+| Selected realized percentile | .423 | .456 | +.034 |
+
+The aligned model reduced the loss and improved broad diagnostics, but the
+actual selection tail worsened: Top-3 spread became more negative, only 3/11
+periods were positive, drawdown remained above the -15% floor, and both
+variants materially underperformed QQQ. The predeclared checks therefore
+produce `top3_alignment_not_supported_on_holdout`.
+
+This refutes further gain-bin, truncation, or Top-K objective tuning within
+this model family. Any next model experiment must change the economic
+information set or label hypothesis and receive new independent evidence.
+`promotion_eligible=false` and `trade_ready=false`.
+
+Reproduction:
+
+```bash
+uv run python scripts/run_candidate_v2_top3_holdout_evidence.py \
+  --data-root D:/Documents/GitHub/alpha_engine_ndx_backfill_data \
+  --provider-lineage-path \
+    D:/Documents/GitHub/alpha_engine_ndx_backfill_data/data/provider_backfill_lineage.json
+```
+
+Evidence is under `artifacts/evidence/candidate_v2_top3_holdout/`.
+
+A higher-grade delisted-price source can close the remaining 1-3 OOS names,
+but the current economic failure is already too large to support promotion.

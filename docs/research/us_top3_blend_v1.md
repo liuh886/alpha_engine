@@ -1,8 +1,16 @@
 # US Top-3 Blend Baseline v1
 
+> **Frozen historical baseline, not a current recommendation.** The broader
+> NDX window-start validation completed on 2026-07-26 and rejected robustness
+> of this selection model. Current evidence is documented in
+> `docs/10d_universe_robustness_report.md`.
+
 ## Purpose
 
-This document freezes the strongest current Alpha Engine research candidate as a canonical baseline for subsequent drawdown-control experiments. It preserves evidence from PR #172 without changing models, weights, universe, benchmark, cost assumptions, or promotion gates.
+This document freezes the former strongest Alpha Engine research candidate as
+a canonical historical baseline for subsequent robustness experiments. It
+preserves evidence from PR #172 without changing models, weights, universe,
+benchmark, cost assumptions, or promotion gates.
 
 ## Baseline identity
 
@@ -31,9 +39,11 @@ This document freezes the strongest current Alpha Engine research candidate as a
 | Mean window Sharpe | 2.24 |
 | Worst window drawdown | -17.00% |
 
-## Gate interpretation
+## Historical gate interpretation
 
-The baseline is a meaningful **stronger research candidate**, but it is **not trade-ready**.
+On its original narrow static universe, the baseline was classified as a
+**stronger research candidate**, but not trade-ready. That classification is
+historical and has been withdrawn by the broader NDX evidence linked above.
 
 | Gate | Threshold | Observed | Pass? |
 |---|---:|---:|---|
@@ -56,15 +66,22 @@ This baseline preservation does not:
 - introduce broker, order-management, or live-trading behavior;
 - set `trade_ready=true`.
 
-## Required next experiment
+## Completed follow-up
 
-Run exactly three drawdown-control variants against this frozen baseline:
+The historical plan required exactly three drawdown-control variants against
+this frozen baseline:
 
 1. `top5_equal_weight` — Top-5 long-only, equal weight.
 2. `top3_inverse_vol20_weight` — Top-3 long-only, weights proportional to `1 / vol20`, normalized to 100% gross exposure.
 3. `top3_benchmark_trend_filter` — Top-3 long-only; if QQQ 20D return is negative, gross exposure is 0.5, otherwise 1.0.
 
 Each variant must use the same data snapshot, benchmark, cost, OOS windows, frozen score source, and raw forward 10D return convention as this baseline.
+
+Those variants and the subsequent point-in-time NDX validation are complete.
+No overlay passed consistently across cohorts, and the frozen selection model
+failed on the broader official universe. See
+`docs/10d_universe_robustness_report.md`; no further overlay or weight tuning
+is recommended.
 
 ## Decision
 

@@ -1,7 +1,7 @@
 ---
-path: 100_Project/2601_Trading/scripts/README.md
-version: 1.1.1
-last_edit_date: 2026-02-24
+path: scripts/README.md
+version: 1.2.0
+last_edit_date: 2026-07-26
 status: active
 ---
 
@@ -27,23 +27,31 @@ This folder contains a mix of **supported entrypoints** (stable, documented) and
   - `python scripts/arena_settle.py --market {market} --arena-name "{arena}" --date latest`
 - **System Doctor** (P0 - Check environment health and metadata consistency.):
   - `python scripts/doctor.py`
-- **Agent Management Entry** (P0 - Start project management flow by agent identity.):
+- **Research Assistant Compatibility Entry** (P0 - Route a legacy role alias
+  into the unified `ResearchAssistant`; these aliases are not separate runtime
+  agents.):
   - `python scripts/agent_entry.py --agent {alpha|risk|governance|developer} [--market {cn|us|all}] [--topic "<topic>"]`
 
 ## Utilities (use as needed)
 
 - Update Data: `python scripts/update_data.py --market {market}`
 - Static Site Export: `python scripts/export_static_site_data.py --market all --output site/data`
+- Build an isolated NDX research provider without mutating operational data:
+  `uv run python scripts/build_ndx_window_start_provider.py --base-data-root . --output-data-root <isolated-root>`
+  The builder verifies copied source hashes, fails closed on split-like
+  adjusted-close discontinuities, and records any full-history refresh in its
+  provider lineage.
+- Re-run the frozen candidate_v2 on official NDX window-start membership:
+  `uv run python scripts/run_candidate_v2_ndx_window_start_evidence.py --data-root <isolated-root> --provider-lineage-path <isolated-root>/data/provider_backfill_lineage.json --first-test-year 2024 --last-test-year 2026`
+- Diagnose broad IC versus exact Top-3 tails for the seven frozen candidate_v2
+  inputs without training or tuning:
+  `uv run python scripts/run_candidate_v2_ndx_factor_diagnostics.py --data-root <isolated-root>`
+- Falsify one predeclared binary-Top-3 LambdaRank objective on the
+  horizon-contained 2026H1 holdout:
+  `uv run python scripts/run_candidate_v2_top3_holdout_evidence.py --data-root <isolated-root> --provider-lineage-path <isolated-root>/data/provider_backfill_lineage.json`
 
 ## Legacy
 
 Deprecated/kept-for-reference scripts live under `scripts/_legacy/`.
 
 If a utility script becomes part of the “daily/weekly” workflow, promote it to the supported list above and document it in `README.md`.
-
-## Governance (Task Registry Migration Backlog)
-
-Planned script -> runtime task migration candidates are tracked in:
-- `100_Project/2601_Trading/scripts/Task_Registry_Candidates_v0.1.md`
-
-This file is a governance backlog only (it does **not** create runtime task registry entries).

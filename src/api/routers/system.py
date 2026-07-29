@@ -67,16 +67,13 @@ def system_health_check():
 @router.get("/docs/main")
 def get_main_system_doc():
     """
-    Return the SSOT user/developer guide markdown that is rendered in WebUI Docs.
+    Return the current project guide rendered in WebUI Docs.
+
+    The repository README is the maintained entry point for product scope,
+    architecture, research evidence, and links to the deeper runbooks.  Retired
+    agent-role documents must not remain an API-visible source of truth.
     """
-    doc_path = (
-        PROJECT_ROOT
-        / "agents"
-        / "developer"
-        / "docs"
-        / "design"
-        / "2026-03-02_trading_platform_user_developer_guide.md"
-    )
+    doc_path = PROJECT_ROOT / "README.md"
     if not doc_path.exists():
         raise HTTPException(status_code=404, detail="main doc not found")
     try:

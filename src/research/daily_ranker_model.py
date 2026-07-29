@@ -17,6 +17,9 @@ class DailyRankerResult:
     feature_names: list[str]
     groups: list[int]
     n_gain_bins: int
+    target_type: str = "percentile_gain"
+    target_top_k: int | None = None
+    lambdarank_truncation_level: int | None = None
 
 
 def percentile_rank_to_gain(
@@ -46,17 +49,12 @@ def percentile_rank_to_gain(
     return gains
 
 
-def fit_lgbm_daily_ranker(
+def _validate_ranker_fit_inputs(
     features: pd.DataFrame,
     rank_target: pd.Series,
     groups: list[int],
-    *,
-    n_gain_bins: int = 5,
-    params: dict[str, Any] | None = None,
-    num_boost_round: int = 200,
-) -> DailyRankerResult:
-    """Fit a LightGBM LambdaRank model with explicit daily groups."""
-
+) -> None:
+    """Validate finite, index-aligned ranker inputs before LightGBM import."""
     if features.empty:
         raise ValueError("features must not be empty")
     if not features.index.equals(rank_target.index):
@@ -73,6 +71,20 @@ def fit_lgbm_daily_ranker(
             "features contain missing or non-finite values; invalid rows must "
             "be removed before model fitting"
         )
+
+
+def fit_lgbm_daily_ranker(
+    features: pd.DataFrame,
+    rank_target: pd.Series,
+    groups: list[int],
+    *,
+    n_gain_bins: int = 5,
+    params: dict[str, Any] | None = None,
+    num_boost_round: int = 200,
+) -> DailyRankerResult:
+    """Fit a LightGBM LambdaRank model with explicit daily groups."""
+
+    _validate_ranker_fit_inputs(features, rank_target, groups)
 
     import lightgbm as lgb
 
@@ -107,6 +119,103 @@ def fit_lgbm_daily_ranker(
     )
 
 
+def fit_lgbm_daily_topk_ranker(
+    features: pd.DataFrame,
+    relevance_target: pd.Series,
+    groups: list[int],
+    *,
+    top_k: int = 3,
+    params: dict[str, Any] | None = None,
+    num_boost_round: int = 100,
+) -> DailyRankerResult:
+    """Fit one predeclared Top-K-aligned LambdaRank objective.
+
+    The relevance target must contain exactly ``top_k`` binary positives per
+    daily group. The objective cutoff is frozen to ``top_k + 3`` so the model
+    focuses on the portfolio tail while retaining a small number of additional
+    ranking pairs. Structural parameters cannot be overridden through
+    ``params``; callers may still provide ordinary tree/calibration settings.
+    """
+
+    if top_k < 1:
+        raise ValueError("top_k must be positive")
+    _validate_ranker_fit_inputs(features, relevance_target, groups)
+    if (
+        relevance_target.attrs.get("provenance")
+        != "processed_daily_topk_relevance_target"
+    ):
+        raise ValueError(
+            "relevance_target provenance must be "
+            "processed_daily_topk_relevance_target"
+        )
+    if relevance_target.attrs.get("top_k") != top_k:
+        raise ValueError("relevance_target top_k does not match requested top_k")
+
+    values = relevance_target.astype(float).to_numpy()
+    if not np.isfinite(values).all() or not np.isin(values, [0.0, 1.0]).all():
+        raise ValueError("relevance_target must contain only finite binary labels")
+    offset = 0
+    for group_size in groups:
+        group_values = values[offset : offset + group_size]
+        if int(group_values.sum()) != top_k:
+            raise ValueError(
+                "each daily relevance group must contain exactly top_k positives"
+            )
+        offset += group_size
+
+    protected = {
+        "objective",
+        "metric",
+        "eval_at",
+        "lambdarank_truncation_level",
+        "label_gain",
+    }
+    conflicts = sorted(protected.intersection(params or {}))
+    if conflicts:
+        raise ValueError(
+            "Top-K structural ranker parameters cannot be overridden: "
+            f"{conflicts}"
+        )
+
+    import lightgbm as lgb
+
+    truncation_level = top_k + 3
+    model_params = {
+        "objective": "lambdarank",
+        "metric": "ndcg",
+        "eval_at": [top_k],
+        "lambdarank_truncation_level": truncation_level,
+        "label_gain": [0, 1],
+        "learning_rate": 0.05,
+        "num_leaves": 31,
+        "min_data_in_leaf": 10,
+        "seed": 42,
+        "verbosity": -1,
+    }
+    if params:
+        model_params.update(params)
+
+    dataset = lgb.Dataset(
+        features,
+        label=relevance_target.loc[features.index].astype(int),
+        group=groups,
+    )
+    model = lgb.train(
+        model_params,
+        dataset,
+        num_boost_round=num_boost_round,
+    )
+    return DailyRankerResult(
+        model=model,
+        feature_names=[str(item) for item in features.columns],
+        groups=list(groups),
+        n_gain_bins=2,
+        target_type="topk_binary_relevance",
+        target_top_k=top_k,
+        lambdarank_truncation_level=truncation_level,
+    )
+
+
 def predict_lgbm_daily_ranker(
     result: DailyRankerResult,
     features: pd.DataFrame,
@@ -122,4 +231,9 @@ def predict_lgbm_daily_ranker(
     scores.attrs["provenance"] = "out_of_sample_daily_ranker_prediction"
     scores.attrs["model_type"] = "lgbm_lambdarank"
     scores.attrs["n_gain_bins"] = result.n_gain_bins
+    scores.attrs["target_type"] = result.target_type
+    scores.attrs["target_top_k"] = result.target_top_k
+    scores.attrs["lambdarank_truncation_level"] = (
+        result.lambdarank_truncation_level
+    )
     return scores

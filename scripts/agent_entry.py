@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-"""
-Unified entrypoint to manage the project by agent identity.
+"""Backward-compatible role-alias entrypoint for ``ResearchAssistant``.
+
+The ``--agent`` values below are task-domain aliases retained for existing
+automation. They all route through one unified ``ResearchAssistant`` and do
+not create separate runtime agents.
 
 Examples:
   python scripts/agent_entry.py --agent governance --market all
@@ -26,13 +29,16 @@ from src.agents.agent_router import AgentRouter
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run project management flow as a chosen agent identity."
+        description=(
+            "Route a legacy task-domain alias through the unified "
+            "ResearchAssistant."
+        )
     )
     parser.add_argument(
         "--agent",
         required=True,
         choices=["alpha", "risk", "governance", "developer"],
-        help="Agent identity to run.",
+        help="Legacy task-domain alias (not a separate runtime agent).",
     )
     parser.add_argument(
         "--market",
