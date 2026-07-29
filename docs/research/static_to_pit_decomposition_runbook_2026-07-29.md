@@ -25,6 +25,15 @@ This prevents the KLAC/full-history repair and other provider changes from being
 silently attributed to membership. The report includes a separate provider
 repair effect from published S/S to controlled repaired-provider S/S.
 
+The CLI requires the exact committed provider identities:
+
+| Role | Required identity |
+| --- | --- |
+| Published static reference | `66129d0727beb8d7b014966651f8b72c119f99195e33553d9781c9954ef267d8` |
+| Controlled repaired provider | `6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407` |
+
+A different manifest-bound provider fails before any model fitting.
+
 ## Frozen matrix
 
 | Cell | Training membership | OOS membership | Interpretation |
@@ -45,15 +54,40 @@ The three effects must reconcile exactly to the controlled total gap.
 
 ## Command
 
+Generic command:
+
 ```bash
 uv run python scripts/run_static_to_pit_alpha_decomposition.py \
   --static-reference-provider-uri <original-static-provider> \
   --decomposition-provider-uri <repaired-pit-provider>
 ```
 
-Both paths must contain valid provider manifests and non-empty
-`provider_identity_sha256` values. The runner fails closed if an endpoint does
-not reproduce the committed rounded metrics.
+The committed evidence records these Windows paths for the original run:
+
+```powershell
+uv run python scripts/run_static_to_pit_alpha_decomposition.py `
+  --static-reference-provider-uri "D:\Documents\GitHub\alpha_engine\data\providers\us" `
+  --decomposition-provider-uri "D:\Documents\GitHub\alpha_engine_ndx_backfill_data_cf8c77f\data\providers\us"
+```
+
+The paths are accepted only when their manifests match the two identities above.
+The runner also fails closed if the published S/S or authoritative P/P endpoint
+does not reproduce the committed rounded metrics.
+
+If the repaired directory is no longer present, rebuild an isolated provider
+before running the decomposition:
+
+```powershell
+uv run python scripts/build_ndx_window_start_provider.py `
+  --base-data-root "D:\Documents\GitHub\alpha_engine" `
+  --output-data-root "D:\Documents\GitHub\alpha_engine_ndx_backfill_data_cf8c77f" `
+  --overwrite
+```
+
+After a rebuild, verify that the resulting identity is still
+`6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407`.
+A different identity is new data and must not silently replace the committed
+provider in this decomposition.
 
 ## Outputs
 
