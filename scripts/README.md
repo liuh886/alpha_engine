@@ -1,7 +1,7 @@
 ---
 path: scripts/README.md
-version: 1.2.0
-last_edit_date: 2026-07-26
+version: 1.3.0
+last_edit_date: 2026-07-29
 status: active
 ---
 
@@ -56,6 +56,13 @@ This folder contains a mix of **supported entrypoints** (stable, documented) and
 - Challenge the unchanged 126/10 residual-trend formula on the canonical
   CN/CSI300 Top-15 contract using an isolated CN provider:
   `uv run python scripts/run_cn_residual_trend_evidence.py --data-root <isolated-cn-root>`
+- Decompose the static-to-PIT ranker collapse without tuning. The command first
+  reproduces the published #183 S/S endpoint on its original manifest-bound
+  provider, then runs the controlled S/S, S/P, P/S and P/P matrix on the repaired
+  PIT provider so data-repair and membership effects remain separate:
+  `uv run python scripts/run_static_to_pit_alpha_decomposition.py --static-reference-provider-uri <original-static-provider> --decomposition-provider-uri <repaired-pit-provider>`
+  Outputs are written under `artifacts/evidence/static_to_pit_alpha_decomposition/`
+  and are research-only; mixed cells cannot be promoted.
 
 ## Legacy
 
