@@ -1,230 +1,330 @@
 # Research Methodology
 
-> Last updated: 2026-07-18
+> Last updated: 2026-07-29
 
-This document describes the current research methodology for AlphaEngine. It is the
-authoritative reference for understanding how research is structured, what the fixed-10D
-paradigm requires, how evidence is evaluated, and what gates a candidate must pass before
-it can be considered trade-ready.
+This document is the authoritative reference for AlphaEngine's fixed-10D
+research method, evidence requirements, universe-validity rules, and promotion
+boundaries.
 
----
+## 1. Research objective
 
-## 1. Core Paradigm: Fixed 10D Horizon
+AlphaEngine is a research-only system. Its purpose is not to maximize a single
+backtest result; it is to determine whether a declared signal produces
+repeatable benchmark-relative evidence after data, universe, time, cost, and
+model contracts are fixed.
 
-Both CN and US research follow a **fixed 10-trading-day paradigm** declared in versioned
-research-paradigm specs under `configs/research_paradigms/`:
+No current model is `trade_ready`.
 
-| Market | Spec file | Benchmark | Universe source |
-|--------|-----------|-----------|-----------------|
-| CN | `cn_10d_csi300_baseline.yaml` | CSI 300 (`000300`) | `configs/research_universes/cn_curated_equities_v1.yaml` |
-| US | `us_10d_qqq_baseline.yaml` | QQQ | `configs/research_universes/us_curated_equities_v1.yaml` |
+## 2. Core paradigm: fixed 10D horizon
 
-### Paradigm invariants
+Both CN and US research use versioned specs under
+`configs/research_paradigms/`.
 
-| Property | Value |
-|----------|-------|
-| Horizon | 10 trading days |
-| Holding period | 10 trading days |
-| Rebalance cadence | 10 trading days |
-| Return expression | `Ref($close, -10) / $close - 1` |
+| Market | Canonical baseline | Benchmark | Baseline universe |
+| --- | --- | --- | --- |
+| CN | `cn_10d_csi300_baseline.yaml` | CSI 300 (`000300`) | `cn_curated_equities_v1.yaml` |
+| US | `us_10d_qqq_baseline.yaml` | QQQ | `us_curated_equities_v1.yaml` |
+
+### Invariants
+
+| Property | Required value |
+| --- | --- |
+| Horizon | 10 trading sessions |
+| Holding period | 10 trading sessions |
+| Rebalance cadence | 10 trading sessions |
+| Economic return | `Ref($close, -10) / $close - 1` |
 | Return provenance | `raw_forward_return` |
-| Research scope | `research_only: true` — no production or trading claim |
-| Walk-forward policy | `complete_windows_only` |
-| Train embargo | 10 sessions between each training tail and its OOS test window |
+| Walk-forward policy | complete half-year OOS windows |
+| Train embargo | 10 sessions |
+| Research scope | `research_only=true` |
 
-### Universes
+A new experiment may change an economic hypothesis, but it must not silently
+change these invariants and compare the result with an earlier contract as if
+the experiments were identical.
 
-Both universes use **static curated membership** as of 2026-07-11, which introduces
-**survivorship bias**:
-- CN: ~200 A-share equities from the CSI 300 pool
-- US: ~120 NASDAQ/NYSE equities from the QQQ tracked pool
+## 3. Training target and economic truth
 
-This is acceptable for exploratory research but is not an unbiased historical estimate.
-No model trained on these universes should be treated as trade-ready without additional
-delisting-adjusted backtesting.
+Two return-related objects have different roles:
 
-### Factor libraries
+| Object | Definition | Allowed use |
+| --- | --- | --- |
+| Raw canonical 10D return | `Ref($close, -10) / $close - 1` | economic evaluation, benchmark comparison, spread and portfolio results |
+| Processed rank target | same-date cross-sectional percentile rank converted to relevance gains | model fitting only |
 
-| Market | Library | Groups |
-|--------|---------|--------|
-| CN | `configs/factor_libraries/cn_ohlcv.yaml` | short_reversal_liquidity, volatility_reversal, price_volume_pressure, balanced_ohlcv |
-| US | `configs/factor_libraries/us_ohlcv.yaml` | momentum, momentum_volatility, momentum_volatility_volume, risk_controlled_momentum |
+The processed target is never a substitute for realized economic returns.
+Promotion evidence, portfolio returns, drawdown, and benchmark-relative results
+must use the raw canonical return.
 
-### Candidate grid
+Because the processed target is cross-sectional, changing the daily universe
+changes the label, query group, feature distribution, and fitted ranker. A
+point-in-time universe test is therefore a new training/evaluation problem, not
+merely a filter applied after prediction.
 
-Each spec declares a ranker calibration grid (LightGBM LambdaRank with varying
-`n_gain_bins`, `num_leaves`, `min_data_in_leaf`, `learning_rate`) and factor baselines.
-The grid is evaluated identity-by-identity against the spec's declared evidence contract.
+## 4. Universe validity
 
----
+### 4.1 Static curated universes
 
-## 2. Return Concepts
+The canonical CN and US baseline specs still use static curated membership.
+These universes are useful for exploratory diagnostics but have explicit
+survivorship and selection bias.
 
-Two distinct return concepts are used for different purposes:
+- CN contains roughly 200 current A-share equities.
+- US contains roughly 120 currently curated Nasdaq/NYSE equities and is not a
+  historical Nasdaq-100 constituent series.
 
-| Concept | Expression | Provenance | Purpose |
-|---------|-----------|------------|---------|
-| **Raw canonical 10D return** | `Ref($close, -10) / $close - 1` | `raw_forward_return` | Economic evaluation, backtest scoring, spread analysis |
-| **Processed rank training target** | Same-date cross-sectional percentile rank converted to integer gains | `processed_training_target` | LightGBM LambdaRank training objective only |
+A static result must be labeled `static_curated` and cannot support trade
+guidance.
 
-The raw forward return is the single economic truth. Processed targets are training
-artifacts and are **never** used for economic evaluation, backtest scoring, or promotion
-decisions.
+### 4.2 Window-start point-in-time NDX
 
----
+US model-robustness work may use
+`configs/research_universes/ndx_window_start_membership.json` with:
 
-## 3. Walk-Forward Validation
+- official Nasdaq-100 membership at the first trading day of each OOS half-year;
+- the latest committed semiannual membership known on each training date;
+- membership hashes bound into execution identity;
+- missing historical names reported and excluded, never zero-filled or replaced
+  with current constituents;
+- QQQ loaded separately as a non-tradable benchmark.
 
-Walk-forward validation uses **expanding half-year out-of-sample windows** with a
-10-session embargo between train and test periods.
+Current OOS coverage is near-complete but not perfect:
+
+| Window | Requested | Retained | Missing |
+| --- | ---: | ---: | --- |
+| 2024H1 | 101 | 98 | ANSS, SPLK, WBA |
+| 2024H2 | 102 | 100 | ANSS, WBA |
+| 2025H1 | 101 | 100 | ANSS |
+| 2025H2 | 101 | 100 | ANSS |
+
+This is window-start/semiannual PIT. It is stronger than static membership but
+is not full daily/event-level PIT history.
+
+### 4.3 Universe-validity levels
+
+| Level | Contract | Permitted interpretation |
+| --- | --- | --- |
+| U0 | static curated current membership | exploratory diagnostics only |
+| U1 | window-start OOS PIT plus as-of training membership | robustness research; still not trade-grade |
+| U2 | event/daily PIT membership with delistings, corporate actions, aliases, and tradability | required before a universe can support trade-guidance evidence |
+
+CN remains U0. The current NDX robustness path is U1.
+
+## 5. Data readiness and provider lineage
+
+Every real-data experiment must bind its provider identity and validate the
+source before model interpretation.
+
+Required checks include:
+
+- declared date boundaries and market calendar;
+- instrument identity and ticker aliases;
+- duplicate dates and non-finite values;
+- OHLC relationships;
+- split-like discontinuities and adjusted/unadjusted mixing;
+- benchmark completeness on every evaluation date;
+- universe coverage and missing-symbol accounting;
+- immutable repair lineage when a source is rebuilt.
+
+The US PIT provider detected and repaired a mixed adjusted/unadjusted KLAC
+history. The CN audit found 46 invalid OHLC histories on 2024-03-29; an isolated
+EFinance-qfq rebuild repaired them while preserving source count and
+calendar/instrument hashes.
+
+If readiness, hash, mapping, benchmark, or minimum-window evidence is missing,
+the experiment fails closed.
+
+## 6. Walk-forward validation
+
+Walk-forward validation uses expanding training history, a 10-session embargo,
+and non-overlapping half-year OOS windows.
 
 | Parameter | CN | US |
-|-----------|----|-----|
-| Train start | 2021-01-01 | 2021-01-01 |
-| Test end | 2026-06-18 | 2026-06-18 |
-| First test year | 2024 | 2024 |
-| Last test year | 2026 | 2026 |
-| Min windows | 3 | 3 |
+| --- | --- | --- |
+| Requested train start | 2021-01-01 | 2021-01-01 |
+| Current aligned US PIT start | n/a | 2021-04-05 |
+| First complete OOS year | 2024 | 2024 |
+| Complete windows currently used | 2024H1--2025H2 | 2024H1--2025H2 |
+| Partial-window policy | falsification only when explicitly declared | falsification only when explicitly declared |
 | Train embargo | 10 sessions | 10 sessions |
-| Partial window policy | `complete_windows_only` | `complete_windows_only` |
+
+A partial window cannot compensate for failure across complete windows and
+cannot independently support promotion.
 
 ### Required metrics
 
-Walk-forward results are evaluated against these metrics (defined in gate profile
-`ten_day_model_gates_v1`):
+| Metric | Meaning |
+| --- | --- |
+| `mean_icir` | cross-window information coefficient stability |
+| `mean_rank_ic` | mean rank-based information coefficient |
+| `mean_spread` | mean top-minus-bottom cross-sectional return spread |
+| `worst_drawdown` | worst portfolio drawdown across OOS windows |
+| `ready_ratio` | fraction of windows satisfying all readiness gates |
+| `positive_icir_ratio` | fraction of windows with positive ICIR |
+| `positive_spread_ratio` | fraction of windows with positive spread |
+| benchmark-relative excess | compounded strategy return relative to the declared benchmark |
+| positive-excess ratio | fraction of windows beating the benchmark |
 
-| Metric | Description |
-|--------|-------------|
-| `mean_icir` | Mean information coefficient divided by its cross-window standard deviation |
-| `mean_rank_ic` | Mean rank-based information coefficient |
-| `mean_spread` | Mean spread between top and bottom quintile returns |
-| `worst_drawdown` | Worst portfolio drawdown across windows |
-| `ready_ratio` | Fraction of windows meeting all readiness criteria |
-| `positive_icir_ratio` | Fraction of windows with positive ICIR |
-| `positive_spread_ratio` | Fraction of windows with positive spread |
+A model cannot be stable solely because IC metrics are positive. It must also
+show positive benchmark-relative economics and acceptable drawdown across
+windows.
 
----
+## 7. Portfolio evaluation
 
-## 4. PromotionDecision Gates
+Portfolio evidence must declare:
 
-The `PromotionDecision` interface (ADR-0005) is the single canonical promotion gate.
-It is enforced by `src/research/promotion_decision.py` and evaluates three required
-evidence files **before** any promotion recommendation:
+- Top-K and any Bottom-K diagnostic;
+- weighting rule;
+- holding/rebalance schedule;
+- transaction-cost convention;
+- benchmark mode;
+- missing-return behavior;
+- gross-exposure or risk-overlay rules.
 
-| Evidence file | Purpose | Fail-closed status |
-|---------------|---------|---------------------|
-| `execution_identity.json` | Proves what ran and which contract was executed | `MISSING_EVIDENCE` if absent |
-| `data_readiness.json` | Proves data coverage completeness | `MISSING_EVIDENCE` if absent |
-| `walk_forward_stability.json` | Proves walk-forward metrics pass thresholds | `MISSING_EVIDENCE` if absent |
+Selected holdings and benchmark returns must be finite. Missing selected returns
+must never be converted to zero. Bottom-K and Top-minus-Bottom results are
+research diagnostics unless executable shorting assumptions are explicitly
+modeled.
 
-The legacy pipeline's `mean_ic > 0.1 → DEPLOY` gate is **retired** (ADR-0007). No
-single metric can trigger a promotion decision. All three evidence files must be
-present and valid, or the decision is `MISSING_EVIDENCE`.
+## 8. PromotionDecision
 
-### Status separation
+`PromotionDecision` is the single canonical promotion interface. It evaluates:
 
-Execution state and promotion state are separate interfaces:
+| Evidence | Purpose | Missing result |
+| --- | --- | --- |
+| `execution_identity.json` | proves the executed contract | `MISSING_EVIDENCE` |
+| `data_readiness.json` | proves usable data and universe coverage | `MISSING_EVIDENCE` |
+| `walk_forward_stability.json` | proves cross-window model/economic stability | `MISSING_EVIDENCE` |
 
-| Interface | Values | Implication |
-|-----------|--------|-------------|
-| **Execution** | completed / skipped / failed | Technical outcome only; no quality claim |
-| **PromotionDecision.status** | missing_evidence / rejected / research_candidate / stronger_research_candidate / trade_guidance_candidate | Evidence-derived research status |
-| **PromotionDecision.trade_ready** | true only for `trade_guidance_candidate` | Research guidance only; never authorizes live or automated trading |
+Execution and promotion are separate:
 
-The current diagnostic evidence did not evaluate promotion and contains no
-`trade_guidance_candidate` decision.
+| Interface | Meaning |
+| --- | --- |
+| execution completed/skipped/failed | technical outcome only |
+| promotion status | evidence-derived research status |
+| `trade_ready` | true only for a trade-guidance candidate; never an order authorization |
 
----
+The retired `mean_ic > 0.1 -> DEPLOY` rule must not reappear in any consumer.
 
-## 5. Current Evidence: 2026-07-16 Diagnostic Run
+## 9. Observed-window governance
 
-The latest evidence package is at `docs/evidence/issue-124-current-2026-07-16/`.
+Repeatedly proposing new models after reading the same 2024H1--2025H2 windows
+creates researcher overfitting even when each individual PR says “no parameter
+search.”
 
-| Market | Status | Acceptance | Diagnostics | Diagnostic only |
-|--------|--------|:----------:|:-----------:|:---------------:|
-| CN | completed | passed | passed | **true** |
-| US | completed | passed | passed | **true** |
+The current complete windows are now development-observed. They may be used to:
 
-Both markets completed with exit code 0. The pipeline **never promotes** — all outputs
-are factor diagnostics for review only.
+- reproduce a frozen result;
+- falsify a predeclared hypothesis;
+- decompose a known failure;
+- validate data or execution contracts.
 
-### Key evidence links
+They must not be used for an open-ended search over:
 
-- [CN/US evidence README](evidence/issue-124-current-2026-07-16/README.md) — full provenance, factor tables, coverage counts
-- [CN factor diagnostics](../artifacts/research_runs/cn_10d_csi300_baseline/factor_diagnostics.json) — 23 unique expressions, best oriented ICIR ~0.22 (5d volatility inverted)
-- [US factor diagnostics](../artifacts/research_runs/us_10d_qqq_baseline/factor_diagnostics.json) — 9 unique expressions, best oriented ICIR ~0.29 (20d risk-controlled momentum)
-- [CN acceptance](../artifacts/research_runs/cn_10d_csi300_baseline/real_market_acceptance.json) — 10 pass, 1 warn (survivorship bias), 0 fail
-- [US acceptance](../artifacts/research_runs/us_10d_qqq_baseline/real_market_acceptance.json) — 10 pass, 1 warn (survivorship bias), 0 fail
+- technical-indicator windows;
+- score orientation;
+- tree parameters or boosting rounds;
+- Top-K values;
+- blend weights;
+- gate thresholds;
+- risk overlays intended only to repair an observed failure.
 
-### Diagnostic flags
+A new candidate must change the economic information set or earn evidence from
+an untouched period, independent market, or newly valid historical dataset.
 
-| Flag | CN | US |
-|------|:--:|:--:|
-| `diagnostic_only` | true | true |
-| `promotion_eligible` | false | false |
-| `trade_ready` | false | false |
-| `research_only` | true | true |
-| `promotion_evaluated` | false | false |
+## 10. Current evidence: 2026-07-29
 
-### Interpretation boundary
+### 10.1 Static ranker comparison
 
-These outputs are factor diagnostics, not a deployable model or trading signal.
-Factor-library changes, orientation changes, combination research, model fitting,
-promotion, or trade readiness require separate reviewed work. **No model is currently
-trade-ready.**
+On the as-of-2026 static curated universe:
 
----
+| Candidate | Mean ICIR | Relative excess vs QQQ | Positive excess windows | Worst drawdown |
+| --- | ---: | ---: | ---: | ---: |
+| LightGBM LambdaRank | 0.3587 | +65.04% | 3/4 | -27.34% |
+| XGBoost `rank:ndcg` | 0.3497 | +70.35% | 4/4 | -25.63% |
 
-## 6. Execution: Spec-Bound ResearchWorkflow
+This is an intermediate observation only. The static universe has selection and
+survivorship bias and both candidates fail the drawdown/ready-ratio gates.
 
-All research execution goes through the canonical `ResearchWorkflow` backed by
-`SpecBoundResearchWorkflowExecutor` (ADR-0006, ADR-0007).
+### 10.2 PIT NDX robustness
 
-```
+The frozen comparison was rerun with the same features, target, model budget,
+cost, benchmark, and portfolio contract under U1 membership:
+
+| Candidate | Mean ICIR | Relative excess vs QQQ | Positive excess windows | Worst drawdown | Ready ratio |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| LightGBM LambdaRank | 0.0966 | -20.49% | 1/4 | -26.11% | 0.25 |
+| XGBoost `rank:ndcg` | 0.1149 | -34.08% | 1/4 | -25.59% | 0.00 |
+| Historical momentum | -0.0052 | -25.70% | 0/4 | -20.17% | 0.00 |
+
+Decision: `rejected`; no stable candidate; `trade_ready=false`.
+
+The principal finding is that the apparent static-universe alpha does not
+survive the stricter historical-membership contract. The difference between
+LightGBM and XGBoost is economically immaterial relative to the universe and
+drawdown problem.
+
+### 10.3 Other stopped hypotheses
+
+- benchmark-residual trend quality: stopped in both US and CN;
+- fixed Bollinger, MACD, RSI, and close-location indicators: no cross-market
+  supported candidate;
+- Top-3-aligned LambdaRank objective: falsified on the declared 2026H1 partial
+  holdout;
+- risk overlays on the rejected static candidate: no robust cross-universe fix.
+
+## 11. Next approved model-effectiveness work
+
+The next task is the frozen static-to-PIT alpha decomposition described in
+`docs/research/static_to_pit_alpha_diagnosis_2026-07-29.md`.
+
+It must isolate:
+
+- static versus PIT training membership;
+- static versus PIT OOS tradable membership;
+- label and score migration on common names;
+- selection overlap;
+- contributions from common, static-only, PIT-only, entrant, and exit groups;
+- per-window and per-security concentration of the return gap.
+
+This work explains the failure. It must not optimize the existing OHLCV ranker.
+After the decomposition, a new candidate requires a genuinely new economic
+information set and independent evidence.
+
+## 12. Canonical execution
+
+All canonical research runs through:
+
+```text
 ResearchWorkflow.run(request)
-    ↓
-SpecBoundResearchWorkflowExecutor.run_step()
-    ↓
-resolve_spec(request.market)
-    ↓
-execute_spec_bound_research(spec)
-    ↓
-execute_spec_bound_runner(spec, adapter)
-    ↓
-TRAIN → WALK_FORWARD → BACKTEST → PROMOTE
-                                     ↓
-                             PromotionDecision
-                             (evidence-gated, ADR-0005)
+    -> SpecBoundResearchWorkflowExecutor.run_step()
+    -> resolve_spec(request.market)
+    -> execute_spec_bound_research(spec)
+    -> execute_spec_bound_runner(spec, adapter)
+    -> TRAIN -> WALK_FORWARD -> BACKTEST -> PROMOTE
+                                      -> PromotionDecision
 ```
 
-- Market `cn` resolves to `configs/research_paradigms/cn_10d_csi300_baseline.yaml`
-- Market `us` resolves to `configs/research_paradigms/us_10d_qqq_baseline.yaml`
-- The legacy research runtime (`LegacyResearchPipelineExecutor`) is **retired** (ADR-0007)
-- Free-text `goal` is audit metadata only; it does not change what executes
+Free-text goals are audit metadata only and cannot silently alter the executable
+spec. Unsupported markets, path traversal, spec/market mismatch, insufficient
+coverage, and invalid benchmark evidence fail before model execution or
+promotion.
 
-### Spec resolution safety
+## 13. References
 
-Unsupported markets, path traversal attempts, spec/market mismatches, missing files,
-and insufficient symbol coverage all fail before any model or data execution.
-
-### ATTRIBUTION step
-
-No standalone attribution artifact exists in the fixed-10D path. The `ATTRIBUTION`
-step is explicitly `SKIPPED` during spec-bound execution.
-
----
-
-## 7. References
-
-| Document | Purpose |
-|----------|---------|
-| `configs/research_paradigms/cn_10d_csi300_baseline.yaml` | CN fixed-10D paradigm spec |
-| `configs/research_paradigms/us_10d_qqq_baseline.yaml` | US fixed-10D paradigm spec |
-| `docs/adr/0005-promotion-decision-single-interface.md` | PromotionDecision single interface (ADR-0005) |
-| `docs/adr/0006-spec-bound-default-workflow-runtime.md` | Spec-bound default runtime (ADR-0006) |
-| `docs/adr/0007-retire-legacy-research-runtime.md` | Legacy runtime retirement (ADR-0007) |
-| `docs/evidence/issue-124-current-2026-07-16/README.md` | Latest CN/US diagnostic evidence |
-| `src/research/promotion_decision.py` | PromotionDecision implementation |
-| `src/research/spec_bound_execution.py` | Spec-bound execution implementation |
-| `src/research/workflow.py` | ResearchWorkflow protocol and runner |
-| `src/research/spec_bound_workflow_executor.py` | Default executor (ADR-0006) |
+| Resource | Purpose |
+| --- | --- |
+| `configs/research_paradigms/cn_10d_csi300_baseline.yaml` | CN fixed-10D baseline |
+| `configs/research_paradigms/us_10d_qqq_baseline.yaml` | US fixed-10D baseline |
+| `configs/research_paradigms/us_10d_lgbm_xgb_ranker_pit_robustness.yaml` | PIT ranker robustness contract |
+| `configs/research_universes/us_curated_equities_v1.yaml` | static US exploratory universe |
+| `configs/research_universes/ndx_window_start_membership.json` | U1 NDX membership evidence |
+| `docs/research/static_to_pit_alpha_diagnosis_2026-07-29.md` | cause assessment and decomposition design |
+| `docs/research/lgbm_xgb_ranker_comparison_2026-07-29.md` | static intermediate comparison |
+| `docs/research/lgbm_xgb_ranker_pit_robustness_2026-07-29.md` | authoritative PIT decision |
+| `docs/research/technical_indicator_quality_2026-07-29.md` | fixed technical-indicator decision |
+| `docs/10d_universe_robustness_report.md` | maintained robustness record |
+| `docs/adr/0005-promotion-decision-single-interface.md` | promotion interface |
+| `docs/adr/0006-spec-bound-default-workflow-runtime.md` | canonical runtime |
+| `docs/adr/0007-retire-legacy-research-runtime.md` | legacy runtime retirement |
+| `src/research/promotion_decision.py` | promotion implementation |
+| `src/research/spec_bound_execution.py` | spec-bound execution |
