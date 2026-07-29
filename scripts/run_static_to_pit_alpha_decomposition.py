@@ -12,6 +12,11 @@ from src.research.static_to_pit_execution import (
     DEFAULT_STATIC_SPEC,
     run_static_to_pit_decomposition,
 )
+from src.research.static_to_pit_provider_lock import (
+    DECOMPOSITION_PROVIDER_IDENTITY,
+    STATIC_REFERENCE_PROVIDER_IDENTITY,
+    validate_authoritative_provider_pair,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -23,7 +28,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--static-reference-provider-uri",
         type=Path,
         required=True,
-        help="Original manifest-bound provider used by the published #183 S/S run.",
+        help=(
+            "Original manifest-bound provider used by the published #183 S/S "
+            f"run; required identity={STATIC_REFERENCE_PROVIDER_IDENTITY}."
+        ),
     )
     parser.add_argument(
         "--decomposition-provider-uri",
@@ -31,7 +39,8 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help=(
             "Repaired manifest-bound provider used for the controlled S/S, S/P, "
-            "P/S and P/P matrix."
+            "P/S and P/P matrix; required identity="
+            f"{DECOMPOSITION_PROVIDER_IDENTITY}."
         ),
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
@@ -40,6 +49,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
+    validated_providers = validate_authoritative_provider_pair(
+        args.static_reference_provider_uri,
+        args.decomposition_provider_uri,
+    )
     payload = run_static_to_pit_decomposition(
         args.root,
         static_spec_path=args.static_spec,
@@ -48,6 +61,7 @@ def main() -> None:
         decomposition_provider_uri=args.decomposition_provider_uri,
         output_dir=args.output_dir,
     )
+    payload["validated_provider_pair"] = validated_providers
     print(json.dumps(payload, indent=2, sort_keys=True, default=str))
 
 
