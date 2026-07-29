@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 
 
-def _original_rows(stability: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def _original_rows(stability: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for row in stability.get("candidates", []):
         candidate = str(row.get("candidate", ""))
@@ -28,6 +28,8 @@ def _mean(values: Sequence[float | None]) -> float | None:
 def render_markdown_report(
     *,
     stability: dict[str, dict[str, Any]],
+    reference_stability: dict[str, Any],
+    provider_repair_effect: dict[str, Any],
     per_window_payloads: list[dict[str, Any]],
     endpoint_reproduction: dict[str, Any],
 ) -> str:
@@ -43,18 +45,66 @@ def render_markdown_report(
         "This run is explanatory and uses already observed 2024H1--2025H2 "
         "windows. Mixed cells cannot support promotion or parameter selection.",
         "",
-        "## Endpoint reproduction",
+        "## Endpoint reproduction and provider control",
         "",
         f"- Passed: `{str(bool(endpoint_reproduction.get('passed'))).lower()}`",
-        "- S/S reproduces the committed static-curated comparison.",
-        "- P/P reproduces the authoritative window-start PIT comparison.",
+        "- The published #183 S/S endpoint is reproduced on its original provider.",
+        "- The controlled four-cell matrix is run entirely on the repaired PIT "
+        "provider, and its P/P endpoint reproduces the authoritative PIT result.",
+        "- Controlled S/S may differ from published S/S because the provider repair "
+        "effect is reported separately rather than hidden inside membership effects.",
         "",
-        "## Four-cell stability",
+        "### Published static reference",
         "",
-        "| Cell | Candidate | Mean ICIR | Relative excess | Worst drawdown | "
-        "Positive excess windows |",
-        "| --- | --- | ---: | ---: | ---: | ---: |",
+        "| Candidate | Mean ICIR | Relative excess | Worst drawdown |",
+        "| --- | ---: | ---: | ---: |",
     ]
+    for candidate, row in sorted(_original_rows(reference_stability).items()):
+        if not candidate.startswith(("lgbm:", "xgb:")):
+            continue
+        lines.append(
+            f"| `{candidate}` | {float(row.get('mean_icir', 0.0)):.4f} | "
+            f"{float(row.get('compounded_relative_excess_return', 0.0)):.2%} | "
+            f"{float(row.get('worst_drawdown', 0.0)):.2%} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "### Provider repair effect before membership decomposition",
+            "",
+            "| Candidate | Metric | Published S/S | Controlled S/S | Effect |",
+            "| --- | --- | ---: | ---: | ---: |",
+        ]
+    )
+    for candidate, metrics in sorted(provider_repair_effect.items()):
+        for metric in (
+            "mean_icir",
+            "compounded_relative_excess_return",
+            "worst_drawdown",
+        ):
+            row = metrics.get(metric)
+            if not row:
+                continue
+            percent = metric != "mean_icir"
+            fmt = ".2%" if percent else ".4f"
+            lines.append(
+                f"| `{candidate}` | `{metric}` | "
+                f"{format(float(row['published_static_reference']), fmt)} | "
+                f"{format(float(row['controlled_repaired_provider_S/S']), fmt)} | "
+                f"{format(float(row['provider_repair_effect']), fmt)} |"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Controlled four-cell stability",
+            "",
+            "| Cell | Candidate | Mean ICIR | Relative excess | Worst drawdown | "
+            "Positive excess windows |",
+            "| --- | --- | ---: | ---: | ---: | ---: |",
+        ]
+    )
     for cell_id in ("S/S", "S/P", "P/S", "P/P"):
         for candidate, row in sorted(_original_rows(stability[cell_id]).items()):
             lines.append(
@@ -131,7 +181,7 @@ def render_markdown_report(
                 f"{(_mean(training_effects) or 0.0):.2%}.",
                 "- Mean interaction residual: "
                 f"{(_mean(interactions) or 0.0):.2%}.",
-                "- Mean total P/P minus S/S window gap: "
+                "- Mean controlled P/P minus S/S window gap: "
                 f"{(_mean(total_gaps) or 0.0):.2%}.",
                 "- Mean Top-15 selection overlap: "
                 f"{(_mean(overlaps) or 0.0):.1%}.",
