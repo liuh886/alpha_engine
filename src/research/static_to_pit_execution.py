@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
-from functools import partial
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Mapping
 
 import pandas as pd
 
+from src.data.market_provider import load_provider_manifest
 from src.research.market_data_alignment import align_train_start_to_coverage
 from src.research.multi_market_readiness import (
     MarketReadinessSpec,
@@ -25,10 +27,7 @@ from src.research.qlib_execution_common import (
     materialize_ranker_candidates,
 )
 from src.research.research_artifacts import write_json
-from src.research.spec_bound_execution import (
-    build_spec_bound_execution_plan,
-    execute_spec_bound_research,
-)
+from src.research.spec_bound_execution import build_spec_bound_execution_plan
 from src.research.static_to_pit_contract import (
     build_four_cell_matrix,
     canonical_sha256,
@@ -41,10 +40,7 @@ from src.research.static_to_pit_window import (
     WindowExecutionContext,
     execute_decomposition_window,
 )
-from src.research.us_qlib_execution_adapter import (
-    QlibUSExecutionRuntime,
-    execute_us_qlib_plan,
-)
+from src.research.us_qlib_execution_adapter import QlibUSExecutionRuntime
 from src.research.walk_forward_stability import summarize_walk_forward_reports
 from src.research.window_policy import (
     build_window_sampling_plan,
@@ -151,26 +147,61 @@ def _run_static_reference(
     provider_uri: str | Path,
     output_dir: Path,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    runtime = QlibUSExecutionRuntime(provider_uri=provider_uri)
-    result = execute_spec_bound_research(
-        static_spec,
-        partial(execute_us_qlib_plan, runtime=runtime),
-        root=root,
-        output_dir=output_dir,
+    """Reproduce #183 in a separate process so Qlib providers cannot bleed."""
+
+    provider_path = Path(provider_uri).resolve()
+    manifest = load_provider_manifest(
+        provider_path,
+        expected_market="us",
+        required=True,
+        verify_files=True,
     )
-    if result["status"] != "passed":
+    if manifest is None:
+        raise ValueError("static reference provider manifest is required")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    command = [
+        sys.executable,
+        str(root / "scripts" / "run_us_feature_quality_validation.py"),
+        "--spec",
+        str(Path(static_spec.spec_path).resolve()),
+        "--output-dir",
+        str(output_dir.resolve()),
+        "--provider-uri",
+        str(provider_path),
+    ]
+    completed = subprocess.run(
+        command,
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
         raise ValueError(
-            "static reference execution did not pass: "
-            f"status={result['status']}"
+            "static reference subprocess failed: "
+            + (completed.stderr.strip() or completed.stdout.strip())
         )
-    metadata = dict(result.get("runtime_metadata", {}))
+    expected = output_dir / static_spec.experiment_id / "walk_forward_stability.json"
+    if expected.is_file():
+        stability_path = expected
+    else:
+        candidates = list(output_dir.rglob("walk_forward_stability.json"))
+        if len(candidates) != 1:
+            raise ValueError(
+                "static reference output must contain exactly one "
+                f"walk_forward_stability.json; found {len(candidates)}"
+            )
+        stability_path = candidates[0]
+    metadata = {
+        "provider": "qlib",
+        "provider_uri": str(provider_path),
+        "provider_identity_sha256": str(manifest["provider_identity_sha256"]),
+        "market": "us",
+        "subprocess_command": command,
+        "run_dir": str(stability_path.parent),
+    }
     _require_manifest_identity(metadata, label="static reference provider")
-    stability_path = result.get("evidence_paths", {}).get(
-        "walk_forward_stability"
-    )
-    if not stability_path:
-        raise ValueError("static reference result omitted walk_forward_stability")
-    return _load_json(stability_path), result
+    return _load_json(stability_path), metadata
 
 
 def run_static_to_pit_decomposition(
@@ -208,7 +239,7 @@ def run_static_to_pit_decomposition(
     ]:
         raise ValueError("static and PIT candidate identities differ")
 
-    reference_stability, reference_run = _run_static_reference(
+    reference_stability, reference_metadata = _run_static_reference(
         root=root,
         static_spec=static_spec,
         provider_uri=static_reference_provider_uri,
@@ -442,9 +473,7 @@ def run_static_to_pit_decomposition(
         "trade_ready": False,
         "frozen_contract": frozen_contract,
         "providers": {
-            "published_static_reference": dict(
-                reference_run.get("runtime_metadata", {})
-            ),
+            "published_static_reference": reference_metadata,
             "controlled_decomposition": provider_metadata,
         },
         "provider_separation_reason": (
