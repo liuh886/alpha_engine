@@ -5,19 +5,25 @@ on:
     branches: [main]
     paths:
       - "src/research/focus_watchlist_signal.py"
+      - "src/research/focus_watchlist_validation.py"
       - "scripts/run_focus_watchlist_cycle_signal.py"
+      - "scripts/run_focus_watchlist_validation.py"
       - "configs/research_paradigms/us_focus_watchlist_cycle_signal_v1.yaml"
       - "tests/test_focus_watchlist_cycle_signal_contract.py"
       - "tests/test_focus_watchlist_signal_engine.py"
+      - "tests/test_focus_watchlist_validation.py"
       - ".github/workflows/focus-signal-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "src/research/focus_watchlist_signal.py"
+      - "src/research/focus_watchlist_validation.py"
       - "scripts/run_focus_watchlist_cycle_signal.py"
+      - "scripts/run_focus_watchlist_validation.py"
       - "configs/research_paradigms/us_focus_watchlist_cycle_signal_v1.yaml"
       - "tests/test_focus_watchlist_cycle_signal_contract.py"
       - "tests/test_focus_watchlist_signal_engine.py"
+      - "tests/test_focus_watchlist_validation.py"
       - ".github/workflows/focus-signal-ci.yml"
   workflow_dispatch:
 
@@ -27,7 +33,7 @@ permissions:
 jobs:
   focus-signal-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -42,12 +48,16 @@ jobs:
         run: >-
           uv run ruff check
           src/research/focus_watchlist_signal.py
+          src/research/focus_watchlist_validation.py
           scripts/run_focus_watchlist_cycle_signal.py
+          scripts/run_focus_watchlist_validation.py
           tests/test_focus_watchlist_cycle_signal_contract.py
           tests/test_focus_watchlist_signal_engine.py
+          tests/test_focus_watchlist_validation.py
       - name: Focus signal tests
         run: >-
           uv run pytest
           tests/test_focus_watchlist_cycle_signal_contract.py
           tests/test_focus_watchlist_signal_engine.py
+          tests/test_focus_watchlist_validation.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
