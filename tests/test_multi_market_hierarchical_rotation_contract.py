@@ -57,7 +57,7 @@ def test_cn_draft_remains_non_authoritative_provenance() -> None:
     assert pool["status"] == "draft_requires_user_freeze"
     assert pool["authoritative_for_performance"] is False
     assert spec["authoritative_validation_allowed"] is False
-    assert spec["pool_spec"] == str(CN_DRAFT_POOL_PATH)
+    assert Path(spec["pool_spec"]) == CN_DRAFT_POOL_PATH
 
 
 def test_cn_frozen_pool_is_exchange_aware_unique_and_authoritative() -> None:
@@ -131,7 +131,7 @@ def test_cn_microstructure_and_frozen_boundary_are_explicit() -> None:
     microstructure = spec["market_microstructure"]
 
     assert spec["authoritative_validation_allowed"] is True
-    assert spec["pool_spec"] == str(CN_FROZEN_POOL_PATH)
+    assert Path(spec["pool_spec"]) == CN_FROZEN_POOL_PATH
     assert spec["pool_governance"]["pool_must_be_frozen_before_performance"] is True
     assert spec["pool_governance"]["frozen_pool_id"] == "cn_small_pool_v1"
     assert microstructure == {
