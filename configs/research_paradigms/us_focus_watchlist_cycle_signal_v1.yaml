@@ -208,6 +208,12 @@ evaluation:
     positive_strategy_return_symbol_ratio_min: 0.60
     positive_qqq_relative_symbol_ratio_min: 0.50
     minimum_supported_market_regimes: 3
+  falsification_targets:
+    median_drawdown_reduction_vs_buy_hold_min: 0.0
+    aggregate_qqq_relative_return_after_costs_min: 0.0
+    maximum_single_symbol_profit_contribution: 0.50
+    positive_strategy_return_symbol_ratio_min: 0.50
+    positive_qqq_relative_symbol_ratio_min: 0.50
 
 parameter_search:
   allowed: false
