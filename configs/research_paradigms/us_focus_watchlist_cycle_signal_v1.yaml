@@ -1,6 +1,6 @@
 # Target-specific, low-turnover US focus-watchlist signal contract.
-# One shared rule set is applied independently to each security.
-schema_version: "1.0"
+# One shared rule set is applied independently to each signal target.
+schema_version: "1.1"
 experiment_id: "us_focus_watchlist_cycle_signal_v1"
 market: "us"
 benchmark: "QQQ"
@@ -15,20 +15,52 @@ objective:
 
 universe:
   source: "configs/watchlist.yaml"
-  universe_id: "us_focus_watchlist_v1"
+  universe_id: "us_focus_watchlist_v2"
   membership_mode: "fixed_predeclared"
   symbols:
-    - "POET"
-    - "IREN"
-    - "HIMS"
-    - "BE"
-    - "CRDO"
-    - "HIMX"
+    - "ALAB"
+    - "TSM"
+    - "VRT"
     - "NBIS"
     - "TSLA"
-    - "CRCL"
-  benchmark_symbols:
     - "QQQ"
+    - "HIMS"
+    - "NOK"
+    - "INTC"
+    - "CRDO"
+    - "POET"
+    - "IREN"
+    - "SOX"
+    - "AAOI"
+    - "ORCL"
+    - "SNDK"
+    - "TIGO"
+    - "AMD"
+    - "LITE"
+  signal_symbols:
+    - "ALAB"
+    - "TSM"
+    - "VRT"
+    - "NBIS"
+    - "TSLA"
+    - "HIMS"
+    - "NOK"
+    - "INTC"
+    - "CRDO"
+    - "POET"
+    - "IREN"
+    - "AAOI"
+    - "ORCL"
+    - "SNDK"
+    - "TIGO"
+    - "AMD"
+    - "LITE"
+  market_reference_symbols:
+    - "QQQ"
+  sector_reference_symbols:
+    - "SOX"
+  provider_aliases:
+    SOX: "^SOX"
   minimum_sessions_for_full_evaluation: 504
   insufficient_history_policy: "short_history_diagnostic_or_forward_only"
   silent_exclusion_allowed: false
@@ -52,6 +84,12 @@ signal:
     risk_on_rule: "qqq_close > qqq_sma_200 and qqq_sma_50 > qqq_sma_200"
     risk_off_rule: "not risk_on"
 
+  sector_context:
+    reference: "SOX"
+    informational_only: true
+    medium_trend_days: 50
+    long_trend_days: 200
+
   security_trend:
     medium_trend_days: 50
     long_trend_days: 100
@@ -59,6 +97,7 @@ signal:
     breakout_days: 20
     atr_days: 20
     trailing_stop_atr_multiple: 3.0
+    sma_slope_definition: "one_session_change_in_sma_50"
 
   transitions:
     enter: "risk_on and close > sma_100 and sma_50_slope > 0 and rel_mom_63_vs_qqq > 0 and close > prior_high_20"
@@ -75,15 +114,26 @@ risk:
     core: 1.0
     tactical: 0.5
   symbol_tiers:
-    POET: "tactical"
-    IREN: "core"
-    HIMS: "core"
-    BE: "tactical"
-    CRDO: "core"
-    HIMX: "tactical"
+    ALAB: "tactical"
+    TSM: "core"
+    VRT: "core"
     NBIS: "core"
     TSLA: "core"
-    CRCL: "tactical"
+    HIMS: "core"
+    NOK: "core"
+    INTC: "tactical"
+    CRDO: "core"
+    POET: "tactical"
+    IREN: "core"
+    AAOI: "tactical"
+    ORCL: "core"
+    SNDK: "tactical"
+    TIGO: "tactical"
+    AMD: "core"
+    LITE: "core"
+  reference_roles:
+    QQQ: "market_regime_and_benchmark"
+    SOX: "semiconductor_sector_context"
   tier_changes_signal_formula: false
 
 execution:
@@ -152,8 +202,7 @@ outputs:
   artifact_profile: "focus_watchlist_signal_v1"
   required:
     - "signal_history.json"
-    - "per_symbol_metrics.json"
-    - "regime_metrics.json"
-    - "trade_tickets.json"
+    - "reference_history.json"
+    - "current_signals.json"
     - "evidence_manifest.json"
     - "decision.json"
