@@ -83,15 +83,24 @@ def test_rotation_score_is_simple_equal_weight_and_not_fitted() -> None:
 
 def test_security_state_machine_is_an_overlay_not_the_whole_strategy() -> None:
     spec = _load(SPEC_PATH)
+    architecture = spec["architecture"]
+    timing = architecture["security_timing_component"]
 
-    assert spec["architecture"]["layers"] == [
+    assert architecture["layers"] == [
         "market_regime",
         "basket_rotation",
         "security_timing",
     ]
-    assert spec["architecture"]["security_timing_spec"].endswith(
+    assert timing["formula_source"].endswith(
         "us_focus_watchlist_cycle_signal_v1.yaml"
     )
+    assert timing["reuse_scope"] == [
+        "market_regime",
+        "security_trend",
+        "transitions",
+    ]
+    assert timing["source_universe_reused"] is False
+    assert timing["candidate_universe_source"] == "pool_spec.baskets"
     assert spec["security_selection"]["eligible_states"] == {
         "ENTER": 1.0,
         "HOLD": 1.0,
