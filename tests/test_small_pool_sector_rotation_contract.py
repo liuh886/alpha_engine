@@ -63,6 +63,7 @@ def test_rotation_score_is_simple_equal_weight_and_not_fitted() -> None:
 
     assert spec["objective"]["model_fitting"] is False
     assert spec["objective"]["cash_allowed"] is True
+    assert rotation["rotation_anchor_date"] == "2021-01-04"
     assert rotation["rebalance_every_n_qqq_sessions"] == 10
     assert rotation["maximum_selected_baskets"] == 2
     assert rotation["maximum_selected_symbols_per_basket"] == 2
