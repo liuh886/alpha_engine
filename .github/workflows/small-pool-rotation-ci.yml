@@ -5,22 +5,32 @@ on:
     branches: [main]
     paths:
       - "configs/pools/us_small_pool_v1.yaml"
+      - "configs/pools/cn_small_pool_v1_draft.yaml"
       - "configs/research_paradigms/us_small_pool_sector_rotation_v1.yaml"
+      - "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v2_draft.yaml"
+      - "configs/research_paradigms/cn_small_pool_sector_rotation_v1_draft.yaml"
       - "docs/research/small_pool_sector_rotation_charter_2026-07-30.md"
+      - "docs/research/multi_market_hierarchical_rotation_charter_2026-07-30.md"
       - "src/research/small_pool_rotation.py"
       - "scripts/run_small_pool_rotation.py"
       - "tests/test_small_pool_sector_rotation_contract.py"
       - "tests/test_small_pool_rotation_engine.py"
+      - "tests/test_multi_market_hierarchical_rotation_contract.py"
       - ".github/workflows/small-pool-rotation-ci.yml"
   push:
     branches: [main]
     paths:
       - "configs/pools/us_small_pool_v1.yaml"
+      - "configs/pools/cn_small_pool_v1_draft.yaml"
       - "configs/research_paradigms/us_small_pool_sector_rotation_v1.yaml"
+      - "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v2_draft.yaml"
+      - "configs/research_paradigms/cn_small_pool_sector_rotation_v1_draft.yaml"
+      - "docs/research/multi_market_hierarchical_rotation_charter_2026-07-30.md"
       - "src/research/small_pool_rotation.py"
       - "scripts/run_small_pool_rotation.py"
       - "tests/test_small_pool_sector_rotation_contract.py"
       - "tests/test_small_pool_rotation_engine.py"
+      - "tests/test_multi_market_hierarchical_rotation_contract.py"
       - ".github/workflows/small-pool-rotation-ci.yml"
   workflow_dispatch:
 
@@ -48,9 +58,11 @@ jobs:
           scripts/run_small_pool_rotation.py
           tests/test_small_pool_sector_rotation_contract.py
           tests/test_small_pool_rotation_engine.py
+          tests/test_multi_market_hierarchical_rotation_contract.py
       - name: Run rotation tests
         run: >-
           uv run pytest
           tests/test_small_pool_sector_rotation_contract.py
           tests/test_small_pool_rotation_engine.py
+          tests/test_multi_market_hierarchical_rotation_contract.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
