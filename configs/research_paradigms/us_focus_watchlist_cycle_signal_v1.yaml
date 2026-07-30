@@ -1,0 +1,159 @@
+# Target-specific, low-turnover US focus-watchlist signal contract.
+# One shared rule set is applied independently to each security.
+schema_version: "1.0"
+experiment_id: "us_focus_watchlist_cycle_signal_v1"
+market: "us"
+benchmark: "QQQ"
+research_only: true
+
+objective:
+  type: "target_specific_cycle_resilient_signal"
+  primary: "produce understandable manual trading states for a fixed focus list"
+  secondary: "improve drawdown behavior while preserving meaningful upside participation"
+  universal_model_required: false
+  cross_sectional_ranking: false
+
+universe:
+  source: "configs/watchlist.yaml"
+  universe_id: "us_focus_watchlist_v1"
+  membership_mode: "fixed_predeclared"
+  symbols:
+    - "POET"
+    - "IREN"
+    - "HIMS"
+    - "BE"
+    - "CRDO"
+    - "HIMX"
+    - "NBIS"
+    - "TSLA"
+    - "CRCL"
+  benchmark_symbols:
+    - "QQQ"
+  minimum_sessions_for_full_evaluation: 504
+  insufficient_history_policy: "short_history_diagnostic_or_forward_only"
+  silent_exclusion_allowed: false
+
+signal:
+  family: "per_security_time_series_state_machine"
+  shared_rule_set_across_symbols: true
+  states:
+    - "WATCH"
+    - "ENTER"
+    - "HOLD"
+    - "REDUCE"
+    - "EXIT"
+  evaluation_time: "daily_close"
+  execution_time: "next_trading_session"
+
+  market_regime:
+    reference: "QQQ"
+    medium_trend_days: 50
+    long_trend_days: 200
+    risk_on_rule: "qqq_close > qqq_sma_200 and qqq_sma_50 > qqq_sma_200"
+    risk_off_rule: "not risk_on"
+
+  security_trend:
+    medium_trend_days: 50
+    long_trend_days: 100
+    relative_momentum_days: 63
+    breakout_days: 20
+    atr_days: 20
+    trailing_stop_atr_multiple: 3.0
+
+  transitions:
+    enter: "risk_on and close > sma_100 and sma_50_slope > 0 and rel_mom_63_vs_qqq > 0 and close > prior_high_20"
+    hold: "position_open and risk_on and close > sma_50 and close > trailing_stop_3atr"
+    reduce: "position_open and risk_on and (close <= sma_50 or rel_mom_63_vs_qqq <= 0) and close > trailing_stop_3atr"
+    exit: "position_open and (risk_off or close <= trailing_stop_3atr)"
+    watch: "not position_open and not enter"
+
+risk:
+  manual_execution_only: true
+  automatic_order_routing: false
+  shorting_allowed: false
+  risk_units:
+    core: 1.0
+    tactical: 0.5
+  symbol_tiers:
+    POET: "tactical"
+    IREN: "core"
+    HIMS: "core"
+    BE: "tactical"
+    CRDO: "core"
+    HIMX: "tactical"
+    NBIS: "core"
+    TSLA: "core"
+    CRCL: "tactical"
+  tier_changes_signal_formula: false
+
+execution:
+  transaction_cost_bps_per_round_trip: 20
+  signal_frequency: "daily"
+  intended_turnover: "low"
+  maximum_target_trades_per_year_per_symbol: 12
+  minimum_target_average_holding_sessions: 15
+  broker_integration: false
+  output_mode: "manual_trade_ticket"
+
+evidence:
+  development_observed:
+    start: "2021-01-01"
+    end: "2025-12-31"
+  falsification_only:
+    start: "2026-01-01"
+    end: "2026-06-30"
+  independent_reserved:
+    start: "2026-07-01"
+    end: "2026-12-31"
+    opening_rule: "complete_half_year_plus_20_session_forward_horizon"
+
+regimes:
+  bull: "qqq_close > qqq_sma_200 and qqq_sma_50 > qqq_sma_200"
+  bear: "qqq_close < qqq_sma_200 and qqq_sma_50 < qqq_sma_200"
+  recovery: "qqq_close > qqq_sma_200 and qqq_sma_50 <= qqq_sma_200"
+  sideways_or_high_volatility: "all_other_sessions"
+
+evaluation:
+  baselines:
+    - "same_security_buy_and_hold"
+    - "QQQ"
+  metrics:
+    - "strategy_total_return_after_costs"
+    - "same_security_buy_hold_return"
+    - "qqq_relative_return"
+    - "maximum_drawdown"
+    - "drawdown_reduction_vs_buy_hold"
+    - "upside_capture"
+    - "downside_capture"
+    - "average_holding_sessions"
+    - "trades_per_year"
+    - "turnover"
+    - "forward_return_10d_by_state"
+    - "forward_return_20d_by_state"
+    - "false_exit_reentry_rate"
+    - "security_contribution_concentration"
+    - "regime_stability"
+  development_targets:
+    median_drawdown_reduction_vs_buy_hold_min: 0.20
+    aggregate_qqq_relative_return_after_costs_min: 0.0
+    positive_20d_enter_return_symbol_ratio_min: 0.60
+    maximum_single_symbol_profit_contribution: 0.40
+    median_trades_per_year_max: 8
+    median_average_holding_sessions_min: 15
+
+parameter_search:
+  allowed: false
+  per_symbol_fitting_allowed: false
+  threshold_grid_allowed: false
+  lookback_grid_allowed: false
+  state_rule_variants_allowed: false
+
+outputs:
+  artifact_profile: "focus_watchlist_signal_v1"
+  required:
+    - "signal_history.json"
+    - "per_symbol_metrics.json"
+    - "regime_metrics.json"
+    - "trade_tickets.json"
+    - "evidence_manifest.json"
+    - "decision.json"
