@@ -553,3 +553,59 @@ These decisions map to Phase 2 (research validity), Phase 3 (governance), and Ph
   The static-universe result does not survive the stricter membership test, so
   these rankers must not guide trading. See
   `docs/research/lgbm_xgb_ranker_pit_robustness_2026-07-29.md`.
+
+### 2026-07-31: US Hierarchical Rotation Validation — Fail-Closed Evidence
+
+- Phase 1 provider: the manifest-bound snapshot validated all 25 required
+  provider symbols (23 candidates + QQQ + ^SOX), 36,225 observed rows from
+  2020-01-02 through 2026-06-30, zero reserved rows, and upstream source
+  hashes. Five recent listings (ALAB, CRDO, IREN, NBIS, SNDK) remain explicit
+  short-history diagnostics. Provider identity:
+  `78bfc57bf5f407265c3401bfeadead6a58344ea399e5f505ec6e996dda8a2c1f`;
+  snapshot manifest:
+  `31c1dcc5516098dc50aba7e415b9f41efbf4c0b6491ac067a1b4a0d6f922f6aa`.
+- Phase 2 research validity: the frozen
+  `us_structured_pool_hierarchical_rotation_v2` spec was evaluated with
+  close(t) signal -> open(t+1) execution -> open(t+2) return, 10 bps per unit
+  exposure change, and all dates >= 2026-07-01 excluded before computation.
+  Development-window after-cost total returns were: equal-weight pool
+  buy-and-hold +146.95%, time-series state only +821.59%, genuinely state-free
+  hierarchical cross-section +256.97%, and hierarchical plus state +148.81%.
+  The full strategy beat QQQ by +41.69 percentage points and the equal-weight
+  pool by +1.86 points, but this return comparison did not survive the risk and
+  implementation gates.
+- Phase 2 attribution uses named, non-additive counterfactuals rather than
+  treating one baseline difference as a decomposition. Removing the market
+  gate increased return by 46.45 points (`market_regime_effect=-0.4645`);
+  basket ranking added 123.44 points; security ranking reduced return by
+  6.41 points; and state eligibility plus daily state multipliers reduced
+  return by 61.71 points with the market gate held off. The explicit
+  non-additivity residual was -7.00 points. Positive effect means the named
+  component improved total return.
+- Phase 2 gates: the full strategy failed development maximum drawdown
+  (-43.48% vs -35% floor), drawdown improvement vs QQQ and EW, annual turnover
+  (24.86x vs 6.0x ceiling), average holding sessions (13.61 vs 20 floor), and
+  maximum single-symbol concentration (60.42% vs 40% ceiling).
+  Falsification-only drawdown improvements also failed, and the robustness
+  baseline-improvement ratio was 0.0127 vs the 0.50 floor.
+- Phase 3 final decision:
+  `us_hierarchical_rotation_not_supported_on_observed_evidence`,
+  `trade_ready=false`, `research_only=true`,
+  `reserved_performance_opened=false`. The reserved period
+  2026-07-01–2026-12-31 was not opened. No score, pool, symbol, selection-count,
+  or gate search is approved on this observed window. All evidence artifacts
+  are local-only and gitignored under
+  `artifacts/evidence/us_hierarchical_rotation_validation/final/`.
+- Phase 3 evidence identity:
+  `5c528ce26a890a260cfcbe0687ef466242752c0ec66e161b584e6a5914c2f999`.
+  The snapshot, current spec
+  (`cca1a584a8802a47171216abd2be495fe4cf6f469164b4ad48d910ebb4281376`),
+  frozen pool, timing formula, validator, and generic engine hashes are bound
+  in that manifest.
+- Lightweight reproducibility:
+  `uv run python scripts/build_us_hierarchical_validation_snapshot.py --help`;
+  `uv run python scripts/run_us_hierarchical_rotation_validation.py --help`;
+  `uv run pytest tests/test_hierarchical_rotation_validation.py -q --strict-markers --tb=short --disable-warnings --maxfail=1`.
+  `.github/workflows/us-hierarchical-validation-ci.yml` runs only the focused
+  contract test and lint; it does not build providers, run notebooks, or fetch
+  market data.
