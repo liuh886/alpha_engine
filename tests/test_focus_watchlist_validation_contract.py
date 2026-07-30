@@ -37,9 +37,18 @@ def test_validation_execution_assumptions_are_frozen_before_real_results() -> No
     }
 
 
-def test_validation_breadth_gates_are_predeclared() -> None:
-    targets = _spec()["evaluation"]["development_targets"]
-    assert targets["positive_strategy_return_symbol_ratio_min"] == 0.60
-    assert targets["positive_qqq_relative_symbol_ratio_min"] == 0.50
-    assert targets["minimum_supported_market_regimes"] == 3
-    assert targets["maximum_single_symbol_profit_contribution"] == 0.40
+def test_validation_breadth_and_falsification_gates_are_predeclared() -> None:
+    evaluation = _spec()["evaluation"]
+    development = evaluation["development_targets"]
+    assert development["positive_strategy_return_symbol_ratio_min"] == 0.60
+    assert development["positive_qqq_relative_symbol_ratio_min"] == 0.50
+    assert development["minimum_supported_market_regimes"] == 3
+    assert development["maximum_single_symbol_profit_contribution"] == 0.40
+
+    assert evaluation["falsification_targets"] == {
+        "median_drawdown_reduction_vs_buy_hold_min": 0.0,
+        "aggregate_qqq_relative_return_after_costs_min": 0.0,
+        "maximum_single_symbol_profit_contribution": 0.50,
+        "positive_strategy_return_symbol_ratio_min": 0.50,
+        "positive_qqq_relative_symbol_ratio_min": 0.50,
+    }
