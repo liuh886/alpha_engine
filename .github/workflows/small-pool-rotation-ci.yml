@@ -7,14 +7,20 @@ on:
       - "configs/pools/us_small_pool_v1.yaml"
       - "configs/research_paradigms/us_small_pool_sector_rotation_v1.yaml"
       - "docs/research/small_pool_sector_rotation_charter_2026-07-30.md"
+      - "src/research/small_pool_rotation.py"
+      - "scripts/run_small_pool_rotation.py"
       - "tests/test_small_pool_sector_rotation_contract.py"
+      - "tests/test_small_pool_rotation_engine.py"
       - ".github/workflows/small-pool-rotation-ci.yml"
   push:
     branches: [main]
     paths:
       - "configs/pools/us_small_pool_v1.yaml"
       - "configs/research_paradigms/us_small_pool_sector_rotation_v1.yaml"
+      - "src/research/small_pool_rotation.py"
+      - "scripts/run_small_pool_rotation.py"
       - "tests/test_small_pool_sector_rotation_contract.py"
+      - "tests/test_small_pool_rotation_engine.py"
       - ".github/workflows/small-pool-rotation-ci.yml"
   workflow_dispatch:
 
@@ -24,7 +30,7 @@ permissions:
 jobs:
   rotation-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,10 +41,16 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Ruff contract test
-        run: uv run ruff check tests/test_small_pool_sector_rotation_contract.py
-      - name: Run contract test
+      - name: Ruff rotation files
+        run: >-
+          uv run ruff check
+          src/research/small_pool_rotation.py
+          scripts/run_small_pool_rotation.py
+          tests/test_small_pool_sector_rotation_contract.py
+          tests/test_small_pool_rotation_engine.py
+      - name: Run rotation tests
         run: >-
           uv run pytest
           tests/test_small_pool_sector_rotation_contract.py
+          tests/test_small_pool_rotation_engine.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
