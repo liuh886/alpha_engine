@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the deterministic focus-watchlist signal engine on a long-form OHLCV CSV."""
+"""Generate deterministic focus signals without evaluating forward performance."""
 
 from __future__ import annotations
 
