@@ -7,8 +7,10 @@ import pandas as pd
 
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
 
-_CSI300_SYMBOL = "000300"
-_CSI300_PROVIDER_SYMBOL = "sh000300"
+_INDEX_PROVIDER_SYMBOLS = {
+    "000300": "sh000300",
+    "399006": "sz399006",
+}
 _BAR_COLUMNS = ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
 
 
@@ -91,8 +93,8 @@ class AkShareAdapter:
 
         provider_symbol = symbol
         try:
-            if symbol == _CSI300_SYMBOL:
-                provider_symbol = _CSI300_PROVIDER_SYMBOL
+            if symbol in _INDEX_PROVIDER_SYMBOLS:
+                provider_symbol = _INDEX_PROVIDER_SYMBOLS[symbol]
                 frame = ak.stock_zh_index_daily(symbol=provider_symbol)
                 out = _normalize_index_frame(
                     frame,
