@@ -88,9 +88,9 @@ QQQ remains the US market benchmark and SOX remains an informational semiconduct
 
 ## China A-share pool
 
-`cn_small_pool_v1_draft` is a compiled draft based on names repeatedly referenced by the user in prior holdings and watchlist discussions. It is deliberately non-authoritative until the user reviews and freezes both membership and basket assignments.
+`cn_small_pool_v1` is frozen after explicit user approval on 2026-07-30, before any A-share pool performance result was viewed.
 
-The draft includes six baskets:
+The frozen pool contains 21 candidates across six primary baskets:
 
 - semiconductor and storage;
 - optical, PCB, and connectivity;
@@ -99,9 +99,14 @@ The draft includes six baskets:
 - metals and shipping;
 - advanced manufacturing.
 
-The draft uses exchange-aware canonical symbols and separate provider aliases. The CSI 300 is the market benchmark and the ChiNext Index is an informational growth-style context.
+The pool uses exchange-aware canonical symbols and separate provider aliases. The CSI 300 is the market benchmark and the ChiNext Index is an informational growth-style context.
 
-No A-share performance result may be produced while the pool status remains `draft_requires_user_freeze`.
+The prior `cn_small_pool_v1_draft` files remain as non-authoritative provenance. Authoritative A-share validation must use:
+
+- `configs/pools/cn_small_pool_v1.yaml`;
+- `configs/research_paradigms/cn_small_pool_sector_rotation_v1.yaml`.
+
+Any membership, alias, or primary-basket change after this freeze requires `cn_small_pool_v2`.
 
 ## A-share market-microstructure boundary
 
@@ -117,6 +122,8 @@ An authoritative A-share provider and evaluator must explicitly handle:
 
 A suspended or short-history security remains in membership records. It may be marked unavailable or non-tradable, but it may not be silently deleted.
 
+Listing eligibility and point-in-time special status are provider evidence, not invented static pool metadata. They must be resolved in the manifest-bound provider step before authoritative performance is calculated.
+
 ## Governance
 
 - pool changes require a new version after the pool is frozen;
@@ -128,11 +135,12 @@ A suspended or short-history security remains in membership records. It may be m
 
 ## Completion boundary
 
-The contract phase is complete when:
+The contract phase is complete because:
 
 1. the US spec contains basket and within-basket cross-sectional layers;
-2. the draft CN pool and CN research contract are versioned;
-3. contract tests enforce market isolation, fixed weights, four attribution baselines, and the CN draft gate;
+2. the CN pool and research contract are frozen and versioned;
+3. contract tests enforce market isolation, fixed weights, four attribution baselines, draft provenance, and frozen authority;
 4. separate implementation and validation tasks exist for both markets.
 
-Completion decision: `multi_market_hierarchical_rotation_contract_ready`.
+Contract decision: `multi_market_hierarchical_rotation_contract_ready`.  
+CN pool decision: `cn_small_pool_v1_frozen`.
