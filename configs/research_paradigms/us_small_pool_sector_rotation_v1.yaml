@@ -18,7 +18,14 @@ architecture:
     - "market_regime"
     - "basket_rotation"
     - "security_timing"
-  security_timing_spec: "configs/research_paradigms/us_focus_watchlist_cycle_signal_v1.yaml"
+  security_timing_component:
+    formula_source: "configs/research_paradigms/us_focus_watchlist_cycle_signal_v1.yaml"
+    reuse_scope:
+      - "market_regime"
+      - "security_trend"
+      - "transitions"
+    source_universe_reused: false
+    candidate_universe_source: "pool_spec.baskets"
   shared_rules_across_baskets: true
   shared_rules_across_symbols: true
 
