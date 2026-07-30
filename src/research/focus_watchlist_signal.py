@@ -63,7 +63,7 @@ def validate_focus_signal_spec(spec: Mapping[str, Any]) -> None:
 
 
 def load_long_ohlcv_csv(path: str | Path, spec: Mapping[str, Any]) -> pd.DataFrame:
-    frame = pd.read_csv(path)
+    frame = pd.read_csv(path, dtype={"symbol": "string"})
     frame.columns = [str(column).strip().lower() for column in frame.columns]
     missing_columns = [column for column in REQUIRED_PRICE_COLUMNS if column not in frame]
     if missing_columns:
