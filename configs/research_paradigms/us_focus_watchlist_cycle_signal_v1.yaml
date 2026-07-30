@@ -1,6 +1,6 @@
 # Target-specific, low-turnover US focus-watchlist signal contract.
 # One shared rule set is applied independently to each signal target.
-schema_version: "1.1"
+schema_version: "1.2"
 experiment_id: "us_focus_watchlist_cycle_signal_v1"
 market: "us"
 benchmark: "QQQ"
@@ -14,7 +14,7 @@ objective:
   cross_sectional_ranking: false
 
 universe:
-  source: "configs/watchlist.yaml"
+  source: "user_predeclared_inline_2026-07-30"
   universe_id: "us_focus_watchlist_v2"
   membership_mode: "fixed_predeclared"
   symbols:
@@ -167,6 +167,20 @@ evaluation:
   baselines:
     - "same_security_buy_and_hold"
     - "QQQ"
+  execution_assumptions:
+    signal_observation: "daily_close"
+    execution_price: "next_session_open"
+    return_basis: "next_open_to_following_open"
+    forward_return_basis: "next_open_to_horizon_open"
+    state_exposure:
+      WATCH: 0.0
+      ENTER: 1.0
+      HOLD: 1.0
+      REDUCE: 0.5
+      EXIT: 0.0
+    cost_bps_per_unit_exposure_change: 10
+    false_exit_reentry_sessions: 20
+    combined_book_weighting: "risk_unit_normalized_equal_weight"
   metrics:
     - "strategy_total_return_after_costs"
     - "same_security_buy_hold_return"
@@ -183,6 +197,7 @@ evaluation:
     - "false_exit_reentry_rate"
     - "security_contribution_concentration"
     - "regime_stability"
+    - "sox_context_stability"
   development_targets:
     median_drawdown_reduction_vs_buy_hold_min: 0.20
     aggregate_qqq_relative_return_after_costs_min: 0.0
@@ -190,6 +205,9 @@ evaluation:
     maximum_single_symbol_profit_contribution: 0.40
     median_trades_per_year_max: 8
     median_average_holding_sessions_min: 15
+    positive_strategy_return_symbol_ratio_min: 0.60
+    positive_qqq_relative_symbol_ratio_min: 0.50
+    minimum_supported_market_regimes: 3
 
 parameter_search:
   allowed: false
