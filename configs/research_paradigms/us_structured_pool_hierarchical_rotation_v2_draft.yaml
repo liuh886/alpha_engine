@@ -1,0 +1,126 @@
+schema_version: "1.0"
+experiment_id: "us_structured_pool_hierarchical_rotation_v2_draft"
+market: "us"
+benchmark: "QQQ"
+research_only: true
+trade_ready: false
+authoritative_validation_allowed: false
+pool_spec: "configs/pools/us_small_pool_v1.yaml"
+
+objective:
+  type: "versioned_structured_pool_hierarchical_rotation"
+  primary: "rank economic baskets, rank eligible securities within selected baskets, and apply absolute timing controls"
+  universal_model_required: false
+  model_fitting: false
+  cash_allowed: true
+  controlled_path_to_larger_universe: true
+
+architecture:
+  layers: ["market_regime", "basket_cross_section", "security_cross_section", "security_timing"]
+  relative_selection_layers: ["basket_cross_section", "security_cross_section"]
+  absolute_control_layers: ["market_regime", "security_timing"]
+  security_timing_component:
+    formula_source: "configs/research_paradigms/us_focus_watchlist_cycle_signal_v1.yaml"
+    reuse_scope: ["market_regime", "security_trend", "transitions"]
+    source_universe_reused: false
+    candidate_universe_source: "pool_spec.baskets"
+  shared_rules_across_baskets: true
+  shared_rules_across_symbols: true
+  cross_market_ranking_allowed: false
+
+market_regime:
+  reference: "QQQ"
+  medium_trend_days: 50
+  long_trend_days: 200
+  risk_on_rule: "benchmark_close > benchmark_sma_200 and benchmark_sma_50 > benchmark_sma_200"
+  risk_off_rule: "not risk_on"
+  risk_off_target_exposure: 0.0
+
+sector_context:
+  reference: "SOX"
+  provider_symbol: "^SOX"
+  informational_only: true
+
+rotation:
+  evaluation_time: "daily_close"
+  execution_time: "next_trading_session"
+  rotation_anchor_date: "2021-01-04"
+  rebalance_every_n_benchmark_sessions: 10
+  maximum_selected_baskets: 2
+  maximum_selected_symbols_per_basket: 2
+  forced_selection: false
+  eligibility:
+    minimum_eligible_constituents: 2
+    minimum_constituent_coverage_ratio: 0.50
+    minimum_breadth_above_sma50: 0.50
+    require_positive_median_relative_momentum_63: true
+  score:
+    normalization: "cross_basket_percentile_rank"
+    combination: "equal_weight_mean"
+    components:
+      median_relative_momentum_63_vs_benchmark: {weight: 0.25, direction: "higher_is_better"}
+      median_momentum_20: {weight: 0.25, direction: "higher_is_better"}
+      breadth_above_sma50: {weight: 0.25, direction: "higher_is_better"}
+      median_drawdown_from_63d_high: {weight: 0.25, direction: "higher_is_better"}
+    minimum_composite_percentile: 0.50
+
+security_selection:
+  absolute_state_filter: {ENTER: 1.0, HOLD: 1.0, REDUCE: 0.5, WATCH: 0.0, EXIT: 0.0}
+  cross_section:
+    universe: "eligible_members_of_selected_basket"
+    normalization: "within_basket_percentile_rank"
+    combination: "equal_weight_mean"
+    minimum_composite_percentile: 0.50
+    components:
+      relative_momentum_63_vs_benchmark: {weight: 0.25, direction: "higher_is_better"}
+      momentum_20: {weight: 0.25, direction: "higher_is_better"}
+      drawdown_from_63d_high: {weight: 0.25, direction: "higher_is_better"}
+      realized_volatility_20: {weight: 0.25, direction: "lower_is_better"}
+    tie_breakers: ["state_priority", "symbol"]
+    state_priority: {ENTER: 3, HOLD: 2, REDUCE: 1, WATCH: 0, EXIT: 0}
+  state_is_absolute_filter_not_primary_rank: true
+  daily_reduce_and_exit_between_rotation_dates: true
+  entry_requires_selected_basket: true
+
+portfolio:
+  selected_basket_weighting: "equal_weight"
+  selected_symbol_weighting_within_basket: "equal_weight"
+  reduce_state_multiplier: 0.5
+  maximum_gross_exposure: 1.0
+  shorting_allowed: false
+  automatic_order_routing: false
+  manual_execution_only: true
+  transaction_cost_bps_per_unit_exposure_change: 10
+
+pool_governance:
+  immutable_pool_version_per_run: true
+  membership_hash_required: true
+  allow_mid_run_changes: false
+  allow_post_result_removal: false
+  primary_basket_only: true
+
+benchmarking:
+  baselines: ["equal_weight_pool_buy_and_hold", "time_series_state_only", "hierarchical_cross_section_only", "hierarchical_cross_section_plus_state"]
+  market_benchmark: "QQQ"
+  report_basket_contribution: true
+  report_symbol_contribution: true
+  report_cash_utilization: true
+  require_incremental_attribution: true
+
+evidence:
+  development_observed: {start: "2021-01-01", end: "2025-12-31"}
+  falsification_only: {start: "2026-01-01", end: "2026-06-30"}
+  independent_reserved:
+    start: "2026-07-01"
+    end: "2026-12-31"
+    opening_rule: "complete_half_year_plus_required_forward_horizon"
+
+parameter_search:
+  allowed: false
+  score_weight_search_allowed: false
+  basket_definition_search_allowed: false
+  per_basket_rule_variants_allowed: false
+  per_symbol_rule_variants_allowed: false
+  rotation_frequency_search_allowed: false
+  selection_count_search_allowed: false
+  security_score_weight_search_allowed: false
