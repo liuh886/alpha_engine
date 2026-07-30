@@ -45,6 +45,7 @@ sector_context:
 rotation:
   evaluation_time: "daily_close"
   execution_time: "next_trading_session"
+  rotation_anchor_date: "2021-01-04"
   rebalance_every_n_qqq_sessions: 10
   maximum_selected_baskets: 2
   maximum_selected_symbols_per_basket: 2
