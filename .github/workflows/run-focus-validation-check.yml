@@ -1,0 +1,93 @@
+name: One-shot Focus Validation Check
+
+on:
+  push:
+    branches:
+      - research/focus-signal-validation-infra
+    paths:
+      - ".github/workflows/run-focus-validation-check.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/focus-signal-validation-infra
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run and record verification
+        shell: bash
+        run: |
+          set +e
+          curl -LsSf https://astral.sh/uv/install.sh | sh > install-uv.log 2>&1
+          install_uv=$?
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+          if [ "$install_uv" -eq 0 ]; then
+            uv sync --frozen --extra dev > uv-sync.log 2>&1
+            sync_status=$?
+          else
+            sync_status=99
+            echo "uv installation failed" > uv-sync.log
+          fi
+          if [ "$sync_status" -eq 0 ]; then
+            uv run ruff check \
+              src/research/focus_watchlist_signal.py \
+              src/research/focus_watchlist_validation.py \
+              scripts/run_focus_watchlist_cycle_signal.py \
+              scripts/run_focus_watchlist_validation.py \
+              tests/test_focus_watchlist_cycle_signal_contract.py \
+              tests/test_focus_watchlist_signal_engine.py \
+              tests/test_focus_watchlist_validation.py \
+              tests/test_focus_watchlist_validation_contract.py \
+              > ruff.log 2>&1
+            ruff_status=$?
+            uv run pytest \
+              tests/test_focus_watchlist_cycle_signal_contract.py \
+              tests/test_focus_watchlist_signal_engine.py \
+              tests/test_focus_watchlist_validation.py \
+              tests/test_focus_watchlist_validation_contract.py \
+              -q --strict-markers --tb=short --disable-warnings --maxfail=1 \
+              > pytest.log 2>&1
+            pytest_status=$?
+          else
+            ruff_status=98
+            pytest_status=98
+            echo "dependency sync failed" > ruff.log
+            echo "dependency sync failed" > pytest.log
+          fi
+          mkdir -p docs/evidence
+          {
+            echo "# Focus Signal Validation CI"
+            echo
+            echo "- Commit: $(git rev-parse HEAD)"
+            echo "- uv install status: $install_uv"
+            echo "- dependency sync status: $sync_status"
+            echo "- ruff status: $ruff_status"
+            echo "- pytest status: $pytest_status"
+            echo
+            echo '## Ruff output'
+            echo '```text'
+            tail -n 40 ruff.log
+            echo '```'
+            echo
+            echo '## Pytest output'
+            echo '```text'
+            tail -n 80 pytest.log
+            echo '```'
+          } > docs/evidence/focus-signal-validation-ci-2026-07-30.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/evidence/focus-signal-validation-ci-2026-07-30.md
+          git commit -m "test(research): record focus validation CI result"
+          git push origin HEAD:research/focus-signal-validation-infra
+          if [ "$install_uv" -ne 0 ] || [ "$sync_status" -ne 0 ] || [ "$ruff_status" -ne 0 ] || [ "$pytest_status" -ne 0 ]; then
+            exit 1
+          fi
