@@ -3,7 +3,9 @@ from pathlib import Path
 import yaml
 
 
-US_SPEC_PATH = Path("configs/research_paradigms/us_small_pool_sector_rotation_v1.yaml")
+US_SPEC_PATH = Path(
+    "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v2_draft.yaml"
+)
 CN_SPEC_PATH = Path("configs/research_paradigms/cn_small_pool_sector_rotation_v1_draft.yaml")
 CN_POOL_PATH = Path("configs/pools/cn_small_pool_v1_draft.yaml")
 EXPECTED_BASELINES = [
