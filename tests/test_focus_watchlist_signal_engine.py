@@ -78,10 +78,12 @@ def test_state_machine_enters_holds_and_exits_without_ranking(tmp_path: Path) ->
     assert "EXIT" in states
 
     first_enter = next(row for row in alab if row["state"] == "ENTER")
+    first_exit = next(row for row in alab if row["state"] == "EXIT")
     assert first_enter["actionable_from"] > first_enter["date"]
     assert first_enter["reason_codes"] == [
         "ENTER_BREAKOUT_TREND_RELATIVE_STRENGTH_CONFIRMED"
     ]
+    assert first_exit["indicators"]["trailing_stop_3atr"] is not None
     assert {row["symbol"] for row in references} == {"QQQ", "SOX"}
     assert all(row["symbol"] not in {"QQQ", "SOX"} for row in history)
 
