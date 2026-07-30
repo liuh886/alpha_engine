@@ -238,6 +238,7 @@ def generate_signal_history(
         trailing_stop: float | None = None
 
         for _, row in group.iterrows():
+            reported_trailing_stop = trailing_stop
             required = (
                 "sma_50",
                 "sma_100",
@@ -276,6 +277,7 @@ def generate_signal_history(
                     position_open = True
                     peak_high = float(row["high"])
                     trailing_stop = peak_high - multiple * float(row["atr_20"])
+                    reported_trailing_stop = trailing_stop
                 else:
                     state = "WATCH"
                     reasons = _watch_reasons(row)
@@ -283,6 +285,7 @@ def generate_signal_history(
                 peak_high = max(float(peak_high), float(row["high"]))
                 candidate_stop = peak_high - multiple * float(row["atr_20"])
                 trailing_stop = max(float(trailing_stop), candidate_stop)
+                reported_trailing_stop = trailing_stop
                 if not bool(row["risk_on"]):
                     state = "EXIT"
                     reasons = ["EXIT_MARKET_RISK_OFF"]
@@ -319,7 +322,7 @@ def generate_signal_history(
                     "market_regime": str(row["market_regime"]),
                     "risk_on": None if pd.isna(row["risk_on"]) else bool(row["risk_on"]),
                     "actionable_from": None if actionable is None else actionable.date().isoformat(),
-                    "indicators": _indicator_payload(row, trailing_stop),
+                    "indicators": _indicator_payload(row, reported_trailing_stop),
                 }
             )
             previous_state = state
