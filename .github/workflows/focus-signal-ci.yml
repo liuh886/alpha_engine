@@ -12,6 +12,7 @@ on:
       - "tests/test_focus_watchlist_cycle_signal_contract.py"
       - "tests/test_focus_watchlist_signal_engine.py"
       - "tests/test_focus_watchlist_validation.py"
+      - "tests/test_focus_watchlist_validation_contract.py"
       - ".github/workflows/focus-signal-ci.yml"
   pull_request:
     branches: [main]
@@ -24,6 +25,7 @@ on:
       - "tests/test_focus_watchlist_cycle_signal_contract.py"
       - "tests/test_focus_watchlist_signal_engine.py"
       - "tests/test_focus_watchlist_validation.py"
+      - "tests/test_focus_watchlist_validation_contract.py"
       - ".github/workflows/focus-signal-ci.yml"
   workflow_dispatch:
 
@@ -54,10 +56,12 @@ jobs:
           tests/test_focus_watchlist_cycle_signal_contract.py
           tests/test_focus_watchlist_signal_engine.py
           tests/test_focus_watchlist_validation.py
+          tests/test_focus_watchlist_validation_contract.py
       - name: Focus signal tests
         run: >-
           uv run pytest
           tests/test_focus_watchlist_cycle_signal_contract.py
           tests/test_focus_watchlist_signal_engine.py
           tests/test_focus_watchlist_validation.py
+          tests/test_focus_watchlist_validation_contract.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
