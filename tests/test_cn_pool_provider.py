@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 import yaml
 
+from src.data.adapters.akshare_adapter import _INDEX_PROVIDER_SYMBOLS
 from src.research.cn_pool_provider import build_cn_pool_provider
 
 
@@ -24,6 +25,7 @@ def _provider_symbol(canonical: str, pool: dict) -> str:
 
 
 def _fixture_inputs(tmp_path: Path) -> tuple[Path, Path, Path, dict]:
+    tmp_path.mkdir(parents=True, exist_ok=True)
     pool = _load(POOL_PATH)
     candidates = [
         symbol
@@ -102,6 +104,13 @@ def _run(tmp_path: Path, bars_path: Path, status_path: Path, calendar_path: Path
     )
 
 
+def test_cn_reference_provider_aliases_cover_benchmark_and_style_context() -> None:
+    assert _INDEX_PROVIDER_SYMBOLS == {
+        "000300": "sh000300",
+        "399006": "sz399006",
+    }
+
+
 def test_cn_provider_builds_manifest_bound_outputs_and_preserves_symbols(
     tmp_path: Path,
 ) -> None:
@@ -113,6 +122,9 @@ def test_cn_provider_builds_manifest_bound_outputs_and_preserves_symbols(
     assert decision["pool_id"] == "cn_small_pool_v1"
     assert decision["candidate_count"] == 21
     assert decision["reference_count"] == 2
+    assert decision["provider_contract_passed"] is True
+    assert decision["live_provider_run_completed"] is False
+    assert decision["authoritative_provider_artifact"] is False
     assert decision["performance_evaluated"] is False
     assert decision["reserved_performance_opened"] is False
     assert decision["trade_ready"] is False
@@ -146,7 +158,9 @@ def test_cn_provider_builds_manifest_bound_outputs_and_preserves_symbols(
     assert quality["missing_required_identities"] == []
     assert quality["providers"]["stock_bars"] == ["fixture_stock_bars"]
     assert quality["providers"]["reference_bars"] == ["fixture_index_bars"]
+    assert quality["live_provider_run_completed"] is False
     assert manifest["reserved_start"] == "2026-07-01"
+    assert manifest["live_provider_run_completed"] is False
     assert len(manifest["manifest_identity_sha256"]) == 64
     assert set(manifest["outputs"]) == {
         "cn_pool_bars.csv",
