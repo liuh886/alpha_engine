@@ -1,0 +1,95 @@
+schema_version: "1.0"
+provider_contract_id: "cn_small_pool_v1_provider_v1"
+market: "cn"
+pool_spec: "configs/pools/cn_small_pool_v1.yaml"
+research_spec: "configs/research_paradigms/cn_small_pool_sector_rotation_v1.yaml"
+research_only: true
+trade_ready: false
+performance_calculation_allowed: false
+
+identity:
+  benchmark: "000300.SH"
+  style_context: "399006.SZ"
+  expected_candidate_count: 21
+  expected_reference_count: 2
+  provider_symbol_dtype: "string"
+
+source_roles:
+  stock_bars:
+    single_provider_required: true
+    adjustment_convention: "qfq"
+  reference_bars:
+    single_provider_required: true
+    adjustment_convention: "unadjusted_index"
+  point_in_time_status:
+    single_provider_required: true
+    required_for_all_symbols: true
+  trading_calendar:
+    single_provider_required: true
+
+required_bar_columns:
+  - "date"
+  - "symbol"
+  - "open"
+  - "high"
+  - "low"
+  - "close"
+  - "volume"
+  - "amount"
+  - "adjustment_convention"
+  - "source_bar_provider"
+
+required_status_columns:
+  - "date"
+  - "symbol"
+  - "listed"
+  - "suspended"
+  - "st"
+  - "delisted"
+  - "limit_up_at_open"
+  - "limit_down_at_open"
+  - "tradable_at_open"
+  - "source_status_provider"
+
+required_calendar_columns:
+  - "date"
+  - "is_open"
+  - "source_calendar_provider"
+
+validation:
+  duplicate_date_symbol_allowed: false
+  positive_prices_required: true
+  non_negative_volume_required: true
+  ohlc_internal_consistency_required: true
+  every_bar_requires_status_row: true
+  bar_on_suspended_session_allowed: false
+  bar_before_listing_allowed: false
+  bar_after_delisting_allowed: false
+  tradable_requires_listed: true
+  tradable_while_suspended_allowed: false
+  tradable_after_delisting_allowed: false
+  simultaneous_limit_up_and_limit_down_allowed: false
+  mixed_stock_bar_provider_allowed: false
+  mixed_reference_bar_provider_allowed: false
+  mixed_status_provider_allowed: false
+  mixed_calendar_provider_allowed: false
+  missing_required_identity_allowed: false
+  silent_symbol_exclusion_allowed: false
+
+reserved_evidence:
+  independent_reserved_start: "2026-07-01"
+  output_cutoff_inclusive: "2026-06-30"
+  rows_on_or_after_reserved_start: "exclude_before_all_downstream_outputs"
+
+outputs:
+  required:
+    - "cn_pool_bars.csv"
+    - "cn_pool_status.csv"
+    - "cn_trading_calendar.csv"
+    - "provider_manifest.json"
+    - "data_quality_report.json"
+    - "decision.json"
+
+completion_decision:
+  pass: "cn_provider_contract_ready"
+  fail: "cn_provider_contract_blocked"
