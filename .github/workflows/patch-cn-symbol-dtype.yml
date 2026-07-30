@@ -1,0 +1,38 @@
+name: Patch CN Symbol Dtype
+
+on:
+  push:
+    branches:
+      - research/generic-hierarchical-rotation-engine
+    paths:
+      - ".github/workflows/patch-cn-symbol-dtype.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/generic-hierarchical-rotation-engine
+          fetch-depth: 0
+      - name: Preserve leading zeros in provider symbols
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/research/focus_watchlist_signal.py")
+          text = path.read_text(encoding="utf-8")
+          old = "    frame = pd.read_csv(path)\n"
+          new = '    frame = pd.read_csv(path, dtype={"symbol": "string"})\n'
+          if text.count(old) != 1:
+              raise SystemExit(f"expected exactly one CSV loader match, found {text.count(old)}")
+          path.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/research/focus_watchlist_signal.py
+          git commit -m "fix(research): preserve leading zeros in market symbols"
+          git push origin HEAD:research/generic-hierarchical-rotation-engine
