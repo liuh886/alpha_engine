@@ -1,0 +1,1 @@
+PR 1: fundamental validation. PR 2: equal-weight multifactor validation. PR 3: one Ridge challenger only if PR 2 passes.
