@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "configs/providers/us_small_pool_sec_cik_v1.yaml"
       - "src/research/latest_us_fundamental_validation.py"
       - "scripts/run_latest_us_fundamental_validation.py"
       - "tests/test_latest_us_fundamental_validation.py"
@@ -11,6 +12,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - "configs/providers/us_small_pool_sec_cik_v1.yaml"
       - "src/research/latest_us_fundamental_validation.py"
       - "scripts/run_latest_us_fundamental_validation.py"
       - "tests/test_latest_us_fundamental_validation.py"
