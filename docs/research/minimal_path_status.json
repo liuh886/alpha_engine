@@ -1,8 +1,0 @@
-{
-  "path_id": "minimal_daily_model_path_v1",
-  "current_step": 1,
-  "current_issue": 225,
-  "current_objective": "validate_fundamental_acceleration",
-  "market_frequency": "daily",
-  "trade_ready": false
-}
