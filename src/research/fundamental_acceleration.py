@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -32,7 +32,9 @@ def _sha256_file(path: Path) -> str:
 
 
 def _canonical_hash(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), default=str
+    ).encode()
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -80,27 +82,41 @@ def _pool_membership(pool: Mapping[str, Any]) -> tuple[dict[str, str], list[str]
     return basket_by_symbol, references
 
 
-def load_fundamentals(path: str | Path, contract: Mapping[str, Any], symbols: set[str]) -> pd.DataFrame:
-    resolved = Path(path).resolve()
-    frame = pd.read_csv(resolved, dtype={"symbol": "string", "accession_id": "string"})
+def load_fundamentals(
+    path: str | Path,
+    contract: Mapping[str, Any],
+    symbols: set[str],
+) -> pd.DataFrame:
+    frame = pd.read_csv(
+        Path(path).resolve(),
+        dtype={"symbol": "string", "accession_id": "string"},
+    )
     missing = sorted(REQUIRED_FUNDAMENTAL_COLUMNS - set(frame.columns))
     if missing:
         raise ValueError("fundamentals missing columns: " + ", ".join(missing))
     frame = frame[list(REQUIRED_FUNDAMENTAL_COLUMNS)].copy()
     frame["symbol"] = frame["symbol"].str.upper().str.strip()
-    frame["fiscal_period_end"] = pd.to_datetime(frame["fiscal_period_end"], errors="coerce")
+    frame["fiscal_period_end"] = pd.to_datetime(
+        frame["fiscal_period_end"], errors="coerce"
+    )
     frame["filed_date"] = pd.to_datetime(frame["filed_date"], errors="coerce")
     frame["revenue"] = pd.to_numeric(frame["revenue"], errors="coerce")
     frame["gross_profit"] = pd.to_numeric(frame["gross_profit"], errors="coerce")
     frame["currency"] = frame["currency"].astype(str).str.upper().str.strip()
     frame["form_type"] = frame["form_type"].astype(str).str.upper().str.strip()
     frame["accession_id"] = frame["accession_id"].astype(str).str.strip()
-    if frame[["fiscal_period_end", "filed_date", "revenue", "gross_profit"]].isna().any().any():
+    numeric_fields = ["fiscal_period_end", "filed_date", "revenue", "gross_profit"]
+    if frame[numeric_fields].isna().any().any():
         raise ValueError("fundamentals contain invalid dates or numeric values")
     if (frame["filed_date"] < frame["fiscal_period_end"]).any():
         raise ValueError("filed_date cannot precede fiscal_period_end")
-    accepted = {str(value).upper() for value in contract["point_in_time_input"]["accepted_form_types"]}
-    frame = frame[frame["form_type"].isin(accepted) & frame["symbol"].isin(symbols)].copy()
+    accepted = {
+        str(value).upper()
+        for value in contract["point_in_time_input"]["accepted_form_types"]
+    }
+    frame = frame[
+        frame["form_type"].isin(accepted) & frame["symbol"].isin(symbols)
+    ].copy()
     if frame.empty:
         raise ValueError("fundamentals contain no frozen-pool observations")
     if (frame["revenue"] <= 0).any():
@@ -109,62 +125,66 @@ def load_fundamentals(path: str | Path, contract: Mapping[str, Any], symbols: se
         ["symbol", "fiscal_period_end", "filed_date", "accession_id"]
     ).drop_duplicates(["symbol", "fiscal_period_end", "filed_date"], keep="last")
     duplicates = frame.duplicated(["symbol", "fiscal_period_end"], keep=False)
-    if duplicates.any():
-        # Later filings amend earlier information; keep both versions for PIT selection.
-        if frame.loc[duplicates, "filed_date"].duplicated().any():
-            raise ValueError("ambiguous duplicate fundamental filing identity")
+    if duplicates.any() and frame.loc[duplicates, "filed_date"].duplicated().any():
+        raise ValueError("ambiguous duplicate fundamental filing identity")
     return frame.reset_index(drop=True)
 
 
 def compute_pit_features(fundamentals: pd.DataFrame) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
     for symbol, group in fundamentals.groupby("symbol", sort=True):
-        group = group.sort_values(["fiscal_period_end", "filed_date", "accession_id"]).copy()
-        # Use the latest known filing for each fiscal period when constructing each published snapshot.
-        period_latest = group.sort_values(["fiscal_period_end", "filed_date", "accession_id"]).drop_duplicates(
-            "fiscal_period_end", keep="last"
+        period_latest = (
+            group.sort_values(["fiscal_period_end", "filed_date", "accession_id"])
+            .drop_duplicates("fiscal_period_end", keep="last")
+            .sort_values("fiscal_period_end")
+            .reset_index(drop=True)
         )
-        period_latest = period_latest.sort_values("fiscal_period_end").reset_index(drop=True)
-        period_latest["gross_margin"] = period_latest["gross_profit"] / period_latest["revenue"]
-        period_latest["revenue_yoy"] = period_latest["revenue"] / period_latest["revenue"].shift(4) - 1.0
+        period_latest["gross_margin"] = (
+            period_latest["gross_profit"] / period_latest["revenue"]
+        )
+        period_latest["revenue_yoy"] = (
+            period_latest["revenue"] / period_latest["revenue"].shift(4) - 1.0
+        )
         period_latest["revenue_growth_acceleration"] = (
             period_latest["revenue_yoy"] - period_latest["revenue_yoy"].shift(1)
         )
         period_latest["gross_margin_yoy_change"] = (
             period_latest["gross_margin"] - period_latest["gross_margin"].shift(4)
         )
-        c0 = period_latest["currency"]
-        valid_currency = (
-            c0.eq(c0.shift(1))
-            & c0.eq(c0.shift(4))
-            & c0.eq(c0.shift(5))
+        currencies = period_latest["currency"]
+        comparable = (
+            currencies.eq(currencies.shift(1))
+            & currencies.eq(currencies.shift(4))
+            & currencies.eq(currencies.shift(5))
         )
-        period_latest["currency_comparable"] = valid_currency
-        period_latest.loc[~valid_currency, list(COMPONENT_KEYS)] = pd.NA
+        period_latest["currency_comparable"] = comparable
+        period_latest.loc[~comparable, list(COMPONENT_KEYS)] = pd.NA
         period_latest["symbol"] = symbol
         rows.append(period_latest)
-    features = pd.concat(rows, ignore_index=True)
-    return features.sort_values(["symbol", "filed_date", "fiscal_period_end"]).reset_index(drop=True)
+    if not rows:
+        return pd.DataFrame()
+    return (
+        pd.concat(rows, ignore_index=True)
+        .sort_values(["symbol", "filed_date", "fiscal_period_end"])
+        .reset_index(drop=True)
+    )
 
 
 def load_prices(path: str | Path, required_symbols: set[str]) -> pd.DataFrame:
-    resolved = Path(path).resolve()
-    frame = pd.read_csv(resolved, dtype={"symbol": "string"})
+    frame = pd.read_csv(Path(path).resolve(), dtype={"symbol": "string"})
     missing = sorted(REQUIRED_PRICE_COLUMNS - set(frame.columns))
     if missing:
         raise ValueError("prices missing columns: " + ", ".join(missing))
-    frame = frame[[column for column in frame.columns if column in REQUIRED_PRICE_COLUMNS]].copy()
+    frame = frame[["date", "symbol", "close"]].copy()
     frame["symbol"] = frame["symbol"].str.upper().str.strip()
     frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
     frame["close"] = pd.to_numeric(frame["close"], errors="coerce")
     if frame[["date", "close"]].isna().any().any() or (frame["close"] <= 0).any():
         raise ValueError("prices contain invalid dates or closes")
     frame = frame[frame["symbol"].isin(required_symbols)].copy()
-    duplicates = frame.duplicated(["date", "symbol"], keep=False)
-    if duplicates.any():
+    if frame.duplicated(["date", "symbol"]).any():
         raise ValueError("prices contain duplicate date-symbol rows")
-    observed = set(frame["symbol"].unique())
-    missing_symbols = sorted(required_symbols - observed)
+    missing_symbols = sorted(required_symbols - set(frame["symbol"].unique()))
     if missing_symbols:
         raise ValueError("prices missing frozen symbols: " + ", ".join(missing_symbols))
     return frame.sort_values(["symbol", "date"]).reset_index(drop=True)
@@ -178,11 +198,18 @@ def _rank_percentile(series: pd.Series) -> pd.Series:
     return series.rank(method="average", pct=True)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Holding:
     symbol: str
     basket: str
     entry_session_index: int
+
+
+def _evaluation_dates(benchmark_dates: pd.DatetimeIndex, interval: int) -> list[pd.Timestamp]:
+    dates = list(benchmark_dates[::interval])
+    if dates[-1] != benchmark_dates[-1]:
+        dates.append(benchmark_dates[-1])
+    return dates
 
 
 def build_factor_history(
@@ -200,26 +227,22 @@ def build_factor_history(
     benchmark_dates = price_wide.index[price_wide[benchmark].notna()]
     if benchmark_dates.empty:
         raise ValueError("benchmark has no valid price dates")
-    sma_sessions = int(contract["portfolio"]["eligibility"]["price_above_sma_sessions"])
+    portfolio = contract["portfolio"]
+    sma_sessions = int(portfolio["eligibility"]["price_above_sma_sessions"])
     sma = price_wide.rolling(sma_sessions, min_periods=sma_sessions).mean()
-    interval = int(contract["portfolio"]["evaluation_interval_sessions"])
-    evaluation_dates = list(benchmark_dates[::interval])
-    if evaluation_dates[-1] != benchmark_dates[-1]:
-        evaluation_dates.append(benchmark_dates[-1])
-
-    entry_threshold = 1.0 - float(contract["portfolio"]["entry_top_fraction"])
-    retention_threshold = float(contract["portfolio"]["retention_min_percentile"])
-    min_holding = int(contract["portfolio"]["minimum_holding_sessions"])
-    max_holdings = int(contract["portfolio"]["maximum_holdings_per_basket"])
-    max_replacements = int(
-        contract["portfolio"]["maximum_replacements_per_basket_per_evaluation"]
+    evaluation_dates = _evaluation_dates(
+        benchmark_dates, int(portfolio["evaluation_interval_sessions"])
     )
+    entry_threshold = 1.0 - float(portfolio["entry_top_fraction"])
+    retention_threshold = float(portfolio["retention_min_percentile"])
+    minimum_holding = int(portfolio["minimum_holding_sessions"])
+    max_holdings = int(portfolio["maximum_holdings_per_basket"])
+    max_replacements = int(portfolio["maximum_replacements_per_basket_per_evaluation"])
     composite_key = str(contract["stable_factor_key"])
     holdings: dict[str, Holding] = {}
-    score_history: list[dict[str, Any]] = []
-    selection_history: list[dict[str, Any]] = []
-
-    feature_by_symbol = {
+    scores: list[dict[str, Any]] = []
+    selections: list[dict[str, Any]] = []
+    features_by_symbol = {
         symbol: group.sort_values(["filed_date", "fiscal_period_end"])
         for symbol, group in features.groupby("symbol", sort=True)
     }
@@ -228,15 +251,15 @@ def build_factor_history(
     for evaluation_date in evaluation_dates:
         snapshots: list[dict[str, Any]] = []
         for symbol, basket in sorted(basket_by_symbol.items()):
-            symbol_features = feature_by_symbol.get(symbol)
+            symbol_features = features_by_symbol.get(symbol)
             available = (
                 pd.DataFrame()
                 if symbol_features is None
                 else symbol_features[symbol_features["filed_date"] <= evaluation_date]
             )
             latest = None if available.empty else available.iloc[-1]
-            close = price_wide.at[evaluation_date, symbol] if symbol in price_wide.columns else pd.NA
-            sma_value = sma.at[evaluation_date, symbol] if symbol in sma.columns else pd.NA
+            close = price_wide.at[evaluation_date, symbol]
+            sma_value = sma.at[evaluation_date, symbol]
             components = {
                 key: None if latest is None or pd.isna(latest[key]) else float(latest[key])
                 for key in COMPONENT_KEYS
@@ -255,10 +278,15 @@ def build_factor_history(
                     "date": evaluation_date.date().isoformat(),
                     "symbol": symbol,
                     "basket": basket,
-                    "filed_date": None if latest is None else latest["filed_date"].date().isoformat(),
-                    "fiscal_period_end": None if latest is None else latest["fiscal_period_end"].date().isoformat(),
-                    "revenue_growth_acceleration": components["revenue_growth_acceleration"],
-                    "gross_margin_yoy_change": components["gross_margin_yoy_change"],
+                    "filed_date": (
+                        None if latest is None else latest["filed_date"].date().isoformat()
+                    ),
+                    "fiscal_period_end": (
+                        None
+                        if latest is None
+                        else latest["fiscal_period_end"].date().isoformat()
+                    ),
+                    **components,
                     "price": None if pd.isna(close) else float(close),
                     "sma100": None if pd.isna(sma_value) else float(sma_value),
                     "eligible": not reasons,
@@ -266,58 +294,54 @@ def build_factor_history(
                 }
             )
 
-        snapshot_frame = pd.DataFrame(snapshots)
-        for basket, basket_frame in snapshot_frame.groupby("basket", sort=True):
+        snapshot = pd.DataFrame(snapshots)
+        for basket, basket_frame in snapshot.groupby("basket", sort=True):
             eligible_index = basket_frame.index[basket_frame["eligible"]]
             for component in COMPONENT_KEYS:
-                percentiles = _rank_percentile(
-                    pd.to_numeric(snapshot_frame.loc[eligible_index, component], errors="coerce")
+                snapshot.loc[eligible_index, f"{component}_percentile"] = _rank_percentile(
+                    pd.to_numeric(snapshot.loc[eligible_index, component], errors="coerce")
                 )
-                snapshot_frame.loc[eligible_index, f"{component}_percentile"] = percentiles
-            snapshot_frame.loc[eligible_index, "composite_percentile"] = snapshot_frame.loc[
-                eligible_index,
-                [f"{component}_percentile" for component in COMPONENT_KEYS],
+            percentile_columns = [f"{component}_percentile" for component in COMPONENT_KEYS]
+            snapshot.loc[eligible_index, "composite_percentile"] = snapshot.loc[
+                eligible_index, percentile_columns
             ].mean(axis=1)
 
-            current_symbols = [
-                symbol for symbol, holding in holdings.items() if holding.basket == basket
-            ]
+            current_session = session_index[evaluation_date]
+            rows_by_symbol = snapshot.set_index("symbol", drop=False)
             kept: list[str] = []
             removed: list[str] = []
-            current_session = session_index[evaluation_date]
-            rows_by_symbol = snapshot_frame.set_index("symbol", drop=False)
-            for symbol in current_symbols:
+            for symbol, holding in list(holdings.items()):
+                if holding.basket != basket:
+                    continue
                 row = rows_by_symbol.loc[symbol]
-                held_sessions = current_session - holdings[symbol].entry_session_index
-                hard_invalid = not bool(row["eligible"])
+                held_sessions = current_session - holding.entry_session_index
                 percentile = row.get("composite_percentile")
                 retention_failed = pd.isna(percentile) or float(percentile) < retention_threshold
-                if hard_invalid or (retention_failed and held_sessions >= min_holding):
+                if not bool(row["eligible"]) or (
+                    retention_failed and held_sessions >= minimum_holding
+                ):
                     removed.append(symbol)
-                    holdings.pop(symbol, None)
+                    holdings.pop(symbol)
                 else:
                     kept.append(symbol)
 
             available_slots = max(0, max_holdings - len(kept))
             additions_allowed = min(max_replacements, available_slots)
-            candidates = snapshot_frame[
-                (snapshot_frame["basket"] == basket)
-                & snapshot_frame["eligible"]
-                & ~snapshot_frame["symbol"].isin(kept)
-                & ~snapshot_frame["symbol"].isin(holdings)
-                & (snapshot_frame["composite_percentile"] >= entry_threshold)
+            candidates = snapshot[
+                (snapshot["basket"] == basket)
+                & snapshot["eligible"]
+                & ~snapshot["symbol"].isin(kept)
+                & ~snapshot["symbol"].isin(holdings)
+                & (snapshot["composite_percentile"] >= entry_threshold)
             ].sort_values(["composite_percentile", "symbol"], ascending=[False, True])
             added = list(candidates.head(additions_allowed)["symbol"])
             for symbol in added:
                 holdings[symbol] = Holding(symbol, basket, current_session)
 
             selected = sorted(kept + added)
-            basket_weight = 0.0
             active_baskets = {holding.basket for holding in holdings.values()}
-            if active_baskets:
-                basket_weight = 1.0 / len(active_baskets)
-            per_symbol_weight = basket_weight / len(selected) if selected else 0.0
-            selection_history.append(
+            basket_weight = 1.0 / len(active_baskets) if active_baskets else 0.0
+            selections.append(
                 {
                     "date": evaluation_date.date().isoformat(),
                     "basket": basket,
@@ -325,25 +349,32 @@ def build_factor_history(
                     "kept_symbols": sorted(kept),
                     "added_symbols": sorted(added),
                     "removed_symbols": sorted(removed),
-                    "target_weight_per_symbol": float(per_symbol_weight),
+                    "target_weight_per_symbol": (
+                        basket_weight / len(selected) if selected else 0.0
+                    ),
                 }
             )
 
         selected_symbols = set(holdings)
-        for row in snapshot_frame.to_dict(orient="records"):
+        for row in snapshot.to_dict(orient="records"):
             symbol = str(row["symbol"])
             composite = row.get("composite_percentile")
-            row["selected"] = symbol in selected_symbols
-            row["stable_factor_key"] = composite_key
-            row["score"] = None if pd.isna(composite) else float(composite)
-            row["percentile"] = row["score"]
-            row["reason_codes"] = list(row.get("reason_codes", []))
-            if row["selected"]:
-                row["reason_codes"].append("LOW_TURNOVER_PORTFOLIO_SELECTED")
-            score_history.append(row)
+            base_reasons = list(row.get("reason_codes", []))
+            if symbol in selected_symbols:
+                base_reasons.append("LOW_TURNOVER_PORTFOLIO_SELECTED")
+            scores.append(
+                {
+                    **row,
+                    "selected": symbol in selected_symbols,
+                    "stable_factor_key": composite_key,
+                    "score": None if pd.isna(composite) else float(composite),
+                    "percentile": None if pd.isna(composite) else float(composite),
+                    "reason_codes": base_reasons,
+                }
+            )
             for component in COMPONENT_KEYS:
-                component_percentile = row.get(f"{component}_percentile")
-                score_history.append(
+                percentile = row.get(f"{component}_percentile")
+                scores.append(
                     {
                         "date": row["date"],
                         "symbol": symbol,
@@ -352,68 +383,88 @@ def build_factor_history(
                         "fiscal_period_end": row["fiscal_period_end"],
                         "stable_factor_key": component,
                         "score": row.get(component),
-                        "percentile": (
-                            None if pd.isna(component_percentile) else float(component_percentile)
-                        ),
-                        "selected": row["selected"],
+                        "percentile": None if pd.isna(percentile) else float(percentile),
+                        "selected": symbol in selected_symbols,
                         "eligible": row["eligible"],
-                        "reason_codes": list(row["reason_codes"]),
+                        "reason_codes": base_reasons,
                     }
                 )
+    return scores, selections
 
-    return score_history, selection_history
+
+def _card(
+    contract: Mapping[str, Any],
+    *,
+    key: str,
+    name: str,
+    definition: str,
+    family: str,
+    transformation: str,
+    thesis: str,
+) -> FactorCardInput:
+    version = str(contract["factor_version"])
+    return FactorCardInput(
+        stable_factor_key=key,
+        factor_version=version,
+        name=name,
+        canonical_definition=definition,
+        information_family=family,
+        update_frequency="quarterly_after_public_filing",
+        availability_lag_days=0,
+        transformation=transformation,
+        orientation="higher_is_better",
+        neutralization="within_primary_basket",
+        thesis=thesis,
+        code_identity="src/research/fundamental_acceleration.py",
+        status="data_blocked",
+        spec_path="configs/factors/us_fundamental_acceleration_v1.yaml",
+        source_kind="native_v2",
+        source_ref=f"us_fundamental_acceleration_v1:{key}:{version}",
+    )
 
 
 def register_factor_cards(registry_db: str | Path, contract: Mapping[str, Any]) -> list[str]:
     registry = FactorKnowledgeRegistry(registry_db)
     cards = [
-        FactorCardInput(
-            stable_factor_key="revenue_growth_acceleration",
-            factor_version=str(contract["factor_version"]),
+        _card(
+            contract,
+            key="revenue_growth_acceleration",
             name="Revenue growth acceleration",
-            canonical_definition=str(contract["components"]["revenue_growth_acceleration"]["definition"]),
-            information_family="growth",
-            update_frequency="quarterly_after_public_filing",
-            availability_lag_days=0,
+            definition=str(
+                contract["components"]["revenue_growth_acceleration"]["definition"]
+            ),
+            family="growth",
             transformation="within_basket_percentile_rank",
-            orientation="higher_is_better",
-            neutralization="within_primary_basket",
             thesis="Improving revenue growth may identify strengthening operating momentum.",
-            code_identity="src/research/fundamental_acceleration.py",
-            status="data_blocked",
-            spec_path="configs/factors/us_fundamental_acceleration_v1.yaml",
         ),
-        FactorCardInput(
-            stable_factor_key="gross_margin_yoy_change",
-            factor_version=str(contract["factor_version"]),
+        _card(
+            contract,
+            key="gross_margin_yoy_change",
             name="Gross-margin year-over-year improvement",
-            canonical_definition=str(contract["components"]["gross_margin_yoy_change"]["definition"]),
-            information_family="quality",
-            update_frequency="quarterly_after_public_filing",
-            availability_lag_days=0,
+            definition=str(
+                contract["components"]["gross_margin_yoy_change"]["definition"]
+            ),
+            family="quality",
             transformation="within_basket_percentile_rank",
-            orientation="higher_is_better",
-            neutralization="within_primary_basket",
-            thesis="Improving gross margin may distinguish higher-quality growth from revenue expansion without economics.",
-            code_identity="src/research/fundamental_acceleration.py",
-            status="data_blocked",
-            spec_path="configs/factors/us_fundamental_acceleration_v1.yaml",
+            thesis=(
+                "Improving gross margin may distinguish higher-quality growth "
+                "from revenue expansion without economics."
+            ),
         ),
-        FactorCardInput(
-            stable_factor_key=str(contract["stable_factor_key"]),
-            factor_version=str(contract["factor_version"]),
+        _card(
+            contract,
+            key=str(contract["stable_factor_key"]),
             name="Equal-weight fundamental acceleration",
-            canonical_definition="0.5 * rank(revenue growth acceleration) + 0.5 * rank(gross-margin YoY change)",
-            information_family="composite",
-            update_frequency="quarterly_after_public_filing",
-            availability_lag_days=0,
+            definition=(
+                "0.5 * rank(revenue growth acceleration) + "
+                "0.5 * rank(gross-margin YoY change)"
+            ),
+            family="composite",
             transformation="equal_weight_within_basket_percentile_mean",
-            orientation="higher_is_better",
-            neutralization="within_primary_basket",
-            thesis="Growth acceleration confirmed by margin improvement may provide a slower and more durable security-selection signal.",
-            code_identity="src/research/fundamental_acceleration.py",
-            status="data_blocked",
-            spec_path="configs/factors/us_fundamental_acceleration_v1.yaml",
+            thesis=(
+                "Growth acceleration confirmed by margin improvement may provide "
+                "a slower and more durable security-selection signal."
+            ),
         ),
     ]
     return [registry.register_card(card) for card in cards]
@@ -432,7 +483,9 @@ def run_fundamental_acceleration(
     required_symbols = set(basket_by_symbol) | set(references)
     fundamentals_path = Path(fundamentals_csv).resolve()
     prices_path = Path(prices_csv).resolve()
-    fundamentals = load_fundamentals(fundamentals_path, contract, set(basket_by_symbol))
+    fundamentals = load_fundamentals(
+        fundamentals_path, contract, set(basket_by_symbol)
+    )
     features = compute_pit_features(fundamentals)
     prices = load_prices(prices_path, required_symbols)
     score_history, selection_history = build_factor_history(
@@ -478,7 +531,7 @@ def run_fundamental_acceleration(
         filename: _sha256_file(output / filename)
         for filename in [*payloads, "decision.json"]
     }
-    manifest_payload = {
+    manifest: dict[str, Any] = {
         "schema_version": "1.0",
         "factor_contract_id": contract["factor_contract_id"],
         "inputs": {
@@ -491,6 +544,6 @@ def run_fundamental_acceleration(
         "score_row_count": len(score_history),
         "selection_row_count": len(selection_history),
     }
-    manifest_payload["manifest_identity_sha256"] = _canonical_hash(manifest_payload)
-    _write_json(output / "evidence_manifest.json", manifest_payload)
+    manifest["manifest_identity_sha256"] = _canonical_hash(manifest)
+    _write_json(output / "evidence_manifest.json", manifest)
     return decision
