@@ -28,6 +28,20 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
+      - name: Prepare persistent state root
+        run: |
+          mkdir -p artifacts/decision_ledger
+          touch artifacts/decision_ledger/.state-root
+      - name: Restore prior Decision Desk state
+        id: state_restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            artifacts/decision_ledger
+            artifacts/factor_registry.db
+          key: daily-us-decision-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            daily-us-decision-state-
       - name: Run latest complete US decision cycle
         id: live_run
         shell: bash
@@ -45,13 +59,14 @@ jobs:
           uv run python scripts/summarize_daily_us_decision_run.py \
             --artifacts-root artifacts \
             --exit-code "${{ steps.live_run.outputs.exit_code || '1' }}" \
+            --state-restored "${{ steps.state_restore.outputs.cache-matched-key != '' }}" \
             --output artifacts/operations/daily_us_decision_summary.md
           cat artifacts/operations/daily_us_decision_summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload diagnostic artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-us-decision-${{ github.run_id }}
+          name: daily-us-decision-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             artifacts/market_snapshots
             artifacts/forward_shadow_runs
@@ -60,6 +75,14 @@ jobs:
             artifacts/operations
           if-no-files-found: warn
           retention-days: 30
+      - name: Save Decision Desk state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            artifacts/decision_ledger
+            artifacts/factor_registry.db
+          key: daily-us-decision-state-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Preserve governed failure status
         if: always()
         shell: bash
