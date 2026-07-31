@@ -1,0 +1,1 @@
+Portfolio construction remains equal by active basket and equal within basket, with no learned weights in the first two steps.
