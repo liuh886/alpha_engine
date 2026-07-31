@@ -41,7 +41,12 @@ def _blockers(coverage: dict[str, Any] | None) -> list[str]:
     return output
 
 
-def build_summary(*, artifacts_root: Path, exit_code: int) -> str:
+def build_summary(
+    *,
+    artifacts_root: Path,
+    exit_code: int,
+    state_restored: bool = False,
+) -> str:
     price_path, price_decision = _load_latest(
         artifacts_root / "market_snapshots", "decision.json"
     )
@@ -87,6 +92,7 @@ def build_summary(*, artifacts_root: Path, exit_code: int) -> str:
         f"# Daily US Decision — {status}",
         "",
         f"- Governed process exit code: `{exit_code}`",
+        f"- Prior Decision Desk state restored: `{str(state_restored).lower()}`",
         "- Mode: `diagnostic_only`",
         "- Trade ready: `false`",
         "- Automatic order routing: `false`",
@@ -142,15 +148,24 @@ def build_summary(*, artifacts_root: Path, exit_code: int) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _parse_bool(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized not in {"true", "false"}:
+        raise argparse.ArgumentTypeError("expected true or false")
+    return normalized == "true"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts-root", type=Path, required=True)
     parser.add_argument("--exit-code", type=int, required=True)
+    parser.add_argument("--state-restored", type=_parse_bool, default=False)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     summary = build_summary(
         artifacts_root=args.artifacts_root.resolve(),
         exit_code=args.exit_code,
+        state_restored=args.state_restored,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(summary, encoding="utf-8")
