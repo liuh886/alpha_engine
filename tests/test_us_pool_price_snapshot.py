@@ -55,10 +55,19 @@ class FakeUsBarsAdapter:
         basket = self.basket_by_canonical.get(canonical, "reference")
         baskets = sorted(set(self.basket_by_canonical.values()))
         basket_index = baskets.index(basket) if basket in baskets else len(baskets)
-        slope = [0.0009, 0.00035, 0.00065, 0.00045, 0.00075, 0.00030, 0.00055][
-            basket_index
+        slopes = [
+            0.0009,
+            0.00035,
+            0.00065,
+            0.00045,
+            0.00075,
+            0.00030,
+            0.00055,
+            0.00050,
         ]
-        shock = [0.022, 0.0, 0.014, 0.006, 0.018, 0.010, 0.004][basket_index]
+        shocks = [0.022, 0.0, 0.014, 0.006, 0.018, 0.010, 0.004, 0.002]
+        slope = slopes[basket_index]
+        shock = shocks[basket_index]
         phase = symbol_index * 0.73
         rows = []
         previous_close = 50.0 + symbol_index * 2.0
