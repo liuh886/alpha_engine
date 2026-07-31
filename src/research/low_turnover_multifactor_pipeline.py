@@ -125,7 +125,7 @@ def run_low_turnover_multifactor_pipeline(
     relationship_manifest_hash, relationship_manifest_identity = (
         _verify_relationship_manifest(relationship_path)
     )
-    decision = run_low_turnover_multifactor(
+    run_low_turnover_multifactor(
         contract_path=resolved_contract,
         fundamental_scores_path=fundamental_scores_path,
         basket_scores_path=basket_scores_path,
