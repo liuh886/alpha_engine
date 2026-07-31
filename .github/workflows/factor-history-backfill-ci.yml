@@ -1,0 +1,51 @@
+name: Factor History Backfill CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
+      - "src/research/factor_history_backfill.py"
+      - "scripts/backfill_factor_history_batch1.py"
+      - "tests/test_factor_history_backfill.py"
+      - ".github/workflows/factor-history-backfill-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
+      - "src/research/factor_history_backfill.py"
+      - "scripts/backfill_factor_history_batch1.py"
+      - "tests/test_factor_history_backfill.py"
+      - ".github/workflows/factor-history-backfill-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  historical-backfill-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff focused files
+        run: >-
+          uv run ruff check
+          src/research/factor_history_backfill.py
+          scripts/backfill_factor_history_batch1.py
+          tests/test_factor_history_backfill.py
+      - name: Run historical backfill tests
+        run: >-
+          uv run pytest
+          tests/test_factor_history_backfill.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Backfill CLI import check
+        run: uv run python scripts/backfill_factor_history_batch1.py --help
