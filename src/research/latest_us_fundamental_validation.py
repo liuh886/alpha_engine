@@ -67,7 +67,7 @@ def run_latest_us_fundamental_validation(
     run_root = output / as_of
     sec_dir = run_root / "sec_companyfacts"
     sec_decision = build_sec_companyfacts_fundamentals(
-        contract_path="configs/factors/us_sec_companyfacts_fundamentals_v1.yaml",
+        contract_path="configs/providers/sec_companyfacts_fundamentals_v1.yaml",
         output_dir=sec_dir,
         client=sec_client,
     )
