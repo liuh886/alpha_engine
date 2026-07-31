@@ -4,16 +4,25 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping
+
+import yaml
 
 from src.data.us_pool_price_snapshot import DailyBarsAdapter, build_us_pool_price_snapshot
 from src.research.minimal_fundamental_validation import run_minimal_fundamental_validation
 from src.research.sec_companyfacts_fundamentals import (
     SecClientProtocol,
+    SecHttpClient,
     build_sec_companyfacts_fundamentals,
 )
+
+SEC_CONTRACT = Path("configs/providers/sec_companyfacts_fundamentals_v1.yaml")
+CIK_MAPPING = Path("configs/providers/us_small_pool_sec_cik_v1.yaml")
+POOL = Path("configs/pools/us_small_pool_v1.yaml")
+VALIDATION_CONTRACT = Path("configs/factors/us_fundamental_acceleration_v1.yaml")
 
 
 def _sha(path: Path) -> str:
@@ -37,6 +46,85 @@ def _write_immutable(path: Path, payload: Mapping[str, Any]) -> None:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(content)
+
+
+def load_frozen_cik_mapping(
+    *,
+    mapping_path: str | Path = CIK_MAPPING,
+    pool_path: str | Path = POOL,
+) -> dict[str, str]:
+    """Load an exact, versioned mapping for the frozen pool candidates."""
+
+    mapping_file = Path(mapping_path).resolve()
+    pool_file = Path(pool_path).resolve()
+    payload = yaml.safe_load(mapping_file.read_text(encoding="utf-8"))
+    pool = yaml.safe_load(pool_file.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or payload.get("status") != "frozen_source_identity":
+        raise ValueError("SEC CIK mapping is not frozen")
+    if not isinstance(pool, dict) or payload.get("pool_id") != pool.get("pool_id"):
+        raise ValueError("SEC CIK mapping pool identity mismatch")
+    raw = payload.get("symbols")
+    if not isinstance(raw, dict):
+        raise ValueError("SEC CIK mapping must contain symbols")
+    expected = {
+        str(symbol).upper()
+        for basket in pool.get("baskets", {}).values()
+        for symbol in basket.get("symbols", [])
+    }
+    observed = {str(symbol).upper() for symbol in raw}
+    if observed != expected:
+        missing = sorted(expected - observed)
+        extra = sorted(observed - expected)
+        raise ValueError(f"SEC CIK mapping coverage mismatch: missing={missing}, extra={extra}")
+    mapping: dict[str, str] = {}
+    for symbol, raw_cik in raw.items():
+        cik = str(raw_cik).strip()
+        if len(cik) != 10 or not cik.isdigit():
+            raise ValueError(f"invalid frozen CIK for {symbol}: {raw_cik}")
+        mapping[str(symbol).upper()] = cik
+    if len(set(mapping.values())) != len(mapping):
+        raise ValueError("frozen SEC CIK mapping contains duplicate CIK identities")
+    return dict(sorted(mapping.items()))
+
+
+class FrozenPoolSecClient:
+    """Serve frozen ticker identities locally and official Company Facts remotely."""
+
+    def __init__(self, *, delegate: SecHttpClient, mapping: Mapping[str, str]) -> None:
+        self.delegate = delegate
+        self.mapping = dict(mapping)
+
+    def ticker_mapping(self) -> Mapping[str, Any]:
+        return {
+            str(index): {
+                "ticker": symbol,
+                "cik_str": int(cik),
+                "title": symbol,
+            }
+            for index, (symbol, cik) in enumerate(sorted(self.mapping.items()))
+        }
+
+    def companyfacts(self, cik10: str) -> Mapping[str, Any]:
+        return self.delegate.companyfacts(cik10)
+
+
+def _default_sec_client() -> FrozenPoolSecClient | None:
+    """Build the live client without calling the SEC bulk ticker endpoint."""
+
+    contract = yaml.safe_load(SEC_CONTRACT.read_text(encoding="utf-8"))
+    user_agent_env = str(contract["http"]["user_agent_env"])
+    user_agent = os.environ.get(user_agent_env, "").strip()
+    if not user_agent:
+        return None
+    http = contract["http"]
+    delegate = SecHttpClient(
+        user_agent=user_agent,
+        ticker_mapping_url=str(http["ticker_mapping_url"]),
+        companyfacts_url_template=str(http["companyfacts_url_template"]),
+        minimum_interval_seconds=float(http["minimum_request_interval_seconds"]),
+        timeout_seconds=int(http["timeout_seconds"]),
+    )
+    return FrozenPoolSecClient(delegate=delegate, mapping=load_frozen_cik_mapping())
 
 
 def run_latest_us_fundamental_validation(
@@ -66,10 +154,11 @@ def run_latest_us_fundamental_validation(
     prices_path = Path(str(snapshot["prices_csv"])).resolve()
     run_root = output / as_of
     sec_dir = run_root / "sec_companyfacts"
+    effective_client = sec_client or _default_sec_client()
     sec_decision = build_sec_companyfacts_fundamentals(
-        contract_path="configs/providers/sec_companyfacts_fundamentals_v1.yaml",
+        contract_path=SEC_CONTRACT,
         output_dir=sec_dir,
-        client=sec_client,
+        client=effective_client,
     )
     candidate_count = int(sec_decision.get("candidate_count", 0))
     ready_count = int(sec_decision.get("factor_ready_count", 0))
@@ -90,7 +179,7 @@ def run_latest_us_fundamental_validation(
     fundamentals_path = sec_dir / "fundamentals.csv"
     validation_dir = run_root / "validation"
     decision = run_minimal_fundamental_validation(
-        contract_path="configs/factors/us_fundamental_acceleration_v1.yaml",
+        contract_path=VALIDATION_CONTRACT,
         fundamentals_csv=fundamentals_path,
         prices_csv=prices_path,
         output_dir=validation_dir,
@@ -108,9 +197,8 @@ def run_latest_us_fundamental_validation(
             "prices_sha256": _sha(prices_path),
             "fundamentals_sha256": _sha(fundamentals_path),
             "sec_manifest_sha256": _sha(sec_dir / "evidence_manifest.json"),
-            "validation_contract_sha256": _sha(
-                Path("configs/factors/us_fundamental_acceleration_v1.yaml").resolve()
-            ),
+            "frozen_cik_mapping_sha256": _sha(CIK_MAPPING.resolve()),
+            "validation_contract_sha256": _sha(VALIDATION_CONTRACT.resolve()),
         },
         "outputs": {
             "validation_decision": decision["decision"],
