@@ -1,5 +1,6 @@
 schema_version: "1.0"
 combination_id: "us_low_turnover_multifactor_v1"
+combination_version: "1.0.0"
 status: "frozen_pre_evaluation"
 market: "us"
 pool_spec: "configs/pools/us_small_pool_v1.yaml"
