@@ -6,6 +6,7 @@ on:
     paths:
       - "configs/factors/us_low_turnover_multifactor_v1.yaml"
       - "src/research/low_turnover_multifactor.py"
+      - "src/research/low_turnover_multifactor_pipeline.py"
       - "scripts/build_low_turnover_multifactor.py"
       - "tests/test_low_turnover_multifactor.py"
       - ".github/workflows/low-turnover-multifactor-ci.yml"
@@ -14,6 +15,7 @@ on:
     paths:
       - "configs/factors/us_low_turnover_multifactor_v1.yaml"
       - "src/research/low_turnover_multifactor.py"
+      - "src/research/low_turnover_multifactor_pipeline.py"
       - "scripts/build_low_turnover_multifactor.py"
       - "tests/test_low_turnover_multifactor.py"
       - ".github/workflows/low-turnover-multifactor-ci.yml"
@@ -37,7 +39,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
       - name: Ruff focused files
-        run: uv run ruff check src/research/low_turnover_multifactor.py scripts/build_low_turnover_multifactor.py tests/test_low_turnover_multifactor.py
+        run: uv run ruff check src/research/low_turnover_multifactor.py src/research/low_turnover_multifactor_pipeline.py scripts/build_low_turnover_multifactor.py tests/test_low_turnover_multifactor.py
       - name: Run multifactor tests
         run: uv run pytest tests/test_low_turnover_multifactor.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: CLI import check
