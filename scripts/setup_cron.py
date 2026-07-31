@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import platform
 import sys
 from pathlib import Path
@@ -79,8 +78,8 @@ if not defined SEC_USER_AGENT (
   echo SEC_USER_AGENT is required for SEC Company Facts access.
   exit /b 2
 )
-if not exist artifacts\logs mkdir artifacts\logs
-"{python_exe}" scripts\run_latest_us_low_turnover_decision.py >> artifacts\logs\daily_us_decision.log 2>&1
+if not exist artifacts/logs mkdir artifacts/logs
+"{python_exe}" scripts/run_latest_us_low_turnover_decision.py >> artifacts/logs/daily_us_decision.log 2>&1
 exit /b %ERRORLEVEL%
 """
 
@@ -92,9 +91,9 @@ def setup_windows_task() -> str:
     python_exe = Path(sys.executable).resolve()
     weekly_batch = f"""@echo off
 cd /d "{project_root}"
-"{python_exe}" scripts\weekly_research.py --market us
-"{python_exe}" scripts\check_factor_decay.py --update-metadata
-"{python_exe}" scripts\generate_weekly_report.py
+"{python_exe}" scripts/weekly_research.py --market us
+"{python_exe}" scripts/check_factor_decay.py --update-metadata
+"{python_exe}" scripts/generate_weekly_report.py
 """
     weekly_path = project_root / "scripts" / "run_weekly.bat"
     weekly_path.write_text(weekly_batch, encoding="utf-8")
