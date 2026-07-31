@@ -1,0 +1,57 @@
+schema_version: "1.0"
+contract_id: "prospective_shadow_cutover_v1"
+status: "active_forward_shadow"
+effective_as_of_date: "2026-07-31"
+first_actionable_session: "2026-08-03"
+
+truth_boundary:
+  research_only: true
+  diagnostic_only: true
+  trade_ready: false
+  automatic_order_routing: false
+  personalized_trade_instruction: false
+
+markets:
+  us:
+    enabled: true
+    benchmark: "QQQ"
+    pool_id: "us_small_pool_v1"
+    rotation_spec: "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v2.yaml"
+  cn:
+    enabled: false
+    benchmark: "000300.SH"
+    pool_id: "cn_small_pool_v1"
+    rotation_spec: "configs/research_paradigms/cn_small_pool_sector_rotation_v1.yaml"
+    blocked_by: "Issue #223 live point-in-time provider completion"
+
+reserved_evidence_disposition:
+  previous_plan:
+    start: "2026-07-01"
+    end: "2026-12-31"
+    role: "independent_reserved_for_existing_strategy_families"
+  new_classification: "observed_bootstrap_and_prospective_shadow_context"
+  repurposed_for_forward_shadow_use: true
+  independent_validation_claim_prohibited_for_existing_families: true
+  retrospective_performance_selection_prohibited: true
+  reason: "Current practical shadow use requires reading July 2026 prices; the platform must not retain a contradictory untouched-evidence claim."
+
+future_multifactor_validation:
+  issue: 229
+  requires_new_reserved_window_after_factor_and_portfolio_freeze: true
+  current_cutover_does_not_validate_multifactor_candidate: true
+
+run_contract:
+  current_prices_must_end_on_or_before_as_of_date: true
+  current_prices_must_include_as_of_date: true
+  provider_or_source_manifest_required: false
+  user_supplied_prices_allowed_for_diagnostic_shadow: true
+  input_hashes_required: true
+  same_date_changed_inputs_fail_closed: true
+  hierarchical_engine_authoritative_mode: false
+  performance_evaluation_allowed: false
+  annual_turnover_budget: 4.0
+
+acknowledgement:
+  exact_value: "REPURPOSE_2026H2_FOR_PROSPECTIVE_SHADOW_NO_INDEPENDENT_CLAIM"
+  recorded: true
+  source: "User instruction on 2026-07-31 to make the platform operational for practical use"
