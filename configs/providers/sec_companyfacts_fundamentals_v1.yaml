@@ -1,0 +1,71 @@
+schema_version: "1.0"
+source_contract_id: "sec_companyfacts_fundamentals_v1"
+status: "frozen_source_contract"
+market: "us"
+pool_spec: "configs/pools/us_small_pool_v1.yaml"
+
+truth_boundary:
+  research_only: true
+  trade_ready: false
+  performance_evaluated: false
+  pristine_historical_api_vintage_claim: false
+  current_companyfacts_reconstruction: true
+
+http:
+  ticker_mapping_url: "https://www.sec.gov/files/company_tickers.json"
+  companyfacts_url_template: "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik10}.json"
+  user_agent_env: "SEC_USER_AGENT"
+  user_agent_required: true
+  minimum_request_interval_seconds: 0.12
+  timeout_seconds: 60
+
+forms:
+  accepted: ["10-Q", "10-K", "20-F", "6-K"]
+  direct_quarter_preferred: true
+  derive_q4_from_fy_minus_q1_q2_q3: true
+
+concepts:
+  revenue:
+    namespaces:
+      us-gaap:
+        - "RevenueFromContractWithCustomerExcludingAssessedTax"
+        - "Revenues"
+        - "SalesRevenueNet"
+      ifrs-full:
+        - "Revenue"
+  gross_profit:
+    namespaces:
+      us-gaap:
+        - "GrossProfit"
+      ifrs-full:
+        - "GrossProfit"
+
+unit_contract:
+  accepted_currency_units: ["USD", "EUR", "GBP", "CNY", "JPY", "KRW", "TWD"]
+  require_same_unit_for_revenue_and_gross_profit: true
+  require_same_unit_within_derived_quarter: true
+
+output:
+  required_columns:
+    - symbol
+    - fiscal_period_end
+    - filed_date
+    - revenue
+    - gross_profit
+    - currency
+    - form_type
+    - accession_id
+  diagnostic_columns:
+    - cik
+    - fiscal_year
+    - fiscal_period
+    - frame
+    - revenue_concept
+    - gross_profit_concept
+    - derivation
+    - source_url
+
+coverage:
+  minimum_quarters_per_symbol_for_factor: 6
+  missing_gross_profit_is_blocking_for_symbol: true
+  missing_symbol_does_not_block_other_symbols: true
