@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: weekly-us-fundamental-validation
@@ -66,6 +67,41 @@ jobs:
           else
             echo "- No validation artifact was produced." >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Publish first-run result to Issue 225
+        if: always() && github.event_name != 'schedule'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          comment=artifacts/operations/fundamental_issue_comment.md
+          latest=$(find artifacts/evidence/latest_us_fundamental_validation -path '*/validation/decision.json' -type f 2>/dev/null | sort | tail -1)
+          blocked=$(find artifacts/evidence/latest_us_fundamental_validation -name blocked.json -type f 2>/dev/null | sort | tail -1)
+          {
+            echo "### Live fundamental validation run"
+            echo
+            echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- Exit code: \`${{ steps.validation.outputs.exit_code || '1' }}\`"
+            echo "- Mode: \`diagnostic_only\`"
+            echo "- Trade ready: \`false\`"
+            echo
+            if [ -n "$latest" ]; then
+              echo "#### Validation decision"
+              echo '```json'
+              cat "$latest"
+              echo '```'
+            elif [ -n "$blocked" ]; then
+              echo "#### Source blocker"
+              echo '```json'
+              cat "$blocked"
+              echo '```'
+            else
+              echo "#### Run did not reach a decision artifact"
+              echo '```text'
+              tail -30 artifacts/operations/weekly_us_fundamental_validation.log 2>/dev/null || true
+              echo '```'
+            fi
+          } > "$comment"
+          gh issue comment 225 --repo "$GITHUB_REPOSITORY" --body-file "$comment"
       - name: Upload evidence and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -75,7 +111,7 @@ jobs:
             artifacts/evidence/latest_us_fundamental_validation
             artifacts/market_snapshots/us_small_pool_v1
             artifacts/factor_registry.db
-            artifacts/operations/weekly_us_fundamental_validation.log
+            artifacts/operations
           if-no-files-found: warn
           retention-days: 90
       - name: Preserve governed failure status
