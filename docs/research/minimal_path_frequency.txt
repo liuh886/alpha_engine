@@ -1,0 +1,1 @@
+Signal frequency: daily bars. Portfolio evaluation: every 20 benchmark sessions. Intended holding period: at least 40 sessions.
