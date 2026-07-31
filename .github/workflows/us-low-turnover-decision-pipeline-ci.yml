@@ -1,0 +1,49 @@
+name: US Low-Turnover Decision Pipeline CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/decision_support/us_low_turnover_decision_pipeline.py"
+      - "scripts/run_us_low_turnover_decision_pipeline.py"
+      - "tests/test_us_low_turnover_decision_pipeline.py"
+      - ".github/workflows/us-low-turnover-decision-pipeline-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/decision_support/us_low_turnover_decision_pipeline.py"
+      - "scripts/run_us_low_turnover_decision_pipeline.py"
+      - "tests/test_us_low_turnover_decision_pipeline.py"
+      - ".github/workflows/us-low-turnover-decision-pipeline-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  end-to-end-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff focused files
+        run: >-
+          uv run ruff check
+          src/decision_support/us_low_turnover_decision_pipeline.py
+          scripts/run_us_low_turnover_decision_pipeline.py
+          tests/test_us_low_turnover_decision_pipeline.py
+      - name: Run end-to-end pipeline tests
+        run: >-
+          uv run pytest
+          tests/test_us_low_turnover_decision_pipeline.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: CLI import check
+        run: uv run python scripts/run_us_low_turnover_decision_pipeline.py --help
