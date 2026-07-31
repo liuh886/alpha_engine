@@ -7,7 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
-from src.research.cn_live_evidence_sources import build_cn_live_evidence_sources
+from src.research.cn_live_evidence_pipeline import build_cn_live_evidence_sources
 
 DEFAULT_CONTRACT = Path("configs/providers/cn_small_pool_v1_provider_contract.yaml")
 DEFAULT_OUTPUT = Path("artifacts/evidence/cn_small_pool_live_provider")
