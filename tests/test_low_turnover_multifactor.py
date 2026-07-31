@@ -240,7 +240,12 @@ def test_builds_equal_weight_low_turnover_diagnostic_candidate(tmp_path: Path) -
     assert decision["trade_ready"] is False
     assert decision["composite_card_id"]
     registry = FactorKnowledgeRegistry(registry_path)
-    assert registry.get_card_by_key("us_low_turnover_multifactor_v1") is not None
+    composite_cards = [
+        card
+        for card in registry.list_cards()
+        if card["stable_factor_key"] == "us_low_turnover_multifactor_v1"
+    ]
+    assert len(composite_cards) == 1
     portfolio = json.loads(
         (tmp_path / "output" / "portfolio_history.json").read_text(encoding="utf-8")
     )
