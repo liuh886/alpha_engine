@@ -8,6 +8,7 @@ on:
       - "src/research/latest_us_fundamental_validation.py"
       - "src/research/minimal_fundamental_validation.py"
       - "configs/factors/us_fundamental_acceleration_v1.yaml"
+      - "configs/providers/sec_companyfacts_fundamentals_v1.yaml"
       - "configs/providers/us_small_pool_sec_cik_v1.yaml"
   schedule:
     - cron: "45 23 * * 5"
@@ -48,148 +49,6 @@ jobs:
           status=${PIPESTATUS[0]}
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
           exit 0
-      - name: Inspect blocked SEC concept shapes
-        if: always()
-        shell: bash
-        run: |
-          uv run python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          import yaml
-
-          from src.research.latest_us_fundamental_validation import (
-              CompressedSecHttpClient,
-              SEC_CONTRACT,
-          )
-
-          coverage_files = sorted(
-              Path("artifacts/evidence/latest_us_fundamental_validation").glob(
-                  "*/sec_companyfacts/coverage_report.json"
-              )
-          )
-          if not coverage_files:
-              raise SystemExit(0)
-          coverage = json.loads(coverage_files[-1].read_text(encoding="utf-8"))
-          blocked = [
-              row
-              for row in coverage.get("rows", [])
-              if not row.get("factor_ready") and row.get("cik")
-          ]
-          if not blocked:
-              raise SystemExit(0)
-
-          contract = yaml.safe_load(SEC_CONTRACT.read_text(encoding="utf-8"))
-          http = contract["http"]
-          client = CompressedSecHttpClient(
-              user_agent=os.environ["SEC_USER_AGENT"],
-              ticker_mapping_url=str(http["ticker_mapping_url"]),
-              companyfacts_url_template=str(http["companyfacts_url_template"]),
-              minimum_interval_seconds=float(http["minimum_request_interval_seconds"]),
-              timeout_seconds=int(http["timeout_seconds"]),
-          )
-          accepted_forms = {str(value) for value in contract["forms"]["accepted"]}
-          tokens = (
-              "revenue",
-              "sales",
-              "grossprofit",
-              "costofrevenue",
-              "costofgoods",
-              "costofsales",
-          )
-          inventory = {}
-          for blocked_row in blocked:
-              symbol = str(blocked_row["symbol"])
-              cik = str(blocked_row["cik"])
-              try:
-                  payload = client.companyfacts(cik)
-              except Exception as exc:
-                  inventory[symbol] = {
-                      "cik": cik,
-                      "fetch_error": type(exc).__name__,
-                  }
-                  continue
-              relevant = {}
-              for namespace, namespace_facts in payload.get("facts", {}).items():
-                  if namespace not in {"us-gaap", "ifrs-full"}:
-                      continue
-                  if not isinstance(namespace_facts, dict):
-                      continue
-                  for concept_name, concept_payload in namespace_facts.items():
-                      compact_name = str(concept_name).replace("_", "").lower()
-                      if not any(token in compact_name for token in tokens):
-                          continue
-                      if not isinstance(concept_payload, dict):
-                          continue
-                      entries = []
-                      for unit, unit_rows in concept_payload.get("units", {}).items():
-                          if not isinstance(unit_rows, list):
-                              continue
-                          for row in unit_rows:
-                              if not isinstance(row, dict):
-                                  continue
-                              if str(row.get("form", "")) not in accepted_forms:
-                                  continue
-                              start = row.get("start")
-                              end = row.get("end")
-                              duration_days = None
-                              if start and end:
-                                  try:
-                                      duration_days = (
-                                          __import__("datetime").date.fromisoformat(str(end))
-                                          - __import__("datetime").date.fromisoformat(str(start))
-                                      ).days + 1
-                                  except ValueError:
-                                      duration_days = None
-                              entries.append(
-                                  {
-                                      "unit": str(unit),
-                                      "form": str(row.get("form", "")),
-                                      "fp": str(row.get("fp", "")),
-                                      "frame": str(row.get("frame", "")),
-                                      "start": start,
-                                      "end": end,
-                                      "filed": row.get("filed"),
-                                      "duration_days": duration_days,
-                                  }
-                              )
-                      if not entries:
-                          continue
-                      durations = [
-                          row["duration_days"]
-                          for row in entries
-                          if row["duration_days"] is not None
-                      ]
-                      relevant[f"{namespace}:{concept_name}"] = {
-                          "count": len(entries),
-                          "units": sorted({row["unit"] for row in entries}),
-                          "forms": sorted({row["form"] for row in entries}),
-                          "fps": sorted({row["fp"] for row in entries}),
-                          "frames": sorted(
-                              {row["frame"] for row in entries if row["frame"]}
-                          )[:20],
-                          "duration_days_min": min(durations) if durations else None,
-                          "duration_days_max": max(durations) if durations else None,
-                          "recent_samples": sorted(
-                              entries,
-                              key=lambda row: str(row.get("filed") or ""),
-                          )[-5:],
-                      }
-              inventory[symbol] = {
-                  "cik": cik,
-                  "entity_name": payload.get("entityName"),
-                  "existing_reason_codes": blocked_row.get("reason_codes", []),
-                  "concepts": relevant,
-              }
-
-          output = Path("artifacts/operations/sec_blocked_concept_inventory.json")
-          output.parent.mkdir(parents=True, exist_ok=True)
-          output.write_text(
-              json.dumps(inventory, ensure_ascii=False, indent=2, sort_keys=True),
-              encoding="utf-8",
-          )
-          PY
       - name: Write run summary
         if: always()
         shell: bash
@@ -199,7 +58,7 @@ jobs:
           echo "- Mode: diagnostic only" >> "$GITHUB_STEP_SUMMARY"
           echo "- Trade ready: false" >> "$GITHUB_STEP_SUMMARY"
           echo "- Exit code: ${{ steps.validation.outputs.exit_code || '1' }}" >> "$GITHUB_STEP_SUMMARY"
-          latest=$(find artifacts/evidence/latest_us_fundamental_validation -name decision.json -type f 2>/dev/null | sort | tail -1)
+          latest=$(find artifacts/evidence/latest_us_fundamental_validation -path '*/validation/decision.json' -type f 2>/dev/null | sort | tail -1)
           blocked=$(find artifacts/evidence/latest_us_fundamental_validation -name blocked.json -type f 2>/dev/null | sort | tail -1)
           if [ -n "$latest" ]; then
             echo "- Validation decision artifact: \`$latest\`" >> "$GITHUB_STEP_SUMMARY"
@@ -210,7 +69,7 @@ jobs:
           else
             echo "- No validation artifact was produced." >> "$GITHUB_STEP_SUMMARY"
           fi
-      - name: Publish first-run result to Issue 225
+      - name: Publish run result to Issue 225
         if: always() && github.event_name != 'schedule'
         shell: bash
         env:
@@ -219,6 +78,7 @@ jobs:
           comment=artifacts/operations/fundamental_issue_comment.md
           latest=$(find artifacts/evidence/latest_us_fundamental_validation -path '*/validation/decision.json' -type f 2>/dev/null | sort | tail -1)
           blocked=$(find artifacts/evidence/latest_us_fundamental_validation -name blocked.json -type f 2>/dev/null | sort | tail -1)
+          applicability=$(find artifacts/evidence/latest_us_fundamental_validation -name factor_applicability.json -type f 2>/dev/null | sort | tail -1)
           {
             echo "### Live fundamental validation run"
             echo
@@ -227,6 +87,13 @@ jobs:
             echo "- Mode: \`diagnostic_only\`"
             echo "- Trade ready: \`false\`"
             echo
+            if [ -n "$applicability" ]; then
+              echo "#### Factor applicability"
+              echo '```json'
+              cat "$applicability"
+              echo '```'
+              echo
+            fi
             if [ -n "$latest" ]; then
               echo "#### Validation decision"
               echo '```json'
