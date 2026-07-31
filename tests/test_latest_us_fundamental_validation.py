@@ -1,18 +1,42 @@
 from __future__ import annotations
 
+import csv
 import gzip
 import json
 from pathlib import Path
 from typing import Any, Mapping
 
 import pytest
+import yaml
 
 import src.research.latest_us_fundamental_validation as live
+
+READY_FIVE_BASKETS = {
+    "ALAB",
+    "AMD",
+    "AAOI",
+    "CRDO",
+    "AAPL",
+    "MSFT",
+    "KO",
+    "WMT",
+    "HIMS",
+    "TSLA",
+}
 
 
 def _write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def _pool_symbols() -> list[str]:
+    pool = yaml.safe_load(live.POOL.read_text(encoding="utf-8"))
+    return sorted(
+        str(symbol)
+        for metadata in pool["baskets"].values()
+        for symbol in metadata["symbols"]
+    )
 
 
 def _patch_snapshot(monkeypatch, tmp_path: Path) -> Path:
@@ -30,6 +54,53 @@ def _patch_snapshot(monkeypatch, tmp_path: Path) -> Path:
 
     monkeypatch.setattr(live, "build_us_pool_price_snapshot", fake_snapshot)
     return prices
+
+
+def _write_source_fixture(output: Path, ready_symbols: set[str]) -> dict[str, Any]:
+    output.mkdir(parents=True, exist_ok=True)
+    columns = [
+        "symbol",
+        "fiscal_period_end",
+        "filed_date",
+        "revenue",
+        "gross_profit",
+        "currency",
+        "form_type",
+        "accession_id",
+    ]
+    with (output / "fundamentals.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=columns)
+        writer.writeheader()
+        for symbol in sorted(ready_symbols):
+            writer.writerow(
+                {
+                    "symbol": symbol,
+                    "fiscal_period_end": "2025-12-31",
+                    "filed_date": "2026-02-01",
+                    "revenue": 100,
+                    "gross_profit": 40,
+                    "currency": "USD",
+                    "form_type": "10-Q",
+                    "accession_id": f"{symbol}-fixture",
+                }
+            )
+    coverage_rows = [
+        {
+            "symbol": symbol,
+            "factor_ready": symbol in ready_symbols,
+            "reason_codes": [] if symbol in ready_symbols else ["INSUFFICIENT_QUARTER_COVERAGE"],
+        }
+        for symbol in _pool_symbols()
+    ]
+    _write_json(output / "coverage_report.json", {"rows": coverage_rows})
+    _write_json(output / "evidence_manifest.json", {"identity": "sec"})
+    return {
+        "decision": "sec_companyfacts_source_ready_with_partial_coverage",
+        "candidate_count": len(_pool_symbols()),
+        "factor_ready_count": len(ready_symbols),
+        "source_run_completed": True,
+        "trade_ready": False,
+    }
 
 
 def test_frozen_cik_mapping_exactly_matches_pool() -> None:
@@ -70,7 +141,43 @@ def test_compressed_sec_client_decodes_gzip(monkeypatch) -> None:
     assert client.companyfacts("0000320193") == expected
 
 
+def test_standardises_quarter_label_and_derives_gross_profit() -> None:
+    contract = yaml.safe_load(live.SEC_CONTRACT.read_text(encoding="utf-8"))
+    common = {
+        "start": "2024-01-01",
+        "end": "2024-03-31",
+        "filed": "2024-05-01",
+        "accn": "fixture",
+        "form": "6-K",
+        "fy": 2024,
+        "fp": None,
+        "frame": "CY2024Q1",
+    }
+    payload = {
+        "facts": {
+            "us-gaap": {
+                "RevenueFromContractWithCustomerExcludingAssessedTax": {
+                    "units": {"USD": [{**common, "val": 100.0}]}
+                },
+                "CostOfRevenue": {"units": {"USD": [{**common, "val": 65.0}]}},
+            }
+        }
+    }
+
+    result = live.standardise_companyfacts(payload, contract=contract)
+    facts = result["facts"]["us-gaap"]
+    revenue = facts["RevenueFromContractWithCustomerExcludingAssessedTax"]["units"]["USD"][0]
+    gross = facts["DerivedGrossProfitFromRevenueMinusCost"]["units"]["USD"][0]
+
+    assert revenue["fp"] == "Q1"
+    assert gross["fp"] == "Q1"
+    assert gross["val"] == pytest.approx(35.0)
+    assert "DerivedGrossProfitFromRevenueMinusCost" not in payload["facts"]["us-gaap"]
+
+
 def test_frozen_client_never_uses_bulk_ticker_endpoint() -> None:
+    contract = yaml.safe_load(live.SEC_CONTRACT.read_text(encoding="utf-8"))
+
     class Delegate:
         def ticker_mapping(self) -> Mapping[str, Any]:
             raise AssertionError("bulk ticker endpoint must not be called")
@@ -79,8 +186,9 @@ def test_frozen_client_never_uses_bulk_ticker_endpoint() -> None:
             return {"cik": cik10, "facts": {}}
 
     client = live.FrozenPoolSecClient(
-        delegate=Delegate(),  # type: ignore[arg-type]
+        delegate=Delegate(),
         mapping={"AAPL": "0000320193", "MSFT": "0000789019"},
+        contract=contract,
     )
 
     ticker_rows = client.ticker_mapping()
@@ -111,26 +219,19 @@ def test_default_client_uses_frozen_mapping(monkeypatch) -> None:
     assert by_symbol["TIGO"] == "0000912958"
 
 
-def test_live_wrapper_binds_source_and_validation(monkeypatch, tmp_path: Path) -> None:
+def test_partial_source_coverage_runs_with_frozen_applicability(
+    monkeypatch, tmp_path: Path
+) -> None:
     prices = _patch_snapshot(monkeypatch, tmp_path)
 
     def fake_sec(**kwargs):
-        output = Path(kwargs["output_dir"])
-        output.mkdir(parents=True, exist_ok=True)
-        (output / "fundamentals.csv").write_text(
-            "symbol,fiscal_period_end,filed_date,revenue,gross_profit,currency,form_type,accession_id\n",
-            encoding="utf-8",
-        )
-        _write_json(output / "evidence_manifest.json", {"identity": "sec"})
-        return {
-            "decision": "sec_companyfacts_source_ready",
-            "candidate_count": 23,
-            "factor_ready_count": 23,
-            "trade_ready": False,
-        }
+        return _write_source_fixture(Path(kwargs["output_dir"]), READY_FIVE_BASKETS)
 
     def fake_validation(**kwargs):
         assert Path(kwargs["prices_csv"]) == prices
+        with Path(kwargs["fundamentals_csv"]).open(encoding="utf-8") as handle:
+            observed = {row["symbol"] for row in csv.DictReader(handle)}
+        assert observed == READY_FIVE_BASKETS
         output = Path(kwargs["output_dir"])
         output.mkdir(parents=True, exist_ok=True)
         _write_json(
@@ -153,30 +254,33 @@ def test_live_wrapper_binds_source_and_validation(monkeypatch, tmp_path: Path) -
     )
 
     assert result["outputs"]["validation_decision"] == "simple_fundamental_factor_not_supported"
-    assert result["source_grade"] == "current_sec_companyfacts_reconstruction_with_filed_dates"
+    assert result["factor_eligible_count"] == 10
+    assert result["active_basket_count"] == 5
+    assert result["pool_membership_unchanged"] is True
     assert result["trade_ready"] is False
-    assert len(result["run_identity_sha256"]) == 64
-    assert len(result["inputs"]["frozen_cik_mapping_sha256"]) == 64
-    manifest = tmp_path / "live" / "2026-07-31" / "latest_run_manifest.json"
-    assert manifest.is_file()
+    applicability = json.loads(
+        (
+            tmp_path
+            / "live"
+            / "2026-07-31"
+            / "sec_companyfacts"
+            / "factor_applicability.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert applicability["membership_unchanged"] is True
+    assert applicability["performance_based_selection"] is False
 
 
-def test_incomplete_sec_coverage_fails_closed(monkeypatch, tmp_path: Path) -> None:
+def test_insufficient_active_baskets_fails_closed(monkeypatch, tmp_path: Path) -> None:
     _patch_snapshot(monkeypatch, tmp_path)
+    four_baskets = READY_FIVE_BASKETS - {"HIMS", "TSLA"}
 
     def fake_sec(**kwargs):
-        output = Path(kwargs["output_dir"])
-        output.mkdir(parents=True, exist_ok=True)
-        return {
-            "decision": "sec_companyfacts_source_ready_with_partial_coverage",
-            "candidate_count": 23,
-            "factor_ready_count": 22,
-            "trade_ready": False,
-        }
+        return _write_source_fixture(Path(kwargs["output_dir"]), four_baskets)
 
     monkeypatch.setattr(live, "build_sec_companyfacts_fundamentals", fake_sec)
 
-    with pytest.raises(ValueError, match="do not cover every frozen candidate"):
+    with pytest.raises(ValueError, match="insufficient active baskets"):
         live.run_latest_us_fundamental_validation(
             output_root=tmp_path / "live",
             snapshot_root=tmp_path / "snapshot",
@@ -186,5 +290,5 @@ def test_incomplete_sec_coverage_fails_closed(monkeypatch, tmp_path: Path) -> No
     blocked = tmp_path / "live" / "2026-07-31" / "blocked.json"
     payload = json.loads(blocked.read_text(encoding="utf-8"))
     assert payload["decision"] == "live_fundamental_validation_blocked"
-    assert payload["factor_ready_count"] == 22
+    assert payload["factor_applicability"]["active_basket_count"] == 4
     assert payload["trade_ready"] is False
