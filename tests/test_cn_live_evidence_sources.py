@@ -21,11 +21,6 @@ CANDIDATES = [
 ]
 
 
-def _canonical(code: str) -> str:
-    exchange, six_digit = code.split(".")
-    return f"{six_digit}.{'SH' if exchange == 'sh' else 'SZ'}"
-
-
 class FakeBaoStock:
     def login(self) -> None:
         return None
@@ -42,7 +37,6 @@ class FakeBaoStock:
         adjustflag: str,
         fields: list[str],
     ) -> pd.DataFrame:
-        symbol = _canonical(code)
         rows = []
         for day, raw_close in [("2026-06-29", 10.0), ("2026-06-30", 11.0)]:
             factor = 0.5 if adjustflag == "2" else 1.0
