@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import copy
 import gzip
 import hashlib
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -14,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping
 
+import pandas as pd
 import yaml
 
 from src.data.us_pool_price_snapshot import DailyBarsAdapter, build_us_pool_price_snapshot
@@ -29,6 +32,7 @@ SEC_CONTRACT = Path("configs/providers/sec_companyfacts_fundamentals_v1.yaml")
 CIK_MAPPING = Path("configs/providers/us_small_pool_sec_cik_v1.yaml")
 POOL = Path("configs/pools/us_small_pool_v1.yaml")
 VALIDATION_CONTRACT = Path("configs/factors/us_fundamental_acceleration_v1.yaml")
+_QUARTER_FRAME = re.compile(r"^CY\d{4}Q([1-4])$")
 
 
 def _sha(path: Path) -> str:
@@ -136,12 +140,126 @@ class CompressedSecHttpClient(SecHttpClient):
         return payload
 
 
-class FrozenPoolSecClient:
-    """Serve frozen ticker identities locally and official Company Facts remotely."""
+def _fact_key(unit: str, entry: Mapping[str, Any]) -> tuple[str, ...] | None:
+    values = (
+        str(unit),
+        str(entry.get("start", "")),
+        str(entry.get("end", "")),
+        str(entry.get("filed", "")),
+        str(entry.get("accn", "")),
+        str(entry.get("form", "")),
+    )
+    return values if all(values) else None
 
-    def __init__(self, *, delegate: SecHttpClient, mapping: Mapping[str, str]) -> None:
+
+def _preferred_facts(
+    namespace_facts: Mapping[str, Any], concepts: list[str]
+) -> dict[tuple[str, ...], tuple[str, dict[str, Any]]]:
+    selected: dict[tuple[str, ...], tuple[str, dict[str, Any]]] = {}
+    for concept in concepts:
+        payload = namespace_facts.get(concept)
+        if not isinstance(payload, dict):
+            continue
+        units = payload.get("units")
+        if not isinstance(units, dict):
+            continue
+        for unit, entries in units.items():
+            if not isinstance(entries, list):
+                continue
+            for raw in entries:
+                if not isinstance(raw, dict):
+                    continue
+                key = _fact_key(str(unit), raw)
+                if key is not None:
+                    selected.setdefault(key, (concept, raw))
+    return selected
+
+
+def _infer_standard_quarter_labels(namespace_facts: Mapping[str, Any]) -> None:
+    for concept_payload in namespace_facts.values():
+        if not isinstance(concept_payload, dict):
+            continue
+        units = concept_payload.get("units")
+        if not isinstance(units, dict):
+            continue
+        for entries in units.values():
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                if str(entry.get("fp", "")) not in {"", "None"}:
+                    continue
+                match = _QUARTER_FRAME.fullmatch(str(entry.get("frame", "")))
+                if match:
+                    entry["fp"] = f"Q{match.group(1)}"
+
+
+def _derive_standard_gross_profit(
+    namespace_facts: dict[str, Any],
+    *,
+    revenue_concepts: list[str],
+    cost_concepts: list[str],
+) -> None:
+    revenue = _preferred_facts(namespace_facts, revenue_concepts)
+    cost = _preferred_facts(namespace_facts, cost_concepts)
+    native = _preferred_facts(namespace_facts, ["GrossProfit"])
+    derived_units: dict[str, list[dict[str, Any]]] = {}
+    for key in sorted(set(revenue) & set(cost) - set(native)):
+        _, revenue_entry = revenue[key]
+        _, cost_entry = cost[key]
+        try:
+            gross_value = float(revenue_entry["val"]) - float(cost_entry["val"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        entry = dict(revenue_entry)
+        entry["val"] = gross_value
+        derived_units.setdefault(key[0], []).append(entry)
+    if derived_units:
+        namespace_facts["DerivedGrossProfitFromRevenueMinusCost"] = {
+            "label": "Derived gross profit from standard revenue and cost facts",
+            "description": "Revenue minus cost of revenue for an identical SEC fact identity",
+            "units": derived_units,
+        }
+
+
+def standardise_companyfacts(
+    payload: Mapping[str, Any], *, contract: Mapping[str, Any]
+) -> Mapping[str, Any]:
+    """Apply only declared standard-taxonomy compatibility rules."""
+
+    output = copy.deepcopy(dict(payload))
+    facts = output.get("facts")
+    if not isinstance(facts, dict):
+        return output
+    revenue_namespaces = contract["concepts"]["revenue"]["namespaces"]
+    cost_namespaces = contract["concepts"]["cost_of_revenue"]["namespaces"]
+    for namespace in sorted(set(revenue_namespaces) | set(cost_namespaces)):
+        namespace_facts = facts.get(namespace)
+        if not isinstance(namespace_facts, dict):
+            continue
+        _infer_standard_quarter_labels(namespace_facts)
+        _derive_standard_gross_profit(
+            namespace_facts,
+            revenue_concepts=[str(value) for value in revenue_namespaces.get(namespace, [])],
+            cost_concepts=[str(value) for value in cost_namespaces.get(namespace, [])],
+        )
+    return output
+
+
+class FrozenPoolSecClient:
+    """Serve frozen ticker identities and standardised official Company Facts."""
+
+    def __init__(
+        self,
+        *,
+        delegate: SecClientProtocol,
+        mapping: Mapping[str, str],
+        contract: Mapping[str, Any],
+    ) -> None:
         self.delegate = delegate
         self.mapping = dict(mapping)
+        self.contract = dict(contract)
 
     def ticker_mapping(self) -> Mapping[str, Any]:
         return {
@@ -154,7 +272,9 @@ class FrozenPoolSecClient:
         }
 
     def companyfacts(self, cik10: str) -> Mapping[str, Any]:
-        return self.delegate.companyfacts(cik10)
+        return standardise_companyfacts(
+            self.delegate.companyfacts(cik10), contract=self.contract
+        )
 
 
 def _default_sec_client() -> FrozenPoolSecClient | None:
@@ -173,7 +293,84 @@ def _default_sec_client() -> FrozenPoolSecClient | None:
         minimum_interval_seconds=float(http["minimum_request_interval_seconds"]),
         timeout_seconds=int(http["timeout_seconds"]),
     )
-    return FrozenPoolSecClient(delegate=delegate, mapping=load_frozen_cik_mapping())
+    return FrozenPoolSecClient(
+        delegate=delegate,
+        mapping=load_frozen_cik_mapping(),
+        contract=contract,
+    )
+
+
+def _build_factor_applicability(sec_dir: Path) -> dict[str, Any]:
+    coverage = json.loads(
+        (sec_dir / "coverage_report.json").read_text(encoding="utf-8")
+    )
+    pool = yaml.safe_load(POOL.read_text(encoding="utf-8"))
+    factor_contract = yaml.safe_load(VALIDATION_CONTRACT.read_text(encoding="utf-8"))
+    policy = factor_contract["applicability"]
+    ready = {
+        str(row["symbol"]).upper()
+        for row in coverage.get("rows", [])
+        if row.get("factor_ready") is True
+    }
+    minimum_per_basket = int(policy["minimum_ready_symbols_per_active_basket"])
+    baskets: dict[str, Any] = {}
+    eligible: set[str] = set()
+    for basket, metadata in pool["baskets"].items():
+        members = [str(symbol).upper() for symbol in metadata["symbols"]]
+        ready_members = sorted(set(members) & ready)
+        active = len(ready_members) >= minimum_per_basket
+        if active:
+            eligible.update(ready_members)
+        baskets[str(basket)] = {
+            "members": members,
+            "factor_ready_symbols": ready_members,
+            "active_for_factor": active,
+            "reason": None if active else "INSUFFICIENT_FACTOR_READY_PEERS",
+        }
+    active_baskets = sorted(
+        basket for basket, row in baskets.items() if row["active_for_factor"]
+    )
+    minimum_active = int(policy["minimum_active_baskets"])
+    all_members = {
+        str(symbol).upper()
+        for metadata in pool["baskets"].values()
+        for symbol in metadata["symbols"]
+    }
+    result = {
+        "schema_version": "1.0",
+        "decision": (
+            "fundamental_factor_applicability_ready"
+            if len(active_baskets) >= minimum_active
+            else "fundamental_factor_applicability_blocked"
+        ),
+        "research_only": True,
+        "trade_ready": False,
+        "membership_unchanged": True,
+        "performance_based_selection": False,
+        "source_factor_ready_symbols": sorted(ready),
+        "factor_eligible_symbols": sorted(eligible),
+        "factor_not_applicable_symbols": sorted(all_members - eligible),
+        "active_baskets": active_baskets,
+        "active_basket_count": len(active_baskets),
+        "minimum_active_baskets": minimum_active,
+        "minimum_ready_symbols_per_active_basket": minimum_per_basket,
+        "baskets": baskets,
+    }
+    _write_immutable(sec_dir / "factor_applicability.json", result)
+    return result
+
+
+def _write_factor_eligible_fundamentals(
+    sec_dir: Path, eligible_symbols: set[str]
+) -> Path:
+    source = pd.read_csv(sec_dir / "fundamentals.csv", dtype={"symbol": "string"})
+    source["symbol"] = source["symbol"].astype(str).str.upper()
+    eligible = source[source["symbol"].isin(eligible_symbols)].copy()
+    if eligible.empty:
+        raise ValueError("factor applicability produced no eligible fundamentals")
+    path = sec_dir / "factor_eligible_fundamentals.csv"
+    eligible.to_csv(path, index=False)
+    return path
 
 
 def run_latest_us_fundamental_validation(
@@ -211,7 +408,8 @@ def run_latest_us_fundamental_validation(
     )
     candidate_count = int(sec_decision.get("candidate_count", 0))
     ready_count = int(sec_decision.get("factor_ready_count", 0))
-    if candidate_count <= 0 or ready_count != candidate_count:
+    source_completed = sec_decision.get("source_run_completed") is True
+    if candidate_count <= 0 or not source_completed:
         blocker = {
             "schema_version": "1.0",
             "decision": "live_fundamental_validation_blocked",
@@ -223,9 +421,26 @@ def run_latest_us_fundamental_validation(
             "sec_decision": sec_decision,
         }
         _write_immutable(run_root / "blocked.json", blocker)
-        raise ValueError("SEC fundamentals do not cover every frozen candidate")
+        raise ValueError("SEC fundamentals source did not complete")
 
-    fundamentals_path = sec_dir / "fundamentals.csv"
+    applicability = _build_factor_applicability(sec_dir)
+    if applicability["decision"] != "fundamental_factor_applicability_ready":
+        blocker = {
+            "schema_version": "1.0",
+            "decision": "live_fundamental_validation_blocked",
+            "as_of_date": as_of,
+            "research_only": True,
+            "trade_ready": False,
+            "candidate_count": candidate_count,
+            "factor_ready_count": ready_count,
+            "sec_decision": sec_decision,
+            "factor_applicability": applicability,
+        }
+        _write_immutable(run_root / "blocked.json", blocker)
+        raise ValueError("insufficient active baskets for the fundamental factor")
+
+    eligible_symbols = set(applicability["factor_eligible_symbols"])
+    fundamentals_path = _write_factor_eligible_fundamentals(sec_dir, eligible_symbols)
     validation_dir = run_root / "validation"
     decision = run_minimal_fundamental_validation(
         contract_path=VALIDATION_CONTRACT,
@@ -242,9 +457,14 @@ def run_latest_us_fundamental_validation(
         "diagnostic_only": True,
         "trade_ready": False,
         "source_grade": "current_sec_companyfacts_reconstruction_with_filed_dates",
+        "pool_membership_unchanged": True,
+        "factor_eligible_count": len(eligible_symbols),
+        "active_basket_count": applicability["active_basket_count"],
         "inputs": {
             "prices_sha256": _sha(prices_path),
-            "fundamentals_sha256": _sha(fundamentals_path),
+            "raw_fundamentals_sha256": _sha(sec_dir / "fundamentals.csv"),
+            "factor_eligible_fundamentals_sha256": _sha(fundamentals_path),
+            "factor_applicability_sha256": _sha(sec_dir / "factor_applicability.json"),
             "sec_manifest_sha256": _sha(sec_dir / "evidence_manifest.json"),
             "frozen_cik_mapping_sha256": _sha(CIK_MAPPING.resolve()),
             "validation_contract_sha256": _sha(VALIDATION_CONTRACT.resolve()),
