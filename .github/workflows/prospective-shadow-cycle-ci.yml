@@ -1,0 +1,53 @@
+name: Prospective Shadow Cycle CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "configs/operations/prospective_shadow_cutover_v1.yaml"
+      - "src/decision_support/prospective_shadow_cycle.py"
+      - "scripts/run_prospective_shadow_cycle.py"
+      - "tests/test_prospective_shadow_cycle.py"
+      - "docs/operations/prospective_shadow_runbook.md"
+      - ".github/workflows/prospective-shadow-cycle-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "configs/operations/prospective_shadow_cutover_v1.yaml"
+      - "src/decision_support/prospective_shadow_cycle.py"
+      - "scripts/run_prospective_shadow_cycle.py"
+      - "tests/test_prospective_shadow_cycle.py"
+      - "docs/operations/prospective_shadow_runbook.md"
+      - ".github/workflows/prospective-shadow-cycle-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prospective-shadow-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff focused files
+        run: >-
+          uv run ruff check
+          src/decision_support/prospective_shadow_cycle.py
+          scripts/run_prospective_shadow_cycle.py
+          tests/test_prospective_shadow_cycle.py
+      - name: Run prospective shadow tests
+        run: >-
+          uv run pytest
+          tests/test_prospective_shadow_cycle.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Prospective runner CLI import check
+        run: uv run python scripts/run_prospective_shadow_cycle.py --help
