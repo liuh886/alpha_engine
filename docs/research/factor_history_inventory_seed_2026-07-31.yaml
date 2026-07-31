@@ -1,0 +1,100 @@
+schema_version: "1.0"
+status: "seed_requires_backfill"
+truth_boundary:
+  research_only: true
+  trade_ready: false
+  reserved_performance_opened: false
+
+factor_families:
+  legacy_factor_scan:
+    current_status: legacy_unverified
+    examples:
+      - mom_5d
+      - mom_10d
+      - sharpe_20
+      - corr_cv_20
+      - mean_reversion_ma_dev_5
+    lesson: "Legacy registry promotion predates current PIT, economic, turnover, and evidence-identity contracts. Preserve but do not treat as current support."
+
+  benchmark_residual_trend:
+    current_status: rejected
+    examples:
+      - qqq_residual_trend_quality_126_skip10
+    lesson: "Improved selected-tail diagnostics but failed stable benchmark-relative economics in both US and CN evidence."
+
+  technical_indicators:
+    current_status: rejected_or_market_specific_clue
+    examples:
+      - bollinger_reversion_z20
+      - macd_histogram_12_26_9
+      - rsi_strength_10
+      - close_location_pressure_10
+    lesson: "No factor was cross-market supported; CN RSI remained only a market-specific clue under static membership."
+
+  tree_ohlcv_rankers:
+    current_status: retired
+    examples:
+      - lightgbm_lambdarank_ohlcv
+      - xgboost_rank_ndcg_ohlcv
+    lesson: "Strong static-universe results collapsed under PIT Nasdaq-100 membership; opportunity-set validity dominated model-family differences."
+
+  basket_cross_section:
+    current_status: market_specific_clue
+    examples:
+      - basket_relative_momentum_63
+      - basket_momentum_20
+      - basket_breadth_above_sma50
+      - basket_drawdown_from_63d_high
+    lesson: "Basket ranking added positive counterfactual return in the frozen US hierarchical experiment, but the full strategy failed risk, turnover, and concentration gates."
+
+  security_cross_section:
+    current_status: rejected_in_current_combination
+    examples:
+      - security_relative_momentum_63
+      - security_momentum_20
+      - security_drawdown_from_63d_high
+      - security_realized_volatility_20
+    lesson: "Within-basket ranking reduced return in the current US hierarchical combination and requires separate factor-level evidence before reuse."
+
+  time_series_state:
+    current_status: economically_interesting_but_unusable_turnover
+    examples:
+      - trend_breakout_state_machine
+      - atr_trailing_state_overlay
+      - qqq_market_regime_gate
+    lesson: "Standalone state timing showed strong gross economics but excessive annual turnover; market and state overlays weakened the full hierarchical result."
+
+  fundamental_acceleration:
+    current_status: proposed
+    examples:
+      - revenue_growth_acceleration
+      - gross_margin_yoy_change
+    lesson: "Tracked in Issue #225 as the first new-standard point-in-time, low-turnover factor card."
+
+required_backfill_fields:
+  - factor_id
+  - factor_version
+  - canonical_definition
+  - economic_thesis
+  - information_family
+  - market
+  - universe_version
+  - provider_identity
+  - availability_lag
+  - benchmark
+  - horizon
+  - cost_contract
+  - evidence_windows
+  - evidence_manifest
+  - ic_metrics
+  - economic_metrics
+  - turnover_metrics
+  - risk_metrics
+  - regime_behavior
+  - basket_behavior
+  - correlation_and_overlap
+  - marginal_contribution
+  - decision_status
+  - failed_gates
+  - failure_class
+  - lessons_learned
