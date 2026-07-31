@@ -1,0 +1,35 @@
+schema_version: "1.0"
+path_id: "minimal_daily_model_path_v1"
+market_frequency: "daily"
+decision_frequency: "every_20_sessions"
+truth_boundary:
+  research_only: true
+  trade_ready: false
+  automatic_order_routing: false
+
+pull_requests:
+  - sequence: 1
+    objective: "validate the frozen fundamental-acceleration candidate"
+    issue: 225
+    status: "in_progress"
+    output_decisions:
+      - "simple_fundamental_factor_not_supported"
+      - "simple_fundamental_factor_independent_validation_required"
+  - sequence: 2
+    objective: "validate one equal-weight low-turnover multifactor combination"
+    issue: 229
+    status: "blocked_by_pr_1"
+    maximum_factors: 4
+    weighting: "equal"
+  - sequence: 3
+    objective: "test one Ridge linear challenger against the supported simple baseline"
+    status: "blocked_by_pr_2"
+    model_family: "ridge"
+    parameter_search: false
+
+stop_rules:
+  no_tree_model_before_simple_baseline: true
+  no_intraday_data: true
+  no_high_frequency_logic: true
+  no_parameter_grid: true
+  no_per_symbol_formula: true
