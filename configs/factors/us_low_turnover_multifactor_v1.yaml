@@ -1,0 +1,87 @@
+schema_version: "1.0"
+combination_id: "us_low_turnover_multifactor_v1"
+combination_version: "1.0.0"
+status: "frozen_pre_evaluation"
+market: "us"
+pool_spec: "configs/pools/us_small_pool_v1.yaml"
+benchmark: "QQQ"
+
+truth_boundary:
+  research_only: true
+  diagnostic_only_until_independent_validation: true
+  trade_ready: false
+  performance_evaluated: false
+  independent_validation_completed: false
+
+factors:
+  - stable_factor_key: "revenue_growth_acceleration"
+    information_family: "growth"
+    source: "fundamental_scores"
+    scope: "security"
+    weight: 0.25
+  - stable_factor_key: "gross_margin_yoy_change"
+    information_family: "quality"
+    source: "fundamental_scores"
+    scope: "security"
+    weight: 0.25
+  - stable_factor_key: "basket_relative_momentum_63"
+    information_family: "price_trend"
+    source: "basket_scores"
+    scope: "basket"
+    source_percentile_field: "median_relative_momentum_63_vs_benchmark_percentile"
+    weight: 0.25
+  - stable_factor_key: "basket_drawdown_from_63d_high"
+    information_family: "risk"
+    source: "basket_scores"
+    scope: "basket"
+    source_percentile_field: "median_drawdown_from_63d_high_percentile"
+    weight: 0.25
+
+selection_contract:
+  maximum_primary_factors: 4
+  minimum_information_families: 3
+  maximum_one_factor_per_redundancy_cluster: true
+  require_all_factor_scores: true
+  require_registered_factor_cards: true
+  require_relationship_map: true
+  equal_weight_only: true
+  learned_weights_allowed: false
+  admissible_card_statuses:
+    - "candidate"
+    - "market_specific_clue"
+    - "independent_validation_required"
+    - "data_blocked"
+  data_blocked_cards_keep_output_diagnostic: true
+
+portfolio:
+  evaluation_interval_sessions: 20
+  minimum_holding_sessions: 40
+  entry_top_fraction: 0.30
+  retention_min_percentile: 0.40
+  maximum_replacements_per_basket_per_evaluation: 1
+  maximum_holdings_per_basket: 2
+  weighting: "equal_by_basket_then_equal_within_basket"
+  annual_turnover_ceiling: 4.0
+  average_holding_sessions_floor: 40
+  transaction_cost_bps_per_one_way_turnover: 10.0
+
+relationship_gate:
+  relationship_contract_id: "factor_relationship_map_v1"
+  reject_shared_nonempty_redundancy_cluster: true
+  reject_missing_factor_relationship_identity: true
+  minimum_pair_coverage_ratio: 1.0
+
+windows:
+  development_start: "2021-01-01"
+  development_end: "2025-12-31"
+  falsification_start: "2026-01-01"
+  falsification_end: "2026-06-30"
+  future_independent_window: "must_be_declared_after_observed_evaluation_and_candidate_freeze"
+
+stop_rules:
+  factor_substitution_after_observation: false
+  weight_search_after_observation: false
+  threshold_search_after_observation: false
+  rebalance_frequency_search_after_observation: false
+  holding_period_search_after_observation: false
+  pool_or_basket_change_after_observation: false
