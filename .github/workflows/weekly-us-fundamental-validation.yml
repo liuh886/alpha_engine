@@ -8,6 +8,7 @@ on:
       - "src/research/latest_us_fundamental_validation.py"
       - "src/research/minimal_fundamental_validation.py"
       - "configs/factors/us_fundamental_acceleration_v1.yaml"
+      - "configs/providers/us_small_pool_sec_cik_v1.yaml"
   schedule:
     - cron: "45 23 * * 5"
   workflow_dispatch:
