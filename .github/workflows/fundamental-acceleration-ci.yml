@@ -1,27 +1,43 @@
-name: Fundamental Acceleration CI
+name: US Fundamental Path CI
 
 on:
   push:
     branches: [main]
     paths:
       - "configs/factors/us_fundamental_acceleration_v1.yaml"
+      - "configs/providers/sec_companyfacts_fundamentals_v1.yaml"
+      - "configs/providers/us_small_pool_sec_cik_v1.yaml"
       - "src/research/fundamental_acceleration.py"
       - "src/research/minimal_fundamental_validation.py"
+      - "src/research/sec_companyfacts_fundamentals.py"
+      - "src/research/latest_us_fundamental_validation.py"
       - "scripts/build_fundamental_acceleration_scores.py"
       - "scripts/run_minimal_fundamental_validation.py"
+      - "scripts/build_sec_companyfacts_fundamentals.py"
+      - "scripts/run_latest_us_fundamental_validation.py"
       - "tests/test_fundamental_acceleration.py"
       - "tests/test_minimal_fundamental_validation.py"
+      - "tests/test_sec_companyfacts_fundamentals.py"
+      - "tests/test_latest_us_fundamental_validation.py"
       - ".github/workflows/fundamental-acceleration-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "configs/factors/us_fundamental_acceleration_v1.yaml"
+      - "configs/providers/sec_companyfacts_fundamentals_v1.yaml"
+      - "configs/providers/us_small_pool_sec_cik_v1.yaml"
       - "src/research/fundamental_acceleration.py"
       - "src/research/minimal_fundamental_validation.py"
+      - "src/research/sec_companyfacts_fundamentals.py"
+      - "src/research/latest_us_fundamental_validation.py"
       - "scripts/build_fundamental_acceleration_scores.py"
       - "scripts/run_minimal_fundamental_validation.py"
+      - "scripts/build_sec_companyfacts_fundamentals.py"
+      - "scripts/run_latest_us_fundamental_validation.py"
       - "tests/test_fundamental_acceleration.py"
       - "tests/test_minimal_fundamental_validation.py"
+      - "tests/test_sec_companyfacts_fundamentals.py"
+      - "tests/test_latest_us_fundamental_validation.py"
       - ".github/workflows/fundamental-acceleration-ci.yml"
   workflow_dispatch:
 
@@ -29,7 +45,7 @@ permissions:
   contents: read
 
 jobs:
-  factor-contract:
+  fundamental-path:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -42,22 +58,32 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Ruff focused files
+      - name: Ruff focused path
         run: >-
           uv run ruff check
           src/research/fundamental_acceleration.py
           src/research/minimal_fundamental_validation.py
+          src/research/sec_companyfacts_fundamentals.py
+          src/research/latest_us_fundamental_validation.py
           scripts/build_fundamental_acceleration_scores.py
           scripts/run_minimal_fundamental_validation.py
+          scripts/build_sec_companyfacts_fundamentals.py
+          scripts/run_latest_us_fundamental_validation.py
           tests/test_fundamental_acceleration.py
           tests/test_minimal_fundamental_validation.py
-      - name: Run factor tests
+          tests/test_sec_companyfacts_fundamentals.py
+          tests/test_latest_us_fundamental_validation.py
+      - name: Run fundamental path tests
         run: >-
           uv run pytest
           tests/test_fundamental_acceleration.py
           tests/test_minimal_fundamental_validation.py
+          tests/test_sec_companyfacts_fundamentals.py
+          tests/test_latest_us_fundamental_validation.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: CLI import checks
         run: |
           uv run python scripts/build_fundamental_acceleration_scores.py --help
           uv run python scripts/run_minimal_fundamental_validation.py --help
+          uv run python scripts/build_sec_companyfacts_fundamentals.py --help
+          uv run python scripts/run_latest_us_fundamental_validation.py --help
