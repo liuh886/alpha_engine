@@ -106,7 +106,6 @@ def list_research_runs(
             with open(f) as fh:
                 run_data = json.load(fh)
 
-            # Apply filters
             if market and run_data.get("market") != market:
                 continue
             if status and run_data.get("status") != status:
@@ -199,3 +198,8 @@ def get_research_run_steps(run_id: str):
             "pending": sum(1 for s in steps if s["status"] == "pending"),
         },
     }
+
+
+from src.api.routers import decision_desk as _decision_desk  # noqa: E402
+
+router.include_router(_decision_desk.router)
