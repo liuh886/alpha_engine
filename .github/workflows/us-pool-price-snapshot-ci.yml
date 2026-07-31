@@ -1,0 +1,57 @@
+name: US Pool Price Snapshot CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/data/us_pool_price_snapshot.py"
+      - "src/decision_support/latest_us_low_turnover_run.py"
+      - "scripts/build_us_pool_price_snapshot.py"
+      - "scripts/run_latest_us_low_turnover_decision.py"
+      - "tests/test_us_pool_price_snapshot.py"
+      - ".github/workflows/us-pool-price-snapshot-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/data/us_pool_price_snapshot.py"
+      - "src/decision_support/latest_us_low_turnover_run.py"
+      - "scripts/build_us_pool_price_snapshot.py"
+      - "scripts/run_latest_us_low_turnover_decision.py"
+      - "tests/test_us_pool_price_snapshot.py"
+      - ".github/workflows/us-pool-price-snapshot-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  price-refresh-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff focused files
+        run: >-
+          uv run ruff check
+          src/data/us_pool_price_snapshot.py
+          src/decision_support/latest_us_low_turnover_run.py
+          scripts/build_us_pool_price_snapshot.py
+          scripts/run_latest_us_low_turnover_decision.py
+          tests/test_us_pool_price_snapshot.py
+      - name: Run automatic refresh tests
+        run: >-
+          uv run pytest
+          tests/test_us_pool_price_snapshot.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: CLI import checks
+        run: |
+          uv run python scripts/build_us_pool_price_snapshot.py --help
+          uv run python scripts/run_latest_us_low_turnover_decision.py --help
