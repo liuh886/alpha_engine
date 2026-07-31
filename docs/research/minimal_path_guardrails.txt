@@ -1,0 +1,1 @@
+No new factor family is added in PR 1. No weight search. No threshold search. No model fitting. No intraday data.
