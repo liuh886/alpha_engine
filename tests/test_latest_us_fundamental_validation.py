@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, Mapping
 
 import pytest
 
@@ -28,6 +29,57 @@ def _patch_snapshot(monkeypatch, tmp_path: Path) -> Path:
 
     monkeypatch.setattr(live, "build_us_pool_price_snapshot", fake_snapshot)
     return prices
+
+
+def test_frozen_cik_mapping_exactly_matches_pool() -> None:
+    mapping = live.load_frozen_cik_mapping()
+
+    assert len(mapping) == 23
+    assert mapping["AAPL"] == "0000320193"
+    assert mapping["IREN"] == "0001878848"
+    assert mapping["TIGO"] == "0000912958"
+    assert all(len(cik) == 10 and cik.isdigit() for cik in mapping.values())
+
+
+def test_frozen_client_never_uses_bulk_ticker_endpoint() -> None:
+    class Delegate:
+        def ticker_mapping(self) -> Mapping[str, Any]:
+            raise AssertionError("bulk ticker endpoint must not be called")
+
+        def companyfacts(self, cik10: str) -> Mapping[str, Any]:
+            return {"cik": cik10, "facts": {}}
+
+    client = live.FrozenPoolSecClient(
+        delegate=Delegate(),  # type: ignore[arg-type]
+        mapping={"AAPL": "0000320193", "MSFT": "0000789019"},
+    )
+
+    ticker_rows = client.ticker_mapping()
+    assert {row["ticker"] for row in ticker_rows.values()} == {"AAPL", "MSFT"}
+    assert client.companyfacts("0000320193")["cik"] == "0000320193"
+
+
+def test_default_client_uses_frozen_mapping(monkeypatch) -> None:
+    class FakeHttpClient:
+        def __init__(self, **kwargs) -> None:
+            self.kwargs = kwargs
+
+        def ticker_mapping(self) -> Mapping[str, Any]:
+            raise AssertionError("bulk ticker endpoint must not be called")
+
+        def companyfacts(self, cik10: str) -> Mapping[str, Any]:
+            return {"cik": cik10, "facts": {}}
+
+    monkeypatch.setenv("SEC_USER_AGENT", "AlphaEngine test contact@example.com")
+    monkeypatch.setattr(live, "SecHttpClient", FakeHttpClient)
+
+    client = live._default_sec_client()
+
+    assert client is not None
+    rows = client.ticker_mapping()
+    by_symbol = {row["ticker"]: str(row["cik_str"]).zfill(10) for row in rows.values()}
+    assert by_symbol["IREN"] == "0001878848"
+    assert by_symbol["TIGO"] == "0000912958"
 
 
 def test_live_wrapper_binds_source_and_validation(monkeypatch, tmp_path: Path) -> None:
@@ -75,6 +127,7 @@ def test_live_wrapper_binds_source_and_validation(monkeypatch, tmp_path: Path) -
     assert result["source_grade"] == "current_sec_companyfacts_reconstruction_with_filed_dates"
     assert result["trade_ready"] is False
     assert len(result["run_identity_sha256"]) == 64
+    assert len(result["inputs"]["frozen_cik_mapping_sha256"]) == 64
     manifest = tmp_path / "live" / "2026-07-31" / "latest_run_manifest.json"
     assert manifest.is_file()
 
