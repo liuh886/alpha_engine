@@ -1,0 +1,1 @@
+Daily bars only. Medium-frequency decisions. Low turnover. Simple factors first. Ridge only after the simple baseline passes. No tree restart, no intraday logic, no automatic orders.
