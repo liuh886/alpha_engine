@@ -14,13 +14,27 @@ Once per week, after the US market has closed, it:
 
 The weekly cadence is intentional. The underlying information changes with public financial filings, not every trading day.
 
+## Required SEC identity
+
+SEC automated access requires a declared application or organization name and a monitored contact email. The GitHub Actions workflow does not use an anonymous repository-URL fallback.
+
+Create a repository Actions variable named `SEC_USER_AGENT` with a value in this form:
+
+```text
+AlphaEngine Research monitored-contact@example.com
+```
+
+Use an address that is actually monitored. Do not commit the real value to the repository. The plaintext value is sent only as the HTTP User-Agent; evidence stores only its presence and SHA-256 identity.
+
+Without this repository variable, the workflow fails closed with `live_fundamental_validation_blocked` before performance evaluation.
+
 ## Manual run
 
 ```bash
 uv run python scripts/run_latest_us_fundamental_validation.py
 ```
 
-Set `SEC_USER_AGENT` to a truthful application name and monitored contact before running against SEC endpoints.
+For a local run, set the same `SEC_USER_AGENT` environment variable first.
 
 ## Results
 
