@@ -6,10 +6,8 @@ from typing import Any, Mapping
 
 import pandas as pd
 
-from src.research.cn_live_evidence_sources import (
-    _cutoff_anchored_adjusted,
-    build_cn_live_evidence_sources,
-)
+from src.research.cn_live_evidence_pipeline import build_cn_live_evidence_sources
+from src.research.cn_live_evidence_sources import _cutoff_anchored_adjusted
 
 CONTRACT = Path("configs/providers/cn_small_pool_v1_provider_contract.yaml")
 CANDIDATES = [
