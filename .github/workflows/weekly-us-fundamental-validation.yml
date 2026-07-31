@@ -1,0 +1,82 @@
+name: Weekly US Fundamental Validation
+
+on:
+  schedule:
+    - cron: "45 23 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-us-fundamental-validation
+  cancel-in-progress: false
+
+jobs:
+  run-observed-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT || 'AlphaEngine research https://github.com/liuh886/alpha_engine' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Run latest fundamental validation
+        id: validation
+        shell: bash
+        run: |
+          mkdir -p artifacts/operations
+          set +e
+          uv run python scripts/run_latest_us_fundamental_validation.py \
+            2>&1 | tee artifacts/operations/weekly_us_fundamental_validation.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Write run summary
+        if: always()
+        shell: bash
+        run: |
+          echo "# Weekly US Fundamental Validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Mode: diagnostic only" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Trade ready: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Exit code: ${{ steps.validation.outputs.exit_code || '1' }}" >> "$GITHUB_STEP_SUMMARY"
+          latest=$(find artifacts/evidence/latest_us_fundamental_validation -name decision.json -type f 2>/dev/null | sort | tail -1)
+          blocked=$(find artifacts/evidence/latest_us_fundamental_validation -name blocked.json -type f 2>/dev/null | sort | tail -1)
+          if [ -n "$latest" ]; then
+            echo "- Validation decision artifact: \`$latest\`" >> "$GITHUB_STEP_SUMMARY"
+            cat "$latest" >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$blocked" ]; then
+            echo "- Source-blocked artifact: \`$blocked\`" >> "$GITHUB_STEP_SUMMARY"
+            cat "$blocked" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- No validation artifact was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload evidence and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-us-fundamental-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/evidence/latest_us_fundamental_validation
+            artifacts/market_snapshots/us_small_pool_v1
+            artifacts/factor_registry.db
+            artifacts/operations/weekly_us_fundamental_validation.log
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Preserve governed failure status
+        if: always()
+        shell: bash
+        run: |
+          status="${{ steps.validation.outputs.exit_code || '1' }}"
+          if [ "$status" != "0" ]; then
+            echo "Fundamental validation was blocked or rejected before completion; inspect uploaded evidence."
+            exit "$status"
+          fi
