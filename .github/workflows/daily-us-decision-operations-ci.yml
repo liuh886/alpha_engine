@@ -51,7 +51,7 @@ jobs:
           uv run pytest
           tests/test_daily_us_decision_operations.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: CLI import checks
+      - name: Side-effect-free import checks
         run: |
-          uv run python scripts/setup_cron.py --help || true
+          uv run python -c "import scripts.setup_cron"
           uv run python scripts/summarize_daily_us_decision_run.py --help
