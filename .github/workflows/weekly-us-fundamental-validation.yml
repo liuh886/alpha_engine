@@ -1,15 +1,6 @@
 name: Weekly US Fundamental Validation
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/weekly-us-fundamental-validation.yml"
-      - "src/research/latest_us_fundamental_validation.py"
-      - "src/research/minimal_fundamental_validation.py"
-      - "configs/factors/us_fundamental_acceleration_v1.yaml"
-      - "configs/providers/sec_companyfacts_fundamentals_v1.yaml"
-      - "configs/providers/us_small_pool_sec_cik_v1.yaml"
   schedule:
     - cron: "45 23 * * 5"
   workflow_dispatch:
@@ -69,8 +60,8 @@ jobs:
           else
             echo "- No validation artifact was produced." >> "$GITHUB_STEP_SUMMARY"
           fi
-      - name: Publish run result to Issue 225
-        if: always() && github.event_name != 'schedule'
+      - name: Publish manual-run result to Issue 225
+        if: always() && github.event_name == 'workflow_dispatch'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
