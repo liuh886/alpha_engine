@@ -42,7 +42,6 @@ def _register(registry_path: Path, factors: list[str]) -> None:
 
 
 def _input_files(root: Path) -> Path:
-    factors = ["momentum_a", "momentum_b", "quality"]
     symbols = ["AAA", "BBB", "CCC"]
     score_rows = []
     dates = pd.bdate_range("2025-01-02", periods=40)
@@ -76,9 +75,21 @@ def _input_files(root: Path) -> Path:
         momentum_return = (index % 5 - 2) / 100.0
         returns_rows.extend(
             [
-                {"date": day.date().isoformat(), "stable_factor_key": "momentum_a", "return": momentum_return},
-                {"date": day.date().isoformat(), "stable_factor_key": "momentum_b", "return": momentum_return},
-                {"date": day.date().isoformat(), "stable_factor_key": "quality", "return": ((index * 3) % 7 - 3) / 100.0},
+                {
+                    "date": day.date().isoformat(),
+                    "stable_factor_key": "momentum_a",
+                    "return": momentum_return,
+                },
+                {
+                    "date": day.date().isoformat(),
+                    "stable_factor_key": "momentum_b",
+                    "return": momentum_return,
+                },
+                {
+                    "date": day.date().isoformat(),
+                    "stable_factor_key": "quality",
+                    "return": ((index * 3) % 7 - 3) / 100.0,
+                },
             ]
         )
     selection_rows = []
@@ -141,17 +152,25 @@ def test_builds_redundancy_clusters_and_records_relationships(tmp_path: Path) ->
         output_dir=tmp_path / "output",
     )
     payload = json.loads(
-        (tmp_path / "output" / "factor_relationships.json").read_text(encoding="utf-8")
+        (tmp_path / "output" / "factor_relationships.json").read_text(
+            encoding="utf-8"
+        )
     )
     factors = {row["stable_factor_key"]: row for row in payload["factors"]}
     pairs = {(row["left"], row["right"]): row for row in payload["pairs"]}
 
     assert decision["pair_count"] == 3
     assert decision["redundancy_cluster_count"] == 1
-    assert factors["momentum_a"]["redundancy_cluster"] == factors["momentum_b"]["redundancy_cluster"]
+    assert factors["momentum_a"]["redundancy_cluster"] == factors["momentum_b"][
+        "redundancy_cluster"
+    ]
     assert factors["quality"]["redundancy_cluster"] == ""
-    assert pairs[("momentum_a", "momentum_b")]["score_correlation"] == pytest.approx(1.0)
-    assert pairs[("momentum_a", "momentum_b")]["selection_overlap"] == pytest.approx(1.0)
+    assert pairs[("momentum_a", "momentum_b")]["score_correlation"] == pytest.approx(
+        1.0
+    )
+    assert pairs[("momentum_a", "momentum_b")]["selection_overlap"] == pytest.approx(
+        1.0
+    )
 
 
 def test_artifact_hash_mismatch_fails_closed(tmp_path: Path) -> None:
