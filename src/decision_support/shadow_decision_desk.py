@@ -66,14 +66,17 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 def _rows(payload: Mapping[str, Any], *, label: str) -> list[dict[str, Any]]:
     rows = payload.get("rows")
-    if not isinstance(rows, list):
-        raise ValueError(f"{label} must contain a rows list")
-    if not all(isinstance(row, dict) for row in rows):
-        raise ValueError(f"{label} rows must be objects")
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        raise ValueError(f"{label} must contain an object rows list")
     return rows
 
 
-def _validate_date_rows(rows: Iterable[Mapping[str, Any]], *, as_of: date, label: str) -> None:
+def _validate_date_rows(
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    as_of: date,
+    label: str,
+) -> None:
     for row in rows:
         raw = row.get("date")
         if not raw:
@@ -83,7 +86,7 @@ def _validate_date_rows(rows: Iterable[Mapping[str, Any]], *, as_of: date, label
             raise ValueError(f"{label} contains future row {row_date} beyond as-of {as_of}")
 
 
-def _latest_rows_by_date(
+def _latest_rows(
     rows: list[dict[str, Any]],
     *,
     as_of: date,
@@ -109,16 +112,14 @@ def _verify_rotation_artifacts(rotation_dir: Path) -> dict[str, dict[str, Any]]:
     if decision.get("performance_evaluated") is not False:
         raise ValueError("shadow desk requires a non-performance rotation artifact")
 
-    manifest = payloads["evidence_manifest.json"]
-    output_hashes = manifest.get("outputs")
+    output_hashes = payloads["evidence_manifest.json"].get("outputs")
     if not isinstance(output_hashes, dict):
         raise ValueError("rotation evidence manifest is missing output hashes")
     for filename, expected in output_hashes.items():
         path = rotation_dir / str(filename)
         if not path.exists():
             raise ValueError(f"manifest output is missing: {filename}")
-        actual = _sha256_file(path)
-        if actual != expected:
+        if _sha256_file(path) != expected:
             raise ValueError(f"rotation artifact hash mismatch: {filename}")
     return payloads
 
@@ -130,7 +131,7 @@ def _load_factor_context(
     as_of: date,
 ) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, Any]]], list[str]]:
     cards = registry.list_cards()
-    card_by_key = {str(card["stable_factor_key"]): card for card in cards}
+    cards_by_key = {str(card["stable_factor_key"]): card for card in cards}
     catalog = [
         {
             "card_id": card["card_id"],
@@ -143,23 +144,20 @@ def _load_factor_context(
         }
         for card in cards
     ]
+    if factor_scores_path is None:
+        return catalog, {}, ["FACTOR_SCORE_INPUT_NOT_PROVIDED"]
 
+    score_rows = _rows(_load_json(factor_scores_path), label="factor score artifact")
+    _validate_date_rows(score_rows, as_of=as_of, label="factor score artifact")
+    latest_date, latest_rows = _latest_rows(score_rows, as_of=as_of)
     warnings: list[str] = []
     by_symbol: dict[str, list[dict[str, Any]]] = {}
-    if factor_scores_path is None:
-        warnings.append("FACTOR_SCORE_INPUT_NOT_PROVIDED")
-        return catalog, by_symbol, warnings
-
-    payload = _load_json(factor_scores_path)
-    score_rows = _rows(payload, label="factor score artifact")
-    _validate_date_rows(score_rows, as_of=as_of, label="factor score artifact")
-    latest_date, latest_rows = _latest_rows_by_date(score_rows, as_of=as_of)
     for row in latest_rows:
         key = str(row.get("stable_factor_key", ""))
         symbol = str(row.get("symbol", ""))
         if not key or not symbol:
             raise ValueError("factor score row requires stable_factor_key and symbol")
-        card = card_by_key.get(key)
+        card = cards_by_key.get(key)
         if card is None:
             warnings.append(f"UNKNOWN_FACTOR_CARD:{key}")
             continue
@@ -194,8 +192,7 @@ def _load_previous_ticket(ledger_market_dir: Path, as_of: date) -> dict[str, Any
             candidates.append((ticket_date, path))
     if not candidates:
         return None
-    _, latest_path = max(candidates, key=lambda item: item[0])
-    return _load_json(latest_path)
+    return _load_json(max(candidates, key=lambda item: item[0])[1])
 
 
 def _weights_from_ticket(ticket: Mapping[str, Any] | None) -> dict[str, float]:
@@ -231,7 +228,7 @@ def _build_markdown(ticket: Mapping[str, Any]) -> str:
         f"# Alpha Engine Shadow Decision Ticket — {market}",
         "",
         f"**As of:** {ticket['as_of_date']}",
-        f"**Mode:** diagnostic_only · trade_ready=false",
+        "**Mode:** diagnostic_only · trade_ready=false",
         f"**Benchmark:** {ticket['market_context']['benchmark']}",
         f"**Market regime:** {ticket['market_context']['market_regime']}",
         f"**Gross exposure:** {ticket['market_context']['gross_exposure']:.2%}",
@@ -246,10 +243,11 @@ def _build_markdown(ticket: Mapping[str, Any]) -> str:
     for row in ticket["baskets"]:
         composite = row.get("composite_percentile")
         breadth = row.get("breadth_above_sma50")
+        composite_text = "" if composite is None else f"{float(composite):.2f}"
+        breadth_text = "" if breadth is None else f"{float(breadth):.0%}"
+        selected = "yes" if row.get("selected") else "no"
         lines.append(
-            f"| {row['basket']} | {'yes' if row.get('selected') else 'no'} | "
-            f"{'' if composite is None else f'{float(composite):.2f}'} | "
-            f"{'' if breadth is None else f'{float(breadth):.0%}'} |"
+            f"| {row['basket']} | {selected} | {composite_text} | {breadth_text} |"
         )
     lines.extend(
         [
@@ -273,25 +271,24 @@ def _build_markdown(ticket: Mapping[str, Any]) -> str:
         [
             "",
             "---",
-            "This is a forward shadow record for research and manual review. It is not an order, broker instruction, or independently validated trading recommendation.",
+            "This is a forward shadow record for research and manual review. "
+            "It is not an order, broker instruction, or independently validated "
+            "trading recommendation.",
         ]
     )
     return "\n".join(lines) + "\n"
 
 
 def _write_immutable(path: Path, payload: str, identity: str) -> None:
-    if path.exists():
-        if path.suffix == ".json":
-            existing = _load_json(path)
-            if existing.get("ticket_identity_sha256") != identity:
-                raise ValueError(f"immutable shadow ledger conflict: {path}")
-            return
-        existing_hash = _sha256_bytes(path.read_bytes())
-        new_hash = _sha256_bytes(payload.encode("utf-8"))
-        if existing_hash != new_hash:
+    if not path.exists():
+        path.write_text(payload, encoding="utf-8")
+        return
+    if path.suffix == ".json":
+        if _load_json(path).get("ticket_identity_sha256") != identity:
             raise ValueError(f"immutable shadow ledger conflict: {path}")
         return
-    path.write_text(payload, encoding="utf-8")
+    if _sha256_bytes(path.read_bytes()) != _sha256_bytes(payload.encode("utf-8")):
+        raise ValueError(f"immutable shadow ledger conflict: {path}")
 
 
 def _update_ledger_manifest(ledger_market_dir: Path, market: str) -> None:
@@ -345,9 +342,13 @@ def build_shadow_decision_ticket(
         raise ValueError(f"market mismatch: artifact={artifact_market}, requested={market}")
 
     basket_rows = _rows(payloads["basket_score_history.json"], label="basket score history")
-    security_rows = _rows(payloads["security_score_history.json"], label="security score history")
+    security_rows = _rows(
+        payloads["security_score_history.json"], label="security score history"
+    )
     rotation_rows = _rows(payloads["rotation_history.json"], label="rotation history")
-    portfolio_rows = _rows(payloads["portfolio_state_history.json"], label="portfolio state history")
+    portfolio_rows = _rows(
+        payloads["portfolio_state_history.json"], label="portfolio state history"
+    )
     for label, rows in (
         ("basket score history", basket_rows),
         ("security score history", security_rows),
@@ -356,13 +357,12 @@ def build_shadow_decision_ticket(
     ):
         _validate_date_rows(rows, as_of=as_of, label=label)
 
-    basket_date, latest_baskets = _latest_rows_by_date(basket_rows, as_of=as_of)
-    security_date, latest_security = _latest_rows_by_date(security_rows, as_of=as_of)
-    rotation_date, latest_rotations = _latest_rows_by_date(rotation_rows, as_of=as_of)
-    portfolio_date, latest_portfolios = _latest_rows_by_date(portfolio_rows, as_of=as_of)
+    basket_date, latest_baskets = _latest_rows(basket_rows, as_of=as_of)
+    security_date, latest_security = _latest_rows(security_rows, as_of=as_of)
+    rotation_date, latest_rotations = _latest_rows(rotation_rows, as_of=as_of)
+    portfolio_date, latest_portfolios = _latest_rows(portfolio_rows, as_of=as_of)
     if len(latest_rotations) != 1 or len(latest_portfolios) != 1:
         raise ValueError("rotation and portfolio histories require one latest row per date")
-    rotation = latest_rotations[0]
     portfolio = latest_portfolios[0]
 
     registry = FactorKnowledgeRegistry(registry_db)
@@ -392,8 +392,8 @@ def build_shadow_decision_ticket(
         if row.get("symbol")
     }
     symbols = sorted(set(positions) | set(previous_weights) | set(security_by_symbol))
-    securities: list[dict[str, Any]] = []
     current_weights: dict[str, float] = {}
+    securities: list[dict[str, Any]] = []
     for symbol in symbols:
         position = positions.get(symbol, {})
         score_row = security_by_symbol.get(symbol, {})
