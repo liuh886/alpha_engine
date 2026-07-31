@@ -1,0 +1,42 @@
+schema_version: "1.0"
+relationship_contract_id: "factor_relationship_map_v1"
+status: "frozen_pre_observation"
+truth_boundary:
+  research_only: true
+  trade_ready: false
+  cross_market_alignment_allowed: false
+  mixed_universe_alignment_allowed: false
+
+minimum_observations:
+  score_pairs: 30
+  return_dates: 20
+  selection_dates: 5
+
+correlation:
+  score_method: "spearman"
+  return_method: "pearson"
+  absolute_score_redundancy_threshold: 0.80
+  absolute_return_redundancy_threshold: 0.80
+  selection_overlap_threshold: 0.60
+
+redundancy_rule:
+  expression: "abs(score_corr) >= 0.80 OR (abs(return_corr) >= 0.80 AND selection_overlap >= 0.60)"
+  cluster_method: "connected_components"
+  cluster_label_prefix: "redundancy_cluster"
+
+required_scope_fields:
+  - market
+  - universe_version
+  - benchmark
+  - start_date
+  - end_date
+  - provider_identity
+  - evidence_manifest_hash
+
+required_artifacts:
+  scores:
+    columns: [date, symbol, stable_factor_key, score]
+  returns:
+    columns: [date, stable_factor_key, return]
+  selections:
+    columns: [date, stable_factor_key, symbol, selected]
