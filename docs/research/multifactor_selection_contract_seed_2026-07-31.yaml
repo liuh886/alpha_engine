@@ -1,0 +1,74 @@
+schema_version: "1.0"
+status: "seed_not_authoritative_for_performance"
+research_only: true
+trade_ready: false
+
+objective:
+  primary: "build a cumulative factor evidence map and select a small complementary low-turnover multi-factor candidate"
+  optimization_target: "after-cost benchmark-relative return subject to drawdown, turnover, concentration, and evidence-stability gates"
+  standalone_factor_leaderboard_is_sufficient: false
+
+selection_principles:
+  maximum_primary_factors: 4
+  minimum_information_families: 3
+  maximum_one_primary_factor_per_redundancy_cluster: true
+  equal_weight_first: true
+  learned_weights_allowed_initially: false
+  require_positive_incremental_or_risk_reduction_contribution: true
+  require_point_in_time_data: true
+  require_manifest_bound_evidence: true
+
+admissible_information_families:
+  - growth_acceleration
+  - quality_profitability
+  - valuation_cash_flow_yield
+  - medium_term_relative_trend
+  - downside_resilience
+  - revisions_events
+
+portfolio_control:
+  evaluation_frequency: monthly
+  minimum_holding_sessions: 40
+  entry_retention_buffer_required: true
+  maximum_replacements_per_basket_per_rebalance: 1
+  daily_factor_weight_changes_allowed: false
+  transaction_costs_required: true
+  annual_turnover_max: 4.0
+  average_holding_sessions_min: 40
+
+required_diagnostics:
+  - standalone_factor_metrics
+  - score_correlation_matrix
+  - factor_portfolio_return_correlation_matrix
+  - selection_overlap
+  - churn_attribution
+  - add_one_contribution
+  - leave_one_out_contribution
+  - regime_contribution
+  - basket_contribution
+  - turnover_contribution
+  - concentration_contribution
+  - non_additivity_residual
+
+comparison_set:
+  - equal_weight_pool_buy_and_hold
+  - best_standalone_factor
+  - each_included_standalone_factor
+  - simple_equal_weight_multifactor
+  - market_benchmark
+
+stop_rules:
+  post_result_factor_substitution_allowed: false
+  post_result_weight_search_allowed: false
+  post_result_threshold_search_allowed: false
+  post_result_frequency_search_allowed: false
+  post_result_universe_change_allowed: false
+  reserved_period_opening_allowed: false
+
+next_gate:
+  required_before_authoritative_experiment:
+    - registry_v2_migration_complete
+    - historical_factor_backfill_complete
+    - evidence_completeness_report_complete
+    - factor_relationship_map_complete
+    - candidate_factor_set_frozen
