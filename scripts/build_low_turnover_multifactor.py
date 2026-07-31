@@ -7,7 +7,9 @@ import argparse
 import json
 from pathlib import Path
 
-from src.research.low_turnover_multifactor import run_low_turnover_multifactor
+from src.research.low_turnover_multifactor_pipeline import (
+    run_low_turnover_multifactor_pipeline,
+)
 
 DEFAULT_CONTRACT = Path("configs/factors/us_low_turnover_multifactor_v1.yaml")
 DEFAULT_OUTPUT = Path("artifacts/evidence/us_low_turnover_multifactor_v1")
@@ -23,7 +25,7 @@ def main() -> int:
     parser.add_argument("--contract", type=Path, default=DEFAULT_CONTRACT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
-    decision = run_low_turnover_multifactor(
+    decision = run_low_turnover_multifactor_pipeline(
         contract_path=args.contract,
         fundamental_scores_path=args.fundamental_scores,
         basket_scores_path=args.basket_scores,
