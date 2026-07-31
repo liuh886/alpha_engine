@@ -1,0 +1,1 @@
+The first learned challenger, if reached, is Ridge regression on the frozen factor set. No LightGBM or XGBoost restart is allowed before that baseline comparison.
