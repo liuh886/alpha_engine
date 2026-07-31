@@ -1,6 +1,13 @@
 name: Weekly US Fundamental Validation
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/weekly-us-fundamental-validation.yml"
+      - "src/research/latest_us_fundamental_validation.py"
+      - "src/research/minimal_fundamental_validation.py"
+      - "configs/factors/us_fundamental_acceleration_v1.yaml"
   schedule:
     - cron: "45 23 * * 5"
   workflow_dispatch:
@@ -77,6 +84,6 @@ jobs:
         run: |
           status="${{ steps.validation.outputs.exit_code || '1' }}"
           if [ "$status" != "0" ]; then
-            echo "Fundamental validation was blocked or rejected before completion; inspect uploaded evidence."
+            echo "Fundamental validation was blocked before completion; inspect uploaded evidence."
             exit "$status"
           fi
