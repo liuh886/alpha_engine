@@ -78,19 +78,22 @@ def _write_fundamentals(path: Path) -> None:
     basket_by_symbol, _ = _membership()
     period_ends = pd.date_range("2024-03-31", periods=8, freq="QE")
     rows = []
+    symbol_count = len(basket_by_symbol)
     for symbol_index, symbol in enumerate(basket_by_symbol):
         base = 90.0 + symbol_index * 4.0
+        acceleration = 0.00035 + 0.000035 * symbol_index
+        margin_slope_rank = (symbol_index * 7) % symbol_count
+        margin_slope = 0.0007 + 0.000055 * margin_slope_rank
         for quarter_index, period_end in enumerate(period_ends):
-            growth_shape = (
+            revenue = base * (
                 1.0
-                + 0.045 * quarter_index
-                + 0.009 * ((symbol_index * 3 + quarter_index * 2) % 7)
+                + 0.035 * quarter_index
+                + acceleration * quarter_index * quarter_index
             )
-            revenue = base * growth_shape
             margin = (
                 0.31
-                + 0.008 * ((symbol_index * 5 + quarter_index * 3) % 11)
-                + 0.0015 * quarter_index
+                + 0.0015 * (symbol_index % 4)
+                + margin_slope * quarter_index
             )
             rows.append(
                 {
