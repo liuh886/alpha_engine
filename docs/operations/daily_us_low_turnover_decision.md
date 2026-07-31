@@ -65,8 +65,23 @@ On Windows, this writes `scripts/run_daily_us_decision.bat` and prints a Task Sc
 
 `.github/workflows/daily-us-low-turnover-decision.yml` runs at 23:30 UTC Monday through Friday. It always uploads available diagnostic artifacts, including source blockers, before preserving a failed status when the governed pipeline cannot complete.
 
+Before each run, the workflow restores the most recent cached:
+
+- `artifacts/decision_ledger`;
+- `artifacts/factor_registry.db`.
+
+After the run and diagnostic upload, it saves a new immutable state cache keyed by the workflow run and attempt. This continuity is required for:
+
+- comparisons with the previous ticket;
+- cumulative paper-turnover accounting;
+- the append-only ticket identity chain;
+- persistent factor-card and relationship records.
+
+The cache is an operational continuation mechanism, not authoritative performance evidence. Existing same-date ticket identities still fail closed and cannot be overwritten by restored or newly generated state.
+
 The workflow summary reports:
 
+- whether prior Decision Desk state was restored;
 - resolved complete market session;
 - number of price symbols and rows;
 - SEC factor-ready coverage;
