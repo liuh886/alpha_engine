@@ -1,0 +1,57 @@
+name: Daily US Decision Operations CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/daily-us-low-turnover-decision.yml"
+      - "scripts/setup_cron.py"
+      - "scripts/summarize_daily_us_decision_run.py"
+      - "tests/test_daily_us_decision_operations.py"
+      - "docs/operations/daily_us_low_turnover_decision.md"
+      - ".env.example"
+      - ".github/workflows/daily-us-decision-operations-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/daily-us-low-turnover-decision.yml"
+      - "scripts/setup_cron.py"
+      - "scripts/summarize_daily_us_decision_run.py"
+      - "tests/test_daily_us_decision_operations.py"
+      - "docs/operations/daily_us_low_turnover_decision.md"
+      - ".env.example"
+      - ".github/workflows/daily-us-decision-operations-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  operations-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff focused files
+        run: >-
+          uv run ruff check
+          scripts/setup_cron.py
+          scripts/summarize_daily_us_decision_run.py
+          tests/test_daily_us_decision_operations.py
+      - name: Run operations tests
+        run: >-
+          uv run pytest
+          tests/test_daily_us_decision_operations.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Side-effect-free import checks
+        run: |
+          uv run python -c "import scripts.setup_cron"
+          uv run python scripts/summarize_daily_us_decision_run.py --help
