@@ -100,7 +100,7 @@ def test_pit_selection_uses_filed_date_and_low_turnover_rules() -> None:
     prices = pd.DataFrame(price_rows)
 
     first_filing = dates[95]
-    second_filing = dates[125]
+    second_filing = dates[115]
     rows = []
     initial = {
         "AAA": (0.30, 0.12),
@@ -152,9 +152,9 @@ def test_pit_selection_uses_filed_date_and_low_turnover_rules() -> None:
     basket_rows = [row for row in selections if row["basket"] == "test_basket"]
     first_nonempty = next(row for row in basket_rows if row["selected_symbols"])
     assert first_nonempty["selected_symbols"] == ["AAA"]
-    # One-addition limit means the second slot is filled only at a later evaluation.
-    later = [row for row in basket_rows if len(row["selected_symbols"]) == 2]
-    assert later
+    overlap = next(row for row in basket_rows if len(row["selected_symbols"]) == 2)
+    assert overlap["selected_symbols"] == ["AAA", "CCC"]
+    assert overlap["added_symbols"] == ["CCC"]
 
 
 def test_registers_three_current_standard_cards(tmp_path: Path) -> None:
