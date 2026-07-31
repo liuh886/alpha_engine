@@ -1,0 +1,40 @@
+schema_version: "1.0"
+mapping_id: "us_small_pool_sec_cik_v1"
+status: "frozen_source_identity"
+pool_id: "us_small_pool_v1"
+source:
+  authority: "U.S. Securities and Exchange Commission"
+  url: "https://www.sec.gov/files/company_tickers.json"
+  retrieved_date: "2026-08-01"
+  purpose: "avoid runtime dependency on the SEC bulk ticker endpoint while preserving official ticker-to-CIK identities"
+
+symbols:
+  AAOI: "0001158114"
+  AAPL: "0000320193"
+  ALAB: "0001736297"
+  AMD: "0000002488"
+  CRDO: "0001807794"
+  HIMS: "0001773751"
+  INTC: "0000050863"
+  IREN: "0001878848"
+  JD: "0001549802"
+  KO: "0000021344"
+  LITE: "0001633978"
+  MSFT: "0000789019"
+  NBIS: "0001513845"
+  NOK: "0000924613"
+  ORCL: "0001341439"
+  PDD: "0001737806"
+  POET: "0001437424"
+  SNDK: "0002023554"
+  TIGO: "0000912958"
+  TSM: "0001046179"
+  TSLA: "0001318605"
+  VRT: "0001674101"
+  WMT: "0000104169"
+
+governance:
+  exact_pool_coverage_required: true
+  runtime_symbol_discovery_allowed: false
+  additions_or_removals_require_new_mapping_version: true
+  official_companyfacts_endpoint_unchanged: true
