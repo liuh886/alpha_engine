@@ -1,0 +1,44 @@
+name: Factor Relationship Map CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "configs/factor_knowledge/relationship_map_v1.yaml"
+      - "src/research/factor_relationship_map.py"
+      - "scripts/build_factor_relationship_map.py"
+      - "tests/test_factor_relationship_map.py"
+      - ".github/workflows/factor-relationship-map-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "configs/factor_knowledge/relationship_map_v1.yaml"
+      - "src/research/factor_relationship_map.py"
+      - "scripts/build_factor_relationship_map.py"
+      - "tests/test_factor_relationship_map.py"
+      - ".github/workflows/factor-relationship-map-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  relationship-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff focused files
+        run: uv run ruff check src/research/factor_relationship_map.py scripts/build_factor_relationship_map.py tests/test_factor_relationship_map.py
+      - name: Run relationship tests
+        run: uv run pytest tests/test_factor_relationship_map.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: CLI import check
+        run: uv run python scripts/build_factor_relationship_map.py --help
