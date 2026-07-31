@@ -9,7 +9,9 @@ import pytest
 import yaml
 
 from src.research.factor_knowledge_registry import FactorCardInput, FactorKnowledgeRegistry
-from src.research.low_turnover_multifactor import run_low_turnover_multifactor
+from src.research.low_turnover_multifactor_pipeline import (
+    run_low_turnover_multifactor_pipeline,
+)
 
 CONTRACT = Path("configs/factors/us_low_turnover_multifactor_v1.yaml")
 POOL = Path("configs/pools/us_small_pool_v1.yaml")
@@ -176,7 +178,9 @@ def _fixtures(root: Path, *, redundant: bool = False) -> dict[str, Path]:
                 "redundancy_cluster": cluster,
             }
         )
-    relationship_path = root / "factor_relationships.json"
+    relationship_folder = root / "relationship"
+    relationship_folder.mkdir(parents=True, exist_ok=True)
+    relationship_path = relationship_folder / "factor_relationships.json"
     relationship_path.write_text(
         json.dumps(
             {
@@ -193,6 +197,14 @@ def _fixtures(root: Path, *, redundant: bool = False) -> dict[str, Path]:
         ),
         encoding="utf-8",
     )
+    relationship_manifest = {
+        "schema_version": "1.0",
+        "manifest_identity_sha256": hashlib.sha256(b"relationship").hexdigest(),
+        "outputs": {relationship_path.name: _sha(relationship_path)},
+    }
+    (relationship_folder / "evidence_manifest.json").write_text(
+        json.dumps(relationship_manifest, sort_keys=True), encoding="utf-8"
+    )
     return {
         "prices": prices_path,
         "fundamental": fundamental_path,
@@ -201,12 +213,11 @@ def _fixtures(root: Path, *, redundant: bool = False) -> dict[str, Path]:
     }
 
 
-def test_builds_equal_weight_low_turnover_diagnostic_candidate(tmp_path: Path) -> None:
+def _run(tmp_path: Path, *, data_blocked: bool = False, redundant: bool = False):
     registry_path = tmp_path / "factor.db"
-    _register_cards(registry_path)
-    paths = _fixtures(tmp_path)
-
-    decision = run_low_turnover_multifactor(
+    _register_cards(registry_path, data_blocked=data_blocked)
+    paths = _fixtures(tmp_path, redundant=redundant)
+    decision = run_low_turnover_multifactor_pipeline(
         contract_path=CONTRACT,
         fundamental_scores_path=paths["fundamental"],
         basket_scores_path=paths["basket"],
@@ -215,6 +226,11 @@ def test_builds_equal_weight_low_turnover_diagnostic_candidate(tmp_path: Path) -
         registry_db=registry_path,
         output_dir=tmp_path / "output",
     )
+    return decision, registry_path, paths
+
+
+def test_builds_equal_weight_low_turnover_diagnostic_candidate(tmp_path: Path) -> None:
+    decision, registry_path, _ = _run(tmp_path)
 
     assert decision["decision"] == "multifactor_diagnostic_candidate_ready"
     assert decision["relationship_gate_passed"] is True
@@ -222,27 +238,22 @@ def test_builds_equal_weight_low_turnover_diagnostic_candidate(tmp_path: Path) -
     assert decision["turnover_diagnostics"]["turnover_gate_passed"] is True
     assert len(decision["combination_usage_ids"]) == 4
     assert decision["trade_ready"] is False
+    assert decision["composite_card_id"]
+    registry = FactorKnowledgeRegistry(registry_path)
+    assert registry.get_card_by_key("us_low_turnover_multifactor_v1") is not None
     portfolio = json.loads(
         (tmp_path / "output" / "portfolio_history.json").read_text(encoding="utf-8")
     )
     assert portfolio["rows"]
     assert max(len(row["selected_symbols"]) for row in portfolio["rows"]) > 0
+    scores = json.loads(
+        (tmp_path / "output" / "multifactor_scores.json").read_text(encoding="utf-8")
+    )
+    assert all("score" in row and "percentile" in row for row in scores["rows"])
 
 
 def test_data_blocked_card_keeps_candidate_diagnostic_and_incomplete(tmp_path: Path) -> None:
-    registry_path = tmp_path / "factor.db"
-    _register_cards(registry_path, data_blocked=True)
-    paths = _fixtures(tmp_path)
-
-    decision = run_low_turnover_multifactor(
-        contract_path=CONTRACT,
-        fundamental_scores_path=paths["fundamental"],
-        basket_scores_path=paths["basket"],
-        relationship_map_path=paths["relationship"],
-        prices_csv=paths["prices"],
-        registry_db=registry_path,
-        output_dir=tmp_path / "output",
-    )
+    decision, _, _ = _run(tmp_path, data_blocked=True)
 
     assert decision["decision"] == (
         "multifactor_diagnostic_scores_ready_registry_evidence_incomplete"
@@ -258,7 +269,7 @@ def test_shared_redundancy_cluster_fails_closed(tmp_path: Path) -> None:
     paths = _fixtures(tmp_path, redundant=True)
 
     with pytest.raises(ValueError, match="share redundancy clusters"):
-        run_low_turnover_multifactor(
+        run_low_turnover_multifactor_pipeline(
             contract_path=CONTRACT,
             fundamental_scores_path=paths["fundamental"],
             basket_scores_path=paths["basket"],
@@ -277,7 +288,26 @@ def test_tampered_factor_artifact_fails_closed(tmp_path: Path) -> None:
         handle.write("\n")
 
     with pytest.raises(ValueError, match="artifact hash mismatch"):
-        run_low_turnover_multifactor(
+        run_low_turnover_multifactor_pipeline(
+            contract_path=CONTRACT,
+            fundamental_scores_path=paths["fundamental"],
+            basket_scores_path=paths["basket"],
+            relationship_map_path=paths["relationship"],
+            prices_csv=paths["prices"],
+            registry_db=registry_path,
+            output_dir=tmp_path / "output",
+        )
+
+
+def test_tampered_relationship_map_fails_closed(tmp_path: Path) -> None:
+    registry_path = tmp_path / "factor.db"
+    _register_cards(registry_path)
+    paths = _fixtures(tmp_path)
+    with paths["relationship"].open("a", encoding="utf-8") as handle:
+        handle.write("\n")
+
+    with pytest.raises(ValueError, match="relationship map hash"):
+        run_low_turnover_multifactor_pipeline(
             contract_path=CONTRACT,
             fundamental_scores_path=paths["fundamental"],
             basket_scores_path=paths["basket"],
