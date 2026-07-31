@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 from pathlib import Path
 from typing import Any, Mapping
@@ -41,6 +42,34 @@ def test_frozen_cik_mapping_exactly_matches_pool() -> None:
     assert all(len(cik) == 10 and cik.isdigit() for cik in mapping.values())
 
 
+def test_compressed_sec_client_decodes_gzip(monkeypatch) -> None:
+    expected = {"cik": 320193, "facts": {"us-gaap": {}}}
+    compressed = gzip.compress(json.dumps(expected).encode("utf-8"))
+
+    class Response:
+        headers = {"Content-Encoding": "gzip"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return compressed
+
+    monkeypatch.setattr(live.urllib.request, "urlopen", lambda *args, **kwargs: Response())
+    client = live.CompressedSecHttpClient(
+        user_agent="AlphaEngine test contact@example.com",
+        ticker_mapping_url="https://example.invalid/tickers.json",
+        companyfacts_url_template="https://example.invalid/CIK{cik10}.json",
+        minimum_interval_seconds=0,
+        timeout_seconds=1,
+    )
+
+    assert client.companyfacts("0000320193") == expected
+
+
 def test_frozen_client_never_uses_bulk_ticker_endpoint() -> None:
     class Delegate:
         def ticker_mapping(self) -> Mapping[str, Any]:
@@ -71,7 +100,7 @@ def test_default_client_uses_frozen_mapping(monkeypatch) -> None:
             return {"cik": cik10, "facts": {}}
 
     monkeypatch.setenv("SEC_USER_AGENT", "AlphaEngine test contact@example.com")
-    monkeypatch.setattr(live, "SecHttpClient", FakeHttpClient)
+    monkeypatch.setattr(live, "CompressedSecHttpClient", FakeHttpClient)
 
     client = live._default_sec_client()
 
