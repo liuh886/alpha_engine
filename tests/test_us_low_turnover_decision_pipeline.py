@@ -31,13 +31,13 @@ def _write_prices(path: Path) -> None:
     dates = pd.bdate_range(end=AS_OF, periods=340)
     baskets = sorted(set(basket_by_symbol.values()))
     slopes = {
-        basket: [0.0009, 0.00025, 0.00065, 0.0004, 0.00075, 0.00015][
+        basket: [0.0009, 0.00035, 0.00065, 0.00045, 0.00075, 0.00030][
             index % 6
         ]
         for index, basket in enumerate(baskets)
     }
     shocks = {
-        basket: [0.07, 0.0, 0.04, 0.015, 0.055, 0.025][index % 6]
+        basket: [0.022, 0.0, 0.014, 0.006, 0.018, 0.010][index % 6]
         for index, basket in enumerate(baskets)
     }
     rows = []
@@ -45,20 +45,20 @@ def _write_prices(path: Path) -> None:
     for symbol_index, symbol in enumerate(all_symbols):
         basket = basket_by_symbol.get(symbol, "reference")
         slope = slopes.get(basket, 0.00055)
-        shock = shocks.get(basket, 0.01 if symbol != "QQQ" else 0.0)
+        shock = shocks.get(basket, 0.004 if symbol != "QQQ" else 0.0)
         phase = symbol_index * 0.73
         previous_close = 50.0 + symbol_index * 2.0
         for day_index, day in enumerate(dates):
             trend = np.exp(slope * day_index)
-            wave = 1.0 + 0.018 * np.sin(day_index / (9.0 + symbol_index % 5) + phase)
+            wave = 1.0 + 0.004 * np.sin(day_index / (12.0 + symbol_index % 5) + phase)
             late_shock = 1.0
             if day_index >= len(dates) - 25:
                 progress = (day_index - (len(dates) - 25)) / 24.0
                 late_shock = 1.0 - shock * progress
             close = (50.0 + symbol_index * 2.0) * trend * wave * late_shock
-            open_price = previous_close * (1.0 + 0.001 * np.sin(day_index + phase))
-            high = max(open_price, close) * 1.01
-            low = min(open_price, close) * 0.99
+            open_price = previous_close * (1.0 + 0.0005 * np.sin(day_index + phase))
+            high = max(open_price, close) * 1.006
+            low = min(open_price, close) * 0.994
             rows.append(
                 {
                     "date": day.date().isoformat(),
