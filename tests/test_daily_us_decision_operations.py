@@ -6,6 +6,8 @@ from pathlib import Path
 import scripts.setup_cron as setup_cron
 from scripts.summarize_daily_us_decision_run import build_summary
 
+WORKFLOW = Path(".github/workflows/daily-us-low-turnover-decision.yml")
+
 
 def _write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -38,7 +40,28 @@ def test_windows_setup_writes_fail_closed_daily_batch(
     assert "daily_us_decision.log" in content
 
 
-def test_summary_surfaces_source_blockers_and_ticket(tmp_path: Path) -> None:
+def test_scheduled_workflow_restores_and_saves_state_in_order() -> None:
+    content = WORKFLOW.read_text(encoding="utf-8")
+
+    restore = content.index("Restore prior Decision Desk state")
+    live_run = content.index("Run latest complete US decision cycle")
+    summary = content.index("Build answer-first run summary")
+    upload = content.index("Upload diagnostic artifacts")
+    save = content.index("Save Decision Desk state")
+    failure = content.index("Preserve governed failure status")
+
+    assert restore < live_run < summary < upload < save < failure
+    assert "actions/cache/restore@v4" in content
+    assert "actions/cache/save@v4" in content
+    assert "artifacts/decision_ledger" in content
+    assert "artifacts/factor_registry.db" in content
+    assert "daily-us-decision-state-${{ github.run_id }}-${{ github.run_attempt }}" in content
+    assert "--state-restored" in content
+
+
+def test_summary_surfaces_source_blockers_ticket_and_restored_state(
+    tmp_path: Path,
+) -> None:
     _write_json(
         tmp_path / "market_snapshots" / "us_small_pool_v1" / "2026-07-31" / "decision.json",
         {
@@ -60,7 +83,11 @@ def test_summary_surfaces_source_blockers_and_ticket(tmp_path: Path) -> None:
         run_root / "sec_companyfacts" / "coverage_report.json",
         {
             "rows": [
-                {"symbol": "SNDK", "factor_ready": False, "blockers": ["INSUFFICIENT_QUARTERS"]}
+                {
+                    "symbol": "SNDK",
+                    "factor_ready": False,
+                    "blockers": ["INSUFFICIENT_QUARTERS"],
+                }
             ]
         },
     )
@@ -81,13 +108,26 @@ def test_summary_surfaces_source_blockers_and_ticket(tmp_path: Path) -> None:
     )
     operations = tmp_path / "operations"
     operations.mkdir()
-    (operations / "daily_us_decision.log").write_text("line one\nline two\n", encoding="utf-8")
+    (operations / "daily_us_decision.log").write_text(
+        "line one\nline two\n",
+        encoding="utf-8",
+    )
 
-    completed = build_summary(artifacts_root=tmp_path, exit_code=0)
-    blocked = build_summary(artifacts_root=tmp_path, exit_code=1)
+    completed = build_summary(
+        artifacts_root=tmp_path,
+        exit_code=0,
+        state_restored=True,
+    )
+    blocked = build_summary(
+        artifacts_root=tmp_path,
+        exit_code=1,
+        state_restored=False,
+    )
 
     assert "Daily US Decision — COMPLETED" in completed
+    assert "Prior Decision Desk state restored: `true`" in completed
     assert "Resolved complete session: `2026-07-31`" in completed
     assert "SNDK: INSUFFICIENT_QUARTERS" in completed
     assert "Ticket identity: `ticket-123`" in completed
     assert "Daily US Decision — BLOCKED" in blocked
+    assert "Prior Decision Desk state restored: `false`" in blocked
