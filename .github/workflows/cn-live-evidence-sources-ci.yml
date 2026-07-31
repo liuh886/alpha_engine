@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "src/research/cn_live_evidence_sources.py"
+      - "src/research/cn_live_evidence_pipeline.py"
       - "scripts/build_cn_live_evidence_sources.py"
       - "tests/test_cn_live_evidence_sources.py"
       - ".github/workflows/cn-live-evidence-sources-ci.yml"
@@ -12,6 +13,7 @@ on:
     branches: [main]
     paths:
       - "src/research/cn_live_evidence_sources.py"
+      - "src/research/cn_live_evidence_pipeline.py"
       - "scripts/build_cn_live_evidence_sources.py"
       - "tests/test_cn_live_evidence_sources.py"
       - ".github/workflows/cn-live-evidence-sources-ci.yml"
@@ -35,7 +37,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
       - name: Ruff focused files
-        run: uv run ruff check src/research/cn_live_evidence_sources.py scripts/build_cn_live_evidence_sources.py tests/test_cn_live_evidence_sources.py
+        run: uv run ruff check src/research/cn_live_evidence_sources.py src/research/cn_live_evidence_pipeline.py scripts/build_cn_live_evidence_sources.py tests/test_cn_live_evidence_sources.py
       - name: Run source tests
         run: uv run pytest tests/test_cn_live_evidence_sources.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: CLI import check
