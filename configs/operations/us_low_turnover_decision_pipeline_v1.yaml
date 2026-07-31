@@ -1,0 +1,58 @@
+schema_version: "1.0"
+pipeline_id: "us_low_turnover_decision_pipeline_v1"
+status: "frozen_diagnostic_pipeline"
+market: "us"
+as_of_cutover_contract: "configs/operations/prospective_shadow_cutover_v1.yaml"
+pool_spec: "configs/pools/us_small_pool_v1.yaml"
+rotation_spec: "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v2.yaml"
+fundamental_source_contract: "configs/providers/sec_companyfacts_fundamentals_v1.yaml"
+fundamental_factor_contract: "configs/factors/us_fundamental_acceleration_v1.yaml"
+relationship_contract: "configs/factor_knowledge/relationship_map_v1.yaml"
+multifactor_contract: "configs/factors/us_low_turnover_multifactor_v1.yaml"
+historical_factor_inventory: "configs/factor_knowledge/historical_factor_cards_v1.yaml"
+
+truth_boundary:
+  research_only: true
+  diagnostic_only: true
+  trade_ready: false
+  performance_evaluated: false
+  independent_validation_completed: false
+  automatic_order_routing: false
+
+source_coverage_gate:
+  minimum_factor_ready_ratio: 0.70
+  minimum_factor_ready_symbols_per_basket: 1
+  require_sec_source_run_completed: true
+  allow_partial_pool_scores: true
+  missing_symbols_remain_in_pool_with_incomplete_score: true
+
+relationship_inputs:
+  security_factor_selection_top_fraction: 0.30
+  basket_factor_selection_top_fraction: 0.50
+  return_measure: "gross_close_to_close_between_factor_evaluations"
+  transaction_cost_applied: false
+  purpose: "correlation_and_redundancy_only"
+  factor_keys:
+    - "revenue_growth_acceleration"
+    - "gross_margin_yoy_change"
+    - "basket_relative_momentum_63"
+    - "basket_drawdown_from_63d_high"
+
+shadow_adapter:
+  selected_state_when_new: "ENTER"
+  selected_state_when_retained: "HOLD"
+  removed_state: "EXIT"
+  unselected_state: "WATCH"
+  preserve_hierarchical_market_regime_as_context_only: true
+  hierarchical_positions_are_not_used: true
+
+outputs:
+  workspace_subdirectories:
+    - "sec_source"
+    - "fundamental_factor"
+    - "hierarchical_rotation"
+    - "relationship_inputs"
+    - "relationship_map"
+    - "multifactor"
+    - "shadow_overlay"
+  top_level_manifest: "pipeline_manifest.json"
