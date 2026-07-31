@@ -1,0 +1,333 @@
+schema_version: "1.0"
+status: "historical_backfill_batch_1"
+truth_boundary:
+  research_only: true
+  trade_ready: false
+  reserved_performance_opened: false
+  standalone_support_implied: false
+
+defaults:
+  factor_version: "historical-v1"
+  orientation: "higher_is_better"
+  neutralization: "legacy_or_declared_universe_cross_section"
+  source_kind: "historical_backfill_batch_1"
+  source_report_path: "docs/research/factor_history_inventory_seed_2026-07-31.yaml"
+
+cards:
+  - stable_factor_key: mom_5d
+    name: 5-day momentum
+    canonical_definition: "$close / Ref($close, 5) - 1"
+    information_family: price_trend
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: cross_sectional_rank
+    thesis: Short-horizon price continuation may persist across the next holding window.
+    code_identity: "legacy-factor-library:mom_5d"
+    status: legacy_unverified
+    lesson: Strong legacy IC statistics predate current PIT, cost, turnover, and evidence-identity contracts.
+
+  - stable_factor_key: mom_10d
+    name: 10-day momentum
+    canonical_definition: "$close / Ref($close, 10) - 1"
+    information_family: price_trend
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: cross_sectional_rank
+    thesis: Medium-short price continuation may rank future relative returns.
+    code_identity: "legacy-factor-library:mom_10d"
+    status: legacy_unverified
+    lesson: Strong legacy IC statistics remain non-authoritative because the opportunity set was not current-contract PIT.
+
+  - stable_factor_key: sharpe_20
+    name: 20-day return-to-risk
+    canonical_definition: "Mean($close / Ref($close, 1) - 1, 20) / Std($close / Ref($close, 1) - 1, 20)"
+    information_family: risk
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: cross_sectional_rank
+    thesis: Stocks with stronger recent return per unit of volatility may exhibit persistent quality of trend.
+    code_identity: "legacy-factor-library:sharpe_20"
+    status: legacy_unverified
+    lesson: Legacy promotion is preserved, but economic performance and turnover were not bound to current evidence.
+
+  - stable_factor_key: corr_cv_20
+    name: 20-day close-volume correlation
+    canonical_definition: "Corr($close, $volume, 20)"
+    information_family: flow
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: cross_sectional_rank
+    thesis: Price-volume confirmation may distinguish durable participation from unsupported moves.
+    code_identity: "legacy-factor-library:corr_cv_20"
+    status: legacy_unverified
+    lesson: The legacy signal requires PIT and economic rerating before reuse.
+
+  - stable_factor_key: mean_reversion_ma_dev_5
+    name: 5-day moving-average deviation
+    canonical_definition: "$close / Mean($close, 5) - 1"
+    information_family: price_trend
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: signed_cross_sectional_rank
+    thesis: Short-term deviation from a local mean may contain reversal or continuation information depending on orientation.
+    code_identity: "legacy-factor-library:mean_reversion_ma_dev_5"
+    status: legacy_unverified
+    lesson: A high legacy ICIR is not current support because direction, costs, universe validity, and portfolio economics are incomplete.
+
+  - stable_factor_key: qqq_residual_trend_quality_126_skip10
+    name: Benchmark-residual trend quality
+    canonical_definition: "126-session stock return excluding the most recent 10 sessions minus matched QQQ return, scaled by residual volatility"
+    information_family: price_trend
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: cross_sectional_rank
+    thesis: Persistent idiosyncratic trend may be more useful than raw market-exposed momentum.
+    code_identity: "research-contract:benchmark-residual-trend-quality"
+    status: rejected
+    source_report_path: "DESIGN.md"
+    lesson: Tail diagnostics improved, but stable benchmark-relative economics were not supported across US and China evidence.
+
+  - stable_factor_key: bollinger_reversion_z20
+    name: Bollinger reversion z-score
+    canonical_definition: "-($close - Mean($close, 20)) / Std($close, 20)"
+    information_family: price_trend
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: cross_sectional_rank
+    thesis: Extreme standardized deviations may mean-revert.
+    code_identity: "research-factor:bollinger-reversion-z20"
+    status: rejected
+    lesson: No stable cross-market support was established under current evidence.
+
+  - stable_factor_key: macd_histogram_12_26_9
+    name: MACD histogram
+    canonical_definition: "EMA($close, 12) - EMA($close, 26) minus its 9-session signal EMA"
+    information_family: price_trend
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: cross_sectional_rank
+    thesis: Trend acceleration may identify securities whose momentum is strengthening.
+    code_identity: "research-factor:macd-histogram-12-26-9"
+    status: rejected
+    lesson: The factor did not provide stable cross-market benchmark-relative economics.
+
+  - stable_factor_key: rsi_strength_10
+    name: 10-day RSI strength
+    canonical_definition: "RSI($close, 10)"
+    information_family: price_trend
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: cross_sectional_rank
+    thesis: Persistent relative buying pressure may rank near-term continuation.
+    code_identity: "research-factor:rsi-strength-10"
+    status: market_specific_clue
+    lesson: China evidence retained a static-membership clue, but no cross-market or PIT support exists.
+
+  - stable_factor_key: close_location_pressure_10
+    name: Close-location pressure
+    canonical_definition: "Mean(($close - $low) / ($high - $low), 10)"
+    information_family: flow
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: cross_sectional_rank
+    thesis: Repeated closes near the session high may proxy sustained buying pressure.
+    code_identity: "research-factor:close-location-pressure-10"
+    status: rejected
+    lesson: The observed evidence did not establish stable cross-market value.
+
+  - stable_factor_key: lightgbm_lambdarank_ohlcv
+    name: LightGBM OHLCV ranker family
+    canonical_definition: "LightGBM LambdaRank over the frozen OHLCV technical information set"
+    information_family: composite
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: learned_cross_sectional_rank
+    thesis: Nonlinear interactions among price and volume features may rank future 10-session returns.
+    code_identity: "model-family:lightgbm-lambdarank-ohlcv"
+    status: retired
+    source_report_path: "docs/research/static_to_pit_decomposition_results_2026-07-30.md"
+    lesson: Strong static-universe excess collapsed under PIT Nasdaq-100 membership; opportunity-set validity dominated training differences.
+
+  - stable_factor_key: xgboost_rank_ndcg_ohlcv
+    name: XGBoost OHLCV ranker family
+    canonical_definition: "XGBoost rank:ndcg over the frozen OHLCV technical information set"
+    information_family: composite
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: learned_cross_sectional_rank
+    thesis: A second nonlinear ranker may reveal robust structure independent of the LightGBM implementation.
+    code_identity: "model-family:xgboost-rank-ndcg-ohlcv"
+    status: retired
+    source_report_path: "docs/research/static_to_pit_decomposition_results_2026-07-30.md"
+    lesson: The same PIT opportunity-set collapse occurred; further model-family or parameter search on the observed windows is prohibited.
+
+  - stable_factor_key: basket_relative_momentum_63
+    name: Basket 63-day relative momentum
+    canonical_definition: "Median constituent 63-session return relative to the market benchmark"
+    information_family: price_trend
+    update_frequency: every_10_sessions
+    availability_lag_days: 0
+    transformation: cross_basket_percentile_rank
+    thesis: Economic baskets outperforming the benchmark may continue to attract capital.
+    code_identity: "us-hierarchical-v2:basket-relative-momentum-63"
+    status: market_specific_clue
+    source_report_path: "DESIGN.md"
+    lesson: The basket-ranking layer added positive counterfactual return, but individual component contribution was not separately identified.
+
+  - stable_factor_key: basket_momentum_20
+    name: Basket 20-day momentum
+    canonical_definition: "Median constituent 20-session return"
+    information_family: price_trend
+    update_frequency: every_10_sessions
+    availability_lag_days: 0
+    transformation: cross_basket_percentile_rank
+    thesis: Recent basket-level continuation may complement longer relative momentum.
+    code_identity: "us-hierarchical-v2:basket-momentum-20"
+    status: market_specific_clue
+    source_report_path: "DESIGN.md"
+    lesson: Only combination-level basket evidence exists; standalone factor validation remains incomplete.
+
+  - stable_factor_key: basket_breadth_above_sma50
+    name: Basket breadth above SMA50
+    canonical_definition: "Fraction of eligible basket constituents closing above their 50-session moving average"
+    information_family: price_trend
+    update_frequency: every_10_sessions
+    availability_lag_days: 0
+    transformation: cross_basket_percentile_rank
+    thesis: Broad participation should be more durable than leadership driven by one security.
+    code_identity: "us-hierarchical-v2:basket-breadth-sma50"
+    status: market_specific_clue
+    source_report_path: "DESIGN.md"
+    lesson: Breadth was part of the positively contributing basket layer but lacks standalone evidence.
+
+  - stable_factor_key: basket_drawdown_from_63d_high
+    name: Basket drawdown from 63-day high
+    canonical_definition: "Median constituent close divided by 63-session high minus one"
+    information_family: risk
+    update_frequency: every_10_sessions
+    availability_lag_days: 0
+    transformation: cross_basket_percentile_rank
+    thesis: Baskets closer to recent highs may exhibit stronger trend resilience.
+    code_identity: "us-hierarchical-v2:basket-drawdown-63"
+    status: market_specific_clue
+    source_report_path: "DESIGN.md"
+    lesson: The component remains a clue inside a positive basket layer, not a supported standalone factor.
+
+  - stable_factor_key: security_relative_momentum_63
+    name: Security 63-day relative momentum
+    canonical_definition: "Security 63-session return relative to the market benchmark"
+    information_family: price_trend
+    update_frequency: every_10_sessions
+    availability_lag_days: 0
+    transformation: within_basket_percentile_rank
+    thesis: The strongest securities inside a selected basket may continue outperforming.
+    code_identity: "us-hierarchical-v2:security-relative-momentum-63"
+    status: rejected
+    source_report_path: "DESIGN.md"
+    lesson: The within-basket security-ranking layer reduced return in the frozen US hierarchical combination.
+
+  - stable_factor_key: security_momentum_20
+    name: Security 20-day momentum
+    canonical_definition: "Security 20-session return"
+    information_family: price_trend
+    update_frequency: every_10_sessions
+    availability_lag_days: 0
+    transformation: within_basket_percentile_rank
+    thesis: Shorter continuation may distinguish leaders within an already strong basket.
+    code_identity: "us-hierarchical-v2:security-momentum-20"
+    status: rejected
+    source_report_path: "DESIGN.md"
+    lesson: The current combination produced negative security-ranking contribution and high churn.
+
+  - stable_factor_key: security_drawdown_from_63d_high
+    name: Security drawdown from 63-day high
+    canonical_definition: "Security close divided by its 63-session high minus one"
+    information_family: risk
+    update_frequency: every_10_sessions
+    availability_lag_days: 0
+    transformation: within_basket_percentile_rank
+    thesis: Securities holding near recent highs may possess greater downside resilience.
+    code_identity: "us-hierarchical-v2:security-drawdown-63"
+    status: rejected
+    source_report_path: "DESIGN.md"
+    lesson: No standalone support exists and the security-ranking layer weakened the current combination.
+
+  - stable_factor_key: security_realized_volatility_20
+    name: Security 20-day realized volatility
+    canonical_definition: "Negative 20-session standard deviation of daily returns"
+    information_family: risk
+    update_frequency: every_10_sessions
+    availability_lag_days: 0
+    transformation: within_basket_percentile_rank
+    thesis: Lower-volatility leaders may offer more stable participation.
+    code_identity: "us-hierarchical-v2:security-realized-volatility-20"
+    status: rejected
+    source_report_path: "DESIGN.md"
+    lesson: The present within-basket combination did not improve risk or return sufficiently.
+
+  - stable_factor_key: trend_breakout_state_machine
+    name: Trend and breakout state machine
+    canonical_definition: "Shared ENTER/HOLD/REDUCE/WATCH/EXIT state derived from benchmark regime, moving-average trend, breakout, and stop conditions"
+    information_family: composite
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: discrete_state
+    thesis: Absolute trend confirmation may avoid holding securities during broken trends.
+    code_identity: "us-focus-watchlist-cycle-signal-v1"
+    status: market_specific_clue
+    source_report_path: "DESIGN.md"
+    lesson: Standalone timing showed strong observed economics but approximately 39x annual turnover, making it unusable under the current objective.
+
+  - stable_factor_key: atr_trailing_state_overlay
+    name: ATR trailing-state overlay
+    canonical_definition: "Daily exposure reduction or exit triggered by a trailing three-ATR boundary"
+    information_family: risk
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: discrete_risk_overlay
+    thesis: Volatility-scaled exits may limit large losses while adapting to each security.
+    code_identity: "us-focus-watchlist-cycle-signal-v1:atr-overlay"
+    status: rejected
+    source_report_path: "DESIGN.md"
+    lesson: State eligibility and multipliers reduced return in the hierarchical combination and contributed to excessive turnover.
+
+  - stable_factor_key: qqq_market_regime_gate
+    name: QQQ market-regime gate
+    canonical_definition: "Risk-on when QQQ close is above SMA200 and SMA50 is above SMA200; otherwise zero target exposure"
+    information_family: risk
+    update_frequency: daily
+    availability_lag_days: 0
+    transformation: binary_market_gate
+    thesis: Avoiding structurally weak benchmark regimes may reduce portfolio drawdown.
+    code_identity: "us-hierarchical-v2:qqq-market-regime"
+    status: rejected
+    source_report_path: "DESIGN.md"
+    lesson: Removing the hard market gate improved observed return; it should not remain an unquestioned absolute switch.
+
+  - stable_factor_key: revenue_growth_acceleration
+    name: Revenue growth acceleration
+    canonical_definition: "Latest publicly available quarterly YoY revenue growth minus the prior quarter's YoY revenue growth"
+    information_family: growth
+    update_frequency: quarterly
+    availability_lag_days: 1
+    transformation: within_basket_percentile_rank
+    neutralization: within_primary_basket
+    thesis: Improving top-line growth may identify companies whose operating trajectory is strengthening.
+    code_identity: "issue-225:revenue-growth-acceleration-v1"
+    status: data_blocked
+    source_report_path: "https://github.com/liuh886/alpha_engine/issues/225"
+    lesson: Awaiting manifest-bound point-in-time filing data and a frozen standalone validation.
+
+  - stable_factor_key: gross_margin_yoy_change
+    name: Gross-margin year-over-year change
+    canonical_definition: "Latest publicly available quarterly gross margin minus gross margin in the same quarter one year earlier"
+    information_family: quality
+    update_frequency: quarterly
+    availability_lag_days: 1
+    transformation: within_basket_percentile_rank
+    neutralization: within_primary_basket
+    thesis: Improving gross margin may indicate stronger pricing power, product mix, or operating quality.
+    code_identity: "issue-225:gross-margin-yoy-change-v1"
+    status: data_blocked
+    source_report_path: "https://github.com/liuh886/alpha_engine/issues/225"
+    lesson: Awaiting manifest-bound point-in-time filing data and a frozen standalone validation.
