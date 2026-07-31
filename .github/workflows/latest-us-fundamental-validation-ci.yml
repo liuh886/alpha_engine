@@ -1,0 +1,49 @@
+name: Latest US Fundamental Validation CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/research/latest_us_fundamental_validation.py"
+      - "scripts/run_latest_us_fundamental_validation.py"
+      - "tests/test_latest_us_fundamental_validation.py"
+      - ".github/workflows/latest-us-fundamental-validation-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/research/latest_us_fundamental_validation.py"
+      - "scripts/run_latest_us_fundamental_validation.py"
+      - "tests/test_latest_us_fundamental_validation.py"
+      - ".github/workflows/latest-us-fundamental-validation-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-orchestration-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff focused files
+        run: >-
+          uv run ruff check
+          src/research/latest_us_fundamental_validation.py
+          scripts/run_latest_us_fundamental_validation.py
+          tests/test_latest_us_fundamental_validation.py
+      - name: Run orchestration tests
+        run: >-
+          uv run pytest
+          tests/test_latest_us_fundamental_validation.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: CLI import check
+        run: uv run python scripts/run_latest_us_fundamental_validation.py --help
