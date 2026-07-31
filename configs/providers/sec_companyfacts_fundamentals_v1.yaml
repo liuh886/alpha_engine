@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 source_contract_id: "sec_companyfacts_fundamentals_v1"
 status: "frozen_source_contract"
 market: "us"
@@ -22,6 +22,7 @@ http:
 forms:
   accepted: ["10-Q", "10-K", "20-F", "6-K"]
   direct_quarter_preferred: true
+  infer_quarter_from_standard_frame_when_fp_missing: true
   derive_q4_from_fy_minus_q1_q2_q3: true
 
 concepts:
@@ -33,16 +34,33 @@ concepts:
         - "SalesRevenueNet"
       ifrs-full:
         - "Revenue"
+  cost_of_revenue:
+    namespaces:
+      us-gaap:
+        - "CostOfRevenue"
+        - "CostOfGoodsAndServicesSold"
+      ifrs-full:
+        - "CostOfSales"
   gross_profit:
     namespaces:
       us-gaap:
         - "GrossProfit"
+        - "DerivedGrossProfitFromRevenueMinusCost"
       ifrs-full:
         - "GrossProfit"
+        - "DerivedGrossProfitFromRevenueMinusCost"
+
+derivations:
+  gross_profit_from_revenue_minus_cost:
+    enabled: true
+    formula: "revenue minus cost_of_revenue"
+    match_keys: ["namespace", "unit", "start", "end", "filed", "accession_id", "form_type"]
+    native_gross_profit_preferred: true
 
 unit_contract:
   accepted_currency_units: ["USD", "EUR", "GBP", "CNY", "JPY", "KRW", "TWD"]
   require_same_unit_for_revenue_and_gross_profit: true
+  require_same_unit_for_revenue_and_cost: true
   require_same_unit_within_derived_quarter: true
 
 output:
