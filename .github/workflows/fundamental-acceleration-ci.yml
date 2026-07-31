@@ -6,16 +6,22 @@ on:
     paths:
       - "configs/factors/us_fundamental_acceleration_v1.yaml"
       - "src/research/fundamental_acceleration.py"
+      - "src/research/minimal_fundamental_validation.py"
       - "scripts/build_fundamental_acceleration_scores.py"
+      - "scripts/run_minimal_fundamental_validation.py"
       - "tests/test_fundamental_acceleration.py"
+      - "tests/test_minimal_fundamental_validation.py"
       - ".github/workflows/fundamental-acceleration-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "configs/factors/us_fundamental_acceleration_v1.yaml"
       - "src/research/fundamental_acceleration.py"
+      - "src/research/minimal_fundamental_validation.py"
       - "scripts/build_fundamental_acceleration_scores.py"
+      - "scripts/run_minimal_fundamental_validation.py"
       - "tests/test_fundamental_acceleration.py"
+      - "tests/test_minimal_fundamental_validation.py"
       - ".github/workflows/fundamental-acceleration-ci.yml"
   workflow_dispatch:
 
@@ -37,8 +43,21 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
       - name: Ruff focused files
-        run: uv run ruff check src/research/fundamental_acceleration.py scripts/build_fundamental_acceleration_scores.py tests/test_fundamental_acceleration.py
+        run: >-
+          uv run ruff check
+          src/research/fundamental_acceleration.py
+          src/research/minimal_fundamental_validation.py
+          scripts/build_fundamental_acceleration_scores.py
+          scripts/run_minimal_fundamental_validation.py
+          tests/test_fundamental_acceleration.py
+          tests/test_minimal_fundamental_validation.py
       - name: Run factor tests
-        run: uv run pytest tests/test_fundamental_acceleration.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: CLI import check
-        run: uv run python scripts/build_fundamental_acceleration_scores.py --help
+        run: >-
+          uv run pytest
+          tests/test_fundamental_acceleration.py
+          tests/test_minimal_fundamental_validation.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: CLI import checks
+        run: |
+          uv run python scripts/build_fundamental_acceleration_scores.py --help
+          uv run python scripts/run_minimal_fundamental_validation.py --help
