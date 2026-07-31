@@ -1,0 +1,70 @@
+name: Decision Desk Product CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/decision_support/decision_ledger_reader.py"
+      - "src/api/routers/decision_desk.py"
+      - "src/api/routers/research.py"
+      - "tests/test_decision_ledger_reader.py"
+      - "qlib-dashboard/src/pages/DecisionDeskPage.tsx"
+      - "qlib-dashboard/src/routes.ts"
+      - ".github/workflows/decision-desk-product-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/decision_support/decision_ledger_reader.py"
+      - "src/api/routers/decision_desk.py"
+      - "src/api/routers/research.py"
+      - "tests/test_decision_ledger_reader.py"
+      - "qlib-dashboard/src/pages/DecisionDeskPage.tsx"
+      - "qlib-dashboard/src/routes.ts"
+      - ".github/workflows/decision-desk-product-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff focused files
+        run: >-
+          uv run ruff check
+          src/decision_support/decision_ledger_reader.py
+          src/api/routers/decision_desk.py
+          src/api/routers/research.py
+          tests/test_decision_ledger_reader.py
+      - name: Run ledger reader tests
+        run: >-
+          uv run pytest tests/test_decision_ledger_reader.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  frontend-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: qlib-dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
