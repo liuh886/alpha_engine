@@ -67,6 +67,20 @@ windows:
   falsification_end: "2026-06-30"
   future_independent_window: "must_be_declared_after_candidate_freeze"
 
+validation:
+  candidate: "fundamental_acceleration_with_sma100"
+  attribution_variant: "same_factor_without_sma100"
+  baselines: ["equal_weight_pool", "QQQ"]
+  maximum_drawdown_floor: -0.35
+  annual_turnover_ceiling: 4.0
+  average_holding_sessions_floor: 40
+  maximum_symbol_weight_ceiling: 0.40
+  require_positive_relative_return_in_development: true
+  require_positive_relative_return_in_falsification: true
+  result_values:
+    pass: "simple_fundamental_factor_independent_validation_required"
+    fail: "simple_fundamental_factor_not_supported"
+
 stop_rules:
   field_substitution_after_observation: false
   weight_search_after_observation: false
