@@ -12,7 +12,10 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from src.research.etf_rotation_experiment import fetch_adjusted_daily_bars
+from src.research.etf_rotation_experiment import (
+    chronological_split_metrics,
+    fetch_adjusted_daily_bars,
+)
 from src.research.vix_rotation_experiment import (
     VIX_SYMBOL,
     config_from_contract,
@@ -20,7 +23,10 @@ from src.research.vix_rotation_experiment import (
     vix_repair_event_study,
     vix_signal_audit,
 )
-from src.research.vix_rotation_runtime import run_vix_runtime_comparison
+from src.research.vix_rotation_runtime import (
+    run_vix_runtime_comparison,
+    state_reachability,
+)
 
 
 def _json_default(value: Any) -> Any:
@@ -33,6 +39,17 @@ def _json_default(value: Any) -> Any:
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _metric_delta(challenger: dict[str, Any], baseline: dict[str, Any]) -> dict[str, float]:
+    return {
+        "cagr_delta": float(challenger["cagr"] - baseline["cagr"]),
+        "max_drawdown_delta": float(
+            challenger["max_drawdown"] - baseline["max_drawdown"]
+        ),
+        "sharpe_delta": float(challenger["sharpe"] - baseline["sharpe"]),
+        "calmar_delta": float(challenger["calmar"] - baseline["calmar"]),
+    }
 
 
 def main() -> int:
@@ -67,6 +84,19 @@ def main() -> int:
         cluster_gap_sessions=contract["validation"]["vix_event_cluster_gap_sessions"],
     )
     audit = vix_signal_audit(prepared)
+    reachability = {
+        key: state_reachability(results[key])
+        for key in ("rotation_price_repair_v2", "rotation_vix_v2")
+    }
+    split_frames: list[pd.DataFrame] = []
+    for key in ("rotation_price_repair_v2", "rotation_vix_v2"):
+        split = chronological_split_metrics(
+            results[key],
+            train_fraction=contract["validation"]["chronological_train_fraction"],
+        ).reset_index()
+        split.insert(0, "strategy", key)
+        split_frames.append(split)
+    chronological = pd.concat(split_frames, ignore_index=True)
 
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -74,6 +104,7 @@ def main() -> int:
     metrics.to_csv(output / "strategy_metrics.csv")
     regime.to_csv(output / "vix_regime_asset_metrics.csv")
     event.to_csv(output / "vix_repair_events.csv", index=False)
+    chronological.to_csv(output / "chronological_split.csv", index=False)
     prepared.to_csv(output / "prepared_signal_frame.csv")
     for key, result in results.items():
         result.daily.to_csv(output / f"daily_{key}.csv")
@@ -82,11 +113,28 @@ def main() -> int:
         json.dumps(audit, ensure_ascii=False, indent=2, sort_keys=True, default=_json_default),
         encoding="utf-8",
     )
+    (output / "state_reachability.json").write_text(
+        json.dumps(
+            reachability,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            default=_json_default,
+        ),
+        encoding="utf-8",
+    )
 
-    comparison = metrics.loc[["buy_hold_QQQ", "rotation_price_v1", "rotation_vix_v2"]]
+    comparison_keys = [
+        "buy_hold_QQQ",
+        "rotation_price_v1",
+        "rotation_price_repair_v2",
+        "rotation_vix_v2",
+    ]
+    comparison = metrics.loc[comparison_keys]
     v2 = results["rotation_vix_v2"].metrics
     qqq = results["buy_hold_QQQ"].metrics
     price_v1 = results["rotation_price_v1"].metrics
+    price_repair = results["rotation_price_repair_v2"].metrics
     summary = {
         "experiment_id": contract["experiment_id"],
         "research_only": True,
@@ -97,25 +145,16 @@ def main() -> int:
         "economic_return_end": v2["end_date"],
         "comparison": comparison.reset_index().to_dict(orient="records"),
         "vix_signal_audit": audit,
-        "relative_to_qqq": {
-            "cagr_delta": float(v2["cagr"] - qqq["cagr"]),
-            "max_drawdown_delta": float(v2["max_drawdown"] - qqq["max_drawdown"]),
-            "sharpe_delta": float(v2["sharpe"] - qqq["sharpe"]),
-            "calmar_delta": float(v2["calmar"] - qqq["calmar"]),
-        },
-        "relative_to_price_v1": {
-            "cagr_delta": float(v2["cagr"] - price_v1["cagr"]),
-            "max_drawdown_delta": float(
-                v2["max_drawdown"] - price_v1["max_drawdown"]
-            ),
-            "sharpe_delta": float(v2["sharpe"] - price_v1["sharpe"]),
-            "calmar_delta": float(v2["calmar"] - price_v1["calmar"]),
-        },
+        "state_reachability": reachability,
+        "relative_to_qqq": _metric_delta(v2, qqq),
+        "relative_to_price_v1": _metric_delta(v2, price_v1),
+        "vix_incremental_vs_matched_price_repair": _metric_delta(v2, price_repair),
         "limitations": [
             "VIX measures 30-day expected S&P 500 volatility, not QQQ direction.",
             "Spot VIX is used only as a signal and is never treated as a tradable asset.",
             "QQQI inception limits the true common three-asset sample to 2024 onward.",
             "This contract is frozen before observing v2 performance and must not be tuned in-place.",
+            "VIX attribution must use the matched price-repair ablation, not the old price-only v1.",
             "A reached leveraged state is necessary but not sufficient for trade readiness.",
         ],
     }
