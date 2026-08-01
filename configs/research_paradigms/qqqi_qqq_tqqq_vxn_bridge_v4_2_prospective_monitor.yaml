@@ -1,0 +1,42 @@
+experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor
+parent_experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+prospective_monitoring: true
+monitoring_start_date: "2026-08-01"
+purpose: >-
+  Compare the frozen v4.1 baseline with the frozen 50% QQQI / 50% QQQ bridge
+  challenger using only returns dated on or after 2026-08-01. This monitor
+  records evidence and never tunes or promotes either candidate.
+
+bridge_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  prospective_metrics_begin_at_monitoring_start: true
+  same_state_trace_required: true
+  no_parameter_change: true
+  no_automatic_promotion: true
+
+monitoring:
+  benchmark_strategies:
+    - buy_hold_QQQ
+    - rotation_vxn_leverage_v4_1_75
+    - rotation_vxn_bridge_v4_2_50_50
+  report_latest_executed_state: true
+  report_latest_close_decision: true
+  report_state_1_daily_differences: true
+  report_turnover_and_cost_differences: true
+  report_contract_hashes: true
+  allow_zero_prospective_sessions: true
+
+hypothesis_discipline:
+  - Monitoring begins on 2026-08-01; no earlier return is labelled prospective.
+  - v4.1 and bridge v4.2 contracts are frozen.
+  - Both candidates use the exact same decision state every session.
+  - No alternative bridge allocation, signal threshold or factor may be tested.
+  - Full-history recomputation is context only and is not new evidence.
+  - The workflow records evidence and cannot mark either strategy trade ready.
