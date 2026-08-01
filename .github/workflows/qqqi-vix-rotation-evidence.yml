@@ -8,6 +8,7 @@ on:
       - "configs/research_paradigms/qqqi_qqq_tqqq_vix_v2.yaml"
       - "scripts/run_qqqi_qqq_tqqq_vix_v2.py"
       - "src/research/vix_rotation_experiment.py"
+      - "src/research/vix_rotation_runtime.py"
       - "tests/test_vix_rotation_experiment.py"
       - "notebooks/13_qqqi_qqq_tqqq_vix_v2.ipynb"
       - "docs/research/qqqi_qqq_tqqq_vix_v2_experiment.md"
@@ -38,6 +39,7 @@ jobs:
         run: |
           uv run python -m py_compile \
             src/research/vix_rotation_experiment.py \
+            src/research/vix_rotation_runtime.py \
             scripts/run_qqqi_qqq_tqqq_vix_v2.py \
             tests/test_vix_rotation_experiment.py
           uv run python - <<'PY'
