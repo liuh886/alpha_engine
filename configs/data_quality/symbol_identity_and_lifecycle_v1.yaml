@@ -19,6 +19,12 @@ rules:
       action: "exclude_from_energy_baskets"
 
   independent_listing_boundaries:
+    TYGO:
+      market: "us"
+      public_trading_start: "2023-05-24"
+      pre_start_policy: "unavailable_not_backfilled"
+      authoritative_backtest_before_start_allowed: false
+      eligible_after_start_only: true
     SNDK:
       market: "us"
       independent_history_start: "2025-02-24"
