@@ -49,9 +49,8 @@ def test_us_retest_changes_only_the_selected_opportunity_set() -> None:
     assert new["universe"]["universe_id"] == "us_selected_equities_v2"
     assert new["universe"]["exact_pool_candidate_count"] == 87
     assert new["universe"]["min_symbols"] == old["universe"]["min_symbols"] == 30
-    assert new["universe"]["alignment_mode"] == (
-        old["universe"]["alignment_mode"] == "auto"
-    )
+    assert new["universe"]["alignment_mode"] == "auto"
+    assert old["universe"]["alignment_mode"] == "auto"
     assert new["universe"]["listing_policy"] == (
         "no_prelisting_fill_coverage_qualified_static_members"
     )
