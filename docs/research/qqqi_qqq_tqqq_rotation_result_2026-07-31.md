@@ -6,8 +6,8 @@
 - Evidence cutoff requested: 2026-08-01
 - Latest completed market session: 2026-07-31
 - Economic return sample: 2024-01-30 through 2026-07-30, 627 open-to-open observations
-- GitHub Actions run: `30683857956`
-- Evidence artifact digest: `sha256:3d722b6d4d08707de5a5ec7f82d7b6c1c652034e1ff76bc0d4f1c4419e2a9389`
+- Multi-stage recovery evidence run: `30686827663`
+- Evidence artifact digest: `sha256:056fe9eb49c6d8d632d40d396131a97300dd8f7facbe680bcb33f9fcba1f117b`
 - Boundary: `research_only=true`, `trade_ready=false`
 
 QQQI was launched on 2024-01-29, so the true three-asset common sample cannot directly cover the 2020 pandemic shock or the 2022 technology bear market. Earlier QQQ/TQQQ results in this report are context only, not a synthetic QQQI backfill.
@@ -17,7 +17,7 @@ QQQI was launched on 2024-01-29, so the true three-asset common sample cannot di
 The experiment does **not** support the current three-state strategy as an improvement over buy-and-hold QQQ.
 
 1. QQQI was generally smoother than QQQ in weak, sideways and transition regimes, but usually earned a lower cumulative return.
-2. QQQ recovered faster than QQQI in two of the three complete MA200 recovery events, but three events are not enough to establish a reliable recovery advantage.
+2. QQQ's recovery advantage is **stage-dependent**. MA200 reclaim is too late and too sparse to be the sole recovery definition. Early 5-day breakout and intermediate MA50 reclaim produced more usable and more discriminating evidence.
 3. Rotation A reduced QQQ's maximum drawdown by only 0.49 percentage points while giving up 1.62 percentage points of CAGR. Its Sharpe and Calmar were also lower than QQQ.
 4. Rotation B was identical to Rotation A because the TQQQ state was never reached.
 5. The 324-combination grid looked numerically insensitive, but this was not genuine robustness: `drawdown_threshold` and `n_exit_short` never changed any outcome because TQQQ exposure was zero in every combination.
@@ -25,7 +25,7 @@ The experiment does **not** support the current three-state strategy as an impro
 The correct decision is therefore:
 
 - **QQQI defensive premise: partially supported.**
-- **QQQ recovery premise: directionally supported but not established.**
+- **QQQ recovery premise: conditionally supported, strongest after intermediate confirmation rather than MA200 alone.**
 - **Current QQQI / QQQ rotation: not superior to QQQ in the observed sample.**
 - **Current three-state QQQI / QQQ / TQQQ strategy: structurally incomplete and not yet evaluated.**
 
@@ -62,17 +62,51 @@ All regime labels were determined from QQQ at close `t`; returns begin at the ne
 
 QQQI showed a consistent smoothing effect, especially in sideways and transition periods. That effect did not translate into a higher full-sample Sharpe or Calmar than QQQ, and it generally came with lower cumulative return.
 
-## Did QQQ recover faster?
+## How should recovery speed be measured?
 
-Only three complete MA200 recovery events existed in the common sample:
+MA200 reclaim is only a late trend-confirmation event. It does not capture the earlier part of a rebound, and it can still produce false starts. The revised study therefore defines one material-drawdown episode whenever QQQ reaches at least a 10% drawdown, retains that shock in memory for 63 sessions, and records the first occurrence of each recovery stage:
 
-| Signal close | Next-open entry | QQQI 20-session return | QQQ 20-session return | QQQ minus QQQI |
-|---|---|---:|---:|---:|
-| 2025-03-25 | 2025-03-26 | -6.49% | -7.28% | -0.78 pp |
-| 2025-05-12 | 2025-05-13 | 3.95% | 5.20% | 1.25 pp |
-| 2026-04-08 | 2026-04-09 | 9.39% | 14.96% | 5.57 pp |
+1. `breakout_5d`: first close above the prior five-session high;
+2. `ma20_reclaim`: first reclaim of MA20 / Bollinger middle band;
+3. `ma50_reclaim`: first reclaim of MA50;
+4. `breakout_20d`: first close above the prior 20-session high;
+5. `ma200_reclaim`: first reclaim of MA200.
 
-QQQ outperformed in two of three events, with an average advantage of 2.01 percentage points. This is useful directional evidence, but the event count is too small for a stable conclusion.
+There is at most one trigger of each family in each shock episode. A signal is confirmed at close `t`, and all return and time-to-target measurements start at open `t+1`.
+
+The common sample contained three independent shock episodes and fourteen stage events.
+
+### Recovery-stage summary
+
+| Trigger family | Median sessions after shock | QQQ wins, 5d | QQQ wins, 20d | QQQ wins, 40d | Median QQQ advantage, 40d |
+|---|---:|---:|---:|---:|---:|
+| 5-day breakout | 5 | 3/3 | 1/3 | 3/3 | +2.05 pp |
+| MA20 reclaim | 7 | 2/3 | 1/3 | 3/3 | +1.68 pp |
+| MA50 reclaim | 9 | 3/3 | 2/3 | 3/3 | +3.63 pp |
+| 20-day breakout | 13 | 2/3 | 2/3 | 2/3 | +3.63 pp |
+| MA200 reclaim | 9 | 1/2 | 1/2 | 2/2 | +4.65 pp |
+
+The MA200 median timing is not later in this tiny sample because only two MA200 events were observed; it is therefore not a reliable stage-order estimate.
+
+### Direct speed metrics
+
+| Trigger family | QQQ +5% hit rate | QQQI +5% hit rate | Median days to +5%, QQQ | Median days to +5%, QQQI |
+|---|---:|---:|---:|---:|
+| 5-day breakout | 100% | 100% | 6.0 | 7.0 |
+| MA20 reclaim | 100% | 67% | 30.0 | 18.0 |
+| MA50 reclaim | 100% | 67% | 8.0 | 14.0 |
+| 20-day breakout | 67% | 67% | 6.5 | 15.5 |
+| MA200 reclaim | 100% | 50% | 20.5 | 11.0 |
+
+These results change the interpretation:
+
+- **5-day breakout identifies the earliest opportunity.** QQQ beat QQQI over the first five sessions in all three episodes and reached +5% slightly faster. It is useful for moving from defense to ordinary QQQ, but it is too early to justify full leverage.
+- **MA20 reclaim is noisy.** The March 2025 signal was followed by another decline; QQQ lost 10.83% over the next ten sessions versus 9.89% for QQQI. MA20 alone should not start TQQQ.
+- **MA50 reclaim is the strongest current candidate for intermediate confirmation.** QQQ beat QQQI over five sessions in all three episodes, over 10 and 20 sessions in two of three, and over 40 sessions in all three. QQQ reached +5% in a median eight sessions versus fourteen for QQQI.
+- **20-day breakout is useful confirmation but can be late.** The August 2024 event entered immediately before a renewed short-term decline.
+- **MA200 reclaim is sparse and can still false-trigger.** The March 2025 event was followed by a 15.59% QQQ loss over ten sessions. It should remain a long-trend reference or defensive boundary, not the sole recovery clock.
+
+The sample remains only three shock episodes. These findings identify candidate mechanisms; they do not validate a production entry rule.
 
 ## Why Rotation B collapsed to Rotation A
 
@@ -140,15 +174,22 @@ The fixed default also passed the user's broad chronological split heuristics: l
 
 ## Recommended next experiment
 
-Do not select a lower threshold merely because a post-hoc backtest looks attractive. Freeze a new `v2` hypothesis before evaluating returns.
+Do not select one of the observed triggers merely because it looks best in three episodes. Freeze a new `v2` mechanism before evaluating portfolio returns.
 
-The most defensible redesign is to separate the historical shock from current recovery confirmation:
+The most defensible staged hypothesis is:
 
-1. **Shock memory:** QQQ experienced at least a 10% drawdown within a fixed recent window, such as the prior 20–60 sessions.
-2. **Recovery confirmation:** QQQ is now above MA200 and MA20, with MA20 rising.
-3. **TQQQ risk budget:** cap TQQQ at a partial allocation rather than 100% until the state has independent evidence.
-4. **Fast degradation:** exit TQQQ on a confirmed MA20 break and fall directly to QQQI if MA200 is broken.
+1. **Shock memory:** QQQ experienced at least a 10% drawdown during the previous 63 sessions.
+2. **Defense to QQQ:** move from QQQI to QQQ after a 5-day breakout or MA20 reclaim. This captures the early repair without applying leverage.
+3. **QQQ to partial TQQQ:** permit a 30%–50% TQQQ sleeve only after MA50 reclaim, preferably with either a 20-day breakout or a positive MA20 slope as secondary confirmation.
+4. **Do not require current deep drawdown:** the historical shock and current recovery confirmation are separate conditions.
+5. **Fast degradation:** remove TQQQ on a confirmed MA20 break; move fully to QQQI when the long-trend defensive boundary is broken.
+6. **MA200's role:** use MA200 primarily as a long-horizon risk boundary or late confirmation, not as the only definition of recovery.
 
-This better matches the stated economic idea: use leverage during recovery from a material drawdown, rather than requiring the market to remain deeply drawn down after trend recovery has already been confirmed.
+This staged design matches the empirical pattern better than the current rule:
 
-Version A should remain the simple benchmark. The next frozen challenger should be compared against QQQ and Rotation A, with state reachability required before any performance conclusion is accepted.
+- very early signals can justify leaving QQQI;
+- MA20 alone is too noisy for leverage;
+- MA50 appears to be a more credible leverage gate;
+- MA200 alone sacrifices earlier opportunity and does not eliminate false starts.
+
+Version A should remain the simple benchmark. The next frozen challenger must be compared against QQQ, QQQI and Rotation A, and must pass state-reachability, parameter-activity and tail-risk checks before any performance conclusion is accepted.
