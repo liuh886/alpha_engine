@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -72,12 +71,14 @@ def _stamp_metadata(
     end_date: str | None,
 ) -> None:
     bundle = notebook.metadata.setdefault("alpha_engine_research_bundle", {})
+    bundle.pop("executed_at_utc", None)
+    bundle.pop("git_sha", None)
     bundle.update(
         {
-            "executed_at_utc": datetime.now(timezone.utc)
-            .replace(microsecond=0)
-            .isoformat(),
             "execution_end_date": end_date,
+            "execution_mode": (
+                "explicit_end_date" if end_date else "latest_available_data"
+            ),
             "notebook_path": str(notebook_path.relative_to(root)),
             "snapshot": str(snapshot_path.relative_to(root)),
             "snapshot_sha256": _sha256(snapshot_path),
@@ -85,7 +86,6 @@ def _stamp_metadata(
                 str(path.relative_to(root)): _sha256(path)
                 for path in contract_paths
             },
-            "git_sha": os.getenv("GITHUB_SHA"),
             "research_only": True,
             "trade_ready": False,
         }
