@@ -8,7 +8,7 @@ from src.research.selected_pool_guard import resolve_selected_pool
 
 
 US_SELECTED = Path("configs/research_universes/us_selected_equities_v2.yaml")
-CN_SELECTED = Path("configs/research_universes/cn_selected_equities_v2.yaml")
+CN_SELECTED = Path("configs/research_universes/cn_selected_equities_v3.yaml")
 US_STRATEGY_POOL = Path("configs/pools/us_small_pool_v2.yaml")
 REGISTRY = Path("configs/pools/selected_pool_registry_v1.yaml")
 CIK_MAPPING = Path("configs/providers/us_small_pool_sec_cik_v2.yaml")
@@ -23,7 +23,7 @@ US_APPROVED_REMOVALS = {
     "SBUX", "AMGN", "GILD", "ALNY", "INSM", "IDXX", "DXCM", "PYPL",
     "MSTR", "CSX", "ODFL", "PCAR", "FAST", "FER",
 }
-CN_APPROVED_REMOVALS = {
+CN_FIRST_ROUND_REMOVALS = {
     "000656", "002157", "002607", "601933", "000002", "001979",
     "600048", "000069", "002146", "002271", "603833", "600000",
     "600016", "601398", "601939", "601988", "601288", "601328",
@@ -35,6 +35,18 @@ CN_APPROVED_REMOVALS = {
     "600741", "600170", "601186", "601390", "601618", "601668",
     "601800", "002074", "002129", "002120",
 }
+CN_SECOND_ROUND_REMOVALS = {
+    "000157", "000617", "000703", "000708", "000723", "000786",
+    "000876", "002032", "002064", "002153", "002180", "002236",
+    "002252", "002304", "002508", "002555", "002558", "002624",
+    "002739", "600050", "600428", "600585", "601006", "601898",
+    "600028", "600196", "600600", "601111", "601166", "601225",
+    "601360", "601727", "601816",
+}
+CN_USER_RETAINED = {
+    "000338", "000895", "002202", "300017", "300133", "600184", "600875",
+}
+CN_ALL_APPROVED_REMOVALS = CN_FIRST_ROUND_REMOVALS | CN_SECOND_ROUND_REMOVALS
 
 
 def _load(path: Path) -> dict:
@@ -80,15 +92,22 @@ def test_user_approved_selected_universes_are_active_and_exact() -> None:
     assert us["status"] == "active_selected_pool"
     assert cn["status"] == "active_selected_pool"
     assert len(us_symbols) == us["candidate_count"] == 87
-    assert len(cn_symbols) == cn["candidate_count"] == 163
+    assert len(cn_symbols) == cn["candidate_count"] == 130
+    assert cn["parent_pool_id"] == "cn_selected_equities_v2"
+    assert cn["selection_decision_issue"] == 269
+
     assert "TIGO" in us_symbols
     assert "TYGO" in us_symbols
     assert us["data_readiness"]["TIGO"]["silent_exclusion_allowed"] is False
     assert US_APPROVED_REMOVALS.isdisjoint(us_symbols)
-    assert CN_APPROVED_REMOVALS.isdisjoint(cn_symbols)
+    assert CN_ALL_APPROVED_REMOVALS.isdisjoint(cn_symbols)
+    assert CN_USER_RETAINED <= cn_symbols
     assert {"600837", "601989"}.isdisjoint(cn_symbols)
+
     assert set(us["approved_removals"]) == US_APPROVED_REMOVALS
-    assert set(cn["approved_removals"]) == CN_APPROVED_REMOVALS
+    assert set(cn["second_round_approved_removals"]) == CN_SECOND_ROUND_REMOVALS
+    assert set(cn["all_approved_removals"]) == CN_ALL_APPROVED_REMOVALS
+    assert set(cn["user_retained_exceptions"]) == CN_USER_RETAINED
 
 
 def test_selected_pool_cik_mapping_is_exact_for_strategy_pool() -> None:
@@ -121,8 +140,10 @@ def test_future_runs_are_bound_to_user_approved_selected_universes() -> None:
     assert spec["pool_spec"] == us["active_strategy_pool_spec"]
     assert spec["pool_governance"]["allow_broad_universe_fallback"] is False
 
-    assert cn["active_pool_id"] == "cn_selected_equities_v2"
+    assert cn["active_pool_id"] == "cn_selected_equities_v3"
     assert cn["pool_spec"] == str(CN_SELECTED)
+    assert cn["parent_pool_id"] == "cn_selected_equities_v2"
+    assert cn["selection_decision_issue"] == 269
     assert cn["new_authoritative_runs_allowed"] is True
     assert set(cn["mandatory_exclusions_after_terminal_date"]) == {"600837", "601989"}
 
@@ -137,7 +158,7 @@ def test_authoritative_guard_and_data_universe_resolve_both_markets() -> None:
     assert us.pool_id == "us_selected_equities_v2"
     assert us.pool_spec == US_SELECTED.resolve()
     assert us.authoritative_data_blockers
-    assert cn.pool_id == "cn_selected_equities_v2"
+    assert cn.pool_id == "cn_selected_equities_v3"
     assert cn.pool_spec == CN_SELECTED.resolve()
     assert not cn.authoritative_data_blockers
 
@@ -158,8 +179,11 @@ def test_symbol_lifecycle_rules_fail_closed() -> None:
 
 
 def test_approved_csv_files_are_removed_and_archived_history_remains() -> None:
-    for symbol in sorted(US_APPROVED_REMOVALS | CN_APPROVED_REMOVALS):
+    for symbol in sorted(US_APPROVED_REMOVALS | CN_ALL_APPROVED_REMOVALS):
         assert not Path(f"data/csv_clean/{symbol}.csv").exists(), symbol
+
+    for symbol in CN_USER_RETAINED:
+        assert Path(f"data/csv_clean/{symbol}.csv").exists(), symbol
 
     assert "TIGO" not in US_APPROVED_REMOVALS
     assert Path("data/csv_clean/600837.csv").exists()

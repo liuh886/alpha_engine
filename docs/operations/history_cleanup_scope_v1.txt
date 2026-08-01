@@ -1,0 +1,4 @@
+data/csv_clean/**
+data/qlib_data/**
+data/providers/**
+data/snapshots/**
