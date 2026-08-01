@@ -1,0 +1,27 @@
+experiment_id: qqq_tqqq_vxn_v4_1_churn_diagnostics
+parent_experiment_id: qqq_tqqq_vxn_attack_v4_1_long_history
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+diagnostic_only: true
+strategy_rule_changed: false
+purpose: >-
+  Measure whether the frozen v4.1 VXN leverage veto creates avoidable short
+  exits, rapid re-entry cycles or excess turnover before proposing any
+  hysteresis or cooldown rule.
+
+base_contract: configs/research_paradigms/qqq_tqqq_vxn_attack_v4_1_long_history.yaml
+
+diagnostics:
+  round_trip_thresholds_sessions: [5, 10, 20]
+  quick_reentry_sessions: 5
+  event_horizons: [1, 5, 10, 20]
+  report_same_month_reentries: true
+  report_transition_cost_by_reason: true
+  report_vxn_only_exits: true
+
+hypothesis_discipline:
+  - This experiment changes no strategy signal, threshold, weight or execution rule.
+  - Diagnostics must separate rapid exits from longer protective exits.
+  - No cooldown or persistence parameter may be tested in this experiment.
+  - A follow-up hysteresis hypothesis is admissible only if rapid VXN-only exits are recurring and economically harmful.
