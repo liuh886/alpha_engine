@@ -141,6 +141,7 @@ def test_symbol_lifecycle_rules_fail_closed() -> None:
     lifecycle = _load(LIFECYCLE)["rules"]
 
     assert lifecycle["orphan_or_corrupt_files"]["ALBA"]["action"] == "delete_from_active_data"
+    assert lifecycle["ticker_identity_conflicts"]["TIGO"]["retained_in_selected_universe"] is True
     assert lifecycle["ticker_identity_conflicts"]["TIGO"]["intended_symbol_for_tigo_energy"] == "TYGO"
     assert lifecycle["independent_listing_boundaries"]["TYGO"]["public_trading_start"] == "2023-05-24"
     assert lifecycle["independent_listing_boundaries"]["SNDK"]["authoritative_backtest_before_start_allowed"] is False
