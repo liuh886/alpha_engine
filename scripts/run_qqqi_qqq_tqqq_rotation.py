@@ -12,6 +12,12 @@ from typing import Any
 import pandas as pd
 import yaml
 
+from src.research.etf_rotation_evidence import (
+    long_history_asset_context,
+    long_history_signal_audit,
+    parameter_activity_audit,
+    state_reachability_summary,
+)
 from src.research.etf_rotation_experiment import (
     RotationConfig,
     chronological_split_metrics,
@@ -62,6 +68,7 @@ def main() -> int:
         end=end_date,
     )
     metrics, results, prepared = run_default_comparison(bars, config)
+    reachability = state_reachability_summary(results["rotation_B"])
 
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -84,6 +91,27 @@ def main() -> int:
         results["rotation_B"],
         train_fraction=contract["validation"]["chronological_train_fraction"],
     ).to_csv(output / "chronological_split.csv")
+    long_history_asset_context(
+        bars,
+        periods,
+        annual_risk_free_rate=config.annual_risk_free_rate,
+    ).to_csv(output / "long_history_asset_context.csv")
+    long_history_signal_audit(
+        bars["QQQ"],
+        config,
+        periods,
+        version="B",
+    ).to_csv(output / "long_history_signal_audit.csv")
+    (output / "state_reachability.json").write_text(
+        json.dumps(
+            reachability,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            default=_json_default,
+        ),
+        encoding="utf-8",
+    )
     for key, result in results.items():
         result.daily.to_csv(output / f"daily_{key}.csv")
         result.trades.to_csv(output / f"trades_{key}.csv", index=False)
@@ -94,6 +122,29 @@ def main() -> int:
         grid.to_csv(output / "sensitivity_grid.csv", index=False)
         sensitivity_summary_payload = stability_summary(
             grid, baseline_metrics=results["rotation_B"].metrics
+        )
+        activity = parameter_activity_audit(
+            grid,
+            parameter_columns=list(contract["sensitivity"]),
+        )
+        activity.to_csv(output / "parameter_activity.csv")
+        metric_pass = bool(sensitivity_summary_payload.pop("heuristic_robust"))
+        inactive_parameters = activity.index[~activity["active"]].tolist()
+        sensitivity_summary_payload.update(
+            {
+                "metric_dispersion_heuristic_pass": metric_pass,
+                "structurally_complete": bool(reachability["structurally_complete"]),
+                "inactive_parameters": inactive_parameters,
+                "overall_robust": bool(
+                    metric_pass
+                    and reachability["structurally_complete"]
+                    and not inactive_parameters
+                ),
+                "interpretation": (
+                    "Metric dispersion is not enough: intended states must be reached and "
+                    "sensitivity parameters must affect at least one matched outcome."
+                ),
+            }
         )
         (output / "stability_summary.json").write_text(
             json.dumps(
@@ -110,19 +161,34 @@ def main() -> int:
         "experiment_id": contract["experiment_id"],
         "research_only": True,
         "trade_ready": False,
-        "common_sample_start": prepared.index.min().date().isoformat(),
-        "common_sample_end": prepared.index.max().date().isoformat(),
+        "common_price_sample_start": prepared.index.min().date().isoformat(),
+        "common_price_sample_end": prepared.index.max().date().isoformat(),
+        "economic_return_start": results["rotation_B"].metrics["start_date"],
+        "economic_return_end": results["rotation_B"].metrics["end_date"],
         "strategy_metrics": metrics.reset_index().to_dict(orient="records"),
+        "state_reachability": reachability,
         "stability": sensitivity_summary_payload,
         "limitations": [
             "QQQI inception is 2024-01-29; 2020 and 2022 cannot be direct three-asset tests.",
             "The common live sample is short and contains limited independent market regimes.",
             "The sensitivity grid is diagnostic and must not be used to promote a fitted winner.",
+            (
+                "Rotation B did not reach all intended states in the frozen common sample; "
+                "TQQQ-specific sensitivity is therefore structurally uninterpretable."
+                if not reachability["structurally_complete"]
+                else "All intended states were reached in the frozen common sample."
+            ),
         ],
     }
     summary_path = output / "summary.json"
     summary_path.write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True, default=_json_default),
+        json.dumps(
+            summary,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            default=_json_default,
+        ),
         encoding="utf-8",
     )
     output_files = sorted(path for path in output.iterdir() if path.is_file())
