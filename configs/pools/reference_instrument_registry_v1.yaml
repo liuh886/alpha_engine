@@ -1,0 +1,108 @@
+schema_version: "1.0"
+registry_id: "reference_instrument_registry_v1"
+created_at: "2026-08-01"
+status: "active_governance_contract"
+
+policy:
+  candidate_eligible_by_default: false
+  portfolio_eligible_by_default: false
+  references_must_be_declared_by_model_or_strategy_spec: true
+  cross_market_reference_use_allowed: false
+  index_and_tracking_etf_are_distinct_instruments: true
+  provider_aliases_must_preserve_canonical_identity: true
+  reference_membership_changes_require_new_version: true
+  post_result_reference_changes_allowed: false
+
+markets:
+  us:
+    instruments:
+      QQQ:
+        canonical_symbol: "QQQ"
+        instrument_type: "equity_etf"
+        provider_aliases: ["QQQ"]
+        roles: ["benchmark", "market_regime", "factor_reference"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: true
+      TQQQ:
+        canonical_symbol: "TQQQ"
+        instrument_type: "leveraged_equity_etf"
+        provider_aliases: ["TQQQ"]
+        roles: ["leveraged_sleeve", "recovery_context", "risk_budget_context"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: true
+      QQQI:
+        canonical_symbol: "QQQI"
+        instrument_type: "income_equity_etf"
+        provider_aliases: ["QQQI"]
+        roles: ["defensive_sleeve", "income_context"]
+        executable: true
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: true
+      VIX:
+        canonical_symbol: "VIX"
+        instrument_type: "volatility_index"
+        provider_aliases: ["^VIX", "VIX"]
+        roles: ["volatility_context", "market_regime", "risk_budget_context"]
+        executable: false
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: false
+      VXN:
+        canonical_symbol: "VXN"
+        instrument_type: "volatility_index"
+        provider_aliases: ["^VXN", "VXN"]
+        roles: ["volatility_context", "nasdaq_risk_context", "risk_budget_context"]
+        executable: false
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: false
+      SOX:
+        canonical_symbol: "SOX"
+        instrument_type: "sector_index"
+        provider_aliases: ["^SOX", "SOX"]
+        roles: ["sector_context", "factor_reference"]
+        executable: false
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: false
+
+  cn:
+    instruments:
+      CSI300:
+        canonical_symbol: "000300.SH"
+        instrument_type: "equity_index"
+        provider_aliases: ["000300.SH", "SH000300", "sh.000300"]
+        roles: ["benchmark", "market_regime", "factor_reference"]
+        executable: false
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: false
+      CHINEXT:
+        canonical_symbol: "399006.SZ"
+        instrument_type: "equity_index"
+        provider_aliases: ["399006.SZ", "SZ399006", "sz.399006"]
+        roles: ["growth_style_context", "factor_reference"]
+        executable: false
+        candidate_eligible: false
+        portfolio_eligible_by_default: false
+        fundamental_data_applicable: false
+        corporate_actions_applicable: false
+
+activation_requirements:
+  - "candidate and reference universes are resolved separately"
+  - "every use declares an allowed role"
+  - "an executable ETF requires explicit portfolio authorization in the strategy spec"
+  - "an index cannot be substituted by a tracking ETF"
+  - "reference registry identity is bound into every model or strategy manifest"
