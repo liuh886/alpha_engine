@@ -38,6 +38,7 @@ jobs:
             echo "PURGE_LIST=${GITHUB_WORKSPACE}/configs/data_quality/history_purge_paths_v1.txt"
             echo "VERIFY_DIR=${RUNNER_TEMP}/alpha-engine-final-verify.git"
             echo "RECOVERY_DIR=${RUNNER_TEMP}/pre-purge-recovery"
+            echo "BUNDLE_VERIFY_DIR=${RUNNER_TEMP}/pre-purge-bundle-verify.git"
           } >> "$GITHUB_ENV"
 
       - name: Verify rewritten remote from a fresh mirror
@@ -87,11 +88,13 @@ jobs:
           bundle="$(find "$RECOVERY_DIR" -type f -name '*.bundle' -print -quit)"
           checksum="$(find "$RECOVERY_DIR" -type f -name '*.bundle.sha256' -print -quit)"
           test -n "$bundle" && test -n "$checksum"
-          (
-            cd "$(dirname "$bundle")"
-            sha256sum -c "$(basename "$checksum")"
-          )
-          git bundle verify "$bundle"
+
+          expected_hash="$(awk 'NR == 1 {print $1}' "$checksum")"
+          actual_hash="$(sha256sum "$bundle" | awk '{print $1}')"
+          test "$actual_hash" = "$expected_hash"
+
+          git clone --mirror "$bundle" "$BUNDLE_VERIFY_DIR"
+          git --git-dir="$BUNDLE_VERIFY_DIR" fsck --full
 
           {
             echo "PURGE_RUN_ID=$purge_run_id"
