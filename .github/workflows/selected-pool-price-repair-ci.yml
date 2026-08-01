@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths:
       - "configs/pools/selected_pool_registry_v1.yaml"
+      - "src/data/adapters/yfinance_adapter.py"
       - "scripts/data/refresh_selected_pool_prices.py"
+      - "tests/test_yfinance_adapter.py"
       - "tests/test_refresh_selected_pool_prices.py"
       - "docs/research/selected_pool_price_repair_v1_2026-08-01.md"
       - ".github/workflows/selected-pool-price-repair-ci.yml"
@@ -13,7 +15,9 @@ on:
     branches: [main]
     paths:
       - "configs/pools/selected_pool_registry_v1.yaml"
+      - "src/data/adapters/yfinance_adapter.py"
       - "scripts/data/refresh_selected_pool_prices.py"
+      - "tests/test_yfinance_adapter.py"
       - "tests/test_refresh_selected_pool_prices.py"
       - "docs/research/selected_pool_price_repair_v1_2026-08-01.md"
       - ".github/workflows/selected-pool-price-repair-ci.yml"
@@ -26,7 +30,7 @@ on:
         type: choice
         options: [cn, us]
       max_rounds:
-        description: "Provider retry rounds per blocked symbol"
+        description: "Provider retry rounds per symbol"
         required: true
         default: "2"
         type: choice
@@ -42,7 +46,7 @@ permissions:
 jobs:
   contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -56,15 +60,19 @@ jobs:
       - name: Ruff selected-pool repair
         run: >-
           uv run ruff check
+          src/data/adapters/yfinance_adapter.py
           scripts/data/refresh_selected_pool_prices.py
+          tests/test_yfinance_adapter.py
           tests/test_refresh_selected_pool_prices.py
       - name: Mypy selected-pool repair
         run: >-
           uv run mypy
+          src/data/adapters/yfinance_adapter.py
           scripts/data/refresh_selected_pool_prices.py
       - name: Run selected-pool repair tests
         run: >-
           uv run pytest
+          tests/test_yfinance_adapter.py
           tests/test_refresh_selected_pool_prices.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
@@ -76,7 +84,7 @@ jobs:
       matrix:
         market: [cn, us]
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -87,7 +95,7 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Build exact selected-pool source and provider
+      - name: Rebuild complete selected-pool history and provider
         run: >-
           uv run python scripts/data/refresh_selected_pool_prices.py
           --market "${{ matrix.market }}"
@@ -96,6 +104,7 @@ jobs:
           --start 2021-01-01
           --cutoff 2026-06-18
           --max-rounds 1
+          --full-refresh
       - name: Upload complete source, provider and manifest
         if: always()
         uses: actions/upload-artifact@v4
@@ -109,7 +118,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     needs: contract
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -120,7 +129,7 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Build isolated selected-pool source and provider
+      - name: Rebuild complete selected-pool history and provider
         run: >-
           uv run python scripts/data/refresh_selected_pool_prices.py
           --market "${{ inputs.market }}"
@@ -129,6 +138,7 @@ jobs:
           --start 2021-01-01
           --cutoff 2026-06-18
           --max-rounds "${{ inputs.max_rounds }}"
+          --full-refresh
       - name: Upload complete source, provider and manifest
         if: always()
         uses: actions/upload-artifact@v4
