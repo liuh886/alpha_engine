@@ -3,7 +3,8 @@
 The command never overwrites the authoritative source directory. It copies valid
 source files into a staging tree, fetches only missing/invalid candidates, writes
 source-attempt evidence, validates the exact selected pool, builds a manifest-
-bound Qlib provider, and atomically publishes the isolated output directory.
+bound Qlib provider, and atomically publishes either a complete build or a
+blocked diagnostics-only result.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import hashlib
 import json
 import shutil
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +27,7 @@ from src.data.adapters.baostock_adapter import BaoStockAdapter
 from src.data.adapters.base import MarketDataAdapter
 from src.data.adapters.efinance_adapter import EFinanceAdapter
 from src.data.adapters.yfinance_adapter import YFinanceAdapter
-from src.data.router import MarketDataRouter
+from src.data.router import MarketDataRouter, RouterResponse
 from src.data.validation.schema import validate_market_data
 from src.research.selected_pool_guard import resolve_selected_pool
 
@@ -76,7 +78,7 @@ def _normalize_frame(frame: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
     missing = sorted(set(CANONICAL_COLUMNS) - set(frame.columns))
     if missing:
         raise ValueError(f"{symbol} is missing columns: {missing}")
-    result = frame.loc[:, CANONICAL_COLUMNS].copy()
+    result = frame.loc[:, list(CANONICAL_COLUMNS)].copy()
     result["date"] = pd.to_datetime(result["date"], errors="coerce")
     for column in CANONICAL_COLUMNS[1:]:
         result[column] = pd.to_numeric(result[column], errors="coerce")
@@ -133,8 +135,69 @@ def _write_csv(path: Path, frame: pd.DataFrame) -> None:
     output.to_csv(path, index=False, lineterminator="\n")
 
 
-def _attempts(response: Any) -> list[dict[str, Any]]:
+def _attempts(response: RouterResponse) -> list[dict[str, Any]]:
     return [attempt.to_dict() for attempt in response.attempts]
+
+
+def _fetch_with_retries(
+    router: MarketDataRouter,
+    *,
+    symbol: str,
+    market: str,
+    start: str,
+    cutoff: str,
+    max_rounds: int,
+) -> tuple[RouterResponse, list[dict[str, Any]]]:
+    if max_rounds < 1:
+        raise ValueError("max_rounds must be at least 1")
+    combined_attempts: list[dict[str, Any]] = []
+    last_response = RouterResponse(result=None, attempts=[])
+    for round_number in range(1, max_rounds + 1):
+        response = router.fetch_daily_bars(
+            symbol=symbol,
+            market=market,
+            start=start,
+            end=cutoff,
+            validate=True,
+        )
+        for attempt in _attempts(response):
+            combined_attempts.append({"round": round_number, **attempt})
+        last_response = response
+        if response.ok:
+            return response, combined_attempts
+        if round_number < max_rounds:
+            time.sleep(float(round_number * 2))
+    return last_response, combined_attempts
+
+
+def _base_manifest(
+    *,
+    market: str,
+    pool_id: str,
+    candidates: list[str],
+    benchmark: str,
+    start: str,
+    cutoff: str,
+    targets: list[str],
+    before: dict[str, dict[str, Any]],
+    records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "schema_version": "1.0",
+        "evidence_type": "selected_pool_price_refresh_v1",
+        "market": market,
+        "pool_id": pool_id,
+        "candidate_count": len(candidates),
+        "benchmark": benchmark,
+        "start": start,
+        "cutoff": cutoff,
+        "target_count": len(targets),
+        "targets": targets,
+        "before": before,
+        "records": records,
+        "research_only": True,
+        "trade_ready": False,
+    }
 
 
 def refresh_selected_pool_prices(
@@ -146,6 +209,7 @@ def refresh_selected_pool_prices(
     start: str,
     cutoff: str,
     router: MarketDataRouter | None = None,
+    max_rounds: int = 2,
 ) -> dict[str, Any]:
     """Build one isolated, exact selected-pool price source and provider."""
 
@@ -187,6 +251,7 @@ def refresh_selected_pool_prices(
         csv_out = stage / "data" / "csv_source"
         csv_out.mkdir(parents=True)
         records: list[dict[str, Any]] = []
+        failures: list[dict[str, Any]] = []
 
         for symbol in required:
             source_path = source_dir / f"{symbol}.csv"
@@ -204,23 +269,41 @@ def refresh_selected_pool_prices(
                 )
                 continue
 
-            response = data_router.fetch_daily_bars(
+            response, attempt_rows = _fetch_with_retries(
+                data_router,
                 symbol=symbol,
                 market=market_key,
                 start=start,
-                end=cutoff,
-                validate=True,
+                cutoff=cutoff,
+                max_rounds=max_rounds,
             )
             if not response.ok or response.result is None:
-                raise RuntimeError(
-                    f"all providers failed for {market_key}:{symbol}: "
-                    f"{json.dumps(_attempts(response), sort_keys=True)}"
-                )
-            frame = _normalize_frame(response.result.df, symbol=symbol)
-            frame = frame.loc[frame["date"] <= pd.Timestamp(cutoff)].copy()
-            if frame.empty:
-                raise RuntimeError(f"provider returned no rows through cutoff for {symbol}")
-            _write_csv(output_path, frame)
+                failure = {
+                    "symbol": symbol,
+                    "action": "fetch_failed",
+                    "previous_status": before[symbol]["status"],
+                    "attempts": attempt_rows,
+                }
+                records.append(failure)
+                failures.append(failure)
+                continue
+            try:
+                frame = _normalize_frame(response.result.df, symbol=symbol)
+                frame = frame.loc[frame["date"] <= pd.Timestamp(cutoff)].copy()
+                if frame.empty:
+                    raise ValueError("provider returned no rows through cutoff")
+                _write_csv(output_path, frame)
+            except Exception as exc:
+                failure = {
+                    "symbol": symbol,
+                    "action": "normalization_failed",
+                    "previous_status": before[symbol]["status"],
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "attempts": attempt_rows,
+                }
+                records.append(failure)
+                failures.append(failure)
+                continue
             records.append(
                 {
                     "symbol": symbol,
@@ -231,8 +314,40 @@ def refresh_selected_pool_prices(
                     "rows": int(len(frame)),
                     "first_date": frame["date"].min().date().isoformat(),
                     "last_date": frame["date"].max().date().isoformat(),
-                    "attempts": _attempts(response),
+                    "attempts": attempt_rows,
                 }
+            )
+
+        manifest = _base_manifest(
+            market=market_key,
+            pool_id=binding.pool_id,
+            candidates=candidates,
+            benchmark=benchmark,
+            start=start,
+            cutoff=cutoff,
+            targets=targets,
+            before=before,
+            records=records,
+        )
+        if failures:
+            manifest.update(
+                {
+                    "status": "selected_pool_price_refresh_blocked",
+                    "failure_count": len(failures),
+                    "failed_symbols": [row["symbol"] for row in failures],
+                    "failures": failures,
+                    "all_sources_ready": False,
+                }
+            )
+            shutil.rmtree(stage / "data", ignore_errors=True)
+            _write_json(
+                stage / "artifacts" / "selected_pool_price_refresh_manifest.json",
+                manifest,
+            )
+            stage.replace(destination)
+            raise RuntimeError(
+                "selected-pool refresh failed for symbols: "
+                + ", ".join(str(row["symbol"]) for row in failures)
             )
 
         after = {
@@ -252,27 +367,18 @@ def refresh_selected_pool_prices(
             market=market_key,
             include_fields=DEFAULT_FIELDS,
         )
-        manifest = {
-            "schema_version": "1.0",
-            "evidence_type": "selected_pool_price_refresh_v1",
-            "market": market_key,
-            "pool_id": binding.pool_id,
-            "candidate_count": len(candidates),
-            "benchmark": benchmark,
-            "start": start,
-            "cutoff": cutoff,
-            "target_count": len(targets),
-            "targets": targets,
-            "before": before,
-            "after": after,
-            "records": records,
-            "provider_identity_sha256": provider_manifest.get(
-                "provider_identity_sha256"
-            ),
-            "all_sources_ready": True,
-            "research_only": True,
-            "trade_ready": False,
-        }
+        manifest.update(
+            {
+                "status": "selected_pool_price_refresh_ready",
+                "failure_count": 0,
+                "failed_symbols": [],
+                "after": after,
+                "provider_identity_sha256": provider_manifest.get(
+                    "provider_identity_sha256"
+                ),
+                "all_sources_ready": True,
+            }
+        )
         _write_json(
             stage / "artifacts" / "selected_pool_price_refresh_manifest.json",
             manifest,
@@ -293,6 +399,7 @@ def main() -> None:
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--start", default="2021-01-01")
     parser.add_argument("--cutoff", default="2026-06-18")
+    parser.add_argument("--max-rounds", type=int, default=2)
     args = parser.parse_args()
 
     payload = refresh_selected_pool_prices(
@@ -302,6 +409,7 @@ def main() -> None:
         output_root=args.output_root,
         start=args.start,
         cutoff=args.cutoff,
+        max_rounds=args.max_rounds,
     )
     print(json.dumps(payload, indent=2, sort_keys=True))
 
