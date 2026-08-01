@@ -16,11 +16,11 @@ from src.research.etf_rotation_experiment import fetch_adjusted_daily_bars
 from src.research.vix_rotation_experiment import (
     VIX_SYMBOL,
     config_from_contract,
-    run_vix_comparison,
     vix_regime_asset_metrics,
     vix_repair_event_study,
     vix_signal_audit,
 )
+from src.research.vix_rotation_runtime import run_vix_runtime_comparison
 
 
 def _json_default(value: Any) -> Any:
@@ -59,7 +59,7 @@ def main() -> int:
         start=contract["data"]["start_date"],
         end=end_date,
     )
-    metrics, results, prepared = run_vix_comparison(bars, config)
+    metrics, results, prepared = run_vix_runtime_comparison(bars, config)
     regime = vix_regime_asset_metrics(prepared)
     event = vix_repair_event_study(
         prepared,
