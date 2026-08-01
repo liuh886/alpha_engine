@@ -1,0 +1,98 @@
+experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+parent_experiment_id: qqqi_qqq_tqqq_vxn_leverage_v4_1
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+purpose: >-
+  Test whether the weak early QQQ risk-on state should use a neutral 50% QQQI
+  and 50% QQQ bridge while preserving every frozen v4.1 signal, transition,
+  VIX/VXN rule, TQQQ weight, execution convention and cost assumption.
+
+boundaries:
+  price_signal_symbol: QQQ
+  vix_symbol: ^VIX
+  vxn_symbol: ^VXN
+  tradable_symbols: [QQQI, QQQ, TQQQ]
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  common_tradable_window: true
+  no_pre_inception_backfill_for_qqqi: true
+  volatility_indices_are_signal_only: true
+  decision_trace_must_equal_v4_1: true
+
+data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  fields: [date, open, close]
+  corporate_action_basis: adjusted
+
+price_logic:
+  ma_short: 20
+  ma_medium: 50
+  ma_long: 200
+  ma_long_buffer: 0.01
+  shock_drawdown: 0.10
+  shock_lookback_sessions: 63
+  shock_memory_sessions: 63
+  early_breakout_sessions: 5
+  confirmation_breakout_sessions: 20
+  ma_rise_sessions: 3
+  exit_below_ma_short_sessions: 2
+
+vix_logic:
+  rolling_window: 252
+  stress_quantile: 0.80
+  normalization_quantile: 0.60
+  spike_1d: 0.20
+  spike_5d: 0.35
+  easing_retreat_for_qqq: 0.15
+  normalization_retreat_for_tqqq: 0.25
+  falling_sessions: 3
+
+vxn_overlay:
+  role: partial_leverage_veto_only
+  qqqi_defense_uses_vix_only: true
+  partial_leverage_entry_requires_vix_normalized: true
+  partial_leverage_entry_requires_vxn_not_stressed: true
+  partial_leverage_exit_if_vxn_stressed: true
+  no_vxn_normalization_requirement: true
+
+portfolio:
+  state_0:
+    QQQI: 1.00
+    QQQ: 0.00
+    TQQQ: 0.00
+  state_1_bridge:
+    QQQI: 0.50
+    QQQ: 0.50
+    TQQQ: 0.00
+  state_2:
+    QQQI: 0.00
+    QQQ: 0.25
+    TQQQ: 0.75
+  transaction_cost_bps_per_turnover_unit: 10.0
+  annual_risk_free_rate: 0.0
+  charge_initial_entry: true
+
+validation:
+  chronological_train_fraction: 0.60
+  event_horizons: [5, 10, 20, 40]
+  primary_baseline_experiment: qqqi_qqq_tqqq_vxn_leverage_v4_1
+  primary_metrics:
+    [cagr, annual_volatility, sharpe, sortino, max_drawdown, calmar]
+  require_same_decision_state_every_session: true
+  require_same_partial_leverage_sessions: true
+  require_lower_or_equal_turnover: true
+  require_max_drawdown_not_worse: true
+  require_risk_adjusted_improvement: true
+
+hypothesis_discipline:
+  - The v4.1 state machine is frozen and must produce the exact same decision trace.
+  - State 1 is interpreted as a lower-confidence bridge rather than a full QQQ commitment.
+  - Exactly one neutral 50/50 bridge allocation is tested; no allocation grid is allowed.
+  - No VIX, VXN, price, leverage-weight or persistence threshold may change.
+  - This experiment was motivated by the observed weak QQQI-to-QQ event study and is not independent evidence.
+  - Any attractive result remains research-only and requires prospective monitoring.
