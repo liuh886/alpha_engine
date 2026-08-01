@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGlobalStore } from '@/store/globalStore';
 import { apiClient } from '@/lib/api-client';
+import { runtimeCapabilities } from '@/lib/runtime-capabilities';
 import { useModels } from './useModels';
 import { useJobs } from './useJobs';
 import { useDataStatus } from './useDataStatus';
@@ -16,39 +17,40 @@ export function useAppBootstrap() {
   // Collect all callbacks in a ref so the bootstrap effect below can call the
   // latest version of each function without listing them as deps (which would
   // re-run the one-time bootstrap on every render cycle).
-  // Pattern: write to ref on every render (useEffect with no deps array)
-  // so the ref is always fresh, then read from ref inside the stable callback.
   const callbacksRef = useRef({ loadDataStatus, fetchModels, pollActiveJobsCount, setUsername, setApiError, setDemoMode });
   useEffect(() => {
     callbacksRef.current = { loadDataStatus, fetchModels, pollActiveJobsCount, setUsername, setApiError, setDemoMode };
   });
 
-  // Bootstrap runs exactly once on mount.  All network calls are issued in
-  // parallel via Promise.all so the initial load time equals the slowest
-  // individual call rather than their sum.
   useEffect(() => {
     const bootstrap = async () => {
+      const {
+        loadDataStatus: loadData,
+        fetchModels: fetchM,
+        pollActiveJobsCount: pollJobs,
+        setUsername: setU,
+        setApiError: setErr,
+        setDemoMode: setDemo,
+      } = callbacksRef.current;
+
       try {
         setLoading(true);
-        const {
-          loadDataStatus: loadData,
-          fetchModels: fetchM,
-          pollActiveJobsCount: pollJobs,
-          setUsername: setU,
-          setApiError: setErr,
-          setDemoMode: setDemo,
-        } = callbacksRef.current;
+
+        if (!runtimeCapabilities.backendApi) {
+          const parsed = await fetchM();
+          setU('Artifact Studio');
+          setDemo(true);
+          setErr(parsed === null ? 'No compatible static research bundle was found.' : null);
+          return;
+        }
 
         await Promise.all([
           loadData(),
           fetchM(),
           pollJobs(),
-          // Fetch the authenticated user's display name — ignore failures
-          // (endpoint may not exist in older backend versions).
           apiClient.get<{ username: string }>('/api/system/me').then(data => {
             if (data?.username) setU(data.username);
           }).catch(() => {}),
-          // Detect demo mode from the health endpoint — ignore failures.
           apiClient.get<{ demo_mode: boolean }>('/api/system/health').then(data => {
             if (data?.demo_mode) setDemo(true);
           }).catch(() => {}),
@@ -56,7 +58,11 @@ export function useAppBootstrap() {
 
         setErr(null);
       } catch (err) {
-        callbacksRef.current.setApiError('Cannot reach server. Check if the backend is running.');
+        callbacksRef.current.setApiError(
+          runtimeCapabilities.backendApi
+            ? 'Cannot reach server. Check if the backend is running.'
+            : 'Cannot load the exported research bundle.',
+        );
       } finally {
         setLoading(false);
       }
