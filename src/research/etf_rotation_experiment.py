@@ -496,11 +496,14 @@ def run_default_comparison(
 
 
 def conditional_asset_metrics(prepared: pd.DataFrame) -> pd.DataFrame:
-    """Compare QQQI and QQQ within QQQ-defined contemporaneous regimes."""
+    """Compare next-session QQQI and QQQ outcomes after QQQ-defined regimes."""
 
     rows: list[dict[str, Any]] = []
     for regime in ("weak_below_ma200", "sideways_above_ma200", "uptrend", "transition"):
-        mask = prepared["regime"].eq(regime)
+        # Regime is known only after close t. The earliest executable holding
+        # interval starts at open t+1, so use the following row's open-to-open
+        # return rather than the interval that began at open t.
+        mask = prepared["regime"].shift(1).eq(regime)
         for symbol in ("QQQI", "QQQ"):
             series = prepared.loc[mask, f"{symbol}_next_open_return"].dropna()
             metrics = _return_metrics(series)
@@ -535,10 +538,15 @@ def recovery_event_study(
     event_dates = list(prepared.index[cross.fillna(False)])
     for event_date in event_dates:
         location = prepared.index.get_loc(event_date)
-        window = prepared.iloc[location : location + horizon_sessions]
+        # The crossover is confirmed at close t and can first be acted on at
+        # open t+1. Each selected row then measures that open to the next open.
+        window = prepared.iloc[location + 1 : location + 1 + horizon_sessions]
         if len(window) < horizon_sessions:
             continue
-        row: dict[str, Any] = {"event_date": event_date}
+        row: dict[str, Any] = {
+            "event_date": event_date,
+            "entry_date": window.index[0],
+        }
         for symbol in ("QQQI", "QQQ"):
             values = window[f"{symbol}_next_open_return"].dropna()
             if len(values) < horizon_sessions:
