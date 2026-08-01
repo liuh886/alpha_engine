@@ -152,7 +152,9 @@ def run_vix_runtime_comparison(
     results: dict[str, StrategyResult] = {}
     for symbol in ("QQQI", "QQQ", "TQQQ"):
         results[f"buy_hold_{symbol}"] = run_buy_and_hold(prepared, base_config, symbol=symbol)
-    results["rotation_price_v1"] = run_rotation_backtest(prepared, base_config, version="B")
+    price_v1 = run_rotation_backtest(prepared, base_config, version="B")
+    price_v1.metrics["strategy"] = "rotation_price_v1"
+    results["rotation_price_v1"] = price_v1
     results["rotation_vix_v2"] = run_vix_rotation_backtest(prepared, config)
     metrics = pd.DataFrame([result.metrics for result in results.values()]).set_index("strategy")
     return metrics.sort_index(), results, prepared
