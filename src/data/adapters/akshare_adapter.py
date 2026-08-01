@@ -55,8 +55,9 @@ def _normalize_index_frame(
     if out.empty:
         raise DataFetchError(f"empty usable index bars for {symbol}")
 
-    # The selected AkShare index endpoint exposes volume but not turnover amount.
-    # Preserve that absence as NaN instead of fabricating close * volume.
+    # The selected AKShare index endpoint exposes volume but not turnover
+    # amount. Its volume is already an index-specific provider quantity, so it
+    # is retained and explicitly separated from equity share volume.
     out["amount"] = np.nan
     out["factor"] = 1.0
     return out[_BAR_COLUMNS]
@@ -132,6 +133,9 @@ class AkShareAdapter:
                 out["date"] = pd.to_datetime(out["date"], errors="coerce")
                 for column in ("open", "high", "low", "close", "volume", "amount"):
                     out[column] = pd.to_numeric(out[column], errors="coerce")
+                # AKShare/Eastmoney reports equity volume in lots (手). The
+                # canonical Alpha Engine unit is shares; turnover is already CNY.
+                out["volume"] = out["volume"] * 100.0
                 out = (
                     out.dropna(subset=["date", "open", "high", "low", "close"])
                     .sort_values("date")
