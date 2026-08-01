@@ -1,0 +1,163 @@
+schema_version: "1.0"
+pool_id: "us_selected_equities_v2"
+parent_universe_id: "us_curated_equities_v1"
+created_at: "2026-08-01"
+market: "us"
+status: "active_selected_pool"
+membership_mode: "user_approved_versioned"
+selection_decision_issue: 263
+candidate_count: 87
+
+selection_policy:
+  purpose: "authoritative experiments and backtests"
+  benchmark_and_reference_instruments_separate: true
+  post_result_membership_changes_allowed: false
+  additions_or_removals_require_new_version: true
+
+approved_exception:
+  TIGO:
+    entity: "Millicom International Cellular"
+    reason: "explicitly retained by user; must not be classified as Tigo Energy or energy infrastructure"
+
+data_readiness:
+  TIGO:
+    csv_clean_present_at_selection: false
+    required_before_authoritative_use: "provider refresh or verified existing provider source"
+    silent_exclusion_allowed: false
+
+symbols:
+  - AAOI
+  - AAPL
+  - ABBNY
+  - ADP
+  - ADSK
+  - ALAB
+  - AMAT
+  - AMD
+  - AMZN
+  - ANET
+  - APP
+  - ARM
+  - ASML
+  - AVGO
+  - AXON
+  - BE
+  - BKNG
+  - BKR
+  - CDNS
+  - CEG
+  - COHR
+  - COST
+  - CPRT
+  - CRCL
+  - CRWD
+  - CSCO
+  - CTAS
+  - DASH
+  - DDOG
+  - EA
+  - EME
+  - ETN
+  - FANG
+  - FIX
+  - FN
+  - GEHC
+  - GOOGL
+  - HON
+  - HOOD
+  - INTC
+  - INTU
+  - IREN
+  - ISRG
+  - KLAC
+  - LIN
+  - LITE
+  - LRCX
+  - MELI
+  - META
+  - MPWR
+  - MRVL
+  - MSFT
+  - MU
+  - NBIS
+  - NFLX
+  - NVDA
+  - ORLY
+  - PANW
+  - PDD
+  - PEP
+  - PLTR
+  - PWR
+  - QCOM
+  - REGN
+  - ROP
+  - SBGSY
+  - SHOP
+  - SNPS
+  - SNDK
+  - TEM
+  - TIGO
+  - TYGO
+  - TMUS
+  - TSLA
+  - TTWO
+  - VRT
+  - VRTX
+  - WDC
+  - WMT
+  - HIMS
+  - HIMX
+  - NOK
+  - TSM
+  - CRDO
+  - ORCL
+  - POET
+  - AEHR
+
+approved_removals:
+  - GOOG
+  - STX
+  - PAYX
+  - CHTR
+  - CMCSA
+  - WBD
+  - KHC
+  - KDP
+  - CCEP
+  - MDLZ
+  - MNST
+  - ROST
+  - AEP
+  - EXC
+  - XEL
+  - BABA
+  - BIDU
+  - CSGP
+  - TRI
+  - VRSK
+  - CTSH
+  - FTNT
+  - ZS
+  - WDAY
+  - TEAM
+  - ADBE
+  - MCHP
+  - NXPI
+  - TXN
+  - ADI
+  - MAR
+  - ABNB
+  - SBUX
+  - AMGN
+  - GILD
+  - ALNY
+  - INSM
+  - IDXX
+  - DXCM
+  - PYPL
+  - MSTR
+  - CSX
+  - ODFL
+  - PCAR
+  - FAST
+  - FER
