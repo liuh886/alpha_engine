@@ -1,0 +1,62 @@
+experiment_id: qqqi_qqq_tqqq_rotation_v1
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Test whether a QQQ-signal state machine rotating among QQQI, QQQ and TQQQ
+  improves risk-adjusted outcomes over common-window buy-and-hold baselines.
+
+boundaries:
+  signal_symbol: QQQ
+  tradable_symbols: [QQQI, QQQ, TQQQ]
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  common_tradable_window: true
+  no_pre_inception_backfill_for_qqqi: true
+  no_parameter_promotion_from_this_grid: true
+
+data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  fields: [date, open, close]
+  corporate_action_basis: adjusted
+
+strategy:
+  ma_long: 200
+  ma_short: 20
+  buffer: 0.01
+  n_rise: 3
+  n_fall: 3
+  drawdown_threshold: 0.10
+  n_exit_short: 2
+  high_window: 252
+  bollinger_window: 20
+  bollinger_std: 2.0
+  require_above_bollinger_mid: true
+  exit_on_ma_short_fall: false
+  transaction_cost_bps_per_leg: 10.0
+  annual_risk_free_rate: 0.0
+  charge_initial_entry: true
+
+sensitivity:
+  ma_long: [180, 200, 220]
+  buffer: [0.0, 0.005, 0.01, 0.02]
+  n_rise: [3, 5, 7]
+  drawdown_threshold: [0.08, 0.10, 0.15]
+  n_exit_short: [1, 2, 3]
+
+named_periods:
+  covid_crash_and_recovery: ["2020-02-19", "2020-08-31"]
+  rate_hike_technology_bear: ["2022-01-03", "2022-12-30"]
+  ai_bull_market: ["2023-01-03", "2024-12-31"]
+  qqqi_live_history: ["2024-01-29", "2099-12-31"]
+
+validation:
+  chronological_train_fraction: 0.60
+  recovery_event_horizon_sessions: 20
+  minimum_phase_sessions: 20
+  robustness_heuristic:
+    cagr_relative_spread_lt: 0.20
+    max_drawdown_relative_spread_lt: 0.30
