@@ -23,7 +23,6 @@ def _frame(dates: list[str]) -> pd.DataFrame:
             "High": [11.0 + i for i in range(len(index))],
             "Low": [9.0 + i for i in range(len(index))],
             "Close": [10.5 + i for i in range(len(index))],
-            "Adj Close": [5.25 + 0.5 * i for i in range(len(index))],
             "Volume": [1000 + i for i in range(len(index))],
         },
         index=index,
@@ -33,7 +32,16 @@ def _frame(dates: list[str]) -> pd.DataFrame:
 def test_yfinance_translates_inclusive_end_and_clips_provider_rows(monkeypatch):
     captured: dict[str, object] = {}
 
-    def download(ticker, *, start, end, progress, auto_adjust):
+    def download(
+        ticker,
+        *,
+        start,
+        end,
+        progress,
+        auto_adjust,
+        repair,
+        threads,
+    ):
         captured.update(
             {
                 "ticker": ticker,
@@ -41,6 +49,8 @@ def test_yfinance_translates_inclusive_end_and_clips_provider_rows(monkeypatch):
                 "end": end,
                 "progress": progress,
                 "auto_adjust": auto_adjust,
+                "repair": repair,
+                "threads": threads,
             }
         )
         return _frame(["2026-06-17", "2026-06-18", "2026-06-19"])
@@ -59,17 +69,20 @@ def test_yfinance_translates_inclusive_end_and_clips_provider_rows(monkeypatch):
         "start": "2026-06-17",
         "end": "2026-06-19",
         "progress": False,
-        "auto_adjust": False,
+        "auto_adjust": True,
+        "repair": True,
+        "threads": False,
     }
     assert result.end == "2026-06-18"
     assert result.df["date"].dt.strftime("%Y-%m-%d").tolist() == [
         "2026-06-17",
         "2026-06-18",
     ]
-    assert result.df.iloc[0]["open"] == pytest.approx(5.0)
-    assert result.df.iloc[0]["high"] == pytest.approx(5.5)
-    assert result.df.iloc[0]["low"] == pytest.approx(4.5)
-    assert result.df.iloc[0]["close"] == pytest.approx(5.25)
+    assert result.df.iloc[0]["open"] == pytest.approx(10.0)
+    assert result.df.iloc[0]["high"] == pytest.approx(11.0)
+    assert result.df.iloc[0]["low"] == pytest.approx(9.0)
+    assert result.df.iloc[0]["close"] == pytest.approx(10.5)
+    assert result.df.iloc[0]["amount"] == pytest.approx(10500.0)
 
 
 def test_cn_yahoo_exchange_mapping_covers_main_boards_and_growth_boards():
@@ -83,8 +96,8 @@ def test_cn_yahoo_exchange_mapping_covers_main_boards_and_growth_boards():
 def test_yfinance_current_snapshot_keeps_open_ended_provider_request(monkeypatch):
     captured: dict[str, object] = {}
 
-    def download(ticker, *, start, end, progress, auto_adjust):
-        captured["end"] = end
+    def download(ticker, **kwargs):
+        captured["end"] = kwargs["end"]
         return _frame(["2026-06-17", "2026-06-18"])
 
     monkeypatch.setitem(sys.modules, "yfinance", SimpleNamespace(download=download))
@@ -153,7 +166,6 @@ def test_material_ohlc_inconsistency_remains_rejected(monkeypatch):
     frame = _frame(["2026-06-17"])
     frame.loc[:, "High"] = 10.0
     frame.loc[:, "Close"] = 12.0
-    frame.loc[:, "Adj Close"] = 6.0
     monkeypatch.setitem(
         sys.modules,
         "yfinance",
