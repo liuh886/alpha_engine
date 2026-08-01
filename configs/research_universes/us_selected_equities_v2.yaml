@@ -19,6 +19,12 @@ approved_exception:
     entity: "Millicom International Cellular"
     reason: "explicitly retained by user; must not be classified as Tigo Energy or energy infrastructure"
 
+data_readiness:
+  TIGO:
+    csv_clean_present_at_selection: false
+    required_before_authoritative_use: "provider refresh or verified existing provider source"
+    silent_exclusion_allowed: false
+
 symbols:
   - AAOI
   - AAPL
