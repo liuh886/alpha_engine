@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -130,12 +131,14 @@ def test_refresh_fetches_only_missing_or_invalid_sources(
         start="2021-01-01",
         cutoff="2026-06-18",
         router=router,  # type: ignore[arg-type]
+        max_rounds=1,
     )
 
     assert payload["pool_id"] == "test_cn_pool"
     assert payload["target_count"] == 1
     assert payload["targets"] == ["000002"]
     assert router.calls == ["000002"]
+    assert payload["status"] == "selected_pool_price_refresh_ready"
     assert payload["all_sources_ready"] is True
     assert (output / "data/csv_source/000001.csv").is_file()
     assert (output / "data/csv_source/000002.csv").is_file()
@@ -145,7 +148,7 @@ def test_refresh_fetches_only_missing_or_invalid_sources(
     ).is_file()
 
 
-def test_refresh_fails_without_partially_publishing_output(
+def test_refresh_publishes_diagnostics_without_partial_data(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -155,7 +158,7 @@ def test_refresh_fails_without_partially_publishing_output(
     _write_csv(source / "000300.csv", _frame())
     output = tmp_path / "output"
 
-    with pytest.raises(RuntimeError, match="all providers failed"):
+    with pytest.raises(RuntimeError, match="refresh failed for symbols"):
         module.refresh_selected_pool_prices(
             root=tmp_path,
             market="cn",
@@ -164,9 +167,19 @@ def test_refresh_fails_without_partially_publishing_output(
             start="2021-01-01",
             cutoff="2026-06-18",
             router=FakeRouter({}),  # type: ignore[arg-type]
+            max_rounds=1,
         )
 
-    assert not output.exists()
+    manifest_path = (
+        output / "artifacts/selected_pool_price_refresh_manifest.json"
+    )
+    assert manifest_path.is_file()
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert payload["status"] == "selected_pool_price_refresh_blocked"
+    assert payload["failed_symbols"] == ["000002"]
+    assert payload["failure_count"] == 1
+    assert payload["all_sources_ready"] is False
+    assert not (output / "data").exists()
 
 
 def test_refresh_refuses_nonempty_destination(
@@ -187,4 +200,5 @@ def test_refresh_refuses_nonempty_destination(
             start="2021-01-01",
             cutoff="2026-06-18",
             router=FakeRouter({}),  # type: ignore[arg-type]
+            max_rounds=1,
         )
