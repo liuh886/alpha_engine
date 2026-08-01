@@ -12,6 +12,12 @@ from typing import Any
 import pandas as pd
 import yaml
 
+from src.research.etf_recovery_events import (
+    build_recovery_event_frame,
+    recovery_config_from_mapping,
+    summarize_recovery_returns,
+    summarize_recovery_speed,
+)
 from src.research.etf_rotation_evidence import (
     long_history_asset_context,
     long_history_signal_audit,
@@ -24,7 +30,6 @@ from src.research.etf_rotation_experiment import (
     conditional_asset_metrics,
     fetch_adjusted_daily_bars,
     phase_metrics,
-    recovery_event_study,
     run_default_comparison,
     run_sensitivity_grid,
     stability_summary,
@@ -61,6 +66,7 @@ def main() -> int:
 
     contract = yaml.safe_load(args.contract.read_text(encoding="utf-8"))
     config = RotationConfig(**contract["strategy"])
+    recovery_config = recovery_config_from_mapping(contract["recovery_study"])
     end_date = args.end_date or contract["data"].get("end_date")
     bars, coverage = fetch_adjusted_daily_bars(
         symbols=contract["boundaries"]["tradable_symbols"],
@@ -69,16 +75,18 @@ def main() -> int:
     )
     metrics, results, prepared = run_default_comparison(bars, config)
     reachability = state_reachability_summary(results["rotation_B"])
+    recovery_events = build_recovery_event_frame(prepared, recovery_config)
+    recovery_return_summary = summarize_recovery_returns(recovery_events, recovery_config)
+    recovery_speed_summary = summarize_recovery_speed(recovery_events, recovery_config)
 
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
     coverage.to_csv(output / "coverage.csv", index=False)
     metrics.to_csv(output / "strategy_metrics.csv")
     conditional_asset_metrics(prepared).to_csv(output / "conditional_asset_metrics.csv")
-    recovery_event_study(
-        prepared,
-        horizon_sessions=contract["validation"]["recovery_event_horizon_sessions"],
-    ).to_csv(output / "recovery_events.csv", index=False)
+    recovery_events.to_csv(output / "recovery_events_multi_stage.csv", index=False)
+    recovery_return_summary.to_csv(output / "recovery_return_summary.csv")
+    recovery_speed_summary.to_csv(output / "recovery_speed_summary.csv")
     periods = {
         name: (dates[0], dates[1]) for name, dates in contract["named_periods"].items()
     }
@@ -157,6 +165,19 @@ def main() -> int:
             encoding="utf-8",
         )
 
+    recovery_overview = {
+        "shock_episodes": int(recovery_events["shock_episode"].nunique())
+        if not recovery_events.empty
+        else 0,
+        "event_count": int(len(recovery_events)),
+        "families": sorted(recovery_events["event_family"].unique().tolist())
+        if not recovery_events.empty
+        else [],
+        "method": (
+            "One first trigger per family per material-drawdown episode; signal at close t, "
+            "measurement begins at the next open."
+        ),
+    }
     summary = {
         "experiment_id": contract["experiment_id"],
         "research_only": True,
@@ -166,11 +187,13 @@ def main() -> int:
         "economic_return_start": results["rotation_B"].metrics["start_date"],
         "economic_return_end": results["rotation_B"].metrics["end_date"],
         "strategy_metrics": metrics.reset_index().to_dict(orient="records"),
+        "recovery_study": recovery_overview,
         "state_reachability": reachability,
         "stability": sensitivity_summary_payload,
         "limitations": [
             "QQQI inception is 2024-01-29; 2020 and 2022 cannot be direct three-asset tests.",
             "The common live sample is short and contains limited independent market regimes.",
+            "Recovery families are diagnostic definitions, not independently optimized entry rules.",
             "The sensitivity grid is diagnostic and must not be used to promote a fitted winner.",
             (
                 "Rotation B did not reach all intended states in the frozen common sample; "
@@ -193,7 +216,7 @@ def main() -> int:
     )
     output_files = sorted(path for path in output.iterdir() if path.is_file())
     manifest = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "research_only": True,
         "trade_ready": False,
         "contract": str(args.contract),
