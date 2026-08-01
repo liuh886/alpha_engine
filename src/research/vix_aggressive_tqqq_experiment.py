@@ -53,10 +53,17 @@ def validate_weight_only_change(
     return baseline_weight, challenger_weight
 
 
-def _rename_metrics(result: StrategyResult, strategy: str) -> dict[str, Any]:
+def _relabel_result(
+    result: StrategyResult,
+    *,
+    strategy: str,
+    display_name: str,
+) -> StrategyResult:
+    """Return the same evidence with an explicit experiment-specific identity."""
+
     metrics = dict(result.metrics)
     metrics["strategy"] = strategy
-    return metrics
+    return StrategyResult(display_name, result.daily, result.trades, metrics)
 
 
 def _state_capture(result: StrategyResult) -> dict[str, float | int]:
@@ -99,30 +106,47 @@ def run_aggressive_tqqq_comparison(
     )
     pd.testing.assert_index_equal(baseline_prepared.index, challenger_prepared.index)
 
-    baseline = baseline_results["rotation_vix_v2"]
-    challenger = challenger_results["rotation_vix_v2"]
-    if not baseline.daily["decision_state"].equals(challenger.daily["decision_state"]):
+    baseline_raw = baseline_results["rotation_vix_v2"]
+    challenger_raw = challenger_results["rotation_vix_v2"]
+    if not baseline_raw.daily["decision_state"].equals(
+        challenger_raw.daily["decision_state"]
+    ):
         raise ValueError("challenger changed the close decision-state trace")
-    if not baseline.daily["position_state"].equals(challenger.daily["position_state"]):
+    if not baseline_raw.daily["position_state"].equals(
+        challenger_raw.daily["position_state"]
+    ):
         raise ValueError("challenger changed the executed position-state trace")
 
+    baseline = _relabel_result(
+        baseline_raw,
+        strategy="rotation_vix_v2_50",
+        display_name="Rotation VIX v2 — 50% TQQQ",
+    )
+    challenger = _relabel_result(
+        challenger_raw,
+        strategy="rotation_vix_v3_75",
+        display_name="Rotation VIX v3 — 75% TQQQ",
+    )
+    no_vix = _relabel_result(
+        challenger_results["rotation_price_repair_v2"],
+        strategy="rotation_price_repair_v3_75",
+        display_name="Rotation price-repair v3 — 75% TQQQ",
+    )
+    qqq = _relabel_result(
+        baseline_results["buy_hold_QQQ"],
+        strategy="buy_hold_QQQ",
+        display_name="Buy and hold QQQ",
+    )
+
     results = {
-        "buy_hold_QQQ": baseline_results["buy_hold_QQQ"],
+        "buy_hold_QQQ": qqq,
         "rotation_vix_v2_50": baseline,
         "rotation_vix_v3_75": challenger,
-        "rotation_price_repair_v3_75": challenger_results["rotation_price_repair_v2"],
+        "rotation_price_repair_v3_75": no_vix,
     }
-    metrics = pd.DataFrame(
-        [
-            _rename_metrics(results["buy_hold_QQQ"], "buy_hold_QQQ"),
-            _rename_metrics(results["rotation_vix_v2_50"], "rotation_vix_v2_50"),
-            _rename_metrics(results["rotation_vix_v3_75"], "rotation_vix_v3_75"),
-            _rename_metrics(
-                results["rotation_price_repair_v3_75"],
-                "rotation_price_repair_v3_75",
-            ),
-        ]
-    ).set_index("strategy")
+    metrics = pd.DataFrame([result.metrics for result in results.values()]).set_index(
+        "strategy"
+    )
 
     base_capture = _state_capture(baseline)
     challenger_capture = _state_capture(challenger)
