@@ -10,6 +10,7 @@ export function ModelSelector({
     selectedModelId,
     onSelect,
     onDelete,
+    canDelete = true,
     open,
     onOpenChange
 }: {
@@ -17,6 +18,7 @@ export function ModelSelector({
     selectedModelId: string,
     onSelect: (id: string) => void,
     onDelete: (id: string) => void | Promise<void>,
+    canDelete?: boolean,
     open: boolean,
     onOpenChange: (open: boolean) => void
 }) {
@@ -111,17 +113,19 @@ export function ModelSelector({
                                         <TableCell className="text-right">
                                             <div className="flex justify-end items-center gap-2">
                                                 {isSelected && <Badge>Active</Badge>}
-                                                <Button
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onDelete(m.id);
-                                                    }}
-                                                    title="Delete this run from mlruns/ and remove it from artifacts/dashboard/dashboard_db.json"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                {canDelete && (
+                                                    <Button
+                                                        variant="destructive"
+                                                        size="sm"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onDelete(m.id);
+                                                        }}
+                                                        title="Delete this run from mlruns/ and remove it from artifacts/dashboard/dashboard_db.json"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>
