@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - "configs/pools/selected_pool_registry_v1.yaml"
       - "scripts/data/refresh_selected_pool_prices.py"
       - "tests/test_refresh_selected_pool_prices.py"
       - "docs/research/selected_pool_price_repair_v1_2026-08-01.md"
@@ -11,6 +12,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "configs/pools/selected_pool_registry_v1.yaml"
       - "scripts/data/refresh_selected_pool_prices.py"
       - "tests/test_refresh_selected_pool_prices.py"
       - "docs/research/selected_pool_price_repair_v1_2026-08-01.md"
@@ -66,9 +68,13 @@ jobs:
           tests/test_refresh_selected_pool_prices.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-  cn-live-repair-on-pr:
+  live-repair-on-pr:
     if: github.event_name == 'pull_request'
     needs: contract
+    strategy:
+      fail-fast: false
+      matrix:
+        market: [cn, us]
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -81,21 +87,21 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Build isolated CN 130 source and provider
+      - name: Build exact selected-pool source and provider
         run: >-
           uv run python scripts/data/refresh_selected_pool_prices.py
-          --market cn
+          --market "${{ matrix.market }}"
           --source-csv-dir data/csv_clean
-          --output-root artifacts/selected_pool_price_refresh/cn
+          --output-root "artifacts/selected_pool_price_refresh/${{ matrix.market }}"
           --start 2021-01-01
           --cutoff 2026-06-18
           --max-rounds 1
-      - name: Upload refresh manifest
+      - name: Upload complete source, provider and manifest
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: selected-pool-price-repair-cn-${{ github.run_id }}
-          path: artifacts/selected_pool_price_refresh/cn/artifacts
+          name: selected-pool-price-repair-${{ matrix.market }}-${{ github.run_id }}
+          path: artifacts/selected_pool_price_refresh/${{ matrix.market }}
           if-no-files-found: error
           retention-days: 90
 
@@ -123,11 +129,11 @@ jobs:
           --start 2021-01-01
           --cutoff 2026-06-18
           --max-rounds "${{ inputs.max_rounds }}"
-      - name: Upload refresh manifest
+      - name: Upload complete source, provider and manifest
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: selected-pool-price-repair-${{ inputs.market }}-${{ github.run_id }}
-          path: artifacts/selected_pool_price_refresh/${{ inputs.market }}/artifacts
+          path: artifacts/selected_pool_price_refresh/${{ inputs.market }}
           if-no-files-found: error
           retention-days: 90
