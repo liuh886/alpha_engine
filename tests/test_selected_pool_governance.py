@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import yaml
 
 from src.data.universe import get_selected_tickers
@@ -127,13 +128,18 @@ def test_future_runs_are_bound_to_user_approved_selected_universes() -> None:
 
 
 def test_authoritative_guard_and_data_universe_resolve_both_markets() -> None:
-    us = resolve_selected_pool("us")
+    with pytest.raises(ValueError, match="TIGO provider refresh required"):
+        resolve_selected_pool("us")
+
+    us = resolve_selected_pool("us", require_data_ready=False)
     cn = resolve_selected_pool("cn")
 
     assert us.pool_id == "us_selected_equities_v2"
     assert us.pool_spec == US_SELECTED.resolve()
+    assert us.authoritative_data_blockers
     assert cn.pool_id == "cn_selected_equities_v2"
     assert cn.pool_spec == CN_SELECTED.resolve()
+    assert not cn.authoritative_data_blockers
 
     assert get_selected_tickers("us", Path(".")) == _load(US_SELECTED)["symbols"]
     assert get_selected_tickers("cn", Path(".")) == _load(CN_SELECTED)["symbols"]
