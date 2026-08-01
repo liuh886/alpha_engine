@@ -8,11 +8,13 @@ on:
       - "src/data/provider_catalog.py"
       - "src/data/router.py"
       - "src/data/adapters/akshare_adapter.py"
+      - "src/data/adapters/akshare_sina_adapter.py"
       - "src/data/adapters/efinance_adapter.py"
       - "src/data/adapters/tushare_adapter.py"
       - "src/data/adapters/yfinance_adapter.py"
       - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
+      - "tests/test_akshare_sina_adapter.py"
       - "tests/test_cn_provider_units.py"
       - "tests/test_market_data_router_circuit_breaker.py"
       - "tests/test_provider_catalog.py"
@@ -30,11 +32,13 @@ on:
       - "src/data/provider_catalog.py"
       - "src/data/router.py"
       - "src/data/adapters/akshare_adapter.py"
+      - "src/data/adapters/akshare_sina_adapter.py"
       - "src/data/adapters/efinance_adapter.py"
       - "src/data/adapters/tushare_adapter.py"
       - "src/data/adapters/yfinance_adapter.py"
       - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
+      - "tests/test_akshare_sina_adapter.py"
       - "tests/test_cn_provider_units.py"
       - "tests/test_market_data_router_circuit_breaker.py"
       - "tests/test_provider_catalog.py"
@@ -87,11 +91,13 @@ jobs:
           src/data/provider_catalog.py
           src/data/router.py
           src/data/adapters/akshare_adapter.py
+          src/data/adapters/akshare_sina_adapter.py
           src/data/adapters/efinance_adapter.py
           src/data/adapters/tushare_adapter.py
           src/data/adapters/yfinance_adapter.py
           scripts/data/refresh_selected_pool_prices.py
           scripts/data/refresh_selected_pool_prices_v2.py
+          tests/test_akshare_sina_adapter.py
           tests/test_cn_provider_units.py
           tests/test_market_data_router_circuit_breaker.py
           tests/test_provider_catalog.py
@@ -105,6 +111,7 @@ jobs:
           src/data/provider_catalog.py
           src/data/router.py
           src/data/adapters/akshare_adapter.py
+          src/data/adapters/akshare_sina_adapter.py
           src/data/adapters/efinance_adapter.py
           src/data/adapters/tushare_adapter.py
           src/data/adapters/yfinance_adapter.py
@@ -113,6 +120,7 @@ jobs:
       - name: Run provider and selected-pool repair tests
         run: >-
           uv run pytest
+          tests/test_akshare_sina_adapter.py
           tests/test_cn_provider_units.py
           tests/test_market_data_router_circuit_breaker.py
           tests/test_provider_catalog.py
