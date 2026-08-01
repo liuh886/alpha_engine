@@ -1,0 +1,66 @@
+name: Report history purge state
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/operations/report_history_purge_state_2026-08-01.flag"
+
+permissions:
+  actions: read
+  issues: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Collect workflow state and failed logs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          purge_json="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow purge-deleted-market-data-history.yml \
+            --limit 3 \
+            --json databaseId,status,conclusion,url,headSha,createdAt,updatedAt 2>&1 || true)"
+          finalize_json="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow finalize-deleted-market-data-history-purge.yml \
+            --limit 3 \
+            --json databaseId,status,conclusion,url,headSha,createdAt,updatedAt 2>&1 || true)"
+
+          finalize_id="$(jq -r '.[0].databaseId // empty' <<< "$finalize_json" 2>/dev/null || true)"
+          failed_log=""
+          if test -n "$finalize_id"; then
+            gh run view "$finalize_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --log-failed > "${RUNNER_TEMP}/failed.log" 2>&1 || true
+            failed_log="$(tail -c 6000 "${RUNNER_TEMP}/failed.log")"
+          fi
+
+          body="$(cat <<EOF
+          History-purge workflow diagnostic:
+
+          **Original purge runs**
+          \`\`\`json
+          ${purge_json}
+          \`\`\`
+
+          **Finalizer runs**
+          \`\`\`json
+          ${finalize_json}
+          \`\`\`
+
+          **Latest finalizer failed log (tail)**
+          \`\`\`
+          ${failed_log}
+          \`\`\`
+          EOF
+          )"
+
+          gh issue comment 270 --repo "$GITHUB_REPOSITORY" --body "$body"
