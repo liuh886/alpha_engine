@@ -4,7 +4,6 @@ import warnings
 from dataclasses import dataclass
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
@@ -77,44 +76,40 @@ def _reconcile_ohlc_rounding(
 
 
 def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize bars already adjusted consistently by Yahoo/yfinance.
+
+    The adapter requests ``auto_adjust=True``. Reconstructing OHLC from an
+    adjusted-close ratio is deliberately forbidden because Yahoo can publish
+    repaired or rounded fields whose ratios differ across columns.
+    """
+
     if df is None or df.empty:
         return pd.DataFrame()
-    if isinstance(df.columns, pd.MultiIndex):
+    result = df.copy()
+    if isinstance(result.columns, pd.MultiIndex):
         try:
-            df.columns = df.columns.get_level_values(0)
+            result.columns = result.columns.get_level_values(0)
         except Exception:
             pass
-    df = df.reset_index()
-    df.columns = [str(column).lower() for column in df.columns]
+    result = result.reset_index()
+    result.columns = [str(column).lower() for column in result.columns]
     required = ["date", "open", "high", "low", "close", "volume"]
-    for column in required:
-        if column not in df.columns:
-            return pd.DataFrame()
-    if "adj close" in df.columns:
-        try:
-            raw_close = df["close"].astype(float)
-            adj_close = df["adj close"].astype(float)
-        except (ValueError, TypeError):
-            return pd.DataFrame()
-        ratio = adj_close / raw_close
-        finite_positive = (ratio > 0) & np.isfinite(ratio)
-        if not finite_positive.all():
-            return pd.DataFrame()
-        try:
-            for column in ("open", "high", "low", "close"):
-                df[column] = df[column].astype(float) * ratio
-            if "amount" in df.columns:
-                df["amount"] = df["amount"].astype(float) * ratio
-        except (ValueError, TypeError):
-            return pd.DataFrame()
-    if "amount" not in df.columns:
-        df["amount"] = df["close"] * df["volume"]
-    df["factor"] = 1.0
-    out = df[
+    if any(column not in result.columns for column in required):
+        return pd.DataFrame()
+    result["date"] = pd.to_datetime(result["date"], errors="coerce")
+    for column in ("open", "high", "low", "close", "volume"):
+        result[column] = pd.to_numeric(result[column], errors="coerce")
+    result = result.dropna(
+        subset=["date", "open", "high", "low", "close"]
+    ).copy()
+    # Yahoo does not expose reported turnover through this endpoint. Keep the
+    # historical Alpha Engine column but classify it as synthetic in the
+    # provider capability manifest.
+    result["amount"] = result["close"] * result["volume"]
+    result["factor"] = 1.0
+    out = result[
         ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
-    ].copy()
-    out["date"] = pd.to_datetime(out["date"], errors="coerce")
-    out = out.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+    ].sort_values("date").reset_index(drop=True)
     reconciled, _ = _reconcile_ohlc_rounding(out)
     return reconciled
 
@@ -199,7 +194,9 @@ class YFinanceAdapter:
                     start=start,
                     end=provider_end,
                     progress=False,
-                    auto_adjust=False,
+                    auto_adjust=True,
+                    repair=True,
+                    threads=False,
                 )
         except Exception as exc:
             raise DataFetchError(
