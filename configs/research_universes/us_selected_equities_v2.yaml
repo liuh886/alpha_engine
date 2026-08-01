@@ -57,8 +57,6 @@ symbols:
   - FN
   - GEHC
   - GOOGL
-  - HIMX
-  - HIMS
   - HON
   - HOOD
   - INTC
@@ -77,15 +75,12 @@ symbols:
   - MU
   - NBIS
   - NFLX
-  - NOK
   - NVDA
-  - ORCL
   - ORLY
   - PANW
   - PDD
   - PEP
   - PLTR
-  - POET
   - PWR
   - QCOM
   - REGN
@@ -96,17 +91,22 @@ symbols:
   - SNDK
   - TEM
   - TIGO
+  - TYGO
   - TMUS
-  - TSM
   - TSLA
   - TTWO
-  - TYGO
   - VRT
   - VRTX
   - WDC
   - WMT
-  - AEHR
+  - HIMS
+  - HIMX
+  - NOK
+  - TSM
   - CRDO
+  - ORCL
+  - POET
+  - AEHR
 
 approved_removals:
   - GOOG
