@@ -15,6 +15,7 @@ from typing import Any
 
 from scripts.data.refresh_selected_pool_prices import refresh_selected_pool_prices
 from src.data.adapters.akshare_adapter import AkShareAdapter
+from src.data.adapters.akshare_sina_adapter import AkShareSinaAdapter
 from src.data.adapters.baostock_adapter import BaoStockAdapter
 from src.data.adapters.base import MarketDataAdapter
 from src.data.adapters.efinance_adapter import EFinanceAdapter
@@ -50,13 +51,22 @@ def build_hardened_router(market: str) -> MarketDataRouter:
             providers.append("tushare")
         adapters.extend(
             [
+                AkShareSinaAdapter(),
                 AkShareAdapter(),
                 BaoStockAdapter(),
                 EFinanceAdapter(),
                 YFinanceAdapter(),
             ]
         )
-        providers.extend(["akshare", "baostock", "efinance", "yfinance"])
+        providers.extend(
+            [
+                "akshare_sina",
+                "akshare",
+                "baostock",
+                "efinance",
+                "yfinance",
+            ]
+        )
     elif market_key == "us":
         adapters.append(YFinanceAdapter())
         providers.append("yfinance")
@@ -118,7 +128,7 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
                         _decorate_attempt(attempt)
 
     payload["provider_architecture"] = {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "selection_mode": "credential_aware_fallback",
         "provider_order": provider_order,
         "independent_provider_order": independent_provider_names(provider_order),
@@ -128,6 +138,10 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
         "same_source_warning": (
             "akshare and efinance share source_family=eastmoney and do not count "
             "as independent corroboration"
+        ),
+        "public_source_boundary": (
+            "akshare_sina is independent from eastmoney but is throttled and may "
+            "be temporarily IP-blocked; credentialed tushare remains preferred"
         ),
         "health": router.provider_health_snapshot(),
     }
