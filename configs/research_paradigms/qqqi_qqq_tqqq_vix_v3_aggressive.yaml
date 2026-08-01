@@ -1,0 +1,80 @@
+experiment_id: qqqi_qqq_tqqq_vix_v3_aggressive
+parent_experiment_id: qqqi_qqq_tqqq_vix_v2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Isolate the effect of increasing the partial-leverage state's TQQQ weight
+  from 50% to 75% while preserving every VIX v2 signal, execution and cost rule.
+
+change_control:
+  allowed_change: portfolio.leveraged_tqqq_weight
+  baseline_value: 0.50
+  challenger_value: 0.75
+  all_signal_rules_frozen: true
+  no_parameter_promotion_from_this_contract: true
+
+boundaries:
+  price_signal_symbol: QQQ
+  volatility_signal_symbol: ^VIX
+  tradable_symbols: [QQQI, QQQ, TQQQ]
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  common_tradable_window: true
+  no_pre_inception_backfill_for_qqqi: true
+  no_vix_spot_trading: true
+  no_parameter_promotion_from_this_contract: true
+
+data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  fields: [date, open, close]
+  corporate_action_basis: adjusted
+
+price_logic:
+  ma_short: 20
+  ma_medium: 50
+  ma_long: 200
+  ma_long_buffer: 0.01
+  shock_drawdown: 0.10
+  shock_lookback_sessions: 63
+  shock_memory_sessions: 63
+  early_breakout_sessions: 5
+  confirmation_breakout_sessions: 20
+  ma_rise_sessions: 3
+  exit_below_ma_short_sessions: 2
+
+vix_logic:
+  rolling_window: 252
+  stress_quantile: 0.80
+  normalization_quantile: 0.60
+  spike_1d: 0.20
+  spike_5d: 0.35
+  easing_retreat_for_qqq: 0.15
+  normalization_retreat_for_tqqq: 0.25
+  falling_sessions: 3
+
+portfolio:
+  leveraged_tqqq_weight: 0.75
+  transaction_cost_bps_per_turnover_unit: 10.0
+  annual_risk_free_rate: 0.0
+  charge_initial_entry: true
+
+validation:
+  event_horizons: [5, 10, 20, 40]
+  vix_event_cluster_gap_sessions: 20
+  minimum_regime_sessions: 20
+  chronological_train_fraction: 0.60
+  require_all_states_reached: true
+  primary_baseline_experiment: qqqi_qqq_tqqq_vix_v2
+  primary_metrics: [cagr, annual_volatility, sharpe, max_drawdown, calmar]
+  require_identical_state_trace_to_baseline: true
+
+hypothesis_discipline:
+  - The only admissible change is TQQQ weight inside the already-confirmed partial-leverage state.
+  - Higher TQQQ weight should capture more of the post-shock recovery, but may amplify false starts and tail loss.
+  - VIX remains a risk-budget overlay rather than a directional return signal.
+  - A higher CAGR alone is insufficient; drawdown, Calmar, turnover and recovery-state contribution must be reported.
+  - Results remain research-only because the true common QQQI sample begins in 2024.
