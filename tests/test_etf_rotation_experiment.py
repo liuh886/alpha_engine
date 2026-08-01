@@ -3,6 +3,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from src.research.etf_recovery_events import (
+    RecoveryStudyConfig,
+    build_recovery_event_frame,
+    summarize_recovery_returns,
+    summarize_recovery_speed,
+)
 from src.research.etf_rotation_experiment import (
     RotationConfig,
     build_signal_frame,
@@ -128,6 +134,65 @@ def test_recovery_event_starts_at_next_open_after_cross_confirmation() -> None:
     assert events.loc[0, "entry_date"] == index[2]
     assert np.isclose(events.loc[0, "QQQI_return"], 0.01)
     assert np.isclose(events.loc[0, "QQQ_return"], 0.03)
+
+
+def test_multi_stage_recovery_uses_next_open_and_one_trigger_per_episode() -> None:
+    index = pd.bdate_range("2024-01-01", periods=12)
+    prepared = pd.DataFrame(
+        {
+            "qqq_close": [100, 88, 89, 91, 93, 95, 94, 96, 98, 99, 101, 102],
+            "drawdown": [0.0, -0.12, -0.11, -0.09, -0.07, -0.05, -0.06, -0.04, -0.02, -0.01, 0.0, 0.01],
+            "ma_short": [95, 95, 95, 90, 91, 92, 93, 94, 95, 96, 97, 98],
+            "ma_long": [97] * 12,
+            "QQQI_next_open_return": [0.0, 0.0, 0.0, 0.01, 0.01, 0.0, -0.01, 0.01, 0.01, 0.01, 0.0, 0.0],
+            "QQQ_next_open_return": [0.0, 0.0, 0.90, 0.03, 0.02, 0.0, -0.02, 0.02, 0.02, 0.01, 0.0, 0.0],
+        },
+        index=index,
+    )
+    config = RecoveryStudyConfig(
+        shock_threshold=0.10,
+        shock_memory_sessions=6,
+        ma_medium=3,
+        breakout_windows=(2, 3),
+        horizons=(1, 2),
+        target_returns=(0.02,),
+    )
+    events = build_recovery_event_frame(prepared, config)
+    ma20 = events.loc[events["event_family"].eq("ma20_reclaim")].iloc[0]
+    assert ma20["event_date"] == index[3]
+    assert ma20["entry_date"] == index[4]
+    assert np.isclose(ma20["QQQ_return_1d"], 0.02)
+    assert not events.duplicated(["shock_episode", "event_family"]).any()
+
+
+def test_multi_stage_recovery_summaries_measure_return_and_speed() -> None:
+    events = pd.DataFrame(
+        {
+            "event_family": ["ma20_reclaim", "ma20_reclaim"],
+            "sessions_from_shock_start": [4, 6],
+            "QQQ_return_5d": [0.08, 0.02],
+            "QQQI_return_5d": [0.04, 0.03],
+            "QQQ_minus_QQQI_5d": [0.04, -0.01],
+            "QQQ_days_to_500bps": [3.0, np.nan],
+            "QQQI_days_to_500bps": [5.0, np.nan],
+            "QQQ_peak_return_5d": [0.08, 0.03],
+            "QQQI_peak_return_5d": [0.05, 0.04],
+            "QQQ_max_adverse_5d": [-0.01, -0.03],
+            "QQQI_max_adverse_5d": [-0.005, -0.02],
+        }
+    )
+    config = RecoveryStudyConfig(
+        shock_memory_sessions=5,
+        ma_medium=3,
+        breakout_windows=(2,),
+        horizons=(5,),
+        target_returns=(0.05,),
+    )
+    returns = summarize_recovery_returns(events, config)
+    speed = summarize_recovery_speed(events, config)
+    assert np.isclose(returns.loc[("ma20_reclaim", 5), "QQQ_win_rate"], 0.5)
+    assert np.isclose(speed.loc[("ma20_reclaim", 0.05), "QQQ_hit_rate"], 0.5)
+    assert np.isclose(speed.loc[("ma20_reclaim", 0.05), "QQQ_median_days"], 3.0)
 
 
 def test_parameter_activity_audit_flags_dead_dimensions() -> None:
