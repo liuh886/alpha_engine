@@ -83,7 +83,7 @@ def main() -> int:
         horizons=contract["validation"]["event_horizons"],
         cluster_gap_sessions=contract["validation"]["vix_event_cluster_gap_sessions"],
     )
-    audit = vix_signal_audit(prepared)
+    audit = vix_signal_audit(prepared, config)
     reachability = {
         key: state_reachability(results[key])
         for key in ("rotation_price_repair_v2", "rotation_vix_v2")
