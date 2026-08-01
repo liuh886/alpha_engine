@@ -17,7 +17,8 @@ does not authorize trading.
 
 ## Critical sample limitation
 
-QQQI's official fund inception date is 2024-01-29. Therefore the three-asset
+QQQI's official fund inception date is 2024-01-29, as reported on the
+[NEOS official fund page](https://neosfunds.com/qqqi/). Therefore the three-asset
 strategy cannot be tested directly through the 2020 pandemic crash or the 2022
 rate-hike bear market. The implementation fails closed on common tradable
 history and labels pre-inception named periods as insufficient rather than
