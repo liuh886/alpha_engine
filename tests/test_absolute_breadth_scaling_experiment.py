@@ -58,8 +58,8 @@ def test_soft_scaling_preserves_decisions_and_uses_50_75_schedule() -> None:
         confirmed_tqqq_weight=0.75,
         dynamic_breadth=True,
     )
-    assert result.daily["source_position_state"].tolist() == [0, 2, 2, 2, 2]
-    assert result.daily["weight_TQQQ"].tolist() == [0.0, 0.5, 0.75, 0.75, 0.5]
+    assert result.daily["source_position_state"].tolist() == [0, 2, 2, 2, 2, 1]
+    assert result.daily["weight_TQQQ"].tolist() == [0.0, 0.5, 0.5, 0.75, 0.75, 0.0]
 
 
 def test_fixed_baseline_always_uses_75_percent_when_leveraged() -> None:
