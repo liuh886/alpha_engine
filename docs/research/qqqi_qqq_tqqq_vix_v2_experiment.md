@@ -5,6 +5,9 @@
 This is a frozen, research-only challenger to the price-only rotation study. It
 does not authorize trading and it does not treat spot VIX as a tradable asset.
 
+Completed live-data result:
+`docs/research/qqqi_qqq_tqqq_vix_v2_result_2026-07-31.md`.
+
 ## Why introduce VIX
 
 The Cboe VIX Index is a forward-looking measure of the S&P 500 market's expected
@@ -62,6 +65,22 @@ features:
 These values are frozen before observing v2 returns. They are not promoted as
 optimal thresholds.
 
+## Matched VIX attribution
+
+Comparing VIX v2 only with the old v1 would be misleading because v2 also changes
+the price-repair logic and introduces partial TQQQ. The runner therefore includes
+`rotation_price_repair_v2`, which uses:
+
+- the same shock memory;
+- the same early and medium price-repair gates;
+- the same 50% QQQ / 50% TQQQ leveraged state;
+- the same execution timing and transaction-cost model;
+- no VIX conditions.
+
+The incremental contribution of VIX is measured only against this matched
+ablation. Improvements versus old v1 or QQQ describe the complete strategy, not
+VIX alone.
+
 ## Execution and cost contract
 
 - QQQ and VIX signals are calculated at close `t`.
@@ -77,6 +96,8 @@ optimal thresholds.
 The evidence runner writes:
 
 - common-window strategy metrics;
+- matched price-repair ablation metrics;
+- chronological early/late sample comparison;
 - daily portfolio weights, states and costs;
 - VIX calm, normal and stress regime comparisons for QQQI and QQQ;
 - event studies for VIX stress onset, easing and normalization;
@@ -98,7 +119,7 @@ uv run jupyter lab notebooks/13_qqqi_qqq_tqqq_vix_v2.ipynb
 ## Acceptance discipline
 
 The VIX extension is not accepted merely because it increases CAGR. It must be
-judged against QQQ and the price-only v1 on:
+judged against QQQ, price-only v1 and the matched price-repair v2 on:
 
 - maximum drawdown and tail behavior during VIX stress;
 - Sharpe and Calmar, not total return alone;
