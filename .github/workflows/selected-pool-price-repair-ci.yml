@@ -5,20 +5,36 @@ on:
     branches: [main]
     paths:
       - "configs/pools/selected_pool_registry_v1.yaml"
+      - "src/data/provider_catalog.py"
+      - "src/data/adapters/akshare_adapter.py"
+      - "src/data/adapters/efinance_adapter.py"
+      - "src/data/adapters/tushare_adapter.py"
       - "src/data/adapters/yfinance_adapter.py"
       - "scripts/data/refresh_selected_pool_prices.py"
+      - "scripts/data/refresh_selected_pool_prices_v2.py"
+      - "tests/test_provider_catalog.py"
+      - "tests/test_tushare_adapter.py"
       - "tests/test_yfinance_adapter.py"
       - "tests/test_refresh_selected_pool_prices.py"
+      - "tests/test_refresh_selected_pool_prices_v2.py"
       - "docs/research/selected_pool_price_repair_v1_2026-08-01.md"
       - ".github/workflows/selected-pool-price-repair-ci.yml"
   push:
     branches: [main]
     paths:
       - "configs/pools/selected_pool_registry_v1.yaml"
+      - "src/data/provider_catalog.py"
+      - "src/data/adapters/akshare_adapter.py"
+      - "src/data/adapters/efinance_adapter.py"
+      - "src/data/adapters/tushare_adapter.py"
       - "src/data/adapters/yfinance_adapter.py"
       - "scripts/data/refresh_selected_pool_prices.py"
+      - "scripts/data/refresh_selected_pool_prices_v2.py"
+      - "tests/test_provider_catalog.py"
+      - "tests/test_tushare_adapter.py"
       - "tests/test_yfinance_adapter.py"
       - "tests/test_refresh_selected_pool_prices.py"
+      - "tests/test_refresh_selected_pool_prices_v2.py"
       - "docs/research/selected_pool_price_repair_v1_2026-08-01.md"
       - ".github/workflows/selected-pool-price-repair-ci.yml"
   workflow_dispatch:
@@ -57,23 +73,39 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Ruff selected-pool repair
+      - name: Ruff provider and selected-pool repair
         run: >-
           uv run ruff check
+          src/data/provider_catalog.py
+          src/data/adapters/akshare_adapter.py
+          src/data/adapters/efinance_adapter.py
+          src/data/adapters/tushare_adapter.py
           src/data/adapters/yfinance_adapter.py
           scripts/data/refresh_selected_pool_prices.py
+          scripts/data/refresh_selected_pool_prices_v2.py
+          tests/test_provider_catalog.py
+          tests/test_tushare_adapter.py
           tests/test_yfinance_adapter.py
           tests/test_refresh_selected_pool_prices.py
-      - name: Mypy selected-pool repair
+          tests/test_refresh_selected_pool_prices_v2.py
+      - name: Mypy provider and selected-pool repair
         run: >-
           uv run mypy
+          src/data/provider_catalog.py
+          src/data/adapters/akshare_adapter.py
+          src/data/adapters/efinance_adapter.py
+          src/data/adapters/tushare_adapter.py
           src/data/adapters/yfinance_adapter.py
           scripts/data/refresh_selected_pool_prices.py
-      - name: Run selected-pool repair tests
+          scripts/data/refresh_selected_pool_prices_v2.py
+      - name: Run provider and selected-pool repair tests
         run: >-
           uv run pytest
+          tests/test_provider_catalog.py
+          tests/test_tushare_adapter.py
           tests/test_yfinance_adapter.py
           tests/test_refresh_selected_pool_prices.py
+          tests/test_refresh_selected_pool_prices_v2.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   live-repair-on-pr:
@@ -85,6 +117,8 @@ jobs:
         market: [cn, us]
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -97,7 +131,7 @@ jobs:
           uv sync --frozen --extra dev
       - name: Rebuild complete selected-pool history and provider
         run: >-
-          uv run python scripts/data/refresh_selected_pool_prices.py
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py
           --market "${{ matrix.market }}"
           --source-csv-dir data/csv_clean
           --output-root "artifacts/selected_pool_price_refresh/${{ matrix.market }}"
@@ -119,6 +153,8 @@ jobs:
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 240
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -131,7 +167,7 @@ jobs:
           uv sync --frozen --extra dev
       - name: Rebuild complete selected-pool history and provider
         run: >-
-          uv run python scripts/data/refresh_selected_pool_prices.py
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py
           --market "${{ inputs.market }}"
           --source-csv-dir data/csv_clean
           --output-root "artifacts/selected_pool_price_refresh/${{ inputs.market }}"
