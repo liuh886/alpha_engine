@@ -134,18 +134,45 @@ def test_refresh_fetches_only_missing_or_invalid_sources(
         max_rounds=1,
     )
 
-    assert payload["pool_id"] == "test_cn_pool"
+    assert payload["refresh_mode"] == "repair_only"
     assert payload["target_count"] == 1
     assert payload["targets"] == ["000002"]
     assert router.calls == ["000002"]
     assert payload["status"] == "selected_pool_price_refresh_ready"
     assert payload["all_sources_ready"] is True
-    assert (output / "data/csv_source/000001.csv").is_file()
-    assert (output / "data/csv_source/000002.csv").is_file()
-    assert (output / "data/csv_source/000300.csv").is_file()
-    assert (
-        output / "artifacts/selected_pool_price_refresh_manifest.json"
-    ).is_file()
+
+
+def test_full_refresh_fetches_every_candidate_and_benchmark(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_contract(tmp_path, monkeypatch)
+    source = tmp_path / "source"
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", _frame())
+    router = FakeRouter(
+        {symbol: _frame(2.0) for symbol in ("000001", "000002", "000300")}
+    )
+    output = tmp_path / "output"
+
+    payload = module.refresh_selected_pool_prices(
+        root=tmp_path,
+        market="cn",
+        source_csv_dir=source,
+        output_root=output,
+        start="2021-01-01",
+        cutoff="2026-06-18",
+        router=router,  # type: ignore[arg-type]
+        max_rounds=1,
+        full_refresh=True,
+    )
+
+    assert payload["refresh_mode"] == "full"
+    assert payload["targets"] == ["000001", "000002", "000300"]
+    assert router.calls == ["000001", "000002", "000300"]
+    assert {row["action"] for row in payload["records"]} == {
+        "fetched_full_refresh"
+    }
 
 
 def test_refresh_publishes_diagnostics_without_partial_data(
@@ -170,9 +197,7 @@ def test_refresh_publishes_diagnostics_without_partial_data(
             max_rounds=1,
         )
 
-    manifest_path = (
-        output / "artifacts/selected_pool_price_refresh_manifest.json"
-    )
+    manifest_path = output / "artifacts/selected_pool_price_refresh_manifest.json"
     assert manifest_path.is_file()
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert payload["status"] == "selected_pool_price_refresh_blocked"
@@ -216,15 +241,11 @@ def test_default_cn_router_prioritizes_yfinance() -> None:
 
 def test_tigo_identity_contract_rejects_tygo() -> None:
     contract = module._validate_provider_identity(
-        market="us",
-        symbol="TIGO",
-        provider_symbol="TIGO",
+        market="us", symbol="TIGO", provider_symbol="TIGO"
     )
     assert contract is not None
     assert contract["expected_issuer"] == "Millicom International Cellular S.A."
     with pytest.raises(ValueError, match="forbidden identity substitution"):
         module._validate_provider_identity(
-            market="us",
-            symbol="TIGO",
-            provider_symbol="TYGO",
+            market="us", symbol="TIGO", provider_symbol="TYGO"
         )
