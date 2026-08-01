@@ -68,10 +68,10 @@ const SystemPage = lazy(() => import('./pages/SystemPage').then(m => ({ default:
 const TopBottomPage = lazy(() => import('./components/TopBottomAnalysis').then(m => ({ default: m.TopBottomAnalysis })));
 
 export const routes: RouteDefinition[] = [
-  { path: '',              title: 'Research Studio', title: 'Research Studio', label: 'Home',            releaseLevel: 'release',      navGroup: 'Daily Research', icon: LayoutDashboard, component: HomePage },
-  { path: 'dashboard',     title: 'Model Dashboard', label: 'Model Dashboard', releaseLevel: 'release',      navGroup: 'Daily Research', icon: LayoutDashboard, component: DashboardPage },
-  { path: 'decision-desk', title: 'Decision Desk',   label: 'Decision Desk',   releaseLevel: 'experimental', navGroup: 'Daily Research', icon: Radar, component: DecisionDeskPage },
-  { path: 'terminal',      title: 'Stock Terminal',  label: 'Stock Terminal',  releaseLevel: 'experimental', navGroup: 'Daily Research', icon: Terminal, component: StockTerminal },
+  { path: '',              title: 'Research Studio',   label: 'Home',            releaseLevel: 'release',      navGroup: 'Daily Research', icon: LayoutDashboard, component: HomePage },
+  { path: 'dashboard',     title: 'Model Dashboard',   label: 'Model Dashboard', releaseLevel: 'release',      navGroup: 'Daily Research', icon: LayoutDashboard, component: DashboardPage },
+  { path: 'decision-desk', title: 'Decision Desk',     label: 'Decision Desk',   releaseLevel: 'experimental', navGroup: 'Daily Research', icon: Radar, component: DecisionDeskPage },
+  { path: 'terminal',      title: 'Stock Terminal',    label: 'Stock Terminal',  releaseLevel: 'experimental', navGroup: 'Daily Research', icon: Terminal, component: StockTerminal },
 
   { path: 'models',          title: 'Model Registry',    label: 'Models',          releaseLevel: 'release',      navGroup: 'Model Lab', icon: Cpu, component: ModelsPage },
   { path: 'factors',         title: 'Factor Analysis',   label: 'Factor Analysis', releaseLevel: 'release',      navGroup: 'Model Lab', icon: BarChart3, component: FactorPage },
