@@ -1,0 +1,194 @@
+name: Finalize managed-ref history purge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/operations/finalize_managed_ref_history_purge_2026-08-01.flag"
+
+permissions:
+  actions: read
+  contents: write
+  issues: write
+
+concurrency:
+  group: finalize-managed-ref-history-purge
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PURGE_RUN_ID: "30692219806"
+      RECOVERY_ARTIFACT: alpha-engine-pre-history-purge-backup
+      RELEASE_TAG: history-rewrite-backup-2026-08-01
+
+    steps:
+      - name: Checkout audit contract
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Initialize paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "PURGE_LIST=${GITHUB_WORKSPACE}/configs/data_quality/history_purge_paths_v1.txt"
+            echo "MIRROR_DIR=${RUNNER_TEMP}/alpha-engine-managed-ref-audit.git"
+            echo "RECOVERY_DIR=${RUNNER_TEMP}/pre-purge-recovery"
+            echo "BUNDLE_VERIFY_DIR=${RUNNER_TEMP}/pre-purge-bundle-verify.git"
+          } >> "$GITHUB_ENV"
+
+      - name: Audit managed refs and hidden pull refs separately
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git clone --mirror "$remote" "$MIRROR_DIR"
+
+          mapfile -t managed_refs < <(
+            git --git-dir="$MIRROR_DIR" for-each-ref \
+              --format='%(refname)' refs/heads refs/tags
+          )
+          test "${#managed_refs[@]}" -gt 0
+          git --git-dir="$MIRROR_DIR" rev-list --objects "${managed_refs[@]}" \
+            > "${RUNNER_TEMP}/managed-ref-objects.txt"
+
+          managed_failure=0
+          while IFS= read -r path; do
+            if grep -F " $path" "${RUNNER_TEMP}/managed-ref-objects.txt" >/dev/null; then
+              echo "managed ref still reaches purged path: $path" >&2
+              managed_failure=1
+            fi
+          done < "$PURGE_LIST"
+          test "$managed_failure" = "0"
+
+          git --git-dir="$MIRROR_DIR" for-each-ref \
+            --format='%(refname)' refs/heads refs/tags \
+            > "${RUNNER_TEMP}/managed-refs.txt"
+
+          mapfile -t hidden_refs < <(
+            git --git-dir="$MIRROR_DIR" for-each-ref \
+              --format='%(refname)' refs/pull
+          )
+          : > "${RUNNER_TEMP}/hidden-pull-refs.txt"
+          : > "${RUNNER_TEMP}/hidden-retained-inventory.txt"
+          if test "${#hidden_refs[@]}" -gt 0; then
+            printf '%s\n' "${hidden_refs[@]}" \
+              > "${RUNNER_TEMP}/hidden-pull-refs.txt"
+            git --git-dir="$MIRROR_DIR" rev-list --objects "${hidden_refs[@]}" \
+              > "${RUNNER_TEMP}/hidden-pull-ref-objects.txt"
+            grep -Ff "$PURGE_LIST" \
+              "${RUNNER_TEMP}/hidden-pull-ref-objects.txt" \
+              > "${RUNNER_TEMP}/hidden-retained-inventory.txt" || true
+          fi
+
+          hidden_path_count="$(
+            awk '{print $2}' "${RUNNER_TEMP}/hidden-retained-inventory.txt" |
+              sort -u |
+              sed '/^$/d' |
+              wc -l |
+              tr -d ' '
+          )"
+          hidden_ref_count="${#hidden_refs[@]}"
+          current_main="$(git --git-dir="$MIRROR_DIR" rev-parse refs/heads/main)"
+          git --git-dir="$MIRROR_DIR" count-objects -vH \
+            > "${RUNNER_TEMP}/managed-ref-audit-objects.txt"
+
+          {
+            echo "CURRENT_MAIN=$current_main"
+            echo "HIDDEN_REF_COUNT=$hidden_ref_count"
+            echo "HIDDEN_PATH_COUNT=$hidden_path_count"
+          } >> "$GITHUB_ENV"
+
+      - name: Download and verify pre-rewrite recovery bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RECOVERY_DIR"
+          gh run download "$PURGE_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "$RECOVERY_ARTIFACT" \
+            --dir "$RECOVERY_DIR"
+
+          bundle="$(find "$RECOVERY_DIR" -type f -name '*.bundle' -print -quit)"
+          checksum="$(find "$RECOVERY_DIR" -type f -name '*.bundle.sha256' -print -quit)"
+          test -n "$bundle" && test -n "$checksum"
+
+          expected_hash="$(awk 'NR == 1 {print $1}' "$checksum")"
+          actual_hash="$(sha256sum "$bundle" | awk '{print $1}')"
+          test "$actual_hash" = "$expected_hash"
+
+          git clone --mirror "$bundle" "$BUNDLE_VERIFY_DIR"
+          git --git-dir="$BUNDLE_VERIFY_DIR" fsck --full
+
+          {
+            echo "RECOVERY_BUNDLE=$bundle"
+            echo "RECOVERY_CHECKSUM=$checksum"
+            echo "RECOVERY_SHA256=$actual_hash"
+          } >> "$GITHUB_ENV"
+
+      - name: Publish durable recovery release
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "${RUNNER_TEMP}/release-notes.md" <<EOF
+          Pre-rewrite Git bundle captured before the approved market-data history rewrite.
+
+          Current main: ${CURRENT_MAIN}
+          Managed branch/tag verification: passed for all 138 approved paths.
+          GitHub hidden pull refs detected: ${HIDDEN_REF_COUNT}.
+          Approved paths still retained only through hidden pull refs: ${HIDDEN_PATH_COUNT}.
+          Hidden-ref/server-GC follow-up: Issue #277.
+          Recovery bundle SHA-256: ${RECOVERY_SHA256}.
+          EOF
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --yes \
+              --cleanup-tag
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$CURRENT_MAIN" \
+            --title "Pre-history-rewrite recovery bundle (2026-08-01)" \
+            --notes-file "${RUNNER_TEMP}/release-notes.md" \
+            "$RECOVERY_BUNDLE" \
+            "$RECOVERY_CHECKSUM" \
+            "${RUNNER_TEMP}/managed-refs.txt" \
+            "${RUNNER_TEMP}/managed-ref-audit-objects.txt" \
+            "${RUNNER_TEMP}/hidden-pull-refs.txt" \
+            "${RUNNER_TEMP}/hidden-retained-inventory.txt" \
+            "$PURGE_LIST"
+
+      - name: Record controllable-scope completion
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue comment 270 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Controllable Git history cleanup is complete. All 138 approved obsolete CSV paths are unreachable from every user-managed branch and tag. Current main: \`${CURRENT_MAIN}\`. The pre-rewrite recovery bundle was checksum-verified, mirror-cloned, fsck-verified, and published in Release \`${RELEASE_TAG}\`. GitHub still advertises \`${HIDDEN_REF_COUNT}\` platform-managed pull refs retaining \`${HIDDEN_PATH_COUNT}\` approved paths; those internal refs cannot be rewritten by normal Git push and are tracked separately in #277 for GitHub Support/server-side GC. Existing pre-rewrite local clones must be discarded and cloned again."
+          gh issue close 270 --repo "$GITHUB_REPOSITORY" --reason completed
+
+          gh issue comment 277 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Managed-ref audit completed. Every user-managed branch and tag is clean for all 138 approved paths. GitHub hidden pull refs detected: \`${HIDDEN_REF_COUNT}\`; approved paths retained only through those hidden refs: \`${HIDDEN_PATH_COUNT}\`. Recovery Release: \`${RELEASE_TAG}\`. Remaining work is limited to GitHub Support/server-side hidden-ref cleanup and garbage collection."
+
+      - name: Upload final audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpha-engine-managed-ref-history-purge-audit
+          retention-days: 90
+          path: |
+            ${{ runner.temp }}/managed-refs.txt
+            ${{ runner.temp }}/managed-ref-objects.txt
+            ${{ runner.temp }}/managed-ref-audit-objects.txt
+            ${{ runner.temp }}/hidden-pull-refs.txt
+            ${{ runner.temp }}/hidden-retained-inventory.txt
+            configs/data_quality/history_purge_paths_v1.txt
