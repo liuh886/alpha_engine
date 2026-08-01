@@ -128,3 +128,35 @@ def test_recovery_event_starts_at_next_open_after_cross_confirmation() -> None:
     assert events.loc[0, "entry_date"] == index[2]
     assert np.isclose(events.loc[0, "QQQI_return"], 0.01)
     assert np.isclose(events.loc[0, "QQQ_return"], 0.03)
+
+
+def test_parameter_activity_audit_flags_dead_dimensions() -> None:
+    from src.research.etf_rotation_evidence import parameter_activity_audit
+
+    grid = pd.DataFrame(
+        {
+            "ma_long": [180, 180, 200, 200],
+            "drawdown_threshold": [0.08, 0.10, 0.08, 0.10],
+            "cagr": [0.20, 0.20, 0.18, 0.18],
+            "max_drawdown": [-0.20, -0.20, -0.22, -0.22],
+            "pct_time_tqqq": [0.0, 0.0, 0.0, 0.0],
+        }
+    )
+    audit = parameter_activity_audit(
+        grid,
+        parameter_columns=["ma_long", "drawdown_threshold"],
+    )
+    assert bool(audit.loc["ma_long", "active"])
+    assert not bool(audit.loc["drawdown_threshold", "active"])
+
+
+def test_state_reachability_flags_unvisited_tqqq() -> None:
+    from src.research.etf_rotation_evidence import state_reachability_summary
+
+    values = list(np.linspace(100, 125, 70))
+    config = RotationConfig(ma_long=20, ma_short=5, high_window=20, bollinger_window=5)
+    prepared = prepare_rotation_data(_three_asset_bars(values), config)
+    result = run_rotation_backtest(prepared, config, version="B")
+    summary = state_reachability_summary(result)
+    assert "TQQQ" in summary["unreachable_symbols"]
+    assert not summary["structurally_complete"]
