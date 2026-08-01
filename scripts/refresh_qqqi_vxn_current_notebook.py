@@ -68,6 +68,7 @@ def _stamp_metadata(
     root: Path,
     notebook_path: Path,
     snapshot_path: Path,
+    contract_paths: tuple[Path, ...],
     end_date: str | None,
 ) -> None:
     bundle = notebook.metadata.setdefault("alpha_engine_research_bundle", {})
@@ -82,7 +83,7 @@ def _stamp_metadata(
             "snapshot_sha256": _sha256(snapshot_path),
             "contract_sha256": {
                 str(path.relative_to(root)): _sha256(path)
-                for path in DEFAULT_CONTRACTS
+                for path in contract_paths
             },
             "git_sha": os.getenv("GITHUB_SHA"),
             "research_only": True,
@@ -96,6 +97,7 @@ def refresh_notebook(
     root: Path,
     notebook_path: Path,
     snapshot_path: Path,
+    contract_paths: tuple[Path, ...],
     timeout: int,
     end_date: str | None,
 ) -> NotebookNode:
@@ -103,6 +105,8 @@ def refresh_notebook(
 
     if end_date:
         os.environ["QQQI_VXN_NOTEBOOK_END_DATE"] = end_date
+    else:
+        os.environ.pop("QQQI_VXN_NOTEBOOK_END_DATE", None)
     notebook = nbformat.read(notebook_path, as_version=4)
     executed = NotebookClient(
         notebook,
@@ -116,6 +120,7 @@ def refresh_notebook(
         root=root,
         notebook_path=notebook_path,
         snapshot_path=snapshot_path,
+        contract_paths=contract_paths,
         end_date=end_date,
     )
     temporary = notebook_path.with_suffix(".executed.tmp.ipynb")
@@ -144,11 +149,10 @@ def main() -> int:
     root = Path(__file__).resolve().parents[1]
     notebook_path = (root / args.notebook).resolve()
     snapshot_path = (root / args.snapshot).resolve()
-    missing = [
-        path
-        for path in (notebook_path, snapshot_path, *DEFAULT_CONTRACTS)
-        if not path.exists()
-    ]
+    contract_paths = tuple((root / path).resolve() for path in DEFAULT_CONTRACTS)
+    end_date = args.end_date.strip() if args.end_date else None
+    required_paths = (notebook_path, snapshot_path, *contract_paths)
+    missing = [path for path in required_paths if not path.exists()]
     if missing:
         raise FileNotFoundError(f"missing research bundle files: {missing}")
 
@@ -162,8 +166,9 @@ def main() -> int:
         root=root,
         notebook_path=notebook_path,
         snapshot_path=snapshot_path,
+        contract_paths=contract_paths,
         timeout=args.timeout,
-        end_date=args.end_date,
+        end_date=end_date,
     )
     print(
         "refreshed rolling notebook: "
