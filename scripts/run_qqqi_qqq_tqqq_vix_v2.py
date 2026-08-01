@@ -66,7 +66,7 @@ def main() -> int:
         horizons=contract["validation"]["event_horizons"],
         cluster_gap_sessions=contract["validation"]["vix_event_cluster_gap_sessions"],
     )
-    audit = vix_signal_audit(prepared, config)
+    audit = vix_signal_audit(prepared)
 
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
