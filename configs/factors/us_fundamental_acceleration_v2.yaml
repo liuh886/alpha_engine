@@ -1,0 +1,100 @@
+schema_version: "1.1"
+factor_contract_id: "us_fundamental_acceleration_v2"
+parent_factor_contract_id: "us_fundamental_acceleration_v1"
+status: "frozen_pre_evaluation"
+market: "us"
+pool_spec: "configs/pools/us_small_pool_v2.yaml"
+benchmark: "QQQ"
+stable_factor_key: "fundamental_acceleration_equal_weight"
+factor_version: "2.0.0"
+
+truth_boundary:
+  research_only: true
+  trade_ready: false
+  performance_evaluated: false
+  independent_validation_completed: false
+
+point_in_time_input:
+  required_columns:
+    - symbol
+    - fiscal_period_end
+    - filed_date
+    - revenue
+    - gross_profit
+    - currency
+    - form_type
+    - accession_id
+  availability_date_field: "filed_date"
+  period_end_must_not_control_availability: true
+  accepted_form_types: ["10-Q", "10-K", "20-F", "6-K"]
+  duplicate_resolution: "latest_accession_for_same_symbol_period_and_filed_date"
+  currency_policy: "within-symbol growth only; reject currency changes across compared quarters"
+
+applicability:
+  membership_policy: "retain_full_pool_membership_and_exclude_only_from_this_factor_when_standard_quarterly_data_are_insufficient"
+  minimum_quarters_per_symbol: 6
+  minimum_ready_symbols_per_active_basket: 2
+  minimum_active_baskets: 5
+  inactive_basket_policy: "record_as_factor_not_applicable"
+  baseline_universe: "full_frozen_pool"
+  performance_based_eligibility_selection_allowed: false
+
+components:
+  revenue_growth_acceleration:
+    definition: "latest quarterly YoY revenue growth minus previous quarter YoY revenue growth"
+    weight: 0.5
+    direction: "higher_is_better"
+  gross_margin_yoy_change:
+    definition: "latest quarterly gross margin minus gross margin for the same fiscal quarter one year earlier"
+    weight: 0.5
+    direction: "higher_is_better"
+
+scoring:
+  scope: "within_primary_basket"
+  percentile_method: "average_rank"
+  minimum_component_coverage: 2
+  composite: "equal_weight_mean"
+
+portfolio:
+  evaluation_interval_sessions: 20
+  minimum_holding_sessions: 40
+  entry_top_fraction: 0.30
+  retention_top_fraction: 0.60
+  retention_min_percentile: 0.40
+  maximum_replacements_per_basket_per_evaluation: 1
+  maximum_holdings_per_basket: 2
+  eligibility:
+    price_above_sma_sessions: 100
+  weighting: "equal_by_basket_then_equal_within_basket"
+  transaction_cost_bps_per_one_way_turnover: 10.0
+  annual_turnover_ceiling: 4.0
+  average_holding_sessions_floor: 40
+
+windows:
+  development_start: "2021-01-01"
+  development_end: "2025-12-31"
+  falsification_start: "2026-01-01"
+  falsification_end: "2026-06-30"
+  future_independent_window: "must_be_declared_after_candidate_freeze"
+
+validation:
+  candidate: "fundamental_acceleration_with_sma100"
+  attribution_variant: "same_factor_without_sma100"
+  baselines: ["equal_weight_pool", "QQQ"]
+  maximum_drawdown_floor: -0.35
+  annual_turnover_ceiling: 4.0
+  average_holding_sessions_floor: 40
+  maximum_symbol_weight_ceiling: 0.40
+  require_positive_relative_return_in_development: true
+  require_positive_relative_return_in_falsification: true
+  result_values:
+    pass: "simple_fundamental_factor_independent_validation_required"
+    fail: "simple_fundamental_factor_not_supported"
+
+stop_rules:
+  field_substitution_after_observation: false
+  weight_search_after_observation: false
+  threshold_search_after_observation: false
+  rebalance_search_after_observation: false
+  holding_period_search_after_observation: false
+  pool_or_basket_change_after_observation: false
