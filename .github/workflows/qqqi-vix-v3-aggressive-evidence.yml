@@ -16,6 +16,7 @@ on:
       - "tests/test_vix_aggressive_tqqq_experiment.py"
       - "notebooks/14_qqqi_qqq_tqqq_vix_v3_aggressive.ipynb"
       - "docs/research/qqqi_qqq_tqqq_vix_v3_aggressive_experiment.md"
+      - "docs/research/qqqi_qqq_tqqq_vix_v3_aggressive_result_2026-07-31.md"
   workflow_dispatch:
 
 permissions:
@@ -35,6 +36,20 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
+      - name: Ruff lint new strategy paths
+        run: >-
+          uv run ruff check
+          src/research/strategy_experiment_journal.py
+          src/research/vix_aggressive_tqqq_experiment.py
+          scripts/run_qqqi_qqq_tqqq_vix_v3_aggressive.py
+          tests/test_strategy_experiment_journal.py
+          tests/test_vix_aggressive_tqqq_experiment.py
+      - name: Mypy focused strategy paths
+        run: >-
+          uv run mypy --follow-imports=skip
+          src/research/strategy_experiment_journal.py
+          src/research/vix_aggressive_tqqq_experiment.py
+          scripts/run_qqqi_qqq_tqqq_vix_v3_aggressive.py
       - name: Run focused strategy-memory and weight-isolation tests
         run: >-
           uv run pytest
