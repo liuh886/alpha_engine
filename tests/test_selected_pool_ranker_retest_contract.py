@@ -3,7 +3,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from scripts.run_selected_pool_ranker_retest import run
+from scripts.run_selected_pool_ranker_retest import (
+    CN_SPEC,
+    US_SPEC,
+    _run_market,
+    run,
+)
 from src.research.multi_market_readiness import load_market_watchlist
 from src.research.paradigm import load_research_paradigm_spec
 
@@ -11,18 +16,29 @@ from src.research.paradigm import load_research_paradigm_spec
 OLD_US_SPEC = Path(
     "configs/research_paradigms/us_10d_lgbm_xgb_ranker_comparison.yaml"
 )
-US_SPEC = Path(
-    "configs/research_paradigms/us_10d_selected_pool_ranker_retest_v1.yaml"
-)
-CN_SPEC = Path(
-    "configs/research_paradigms/cn_10d_selected_pool_ranker_retest_v1.yaml"
-)
 US_POOL = Path("configs/research_universes/us_selected_equities_v2.yaml")
 CN_POOL = Path("configs/research_universes/cn_selected_equities_v3.yaml")
 
 
 def _load(path: Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def _runner_result(
+    *,
+    execution_status: str = "passed",
+    promotion_status: str = "rejected",
+    rationale: str = "frozen gates rejected every candidate",
+) -> dict:
+    return {
+        "status": execution_status,
+        "runtime_metadata": {},
+        "promotion_decision": {
+            "status": promotion_status,
+            "rationale": rationale,
+            "trade_ready": False,
+        },
+    }
 
 
 def test_us_retest_changes_only_the_selected_opportunity_set() -> None:
@@ -33,7 +49,9 @@ def test_us_retest_changes_only_the_selected_opportunity_set() -> None:
     assert new["universe"]["universe_id"] == "us_selected_equities_v2"
     assert new["universe"]["exact_pool_candidate_count"] == 87
     assert new["universe"]["min_symbols"] == old["universe"]["min_symbols"] == 30
-    assert new["universe"]["alignment_mode"] == old["universe"]["alignment_mode"] == "auto"
+    assert new["universe"]["alignment_mode"] == (
+        old["universe"]["alignment_mode"] == "auto"
+    )
     assert new["universe"]["listing_policy"] == (
         "no_prelisting_fill_coverage_qualified_static_members"
     )
@@ -123,3 +141,71 @@ def test_us_run_fails_closed_without_exact_refreshed_provider() -> None:
     assert payload["overall_status"] == "selected_pool_ranker_data_blocked"
     assert market["status"] == "selected_pool_ranker_data_blocked"
     assert "provider" in market["reason"].lower()
+
+
+def test_rejected_promotion_is_completed_negative_evidence(tmp_path: Path) -> None:
+    result = _run_market(
+        Path.cwd(),
+        market="us",
+        spec_path=US_SPEC,
+        runner=lambda *args, **kwargs: _runner_result(),
+        output_dir=tmp_path,
+        provider_uri=tmp_path / "provider",
+    )
+
+    assert result["status"] == "selected_pool_ranker_not_supported"
+    assert result["evidence_completed"] is True
+    assert "rejected" in result["reason"]
+
+
+def test_candidate_promotion_is_completed_positive_research_evidence(
+    tmp_path: Path,
+) -> None:
+    result = _run_market(
+        Path.cwd(),
+        market="cn",
+        spec_path=CN_SPEC,
+        runner=lambda *args, **kwargs: _runner_result(
+            promotion_status="research_candidate",
+            rationale="candidate passed the frozen research gates",
+        ),
+        output_dir=tmp_path,
+        provider_uri=tmp_path / "provider",
+    )
+
+    assert result["status"] == "selected_pool_ranker_research_candidate"
+    assert result["evidence_completed"] is True
+
+
+def test_missing_promotion_evidence_remains_data_blocked(tmp_path: Path) -> None:
+    result = _run_market(
+        Path.cwd(),
+        market="us",
+        spec_path=US_SPEC,
+        runner=lambda *args, **kwargs: _runner_result(
+            promotion_status="missing_evidence",
+            rationale="walk-forward evidence is missing",
+        ),
+        output_dir=tmp_path,
+        provider_uri=tmp_path / "provider",
+    )
+
+    assert result["status"] == "selected_pool_ranker_data_blocked"
+    assert result["evidence_completed"] is False
+    assert "missing" in result["reason"]
+
+
+def test_skipped_execution_remains_data_blocked(tmp_path: Path) -> None:
+    payload = _runner_result(execution_status="skipped")
+    payload["runtime_metadata"] = {"skip_reason": "coverage below minimum"}
+    result = _run_market(
+        Path.cwd(),
+        market="cn",
+        spec_path=CN_SPEC,
+        runner=lambda *args, **kwargs: payload,
+        output_dir=tmp_path,
+        provider_uri=tmp_path / "provider",
+    )
+
+    assert result["status"] == "selected_pool_ranker_data_blocked"
+    assert result["reason"] == "coverage below minimum"
