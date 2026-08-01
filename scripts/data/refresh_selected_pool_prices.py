@@ -1,10 +1,9 @@
-"""Refresh missing or invalid selected-pool price sources into an isolated build.
+"""Refresh selected-pool prices into an isolated, manifest-bound provider.
 
 The command never overwrites the authoritative source directory. It copies valid
-source files into a staging tree, fetches only missing/invalid candidates, writes
-source-attempt evidence, validates the exact selected pool, builds a manifest-
-bound Qlib provider, and atomically publishes either a complete build or a
-blocked diagnostics-only result.
+sources, fetches only missing or invalid symbols, records every provider attempt,
+validates the exact selected pool plus benchmark, and atomically publishes either
+a complete provider or a diagnostics-only blocked result.
 """
 
 from __future__ import annotations
@@ -43,6 +42,16 @@ CANONICAL_COLUMNS = (
     "amount",
     "factor",
 )
+IDENTITY_CONTRACTS: dict[tuple[str, str], dict[str, str]] = {
+    (
+        "us",
+        "TIGO",
+    ): {
+        "expected_provider_symbol": "TIGO",
+        "expected_issuer": "Millicom International Cellular S.A.",
+        "forbidden_substitute": "TYGO",
+    }
+}
 
 
 def _sha256(path: Path) -> str:
@@ -119,8 +128,18 @@ def _default_router(market: str) -> MarketDataRouter:
     adapters: list[MarketDataAdapter]
     policy: dict[str, list[str]]
     if market == "cn":
-        adapters = [EFinanceAdapter(), AkShareAdapter(), BaoStockAdapter()]
-        policy = {"cn": ["efinance", "akshare", "baostock"]}
+        # Yahoo already supports the repository's .SS/.SZ mapping and returns
+        # internally consistent adjusted OHLCV. Keep the maintained domestic
+        # adapters as independent fallbacks and evidence sources.
+        adapters = [
+            YFinanceAdapter(),
+            EFinanceAdapter(),
+            AkShareAdapter(),
+            BaoStockAdapter(),
+        ]
+        policy = {
+            "cn": ["yfinance", "efinance", "akshare", "baostock"]
+        }
     elif market == "us":
         adapters = [YFinanceAdapter()]
         policy = {"us": ["yfinance"]}
@@ -137,6 +156,34 @@ def _write_csv(path: Path, frame: pd.DataFrame) -> None:
 
 def _attempts(response: RouterResponse) -> list[dict[str, Any]]:
     return [attempt.to_dict() for attempt in response.attempts]
+
+
+def _identity_contract(market: str, symbol: str) -> dict[str, str] | None:
+    return IDENTITY_CONTRACTS.get((market.lower(), symbol.upper()))
+
+
+def _validate_provider_identity(
+    *,
+    market: str,
+    symbol: str,
+    provider_symbol: str | None,
+) -> dict[str, str] | None:
+    contract = _identity_contract(market, symbol)
+    if contract is None:
+        return None
+    observed = str(provider_symbol or symbol).strip().upper()
+    expected = contract["expected_provider_symbol"].upper()
+    forbidden = contract["forbidden_substitute"].upper()
+    if observed == forbidden:
+        raise ValueError(
+            f"forbidden identity substitution for {symbol}: observed={observed}"
+        )
+    if observed != expected:
+        raise ValueError(
+            f"provider identity mismatch for {symbol}: "
+            f"expected={expected} observed={observed}"
+        )
+    return contract
 
 
 def _fetch_with_retries(
@@ -183,7 +230,7 @@ def _base_manifest(
     records: list[dict[str, Any]],
 ) -> dict[str, Any]:
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "evidence_type": "selected_pool_price_refresh_v1",
         "market": market,
         "pool_id": pool_id,
@@ -195,6 +242,11 @@ def _base_manifest(
         "targets": targets,
         "before": before,
         "records": records,
+        "identity_contracts": {
+            symbol: contract
+            for symbol in candidates
+            if (contract := _identity_contract(market, symbol)) is not None
+        },
         "research_only": True,
         "trade_ready": False,
     }
@@ -265,6 +317,9 @@ def refresh_selected_pool_prices(
                         "source_sha256": before[symbol]["sha256"],
                         "output_sha256": _sha256(output_path),
                         "attempts": [],
+                        "identity_contract": _identity_contract(
+                            market_key, symbol
+                        ),
                     }
                 )
                 continue
@@ -288,6 +343,11 @@ def refresh_selected_pool_prices(
                 failures.append(failure)
                 continue
             try:
+                identity = _validate_provider_identity(
+                    market=market_key,
+                    symbol=symbol,
+                    provider_symbol=response.result.provider_symbol,
+                )
                 frame = _normalize_frame(response.result.df, symbol=symbol)
                 frame = frame.loc[frame["date"] <= pd.Timestamp(cutoff)].copy()
                 if frame.empty:
@@ -296,7 +356,7 @@ def refresh_selected_pool_prices(
             except Exception as exc:
                 failure = {
                     "symbol": symbol,
-                    "action": "normalization_failed",
+                    "action": "normalization_or_identity_failed",
                     "previous_status": before[symbol]["status"],
                     "error": f"{type(exc).__name__}: {exc}",
                     "attempts": attempt_rows,
@@ -310,6 +370,7 @@ def refresh_selected_pool_prices(
                     "action": "fetched_replacement",
                     "provider": response.result.provider,
                     "provider_symbol": response.result.provider_symbol,
+                    "identity_contract": identity,
                     "output_sha256": _sha256(output_path),
                     "rows": int(len(frame)),
                     "first_date": frame["date"].min().date().isoformat(),
