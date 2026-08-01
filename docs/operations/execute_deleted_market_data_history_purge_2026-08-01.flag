@@ -1,0 +1,5 @@
+AUTHORIZED_BY_USER=2026-08-01
+SCOPE=configs/data_quality/history_purge_paths_v1.txt
+EXPECTED_PATH_COUNT=138
+MODE=all-branches-and-tags
+RECOVERY=git-bundle-plus-release
