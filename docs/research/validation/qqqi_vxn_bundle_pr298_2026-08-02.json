@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "validation_id": "qqqi_vxn_bundle_pr298_2026-08-02",
+  "pull_request": 298,
+  "validated_source_commit": "7963937402072ca360992f1f6262df5b1e490b09",
+  "executed_notebook_commit": "4a0791ff6891244891d4961977209e9208e4403a",
+  "workflow": {
+    "name": "QQQI VXN Research Bundle",
+    "run_id": 30708106691,
+    "conclusion": "success"
+  },
+  "executed_notebook": {
+    "path": "notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb",
+    "artifact_id": 8820976285,
+    "artifact_name": "qqqi-vxn-current-strategy-notebook-30708106691",
+    "artifact_size_bytes": 437201,
+    "artifact_sha256": "81266f30eabd67dbbbb1c54d31ed7ee7a01e9ea347053f6294aa092af2a3ea99",
+    "artifact_expires_at": "2026-10-30T16:25:46Z",
+    "committed_with_saved_outputs": true
+  },
+  "checks": {
+    "ruff": "passed",
+    "python_compile": "passed",
+    "bundle_tests": "passed",
+    "source_bundle_validation": "passed",
+    "notebook_clean_kernel_execution": "passed",
+    "executed_output_validation": "passed",
+    "error_outputs": 0
+  },
+  "research_boundary": {
+    "baseline": "qqqi_qqq_tqqq_vxn_leverage_v4_1",
+    "challenger": "qqqi_qqq_tqqq_vxn_bridge_v4_2",
+    "prospective_start": "2026-08-01",
+    "research_only": true,
+    "trade_ready": false
+  }
+}
