@@ -39,9 +39,9 @@ def test_monitor_keeps_only_prospective_rows_and_computes_deltas() -> None:
     assert first["position_state"] == 1
     assert first["baseline_weight_QQQ"] == 1.0
     assert first["bridge_weight_QQQ"] == 0.5
-    assert first["turnover_units_delta"] == -1.0
-    assert first["transaction_cost_delta"] == -0.001
-    assert first["net_return_delta"] == -0.001
+    assert first["turnover_units_delta"] == pytest.approx(-1.0)
+    assert first["transaction_cost_delta"] == pytest.approx(-0.001)
+    assert first["net_return_delta"] == pytest.approx(-0.001)
 
 
 def test_monitor_rejects_divergent_state_traces() -> None:
