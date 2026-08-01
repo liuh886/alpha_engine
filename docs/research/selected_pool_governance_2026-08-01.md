@@ -30,9 +30,9 @@ diagnostics.
 ### Retained with explicit identity or lifecycle boundaries
 
 - `TIGO`: retained as Millicom. No `csv_clean` file existed at selection time, so
-  a verified provider refresh is required before authoritative use. The selected
-  pool guard blocks authoritative US runs until that data-readiness blocker is
-  cleared; silent exclusion is prohibited.
+  a verified provider refresh is required before authoritative general-universe
+  use. The selected-pool guard blocks that path until the blocker is cleared;
+  silent exclusion is prohibited.
 - `TYGO`: retained as Tigo Energy; unavailable before 2023-05-24.
 - `SNDK`: forward-only from 2025-02-24; `WDC` is the historical storage proxy.
 - `600837` and `601989`: historical rows retained for reproduction, but neither
