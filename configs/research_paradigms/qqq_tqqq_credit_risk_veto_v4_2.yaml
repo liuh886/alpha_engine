@@ -1,0 +1,79 @@
+experiment_id: qqq_tqqq_credit_risk_veto_v4_2
+parent_experiment_id: qqq_tqqq_downside_vol_veto_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Test whether a liquid adjusted-price credit-risk proxy adds leverage-allocation
+  information beyond the frozen v4.1 price, VIX and VXN rules.
+
+base_contract: configs/research_paradigms/qqq_tqqq_vxn_attack_v4_1_long_history.yaml
+
+boundaries:
+  high_yield_symbol: HYG
+  short_treasury_symbol: SHY
+  proxy: adjusted_close_HYG_divided_by_adjusted_close_SHY
+  interpretation: high_yield_relative_to_short_treasury_risk_appetite_proxy
+  not_a_pure_credit_spread: true
+  role: leveraged_state_veto_only
+  qqq_state_and_defense_frozen: true
+  price_repair_frozen: true
+  vix_rules_frozen: true
+  vxn_rules_frozen: true
+  leveraged_tqqq_weight_frozen: 0.75
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+
+credit_logic:
+  moving_average_sessions: 50
+  stress_when_ratio_below_moving_average: true
+  entry_veto: true
+  existing_leverage_exit: true
+
+data_quality:
+  minimum_common_sessions: 756
+  minimum_coverage_ratio_within_common_span: 0.98
+  maximum_absolute_daily_ratio_return: 0.20
+  require_positive_adjusted_closes: true
+  fail_closed: true
+
+portfolio:
+  transaction_cost_bps_per_turnover_unit: 10.0
+
+validation:
+  chronological_periods:
+    historical_early:
+      start: "2010-01-01"
+      end: "2017-12-31"
+    stress_validation:
+      start: "2018-01-01"
+      end: "2021-12-31"
+    recent_validation:
+      start: "2022-01-01"
+      end: "2026-08-01"
+  regime_windows:
+    q4_2018_selloff:
+      start: "2018-10-01"
+      end: "2018-12-31"
+    covid_crash_and_recovery:
+      start: "2020-02-19"
+      end: "2020-08-31"
+    calendar_2022_drawdown:
+      start: "2022-01-03"
+      end: "2022-12-30"
+  rolling_windows_sessions: [252, 756]
+  event_horizons: [5, 10, 20, 40]
+  cost_sensitivity_bps: [10, 25, 50]
+  primary_metrics: [cagr, annual_volatility, sharpe, sortino, max_drawdown, calmar]
+  require_incremental_information_beyond_vix_vxn: true
+  require_false_start_or_tail_loss_improvement: true
+  reject_if_cagr_sacrifice_is_material: true
+  reject_if_period_results_are_unstable: true
+
+hypothesis_discipline:
+  - HYG/SHY below its own MA50 is the only tested credit-risk specification.
+  - The proxy uses adjusted closes and is not interpreted as a pure option-adjusted spread.
+  - No alternative Treasury ETF, moving-average window, momentum rule or persistence rule is tested.
+  - The factor cannot alter QQQ defense or initial price-repair logic.
+  - VIX and VXN remain active and unchanged; overlap and unique-stress sessions must be reported.
+  - The factor is added only if data quality passes and incremental portfolio value is clear after costs and across periods.
