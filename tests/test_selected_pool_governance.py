@@ -116,6 +116,7 @@ def test_future_runs_are_bound_to_user_approved_selected_universes() -> None:
     assert us["pool_spec"] == str(US_SELECTED)
     assert us["active_strategy_pool_id"] == "us_small_pool_v2"
     assert us["new_authoritative_runs_allowed"] is True
+    assert "TIGO provider refresh required" in us["authoritative_data_blockers"][0]
     assert spec["pool_spec"] == us["active_strategy_pool_spec"]
     assert spec["pool_governance"]["allow_broad_universe_fallback"] is False
 
