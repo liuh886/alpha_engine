@@ -35,6 +35,11 @@ def test_us_selected_pool_fixes_entity_and_history_errors() -> None:
     assert "WDC" in symbols
     assert "SNDK" not in symbols
 
+    tygo = pool["symbol_history_constraints"]["TYGO"]
+    assert tygo["public_trading_start"] == "2023-05-24"
+    assert tygo["pre_start_policy"] == "unavailable_not_backfilled"
+    assert tygo["eligible_after_start_only"] is True
+
     sndk = pool["forward_only_symbols"]["SNDK"]
     assert sndk["independent_history_start"] == "2025-02-24"
     assert sndk["pre_start_policy"] == "unavailable_not_backfilled"
@@ -78,6 +83,8 @@ def test_symbol_lifecycle_rules_fail_closed() -> None:
 
     assert lifecycle["orphan_or_corrupt_files"]["ALBA"]["action"] == "delete_from_active_data"
     assert lifecycle["ticker_identity_conflicts"]["TIGO"]["intended_symbol_for_tigo_energy"] == "TYGO"
+    assert lifecycle["independent_listing_boundaries"]["TYGO"]["public_trading_start"] == "2023-05-24"
+    assert lifecycle["independent_listing_boundaries"]["TYGO"]["authoritative_backtest_before_start_allowed"] is False
     assert lifecycle["independent_listing_boundaries"]["SNDK"]["authoritative_backtest_before_start_allowed"] is False
     assert lifecycle["terminal_listings"]["600837"]["active_universe_after_terminal_date_allowed"] is False
     assert lifecycle["terminal_listings"]["601989"]["active_universe_after_terminal_date_allowed"] is False
