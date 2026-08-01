@@ -7,7 +7,11 @@ import pandas as pd
 import pytest
 
 from src.research.vix_aggressive_tqqq_experiment import validate_weight_only_change
-from src.research.vix_rotation_experiment import VixRotationConfig, run_vix_rotation_backtest
+from src.research.vix_rotation_experiment import (
+    VixRotationConfig,
+    generate_vix_decision_states,
+)
+from src.research.vix_rotation_runtime import _run_weighted_state_backtest
 
 
 def _contract(weight: float) -> dict:
@@ -79,19 +83,28 @@ def test_contract_rejects_signal_rule_change() -> None:
 
 def test_higher_weight_preserves_states_and_increases_recovery_capture() -> None:
     prepared = _prepared()
-    baseline = run_vix_rotation_backtest(
-        prepared,
-        VixRotationConfig(
-            leveraged_tqqq_weight=0.50,
-            transaction_cost_bps_per_turnover_unit=10.0,
-        ),
+    baseline_config = VixRotationConfig(
+        leveraged_tqqq_weight=0.50,
+        transaction_cost_bps_per_turnover_unit=10.0,
     )
-    challenger = run_vix_rotation_backtest(
+    challenger_config = VixRotationConfig(
+        leveraged_tqqq_weight=0.75,
+        transaction_cost_bps_per_turnover_unit=10.0,
+    )
+    decisions = generate_vix_decision_states(prepared, baseline_config)
+    baseline = _run_weighted_state_backtest(
         prepared,
-        VixRotationConfig(
-            leveraged_tqqq_weight=0.75,
-            transaction_cost_bps_per_turnover_unit=10.0,
-        ),
+        baseline_config,
+        decisions,
+        strategy_key="baseline",
+        display_name="baseline",
+    )
+    challenger = _run_weighted_state_backtest(
+        prepared,
+        challenger_config,
+        decisions,
+        strategy_key="challenger",
+        display_name="challenger",
     )
     pd.testing.assert_series_equal(
         baseline.daily["position_state"], challenger.daily["position_state"]
