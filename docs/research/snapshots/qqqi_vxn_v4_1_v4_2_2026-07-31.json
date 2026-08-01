@@ -1,0 +1,118 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "qqqi_vxn_v4_1_v4_2_2026-07-31",
+  "evidence_date": "2026-07-31",
+  "economic_return_sample": {
+    "start": "2024-01-30",
+    "end": "2026-07-30",
+    "observations": 627,
+    "return_measurement": "adjusted_open_to_adjusted_open"
+  },
+  "research_status": {
+    "research_only": true,
+    "trade_ready": false,
+    "prospective_monitoring_start": "2026-08-01"
+  },
+  "strategies": {
+    "qqq_buy_and_hold": {
+      "total_return": 0.6406,
+      "cagr": 0.2201,
+      "annual_volatility": 0.2130,
+      "sharpe": 1.041,
+      "max_drawdown": -0.2417,
+      "calmar": 0.911
+    },
+    "qqqi_qqq_tqqq_vxn_leverage_v4_1": {
+      "role": "frozen_prospective_baseline",
+      "state_0": {"QQQI": 1.0, "QQQ": 0.0, "TQQQ": 0.0},
+      "state_1": {"QQQI": 0.0, "QQQ": 1.0, "TQQQ": 0.0},
+      "state_2": {"QQQI": 0.0, "QQQ": 0.25, "TQQQ": 0.75},
+      "total_return": 1.0117,
+      "cagr": 0.3244,
+      "annual_volatility": 0.2582,
+      "sharpe": 1.218,
+      "sortino": 1.764,
+      "max_drawdown": -0.2443,
+      "calmar": 1.328,
+      "switch_count": 40,
+      "turnover_units": 71.0,
+      "transaction_cost_deduction": 0.0710,
+      "partial_leverage_sessions": 129
+    },
+    "qqqi_qqq_tqqq_vxn_bridge_v4_2": {
+      "role": "post_result_prospective_challenger",
+      "state_0": {"QQQI": 1.0, "QQQ": 0.0, "TQQQ": 0.0},
+      "state_1": {"QQQI": 0.5, "QQQ": 0.5, "TQQQ": 0.0},
+      "state_2": {"QQQI": 0.0, "QQQ": 0.25, "TQQQ": 0.75},
+      "total_return": 1.0353,
+      "cagr": 0.3306,
+      "annual_volatility": 0.2562,
+      "sharpe": 1.244,
+      "sortino": 1.801,
+      "max_drawdown": -0.2421,
+      "calmar": 1.365,
+      "switch_count": 40,
+      "turnover_units": 55.0,
+      "transaction_cost_deduction": 0.0550,
+      "partial_leverage_sessions": 129
+    }
+  },
+  "signal_event_study_v4_1": {
+    "horizon_sessions": 20,
+    "add_tqqq_leverage": {
+      "events": 12,
+      "mean_return_benefit_percentage_points": 5.76,
+      "median_return_benefit_percentage_points": 4.24,
+      "positive_benefit_rate": 0.917
+    },
+    "qqqi_to_qqq": {
+      "events": 10,
+      "mean_return_benefit_percentage_points": 0.74,
+      "positive_benefit_rate": 0.50
+    },
+    "tqqq_to_qqq": {
+      "events": 8,
+      "mean_return_benefit_percentage_points": -3.40,
+      "mean_max_drawdown_improvement_percentage_points": 6.34
+    },
+    "qqq_to_qqqi": {
+      "events": 10,
+      "mean_return_benefit_percentage_points": -0.61,
+      "mean_max_drawdown_improvement_percentage_points": 3.97
+    }
+  },
+  "evidence": {
+    "v4_1": {
+      "workflow_run": 30690786777,
+      "artifact_id": 8815588121,
+      "sha256": "6184c8e2f4186d4fc90848cb4ceb974c7334d9fce56b9e17eda1ef1a07ce4cd4"
+    },
+    "v4_1_long_history": {
+      "workflow_run": 30691947502,
+      "artifact_id": 8815971914,
+      "sha256": "64cb61754392e2c195ebceb5eba46d69cf776ef16abf0b8800f91c5926da973f"
+    },
+    "v4_2": {
+      "workflow_run": 30706201043,
+      "artifact_id": 8820398584,
+      "sha256": "3b4962b11796ee72ec4f74cca12ddf0d40800cf5417af4e42dabfb3a3d81abbf"
+    },
+    "initial_side_by_side_prospective_monitor": {
+      "workflow_run": 30706636567,
+      "artifact_id": 8820527353,
+      "sha256": "49f7fee3dd3e3844320c0e049f1b9adcb23d5438662899d103133170f0c7da78",
+      "prospective_observations": 0,
+      "status": "awaiting_first_prospective_return"
+    }
+  },
+  "companion_documents": [
+    "docs/research/qqqi_qqq_tqqq_experiment_ledger.md",
+    "docs/research/qqqi_qqq_tqqq_vxn_v4_1_full_backtest_review_2026-07-31.md",
+    "docs/research/qqqi_qqq_tqqq_vxn_bridge_v4_2_result_2026-07-31.md",
+    "docs/research/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitoring.md"
+  ],
+  "notebooks": {
+    "immutable_v4_1_review": "notebooks/16_qqqi_qqq_tqqq_vxn_v4_1_backtest_review.ipynb",
+    "rolling_current_review": "notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb"
+  }
+}
