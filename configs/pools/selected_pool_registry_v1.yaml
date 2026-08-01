@@ -1,0 +1,38 @@
+schema_version: "1.0"
+registry_id: "selected_pool_registry_v1"
+created_at: "2026-08-01"
+status: "active_governance_contract"
+
+policy:
+  new_experiments_must_use_selected_pool: true
+  new_backtests_must_use_selected_pool: true
+  broad_universe_runs_are_legacy_or_diagnostic_only: true
+  pool_membership_changes_require_new_version: true
+  post_result_membership_changes_allowed: false
+  selection_decision_issue: 263
+
+markets:
+  us:
+    status: "active"
+    active_pool_id: "us_small_pool_v2"
+    pool_spec: "configs/pools/us_small_pool_v2.yaml"
+    active_research_spec: "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v3.yaml"
+    sec_identity_mapping: "configs/providers/us_small_pool_sec_cik_v2.yaml"
+    new_authoritative_runs_allowed: true
+  cn:
+    status: "pending_user_selection"
+    corrected_base_universe: "configs/research_universes/cn_curated_equities_v1.yaml"
+    mandatory_exclusions_after_terminal_date: ["600837", "601989"]
+    selection_decision_issue: 263
+    new_authoritative_runs_allowed: false
+    allowed_before_activation:
+      - "data_quality_diagnostics"
+      - "coverage_checks"
+      - "selection_design_without_performance_review"
+
+activation_requirements:
+  - "user approves explicit membership list"
+  - "new versioned pool file is committed before performance review"
+  - "pool hash is bound into every run manifest"
+  - "benchmark and reference instruments are separate from candidates"
+  - "data lifecycle registry passes"
