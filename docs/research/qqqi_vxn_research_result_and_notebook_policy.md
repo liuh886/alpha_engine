@@ -128,3 +128,15 @@ As of the 2026-07-31 evidence snapshot:
 - prospective boundary: 2026-08-01;
 - both candidates remain `research_only=true` and `trade_ready=false`;
 - no additional retrospective factor, threshold or bridge-weight search is permitted on the same sample.
+
+## Initial rolling-notebook validation
+
+The first rolling notebook execution was completed in PR #298. The research-bundle workflow successfully:
+
+- linted and compiled the maintenance scripts;
+- passed the bundle validation tests;
+- recomputed the frozen v4.1 and v4.2 comparison from live market data;
+- generated and saved equity, drawdown and executed-trade outputs;
+- verified that every code cell executed and that no error output was present;
+- committed the executed `.ipynb` back to the PR branch;
+- uploaded an independent executed-notebook artifact for audit.
