@@ -1,0 +1,65 @@
+experiment_id: qqq_tqqq_absolute_breadth_scaling_v4_2
+parent_experiment_id: qqq_tqqq_vxn_exit_persistence_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Test whether the equal-weight Nasdaq-100 ETF's own absolute trend can scale
+  the already-approved leveraged state between previously studied 50% and 75%
+  TQQQ allocations without changing any entry or exit state.
+
+base_contract: configs/research_paradigms/qqq_tqqq_vxn_attack_v4_1_long_history.yaml
+
+boundaries:
+  breadth_symbol: QQQE
+  relative_strength_not_used: true
+  hard_entry_gate_not_used: true
+  v4_1_decision_trace_frozen: true
+
+breadth_logic:
+  ma_window: 20
+  momentum_sessions: 5
+  confirmed_when_above_ma_and_positive_momentum: true
+
+portfolio:
+  unconfirmed_tqqq_weight: 0.50
+  confirmed_tqqq_weight: 0.75
+  qqq_weight_is_residual: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+
+validation:
+  chronological_periods:
+    historical_early:
+      start: "2010-01-01"
+      end: "2017-12-31"
+    stress_validation:
+      start: "2018-01-01"
+      end: "2021-12-31"
+    recent_validation:
+      start: "2022-01-01"
+      end: "2026-08-01"
+  regime_windows:
+    q4_2018_selloff:
+      start: "2018-10-01"
+      end: "2018-12-31"
+    covid_crash_and_recovery:
+      start: "2020-02-19"
+      end: "2020-08-31"
+    calendar_2022_drawdown:
+      start: "2022-01-03"
+      end: "2022-12-30"
+  rolling_windows_sessions: [252, 756]
+  cost_sensitivity_bps: [10, 25, 50]
+  primary_metrics: [cagr, annual_volatility, sharpe, sortino, max_drawdown, calmar]
+  require_clear_risk_adjusted_improvement: true
+  reject_if_cagr_sacrifice_is_material: true
+  reject_if_period_results_are_unstable: true
+
+hypothesis_discipline:
+  - The v4.1 entry and exit state trace must remain identical.
+  - QQQE is evaluated only on its own absolute trend, never relative to QQQ.
+  - Weak breadth retains 50% TQQQ rather than blocking the recovery state.
+  - Confirmed breadth permits the frozen 75% TQQQ allocation.
+  - MA20, five-session momentum and the 50/75 schedule are the only predeclared specification.
+  - No moving-average, momentum or allocation grid is permitted.
+  - The factor is added only if improvement is clear after costs and across periods.
