@@ -43,9 +43,11 @@ an asset and also earning that asset's close-to-close return for `t`.
 
 - Frozen contract: `configs/research_paradigms/qqqi_qqq_tqqq_rotation_v1.yaml`
 - Reusable engine: `src/research/etf_rotation_experiment.py`
+- Structural evidence governance: `src/research/etf_rotation_evidence.py`
 - CLI: `scripts/run_qqqi_qqq_tqqq_rotation.py`
 - Notebook: `notebooks/12_qqqi_qqq_tqqq_rotation.ipynb`
 - Tests: `tests/test_etf_rotation_experiment.py`
+- Dated live-data result: `docs/research/qqqi_qqq_tqqq_rotation_result_2026-07-31.md`
 
 ## Run
 
@@ -61,12 +63,16 @@ uv run jupyter lab notebooks/12_qqqi_qqq_tqqq_rotation.ipynb
 
 The CLI writes source coverage, strategy metrics, daily traces, trades,
 conditional regime comparisons, recovery events, named-period coverage,
-chronological split results, the full sensitivity grid and an evidence manifest
-under `artifacts/evidence/qqqi_qqq_tqqq_rotation_v1/`.
+chronological split results, proxy-free long-history context, full-history
+signal-state diagnostics, state reachability, parameter activity, the full
+sensitivity grid and an evidence manifest under
+`artifacts/evidence/qqqi_qqq_tqqq_rotation_v1/`.
 
 ## Interpretation discipline
 
 The default parameter set is the primary test. The grid is a robustness
-inspection only. A high-Calmar combination found after looking at outcomes must
+inspection only. Low metric dispersion is not accepted as robustness unless all
+intended states are reached and each tested parameter changes at least one
+matched outcome. A high-Calmar combination found after looking at outcomes must
 not be presented as validated without a new frozen contract and genuinely new
 out-of-sample data.
