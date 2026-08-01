@@ -3,8 +3,9 @@
 Pool membership remains exact and immutable. Runtime coverage follows the
 historical frozen contract: no pre-listing data are fabricated, coverage-
 qualified members are retained, and every dropped symbol is reported. A market
-is complete only when its exact refreshed provider exists and the execution
-adapter returns a passed multi-window result.
+is complete when its exact promoted provider exists and the execution adapter
+finishes a passed multi-window result. A rejected promotion decision is valid
+negative evidence, not a data or execution failure.
 """
 
 from __future__ import annotations
@@ -29,6 +30,11 @@ CN_SPEC = Path(
 )
 REGISTRY = Path("configs/pools/selected_pool_registry_v1.yaml")
 LISTING_POLICY = "no_prelisting_fill_coverage_qualified_static_members"
+CANDIDATE_PROMOTION_STATUSES = {
+    "research_candidate",
+    "stronger_research_candidate",
+    "trade_guidance_candidate",
+}
 
 Runner = Callable[..., dict[str, Any]]
 
@@ -91,6 +97,33 @@ def _preflight(root: Path, market: str, spec_path: Path) -> dict[str, Any]:
     }
 
 
+def _completed_evidence_status(result: dict[str, Any]) -> tuple[str, str]:
+    """Classify a passed execution by its canonical promotion decision."""
+
+    promotion = result.get("promotion_decision")
+    if not isinstance(promotion, dict):
+        return (
+            "selected_pool_ranker_data_blocked",
+            "passed execution has no canonical promotion_decision",
+        )
+    promotion_status = str(promotion.get("status", "")).strip().lower()
+    rationale = str(promotion.get("rationale", "")).strip()
+    if promotion_status == "rejected":
+        return (
+            "selected_pool_ranker_not_supported",
+            rationale or "no candidate satisfied the frozen promotion gates",
+        )
+    if promotion_status in CANDIDATE_PROMOTION_STATUSES:
+        return (
+            "selected_pool_ranker_research_candidate",
+            rationale or f"promotion_status={promotion_status}",
+        )
+    return (
+        "selected_pool_ranker_data_blocked",
+        rationale or f"unsupported promotion_status={promotion_status or 'missing'}",
+    )
+
+
 def _run_market(
     root: Path,
     *,
@@ -130,12 +163,12 @@ def _run_market(
             "reason": f"{type(exc).__name__}: {exc}",
         }
 
-    execution_status = str(result.get("execution_status", "")).lower()
+    execution_status = str(result.get("status", "")).strip().lower()
     if execution_status != "passed":
-        execution = result.get("execution")
+        runtime_metadata = result.get("runtime_metadata")
         reason = (
-            execution.get("runtime_metadata", {}).get("skip_reason")
-            if isinstance(execution, dict)
+            runtime_metadata.get("skip_reason")
+            if isinstance(runtime_metadata, dict)
             else None
         )
         return {
@@ -145,9 +178,12 @@ def _run_market(
             "result": result,
         }
 
+    verdict, reason = _completed_evidence_status(result)
     return {
         **preflight,
-        "status": "evidence_run_completed",
+        "status": verdict,
+        "evidence_completed": verdict != "selected_pool_ranker_data_blocked",
+        "reason": reason,
         "result": result,
     }
 
@@ -186,9 +222,9 @@ def run(
 
     statuses = {payload["status"] for payload in results.values()}
     overall = (
-        "evidence_run_completed"
-        if statuses == {"evidence_run_completed"}
-        else "selected_pool_ranker_data_blocked"
+        "selected_pool_ranker_data_blocked"
+        if "selected_pool_ranker_data_blocked" in statuses
+        else "evidence_run_completed"
     )
     return {
         "experiment_family": "selected_pool_ranker_retest_v1",
