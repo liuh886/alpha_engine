@@ -61,6 +61,7 @@ vxn_overlay:
   no_vxn_normalization_requirement: true
 
 portfolio:
+  leveraged_tqqq_weight: 0.75
   state_0:
     QQQI: 1.00
     QQQ: 0.00
