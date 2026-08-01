@@ -1,5 +1,5 @@
 experiment_id: qqqi_qqq_tqqq_rotation_v1
-schema_version: "1.0"
+schema_version: "1.1"
 research_only: true
 trade_ready: false
 purpose: >-
@@ -47,6 +47,25 @@ sensitivity:
   drawdown_threshold: [0.08, 0.10, 0.15]
   n_exit_short: [1, 2, 3]
 
+recovery_study:
+  interpretation: >-
+    MA200 reclaim is a late trend-confirmation event, not the sole definition of
+    recovery. Compare early, intermediate and late triggers after one material
+    QQQ drawdown episode.
+  shock_threshold: 0.10
+  shock_memory_sessions: 63
+  ma_medium: 50
+  breakout_windows: [5, 20]
+  trigger_families:
+    - breakout_5d
+    - ma20_reclaim
+    - ma50_reclaim
+    - breakout_20d
+    - ma200_reclaim
+  horizons: [5, 10, 20, 40]
+  target_returns: [0.05, 0.10]
+  one_first_trigger_per_family_per_shock_episode: true
+
 named_periods:
   covid_crash_and_recovery: ["2020-02-19", "2020-08-31"]
   rate_hike_technology_bear: ["2022-01-03", "2022-12-30"]
@@ -55,7 +74,6 @@ named_periods:
 
 validation:
   chronological_train_fraction: 0.60
-  recovery_event_horizon_sessions: 20
   minimum_phase_sessions: 20
   robustness_heuristic:
     cagr_relative_spread_lt: 0.20
