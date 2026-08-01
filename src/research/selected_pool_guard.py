@@ -18,6 +18,7 @@ class SelectedPoolBinding:
     pool_id: str
     pool_spec: Path
     registry_spec: Path
+    authoritative_data_blockers: tuple[str, ...]
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -32,6 +33,7 @@ def resolve_selected_pool(
     *,
     registry_path: str | Path = DEFAULT_REGISTRY,
     authoritative: bool = True,
+    require_data_ready: bool = False,
 ) -> SelectedPoolBinding:
     """Resolve the selected pool or block an authoritative run."""
 
@@ -50,6 +52,17 @@ def resolve_selected_pool(
         status = market_config.get("status", "unknown")
         raise ValueError(
             f"authoritative {normalized_market} run blocked by selected-pool status: {status}"
+        )
+
+    blockers = tuple(
+        str(value).strip()
+        for value in market_config.get("authoritative_data_blockers", [])
+        if str(value).strip()
+    )
+    if authoritative and require_data_ready and blockers:
+        raise ValueError(
+            f"authoritative {normalized_market} run blocked by data readiness: "
+            + "; ".join(blockers)
         )
 
     pool_id = str(market_config.get("active_pool_id", "")).strip()
@@ -72,6 +85,7 @@ def resolve_selected_pool(
         pool_id=pool_id,
         pool_spec=pool_spec,
         registry_spec=registry_spec,
+        authoritative_data_blockers=blockers,
     )
 
 
@@ -80,11 +94,13 @@ def assert_pool_is_active_selected(
     *,
     market: str,
     registry_path: str | Path = DEFAULT_REGISTRY,
+    require_data_ready: bool = False,
 ) -> SelectedPoolBinding:
     binding = resolve_selected_pool(
         market,
         registry_path=registry_path,
         authoritative=True,
+        require_data_ready=require_data_ready,
     )
     supplied = Path(pool_path).resolve()
     if supplied != binding.pool_spec:
