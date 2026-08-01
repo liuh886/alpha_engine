@@ -1,0 +1,100 @@
+schema_version: "1.0"
+contract_id: "fundamental_event_store_v1"
+status: "active_foundation"
+research_only: true
+trade_ready: false
+
+selected_pools:
+  us:
+    pool_id: "us_selected_equities_v2"
+    pool_spec: "configs/research_universes/us_selected_equities_v2.yaml"
+    expected_candidates: 87
+  cn:
+    pool_id: "cn_selected_equities_v3"
+    pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
+    expected_candidates: 130
+
+canonical_fields:
+  required:
+    - market
+    - symbol
+    - exchange
+    - entity_id
+    - fiscal_period_end
+    - fiscal_year
+    - fiscal_period
+    - reported_at
+    - available_at
+    - filing_type
+    - source_provider
+    - source_document_id
+    - source_endpoint
+    - field
+    - value
+    - unit
+    - currency
+    - is_quarterly
+    - is_derived
+    - derivation_rule
+    - revision_sequence
+    - supersedes_event_id
+    - retrieved_at
+    - source_hash
+    - event_id
+
+normalized_fields:
+  income_statement:
+    - revenue
+    - gross_profit
+    - operating_income
+    - net_income_common
+    - eps_basic
+    - eps_diluted
+  balance_sheet:
+    - total_assets
+    - cash_and_equivalents
+    - total_debt
+    - current_assets
+    - current_liabilities
+    - common_equity
+    - shares_outstanding
+  cash_flow:
+    - operating_cash_flow
+    - capital_expenditure
+    - free_cash_flow
+    - financing_cash_flow
+
+availability_policy:
+  use_public_report_or_filing_time: true
+  period_end_as_availability_forbidden: true
+  forward_fill_forbidden: true
+  revisions_append_only: true
+  source_and_derived_values_separate: true
+
+source_hierarchy:
+  us:
+    - sec_submissions
+    - sec_companyfacts_us_gaap
+    - sec_companyfacts_ifrs_full
+    - generic_sec_filing_instance_xbrl
+  cn:
+    - tushare_income
+    - tushare_balancesheet
+    - tushare_cashflow
+    - tushare_fina_indicator
+    - tushare_forecast
+    - tushare_express
+    - tushare_stock_basic
+
+storage_layers:
+  raw_cache: "data/raw/fundamentals/{market}/{provider}"
+  normalized_events: "data/normalized/fundamentals/{market}/events.jsonl"
+  manifests: "artifacts/data_manifests/fundamentals/{market}"
+  coverage_reports: "artifacts/data_quality/fundamentals/{market}"
+
+completion_rules:
+  exact_selected_pool_coverage_report_required: true
+  missing_symbol_silent_drop_forbidden: true
+  source_hash_required: true
+  deterministic_event_id_required: true
+  live_source_bound_artifact_required_before_close: true
