@@ -7,6 +7,7 @@ from typing import Any
 import pandas as pd
 
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult, MarketDataAdapter
+from src.data.provider_catalog import provider_capability
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,9 @@ class RouterAttempt:
     last_date: str | None = None
     error: str | None = None
     schema_errors: tuple[str, ...] = ()
+    source_family: str | None = None
+    independent_group: str | None = None
+    circuit_breaker_open: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -42,11 +46,27 @@ class MarketDataRouter:
     Market defaults use ``{market: [provider, ...]}``. A single logical symbol can
     override that order with ``{"market:SYMBOL": [provider, ...]}`` without
     changing the provider preference for the rest of the market.
+
+    When ``failure_threshold`` is configured, repeated failures open a circuit for
+    the provider's *source family*. This prevents two adapters over one failed
+    upstream (for example AKShare and EFinance over Eastmoney) from consuming the
+    full selected-pool run with repeated network timeouts.
     """
 
-    def __init__(self, *, adapters: Iterable[MarketDataAdapter], policy: dict | None = None):
+    def __init__(
+        self,
+        *,
+        adapters: Iterable[MarketDataAdapter],
+        policy: dict | None = None,
+        failure_threshold: int | None = None,
+    ):
         self._adapters = {adapter.name: adapter for adapter in adapters}
         self._policy = policy or {}
+        if failure_threshold is not None and failure_threshold < 1:
+            raise ValueError("failure_threshold must be at least 1")
+        self._failure_threshold = failure_threshold
+        self._group_failures: dict[str, int] = {}
+        self._open_groups: set[str] = set()
 
     @staticmethod
     def _provider_list(value: object) -> list[str] | None:
@@ -95,6 +115,39 @@ class MarketDataRouter:
             pd.Timestamp(dates.max()).strftime("%Y-%m-%d"),
         )
 
+    @staticmethod
+    def _source_context(provider: str) -> dict[str, str]:
+        capability = provider_capability(provider)
+        return {
+            "source_family": capability.source_family,
+            "independent_group": capability.independent_group,
+        }
+
+    def _record_failure(self, provider: str) -> None:
+        if self._failure_threshold is None:
+            return
+        group = provider_capability(provider).independent_group
+        failures = self._group_failures.get(group, 0) + 1
+        self._group_failures[group] = failures
+        if failures >= self._failure_threshold:
+            self._open_groups.add(group)
+
+    def _record_success(self, provider: str) -> None:
+        group = provider_capability(provider).independent_group
+        self._group_failures[group] = 0
+        self._open_groups.discard(group)
+
+    def _is_open(self, provider: str) -> bool:
+        group = provider_capability(provider).independent_group
+        return group in self._open_groups
+
+    def provider_health_snapshot(self) -> dict[str, Any]:
+        return {
+            "failure_threshold": self._failure_threshold,
+            "source_family_failures": dict(sorted(self._group_failures.items())),
+            "open_source_families": sorted(self._open_groups),
+        }
+
     def fetch_daily_bars(
         self,
         *,
@@ -109,14 +162,29 @@ class MarketDataRouter:
         req = FetchRequest(symbol=symbol, market=market, start=start, end=end)
         attempts: list[RouterAttempt] = []
         for provider in self.providers_for_request(market, symbol):
+            context = self._source_context(provider)
             adapter = self._adapters.get(provider)
+            if self._is_open(provider):
+                attempts.append(
+                    RouterAttempt(
+                        provider=provider,
+                        ok=False,
+                        provider_symbol=str(symbol),
+                        error="source-family circuit breaker is open",
+                        circuit_breaker_open=True,
+                        **context,
+                    )
+                )
+                continue
             if adapter is None:
+                self._record_failure(provider)
                 attempts.append(
                     RouterAttempt(
                         provider=provider,
                         ok=False,
                         provider_symbol=str(symbol),
                         error="adapter not registered",
+                        **context,
                     )
                 )
                 continue
@@ -133,6 +201,7 @@ class MarketDataRouter:
 
                         ok, _, errors = validate_market_data(result.df, symbol)
                         if not ok:
+                            self._record_failure(provider)
                             attempts.append(
                                 RouterAttempt(
                                     provider=provider,
@@ -143,12 +212,14 @@ class MarketDataRouter:
                                     last_date=last_date,
                                     error="schema validation failed",
                                     schema_errors=tuple(str(item) for item in errors),
+                                    **context,
                                 )
                             )
                             continue
                     except ImportError:
                         pass
 
+                self._record_success(provider)
                 attempts.append(
                     RouterAttempt(
                         provider=provider,
@@ -157,25 +228,30 @@ class MarketDataRouter:
                         rows=rows,
                         first_date=first_date,
                         last_date=last_date,
+                        **context,
                     )
                 )
                 return RouterResponse(result=result, attempts=attempts)
             except DataFetchError as exc:
+                self._record_failure(provider)
                 attempts.append(
                     RouterAttempt(
                         provider=provider,
                         ok=False,
                         provider_symbol=provider_symbol,
                         error=str(exc),
+                        **context,
                     )
                 )
             except Exception as exc:
+                self._record_failure(provider)
                 attempts.append(
                     RouterAttempt(
                         provider=provider,
                         ok=False,
                         provider_symbol=provider_symbol,
                         error=f"unexpected: {exc}",
+                        **context,
                     )
                 )
         return RouterResponse(result=None, attempts=attempts)
@@ -188,14 +264,21 @@ class MarketDataRouter:
         start: str,
         end: str | None = None,
         limit: int = 2,
+        independent_only: bool = False,
     ) -> dict[str, FetchResult]:
-        """Fetch from multiple providers for consistency checks."""
+        """Fetch multiple providers, optionally one per independent source family."""
 
         req = FetchRequest(symbol=symbol, market=market, start=start, end=end)
         results: dict[str, FetchResult] = {}
+        selected_groups: set[str] = set()
         for provider in self.providers_for_request(market, symbol):
             if len(results) >= limit:
                 break
+            capability = provider_capability(provider)
+            if independent_only and capability.independent_group in selected_groups:
+                continue
+            if self._is_open(provider):
+                continue
             adapter = self._adapters.get(provider)
             if adapter is None:
                 continue
@@ -203,6 +286,11 @@ class MarketDataRouter:
                 result = adapter.fetch_daily_bars(req)
                 if result and not result.df.empty:
                     results[provider] = result
+                    selected_groups.add(capability.independent_group)
+                    self._record_success(provider)
+                else:
+                    self._record_failure(provider)
             except Exception:
+                self._record_failure(provider)
                 continue
         return results

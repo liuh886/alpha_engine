@@ -35,8 +35,8 @@ class EFinanceAdapter:
 
         try:
             import efinance as ef  # type: ignore
-        except Exception as e:
-            raise DataFetchError(f"efinance import failed: {e}") from e
+        except Exception as exc:
+            raise DataFetchError(f"efinance import failed: {exc}") from exc
 
         beg = _to_yyyymmdd(start)
         end = _to_yyyymmdd(str(req.end)) if req.end else "20500101"
@@ -44,14 +44,16 @@ class EFinanceAdapter:
             raise DataFetchError("invalid start date")
 
         try:
-            df = ef.stock.get_quote_history(symbol, beg=beg, end=end, klt=101, fqt=1)
-        except Exception as e:
-            raise DataFetchError(f"efinance fetch failed for {symbol}: {e}") from e
+            frame = ef.stock.get_quote_history(
+                symbol, beg=beg, end=end, klt=101, fqt=1
+            )
+        except Exception as exc:
+            raise DataFetchError(f"efinance fetch failed for {symbol}: {exc}") from exc
 
-        if df is None or df.empty:
+        if frame is None or frame.empty:
             raise DataFetchError(f"empty data for {symbol}")
 
-        col_map = {
+        column_map = {
             "日期": "date",
             "开盘": "open",
             "最高": "high",
@@ -60,15 +62,23 @@ class EFinanceAdapter:
             "成交量": "volume",
             "成交额": "amount",
         }
-        for k in col_map:
-            if k not in df.columns:
-                raise DataFetchError(f"missing column: {k}")
+        missing = [column for column in column_map if column not in frame.columns]
+        if missing:
+            raise DataFetchError(f"efinance payload missing columns: {missing}")
 
-        out = df[list(col_map.keys())].rename(columns=col_map).copy()
+        out = frame[list(column_map)].rename(columns=column_map).copy()
         out["date"] = pd.to_datetime(out["date"], errors="coerce")
-        for c in ["open", "high", "low", "close", "volume", "amount"]:
-            out[c] = pd.to_numeric(out[c], errors="coerce")
-        out = out.dropna(subset=["date", "open", "high", "low", "close"]).sort_values("date").reset_index(drop=True)
+        for column in ("open", "high", "low", "close", "volume", "amount"):
+            out[column] = pd.to_numeric(out[column], errors="coerce")
+        # Eastmoney reports A-share historical volume in lots. Alpha Engine's
+        # canonical unit is shares. Turnover amount is already CNY.
+        out["volume"] = out["volume"] * 100.0
+        out = (
+            out.dropna(subset=["date", "open", "high", "low", "close"])
+            .sort_values("date")
+            .drop_duplicates(subset=["date"], keep="last")
+            .reset_index(drop=True)
+        )
         if out.empty:
             raise DataFetchError(f"empty usable bars for {symbol}")
         out["factor"] = 1.0
@@ -79,6 +89,17 @@ class EFinanceAdapter:
             market=market,
             start=start,
             end=req.end,
-            df=out[["date", "open", "high", "low", "close", "volume", "amount", "factor"]],
+            df=out[
+                [
+                    "date",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                    "amount",
+                    "factor",
+                ]
+            ],
+            provider_symbol=symbol,
         )
-
