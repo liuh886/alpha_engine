@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from src.data.adapters.base import DataFetchError, FetchRequest
-from src.data.adapters.yfinance_adapter import YFinanceAdapter
+from src.data.adapters.yfinance_adapter import YFinanceAdapter, _get_yahoo_ticker
 
 
 def _frame(dates: list[str]) -> pd.DataFrame:
@@ -18,6 +18,7 @@ def _frame(dates: list[str]) -> pd.DataFrame:
             "High": [11.0 + i for i in range(len(index))],
             "Low": [9.0 + i for i in range(len(index))],
             "Close": [10.5 + i for i in range(len(index))],
+            "Adj Close": [5.25 + 0.5 * i for i in range(len(index))],
             "Volume": [1000 + i for i in range(len(index))],
         },
         index=index,
@@ -37,8 +38,6 @@ def test_yfinance_translates_inclusive_end_and_clips_provider_rows(monkeypatch):
                 "auto_adjust": auto_adjust,
             }
         )
-        # Include one defensive row after the declared boundary. The adapter must
-        # never expose it to the router even if a provider over-returns.
         return _frame(["2026-06-17", "2026-06-18", "2026-06-19"])
 
     monkeypatch.setitem(sys.modules, "yfinance", SimpleNamespace(download=download))
@@ -57,13 +56,25 @@ def test_yfinance_translates_inclusive_end_and_clips_provider_rows(monkeypatch):
         "start": "2026-06-17",
         "end": "2026-06-19",
         "progress": False,
-        "auto_adjust": True,
+        "auto_adjust": False,
     }
     assert result.end == "2026-06-18"
     assert result.df["date"].dt.strftime("%Y-%m-%d").tolist() == [
         "2026-06-17",
         "2026-06-18",
     ]
+    assert result.df.iloc[0]["open"] == pytest.approx(5.0)
+    assert result.df.iloc[0]["high"] == pytest.approx(5.5)
+    assert result.df.iloc[0]["low"] == pytest.approx(4.5)
+    assert result.df.iloc[0]["close"] == pytest.approx(5.25)
+
+
+def test_cn_yahoo_exchange_mapping_covers_main_boards_and_growth_boards():
+    assert _get_yahoo_ticker("000001", "cn") == "000001.SZ"
+    assert _get_yahoo_ticker("301291", "cn") == "301291.SZ"
+    assert _get_yahoo_ticker("600009", "cn") == "600009.SS"
+    assert _get_yahoo_ticker("688521", "cn") == "688521.SS"
+    assert _get_yahoo_ticker("000300", "cn") == "000300.SS"
 
 
 def test_yfinance_current_snapshot_keeps_open_ended_provider_request(monkeypatch):
@@ -125,6 +136,7 @@ def test_yfinance_rejects_provider_ohlc_inconsistency(monkeypatch):
     frame = _frame(["2026-06-17"])
     frame.loc[:, "High"] = 10.0
     frame.loc[:, "Close"] = 12.0
+    frame.loc[:, "Adj Close"] = 6.0
     monkeypatch.setitem(
         sys.modules,
         "yfinance",
