@@ -8,6 +8,7 @@ on:
       - "configs/research_paradigms/qqqi_qqq_tqqq_rotation_v1.yaml"
       - "scripts/run_qqqi_qqq_tqqq_rotation.py"
       - "src/research/etf_rotation_experiment.py"
+      - "src/research/etf_rotation_evidence.py"
       - "tests/test_etf_rotation_experiment.py"
   workflow_dispatch:
 
