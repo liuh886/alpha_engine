@@ -58,6 +58,21 @@ _PROVIDER_CATALOG: dict[str, ProviderCapability] = {
         credential_env="TUSHARE_TOKEN",
         usage_note="Credentialed managed CN source; token permissions determine endpoint access.",
     ),
+    "akshare_sina": ProviderCapability(
+        name="akshare_sina",
+        source_family="sina_finance",
+        independent_group="sina_finance",
+        markets=("cn",),
+        price_mode="qfq_adjusted",
+        volume_unit="shares",
+        amount_unit="CNY",
+        corporate_actions=False,
+        trade_calendar=False,
+        usage_note=(
+            "Independent public Sina transport through AKShare; throttled because "
+            "repeated requests can trigger temporary IP blocking."
+        ),
+    ),
     "akshare": ProviderCapability(
         name="akshare",
         source_family="eastmoney",
