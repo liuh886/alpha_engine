@@ -1,0 +1,164 @@
+name: Finalize deleted market-data history purge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/operations/finalize_deleted_market_data_history_purge_2026-08-01.flag"
+
+permissions:
+  actions: read
+  contents: write
+  issues: write
+
+concurrency:
+  group: finalize-deleted-market-data-history-purge
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: history-rewrite-backup-2026-08-01
+
+    steps:
+      - name: Checkout finalization contract
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Initialize paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "PURGE_LIST=${GITHUB_WORKSPACE}/configs/data_quality/history_purge_paths_v1.txt"
+            echo "VERIFY_DIR=${RUNNER_TEMP}/alpha-engine-final-verify.git"
+            echo "RECOVERY_DIR=${RUNNER_TEMP}/pre-purge-recovery"
+            echo "BUNDLE_VERIFY_DIR=${RUNNER_TEMP}/pre-purge-bundle-verify.git"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify rewritten remote from a fresh mirror
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git clone --mirror "$remote" "$VERIFY_DIR"
+          git --git-dir="$VERIFY_DIR" rev-list --objects --all > "${RUNNER_TEMP}/fresh-all-objects.txt"
+
+          test "$(wc -l < "$PURGE_LIST" | tr -d ' ')" = "138"
+          while IFS= read -r path; do
+            if grep -F " $path" "${RUNNER_TEMP}/fresh-all-objects.txt" >/dev/null; then
+              echo "fresh mirror still reaches purged path: $path" >&2
+              exit 1
+            fi
+          done < "$PURGE_LIST"
+
+          new_main="$(git --git-dir="$VERIFY_DIR" rev-parse refs/heads/main)"
+          echo "NEW_MAIN=$new_main" >> "$GITHUB_ENV"
+          git --git-dir="$VERIFY_DIR" count-objects -vH > "${RUNNER_TEMP}/fresh-objects-final.txt"
+
+      - name: Locate original purge run and download recovery artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_json="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow purge-deleted-market-data-history.yml \
+            --limit 1 \
+            --json databaseId,status,conclusion,url,headSha)"
+
+          purge_run_id="$(jq -r '.[0].databaseId // empty' <<< "$run_json")"
+          purge_conclusion="$(jq -r '.[0].conclusion // "unknown"' <<< "$run_json")"
+          purge_url="$(jq -r '.[0].url // empty' <<< "$run_json")"
+          test -n "$purge_run_id" || {
+            echo "original purge run not found" >&2
+            exit 1
+          }
+
+          mkdir -p "$RECOVERY_DIR"
+          gh run download "$purge_run_id" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name alpha-engine-pre-history-purge-backup \
+            --dir "$RECOVERY_DIR"
+
+          bundle="$(find "$RECOVERY_DIR" -type f -name '*.bundle' -print -quit)"
+          checksum="$(find "$RECOVERY_DIR" -type f -name '*.bundle.sha256' -print -quit)"
+          test -n "$bundle" && test -n "$checksum"
+
+          expected_hash="$(awk 'NR == 1 {print $1}' "$checksum")"
+          actual_hash="$(sha256sum "$bundle" | awk '{print $1}')"
+          test "$actual_hash" = "$expected_hash"
+
+          git clone --mirror "$bundle" "$BUNDLE_VERIFY_DIR"
+          git --git-dir="$BUNDLE_VERIFY_DIR" fsck --full
+
+          {
+            echo "PURGE_RUN_ID=$purge_run_id"
+            echo "PURGE_CONCLUSION=$purge_conclusion"
+            echo "PURGE_URL=$purge_url"
+            echo "RECOVERY_BUNDLE=$bundle"
+            echo "RECOVERY_CHECKSUM=$checksum"
+          } >> "$GITHUB_ENV"
+
+      - name: Publish durable recovery release
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "${RUNNER_TEMP}/release-notes.md" <<EOF
+          Pre-rewrite Git bundle captured before the approved market-data history purge.
+
+          Rewritten main: ${NEW_MAIN}
+          Original purge run: ${PURGE_URL}
+          Original purge conclusion: ${PURGE_CONCLUSION}
+          Purged scope: 138 exact obsolete CSV paths.
+          Fresh-mirror verification: passed.
+          EOF
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --yes \
+              --cleanup-tag
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$NEW_MAIN" \
+            --title "Pre-history-purge recovery bundle (2026-08-01)" \
+            --notes-file "${RUNNER_TEMP}/release-notes.md" \
+            "$RECOVERY_BUNDLE" \
+            "$RECOVERY_CHECKSUM" \
+            "${RUNNER_TEMP}/fresh-objects-final.txt" \
+            "$PURGE_LIST"
+
+      - name: Record verified completion
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue comment 270 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "History purge verified and finalized. A fresh mirror clone confirms that all 138 approved obsolete CSV paths are unreachable from every current branch and tag. Rewritten main: \`${NEW_MAIN}\`. Original purge run conclusion: \`${PURGE_CONCLUSION}\`. Recovery release: \`${RELEASE_TAG}\`. Existing pre-rewrite local clones must be discarded and cloned again."
+          gh issue close 270 --repo "$GITHUB_REPOSITORY" --reason completed
+
+      - name: Remove finalization branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            --delete agent/finalize-history-purge || true
+
+      - name: Upload final verification audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpha-engine-history-purge-final-verification
+          retention-days: 90
+          path: |
+            ${{ runner.temp }}/fresh-all-objects.txt
+            ${{ runner.temp }}/fresh-objects-final.txt
+            configs/data_quality/history_purge_paths_v1.txt
