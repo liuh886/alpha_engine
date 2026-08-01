@@ -8,8 +8,9 @@ does not authorize trading.
 
 1. Does QQQI deliver lower drawdown and volatility than QQQ when QQQ is below
    its 200-day moving average or in an above-MA200 sideways regime?
-2. After QQQ crosses back above MA200, does QQQ recover faster than QQQI over
-   the next 20 sessions?
+2. After a material QQQ drawdown, at which recovery stage does QQQ begin to
+   outperform QQQI: a five-session breakout, MA20 reclaim, MA50 reclaim,
+   20-session breakout, or MA200 reclaim?
 3. Does a close-signal / next-open state machine rotating among QQQI, QQQ and
    TQQQ improve CAGR, maximum drawdown, Sharpe, Sortino and Calmar relative to
    common-window buy-and-hold baselines?
@@ -39,10 +40,29 @@ but those observations are not evidence for the QQQI state.
 This differs from the tempting but invalid pattern of using close `t` to select
 an asset and also earning that asset's close-to-close return for `t`.
 
+## Recovery-event contract
+
+MA200 reclaim is retained as a late trend-confirmation event, but it is not the
+sole recovery definition. A material shock episode begins when QQQ reaches a
+10% drawdown and remains in memory for 63 sessions after the latest threshold
+breach. Within each episode, the study records only the first occurrence of:
+
+- five-session breakout;
+- MA20 / Bollinger-middle reclaim;
+- MA50 reclaim;
+- 20-session breakout;
+- MA200 reclaim.
+
+The comparison measures QQQ versus QQQI over 5, 10, 20 and 40 sessions, plus
+time to +5% and +10% and maximum adverse movement. This separates an early
+opportunity signal from an intermediate leverage confirmation and a late
+long-trend confirmation.
+
 ## Files
 
 - Frozen contract: `configs/research_paradigms/qqqi_qqq_tqqq_rotation_v1.yaml`
 - Reusable engine: `src/research/etf_rotation_experiment.py`
+- Multi-stage recovery study: `src/research/etf_recovery_events.py`
 - Structural evidence governance: `src/research/etf_rotation_evidence.py`
 - CLI: `scripts/run_qqqi_qqq_tqqq_rotation.py`
 - Notebook: `notebooks/12_qqqi_qqq_tqqq_rotation.ipynb`
@@ -62,15 +82,16 @@ uv run jupyter lab notebooks/12_qqqi_qqq_tqqq_rotation.ipynb
 ```
 
 The CLI writes source coverage, strategy metrics, daily traces, trades,
-conditional regime comparisons, recovery events, named-period coverage,
-chronological split results, proxy-free long-history context, full-history
-signal-state diagnostics, state reachability, parameter activity, the full
-sensitivity grid and an evidence manifest under
-`artifacts/evidence/qqqi_qqq_tqqq_rotation_v1/`.
+conditional regime comparisons, multi-stage recovery events, recovery-return
+and time-to-target summaries, named-period coverage, chronological split
+results, proxy-free long-history context, full-history signal-state diagnostics,
+state reachability, parameter activity, the full sensitivity grid and an
+evidence manifest under `artifacts/evidence/qqqi_qqq_tqqq_rotation_v1/`.
 
 ## Interpretation discipline
 
-The default parameter set is the primary test. The grid is a robustness
+The default parameter set is the primary test. Recovery families are diagnostic
+mechanisms rather than optimized entry rules. The grid is a robustness
 inspection only. Low metric dispersion is not accepted as robustness unless all
 intended states are reached and each tested parameter changes at least one
 matched outcome. A high-Calmar combination found after looking at outcomes must
