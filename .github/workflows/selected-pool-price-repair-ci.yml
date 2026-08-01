@@ -6,17 +6,21 @@ on:
     paths:
       - "configs/pools/selected_pool_registry_v1.yaml"
       - "src/data/provider_catalog.py"
+      - "src/data/router.py"
       - "src/data/adapters/akshare_adapter.py"
       - "src/data/adapters/efinance_adapter.py"
       - "src/data/adapters/tushare_adapter.py"
       - "src/data/adapters/yfinance_adapter.py"
       - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
+      - "tests/test_cn_provider_units.py"
+      - "tests/test_market_data_router_circuit_breaker.py"
       - "tests/test_provider_catalog.py"
       - "tests/test_tushare_adapter.py"
       - "tests/test_yfinance_adapter.py"
       - "tests/test_refresh_selected_pool_prices.py"
       - "tests/test_refresh_selected_pool_prices_v2.py"
+      - "docs/research/provider_architecture_v1_2026-08-01.md"
       - "docs/research/selected_pool_price_repair_v1_2026-08-01.md"
       - ".github/workflows/selected-pool-price-repair-ci.yml"
   push:
@@ -24,17 +28,21 @@ on:
     paths:
       - "configs/pools/selected_pool_registry_v1.yaml"
       - "src/data/provider_catalog.py"
+      - "src/data/router.py"
       - "src/data/adapters/akshare_adapter.py"
       - "src/data/adapters/efinance_adapter.py"
       - "src/data/adapters/tushare_adapter.py"
       - "src/data/adapters/yfinance_adapter.py"
       - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
+      - "tests/test_cn_provider_units.py"
+      - "tests/test_market_data_router_circuit_breaker.py"
       - "tests/test_provider_catalog.py"
       - "tests/test_tushare_adapter.py"
       - "tests/test_yfinance_adapter.py"
       - "tests/test_refresh_selected_pool_prices.py"
       - "tests/test_refresh_selected_pool_prices_v2.py"
+      - "docs/research/provider_architecture_v1_2026-08-01.md"
       - "docs/research/selected_pool_price_repair_v1_2026-08-01.md"
       - ".github/workflows/selected-pool-price-repair-ci.yml"
   workflow_dispatch:
@@ -77,12 +85,15 @@ jobs:
         run: >-
           uv run ruff check
           src/data/provider_catalog.py
+          src/data/router.py
           src/data/adapters/akshare_adapter.py
           src/data/adapters/efinance_adapter.py
           src/data/adapters/tushare_adapter.py
           src/data/adapters/yfinance_adapter.py
           scripts/data/refresh_selected_pool_prices.py
           scripts/data/refresh_selected_pool_prices_v2.py
+          tests/test_cn_provider_units.py
+          tests/test_market_data_router_circuit_breaker.py
           tests/test_provider_catalog.py
           tests/test_tushare_adapter.py
           tests/test_yfinance_adapter.py
@@ -92,6 +103,7 @@ jobs:
         run: >-
           uv run mypy
           src/data/provider_catalog.py
+          src/data/router.py
           src/data/adapters/akshare_adapter.py
           src/data/adapters/efinance_adapter.py
           src/data/adapters/tushare_adapter.py
@@ -101,6 +113,8 @@ jobs:
       - name: Run provider and selected-pool repair tests
         run: >-
           uv run pytest
+          tests/test_cn_provider_units.py
+          tests/test_market_data_router_circuit_breaker.py
           tests/test_provider_catalog.py
           tests/test_tushare_adapter.py
           tests/test_yfinance_adapter.py
