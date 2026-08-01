@@ -48,8 +48,9 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
             return pd.DataFrame()
 
     # Request raw Yahoo OHLC and reconstruct every adjusted price column with
-    # one shared factor. This prevents adjusted-close / differently-rounded
-    # high-low mismatches around corporate actions.
+    # one shared positive factor. All four prices intentionally use the same
+    # multiplication path so raw OHLC inequalities survive floating-point
+    # adjustment even when raw high/low equals raw close.
     if "adj close" in df.columns:
         try:
             raw_close = df["close"].astype(float)
@@ -63,9 +64,6 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
         try:
             for column in ("open", "high", "low", "close"):
                 df[column] = df[column].astype(float) * ratio
-            # Use the provider's adjusted close exactly after applying the
-            # common factor to avoid a second independent rounding path.
-            df["close"] = adj_close
             if "amount" in df.columns:
                 df["amount"] = df["amount"].astype(float) * ratio
         except (ValueError, TypeError):
