@@ -1,9 +1,9 @@
 """Refresh selected-pool prices into an isolated, manifest-bound provider.
 
-The command never overwrites the authoritative source directory. It copies valid
-sources, fetches only missing or invalid symbols, records every provider attempt,
-validates the exact selected pool plus benchmark, and atomically publishes either
-a complete provider or a diagnostics-only blocked result.
+The command never overwrites the authoritative source directory. It can either
+refresh only missing/invalid symbols or rebuild the complete selected pool plus
+benchmark. Every provider attempt is recorded, the exact pool is validated, and
+only a complete provider or diagnostics-only blocked result is published.
 """
 
 from __future__ import annotations
@@ -43,10 +43,7 @@ CANONICAL_COLUMNS = (
     "factor",
 )
 IDENTITY_CONTRACTS: dict[tuple[str, str], dict[str, str]] = {
-    (
-        "us",
-        "TIGO",
-    ): {
+    ("us", "TIGO"): {
         "expected_provider_symbol": "TIGO",
         "expected_issuer": "Millicom International Cellular S.A.",
         "forbidden_substitute": "TYGO",
@@ -128,18 +125,13 @@ def _default_router(market: str) -> MarketDataRouter:
     adapters: list[MarketDataAdapter]
     policy: dict[str, list[str]]
     if market == "cn":
-        # Yahoo already supports the repository's .SS/.SZ mapping and returns
-        # internally consistent adjusted OHLCV. Keep the maintained domestic
-        # adapters as independent fallbacks and evidence sources.
         adapters = [
             YFinanceAdapter(),
             EFinanceAdapter(),
             AkShareAdapter(),
             BaoStockAdapter(),
         ]
-        policy = {
-            "cn": ["yfinance", "efinance", "akshare", "baostock"]
-        }
+        policy = {"cn": ["yfinance", "efinance", "akshare", "baostock"]}
     elif market == "us":
         adapters = [YFinanceAdapter()]
         policy = {"us": ["yfinance"]}
@@ -163,10 +155,7 @@ def _identity_contract(market: str, symbol: str) -> dict[str, str] | None:
 
 
 def _validate_provider_identity(
-    *,
-    market: str,
-    symbol: str,
-    provider_symbol: str | None,
+    *, market: str, symbol: str, provider_symbol: str | None
 ) -> dict[str, str] | None:
     contract = _identity_contract(market, symbol)
     if contract is None:
@@ -228,9 +217,10 @@ def _base_manifest(
     targets: list[str],
     before: dict[str, dict[str, Any]],
     records: list[dict[str, Any]],
+    full_refresh: bool,
 ) -> dict[str, Any]:
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "evidence_type": "selected_pool_price_refresh_v1",
         "market": market,
         "pool_id": pool_id,
@@ -238,6 +228,7 @@ def _base_manifest(
         "benchmark": benchmark,
         "start": start,
         "cutoff": cutoff,
+        "refresh_mode": "full" if full_refresh else "repair_only",
         "target_count": len(targets),
         "targets": targets,
         "before": before,
@@ -262,6 +253,7 @@ def refresh_selected_pool_prices(
     cutoff: str,
     router: MarketDataRouter | None = None,
     max_rounds: int = 2,
+    full_refresh: bool = False,
 ) -> dict[str, Any]:
     """Build one isolated, exact selected-pool price source and provider."""
 
@@ -286,9 +278,16 @@ def refresh_selected_pool_prices(
         symbol: _audit_source(source_dir / f"{symbol}.csv", symbol)
         for symbol in required
     }
-    targets = [
-        symbol for symbol in required if before[symbol]["status"] != "ready"
-    ]
+    targets = (
+        list(required)
+        if full_refresh
+        else [
+            symbol
+            for symbol in required
+            if before[symbol]["status"] != "ready"
+        ]
+    )
+    target_set = set(targets)
     data_router = router or _default_router(market_key)
 
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -296,8 +295,7 @@ def refresh_selected_pool_prices(
         destination.rmdir()
 
     with tempfile.TemporaryDirectory(
-        prefix=f".{destination.name}-staging-",
-        dir=destination.parent,
+        prefix=f".{destination.name}-staging-", dir=destination.parent
     ) as temporary:
         stage = Path(temporary) / "payload"
         csv_out = stage / "data" / "csv_source"
@@ -308,7 +306,7 @@ def refresh_selected_pool_prices(
         for symbol in required:
             source_path = source_dir / f"{symbol}.csv"
             output_path = csv_out / f"{symbol}.csv"
-            if before[symbol]["status"] == "ready":
+            if symbol not in target_set:
                 shutil.copy2(source_path, output_path)
                 records.append(
                     {
@@ -367,7 +365,11 @@ def refresh_selected_pool_prices(
             records.append(
                 {
                     "symbol": symbol,
-                    "action": "fetched_replacement",
+                    "action": (
+                        "fetched_full_refresh"
+                        if full_refresh
+                        else "fetched_replacement"
+                    ),
                     "provider": response.result.provider,
                     "provider_symbol": response.result.provider_symbol,
                     "identity_contract": identity,
@@ -389,6 +391,7 @@ def refresh_selected_pool_prices(
             targets=targets,
             before=before,
             records=records,
+            full_refresh=full_refresh,
         )
         if failures:
             manifest.update(
@@ -419,7 +422,9 @@ def refresh_selected_pool_prices(
             symbol for symbol in required if after[symbol]["status"] != "ready"
         ]
         if blocked:
-            raise RuntimeError(f"isolated selected-pool build remains blocked: {blocked}")
+            raise RuntimeError(
+                f"isolated selected-pool build remains blocked: {blocked}"
+            )
 
         provider_dir = stage / "data" / "providers" / market_key
         provider_manifest = build_market_provider(
@@ -453,14 +458,17 @@ def main() -> None:
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--market", choices=("cn", "us"), required=True)
     parser.add_argument(
-        "--source-csv-dir",
-        type=Path,
-        default=Path("data/csv_clean"),
+        "--source-csv-dir", type=Path, default=Path("data/csv_clean")
     )
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--start", default="2021-01-01")
     parser.add_argument("--cutoff", default="2026-06-18")
     parser.add_argument("--max-rounds", type=int, default=2)
+    parser.add_argument(
+        "--full-refresh",
+        action="store_true",
+        help="Fetch every candidate and benchmark instead of only blocked files.",
+    )
     args = parser.parse_args()
 
     payload = refresh_selected_pool_prices(
@@ -471,6 +479,7 @@ def main() -> None:
         start=args.start,
         cutoff=args.cutoff,
         max_rounds=args.max_rounds,
+        full_refresh=args.full_refresh,
     )
     print(json.dumps(payload, indent=2, sort_keys=True))
 
