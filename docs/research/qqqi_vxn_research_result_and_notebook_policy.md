@@ -103,7 +103,8 @@ The refresh command must:
 - execute the rolling notebook from a clean kernel;
 - fail on any notebook error;
 - preserve generated tables and figures in the committed `.ipynb`;
-- stamp the notebook metadata with the current snapshot, contracts and execution timestamp;
+- stamp the notebook metadata with the stable snapshot hash, contract hashes, execution mode and data boundary;
+- avoid volatile timestamps or commit identifiers that would create meaningless notebook diffs;
 - validate that the notebook contains no error outputs;
 - leave the immutable v4.1 notebook unchanged.
 
