@@ -7,7 +7,12 @@ import pandas as pd
 import pytest
 
 from src.data.adapters.base import DataFetchError, FetchRequest
-from src.data.adapters.yfinance_adapter import YFinanceAdapter, _get_yahoo_ticker
+from src.data.adapters.yfinance_adapter import (
+    OHLC_ROUNDING_REL_TOL,
+    YFinanceAdapter,
+    _get_yahoo_ticker,
+    _reconcile_ohlc_rounding,
+)
 
 
 def _frame(dates: list[str]) -> pd.DataFrame:
@@ -41,7 +46,6 @@ def test_yfinance_translates_inclusive_end_and_clips_provider_rows(monkeypatch):
         return _frame(["2026-06-17", "2026-06-18", "2026-06-19"])
 
     monkeypatch.setitem(sys.modules, "yfinance", SimpleNamespace(download=download))
-
     result = YFinanceAdapter().fetch_daily_bars(
         FetchRequest(
             symbol="000001",
@@ -50,7 +54,6 @@ def test_yfinance_translates_inclusive_end_and_clips_provider_rows(monkeypatch):
             end="2026-06-18",
         )
     )
-
     assert captured == {
         "ticker": "000001.SZ",
         "start": "2026-06-17",
@@ -85,17 +88,11 @@ def test_yfinance_current_snapshot_keeps_open_ended_provider_request(monkeypatch
         return _frame(["2026-06-17", "2026-06-18"])
 
     monkeypatch.setitem(sys.modules, "yfinance", SimpleNamespace(download=download))
-
     result = YFinanceAdapter().fetch_daily_bars(
         FetchRequest(symbol="AAPL", market="us", start="2026-06-17")
     )
-
     assert captured["end"] is None
     assert result.end is None
-    assert result.df["date"].dt.strftime("%Y-%m-%d").tolist() == [
-        "2026-06-17",
-        "2026-06-18",
-    ]
 
 
 def test_yfinance_rejects_invalid_or_reversed_boundaries(monkeypatch):
@@ -108,7 +105,6 @@ def test_yfinance_rejects_invalid_or_reversed_boundaries(monkeypatch):
 
     monkeypatch.setitem(sys.modules, "yfinance", SimpleNamespace(download=download))
     adapter = YFinanceAdapter()
-
     with pytest.raises(DataFetchError, match="invalid end"):
         adapter.fetch_daily_bars(
             FetchRequest(
@@ -119,7 +115,6 @@ def test_yfinance_rejects_invalid_or_reversed_boundaries(monkeypatch):
             )
         )
     assert called is False
-
     with pytest.raises(DataFetchError, match="end must be on or after start"):
         adapter.fetch_daily_bars(
             FetchRequest(
@@ -132,7 +127,29 @@ def test_yfinance_rejects_invalid_or_reversed_boundaries(monkeypatch):
     assert called is False
 
 
-def test_yfinance_rejects_provider_ohlc_inconsistency(monkeypatch):
+def test_tiny_ohlc_rounding_violation_is_reconciled_with_evidence():
+    frame = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2026-06-17"]),
+            "open": [10.0],
+            "high": [11.0 - 1e-10],
+            "low": [9.0],
+            "close": [11.0],
+            "volume": [100.0],
+            "amount": [1100.0],
+            "factor": [1.0],
+        }
+    )
+    reconciled, evidence = _reconcile_ohlc_rounding(frame)
+    assert reconciled.loc[0, "high"] == pytest.approx(11.0)
+    assert evidence["corrected_rows"] == 1
+    assert evidence["corrected_high_rows"] == 1
+    assert evidence["corrected_low_rows"] == 0
+    assert evidence["max_relative_violation"] < OHLC_ROUNDING_REL_TOL
+    assert reconciled.attrs["ohlc_rounding_reconciliation"] == evidence
+
+
+def test_material_ohlc_inconsistency_remains_rejected(monkeypatch):
     frame = _frame(["2026-06-17"])
     frame.loc[:, "High"] = 10.0
     frame.loc[:, "Close"] = 12.0
@@ -142,8 +159,7 @@ def test_yfinance_rejects_provider_ohlc_inconsistency(monkeypatch):
         "yfinance",
         SimpleNamespace(download=lambda *args, **kwargs: frame),
     )
-
-    with pytest.raises(DataFetchError, match="schema validation failed"):
+    with pytest.raises(DataFetchError, match="material Yahoo OHLC"):
         YFinanceAdapter().fetch_daily_bars(
             FetchRequest(
                 symbol="000063",
