@@ -1,10 +1,14 @@
 name: QQQI Rotation Evidence
 
 on:
-  push:
-    branches: ["agent/qqqi-qqq-tqqq-rotation"]
+  pull_request:
+    branches: [main]
     paths:
       - ".github/workflows/qqqi-rotation-evidence.yml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_rotation_v1.yaml"
+      - "scripts/run_qqqi_qqq_tqqq_rotation.py"
+      - "src/research/etf_rotation_experiment.py"
+      - "tests/test_etf_rotation_experiment.py"
   workflow_dispatch:
 
 permissions:
