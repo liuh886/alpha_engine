@@ -23,6 +23,16 @@ on:
         default: "cn"
         type: choice
         options: [cn, us]
+      max_rounds:
+        description: "Provider retry rounds per blocked symbol"
+        required: true
+        default: "2"
+        type: choice
+        options: ["1", "2", "3"]
+
+concurrency:
+  group: selected-pool-price-repair-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -79,13 +89,14 @@ jobs:
           --output-root artifacts/selected_pool_price_refresh/cn
           --start 2021-01-01
           --cutoff 2026-06-18
+          --max-rounds 1
       - name: Upload refresh manifest
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: selected-pool-price-repair-cn-${{ github.run_id }}
           path: artifacts/selected_pool_price_refresh/cn/artifacts
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 90
 
   manual-live-repair:
@@ -111,11 +122,12 @@ jobs:
           --output-root "artifacts/selected_pool_price_refresh/${{ inputs.market }}"
           --start 2021-01-01
           --cutoff 2026-06-18
+          --max-rounds "${{ inputs.max_rounds }}"
       - name: Upload refresh manifest
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: selected-pool-price-repair-${{ inputs.market }}-${{ github.run_id }}
           path: artifacts/selected_pool_price_refresh/${{ inputs.market }}/artifacts
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 90
