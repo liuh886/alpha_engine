@@ -110,15 +110,15 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="text-left rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors" onClick={() => navigate('/reports')}>
+          <button className="text-left rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors" onClick={() => navigate('/models')}>
             <FileText className="h-5 w-5 text-primary mb-4" />
-            <div className="font-bold">Reports & interpretation</div>
-            <p className="text-sm text-muted-foreground mt-2">Read preserved conclusions and supporting research notes.</p>
+            <div className="font-bold">Model evidence</div>
+            <p className="text-sm text-muted-foreground mt-2">Review available model records, metrics and declared research status.</p>
           </button>
-          <button className="text-left rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors" onClick={() => navigate('/backtest')}>
+          <button className="text-left rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors" onClick={() => navigate('/dashboard')}>
             <Database className="h-5 w-5 text-primary mb-4" />
-            <div className="font-bold">Backtest evidence</div>
-            <p className="text-sm text-muted-foreground mt-2">Review performance, drawdown, costs, holdings and attribution.</p>
+            <div className="font-bold">Performance evidence</div>
+            <p className="text-sm text-muted-foreground mt-2">Inspect exported performance, drawdown, holdings and attribution data.</p>
           </button>
           <button className="text-left rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors" onClick={() => navigate('/methodology')}>
             <BookOpen className="h-5 w-5 text-primary mb-4" />
