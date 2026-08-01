@@ -17,9 +17,9 @@ def _get_yahoo_ticker(ticker: str, region: str) -> str:
             return ticker
         if ticker == "000300":
             return "000300.SS"
-        if ticker.startswith("60") or ticker.startswith("51"):
+        if ticker.startswith(("60", "68", "51", "56", "58")):
             return f"{ticker}.SS"
-        if ticker.startswith("00") or ticker.startswith("30") or ticker.startswith("15"):
+        if ticker.startswith(("00", "30", "15", "16")):
             return f"{ticker}.SZ"
         return f"{ticker}.SS"
 
@@ -47,6 +47,9 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
         if column not in df.columns:
             return pd.DataFrame()
 
+    # Request raw Yahoo OHLC and reconstruct every adjusted price column with
+    # one shared factor. This prevents adjusted-close / differently-rounded
+    # high-low mismatches around corporate actions.
     if "adj close" in df.columns:
         try:
             raw_close = df["close"].astype(float)
@@ -58,9 +61,10 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
         if not finite_positive.all():
             return pd.DataFrame()
         try:
-            df["open"] = df["open"].astype(float) * ratio
-            df["high"] = df["high"].astype(float) * ratio
-            df["low"] = df["low"].astype(float) * ratio
+            for column in ("open", "high", "low", "close"):
+                df[column] = df[column].astype(float) * ratio
+            # Use the provider's adjusted close exactly after applying the
+            # common factor to avoid a second independent rounding path.
             df["close"] = adj_close
             if "amount" in df.columns:
                 df["amount"] = df["amount"].astype(float) * ratio
@@ -70,7 +74,9 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
     if "amount" not in df.columns:
         df["amount"] = df["close"] * df["volume"]
     df["factor"] = 1.0
-    out = df[["date", "open", "high", "low", "close", "volume", "amount", "factor"]].copy()
+    out = df[
+        ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
+    ].copy()
     out["date"] = pd.to_datetime(out["date"], errors="coerce")
     return out.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
 
@@ -155,16 +161,20 @@ class YFinanceAdapter:
         yf_ticker = self.provider_symbol(req)
         try:
             with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message=".*Timestamp.utcnow is deprecated.*")
+                warnings.filterwarnings(
+                    "ignore", message=".*Timestamp.utcnow is deprecated.*"
+                )
                 df = yf.download(
                     yf_ticker,
                     start=start,
                     end=provider_end,
                     progress=False,
-                    auto_adjust=True,
+                    auto_adjust=False,
                 )
         except Exception as exc:
-            raise DataFetchError(f"yfinance download failed for {yf_ticker}: {exc}") from exc
+            raise DataFetchError(
+                f"yfinance download failed for {yf_ticker}: {exc}"
+            ) from exc
 
         out = _clip_to_request(
             _process_yfinance_df(df),
