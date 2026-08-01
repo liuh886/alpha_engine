@@ -55,4 +55,3 @@ jobs:
             - Requires normal review before merge.
           add-paths: |
             notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb
-          labels: research
