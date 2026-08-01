@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
+
+OHLC_ROUNDING_REL_TOL = 1e-8
 
 
 def _get_yahoo_ticker(ticker: str, region: str) -> str:
@@ -22,14 +25,55 @@ def _get_yahoo_ticker(ticker: str, region: str) -> str:
         if ticker.startswith(("00", "30", "15", "16")):
             return f"{ticker}.SZ"
         return f"{ticker}.SS"
-
     if region == "hk":
         clean = ticker.replace(".HK", "")
         if len(clean) == 5 and clean.startswith("0"):
             clean = clean[1:]
         return f"{clean}.HK"
-
     return ticker
+
+
+def _reconcile_ohlc_rounding(
+    frame: pd.DataFrame,
+    *,
+    relative_tolerance: float = OHLC_ROUNDING_REL_TOL,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Correct only machine-scale OHLC envelope drift and record evidence."""
+
+    result = frame.copy()
+    required_high = result[["open", "close", "low"]].max(axis=1)
+    required_low = result[["open", "close", "high"]].min(axis=1)
+    high_gap = (required_high - result["high"]).clip(lower=0.0)
+    low_gap = (result["low"] - required_low).clip(lower=0.0)
+    high_scale = pd.concat(
+        [required_high.abs(), result["high"].abs()], axis=1
+    ).max(axis=1).clip(lower=1.0)
+    low_scale = pd.concat(
+        [required_low.abs(), result["low"].abs()], axis=1
+    ).max(axis=1).clip(lower=1.0)
+    high_relative = high_gap / high_scale
+    low_relative = low_gap / low_scale
+    max_relative = float(max(high_relative.max(), low_relative.max()))
+    high_mask = high_gap > 0.0
+    low_mask = low_gap > 0.0
+    corrected_mask = high_mask | low_mask
+    evidence = {
+        "relative_tolerance": relative_tolerance,
+        "corrected_rows": int(corrected_mask.sum()),
+        "corrected_high_rows": int(high_mask.sum()),
+        "corrected_low_rows": int(low_mask.sum()),
+        "max_relative_violation": max_relative,
+    }
+    if max_relative > relative_tolerance:
+        raise DataFetchError(
+            "material Yahoo OHLC envelope violation: "
+            f"max_relative={max_relative:.12g} "
+            f"> tolerance={relative_tolerance:.12g}"
+        )
+    result.loc[high_mask, "high"] = required_high.loc[high_mask]
+    result.loc[low_mask, "low"] = required_low.loc[low_mask]
+    result.attrs["ohlc_rounding_reconciliation"] = evidence
+    return result, evidence
 
 
 def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -46,11 +90,6 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
     for column in required:
         if column not in df.columns:
             return pd.DataFrame()
-
-    # Request raw Yahoo OHLC and reconstruct every adjusted price column with
-    # one shared positive factor. All four prices intentionally use the same
-    # multiplication path so raw OHLC inequalities survive floating-point
-    # adjustment even when raw high/low equals raw close.
     if "adj close" in df.columns:
         try:
             raw_close = df["close"].astype(float)
@@ -68,7 +107,6 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
                 df["amount"] = df["amount"].astype(float) * ratio
         except (ValueError, TypeError):
             return pd.DataFrame()
-
     if "amount" not in df.columns:
         df["amount"] = df["close"] * df["volume"]
     df["factor"] = 1.0
@@ -76,7 +114,9 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
         ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
     ].copy()
     out["date"] = pd.to_datetime(out["date"], errors="coerce")
-    return out.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+    out = out.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+    reconciled, _ = _reconcile_ohlc_rounding(out)
+    return reconciled
 
 
 def _normalise_boundary(value: object, *, field_name: str) -> pd.Timestamp:
@@ -87,8 +127,6 @@ def _normalise_boundary(value: object, *, field_name: str) -> pd.Timestamp:
 
 
 def _exclusive_provider_end(value: str | None) -> str | None:
-    """Translate AlphaEngine's inclusive end into yfinance's exclusive end."""
-
     if value is None or not str(value).strip():
         return None
     requested_end = _normalise_boundary(value, field_name="end")
@@ -96,20 +134,15 @@ def _exclusive_provider_end(value: str | None) -> str | None:
 
 
 def _clip_to_request(
-    frame: pd.DataFrame,
-    *,
-    start: str,
-    end: str | None,
+    frame: pd.DataFrame, *, start: str, end: str | None
 ) -> pd.DataFrame:
-    """Keep only rows inside the inclusive router request interval."""
-
     if frame.empty:
         return frame
     start_ts = _normalise_boundary(start, field_name="start")
     end_ts = _normalise_boundary(end, field_name="end") if end else None
     if end_ts is not None and end_ts < start_ts:
         raise DataFetchError("end must be on or after start")
-
+    evidence = frame.attrs.get("ohlc_rounding_reconciliation")
     dates = pd.to_datetime(frame["date"], errors="coerce")
     if dates.dt.tz is not None:
         dates = dates.dt.tz_localize(None)
@@ -117,10 +150,12 @@ def _clip_to_request(
     mask = dates >= start_ts
     if end_ts is not None:
         mask &= dates <= end_ts
-
     clipped = frame.loc[mask].copy()
     clipped["date"] = dates.loc[mask]
-    return clipped.sort_values("date").reset_index(drop=True)
+    clipped = clipped.sort_values("date").reset_index(drop=True)
+    if evidence is not None:
+        clipped.attrs["ohlc_rounding_reconciliation"] = evidence
+    return clipped
 
 
 @dataclass
@@ -139,7 +174,6 @@ class YFinanceAdapter:
             import yfinance as yf
         except Exception as exc:
             raise DataFetchError(f"yfinance import failed: {exc}") from exc
-
         symbol = str(req.symbol or "").strip()
         if not symbol:
             raise DataFetchError("symbol is required")
@@ -149,12 +183,10 @@ class YFinanceAdapter:
         start = str(req.start or "").strip()
         if not start:
             raise DataFetchError("start is required")
-
         start_ts = _normalise_boundary(start, field_name="start")
         end_ts = _normalise_boundary(req.end, field_name="end") if req.end else None
         if end_ts is not None and end_ts < start_ts:
             raise DataFetchError("end must be on or after start")
-
         provider_end = _exclusive_provider_end(req.end)
         yf_ticker = self.provider_symbol(req)
         try:
@@ -173,11 +205,8 @@ class YFinanceAdapter:
             raise DataFetchError(
                 f"yfinance download failed for {yf_ticker}: {exc}"
             ) from exc
-
         out = _clip_to_request(
-            _process_yfinance_df(df),
-            start=start,
-            end=req.end,
+            _process_yfinance_df(df), start=start, end=req.end
         )
         if out.empty:
             raise DataFetchError(f"empty data for {yf_ticker}")
@@ -189,7 +218,6 @@ class YFinanceAdapter:
                 f"yfinance schema validation failed for {yf_ticker}: "
                 f"{'; '.join(errors)}"
             )
-
         return FetchResult(
             provider=self.name,
             symbol=symbol,
