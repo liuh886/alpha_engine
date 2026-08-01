@@ -11,8 +11,24 @@ def test_eastmoney_transports_are_not_independent_sources():
     assert efinance.source_family == "eastmoney"
     assert akshare.independent_group == efinance.independent_group
     assert independent_provider_names(
-        ["tushare", "akshare", "efinance", "baostock", "yfinance"]
-    ) == ["tushare", "akshare", "baostock", "yfinance"]
+        [
+            "tushare",
+            "akshare_sina",
+            "akshare",
+            "efinance",
+            "baostock",
+            "yfinance",
+        ]
+    ) == ["tushare", "akshare_sina", "akshare", "baostock", "yfinance"]
+
+
+def test_sina_is_independent_from_eastmoney():
+    sina = provider_capability("akshare_sina")
+    eastmoney = provider_capability("akshare")
+    assert sina.source_family == "sina_finance"
+    assert sina.independent_group != eastmoney.independent_group
+    assert sina.volume_unit == "shares"
+    assert sina.amount_unit == "CNY"
 
 
 def test_tushare_availability_depends_on_explicit_token(monkeypatch):
