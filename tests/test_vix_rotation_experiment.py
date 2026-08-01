@@ -10,6 +10,11 @@ from src.research.vix_rotation_experiment import (
     run_vix_rotation_backtest,
     vix_regime_asset_metrics,
 )
+from src.research.vix_rotation_runtime import (
+    _run_weighted_state_backtest,
+    generate_price_repair_decision_states,
+    state_reachability,
+)
 
 
 def _prepared(rows: list[dict[str, object]]) -> pd.DataFrame:
@@ -179,3 +184,46 @@ def test_vix_regime_metrics_begin_after_close_confirmation() -> None:
     assert stress.loc["QQQI", "sessions"] == 1
     assert np.isclose(stress.loc["QQQI", "cumulative_return"], 0.01)
     assert np.isclose(stress.loc["QQQ", "cumulative_return"], 0.03)
+
+
+def test_price_repair_ablation_uses_same_price_gates_without_vix() -> None:
+    prepared = _prepared(
+        [
+            {"shock_memory": True, "early_repair": True},
+            {
+                "shock_memory": True,
+                "medium_repair": True,
+                "secondary_confirmation": True,
+            },
+            {"below_ma_short_n": True},
+        ]
+    )
+    decisions = generate_price_repair_decision_states(prepared)
+    assert decisions["decision_state"].tolist() == [1, 2, 1]
+
+
+def test_runtime_trade_reason_is_lagged_with_executed_position() -> None:
+    prepared = _prepared(
+        [
+            {"shock_memory": True, "early_repair": True},
+            {
+                "shock_memory": True,
+                "medium_repair": True,
+                "secondary_confirmation": True,
+            },
+            {},
+            {},
+        ]
+    )
+    decisions = generate_price_repair_decision_states(prepared)
+    result = _run_weighted_state_backtest(
+        prepared,
+        VixRotationConfig(),
+        decisions,
+        strategy_key="test",
+        display_name="test",
+    )
+    assert result.daily["position_state"].tolist() == [0, 1, 2, 2]
+    assert result.trades.loc[1, "executed_reason"] == "enter_qqq_early_price_repair"
+    assert result.trades.loc[2, "executed_reason"] == "enter_partial_tqqq_ma50_confirmation"
+    assert state_reachability(result)["all_states_reached"]
