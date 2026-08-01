@@ -1,0 +1,106 @@
+experiment_id: qqq_tqqq_vxn_attack_v4_1_long_history
+parent_experiment_id: qqqi_qqq_tqqq_vxn_leverage_v4_1
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+historical_structural_validation: true
+purpose: >-
+  Test whether the frozen v4.1 VXN leverage veto improves the QQQ/TQQQ attack
+  layer across a substantially longer history without reconstructing or
+  backfilling QQQI.
+
+boundaries:
+  price_signal_symbol: QQQ
+  vix_symbol: ^VIX
+  vxn_symbol: ^VXN
+  tradable_symbols: [QQQ, TQQQ]
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  qqqi_excluded: true
+  source_states_0_and_1_map_to: QQQ
+  source_state_2_maps_to: 25_percent_QQQ_75_percent_TQQQ
+  volatility_indices_are_signal_only: true
+
+data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  fields: [date, open, close]
+  corporate_action_basis: adjusted
+
+price_logic:
+  ma_short: 20
+  ma_medium: 50
+  ma_long: 200
+  ma_long_buffer: 0.01
+  shock_drawdown: 0.10
+  shock_lookback_sessions: 63
+  shock_memory_sessions: 63
+  early_breakout_sessions: 5
+  confirmation_breakout_sessions: 20
+  ma_rise_sessions: 3
+  exit_below_ma_short_sessions: 2
+
+vix_logic:
+  rolling_window: 252
+  stress_quantile: 0.80
+  normalization_quantile: 0.60
+  spike_1d: 0.20
+  spike_5d: 0.35
+  easing_retreat_for_qqq: 0.15
+  normalization_retreat_for_tqqq: 0.25
+  falling_sessions: 3
+
+vxn_overlay:
+  role: partial_leverage_veto_only
+  source_states_0_and_1_remain_qqq: true
+  partial_leverage_entry_requires_vix_normalized: true
+  partial_leverage_entry_requires_vxn_not_stressed: true
+  partial_leverage_exit_if_vxn_stressed: true
+  no_vxn_normalization_requirement: true
+
+portfolio:
+  leveraged_tqqq_weight: 0.75
+  transaction_cost_bps_per_turnover_unit: 10.0
+  annual_risk_free_rate: 0.0
+  charge_initial_entry: true
+
+validation:
+  event_horizons: [5, 10, 20, 40]
+  rolling_windows_sessions: [252, 756]
+  cost_sensitivity_bps: [10, 25, 50]
+  chronological_periods:
+    historical_early:
+      start: "2010-01-01"
+      end: "2017-12-31"
+    stress_validation:
+      start: "2018-01-01"
+      end: "2021-12-31"
+    recent_validation:
+      start: "2022-01-01"
+      end: "2026-08-01"
+  regime_windows:
+    q4_2018_selloff:
+      start: "2018-10-01"
+      end: "2018-12-31"
+    covid_crash_and_recovery:
+      start: "2020-02-19"
+      end: "2020-08-31"
+    calendar_2022_drawdown:
+      start: "2022-01-03"
+      end: "2022-12-30"
+  primary_baseline_experiment: qqqi_qqq_tqqq_vix_v3_aggressive
+  primary_metrics: [cagr, annual_volatility, sharpe, sortino, max_drawdown, calmar]
+  reject_if_benefit_is_2026_only: true
+  reject_if_major_recoveries_are_consistently_missed: true
+  reject_if_rolling_risk_adjusted_performance_is_unstable: true
+
+hypothesis_discipline:
+  - The v4.1 signal rules and 75% TQQQ weight are frozen.
+  - QQQI is excluded rather than synthetically reconstructed or backfilled.
+  - Source states 0 and 1 both hold QQQ; only source state 2 receives leverage.
+  - This is retrospective structural validation, not prospective out-of-sample evidence.
+  - No VIX, VXN, price, allocation or cost threshold may be selected from this run.
+  - Only a clear and repeated risk-adjusted improvement may justify retaining VXN.
