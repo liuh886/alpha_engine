@@ -156,8 +156,9 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    created_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    run_id = f"{created_at.replace(':', '').replace('-', '')}-{uuid.uuid4().hex[:8]}"
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    created_at = now.isoformat()
+    run_id = f"{now.strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
     record = {
         "schema_version": "1.0",
         "experiment_id": challenger_contract["experiment_id"],
