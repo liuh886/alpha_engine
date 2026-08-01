@@ -82,6 +82,7 @@ def test_user_approved_selected_universes_are_active_and_exact() -> None:
     assert len(cn_symbols) == cn["candidate_count"] == 163
     assert "TIGO" in us_symbols
     assert "TYGO" in us_symbols
+    assert us["data_readiness"]["TIGO"]["silent_exclusion_allowed"] is False
     assert US_APPROVED_REMOVALS.isdisjoint(us_symbols)
     assert CN_APPROVED_REMOVALS.isdisjoint(cn_symbols)
     assert {"600837", "601989"}.isdisjoint(cn_symbols)
@@ -149,11 +150,11 @@ def test_symbol_lifecycle_rules_fail_closed() -> None:
     assert lifecycle["terminal_listings"]["601989"]["active_universe_after_terminal_date_allowed"] is False
 
 
-def test_approved_csv_files_are_removed_but_millicom_and_terminal_history_remain() -> None:
+def test_approved_csv_files_are_removed_and_archived_history_remains() -> None:
     for symbol in sorted(US_APPROVED_REMOVALS | CN_APPROVED_REMOVALS):
         assert not Path(f"data/csv_clean/{symbol}.csv").exists(), symbol
 
-    assert Path("data/csv_clean/TIGO.csv").exists()
+    assert "TIGO" not in US_APPROVED_REMOVALS
     assert Path("data/csv_clean/600837.csv").exists()
     assert Path("data/csv_clean/601989.csv").exists()
     assert not Path("data/csv_clean/ALBA.csv").exists()
