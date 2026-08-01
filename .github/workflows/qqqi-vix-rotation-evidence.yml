@@ -12,6 +12,7 @@ on:
       - "tests/test_vix_rotation_experiment.py"
       - "notebooks/13_qqqi_qqq_tqqq_vix_v2.ipynb"
       - "docs/research/qqqi_qqq_tqqq_vix_v2_experiment.md"
+      - "docs/research/qqqi_qqq_tqqq_vix_v2_result_2026-07-31.md"
   workflow_dispatch:
 
 permissions:
