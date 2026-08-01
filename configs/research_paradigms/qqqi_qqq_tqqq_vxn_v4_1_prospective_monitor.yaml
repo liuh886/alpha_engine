@@ -1,0 +1,42 @@
+experiment_id: qqqi_qqq_tqqq_vxn_v4_1_prospective_monitor
+parent_experiment_id: qqqi_qqq_tqqq_vxn_leverage_v4_1
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+prospective_monitoring: true
+monitoring_start_date: "2026-08-01"
+purpose: >-
+  Accumulate unchanged prospective evidence for the frozen v4.1 VXN leverage-veto
+  candidate after the retrospective sequential factor cycle. This monitor does
+  not change, tune or promote the strategy.
+
+base_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_leverage_v4_1.yaml
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  full_history_recomputed_for_context: true
+  prospective_metrics_begin_at_monitoring_start: true
+  no_parameter_change: true
+  no_automatic_promotion: true
+
+monitoring:
+  benchmark_strategies:
+    - buy_hold_QQQ
+    - rotation_vix_v3_75
+    - rotation_vxn_leverage_v4_1_75
+  event_horizons: [5, 10, 20, 40]
+  report_latest_executed_state: true
+  report_latest_close_decision: true
+  report_vxn_state_differences: true
+  report_contract_hash: true
+  allow_zero_prospective_sessions: true
+
+hypothesis_discipline:
+  - The v4.1 price, VIX, VXN, allocation, execution and cost rules are frozen.
+  - Monitoring begins on 2026-08-01; no earlier return is labelled prospective.
+  - Full-history metrics may be recomputed only as context and are not new evidence.
+  - No breadth, downside-volatility, credit, cooldown or persistence factor is active.
+  - No threshold, leverage weight or state rule may be changed by this workflow.
+  - The workflow records evidence; it never marks the strategy trade ready.
