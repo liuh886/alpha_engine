@@ -1,0 +1,56 @@
+name: Fundamental Event Store CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "configs/data_contracts/fundamental_event_store_v1.yaml"
+      - "src/data/fundamentals/**"
+      - "scripts/data/**"
+      - "tests/test_fundamental_event_store_contract.py"
+      - "docs/research/fundamental_event_store_v1_2026-08-01.md"
+      - ".github/workflows/fundamental-event-store-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "configs/data_contracts/fundamental_event_store_v1.yaml"
+      - "src/data/fundamentals/**"
+      - "scripts/data/**"
+      - "tests/test_fundamental_event_store_contract.py"
+      - "docs/research/fundamental_event_store_v1_2026-08-01.md"
+      - ".github/workflows/fundamental-event-store-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff event-store files
+        run: >-
+          uv run ruff check
+          src/data/fundamentals
+          scripts/data
+          tests/test_fundamental_event_store_contract.py
+      - name: Mypy event-store files
+        run: >-
+          uv run mypy
+          src/data/fundamentals
+          scripts/data/audit_fundamental_coverage.py
+      - name: Run event-store contract tests
+        run: >-
+          uv run pytest
+          tests/test_fundamental_event_store_contract.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
