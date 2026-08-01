@@ -1,0 +1,101 @@
+schema_version: "1.0"
+contract_id: "corporate_action_store_v1"
+status: "active_foundation"
+research_only: true
+trade_ready: false
+
+selected_pools:
+  us:
+    pool_id: "us_selected_equities_v2"
+    pool_spec: "configs/research_universes/us_selected_equities_v2.yaml"
+    expected_candidates: 87
+  cn:
+    pool_id: "cn_selected_equities_v3"
+    pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
+    expected_candidates: 130
+
+canonical_event_fields:
+  - market
+  - symbol
+  - exchange
+  - entity_id
+  - event_type
+  - announced_at
+  - ex_date
+  - record_date
+  - pay_date
+  - effective_date
+  - cash_amount
+  - currency
+  - split_ratio
+  - stock_dividend_ratio
+  - rights_ratio
+  - rights_price
+  - shares_before
+  - shares_after
+  - old_symbol
+  - new_symbol
+  - source_provider
+  - source_document_id
+  - source_endpoint
+  - retrieved_at
+  - source_hash
+  - revision_sequence
+  - supersedes_event_id
+  - confidence
+  - reconciliation_status
+  - event_id
+
+event_types:
+  - cash_dividend
+  - stock_dividend
+  - split
+  - reverse_split
+  - rights_issue
+  - secondary_issuance
+  - ticker_change
+  - exchange_change
+  - merger
+  - acquisition
+  - spin_off
+  - delisting
+  - suspension
+  - resumption
+  - etf_distribution
+  - etf_split
+
+price_roles:
+  feature_and_label_price: adjusted
+  execution_price: raw
+  source_price_files_are_immutable: true
+  adjusted_series_rebuilt_to_declared_cutoff: true
+  moving_latest_qfq_anchor_forbidden: true
+
+source_hierarchy:
+  us:
+    - yahoo_dividends_and_splits
+    - sec_submissions_and_filings
+  cn:
+    - tushare_adj_factor
+    - tushare_dividend
+    - tushare_share_float
+    - tushare_suspend
+    - tushare_stock_basic
+    - tushare_namechange
+    - baostock_raw_and_qfq_reconciliation
+
+coverage_policy:
+  exact_selected_pool_enumeration: true
+  no_event_observed_is_valid_status: true
+  not_applicable_is_valid_for_indices: true
+  unexplained_material_discontinuity_is_blocker: true
+  duplicate_event_identity_forbidden: true
+  ticker_change_preserves_entity_lineage: true
+
+storage_layers:
+  raw_cache: "data/raw/corporate_actions/{market}/{provider}"
+  normalized_events: "data/normalized/corporate_actions/{market}/events.jsonl"
+  adjustment_factors: "data/normalized/corporate_actions/{market}/adjustment_factors.csv"
+  rebuilt_prices: "artifacts/data_quality/corporate_actions/{market}/rebuilt_prices"
+  manifests: "artifacts/data_manifests/corporate_actions/{market}"
+  coverage_reports: "artifacts/data_quality/corporate_actions/{market}"
