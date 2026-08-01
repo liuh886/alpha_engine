@@ -1,0 +1,56 @@
+experiment_id: qqq_tqqq_vxn_exit_persistence_v4_2
+parent_experiment_id: qqq_tqqq_vxn_v4_1_churn_diagnostics
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+purpose: >-
+  Test one mechanism identified by the frozen v4.1 churn diagnostics: preserve
+  immediate VXN vetoes on new leverage entries, but require two consecutive
+  VXN-stress closes before VXN alone exits an existing leveraged position.
+
+base_contract: configs/research_paradigms/qqq_tqqq_vxn_attack_v4_1_long_history.yaml
+
+change_control:
+  allowed_change: vxn_existing_leverage_exit_persistence_closes
+  baseline_value: 1
+  challenger_value: 2
+  immediate_entry_veto_frozen: true
+  immediate_vix_exit_frozen: true
+  immediate_price_exit_frozen: true
+  leveraged_tqqq_weight_frozen: 0.75
+  no_alternative_persistence_test: true
+
+validation:
+  chronological_periods:
+    historical_early:
+      start: "2010-01-01"
+      end: "2017-12-31"
+    stress_validation:
+      start: "2018-01-01"
+      end: "2021-12-31"
+    recent_validation:
+      start: "2022-01-01"
+      end: "2026-08-01"
+  regime_windows:
+    q4_2018_selloff:
+      start: "2018-10-01"
+      end: "2018-12-31"
+    covid_crash_and_recovery:
+      start: "2020-02-19"
+      end: "2020-08-31"
+    calendar_2022_drawdown:
+      start: "2022-01-03"
+      end: "2022-12-30"
+  rolling_windows_sessions: [252, 756]
+  cost_sensitivity_bps: [10, 25, 50]
+  primary_metrics: [cagr, annual_volatility, sharpe, sortino, max_drawdown, calmar]
+  require_lower_turnover: true
+  require_no_risk_adjusted_deterioration: true
+
+hypothesis_discipline:
+  - The two-close rule was predeclared from Phase B diagnostics and is the only challenger.
+  - New leveraged entries remain immediately vetoed by any VXN stress close.
+  - VIX stress and MA20 price failure continue to exit immediately.
+  - No one-day, three-day, five-day or cooldown comparison is permitted.
+  - Lower turnover alone is insufficient; risk-adjusted performance must not deteriorate.
