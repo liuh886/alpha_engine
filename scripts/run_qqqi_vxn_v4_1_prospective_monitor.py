@@ -17,7 +17,10 @@ import yaml
 
 from src.research.etf_rotation_experiment import fetch_adjusted_daily_bars
 from src.research.strategy_experiment_journal import write_strategy_run_record
-from src.research.vix_rotation_experiment import generate_vix_decision_states
+from src.research.vix_rotation_experiment import (
+    config_from_contract,
+    generate_vix_decision_states,
+)
 from src.research.vxn_leverage_overlay_experiment import (
     generate_vxn_leverage_veto_states,
     run_vxn_leverage_overlay_comparison,
@@ -85,23 +88,9 @@ def main() -> int:
     full_metrics, results, prepared, retrospective_diagnostics = (
         run_vxn_leverage_overlay_comparison(bars, base_contract)
     )
-    baseline_decisions = generate_vix_decision_states(
-        prepared,
-        # Both generators use the same frozen config embedded in the base contract.
-        # The comparison already validated the prepared data; import the config via
-        # the generator's companion data path is unnecessary here.
-        __import__(
-            "src.research.vix_rotation_experiment",
-            fromlist=["config_from_contract"],
-        ).config_from_contract(base_contract),
-    )
-    overlay_decisions = generate_vxn_leverage_veto_states(
-        prepared,
-        __import__(
-            "src.research.vix_rotation_experiment",
-            fromlist=["config_from_contract"],
-        ).config_from_contract(base_contract),
-    )
+    config = config_from_contract(base_contract)
+    baseline_decisions = generate_vix_decision_states(prepared, config)
+    overlay_decisions = generate_vxn_leverage_veto_states(prepared, config)
 
     tracked_keys = list(monitor_contract["monitoring"]["benchmark_strategies"])
     prospective_metrics = {
