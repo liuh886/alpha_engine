@@ -202,3 +202,29 @@ def test_refresh_refuses_nonempty_destination(
             router=FakeRouter({}),  # type: ignore[arg-type]
             max_rounds=1,
         )
+
+
+def test_default_cn_router_prioritizes_yfinance() -> None:
+    router = module._default_router("cn")
+    assert router.providers_for_market("cn") == [
+        "yfinance",
+        "efinance",
+        "akshare",
+        "baostock",
+    ]
+
+
+def test_tigo_identity_contract_rejects_tygo() -> None:
+    contract = module._validate_provider_identity(
+        market="us",
+        symbol="TIGO",
+        provider_symbol="TIGO",
+    )
+    assert contract is not None
+    assert contract["expected_issuer"] == "Millicom International Cellular S.A."
+    with pytest.raises(ValueError, match="forbidden identity substitution"):
+        module._validate_provider_identity(
+            market="us",
+            symbol="TIGO",
+            provider_symbol="TYGO",
+        )
