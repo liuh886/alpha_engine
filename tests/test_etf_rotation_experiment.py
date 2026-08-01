@@ -6,8 +6,10 @@ import pandas as pd
 from src.research.etf_rotation_experiment import (
     RotationConfig,
     build_signal_frame,
+    conditional_asset_metrics,
     generate_decision_states,
     prepare_rotation_data,
+    recovery_event_study,
     run_buy_and_hold,
     run_rotation_backtest,
 )
@@ -90,3 +92,39 @@ def test_buy_and_hold_and_rotation_share_the_same_return_window() -> None:
     assert baseline.metrics["observations"] == rotation.metrics["observations"]
     assert baseline.metrics["start_date"] == rotation.metrics["start_date"]
     assert baseline.metrics["end_date"] == rotation.metrics["end_date"]
+
+
+def test_conditional_metrics_start_after_regime_confirmation() -> None:
+    index = pd.bdate_range("2024-01-01", periods=3)
+    prepared = pd.DataFrame(
+        {
+            "regime": ["weak_below_ma200", "transition", "transition"],
+            "QQQI_next_open_return": [0.90, 0.01, 0.02],
+            "QQQ_next_open_return": [0.80, 0.03, 0.04],
+        },
+        index=index,
+    )
+    table = conditional_asset_metrics(prepared)
+    weak = table.loc["weak_below_ma200"]
+    assert weak.loc["QQQI", "sessions"] == 1
+    assert np.isclose(weak.loc["QQQI", "cumulative_return"], 0.01)
+    assert np.isclose(weak.loc["QQQ", "cumulative_return"], 0.03)
+
+
+def test_recovery_event_starts_at_next_open_after_cross_confirmation() -> None:
+    index = pd.bdate_range("2024-01-01", periods=4)
+    prepared = pd.DataFrame(
+        {
+            "qqq_close": [99.0, 101.0, 102.0, 103.0],
+            "ma_long": [100.0, 100.0, 100.0, 100.0],
+            "QQQI_next_open_return": [0.90, 0.80, 0.01, 0.02],
+            "QQQ_next_open_return": [0.90, 0.70, 0.03, 0.04],
+        },
+        index=index,
+    )
+    events = recovery_event_study(prepared, horizon_sessions=1)
+    assert len(events) == 1
+    assert events.loc[0, "event_date"] == index[1]
+    assert events.loc[0, "entry_date"] == index[2]
+    assert np.isclose(events.loc[0, "QQQI_return"], 0.01)
+    assert np.isclose(events.loc[0, "QQQ_return"], 0.03)
