@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 registry_id: "selected_pool_registry_v1"
 created_at: "2026-08-01"
 status: "active_governance_contract"
@@ -26,8 +26,10 @@ markets:
     new_authoritative_runs_allowed: true
   cn:
     status: "active"
-    active_pool_id: "cn_selected_equities_v2"
-    pool_spec: "configs/research_universes/cn_selected_equities_v2.yaml"
+    active_pool_id: "cn_selected_equities_v3"
+    pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
+    parent_pool_id: "cn_selected_equities_v2"
+    selection_decision_issue: 269
     mandatory_exclusions_after_terminal_date: ["600837", "601989"]
     new_authoritative_runs_allowed: true
 
