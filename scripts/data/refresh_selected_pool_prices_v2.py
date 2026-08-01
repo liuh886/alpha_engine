@@ -1,7 +1,8 @@
 """Run selected-pool refresh with source-aware provider governance.
 
 This wrapper preserves the atomic refresh implementation from v1 while adding
-credential-aware providers, upstream-family lineage and promotion gates.
+credential-aware providers, upstream-family lineage, circuit breaking and
+promotion gates.
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from src.data.router import MarketDataRouter
 MANIFEST_RELATIVE_PATH = Path(
     "artifacts/selected_pool_price_refresh_manifest.json"
 )
+SOURCE_FAMILY_FAILURE_THRESHOLD = 3
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -60,7 +62,11 @@ def build_hardened_router(market: str) -> MarketDataRouter:
         providers.append("yfinance")
     else:
         raise ValueError(f"unsupported market: {market}")
-    return MarketDataRouter(adapters=adapters, policy={market_key: providers})
+    return MarketDataRouter(
+        adapters=adapters,
+        policy={market_key: providers},
+        failure_threshold=SOURCE_FAMILY_FAILURE_THRESHOLD,
+    )
 
 
 def _decorate_attempt(attempt: dict[str, Any]) -> None:
@@ -112,7 +118,7 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
                         _decorate_attempt(attempt)
 
     payload["provider_architecture"] = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "selection_mode": "credential_aware_fallback",
         "provider_order": provider_order,
         "independent_provider_order": independent_provider_names(provider_order),
@@ -123,6 +129,7 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
             "akshare and efinance share source_family=eastmoney and do not count "
             "as independent corroboration"
         ),
+        "health": router.provider_health_snapshot(),
     }
     payload["selected_providers"] = selected_providers
     payload["quarantined_symbols"] = sorted(set(quarantined))
