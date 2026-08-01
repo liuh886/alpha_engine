@@ -1,0 +1,74 @@
+experiment_id: qqq_tqqq_downside_vol_veto_v4_2
+parent_experiment_id: qqq_tqqq_absolute_breadth_scaling_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Test whether realized QQQ downside volatility adds information beyond the
+  frozen v4.1 VIX and VXN rules by vetoing only the leveraged layer during
+  unusually adverse recent price paths.
+
+base_contract: configs/research_paradigms/qqq_tqqq_vxn_attack_v4_1_long_history.yaml
+
+boundaries:
+  signal_symbol: QQQ
+  role: leveraged_state_veto_only
+  qqq_state_and_defense_frozen: true
+  vix_rules_frozen: true
+  vxn_rules_frozen: true
+  price_repair_frozen: true
+  leveraged_tqqq_weight_frozen: 0.75
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+
+downside_volatility:
+  return_basis: adjusted_close_to_close
+  lookback_sessions: 10
+  definition: annualized_root_mean_square_of_negative_returns
+  threshold_window_sessions: 252
+  threshold_quantile: 0.80
+  minimum_threshold_history_sessions: 126
+  stress_when_above_rolling_quantile: true
+  entry_veto: true
+  existing_leverage_exit: true
+
+portfolio:
+  transaction_cost_bps_per_turnover_unit: 10.0
+
+validation:
+  chronological_periods:
+    historical_early:
+      start: "2010-01-01"
+      end: "2017-12-31"
+    stress_validation:
+      start: "2018-01-01"
+      end: "2021-12-31"
+    recent_validation:
+      start: "2022-01-01"
+      end: "2026-08-01"
+  regime_windows:
+    q4_2018_selloff:
+      start: "2018-10-01"
+      end: "2018-12-31"
+    covid_crash_and_recovery:
+      start: "2020-02-19"
+      end: "2020-08-31"
+    calendar_2022_drawdown:
+      start: "2022-01-03"
+      end: "2022-12-30"
+  rolling_windows_sessions: [252, 756]
+  event_horizons: [5, 10, 20, 40]
+  cost_sensitivity_bps: [10, 25, 50]
+  primary_metrics: [cagr, annual_volatility, sharpe, sortino, max_drawdown, calmar]
+  require_incremental_information_beyond_vxn: true
+  require_false_start_or_tail_loss_improvement: true
+  reject_if_cagr_sacrifice_is_material: true
+  reject_if_period_results_are_unstable: true
+
+hypothesis_discipline:
+  - The sole new signal is the frozen QQQ ten-session downside-volatility stress flag.
+  - The threshold is the trailing 252-session 80th percentile with 126-session minimum history.
+  - No alternative lookback, quantile, return definition or persistence rule is tested.
+  - The factor cannot alter QQQ defense or initial price-repair logic.
+  - VIX and VXN remain active and unchanged; overlap and unique-stress sessions must be reported.
+  - Add the factor only if incremental risk-adjusted value is clear after costs and across periods.
