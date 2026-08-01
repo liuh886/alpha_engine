@@ -1,0 +1,101 @@
+experiment_id: qqqi_qqq_tqqq_breadth_vxn_v4
+parent_experiment_id: qqqi_qqq_tqqq_vix_v3_aggressive
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Test whether a survivorship-resistant Nasdaq-100 breadth proxy and the
+  Nasdaq-specific VXN implied-volatility index improve the timing of the
+  75% TQQQ recovery state without changing the frozen price-repair logic.
+
+boundaries:
+  price_signal_symbol: QQQ
+  breadth_symbol: QQQE
+  breadth_benchmark_symbol: QQQ
+  vix_symbol: ^VIX
+  vxn_symbol: ^VXN
+  tradable_symbols: [QQQI, QQQ, TQQQ]
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  common_tradable_window: true
+  no_pre_inception_backfill_for_qqqi: true
+  volatility_indices_are_signal_only: true
+  breadth_proxy_is_signal_only: true
+
+data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  fields: [date, open, close]
+  corporate_action_basis: adjusted
+
+price_logic:
+  ma_short: 20
+  ma_medium: 50
+  ma_long: 200
+  ma_long_buffer: 0.01
+  shock_drawdown: 0.10
+  shock_lookback_sessions: 63
+  shock_memory_sessions: 63
+  early_breakout_sessions: 5
+  confirmation_breakout_sessions: 20
+  ma_rise_sessions: 3
+  exit_below_ma_short_sessions: 2
+
+vix_logic:
+  rolling_window: 252
+  stress_quantile: 0.80
+  normalization_quantile: 0.60
+  spike_1d: 0.20
+  spike_5d: 0.35
+  easing_retreat_for_qqq: 0.15
+  normalization_retreat_for_tqqq: 0.25
+  falling_sessions: 3
+
+breadth_logic:
+  proxy: QQQE_divided_by_QQQ
+  rationale: >-
+    QQQE tracks the equal-weighted Nasdaq-100 and avoids reconstructing
+    historical constituent membership from today's component list.
+  ratio_ma_window: 20
+  ratio_momentum_sessions: 5
+  confirmation_rule: ratio_above_ma_and_positive_momentum
+  application: gate_partial_leverage_entry_only
+  no_threshold_search: true
+
+vxn_logic:
+  reuse_vix_dynamic_parameters: true
+  variants:
+    - vxn_replaces_vix
+    - vix_and_vxn_confirm
+  dual_confirmation:
+    qqq_entry_requires_both_easing: true
+    tqqq_entry_requires_both_normalized: true
+    partial_leverage_exit_if_either_stressed: true
+    severe_defense_if_either_stressed_and_price_fails: true
+  no_threshold_search: true
+
+portfolio:
+  leveraged_tqqq_weight: 0.75
+  transaction_cost_bps_per_turnover_unit: 10.0
+  annual_risk_free_rate: 0.0
+  charge_initial_entry: true
+
+validation:
+  event_horizons: [5, 10, 20, 40]
+  chronological_train_fraction: 0.60
+  require_all_states_reached_for_baseline: true
+  primary_baseline_experiment: qqqi_qqq_tqqq_vix_v3_aggressive
+  primary_metrics: [cagr, annual_volatility, sharpe, max_drawdown, calmar]
+  compare_state_occupancy: true
+  compare_blocked_leverage_entries: true
+  compare_false_start_cost: true
+
+hypothesis_discipline:
+  - Market breadth should reduce leverage entries driven only by a small number of mega-cap stocks.
+  - VXN should be evaluated as Nasdaq-specific risk information, not assumed superior to VIX.
+  - Breadth and VXN are tested separately before any combined promotion claim.
+  - No threshold or lookback may be selected from the observed result of this contract.
+  - A lower drawdown is not sufficient if successful recovery participation is removed.
+  - Results remain research-only because the common QQQI sample begins in 2024.
