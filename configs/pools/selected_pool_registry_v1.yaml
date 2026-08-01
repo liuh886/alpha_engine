@@ -21,6 +21,8 @@ markets:
     active_research_spec: "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v3.yaml"
     sec_identity_mapping: "configs/providers/us_small_pool_sec_cik_v2.yaml"
     retained_identity_exception: "TIGO"
+    authoritative_data_blockers:
+      - "TIGO provider refresh required before inclusion in an authoritative run"
     new_authoritative_runs_allowed: true
   cn:
     status: "active"
