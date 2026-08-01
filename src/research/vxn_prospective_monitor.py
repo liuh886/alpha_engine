@@ -38,43 +38,50 @@ def prospective_return_metrics(
             "switch_count": 0,
             "turnover_units": 0.0,
             "transaction_cost_paid": 0.0,
-            "state_counts": {
-                "defensive": 0,
-                "attack": 0,
-                "partial_leverage": 0,
-            },
+            "state_counts": None,
         }
 
     equity = (1.0 + returns).cumprod()
     total_return = float(equity.iloc[-1] - 1.0)
     observations = int(len(returns))
     cagr = float(equity.iloc[-1] ** (252.0 / observations) - 1.0)
-    volatility = float(returns.std(ddof=1) * np.sqrt(252.0)) if observations > 1 else 0.0
+    volatility = float(returns.std(ddof=0) * np.sqrt(252.0))
     sharpe = (
-        float(returns.mean() / returns.std(ddof=1) * np.sqrt(252.0))
-        if observations > 1 and returns.std(ddof=1) > 0
+        float(returns.mean() / returns.std(ddof=0) * np.sqrt(252.0))
+        if returns.std(ddof=0) > 1e-12
         else None
     )
-    downside = returns[returns.lt(0.0)]
-    downside_deviation = (
-        float(downside.std(ddof=1) * np.sqrt(252.0)) if len(downside) > 1 else 0.0
-    )
+    downside = np.minimum(returns.to_numpy(dtype=float), 0.0)
+    downside_deviation = float(np.sqrt(np.mean(np.square(downside))))
     sortino = (
-        float(returns.mean() * 252.0 / downside_deviation)
-        if downside_deviation > 0
+        float(returns.mean() / downside_deviation * np.sqrt(252.0))
+        if downside_deviation > 1e-12
         else None
     )
     drawdown = equity / equity.cummax() - 1.0
     max_drawdown = float(drawdown.min())
-    calmar = float(cagr / abs(max_drawdown)) if max_drawdown < 0 else None
+    calmar = float(cagr / abs(max_drawdown)) if max_drawdown < -1e-12 else None
 
-    state_counts = (
-        sample.loc[returns.index, "position_state"]
-        .value_counts()
-        .reindex([0, 1, 2], fill_value=0)
+    state_counts: dict[str, int] | None = None
+    switches = 0
+    if "position_state" in sample.columns:
+        state_series = sample.loc[returns.index, "position_state"].astype(int)
+        counts = state_series.value_counts().reindex([0, 1, 2], fill_value=0)
+        state_counts = {
+            STATE_LABELS[state]: int(counts.loc[state]) for state in (0, 1, 2)
+        }
+        switches = int(max(state_series.ne(state_series.shift()).sum() - 1, 0))
+
+    turnover_units = (
+        float(sample.loc[returns.index, "turnover_units"].sum())
+        if "turnover_units" in sample.columns
+        else 0.0
     )
-    state_series = sample.loc[returns.index, "position_state"]
-    switches = int(max(state_series.ne(state_series.shift()).sum() - 1, 0))
+    transaction_cost_paid = (
+        float(sample.loc[returns.index, "transaction_cost"].sum())
+        if "transaction_cost" in sample.columns
+        else 0.0
+    )
     return {
         "strategy": str(result.metrics["strategy"]),
         "status": "prospective_observations_available",
@@ -89,13 +96,9 @@ def prospective_return_metrics(
         "max_drawdown": max_drawdown,
         "calmar": calmar,
         "switch_count": switches,
-        "turnover_units": float(sample.loc[returns.index, "turnover_units"].sum()),
-        "transaction_cost_paid": float(
-            sample.loc[returns.index, "transaction_cost"].sum()
-        ),
-        "state_counts": {
-            STATE_LABELS[state]: int(state_counts.loc[state]) for state in (0, 1, 2)
-        },
+        "turnover_units": turnover_units,
+        "transaction_cost_paid": transaction_cost_paid,
+        "state_counts": state_counts,
     }
 
 
@@ -121,10 +124,8 @@ def prospective_state_differences(
         overlay_state = int(overlay_decisions.iloc[int(location)]["decision_state"])
         if baseline_state == 2 and overlay_state == 1:
             event_type = "vxn_blocks_or_exits_leverage"
-        elif baseline_state != overlay_state:
-            event_type = "vxn_state_difference"
         else:
-            event_type = "none"
+            event_type = "vxn_state_difference"
         row: dict[str, Any] = {
             "signal_date": date,
             "event_type": event_type,
@@ -152,7 +153,22 @@ def prospective_state_differences(
                 else np.nan
             )
         rows.append(row)
-    return pd.DataFrame(rows)
+    columns = [
+        "signal_date",
+        "event_type",
+        "baseline_decision_state",
+        "overlay_decision_state",
+        "baseline_decision_label",
+        "overlay_decision_label",
+        "baseline_reason",
+        "overlay_reason",
+        "vix_close",
+        "vxn_close",
+        "vix_stress",
+        "vxn_stress",
+        *[f"TQQQ_return_{int(horizon)}d" for horizon in horizons],
+    ]
+    return pd.DataFrame(rows, columns=columns)
 
 
 def latest_monitor_snapshot(
