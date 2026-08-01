@@ -1,0 +1,56 @@
+name: Corporate Action Store CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "configs/data_contracts/corporate_action_store_v1.yaml"
+      - "src/data/corporate_actions/**"
+      - "scripts/data/audit_corporate_action_coverage.py"
+      - "tests/test_corporate_action_store_contract.py"
+      - "docs/research/corporate_action_store_v1_2026-08-01.md"
+      - ".github/workflows/corporate-action-store-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "configs/data_contracts/corporate_action_store_v1.yaml"
+      - "src/data/corporate_actions/**"
+      - "scripts/data/audit_corporate_action_coverage.py"
+      - "tests/test_corporate_action_store_contract.py"
+      - "docs/research/corporate_action_store_v1_2026-08-01.md"
+      - ".github/workflows/corporate-action-store-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff corporate-action files
+        run: >-
+          uv run ruff check
+          src/data/corporate_actions
+          scripts/data/audit_corporate_action_coverage.py
+          tests/test_corporate_action_store_contract.py
+      - name: Mypy corporate-action files
+        run: >-
+          uv run mypy
+          src/data/corporate_actions
+          scripts/data/audit_corporate_action_coverage.py
+      - name: Run corporate-action contract tests
+        run: >-
+          uv run pytest
+          tests/test_corporate_action_store_contract.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
