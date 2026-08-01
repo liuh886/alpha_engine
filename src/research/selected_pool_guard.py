@@ -33,7 +33,7 @@ def resolve_selected_pool(
     *,
     registry_path: str | Path = DEFAULT_REGISTRY,
     authoritative: bool = True,
-    require_data_ready: bool = False,
+    require_data_ready: bool = True,
 ) -> SelectedPoolBinding:
     """Resolve the selected pool or block an authoritative run."""
 
@@ -94,7 +94,7 @@ def assert_pool_is_active_selected(
     *,
     market: str,
     registry_path: str | Path = DEFAULT_REGISTRY,
-    require_data_ready: bool = False,
+    require_data_ready: bool = True,
 ) -> SelectedPoolBinding:
     binding = resolve_selected_pool(
         market,
