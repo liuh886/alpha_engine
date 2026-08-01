@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch adjusted OHLCV for the complete frozen US small pool."""
+"""Fetch adjusted OHLCV for the active selected US pool."""
 
 from __future__ import annotations
 
@@ -7,7 +7,9 @@ import argparse
 import json
 from pathlib import Path
 
-from src.data.us_pool_price_snapshot import build_us_pool_price_snapshot
+from src.data.selected_us_pool_price_snapshot import (
+    build_selected_us_pool_price_snapshot,
+)
 
 
 def main() -> int:
@@ -15,12 +17,12 @@ def main() -> int:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("artifacts/market_snapshots/us_small_pool_v1"),
+        default=Path("artifacts/market_snapshots/us_small_pool_v2"),
     )
     parser.add_argument("--requested-through", default=None)
     parser.add_argument("--start-date", default="2024-01-01")
     args = parser.parse_args()
-    decision = build_us_pool_price_snapshot(
+    decision = build_selected_us_pool_price_snapshot(
         output_root=args.output_root,
         requested_through=args.requested_through,
         start_date=args.start_date,

@@ -1,0 +1,98 @@
+schema_version: "1.0"
+pool_id: "us_small_pool_v2"
+parent_pool_id: "us_small_pool_v1"
+created_at: "2026-08-01"
+source: "user_predeclared_with_identity_corrections"
+market: "us"
+membership_mode: "versioned_predeclared"
+status: "active_selected_pool"
+primary_basket_only: true
+silent_exclusion_allowed: false
+
+corrections_from_parent:
+  - type: "ticker_entity_correction"
+    removed_symbol: "TIGO"
+    added_symbol: "TYGO"
+    reason: "TIGO is Millicom; TYGO is Tigo Energy, the intended solar and energy infrastructure company"
+  - type: "independent_history_boundary"
+    removed_symbol: "SNDK"
+    added_symbol: "WDC"
+    reason: "SNDK began independent regular-way trading on 2025-02-24; WDC is the historical storage-industry proxy"
+
+references:
+  QQQ:
+    role: "market_regime_and_benchmark"
+    provider_symbol: "QQQ"
+  SOX:
+    role: "semiconductor_cycle_context"
+    provider_symbol: "^SOX"
+
+baskets:
+  semiconductor_compute:
+    description: "semiconductor design, manufacturing, compute and storage"
+    symbols:
+      - "ALAB"
+      - "TSM"
+      - "INTC"
+      - "AMD"
+      - "WDC"
+  optical_networking:
+    description: "high-speed connectivity, optical and communications infrastructure"
+    symbols:
+      - "CRDO"
+      - "POET"
+      - "AAOI"
+      - "LITE"
+      - "NOK"
+  ai_infrastructure_power:
+    description: "AI infrastructure, data-center power and adjacent enabling capacity"
+    symbols:
+      - "VRT"
+      - "NBIS"
+      - "IREN"
+      - "TYGO"
+  mega_cap_platforms:
+    description: "large technology platforms and enterprise software"
+    symbols:
+      - "AAPL"
+      - "MSFT"
+      - "ORCL"
+  china_consumer_internet:
+    description: "China consumer internet and e-commerce"
+    symbols:
+      - "PDD"
+      - "JD"
+  defensive_consumer:
+    description: "defensive consumer demand and large-scale retail"
+    symbols:
+      - "KO"
+      - "WMT"
+  consumer_growth:
+    description: "consumer-facing growth and high-beta discretionary exposure"
+    symbols:
+      - "TSLA"
+      - "HIMS"
+
+symbol_history_constraints:
+  TYGO:
+    public_trading_start: "2023-05-24"
+    pre_start_policy: "unavailable_not_backfilled"
+    eligible_after_start_only: true
+
+forward_only_symbols:
+  SNDK:
+    role: "storage_industry_successor_observation"
+    independent_history_start: "2025-02-24"
+    pre_start_policy: "unavailable_not_backfilled"
+    eligible_for_historical_validation: false
+    eligible_for_prospective_shadow: true
+
+membership_governance:
+  additions_require_new_pool_version: true
+  removals_require_new_pool_version: true
+  basket_reclassification_requires_new_pool_version: true
+  aliases_require_new_pool_version: true
+  changes_before_performance_review: true
+  retrospective_removal_allowed: false
+  short_history_policy: "diagnostic_or_forward_only"
+  delisted_symbol_policy: "retain_historical_membership_and_mark_unavailable_after_last_trade"
