@@ -7,7 +7,6 @@ from src.research.vix_rotation_experiment import (
     VixRotationConfig,
     build_vix_features,
     generate_vix_decision_states,
-    run_vix_rotation_backtest,
     vix_regime_asset_metrics,
 )
 from src.research.vix_rotation_runtime import (
@@ -37,6 +36,18 @@ def _prepared(rows: list[dict[str, object]]) -> pd.DataFrame:
         "TQQQ_next_open_return": 0.0,
     }
     return pd.DataFrame([{**defaults, **row} for row in rows], index=index)
+
+
+def _run_vix(prepared: pd.DataFrame, config: VixRotationConfig | None = None):
+    effective_config = config or VixRotationConfig()
+    decisions = generate_vix_decision_states(prepared, effective_config)
+    return _run_weighted_state_backtest(
+        prepared,
+        effective_config,
+        decisions,
+        strategy_key="rotation_vix_v2",
+        display_name="Rotation VIX v2",
+    )
 
 
 def test_vix_features_use_only_current_and_past_rows() -> None:
@@ -112,7 +123,7 @@ def test_positions_execute_one_session_after_close_decision() -> None:
             {},
         ]
     )
-    result = run_vix_rotation_backtest(prepared, VixRotationConfig())
+    result = _run_vix(prepared)
     assert result.daily["position_state"].tolist() == [0, 1, 2, 2]
 
 
@@ -134,7 +145,7 @@ def test_partial_leverage_uses_fixed_half_tqqq_weight_and_turnover_cost() -> Non
         leveraged_tqqq_weight=0.50,
         transaction_cost_bps_per_turnover_unit=10.0,
     )
-    result = run_vix_rotation_backtest(prepared, config)
+    result = _run_vix(prepared, config)
     leveraged = result.daily.loc[result.daily["position_state"].eq(2)].iloc[0]
     assert np.isclose(leveraged["weight_QQQ"], 0.50)
     assert np.isclose(leveraged["weight_TQQQ"], 0.50)
