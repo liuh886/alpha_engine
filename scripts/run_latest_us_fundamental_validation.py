@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refresh US sources and run the minimal fundamental validation."""
+"""Refresh US sources and run validation on the active selected pool."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import argparse
 import json
 from pathlib import Path
 
-from src.research.latest_us_fundamental_validation import (
-    run_latest_us_fundamental_validation,
+from src.research.selected_us_fundamental_validation import (
+    run_selected_us_fundamental_validation,
 )
 
 
@@ -19,12 +19,12 @@ def main() -> int:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("artifacts/evidence/latest_us_fundamental_validation"),
+        default=Path("artifacts/evidence/selected_us_fundamental_validation_v2"),
     )
     parser.add_argument(
         "--snapshot-root",
         type=Path,
-        default=Path("artifacts/market_snapshots/us_small_pool_v1"),
+        default=Path("artifacts/market_snapshots/us_small_pool_v2"),
     )
     parser.add_argument(
         "--registry-db",
@@ -32,7 +32,7 @@ def main() -> int:
         default=Path("artifacts/factor_registry.db"),
     )
     args = parser.parse_args()
-    result = run_latest_us_fundamental_validation(
+    result = run_selected_us_fundamental_validation(
         output_root=args.output_root,
         snapshot_root=args.snapshot_root,
         registry_db=args.registry_db,
