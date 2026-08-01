@@ -1,6 +1,9 @@
 from pathlib import Path
 
+import pytest
 import yaml
+
+from src.research.selected_pool_guard import resolve_selected_pool
 
 
 US_POOL = Path("configs/pools/us_small_pool_v2.yaml")
@@ -76,6 +79,15 @@ def test_future_runs_are_bound_to_selected_pool_registry() -> None:
     assert cn["status"] == "pending_user_selection"
     assert cn["new_authoritative_runs_allowed"] is False
     assert set(cn["mandatory_exclusions_after_terminal_date"]) == {"600837", "601989"}
+
+
+def test_authoritative_guard_allows_us_and_blocks_cn() -> None:
+    us = resolve_selected_pool("us")
+    assert us.pool_id == "us_small_pool_v2"
+    assert us.pool_spec == US_POOL.resolve()
+
+    with pytest.raises(ValueError, match="authoritative cn run blocked"):
+        resolve_selected_pool("cn")
 
 
 def test_symbol_lifecycle_rules_fail_closed() -> None:
