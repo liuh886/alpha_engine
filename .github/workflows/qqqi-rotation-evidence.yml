@@ -1,0 +1,49 @@
+name: QQQI Rotation Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqqi-rotation-evidence.yml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_rotation_v1.yaml"
+      - "scripts/run_qqqi_qqq_tqqq_rotation.py"
+      - "src/research/etf_recovery_events.py"
+      - "src/research/etf_rotation_experiment.py"
+      - "src/research/etf_rotation_evidence.py"
+      - "tests/test_etf_rotation_experiment.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Run focused contract tests
+        run: >-
+          uv run pytest tests/test_etf_rotation_experiment.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Run frozen live-data experiment
+        run: >-
+          uv run python scripts/run_qqqi_qqq_tqqq_rotation.py
+          --end-date 2026-08-01
+          --output-dir artifacts/evidence/qqqi_qqq_tqqq_rotation_v1
+      - name: Upload evidence package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqqi-qqq-tqqq-rotation-evidence
+          path: artifacts/evidence/qqqi_qqq_tqqq_rotation_v1
+          if-no-files-found: warn
+          retention-days: 14
