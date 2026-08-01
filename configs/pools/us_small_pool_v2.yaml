@@ -73,6 +73,12 @@ baskets:
       - "TSLA"
       - "HIMS"
 
+symbol_history_constraints:
+  TYGO:
+    public_trading_start: "2023-05-24"
+    pre_start_policy: "unavailable_not_backfilled"
+    eligible_after_start_only: true
+
 forward_only_symbols:
   SNDK:
     role: "storage_industry_successor_observation"
