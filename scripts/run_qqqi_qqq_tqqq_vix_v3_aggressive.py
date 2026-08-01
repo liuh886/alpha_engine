@@ -34,27 +34,22 @@ def _sha256(path: Path) -> str:
 
 
 def _metric_delta(challenger: Mapping[str, Any], baseline: Mapping[str, Any]) -> dict[str, float]:
-    return {
-        "total_return_delta": float(challenger["total_return"] - baseline["total_return"]),
-        "cagr_delta": float(challenger["cagr"] - baseline["cagr"]),
-        "annual_volatility_delta": float(
-            challenger["annual_volatility"] - baseline["annual_volatility"]
-        ),
-        "max_drawdown_delta": float(
-            challenger["max_drawdown"] - baseline["max_drawdown"]
-        ),
-        "sharpe_delta": float(challenger["sharpe"] - baseline["sharpe"]),
-        "calmar_delta": float(challenger["calmar"] - baseline["calmar"]),
-        "turnover_units_delta": float(
-            challenger["turnover_units"] - baseline["turnover_units"]
-        ),
-        "transaction_cost_paid_delta": float(
-            challenger["transaction_cost_paid"] - baseline["transaction_cost_paid"]
-        ),
-        "average_tqqq_weight_delta": float(
-            challenger["average_tqqq_weight"] - baseline["average_tqqq_weight"]
-        ),
-    }
+    fields = (
+        "total_return",
+        "cagr",
+        "annual_volatility",
+        "max_drawdown",
+        "sharpe",
+        "calmar",
+        "turnover_units",
+        "transaction_cost_paid",
+        "average_tqqq_weight",
+    )
+    deltas: dict[str, float] = {}
+    for field in fields:
+        if field in challenger and field in baseline:
+            deltas[f"{field}_delta"] = float(challenger[field] - baseline[field])
+    return deltas
 
 
 def main() -> int:
