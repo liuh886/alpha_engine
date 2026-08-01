@@ -14,9 +14,10 @@ rules:
     TIGO:
       market: "us"
       entity: "Millicom International Cellular"
+      retained_in_selected_universe: true
       prohibited_roles: ["solar_energy", "energy_infrastructure", "ai_infrastructure_power"]
       intended_symbol_for_tigo_energy: "TYGO"
-      action: "exclude_from_energy_baskets"
+      action: "retain_as_millicom_and_exclude_from_energy_baskets"
 
   independent_listing_boundaries:
     TYGO:
