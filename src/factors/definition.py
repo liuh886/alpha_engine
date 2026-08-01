@@ -22,6 +22,47 @@ _ALLOWED_STATUSES = {
 }
 
 
+def _implementation_hash(
+    *,
+    factor_id: str,
+    factor_version: str,
+    namespace: str,
+    expression: str,
+    source_name: str,
+    source_version: str,
+    required_fields: tuple[str, ...],
+    markets: tuple[str, ...],
+    minimum_lookback: int,
+    availability_lag_sessions: int,
+    adjustment_requirement: str,
+    output_frequency: str,
+    output_dtype: str,
+    missing_value_policy: str,
+) -> str:
+    identity = {
+        "factor_id": factor_id,
+        "factor_version": factor_version,
+        "namespace": namespace,
+        "expression": expression,
+        "source_name": source_name,
+        "source_version": source_version,
+        "required_fields": list(required_fields),
+        "markets": list(markets),
+        "minimum_lookback": minimum_lookback,
+        "availability_lag_sessions": availability_lag_sessions,
+        "adjustment_requirement": adjustment_requirement,
+        "output_frequency": output_frequency,
+        "output_dtype": output_dtype,
+        "missing_value_policy": missing_value_policy,
+    }
+    encoded = json.dumps(
+        identity,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 @dataclass(frozen=True)
 class FactorDefinition:
     """One immutable factor formula and its data/availability semantics."""
@@ -85,12 +126,22 @@ class FactorDefinition:
         }
 
     def compute_implementation_hash(self) -> str:
-        encoded = json.dumps(
-            self.identity_payload(),
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-        return hashlib.sha256(encoded).hexdigest()
+        return _implementation_hash(
+            factor_id=self.factor_id,
+            factor_version=self.factor_version,
+            namespace=self.namespace,
+            expression=self.expression,
+            source_name=self.source_name,
+            source_version=self.source_version,
+            required_fields=self.required_fields,
+            markets=self.markets,
+            minimum_lookback=self.minimum_lookback,
+            availability_lag_sessions=self.availability_lag_sessions,
+            adjustment_requirement=self.adjustment_requirement,
+            output_frequency=self.output_frequency,
+            output_dtype=self.output_dtype,
+            missing_value_policy=self.missing_value_policy,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -118,53 +169,40 @@ class FactorDefinition:
         missing_value_policy: str = "preserve_nan_after_warmup",
         status: str = "unvalidated_formula",
     ) -> FactorDefinition:
-        draft = cls.__new__(cls)
-        payload = {
-            "factor_id": factor_id,
-            "factor_version": factor_version,
-            "display_name": display_name,
-            "namespace": namespace,
-            "information_family": information_family,
-            "expression": expression,
-            "source_name": source_name,
-            "source_version": source_version,
-            "source_reference": source_reference,
-            "required_fields": required_fields,
-            "markets": markets,
-            "minimum_lookback": minimum_lookback,
-            "availability_lag_sessions": availability_lag_sessions,
-            "adjustment_requirement": adjustment_requirement,
-            "output_frequency": output_frequency,
-            "output_dtype": output_dtype,
-            "missing_value_policy": missing_value_policy,
-            "status": status,
-        }
-        identity = {
-            key: value
-            for key, value in payload.items()
-            if key
-            in {
-                "factor_id",
-                "factor_version",
-                "namespace",
-                "expression",
-                "source_name",
-                "source_version",
-                "required_fields",
-                "markets",
-                "minimum_lookback",
-                "availability_lag_sessions",
-                "adjustment_requirement",
-                "output_frequency",
-                "output_dtype",
-                "missing_value_policy",
-            }
-        }
-        encoded = json.dumps(
-            identity,
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-        payload["implementation_hash"] = hashlib.sha256(encoded).hexdigest()
-        del draft
-        return cls(**payload)
+        implementation_hash = _implementation_hash(
+            factor_id=factor_id,
+            factor_version=factor_version,
+            namespace=namespace,
+            expression=expression,
+            source_name=source_name,
+            source_version=source_version,
+            required_fields=required_fields,
+            markets=markets,
+            minimum_lookback=minimum_lookback,
+            availability_lag_sessions=availability_lag_sessions,
+            adjustment_requirement=adjustment_requirement,
+            output_frequency=output_frequency,
+            output_dtype=output_dtype,
+            missing_value_policy=missing_value_policy,
+        )
+        return cls(
+            factor_id=factor_id,
+            factor_version=factor_version,
+            display_name=display_name,
+            namespace=namespace,
+            information_family=information_family,
+            expression=expression,
+            source_name=source_name,
+            source_version=source_version,
+            source_reference=source_reference,
+            required_fields=required_fields,
+            markets=markets,
+            minimum_lookback=minimum_lookback,
+            availability_lag_sessions=availability_lag_sessions,
+            adjustment_requirement=adjustment_requirement,
+            output_frequency=output_frequency,
+            output_dtype=output_dtype,
+            missing_value_policy=missing_value_policy,
+            status=status,
+            implementation_hash=implementation_hash,
+        )
