@@ -6,7 +6,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.research.vix_aggressive_tqqq_experiment import validate_weight_only_change
+from src.research.vix_aggressive_tqqq_experiment import (
+    _relabel_result,
+    validate_weight_only_change,
+)
 from src.research.vix_rotation_experiment import (
     VixRotationConfig,
     generate_vix_decision_states,
@@ -115,3 +118,25 @@ def test_higher_weight_preserves_states_and_increases_recovery_capture() -> None
     assert challenger.daily.loc[leveraged, "net_return"].sum() > baseline.daily.loc[
         leveraged, "net_return"
     ].sum()
+
+
+def test_relabel_result_changes_identity_without_mutating_evidence() -> None:
+    prepared = _prepared()
+    config = VixRotationConfig(leveraged_tqqq_weight=0.75)
+    decisions = generate_vix_decision_states(prepared, config)
+    original = _run_weighted_state_backtest(
+        prepared,
+        config,
+        decisions,
+        strategy_key="rotation_vix_v2",
+        display_name="original",
+    )
+    relabelled = _relabel_result(
+        original,
+        strategy="rotation_vix_v3_75",
+        display_name="VIX v3",
+    )
+    assert original.metrics["strategy"] == "rotation_vix_v2"
+    assert relabelled.metrics["strategy"] == "rotation_vix_v3_75"
+    assert relabelled.daily is original.daily
+    assert relabelled.trades is original.trades
