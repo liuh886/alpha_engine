@@ -89,6 +89,9 @@ def test_router_records_failed_schema_and_selected_benchmark_source() -> None:
     assert rejected["last_date"] == "2021-01-05"
     assert rejected["error"] == "schema validation failed"
     assert rejected["schema_errors"]
+    assert rejected["source_family"] == "stock_api"
+    assert rejected["independent_group"] == "stock_api"
+    assert rejected["circuit_breaker_open"] is False
 
     selected = response.attempts[1].to_dict()
     assert selected == {
@@ -100,6 +103,9 @@ def test_router_records_failed_schema_and_selected_benchmark_source() -> None:
         "last_date": "2021-01-05",
         "error": None,
         "schema_errors": [],
+        "source_family": "yahoo_finance",
+        "independent_group": "yahoo_finance",
+        "circuit_breaker_open": False,
     }
 
 
