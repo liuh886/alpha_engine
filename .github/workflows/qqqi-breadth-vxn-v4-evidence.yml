@@ -1,0 +1,86 @@
+name: QQQI Breadth VXN v4 Evidence
+
+on:
+  pull_request:
+    branches: [agent/qqqi-v3-aggressive-tqqq]
+    paths:
+      - ".github/workflows/qqqi-breadth-vxn-v4-evidence.yml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_breadth_vxn_v4.yaml"
+      - "scripts/run_qqqi_qqq_tqqq_breadth_vxn_v4.py"
+      - "src/research/breadth_vxn_rotation_experiment.py"
+      - "src/research/vix_rotation_experiment.py"
+      - "src/research/vix_rotation_runtime.py"
+      - "src/research/strategy_experiment_journal.py"
+      - "tests/test_breadth_vxn_rotation_experiment.py"
+      - "tests/test_vix_rotation_experiment.py"
+      - "notebooks/15_qqqi_qqq_tqqq_breadth_vxn_v4.ipynb"
+      - "docs/research/qqqi_qqq_tqqq_breadth_vxn_v4_experiment.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff lint breadth and VXN paths
+        run: >-
+          uv run ruff check
+          src/research/breadth_vxn_rotation_experiment.py
+          scripts/run_qqqi_qqq_tqqq_breadth_vxn_v4.py
+          tests/test_breadth_vxn_rotation_experiment.py
+      - name: Mypy focused breadth and VXN paths
+        run: >-
+          uv run mypy
+          src/research/breadth_vxn_rotation_experiment.py
+          scripts/run_qqqi_qqq_tqqq_breadth_vxn_v4.py
+      - name: Run focused breadth, VXN and inherited VIX tests
+        run: >-
+          uv run pytest
+          tests/test_breadth_vxn_rotation_experiment.py
+          tests/test_vix_rotation_experiment.py
+          tests/test_strategy_experiment_journal.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Compile research modules and notebook
+        run: |
+          uv run python -m py_compile \
+            src/research/breadth_vxn_rotation_experiment.py \
+            scripts/run_qqqi_qqq_tqqq_breadth_vxn_v4.py \
+            tests/test_breadth_vxn_rotation_experiment.py
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("notebooks/15_qqqi_qqq_tqqq_breadth_vxn_v4.ipynb")
+          notebook = json.loads(path.read_text(encoding="utf-8"))
+          for cell in notebook.get("cells", []):
+              if cell.get("cell_type") == "code":
+                  compile("".join(cell.get("source", [])), str(path), "exec")
+          PY
+      - name: Run frozen breadth and VXN live-data experiment
+        run: >-
+          uv run python scripts/run_qqqi_qqq_tqqq_breadth_vxn_v4.py
+          --end-date 2026-08-01
+          --output-dir artifacts/evidence/qqqi_qqq_tqqq_breadth_vxn_v4
+          --strategy-run-dir artifacts/strategy_runs
+      - name: Upload evidence and strategy run record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqqi-breadth-vxn-v4-evidence
+          path: |
+            artifacts/evidence/qqqi_qqq_tqqq_breadth_vxn_v4
+            artifacts/strategy_runs/qqqi_qqq_tqqq_breadth_vxn_v4
+          if-no-files-found: warn
+          retention-days: 14
