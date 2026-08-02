@@ -9,6 +9,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: "pages"
@@ -98,3 +99,18 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Report deployment success
+        if: success() && github.event_name == 'push' && startsWith(github.event.head_commit.message, 'fix(pages):')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          gh issue comment 349 --body "Pages deployment succeeded for commit \`${GITHUB_SHA}\`. Published URL: ${PAGE_URL}"
+
+      - name: Report deployment failure
+        if: failure() && github.event_name == 'push' && startsWith(github.event.head_commit.message, 'fix(pages):')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 349 --body "Pages deployment failed for commit \`${GITHUB_SHA}\`. Review the workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
