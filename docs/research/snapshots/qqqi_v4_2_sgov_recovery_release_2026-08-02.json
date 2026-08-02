@@ -1,0 +1,134 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "qqqi_qqq_tqqq_v4_2_sgov_recovery_release_v4_4_research",
+  "evidence_date": "2026-08-02",
+  "sample": {
+    "start": "2024-01-30",
+    "end": "2026-07-30",
+    "observations": 627
+  },
+  "research_only": true,
+  "trade_ready": false,
+  "current_baseline": "qqqi_qqq_tqqq_vxn_bridge_v4_2",
+  "official_cost_bps_per_turnover_unit": 10.0,
+  "decision": {
+    "v4_2": "retain_unchanged",
+    "qqqi_release_on_state_1": "rejected_as_promoted_challenger",
+    "tqqq_release_on_precursor": "retain_deferred_shadow_hypothesis",
+    "staged_qqqi_then_tqqq_release": "rejected_as_promoted_challenger",
+    "production_alert_change_authorized": false,
+    "additional_retrospective_search_authorized": false
+  },
+  "headline": {
+    "current_v4_2": {
+      "cagr": 0.330556,
+      "annual_volatility": 0.256173,
+      "sharpe": 1.243783,
+      "sortino": 1.801439,
+      "max_drawdown": -0.242245,
+      "calmar": 1.364550,
+      "turnover_units": 55.0
+    },
+    "static_blended": {
+      "cagr": 0.295361,
+      "annual_volatility": 0.197478,
+      "sharpe": 1.410357,
+      "sortino": 2.041869,
+      "max_drawdown": -0.179106,
+      "calmar": 1.649086,
+      "turnover_units": 55.0
+    },
+    "qqqi_release_on_state_1": {
+      "cagr": 0.301900,
+      "annual_volatility": 0.202269,
+      "sharpe": 1.406624,
+      "sortino": 2.030653,
+      "max_drawdown": -0.173082,
+      "calmar": 1.744259,
+      "turnover_units": 55.0
+    },
+    "tqqq_release_on_precursor": {
+      "cagr": 0.311978,
+      "annual_volatility": 0.197925,
+      "sharpe": 1.472082,
+      "sortino": 2.137039,
+      "max_drawdown": -0.173533,
+      "calmar": 1.797803,
+      "turnover_units": 55.0,
+      "precursor_sessions": 6,
+      "precursor_events": 3
+    },
+    "staged_qqqi_then_tqqq_release": {
+      "cagr": 0.314533,
+      "annual_volatility": 0.202619,
+      "sharpe": 1.452251,
+      "sortino": 2.101063,
+      "max_drawdown": -0.168386,
+      "calmar": 1.867923,
+      "turnover_units": 55.0,
+      "precursor_sessions": 6,
+      "precursor_events": 3
+    }
+  },
+  "candidate_gates": {
+    "qqqi_release_on_state_1": {
+      "authorized": false,
+      "median_major_trough_protection_pp": 4.376768,
+      "median_resolved_recovery_lag_sessions": 0.0,
+      "unresolved_major_episode_count": 1,
+      "cagr_sacrifice_vs_v4_2_pp": 2.865520,
+      "early_cagr_delta_vs_static_pp": 1.487969,
+      "late_cagr_delta_vs_static_pp": -0.837290
+    },
+    "tqqq_release_on_precursor": {
+      "authorized": false,
+      "median_major_trough_protection_pp": 4.376768,
+      "major_trough_improvement_rate": 1.0,
+      "median_resolved_recovery_lag_sessions": -0.5,
+      "unresolved_major_episode_count": 1,
+      "cagr_sacrifice_vs_v4_2_pp": 1.857793,
+      "early_cagr_delta_vs_static_pp": 2.022460,
+      "late_cagr_delta_vs_static_pp": 0.999496,
+      "precursor_event_positive_rate": 1.0,
+      "largest_precursor_event_benefit_share": 0.598688
+    },
+    "staged_qqqi_then_tqqq_release": {
+      "authorized": false,
+      "median_major_trough_protection_pp": 4.376768,
+      "major_trough_improvement_rate": 0.8,
+      "median_resolved_recovery_lag_sessions": -0.5,
+      "unresolved_major_episode_count": 1,
+      "cagr_sacrifice_vs_v4_2_pp": 1.602271,
+      "early_cagr_delta_vs_static_pp": 3.055189,
+      "late_cagr_delta_vs_static_pp": -0.118721,
+      "precursor_event_positive_rate": 1.0,
+      "largest_precursor_event_benefit_share": 0.598688
+    }
+  },
+  "precursor_events": [
+    {
+      "start": "2024-08-16",
+      "end": "2024-08-21",
+      "sessions": 4,
+      "relative_return_vs_static": 0.018243
+    },
+    {
+      "start": "2024-11-07",
+      "end": "2024-11-07",
+      "sessions": 1,
+      "relative_return_vs_static": 0.005772
+    },
+    {
+      "start": "2026-04-09",
+      "end": "2026-04-09",
+      "sessions": 1,
+      "relative_return_vs_static": 0.006383
+    }
+  ],
+  "evidence": {
+    "workflow_run": 30735777927,
+    "artifact_id": 8829513797,
+    "artifact_digest": "sha256:dc631ede180e2dff39fc4094fdca049c65551ef13cb6b3cd66c115a35e7e733f",
+    "notebook": "notebooks/22_qqqi_qqq_tqqq_v4_2_sgov_recovery_release.ipynb"
+  }
+}
