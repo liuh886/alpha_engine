@@ -1,0 +1,164 @@
+name: US87 Provider Reproducibility Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/audit_us_provider_refresh_reproducibility.py"
+      - "tests/test_us_provider_refresh_reproducibility_audit.py"
+      - "scripts/data/refresh_selected_pool_prices.py"
+      - "scripts/data/refresh_selected_pool_prices_v2.py"
+      - "src/data/adapters/yfinance_adapter.py"
+      - "docs/research/us87_provider_reproducibility_result_2026-08-02.md"
+      - ".github/workflows/us87-provider-reproducibility-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: us87-provider-reproducibility-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_evidence: ${{ steps.scope.outputs.run_evidence }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: scope
+        name: Detect evidence-affecting changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "run_evidence=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "${{ github.event.action }}" != "synchronize" ]]; then
+            echo "run_evidence=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          before="${{ github.event.before }}"
+          after="${{ github.event.after }}"
+          changed="$(git diff --name-only "$before" "$after")"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -Eq '^(scripts/audit_us_provider_refresh_reproducibility\.py|tests/test_us_provider_refresh_reproducibility_audit\.py|scripts/data/refresh_selected_pool_prices(_v2)?\.py|src/data/adapters/yfinance_adapter\.py)'; then
+            echo "run_evidence=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_evidence=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate audit contract
+        run: |
+          uv run ruff check \
+            scripts/audit_us_provider_refresh_reproducibility.py \
+            tests/test_us_provider_refresh_reproducibility_audit.py
+          uv run mypy scripts/audit_us_provider_refresh_reproducibility.py
+          uv run pytest \
+            tests/test_us_provider_refresh_reproducibility_audit.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  evidence:
+    needs:
+      - changes
+      - contract
+    if: needs.changes.outputs.run_evidence == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Build refresh A
+        run: >-
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py
+          --market us
+          --source-csv-dir data/csv_clean
+          --output-root artifacts/reproducibility/us_refresh_a
+          --start 2021-01-01
+          --cutoff 2026-07-31
+          --max-rounds 1
+          --full-refresh
+      - name: Build refresh B
+        run: >-
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py
+          --market us
+          --source-csv-dir data/csv_clean
+          --output-root artifacts/reproducibility/us_refresh_b
+          --start 2021-01-01
+          --cutoff 2026-07-31
+          --max-rounds 1
+          --full-refresh
+      - name: Verify both refreshes are promotion-eligible
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          for name in ("us_refresh_a", "us_refresh_b"):
+              path = Path("artifacts/reproducibility") / name / "artifacts/selected_pool_price_refresh_manifest.json"
+              payload = json.loads(path.read_text(encoding="utf-8"))
+              assert payload.get("status") == "selected_pool_price_refresh_ready", payload
+              assert payload.get("promotion_eligible") is True, payload.get("promotion_blocker")
+              assert not payload.get("failures"), payload.get("failures")
+          PY
+      - name: Compare source and provider snapshots
+        run: >-
+          uv run python scripts/audit_us_provider_refresh_reproducibility.py
+          --left-root artifacts/reproducibility/us_refresh_a
+          --right-root artifacts/reproducibility/us_refresh_b
+          --output artifacts/evidence/us87_provider_reproducibility/audit.json
+      - name: Print classification summary
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("artifacts/evidence/us87_provider_reproducibility/audit.json")
+          if path.is_file():
+              payload = json.loads(path.read_text(encoding="utf-8"))
+              print(json.dumps({
+                  "left_provider": payload.get("left_identity", {}).get("provider_identity_sha256"),
+                  "right_provider": payload.get("right_identity", {}).get("provider_identity_sha256"),
+                  "provider_identity_match": payload.get("provider_identity_match"),
+                  "classification_counts": payload.get("classification_counts"),
+                  "changed_symbol_count": payload.get("changed_symbol_count"),
+                  "preliminary_decision": payload.get("preliminary_decision"),
+              }, indent=2))
+          else:
+              print("audit.json was not created")
+          PY
+      - name: Upload both full snapshots and audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: us87-provider-reproducibility-${{ github.run_id }}
+          path: |
+            artifacts/reproducibility/us_refresh_a
+            artifacts/reproducibility/us_refresh_b
+            artifacts/evidence/us87_provider_reproducibility
+          if-no-files-found: error
+          retention-days: 90
