@@ -66,6 +66,71 @@ def _event_title(record: dict[str, Any]) -> str:
     return f"[前瞻证据] {record['signal_date']} v4.2 恢复前置信号"
 
 
+def _is_current_active_precursor(
+    record: dict[str, Any],
+    latest_status: str,
+    current_precursor: bool,
+) -> bool:
+    return bool(
+        current_precursor
+        and record.get("event_type") == "recovery_precursor"
+        and latest_status == "active_precursor"
+    )
+
+
+def _stabilise_precursor_status(
+    observation: dict[str, Any],
+    record: dict[str, Any],
+    latest_status: str,
+    current_active: bool,
+) -> dict[str, Any]:
+    if record.get("event_type") != "recovery_precursor":
+        return observation
+    if 40 in observation["completed_horizons"]:
+        return observation
+    if current_active:
+        observation["status"] = "active_precursor"
+    elif latest_status in {"active_precursor", "precursor_closed"}:
+        observation["status"] = "precursor_closed"
+    observation["status_changed"] = observation["status"] != latest_status
+    observation["has_material_update"] = bool(
+        observation["new_horizons"] or observation["status_changed"]
+    )
+    return observation
+
+
+def _observe_item(
+    item: dict[str, Any],
+    daily: pd.DataFrame,
+    *,
+    current_precursor: bool,
+    latest_data_date: str,
+) -> dict[str, Any] | None:
+    record = item.get("record", item)
+    if not isinstance(record, dict):
+        return None
+    latest_status = str(item.get("latest_status") or record.get("status") or "")
+    current_active = _is_current_active_precursor(
+        record,
+        latest_status,
+        current_precursor,
+    )
+    observation = compute_event_observation(
+        record,
+        daily,
+        current_precursor_boolean=current_active,
+        latest_data_date=latest_data_date,
+        posted_horizons=item.get("posted_horizons", []),
+        latest_status=latest_status,
+    )
+    return _stabilise_precursor_status(
+        observation,
+        record,
+        latest_status,
+        current_active,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -128,10 +193,7 @@ def main() -> int:
     new_events: list[dict[str, Any]] = []
     for record in candidates:
         validate_event_record(record)
-        body = render_event_issue_body(
-            record,
-            alert_markdown=str(alert.get("markdown", "")),
-        )
+        body = render_event_issue_body(record)
         new_events.append(
             {
                 "event_id": record["event_id"],
@@ -146,26 +208,23 @@ def main() -> int:
     updates: list[dict[str, Any]] = []
     all_items: list[dict[str, Any]] = [*existing]
     for item in existing:
-        record = item.get("record", item)
-        if not isinstance(record, dict):
-            continue
-        observation = compute_event_observation(
-            record,
+        observation = _observe_item(
+            item,
             daily,
-            current_precursor_boolean=current_precursor,
+            current_precursor=current_precursor,
             latest_data_date=latest_data_date,
-            posted_horizons=item.get("posted_horizons", []),
-            latest_status=item.get("latest_status") or record.get("status"),
         )
-        if observation["has_material_update"]:
-            updates.append(
-                {
-                    "issue_number": item.get("issue_number"),
-                    "event_id": record["event_id"],
-                    "observation": observation,
-                    "comment": render_observation_comment(observation),
-                }
-            )
+        if observation is None or not observation["has_material_update"]:
+            continue
+        record = item.get("record", item)
+        updates.append(
+            {
+                "issue_number": item.get("issue_number"),
+                "event_id": record["event_id"],
+                "observation": observation,
+                "comment": render_observation_comment(observation),
+            }
+        )
 
     for item in new_events:
         all_items.append(
@@ -179,19 +238,14 @@ def main() -> int:
 
     observations: list[dict[str, Any]] = []
     for item in all_items:
-        record = item.get("record", item)
-        if not isinstance(record, dict):
-            continue
-        observations.append(
-            compute_event_observation(
-                record,
-                daily,
-                current_precursor_boolean=current_precursor,
-                latest_data_date=latest_data_date,
-                posted_horizons=item.get("posted_horizons", []),
-                latest_status=item.get("latest_status") or record.get("status"),
-            )
+        observation = _observe_item(
+            item,
+            daily,
+            current_precursor=current_precursor,
+            latest_data_date=latest_data_date,
         )
+        if observation is not None:
+            observations.append(observation)
 
     month = args.month or latest_data_date[:7]
     monthly = build_monthly_summary(all_items, observations, month)
