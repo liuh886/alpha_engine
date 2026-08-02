@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
@@ -16,9 +16,9 @@ from src.data.us87_professional_prices import (
 )
 
 
-def _bars(symbol: str) -> pd.DataFrame:
+def _bars(symbol: str, offset: float = 0.0) -> pd.DataFrame:
     dates = pd.bdate_range("2024-01-02", periods=25)
-    base = 20.0 + len(symbol)
+    base = 20.0 + len(symbol) + offset
     values = pd.Series(range(len(dates)), dtype=float) * 0.1 + base
     return pd.DataFrame(
         {
@@ -39,6 +39,7 @@ def _bars(symbol: str) -> pd.DataFrame:
 @dataclass
 class FakeAdapter:
     name: str
+    offset: float = 0.0
 
     def fetch_daily_bars(self, req: FetchRequest) -> FetchResult:
         return FetchResult(
@@ -47,12 +48,12 @@ class FakeAdapter:
             market=req.market,
             start=req.start,
             end=req.end,
-            df=_bars(req.symbol),
+            df=_bars(req.symbol, self.offset),
             provider_symbol=req.symbol,
         )
 
 
-class FakeRateLimitError(ValueError):
+class RateLimitError(RuntimeError):
     error_class = "rate_limited"
     status_code = 429
     retry_after_seconds = None
@@ -60,12 +61,12 @@ class FakeRateLimitError(ValueError):
 
 @dataclass
 class RateLimitedAdapter:
-    name: str = "tiingo"
-    calls: list[str] = field(default_factory=list)
+    name: str
+    calls: int = 0
 
     def fetch_daily_bars(self, req: FetchRequest) -> FetchResult:
-        self.calls.append(req.symbol)
-        raise FakeRateLimitError("provider quota exhausted")
+        self.calls += 1
+        raise RateLimitError("quota window exhausted")
 
 
 def _contract(tmp_path: Path) -> Path:
@@ -84,7 +85,7 @@ def _contract(tmp_path: Path) -> Path:
     contract.write_text(
         yaml.safe_dump(
             {
-                "contract_id": "test_professional_prices",
+                "contract_id": "test_governed_prices",
                 "pool": {
                     "pool_id": "test_us_pool",
                     "spec": str(pool),
@@ -115,7 +116,7 @@ def test_shard_helpers_are_deterministic():
     assert shard_symbols(symbols, shard_size=2, shard_index=1) == ["C", "D"]
 
 
-def test_shards_finalize_exact_pool_and_reference(tmp_path: Path):
+def test_shards_finalize_exact_canonical_pool(tmp_path: Path):
     contract = _contract(tmp_path)
     output = tmp_path / "output"
     for index in range(2):
@@ -125,10 +126,16 @@ def test_shards_finalize_exact_pool_and_reference(tmp_path: Path):
             output_root=output,
             cutoff="2024-03-15",
             shard_index=index,
-            primary_adapter=FakeAdapter("tiingo"),
-            secondary_adapter=FakeAdapter("polygon"),
+            canonical_adapter=FakeAdapter("yfinance"),
+            validation_adapters={
+                "tiingo": FakeAdapter("tiingo"),
+                "polygon": FakeAdapter("polygon"),
+            },
         )
         assert shard["complete"] is True
+        assert {row["status"] for row in shard["records"]} == {
+            "canonical_ready_validated"
+        }
     manifest = finalize_professional_price_bundle(
         root=tmp_path,
         contract_path=contract,
@@ -137,7 +144,9 @@ def test_shards_finalize_exact_pool_and_reference(tmp_path: Path):
     )
     assert manifest["status"] == "ready"
     assert manifest["expected_symbol_count"] == 4
-    assert manifest["professional_corroborated"] is True
+    assert manifest["canonical_provider"] == "yfinance"
+    assert manifest["professional_sources_validation_only"] is True
+    assert manifest["professional_source_ready"] is False
     assert set(manifest["symbol_statuses"]) == {"AAPL", "MSFT", "TIGO", "QQQ"}
     persisted = json.loads(
         (output / "professional_price_manifest.json").read_text(encoding="utf-8")
@@ -145,7 +154,7 @@ def test_shards_finalize_exact_pool_and_reference(tmp_path: Path):
     assert persisted["pool_id"] == "test_us_pool"
 
 
-def test_single_professional_source_is_explicit(tmp_path: Path):
+def test_missing_validators_do_not_replace_or_block_canonical(tmp_path: Path):
     contract = _contract(tmp_path)
     shard = build_professional_price_shard(
         root=tmp_path,
@@ -153,33 +162,31 @@ def test_single_professional_source_is_explicit(tmp_path: Path):
         output_root=tmp_path / "output",
         cutoff="2024-03-15",
         shard_index=0,
-        primary_adapter=FakeAdapter("tiingo"),
-        secondary_adapter=None,
+        canonical_adapter=FakeAdapter("yfinance"),
+        validation_adapters={"tiingo": None, "polygon": None},
     )
+    assert shard["complete"] is True
     assert {row["status"] for row in shard["records"]} == {
-        "single_professional_source"
+        "canonical_ready_unvalidated"
     }
+    assert all(row["canonical_path"] for row in shard["records"])
 
 
-def test_rate_limit_opens_one_shard_wide_provider_circuit(tmp_path: Path):
+def test_validator_rate_limit_opens_circuit_without_losing_canonical(tmp_path: Path):
     contract = _contract(tmp_path)
-    adapter = RateLimitedAdapter()
+    validator = RateLimitedAdapter("tiingo")
     shard = build_professional_price_shard(
         root=tmp_path,
         contract_path=contract,
         output_root=tmp_path / "output",
         cutoff="2024-03-15",
         shard_index=0,
-        primary_adapter=adapter,
-        secondary_adapter=None,
+        canonical_adapter=FakeAdapter("yfinance"),
+        validation_adapters={"tiingo": validator, "polygon": None},
     )
-    assert adapter.calls == ["AAPL"]
-    attempts = [row["primary_attempt"] for row in shard["records"]]
+    assert shard["complete"] is True
+    assert validator.calls == 1
+    attempts = [row["validator_attempts"]["tiingo"] for row in shard["records"]]
     assert attempts[0]["error_class"] == "rate_limited"
     assert attempts[1]["error_class"] == "provider_circuit_open"
-    assert shard["provider_health"]["tiingo"] == {
-        "attempted_symbols": 1,
-        "circuit_open": True,
-        "circuit_reason": "rate_limited",
-    }
-    assert shard["complete"] is False
+    assert all(row["canonical_path"] for row in shard["records"])
