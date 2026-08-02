@@ -34,6 +34,9 @@ dependencies = [
     "sqlalchemy<2.0",
 ]
 
+[project.scripts]
+alpha = "src.cli.main:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest",
@@ -100,6 +103,7 @@ module = [
     "src.agents.*",
     "src.api.*",
     "src.assistant.*",
+    "src.cli.*",
     "src.common.*",
     "src.dashboard.*",
     "src.data.*",
