@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -12,17 +13,36 @@ from typing import Any, Mapping
 from src.data.fundamentals.event_store import FundamentalEvent, normalize_event_record
 
 SEC_DATA_ROOT = "https://data.sec.gov"
+DEFAULT_SEC_USER_AGENT = (
+    "AlphaEngine research data pipeline "
+    "https://github.com/liuh886/alpha_engine/issues"
+)
 
 
 class SecCompanyFactsError(ValueError):
     pass
 
 
+def resolve_sec_user_agent(value: str | None = None) -> str:
+    """Return a declared SEC bot identity without requiring a secret.
+
+    SEC_USER_AGENT remains an optional operational override. The checked-in
+    fallback identifies the project and provides a public contact route through
+    the repository issue tracker; it contains no credential or private data.
+    """
+
+    resolved = str(value or os.getenv("SEC_USER_AGENT", "")).strip()
+    return resolved or DEFAULT_SEC_USER_AGENT
+
+
 @dataclass
 class SecCompanyFactsClient:
-    user_agent: str
+    user_agent: str | None = None
     timeout_seconds: float = 30.0
     data_root: str = SEC_DATA_ROOT
+
+    def __post_init__(self) -> None:
+        self.user_agent = resolve_sec_user_agent(self.user_agent)
 
     def fetch_companyfacts(self, cik: str) -> dict[str, Any]:
         normalized = str(cik).strip().zfill(10)
@@ -31,7 +51,8 @@ class SecCompanyFactsClient:
             url,
             headers={
                 "Accept": "application/json",
-                "User-Agent": self.user_agent,
+                "Accept-Encoding": "gzip, deflate",
+                "User-Agent": str(self.user_agent),
             },
         )
         try:
@@ -47,6 +68,7 @@ class SecCompanyFactsClient:
             ) from exc
         if not isinstance(payload, dict):
             raise SecCompanyFactsError("SEC companyfacts payload must be a mapping")
+        # Stay well below the SEC's current 10 requests/second fair-access ceiling.
         time.sleep(0.11)
         return payload
 
