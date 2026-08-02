@@ -92,6 +92,6 @@ export function workflowHealthLabel(entry: V42WorkflowHealthEntry): {
   if (entry.run.status === 'queued') return { label: 'Queued', tone: 'running' };
   if (entry.run.status === 'in_progress') return { label: 'Running', tone: 'running' };
   if (entry.run.conclusion === 'success') return { label: 'Succeeded', tone: 'healthy' };
-  if (entry.run.conclusion) return { label: entry.run.conclusion.replaceAll('_', ' '), tone: 'attention' };
+  if (entry.run.conclusion) return { label: entry.run.conclusion.replace(/_/g, ' '), tone: 'attention' };
   return { label: entry.run.status, tone: 'unknown' };
 }
