@@ -1,0 +1,91 @@
+name: US87 XGBoost Optimization
+
+on:
+  pull_request:
+    branches:
+      - research/selected-pool-ranker-retest-v1
+    paths:
+      - "configs/research_paradigms/us_10d_xgb_optimization_dev_v1.yaml"
+      - "scripts/run_us87_xgb_optimization.py"
+      - "tests/test_us87_xgb_optimization_contract.py"
+      - ".github/workflows/us87-xgb-optimization.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: us87-xgb-optimization-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate optimization contract
+        run: |
+          uv run ruff check scripts/run_us87_xgb_optimization.py tests/test_us87_xgb_optimization_contract.py
+          uv run mypy scripts/run_us87_xgb_optimization.py
+          uv run pytest tests/test_us87_xgb_optimization_contract.py -q --strict-markers --tb=short
+
+  evidence:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Build promotion-eligible US87 provider through 2026H1
+        run: >-
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py
+          --market us
+          --source-csv-dir data/csv_clean
+          --output-root artifacts/selected_pool_price_refresh/us
+          --start 2021-01-01
+          --cutoff 2026-07-31
+          --max-rounds 1
+          --full-refresh
+      - name: Verify provider promotion gate
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("artifacts/selected_pool_price_refresh/us/artifacts/selected_pool_price_refresh_manifest.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          assert payload.get("status") == "selected_pool_price_refresh_ready", payload
+          assert payload.get("promotion_eligible") is True, payload.get("promotion_blocker")
+          assert not payload.get("failures"), payload.get("failures")
+          PY
+      - name: Run bounded development and frozen challenge
+        run: >-
+          uv run python scripts/run_us87_xgb_optimization.py
+          --provider-uri artifacts/selected_pool_price_refresh/us/data/providers/us
+          --output-dir artifacts/evidence/us87_xgb_optimization_v1
+      - name: Upload complete optimization evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: us87-xgb-optimization-${{ github.run_id }}
+          path: |
+            artifacts/selected_pool_price_refresh/us/artifacts
+            artifacts/selected_pool_price_refresh/us/data/providers/us/provider_manifest.json
+            artifacts/evidence/us87_xgb_optimization_v1
+          if-no-files-found: error
+          retention-days: 90

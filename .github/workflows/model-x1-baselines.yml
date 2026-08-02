@@ -1,0 +1,59 @@
+name: Baseline Model x1 Lifecycle
+
+on:
+  pull_request:
+    branches:
+      - research/us87-xgb-optimization-v1
+    paths:
+      - "configs/models/**"
+      - "configs/research_paradigms/cn_x1_0_frozen_v1.yaml"
+      - "notebooks/models/*_x1_0_baseline.ipynb"
+      - "docs/models/BASELINE_MODEL_GOVERNANCE.md"
+      - "scripts/validate_model_x1_baselines.py"
+      - "tests/test_model_x1_baselines.py"
+      - ".github/workflows/model-x1-baselines.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: model-x1-baselines-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract-and-notebooks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint and type-check lifecycle validator
+        run: |
+          uv run ruff check scripts/validate_model_x1_baselines.py tests/test_model_x1_baselines.py
+          uv run mypy scripts/validate_model_x1_baselines.py
+      - name: Validate model registry, specs and notebooks
+        run: |
+          uv run python scripts/validate_model_x1_baselines.py \
+            --output artifacts/evidence/model_x1_baseline_registry.json
+          uv run pytest tests/test_model_x1_baselines.py -q --strict-markers --tb=short
+      - name: Upload model lifecycle evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-x1-baselines-${{ github.run_id }}
+          path: |
+            artifacts/evidence/model_x1_baseline_registry.json
+            configs/models
+            configs/research_paradigms/cn_x1_0_frozen_v1.yaml
+            notebooks/models/us_x1_0_baseline.ipynb
+            notebooks/models/cn_x1_0_baseline.ipynb
+            docs/models/BASELINE_MODEL_GOVERNANCE.md
+          if-no-files-found: error
+          retention-days: 90

@@ -1,0 +1,172 @@
+schema_version: '1.1'
+model_id: us_x1_0
+display_name: US x1.0
+release_date: '2026-08-02'
+status: baseline_research
+research_only: true
+trade_ready: false
+market: us
+benchmark: QQQ
+objective: Rank the governed US87 equity pool for 10-session forward return.
+lineage:
+  parent: us87_frozen_xgb_baseline
+  adopted_from_pr: 343
+  adoption_decision: improvement_supported
+  supersedes_named_model: null
+universe:
+  universe_id: us_selected_equities_v2
+  source: configs/research_universes/us_selected_equities_v2.yaml
+  declared_candidate_count: 87
+  membership_mode: static_curated
+  survivorship_bias: true
+  listing_policy: no_prelisting_fill_coverage_qualified_static_members
+provider_binding:
+  policy: promotion_eligible_manifest_required
+  canonical_evidence_provider_identity_sha256: 4921168fee3afdcfb222568bed370a0273a5d8795ac57e4477184c1728384a5c
+  start: '2021-01-01'
+  cutoff: '2026-07-31'
+  snapshot_independent_performance_claim: false
+features:
+  library: configs/factor_libraries/us_ohlcv.yaml
+  group: risk_controlled_momentum
+  expressions:
+  - $close/Ref($close,10)-1
+  - $close/Ref($close,20)-1
+  - $close/Ref($close,5)-1
+  - ($close/Ref($close,10)-1)/(Std($close/Ref($close,1)-1,10)+1e-12)
+  - ($close/Ref($close,20)-1)/(Std($close/Ref($close,1)-1,20)+1e-12)
+  - Std($close/Ref($close,1)-1,10)
+  - Std($close/Ref($close,1)-1,20)
+label:
+  type: processed_daily_cross_sectional_percentile_gain
+  economic_return_expression: Ref($close, -10) / $close - 1
+  horizon_sessions: 10
+  gain_bins: 7
+candidate_calibration_identity:
+  source: configs/research_paradigms/us_10d_xgb_optimization_frozen_v1.yaml
+  n_gain_bins: 7
+  num_boost_round: 200
+  legacy_num_leaves_field: 31
+  legacy_min_data_in_leaf_field: 20
+  legacy_learning_rate_field: 0.03
+  effective_xgb_mapping:
+    n_gain_bins: consumed
+    num_boost_round: consumed
+    num_leaves: not_consumed_by_xgb_adapter
+    min_data_in_leaf: not_consumed_by_xgb_adapter
+    learning_rate: not_consumed_by_xgb_adapter
+model:
+  parameter_identity_status: effective_runtime_verified
+  runtime_source: src/research/daily_ranker_model.py::fit_xgb_daily_ranker
+  calibration_mapping_source: src/research/qlib_execution_common.py::fit_ranker_scores
+  family: xgb
+  objective: rank:ndcg
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 31
+  max_depth: 0
+  learning_rate: 0.05
+  num_boost_round: 200
+  seed: 42
+  score_orientation: original
+strategy:
+  holding_sessions: 10
+  rebalance_sessions: 10
+  top_n: 15
+  bottom_n_diagnostic: 15
+  weighting: equal_weight
+  cost_bps: 20
+  benchmark_mode: reference_only
+frozen_research_spec: configs/research_paradigms/us_10d_xgb_optimization_frozen_v1.yaml
+backtest_evidence:
+  development:
+    period: 2024H1-2025H2
+    windows:
+    - window: 2024H1
+      total_return: 0.325426
+      benchmark_return: 0.194209
+      simple_excess: 0.131216
+      ic: 0.024749
+      icir: 0.130787
+      rank_ic: 0.036738
+      top_bottom_spread: 0.01494997
+      max_drawdown: -0.029417
+      turnover: 7.233333
+    - window: 2024H2
+      total_return: 0.435849
+      benchmark_return: 0.068419
+      simple_excess: 0.36743
+      ic: 0.031475
+      icir: 0.130332
+      rank_ic: -0.031669
+      top_bottom_spread: 0.01603006
+      max_drawdown: -0.117242
+      turnover: 7.433333
+    - window: 2025H1
+      total_return: 0.096846
+      benchmark_return: 0.077012
+      simple_excess: 0.019834
+      ic: -0.018816
+      icir: -0.055138
+      rank_ic: 0.017984
+      top_bottom_spread: 0.00025545
+      max_drawdown: -0.28361
+      turnover: 6.3
+    - window: 2025H2
+      total_return: 0.59568
+      benchmark_return: 0.129391
+      simple_excess: 0.46629
+      ic: 0.165774
+      icir: 0.703271
+      rank_ic: 0.138557
+      top_bottom_spread: 0.04685295
+      max_drawdown: -0.100614
+      turnover: 5.7
+    compounded_strategy_return: 2.3308548919057652
+    compounded_benchmark_return: 0.5519824547855452
+    compounded_relative_excess_return: 1.1461936516325029
+    mean_icir: 0.227313
+    mean_rank_ic: 0.0404025
+    mean_top_bottom_spread: 0.0195221075
+    positive_excess_windows: 4/4
+    worst_drawdown: -0.28361
+  frozen_challenge:
+    window: 2026H1
+    test_start: '2026-01-02'
+    test_end: '2026-06-15'
+    total_return: 1.036889
+    benchmark_return: 0.155057
+    simple_excess_return: 0.881833
+    ic: 0.180704
+    icir: 0.840047
+    rank_ic: 0.158905
+    top_bottom_spread: 0.08742329
+    max_drawdown: -0.06799
+    turnover: 5.766667
+    sharpe: 2.915774
+evidence_identity:
+  pull_request: 343
+  workflow_run_id: 30733686862
+  artifact_id: 8828827295
+  artifact_digest: sha256:69e4faf8e30fdc50647a272ba26ccfbc64aa42b52a25c935af49bf236d0755a4
+  result_report: docs/research/us87_xgb_optimization_result_2026-08-02.md
+interpretation_correction:
+  prior_claim: The selected candidate used learning_rate 0.03 and min_data_in_leaf 20 as effective XGBoost regularization.
+  corrected_claim: The runtime consumed the risk-controlled feature group, seven gain bins and 200 boosting rounds. XGBoost retained its fixed learning rate 0.05 and max_leaves 31; the legacy min_data_in_leaf and learning_rate fields were identity-only.
+  economic_result_status: unchanged
+known_limitations:
+- Static curated membership carries survivorship bias.
+- Development return is concentrated in 2025H2.
+- The 2025H1 development drawdown reached -28.36%.
+- 2026H1 selections remain concentrated in high-beta growth and semiconductor names.
+- The historical candidate calibration schema contains LightGBM-oriented fields that were not consumed by XGBoost.
+- Seed/bootstrap, contribution concentration and higher-cost robustness are not yet promotion-complete.
+next_version_gate:
+  candidate_version: US x1.1
+  required_experiments:
+  - security and sector contribution concentration
+  - seed and block-bootstrap stability
+  - 40/60 bps cost stress
+  - explicit XGBoost parameter mapping before any true regularization experiment
+  - risk-control and Top-K robustness without reusing 2026H1 for selection
+  - one new untouched challenge window

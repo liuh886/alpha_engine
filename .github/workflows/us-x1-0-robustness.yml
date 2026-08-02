@@ -1,0 +1,118 @@
+name: US x1.0 Robustness Experiment
+
+on:
+  pull_request:
+    branches:
+      - research/model-x1-baselines-v1
+    paths:
+      - "configs/research_experiments/us_x1_0_robustness_v1.yaml"
+      - "scripts/analyze_us_x1_0_robustness.py"
+      - "tests/test_us_x1_0_robustness.py"
+      - ".github/workflows/us-x1-0-robustness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: us-x1-0-robustness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate experiment contract and analyzer
+        run: |
+          uv run ruff check scripts/analyze_us_x1_0_robustness.py tests/test_us_x1_0_robustness.py
+          uv run mypy scripts/analyze_us_x1_0_robustness.py
+          uv run pytest tests/test_us_x1_0_robustness.py -q --strict-markers --tb=short
+
+  evidence:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Build promotion-eligible US87 provider
+        run: >-
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py
+          --market us
+          --source-csv-dir data/csv_clean
+          --output-root artifacts/selected_pool_price_refresh/us
+          --start 2021-01-01
+          --cutoff 2026-07-31
+          --max-rounds 1
+          --full-refresh
+      - name: Verify provider promotion gate and record identity status
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          import yaml
+
+          manifest_path = Path("artifacts/selected_pool_price_refresh/us/artifacts/selected_pool_price_refresh_manifest.json")
+          provider_path = Path("artifacts/selected_pool_price_refresh/us/data/providers/us/provider_manifest.json")
+          contract_path = Path("configs/research_experiments/us_x1_0_robustness_v1.yaml")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          provider = json.loads(provider_path.read_text(encoding="utf-8"))
+          contract = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
+          assert manifest.get("status") == "selected_pool_price_refresh_ready", manifest
+          assert manifest.get("promotion_eligible") is True, manifest.get("promotion_blocker")
+          assert not manifest.get("failures"), manifest.get("failures")
+          expected = contract["provider"]["required_identity_sha256"]
+          observed = provider["provider_identity_sha256"]
+          status = {
+              "expected_provider_identity_sha256": expected,
+              "observed_provider_identity_sha256": observed,
+              "provider_identity_match": observed == expected,
+              "evidence_revision_scope": (
+                  "canonical" if observed == expected else "noncanonical_provider_revision"
+              ),
+              "version_decision_allowed": observed == expected,
+          }
+          output = Path("artifacts/evidence/us_x1_0_robustness/provider_identity_status.json")
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(status, indent=2))
+          PY
+      - name: Run immutable US x1.0 full backtest
+        run: >-
+          uv run python scripts/run_us_feature_quality_validation.py
+          --spec configs/research_paradigms/us_10d_xgb_optimization_frozen_v1.yaml
+          --provider-uri artifacts/selected_pool_price_refresh/us/data/providers/us
+          --output-dir artifacts/evidence/us_x1_0_robustness/full_backtest
+      - name: Analyze cost, window and selection robustness
+        run: >-
+          uv run python scripts/analyze_us_x1_0_robustness.py
+          --run-dir artifacts/evidence/us_x1_0_robustness/full_backtest/us_10d_xgb_optimization_frozen_v1
+          --output-dir artifacts/evidence/us_x1_0_robustness/analysis
+      - name: Upload complete robustness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: us-x1-0-robustness-${{ github.run_id }}
+          path: |
+            artifacts/selected_pool_price_refresh/us/artifacts
+            artifacts/selected_pool_price_refresh/us/data/providers/us/provider_manifest.json
+            artifacts/evidence/us_x1_0_robustness
+          if-no-files-found: error
+          retention-days: 90

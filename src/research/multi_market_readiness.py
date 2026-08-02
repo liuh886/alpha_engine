@@ -71,8 +71,19 @@ def _safe_min_symbols(count: int, preferred: int) -> int:
     return min(count, max(2, preferred))
 
 
-def load_market_watchlist(market: str, *, watchlist_path: str | Path = "configs/watchlist.yaml") -> list[str]:
-    """Load raw market symbols from watchlist YAML."""
+def load_market_watchlist(
+    market: str,
+    *,
+    watchlist_path: str | Path = "configs/watchlist.yaml",
+) -> list[str]:
+    """Load raw market symbols from legacy or governed selected-pool YAML.
+
+    Legacy universe files store lists under top-level ``us`` / ``cn`` keys.
+    Governed selected pools store one market in ``market`` and candidates in
+    ``symbols`` with an exact ``candidate_count``. The latter is validated
+    strictly so a malformed selected-pool contract cannot be interpreted as an
+    empty universe or a silently shortened list.
+    """
 
     try:
         import yaml
@@ -82,7 +93,32 @@ def load_market_watchlist(market: str, *, watchlist_path: str | Path = "configs/
         return []
     if not isinstance(data, dict):
         return []
-    raw = data.get(market, [])
+
+    normalized_market = str(market).strip().lower()
+    governed_symbols = data.get("symbols")
+    if governed_symbols is not None:
+        declared_market = str(data.get("market", "")).strip().lower()
+        if declared_market != normalized_market:
+            raise ValueError(
+                "governed universe market mismatch: "
+                f"requested={normalized_market}, declared={declared_market or 'missing'}"
+            )
+        if not isinstance(governed_symbols, list):
+            raise ValueError("governed universe symbols must be a list")
+        symbols = [str(item).strip() for item in governed_symbols if str(item).strip()]
+        expected_count = int(data.get("candidate_count", 0))
+        if expected_count <= 0:
+            raise ValueError("governed universe requires positive candidate_count")
+        if len(symbols) != expected_count:
+            raise ValueError(
+                "governed universe candidate_count mismatch: "
+                f"declared={expected_count}, loaded={len(symbols)}"
+            )
+        if len(set(symbols)) != len(symbols):
+            raise ValueError("governed universe symbols must be unique")
+        return symbols
+
+    raw = data.get(normalized_market, [])
     if not isinstance(raw, list):
         return []
     return [str(item).strip() for item in raw if str(item).strip()]
