@@ -5,7 +5,10 @@ on:
     branches: ["main"]
     paths:
       - 'qlib-dashboard/**'
+      - 'src/artifacts/**'
       - 'scripts/export_static_site_data.py'
+      - 'scripts/export_research_bundle.py'
+      - 'docs/contracts/**'
       - 'docs/methodology.md'
       - '.github/workflows/pages.yml'
 
@@ -55,10 +58,15 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Export static site data
+      - name: Export static site data and research bundle
         run: |
           pip install -e .
           python scripts/export_static_site_data.py --output artifacts/site/data
+          mkdir -p artifacts/site/docs
+          cp docs/methodology.md artifacts/site/docs/methodology.md
+          python scripts/export_research_bundle.py \
+            --source artifacts/site \
+            --output artifacts/research-bundle
 
       - name: Assemble site
         run: |
@@ -67,9 +75,14 @@ jobs:
           cp -r artifacts/site/data _site/data 2>/dev/null || true
           cp -r artifacts/site/reports _site/reports 2>/dev/null || true
           cp docs/methodology.md _site/docs/methodology.md
+          cp -r artifacts/research-bundle _site/bundle
+          cp docs/contracts/alpha-engine-bundle.schema.json _site/docs/alpha-engine-bundle.schema.json
           test -f _site/data/manifest.json
           test -f _site/data/models.json
           test -f _site/docs/methodology.md
+          test -f _site/bundle/alpha-engine-bundle.json
+          test -f _site/bundle/data/models.json
+          grep -q '"schema_version": "1.0.0"' _site/bundle/alpha-engine-bundle.json
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
