@@ -3,6 +3,10 @@ name: Deploy Research Artifact Studio to Pages
 on:
   push:
     branches: ["main"]
+  pull_request:
+    branches: ["main"]
+    paths:
+      - '.github/pages-bootstrap'
   workflow_dispatch:
   issue_comment:
     types: [created]
