@@ -17,6 +17,7 @@ from src.data.canonical_vwap import (
     derive_adjusted_vwap,
     write_source_role_manifest,
 )
+from src.data.model_data_bundle import ComponentSpec, build_model_data_bundle
 from src.factors.panel import build_alpha158_panel
 
 
@@ -46,7 +47,9 @@ def _provider_symbol(symbol: str) -> str:
     return f"sz{symbol}"
 
 
-def _fetch_cn_pair(symbol: str, *, start: str, end: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _fetch_cn_pair(
+    symbol: str, *, start: str, end: str
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     try:
         import akshare as ak
     except Exception as exc:
@@ -117,6 +120,45 @@ def _write_us_blocker(
     return blocker
 
 
+def _price_component(
+    *,
+    pool_id: str,
+    cutoff: str,
+    diagnostics: list[dict[str, Any]],
+    provider_manifest_path: Path,
+    source_role_manifest_path: Path,
+) -> dict[str, Any]:
+    expected = len(diagnostics)
+    return {
+        "schema_version": "1.0",
+        "component_id": f"prices.{pool_id}",
+        "component_kind": "selected_pool_prices",
+        "status": "ready",
+        "market": "cn",
+        "pool_id": pool_id,
+        "evidence_cutoff": cutoff,
+        "first_date": min(row["first_date"] for row in diagnostics),
+        "last_date": min(row["last_date"] for row in diagnostics),
+        "expected_symbol_count": expected,
+        "ready_symbol_count": expected,
+        "coverage_ratio": 1.0,
+        "missing_symbols": [],
+        "invalid_symbols": [],
+        "quarantined_symbols": [],
+        "providers": ["akshare_sina"],
+        "professional_source_ready": False,
+        "research_only": True,
+        "trade_ready": False,
+        "details": {
+            "provider_manifest_path": str(provider_manifest_path),
+            "source_role_manifest_path": str(source_role_manifest_path),
+            "price_basis": "same_source_qfq_adjusted",
+            "volume_basis": "reported_shares",
+            "vwap_basis": "reported_turnover_divided_by_reported_volume",
+        },
+    }
+
+
 def build_cn(
     *,
     pool_path: Path,
@@ -131,6 +173,8 @@ def build_cn(
     qfq_cache = output_root / "qfq"
     provider = output_root / "provider"
     panel = output_root / "alpha158"
+    model_data = output_root / "model_data"
+    frontend = output_root / "frontend"
     source_root.mkdir(parents=True, exist_ok=True)
     raw_cache.mkdir(parents=True, exist_ok=True)
     qfq_cache.mkdir(parents=True, exist_ok=True)
@@ -191,14 +235,16 @@ def build_cn(
         market="cn",
         include_fields="open,high,low,close,vwap,volume",
     )
+    provider_manifest_path = provider / "provider_manifest.json"
     source_role = write_source_role_manifest(
         provider,
         provider_manifest=provider_manifest,
-        provider_manifest_path=provider / "provider_manifest.json",
+        provider_manifest_path=provider_manifest_path,
         source_providers=["akshare_sina"],
         market="cn",
         vwap_ready=True,
     )
+    source_role_path = provider / "source_role_manifest.json"
     panel_manifest = build_alpha158_panel(
         root=Path.cwd(),
         contract_path=Path("configs/data/alpha158_panel_v1.yaml"),
@@ -208,6 +254,37 @@ def build_cn(
         cutoff=cutoff,
         output_root=panel,
     )
+    price_manifest = _price_component(
+        pool_id=pool_id,
+        cutoff=cutoff,
+        diagnostics=diagnostics,
+        provider_manifest_path=provider_manifest_path,
+        source_role_manifest_path=source_role_path,
+    )
+    price_manifest_path = output_root / "price_component_manifest.json"
+    _write_json(price_manifest_path, price_manifest)
+    panel_manifest_path = panel / "factor_panel_manifest.json"
+    model_manifest = build_model_data_bundle(
+        root=Path.cwd(),
+        contract_path=Path("configs/data_contracts/model_data_bundle_v1.yaml"),
+        component_specs=[
+            ComponentSpec(
+                component_id=f"prices.{pool_id}",
+                component_kind="selected_pool_prices",
+                manifest_path=price_manifest_path,
+                market="cn",
+            ),
+            ComponentSpec(
+                component_id="factors.qlib_alpha158.panel.cn.v1",
+                component_kind="factor_panel",
+                manifest_path=panel_manifest_path,
+                market="cn",
+            ),
+        ],
+        output_root=model_data,
+        evidence_cutoff=cutoff,
+        frontend_data_dir=frontend,
+    )
     result = {
         "schema_version": "1.0",
         "market": "cn",
@@ -216,7 +293,9 @@ def build_cn(
         "vwap_audit": audit,
         "provider_manifest": provider_manifest,
         "source_role_manifest": source_role,
+        "price_component_manifest": price_manifest,
         "factor_panel_manifest": panel_manifest,
+        "model_data_manifest": model_manifest,
         "status": panel_manifest.get("status"),
         "research_only": True,
         "trade_ready": False,
