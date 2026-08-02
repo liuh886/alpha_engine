@@ -41,6 +41,10 @@ jobs:
       - name: Mypy type check (ratcheted scope)
         run: uv run mypy src/release src/models/metric_contract.py
 
+      - name: Pytest collection
+        if: github.event_name == 'pull_request'
+        run: uv run pytest --collect-only -q --strict-markers
+
       - name: Fast PR pytest
         if: github.event_name == 'pull_request'
         shell: bash
