@@ -1,0 +1,72 @@
+schema_version: "1.0"
+bundle_id: "qqqi_qqq_tqqq_reference_bundle_v1"
+created_at: "2026-08-02"
+status: "active_research_data_contract"
+market: "us"
+research_only: true
+trade_ready: false
+
+instruments:
+  - symbol: "QQQ"
+    instrument_type: "equity_etf"
+    roles: ["benchmark", "attack_sleeve", "signal_reference"]
+    exact_identity_required: true
+  - symbol: "QQQI"
+    instrument_type: "income_equity_etf"
+    roles: ["defensive_sleeve", "income_sleeve"]
+    exact_identity_required: true
+  - symbol: "TQQQ"
+    instrument_type: "leveraged_equity_etf"
+    roles: ["leveraged_attack_sleeve"]
+    exact_identity_required: true
+
+history:
+  requested_start: "2010-01-01"
+  end_policy: "latest_available_or_explicit_cutoff"
+  common_window_policy: "latest_first_observation_across_all_instruments"
+  pre_inception_fill_allowed: false
+  duplicate_sessions_allowed: false
+
+price_contract:
+  strategy_price_basis: "corporate_action_adjusted_open_and_close"
+  next_open_execution_supported: true
+  raw_ohlcv_retained_for_audit: true
+  adjusted_volume_required: true
+  synthetic_amount_allowed_for_diagnostics_only: true
+  cash_distributions_required_from_professional_source: true
+  split_factors_required_from_professional_source: true
+
+providers:
+  primary:
+    name: "tiingo"
+    credential_env: "TIINGO_API_TOKEN"
+    required_for_professional_source_ready: true
+  fallback:
+    name: "yfinance"
+    allowed_for_research_bundle: true
+    professional_source_ready: false
+  independent_reconciliation_required_when_primary_available: true
+
+reconciliation:
+  minimum_overlap_sessions: 20
+  consensus_p99_adjusted_close_return_diff: 0.001
+  consensus_max_adjusted_close_return_diff: 0.01
+  corporate_action_window_sessions: 1
+  material_return_difference: 0.01
+  allowed_statuses:
+    - "consensus"
+    - "explainable_corporate_action_difference"
+    - "provider_missing"
+    - "quarantine"
+
+promotion:
+  strategy_data_ready_requires:
+    - "all three canonical adjusted bar files are schema valid"
+    - "exact identities are preserved"
+    - "common history is inception aware"
+    - "bundle and source hashes are complete"
+  professional_source_ready_requires:
+    - "Tiingo succeeds for QQQ QQQI and TQQQ"
+    - "cash distributions and split factors are retained"
+    - "no reconciliation status is quarantine"
+  automatic_trade_ready_promotion_allowed: false
