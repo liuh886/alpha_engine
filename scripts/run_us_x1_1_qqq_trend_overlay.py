@@ -59,6 +59,7 @@ class WindowInputs:
     score_sha256: str
     economic_score_sha256: str
     selection_sha256: str
+    economic_selection_sha256: str
     removed_score_rows: int
 
 
@@ -135,12 +136,7 @@ def _align_scores(scores: pd.DataFrame, raw_returns: pd.DataFrame) -> pd.DataFra
 
 
 def _selection_ledger(scores: pd.DataFrame) -> pd.DataFrame:
-    """Rebuild the daily Experiment 007 Top-15 identity ledger.
-
-    The evidence ledger contains Top-15 selections for every scored session.
-    Economic portfolio evaluation remains on the separate 10-session rebalance
-    schedule implemented by ``_evaluate``.
-    """
+    """Build a daily Top-15 identity ledger from the supplied score layer."""
 
     dates = [pd.Timestamp(value) for value in sorted(scores["datetime"].unique())]
     rows: list[dict[str, Any]] = []
@@ -423,20 +419,29 @@ def _load_window_inputs(
     )
     raw_returns.columns = ["return"]
     aligned_scores = _align_scores(scores, raw_returns)
+
+    source_selection = _selection_ledger(scores)
+    source_selection_path = (
+        output_dir / "identity" / window / "source_daily_top15_selections.csv"
+    )
+    source_selection_sha = _frame_sha256(source_selection, source_selection_path)
+    _compare_selection_identity(source_selection, expected_selection)
+    if source_selection_sha != str(expected["top15_selection_sha256"]):
+        raise ValueError(
+            f"source selection byte identity mismatch for {window}: "
+            f"{source_selection_sha} != {expected['top15_selection_sha256']}"
+        )
+
     economic_score_path = output_dir / "identity" / window / "economic_scores.csv"
     economic_score_sha = _frame_sha256(aligned_scores, economic_score_path)
-    observed_selection = _selection_ledger(aligned_scores)
-    observed_selection_path = output_dir / "identity" / window / "top15_selections.csv"
-    observed_selection_sha = _frame_sha256(
-        observed_selection,
-        observed_selection_path,
+    economic_selection = _selection_ledger(aligned_scores)
+    economic_selection_path = (
+        output_dir / "identity" / window / "economic_daily_top15_selections.csv"
     )
-    _compare_selection_identity(observed_selection, expected_selection)
-    if observed_selection_sha != str(expected["top15_selection_sha256"]):
-        raise ValueError(
-            f"generated selection byte identity mismatch for {window}: "
-            f"{observed_selection_sha} != {expected['top15_selection_sha256']}"
-        )
+    economic_selection_sha = _frame_sha256(
+        economic_selection,
+        economic_selection_path,
+    )
 
     benchmark_frame = normalize_qlib_frame_index(
         runtime.features(
@@ -470,7 +475,8 @@ def _load_window_inputs(
         closes=closes,
         score_sha256=str(expected["score_sha256"]),
         economic_score_sha256=economic_score_sha,
-        selection_sha256=observed_selection_sha,
+        selection_sha256=source_selection_sha,
+        economic_selection_sha256=economic_selection_sha,
         removed_score_rows=len(scores) - len(aligned_scores),
     )
 
@@ -582,9 +588,12 @@ def run(
                 result["economic_score_identity_sha256"] = inputs[
                     window
                 ].economic_score_sha256
-                result["top15_selection_identity_sha256"] = inputs[
+                result["source_top15_selection_identity_sha256"] = inputs[
                     window
                 ].selection_sha256
+                result["economic_top15_selection_identity_sha256"] = inputs[
+                    window
+                ].economic_selection_sha256
                 result["selection_changed_from_baseline"] = False
 
     aggregates: dict[str, dict[str, dict[str, Any]]] = {}
@@ -624,11 +633,19 @@ def run(
             window: {
                 "source_score_sha256": inputs[window].score_sha256,
                 "economic_score_sha256": inputs[window].economic_score_sha256,
-                "daily_top15_selection_sha256": inputs[window].selection_sha256,
+                "source_daily_top15_selection_sha256": inputs[
+                    window
+                ].selection_sha256,
+                "economic_daily_top15_selection_sha256": inputs[
+                    window
+                ].economic_selection_sha256,
                 "removed_score_rows_without_raw_forward_return": inputs[
                     window
                 ].removed_score_rows,
                 "selection_matches_experiment_007": True,
+                "economic_selection_basis": (
+                    "source_scores_intersect_non_null_raw_forward_returns_before_ranking"
+                ),
             }
             for window in WINDOWS
         },
