@@ -1,28 +1,29 @@
 # QQQI / QQQ / TQQQ Strategy Experiment Ledger
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 ## Purpose
 
-This ledger is the durable decision record for the QQQI / QQQ / TQQQ rotation research line. It complements versioned YAML contracts, result reports, notebooks, evidence archives and `StrategyExperimentJournal` run records.
+This ledger is the durable decision record for the QQQI / QQQ / TQQQ rotation research line. It complements versioned contracts, result reports, notebooks, evidence archives and `StrategyExperimentJournal` records.
 
-A strong retrospective metric is not sufficient for promotion.
+A strong retrospective metric is not sufficient for a trade-ready designation. A research baseline may nevertheless change when a simpler executable architecture improves net results under the same signal trace and cost convention.
 
 ## Shared research boundary
 
 Unless a contract states otherwise:
 
-- tradable instruments: QQQI, QQQ and TQQQ;
+- core tradable instruments: QQQI, QQQ and TQQQ;
+- defensive-asset research may add SGOV without changing the signal trace;
 - signal generation: session close;
 - execution: next session adjusted open;
 - return measurement: adjusted open to adjusted open;
 - transaction cost: 10 basis points per turnover unit;
-- common three-asset sample: 2024-01-30 through 2026-07-30;
+- formal three-asset and SGOV comparison sample: 2024-01-30 through 2026-07-30;
 - observations: 627;
-- no pre-inception backfill for QQQI;
+- no pre-inception backfill for QQQI or SGOV;
 - all strategies remain `research_only=true` and `trade_ready=false`.
 
-The short QQQI history is the principal evidence limitation.
+The short QQQI history remains the principal evidence limitation.
 
 ## Experiment lineage
 
@@ -32,93 +33,131 @@ The short QQQI history is the principal evidence limitation.
 | Price-repair v2 / VIX v2 | #261 | Multi-stage repair and 50% TQQQ; VIX risk budget | Retain architecture; price repair is the return engine |
 | VIX v3 aggressive | #262 | Increase partial leverage from 50% to 75% TQQQ | Retain; do not search leverage weight further |
 | Breadth / VXN v4 | #265 | Relative breadth, VXN replacement and dual confirmation | Reject relative breadth hard gate; retain VXN information |
-| VXN leverage veto v4.1 | #266 | VXN only vetoes the 75% TQQQ layer | Frozen prospective baseline |
+| VXN leverage veto v4.1 | #266 | VXN only vetoes the 75% TQQQ layer | Retain as immutable historical signal comparator |
 | Long-history attack layer | #272 | Replay frozen VIX/VXN leverage logic from 2010 | Directionally positive but not stable enough for promotion |
 | Churn diagnostics | #274 | Diagnose VXN exits and rapid re-entry | Identified short exits; no rule change by itself |
 | Two-day VXN persistence | #276 | Require two pressure days before exiting leverage | Reject; turnover fell but all risk-adjusted metrics worsened |
 | Absolute breadth soft tier | #278 | Use QQQE absolute trend to scale leverage | Reject; lower exposure did not improve risk budgeting |
-| QQQ downside-volatility veto | #279 | Veto leverage on realized downside stress | Reject; duplicated VXN and blocked successful entries |
+| QQQ downside-volatility veto | #279 | Veto leverage on realized downside stress | Reject; duplicated VXN and blocked profitable entries |
 | HYG/SHY credit proxy | #280 | Credit-risk appetite veto | Positive full sample but concentrated in 2015; do not add |
-| Prospective v4.1 monitor | #281 | Weekly frozen monitoring from 2026-08-01 | Active; no automatic promotion |
-| **Confidence bridge v4.2** | **#297** | **State 1 becomes 50% QQQI / 50% QQQ; state trace unchanged** | **Retain as post-result monitoring challenger; do not replace v4.1 yet** |
+| Prospective v4.1 monitor | #281 | Frozen monitoring from 2026-08-01 | Retain as historical comparison stream |
+| Confidence bridge v4.2 | #297 | State 1 becomes 50% QQQI / 50% QQQ; state trace unchanged | Retained as monitoring challenger |
+| **v4.2 baseline promotion** | **#327** | **Use lower turnover and improved net metrics as the default research architecture** | **Current research baseline from 2026-08-02; still not trade-ready** |
+| State-1 lifecycle and tail diagnostics | #327 | Actual holding-cycle attribution and deeper drawdown metrics | Completed; confirms asymmetric bridge value |
+| Pure SGOV defense | #327 | Replace QQQI reserve with SGOV in states 0 and 1 | Reject as primary architecture |
+| **Blended QQQI / SGOV defense** | **#327** | **Split defensive reserve between QQQI and SGOV** | **Retain as drawdown-focused challenger; no baseline replacement** |
+| v4.2 signal alerts | #327 | Daily next-open signal payload with issue/Telegram delivery | Retain; no order placement |
 
 ## Current complete result summary
 
 | Strategy | CAGR | Volatility | Sharpe | Sortino | Max drawdown | Calmar | Total return | Turnover |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| QQQ buy and hold | 22.01% | 21.30% | 1.041 | 1.489 | -24.17% | 0.911 | 64.06% | — |
+| QQQ buy and hold | 22.01% | 21.30% | 1.041 | 1.489 | -24.17% | 0.911 | 64.05% | — |
 | VIX v3, 75% TQQQ | 29.62% | 26.63% | 1.108 | — | -24.43% | 1.212 | 90.68% | 65 |
-| Frozen v4.1 VXN leverage veto | 32.44% | 25.82% | 1.218 | 1.764 | -24.43% | 1.328 | 101.17% | 71 |
-| **v4.2 50/50 bridge challenger** | **33.06%** | **25.62%** | **1.244** | **1.801** | **-24.21%** | **1.365** | **103.53%** | **55** |
+| Historical v4.1 VXN leverage veto | 32.42% | 25.82% | 1.218 | 1.763 | -24.45% | 1.326 | 101.11% | 71 |
+| **Current v4.2 50/50 bridge baseline** | **33.06%** | **25.62%** | **1.244** | **1.801** | **-24.22%** | **1.365** | **103.52%** | **55** |
+| Pure SGOV defense | 25.05% | 17.15% | 1.390 | 2.012 | -21.03% | 1.191 | 74.39% | 55 |
+| Blended QQQI / SGOV defense | 29.54% | 19.75% | **1.410** | **2.042** | **-17.91%** | **1.649** | 90.39% | 55 |
 
 ## Architecture findings
 
-### Price repair and VIX
+### Price repair, VIX and VXN
 
 1. QQQ drawdown provides shock memory.
 2. Short- and medium-horizon price repair identifies recovery opportunity.
-3. VIX regulates broad-market defense and risk budget.
-4. MA200 is a long-term defensive boundary, not the primary recovery clock.
+3. VIX regulates broad-market defense and initial risk budget.
+4. VXN is useful only as a Nasdaq-specific veto for the 75% TQQQ layer.
+5. MA200 remains a long-term defensive boundary rather than the primary recovery clock.
 
 ### TQQQ leverage layer
 
-The state-1-to-state-2 transition is the strongest measured signal component. In the complete v4.1 event study, twelve add-leverage events produced about +5.76 percentage points mean twenty-session benefit and approximately 91.7% positive relative outcomes.
+The state-1-to-state-2 transition remains the strongest measured signal component. Twelve add-leverage events produced about +5.76 percentage points mean twenty-session benefit and approximately 91.7% positive relative outcomes in the original event study.
 
-VXN is useful only in a narrow role aligned with Nasdaq leverage exposure. It should not replace VIX across the full state machine.
-
-### Initial QQQ risk-on state
-
-The QQQI-to-QQ transition is the weakest measured component: ten events produced only about +0.74 percentage points mean twenty-session relative benefit and approximately 50% positive outcomes.
-
-This does not prove that the entry timing is wrong. It shows that state 1 carries lower confidence than state 2 and may not justify an immediate full QQQ allocation.
+No new TQQQ threshold or weight search is authorized.
 
 ### v4.2 confidence bridge
 
-The bridge changes no signal date:
+v4.2 changes no signal date:
 
 - state 0: 100% QQQI;
 - state 1: 50% QQQI + 50% QQQ;
 - state 2: 25% QQQ + 75% TQQQ.
 
-Relative to v4.1 it produced:
+Relative to v4.1 it improves net results and reduces turnover from 71 to 55 units under the same 10 bps cost convention. The post-result origin remains part of the evidence record.
 
-- total return: +2.36 percentage points;
-- CAGR: +0.62 percentage points;
-- volatility: -0.20 percentage points;
-- Sharpe: +0.026;
-- Sortino: +0.037;
-- maximum drawdown: +0.22 percentage points of improvement;
-- Calmar: +0.037;
-- turnover: 71 to 55 units;
-- cumulative cost deduction: 7.10% to 5.50%;
-- exact same state trace and exact same 129 partial-leverage sessions.
+Decision on 2026-08-02: v4.2 becomes the current research baseline. v4.1 remains the immutable historical signal comparator.
 
-The bridge's gross total return was slightly lower than v4.1. The net improvement came primarily from lower 0-to-1 and 1-to-0 transition friction, plus slightly better realized state-1 downside behavior. Both early and late chronological segments improved.
+## State-1 lifecycle attribution
 
-Decision: retain as a separate post-result monitoring challenger. Do not replace the v4.1 frozen baseline before prospective evidence exists and do not test alternative bridge weights on this sample.
+Eighteen actual state-1 intervals were observed.
 
-## Long-history structural validation
+| Lifecycle | Episodes | Mean v4.2 minus v4.1 net return | Positive delta rate | Mean drawdown improvement | Interpretation |
+|---|---:|---:|---:|---:|---|
+| `0->1->0` | 5 | **+0.275 pp** | **80.0%** | **+0.417 pp** | Bridge is valuable when recovery attempts fail |
+| `0->1->2` | 5 | -0.257 pp | 20.0% | +0.019 pp | Bridge gives up some upside in fast successful recoveries |
+| `2->1->2` | 7 | **+0.057 pp** | 57.1% | **+0.154 pp** | Slight benefit during temporary deleveraging |
+| `2->1->0` | 1 | -0.045 pp | 0.0% | **+0.256 pp** | Approximately return-neutral with better path risk |
 
-QQQI is excluded rather than reconstructed. States 0 and 1 map to QQQ and state 2 maps to 25% QQQ / 75% TQQQ.
+The bridge is therefore an asymmetric risk-budget improvement rather than a stronger predictor.
 
-| Attack-layer strategy | CAGR | Volatility | Sharpe | Sortino | Max drawdown | Calmar |
-|---|---:|---:|---:|---:|---:|---:|
-| QQQ buy and hold | 18.95% | 20.46% | 0.951 | 1.332 | -36.69% | 0.516 |
-| Static 25% QQQ / 75% TQQQ | 37.06% | 50.79% | 0.877 | 1.232 | -74.04% | 0.501 |
-| Frozen VIX v3 attack layer | 25.81% | 26.12% | 1.011 | 1.428 | -38.58% | 0.669 |
-| Frozen v4.1 VXN attack layer | 26.31% | 25.78% | 1.036 | 1.472 | -38.58% | 0.682 |
+## Tail-risk diagnosis
 
-The VXN benefit is directionally positive but small and concentrated in a few avoided tail losses. It cannot independently validate the full QQQI strategy.
+Relative to v4.1, v4.2 slightly improves expected shortfall, worst 10- and 20-session returns, maximum drawdown, recovery duration and ulcer index. It does not improve the worst daily or worst five-session loss because those losses arise in the unchanged state-2 allocation.
 
-## Rejected optimization hypotheses
+This identifies the remaining structural problem: the baseline's principal tail risk is concentrated in the leveraged recovery state, while state-1 allocation changes mainly improve ordinary false-recovery behavior.
 
-- Relative QQQE/QQQ breadth hard gate: removed successful mega-cap-led recoveries.
-- Two-day VXN exit persistence: reduced turnover but worsened CAGR, Sharpe, Sortino and Calmar.
-- Absolute QQQE breadth soft scaling: reduced exposure without improving risk-adjusted return.
-- QQQ realized downside-volatility veto: overlapped VXN and blocked profitable leverage entries.
-- HYG/SHY MA50 veto: positive full-sample result was dominated by 2015 and inactive after April 2023.
+## SGOV defensive architecture
 
-No rejected rule is active in v4.1 or the bridge challenger.
+### Pure SGOV defense — rejected
+
+Pure SGOV lowers volatility and expected shortfall but gives up too much return participation:
+
+- CAGR falls from 33.06% to 25.05%;
+- total return falls from 103.52% to 74.39%;
+- Calmar falls from 1.365 to 1.191;
+- longest underwater run increases from 113 to 207 sessions;
+- ulcer index worsens.
+
+It is not retained as the primary architecture.
+
+### Blended QQQI / SGOV defense — retained challenger
+
+The blended structure uses:
+
+- state 0: 50% QQQI / 50% SGOV;
+- state 1: 25% QQQI / 25% SGOV / 50% QQQ;
+- state 2: unchanged 25% QQQ / 75% TQQQ.
+
+It produces:
+
+- maximum drawdown improvement from -24.22% to -17.91%;
+- expected shortfall improvement from -3.93% to -3.05%;
+- volatility reduction from 25.62% to 19.75%;
+- Sharpe improvement from 1.244 to 1.410;
+- Sortino improvement from 1.801 to 2.042;
+- Calmar improvement from 1.365 to 1.649;
+- CAGR reduction from 33.06% to 29.54%;
+- longest underwater run increase from 113 to 195 sessions.
+
+Decision: retain as a drawdown-focused challenger. It reduces loss depth but delays recovery to the prior peak. Do not replace v4.2, do not test additional SGOV weights, and require further episode attribution and prospective evidence.
+
+## Signal-alert architecture
+
+The alert layer reads the existing v4.2 prospective-monitor summary and never recreates the state machine independently.
+
+An alert is issued only when the latest close decision differs from the latest executed state. Each message contains:
+
+- close signal date;
+- intended next-session-open execution;
+- explicit QQQI/QQQ/TQQQ buy and sell weight changes;
+- VIX/VXN context;
+- frozen reason code and Chinese explanation;
+- research-only disclaimer;
+- deterministic fingerprint for deduplication.
+
+The canonical durable channel is an owner-assigned GitHub Issue. Telegram is optional through `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. The workflow never places orders.
+
+The first validation detected a 2026-07-31 close transition from 100% QQQI to the 50% QQQI / 50% QQQ bridge, fingerprint `7bd5f606e67436360da1`.
 
 ## Evidence references
 
@@ -129,47 +168,60 @@ No rejected rule is active in v4.1 or the bridge challenger.
 | VXN leverage veto v4.1 | `30690786777` | `8815588121` | `sha256:6184c8e2f4186d4fc90848cb4ceb974c7334d9fce56b9e17eda1ef1a07ce4cd4` |
 | Long-history attack layer | `30691947502` | `8815971914` | `sha256:64cb61754392e2c195ebceb5eba46d69cf776ef16abf0b8800f91c5926da973f` |
 | Initial prospective monitor | `30694181701` | `8816681833` | `sha256:4e6b27f6910bc630c976d633f8927566789d50f3f417596c0256b6803dcc08a7` |
-| **v4.2 bridge challenger** | **`30706201043`** | **`8820398584`** | **`sha256:3b4962b11796ee72ec4f74cca12ddf0d40800cf5417af4e42dabfb3a3d81abbf`** |
+| v4.2 bridge result | `30706201043` | `8820398584` | `sha256:3b4962b11796ee72ec4f74cca12ddf0d40800cf5417af4e42dabfb3a3d81abbf` |
+| **v4.2 lifecycle, tail and corrected SGOV suite** | **`30730596122`** | **`8827843430`** | **`sha256:7a5feaa66b4d830969b5d1ffa3aef21ca1b98f6157be3af7062b40304c6c79e4`** |
+| **v4.2 signal-alert validation** | **`30730596133`** | **`8827841085`** | **`sha256:2fec875e52d655dad94640f3a4fa8b622c1c3e8eb0f71ef4bcdc904fb4506d1a`** |
 
-## Monitoring candidates
+The initial SGOV run with an economic start of 2024-10-16 was discarded because the signal history lacked sufficient warmup. No decision uses that truncated run.
 
-### Frozen baseline
+## Current baseline and active challengers
 
-Candidate ID: `qqqi_qqq_tqqq_vxn_leverage_v4_1`
+### Current research baseline
 
-Monitoring start: 2026-08-01.
+`qqqi_qqq_tqqq_vxn_bridge_v4_2`
 
-### Allocation challenger
-
-Candidate ID: `qqqi_qqq_tqqq_vxn_bridge_v4_2`
-
-Status:
-
+- effective date: 2026-08-02;
+- active signal-alert source;
 - `research_only=true`;
 - `trade_ready=false`;
-- `post_result_hypothesis=true`;
-- same v4.1 signals;
-- separate prospective comparison required.
+- `post_result_hypothesis=true` retained;
+- cost remains 10 bps per turnover unit.
+
+### Historical signal comparator
+
+`qqqi_qqq_tqqq_vxn_leverage_v4_1`
+
+- exact same state dates as v4.2;
+- preserved for lineage and attribution;
+- no longer the primary comparator for new portfolio challengers.
+
+### Drawdown-focused challenger
+
+`qqqi_sgov_blended_defense`
+
+- exact v4.2 signal trace and state-2 allocation;
+- lower drawdown depth and expected shortfall;
+- lower CAGR and longer underwater duration;
+- retained for further controlled research only.
 
 ## Next admissible work
 
-Do not continue retrospective threshold, factor or allocation searches on the same sample.
+1. Continue v4.2 versus v4.1 prospective monitoring from 2026-08-01.
+2. Run the daily v4.2 signal-alert workflow after US end-of-day data availability.
+3. Attribute the blended SGOV challenger's major drawdown and recovery episodes.
+4. Design a separate prospective monitor only after the defensive-asset data path and decision gates are frozen.
+5. Do not search additional bridge or SGOV weights on the current sample.
+6. Do not modify VIX, VXN, TQQQ or price thresholds as part of the defensive-asset study.
+7. Do not promote any candidate automatically.
 
-The next valid evidence is prospective:
-
-1. monitor v4.1 and bridge v4.2 side by side from 2026-08-01;
-2. preserve both contracts and hashes;
-3. record each state-1 interval, transition cost and realized return difference;
-4. record each VXN leverage veto and subsequent 5/10/20/40-session outcome;
-5. review only after a meaningful number of new state transitions or a predeclared calendar interval;
-6. do not promote either candidate automatically.
-
-## Promotion criteria
+## Trade-ready criteria
 
 No strategy should be marked trade ready until:
 
-- prospective out-of-sample evidence exists after 2026-08-01;
+- meaningful prospective out-of-sample evidence exists after 2026-08-01;
 - performance is not dominated by one or two episodes;
-- turnover and slippage sensitivity remain acceptable;
+- turnover and execution assumptions remain acceptable;
+- drawdown depth and duration are both assessed;
+- data sources and adjusted-return treatment are governed;
 - the active architecture remains explainable and simple;
-- the final contract, evidence hashes and decision are recorded in the journal and this ledger.
+- contracts, evidence hashes, notebooks and decisions are synchronized.

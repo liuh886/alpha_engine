@@ -1,13 +1,17 @@
 experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
 parent_experiment_id: qqqi_qqq_tqqq_vxn_leverage_v4_1
-schema_version: "1.0"
+schema_version: "1.1"
+research_role: current_research_baseline
+baseline_effective_date: "2026-08-02"
 research_only: true
 trade_ready: false
 post_result_hypothesis: true
 purpose: >-
-  Test whether the weak early QQQ risk-on state should use a neutral 50% QQQI
-  and 50% QQQ bridge while preserving every frozen v4.1 signal, transition,
-  VIX/VXN rule, TQQQ weight, execution convention and cost assumption.
+  Use a neutral 50% QQQI and 50% QQQ bridge in the lower-confidence state 1
+  while preserving every frozen v4.1 signal, transition, VIX/VXN rule, TQQQ
+  weight, execution convention and the 10 bps cost assumption. From 2026-08-02
+  this is the current research baseline because it lowers turnover and improves
+  published net metrics without changing the signal trace.
 
 boundaries:
   price_signal_symbol: QQQ
@@ -81,7 +85,7 @@ portfolio:
 validation:
   chronological_train_fraction: 0.60
   event_horizons: [5, 10, 20, 40]
-  primary_baseline_experiment: qqqi_qqq_tqqq_vxn_leverage_v4_1
+  historical_signal_comparator: qqqi_qqq_tqqq_vxn_leverage_v4_1
   primary_metrics:
     [cagr, annual_volatility, sharpe, sortino, max_drawdown, calmar]
   require_same_decision_state_every_session: true
@@ -93,7 +97,7 @@ validation:
 hypothesis_discipline:
   - The v4.1 state machine is frozen and must produce the exact same decision trace.
   - State 1 is interpreted as a lower-confidence bridge rather than a full QQQ commitment.
-  - Exactly one neutral 50/50 bridge allocation is tested; no allocation grid is allowed.
+  - Exactly one neutral 50/50 bridge allocation is active; no allocation grid is allowed.
   - No VIX, VXN, price, leverage-weight or persistence threshold may change.
-  - This experiment was motivated by the observed weak QQQI-to-QQ event study and is not independent evidence.
-  - Any attractive result remains research-only and requires prospective monitoring.
+  - The post-result origin remains part of the evidence record after baseline promotion.
+  - Baseline promotion is research-only and still requires prospective monitoring.
