@@ -46,7 +46,11 @@ The short QQQI history remains the principal evidence limitation.
 | State-1 lifecycle and tail diagnostics | #327 | Actual holding-cycle attribution and deeper drawdown metrics | Completed; confirms asymmetric bridge value |
 | Pure SGOV defense | #327 | Replace QQQI reserve with SGOV in states 0 and 1 | Reject as primary architecture |
 | **Blended QQQI / SGOV defense** | **#327** | **Split defensive reserve between QQQI and SGOV** | **Retain as drawdown-focused challenger; no baseline replacement** |
-| v4.2 signal alerts | #327 | Daily next-open signal payload with issue/Telegram delivery | Retain; no order placement |
+| v4.2 signal alerts | #327 / #335 | Daily next-open decision card with Issue and Telegram delivery | Retain; no order placement |
+| **State-2 tail decomposition** | **#339** | **Separate intraday and overnight loss contribution and test close-based observability** | **Continuous close-based volatility scaling rejected; v4.2 unchanged** |
+| Bridge-entry confirmation | #339 | Require `0→1` to persist one additional session | Reject; lower full-sample CAGR and no drawdown benefit |
+| Leverage-entry confirmation | #339 | Require `1→2` to persist one additional session | Attractive headline metrics but not promoted; low event win rate and weaker late sample |
+| Combined risk-increase confirmation | #339 | Confirm both `0→1` and `1→2` | Reject; fails chronological and event-consistency gates |
 
 ## Current complete result summary
 
@@ -55,9 +59,18 @@ The short QQQI history remains the principal evidence limitation.
 | QQQ buy and hold | 22.01% | 21.30% | 1.041 | 1.489 | -24.17% | 0.911 | 64.05% | — |
 | VIX v3, 75% TQQQ | 29.62% | 26.63% | 1.108 | — | -24.43% | 1.212 | 90.68% | 65 |
 | Historical v4.1 VXN leverage veto | 32.42% | 25.82% | 1.218 | 1.763 | -24.45% | 1.326 | 101.11% | 71 |
-| **Current v4.2 50/50 bridge baseline** | **33.06%** | **25.62%** | **1.244** | **1.801** | **-24.22%** | **1.365** | **103.52%** | **55** |
+| **Current v4.2 50/50 bridge baseline** | **33.06%** | **25.62%** | **1.244** | **1.801** | **-24.21%** | **1.365** | **103.53%** | **55** |
 | Pure SGOV defense | 25.05% | 17.15% | 1.390 | 2.012 | -21.03% | 1.191 | 74.39% | 55 |
 | Blended QQQI / SGOV defense | 29.54% | 19.75% | **1.410** | **2.042** | **-17.91%** | **1.649** | 90.39% | 55 |
+
+Confirmation studies below are rejected diagnostics, not active strategies:
+
+| Diagnostic | CAGR | Sharpe | Sortino | Max drawdown | Calmar | Turnover | Decision |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Mechanical one-session delay | 33.35% | 1.266 | 1.846 | -27.15% | 1.228 | 54.0 | Not robust |
+| Confirm `0→1` | 32.47% | 1.228 | 1.776 | -24.23% | 1.340 | 54.0 | Reject |
+| Confirm `1→2` | 35.64% | 1.354 | 1.998 | -24.21% | 1.472 | 37.5 | Do not promote |
+| Confirm both risk increases | 35.00% | 1.336 | 1.969 | -24.23% | 1.445 | 37.0 | Reject |
 
 ## Architecture findings
 
@@ -73,6 +86,8 @@ The short QQQI history remains the principal evidence limitation.
 
 The state-1-to-state-2 transition remains the strongest measured signal component. Twelve add-leverage events produced about +5.76 percentage points mean twenty-session benefit and approximately 91.7% positive relative outcomes in the original event study.
 
+The state-2 tail study adds an important limitation: the ten worst leveraged sessions had no warning observable at the preceding close. Sixty percent generated an exit signal only at the close of the loss day, after most damage had occurred intraday. Daily close-derived scaling cannot be credited with avoiding losses already realized before the close.
+
 No new TQQQ threshold or weight search is authorized.
 
 ### v4.2 confidence bridge
@@ -85,7 +100,7 @@ v4.2 changes no signal date:
 
 Relative to v4.1 it improves net results and reduces turnover from 71 to 55 units under the same 10 bps cost convention. The post-result origin remains part of the evidence record.
 
-Decision on 2026-08-02: v4.2 becomes the current research baseline. v4.1 remains the immutable historical signal comparator.
+Decision on 2026-08-02: v4.2 remains the current research baseline. v4.1 remains the immutable historical signal comparator.
 
 ## State-1 lifecycle attribution
 
@@ -100,11 +115,27 @@ Eighteen actual state-1 intervals were observed.
 
 The bridge is therefore an asymmetric risk-budget improvement rather than a stronger predictor.
 
-## Tail-risk diagnosis
+## State-2 tail and confirmation decision
 
-Relative to v4.1, v4.2 slightly improves expected shortfall, worst 10- and 20-session returns, maximum drawdown, recovery duration and ulcer index. It does not improve the worst daily or worst five-session loss because those losses arise in the unchanged state-2 allocation.
+The formal sample contains 12 state-2 episodes and 129 leveraged sessions.
 
-This identifies the remaining structural problem: the baseline's principal tail risk is concentrated in the leveraged recovery state, while state-1 allocation changes mainly improve ordinary false-recovery behavior.
+- worst episode net return: -7.85%;
+- negative episode rate: 41.67%;
+- 66.67% of episodes are abrupt or gap-dominated under the frozen classification;
+- only 27.33% of negative contribution across the ten worst sessions was overnight;
+- prior-close warning rate for those sessions was 0%;
+- same-close exit signal rate was 60%.
+
+The continuous close-based volatility-budget gate failed. Intraday tail control would require governed intraday data and a separate execution contract; it is not an admissible v4.2 patch.
+
+The confirmation ablation separated true mechanical latency from persistence:
+
+- mechanical one-session latency slightly raised full-sample CAGR but worsened maximum drawdown by 2.94 percentage points and weakened the late sample;
+- confirming `0→1` reduced CAGR;
+- confirming `1→2` improved headline metrics but only 5 of 12 affected entries won and late-segment CAGR was 0.72 percentage points below v4.2;
+- confirming both risk increases had a 50% event win rate and a -1.39 percentage-point late-segment CAGR delta.
+
+Decision: reject all confirmation challengers and stop retrospective confirmation-length searches on this sample.
 
 ## SGOV defensive architecture
 
@@ -139,25 +170,25 @@ It produces:
 - CAGR reduction from 33.06% to 29.54%;
 - longest underwater run increase from 113 to 195 sessions.
 
-Decision: retain as a drawdown-focused challenger. It reduces loss depth but delays recovery to the prior peak. Do not replace v4.2, do not test additional SGOV weights, and require further episode attribution and prospective evidence.
+Decision: retain as a drawdown-focused challenger. It reduces loss depth but delays recovery to the prior peak. Do not replace v4.2 and do not test additional SGOV weights.
 
 ## Signal-alert architecture
 
 The alert layer reads the existing v4.2 prospective-monitor summary and never recreates the state machine independently.
 
-An alert is issued only when the latest close decision differs from the latest executed state. Each message contains:
+A fresh state-change decision card contains:
 
-- close signal date;
-- intended next-session-open execution;
+- governed data date and signal freshness;
+- close signal date and intended next-session-open execution;
+- current-state duration;
 - explicit QQQI/QQQ/TQQQ buy and sell weight changes;
-- VIX/VXN context;
-- frozen reason code and Chinese explanation;
-- research-only disclaimer;
-- deterministic fingerprint for deduplication.
+- turnover and model-cost estimate;
+- QQQ position relative to MA20, MA50 and MA200;
+- VIX/VXN values and dynamic thresholds;
+- transition-specific historical evidence, confirmation path, invalidation and principal risk;
+- deterministic fingerprint and research-only disclaimer.
 
-The canonical durable channel is an owner-assigned GitHub Issue. Telegram is optional through `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. The workflow never places orders.
-
-The first validation detected a 2026-07-31 close transition from 100% QQQI to the 50% QQQI / 50% QQQ bridge, fingerprint `7bd5f606e67436360da1`.
+The canonical durable channel is an owner-assigned GitHub Issue. Telegram is the immediate delivery channel. The workflow never places orders.
 
 ## Evidence references
 
@@ -169,10 +200,11 @@ The first validation detected a 2026-07-31 close transition from 100% QQQI to th
 | Long-history attack layer | `30691947502` | `8815971914` | `sha256:64cb61754392e2c195ebceb5eba46d69cf776ef16abf0b8800f91c5926da973f` |
 | Initial prospective monitor | `30694181701` | `8816681833` | `sha256:4e6b27f6910bc630c976d633f8927566789d50f3f417596c0256b6803dcc08a7` |
 | v4.2 bridge result | `30706201043` | `8820398584` | `sha256:3b4962b11796ee72ec4f74cca12ddf0d40800cf5417af4e42dabfb3a3d81abbf` |
-| **v4.2 lifecycle, tail and corrected SGOV suite** | **`30730596122`** | **`8827843430`** | **`sha256:7a5feaa66b4d830969b5d1ffa3aef21ca1b98f6157be3af7062b40304c6c79e4`** |
-| **v4.2 signal-alert validation** | **`30730596133`** | **`8827841085`** | **`sha256:2fec875e52d655dad94640f3a4fa8b622c1c3e8eb0f71ef4bcdc904fb4506d1a`** |
+| v4.2 lifecycle, tail and corrected SGOV suite | `30730596122` | `8827843430` | `sha256:7a5feaa66b4d830969b5d1ffa3aef21ca1b98f6157be3af7062b40304c6c79e4` |
+| v4.2 signal-alert validation | `30730596133` | `8827841085` | `sha256:2fec875e52d655dad94640f3a4fa8b622c1c3e8eb0f71ef4bcdc904fb4506d1a` |
+| **State-2 tail and confirmation ablation** | **`30733002466`** | **`8828582862`** | **`sha256:11f7803e47b13d6700a73303b61915f814efaaa97cc4240fabde7288e5cb25e0`** |
 
-The initial SGOV run with an economic start of 2024-10-16 was discarded because the signal history lacked sufficient warmup. No decision uses that truncated run.
+The initial SGOV run with an economic start of 2024-10-16 was discarded because the signal history lacked sufficient warmup. The initial state-2 exploratory `delay` labels were also superseded because they implemented confirmation rather than mechanical latency. No decision uses either invalid evidence path.
 
 ## Current baseline and active challengers
 
@@ -204,15 +236,16 @@ The initial SGOV run with an economic start of 2024-10-16 was discarded because 
 - lower CAGR and longer underwater duration;
 - retained for further controlled research only.
 
+No confirmation or state-2 volatility-budget challenger is active.
+
 ## Next admissible work
 
-1. Continue v4.2 versus v4.1 prospective monitoring from 2026-08-01.
-2. Run the daily v4.2 signal-alert workflow after US end-of-day data availability.
-3. Attribute the blended SGOV challenger's major drawdown and recovery episodes.
-4. Design a separate prospective monitor only after the defensive-asset data path and decision gates are frozen.
-5. Do not search additional bridge or SGOV weights on the current sample.
-6. Do not modify VIX, VXN, TQQQ or price thresholds as part of the defensive-asset study.
-7. Do not promote any candidate automatically.
+1. Continue frozen v4.2 versus v4.1 prospective monitoring from 2026-08-01.
+2. Run the daily v4.2 signal-alert workflow and record real delivery, data freshness and execution deviations.
+3. Do not continue retrospective confirmation, persistence, threshold, bridge-weight, SGOV-weight or TQQQ-weight searches on this sample.
+4. Treat intraday tail control as a separate strategy family requiring governed intraday data and a different execution contract.
+5. Revisit confirmation only if future prospective events independently support it.
+6. Use the already-defined blended QQQI/SGOV profile when a lower-risk allocation is desired; do not modify v4.2 under that objective.
 
 ## Trade-ready criteria
 
