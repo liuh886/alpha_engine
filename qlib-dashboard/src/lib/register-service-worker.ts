@@ -1,5 +1,6 @@
 import { runtimeCapabilities } from './runtime-capabilities';
 
+const SERVICE_WORKER_RELEASE = 'v3';
 const SKIP_WAITING_MESSAGE = { type: 'SKIP_WAITING' } as const;
 
 function requestActivation(worker: ServiceWorker | null): void {
@@ -51,7 +52,7 @@ export function registerServiceWorker(): void {
 
   window.addEventListener('load', () => {
     const serviceWorkerUrl = new URL('sw.js', document.baseURI);
-    serviceWorkerUrl.searchParams.set('release_check', String(Date.now()));
+    serviceWorkerUrl.searchParams.set('release_check', SERVICE_WORKER_RELEASE);
 
     void activateServiceWorkerUpdate(
       navigator.serviceWorker,
