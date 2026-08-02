@@ -1,70 +1,88 @@
 const CACHE_NAME = 'alpha-engine-shell-v3';
-const APP_ROOT = new URL('./', self.location.href);
-const FORMAL_BACKTEST_ROOT = new URL('./data/formal-backtests/', APP_ROOT);
-const SHELL_URLS = [
-  new URL('./', APP_ROOT).toString(),
-  new URL('./index.html', APP_ROOT).toString(),
-  new URL('./manifest.webmanifest', APP_ROOT).toString(),
-  new URL('./icons/alpha-engine.svg', APP_ROOT).toString(),
-];
+const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icons/alpha-engine.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_URLS)).then(() => self.skipWaiting()),
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting()),
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
+      )
       .then(() => self.clients.claim()),
   );
 });
 
-self.addEventListener('fetch', (event) => {
-  const request = event.request;
-  if (request.method !== 'GET') return;
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
+function isSameOrigin(request) {
+  return new URL(request.url).origin === self.location.origin;
+}
+
+function isFormalBacktestRequest(request) {
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
+  return url.pathname.includes('/data/formal-backtests/');
+}
 
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request, { cache: 'no-store' })
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(new URL('./index.html', APP_ROOT), copy));
-          return response;
-        })
-        .catch(() => caches.match(new URL('./index.html', APP_ROOT))),
+function isShellRequest(request) {
+  const url = new URL(request.url);
+  return (
+    request.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('/index.html') ||
+    url.pathname.endsWith('/manifest.webmanifest') ||
+    url.pathname.endsWith('/sw.js')
+  );
+}
+
+async function networkFirst(request, { bypassHttpCache = false } = {}) {
+  try {
+    const networkResponse = await fetch(
+      bypassHttpCache ? new Request(request, { cache: 'no-store' }) : request,
     );
+    if (networkResponse.ok && isSameOrigin(request)) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) return cachedResponse;
+    throw error;
+  }
+}
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  if (request.method !== 'GET' || !isSameOrigin(request)) return;
+
+  if (isFormalBacktestRequest(request) || isShellRequest(request)) {
+    event.respondWith(networkFirst(request, { bypassHttpCache: true }));
     return;
   }
 
-  if (url.pathname.startsWith(FORMAL_BACKTEST_ROOT.pathname)) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        try {
-          const response = await fetch(request, { cache: 'no-store' });
-          if (response.ok) await cache.put(request, response.clone());
-          return response;
-        } catch {
-          return cache.match(request);
-        }
-      }),
-    );
-    return;
-  }
-
-  if (SHELL_URLS.includes(url.toString())) {
-    event.respondWith(
-      fetch(request, { cache: 'no-store' })
-        .then((response) => {
-          if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
-          return response;
-        })
-        .catch(() => caches.match(request)),
-    );
-  }
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      if (cachedResponse) return cachedResponse;
+      return fetch(request).then((networkResponse) => {
+        if (!networkResponse.ok) return networkResponse;
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(request, networkResponse.clone());
+          return networkResponse;
+        });
+      });
+    }),
+  );
 });
