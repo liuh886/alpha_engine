@@ -1,17 +1,8 @@
-name: Deploy Static Dashboard to Pages
+name: Deploy Research Artifact Studio to Pages
 
 on:
   push:
     branches: ["main"]
-    paths:
-      - 'qlib-dashboard/**'
-      - 'src/artifacts/**'
-      - 'scripts/export_static_site_data.py'
-      - 'scripts/export_research_bundle.py'
-      - 'docs/contracts/**'
-      - 'docs/methodology.md'
-      - '.github/workflows/pages.yml'
-
   workflow_dispatch:
 
 permissions:
@@ -31,17 +22,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Verify zero-server product boundary
+        run: python scripts/check_legacy_web_boundary.py
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 24
+          cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
 
       - name: Build static artifact studio
-        working-directory: ./qlib-dashboard
+        working-directory: qlib-dashboard
         env:
           VITE_RUNTIME_MODE: static_artifact
         run: |
@@ -54,17 +48,22 @@ jobs:
           grep -q "Alpha Engine Research Studio" dist/index.html
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.10'
+          python-version: '3.12'
+
+      - name: Install locked Python environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
 
       - name: Export static site data and research bundle
         run: |
-          pip install -e .
-          python scripts/export_static_site_data.py --output artifacts/site/data
+          uv run python scripts/export_static_site_data.py --output artifacts/site/data
           mkdir -p artifacts/site/docs
           cp docs/methodology.md artifacts/site/docs/methodology.md
-          python scripts/export_research_bundle.py \
+          uv run python scripts/export_research_bundle.py \
             --source artifacts/site \
             --output artifacts/research-bundle
 
@@ -77,6 +76,8 @@ jobs:
           cp docs/methodology.md _site/docs/methodology.md
           cp -r artifacts/research-bundle _site/bundle
           cp docs/contracts/alpha-engine-bundle.schema.json _site/docs/alpha-engine-bundle.schema.json
+          touch _site/.nojekyll
+          test -f _site/index.html
           test -f _site/data/manifest.json
           test -f _site/data/models.json
           test -f _site/docs/methodology.md
@@ -85,12 +86,14 @@ jobs:
           grep -q '"schema_version": "1.0.0"' _site/bundle/alpha-engine-bundle.json
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/configure-pages@v5
         with:
-          path: '_site/'
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
