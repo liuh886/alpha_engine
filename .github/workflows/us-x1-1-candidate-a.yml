@@ -1,0 +1,48 @@
+name: US x1.1 Candidate A Contract
+
+on:
+  pull_request:
+    branches:
+      - research/model-x1-consolidation-v1
+      - main
+    paths:
+      - "configs/models/candidates/us_x1_1_candidate_a.yaml"
+      - "configs/research_experiments/us_x1_1_candidate_a_risk_control_v1.yaml"
+      - "tests/test_us_x1_1_candidate_a_contract.py"
+      - ".github/workflows/us-x1-1-candidate-a.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: us-x1-1-candidate-a-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate candidate and risk-control contract
+        run: |
+          uv run ruff check tests/test_us_x1_1_candidate_a_contract.py
+          uv run pytest tests/test_us_x1_1_candidate_a_contract.py -q --strict-markers --tb=short
+      - name: Upload candidate contract
+        uses: actions/upload-artifact@v4
+        with:
+          name: us-x1-1-candidate-a-${{ github.run_id }}
+          path: |
+            configs/models/candidates/us_x1_1_candidate_a.yaml
+            configs/research_experiments/us_x1_1_candidate_a_risk_control_v1.yaml
+          if-no-files-found: error
+          retention-days: 90

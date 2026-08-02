@@ -1,0 +1,130 @@
+schema_version: '1.0'
+experiment_id: us_x1_1_candidate_a_risk_control_v1
+issue: 362
+parent_candidate_id: us_x1_1_candidate_a
+research_only: true
+trade_ready: false
+
+snapshot:
+  policy: immutable_artifact_bound_snapshot
+  provider_identity_sha256: 2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95
+  cutoff: '2026-07-31'
+  workflow_run: 30737322468
+  artifact_id: 8830089966
+  artifact_digest: sha256:6638e37ea77a7183253de5f96ec466c2ac0eab66c6f47d58e1040d4421d7fd70
+
+fixed_model:
+  candidate_name: xgb:daily_ranker:momentum_volatility_volume:gain7_round200_leaves31_leaf20_lr0.03
+  score_orientation: original
+  features_may_change: false
+  label_may_change: false
+  model_parameters_may_change: false
+  pool_membership_may_change: false
+
+windows:
+  development:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+  reporting_only_consumed:
+    - 2026H1
+  reporting_only_may_enter_decision: false
+  new_holdout_consumed: false
+
+baseline:
+  variant_id: top15_equal_weight
+  top_n: 15
+  construction: equal_weight
+  maximum_name_weight: 0.06666666666666667
+  gross_exposure: 1.0
+
+variants:
+  - variant_id: top20_equal_weight
+    top_n: 20
+    construction: equal_weight
+    gross_exposure: 1.0
+  - variant_id: top15_inverse_vol20_capped
+    top_n: 15
+    construction: inverse_vol20_weight
+    maximum_name_weight: 0.10
+    residual_policy: iterative_redistribution
+    gross_exposure: 1.0
+  - variant_id: top15_equal_weight_name_cap
+    top_n: 15
+    construction: equal_weight
+    maximum_name_weight: 0.08
+    residual_policy: iterative_redistribution
+    gross_exposure: 1.0
+  - variant_id: top15_sector_cap
+    top_n: 15
+    construction: equal_weight
+    maximum_sector_weight: 0.30
+    residual_policy: redistribute_to_uncapped_sectors_then_cash
+    gross_exposure: 1.0
+  - variant_id: top15_qqq_trend_overlay
+    top_n: 15
+    construction: equal_weight_with_benchmark_trend_filter
+    benchmark: QQQ
+    trend_sessions: 20
+    negative_trend_gross_exposure: 0.50
+    nonnegative_trend_gross_exposure: 1.0
+
+execution:
+  holding_sessions: 10
+  rebalance_sessions: 10
+  base_cost_bps: 20
+  cost_stress_bps:
+    - 20
+    - 40
+    - 60
+  turnover_model: cash_inclusive_one_way
+  leverage_allowed: false
+  shorting_allowed: false
+
+required_ledgers:
+  per_rebalance:
+    - date
+    - instrument
+    - score
+    - cross_sectional_rank
+    - target_weight
+    - realized_weight
+    - realized_10d_return
+    - gross_contribution
+    - cost_contribution
+    - net_contribution
+    - sector
+    - volatility_bucket
+    - benchmark_return
+    - benchmark_trend_state
+  required_attribution:
+    - top_1_5_10_security_contribution_share
+    - top_1_5_10_rebalance_contribution_share
+    - sector_contribution
+    - maximum_sector_weight
+    - leave_one_name_out_relative_excess
+    - leave_one_window_out_relative_excess
+    - 2025H1_drawdown_decomposition
+    - selection_overlap_with_candidate_a
+
+support_gate:
+  decision: risk_controlled_challenger_supported
+  require_all:
+    - worst_drawdown_improves_by_at_least_0.05_or_is_not_below_minus_0.22
+    - every_development_window_relative_excess_positive
+    - sixty_bps_compounded_relative_excess_positive
+    - strongest_positive_window_share_below_0.55
+    - top_five_security_contribution_share_materially_lower
+    - maximum_sector_weight_not_above_0.35
+
+other_decisions:
+  - baseline_economics_preferred
+  - concentration_not_controllable
+  - data_blocked
+
+version_policy:
+  automatic_model_update: false
+  may_create_x1_1: false
+  candidate_card_update_after_review: true
+  new_untouched_challenge_required: true
