@@ -1,49 +1,40 @@
-import { useState, useEffect, useLayoutEffect, Suspense } from 'react';
-import { HashRouter, Routes, Route, useLocation, Outlet, Link } from 'react-router-dom';
-import { ModelData } from './lib/data-parser';
+import { Suspense, useEffect, useLayoutEffect, useState } from 'react';
+import { HashRouter, Link, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { ChevronDown, Database, Loader2, Moon, Sun, User } from 'lucide-react';
 import type { JobEnvelope } from './api/jobsApi';
-import { ModelSelector } from './components/ModelSelector';
-import { GlobalStatusBar } from './components/GlobalStatusBar';
-import { Sidebar } from './components/Sidebar';
+import type { ModelData } from './lib/data-parser';
+import { AuthGuard } from './components/AuthGuard';
 import { ConsoleModal } from './components/ConsoleModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { GlobalStatusBar } from './components/GlobalStatusBar';
+import { ModelSelector } from './components/ModelSelector';
+import { ResearchContextBar } from './components/ResearchContextBar';
+import { Sidebar } from './components/Sidebar';
+import { Button } from './components/ui/button';
 import { Skeleton } from './components/ui/skeleton';
-import { Loader2, Bell, User, Sun, Moon, ChevronDown, Database } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { useGlobalStore } from './store/globalStore';
+import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { setAuthHeaderProvider } from './lib/api';
 import { useAuth } from './lib/auth';
-import { AuthGuard } from './components/AuthGuard';
 import { runtimeCapabilities } from './lib/runtime-capabilities';
-import { VIEW_TITLES } from './routes';
+import { routes, VIEW_TITLES } from './routes';
+import { useGlobalStore } from './store/globalStore';
 
 function PageLoader() {
-  return (
-    <div className="flex items-center justify-center h-full p-8">
-      <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
-    </div>
-  );
+  return <div className="flex min-h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary/60" /></div>;
 }
 
 function NotFound() {
   return (
-    <div className="flex flex-col items-center justify-center py-32 text-center">
-      <p className="text-6xl font-black text-muted-foreground/30 mb-4">404</p>
-      <p className="text-muted-foreground font-medium mb-6">Page not found.</p>
-      <Button asChild variant="outline" className="rounded-full px-8">
-        <Link to="/">Back to Dashboard</Link>
-      </Button>
+    <div className="research-empty-state">
+      <p className="text-6xl font-black text-muted-foreground/20">404</p>
+      <h1 className="mt-3 text-xl font-semibold">Evidence view not found</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Return to the research overview and choose a declared artifact.</p>
+      <Button asChild variant="outline" className="mt-6"><Link to="/">Back to overview</Link></Button>
     </div>
   );
 }
 
-const RUNTIME_LABELS = {
-  static_artifact: 'Static Artifact',
-  local_artifact: 'Local Artifact',
-  connected_research: 'Connected Research',
-} as const;
-
-function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, setSelectorOpen, consoleOpen, setConsoleOpen, handleDeleteModel, loading, refreshModels, refreshDataStatus, submitAndPoll }: {
+interface LayoutProps {
   models: ModelData[];
   selectedModelId: string;
   setSelectedModelId: (id: string) => void;
@@ -56,27 +47,28 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
   refreshModels: (opts?: { selectLatest?: boolean }) => Promise<ModelData[] | null>;
   refreshDataStatus: () => Promise<void>;
   submitAndPoll: (submitFn: () => Promise<JobEnvelope>, onComplete?: (status: string) => void) => Promise<JobEnvelope>;
-}) {
-  const location = useLocation();
-  const { latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, dataGeneratedAt, apiError, theme, setTheme, username, demoMode } = useGlobalStore();
-  const { logout } = useAuth();
+}
 
+function Layout(props: LayoutProps) {
+  const location = useLocation();
+  const {
+    latestCalendarDay, qualityStatus, qualityWarnings, activeJobsCount, dataGeneratedAt,
+    apiError, theme, setTheme, username,
+  } = useGlobalStore();
+  const { logout } = useAuth();
   const currentPath = location.pathname.replace(/^\//, '');
   const viewTitle = VIEW_TITLES[currentPath] ?? currentPath.replace('-', ' ');
-  const selectedModel = models.find(m => m.id === selectedModelId);
+  const selectedModel = props.models.find((model) => model.id === props.selectedModelId);
+  const showModelPicker = ['dashboard', 'models', 'compare'].includes(currentPath) && selectedModel;
 
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="research-app-shell">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="research-workspace">
         {runtimeCapabilities.backendApi && (
           <GlobalStatusBar
             latestCalendarDay={latestCalendarDay}
@@ -85,138 +77,109 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
             activeJobsCount={activeJobsCount}
             dataGeneratedAt={dataGeneratedAt}
             apiError={apiError}
-            onOpenConsole={() => setConsoleOpen(true)}
+            onOpenConsole={() => props.setConsoleOpen(true)}
           />
         )}
 
-        <header className="h-11 border-b bg-card sticky top-0 z-40 px-5 flex items-center justify-between">
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="font-semibold">{viewTitle}</span>
-            <span className="text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-              {RUNTIME_LABELS[runtimeCapabilities.mode]}
-            </span>
-            {demoMode && runtimeCapabilities.backendApi && (
-              <span className="text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                Demo Mode
-              </span>
-            )}
-            {(currentPath === 'dashboard' || currentPath === '') && selectedModel && (
-              <>
-                <div className="h-3.5 w-px bg-border" />
-                <Button variant="outline" size="sm" onClick={() => setSelectorOpen(true)} className="text-xs font-mono h-7 gap-1.5 px-2.5 border-primary/20 hover:border-primary/40 hover:bg-primary/5">
-                  <Database className="h-3 w-3 text-primary" />
-                  <span className="font-bold">{selectedModel.name}</span>
-                  {selectedModel.market && (
-                    <span className="text-[9px] uppercase font-black tracking-widest text-muted-foreground bg-muted px-1 py-0.5 rounded">
-                      {String(selectedModel.market)}
-                    </span>
-                  )}
-                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+        <header className="research-topbar">
+          <div className="min-w-0">
+            <p className="research-topbar-eyebrow">Alpha Engine / Evidence workspace</p>
+            <div className="flex min-w-0 items-center gap-3">
+              <h1 className="truncate">{viewTitle}</h1>
+              {showModelPicker && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => props.setSelectorOpen(true)}
+                  className="h-7 max-w-[320px] gap-1.5 border-primary/20 bg-background/70 text-xs"
+                >
+                  <Database className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="truncate font-medium">{selectedModel.name}</span>
+                  <span className="rounded bg-muted px-1 py-0.5 text-[9px] font-bold uppercase">{selectedModel.market}</span>
+                  <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
                 </Button>
-              </>
-            )}
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            >
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-
             {runtimeCapabilities.requiresAuthentication && (
-              <>
-                <div className="h-3.5 w-px bg-border" />
-                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Open console" onClick={() => setConsoleOpen(true)}><Bell className="h-4 w-4" /></Button>
-                <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => { if (confirm('Sign out?')) logout(); }}>
-                  <User className="h-3.5 w-3.5" />
-                  <span>{username}</span>
-                </Button>
-              </>
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => logout()}>
+                <User className="h-3.5 w-3.5" /><span>{username}</span>
+              </Button>
             )}
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-5 max-w-[1400px] mx-auto w-full">
-          {loading ? (
-            <div className="space-y-6 p-1">
-              <div className="grid grid-cols-4 gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-24 rounded-lg" />
-                ))}
-              </div>
-              <Skeleton className="h-[300px] rounded-lg" />
-              <div className="grid grid-cols-3 gap-4">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-48 rounded-lg" />
-                ))}
-              </div>
+        <ResearchContextBar />
+
+        <main className="research-main">
+          {props.loading ? (
+            <div className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-3">{Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-xl" />)}</div>
+              <Skeleton className="h-[360px] rounded-xl" />
             </div>
           ) : (
             <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
-                <Outlet context={{ models, selectedModelId, refreshModels, refreshDataStatus, submitAndPoll }} />
+                <Outlet context={{
+                  models: props.models,
+                  selectedModelId: props.selectedModelId,
+                  refreshModels: props.refreshModels,
+                  refreshDataStatus: props.refreshDataStatus,
+                  submitAndPoll: props.submitAndPoll,
+                }} />
               </Suspense>
             </ErrorBoundary>
           )}
         </main>
 
         <ModelSelector
-          models={models}
-          selectedModelId={selectedModelId}
-          onSelect={setSelectedModelId}
-          onDelete={handleDeleteModel}
+          models={props.models}
+          selectedModelId={props.selectedModelId}
+          onSelect={props.setSelectedModelId}
+          onDelete={props.handleDeleteModel}
           canDelete={runtimeCapabilities.mutations}
-          open={selectorOpen}
-          onOpenChange={setSelectorOpen}
+          open={props.selectorOpen}
+          onOpenChange={props.setSelectorOpen}
         />
 
         {runtimeCapabilities.backendApi && (
-          <ConsoleModal
-            isOpen={consoleOpen}
-            onClose={() => setConsoleOpen(false)}
-            warnings={qualityWarnings}
-          />
+          <ConsoleModal isOpen={props.consoleOpen} onClose={() => props.setConsoleOpen(false)} warnings={qualityWarnings} />
         )}
       </div>
     </div>
   );
 }
 
-import { useAppBootstrap } from './hooks/useAppBootstrap';
-import { routes } from './routes';
-
 function App() {
   const { authHeader } = useAuth();
-
   useLayoutEffect(() => {
     setAuthHeaderProvider(authHeader);
     return () => setAuthHeaderProvider(null);
   }, [authHeader]);
-
-  return (
-    <AuthGuard>
-      <AuthenticatedApp />
-    </AuthGuard>
-  );
+  return <AuthGuard><AuthenticatedApp /></AuthGuard>;
 }
 
 function AuthenticatedApp() {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
-
   const {
-    loading,
-    models,
-    selectedModelId,
-    setSelectedModelId,
-    deleteModel,
-    fetchModels,
-    loadDataStatus,
-    jobs,
+    loading, models, selectedModelId, setSelectedModelId, deleteModel,
+    fetchModels, loadDataStatus, jobs,
   } = useAppBootstrap();
 
   const handleDeleteModel = async (id: string) => {
-    if (!runtimeCapabilities.mutations) return;
-    await deleteModel(id);
+    if (runtimeCapabilities.mutations) await deleteModel(id);
   };
 
   return (
@@ -238,9 +201,9 @@ function AuthenticatedApp() {
             submitAndPoll={jobs.submitAndPoll}
           />
         }>
-          {routes.map(r => {
-            const Component = r.component;
-            return <Route key={r.path} path={r.path} element={<Component models={models} />} />;
+          {routes.map((route) => {
+            const Component = route.component;
+            return <Route key={route.path} path={route.path} element={<Component models={models} />} />;
           })}
           <Route path="*" element={<NotFound />} />
         </Route>
