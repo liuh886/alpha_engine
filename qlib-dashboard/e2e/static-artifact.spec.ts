@@ -80,7 +80,7 @@ test('static studio opens without authentication or backend APIs', async ({ page
 
   await page.goto('/#/data');
   await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();
-  await expect(page.getByText('2026-07-31').first()).toBeVisible();
+  await expect(page.locator('main').getByText('2026-07-31', { exact: true })).toBeVisible();
 
   await page.goto('/#/system');
   await expect(page.getByRole('heading', { name: 'Evidence view not found' })).toBeVisible();
