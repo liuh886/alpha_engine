@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Analyze a complete US x1.0 run for cost, window and selection robustness."""
+"""Analyze a complete US x1.0 run without weakening provider identity gates."""
 
 from __future__ import annotations
 
@@ -12,9 +12,7 @@ from typing import Any
 
 import yaml
 
-DEFAULT_CONTRACT = Path(
-    "configs/research_experiments/us_x1_0_robustness_v1.yaml"
-)
+DEFAULT_CONTRACT = Path("configs/research_experiments/us_x1_0_robustness_v1.yaml")
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -32,8 +30,7 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _window_label(path: Path) -> str:
-    stem = path.stem
-    label = stem.rsplit("_", 1)[-1]
+    label = path.stem.rsplit("_", 1)[-1]
     if len(label) != 6 or label[4] != "H":
         raise ValueError(f"Cannot derive half-year label from {path.name}")
     return label
@@ -79,8 +76,8 @@ def _cost_stress(
     cost_bps_values: list[int],
     base_cost_bps: int,
 ) -> list[dict[str, Any]]:
-    output: list[dict[str, Any]] = []
     benchmark = _compound([float(row["benchmark_return"]) for row in rows])
+    output: list[dict[str, Any]] = []
     for cost_bps in cost_bps_values:
         multiplier = cost_bps / base_cost_bps
         stressed_window_returns = [
@@ -102,6 +99,11 @@ def _cost_stress(
 
 
 def _render_markdown(report: dict[str, Any]) -> str:
+    provider_state = (
+        "canonical provider match"
+        if report["provider_identity_match"]
+        else "NONCANONICAL evidence revision; version decision blocked"
+    )
     lines = [
         "# US x1.0 robustness experiment",
         "",
@@ -111,10 +113,11 @@ def _render_markdown(report: dict[str, Any]) -> str:
         "## Identity",
         "",
         f"- Parent model: `{report['parent_model_id']}`",
-        f"- Provider identity: `{report['provider_identity_sha256']}`",
+        f"- Expected provider: `{report['expected_provider_identity_sha256']}`",
+        f"- Observed provider: `{report['observed_provider_identity_sha256']}`",
+        f"- Provider status: **{provider_state}**",
         f"- Candidate: `{report['candidate_name']}` / `{report['orientation']}`",
         "- Effective XGBoost learning rate: `0.05`",
-        "- Development windows: 2024H1, 2024H2, 2025H1, 2025H2",
         "- 2026H1 is reporting-only and was not used in the decision.",
         "",
         "## Development windows",
@@ -146,8 +149,8 @@ def _render_markdown(report: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "The stress scales the recorded cumulative 20 bps costs linearly. "
-            "It is not an order-book or market-impact simulation.",
+            "The stress scales recorded cumulative 20 bps costs linearly; it is "
+            "not an order-book or market-impact simulation.",
             "",
             "## Concentration and tail risk",
             "",
@@ -160,8 +163,8 @@ def _render_markdown(report: dict[str, Any]) -> str:
             f"- Recurring names: "
             f"{', '.join(report['all_window_recurring_names']) or 'none'}.",
             "",
-            "Final Top-15 recurrence is a selection-concentration diagnostic; "
-            "it is not a complete security-contribution ledger.",
+            "Final Top-15 recurrence is a selection-concentration diagnostic, "
+            "not a complete security-contribution ledger.",
             "",
             "## Leave-one-window-out relative excess",
             "",
@@ -170,8 +173,7 @@ def _render_markdown(report: dict[str, Any]) -> str:
     for label, value in report["leave_one_window_out_relative_excess"].items():
         lines.append(f"- Excluding {label}: {value:.2%}")
     lines.extend(["", "## Blocking reasons", ""])
-    for reason in report["blocking_reasons"]:
-        lines.append(f"- {reason}")
+    lines.extend(f"- {reason}" for reason in report["blocking_reasons"])
     if not report["blocking_reasons"]:
         lines.append("- None")
     lines.extend(
@@ -181,8 +183,9 @@ def _render_markdown(report: dict[str, Any]) -> str:
             "",
             report["interpretation"],
             "",
-            "This experiment cannot mutate US x1.0 or create US x1.1 without "
-            "a reviewed design and one new untouched challenge window.",
+            "The report may describe a noncanonical evidence revision, but it "
+            "cannot mutate US x1.0 or create US x1.1. A reviewed design and a new "
+            "untouched challenge window remain mandatory.",
         ]
     )
     return "\n".join(lines) + "\n"
@@ -208,12 +211,11 @@ def build_report(
     runtime = run_status.get("runtime_metadata")
     if not isinstance(runtime, dict):
         raise ValueError("run_status has no runtime_metadata")
-    provider_identity = str(runtime.get("provider_identity_sha256", ""))
-    required_provider = str(contract["provider"]["required_identity_sha256"])
-    if provider_identity != required_provider:
-        raise ValueError(
-            f"Provider identity mismatch: {provider_identity} != {required_provider}"
-        )
+    observed_provider = str(runtime.get("provider_identity_sha256", ""))
+    expected_provider = str(contract["provider"]["required_identity_sha256"])
+    if not observed_provider:
+        raise ValueError("Full backtest did not record provider identity")
+    provider_match = observed_provider == expected_provider
 
     candidate_name = str(contract["candidate"]["candidate_name"])
     orientation = str(contract["candidate"]["orientation"])
@@ -260,15 +262,18 @@ def build_report(
             }
         )
 
-    cost_bps_values = [int(item) for item in contract["stress_tests"]["cost_bps"]]
-    base_cost_bps = int(model["strategy"]["cost_bps"])
-    cost_stress = _cost_stress(development_rows, cost_bps_values, base_cost_bps)
-
+    cost_stress = _cost_stress(
+        development_rows,
+        [int(item) for item in contract["stress_tests"]["cost_bps"]],
+        int(model["strategy"]["cost_bps"]),
+    )
     positive_excess = [
         row["excess_return"]
         for row in development_rows
         if row["excess_return"] > 0
     ]
+    if not positive_excess:
+        raise ValueError("No positive development excess window exists")
     strongest_share = max(positive_excess) / sum(positive_excess)
     worst_drawdown = min(row["max_drawdown"] for row in development_rows)
 
@@ -280,9 +285,7 @@ def build_report(
         leave_one_out[excluded] = _relative(strategy, benchmark)
 
     recurrence = Counter(
-        name
-        for row in development_rows
-        for name in row["top_selected_stocks"]
+        name for row in development_rows for name in row["top_selected_stocks"]
     )
     recurring_names = sorted(
         name
@@ -292,6 +295,11 @@ def build_report(
 
     blocks = contract["block_conditions"]
     blocking_reasons: list[str] = []
+    if not provider_match:
+        blocking_reasons.append(
+            "Observed provider identity differs from the canonical US x1.0 "
+            "evidence snapshot; diagnostics are a noncanonical evidence revision."
+        )
     if worst_drawdown < float(blocks["worst_development_drawdown_below"]):
         blocking_reasons.append(
             f"Worst development drawdown {worst_drawdown:.2%} is below "
@@ -302,8 +310,8 @@ def build_report(
     )
     if len(recurring_names) >= recurrence_limit:
         blocking_reasons.append(
-            f"{len(recurring_names)} names appear in every development "
-            f"final Top-15 list; block threshold is {recurrence_limit}."
+            f"{len(recurring_names)} names appear in every development final "
+            f"Top-15 list; block threshold is {recurrence_limit}."
         )
     share_limit = float(blocks["maximum_strongest_positive_window_share"])
     if strongest_share > share_limit:
@@ -312,13 +320,19 @@ def build_report(
             f"positive simple excess; limit is {share_limit:.2%}."
         )
 
-    sixty_bps = next(
-        row for row in cost_stress if int(row["cost_bps"]) == 60
-    )
+    sixty_bps = next(row for row in cost_stress if int(row["cost_bps"]) == 60)
     economics_failed = sixty_bps["compounded_relative_excess"] <= 0 or any(
         value <= 0 for value in leave_one_out.values()
     )
-    if economics_failed:
+    if not provider_match:
+        decision = "data_blocked"
+        interpretation = (
+            "The current promotion-eligible provider produced a complete "
+            "noncanonical evidence revision. Its diagnostics are retained, but "
+            "the provider mismatch blocks any US x1.1 decision until snapshot "
+            "drift is attributed or the canonical snapshot is recovered."
+        )
+    elif economics_failed:
         decision = "economics_not_cost_robust"
         interpretation = (
             "US x1.0 does not retain positive benchmark-relative economics "
@@ -327,10 +341,9 @@ def build_report(
     elif blocking_reasons:
         decision = "tail_risk_or_concentration_blocks_x1_1"
         interpretation = (
-            "US x1.0 remains strongly positive under 60 bps and every "
-            "leave-one-window-out test, but tail risk and recurring selections "
-            "block immediate x1.1 design. The next experiment should target "
-            "position/sector concentration and drawdown control, not a broad grid."
+            "US x1.0 remains positive under 60 bps and every leave-one-window-out "
+            "test, but tail risk or recurring selections block immediate x1.1 "
+            "design. The next experiment must target the diagnosed mechanism."
         )
     else:
         decision = "robustness_supported_for_x1_1_design"
@@ -355,7 +368,7 @@ def build_report(
         for label in reporting_labels
     }
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "experiment_id": contract["experiment_id"],
         "parent_model_id": contract["parent_model_id"],
         "research_only": True,
@@ -363,7 +376,12 @@ def build_report(
         "decision": decision,
         "candidate_name": candidate_name,
         "orientation": orientation,
-        "provider_identity_sha256": provider_identity,
+        "expected_provider_identity_sha256": expected_provider,
+        "observed_provider_identity_sha256": observed_provider,
+        "provider_identity_match": provider_match,
+        "evidence_revision_scope": (
+            "canonical" if provider_match else "noncanonical_provider_revision"
+        ),
         "development_windows": development_rows,
         "reporting_only_consumed_holdout": reporting_only,
         "cost_stress_method": contract["stress_tests"]["method"],
@@ -392,14 +410,13 @@ def main() -> None:
     )
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
-
     args.output_dir.mkdir(parents=True, exist_ok=True)
     try:
         report = build_report(args.run_dir, args.contract, args.model_config)
         exit_code = 0
     except Exception as exc:
         report = {
-            "schema_version": "1.0",
+            "schema_version": "1.1",
             "experiment_id": "us_x1_0_robustness_v1",
             "research_only": True,
             "trade_ready": False,
@@ -407,15 +424,12 @@ def main() -> None:
             "error": f"{type(exc).__name__}: {exc}",
         }
         exit_code = 2
-
     (args.output_dir / "robustness_report.json").write_text(
-        json.dumps(report, indent=2) + "\n",
-        encoding="utf-8",
+        json.dumps(report, indent=2) + "\n", encoding="utf-8"
     )
     if exit_code == 0:
         (args.output_dir / "robustness_report.md").write_text(
-            _render_markdown(report),
-            encoding="utf-8",
+            _render_markdown(report), encoding="utf-8"
         )
     print(json.dumps(report, indent=2))
     raise SystemExit(exit_code)
