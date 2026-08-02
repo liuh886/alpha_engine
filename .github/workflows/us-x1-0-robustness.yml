@@ -3,7 +3,7 @@ name: US x1.0 Robustness Experiment
 on:
   pull_request:
     branches:
-      - research/model-x1-baselines-v1
+      - main
     paths:
       - "configs/research_experiments/us_x1_0_robustness_v1.yaml"
       - "scripts/analyze_us_x1_0_robustness.py"
