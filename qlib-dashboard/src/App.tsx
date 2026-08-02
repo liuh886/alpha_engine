@@ -7,6 +7,7 @@ import { AuthGuard } from './components/AuthGuard';
 import { ConsoleModal } from './components/ConsoleModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { GlobalStatusBar } from './components/GlobalStatusBar';
+import { MobileNavigation } from './components/MobileNavigation';
 import { ModelSelector } from './components/ModelSelector';
 import { ResearchContextBar } from './components/ResearchContextBar';
 import { Sidebar } from './components/Sidebar';
@@ -16,7 +17,7 @@ import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { setAuthHeaderProvider } from './lib/api';
 import { useAuth } from './lib/auth';
 import { runtimeCapabilities } from './lib/runtime-capabilities';
-import { routes, VIEW_TITLES } from './routes';
+import { isRuntimeVisible, routes } from './routes';
 import { useGlobalStore } from './store/globalStore';
 
 function PageLoader() {
@@ -28,7 +29,7 @@ function NotFound() {
     <div className="research-empty-state">
       <p className="text-6xl font-black text-muted-foreground/20">404</p>
       <h1 className="mt-3 text-xl font-semibold">Evidence view not found</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Return to the research overview and choose a declared artifact.</p>
+      <p className="mt-2 text-sm text-muted-foreground">This route is not available in the active runtime. Return to the research overview and choose a declared artifact.</p>
       <Button asChild variant="outline" className="mt-6"><Link to="/">Back to overview</Link></Button>
     </div>
   );
@@ -57,9 +58,10 @@ function Layout(props: LayoutProps) {
   } = useGlobalStore();
   const { logout } = useAuth();
   const currentPath = location.pathname.replace(/^\//, '');
-  const viewTitle = VIEW_TITLES[currentPath] ?? currentPath.replace('-', ' ');
+  const declaredRoute = routes.find((route) => route.path === currentPath);
+  const viewTitle = declaredRoute && isRuntimeVisible(declaredRoute) ? declaredRoute.title : 'Unavailable route';
   const selectedModel = props.models.find((model) => model.id === props.selectedModelId);
-  const showModelPicker = ['dashboard', 'models', 'compare'].includes(currentPath) && selectedModel;
+  const showModelPicker = Boolean(declaredRoute && isRuntimeVisible(declaredRoute) && ['dashboard', 'models', 'compare'].includes(currentPath) && selectedModel);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -86,7 +88,7 @@ function Layout(props: LayoutProps) {
             <p className="research-topbar-eyebrow">Alpha Engine / Evidence workspace</p>
             <div className="flex min-w-0 items-center gap-3">
               <h1 className="truncate">{viewTitle}</h1>
-              {showModelPicker && (
+              {showModelPicker && selectedModel && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -103,6 +105,7 @@ function Layout(props: LayoutProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            <MobileNavigation />
             <Button
               variant="ghost"
               size="icon"
@@ -201,7 +204,7 @@ function AuthenticatedApp() {
             submitAndPoll={jobs.submitAndPoll}
           />
         }>
-          {routes.map((route) => {
+          {routes.filter(isRuntimeVisible).map((route) => {
             const Component = route.component;
             return <Route key={route.path} path={route.path} element={<Component models={models} />} />;
           })}
