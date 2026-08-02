@@ -102,6 +102,7 @@ jobs:
           test -f _site/bundle/data/models.json
           grep -q '"schema_version": "1.0.0"' _site/bundle/alpha-engine-bundle.json
           grep -q '"source": "repository_research_store"' _site/data/manifest.json
+          grep -q '"id": "us_x1_1"' _site/data/models.json
           grep -q '"id": "us_x1_0"' _site/data/models.json
           grep -q '"id": "cn_x1_0"' _site/data/models.json
           ! grep -q 'metadata_db_missing' _site/bundle/alpha-engine-bundle.json
