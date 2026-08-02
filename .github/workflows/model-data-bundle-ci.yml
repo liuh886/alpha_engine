@@ -9,8 +9,10 @@ on:
       - "src/data/model_data_bundle.py"
       - "src/artifacts/research_bundle.py"
       - "scripts/data/build_model_data_bundle.py"
+      - "scripts/data/check_model_data_profile.py"
       - "scripts/export_research_bundle.py"
       - "tests/test_model_data_bundle.py"
+      - "tests/test_model_data_profile_gate.py"
       - "tests/test_model_data_bundle_research_export.py"
       - "docs/research/model_data_bundle_v1.md"
   push:
@@ -21,8 +23,10 @@ on:
       - "src/data/model_data_bundle.py"
       - "src/artifacts/research_bundle.py"
       - "scripts/data/build_model_data_bundle.py"
+      - "scripts/data/check_model_data_profile.py"
       - "scripts/export_research_bundle.py"
       - "tests/test_model_data_bundle.py"
+      - "tests/test_model_data_profile_gate.py"
       - "tests/test_model_data_bundle_research_export.py"
       - "docs/research/model_data_bundle_v1.md"
   workflow_dispatch:
@@ -54,7 +58,9 @@ jobs:
           src/data/model_data_bundle.py
           src/artifacts/research_bundle.py
           scripts/data/build_model_data_bundle.py
+          scripts/data/check_model_data_profile.py
           tests/test_model_data_bundle.py
+          tests/test_model_data_profile_gate.py
           tests/test_model_data_bundle_research_export.py
       - name: Mypy model data paths
         run: >-
@@ -62,10 +68,12 @@ jobs:
           src/data/model_data_bundle.py
           src/artifacts/research_bundle.py
           scripts/data/build_model_data_bundle.py
+          scripts/data/check_model_data_profile.py
       - name: Run model data tests
         run: >-
           uv run pytest
           tests/test_model_data_bundle.py
+          tests/test_model_data_profile_gate.py
           tests/test_model_data_bundle_research_export.py
           tests/test_research_bundle.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
@@ -151,6 +159,26 @@ jobs:
           --component references.qqqi_qqq_tqqq_reference_bundle_v1:etf_reference_bundle:artifacts/model-data-fixtures/etf.json:us
           --output-root artifacts/data/model_data_bundle_v1
           --frontend-data-dir artifacts/site/data
+      - name: Enforce ready profiles before training
+        run: |
+          uv run python scripts/data/check_model_data_profile.py \
+            --bundle-root artifacts/data/model_data_bundle_v1 \
+            --profile us_selected_price_only_v1 \
+            --expected-pool-id us_selected_equities_v2 \
+            --maximum-evidence-cutoff 2026-07-31 \
+            --output artifacts/data/model_data_bundle_v1/us-training-gate.json
+          uv run python scripts/data/check_model_data_profile.py \
+            --bundle-root artifacts/data/model_data_bundle_v1 \
+            --profile cn_selected_price_only_v1 \
+            --expected-pool-id cn_selected_equities_v3 \
+            --maximum-evidence-cutoff 2026-07-31 \
+            --output artifacts/data/model_data_bundle_v1/cn-training-gate.json
+          uv run python scripts/data/check_model_data_profile.py \
+            --bundle-root artifacts/data/model_data_bundle_v1 \
+            --profile qqqi_qqq_tqqq_rotation_v1 \
+            --expected-pool-id qqqi_qqq_tqqq_reference_bundle_v1 \
+            --maximum-evidence-cutoff 2026-07-31 \
+            --output artifacts/data/model_data_bundle_v1/etf-training-gate.json
       - name: Assemble research bundle fixture
         run: |
           uv run python - <<'PY'
