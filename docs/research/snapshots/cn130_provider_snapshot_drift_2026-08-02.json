@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0",
+  "issue": 345,
+  "research_only": true,
+  "trade_ready": false,
+  "old_evidence": {
+    "pull_request": 289,
+    "workflow_run": 30707914152,
+    "artifact_id": 8820979579,
+    "artifact_digest": "sha256:9f6cafde54fe4431f26f12145053611a72c2406b3333b12367f7b485624fe22a",
+    "cutoff": "2026-06-18",
+    "provider_identity_sha256": "83f5251f77851e8c4766f086db71a7ee456a24ee7c1938f971228f04cf7779f2",
+    "refresh_manifest_sha256": "043d72ad481da3cf2d15dee4b61c39046e3a32a58d45b51c6cbed1d1ec583d81",
+    "provider_manifest_sha256": "9be772dabaa60b4d1ed52f6894be950801d7b87e1d809f7e315868b0c97af343",
+    "calendar_sessions": 1321,
+    "calendar_first": "2021-01-04",
+    "calendar_last": "2026-06-18"
+  },
+  "new_evidence": {
+    "pull_request": 344,
+    "workflow_run": 30733728747,
+    "artifact_id": 8828889722,
+    "artifact_digest": "sha256:8696b9d12a11b86f8732b571ea225fed3e6c23f27a29f977a7ed925d3bf08307",
+    "cutoff": "2026-07-31",
+    "provider_identity_sha256": "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8",
+    "refresh_manifest_sha256": "7a2ac7da725b4f01713525246402d267f605835c570274917fc04f0c64a6f8ef",
+    "provider_manifest_sha256": "0c6769a9a4119a7c8bd1797f85bafec6a582964b1aacf4945b007f4e3ef607bd",
+    "calendar_sessions": 1351,
+    "calendar_first": "2021-01-04",
+    "calendar_last": "2026-07-31"
+  },
+  "manifest_findings": {
+    "same_market": true,
+    "same_pool_id": true,
+    "same_symbol_set": true,
+    "same_selected_provider_for_all_symbols": true,
+    "selected_provider": "akshare_sina",
+    "same_first_date_for_all_131_files": true,
+    "same_before_snapshot_inventory": true,
+    "row_delta_for_all_131_files": 30,
+    "full_file_hash_changed_count": 131,
+    "historical_prefix_hash_available_count": 0,
+    "raw_or_qlib_bar_files_present_in_artifacts": false
+  },
+  "exact_candidate": "xgb:daily_ranker:cn_balanced_ohlcv:gain5_round100_leaves31_leaf10_lr0.05/xgb_rank_ndcg/original",
+  "candidate_evidence": {
+    "old_windows": 4,
+    "new_windows": 4,
+    "old_compounded_total_return": 0.6860128616872052,
+    "new_compounded_total_return": 0.5890991376622334,
+    "old_compounded_benchmark_return": 0.40288572821392776,
+    "new_compounded_benchmark_return": 0.40288572821392776,
+    "old_compounded_relative_excess_return": 0.2018176732282666,
+    "new_compounded_relative_excess_return": 0.13273597820784855,
+    "relative_excess_delta": -0.06908169502041805,
+    "old_worst_drawdown": -0.16116,
+    "new_worst_drawdown": -0.191008
+  },
+  "decision": {
+    "status": "unexplained_provider_drift_blocking",
+    "reason": "The artifacts prove identical membership/provider identity and a 30-row extension, but contain neither overlapping raw bars nor historical-prefix hashes. Full-file hash changes cannot distinguish append-only data from qfq historical revisions or build nondeterminism.",
+    "further_cn_model_search_authorized": false,
+    "automatic_historical_result_restatement_authorized": false,
+    "both_performance_results_remain_snapshot_specific": true
+  }
+}
