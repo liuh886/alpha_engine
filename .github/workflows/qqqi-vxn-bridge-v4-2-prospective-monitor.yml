@@ -5,11 +5,18 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/qqqi-vxn-bridge-v4-2-prospective-monitor.yml"
+      - "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
       - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
       - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor.yaml"
+      - "scripts/data/build_etf_reference_bundle.py"
       - "scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py"
+      - "src/data/adapters/tiingo_adapter.py"
+      - "src/data/etf_reference_bundle.py"
+      - "src/research/etf_strategy_data.py"
       - "src/research/vxn_bridge_allocation_experiment.py"
       - "src/research/vxn_prospective_monitor.py"
+      - "tests/test_tiingo_adapter.py"
+      - "tests/test_etf_reference_bundle.py"
       - "tests/test_vxn_bridge_allocation_experiment.py"
       - "tests/test_vxn_bridge_prospective_monitor.py"
       - "docs/research/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitoring.md"
@@ -23,7 +30,9 @@ permissions:
 jobs:
   prospective-monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,45 +43,56 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Ruff lint bridge monitor paths
+      - name: Ruff lint bridge monitor and ETF data paths
         run: >-
           uv run ruff check
+          src/data/adapters/tiingo_adapter.py
+          src/data/etf_reference_bundle.py
+          src/research/etf_strategy_data.py
           src/research/vxn_bridge_allocation_experiment.py
+          scripts/data/build_etf_reference_bundle.py
           scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py
+          tests/test_tiingo_adapter.py
+          tests/test_etf_reference_bundle.py
           tests/test_vxn_bridge_allocation_experiment.py
           tests/test_vxn_bridge_prospective_monitor.py
-      - name: Mypy focused bridge monitor paths
+      - name: Mypy focused bridge monitor and ETF data paths
         run: >-
           uv run mypy --follow-imports=skip
+          src/data/adapters/tiingo_adapter.py
+          src/data/etf_reference_bundle.py
+          src/research/etf_strategy_data.py
           src/research/vxn_bridge_allocation_experiment.py
+          scripts/data/build_etf_reference_bundle.py
           scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py
-      - name: Run bridge monitor and inherited tests
+      - name: Run bridge monitor and ETF data tests
         run: >-
           uv run pytest
+          tests/test_tiingo_adapter.py
+          tests/test_etf_reference_bundle.py
           tests/test_vxn_bridge_prospective_monitor.py
           tests/test_vxn_bridge_allocation_experiment.py
           tests/test_vxn_prospective_monitor.py
           tests/test_vxn_leverage_overlay_experiment.py
           tests/test_strategy_experiment_journal.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Compile bridge monitor modules
-        run: |
-          uv run python -m py_compile \
-            src/research/vxn_bridge_allocation_experiment.py \
-            scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py \
-            tests/test_vxn_bridge_allocation_experiment.py \
-            tests/test_vxn_bridge_prospective_monitor.py
+      - name: Build governed ETF reference bundle
+        run: >-
+          uv run python scripts/data/build_etf_reference_bundle.py
+          --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
       - name: Run frozen side-by-side prospective monitor
         run: >-
           uv run python scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py
+          --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
           --output-dir artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor
           --strategy-run-dir artifacts/strategy_runs
-      - name: Upload prospective evidence and run record
+      - name: Upload ETF data, prospective evidence and run record
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qqqi-vxn-bridge-v4-2-prospective-${{ github.run_id }}
           path: |
+            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
             artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor
             artifacts/strategy_runs/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor
           if-no-files-found: warn

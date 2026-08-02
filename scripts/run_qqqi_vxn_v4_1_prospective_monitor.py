@@ -15,7 +15,7 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from src.research.etf_rotation_experiment import fetch_adjusted_daily_bars
+from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
 from src.research.strategy_experiment_journal import write_strategy_run_record
 from src.research.vix_rotation_experiment import (
     config_from_contract,
@@ -56,6 +56,12 @@ def main() -> int:
     )
     parser.add_argument("--end-date", default=None)
     parser.add_argument(
+        "--etf-data-bundle",
+        type=Path,
+        default=None,
+        help="Governed QQQ/QQQI/TQQQ bundle; VIX/VXN remain direct references.",
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path(
@@ -80,10 +86,11 @@ def main() -> int:
         boundaries["vix_symbol"],
         boundaries["vxn_symbol"],
     ]
-    bars, coverage = fetch_adjusted_daily_bars(
+    bars, coverage, data_identity = fetch_governed_etf_strategy_bars(
         symbols=list(dict.fromkeys(symbols)),
         start=base_contract["data"]["start_date"],
         end=args.end_date or base_contract["data"].get("end_date"),
+        bundle_dir=args.etf_data_bundle,
     )
     full_metrics, results, prepared, retrospective_diagnostics = (
         run_vxn_leverage_overlay_comparison(bars, base_contract)
@@ -144,6 +151,7 @@ def main() -> int:
             if not results["rotation_vxn_leverage_v4_1_75"].daily.empty
             else None
         ),
+        "data_identity": data_identity,
         "prospective_metrics": prospective_metrics,
         "prospective_vxn_state_difference_count": int(len(state_differences)),
         "latest_snapshot": snapshot,
@@ -157,6 +165,7 @@ def main() -> int:
             "Only returns dated on or after 2026-08-01 are labelled prospective.",
             "The v4.1 contract is unchanged and no rejected factor is active.",
             "Full-history recomputation is context only, not new prospective evidence.",
+            "QQQ, QQQI and TQQQ use the declared governed bundle when supplied.",
             "This workflow cannot mark the strategy trade ready or promote it.",
         ],
     }
@@ -174,7 +183,7 @@ def main() -> int:
 
     output_files = sorted(path for path in output.iterdir() if path.is_file())
     manifest = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "prospective_monitoring": True,
         "monitoring_start_date": monitoring_start,
         "research_only": True,
@@ -183,6 +192,7 @@ def main() -> int:
         "monitor_contract_sha256": _sha256(args.monitor_contract),
         "base_contract": str(base_contract_path),
         "base_contract_sha256": _sha256(base_contract_path),
+        "data_identity": data_identity,
         "outputs": {path.name: _sha256(path) for path in output_files},
     }
     manifest_path = output / "evidence_manifest.json"
@@ -194,7 +204,7 @@ def main() -> int:
     created = datetime.now(timezone.utc).replace(microsecond=0)
     run_id = f"{created.strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
     record = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "experiment_id": monitor_contract["experiment_id"],
         "parent_experiment_id": monitor_contract["parent_experiment_id"],
         "run_id": run_id,
@@ -214,7 +224,7 @@ def main() -> int:
             "no_parameter_change": True,
         },
         "data": {
-            "provider": base_contract["data"]["provider"],
+            **data_identity,
             "latest_data_date": summary["latest_data_date"],
             "latest_economic_return_date": summary["latest_economic_return_date"],
         },
