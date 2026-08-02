@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 decision_date: "2026-08-02"
 strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
 research_only: true
@@ -11,9 +11,9 @@ current_baseline:
   decision: retain_unchanged
   reason: >-
     v4.2 remains the strongest general-purpose architecture under the frozen
-    signal trace and 10 bps cost convention. Later state-2 confirmation and
-    daily-close tail-control experiments did not meet chronological and
-    event-consistency requirements.
+    signal trace and 10 bps cost convention. Later state-2 confirmation,
+    daily-close tail control and SGOV recovery-release experiments did not meet
+    the full evidence standard for replacement or a second actionable signal.
 
 historical_comparator:
   experiment_id: qqqi_qqq_tqqq_vxn_leverage_v4_1
@@ -45,6 +45,59 @@ portfolio_profiles:
       early and late history, but median recovery lag exceeded the predeclared
       30-session limit and one major episode remained unresolved.
 
+recovery_release_hypotheses:
+  qqqi_release_on_state_1:
+    decision: rejected_as_promoted_challenger
+    reason: >-
+      Immediate release from SGOV to QQQI shortened typical recovery but lost
+      late-sample CAGR versus the static blend, exceeded the allowed CAGR
+      sacrifice versus v4.2, and reduced protection in the current unresolved
+      major drawdown.
+  tqqq_release_on_precursor:
+    role: deferred_shadow_hypothesis
+    structure: >-
+      While executed state remains 1, replace the 25% SGOV sleeve with 25%
+      TQQQ only when shock memory, medium repair and VIX normalization are true
+      and VXN is not stressed. Formal state 2 remains 25% QQQ / 75% TQQQ.
+    evidence:
+      report: docs/research/qqqi_qqq_tqqq_v4_2_sgov_recovery_release_result_2026-08-02.md
+      snapshot: docs/research/snapshots/qqqi_v4_2_sgov_recovery_release_2026-08-02.json
+      workflow_run: 30735777927
+      artifact_id: 8829513797
+      artifact_digest: sha256:dc631ede180e2dff39fc4094fdca049c65551ef13cb6b3cd66c115a35e7e733f
+    findings:
+      cagr: 0.311978
+      sharpe: 1.472082
+      max_drawdown: -0.173533
+      precursor_events: 3
+      precursor_sessions: 6
+      precursor_event_positive_rate: 1.00
+      largest_event_benefit_share: 0.598688
+      early_cagr_delta_vs_static_blended_pp: 2.022460
+      late_cagr_delta_vs_static_blended_pp: 0.999496
+      median_major_trough_protection_pp: 4.376768
+      median_resolved_recovery_lag_sessions: -0.5
+      unresolved_major_episode_count: 1
+    prospective_challenger_authorized: false
+    actionable_alert_authorized: false
+    reason: >-
+      It is the strongest controlled release variant and passes every completed
+      economic and chronological check, but only three precursor events exist
+      and one major drawdown remains unresolved. It may be logged as a
+      non-actionable shadow field, not used for target weights or Telegram
+      trading instructions.
+    reconsider_only_after:
+      additional_prospective_precursor_events: 3
+      total_precursor_events_minimum: 6
+      unresolved_major_episode: resolved_or_formally_censored
+      rule: all_conditions_required
+  staged_qqqi_then_tqqq_release:
+    decision: rejected_as_promoted_challenger
+    reason: >-
+      The combined rule improved headline CAGR and drawdown but inherited the
+      QQQI-release late-sample weakness and failed to preserve positive
+      protection in all five major troughs.
+
 closed_retrospective_directions:
   - bridge_weight_search
   - sgov_weight_search
@@ -53,11 +106,19 @@ closed_retrospective_directions:
   - vix_vxn_threshold_search
   - moving_average_period_search
   - daily_close_state2_volatility_scaling
+  - recovery_release_weight_search
+  - recovery_precursor_threshold_search
+  - recovery_precursor_persistence_search
 
 active_next_stage:
   issue: 348
   name: prospective_v4_2_alert_and_execution_evidence
   model_changes_authorized: false
+  shadow_fields_allowed:
+    - tqqq_release_precursor_boolean
+    - precursor_feature_values
+    - hypothetical_25_percent_tqqq_allocation
+    - shadow_outcomes_without_actionable_alert
   required_records:
     - signal_and_governed_data_dates
     - github_and_telegram_delivery_status
