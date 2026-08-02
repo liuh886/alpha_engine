@@ -9,6 +9,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from src.artifacts.repository_research_store import (
+    DEFAULT_CATALOG,
+    RepositoryResearchStoreError,
+    export_repository_research_data,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_METADATA_DB = PROJECT_ROOT / "artifacts" / "metadata" / "metadata.db"
 
@@ -29,11 +35,7 @@ def _write_json(path: Path, payload: Any) -> None:
 
 
 def _write_blocked_empty_export(market: str, output_dir: Path) -> None:
-    """Write a truthful, bundle-compatible export when Pages has no research DB.
-
-    This path is deliberately opt-in. It publishes no model or performance evidence
-    and marks promotion as blocked instead of manufacturing demo results.
-    """
+    """Write a truthful empty export for an explicitly requested legacy DB source."""
 
     _write_json(output_dir / "models.json", [])
     _write_json(output_dir / "arena.json", {"arena_name": "N/A", "leaderboard": []})
@@ -46,13 +48,16 @@ def _write_blocked_empty_export(market: str, output_dir: Path) -> None:
             "evidence_cutoff": None,
             "snapshot_id": None,
             "market": market,
+            "source": "metadata_db",
             "stats": {"total_models": 0, "total_reports": 0},
             "warnings": [
-                "The published Pages build has no repository-backed metadata database.",
-                "Open a verified local Alpha Engine bundle to review research evidence.",
+                "The explicitly selected metadata database is unavailable.",
+                "Use the repository research store for durable published evidence.",
             ],
-            "blocked_gates": ["metadata_db_missing", "published_evidence_unavailable"],
+            "blocked_gates": ["metadata_db_missing"],
             "promotion_decision": "blocked",
+            "research_only": True,
+            "trade_ready": False,
         },
     )
 
@@ -64,6 +69,12 @@ def export_data(
     db_path: Path = DEFAULT_METADATA_DB,
     allow_empty: bool = False,
 ) -> bool:
+    """Export the legacy local SQLite index.
+
+    This function remains for migration and local inspection only. Repository-backed
+    evidence is the default CLI source and the only supported Pages source.
+    """
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not db_path.exists():
@@ -78,14 +89,13 @@ def export_data(
     conn.row_factory = sqlite3.Row
 
     try:
-        # 1. Export Models
-        print("Exporting models...")
+        print("Exporting models from legacy metadata DB...")
         models: list[dict[str, Any]] = []
         if table_exists(conn, "model_versions"):
             m_filter = f"WHERE lower(market) = '{market}'" if market != "all" else ""
             models = [
-                dict(r)
-                for r in conn.execute(
+                dict(row)
+                for row in conn.execute(
                     f"SELECT * FROM model_versions {m_filter} ORDER BY created_ts DESC"
                 ).fetchall()
             ]
@@ -96,36 +106,30 @@ def export_data(
                             model[key.replace("_json", "")] = json.loads(model[key])
                         except Exception:
                             model[key.replace("_json", "")] = {}
-
         _write_json(output_dir / "models.json", models)
 
-        # 2. Export Arena
-        print("Exporting arena...")
         arena_data: dict[str, Any] = {"arena_name": "N/A", "leaderboard": []}
         if table_exists(conn, "arenas") and table_exists(conn, "arena_daily_pnl"):
             arena_name = "Global Arena" if market == "all" else f"{market.upper()} Arena"
             arena = conn.execute("SELECT * FROM arenas WHERE name = ?", (arena_name,)).fetchone()
             if arena:
                 leaderboard = [
-                    dict(r)
-                    for r in conn.execute(
+                    dict(row)
+                    for row in conn.execute(
                         "SELECT * FROM arena_daily_pnl WHERE arena_id = ? ORDER BY date DESC, rank ASC",
                         (arena["id"],),
                     ).fetchall()
                 ]
                 arena_data = {"arena_name": arena_name, "leaderboard": leaderboard}
-
         _write_json(output_dir / "arena.json", arena_data)
 
-        # 3. Export Reports
-        print("Exporting reports index & files...")
         reports: list[dict[str, Any]] = []
         reports_site_dir = output_dir.parent / "reports"
         reports_site_dir.mkdir(parents=True, exist_ok=True)
-
         if table_exists(conn, "reports"):
             reports = [
-                dict(r) for r in conn.execute("SELECT * FROM reports ORDER BY date DESC").fetchall()
+                dict(row)
+                for row in conn.execute("SELECT * FROM reports ORDER BY date DESC").fetchall()
             ]
             for report in reports:
                 if report.get("paths_json"):
@@ -136,17 +140,11 @@ def export_data(
                         src_path = PROJECT_ROOT / html_rel
                         if src_path.exists():
                             flat_name = html_rel.replace("/", "_").replace("\\", "_")
-                            dest_path = reports_site_dir / flat_name
-                            try:
-                                shutil.copy(src_path, dest_path)
-                                report["static_html_path"] = f"reports/{flat_name}"
-                            except Exception:
-                                pass
-
+                            destination = reports_site_dir / flat_name
+                            shutil.copy2(src_path, destination)
+                            report["static_html_path"] = f"reports/{flat_name}"
         _write_json(output_dir / "reports.json", reports)
 
-        # 4. Export Curves
-        print("Exporting equity curves...")
         curves_dir = output_dir / "curves"
         curves_dir.mkdir(parents=True, exist_ok=True)
         if table_exists(conn, "backtest_equity_curve"):
@@ -155,8 +153,8 @@ def export_data(
                 if not run_id:
                     continue
                 points = [
-                    dict(r)
-                    for r in conn.execute(
+                    dict(row)
+                    for row in conn.execute(
                         "SELECT date, nav, drawdown FROM backtest_equity_curve WHERE backtest_run_id = ? ORDER BY date ASC",
                         (run_id,),
                     ).fetchall()
@@ -164,15 +162,16 @@ def export_data(
                 if points:
                     _write_json(curves_dir / f"{run_id}.json", {"run_id": run_id, "points": points})
 
-        # 5. Export Manifest
-        print("Exporting manifest...")
         _write_json(
             output_dir / "manifest.json",
             {
                 "generated_at": datetime.now(timezone.utc).isoformat(),
-                "snapshot_id": "latest",
+                "snapshot_id": "latest-local-db",
                 "market": market,
+                "source": "metadata_db",
                 "stats": {"total_models": len(models), "total_reports": len(reports)},
+                "research_only": True,
+                "trade_ready": False,
             },
         )
         return True
@@ -182,30 +181,58 @@ def export_data(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export Alpha Engine data for the static site.")
+    parser.add_argument(
+        "--source",
+        choices=["repository", "metadata-db"],
+        default="repository",
+        help="Durable repository evidence is the default; metadata-db is a local migration source.",
+    )
     parser.add_argument("--market", type=str, default="all", choices=["cn", "us", "all"])
     parser.add_argument("--output", type=str, default="artifacts/site/data")
+    parser.add_argument(
+        "--repository-catalog",
+        type=Path,
+        default=DEFAULT_CATALOG,
+        help="Publication allow-list for repository-backed research evidence.",
+    )
     parser.add_argument(
         "--metadata-db",
         type=Path,
         default=DEFAULT_METADATA_DB,
-        help="Metadata SQLite database used for the published evidence export.",
+        help="Legacy local SQLite index used only with --source metadata-db.",
     )
     parser.add_argument(
         "--allow-empty",
         action="store_true",
-        help="Write a blocked empty export when the metadata DB is unavailable.",
+        help="With --source metadata-db, write a blocked empty export if the DB is unavailable.",
     )
     args = parser.parse_args()
+    output = Path(args.output)
+
+    if args.source == "repository":
+        try:
+            manifest = export_repository_research_data(
+                output,
+                catalog_path=args.repository_catalog,
+            )
+        except RepositoryResearchStoreError as exc:
+            parser.error(str(exc))
+            return
+        print(
+            f"Done. Repository evidence exported to {output} "
+            f"({manifest['stats']['total_models']} models)."
+        )
+        return
 
     ok = export_data(
         args.market,
-        Path(args.output),
+        output,
         db_path=args.metadata_db,
         allow_empty=args.allow_empty,
     )
     if not ok:
         sys.exit(1)
-    print(f"Done. Data exported to {args.output}")
+    print(f"Done. Metadata DB exported to {output}")
 
 
 if __name__ == "__main__":

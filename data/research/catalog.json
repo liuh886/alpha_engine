@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "release_id": "repository-research-2026-08-02",
+  "published_at": "2026-08-02T00:00:00+00:00",
+  "research_only": true,
+  "trade_ready": false,
+  "published_models": [
+    {
+      "model_id": "us_x1_1",
+      "source": "configs/models/us_x1_1.yaml"
+    },
+    {
+      "model_id": "us_x1_0",
+      "source": "configs/models/us_x1_0.yaml"
+    },
+    {
+      "model_id": "cn_x1_0",
+      "source": "configs/models/cn_x1_0.yaml"
+    }
+  ],
+  "published_runs": [],
+  "notes": [
+    "This catalog is the allow-list for evidence published to the Research Artifact Studio.",
+    "US x1.1 is the active US research baseline; US x1.0 remains immutable historical evidence.",
+    "Candidate and evidence-revision files are not published unless explicitly added here.",
+    "Large run artifacts must be hash-bound from data/research/runs or Git LFS before publication."
+  ]
+}
