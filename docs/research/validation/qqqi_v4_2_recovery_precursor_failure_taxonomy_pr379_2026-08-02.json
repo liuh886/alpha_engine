@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "repository": "liuh886/alpha_engine",
+  "pull_request": 379,
+  "validated_on": "2026-08-02",
+  "validated_content_head_sha": "424f16a8c5df177fec776c4c091500de4b229f2d",
+  "receipt_commit_excluded_from_evidence_calculation": true,
+  "checks": {
+    "lint": "success",
+    "focused_tests": "success",
+    "governed_etf_bundle": "success",
+    "qqq_proxy_long_history_revalidation": "success",
+    "recovery_failure_taxonomy": "success",
+    "signal_close_and_next_open_separation": "success",
+    "leave_one_event_out_stability": "success",
+    "notebook_25_execution": "success",
+    "artifact_upload": "success",
+    "alpha_engine_ci": "success",
+    "decision_evidence_contract_ci": "success",
+    "qqqi_vxn_research_bundle": "success",
+    "sgov_episode_attribution_revalidation": "success",
+    "precursor_50_revalidation": "success"
+  },
+  "decision": {
+    "v4_2_baseline": "retained",
+    "tqqq_precursor_25": "frozen_research_comparator",
+    "tqqq_precursor_50": "post_2024_regime_dependent_shadow_observation",
+    "prospective_feature_monitoring_justified": true,
+    "new_preregistered_trading_hypothesis_justified": false,
+    "model_change_authorized": false,
+    "actionable_alert_authorized": false,
+    "telegram_target_change_authorized": false,
+    "next_stage_issue": 348
+  },
+  "canonical_research_evidence": {
+    "workflow_name": "QQQI v4.2 Recovery Failure Taxonomy",
+    "run_id": 30740263682,
+    "conclusion": "success",
+    "artifact_id": 8831040334,
+    "artifact_name": "qqqi-v4-2-recovery-failure-taxonomy-30740263682",
+    "artifact_digest": "sha256:0e4d355e8e01cf71e66eb92622e77048627305e4d355ae2dd479389205252bfa",
+    "expires_on": "2026-10-31"
+  },
+  "final_content_revalidation": {
+    "workflow_name": "QQQI v4.2 Recovery Failure Taxonomy",
+    "run_id": 30740427142,
+    "conclusion": "success",
+    "artifact_id": 8831093077,
+    "artifact_name": "qqqi-v4-2-recovery-failure-taxonomy-30740427142",
+    "artifact_digest": "sha256:e5536aa33b0d00cb180b1fef91181adff8e55028457328de3f4d49df00e7a824",
+    "expires_on": "2026-10-31"
+  },
+  "final_content_workflows": {
+    "alpha_engine_ci": 30740427143,
+    "decision_evidence_contract_ci": 30740427111,
+    "qqqi_vxn_research_bundle": 30740427134,
+    "qqq_proxy_long_history": 30740427109,
+    "sgov_episode_attribution": 30740427136,
+    "sgov_precursor_50": 30740427145
+  },
+  "taxonomy": {
+    "event_count": 15,
+    "successful_event_count": 6,
+    "failed_event_count": 9,
+    "failed_reverted_before_state_2": 3,
+    "failed_reached_state_2_but_extra_leverage_lost": 6,
+    "descriptively_stable_feature_count": 8,
+    "primary_prospective_fields": [
+      "vix_return_5d",
+      "vxn_return_5d",
+      "vxn_close",
+      "state_1_decision_age_sessions",
+      "vxn_return_1d"
+    ]
+  },
+  "gate_failure": {
+    "late_or_prospective_failed_precursor_event_count": {
+      "observed": 0,
+      "required_minimum": 1
+    },
+    "interpretation": "The late segment contains three successful events and no failed event, so descriptive separators cannot support a new rule or threshold."
+  }
+}
