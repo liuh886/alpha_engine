@@ -4,9 +4,8 @@ import { useActiveResearchBundle } from '@/hooks/useActiveResearchBundle';
 import { runtimeCapabilities } from '@/lib/runtime-capabilities';
 
 const RUNTIME_LABELS = {
-  static_artifact: 'Published bundle',
-  local_artifact: 'Local bundle',
-  connected_research: 'Connected runtime',
+  static_artifact: 'Published artifact',
+  local_artifact: 'Local artifact',
 } as const;
 
 export function ResearchContextBar() {
