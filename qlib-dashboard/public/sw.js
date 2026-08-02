@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alpha-engine-shell-v2';
+const CACHE_NAME = 'alpha-engine-shell-v3';
 const APP_ROOT = new URL('./', self.location.href);
 const FORMAL_BACKTEST_ROOT = new URL('./data/formal-backtests/', APP_ROOT);
 const SHELL_URLS = [
@@ -31,7 +31,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(new URL('./index.html', APP_ROOT), copy));
@@ -46,7 +46,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
         try {
-          const response = await fetch(request);
+          const response = await fetch(request, { cache: 'no-store' });
           if (response.ok) await cache.put(request, response.clone());
           return response;
         } catch {
@@ -58,6 +58,13 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (SHELL_URLS.includes(url.toString())) {
-    event.respondWith(caches.match(request).then((cached) => cached || fetch(request)));
+    event.respondWith(
+      fetch(request, { cache: 'no-store' })
+        .then((response) => {
+          if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(request)),
+    );
   }
 });
