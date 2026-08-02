@@ -62,7 +62,17 @@ jobs:
           test -f dist/manifest.webmanifest
           test -f dist/sw.js
           test -f dist/icons/alpha-engine.svg
+          test -f dist/data/formal-backtests/catalog.json
+          test -f dist/data/formal-backtests/qqqi_qqq_tqqq_v4_2.json
+          test -f dist/data/formal-backtests/us_x1_1.json
+          test -f dist/data/formal-backtests/cn_x1_0.json
           grep -q "Alpha Engine Research Studio" dist/index.html
+          grep -q "Complete backtest review" dist/index.html
+          grep -q '"model_id":"qqqi_qqq_tqqq_v4_2"' dist/data/formal-backtests/catalog.json
+          grep -q '"model_id":"us_x1_1"' dist/data/formal-backtests/catalog.json
+          grep -q '"model_id":"cn_x1_0"' dist/data/formal-backtests/catalog.json
+          ! grep -q '"model_id":"us_x1_0"' dist/data/formal-backtests/catalog.json
+          grep -q '"display": "standalone"' dist/manifest.webmanifest
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -99,10 +109,16 @@ jobs:
           cp docs/methodology.md _site/docs/methodology.md
           cp -r artifacts/research-bundle _site/bundle
           cp docs/contracts/alpha-engine-bundle.schema.json _site/docs/alpha-engine-bundle.schema.json
+          printf '{"commit_sha":"%s","workflow_run_id":"%s"}\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > _site/deployment.json
           touch _site/.nojekyll
           test -f _site/index.html
+          test -f _site/deployment.json
           test -f _site/data/manifest.json
           test -f _site/data/models.json
+          test -f _site/data/formal-backtests/catalog.json
+          test -f _site/data/formal-backtests/qqqi_qqq_tqqq_v4_2.json
+          test -f _site/data/formal-backtests/us_x1_1.json
+          test -f _site/data/formal-backtests/cn_x1_0.json
           test -f _site/docs/methodology.md
           test -f _site/bundle/alpha-engine-bundle.json
           test -f _site/bundle/data/models.json
@@ -114,6 +130,10 @@ jobs:
           grep -q '"id": "us_x1_1"' _site/data/models.json
           grep -q '"id": "us_x1_0"' _site/data/models.json
           grep -q '"id": "cn_x1_0"' _site/data/models.json
+          grep -q '"model_id":"qqqi_qqq_tqqq_v4_2"' _site/data/formal-backtests/catalog.json
+          grep -q '"model_id":"us_x1_1"' _site/data/formal-backtests/catalog.json
+          grep -q '"model_id":"cn_x1_0"' _site/data/formal-backtests/catalog.json
+          ! grep -q '"model_id":"us_x1_0"' _site/data/formal-backtests/catalog.json
           grep -q '"primary_run_curve_unavailable"' _site/data/manifest.json
           grep -q '"primary_run_provider_snapshot_unavailable"' _site/data/manifest.json
           ! grep -q 'metadata_db_missing' _site/bundle/alpha-engine-bundle.json
