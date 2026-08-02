@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -13,10 +14,12 @@ SCRIPT_PATH = REPO_ROOT / "scripts/audit_xgb_baseline_provenance.py"
 
 
 def _load_auditor() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("xgb_baseline_auditor", SCRIPT_PATH)
+    module_name = "xgb_baseline_auditor"
+    spec = importlib.util.spec_from_file_location(module_name, SCRIPT_PATH)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
 
