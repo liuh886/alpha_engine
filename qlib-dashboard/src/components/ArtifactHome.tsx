@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import {
+  Activity,
   ArrowRight,
   BookOpen,
   Boxes,
@@ -51,27 +52,30 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
               Decide what the evidence supports.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-              Review governed Alpha Engine datasets, model candidates, experiments and backtests from one versioned bundle. Every conclusion stays bound to its scope, cutoff, benchmark and source files.
+              Review accepted formal backtests, governed data lineage and the read-only v4.2 operating ledger. Every conclusion stays bound to its scope, cutoff, benchmark and retained source evidence.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Button onClick={() => navigate('/dashboard')} className="gap-2">
-                Review backtest evidence <ArrowRight className="h-4 w-4" />
+                Review formal backtests <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button onClick={() => navigate('/compare')} variant="outline" className="gap-2">
-                <GitCompareArrows className="h-4 w-4" /> Compare candidates
+              <Button onClick={() => navigate('/operations')} variant="outline" className="gap-2">
+                <Activity className="h-4 w-4" /> Open v4.2 operations
+              </Button>
+              <Button onClick={() => navigate('/compare')} variant="ghost" className="gap-2">
+                <GitCompareArrows className="h-4 w-4" /> Compare formal baselines
               </Button>
             </div>
           </div>
 
           <div className="rounded-xl border bg-background/70 p-5 backdrop-blur-sm">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Active evidence</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Repository evidence</p>
             <div className="mt-4 text-3xl font-black font-mono">{models.length}</div>
-            <p className="mt-1 text-sm text-muted-foreground">Model or strategy records in the active bundle.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Versioned model or strategy records in the shared research bundle.</p>
             <div className="mt-5 border-t pt-4">
               <p className="truncate text-sm font-semibold">{latestModel?.name || 'No record loaded'}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {latestModel
-                  ? `${String(latestModel.market || 'unknown').toUpperCase()} · ${latestModel.model_type || 'research candidate'}`
+                  ? `${String(latestModel.market || 'unknown').toUpperCase()} · ${latestModel.model_type || 'formal research record'}`
                   : 'Open a compatible bundle to begin review.'}
               </p>
               <p className="mt-3 font-mono text-[10px] text-muted-foreground">
@@ -82,7 +86,25 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <button
+          type="button"
+          className="rounded-xl border bg-card p-5 text-left transition-colors hover:border-primary/40"
+          onClick={() => navigate('/dashboard')}
+        >
+          <FileText className="mb-4 h-5 w-5 text-primary" />
+          <div className="font-bold">Review retained performance</div>
+          <p className="mt-2 text-sm text-muted-foreground">Inspect the governed path, holdings, trades, attribution and evidence limits of each accepted formal baseline.</p>
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border bg-card p-5 text-left transition-colors hover:border-primary/40"
+          onClick={() => navigate('/operations')}
+        >
+          <Activity className="mb-4 h-5 w-5 text-primary" />
+          <div className="font-bold">Read the v4.2 operating ledger</div>
+          <p className="mt-2 text-sm text-muted-foreground">See the latest governed state-change record, target allocation, evidence progress and workflow health without executing the model.</p>
+        </button>
         <button
           type="button"
           className="rounded-xl border bg-card p-5 text-left transition-colors hover:border-primary/40"
@@ -90,7 +112,7 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
         >
           <Database className="mb-4 h-5 w-5 text-primary" />
           <div className="font-bold">Confirm the evidence boundary</div>
-          <p className="mt-2 text-sm text-muted-foreground">Check provider lineage, market scope, evidence cutoff, missing files and integrity before interpreting results.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Check provider lineage, market scope, cutoff, missing files and integrity before interpreting results.</p>
         </button>
         <button
           type="button"
@@ -98,17 +120,8 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
           onClick={() => navigate('/compare')}
         >
           <GitCompareArrows className="mb-4 h-5 w-5 text-primary" />
-          <div className="font-bold">Compare like with like</div>
-          <p className="mt-2 text-sm text-muted-foreground">Review candidates under the same universe, benchmark, costs and validation window.</p>
-        </button>
-        <button
-          type="button"
-          className="rounded-xl border bg-card p-5 text-left transition-colors hover:border-primary/40"
-          onClick={() => navigate('/reports')}
-        >
-          <FileText className="mb-4 h-5 w-5 text-primary" />
-          <div className="font-bold">Trace the conclusion</div>
-          <p className="mt-2 text-sm text-muted-foreground">Move from headline metrics to experiments, reports, notebooks and manifest-declared source files.</p>
+          <div className="font-bold">Compare governed baselines</div>
+          <p className="mt-2 text-sm text-muted-foreground">Compare only the named formal strategies admitted by the publication allow-list.</p>
         </button>
       </section>
 
@@ -133,7 +146,7 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
             <CardTitle className="flex items-center gap-2 text-sm"><ShieldCheck className="h-4 w-4 text-primary" /> Product boundary</CardTitle>
           </CardHeader>
           <CardContent className="text-sm leading-relaxed text-muted-foreground">
-            The studio does not refresh data, train models, run backtests, mutate registries or execute trades. Python CLI commands and scheduled workflows produce the artifacts; this interface reviews them.
+            The studio does not refresh market data, train models, run backtests, mutate registries or execute trades. Python CLI commands and scheduled workflows produce the evidence; this interface reviews it.
           </CardContent>
         </Card>
         <Card>
@@ -141,7 +154,7 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
             <CardTitle className="flex items-center gap-2 text-sm"><BookOpen className="h-4 w-4 text-primary" /> Interpretation boundary</CardTitle>
           </CardHeader>
           <CardContent className="text-sm leading-relaxed text-muted-foreground">
-            A positive historical result is not a promotion decision. Use Methodology to verify the fixed research contract, benchmark, costs, universe validity and required evidence gates.
+            A positive historical result or a current model target is not a brokerage instruction. Use Methodology to verify the fixed contract, benchmark, costs, universe validity and evidence completeness.
           </CardContent>
         </Card>
       </section>
