@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections import Counter
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -320,6 +321,17 @@ def _corporate_actions(frame: pd.DataFrame | None, symbol: str) -> pd.DataFrame:
     return out[columns].reset_index(drop=True)
 
 
+def _error_class(exc: Exception) -> str:
+    declared = str(getattr(exc, "error_class", "")).strip()
+    if declared:
+        return declared
+    if isinstance(exc, ETFReferenceBundleError):
+        return "schema_or_reconciliation_error"
+    if isinstance(exc, ValueError):
+        return "invalid_provider_response"
+    return "data_fetch_error"
+
+
 def _fetch_source(
     adapter: MarketDataAdapter | None,
     *,
@@ -328,7 +340,11 @@ def _fetch_source(
     end: str | None,
 ) -> tuple[pd.DataFrame | None, dict[str, Any]]:
     if adapter is None:
-        return None, {"ok": False, "error": "provider is not configured"}
+        return None, {
+            "ok": False,
+            "error_class": "provider_not_configured",
+            "error": "provider is not configured",
+        }
     try:
         result = adapter.fetch_daily_bars(
             FetchRequest(symbol=symbol, market="us", start=start, end=end)
@@ -344,7 +360,64 @@ def _fetch_source(
             "metadata": dict(result.df.attrs.get("provider_metadata", {})),
         }
     except (DataFetchError, ETFReferenceBundleError, ValueError) as exc:
-        return None, {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        evidence: dict[str, Any] = {
+            "ok": False,
+            "error_class": _error_class(exc),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+        for attribute in (
+            "status_code",
+            "attempts",
+            "retry_after_seconds",
+            "rate_limit_reset",
+        ):
+            value = getattr(exc, attribute, None)
+            if value is not None:
+                evidence[attribute] = value
+        return None, evidence
+
+
+def _provider_health_summary(
+    coverage: pd.DataFrame,
+    *,
+    provider: str,
+    attempt_column: str,
+) -> dict[str, Any]:
+    attempts = [
+        json.loads(str(value))
+        for value in coverage[attempt_column].tolist()
+    ]
+    failures = [attempt for attempt in attempts if not attempt.get("ok")]
+    error_counts = Counter(
+        str(attempt.get("error_class", "unknown")) for attempt in failures
+    )
+    latencies = [
+        float(attempt.get("metadata", {}).get("elapsed_seconds"))
+        for attempt in attempts
+        if attempt.get("ok")
+        and attempt.get("metadata", {}).get("elapsed_seconds") is not None
+    ]
+    return {
+        "provider": provider,
+        "attempted_symbols": int(len(attempts)),
+        "successful_symbols": int(len(attempts) - len(failures)),
+        "failed_symbols": int(len(failures)),
+        "success_ratio": (
+            float((len(attempts) - len(failures)) / len(attempts))
+            if attempts
+            else 0.0
+        ),
+        "error_class_counts": dict(sorted(error_counts.items())),
+        "rate_limited_symbols": sorted(
+            str(row.symbol)
+            for row in coverage.itertuples()
+            if json.loads(str(getattr(row, attempt_column))).get("error_class")
+            == "rate_limited"
+        ),
+        "mean_elapsed_seconds": (
+            float(sum(latencies) / len(latencies)) if latencies else None
+        ),
+    }
 
 
 def build_etf_reference_bundle(
@@ -500,6 +573,18 @@ def build_etf_reference_bundle(
         .isin(["consensus", "explainable_corporate_action_difference"])
         .all()
     )
+    provider_health = {
+        "tiingo": _provider_health_summary(
+            coverage,
+            provider="tiingo",
+            attempt_column="primary_attempt",
+        ),
+        "yfinance": _provider_health_summary(
+            coverage,
+            provider="yfinance",
+            attempt_column="fallback_attempt",
+        ),
+    }
     manifest = {
         "schema_version": "1.1",
         "bundle_id": str(contract["bundle_id"]),
@@ -521,6 +606,7 @@ def build_etf_reference_bundle(
         "reconciliation_status": {
             str(row.symbol): row.status for row in reconciliations.itertuples()
         },
+        "provider_health": provider_health,
         "provider_contracts": {
             "tiingo": provider_manifest_entry("tiingo"),
             "yfinance": provider_manifest_entry("yfinance"),
@@ -531,6 +617,7 @@ def build_etf_reference_bundle(
             "No QQQI observations are synthesized before its actual first source row.",
             "Synthetic amount is diagnostic only and is not reported turnover.",
             "Open-price reconciliation uses a separate distribution and compounded-drift gate because vendor opening prints are noisier than closing total returns.",
+            "Credential, rate-limit, upstream and validation failures remain distinct provider-health states.",
             "This bundle does not change or promote any strategy rule.",
         ],
     }
