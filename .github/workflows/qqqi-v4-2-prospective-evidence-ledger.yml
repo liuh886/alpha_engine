@@ -1,0 +1,268 @@
+name: QQQI v4.2 Prospective Evidence Ledger
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqqi-v4-2-prospective-evidence-ledger.yml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger.yaml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor.yaml"
+      - "src/research/v4_2_prospective_evidence_ledger.py"
+      - "src/research/strategy_signal_alerts.py"
+      - "scripts/run_qqqi_v4_2_prospective_evidence_ledger.py"
+      - "scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py"
+      - "scripts/run_qqqi_vxn_v4_2_signal_alert.py"
+      - "tests/test_v4_2_prospective_evidence_ledger.py"
+      - "tests/test_strategy_signal_alerts.py"
+      - "docs/research/qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger_spec.md"
+  schedule:
+    # After the decision-alert workflow and after the prior US close data should exist.
+    - cron: "20 1 * * 2-6"
+  workflow_dispatch:
+    inputs:
+      end_date:
+        description: Optional exclusive market-data end date (YYYY-MM-DD)
+        required: false
+        type: string
+
+concurrency:
+  group: qqqi-v4-2-prospective-ledger-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  prospective-ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate ledger implementation
+        run: |
+          uv run ruff check \
+            src/research/v4_2_prospective_evidence_ledger.py \
+            scripts/run_qqqi_v4_2_prospective_evidence_ledger.py \
+            tests/test_v4_2_prospective_evidence_ledger.py
+          uv run pytest tests/test_v4_2_prospective_evidence_ledger.py -q --tb=short
+      - name: Build governed QQQ QQQI TQQQ reference bundle
+        run: >-
+          uv run python scripts/data/build_etf_reference_bundle.py
+          --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+      - name: Run frozen v4.2 prospective monitor
+        run: >-
+          uv run python scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py
+          --end-date "${{ inputs.end_date }}"
+          --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          --output-dir artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor
+          --strategy-run-dir artifacts/strategy_runs
+      - name: Build frozen next-open alert context
+        run: >-
+          uv run python scripts/run_qqqi_vxn_v4_2_signal_alert.py
+          --summary artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_summary.json
+          --output-dir artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2
+      - name: Export existing durable ledger records
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const eventPattern = /<!-- prospective-evidence-record:([A-Za-z0-9_-]+) -->/g;
+            const updatePattern = /<!-- prospective-evidence-update:([A-Za-z0-9_-]+) -->/g;
+            const decode = (value) => JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100,
+            });
+            const exported = [];
+            for (const issue of issues) {
+              if (issue.pull_request) continue;
+              eventPattern.lastIndex = 0;
+              const match = eventPattern.exec(String(issue.body || ''));
+              if (!match) continue;
+              const record = decode(match[1]);
+              const posted = new Set();
+              let latestStatus = String(record.status || '');
+              let latestDate = '';
+              if (issue.comments > 0) {
+                const comments = await github.paginate(github.rest.issues.listComments, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  per_page: 100,
+                });
+                for (const comment of comments) {
+                  updatePattern.lastIndex = 0;
+                  let updateMatch;
+                  while ((updateMatch = updatePattern.exec(String(comment.body || ''))) !== null) {
+                    const observation = decode(updateMatch[1]);
+                    for (const horizon of observation.completed_horizons || []) {
+                      posted.add(Number(horizon));
+                    }
+                    const asOf = String(observation.as_of_data_date || '');
+                    if (asOf >= latestDate) {
+                      latestDate = asOf;
+                      latestStatus = String(observation.status || latestStatus);
+                    }
+                  }
+                }
+              }
+              exported.push({
+                issue_number: issue.number,
+                issue_state: issue.state,
+                record,
+                posted_horizons: Array.from(posted).sort((a, b) => a - b),
+                latest_status: latestStatus,
+              });
+            }
+            fs.mkdirSync('artifacts/evidence', {recursive: true});
+            fs.writeFileSync(
+              'artifacts/evidence/prospective_ledger_existing_events.json',
+              JSON.stringify(exported, null, 2) + '\n'
+            );
+            core.notice(`Exported ${exported.length} durable ledger records.`);
+      - name: Build new records, outcome updates and monthly summary
+        run: >-
+          uv run python scripts/run_qqqi_v4_2_prospective_evidence_ledger.py
+          --summary artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_summary.json
+          --alert artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2/signal_alert.json
+          --daily artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_daily_rotation_vxn_bridge_v4_2_50_50.csv
+          --existing-events artifacts/evidence/prospective_ledger_existing_events.json
+          --output-dir artifacts/evidence/qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger
+      - name: Upload ledger evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqqi-v4-2-prospective-ledger-${{ github.run_id }}
+          path: |
+            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json
+            artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_summary.json
+            artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2/signal_alert.json
+            artifacts/evidence/qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Persist new events and append idempotent updates
+        if: github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const root = 'artifacts/evidence/qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger';
+            const newEvents = JSON.parse(fs.readFileSync(`${root}/new_events.json`, 'utf8'));
+            const updates = JSON.parse(fs.readFileSync(`${root}/event_updates.json`, 'utf8'));
+            const monthly = JSON.parse(fs.readFileSync(`${root}/monthly_summary.json`, 'utf8'));
+            const monthlyBody = fs.readFileSync(`${root}/monthly_summary.md`, 'utf8');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            try {
+              await github.rest.issues.getLabel({owner, repo, name: 'prospective-evidence'});
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.issues.createLabel({
+                owner, repo, name: 'prospective-evidence', color: '1D76DB',
+                description: 'Durable research-only prospective strategy evidence'
+              });
+            }
+
+            let issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'all', per_page: 100,
+            });
+            const issueByEvent = new Map();
+            for (const issue of issues) {
+              if (issue.pull_request) continue;
+              const body = String(issue.body || '');
+              const marker = body.match(/<!-- prospective-evidence-record:([A-Za-z0-9_-]+) -->/);
+              if (!marker) continue;
+              const record = JSON.parse(Buffer.from(marker[1], 'base64url').toString('utf8'));
+              issueByEvent.set(String(record.event_id), issue);
+            }
+
+            for (const item of newEvents) {
+              let issue = issueByEvent.get(String(item.event_id));
+              if (!issue && item.record.event_type === 'state_change') {
+                issue = issues.find((candidate) =>
+                  !candidate.pull_request &&
+                  String(candidate.body || '').includes(`<!-- signal-fingerprint:${item.record.fingerprint} -->`)
+                );
+              }
+              if (issue) {
+                if (!String(issue.body || '').includes('prospective-evidence-record:')) {
+                  const updatedBody = `${String(issue.body || '').trim()}\n\n---\n\n${item.body}`;
+                  const response = await github.rest.issues.update({
+                    owner, repo, issue_number: issue.number, body: updatedBody,
+                    labels: Array.from(new Set([...(issue.labels || []).map((label) => label.name), 'prospective-evidence']))
+                  });
+                  issue = response.data;
+                }
+              } else {
+                const response = await github.rest.issues.create({
+                  owner, repo, title: item.title, body: item.body,
+                  assignees: [owner], labels: ['prospective-evidence']
+                });
+                issue = response.data;
+                issues.push(issue);
+              }
+              issueByEvent.set(String(item.event_id), issue);
+              const deliveryMarker = `<!-- prospective-evidence-delivery:${item.event_id} -->`;
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: issue.number, per_page: 100,
+              });
+              if (!comments.some((comment) => String(comment.body || '').includes(deliveryMarker))) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: issue.number,
+                  body: `${deliveryMarker}\n\n- GitHub Issue：**已持久化**\n- Telegram：**${item.record.delivery.telegram}**\n- 研究用途：是\n- 自动交易授权：否`
+                });
+              }
+            }
+
+            for (const item of updates) {
+              const issue = issueByEvent.get(String(item.event_id)) ||
+                issues.find((candidate) => candidate.number === item.issue_number);
+              if (!issue) {
+                core.warning(`No issue found for event ${item.event_id}`);
+                continue;
+              }
+              const marker = String(item.comment).match(/<!-- prospective-evidence-update:([A-Za-z0-9_-]+) -->/);
+              if (!marker) throw new Error(`Missing update marker for ${item.event_id}`);
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: issue.number, per_page: 100,
+              });
+              if (comments.some((comment) => String(comment.body || '').includes(marker[0]))) {
+                continue;
+              }
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issue.number, body: item.comment,
+              });
+            }
+
+            const monthTitle = `[前瞻证据月报] ${monthly.month}`;
+            const monthMarker = `<!-- prospective-evidence-month-id:${monthly.month} -->`;
+            const monthIssue = issues.find((issue) =>
+              !issue.pull_request && String(issue.body || '').includes(monthMarker)
+            );
+            const body = `${monthlyBody.trim()}\n\n${monthMarker}\n`;
+            if (monthIssue) {
+              await github.rest.issues.update({
+                owner, repo, issue_number: monthIssue.number,
+                title: monthTitle, body, labels: ['prospective-evidence']
+              });
+            } else {
+              await github.rest.issues.create({
+                owner, repo, title: monthTitle, body,
+                assignees: [owner], labels: ['prospective-evidence']
+              });
+            }

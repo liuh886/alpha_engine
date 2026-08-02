@@ -1,0 +1,92 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger_v1
+parent_experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Persist every fresh v4.2 state-change alert and every frozen recovery-precursor
+  episode as a versioned GitHub Issue record, then append deterministic outcome
+  observations without changing the model or retrospectively selecting a rule.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  monitor_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor.yaml
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  transaction_cost_bps_per_turnover_unit: 10.0
+  state_machine_frozen: true
+  weights_frozen: true
+  no_parameter_search: true
+  no_model_change: true
+  no_actionable_shadow_alert: true
+
+persistence:
+  issue_label: prospective-evidence
+  event_marker_prefix: prospective-evidence-record
+  update_marker_prefix: prospective-evidence-update
+  monthly_marker_prefix: prospective-evidence-month
+  github_issue_is_durable_record: true
+  actions_artifact_is_supporting_evidence_only: true
+
+recovery_precursor:
+  conditions:
+    - executed_state_is_1
+    - close_decision_state_is_1
+    - shock_memory
+    - medium_repair
+    - vix_normalized
+    - vxn_not_stressed
+  hypothetical_allocations:
+    tqqq_25: {QQQI: 0.25, QQQ: 0.50, TQQQ: 0.25}
+    tqqq_50: {QQQI: 0.00, QQQ: 0.50, TQQQ: 0.50}
+  actionable: false
+
+outcomes:
+  horizons_sessions: [1, 2, 3, 5, 10, 20, 40]
+  path_horizon_sessions: 5
+  record_execution_open_prices: true
+  record_opening_gap: true
+  record_qqq_tqqq_returns: true
+  record_favourable_adverse_excursion: true
+  record_realized_volatility: true
+  record_sign_reversals: true
+  record_intraday_overnight_contribution: true
+  record_directional_tracking_attribution: true
+  record_state_2_or_state_0_transition: true
+
+signal_close_features:
+  primary:
+    - vix_return_5d
+    - vxn_return_5d
+    - vxn_close
+    - state_1_decision_age_sessions
+    - vxn_return_1d
+  secondary:
+    - qqq_distance_ma_short
+    - vix_close
+    - vxn_retreat_from_peak
+
+validation:
+  require_data_freshness_for_new_event: true
+  require_unique_event_id: true
+  require_signal_date_not_after_latest_data_date: true
+  require_weights_sum_to_one: true
+  require_research_only: true
+  require_trade_ready_false: true
+  prohibit_overwriting_initial_record: true
+
+monthly_summary:
+  enabled: true
+  include_event_counts: true
+  include_completed_horizon_counts: true
+  include_unresolved_counts: true
+  include_delivery_status_counts: true
+  include_model_change_statement: true
+
+decision_discipline:
+  - Event records are evidence, not orders.
+  - Recovery-precursor events never generate Telegram target weights.
+  - Outcome fields are appended only when the declared trading-session horizon exists.
+  - Missing bars, stale data, failed delivery and unresolved outcomes remain explicit.
+  - A monthly summary cannot promote or modify v4.2.
+  - A new timing hypothesis still requires an independent late or prospective failed event.
