@@ -67,6 +67,10 @@ provider_role_rules:
   validation_sources_may_replace_primary: false
   shared_upstream_transports_count_as_one_source: true
   source_disagreement_requires_explicit_conflict_status: true
+  validator_event_prefixes_excluded_from_canonical:
+    - "tushare_validation_"
+    - "tiingo_validation_"
+    - "polygon_validation_"
 
 coverage:
   every_pool_symbol_requires_explicit_status: true
