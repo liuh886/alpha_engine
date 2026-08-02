@@ -1,0 +1,124 @@
+schema_version: "1.0"
+experiment_family: "xgb_dual_market_improvement_v1"
+issue: 338
+status: "preregistered_provenance_pending"
+trade_ready: false
+
+objective:
+  question: "Can the two user-designated XGBoost baselines be reproduced and improved without holdout leakage?"
+  automatic_promotion_allowed: false
+  markets_are_independent: true
+
+reported_baselines:
+  us:
+    value: 0.8143
+    metric: "compounded_relative_excess"
+    benchmark: "QQQ"
+    provenance_status: "unverified_user_reported"
+  cn:
+    value: 0.2018
+    metric: "compounded_relative_excess"
+    benchmark: "CSI300"
+    provenance_status: "unverified_user_reported"
+  formula: "(1 + compounded_strategy_return) / (1 + compounded_benchmark_return) - 1"
+
+markets:
+  us:
+    universe_id: "us_selected_equities_v2"
+    universe_path: "configs/research_universes/us_selected_equities_v2.yaml"
+    exact_candidate_count: 87
+    benchmark: "QQQ"
+    candidate_asset_type: "equity"
+    reference_assets_may_enter_rank: false
+  cn:
+    universe_id: "cn_selected_equities_v3"
+    universe_path: "configs/research_universes/cn_selected_equities_v3.yaml"
+    exact_candidate_count: 130
+    benchmark: "000300"
+    candidate_asset_type: "equity"
+    reference_assets_may_enter_rank: false
+
+hard_gates:
+  - "exact baseline provenance or explicitly labeled reconstruction"
+  - "promotion-eligible provider manifest"
+  - "exact selected-pool count; no silent symbol drops"
+  - "corporate-action and listing-boundary checks"
+  - "market-isolated calendars, features, labels and portfolios"
+  - "final challenge window reserved before variant results"
+  - "all attempted variants counted in the evidence manifest"
+
+stages:
+  - id: "phase_0_provenance"
+    output_state:
+      - "baseline_verified"
+      - "baseline_reconstructed"
+      - "baseline_not_reproducible"
+      - "baseline_data_blocked"
+  - id: "phase_1_exact_replication"
+    tuning_allowed: false
+  - id: "phase_2_diagnosis"
+    diagnostics:
+      - "ic_and_rank_ic_decay"
+      - "top_bottom_spread"
+      - "window_and_regime_attribution"
+      - "feature_gain_permutation_and_shap_stability"
+      - "sector_size_beta_volatility_exposure"
+      - "turnover_concentration_and_cost_drag"
+      - "drawdown_and_recovery_attribution"
+      - "seed_and_bootstrap_sensitivity"
+  - id: "phase_3_bounded_improvement"
+    final_holdout_visible: false
+  - id: "phase_4_single_final_challenge"
+    maximum_evaluations_per_frozen_candidate: 1
+
+improvement_ladder:
+  - id: "data_quality_only"
+    change_scope: "provider, corporate actions and availability boundaries only"
+  - id: "factor_information"
+    allowed_sources:
+      - "alpha_engine_governed_factors"
+      - "qlib_alpha158_predeclared_groups"
+      - "pit_fundamentals_after_coverage_gate"
+    individual_factor_search_on_final_holdout_allowed: false
+    family_ablation_required: true
+  - id: "objective_regularization"
+    bounded_parameter_file_required_before_results: true
+  - id: "portfolio_construction"
+    allowed_dimensions:
+      - "turnover_control"
+      - "volatility_scaling"
+      - "sector_caps"
+      - "top_k_breadth"
+    must_be_reported_separately_from_model_changes: true
+  - id: "regime_risk_overlay"
+    reference_assets_may_be_state_inputs: true
+    reference_assets_may_enter_stock_rank: false
+
+search_budget:
+  baseline_replications_per_market: 1
+  maximum_development_variants_per_market: 12
+  maximum_frozen_candidates_per_market: 1
+  maximum_final_challenge_evaluations_per_market: 1
+
+primary_decision_metric: "compounded_relative_excess_after_cost"
+constraints:
+  maximum_drawdown_must_not_materially_worsen: true
+  multiple_positive_excess_windows_required: true
+  transaction_cost_robustness_required: true
+  sector_or_single_name_dominance_forbidden: true
+  seed_or_bootstrap_robustness_required: true
+
+required_outputs:
+  - "baseline_provenance_report.json"
+  - "exact_replication_manifest.json"
+  - "diagnostic_report.md"
+  - "pre_registered_variant_grid.yaml"
+  - "ablation_and_sensitivity_tables"
+  - "final_challenge_manifest.json"
+  - "factor_registry_and_experiment_ledger_updates"
+
+final_decisions:
+  - "improvement_supported"
+  - "baseline_only"
+  - "not_reproducible"
+  - "data_blocked"
