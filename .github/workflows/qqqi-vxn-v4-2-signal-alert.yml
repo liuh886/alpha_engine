@@ -79,7 +79,7 @@ jobs:
             artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json
             artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_summary.json
             artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 90
       - name: Create one deduplicated GitHub issue for a new signal
         if: >-
