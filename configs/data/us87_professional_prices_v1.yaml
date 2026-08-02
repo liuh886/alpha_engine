@@ -75,4 +75,7 @@ promotion:
     - "Tiingo and Polygon are used only for return/action comparison"
     - "validation sources never become canonical"
     - "missing credentials or provider limits remain explicit"
+  validation_policy_note: >-
+    Professional validators can downgrade confidence or create a conflict record,
+    but they cannot silently replace Yahoo canonical data or become a training source.
   automatic_trade_ready_promotion_allowed: false
