@@ -1,0 +1,49 @@
+schema_version: "1.0"
+contract_id: "alpha158_panel_v1"
+status: "active_research_factor_contract"
+research_only: true
+trade_ready: false
+
+catalog:
+  namespace: "qlib_alpha158"
+  expected_factor_count: 158
+  exact_formula_source_required: true
+  implementation_hash_binding_required: true
+
+markets:
+  us:
+    pool_id: "us_selected_equities_v2"
+    pool_spec: "configs/research_universes/us_selected_equities_v2.yaml"
+    expected_symbols: 87
+  cn:
+    pool_id: "cn_selected_equities_v3"
+    pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
+    expected_symbols: 130
+
+required_provider_fields: [open, high, low, close, vwap, volume]
+field_policy:
+  adjusted_prices_required: true
+  true_vwap_required: true
+  synthetic_close_as_vwap_allowed: false
+  synthetic_amount_divided_by_volume_allowed: false
+
+panel:
+  output_layout: "one_compressed_wide_csv_per_symbol"
+  deterministic_factor_order: true
+  evidence_cutoff_required: true
+  candidate_reference_separation_required: true
+  no_future_data_allowed: true
+
+quality:
+  legal_warmup_policy: "factor_minimum_lookback"
+  post_warmup_nan_policy: "report_and_block_factor_symbol_pair"
+  infinity_policy: "block"
+  constant_factor_policy: "report"
+  near_constant_unique_ratio_threshold: 0.001
+  minimum_post_warmup_rows: 20
+  every_factor_requires_explicit_status: true
+
+component:
+  catalog_component_id: "factors.qlib_alpha158.catalog_v1"
+  panel_component_prefix: "factors.qlib_alpha158.panel"
+  component_kind: "factor_panel"
