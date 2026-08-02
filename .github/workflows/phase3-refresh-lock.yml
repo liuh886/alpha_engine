@@ -1,11 +1,11 @@
 name: Phase 3 lock refresh
 
 on:
-  push:
-    branches:
-      - refactor/legacy-web-retirement-phase-3
+  pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - pyproject.toml
+      - uv.lock
       - .github/workflows/phase3-refresh-lock.yml
 
 permissions:
@@ -13,12 +13,12 @@ permissions:
 
 jobs:
   refresh-lock:
-    if: github.actor != 'github-actions[bot]'
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'refactor/legacy-web-retirement-phase-3' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: refactor/legacy-web-retirement-phase-3
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
         with:
@@ -35,4 +35,4 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add uv.lock
           git commit -m 'build: refresh uv lock after Web dependency removal'
-          git push origin HEAD:refactor/legacy-web-retirement-phase-3
+          git push origin HEAD:${{ github.head_ref }}
