@@ -1,4 +1,4 @@
-schema_version: '1.0'
+schema_version: '1.1'
 model_id: us_x1_0
 display_name: US x1.0
 release_date: '2026-08-02'
@@ -42,15 +42,30 @@ label:
   economic_return_expression: Ref($close, -10) / $close - 1
   horizon_sessions: 10
   gain_bins: 7
+candidate_calibration_identity:
+  source: configs/research_paradigms/us_10d_xgb_optimization_frozen_v1.yaml
+  n_gain_bins: 7
+  num_boost_round: 200
+  legacy_num_leaves_field: 31
+  legacy_min_data_in_leaf_field: 20
+  legacy_learning_rate_field: 0.03
+  effective_xgb_mapping:
+    n_gain_bins: consumed
+    num_boost_round: consumed
+    num_leaves: not_consumed_by_xgb_adapter
+    min_data_in_leaf: not_consumed_by_xgb_adapter
+    learning_rate: not_consumed_by_xgb_adapter
 model:
+  parameter_identity_status: effective_runtime_verified
+  runtime_source: src/research/daily_ranker_model.py::fit_xgb_daily_ranker
+  calibration_mapping_source: src/research/qlib_execution_common.py::fit_ranker_scores
   family: xgb
   objective: rank:ndcg
   tree_method: hist
   grow_policy: lossguide
   max_leaves: 31
   max_depth: 0
-  min_data_in_leaf: 20
-  learning_rate: 0.03
+  learning_rate: 0.05
   num_boost_round: 200
   seed: 42
   score_orientation: original
@@ -135,11 +150,16 @@ evidence_identity:
   artifact_id: 8828827295
   artifact_digest: sha256:69e4faf8e30fdc50647a272ba26ccfbc64aa42b52a25c935af49bf236d0755a4
   result_report: docs/research/us87_xgb_optimization_result_2026-08-02.md
+interpretation_correction:
+  prior_claim: The selected candidate used learning_rate 0.03 and min_data_in_leaf 20 as effective XGBoost regularization.
+  corrected_claim: The runtime consumed the risk-controlled feature group, seven gain bins and 200 boosting rounds. XGBoost retained its fixed learning rate 0.05 and max_leaves 31; the legacy min_data_in_leaf and learning_rate fields were identity-only.
+  economic_result_status: unchanged
 known_limitations:
 - Static curated membership carries survivorship bias.
 - Development return is concentrated in 2025H2.
 - The 2025H1 development drawdown reached -28.36%.
 - 2026H1 selections remain concentrated in high-beta growth and semiconductor names.
+- The historical candidate calibration schema contains LightGBM-oriented fields that were not consumed by XGBoost.
 - Seed/bootstrap, contribution concentration and higher-cost robustness are not yet promotion-complete.
 next_version_gate:
   candidate_version: US x1.1
@@ -147,5 +167,6 @@ next_version_gate:
   - security and sector contribution concentration
   - seed and block-bootstrap stability
   - 40/60 bps cost stress
+  - explicit XGBoost parameter mapping before any true regularization experiment
   - risk-control and Top-K robustness without reusing 2026H1 for selection
   - one new untouched challenge window
