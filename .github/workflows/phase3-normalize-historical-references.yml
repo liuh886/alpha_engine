@@ -1,0 +1,67 @@
+name: Phase 3 historical reference normalization
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - DESIGN.md
+      - TASKS.md
+      - notebooks/_build_pipeline_nb.py
+      - notebooks/_gen_pipeline_nb.py
+      - .github/workflows/phase3-normalize-historical-references.yml
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'refactor/legacy-web-retirement-phase-3' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Replace retired entrypoint names without rewriting history
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('DESIGN.md'): {
+                  'api_server.py': 'retired local server entrypoint',
+              },
+              Path('TASKS.md'): {
+                  'api_server.py': 'retired local server entrypoint',
+                  'ecosystem.config.js': 'retired process configuration',
+              },
+              Path('notebooks/_build_pipeline_nb.py'): {
+                  'api_server.py': 'retired local server entrypoint',
+              },
+              Path('notebooks/_gen_pipeline_nb.py'): {
+                  'api_server.py': 'retired local server entrypoint',
+              },
+          }
+
+          changed = []
+          for path, mapping in replacements.items():
+              text = path.read_text(encoding='utf-8')
+              updated = text
+              for old, new in mapping.items():
+                  updated = updated.replace(old, new)
+              if updated != text:
+                  path.write_text(updated, encoding='utf-8')
+                  changed.append(str(path))
+          print('normalized:', ', '.join(changed) if changed else 'none')
+          PY
+      - name: Commit normalized references
+        run: |
+          if git diff --quiet -- DESIGN.md TASKS.md notebooks/_build_pipeline_nb.py notebooks/_gen_pipeline_nb.py; then
+            echo 'Historical references are already normalized.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add DESIGN.md TASKS.md notebooks/_build_pipeline_nb.py notebooks/_gen_pipeline_nb.py
+          git commit -m 'docs: normalize retired server references in historical files'
+          git push origin HEAD:${{ github.head_ref }}
