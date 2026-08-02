@@ -19,6 +19,7 @@ on:
       - "docs/research/qqqi_qqq_tqqq_v4_2_state2_tail_confirmation_result_2026-08-02.md"
       - "docs/research/snapshots/qqqi_v4_2_state2_tail_confirmation_2026-08-02.json"
       - "docs/research/validation/qqqi_v4_2_state2_tail_pr339_2026-08-02.json"
+      - "docs/research/qqqi_qqq_tqqq_experiment_ledger.md"
   workflow_dispatch:
     inputs:
       end_date:
@@ -27,7 +28,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   evidence:
@@ -37,8 +38,6 @@ jobs:
       TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -117,25 +116,6 @@ jobs:
                           )
               nbformat.write(executed, path)
           PY
-      - name: Commit finalized executed notebooks
-        if: >-
-          github.event_name == 'pull_request' &&
-          github.actor != 'github-actions[bot]' &&
-          github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          if git diff --quiet -- \
-            notebooks/19_qqqi_qqq_tqqq_v4_2_state2_tail_diagnostics.ipynb \
-            notebooks/20_qqqi_qqq_tqqq_v4_2_risk_confirmation_ablation.ipynb; then
-            echo "Executed notebooks are already current."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            notebooks/19_qqqi_qqq_tqqq_v4_2_state2_tail_diagnostics.ipynb \
-            notebooks/20_qqqi_qqq_tqqq_v4_2_risk_confirmation_ablation.ipynb
-          git commit -m "research: save state2 experiment notebook outputs"
-          git push origin "HEAD:${{ github.head_ref }}"
       - name: Upload evidence and executed notebooks
         if: always()
         uses: actions/upload-artifact@v4
