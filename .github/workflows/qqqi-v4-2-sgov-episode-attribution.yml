@@ -8,6 +8,7 @@ on:
       - "configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_episode_attribution.yaml"
       - "configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml"
       - "src/research/v4_2_sgov_episode_attribution.py"
+      - "src/research/v4_2_sgov_episode_attribution_corrected.py"
       - "src/research/v4_2_sgov_defense_experiment.py"
       - "scripts/run_qqqi_v4_2_sgov_episode_attribution.py"
       - "tests/test_v4_2_sgov_episode_attribution.py"
@@ -44,6 +45,7 @@ jobs:
         run: |
           uv run ruff check \
             src/research/v4_2_sgov_episode_attribution.py \
+            src/research/v4_2_sgov_episode_attribution_corrected.py \
             scripts/run_qqqi_v4_2_sgov_episode_attribution.py \
             tests/test_v4_2_sgov_episode_attribution.py
           uv run pytest \
