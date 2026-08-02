@@ -1,0 +1,135 @@
+schema_version: '1.0'
+experiment_id: us_x1_1_native_xgb_calibration_v1
+issue: 357
+parent_model_id: us_x1_1
+status: interface_validation_then_bounded_search
+research_only: true
+trade_ready: false
+
+fixed_contract:
+  universe_id: us_selected_equities_v2
+  benchmark: QQQ
+  feature_group: momentum_volatility_volume
+  label_horizon_sessions: 10
+  holding_sessions: 10
+  rebalance_sessions: 10
+  top_n: 15
+  base_cost_bps: 20
+  features_may_change: false
+  label_may_change: false
+  pool_membership_may_change: false
+  portfolio_role_may_change: false
+
+windows:
+  candidate_selection:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+  consumed_reporting_only:
+    - 2026H1
+  consumed_reporting_may_enter_selection: false
+  new_holdout_reserved: true
+
+native_calibrations:
+  - calibration_id: x1_1_effective_baseline
+    n_gain_bins: 7
+    num_boost_round: 200
+    max_leaves: 31
+    max_depth: 0
+    min_child_weight: 1.0
+    learning_rate: 0.05
+    subsample: 1.0
+    colsample_bytree: 1.0
+    reg_alpha: 0.0
+    reg_lambda: 1.0
+    seed: 42
+  - calibration_id: lower_learning_rate_more_rounds
+    n_gain_bins: 7
+    num_boost_round: 300
+    max_leaves: 31
+    max_depth: 0
+    min_child_weight: 1.0
+    learning_rate: 0.03
+    subsample: 1.0
+    colsample_bytree: 1.0
+    reg_alpha: 0.0
+    reg_lambda: 1.0
+    seed: 42
+  - calibration_id: higher_child_weight
+    n_gain_bins: 7
+    num_boost_round: 200
+    max_leaves: 31
+    max_depth: 0
+    min_child_weight: 5.0
+    learning_rate: 0.05
+    subsample: 1.0
+    colsample_bytree: 1.0
+    reg_alpha: 0.0
+    reg_lambda: 1.0
+    seed: 42
+  - calibration_id: row_and_column_sampling
+    n_gain_bins: 7
+    num_boost_round: 200
+    max_leaves: 31
+    max_depth: 0
+    min_child_weight: 1.0
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 0.0
+    reg_lambda: 1.0
+    seed: 42
+  - calibration_id: regularized
+    n_gain_bins: 7
+    num_boost_round: 200
+    max_leaves: 31
+    max_depth: 0
+    min_child_weight: 2.0
+    learning_rate: 0.05
+    subsample: 1.0
+    colsample_bytree: 1.0
+    reg_alpha: 0.1
+    reg_lambda: 2.0
+    seed: 42
+  - calibration_id: lower_leaf_capacity
+    n_gain_bins: 7
+    num_boost_round: 200
+    max_leaves: 15
+    max_depth: 0
+    min_child_weight: 1.0
+    learning_rate: 0.05
+    subsample: 1.0
+    colsample_bytree: 1.0
+    reg_alpha: 0.0
+    reg_lambda: 1.0
+    seed: 42
+
+selection_priority:
+  - positive_excess_in_all_development_windows
+  - lower_worst_drawdown
+  - lower_security_and_window_concentration
+  - positive_60_bps_compounded_relative_excess
+  - stable_rank_ic_and_top15_overlap
+  - compounded_relative_excess
+
+required_identity_evidence:
+  - declared_parameters
+  - effective_model_parameters
+  - num_boost_round
+  - identity_sha256
+  - per_window_parameter_manifest
+  - final_evidence_parameter_manifest
+
+stop_rules:
+  - no_feature_search
+  - no_pool_changes
+  - no_2026H1_candidate_selection
+  - no_automatic_baseline_update
+  - no_regularization_claim_before_declared_effective_identity_ties
+
+version_policy:
+  maximum_surviving_candidates: 1
+  may_propose_us_x1_2_candidate: true
+  may_release_us_x1_2_automatically: false
+  new_untouched_challenge_required: true
