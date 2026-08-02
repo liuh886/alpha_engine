@@ -80,9 +80,12 @@ test('static studio opens without authentication or backend APIs', async ({ page
     const mobileNavigation = page.getByRole('navigation', { name: 'Mobile research studio navigation' });
     await expect(mobileNavigation).toBeVisible();
     await expect(mobileNavigation.getByRole('link', { name: 'Data', exact: true })).toBeVisible();
+    await expect(mobileNavigation.getByRole('link', { name: 'Experiments', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Close research navigation' }).first().click();
   } else {
-    await expect(page.getByRole('navigation', { name: 'Research studio navigation' })).toBeVisible();
+    const navigation = page.getByRole('navigation', { name: 'Research studio navigation' });
+    await expect(navigation).toBeVisible();
+    await expect(navigation.getByRole('link', { name: 'Experiments', exact: true })).toHaveCount(0);
   }
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Sign in')).toHaveCount(0);
@@ -90,6 +93,24 @@ test('static studio opens without authentication or backend APIs', async ({ page
   expect(pageErrors).toEqual([]);
   await assertNoHorizontalOverflow(page);
   await page.screenshot({ path: `test-results/static-artifact/overview-${testInfo.project.name}.png`, fullPage: true });
+
+  await page.goto('/#/dashboard');
+  await expect(page.getByRole('heading', { name: 'Complete backtest review' })).toBeVisible();
+  await expect(page.getByText('Complete retained evidence', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /QQQ Rotation v4\.2/ })).toBeVisible();
+  await page.getByRole('button', { name: /QQQ Rotation v4\.2/ }).click();
+  const selector = page.getByRole('dialog');
+  await expect(selector.getByRole('heading', { name: 'Select formal baseline' })).toBeVisible();
+  await expect(selector.getByText('QQQ Rotation v4.2', { exact: true })).toBeVisible();
+  await expect(selector.getByText('US x1.1', { exact: true })).toBeVisible();
+  await expect(selector.getByText('CN x1.0', { exact: true })).toBeVisible();
+  await expect(selector.locator('tbody tr')).toHaveCount(3);
+  await page.keyboard.press('Escape');
+  await page.getByRole('tab', { name: 'Evidence' }).click();
+  await expect(page.getByText('Formal backtest evidence', { exact: true })).toBeVisible();
+  await expect(page.getByText('Accepted named baseline only. Exploratory experiments are not part of this package.', { exact: true })).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({ path: `test-results/static-artifact/formal-backtest-${testInfo.project.name}.png`, fullPage: true });
 
   await page.goto('/#/data');
   await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();

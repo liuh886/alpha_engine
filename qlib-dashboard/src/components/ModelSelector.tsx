@@ -22,9 +22,9 @@ export function ModelSelector({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[82vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Select evidence record</DialogTitle>
+          <DialogTitle>Select formal baseline</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Change the active model or backtest record used by the comparison views. The underlying bundle remains read-only.
+            Only accepted named model backtests are available. Exploratory experiments and rejected candidates are excluded by the publication catalog.
           </p>
         </DialogHeader>
 
@@ -32,29 +32,27 @@ export function ModelSelector({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[220px]">Record</TableHead>
+                <TableHead className="min-w-[220px]">Formal model</TableHead>
                 <TableHead className="min-w-[150px]">Scope</TableHead>
                 <TableHead className="min-w-[190px]">Performance</TableHead>
-                <TableHead className="min-w-[190px]">Research contract</TableHead>
+                <TableHead className="min-w-[220px]">Backtest contract</TableHead>
                 <TableHead className="text-right">Selection</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {models.map((model) => {
                 const isSelected = model.id === selectedModelId;
-                const annualizedReturn = model.backtest.metrics['Annualized Return'] ?? null;
-                const informationRatio = model.backtest.metrics['Information Ratio'] ?? null;
+                const annualizedReturn = model.backtest.metrics['Annualized Return'] ?? model.backtest.metrics.CAGR ?? null;
+                const relativeExcess = model.backtest.metrics['Compounded Relative Excess Return'] ?? model.backtest.metrics['Excess Return'] ?? null;
                 const sharpe = model.backtest.metrics['Sharpe Ratio'] ?? null;
                 const params = model.params || {};
-                const meta = (params.meta || {}) as Record<string, unknown>;
-                const strategyProfile = (meta.strategy_profile || {}) as Record<string, unknown>;
-                const strategy = (strategyProfile.strategy || {}) as Record<string, unknown>;
-                const positionRule = (strategy.position_rule || {}) as Record<string, unknown>;
-
-                const rebalance = strategy.rebalance_frequency as string | undefined;
-                const minHoldDays = strategy.min_hold_days as number | undefined;
-                const topk = positionRule.topk as number | undefined;
-                const costsBps = strategy.costs_bps as number | undefined;
+                const formal = (params.formal_backtest || {}) as Record<string, unknown>;
+                const contract = (formal.portfolio_contract || {}) as Record<string, unknown>;
+                const topk = contract.topk as number | undefined;
+                const costsBps = (contract.cost_bps ?? contract.transaction_cost_bps) as number | undefined;
+                const rebalanceSessions = contract.rebalance_sessions as number | undefined;
+                const traceFrequency = String(formal.trace_frequency || 'not declared').split('_').join(' ');
+                const completeness = (formal.evidence_completeness || {}) as Record<string, unknown>;
 
                 return (
                   <TableRow
@@ -76,9 +74,8 @@ export function ModelSelector({
                   >
                     <TableCell>
                       <div className="font-semibold text-foreground">{model.name || 'Untitled record'}</div>
-                      <div className="mt-1 max-w-[260px] truncate font-mono text-[10px] text-muted-foreground" title={model.id}>
-                        {model.id}
-                      </div>
+                      <div className="mt-1 max-w-[260px] truncate font-mono text-[10px] text-muted-foreground" title={model.id}>{model.id}</div>
+                      <Badge variant="secondary" className="mt-2 text-[9px]">Formal baseline</Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="uppercase">{model.market}</Badge>
@@ -89,18 +86,19 @@ export function ModelSelector({
                     </TableCell>
                     <TableCell>
                       <div className={`font-mono text-sm font-semibold ${annualizedReturn !== null && annualizedReturn > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
-                        {annualizedReturn !== null ? `${(annualizedReturn * 100).toFixed(1)}% annualized` : 'Return unavailable'}
+                        {annualizedReturn !== null ? `${(annualizedReturn * 100).toFixed(1)}% annualized` : 'Annualized return unavailable'}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        IR {informationRatio !== null ? informationRatio.toFixed(2) : '—'} · Sharpe {sharpe !== null ? sharpe.toFixed(2) : '—'}
+                        Relative excess {relativeExcess !== null ? `${(relativeExcess * 100).toFixed(1)}%` : '—'} · Sharpe {sharpe !== null ? sharpe.toFixed(2) : '—'}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1 text-xs text-muted-foreground">
-                        <div>Rebalance: {rebalance || 'not declared'}</div>
-                        <div>Minimum hold: {minHoldDays !== undefined ? `${minHoldDays}d` : 'not declared'}</div>
-                        <div>Top-K: {topk !== undefined ? topk : 'not declared'}</div>
+                        <div>Trace: {traceFrequency}</div>
+                        <div>Rebalance: {rebalanceSessions !== undefined ? `${rebalanceSessions} sessions` : 'state / source defined'}</div>
+                        <div>Top-K: {topk !== undefined ? topk : 'not applicable'}</div>
                         <div>Costs: {costsBps !== undefined ? `${costsBps} bps` : 'not declared'}</div>
+                        <div>Evidence: {String(completeness.status || 'not declared')}</div>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
