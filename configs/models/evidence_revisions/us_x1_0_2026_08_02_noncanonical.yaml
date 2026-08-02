@@ -1,0 +1,67 @@
+schema_version: '1.0'
+evidence_revision_id: us_x1_0_2026_08_02_noncanonical
+parent_model_id: us_x1_0
+status: provider_drift_blocked
+research_only: true
+trade_ready: false
+canonical_model_config: configs/models/us_x1_0.yaml
+canonical_provider_identity_sha256: 4921168fee3afdcfb222568bed370a0273a5d8795ac57e4477184c1728384a5c
+observed_provider_identity_sha256: edcf6ed011bfd56ea8438e9b399a34d709a36da42ea5c37388d4a4a9e0152ca5
+provider_identity_match: false
+evidence_scope: noncanonical_provider_revision
+version_decision_allowed: false
+experiment:
+  experiment_id: us_x1_0_robustness_v1
+  issue: 355
+  pull_request: 356
+  workflow_run_id: 30736338767
+  artifact_id: 8829711620
+  artifact_digest: sha256:df6f1f55585e3e2a28d8bc64468d29a68314b8d88d14b520a00d93bae0e5cb80
+  result_report: docs/research/us_x1_0_robustness_result_2026-08-02.md
+model_identity:
+  legacy_candidate_name: xgb:daily_ranker:risk_controlled_momentum:gain7_round200_leaves31_leaf20_lr0.03
+  orientation: original
+  effective_runtime:
+    objective: rank:ndcg
+    n_gain_bins: 7
+    num_boost_round: 200
+    max_leaves: 31
+    learning_rate: 0.05
+    seed: 42
+development:
+  period: 2024H1-2025H2
+  compounded_strategy_return: 1.8594341080173402
+  compounded_benchmark_return: 0.5519837543758637
+  compounded_relative_excess_return: 0.8424381698294727
+  worst_drawdown: -0.280218
+  strongest_positive_window_share: 0.6605373575279083
+  all_window_recurring_names:
+  - AAOI
+  - AEHR
+  - BE
+  - HIMS
+cost_stress:
+  20_bps_relative_excess: 0.8424381698294727
+  40_bps_relative_excess: 0.7652544171031443
+  60_bps_relative_excess: 0.6904844827369423
+leave_one_window_out_relative_excess:
+  2024H1: 0.8412371049374132
+  2024H2: 0.5081752283114878
+  2025H1: 0.7896741132380443
+  2025H2: 0.258471223126447
+reporting_only_consumed_holdout:
+  window: 2026H1
+  total_return: 1.200018
+  benchmark_return: 0.155057
+  simple_excess_return: 1.044961
+  icir: 0.833828
+  rank_ic: 0.156203
+  max_drawdown: -0.067105
+decision: data_blocked
+blocking_reasons:
+- observed provider does not match the canonical US x1.0 evidence snapshot
+- worst development drawdown is below the pre-registered -25% gate
+- strongest positive window contributes more than the pre-registered 55% limit
+provider_drift_issue: 358
+automatic_model_update: false
+new_untouched_challenge_required: true

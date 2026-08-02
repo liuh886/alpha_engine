@@ -1,0 +1,194 @@
+schema_version: '1.1'
+model_id: cn_x1_0
+display_name: CN x1.0
+release_date: '2026-08-02'
+status: baseline_research_data_review
+research_only: true
+trade_ready: false
+market: cn
+benchmark: '000300'
+objective: Rank the governed CN130 equity pool for 10-session forward return.
+lineage:
+  parent: cn130_frozen_xgb_baseline
+  adopted_from_pr: 344
+  adoption_decision: baseline_only
+  supersedes_named_model: null
+universe:
+  universe_id: cn_selected_equities_v3
+  source: configs/research_universes/cn_selected_equities_v3.yaml
+  declared_candidate_count: 130
+  membership_mode: static_curated
+  survivorship_bias: true
+  listing_policy: no_prelisting_fill_coverage_qualified_static_members
+provider_binding:
+  policy: promotion_eligible_manifest_required
+  canonical_evidence_provider_identity_sha256: bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8
+  start: '2021-01-01'
+  cutoff: '2026-07-31'
+  snapshot_independent_performance_claim: false
+  drift_review_issue: 345
+  prior_provider_identity_sha256: 83f5251f77851e8c4766f086db71a7ee456a24ee7c1938f971228f04cf7779f2
+features:
+  library: configs/factor_libraries/cn_ohlcv.yaml
+  group: cn_balanced_ohlcv
+  expressions:
+  - $volume/Mean($volume,10)-1
+  - $volume/Mean($volume,20)-1
+  - $volume/Mean($volume,5)-1
+  - $close/Ref($close,10)-1
+  - $close/Ref($close,20)-1
+  - $close/Ref($close,3)-1
+  - $close/Ref($close,5)-1
+  - Ref($close,1)/$close-1
+  - Ref($close,3)/$close-1
+  - Ref($close,5)/$close-1
+  - ($high-$low)/($close+1e-12)
+  - Std($close/Ref($close,1)-1,10)
+  - Std($close/Ref($close,1)-1,20)
+  - Std($close/Ref($close,1)-1,5)
+label:
+  type: processed_daily_cross_sectional_percentile_gain
+  economic_return_expression: Ref($close, -10) / $close - 1
+  horizon_sessions: 10
+  gain_bins: 5
+candidate_calibration_identity:
+  source: configs/research_paradigms/cn_x1_0_frozen_v1.yaml
+  n_gain_bins: 5
+  num_boost_round: 100
+  legacy_num_leaves_field: 31
+  legacy_min_data_in_leaf_field: 10
+  legacy_learning_rate_field: 0.05
+  effective_xgb_mapping:
+    n_gain_bins: consumed
+    num_boost_round: consumed
+    num_leaves: not_consumed_by_xgb_adapter
+    min_data_in_leaf: not_consumed_by_xgb_adapter
+    learning_rate: not_consumed_by_xgb_adapter
+model:
+  parameter_identity_status: effective_runtime_verified
+  runtime_source: src/research/daily_ranker_model.py::fit_xgb_daily_ranker
+  calibration_mapping_source: src/research/qlib_execution_common.py::fit_ranker_scores
+  family: xgb
+  objective: rank:ndcg
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 31
+  max_depth: 0
+  learning_rate: 0.05
+  num_boost_round: 100
+  seed: 42
+  score_orientation: original
+strategy:
+  holding_sessions: 10
+  rebalance_sessions: 10
+  top_n: 15
+  bottom_n_diagnostic: 15
+  weighting: equal_weight
+  cost_bps: 20
+  benchmark_mode: reference_only
+frozen_research_spec: configs/research_paradigms/cn_x1_0_frozen_v1.yaml
+backtest_evidence:
+  development:
+    period: 2024H1-2025H2
+    provider_identity_sha256: bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8
+    windows:
+    - window: 2024H1
+      total_return: 0.083045
+      benchmark_return: 0.03453
+      simple_excess: 0.048515
+      ic: 0.013189
+      icir: 0.061299
+      rank_ic: -0.017894
+      top_bottom_spread: 0.00204818
+      max_drawdown: -0.106251
+      turnover: 5.966667
+    - window: 2024H2
+      total_return: 0.22044
+      benchmark_return: 0.145894
+      simple_excess: 0.074546
+      ic: -0.006728
+      icir: -0.039414
+      rank_ic: -0.032707
+      top_bottom_spread: 0.00665554
+      max_drawdown: -0.114314
+      turnover: 8.9
+    - window: 2025H1
+      total_return: 0.055035
+      benchmark_return: 0.006871
+      simple_excess: 0.048164
+      ic: 0.071824
+      icir: 0.355997
+      rank_ic: 0.064379
+      top_bottom_spread: 0.02078917
+      max_drawdown: -0.191008
+      turnover: 7.366667
+    - window: 2025H2
+      total_return: 0.139518
+      benchmark_return: 0.175333
+      simple_excess: -0.035815
+      ic: 0.013597
+      icir: 0.098157
+      rank_ic: 0.00294
+      top_bottom_spread: 0.00462987
+      max_drawdown: -0.03683
+      turnover: 7.966667
+    compounded_strategy_return: 0.5890991376622334
+    compounded_benchmark_return: 0.40288572821392776
+    compounded_relative_excess_return: 0.13273597820784855
+    mean_icir: 0.11900975
+    mean_rank_ic: 0.0041795
+    mean_top_bottom_spread: 0.00853069
+    positive_excess_windows: 3/4
+    worst_drawdown: -0.191008
+  frozen_challenge:
+    window: 2026H1
+    test_start: '2026-01-05'
+    test_end: '2026-06-15'
+    total_return: 0.531128
+    benchmark_return: 0.042741
+    simple_excess_return: 0.488387
+    ic: 0.170406
+    icir: 0.888279
+    rank_ic: 0.117718
+    top_bottom_spread: 0.04751884
+    max_drawdown: -0.119957
+    turnover: 6.166667
+    sharpe: 2.797363
+  snapshot_comparison:
+    prior_provider:
+      provider_identity_sha256: 83f5251f77851e8c4766f086db71a7ee456a24ee7c1938f971228f04cf7779f2
+      compounded_relative_excess_return: 0.2018176732282666
+      worst_drawdown: -0.16116
+      source_pr: 289
+    canonical_provider:
+      provider_identity_sha256: bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8
+      compounded_relative_excess_return: 0.13273597820784855
+      worst_drawdown: -0.191008
+      source_pr: 344
+    interpretation: Model identity is stable; performance is provider-snapshot dependent pending Issue #345.
+evidence_identity:
+  pull_request: 344
+  workflow_run_id: 30733728747
+  artifact_id: 8828889722
+  artifact_digest: sha256:8696b9d12a11b86f8732b571ea225fed3e6c23f27a29f977a7ed925d3bf08307
+  result_report: docs/research/cn130_xgb_optimization_result_2026-08-02.md
+interpretation_correction:
+  prior_claim: The bounded grid compared stronger XGBoost regularization through min_data_in_leaf and learning-rate changes.
+  corrected_claim: The runtime compared feature groups, relevance bins and boosting rounds. XGBoost retained its fixed learning rate 0.05 and max_leaves 31; the legacy min_data_in_leaf and learning_rate fields were not consumed.
+  economic_result_status: unchanged
+known_limitations:
+- Static curated membership carries survivorship bias.
+- Provider snapshot drift changes historical candidate returns and remains under Issue #345.
+- Mean development Rank IC is only 0.0042 and two 2024 windows have negative Rank IC.
+- The model underperformed CSI 300 in 2025H2.
+- The historical candidate calibration schema contains LightGBM-oriented fields that were not consumed by XGBoost.
+- No alternative among eight bounded XGBoost identities justified replacement.
+next_version_gate:
+  candidate_version: CN x1.1
+  required_experiments:
+  - complete provider snapshot drift attribution
+  - bind immutable provider revision policy
+  - sector, size, beta and volatility exposure decomposition
+  - seed and block-bootstrap stability
+  - explicit XGBoost parameter mapping before any true regularization experiment
+  - one new untouched challenge window after data governance passes
