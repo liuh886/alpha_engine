@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/us87-professional-prices-ci.yml"
       - "configs/data/us87_professional_prices_v1.yaml"
+      - "docs/research/us87_validation_source_policy_2026-08-02.md"
       - "src/data/provider_catalog.py"
       - "src/data/adapters/polygon_adapter.py"
       - "src/data/us87_professional_prices.py"
@@ -87,16 +88,16 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Build one quota-bounded professional shard
+      - name: Build one quota-bounded governed shard
         run: >-
           uv run python scripts/data/build_us87_professional_prices.py
           --cutoff "${{ inputs.cutoff }}"
           --shard-index "${{ inputs.shard_index }}"
-      - name: Upload resumable shard
+      - name: Upload canonical bars and validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: us87-professional-${{ inputs.cutoff }}-shard-${{ inputs.shard_index }}
+          name: us87-governed-${{ inputs.cutoff }}-shard-${{ inputs.shard_index }}
           path: artifacts/data/us87_professional_prices_v1/shards
           if-no-files-found: error
           retention-days: 90
