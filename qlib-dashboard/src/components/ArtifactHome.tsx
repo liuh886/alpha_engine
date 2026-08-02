@@ -1,5 +1,13 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, BookOpen, Database, FileText, ShieldCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpen,
+  Boxes,
+  Database,
+  FileText,
+  GitCompareArrows,
+  ShieldCheck,
+} from 'lucide-react';
 import type { ModelData } from '@/lib/data-parser';
 import { runtimeCapabilities } from '@/lib/runtime-capabilities';
 import { Badge } from '@/components/ui/badge';
@@ -14,81 +22,128 @@ interface ArtifactHomeProps {
 }
 
 const MODE_LABEL = {
-  static_artifact: 'Static bundle',
-  local_artifact: 'Local bundle',
-  connected_research: 'Connected research',
+  static_artifact: 'Published artifact',
+  local_artifact: 'Local artifact',
 } as const;
 
 export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeProps) {
   const navigate = useNavigate();
 
   return (
-    <div className="space-y-8 max-w-[1400px] mx-auto pb-16">
-      <section className="rounded-2xl border bg-card p-6 md:p-8 overflow-hidden relative">
-        <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-primary/10 to-transparent pointer-events-none" />
-        <div className="relative max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-widest">{MODE_LABEL[runtimeCapabilities.mode]}</Badge>
-            <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-400">Research only</Badge>
+    <div className="mx-auto max-w-[1400px] space-y-8 pb-16">
+      <section className="relative overflow-hidden rounded-2xl border bg-card p-6 md:p-9">
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-primary/10 to-transparent" />
+        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-end">
+          <div className="max-w-3xl">
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+              <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-widest">
+                {MODE_LABEL[runtimeCapabilities.mode]}
+              </Badge>
+              <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                Research only
+              </Badge>
+              <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-widest">
+                Read only
+              </Badge>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">Evidence-first workspace</p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">
+              Decide what the evidence supports.
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
+              Review governed Alpha Engine datasets, model candidates, experiments and backtests from one versioned bundle. Every conclusion stays bound to its scope, cutoff, benchmark and source files.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Button onClick={() => navigate('/dashboard')} className="gap-2">
+                Review backtest evidence <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button onClick={() => navigate('/compare')} variant="outline" className="gap-2">
+                <GitCompareArrows className="h-4 w-4" /> Compare candidates
+              </Button>
+            </div>
           </div>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight">Research Artifact Studio</h1>
-          <p className="mt-4 text-base md:text-lg leading-relaxed text-muted-foreground">
-            Inspect governed Alpha Engine data, models, experiments and backtests without running the research backend.
-            Every conclusion remains traceable to its evidence bundle, contract and cutoff.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button onClick={() => navigate('/dashboard')} className="gap-2">Open latest evidence <ArrowRight className="h-4 w-4" /></Button>
-            <Button onClick={() => navigate('/models')} variant="outline" className="gap-2"><Database className="h-4 w-4" /> Browse models</Button>
+
+          <div className="rounded-xl border bg-background/70 p-5 backdrop-blur-sm">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Active evidence</p>
+            <div className="mt-4 text-3xl font-black font-mono">{models.length}</div>
+            <p className="mt-1 text-sm text-muted-foreground">Model or strategy records in the active bundle.</p>
+            <div className="mt-5 border-t pt-4">
+              <p className="truncate text-sm font-semibold">{latestModel?.name || 'No record loaded'}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {latestModel
+                  ? `${String(latestModel.market || 'unknown').toUpperCase()} · ${latestModel.model_type || 'research candidate'}`
+                  : 'Open a compatible bundle to begin review.'}
+              </p>
+              <p className="mt-3 font-mono text-[10px] text-muted-foreground">
+                Exported {generatedAt ? new Date(generatedAt).toLocaleString() : 'time not declared'}
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Evidence bundle</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <div className="text-3xl font-black font-mono">{models.length}</div>
-            <p className="text-sm text-muted-foreground">Model or strategy records available in the active bundle.</p>
-            <p className="text-[11px] font-mono text-muted-foreground">Generated: {generatedAt ? new Date(generatedAt).toLocaleString() : 'Not declared'}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Latest record</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <div className="text-lg font-bold break-words">{latestModel?.name || 'No model record'}</div>
-            <p className="text-sm text-muted-foreground">
-              {latestModel ? `${String(latestModel.market || 'unknown').toUpperCase()} · ${latestModel.model_type || 'research candidate'}` : 'Open a compatible research bundle to populate this workspace.'}
-            </p>
-            {latestModel && <Button variant="ghost" size="sm" className="px-0 gap-2" onClick={() => navigate('/dashboard')}>Inspect record <ArrowRight className="h-3.5 w-3.5" /></Button>}
-          </CardContent>
-        </Card>
+      <section className="grid gap-4 md:grid-cols-3">
+        <button
+          type="button"
+          className="rounded-xl border bg-card p-5 text-left transition-colors hover:border-primary/40"
+          onClick={() => navigate('/data')}
+        >
+          <Database className="mb-4 h-5 w-5 text-primary" />
+          <div className="font-bold">Confirm the evidence boundary</div>
+          <p className="mt-2 text-sm text-muted-foreground">Check provider lineage, market scope, evidence cutoff, missing files and integrity before interpreting results.</p>
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border bg-card p-5 text-left transition-colors hover:border-primary/40"
+          onClick={() => navigate('/compare')}
+        >
+          <GitCompareArrows className="mb-4 h-5 w-5 text-primary" />
+          <div className="font-bold">Compare like with like</div>
+          <p className="mt-2 text-sm text-muted-foreground">Review candidates under the same universe, benchmark, costs and validation window.</p>
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border bg-card p-5 text-left transition-colors hover:border-primary/40"
+          onClick={() => navigate('/reports')}
+        >
+          <FileText className="mb-4 h-5 w-5 text-primary" />
+          <div className="font-bold">Trace the conclusion</div>
+          <p className="mt-2 text-sm text-muted-foreground">Move from headline metrics to experiments, reports, notebooks and manifest-declared source files.</p>
+        </button>
       </section>
 
       <Card className="border-primary/20">
         <CardHeader>
-          <CardTitle className="text-base">Open a local Alpha Engine results bundle</CardTitle>
-          <p className="text-sm text-muted-foreground">Choose the bundle root folder, select its files, or open a ZIP export. The application requests read access only.</p>
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg border bg-primary/5 p-2 text-primary"><Boxes className="h-5 w-5" /></div>
+            <div>
+              <CardTitle className="text-base">Open a local Alpha Engine bundle</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Choose a bundle root folder, a complete file set or a ZIP export. Files are read locally in the browser and are never uploaded.
+              </p>
+            </div>
+          </div>
         </CardHeader>
         <CardContent><BundleOpenPanel /></CardContent>
       </Card>
 
-      <section>
-        <div className="mb-4">
-          <p className="text-[11px] uppercase tracking-[0.2em] font-bold text-muted-foreground">Research paths</p>
-          <h2 className="text-xl font-bold mt-1">Continue from the evidence, not the infrastructure</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="text-left rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors" onClick={() => navigate('/models')}>
-            <FileText className="h-5 w-5 text-primary mb-4" /><div className="font-bold">Model evidence</div><p className="text-sm text-muted-foreground mt-2">Review available model records, metrics and declared research status.</p>
-          </button>
-          <button className="text-left rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors" onClick={() => navigate('/dashboard')}>
-            <Database className="h-5 w-5 text-primary mb-4" /><div className="font-bold">Performance evidence</div><p className="text-sm text-muted-foreground mt-2">Inspect exported performance, drawdown, holdings and attribution data.</p>
-          </button>
-          <button className="text-left rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors" onClick={() => navigate('/methodology')}>
-            <BookOpen className="h-5 w-5 text-primary mb-4" /><div className="font-bold">Methodology</div><p className="text-sm text-muted-foreground mt-2">Understand the fixed research contract and evidence boundaries.</p>
-          </button>
-        </div>
+      <section className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm"><ShieldCheck className="h-4 w-4 text-primary" /> Product boundary</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm leading-relaxed text-muted-foreground">
+            The studio does not refresh data, train models, run backtests, mutate registries or execute trades. Python CLI commands and scheduled workflows produce the artifacts; this interface reviews them.
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm"><BookOpen className="h-4 w-4 text-primary" /> Interpretation boundary</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm leading-relaxed text-muted-foreground">
+            A positive historical result is not a promotion decision. Use Methodology to verify the fixed research contract, benchmark, costs, universe validity and required evidence gates.
+          </CardContent>
+        </Card>
       </section>
     </div>
   );
