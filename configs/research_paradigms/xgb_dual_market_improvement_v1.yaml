@@ -1,11 +1,12 @@
-schema_version: "1.0"
+schema_version: "1.1"
 experiment_family: "xgb_dual_market_improvement_v1"
 issue: 338
-status: "preregistered_provenance_pending"
+status: "phase_1_baseline_identity_bound"
 trade_ready: false
+baseline_identity_path: "configs/research_paradigms/xgb_dual_market_baseline_identity_v1.yaml"
 
 objective:
-  question: "Can the two user-designated XGBoost baselines be reproduced and improved without holdout leakage?"
+  question: "Can the two governed XGBoost baselines be improved without holdout leakage?"
   automatic_promotion_allowed: false
   markets_are_independent: true
 
@@ -14,12 +15,14 @@ reported_baselines:
     value: 0.8143
     metric: "compounded_relative_excess"
     benchmark: "QQQ"
-    provenance_status: "unverified_user_reported"
+    provenance_status: "unresolved_user_reported"
+    verified_current_scope_value: 0.7372321884377135
   cn:
     value: 0.2018
     metric: "compounded_relative_excess"
     benchmark: "CSI300"
-    provenance_status: "unverified_user_reported"
+    provenance_status: "baseline_verified"
+    verified_current_scope_value: 0.2018176732282666
   formula: "(1 + compounded_strategy_return) / (1 + compounded_benchmark_return) - 1"
 
 markets:
@@ -27,21 +30,26 @@ markets:
     universe_id: "us_selected_equities_v2"
     universe_path: "configs/research_universes/us_selected_equities_v2.yaml"
     exact_candidate_count: 87
+    verified_retained_count: 74
     benchmark: "QQQ"
     candidate_asset_type: "equity"
     reference_assets_may_enter_rank: false
+    baseline_state: "baseline_verified_current_scope_claim_unresolved"
   cn:
     universe_id: "cn_selected_equities_v3"
     universe_path: "configs/research_universes/cn_selected_equities_v3.yaml"
     exact_candidate_count: 130
+    verified_retained_count: 122
     benchmark: "000300"
     candidate_asset_type: "equity"
     reference_assets_may_enter_rank: false
+    baseline_state: "baseline_verified"
 
 hard_gates:
-  - "exact baseline provenance or explicitly labeled reconstruction"
+  - "exact baseline provenance or explicitly labeled current-scope verification"
   - "promotion-eligible provider manifest"
-  - "exact selected-pool count; no silent symbol drops"
+  - "exact selected-pool declaration with explicit lifecycle exclusions"
+  - "no silent symbol drops"
   - "corporate-action and listing-boundary checks"
   - "market-isolated calendars, features, labels and portfolios"
   - "final challenge window reserved before variant results"
@@ -49,14 +57,14 @@ hard_gates:
 
 stages:
   - id: "phase_0_provenance"
-    output_state:
-      - "baseline_verified"
-      - "baseline_reconstructed"
-      - "baseline_not_reproducible"
-      - "baseline_data_blocked"
+    status_by_market:
+      us: "current_scope_verified_user_claim_unresolved"
+      cn: "baseline_verified"
   - id: "phase_1_exact_replication"
+    status: "completed_via_pr_289_artifacts"
     tuning_allowed: false
   - id: "phase_2_diagnosis"
+    status: "active"
     diagnostics:
       - "ic_and_rank_ic_decay"
       - "top_bottom_spread"
@@ -66,9 +74,12 @@ stages:
       - "turnover_concentration_and_cost_drag"
       - "drawdown_and_recovery_attribution"
       - "seed_and_bootstrap_sensitivity"
+      - "selection_overlap_and_score_rank_stability"
   - id: "phase_3_bounded_improvement"
+    status: "not_started"
     final_holdout_visible: false
   - id: "phase_4_single_final_challenge"
+    status: "not_started"
     maximum_evaluations_per_frozen_candidate: 1
 
 improvement_ladder:
@@ -77,7 +88,7 @@ improvement_ladder:
   - id: "factor_information"
     allowed_sources:
       - "alpha_engine_governed_factors"
-      - "qlib_alpha158_predeclared_groups"
+      - "qlib_alpha158_predeclared_groups_after_panel_readiness"
       - "pit_fundamentals_after_coverage_gate"
     individual_factor_search_on_final_holdout_allowed: false
     family_ablation_required: true
@@ -94,6 +105,20 @@ improvement_ladder:
     reference_assets_may_be_state_inputs: true
     reference_assets_may_enter_stock_rank: false
 
+market_specific_order:
+  us:
+    - "tail_risk_and_contribution_concentration"
+    - "seed_bootstrap_and_selection_stability"
+    - "portfolio_construction_efficiency"
+    - "factor_information_after_data_gate"
+    - "bounded_objective_regularization"
+  cn:
+    - "exposure_and_ranking_validity_attribution"
+    - "seed_bootstrap_and_selection_stability"
+    - "factor_family_ablation"
+    - "bounded_objective_regularization"
+    - "portfolio_construction_efficiency"
+
 search_budget:
   baseline_replications_per_market: 1
   maximum_development_variants_per_market: 12
@@ -107,10 +132,11 @@ constraints:
   transaction_cost_robustness_required: true
   sector_or_single_name_dominance_forbidden: true
   seed_or_bootstrap_robustness_required: true
+  ranking_signal_must_be_distinguished_from_exposure_return: true
 
 required_outputs:
   - "baseline_provenance_report.json"
-  - "exact_replication_manifest.json"
+  - "xgb_dual_market_baseline_identity_v1.yaml"
   - "diagnostic_report.md"
   - "pre_registered_variant_grid.yaml"
   - "ablation_and_sensitivity_tables"
