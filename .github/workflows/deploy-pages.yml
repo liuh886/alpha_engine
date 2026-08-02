@@ -37,6 +37,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Verify zero-server product boundary
         run: python scripts/check_legacy_web_boundary.py
