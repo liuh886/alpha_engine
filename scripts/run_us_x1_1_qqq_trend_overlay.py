@@ -1,9 +1,10 @@
 """Validate fixed QQQ trend overlays across US x1.1 development windows.
 
-The experiment consumes the deterministic provider and exact Experiment 007
-score/selection ledgers. It changes only target gross exposure when the QQQ
-trailing 20-session price trend is negative. No model fitting or score search is
-performed, and 2026H1 is excluded.
+This experiment consumes the frozen deterministic provider and exact
+Experiment 007 score/selection artifacts. It changes only gross exposure when
+QQQ's trailing 20-session price trend is negative. No model fitting, score
+search, lookback search, or threshold search is allowed. The consumed 2026H1
+window is excluded.
 """
 
 from __future__ import annotations
@@ -56,9 +57,10 @@ class WindowInputs:
     returns: dict[pd.Timestamp, dict[str, float]]
     benchmark: dict[pd.Timestamp, float]
     closes: pd.DataFrame
-    score_sha256: str
+    source_score_sha256: str
+    source_selection_sha256: str
+    reconstructed_source_selection_sha256: str
     economic_score_sha256: str
-    selection_sha256: str
     economic_selection_sha256: str
     removed_score_rows: int
 
@@ -81,13 +83,10 @@ def _load_json(path: Path) -> dict[str, Any]:
 def _load_scores(path: Path, expected_sha256: str) -> pd.DataFrame:
     observed = _sha256_file(path)
     if observed != expected_sha256:
-        raise ValueError(
-            f"score identity mismatch for {path}: {observed} != {expected_sha256}"
-        )
+        raise ValueError(f"score identity mismatch: {observed} != {expected_sha256}")
     frame = pd.read_csv(path)
-    required = ["datetime", "instrument", "score"]
-    if list(frame.columns) != required:
-        raise ValueError(f"score columns must be {required}")
+    if list(frame.columns) != ["datetime", "instrument", "score"]:
+        raise ValueError("unexpected score-ledger columns")
     frame["datetime"] = pd.to_datetime(frame["datetime"], errors="raise").dt.normalize()
     frame["instrument"] = frame["instrument"].astype(str)
     frame["score"] = pd.to_numeric(frame["score"], errors="raise")
@@ -104,12 +103,12 @@ def _load_selection(path: Path, expected_sha256: str) -> pd.DataFrame:
     observed = _sha256_file(path)
     if observed != expected_sha256:
         raise ValueError(
-            f"selection identity mismatch for {path}: {observed} != {expected_sha256}"
+            f"selection identity mismatch: {observed} != {expected_sha256}"
         )
     frame = pd.read_csv(path)
     required = ["datetime", "instrument", "score", "rank", "target_weight"]
     if list(frame.columns) != required:
-        raise ValueError(f"selection columns must be {required}")
+        raise ValueError("unexpected selection-ledger columns")
     frame["datetime"] = pd.to_datetime(frame["datetime"], errors="raise").dt.normalize()
     frame["instrument"] = frame["instrument"].astype(str)
     frame["score"] = pd.to_numeric(frame["score"], errors="raise")
@@ -136,10 +135,9 @@ def _align_scores(scores: pd.DataFrame, raw_returns: pd.DataFrame) -> pd.DataFra
 
 
 def _selection_ledger(scores: pd.DataFrame) -> pd.DataFrame:
-    """Build a daily Top-15 identity ledger from the supplied score layer."""
-
-    dates = [pd.Timestamp(value) for value in sorted(scores["datetime"].unique())]
+    """Build a daily Top-15 identity ledger from one score layer."""
     rows: list[dict[str, Any]] = []
+    dates = [pd.Timestamp(value) for value in sorted(scores["datetime"].unique())]
     for date in dates:
         ranked = _rank_day(scores.loc[scores["datetime"] == date].copy()).head(15)
         if len(ranked) != 15:
@@ -163,14 +161,7 @@ def _frame_sha256(frame: pd.DataFrame, path: Path) -> str:
 
 
 def _compare_selection_identity(observed: pd.DataFrame, expected: pd.DataFrame) -> None:
-    """Compare parsed ledgers while leaving byte identity to the SHA gate.
-
-    CSV round-tripping can parse the canonical equal weight as the adjacent
-    machine float even though deterministic serialization is byte-identical.
-    Non-weight fields remain exact; the weight gets a one-femtounit tolerance,
-    followed by a strict serialized SHA-256 comparison in the caller.
-    """
-
+    """Prove semantic reconstruction while original artifact SHA proves bytes."""
     exact_columns = ["datetime", "instrument", "score", "rank"]
     pd.testing.assert_frame_equal(
         observed[exact_columns].reset_index(drop=True),
@@ -179,25 +170,24 @@ def _compare_selection_identity(observed: pd.DataFrame, expected: pd.DataFrame) 
         check_dtype=False,
         check_like=False,
     )
-    observed_weight = observed["target_weight"].to_numpy(dtype=float)
-    expected_weight = expected["target_weight"].to_numpy(dtype=float)
-    if not np.allclose(observed_weight, expected_weight, rtol=0.0, atol=1e-15):
+    if not np.allclose(
+        observed["target_weight"].to_numpy(dtype=float),
+        expected["target_weight"].to_numpy(dtype=float),
+        rtol=0.0,
+        atol=1e-15,
+    ):
         raise AssertionError("selection target weights differ beyond CSV tolerance")
 
 
-def _compounded(values: pd.Series | list[float]) -> float:
-    array = np.asarray(values, dtype=float)
-    return float(np.prod(1.0 + array) - 1.0)
+def _compounded(values: list[float] | pd.Series) -> float:
+    return float(np.prod(1.0 + np.asarray(values, dtype=float)) - 1.0)
 
 
-def _state_evidence(
-    periods: pd.DataFrame,
-    baseline_periods: pd.DataFrame,
-) -> dict[str, Any]:
-    if len(periods) != len(baseline_periods):
+def _state_evidence(periods: pd.DataFrame, baseline: pd.DataFrame) -> dict[str, Any]:
+    if len(periods) != len(baseline):
         raise ValueError("variant and baseline period counts differ")
     if not periods["rebalance_date"].reset_index(drop=True).equals(
-        baseline_periods["rebalance_date"].reset_index(drop=True)
+        baseline["rebalance_date"].reset_index(drop=True)
     ):
         raise ValueError("variant and baseline rebalance dates differ")
     reduced = periods["gross_exposure"] < 1.0 - 1e-12
@@ -208,7 +198,7 @@ def _state_evidence(
     )
     upside_forgone = float(
         np.maximum(
-            baseline_periods.loc[rebound, "net_return"].to_numpy(dtype=float)
+            baseline.loc[rebound, "net_return"].to_numpy(dtype=float)
             - periods.loc[rebound, "net_return"].to_numpy(dtype=float),
             0.0,
         ).sum()
@@ -238,28 +228,23 @@ def _state_evidence(
 
 
 def _recovery_comparison(
-    baseline: dict[str, Any],
-    variant: dict[str, Any],
+    baseline: dict[str, Any], variant: dict[str, Any]
 ) -> dict[str, Any]:
-    baseline_recovery = baseline.get("recovery_date")
-    variant_recovery = variant.get("recovery_date")
-    if baseline_recovery and variant_recovery:
-        delta = (
-            pd.Timestamp(variant_recovery) - pd.Timestamp(baseline_recovery)
-        ).days
+    base_date = baseline.get("recovery_date")
+    variant_date = variant.get("recovery_date")
+    if base_date and variant_date:
+        delta = (pd.Timestamp(variant_date) - pd.Timestamp(base_date)).days
         status = "accelerated" if delta < 0 else "delayed" if delta > 0 else "same_date"
         return {"status": status, "calendar_day_delta": int(delta)}
-    if baseline_recovery and not variant_recovery:
+    if base_date and not variant_date:
         return {"status": "variant_not_recovered", "calendar_day_delta": None}
-    if not baseline_recovery and variant_recovery:
+    if not base_date and variant_date:
         return {"status": "variant_recovers_baseline_not", "calendar_day_delta": None}
     return {"status": "neither_recovered", "calendar_day_delta": None}
 
 
 def _aggregate(
-    strategy_id: str,
-    cost_bps: int,
-    window_results: list[dict[str, Any]],
+    strategy_id: str, cost_bps: int, window_results: list[dict[str, Any]]
 ) -> dict[str, Any]:
     strategy_return = float(
         np.prod([1.0 + row["total_return"] for row in window_results]) - 1.0
@@ -268,12 +253,11 @@ def _aggregate(
         np.prod([1.0 + row["benchmark_return"] for row in window_results]) - 1.0
     )
     relative_excess = float((1.0 + strategy_return) / (1.0 + benchmark_return) - 1.0)
-    positive = [
-        float(row["excess_return"])
+    relative_windows = [
+        float((1.0 + row["total_return"]) / (1.0 + row["benchmark_return"]) - 1.0)
         for row in window_results
-        if row["excess_return"] > 0
     ]
-    strongest_share = max(positive) / sum(positive) if positive else 0.0
+    positive = [value for value in relative_windows if value > 0]
     total_periods = sum(int(row["n_periods"]) for row in window_results)
     weighted_gross = sum(
         float(row["state_evidence"]["average_gross_exposure"])
@@ -287,10 +271,10 @@ def _aggregate(
         "compounded_benchmark_return": benchmark_return,
         "compounded_relative_excess_return": relative_excess,
         "worst_drawdown": min(float(row["max_drawdown"]) for row in window_results),
-        "positive_excess_windows": sum(
-            row["excess_return"] > 0 for row in window_results
+        "positive_excess_windows": sum(row["excess_return"] > 0 for row in window_results),
+        "strongest_positive_window_share": (
+            max(positive) / sum(positive) if positive else 0.0
         ),
-        "strongest_positive_window_share": strongest_share,
         "average_gross_exposure": weighted_gross / total_periods if total_periods else 0.0,
         "positive_relative_excess": relative_excess > 0,
     }
@@ -301,53 +285,50 @@ def _candidate_gate(
     aggregates: dict[str, dict[str, dict[str, Any]]],
     windows: dict[str, dict[str, dict[str, Any]]],
 ) -> dict[str, Any]:
-    baseline_20 = aggregates["baseline_100pct"]["20"]
-    candidate_20 = aggregates[strategy_id]["20"]
+    baseline = aggregates["baseline_100pct"]["20"]
+    candidate = aggregates[strategy_id]["20"]
     candidate_60 = aggregates[strategy_id]["60"]
-    worst_improvement = float(
-        candidate_20["worst_drawdown"] - baseline_20["worst_drawdown"]
-    )
+    worst_improvement = float(candidate["worst_drawdown"] - baseline["worst_drawdown"])
     retained = (
-        float(candidate_20["compounded_relative_excess_return"])
-        / float(baseline_20["compounded_relative_excess_return"])
-        if baseline_20["compounded_relative_excess_return"] > 0
+        float(candidate["compounded_relative_excess_return"])
+        / float(baseline["compounded_relative_excess_return"])
+        if baseline["compounded_relative_excess_return"] > 0
         else 0.0
     )
     benefit_windows: list[str] = []
     new_negative_windows: list[str] = []
     window_evidence: list[dict[str, Any]] = []
     for window in WINDOWS:
-        base = windows[window]["baseline_100pct"]["20"]
-        candidate = windows[window][strategy_id]["20"]
-        improvement = float(candidate["max_drawdown"] - base["max_drawdown"])
+        base_row = windows[window]["baseline_100pct"]["20"]
+        candidate_row = windows[window][strategy_id]["20"]
+        improvement = float(candidate_row["max_drawdown"] - base_row["max_drawdown"])
         material = improvement >= MATERIAL_WINDOW_DRAWDOWN_IMPROVEMENT
         if material:
             benefit_windows.append(window)
-        if base["excess_return"] > 0 and candidate["excess_return"] < 0:
+        if base_row["excess_return"] > 0 and candidate_row["excess_return"] < 0:
             new_negative_windows.append(window)
         window_evidence.append(
             {
                 "window": window,
                 "drawdown_improvement": improvement,
                 "excess_change": float(
-                    candidate["excess_return"] - base["excess_return"]
+                    candidate_row["excess_return"] - base_row["excess_return"]
                 ),
                 "material_drawdown_benefit": material,
             }
         )
-    no_negative_gate = (
-        not new_negative_windows
-        or worst_improvement >= NEGATIVE_WINDOW_OVERRIDE_DRAWDOWN
-    )
     gates = {
-        "worst_drawdown_improvement_gate": worst_improvement
-        >= CANDIDATE_WORST_DRAWDOWN_IMPROVEMENT,
+        "worst_drawdown_improvement_gate": (
+            worst_improvement >= CANDIDATE_WORST_DRAWDOWN_IMPROVEMENT
+        ),
         "retained_relative_excess_gate": retained >= EXCESS_RETENTION_GATE,
-        "positive_60bps_relative_excess_gate": candidate_60[
-            "compounded_relative_excess_return"
-        ]
-        > 0,
-        "no_new_negative_window_gate": no_negative_gate,
+        "positive_60bps_relative_excess_gate": (
+            candidate_60["compounded_relative_excess_return"] > 0
+        ),
+        "no_new_negative_window_gate": (
+            not new_negative_windows
+            or worst_improvement >= NEGATIVE_WINDOW_OVERRIDE_DRAWDOWN
+        ),
         "benefit_in_two_windows_gate": len(benefit_windows) >= 2,
     }
     return {
@@ -372,7 +353,7 @@ def _decision(gates: list[dict[str, Any]]) -> dict[str, Any]:
         selected = "qqq_trend_cash"
     else:
         selected = None
-        material_counts = [len(row["benefit_windows"]) for row in gates]
+        benefit_counts = [len(row["benefit_windows"]) for row in gates]
         upside_failure = any(
             not row["gates"]["retained_relative_excess_gate"]
             or not row["gates"]["no_new_negative_window_gate"]
@@ -386,7 +367,7 @@ def _decision(gates: list[dict[str, Any]]) -> dict[str, Any]:
         )
         if upside_failure and meaningful_risk_path:
             decision = "trend_overlay_destroys_too_much_upside"
-        elif max(material_counts, default=0) > 0:
+        elif max(benefit_counts, default=0) > 0:
             decision = "trend_overlay_window_specific"
         else:
             decision = "no_overlay_improves_us_x1_1"
@@ -401,6 +382,12 @@ def _decision(gates: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _expected_window(reproduction: dict[str, Any], window: str) -> dict[str, Any]:
+    return next(
+        row for row in reproduction["run_a"]["windows"] if row["window"] == window
+    )
+
+
 def _load_window_inputs(
     runtime: QlibUSExecutionRuntime,
     reproduction_root: Path,
@@ -408,17 +395,14 @@ def _load_window_inputs(
     window: str,
     output_dir: Path,
 ) -> WindowInputs:
-    expected = next(
-        row for row in reproduction["run_a"]["windows"] if row["window"] == window
-    )
+    expected = _expected_window(reproduction, window)
     ledger_root = reproduction_root / "ledgers" / "a" / window
-    score_path = ledger_root / "scores.csv"
-    selection_path = ledger_root / "top15_selections.csv"
-    scores = _load_scores(score_path, str(expected["score_sha256"]))
+    scores = _load_scores(ledger_root / "scores.csv", str(expected["score_sha256"]))
+    source_selection_path = ledger_root / "top15_selections.csv"
     expected_selection = _load_selection(
-        selection_path,
-        str(expected["top15_selection_sha256"]),
+        source_selection_path, str(expected["top15_selection_sha256"])
     )
+
     symbols = sorted(scores["instrument"].unique())
     dates = [pd.Timestamp(value) for value in sorted(scores["datetime"].unique())]
     start, end = dates[0], dates[-1]
@@ -433,27 +417,19 @@ def _load_window_inputs(
     raw_returns.columns = ["return"]
     aligned_scores = _align_scores(scores, raw_returns)
 
-    source_selection = _selection_ledger(scores)
-    source_selection_path = (
-        output_dir / "identity" / window / "source_daily_top15_selections.csv"
+    reconstructed = _selection_ledger(scores)
+    _compare_selection_identity(reconstructed, expected_selection)
+    reconstructed_sha = _frame_sha256(
+        reconstructed,
+        output_dir / "identity" / window / "reconstructed_source_daily_top15.csv",
     )
-    source_selection_sha = _frame_sha256(source_selection, source_selection_path)
-    _compare_selection_identity(source_selection, expected_selection)
-    if source_selection_sha != str(expected["top15_selection_sha256"]):
-        raise ValueError(
-            f"source selection byte identity mismatch for {window}: "
-            f"{source_selection_sha} != {expected['top15_selection_sha256']}"
-        )
-
-    economic_score_path = output_dir / "identity" / window / "economic_scores.csv"
-    economic_score_sha = _frame_sha256(aligned_scores, economic_score_path)
-    economic_selection = _selection_ledger(aligned_scores)
-    economic_selection_path = (
-        output_dir / "identity" / window / "economic_daily_top15_selections.csv"
+    economic_score_sha = _frame_sha256(
+        aligned_scores,
+        output_dir / "identity" / window / "economic_scores.csv",
     )
     economic_selection_sha = _frame_sha256(
-        economic_selection,
-        economic_selection_path,
+        _selection_ledger(aligned_scores),
+        output_dir / "identity" / window / "economic_daily_top15.csv",
     )
 
     benchmark_frame = normalize_qlib_frame_index(
@@ -479,6 +455,7 @@ def _load_window_inputs(
     )
     close_frame.columns = ["close"]
     closes = close_frame["close"].unstack(level="instrument").sort_index()
+
     return WindowInputs(
         window=window,
         scores=scores,
@@ -486,12 +463,36 @@ def _load_window_inputs(
         returns=_return_lookup(raw_returns),
         benchmark=benchmark,
         closes=closes,
-        score_sha256=str(expected["score_sha256"]),
+        source_score_sha256=str(expected["score_sha256"]),
+        source_selection_sha256=str(expected["top15_selection_sha256"]),
+        reconstructed_source_selection_sha256=reconstructed_sha,
         economic_score_sha256=economic_score_sha,
-        selection_sha256=source_selection_sha,
         economic_selection_sha256=economic_selection_sha,
         removed_score_rows=len(scores) - len(aligned_scores),
     )
+
+
+def _validate_baseline(
+    observed: dict[str, Any], expected: dict[str, Any], window: str, cost: int
+) -> None:
+    for key in (
+        "total_return",
+        "benchmark_return",
+        "excess_return",
+        "max_drawdown",
+        "turnover",
+        "costs",
+    ):
+        if not math.isclose(
+            float(observed[key]),
+            float(expected[key]),
+            rel_tol=0.0,
+            abs_tol=1e-6,
+        ):
+            raise ValueError(
+                f"baseline mismatch {window} {cost}bps {key}: "
+                f"{observed[key]} != {expected[key]}"
+            )
 
 
 def run(
@@ -517,19 +518,15 @@ def run(
 
     inputs = {
         window: _load_window_inputs(
-            runtime,
-            reproduction_root,
-            reproduction,
-            window,
-            output_dir,
+            runtime, reproduction_root, reproduction, window, output_dir
         )
         for window in WINDOWS
     }
     window_results: dict[str, dict[str, dict[str, Any]]] = {}
     period_frames: dict[tuple[str, str, int], pd.DataFrame] = {}
-    for window in WINDOWS:
+
+    for window, data in inputs.items():
         window_results[window] = {}
-        data = inputs[window]
         for spec in STRATEGIES:
             window_results[window][spec.strategy_id] = {}
             for cost in COST_STRESS_BPS:
@@ -541,13 +538,9 @@ def run(
                     spec,
                     cost,
                 )
-                period_frames[(window, spec.strategy_id, cost)] = periods
-                drawdown = _drawdown_path(periods)
-                result = {
-                    **result,
-                    "drawdown_path": drawdown,
-                }
+                result = {**result, "drawdown_path": _drawdown_path(periods)}
                 window_results[window][spec.strategy_id][str(cost)] = result
+                period_frames[(window, spec.strategy_id, cost)] = periods
                 _write_csv(
                     output_dir
                     / "ledgers"
@@ -556,32 +549,14 @@ def run(
                     periods,
                 )
 
-        expected = next(
-            row for row in reproduction["run_a"]["windows"] if row["window"] == window
-        )
+        expected = _expected_window(reproduction, window)
         for cost in COST_STRESS_BPS:
-            observed = window_results[window]["baseline_100pct"][str(cost)]
-            expected_cost = expected["cost_stress"][str(cost)]
-            for key in (
-                "total_return",
-                "benchmark_return",
-                "excess_return",
-                "max_drawdown",
-                "turnover",
-                "costs",
-            ):
-                if not math.isclose(
-                    float(observed[key]),
-                    float(expected_cost[key]),
-                    rel_tol=0.0,
-                    abs_tol=1e-6,
-                ):
-                    raise ValueError(
-                        f"baseline mismatch {window} {cost}bps {key}: "
-                        f"{observed[key]} != {expected_cost[key]}"
-                    )
-
-        for cost in COST_STRESS_BPS:
+            _validate_baseline(
+                window_results[window]["baseline_100pct"][str(cost)],
+                expected["cost_stress"][str(cost)],
+                window,
+                cost,
+            )
             baseline_periods = period_frames[(window, "baseline_100pct", cost)]
             baseline_drawdown = window_results[window]["baseline_100pct"][str(cost)][
                 "drawdown_path"
@@ -589,24 +564,18 @@ def run(
             for spec in STRATEGIES:
                 result = window_results[window][spec.strategy_id][str(cost)]
                 periods = period_frames[(window, spec.strategy_id, cost)]
-                result["state_evidence"] = _state_evidence(
-                    periods,
-                    baseline_periods,
-                )
+                result["state_evidence"] = _state_evidence(periods, baseline_periods)
                 result["recovery_vs_baseline"] = _recovery_comparison(
-                    baseline_drawdown,
-                    result["drawdown_path"],
+                    baseline_drawdown, result["drawdown_path"]
                 )
-                result["score_identity_sha256"] = inputs[window].score_sha256
-                result["economic_score_identity_sha256"] = inputs[
-                    window
-                ].economic_score_sha256
-                result["source_top15_selection_identity_sha256"] = inputs[
-                    window
-                ].selection_sha256
-                result["economic_top15_selection_identity_sha256"] = inputs[
-                    window
-                ].economic_selection_sha256
+                result["score_identity_sha256"] = data.source_score_sha256
+                result["economic_score_identity_sha256"] = data.economic_score_sha256
+                result["source_top15_selection_identity_sha256"] = (
+                    data.source_selection_sha256
+                )
+                result["economic_top15_selection_identity_sha256"] = (
+                    data.economic_selection_sha256
+                )
                 result["selection_changed_from_baseline"] = False
 
     aggregates: dict[str, dict[str, dict[str, Any]]] = {}
@@ -623,7 +592,6 @@ def run(
         _candidate_gate("qqq_trend_50pct", aggregates, window_results),
         _candidate_gate("qqq_trend_cash", aggregates, window_results),
     ]
-    decision = _decision(gates)
     payload = {
         "schema_version": "1.0",
         "experiment_id": "us_x1_1_qqq_trend_overlay_v1",
@@ -644,27 +612,29 @@ def run(
         },
         "identity_proof": {
             window: {
-                "source_score_sha256": inputs[window].score_sha256,
-                "economic_score_sha256": inputs[window].economic_score_sha256,
-                "source_daily_top15_selection_sha256": inputs[
-                    window
-                ].selection_sha256,
-                "economic_daily_top15_selection_sha256": inputs[
-                    window
-                ].economic_selection_sha256,
-                "removed_score_rows_without_raw_forward_return": inputs[
-                    window
-                ].removed_score_rows,
+                "source_score_sha256": data.source_score_sha256,
+                "source_daily_top15_selection_sha256": data.source_selection_sha256,
+                "reconstructed_source_daily_top15_selection_sha256": (
+                    data.reconstructed_source_selection_sha256
+                ),
+                "source_selection_semantically_reconstructed": True,
+                "economic_score_sha256": data.economic_score_sha256,
+                "economic_daily_top15_selection_sha256": (
+                    data.economic_selection_sha256
+                ),
+                "removed_score_rows_without_raw_forward_return": (
+                    data.removed_score_rows
+                ),
                 "selection_matches_experiment_007": True,
                 "economic_selection_basis": (
                     "source_scores_intersect_non_null_raw_forward_returns_before_ranking"
                 ),
             }
-            for window in WINDOWS
+            for window, data in inputs.items()
         },
         "window_results": window_results,
         "aggregate_results": aggregates,
-        "decision": decision,
+        "decision": _decision(gates),
         "governance": {
             "model_refit": False,
             "score_search": False,
@@ -687,10 +657,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     payload = run(
-        args.root,
-        args.provider_uri,
-        args.reproduction_root,
-        args.output_dir,
+        args.root, args.provider_uri, args.reproduction_root, args.output_dir
     )
     print(
         json.dumps(
