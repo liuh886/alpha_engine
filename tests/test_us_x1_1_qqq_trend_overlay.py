@@ -12,7 +12,7 @@ from scripts.run_us_x1_1_qqq_trend_overlay import (
 )
 
 
-def test_selection_ledger_uses_fixed_top15_and_rebalance_schedule() -> None:
+def test_selection_ledger_uses_daily_fixed_top15() -> None:
     dates = pd.bdate_range("2024-01-02", periods=11)
     rows = []
     for date_index, date in enumerate(dates):
@@ -25,8 +25,8 @@ def test_selection_ledger_uses_fixed_top15_and_rebalance_schedule() -> None:
                 }
             )
     ledger = _selection_ledger(pd.DataFrame(rows))
-    assert len(ledger) == 30
-    assert ledger["datetime"].nunique() == 2
+    assert len(ledger) == 165
+    assert ledger["datetime"].nunique() == 11
     assert ledger.groupby("datetime")["target_weight"].sum().round(12).eq(1.0).all()
     assert ledger.groupby("datetime")["rank"].max().eq(15).all()
 
