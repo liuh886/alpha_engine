@@ -4,9 +4,9 @@ import pandas as pd
 import pytest
 
 from src.research.etf_rotation_experiment import StrategyResult
-from src.research.v4_2_sgov_episode_attribution import (
-    attribute_sgov_drawdown_episodes,
-    baseline_drawdown_episodes,
+from src.research.v4_2_sgov_episode_attribution import baseline_drawdown_episodes
+from src.research.v4_2_sgov_episode_attribution_corrected import (
+    attribute_sgov_drawdown_episodes_at_baseline_trough,
 )
 
 
@@ -76,21 +76,22 @@ def test_baseline_drawdown_episodes_find_peak_trough_and_recovery() -> None:
 
 def test_episode_attribution_records_drawdown_benefit_and_recovery_lag() -> None:
     baseline, challenger = _pair()
-    episodes, gate = attribute_sgov_drawdown_episodes(
+    episodes, gate = attribute_sgov_drawdown_episodes_at_baseline_trough(
         baseline, challenger, _contract()
     )
     assert len(episodes) == 2
     assert episodes.iloc[0]["drawdown_improvement_pp"] == pytest.approx(4.0)
+    assert episodes.iloc[0]["challenger_drawdown_at_baseline_trough"] == pytest.approx(-0.06)
     assert episodes.iloc[0]["recovery_lag_sessions"] == 1
     assert episodes.iloc[1]["drawdown_improvement_pp"] > 3.0
     assert set(episodes["chronological_segment"]) == {"early", "late"}
     assert gate["prospective_monitor_authorized"]
-    assert gate["checks"]["cagr_sacrifice"]
+    assert gate["methodology"] == "baseline_trough_aligned"
 
 
 def test_gate_fails_when_recovery_lag_exceeds_predeclared_limit() -> None:
     baseline, challenger = _pair()
-    _, gate = attribute_sgov_drawdown_episodes(
+    _, gate = attribute_sgov_drawdown_episodes_at_baseline_trough(
         baseline, challenger, _contract(recovery_lag_max=0)
     )
     assert not gate["prospective_monitor_authorized"]
@@ -101,4 +102,8 @@ def test_state_trace_mismatch_is_rejected() -> None:
     baseline, challenger = _pair()
     challenger.daily.loc[challenger.daily.index[-1], "position_state"] = 2
     with pytest.raises(AssertionError, match="exact state trace"):
-        attribute_sgov_drawdown_episodes(baseline, challenger, _contract())
+        attribute_sgov_drawdown_episodes_at_baseline_trough(
+            baseline,
+            challenger,
+            _contract(),
+        )
