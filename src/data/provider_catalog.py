@@ -126,6 +126,23 @@ _PROVIDER_CATALOG: dict[str, ProviderCapability] = {
             "cash-distribution and split-factor fields. Subscription terms apply."
         ),
     ),
+    "polygon": ProviderCapability(
+        name="polygon",
+        source_family="polygon_sip",
+        independent_group="polygon_sip",
+        markets=("us",),
+        price_mode="adjusted_daily_aggregates",
+        volume_unit="shares",
+        amount_unit="synthetic_adjusted_close_times_volume",
+        corporate_actions=True,
+        trade_calendar=False,
+        credential_env="POLYGON_API_KEY",
+        research_only=True,
+        usage_note=(
+            "Credentialed independent US SIP aggregate and reference source. "
+            "Plan history and recency limits apply."
+        ),
+    ),
     "yfinance": ProviderCapability(
         name="yfinance",
         source_family="yahoo_finance",
