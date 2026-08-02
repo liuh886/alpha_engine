@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://liuh886.github.io/alpha_engine/schemas/alpha-engine-bundle-v1.json",
+  "title": "Alpha Engine Research Bundle",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "frontend_reader_range",
+    "bundle_id",
+    "title",
+    "generated_at",
+    "research_only",
+    "trade_ready",
+    "scope",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "frontend_reader_range": { "type": "string" },
+    "bundle_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "title": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "evidence_cutoff": { "type": ["string", "null"] },
+    "research_only": { "const": true },
+    "trade_ready": { "const": false },
+    "scope": {
+      "type": "object",
+      "required": ["markets", "model_count"],
+      "properties": {
+        "markets": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "snapshot_id": { "type": ["string", "null"] },
+        "model_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "blocked_gates": { "type": "array", "items": { "type": "string" } },
+    "promotion_decision": { "type": "string" },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "kind", "path", "media_type", "byte_size", "sha256", "required"],
+        "properties": {
+          "artifact_id": { "type": "string", "pattern": "^[a-f0-9]{16}$" },
+          "kind": { "type": "string" },
+          "path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\.\.(?:/|$)).+$" },
+          "media_type": { "type": "string" },
+          "byte_size": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "required": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
