@@ -1,0 +1,378 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+import yaml
+
+from src.data.model_data_bundle import (
+    ComponentSpec,
+    ModelDataBundleError,
+    build_model_data_bundle,
+    verify_model_data_bundle,
+)
+
+CONTRACT = Path("configs/data_contracts/model_data_bundle_v1.yaml")
+
+
+def _write_json(path: Path, payload: object) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return path
+
+
+def _price_manifest(
+    tmp_path: Path,
+    *,
+    market: str,
+    pool_id: str,
+    candidate_count: int,
+    cutoff: str = "2026-06-18",
+) -> Path:
+    symbols = [f"{market.upper()}{index:03d}" for index in range(candidate_count)]
+    return _write_json(
+        tmp_path / f"{market}-prices.json",
+        {
+            "market": market,
+            "pool_id": pool_id,
+            "candidate_count": candidate_count,
+            "status": "selected_pool_price_refresh_ready",
+            "promotion_eligible": True,
+            "evidence_cutoff": cutoff,
+            "records": [
+                {
+                    "symbol": symbol,
+                    "provider": "tiingo" if market == "us" else "tushare",
+                    "first_date": "2021-01-04",
+                    "last_date": cutoff,
+                }
+                for symbol in symbols
+            ],
+            "failures": [],
+            "selected_providers": {
+                symbol: "tiingo" if market == "us" else "tushare"
+                for symbol in symbols
+            },
+            "quarantined_symbols": [],
+            "research_only": True,
+            "trade_ready": False,
+        },
+    )
+
+
+def _etf_manifest(tmp_path: Path) -> Path:
+    return _write_json(
+        tmp_path / "etf-bundle.json",
+        {
+            "bundle_id": "qqqi_qqq_tqqq_reference_bundle_v1",
+            "symbols": ["QQQ", "QQQI", "TQQQ"],
+            "strategy_data_ready": True,
+            "professional_source_ready": True,
+            "selected_providers": {
+                "QQQ": "tiingo",
+                "QQQI": "tiingo",
+                "TQQQ": "tiingo",
+            },
+            "reconciliation_status": {
+                "QQQ": "consensus",
+                "QQQI": "consensus",
+                "TQQQ": "consensus",
+            },
+            "common_history_start": "2024-01-30",
+            "common_history_end": "2026-07-31",
+            "evidence_cutoff": "2026-07-31",
+            "research_only": True,
+            "trade_ready": False,
+        },
+    )
+
+
+def _generic_component(
+    tmp_path: Path,
+    *,
+    component_id: str,
+    kind: str,
+    market: str,
+    pool_id: str,
+    status: str,
+    expected: int,
+    ready: int,
+) -> Path:
+    return _write_json(
+        tmp_path / f"{component_id.replace('.', '-')}.json",
+        {
+            "component_id": component_id,
+            "component_kind": kind,
+            "status": status,
+            "market": market,
+            "pool_id": pool_id,
+            "evidence_cutoff": "2026-06-18",
+            "expected_symbol_count": expected,
+            "ready_symbol_count": ready,
+            "coverage_ratio": ready / expected,
+            "missing_symbols": [],
+            "invalid_symbols": [],
+            "quarantined_symbols": [],
+            "providers": ["fixture"],
+            "research_only": True,
+            "trade_ready": False,
+        },
+    )
+
+
+def test_price_and_etf_profiles_are_ready_while_missing_inputs_block_others(
+    tmp_path: Path,
+) -> None:
+    us_prices = _price_manifest(
+        tmp_path,
+        market="us",
+        pool_id="us_selected_equities_v2",
+        candidate_count=87,
+    )
+    cn_prices = _price_manifest(
+        tmp_path,
+        market="cn",
+        pool_id="cn_selected_equities_v3",
+        candidate_count=130,
+    )
+    etf = _etf_manifest(tmp_path)
+
+    output = tmp_path / "output"
+    frontend = tmp_path / "site" / "data"
+    manifest = build_model_data_bundle(
+        root=Path.cwd(),
+        contract_path=CONTRACT,
+        component_specs=[
+            ComponentSpec(
+                "prices.us_selected_equities_v2",
+                "selected_pool_prices",
+                us_prices,
+                "us",
+            ),
+            ComponentSpec(
+                "prices.cn_selected_equities_v3",
+                "selected_pool_prices",
+                cn_prices,
+                "cn",
+            ),
+            ComponentSpec(
+                "references.qqqi_qqq_tqqq_reference_bundle_v1",
+                "etf_reference_bundle",
+                etf,
+                "us",
+            ),
+        ],
+        output_root=output,
+        evidence_cutoff="2026-07-31",
+        frontend_data_dir=frontend,
+    )
+
+    statuses = {
+        row["profile_id"]: row["status"]
+        for row in manifest["training_profiles"]
+    }
+    assert statuses["us_selected_price_only_v1"] == "ready"
+    assert statuses["cn_selected_price_only_v1"] == "ready"
+    assert statuses["qqqi_qqq_tqqq_rotation_v1"] == "ready"
+    assert statuses["us_selected_price_plus_fundamentals_v1"] == "blocked"
+    assert statuses["cn_selected_price_plus_fundamentals_v1"] == "blocked"
+    assert sorted(verify_model_data_bundle(output)) == [
+        "data-components.json",
+        "model-data-readiness.json",
+        "training-profiles.json",
+    ]
+    assert (frontend / "model-data-readiness.json").is_file()
+    assert (frontend / "data-components.json").is_file()
+    assert (frontend / "training-profiles.json").is_file()
+
+
+def test_partial_fundamentals_can_pass_declared_minimum_coverage(
+    tmp_path: Path,
+) -> None:
+    us_prices = _price_manifest(
+        tmp_path,
+        market="us",
+        pool_id="us_selected_equities_v2",
+        candidate_count=87,
+    )
+    fundamentals = _generic_component(
+        tmp_path,
+        component_id="fundamentals.us_selected_equities_v2",
+        kind="fundamental_coverage",
+        market="us",
+        pool_id="us_selected_equities_v2",
+        status="partial",
+        expected=87,
+        ready=70,
+    )
+    actions = _generic_component(
+        tmp_path,
+        component_id="corporate_actions.us_selected_equities_v2",
+        kind="corporate_action_coverage",
+        market="us",
+        pool_id="us_selected_equities_v2",
+        status="partial",
+        expected=87,
+        ready=87,
+    )
+    manifest = build_model_data_bundle(
+        root=Path.cwd(),
+        contract_path=CONTRACT,
+        component_specs=[
+            ComponentSpec(
+                "prices.us_selected_equities_v2",
+                "selected_pool_prices",
+                us_prices,
+                "us",
+            ),
+            ComponentSpec(
+                "fundamentals.us_selected_equities_v2",
+                "fundamental_coverage",
+                fundamentals,
+                "us",
+            ),
+            ComponentSpec(
+                "corporate_actions.us_selected_equities_v2",
+                "corporate_action_coverage",
+                actions,
+                "us",
+            ),
+        ],
+        output_root=tmp_path / "output",
+        evidence_cutoff="2026-06-18",
+    )
+    profile = next(
+        row
+        for row in manifest["training_profiles"]
+        if row["profile_id"] == "us_selected_price_plus_fundamentals_v1"
+    )
+    assert profile["status"] == "ready"
+    assert profile["failed_gates"] == []
+
+
+def test_profile_fails_on_post_cutoff_component(tmp_path: Path) -> None:
+    prices = _price_manifest(
+        tmp_path,
+        market="us",
+        pool_id="us_selected_equities_v2",
+        candidate_count=87,
+        cutoff="2026-07-01",
+    )
+    manifest = build_model_data_bundle(
+        root=Path.cwd(),
+        contract_path=CONTRACT,
+        component_specs=[
+            ComponentSpec(
+                "prices.us_selected_equities_v2",
+                "selected_pool_prices",
+                prices,
+                "us",
+            )
+        ],
+        output_root=tmp_path / "output",
+        evidence_cutoff="2026-06-18",
+    )
+    profile = next(
+        row
+        for row in manifest["training_profiles"]
+        if row["profile_id"] == "us_selected_price_only_v1"
+    )
+    assert profile["status"] == "blocked"
+    assert any("exceeds" in gate for gate in profile["failed_gates"])
+
+
+def test_candidate_reference_overlap_fails_closed(tmp_path: Path) -> None:
+    contract = yaml.safe_load(CONTRACT.read_text(encoding="utf-8"))
+    contract["profiles"] = {
+        "bad_overlap": {
+            "market": "us",
+            "candidate_pool_id": "fixture",
+            "candidate_symbols": ["QQQ", "AAPL"],
+            "references": ["QQQ"],
+            "required_components": [
+                {
+                    "component_id": "fixture.ready",
+                    "accepted_statuses": ["ready"],
+                    "minimum_coverage_ratio": 1.0,
+                }
+            ],
+        }
+    }
+    contract_path = tmp_path / "contract.yaml"
+    contract_path.write_text(yaml.safe_dump(contract), encoding="utf-8")
+    component = _generic_component(
+        tmp_path,
+        component_id="fixture.ready",
+        kind="factor_catalog",
+        market="us",
+        pool_id="fixture",
+        status="ready",
+        expected=2,
+        ready=2,
+    )
+    manifest = build_model_data_bundle(
+        root=Path.cwd(),
+        contract_path=contract_path,
+        component_specs=[
+            ComponentSpec("fixture.ready", "factor_catalog", component, "us")
+        ],
+        output_root=tmp_path / "output",
+        evidence_cutoff="2026-06-18",
+    )
+    profile = manifest["training_profiles"][0]
+    assert profile["status"] == "blocked"
+    assert profile["failed_gates"] == ["candidate_reference_overlap:QQQ"]
+
+
+def test_bundle_id_is_deterministic_for_identical_evidence(tmp_path: Path) -> None:
+    prices = _price_manifest(
+        tmp_path,
+        market="us",
+        pool_id="us_selected_equities_v2",
+        candidate_count=87,
+    )
+    kwargs = {
+        "root": Path.cwd(),
+        "contract_path": CONTRACT,
+        "component_specs": [
+            ComponentSpec(
+                "prices.us_selected_equities_v2",
+                "selected_pool_prices",
+                prices,
+                "us",
+            )
+        ],
+        "evidence_cutoff": "2026-06-18",
+    }
+    first = build_model_data_bundle(output_root=tmp_path / "first", **kwargs)
+    second = build_model_data_bundle(output_root=tmp_path / "second", **kwargs)
+    assert first["bundle_id"] == second["bundle_id"]
+
+
+def test_verifier_rejects_modified_frontend_index(tmp_path: Path) -> None:
+    prices = _price_manifest(
+        tmp_path,
+        market="us",
+        pool_id="us_selected_equities_v2",
+        candidate_count=87,
+    )
+    output = tmp_path / "output"
+    build_model_data_bundle(
+        root=Path.cwd(),
+        contract_path=CONTRACT,
+        component_specs=[
+            ComponentSpec(
+                "prices.us_selected_equities_v2",
+                "selected_pool_prices",
+                prices,
+                "us",
+            )
+        ],
+        output_root=output,
+        evidence_cutoff="2026-06-18",
+    )
+    path = output / "data-components.json"
+    path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    with pytest.raises(ModelDataBundleError, match="hash mismatch"):
+        verify_model_data_bundle(output)

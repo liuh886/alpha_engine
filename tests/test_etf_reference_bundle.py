@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
+from src.data.adapters.tiingo_adapter import TiingoRateLimitError
 from src.data.etf_reference_bundle import (
     ETFReferenceBundleError,
     build_etf_reference_bundle,
@@ -86,6 +87,24 @@ class FakeAdapter:
         )
 
 
+@dataclass
+class RateLimitedAdapter:
+    _name: str = "tiingo"
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def fetch_daily_bars(self, req: FetchRequest) -> FetchResult:
+        raise TiingoRateLimitError(
+            status_code=429,
+            path=f"tiingo/daily/{req.symbol.upper()}",
+            attempts=1,
+            retry_after_seconds=3600.0,
+            rate_limit_reset="next-hour",
+        )
+
+
 def _fallback_frames() -> dict[str, pd.DataFrame]:
     return {
         "QQQ": _bars("QQQ", start="2024-01-29"),
@@ -109,7 +128,23 @@ def _primary_frames() -> dict[str, pd.DataFrame]:
     }
 
 
-def test_yahoo_only_bundle_is_strategy_ready_but_not_professional(tmp_path: Path) -> None:
+def _reconciliation_settings() -> dict[str, float | int]:
+    return {
+        "minimum_overlap_sessions": 20,
+        "consensus_p99_adjusted_close_return_diff": 0.001,
+        "consensus_max_adjusted_close_return_diff": 0.01,
+        "consensus_p99_adjusted_open_return_diff": 0.002,
+        "consensus_max_adjusted_open_return_diff": 0.01,
+        "consensus_max_annual_compounded_open_return_drift": 0.002,
+        "consensus_max_full_period_compounded_open_return_drift": 0.002,
+        "material_return_difference": 0.01,
+        "corporate_action_window_sessions": 1,
+    }
+
+
+def test_yahoo_only_bundle_is_strategy_ready_but_not_professional(
+    tmp_path: Path,
+) -> None:
     manifest = build_etf_reference_bundle(
         contract_path=CONTRACT,
         output_root=tmp_path,
@@ -160,9 +195,33 @@ def test_professional_bundle_retains_distributions_splits_and_hashes(
     assert sorted(bars) == ["QQQ", "QQQI", "TQQQ"]
     assert len(coverage) == 3
     assert loaded["professional_source_ready"] is True
+    assert loaded["provider_health"]["tiingo"]["success_ratio"] == 1.0
 
 
-def test_unexplained_provider_disagreement_quarantines_primary(tmp_path: Path) -> None:
+def test_rate_limit_is_distinct_from_missing_data(tmp_path: Path) -> None:
+    manifest = build_etf_reference_bundle(
+        contract_path=CONTRACT,
+        output_root=tmp_path,
+        primary_adapter=RateLimitedAdapter(),
+        fallback_adapter=FakeAdapter("yfinance", _fallback_frames()),
+    )
+
+    health = manifest["provider_health"]["tiingo"]
+    assert health["successful_symbols"] == 0
+    assert health["failed_symbols"] == 3
+    assert health["error_class_counts"] == {"rate_limited": 3}
+    assert health["rate_limited_symbols"] == ["QQQ", "QQQI", "TQQQ"]
+    coverage = pd.read_csv(tmp_path / "coverage.csv")
+    attempts = coverage["primary_attempt"].map(__import__("json").loads)
+    assert {attempt["error_class"] for attempt in attempts} == {"rate_limited"}
+    assert {attempt["status_code"] for attempt in attempts} == {429}
+    assert manifest["strategy_data_ready"] is True
+    assert manifest["professional_source_ready"] is False
+
+
+def test_unexplained_provider_disagreement_quarantines_primary(
+    tmp_path: Path,
+) -> None:
     primary = _primary_frames()
     primary["QQQ"].loc[8, ["open", "high", "low", "close"]] = [
         800.0,
@@ -181,6 +240,66 @@ def test_unexplained_provider_disagreement_quarantines_primary(tmp_path: Path) -
     assert manifest["professional_source_ready"] is False
     assert manifest["reconciliation_status"]["QQQ"] == "quarantine"
     assert manifest["selected_providers"]["QQQ"] == "yfinance"
+
+
+def test_sparse_open_vendor_noise_passes_when_economic_drift_is_bounded() -> None:
+    fallback = _bars("QQQ", start="2023-01-03", periods=520)
+    primary = _bars(
+        "QQQ",
+        start="2023-01-03",
+        periods=520,
+        professional=True,
+    )
+    for index, multiplier in ((100, 1.006), (350, 0.994)):
+        primary.loc[index, "open"] *= multiplier
+        primary.loc[index, "high"] = max(
+            primary.loc[index, "high"],
+            primary.loc[index, "open"] * 1.001,
+        )
+        primary.loc[index, "low"] = min(
+            primary.loc[index, "low"],
+            primary.loc[index, "open"] * 0.999,
+        )
+
+    result = reconcile_adjusted_bars(
+        primary,
+        fallback,
+        symbol="QQQ",
+        settings=_reconciliation_settings(),
+    )
+
+    assert result["status"] == "consensus"
+    assert result["close_consensus"] is True
+    assert result["open_execution_consensus"] is True
+    assert result["max_abs_open_return_diff"] < 0.01
+    assert result["max_abs_annual_compounded_open_return_drift"] < 0.002
+
+
+def test_small_daily_open_bias_is_quarantined_by_compounded_drift() -> None:
+    fallback = _bars("QQQ", start="2024-01-02", periods=260)
+    primary = _bars(
+        "QQQ",
+        start="2024-01-02",
+        periods=260,
+        professional=True,
+    )
+    drift = np.power(1.00002, np.arange(len(primary), dtype=float))
+    primary["open"] *= drift
+    primary["high"] = np.maximum(primary["high"], primary["open"] * 1.001)
+    primary["low"] = np.minimum(primary["low"], primary["open"] * 0.999)
+
+    result = reconcile_adjusted_bars(
+        primary,
+        fallback,
+        symbol="QQQ",
+        settings=_reconciliation_settings(),
+    )
+
+    assert result["p99_abs_open_return_diff"] < 0.002
+    assert result["max_abs_open_return_diff"] < 0.01
+    assert result["max_abs_annual_compounded_open_return_drift"] > 0.002
+    assert result["status"] == "quarantine"
+    assert result["open_execution_consensus"] is False
 
 
 def test_bundle_loader_rejects_modified_canonical_file(tmp_path: Path) -> None:
@@ -205,7 +324,9 @@ def test_strategy_loader_uses_bundle_for_etfs_and_direct_fetch_for_vix(
         primary_adapter=None,
         fallback_adapter=FakeAdapter("yfinance", _fallback_frames()),
     )
-    vix_adapter = FakeAdapter("yfinance", {"VIX": _bars("VIX", start="2024-01-29")})
+    vix_adapter = FakeAdapter(
+        "yfinance", {"VIX": _bars("VIX", start="2024-01-29")}
+    )
     bars, coverage, identity = fetch_governed_etf_strategy_bars(
         symbols=["QQQI", "QQQ", "TQQQ", "VIX"],
         start="2024-01-30",
@@ -231,12 +352,6 @@ def test_reconciliation_can_explain_action_window_difference() -> None:
         primary,
         fallback,
         symbol="QQQI",
-        settings={
-            "minimum_overlap_sessions": 20,
-            "consensus_p99_adjusted_close_return_diff": 0.001,
-            "consensus_max_adjusted_close_return_diff": 0.01,
-            "material_return_difference": 0.01,
-            "corporate_action_window_sessions": 1,
-        },
+        settings=_reconciliation_settings(),
     )
     assert result["status"] == "explainable_corporate_action_difference"

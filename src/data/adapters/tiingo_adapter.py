@@ -37,11 +37,77 @@ class TiingoClient(Protocol):
     def get_json(self, path: str, *, params: dict[str, str] | None = None) -> Any: ...
 
 
+class TiingoHttpError(DataFetchError):
+    """Structured Tiingo HTTP failure safe to persist in provider evidence."""
+
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        path: str,
+        attempts: int,
+        retry_after_seconds: float | None = None,
+        rate_limit_reset: str | None = None,
+    ) -> None:
+        self.status_code = int(status_code)
+        self.path = path
+        self.attempts = int(attempts)
+        self.retry_after_seconds = retry_after_seconds
+        self.rate_limit_reset = rate_limit_reset
+        if self.status_code == 429:
+            self.error_class = "rate_limited"
+        elif self.status_code in {401, 403}:
+            self.error_class = "credential_or_entitlement"
+        elif self.status_code == 404:
+            self.error_class = "provider_symbol_not_found"
+        elif self.status_code >= 500:
+            self.error_class = "provider_upstream_error"
+        else:
+            self.error_class = "provider_http_error"
+        details = [
+            f"Tiingo HTTP {self.status_code} for {path}",
+            f"attempts={self.attempts}",
+        ]
+        if retry_after_seconds is not None:
+            details.append(f"retry_after_seconds={retry_after_seconds:g}")
+        if rate_limit_reset:
+            details.append(f"rate_limit_reset={rate_limit_reset}")
+        super().__init__("; ".join(details))
+
+
+class TiingoRateLimitError(TiingoHttpError):
+    """HTTP 429 with reset evidence and bounded retry semantics."""
+
+
+def _header_float(headers: Any, name: str) -> float | None:
+    if headers is None:
+        return None
+    value = headers.get(name)
+    if value is None:
+        return None
+    try:
+        parsed = float(str(value).strip())
+    except ValueError:
+        return None
+    return parsed if parsed >= 0 else None
+
+
+def _header_text(headers: Any, *names: str) -> str | None:
+    if headers is None:
+        return None
+    for name in names:
+        value = headers.get(name)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return None
+
+
 @dataclass
 class TiingoHttpClient:
     token: str
     timeout_seconds: float = 30.0
     max_attempts: int = 3
+    max_retry_after_seconds: float = 30.0
     api_root: str = TIINGO_API_ROOT
 
     def get_json(self, path: str, *, params: dict[str, str] | None = None) -> Any:
@@ -69,18 +135,47 @@ class TiingoHttpClient:
                 return json.loads(raw)
             except urllib.error.HTTPError as exc:
                 last_error = exc
+                retry_after = _header_float(exc.headers, "Retry-After")
+                rate_limit_reset = _header_text(
+                    exc.headers,
+                    "X-RateLimit-Reset",
+                    "X-Rate-Limit-Reset",
+                )
                 retryable = exc.code == 429 or 500 <= exc.code < 600
-                if not retryable or attempt >= self.max_attempts:
-                    raise DataFetchError(
-                        f"Tiingo HTTP {exc.code} for {path}"
-                    ) from exc
+                can_wait = (
+                    retry_after is not None
+                    and retry_after <= self.max_retry_after_seconds
+                )
+                if retryable and attempt < self.max_attempts:
+                    if exc.code == 429 and not can_wait:
+                        raise TiingoRateLimitError(
+                            status_code=exc.code,
+                            path=path,
+                            attempts=attempt,
+                            retry_after_seconds=retry_after,
+                            rate_limit_reset=rate_limit_reset,
+                        ) from exc
+                    time.sleep(
+                        retry_after
+                        if can_wait and retry_after is not None
+                        else min(2 ** (attempt - 1), 4)
+                    )
+                    continue
+                error_type = TiingoRateLimitError if exc.code == 429 else TiingoHttpError
+                raise error_type(
+                    status_code=exc.code,
+                    path=path,
+                    attempts=attempt,
+                    retry_after_seconds=retry_after,
+                    rate_limit_reset=rate_limit_reset,
+                ) from exc
             except (urllib.error.URLError, TimeoutError, OSError) as exc:
                 last_error = exc
                 if attempt >= self.max_attempts:
                     break
+                time.sleep(min(2 ** (attempt - 1), 4))
             except json.JSONDecodeError as exc:
                 raise DataFetchError(f"Tiingo returned invalid JSON for {path}") from exc
-            time.sleep(min(2 ** (attempt - 1), 4))
         raise DataFetchError(f"Tiingo request failed for {path}: {last_error}")
 
 
@@ -142,7 +237,9 @@ def _normalise_prices(payload: Any, *, symbol: str) -> pd.DataFrame:
     }
     missing = sorted(required.difference(frame.columns))
     if missing:
-        raise DataFetchError(f"Tiingo payload missing columns for {symbol}: {missing}")
+        raise DataFetchError(
+            f"Tiingo payload missing columns for {symbol}: {missing}"
+        )
 
     out = pd.DataFrame(
         {
@@ -245,6 +342,7 @@ class TiingoAdapter:
                 "Tiingo is unavailable: TIINGO_API_TOKEN is not configured"
             )
 
+        started = time.perf_counter()
         metadata = _metadata_identity(
             self.client.get_json(f"tiingo/daily/{symbol}"), symbol
         )
@@ -259,10 +357,16 @@ class TiingoAdapter:
             out = out.loc[out["date"] <= pd.Timestamp(end)].reset_index(drop=True)
         out = out.loc[out["date"] >= pd.Timestamp(start)].reset_index(drop=True)
         if out.empty:
-            raise DataFetchError(f"Tiingo has no rows in the request range for {symbol}")
+            raise DataFetchError(
+                f"Tiingo has no rows in the request range for {symbol}"
+            )
+        metadata["request_count"] = 2
+        metadata["elapsed_seconds"] = round(time.perf_counter() - started, 6)
         out.attrs["provider_metadata"] = metadata
         out.attrs["price_mode"] = "adjusted_ohlcv_with_raw_audit_fields"
-        out.attrs["amount_semantics"] = "synthetic_adjusted_close_times_volume"
+        out.attrs["amount_semantics"] = (
+            "synthetic_adjusted_close_times_volume"
+        )
         return FetchResult(
             provider=self.name,
             symbol=symbol,
