@@ -5,6 +5,10 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
+from src.artifacts.repository_metadata_cache import (
+    RepositoryMetadataCacheError,
+    rebuild_metadata_cache,
+)
 from src.artifacts.repository_run_store import (
     RepositoryRunStoreError,
     import_local_run,
@@ -96,6 +100,17 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Attach the run as the published model's primary frontend backtest.",
     )
+
+    rebuild_index = research_commands.add_parser(
+        "rebuild-index",
+        help="Rebuild the disposable local metadata.db from data/research.",
+    )
+    rebuild_index.add_argument(
+        "--output",
+        type=Path,
+        default=Path("artifacts/metadata/metadata.db"),
+        help="SQLite cache path relative to the repository root unless absolute.",
+    )
     return parser
 
 
@@ -135,10 +150,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                 publish=args.publish,
                 set_primary=args.set_primary,
             )
+        elif args.group == "research" and args.research_command == "rebuild-index":
+            output = args.output
+            if not output.is_absolute():
+                output = root / output
+            payload = rebuild_metadata_cache(root=root, db_path=output)
         else:
             parser.error("unsupported command")
             return 2
-    except (DataRecipeError, RepositoryRunStoreError) as exc:
+    except (
+        DataRecipeError,
+        RepositoryRunStoreError,
+        RepositoryMetadataCacheError,
+    ) as exc:
         _render(
             {
                 "status": "blocked",
