@@ -3,7 +3,7 @@ name: Baseline Model x1 Lifecycle
 on:
   pull_request:
     branches:
-      - research/us87-xgb-optimization-v1
+      - main
     paths:
       - "configs/models/**"
       - "configs/research_paradigms/cn_x1_0_frozen_v1.yaml"
