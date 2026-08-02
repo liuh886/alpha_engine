@@ -1,0 +1,2 @@
+bootstrap_commit=f277b3315e010e7c190a383e5939e20b948aa50d
+purpose=trigger the restricted Pages deployment workflow from a same-repository pull request
