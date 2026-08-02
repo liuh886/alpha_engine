@@ -1,14 +1,14 @@
 # Frontend Rebuild — Artifact-Only Product Cutover
 
-Status: **Phase 1 implementation**  
+Status: **Completed**  
 Parent: #316  
-Delivery issue: #318
+Delivery: #318, PRs #329 and #334
 
 ## Product decision
 
 Alpha Engine has one Web product: the **Research Artifact Studio**.
 
-The studio is a static, installable PWA that opens either a published research bundle or a user-selected local bundle. It does not connect to FastAPI, authenticate users, run jobs, refresh data, train models, mutate registries or operate infrastructure.
+The studio is a static, installable PWA that opens either a published research bundle or a user-selected local bundle. It does not authenticate users, run jobs, refresh data, train models, mutate registries or operate infrastructure.
 
 The browser answers four questions:
 
@@ -16,10 +16,6 @@ The browser answers four questions:
 2. What is its scope, cutoff and integrity status?
 3. How do model and backtest candidates compare under the same contract?
 4. Which report, experiment or source file supports a conclusion?
-
-## Target user outcome
-
-A researcher should be able to open an Alpha Engine result folder and reach a defensible interpretation without understanding the repository's server history or starting a localhost process.
 
 ## Product boundary
 
@@ -44,7 +40,7 @@ Research Artifact Studio
 ### Browser non-responsibilities
 
 - authentication;
-- API reads or writes;
+- network data reads or writes;
 - job submission or polling;
 - data refresh;
 - training or backtest execution;
@@ -88,22 +84,22 @@ The interface should feel like a research notebook and evidence terminal, not an
 - keyboard-accessible selectors, dialogs and navigation;
 - explicit empty, incompatible, stale and integrity-failure states.
 
-## Phase 1 route classification
+## Final route classification
 
-| Previous route family | Decision |
+| Previous route family | Final disposition |
 | --- | --- |
-| Overview, Library, artifact Data/Models/Factors/Experiments/Reports | Retain and refine |
-| Backtest dashboard and candidate comparison | Retain as artifact evidence |
-| Methodology | Retain as reference |
-| Login and identity | Delete from product runtime |
-| Jobs, system health and console | Delete from product runtime |
-| Data refresh and runtime data manager | Delete from product runtime |
-| Training/backtest workbench | Delete from product runtime |
-| Model deletion and runtime registry | Delete from product runtime |
-| Agent, tools, stock terminal and arena | Delete from product runtime |
-| Connected-only documentation | Remove from route graph; replace with artifact methodology/docs |
+| Overview, Library, artifact Data/Models/Factors/Experiments/Reports | Retained and rebuilt |
+| Backtest dashboard and candidate comparison | Rebuilt as artifact evidence |
+| Methodology | Retained as reference |
+| Login and identity | Deleted |
+| Jobs, system health and console | Deleted |
+| Data refresh and runtime data manager | Deleted |
+| Training/backtest workbench | Deleted |
+| Model deletion and runtime registry | Deleted |
+| Agent, tools, stock terminal and arena | Deleted |
+| Connected-only documentation | Replaced by artifact methodology and reports |
 
-Useful research interpretation found only in a retired page must first move into the bundle contract and an artifact-native page. Operational controls are not reimplemented elsewhere.
+Useful research interpretation from a retired page was moved into the bundle contract or an artifact-native page. Operational controls were not reimplemented.
 
 ## Runtime model
 
@@ -112,20 +108,18 @@ Only two source modes remain:
 - `static_artifact` — published GitHub Pages bundle;
 - `local_artifact` — local directory, file set or ZIP bundle.
 
-Both modes are permanently read-only, offline-capable and free of `/api/*` requests.
+Both modes are permanently read-only and offline-capable.
 
-## Quality gates
-
-Phase 1 is complete only when:
+## Completion evidence
 
 - production routes contain artifact views only;
-- `connected_research` is absent from production frontend code;
-- the application root has no auth provider or login guard;
-- bootstrap performs no server health, identity, job or data-status requests;
+- application root has no auth provider or login guard;
+- bootstrap performs no health, identity, job or data-status requests;
 - model selection exposes no deletion action;
+- frontend HTTP clients, mutation hooks and old pages are physically deleted;
 - TypeScript, lint and unit tests pass;
 - static build and PWA validation pass;
 - desktop, tablet and mobile Playwright journeys pass;
-- browser acceptance observes zero `/api/*` requests;
+- browser acceptance observes zero data endpoint requests;
 - offline shell reload remains green;
 - `research_only=true` and `trade_ready=false` remain visible.
