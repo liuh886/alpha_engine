@@ -1,0 +1,77 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research
+parent_experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+purpose: >-
+  Test whether replacing part or all of the QQQI defensive reserve with SGOV
+  reduces drawdown depth, expected shortfall and underwater duration while
+  preserving the exact v4.2 close-decision trace, the 75% TQQQ recovery state,
+  next-open execution and the frozen 10 bps transaction-cost convention.
+
+boundaries:
+  signal_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  signal_trace_must_equal_v4_2: true
+  tradable_symbols: [QQQI, QQQ, TQQQ, SGOV]
+  signal_symbols: [QQQ, ^VIX, ^VXN]
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  common_tradable_window: true
+  no_synthetic_pre_inception_backfill: true
+
+data:
+  provider_policy:
+    QQQ: governed_etf_bundle
+    QQQI: governed_etf_bundle
+    TQQQ: governed_etf_bundle
+    SGOV: direct_adjusted_daily_reference
+    ^VIX: direct_signal_reference
+    ^VXN: direct_signal_reference
+  start_date: "2024-01-01"
+  end_date: null
+  fields: [date, open, close]
+  corporate_action_basis: adjusted
+
+portfolio:
+  transaction_cost_bps_per_turnover_unit: 10.0
+  annual_risk_free_rate: 0.0
+  charge_initial_entry: true
+  current_v4_2:
+    state_0: {QQQI: 1.00, QQQ: 0.00, TQQQ: 0.00, SGOV: 0.00}
+    state_1: {QQQI: 0.50, QQQ: 0.50, TQQQ: 0.00, SGOV: 0.00}
+    state_2: {QQQI: 0.00, QQQ: 0.25, TQQQ: 0.75, SGOV: 0.00}
+  sgov_pure_defense:
+    state_0: {QQQI: 0.00, QQQ: 0.00, TQQQ: 0.00, SGOV: 1.00}
+    state_1: {QQQI: 0.00, QQQ: 0.50, TQQQ: 0.00, SGOV: 0.50}
+    state_2: {QQQI: 0.00, QQQ: 0.25, TQQQ: 0.75, SGOV: 0.00}
+  qqqi_sgov_blended_defense:
+    state_0: {QQQI: 0.50, QQQ: 0.00, TQQQ: 0.00, SGOV: 0.50}
+    state_1: {QQQI: 0.25, QQQ: 0.50, TQQQ: 0.00, SGOV: 0.25}
+    state_2: {QQQI: 0.00, QQQ: 0.25, TQQQ: 0.75, SGOV: 0.00}
+
+validation:
+  primary_baseline: current_v4_2
+  primary_objectives:
+    - max_drawdown
+    - expected_shortfall_95
+    - maximum_underwater_run_sessions
+    - ulcer_index
+  return_guardrails:
+    - cagr
+    - sharpe
+    - sortino
+    - calmar
+  require_same_state_trace_every_session: true
+  require_same_state_2_weights: true
+  require_cost_assumption_unchanged: true
+  chronological_train_fraction: 0.60
+  event_horizons: [5, 10, 20, 40]
+
+hypothesis_discipline:
+  - Exactly two SGOV structures are admitted; no SGOV-weight grid is allowed.
+  - No price, VIX, VXN, persistence or TQQQ parameter may change.
+  - The experiment evaluates defensive-asset architecture, not signal quality.
+  - Headline CAGR alone cannot justify promotion; tail-risk objectives are primary.
+  - Any attractive result remains a challenger until chronological and prospective evidence exists.
