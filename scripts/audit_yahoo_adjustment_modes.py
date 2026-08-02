@@ -51,7 +51,10 @@ def _normalise_download(frame: pd.DataFrame, *, auto_adjust: bool) -> pd.DataFra
     if isinstance(result.columns, pd.MultiIndex):
         result.columns = result.columns.get_level_values(0)
     result = result.reset_index()
-    result.columns = [str(column).strip().lower().replace(" ", "_") for column in result.columns]
+    result.columns = [
+        str(column).strip().lower().replace(" ", "_")
+        for column in result.columns
+    ]
     if "datetime" in result.columns and "date" not in result.columns:
         result = result.rename(columns={"datetime": "date"})
     required = ["date", "open", "high", "low", "close", "volume"]
@@ -79,9 +82,13 @@ def download_mode(
 ) -> pd.DataFrame:
     import yfinance as yf
 
-    provider_end = (pd.Timestamp(cutoff) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    provider_end = (pd.Timestamp(cutoff) + pd.Timedelta(days=1)).strftime(
+        "%Y-%m-%d"
+    )
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message=".*Timestamp.utcnow is deprecated.*")
+        warnings.filterwarnings(
+            "ignore", message=".*Timestamp.utcnow is deprecated.*"
+        )
         frame = yf.download(
             symbol,
             start=start,
@@ -127,13 +134,17 @@ def compare_frames(left: pd.DataFrame, right: pd.DataFrame) -> dict[str, Any]:
         }
     changed_index = common[changed_dates.to_numpy(dtype=bool)]
     return {
-        "row_calendar_match": len(missing_left) == 0 and len(missing_right) == 0,
+        "row_calendar_match": len(missing_left) == 0
+        and len(missing_right) == 0,
         "missing_from_left": [item.date().isoformat() for item in missing_left],
         "missing_from_right": [item.date().isoformat() for item in missing_right],
         "exact_match": (
             len(missing_left) == 0
             and len(missing_right) == 0
-            and all(row["exact_difference_count"] == 0 for row in column_rows.values())
+            and all(
+                row["exact_difference_count"] == 0
+                for row in column_rows.values()
+            )
         ),
         "material_match_1e_8": (
             len(missing_left) == 0
@@ -145,10 +156,14 @@ def compare_frames(left: pd.DataFrame, right: pd.DataFrame) -> dict[str, Any]:
         ),
         "material_changed_date_count_1e_8": int(len(changed_index)),
         "first_material_changed_date": (
-            None if len(changed_index) == 0 else changed_index.min().date().isoformat()
+            None
+            if len(changed_index) == 0
+            else changed_index.min().date().isoformat()
         ),
         "last_material_changed_date": (
-            None if len(changed_index) == 0 else changed_index.max().date().isoformat()
+            None
+            if len(changed_index) == 0
+            else changed_index.max().date().isoformat()
         ),
         "columns": column_rows,
     }
@@ -167,15 +182,15 @@ def derive_adjusted_ohlc(raw: pd.DataFrame) -> pd.DataFrame:
 
 def decide(summary: dict[str, Any]) -> str:
     raw = summary["mode_reproducibility"]["raw_no_repair"]
-    adjusted_no_repair = summary["mode_reproducibility"]["adjusted_no_repair"]
+    adjusted_no_repair = summary["mode_reproducibility"][
+        "adjusted_no_repair"
+    ]
     adjusted_repair = summary["mode_reproducibility"]["adjusted_repair"]
-    raw_ohlcv_stable = all(
-        row["raw_ohlcv_exact"] for row in raw.values()
+    raw_ohlcv_stable = all(row["raw_ohlcv_exact"] for row in raw.values())
+    adj_close_stable = all(row["adj_close_exact"] for row in raw.values())
+    no_repair_stable = all(
+        row["exact_match"] for row in adjusted_no_repair.values()
     )
-    adj_close_stable = all(
-        row["adj_close_exact"] for row in raw.values()
-    )
-    no_repair_stable = all(row["exact_match"] for row in adjusted_no_repair.values())
     repair_stable = all(row["exact_match"] for row in adjusted_repair.values())
     if not raw_ohlcv_stable:
         return "upstream_raw_bar_nondeterminism"
@@ -186,7 +201,7 @@ def decide(summary: dict[str, Any]) -> str:
     if not repair_stable:
         return "repair_induced_nondeterminism"
     if all(
-        row["exact_match"]
+        row["material_match_1e_8"]
         for pass_rows in summary["derived_adjustment_comparison"].values()
         for row in pass_rows.values()
     ):
@@ -212,7 +227,13 @@ def run(*, start: str, cutoff: str, output_dir: Path) -> dict[str, Any]:
                     repair=settings["repair"],
                 )
                 frames[pass_id][mode][symbol] = frame
-                path = output_dir / "snapshots" / pass_id / mode / f"{symbol}.csv"
+                path = (
+                    output_dir
+                    / "snapshots"
+                    / pass_id
+                    / mode
+                    / f"{symbol}.csv"
+                )
                 path.parent.mkdir(parents=True, exist_ok=True)
                 export = frame.copy()
                 export["date"] = export["date"].dt.strftime("%Y-%m-%d")
@@ -228,11 +249,15 @@ def run(*, start: str, cutoff: str, output_dir: Path) -> dict[str, Any]:
             )
             if mode == "raw_no_repair":
                 comparison["raw_ohlcv_exact"] = all(
-                    comparison["columns"][column]["exact_difference_count"] == 0
+                    comparison["columns"][column]["exact_difference_count"]
+                    == 0
                     for column in (*PRICE_COLUMNS, "volume")
                 ) and comparison["row_calendar_match"]
                 comparison["adj_close_exact"] = (
-                    comparison["columns"]["adj_close"]["exact_difference_count"] == 0
+                    comparison["columns"]["adj_close"][
+                        "exact_difference_count"
+                    ]
+                    == 0
                     and comparison["row_calendar_match"]
                 )
             mode_reproducibility[mode][symbol] = comparison
@@ -245,7 +270,9 @@ def run(*, start: str, cutoff: str, output_dir: Path) -> dict[str, Any]:
                 frames[pass_id]["adjusted_repair"][symbol],
                 frames[pass_id]["adjusted_no_repair"][symbol],
             )
-            derived = derive_adjusted_ohlc(frames[pass_id]["raw_no_repair"][symbol])
+            derived = derive_adjusted_ohlc(
+                frames[pass_id]["raw_no_repair"][symbol]
+            )
             derived_comparison[pass_id][symbol] = compare_frames(
                 frames[pass_id]["adjusted_no_repair"][symbol],
                 derived,
@@ -280,7 +307,11 @@ def main() -> None:
         default=Path("artifacts/evidence/yahoo_adjustment_mode_audit"),
     )
     args = parser.parse_args()
-    payload = run(start=args.start, cutoff=args.cutoff, output_dir=args.output_dir)
+    payload = run(
+        start=args.start,
+        cutoff=args.cutoff,
+        output_dir=args.output_dir,
+    )
     print(json.dumps(payload, indent=2, default=str))
 
 
