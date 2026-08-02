@@ -46,7 +46,7 @@ export function MobileNavigation() {
             type="button"
             className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px]"
             onClick={() => setOpen(false)}
-            aria-label="Close research navigation"
+            aria-label="Dismiss research navigation"
           />
           <div className="absolute inset-y-0 left-0 flex w-[min(86vw,340px)] flex-col border-r bg-card shadow-2xl">
             <div className="flex h-16 items-center justify-between border-b px-4">
