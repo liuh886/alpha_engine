@@ -10,6 +10,7 @@ on:
       - "tests/test_us_raw_adjustment_snapshot.py"
       - ".github/workflows/us-raw-adjustment-contract.yml"
       - "docs/research/us_x1_1_data_reproducibility_experiments_2026-08-02.md"
+      - "docs/research/us_raw_adjustment_contract_result_2026-08-02.md"
   workflow_dispatch:
 
 permissions:
@@ -32,12 +33,20 @@ jobs:
         id: scope
         shell: bash
         run: |
+          set -euo pipefail
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "evidence=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" > /tmp/changed.txt
-          if grep -Eq '^(src/data/us_raw_adjustment_snapshot.py|scripts/data/build_us_raw_adjustment_snapshot.py|tests/test_us_raw_adjustment_snapshot.py)$' /tmp/changed.txt; then
+          if [[ "${{ github.event.action }}" != "synchronize" ]]; then
+            echo "evidence=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          before="${{ github.event.before }}"
+          after="${{ github.event.after }}"
+          changed="$(git diff --name-only "$before" "$after")"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -Eq '^(src/data/us_raw_adjustment_snapshot\.py|scripts/data/build_us_raw_adjustment_snapshot\.py|tests/test_us_raw_adjustment_snapshot\.py)$'; then
             echo "evidence=true" >> "$GITHUB_OUTPUT"
           else
             echo "evidence=false" >> "$GITHUB_OUTPUT"
