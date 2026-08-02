@@ -53,10 +53,19 @@ def _number(mapping: dict[str, Any], key: str) -> float | None:
     return None
 
 
+def _evaluation_window(model: dict[str, Any]) -> dict[str, Any]:
+    evidence = model.get("backtest_evidence") or {}
+    for key in ("frozen_challenge", "consumed_reporting_window"):
+        value = evidence.get(key)
+        if isinstance(value, dict):
+            return value
+    return {}
+
+
 def _model_metrics(model: dict[str, Any]) -> dict[str, float]:
     evidence = model.get("backtest_evidence") or {}
     development = evidence.get("development") or {}
-    challenge = evidence.get("frozen_challenge") or {}
+    evaluation = _evaluation_window(model)
     metrics: dict[str, float] = {}
 
     aliases = {
@@ -70,16 +79,16 @@ def _model_metrics(model: dict[str, Any]) -> dict[str, float]:
         "Mean Rank IC": (development, "mean_rank_ic"),
         "Mean Top-Bottom Spread": (development, "mean_top_bottom_spread"),
         "Development Worst Drawdown": (development, "worst_drawdown"),
-        "Total Return": (challenge, "total_return"),
-        "Benchmark Return": (challenge, "benchmark_return"),
-        "Excess Return": (challenge, "simple_excess_return"),
-        "IC": (challenge, "ic"),
-        "ICIR": (challenge, "icir"),
-        "Rank IC": (challenge, "rank_ic"),
-        "Top-Bottom Spread": (challenge, "top_bottom_spread"),
-        "Max Drawdown": (challenge, "max_drawdown"),
-        "Turnover": (challenge, "turnover"),
-        "Sharpe Ratio": (challenge, "sharpe"),
+        "Total Return": (evaluation, "total_return"),
+        "Benchmark Return": (evaluation, "benchmark_return"),
+        "Excess Return": (evaluation, "simple_excess_return"),
+        "IC": (evaluation, "ic"),
+        "ICIR": (evaluation, "icir"),
+        "Rank IC": (evaluation, "rank_ic"),
+        "Top-Bottom Spread": (evaluation, "top_bottom_spread"),
+        "Max Drawdown": (evaluation, "max_drawdown"),
+        "Turnover": (evaluation, "turnover"),
+        "Sharpe Ratio": (evaluation, "sharpe"),
     }
     for label, (source, key) in aliases.items():
         if isinstance(source, dict):
@@ -113,6 +122,7 @@ def _normalize_model(
         or ""
     )
     run_id = str(evidence.get("workflow_run_id") or evidence.get("artifact_id") or model_id)
+    backtest_evidence = model.get("backtest_evidence") or {}
 
     params = {
         "repository_source": source,
@@ -146,14 +156,8 @@ def _normalize_model(
         "payload": {
             "backtest": {
                 "metrics": metrics,
-                "development": (model.get("backtest_evidence") or {}).get(
-                    "development"
-                )
-                or {},
-                "frozen_challenge": (model.get("backtest_evidence") or {}).get(
-                    "frozen_challenge"
-                )
-                or {},
+                "development": backtest_evidence.get("development") or {},
+                "evaluation_window": _evaluation_window(model),
             }
         },
     }
