@@ -5,14 +5,24 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/qqqi-vxn-v4-1-prospective-monitor.yml"
+      - "pyproject.toml"
       - "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
+      - "configs/data_contracts/qqq_rotation_model_data_v1.yaml"
+      - "configs/data_recipes/qqq_rotation_v1.yaml"
       - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_v4_1_prospective_monitor.yaml"
       - "scripts/data/build_etf_reference_bundle.py"
       - "scripts/run_qqqi_vxn_v4_1_prospective_monitor.py"
+      - "src/cli/**"
+      - "src/data/data_recipe.py"
+      - "src/data/model_data_profile.py"
+      - "src/data/strategy_data_bundle.py"
       - "src/data/adapters/tiingo_adapter.py"
       - "src/data/etf_reference_bundle.py"
       - "src/research/etf_strategy_data.py"
       - "src/research/vxn_prospective_monitor.py"
+      - "tests/test_data_recipe.py"
+      - "tests/test_researcher_cli.py"
+      - "tests/test_strategy_data_bundle.py"
       - "tests/test_etf_reference_bundle.py"
       - "tests/test_tiingo_adapter.py"
       - "tests/test_vxn_prospective_monitor.py"
@@ -45,30 +55,44 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Ruff lint monitor and ETF data paths
+      - name: Ruff lint monitor and governed recipe paths
         run: >-
           uv run ruff check
+          src/cli
+          src/data/data_recipe.py
+          src/data/model_data_profile.py
+          src/data/strategy_data_bundle.py
           src/data/adapters/tiingo_adapter.py
           src/data/etf_reference_bundle.py
           src/research/etf_strategy_data.py
           src/research/vxn_prospective_monitor.py
           scripts/data/build_etf_reference_bundle.py
           scripts/run_qqqi_vxn_v4_1_prospective_monitor.py
+          tests/test_data_recipe.py
+          tests/test_researcher_cli.py
+          tests/test_strategy_data_bundle.py
           tests/test_tiingo_adapter.py
           tests/test_etf_reference_bundle.py
           tests/test_vxn_prospective_monitor.py
-      - name: Mypy focused monitor and ETF data paths
+      - name: Mypy focused monitor and governed recipe paths
         run: >-
           uv run mypy --follow-imports=skip
+          src/cli
+          src/data/data_recipe.py
+          src/data/model_data_profile.py
+          src/data/strategy_data_bundle.py
           src/data/adapters/tiingo_adapter.py
           src/data/etf_reference_bundle.py
           src/research/etf_strategy_data.py
           src/research/vxn_prospective_monitor.py
           scripts/data/build_etf_reference_bundle.py
           scripts/run_qqqi_vxn_v4_1_prospective_monitor.py
-      - name: Run monitor and ETF data tests
+      - name: Run monitor and governed recipe tests
         run: >-
           uv run pytest
+          tests/test_data_recipe.py
+          tests/test_researcher_cli.py
+          tests/test_strategy_data_bundle.py
           tests/test_tiingo_adapter.py
           tests/test_etf_reference_bundle.py
           tests/test_vxn_prospective_monitor.py
@@ -92,21 +116,28 @@ jobs:
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py
           --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
-      - name: Run frozen prospective monitor
+      - name: Prepare governed strategy dataset and enforce profile gate
+        env:
+          TIINGO_API_TOKEN: ""
         run: >-
-          uv run python scripts/run_qqqi_vxn_v4_1_prospective_monitor.py
-          --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
-          --output-dir artifacts/evidence/qqqi_qqq_tqqq_vxn_v4_1_prospective_monitor
-          --strategy-run-dir artifacts/strategy_runs
-      - name: Upload ETF identity, prospective evidence and run record
+          uv run alpha data prepare qqq-rotation
+          --source-etf-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+      - name: Run frozen prospective monitor through researcher CLI
+        env:
+          TIINGO_API_TOKEN: ""
+        run: >-
+          uv run alpha research run qqqi-vxn-v4.1
+          --source-etf-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+      - name: Upload data identity, profile gate, evidence and run record
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qqqi-vxn-v4-1-prospective-${{ github.run_id }}
           path: |
             artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json
-            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/coverage.csv
-            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/reconciliation.csv
+            artifacts/data/qqq_rotation_strategy_data_v1
+            artifacts/data/qqq_rotation_model_data_v1
+            artifacts/cache/data_recipes/qqq-rotation/latest.json
             artifacts/evidence/qqqi_qqq_tqqq_vxn_v4_1_prospective_monitor
             artifacts/strategy_runs/qqqi_qqq_tqqq_vxn_v4_1_prospective_monitor
           if-no-files-found: warn
