@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "repository": "liuh886/alpha_engine",
+  "pull_request": 401,
+  "validated_on": "2026-08-02",
+  "validated_content_head_sha": "ee4d00809cf0847b0fa5e0a12ae48da4da081e40",
+  "receipt_commit_excluded_from_evidence_calculation": true,
+  "checks": {
+    "lint": "success",
+    "focused_tests": "success",
+    "governed_etf_bundle": "success",
+    "qqq_proxy_long_history_revalidation": "success",
+    "recovery_failure_taxonomy_revalidation": "success",
+    "tqqq_path_efficiency_decomposition": "success",
+    "directional_tracking_component_reconciliation": "success",
+    "open_to_open_intraday_overnight_decomposition": "success",
+    "leave_one_event_out_stability": "success",
+    "notebook_26_execution": "success",
+    "artifact_upload": "success",
+    "alpha_engine_ci": "success",
+    "decision_evidence_contract_ci": "success",
+    "qqqi_vxn_research_bundle": "success",
+    "sgov_episode_attribution_revalidation": "success",
+    "precursor_50_revalidation": "success"
+  },
+  "decision": {
+    "v4_2_baseline": "retained",
+    "tqqq_precursor_25": "frozen_research_comparator",
+    "tqqq_precursor_50": "post_2024_regime_dependent_shadow_observation",
+    "primary_failure_mechanism": "underlying_path_and_entry_timing",
+    "tqqq_tracking_residual_primary_cause": false,
+    "prospective_path_monitoring_justified": true,
+    "new_preregistered_trading_hypothesis_justified": false,
+    "model_change_authorized": false,
+    "actionable_alert_authorized": false,
+    "telegram_target_change_authorized": false,
+    "next_stage_issue": 348
+  },
+  "canonical_research_evidence": {
+    "workflow_name": "QQQI v4.2 TQQQ Path Efficiency",
+    "run_id": 30744871452,
+    "conclusion": "success",
+    "artifact_id": 8832544076,
+    "artifact_name": "qqqi-v4-2-tqqq-path-efficiency-30744871452",
+    "artifact_digest": "sha256:aa0217a44d4aee3c471dbb5e7f2b49c40bf5890d904ea1e12c0c854463d302ff",
+    "expires_on": "2026-10-31"
+  },
+  "final_content_revalidation": {
+    "workflow_name": "QQQI v4.2 TQQQ Path Efficiency",
+    "run_id": 30745087077,
+    "conclusion": "success",
+    "artifact_id": 8832609112,
+    "artifact_name": "qqqi-v4-2-tqqq-path-efficiency-30745087077",
+    "artifact_digest": "sha256:a149d0dcc02b2dadbc2c7c4f76092952c459c01a631bda5cce476dd6ffd1c1c7",
+    "expires_on": "2026-10-31"
+  },
+  "final_content_workflows": {
+    "alpha_engine_ci": 30745087054,
+    "decision_evidence_contract_ci": 30745087079,
+    "qqqi_vxn_research_bundle": 30745087060,
+    "qqq_proxy_long_history": 30745087046,
+    "recovery_failure_taxonomy": 30745087065,
+    "sgov_episode_attribution": 30745087070,
+    "sgov_precursor_50": 30745087066
+  },
+  "path_attribution": {
+    "event_count": 15,
+    "successful_event_count": 6,
+    "failed_event_count": 9,
+    "failed_directional_loss_component": 0.07614265120357103,
+    "failed_tracking_compounding_loss_component": 0.0015884369139107235,
+    "directional_loss_share": 0.9795649726206074,
+    "stable_path_feature_count": 11,
+    "mechanism": "underlying_path_and_entry_timing_dominate_tracking_residual"
+  },
+  "gate_failure": {
+    "late_or_prospective_failed_precursor_event_count": {
+      "observed": 0,
+      "required_minimum": 1
+    },
+    "interpretation": "Post-execution path attribution explains historical failures but cannot authorize a delay or threshold until an independent late or prospective failed event exists."
+  }
+}

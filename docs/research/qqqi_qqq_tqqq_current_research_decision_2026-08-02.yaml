@@ -1,4 +1,4 @@
-schema_version: "1.4"
+schema_version: "1.5"
 decision_date: "2026-08-02"
 strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
 research_only: true
@@ -13,9 +13,11 @@ current_baseline:
     v4.2 remains the only actionable research baseline. Product-specific QQQI
     evidence after 2024 favoured a 50% recovery precursor, but the QQQ proxy
     expanded the sample to 15 events and rejected structural 50% superiority.
-    The failure taxonomy found descriptive recovery-quality features but could
-    not validate them in the late segment because it contains no failures.
-    Production target weights therefore remain unchanged.
+    The failure taxonomy found descriptive recovery-quality features, and the
+    path-efficiency decomposition showed that 97.96% of attributed failed-event
+    loss came from underlying direction and entry timing rather than TQQQ
+    tracking or compounding residual. The late segment still contains no failed
+    event, so production target weights remain unchanged.
 
 historical_comparator:
   experiment_id: qqqi_qqq_tqqq_vxn_leverage_v4_1
@@ -160,6 +162,44 @@ recovery_failure_taxonomy:
     contains three successes and no failures, so no separator can yet be
     validated across both chronological segments and no threshold may be chosen.
 
+tqqq_path_efficiency:
+  experiment_id: qqqi_qqq_tqqq_v4_2_tqqq_path_efficiency_v4_8_research
+  role: governed_post_execution_attribution
+  evidence:
+    report: docs/research/qqqi_qqq_tqqq_v4_2_tqqq_path_efficiency_result_2026-08-02.md
+    snapshot: docs/research/snapshots/qqqi_v4_2_tqqq_path_efficiency_2026-08-02.json
+    workflow_run: 30744871452
+    artifact_id: 8832544076
+    artifact_digest: sha256:aa0217a44d4aee3c471dbb5e7f2b49c40bf5890d904ea1e12c0c854463d302ff
+  findings:
+    event_count: 15
+    successful_event_count: 6
+    failed_event_count: 9
+    stable_path_feature_count: 11
+    failed_directional_loss_component: 0.07614265120357103
+    failed_tracking_compounding_loss_component: 0.0015884369139107235
+    directional_loss_share: 0.9795649726206074
+    mechanism: underlying_path_and_entry_timing_dominate_tracking_residual
+    successful_median_qqq_return_1d: 0.005113
+    failed_median_qqq_return_1d: -0.00228
+    successful_median_qqq_return_5d: 0.018266
+    failed_median_qqq_return_5d: -0.008667
+    successful_median_qqq_mae_5d: 0.005113
+    failed_median_qqq_mae_5d: -0.01678
+    failed_reached_state2_median_time_to_state2_sessions: 8.0
+  path_mechanism_explanation_justified: true
+  prospective_path_monitoring_justified: true
+  new_preregistered_trading_hypothesis_justified: false
+  model_change_authorized: false
+  actionable_alert_authorized: false
+  decision: monitor_path_mechanism_prospectively_without_new_rule
+  reason: >-
+    Failed-event losses are overwhelmingly explained by negative or unstable QQQ
+    follow-through during the precursor window. TQQQ tracking and compounding
+    residuals are too small to explain the result. Post-execution path variables
+    diagnose outcomes but cannot be converted into a delay or threshold on the
+    same sample. The late segment still has no failed event.
+
 closed_retrospective_directions:
   - bridge_weight_search
   - sgov_weight_search
@@ -175,10 +215,12 @@ closed_retrospective_directions:
   - qqq_proxy_weight_search
   - recovery_precursor_feature_threshold_search
   - recovery_precursor_classifier_fit
+  - recovery_path_delay_search
+  - tqqq_tracking_residual_filter
 
 active_next_stage:
   issue: 348
-  name: prospective_v4_2_alert_execution_and_recovery_feature_evidence
+  name: prospective_v4_2_alert_execution_feature_and_path_evidence
   model_changes_authorized: false
   shadow_fields_allowed:
     - tqqq_release_precursor_boolean
@@ -193,6 +235,21 @@ active_next_stage:
     - qqq_distance_ma_short
     - vix_close
     - vxn_retreat_from_peak
+    - qqq_return_1d_after_precursor
+    - qqq_return_2d_after_precursor
+    - qqq_return_3d_after_precursor
+    - qqq_return_5d_after_precursor
+    - tqqq_return_1d_after_precursor
+    - tqqq_return_5d_after_precursor
+    - qqq_mfe_5d_after_precursor
+    - qqq_mae_5d_after_precursor
+    - qqq_realized_volatility_5d_after_precursor
+    - qqq_sign_reversals_5d_after_precursor
+    - qqq_intraday_log_return_5d_after_precursor
+    - qqq_overnight_log_return_5d_after_precursor
+    - directional_leverage_component
+    - tqqq_tracking_compounding_component
+    - time_to_formal_state_2_or_state_0
     - shadow_outcomes_without_actionable_alert
   required_records:
     - signal_and_governed_data_dates
@@ -202,27 +259,31 @@ active_next_stage:
     - theoretical_next_open_prices
     - optional_observed_or_paper_execution_prices
     - opening_gap_slippage_and_cost_deviation
-    - realized_5_10_20_40_session_outcomes
+    - realized_1_2_3_5_10_20_40_session_outcomes
     - confirmation_reversal_or_unresolved_status
   interpretation: >-
     Prospective QQQI observations may determine whether the post-2024 favourable
-    regime persists and whether the descriptive feature directions survive a
-    future failed recovery. They do not authorize a rule or override the
-    negative QQQ-proxy long-history evidence.
+    regime persists, whether the descriptive signal-close features survive a
+    future failed recovery, and whether failure continues to be dominated by
+    weak underlying follow-through rather than TQQQ residuals. These records do
+    not authorize a rule or override the negative QQQ-proxy long-history evidence.
   reconsider_recovery_hypothesis_only_after:
     late_or_prospective_failed_precursor_events_minimum: 1
-    feature_directions_rechecked_without_threshold_selection: true
+    feature_and_path_mechanisms_rechecked_without_threshold_selection: true
+    separately_preregistered_hypothesis_required: true
     rule: all_conditions_required
 
 next_admissible_research:
-  name: prospective_recovery_feature_validation
+  name: prospective_recovery_feature_and_path_validation
   model_changes_authorized: false
   objective: >-
-    Record the frozen descriptive feature set on future actual-QQQI precursor
-    events and wait for both successful and failed outcomes before proposing a
-    separately pre-registered rule.
+    Record the frozen signal-close feature set and post-execution path
+    decomposition on future actual-QQQI precursor events. Wait for both
+    successful and failed outcomes before proposing a separately pre-registered
+    timing hypothesis.
   prohibited:
     - retrospective_threshold_optimization
+    - retrospective_delay_selection
     - classifier_fit
     - new_weight_grid
     - direct_signal_promotion
@@ -231,6 +292,7 @@ intraday_research_boundary:
   status: feasibility_gate_only
   strategy_development_authorized: false
   reason: >-
-    Principal state-2 tail losses generally formed during the session without a
-    preceding-close warning. Intraday controls require a separately governed
-    data and execution contract rather than a retrofit to the daily v4.2 model.
+    Intraday and overnight decomposition is explanatory only. Principal state-2
+    tail losses generally formed during the session without a preceding-close
+    warning. Intraday controls require a separately governed data and execution
+    contract rather than a retrofit to the daily v4.2 model.

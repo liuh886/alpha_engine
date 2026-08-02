@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "qqqi_qqq_tqqq_v4_2_tqqq_path_efficiency_v4_8_research",
+  "evidence_date": "2026-08-02",
+  "research_only": true,
+  "trade_ready": false,
+  "sample": {
+    "start": "2020-06-01",
+    "end": "2026-07-30",
+    "event_count": 15,
+    "successful_event_count": 6,
+    "failed_event_count": 9,
+    "failed_reverted_before_state_2": 3,
+    "failed_reached_state_2_but_extra_leverage_lost": 6
+  },
+  "attribution": {
+    "failed_directional_loss_component": 0.07614265120357103,
+    "failed_tracking_compounding_loss_component": 0.0015884369139107235,
+    "directional_loss_share": 0.9795649726206074,
+    "mechanism": "underlying_path_and_entry_timing_dominate_tracking_residual"
+  },
+  "failure_type_medians": {
+    "successful_recovery": {
+      "strategy_marginal_50_vs_25_return": 0.003793,
+      "event_qqq_return": 0.009435,
+      "event_tqqq_return": 0.026803,
+      "event_directional_leverage_component": 0.004718,
+      "event_tracking_compounding_component": -0.000301,
+      "qqq_return_1d": 0.005113,
+      "qqq_return_5d": 0.018266,
+      "qqq_mae_5d": 0.005113,
+      "qqq_mfe_5d": 0.024190,
+      "qqq_realized_volatility_5d": 0.138461,
+      "qqq_sign_reversals_5d": 2.0,
+      "qqq_intraday_log_return_5d": 0.011651,
+      "qqq_overnight_log_return_5d": 0.006546
+    },
+    "failed_recovery_reached_state2_but_extra_leverage_lost": {
+      "strategy_marginal_50_vs_25_return": -0.003012,
+      "event_qqq_return": -0.004009,
+      "event_tqqq_return": -0.014207,
+      "event_directional_leverage_component": -0.002356,
+      "event_tracking_compounding_component": -0.000192,
+      "qqq_return_1d": -0.001752,
+      "qqq_return_5d": -0.002705,
+      "qqq_mae_5d": -0.011774,
+      "qqq_mfe_5d": 0.003984,
+      "qqq_realized_volatility_5d": 0.198896,
+      "qqq_sign_reversals_5d": 2.5,
+      "qqq_intraday_log_return_5d": -0.005156,
+      "qqq_overnight_log_return_5d": 0.002820,
+      "median_time_to_formal_state_2_sessions": 8.0
+    },
+    "failed_recovery_reverted_before_state2": {
+      "strategy_marginal_50_vs_25_return": -0.017805,
+      "event_qqq_return": -0.033061,
+      "event_tqqq_return": -0.098652,
+      "event_directional_leverage_component": -0.016530,
+      "event_tracking_compounding_component": 0.000132,
+      "qqq_return_1d": -0.033061,
+      "qqq_return_5d": -0.024491,
+      "qqq_mae_5d": -0.039305,
+      "qqq_mfe_5d": -0.024491,
+      "qqq_realized_volatility_5d": 0.238537,
+      "qqq_sign_reversals_5d": 3.0,
+      "qqq_intraday_log_return_5d": -0.016808,
+      "qqq_overnight_log_return_5d": -0.020251,
+      "median_time_to_revert_state_0_sessions": 3.0
+    }
+  },
+  "validation": {
+    "stable_path_feature_count": 11,
+    "early_segment_contains_success_and_failure": true,
+    "late_segment_contains_success_and_failure": false,
+    "path_mechanism_explanation_justified": true,
+    "prospective_path_monitoring_justified": true,
+    "new_preregistered_trading_hypothesis_justified": false,
+    "model_change_authorized": false,
+    "actionable_alert_authorized": false
+  },
+  "decision": "monitor_path_mechanism_prospectively_without_new_rule",
+  "evidence": {
+    "workflow_run": 30744871452,
+    "artifact_id": 8832544076,
+    "artifact_digest": "sha256:aa0217a44d4aee3c471dbb5e7f2b49c40bf5890d904ea1e12c0c854463d302ff",
+    "notebook": "notebooks/26_qqqi_qqq_tqqq_v4_2_tqqq_path_efficiency.ipynb"
+  }
+}

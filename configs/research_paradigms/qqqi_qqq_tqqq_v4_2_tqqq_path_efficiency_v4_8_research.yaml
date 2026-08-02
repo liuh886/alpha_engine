@@ -1,0 +1,76 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_tqqq_path_efficiency_v4_8_research
+parent_experiment_id: qqqi_qqq_tqqq_v4_2_recovery_precursor_failure_taxonomy_v4_7_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Decompose the 15 frozen QQQ-proxy recovery-precursor events into directional
+  return, early adverse path, path choppiness, overnight/intraday contribution
+  and realized TQQQ leverage efficiency. Explain why additional early leverage
+  loses in some events without selecting a new threshold or trading rule.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  sgov_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml
+  attribution_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_episode_attribution.yaml
+  prior_release_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_recovery_release_v4_4_research.yaml
+  bold_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_precursor_50_v4_5_research.yaml
+  proxy_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_qqq_proxy_long_history_v4_6_research.yaml
+  taxonomy_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_recovery_precursor_failure_taxonomy_v4_7_research.yaml
+  signal_trace_frozen: true
+  precursor_dates_frozen: true
+  weights_frozen: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  no_threshold_search: true
+  no_weight_search: true
+  no_classifier: true
+  no_production_change: true
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  required_symbols: [QQQI, QQQ, TQQQ, SGOV, ^VIX, ^VXN]
+  qqqi_proxy_method: exact_adjusted_bar_alias_from_qqq
+
+analysis:
+  fixed_horizons: [1, 2, 3, 5, 10, 20]
+  primary_path_horizon: 5
+  counterfactual_daily_leverage: 3.0
+  extra_tqqq_weight: 0.25
+  path_features:
+    - qqq_return_1d
+    - qqq_return_2d
+    - qqq_return_3d
+    - qqq_return_5d
+    - qqq_mae_5d
+    - qqq_mfe_5d
+    - qqq_realized_volatility_5d
+    - qqq_sign_reversals_5d
+    - qqq_intraday_log_return_5d
+    - qqq_overnight_log_return_5d
+    - tqqq_return_5d
+    - tqqq_tracking_compounding_residual_5d
+    - event_directional_leverage_component
+    - event_tracking_compounding_component
+
+validation:
+  minimum_event_count: 12
+  minimum_successful_event_count: 4
+  minimum_failed_event_count: 6
+  minimum_failure_subtype_count: 2
+  minimum_loo_direction_stability: 0.80
+  minimum_pairwise_distance_from_half: 0.15
+  maximum_mechanism_fields: 6
+  require_early_segment_success_and_failure: true
+  require_late_segment_success_and_failure_for_new_hypothesis: true
+
+hypothesis_discipline:
+  - Post-execution path variables explain outcomes; they are not admissible signal inputs.
+  - No cut-off is selected from the 15 events.
+  - No TQQQ weight, VIX/VXN rule, moving average or persistence value changes.
+  - A 3x daily QQQ counterfactual is an attribution device, not a synthetic tradable return claim.
+  - TQQQ tracking and compounding residual must be separated from underlying QQQ direction.
+  - A future hypothesis requires independent late or prospective failed events.
+  - v4.2 and Telegram targets remain unchanged.
