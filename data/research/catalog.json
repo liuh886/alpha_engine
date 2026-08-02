@@ -1,27 +1,46 @@
 {
   "schema_version": "1.0.0",
   "release_id": "repository-research-2026-08-02",
-  "published_at": "2026-08-02T00:00:00+00:00",
+  "published_at": "2026-08-02T07:15:39Z",
   "research_only": true,
   "trade_ready": false,
   "published_models": [
     {
       "model_id": "us_x1_1",
-      "source": "configs/models/us_x1_1.yaml"
+      "source": "configs/models/us_x1_1.yaml",
+      "primary_run_id": "us_x1_1-evidence-30737322468"
     },
     {
       "model_id": "us_x1_0",
-      "source": "configs/models/us_x1_0.yaml"
+      "source": "configs/models/us_x1_0.yaml",
+      "primary_run_id": "us_x1_0-evidence-30733686862"
     },
     {
       "model_id": "cn_x1_0",
-      "source": "configs/models/cn_x1_0.yaml"
+      "source": "configs/models/cn_x1_0.yaml",
+      "primary_run_id": "cn_x1_0-evidence-30733728747"
     }
   ],
-  "published_runs": [],
+  "published_runs": [
+    {
+      "run_id": "cn_x1_0-evidence-30733728747",
+      "source": "data/research/runs/cn_x1_0-evidence-30733728747"
+    },
+    {
+      "run_id": "us_x1_0-evidence-30733686862",
+      "source": "data/research/runs/us_x1_0-evidence-30733686862"
+    },
+    {
+      "run_id": "us_x1_1-evidence-30737322468",
+      "source": "data/research/runs/us_x1_1-evidence-30737322468"
+    }
+  ],
   "notes": [
     "This catalog is the allow-list for evidence published to the Research Artifact Studio.",
     "US x1.1 is the active US research baseline; US x1.0 remains immutable historical evidence.",
+    "The three primary runs normalize exact accepted artifact metrics, identities and final selections into Repository Run v1.",
+    "Their source artifacts did not retain NAV traces; no equity curve was inferred or reconstructed.",
+    "US exact replay remains blocked by Issue #358 and CN exact replay remains blocked by Issue #345 until immutable provider bytes are available.",
     "Candidate and evidence-revision files are not published unless explicitly added here.",
     "Large run artifacts must be hash-bound from data/research/runs or Git LFS before publication."
   ]
