@@ -1,0 +1,164 @@
+schema_version: '1.0'
+candidate_id: us_x1_1_candidate_a
+display_name: US x1.1 Candidate A
+status: development_candidate
+release_status: not_released
+research_only: true
+trade_ready: false
+market: us
+benchmark: QQQ
+parent_model_id: us_x1_0
+objective: Improve broad-window excess and reduce selection concentration before portfolio risk controls.
+
+latest_snapshot_binding:
+  policy: immutable_artifact_bound_snapshot
+  provider_identity_sha256: 2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95
+  first_day: '2021-01-04'
+  cutoff: '2026-07-31'
+  session_count: 1400
+  instrument_count: 88
+  workflow_run: 30737322468
+  artifact_id: 8830089966
+  artifact_digest: sha256:6638e37ea77a7183253de5f96ec466c2ac0eab66c6f47d58e1040d4421d7fd70
+  historical_baseline_restatement: false
+
+universe:
+  universe_id: us_selected_equities_v2
+  requested_equities: 87
+  benchmark_included_in_provider: true
+  membership_mode: static_curated
+  survivorship_bias: true
+
+features:
+  group: momentum_volatility_volume
+  expressions:
+    - $close/Ref($close,10)-1
+    - $close/Ref($close,20)-1
+    - $close/Ref($close,5)-1
+    - Std($close/Ref($close,1)-1,10)
+    - Std($close/Ref($close,1)-1,20)
+    - $volume/Ref($volume,10)-1
+    - $volume/Mean($volume,20)-1
+
+label:
+  type: processed_daily_cross_sectional_percentile_gain
+  economic_return_expression: Ref($close, -10) / $close - 1
+  horizon_sessions: 10
+  gain_bins: 7
+
+legacy_candidate_identity:
+  candidate_name: xgb:daily_ranker:momentum_volatility_volume:gain7_round200_leaves31_leaf20_lr0.03
+  num_boost_round: 200
+  legacy_num_leaves_field: 31
+  legacy_min_data_in_leaf_field: 20
+  legacy_learning_rate_field: 0.03
+  warning: The leaf20 and lr0.03 suffix fields were not consumed by the XGBoost adapter.
+
+model_effective_runtime:
+  family: xgb
+  objective: rank:ndcg
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 31
+  max_depth: 0
+  learning_rate: 0.05
+  num_boost_round: 200
+  seed: 42
+  score_orientation: original
+  identity_status: legacy_candidate_name_effective_runtime_corrected
+
+strategy:
+  holding_sessions: 10
+  rebalance_sessions: 10
+  top_n: 15
+  weighting: equal_weight
+  cost_bps: 20
+  benchmark_mode: reference_only
+
+backtest_evidence:
+  development:
+    period: 2024H1-2025H2
+    windows:
+      - window: 2024H1
+        total_return: 0.255190
+        benchmark_return: 0.194210
+        simple_excess: 0.060981
+        icir: 0.083575
+        rank_ic: 0.023978
+        max_drawdown: -0.041583
+        turnover: 6.833333
+      - window: 2024H2
+        total_return: 0.469868
+        benchmark_return: 0.068419
+        simple_excess: 0.401449
+        icir: 0.209602
+        rank_ic: -0.025920
+        max_drawdown: -0.099067
+        turnover: 6.700000
+      - window: 2025H1
+        total_return: 0.166855
+        benchmark_return: 0.077012
+        simple_excess: 0.089843
+        icir: 0.014727
+        rank_ic: 0.030905
+        max_drawdown: -0.271527
+        turnover: 6.566667
+      - window: 2025H2
+        total_return: 0.517092
+        benchmark_return: 0.129391
+        simple_excess: 0.387701
+        icir: 0.603945
+        rank_ic: 0.135074
+        max_drawdown: -0.135929
+        turnover: 6.166667
+    compounded_relative_excess_return: 1.1044055793145042
+    positive_excess_windows: 4
+    total_windows: 4
+    mean_icir: 0.22796225
+    mean_rank_ic: 0.04100925
+    mean_spread: 0.0225858925
+    worst_drawdown: -0.271527
+    strongest_positive_window_share: 0.42708521725068993
+    all_window_recurring_names:
+      - AAOI
+      - AEHR
+      - BE
+  consumed_reporting_window:
+    window: 2026H1
+    selection_eligible: false
+    total_return: 1.067216
+    benchmark_return: 0.155057
+    simple_excess: 0.912159
+    icir: 0.740142
+    rank_ic: 0.152309
+    max_drawdown: -0.068982
+    turnover: 5.233333
+
+comparison_to_latest_us_x1_0_revision:
+  us_x1_0_relative_excess: 0.9605410421866238
+  candidate_a_relative_excess: 1.1044055793145042
+  us_x1_0_worst_drawdown: -0.287527
+  candidate_a_worst_drawdown: -0.271527
+  us_x1_0_strongest_window_share: 0.6242619926199262
+  candidate_a_strongest_window_share: 0.42708521725068993
+  us_x1_0_all_window_recurring_name_count: 6
+  candidate_a_all_window_recurring_name_count: 3
+
+next_experiment:
+  issue: 362
+  fixed_score_required: true
+  allowed_changes: portfolio_construction_only
+  variants:
+    - top20_equal_weight
+    - top15_inverse_vol20_capped
+    - top15_equal_weight_name_cap
+    - top15_sector_cap
+    - top15_qqq_trend_overlay
+  automatic_version_promotion: false
+  new_untouched_challenge_required: true
+
+blocking_reasons:
+  - Worst development drawdown remains below the -22% target.
+  - The 2026H1 window has already been consumed and is not independent validation.
+  - XGBoost native calibration identity is not yet implemented under Issue #357.
+  - Portfolio contribution and sector concentration controls have not yet been tested.
