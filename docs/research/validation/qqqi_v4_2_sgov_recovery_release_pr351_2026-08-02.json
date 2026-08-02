@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "repository": "liuh886/alpha_engine",
+  "pull_request": 351,
+  "validated_on": "2026-08-02",
+  "validated_research_head_sha": "6e1cdbc629be12723abbf5c79730a0de31a980ee",
+  "checks": {
+    "lint": "success",
+    "focused_tests": "success",
+    "no_lookahead_execution_shift": "success",
+    "pre_state_2_tqqq_cap": "success",
+    "frozen_state_2_allocation": "success",
+    "frozen_ten_bps_cost": "success",
+    "governed_etf_bundle": "success",
+    "recovery_release_experiment": "success",
+    "notebook_22_execution": "success",
+    "artifact_upload": "success"
+  },
+  "decision": {
+    "v4_2_baseline": "retained",
+    "qqqi_release_on_state_1": "rejected_as_promoted_challenger",
+    "tqqq_release_on_precursor": "retain_deferred_shadow_hypothesis",
+    "staged_release": "rejected_as_promoted_challenger",
+    "production_alert_change": "not_authorized",
+    "additional_retrospective_search": "not_authorized"
+  },
+  "workflow": {
+    "name": "QQQI v4.2 SGOV Recovery Release",
+    "run_id": 30735777927,
+    "conclusion": "success",
+    "artifact_id": 8829513797,
+    "artifact_name": "qqqi-v4-2-sgov-recovery-release-30735777927",
+    "artifact_digest": "sha256:dc631ede180e2dff39fc4094fdca049c65551ef13cb6b3cd66c115a35e7e733f",
+    "expires_on": "2026-10-31"
+  }
+}
