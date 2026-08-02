@@ -1,0 +1,69 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_sgov_episode_attribution
+parent_experiment_id: qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+purpose: >-
+  Explain why the frozen 50% QQQI / 50% SGOV defensive challenger produces
+  shallower drawdowns but longer underwater periods than the current v4.2
+  baseline. Attribute every baseline drawdown episode by stress, recovery,
+  position state, defensive-sleeve return and transaction cost before deciding
+  whether a separate prospective monitor is justified.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  sgov_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml
+  baseline_variant: current_v4_2
+  challenger_variant: qqqi_sgov_blended_defense
+  signal_trace_must_equal_v4_2: true
+  state_2_allocation_must_equal_v4_2: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  no_weight_or_threshold_search: true
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  common_tradable_window: true
+  corporate_action_basis: adjusted
+  required_symbols: [QQQI, QQQ, TQQQ, SGOV, ^VIX, ^VXN]
+
+analysis:
+  episode_definition: >-
+    Drawdown episodes are defined from the current v4.2 equity curve: a prior
+    equity peak, the subsequent trough, and the first recovery to that peak.
+    The challenger is evaluated over the same start date and may recover before
+    or after the baseline.
+  primary_major_episode_count: 5
+  chronological_split_fraction: 0.60
+  relative_contribution_measure: log_wealth_difference
+  phases:
+    - peak_to_baseline_trough
+    - baseline_trough_to_baseline_recovery
+    - baseline_recovery_to_challenger_recovery
+  state_buckets: [0, 1, 2]
+
+prospective_monitor_gate:
+  description: >-
+    Passing this gate authorizes only a separate research monitor for the
+    already frozen blended allocation. It never replaces v4.2 and does not
+    authorize another SGOV weight search.
+  major_episode_drawdown_improvement_rate_min: 0.60
+  median_major_episode_drawdown_improvement_pp_min: 1.00
+  median_major_episode_recovery_lag_sessions_max: 30
+  early_major_episode_improvement_rate_min: 0.50
+  late_major_episode_improvement_rate_min: 0.50
+  largest_episode_improvement_share_max: 0.60
+  full_sample_cagr_sacrifice_pp_max: 4.00
+
+hypothesis_discipline:
+  - The 50/50 QQQI/SGOV defensive split is frozen; no alternative weights are admitted.
+  - The current v4.2 signal trace, thresholds and state-2 allocation remain unchanged.
+  - Drawdown depth and recovery duration are evaluated jointly.
+  - Relative wealth is decomposed by phase and executed position state.
+  - A result dominated by one episode cannot authorize prospective monitoring.
+  - Passing the gate authorizes monitoring only; promotion still requires prospective evidence.
+  - Failing the gate retains the challenger as a descriptive low-risk profile only.
