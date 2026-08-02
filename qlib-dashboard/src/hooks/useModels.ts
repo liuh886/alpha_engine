@@ -16,8 +16,9 @@ export function useModels() {
       const repositoryModels = parseQlibData(json);
       const formalPackages = await loadFormalBacktestPackages();
       const parsed = attachFormalBacktests(repositoryModels, formalPackages);
+      const generatedDates = formalPackages.map((record) => record.generated_at).sort();
       useGlobalStore.getState().setDataGeneratedAt(
-        formalPackages.map((record) => record.generated_at).sort().at(-1) || String(json.generated_at || ''),
+        generatedDates.length > 0 ? generatedDates[generatedDates.length - 1] : String(json.generated_at || ''),
       );
       setModels(parsed);
 
