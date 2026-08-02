@@ -1,0 +1,116 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_sgov_recovery_release_v4_4_research
+parent_experiment_id: qqqi_qqq_tqqq_v4_2_sgov_episode_attribution
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+purpose: >-
+  Test whether the frozen blended QQQI/SGOV defensive profile can retain most
+  of its trough protection while recovering faster by releasing SGOV in two
+  predeclared stages: first to QQQI when the frozen v4.2 state machine enters
+  state 1, and then optionally to a limited 25% TQQQ precursor allocation when
+  the existing medium-repair and volatility-normalization conditions are met.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  sgov_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml
+  attribution_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_episode_attribution.yaml
+  signal_trace_must_equal_v4_2: true
+  state_2_allocation_must_equal_v4_2: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  no_weight_threshold_or_persistence_search: true
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  common_tradable_window: true
+  corporate_action_basis: adjusted
+  required_symbols: [QQQI, QQQ, TQQQ, SGOV, ^VIX, ^VXN]
+
+frozen_allocations:
+  state_0_blended:
+    QQQI: 0.50
+    QQQ: 0.00
+    TQQQ: 0.00
+    SGOV: 0.50
+  state_1_blended:
+    QQQI: 0.25
+    QQQ: 0.50
+    TQQQ: 0.00
+    SGOV: 0.25
+  state_1_qqqi_release:
+    QQQI: 0.50
+    QQQ: 0.50
+    TQQQ: 0.00
+    SGOV: 0.00
+  state_1_tqqq_precursor:
+    QQQI: 0.25
+    QQQ: 0.50
+    TQQQ: 0.25
+    SGOV: 0.00
+  state_2_frozen:
+    QQQI: 0.00
+    QQQ: 0.25
+    TQQQ: 0.75
+    SGOV: 0.00
+
+variants:
+  static_blended:
+    description: Existing frozen blended QQQI/SGOV profile.
+    release_sgov_to_qqqi_on_state_1: false
+    use_tqqq_precursor: false
+  qqqi_release_on_state_1:
+    description: Remove SGOV immediately when executed v4.2 state becomes 1.
+    release_sgov_to_qqqi_on_state_1: true
+    use_tqqq_precursor: false
+  tqqq_release_on_precursor:
+    description: Keep blended state 1 until the frozen leverage precursor is observable.
+    release_sgov_to_qqqi_on_state_1: false
+    use_tqqq_precursor: true
+  staged_qqqi_then_tqqq_release:
+    description: Release SGOV to QQQI in state 1, then move 25% to TQQQ on the precursor.
+    release_sgov_to_qqqi_on_state_1: true
+    use_tqqq_precursor: true
+
+precursor:
+  description: >-
+    The precursor uses only existing frozen close-time features. It is true
+    when shock memory remains active, QQQ has completed medium repair, VIX is
+    normalized, and VXN is not stressed. Secondary confirmation is deliberately
+    not required; once the full v4.2 leverage condition is met, the ordinary
+    state-2 allocation takes precedence at the next open.
+  require_shock_memory: true
+  require_medium_repair: true
+  require_vix_normalized: true
+  require_vxn_not_stressed: true
+  secondary_confirmation_required: false
+  maximum_tqqq_weight_before_state_2: 0.25
+
+validation:
+  chronological_train_fraction: 0.60
+  primary_major_episode_count: 5
+  event_horizons: [5, 10, 20, 40]
+  candidate_gate:
+    major_episode_drawdown_improvement_rate_min: 0.80
+    median_major_episode_trough_protection_pp_min: 2.00
+    median_major_episode_recovery_lag_sessions_max: 30
+    unresolved_major_episode_count_max: 0
+    full_sample_cagr_sacrifice_vs_v4_2_pp_max: 2.00
+    maximum_drawdown_vs_v4_2_worsening_pp_max: 0.50
+    early_segment_cagr_delta_vs_static_blended_pp_min: 0.00
+    late_segment_cagr_delta_vs_static_blended_pp_min: 0.00
+    precursor_event_positive_rate_min: 0.60
+    largest_precursor_event_benefit_share_max: 0.60
+
+hypothesis_discipline:
+  - Exactly three release ablations are admitted; no additional variant is allowed.
+  - No allocation weight, indicator threshold, moving average, quantile or persistence length may change.
+  - QQQI release and TQQQ precursor release must be evaluated separately before the staged combination.
+  - The TQQQ precursor is capped at 25% before formal state 2.
+  - Full state 2 remains exactly 25% QQQ and 75% TQQQ.
+  - A faster recovery that destroys major-trough protection cannot pass.
+  - A headline improvement concentrated in one event cannot pass.
+  - Passing authorizes only a separate prospective challenger; v4.2 remains the baseline.
