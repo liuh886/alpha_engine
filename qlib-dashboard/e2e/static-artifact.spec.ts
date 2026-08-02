@@ -75,7 +75,12 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await mockBundle(page);
   await openStudio(page);
 
-  if (testInfo.project.name !== 'mobile') {
+  if (testInfo.project.name === 'mobile') {
+    await page.getByRole('button', { name: 'Open research navigation' }).click();
+    await expect(page.getByRole('navigation', { name: 'Mobile research studio navigation' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Data' })).toBeVisible();
+    await page.getByRole('button', { name: 'Close research navigation' }).first().click();
+  } else {
     await expect(page.getByRole('navigation', { name: 'Research studio navigation' })).toBeVisible();
   }
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
@@ -93,6 +98,7 @@ test('static studio opens without authentication or backend APIs', async ({ page
 
   await page.goto('/#/system');
   await expect(page.getByRole('heading', { name: 'Evidence view not found' })).toBeVisible();
+  await expect(page.locator('.research-topbar').getByRole('heading', { name: 'Unavailable route' })).toBeVisible();
   expect(apiRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 
