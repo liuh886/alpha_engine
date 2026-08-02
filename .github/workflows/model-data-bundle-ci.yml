@@ -1,0 +1,207 @@
+name: Model Data Bundle CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/model-data-bundle-ci.yml"
+      - "configs/data_contracts/model_data_bundle_v1.yaml"
+      - "src/data/model_data_bundle.py"
+      - "src/artifacts/research_bundle.py"
+      - "scripts/data/build_model_data_bundle.py"
+      - "scripts/export_research_bundle.py"
+      - "tests/test_model_data_bundle.py"
+      - "tests/test_model_data_bundle_research_export.py"
+      - "docs/research/model_data_bundle_v1.md"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/model-data-bundle-ci.yml"
+      - "configs/data_contracts/model_data_bundle_v1.yaml"
+      - "src/data/model_data_bundle.py"
+      - "src/artifacts/research_bundle.py"
+      - "scripts/data/build_model_data_bundle.py"
+      - "scripts/export_research_bundle.py"
+      - "tests/test_model_data_bundle.py"
+      - "tests/test_model_data_bundle_research_export.py"
+      - "docs/research/model_data_bundle_v1.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: model-data-bundle-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff model data paths
+        run: >-
+          uv run ruff check
+          src/data/model_data_bundle.py
+          src/artifacts/research_bundle.py
+          scripts/data/build_model_data_bundle.py
+          tests/test_model_data_bundle.py
+          tests/test_model_data_bundle_research_export.py
+      - name: Mypy model data paths
+        run: >-
+          uv run mypy --follow-imports=skip
+          src/data/model_data_bundle.py
+          src/artifacts/research_bundle.py
+          scripts/data/build_model_data_bundle.py
+      - name: Run model data tests
+        run: >-
+          uv run pytest
+          tests/test_model_data_bundle.py
+          tests/test_model_data_bundle_research_export.py
+          tests/test_research_bundle.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  integration:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Create deterministic component fixtures
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          import yaml
+
+          root = Path.cwd()
+          output = root / "artifacts/model-data-fixtures"
+          output.mkdir(parents=True, exist_ok=True)
+          for market, pool_path, pool_id, provider in (
+              ("us", "configs/research_universes/us_selected_equities_v2.yaml", "us_selected_equities_v2", "tiingo"),
+              ("cn", "configs/research_universes/cn_selected_equities_v3.yaml", "cn_selected_equities_v3", "tushare"),
+          ):
+              pool = yaml.safe_load((root / pool_path).read_text(encoding="utf-8"))
+              symbols = list(pool["symbols"])
+              payload = {
+                  "market": market,
+                  "pool_id": pool_id,
+                  "candidate_count": len(symbols),
+                  "status": "selected_pool_price_refresh_ready",
+                  "promotion_eligible": True,
+                  "evidence_cutoff": "2026-06-18",
+                  "records": [
+                      {
+                          "symbol": symbol,
+                          "provider": provider,
+                          "first_date": "2021-01-04",
+                          "last_date": "2026-06-18",
+                      }
+                      for symbol in symbols
+                  ],
+                  "failures": [],
+                  "selected_providers": {symbol: provider for symbol in symbols},
+                  "quarantined_symbols": [],
+                  "research_only": True,
+                  "trade_ready": False,
+              }
+              (output / f"{market}-prices.json").write_text(
+                  json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+              )
+          etf = {
+              "bundle_id": "qqqi_qqq_tqqq_reference_bundle_v1",
+              "symbols": ["QQQ", "QQQI", "TQQQ"],
+              "strategy_data_ready": True,
+              "professional_source_ready": True,
+              "selected_providers": {symbol: "tiingo" for symbol in ["QQQ", "QQQI", "TQQQ"]},
+              "reconciliation_status": {symbol: "consensus" for symbol in ["QQQ", "QQQI", "TQQQ"]},
+              "common_history_start": "2024-01-30",
+              "common_history_end": "2026-07-31",
+              "evidence_cutoff": "2026-07-31",
+              "research_only": True,
+              "trade_ready": False,
+          }
+          (output / "etf.json").write_text(
+              json.dumps(etf, indent=2, sort_keys=True), encoding="utf-8"
+          )
+          PY
+      - name: Build frontend and training readiness indexes
+        run: >-
+          uv run python scripts/data/build_model_data_bundle.py
+          --evidence-cutoff 2026-07-31
+          --component prices.us_selected_equities_v2:selected_pool_prices:artifacts/model-data-fixtures/us-prices.json:us
+          --component prices.cn_selected_equities_v3:selected_pool_prices:artifacts/model-data-fixtures/cn-prices.json:cn
+          --component references.qqqi_qqq_tqqq_reference_bundle_v1:etf_reference_bundle:artifacts/model-data-fixtures/etf.json:us
+          --output-root artifacts/data/model_data_bundle_v1
+          --frontend-data-dir artifacts/site/data
+      - name: Assemble research bundle fixture
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = Path("artifacts/site/data")
+          data.mkdir(parents=True, exist_ok=True)
+          (data / "manifest.json").write_text(
+              json.dumps(
+                  {
+                      "generated_at": "2026-08-02T00:00:00+00:00",
+                      "evidence_cutoff": "2026-07-31",
+                      "snapshot_id": "model-data-ci",
+                      "warnings": [],
+                      "blocked_gates": [],
+                  },
+                  indent=2,
+              ),
+              encoding="utf-8",
+          )
+          (data / "models.json").write_text("[]\n", encoding="utf-8")
+          PY
+          uv run python scripts/export_research_bundle.py \
+            --source artifacts/site \
+            --output artifacts/research-bundle \
+            --title "Model Data Bundle CI"
+      - name: Verify frontend artifact kinds
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(
+              Path("artifacts/research-bundle/alpha-engine-bundle.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          kinds = {row["path"]: row["kind"] for row in manifest["artifacts"]}
+          assert kinds["data/model-data-readiness.json"] == "data_readiness_index"
+          assert kinds["data/data-components.json"] == "data_component_index"
+          assert kinds["data/training-profiles.json"] == "training_readiness_index"
+          assert manifest["data_readiness"]["bundle_id"]
+          assert manifest["trade_ready"] is False
+          PY
+      - name: Upload data and research bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-data-readiness-${{ github.run_id }}
+          path: |
+            artifacts/data/model_data_bundle_v1
+            artifacts/research-bundle
+          if-no-files-found: error
+          retention-days: 90
