@@ -1,0 +1,48 @@
+schema_version: "1.0"
+recipe_id: "qqq-rotation"
+status: "active_research_recipe"
+research_only: true
+trade_ready: false
+
+description: >-
+  Prepare one hash-bound strategy data product for the QQQI/QQQ/TQQQ rotation
+  research line. Tradable ETF history is provided by the governed ETF reference
+  bundle; VIX and VXN are signal-only references captured into the same strategy
+  data identity.
+
+history:
+  requested_start: "2010-01-01"
+  default_cutoff: null
+
+symbols:
+  tradable: ["QQQI", "QQQ", "TQQQ"]
+  signal_references: ["^VIX", "^VXN"]
+
+source_products:
+  etf_contract: "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
+  etf_bundle_root: "artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1"
+  strategy_bundle_root: "artifacts/data/qqq_rotation_strategy_data_v1"
+  model_data_bundle_root: "artifacts/data/model_data_bundle_v1"
+  frontend_data_dir: "artifacts/site/data"
+
+model_data:
+  contract: "configs/data_contracts/model_data_bundle_v1.yaml"
+  component_id: "strategy.qqqi_qqq_tqqq_vix_vxn_v1"
+  component_kind: "strategy_data_bundle"
+  profile_id: "qqqi_qqq_tqqq_vix_vxn_rotation_v1"
+  candidate_pool_id: "qqqi_qqq_tqqq_reference_bundle_v1"
+
+cache:
+  pointer: "artifacts/cache/data_recipes/qqq-rotation/latest.json"
+  reuse_requires_ready_profile: true
+  forbid_cross_cutoff_reuse: true
+
+research_commands:
+  qqqi-vxn-v4.1:
+    runner: "scripts/run_qqqi_vxn_v4_1_prospective_monitor.py"
+    output_dir: "artifacts/evidence/qqqi_qqq_tqqq_vxn_v4_1_prospective_monitor"
+    strategy_run_dir: "artifacts/strategy_runs"
+  qqqi-vxn-v4.2:
+    runner: "scripts/run_qqqi_vxn_v4_2_prospective_monitor.py"
+    output_dir: "artifacts/evidence/qqqi_qqq_tqqq_vxn_v4_2_prospective_monitor"
+    strategy_run_dir: "artifacts/strategy_runs"
