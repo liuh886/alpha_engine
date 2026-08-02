@@ -1,0 +1,152 @@
+name: US x1.1 QQQ Trend Overlay
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/run_us_x1_1_qqq_trend_overlay.py"
+      - "tests/test_us_x1_1_qqq_trend_overlay.py"
+      - ".github/workflows/us-x1-1-qqq-trend-overlay.yml"
+      - "docs/research/us_x1_1_qqq_trend_overlay_result_2026-08-02.md"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: us-x1-1-qqq-trend-overlay-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      evidence: ${{ steps.scope.outputs.evidence }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect evidence-affecting changes
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "evidence=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "${{ github.event.action }}" != "synchronize" ]]; then
+            echo "evidence=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          before="${{ github.event.before }}"
+          after="${{ github.event.after }}"
+          changed="$(git diff --name-only "$before" "$after")"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -Eq '^(scripts/run_us_x1_1_qqq_trend_overlay\.py|tests/test_us_x1_1_qqq_trend_overlay\.py)$'; then
+            echo "evidence=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "evidence=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate trend-overlay contract
+        run: |
+          uv run ruff check \
+            scripts/run_us_x1_1_qqq_trend_overlay.py \
+            tests/test_us_x1_1_qqq_trend_overlay.py
+          uv run mypy scripts/run_us_x1_1_qqq_trend_overlay.py
+          uv run pytest \
+            tests/test_us_x1_1_qqq_trend_overlay.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  evidence:
+    needs:
+      - changes
+      - contract
+    if: needs.changes.outputs.evidence == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Download frozen provider
+        uses: actions/download-artifact@v4
+        with:
+          name: us-raw-adjustment-contract-30742690159
+          path: artifacts/source/provider
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: liuh886/alpha_engine
+          run-id: 30742690159
+      - name: Download deterministic reproduction ledgers
+        uses: actions/download-artifact@v4
+        with:
+          name: us-x1-1-deterministic-reproduction-30743067256
+          path: artifacts/source/reproduction
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: liuh886/alpha_engine
+          run-id: 30743067256
+      - name: Run multi-window QQQ trend overlay
+        run: >-
+          uv run python scripts/run_us_x1_1_qqq_trend_overlay.py
+          --provider-uri artifacts/source/provider/provider_a/data/providers/us
+          --reproduction-root artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1
+          --output-dir artifacts/evidence/us_x1_1_qqq_trend_overlay_v1
+      - name: Verify governed overlay decision
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("artifacts/evidence/us_x1_1_qqq_trend_overlay_v1/qqq_trend_overlay.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          assert payload["provider_identity_sha256"] == "5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95"
+          assert payload["decision_windows"] == ["2024H1", "2024H2", "2025H1", "2025H2"]
+          assert payload["consumed_reporting_windows_excluded"] == ["2026H1"]
+          assert all(row["selection_matches_experiment_007"] for row in payload["identity_proof"].values())
+          assert payload["decision"]["decision"] in {
+              "qqq_trend_50pct_portfolio_candidate_supported",
+              "qqq_trend_cash_portfolio_candidate_supported",
+              "trend_overlay_window_specific",
+              "trend_overlay_destroys_too_much_upside",
+              "no_overlay_improves_us_x1_1",
+          }
+          assert payload["decision"]["automatic_model_update"] is False
+          assert payload["decision"]["creates_us_x1_2_candidate"] is False
+          assert payload["governance"]["trade_ready"] is False
+          print(json.dumps({
+              "decision": payload["decision"],
+              "aggregate_results": payload["aggregate_results"],
+          }, indent=2))
+          PY
+      - name: Upload complete trend-overlay evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: us-x1-1-qqq-trend-overlay-${{ github.run_id }}
+          path: |
+            artifacts/evidence/us_x1_1_qqq_trend_overlay_v1
+            artifacts/source/provider/verification.json
+            artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1/run_identity_manifest.json
+          if-no-files-found: error
+          retention-days: 90
