@@ -1,0 +1,47 @@
+schema_version: "1.0"
+contract_id: "selected_pool_event_population_v1"
+status: "active_research_data_contract"
+research_only: true
+trade_ready: false
+
+markets:
+  us:
+    pool_id: "us_selected_equities_v2"
+    pool_spec: "configs/research_universes/us_selected_equities_v2.yaml"
+    expected_symbols: 87
+    fundamental_provider: "sec_companyfacts"
+    corporate_action_provider: "tiingo"
+    identity_mapping: "configs/providers/us_selected_equities_sec_cik_v3.yaml"
+    availability_policy: "next_calendar_day_00_00_utc_when_only_filed_date_is_available"
+  cn:
+    pool_id: "cn_selected_equities_v3"
+    pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
+    expected_symbols: 130
+    fundamental_provider: "tushare_fina_indicator"
+    corporate_action_provider: "tushare_dividend"
+    credential_env: "TUSHARE_TOKEN"
+    availability_policy: "f_ann_date_or_ann_date_never_period_end"
+
+fundamental_fields:
+  us:
+    Revenues: {field: revenue, unit: USD, currency: USD}
+    NetIncomeLoss: {field: net_income, unit: USD, currency: USD}
+    Assets: {field: total_assets, unit: USD, currency: USD}
+    Liabilities: {field: total_liabilities, unit: USD, currency: USD}
+    StockholdersEquity: {field: stockholders_equity, unit: USD, currency: USD}
+    EarningsPerShareDiluted: {field: diluted_eps, unit: USD/shares, currency: USD}
+    OperatingIncomeLoss: {field: operating_income, unit: USD, currency: USD}
+  cn:
+    eps: {field: basic_eps, unit: CNY/shares, currency: CNY}
+    dt_eps: {field: diluted_eps, unit: CNY/shares, currency: CNY}
+    gross_margin: {field: gross_margin, unit: percent, currency: CNY}
+    current_ratio: {field: current_ratio, unit: ratio, currency: CNY}
+    debt_to_assets: {field: debt_to_assets, unit: percent, currency: CNY}
+    roe: {field: roe, unit: percent, currency: CNY}
+
+coverage:
+  every_pool_symbol_requires_explicit_status: true
+  allowed_statuses: [ready, partial, provider_missing, identity_missing, conflict]
+  no_forward_fill: true
+  no_price_implied_events: true
+  event_store_hash_binding_required: true
