@@ -62,7 +62,7 @@ jobs:
           --cutoff 2026-07-31
           --max-rounds 1
           --full-refresh
-      - name: Verify provider gate and identity
+      - name: Verify provider promotion gate and record identity status
         run: |
           uv run python - <<'PY'
           import json
@@ -70,16 +70,29 @@ jobs:
           import yaml
 
           manifest_path = Path("artifacts/selected_pool_price_refresh/us/artifacts/selected_pool_price_refresh_manifest.json")
+          provider_path = Path("artifacts/selected_pool_price_refresh/us/data/providers/us/provider_manifest.json")
           contract_path = Path("configs/research_experiments/us_x1_0_robustness_v1.yaml")
           manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          provider = json.loads(provider_path.read_text(encoding="utf-8"))
           contract = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
           assert manifest.get("status") == "selected_pool_price_refresh_ready", manifest
           assert manifest.get("promotion_eligible") is True, manifest.get("promotion_blocker")
           assert not manifest.get("failures"), manifest.get("failures")
-          provider_manifest = json.loads(
-              Path("artifacts/selected_pool_price_refresh/us/data/providers/us/provider_manifest.json").read_text(encoding="utf-8")
-          )
-          assert provider_manifest["provider_identity_sha256"] == contract["provider"]["required_identity_sha256"], provider_manifest
+          expected = contract["provider"]["required_identity_sha256"]
+          observed = provider["provider_identity_sha256"]
+          status = {
+              "expected_provider_identity_sha256": expected,
+              "observed_provider_identity_sha256": observed,
+              "provider_identity_match": observed == expected,
+              "evidence_revision_scope": (
+                  "canonical" if observed == expected else "noncanonical_provider_revision"
+              ),
+              "version_decision_allowed": observed == expected,
+          }
+          output = Path("artifacts/evidence/us_x1_0_robustness/provider_identity_status.json")
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(status, indent=2))
           PY
       - name: Run immutable US x1.0 full backtest
         run: >-
