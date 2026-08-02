@@ -12,6 +12,7 @@ export default defineConfig({
   outputDir: 'test-results/static-artifact',
   use: {
     baseURL: 'http://127.0.0.1:43173',
+    browserName: 'chromium',
     trace: 'retain-on-failure',
   },
   webServer: {
@@ -21,8 +22,18 @@ export default defineConfig({
     timeout: 15_000,
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
-    { name: 'tablet', use: { ...devices['iPad (gen 7)'] } },
-    { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'], browserName: 'chromium' } },
+    {
+      name: 'tablet',
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 1024, height: 1366 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+        userAgent: devices['iPad (gen 7)'].userAgent,
+      },
+    },
+    { name: 'mobile', use: { ...devices['Pixel 7'], browserName: 'chromium' } },
   ],
 });
