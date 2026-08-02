@@ -14,9 +14,29 @@ from typing import Any, Mapping
 
 ASSETS = ("QQQI", "QQQ", "TQQQ")
 STATE_LABELS = {
-    0: "QQQI defensive",
-    1: "50% QQQI / 50% QQQ bridge",
-    2: "25% QQQ / 75% TQQQ leveraged recovery",
+    0: "QQQI 防守",
+    1: "50% QQQI / 50% QQQ 过渡",
+    2: "25% QQQ / 75% TQQQ 杠杆恢复",
+}
+TRANSITION_LABELS = {
+    "open_risk_bridge": "开启风险过渡",
+    "open_leveraged_recovery": "直接进入杠杆恢复",
+    "add_tqqq_leverage": "增加 TQQQ 杠杆",
+    "reduce_tqqq_leverage": "降低 TQQQ 杠杆",
+    "return_to_defense": "回到 QQQI 防守",
+    "exit_to_defense": "退出杠杆并转入防守",
+    "rebalance": "调整组合",
+}
+REASON_LABELS = {
+    "enter_qqq_early_repair_vix_easing": "QQQ 出现早期价格修复且 VIX 回落",
+    "enter_partial_tqqq_vix_normalized_vxn_not_stressed": (
+        "价格修复进一步确认、VIX 已正常化且 VXN 未处于压力状态"
+    ),
+    "exit_partial_tqqq_vix_vxn_or_ma20": (
+        "VIX/VXN 压力上升或 QQQ 跌破短期趋势条件"
+    ),
+    "defensive_price_or_vix_stress": "价格防线失守或 VIX 压力显著上升",
+    "hold": "继续保持当前状态",
 }
 
 
@@ -105,8 +125,9 @@ def build_signal_alert(
     ).hexdigest()[:20]
 
     transition = _transition_type(current_state, target_state)
+    decision_reason = str(signal.get("decision_reason", ""))
     alert = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "experiment_id": baseline_contract["experiment_id"],
         "research_only": True,
         "trade_ready": False,
@@ -115,6 +136,7 @@ def build_signal_alert(
         "signal_date": signal_date,
         "execution_time": "next_session_open",
         "transition_type": transition,
+        "transition_label": TRANSITION_LABELS[transition],
         "current_state": current_state,
         "current_state_label": STATE_LABELS[current_state],
         "target_state": target_state,
@@ -122,7 +144,10 @@ def build_signal_alert(
         "current_weights": current_weights,
         "target_weights": target_weights,
         "orders": order_rows,
-        "decision_reason": str(signal.get("decision_reason", "")),
+        "decision_reason": decision_reason,
+        "decision_reason_label": REASON_LABELS.get(
+            decision_reason, "策略冻结规则触发状态变化"
+        ),
         "market_context": {
             "vix_close": float(signal["vix_close"]),
             "vxn_close": float(signal["vxn_close"]),
@@ -133,8 +158,8 @@ def build_signal_alert(
         },
     }
     alert["title"] = (
-        f"[Research Signal] {signal_date} {current_state}->{target_state} "
-        f"{transition}"
+        f"[策略信号] {signal_date} "
+        f"{STATE_LABELS[current_state]} → {STATE_LABELS[target_state]}"
     )
     alert["markdown"] = render_signal_alert_markdown(alert)
     return alert
@@ -143,37 +168,40 @@ def build_signal_alert(
 def render_signal_alert_markdown(alert: Mapping[str, Any]) -> str:
     """Render a concise GitHub/Telegram friendly alert message."""
 
+    side_labels = {"buy": "买入", "sell": "卖出"}
     orders = alert.get("orders", [])
     order_lines = [
-        f"- **{str(item['side']).upper()} {float(item['weight_change']):.0%} "
-        f"{item['asset']}** ({float(item['from_weight']):.0%} → "
-        f"{float(item['to_weight']):.0%})"
+        f"- **{side_labels[str(item['side'])]} {float(item['weight_change']):.0%} "
+        f"{item['asset']}**（{float(item['from_weight']):.0%} → "
+        f"{float(item['to_weight']):.0%}）"
         for item in orders
     ]
     if not order_lines:
-        order_lines = ["- No portfolio change; current position already matches the signal."]
+        order_lines = ["- 当前仓位已与信号一致，无需调整。"]
     context = alert["market_context"]
     lines = [
         f"## {alert['title']}",
         "",
-        "> Research-only signal. It is not an order and is not marked trade-ready.",
+        "> 研究信号，不是自动订单；当前模型仍未标记为可交易。",
         "",
-        f"- Signal date: **{alert['signal_date']} close**",
-        "- Intended execution: **next US session open**",
-        f"- Current state: **{alert['current_state_label']}**",
-        f"- Target state: **{alert['target_state_label']}**",
-        f"- Reason: `{alert['decision_reason']}`",
+        f"- 信号时间：**{alert['signal_date']} 美股收盘后**",
+        "- 计划执行：**下一美股交易日开盘**",
+        f"- 状态变化：**{alert['transition_label']}**",
+        f"- 当前状态：**{alert['current_state_label']}**",
+        f"- 目标状态：**{alert['target_state_label']}**",
+        f"- 触发解释：{alert['decision_reason_label']}",
+        f"- 规则代码：`{alert['decision_reason']}`",
         "",
-        "### Target rebalance",
+        "### 目标调仓",
         *order_lines,
         "",
-        "### Market context",
-        f"- VIX: **{float(context['vix_close']):.2f}**; "
-        f"stress={bool(context['vix_stress'])}; "
-        f"easing={bool(context['vix_easing'])}; "
-        f"normalized={bool(context['vix_normalized'])}",
-        f"- VXN: **{float(context['vxn_close']):.2f}**; "
-        f"stress={bool(context['vxn_stress'])}",
+        "### 市场条件",
+        f"- VIX：**{float(context['vix_close']):.2f}**；"
+        f"压力={bool(context['vix_stress'])}；"
+        f"回落={bool(context['vix_easing'])}；"
+        f"正常化={bool(context['vix_normalized'])}",
+        f"- VXN：**{float(context['vxn_close']):.2f}**；"
+        f"压力={bool(context['vxn_stress'])}",
         "",
         f"<!-- signal-fingerprint:{alert['fingerprint']} -->",
     ]
