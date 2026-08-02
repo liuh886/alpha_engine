@@ -4,6 +4,8 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -17,13 +19,18 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.number == 349 && github.event.comment.body == '/deploy-pages')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout main
         uses: actions/checkout@v6
+        with:
+          ref: main
 
       - name: Verify zero-server product boundary
         run: python scripts/check_legacy_web_boundary.py
@@ -101,16 +108,18 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Report deployment success
-        if: success() && github.event_name == 'push' && startsWith(github.event.head_commit.message, 'fix(pages):')
+        if: success()
         env:
           GH_TOKEN: ${{ github.token }}
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          gh issue comment 349 --body "Pages deployment succeeded for commit \`${GITHUB_SHA}\`. Published URL: ${PAGE_URL}"
+          SOURCE_SHA=$(git rev-parse HEAD)
+          gh issue comment 349 --body "Pages deployment succeeded for commit \`${SOURCE_SHA}\`. Published URL: ${PAGE_URL}"
 
       - name: Report deployment failure
-        if: failure() && github.event_name == 'push' && startsWith(github.event.head_commit.message, 'fix(pages):')
+        if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment 349 --body "Pages deployment failed for commit \`${GITHUB_SHA}\`. Review the workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          SOURCE_SHA=$(git rev-parse HEAD 2>/dev/null || echo unknown)
+          gh issue comment 349 --body "Pages deployment failed for commit \`${SOURCE_SHA}\`. Review the workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
