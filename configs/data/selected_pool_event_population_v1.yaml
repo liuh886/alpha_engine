@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 contract_id: "selected_pool_event_population_v1"
 status: "active_research_data_contract"
 research_only: true
@@ -9,18 +9,40 @@ markets:
     pool_id: "us_selected_equities_v2"
     pool_spec: "configs/research_universes/us_selected_equities_v2.yaml"
     expected_symbols: 87
-    fundamental_provider: "sec_companyfacts"
-    corporate_action_provider: "tiingo"
+    fundamental_primary:
+      name: "sec_companyfacts"
+      source_family: "sec_edgar"
+      credential_required: false
+      user_agent_policy: "checked_in_project_identity_with_optional_env_override"
+    corporate_action_primary:
+      name: "yfinance_actions"
+      source_family: "yahoo_finance"
+    validators:
+      - {name: "tiingo", source_family: "tiingo_eod", role: "validation_only"}
+      - {name: "polygon", source_family: "polygon_sip", role: "validation_only"}
     identity_mapping: "configs/providers/us_selected_equities_sec_cik_v3.yaml"
     availability_policy: "next_calendar_day_00_00_utc_when_only_filed_date_is_available"
   cn:
     pool_id: "cn_selected_equities_v3"
     pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
     expected_symbols: 130
-    fundamental_provider: "tushare_fina_indicator"
-    corporate_action_provider: "tushare_dividend"
-    credential_env: "TUSHARE_TOKEN"
-    availability_policy: "f_ann_date_or_ann_date_never_period_end"
+    fundamental_primary:
+      transport: "akshare"
+      facts_source: "sina_financial_report"
+      disclosure_time_source: "cninfo_disclosure"
+      source_families: ["sina_finance", "cninfo"]
+      pit_join_required: true
+    corporate_action_primary:
+      transport: "akshare"
+      structured_sources:
+        - {endpoint: "stock_fhps_detail_em", source_family: "eastmoney"}
+        - {endpoint: "stock_share_change_cninfo", source_family: "cninfo"}
+        - {endpoint: "stock_allotment_cninfo", source_family: "cninfo"}
+    validators:
+      - {name: "baostock", source_family: "baostock", role: "validation_only"}
+      - {name: "mootdx", source_family: "tongdaxin", role: "validation_only_optional"}
+      - {name: "tushare", source_family: "tushare_pro", role: "validation_only", credential_env: "TUSHARE_TOKEN"}
+    availability_policy: "official_disclosure_or_source_update_time_never_period_end"
 
 fundamental_fields:
   us:
@@ -32,12 +54,19 @@ fundamental_fields:
     EarningsPerShareDiluted: {field: diluted_eps, unit: USD/shares, currency: USD}
     OperatingIncomeLoss: {field: operating_income, unit: USD, currency: USD}
   cn:
-    eps: {field: basic_eps, unit: CNY/shares, currency: CNY}
-    dt_eps: {field: diluted_eps, unit: CNY/shares, currency: CNY}
-    gross_margin: {field: gross_margin, unit: percent, currency: CNY}
-    current_ratio: {field: current_ratio, unit: ratio, currency: CNY}
-    debt_to_assets: {field: debt_to_assets, unit: percent, currency: CNY}
-    roe: {field: roe, unit: percent, currency: CNY}
+    营业收入: {field: revenue, unit: CNY, currency: CNY}
+    净利润: {field: net_income, unit: CNY, currency: CNY}
+    资产总计: {field: total_assets, unit: CNY, currency: CNY}
+    负债合计: {field: total_liabilities, unit: CNY, currency: CNY}
+    所有者权益(或股东权益)合计: {field: stockholders_equity, unit: CNY, currency: CNY}
+    基本每股收益: {field: basic_eps, unit: CNY/shares, currency: CNY}
+
+provider_role_rules:
+  primary_data_may_feed_training: true
+  validation_sources_may_feed_training: false
+  validation_sources_may_replace_primary: false
+  shared_upstream_transports_count_as_one_source: true
+  source_disagreement_requires_explicit_conflict_status: true
 
 coverage:
   every_pool_symbol_requires_explicit_status: true
