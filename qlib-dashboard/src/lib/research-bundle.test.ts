@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   FileSetBundleSource,
   openResearchBundle,
@@ -6,10 +7,32 @@ import {
   type ResearchBundleManifest,
 } from './research-bundle';
 
+const originalCrypto = globalThis.crypto;
+
+function bytesFromDigestInput(data: BufferSource): Uint8Array {
+  if (data instanceof ArrayBuffer) return new Uint8Array(data);
+  return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+}
+
+beforeAll(() => {
+  vi.stubGlobal('crypto', {
+    subtle: {
+      digest: async (_algorithm: AlgorithmIdentifier, data: BufferSource) => {
+        const hash = createHash('sha256').update(bytesFromDigestInput(data)).digest();
+        const bytes = new Uint8Array(hash.byteLength);
+        bytes.set(hash);
+        return bytes.buffer;
+      },
+    },
+  });
+});
+
+afterAll(() => {
+  vi.stubGlobal('crypto', originalCrypto);
+});
+
 async function digest(text: string): Promise<string> {
-  const bytes = new TextEncoder().encode(text);
-  const value = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(value), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return createHash('sha256').update(text).digest('hex');
 }
 
 function testFile(text: string, name: string, relativePath: string): File {
