@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
+from src.data.adapters.tiingo_adapter import TiingoRateLimitError
 from src.data.etf_reference_bundle import (
     ETFReferenceBundleError,
     build_etf_reference_bundle,
@@ -83,6 +84,24 @@ class FakeAdapter:
             end=req.end,
             df=frame,
             provider_symbol=symbol,
+        )
+
+
+@dataclass
+class RateLimitedAdapter:
+    _name: str = "tiingo"
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def fetch_daily_bars(self, req: FetchRequest) -> FetchResult:
+        raise TiingoRateLimitError(
+            status_code=429,
+            path=f"tiingo/daily/{req.symbol.upper()}",
+            attempts=1,
+            retry_after_seconds=3600.0,
+            rate_limit_reset="next-hour",
         )
 
 
@@ -176,6 +195,28 @@ def test_professional_bundle_retains_distributions_splits_and_hashes(
     assert sorted(bars) == ["QQQ", "QQQI", "TQQQ"]
     assert len(coverage) == 3
     assert loaded["professional_source_ready"] is True
+    assert loaded["provider_health"]["tiingo"]["success_ratio"] == 1.0
+
+
+def test_rate_limit_is_distinct_from_missing_data(tmp_path: Path) -> None:
+    manifest = build_etf_reference_bundle(
+        contract_path=CONTRACT,
+        output_root=tmp_path,
+        primary_adapter=RateLimitedAdapter(),
+        fallback_adapter=FakeAdapter("yfinance", _fallback_frames()),
+    )
+
+    health = manifest["provider_health"]["tiingo"]
+    assert health["successful_symbols"] == 0
+    assert health["failed_symbols"] == 3
+    assert health["error_class_counts"] == {"rate_limited": 3}
+    assert health["rate_limited_symbols"] == ["QQQ", "QQQI", "TQQQ"]
+    coverage = pd.read_csv(tmp_path / "coverage.csv")
+    attempts = coverage["primary_attempt"].map(__import__("json").loads)
+    assert {attempt["error_class"] for attempt in attempts} == {"rate_limited"}
+    assert {attempt["status_code"] for attempt in attempts} == {429}
+    assert manifest["strategy_data_ready"] is True
+    assert manifest["professional_source_ready"] is False
 
 
 def test_unexplained_provider_disagreement_quarantines_primary(
