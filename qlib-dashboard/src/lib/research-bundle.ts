@@ -62,6 +62,29 @@ function blobFromBytes(bytes: Uint8Array): Blob {
   return new Blob([copy.buffer]);
 }
 
+function readBlobAsText(blob: Blob): Promise<string> {
+  if (typeof blob.text === 'function') return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('Unable to read bundle text.'));
+    reader.readAsText(blob);
+  });
+}
+
+function readBlobAsArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result instanceof ArrayBuffer) resolve(reader.result);
+      else reject(new Error('Unable to read bundle bytes.'));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('Unable to read bundle bytes.'));
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
 export function validateBundleManifest(value: unknown): ResearchBundleManifest {
   if (!value || typeof value !== 'object') throw new Error('Bundle manifest is not an object.');
   const manifest = value as Partial<ResearchBundleManifest>;
@@ -77,11 +100,11 @@ export function validateBundleManifest(value: unknown): ResearchBundleManifest {
 }
 
 async function blobJson<T>(blob: Blob): Promise<T> {
-  return JSON.parse(await blob.text()) as T;
+  return JSON.parse(await readBlobAsText(blob)) as T;
 }
 
 async function sha256(blob: Blob): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+  const digest = await crypto.subtle.digest('SHA-256', await readBlobAsArrayBuffer(blob));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
@@ -183,7 +206,7 @@ export class ZipBundleSource implements BundleFileSource {
   private constructor(label: string, private readonly entries: Map<string, Blob>) { this.label = label; }
 
   static async fromFile(file: File): Promise<ZipBundleSource> {
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    const bytes = new Uint8Array(await readBlobAsArrayBuffer(file));
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     let eocd = -1;
     for (let index = bytes.length - 22; index >= Math.max(0, bytes.length - 65557); index -= 1) {
