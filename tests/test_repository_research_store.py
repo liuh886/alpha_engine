@@ -18,7 +18,11 @@ def test_repository_export_publishes_named_models_without_metadata_db(tmp_path: 
     manifest = export_repository_research_data(output, catalog_path=DEFAULT_CATALOG)
 
     models = json.loads((output / "models.json").read_text(encoding="utf-8"))
-    assert [model["id"] for model in models] == ["cn_x1_0", "us_x1_0"]
+    assert [model["id"] for model in models] == [
+        "cn_x1_0",
+        "us_x1_0",
+        "us_x1_1",
+    ]
     assert all(model["params"]["research_only"] is True for model in models)
     assert all(model["params"]["trade_ready"] is False for model in models)
     assert all(model["snapshot_id"] for model in models)
@@ -26,9 +30,10 @@ def test_repository_export_publishes_named_models_without_metadata_db(tmp_path: 
     assert all(model["path"].startswith("docs/models/") for model in models)
     assert manifest["source"] == "repository_research_store"
     assert manifest["catalog_path"] == "data/repository-catalog.json"
-    assert manifest["stats"]["total_models"] == 2
+    assert manifest["stats"]["total_models"] == 3
     assert "metadata_db_missing" not in manifest.get("blocked_gates", [])
     assert (output / "repository-catalog.json").is_file()
+    assert (output.parent / "docs" / "models" / "us_x1_1.yaml").is_file()
     assert (output.parent / "docs" / "models" / "us_x1_0.yaml").is_file()
     assert (output.parent / "docs" / "models" / "cn_x1_0.yaml").is_file()
 
