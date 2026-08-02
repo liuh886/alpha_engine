@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { BarChart3, CheckCircle2, Cpu, GitCompareArrows, ShieldAlert } from 'lucide-react';
 import type { ModelData } from '@/lib/data-parser';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { extractSignalExecutionRows, numericMetric } from '@/lib/artifact-data';
