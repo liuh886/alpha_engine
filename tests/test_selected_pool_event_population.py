@@ -2,14 +2,37 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.data.corporate_actions.ashare_public_actions import (
+    eastmoney_dividend_to_events,
+)
 from src.data.corporate_actions.tiingo_events import (
     tiingo_bars_to_corporate_actions,
 )
-from src.data.fundamentals.sec_companyfacts import companyfacts_to_events
+from src.data.corporate_actions.yfinance_events import (
+    yfinance_actions_to_corporate_actions,
+)
+from src.data.fundamentals.ashare_public_financials import (
+    cninfo_period_disclosures,
+    sina_statement_to_events,
+)
+from src.data.fundamentals.sec_companyfacts import (
+    DEFAULT_SEC_USER_AGENT,
+    SecCompanyFactsClient,
+    companyfacts_to_events,
+    resolve_sec_user_agent,
+)
 from src.data.fundamentals.tushare_financials import tushare_indicator_to_events
 
 
 RETRIEVED = "2026-08-02T00:00:00+00:00"
+
+
+def test_sec_client_has_non_secret_declared_user_agent(monkeypatch):
+    monkeypatch.delenv("SEC_USER_AGENT", raising=False)
+    assert resolve_sec_user_agent() == DEFAULT_SEC_USER_AGENT
+    client = SecCompanyFactsClient()
+    assert "AlphaEngine" in str(client.user_agent)
+    assert "github.com/liuh886/alpha_engine/issues" in str(client.user_agent)
 
 
 def test_sec_companyfacts_uses_conservative_post_filing_availability():
@@ -54,7 +77,51 @@ def test_sec_companyfacts_uses_conservative_post_filing_availability():
     assert event.is_derived is False
 
 
-def test_tushare_fundamentals_use_announcement_not_period_end():
+def test_sina_financials_require_cninfo_disclosure_time():
+    disclosures = pd.DataFrame(
+        [
+            {
+                "公告标题": "某公司2025年年度报告",
+                "公告时间": "2026-03-28",
+                "公告链接": "https://www.cninfo.com.cn/report/1",
+            }
+        ]
+    )
+    indexed = cninfo_period_disclosures(disclosures)
+    statement = pd.DataFrame(
+        [
+            {
+                "报告日": "20251231",
+                "类型": "合并期末",
+                "营业收入": 123.0,
+                "更新日期": "2026-03-28 T18:00:00",
+            },
+            {
+                "报告日": "20250930",
+                "类型": "合并期末",
+                "营业收入": 99.0,
+                "更新日期": "2025-10-30 T18:00:00",
+            },
+        ]
+    )
+    events = sina_statement_to_events(
+        statement,
+        disclosures=indexed,
+        symbol="600000",
+        exchange="SSE",
+        statement="利润表",
+        field_map={"营业收入": {"field": "revenue", "unit": "CNY", "currency": "CNY"}},
+        retrieved_at=RETRIEVED,
+    )
+    assert len(events) == 1
+    event = events[0]
+    assert event.fiscal_period_end == "2025-12-31"
+    assert event.reported_at.startswith("2026-03-28")
+    assert event.available_at.startswith("2026-03-29")
+    assert event.source_provider == "akshare_sina_financial_report_cninfo_time"
+
+
+def test_tushare_fundamentals_are_validation_only():
     frame = pd.DataFrame(
         [
             {
@@ -79,10 +146,55 @@ def test_tushare_fundamentals_use_announcement_not_period_end():
     event = events[0]
     assert event.fiscal_period_end == "2026-03-31"
     assert event.available_at.startswith("2026-04-26T00:00:00+08:00")
-    assert event.available_at[:10] != event.fiscal_period_end
+    assert event.source_provider.startswith("tushare_validation_")
 
 
-def test_tiingo_actions_are_explicit_not_price_inferred():
+def test_eastmoney_actions_use_explicit_fields():
+    frame = pd.DataFrame(
+        [
+            {
+                "报告期": "2025-12-31",
+                "最新公告日期": "2026-05-20",
+                "股权登记日": "2026-05-27",
+                "除权除息日": "2026-05-28",
+                "现金红利发放日": "2026-05-28",
+                "现金分红-现金分红比例": 5.0,
+                "送转股份-送转总比例": 2.0,
+            }
+        ]
+    )
+    events = eastmoney_dividend_to_events(
+        frame,
+        symbol="600000",
+        exchange="SSE",
+        retrieved_at=RETRIEVED,
+    )
+    assert [event.event_type for event in events] == ["cash_dividend", "stock_dividend"]
+    assert events[0].cash_amount == 0.5
+    assert events[1].stock_dividend_ratio == 0.2
+    assert all(event.source_provider == "akshare_eastmoney_dividend" for event in events)
+
+
+def test_yahoo_actions_are_primary_explicit_events():
+    frame = pd.DataFrame(
+        {
+            "Dividends": [0.25, 0.0],
+            "Stock Splits": [0.0, 2.0],
+        },
+        index=pd.to_datetime(["2026-06-01", "2026-06-02"], utc=True),
+    )
+    events = yfinance_actions_to_corporate_actions(
+        frame,
+        symbol="AAPL",
+        exchange="XNAS",
+        entity_id="CIK0000320193",
+        retrieved_at=RETRIEVED,
+    )
+    assert [event.event_type for event in events] == ["cash_dividend", "split"]
+    assert all(event.source_provider == "yfinance_actions" for event in events)
+
+
+def test_tiingo_actions_are_explicit_validation_evidence():
     frame = pd.DataFrame(
         {
             "date": pd.to_datetime(["2026-06-01", "2026-06-02", "2026-06-03"]),
@@ -100,7 +212,6 @@ def test_tiingo_actions_are_explicit_not_price_inferred():
     )
     assert [event.event_type for event in events] == ["cash_dividend", "split"]
     assert all(event.effective_date == "2026-06-02" for event in events)
-    assert all(event.reconciliation_status == "source_only" for event in events)
 
     no_fields = frame.drop(columns=["cash_distribution", "split_factor"])
     assert tiingo_bars_to_corporate_actions(
