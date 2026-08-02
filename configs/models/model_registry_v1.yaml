@@ -1,0 +1,33 @@
+schema_version: '1.0'
+registry_id: baseline_model_registry_v1
+status: active_research_baselines
+created_at: '2026-08-02'
+issue: 350
+trade_ready: false
+versioning_policy:
+  immutable_released_versions: true
+  compatible_evidence_supported_change: increment_minor
+  contract_breaking_change: increment_major
+  performance_only_change_without_contract_change: new_evidence_revision_not_model_version
+  final_holdout_reuse_for_selection_allowed: false
+  automatic_promotion_allowed: false
+models:
+  us_x1_0:
+    display_name: US x1.0
+    market: us
+    status: baseline_research
+    config: configs/models/us_x1_0.yaml
+    notebook: notebooks/models/us_x1_0_baseline.ipynb
+    frozen_research_spec: configs/research_paradigms/us_10d_xgb_optimization_frozen_v1.yaml
+    source_pr: 343
+    next_version: US x1.1
+  cn_x1_0:
+    display_name: CN x1.0
+    market: cn
+    status: baseline_research_data_review
+    config: configs/models/cn_x1_0.yaml
+    notebook: notebooks/models/cn_x1_0_baseline.ipynb
+    frozen_research_spec: configs/research_paradigms/cn_x1_0_frozen_v1.yaml
+    source_pr: 344
+    data_blocker_issue: 345
+    next_version: CN x1.1
