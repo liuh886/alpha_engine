@@ -72,10 +72,12 @@ Historical PR #343/#344 candidate names included fields that were not consumed b
 
 ## Experiment 003 — six-candidate native XGBoost grid
 
-**Status:** running through Issue #370.  
-**Parent:** US x1.1.  
-**Decision windows:** 2024H1, 2024H2, 2025H1, 2025H2.  
-**Reporting-only window:** none in candidate selection; 2026H1 remains excluded.
+**Date:** 2026-08-02  
+**Issue / PR:** #370 / #378  
+**Workflow / artifact:** `30740184315` / `8831050347`  
+**Artifact digest:** `sha256:31c5c05297bade69bb730f3df7815f043f390e2de59674db3bff151fd71d6776`  
+**Decision:** `data_blocked`  
+**Version consequence:** no US x1.2 candidate; US x1.1 unchanged.
 
 ### Hypothesis
 
@@ -88,33 +90,72 @@ Native regularization may reduce the 2025H1 drawdown or selection instability wh
 - Top-15 equal-weight portfolio role;
 - 20 bps base cost;
 - score orientation;
-- development windows.
+- development windows 2024H1–2025H2.
 
-### Pre-registered candidates
+The consumed 2026H1 reporting window was not loaded.
 
-1. exact effective US x1.1 runtime;
-2. learning rate 0.03 with 300 rounds;
-3. minimum child weight 5;
-4. row and column sampling at 0.8;
-5. explicit L1/L2 regularization with child weight 2;
-6. maximum leaves 15.
+### Provider identity
 
-### Required outputs
+- canonical US x1.1 provider: `2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95`;
+- observed provider: `a48bfc398b6207a0de1e38558f15caa4d096922572da2c78df636fc20aabf081`;
+- provider match: false;
+- calendar and instrument hashes: unchanged;
+- changed source CSV hashes: 47 of 88.
 
-- provider identity and manifest;
-- effective parameter identity per candidate and window;
-- 20/40/60 bps cost stress;
-- score-rank correlation and final Top-15 overlap versus US x1.1;
-- window contribution balance and recurring names;
-- deterministic rerun check for the baseline calibration;
-- one final decision: `native_xgb_x1_2_candidate_supported`, `us_x1_1_native_runtime_preferred`, `native_grid_unstable`, or `data_blocked`.
+This is source-data drift rather than a metadata-only change. Comparative results are retained as a noncanonical evidence revision, but cannot support a version decision.
 
-Results will be appended after the workflow artifact is reviewed.
+### Result
+
+Compounded relative excess versus QQQ on the observed provider:
+
+| Calibration | 20 bps | 60 bps | Positive windows | Worst drawdown | Strongest-window share |
+|---|---:|---:|---:|---:|---:|
+| US x1.1 effective runtime | 114.35% | 94.07% | 4/4 | -33.84% | 47.82% |
+| Lower learning rate / 300 rounds | **172.96%** | **147.35%** | 4/4 | **-39.29%** | 45.53% |
+| Higher child weight | 113.15% | 93.21% | 3/4 | -38.56% | 50.16% |
+| Row and column sampling 0.8 | **164.19%** | **140.63%** | 4/4 | -33.71% | **41.86%** |
+| Explicit regularization | 119.93% | 98.62% | 3/4 | -36.61% | 53.58% |
+| Maximum leaves 15 | **162.09%** | **139.30%** | 4/4 | -35.53% | 47.06% |
+
+The deterministic repeat-fit check for the effective US x1.1 calibration passed in all four windows.
+
+### Gate result
+
+No challenger passed the drawdown gate. Every challenger needed either a three-percentage-point drawdown improvement or a worst drawdown above -22%.
+
+- lower learning rate generated the highest return, but worsened worst drawdown to -39.29%;
+- row/column sampling generated strong return and the best window balance, but improved drawdown by only 0.13 percentage point on the observed provider;
+- higher child weight and explicit regularization produced negative excess in 2025H1;
+- lower leaf capacity improved return but worsened drawdown.
+
+### Accepted learning
+
+- Native XGBoost fields now create genuinely different score and economic contracts.
+- Nearby calibrations preserve positive 60 bps relative excess; transaction costs are not the central weakness.
+- Lower learning rate, sampling and smaller leaf capacity expose substantial return upside.
+- Parameter regularization alone does not solve the 2025H1 regime drawdown.
+- Row/column sampling is the most useful exploratory challenger because it improved return and window balance while retaining 90% mean final Top-15 overlap with US x1.1.
+
+### Rejected learning
+
+- No candidate may be called US x1.2 from this run.
+- Higher return does not establish a superior baseline when tail risk deteriorates.
+- These metrics do not restate canonical US x1.1 because the provider changed.
+
+### Next action
+
+- retain row/column sampling as an exploratory challenger only;
+- prioritize provider reproducibility and full provider artifact retention;
+- proceed to fixed-score portfolio and concentration controls rather than expanding the parameter grid;
+- use the same drawdown attribution framework on US x1.1 and the sampling challenger after the data gate is resolved.
+
+Full result: `docs/research/us_x1_1_native_xgb_grid_result_2026-08-02.md`.
 
 ## Active research queue
 
-1. Complete native-grid evidence and decide whether any parameter candidate deserves x1.2 validation.
+1. Preserve full provider snapshots in future evidence artifacts and continue drift attribution under #358.
 2. Build the governed US87 sector map under #366.
 3. Execute the fixed-score portfolio variants under #362.
-4. Decompose the 2025H1 drawdown and recurring-name contribution.
-5. Reserve a genuinely untouched future challenge window before any operational claim.
+4. Decompose the 2025H1 drawdown and recurring-name contribution for US x1.1.
+5. Revisit row/column sampling only after the data and portfolio-risk gates are resolved.
+6. Reserve a genuinely untouched future challenge window before any operational claim.
