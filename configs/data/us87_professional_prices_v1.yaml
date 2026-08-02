@@ -1,5 +1,5 @@
-schema_version: "1.0"
-contract_id: "us87_professional_prices_v1"
+schema_version: "1.1"
+contract_id: "us87_governed_prices_v1"
 status: "active_research_data_contract"
 market: "us"
 research_only: true
@@ -16,29 +16,36 @@ history:
   requested_start: "2021-01-01"
   end_policy: "explicit_cutoff_required"
   adjusted_price_required: true
-  raw_price_retention_required_when_provider_supports_it: true
   pre_listing_fill_allowed: false
 
 providers:
-  primary:
-    name: "tiingo"
-    credential_env: "TIINGO_API_TOKEN"
-    source_family: "tiingo_eod"
-  secondary:
-    name: "polygon"
-    credential_env: "POLYGON_API_KEY"
-    source_family: "polygon_sip"
-    optional_for_single_professional_source: true
-  fallback_research_only:
+  canonical:
     name: "yfinance"
-    eligible_for_professional_status: false
+    source_family: "yahoo_finance"
+    role: "primary_research_data"
+    eligible_for_training: true
+  validators:
+    - name: "tiingo"
+      credential_env: "TIINGO_API_TOKEN"
+      source_family: "tiingo_eod"
+      role: "validation_only"
+      eligible_for_training: false
+      may_replace_canonical: false
+    - name: "polygon"
+      credential_env: "POLYGON_API_KEY"
+      source_family: "polygon_sip"
+      role: "validation_only"
+      eligible_for_training: false
+      may_replace_canonical: false
 
 sharding:
   shard_size: 10
   deterministic_order: "pool_order_then_reference"
   one_shard_per_live_invocation: true
-  finalization_requires_all_symbols: true
+  finalization_requires_all_canonical_symbols: true
   partial_shards_may_not_be_used_for_training: true
+  validator_failure_may_not_delete_canonical_data: true
+  provider_wide_rate_limit_opens_shard_circuit: true
 
 reconciliation:
   minimum_overlap_sessions: 20
@@ -52,17 +59,20 @@ reconciliation:
   corporate_action_window_sessions: 1
 
 symbol_statuses:
-  - "consensus"
-  - "explainable_corporate_action_difference"
-  - "single_professional_source"
-  - "provider_missing"
+  - "canonical_ready_unvalidated"
+  - "canonical_ready_validated"
+  - "canonical_ready_partially_validated"
+  - "canonical_missing"
+  - "validation_conflict"
   - "quarantine"
 
 promotion:
-  professional_single_source_requires:
-    - "Tiingo identity and adjusted bars pass"
+  research_price_ready_requires:
+    - "Yahoo canonical identity and adjusted bars pass"
     - "all exact candidates and QQQ reference are present"
-  professional_corroborated_requires:
-    - "Tiingo and Polygon both pass exact identity"
-    - "all symbols pass independent return reconciliation"
+    - "all canonical files and manifests are hash bound"
+  validation_evidence_requires:
+    - "Tiingo and Polygon are used only for return/action comparison"
+    - "validation sources never become canonical"
+    - "missing credentials or provider limits remain explicit"
   automatic_trade_ready_promotion_allowed: false
