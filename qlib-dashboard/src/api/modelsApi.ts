@@ -1,5 +1,3 @@
-import { apiClient } from '@/lib/api-client';
-import { runtimeCapabilities } from '@/lib/runtime-capabilities';
 import {
   getActiveResearchBundle,
   loadStaticResearchBundle,
@@ -15,16 +13,11 @@ async function getArtifactDashboardDb(): Promise<any> {
   return bundle.dashboard;
 }
 
+/**
+ * Artifact-only model reader retained under the existing module name while the
+ * remaining legacy API directory is retired. It performs no HTTP requests and
+ * exposes no mutation methods.
+ */
 export const modelsApi = {
-  getDashboardDb: () => (
-    runtimeCapabilities.backendApi
-      ? apiClient.get<any>('/api/artifacts/dashboard-db')
-      : getArtifactDashboardDb()
-  ),
-  deleteModel: (versionId: string) => {
-    if (!runtimeCapabilities.mutations) {
-      return Promise.resolve({ ok: false, reason: 'read_only_runtime' });
-    }
-    return apiClient.post<{ ok: boolean }>('/api/models/delete', { artifact_id: versionId });
-  },
+  getDashboardDb: getArtifactDashboardDb,
 };

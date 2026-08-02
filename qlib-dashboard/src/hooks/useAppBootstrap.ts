@@ -1,75 +1,45 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useGlobalStore } from '@/store/globalStore';
-import { apiClient } from '@/lib/api-client';
-import { runtimeCapabilities } from '@/lib/runtime-capabilities';
 import { useModels } from './useModels';
-import { useJobs } from './useJobs';
-import { useDataStatus } from './useDataStatus';
 
+/**
+ * Bootstrap the read-only artifact workspace.
+ *
+ * The browser never probes a server, polls jobs or mutates research state. It
+ * only opens the published bundle and reacts when the user switches to another
+ * local bundle.
+ */
 export function useAppBootstrap() {
   const [loading, setLoading] = useState(true);
-  const { setApiError, setUsername, setDemoMode } = useGlobalStore();
-  
-  const { models, selectedModelId, setSelectedModelId, fetchModels, deleteModel } = useModels();
-  const { activeJobId, isPolling, startPolling, submitAndPoll, pollActiveJobsCount } = useJobs();
-  const { loadDataStatus } = useDataStatus();
-
-  // Collect all callbacks in a ref so the bootstrap effect below can call the
-  // latest version of each function without listing them as deps (which would
-  // re-run the one-time bootstrap on every render cycle).
-  const callbacksRef = useRef({ loadDataStatus, fetchModels, pollActiveJobsCount, setUsername, setApiError, setDemoMode });
-  useEffect(() => {
-    callbacksRef.current = { loadDataStatus, fetchModels, pollActiveJobsCount, setUsername, setApiError, setDemoMode };
-  });
+  const setApiError = useGlobalStore((state) => state.setApiError);
+  const {
+    models,
+    selectedModelId,
+    setSelectedModelId,
+    fetchModels,
+  } = useModels();
 
   useEffect(() => {
+    let active = true;
+
     const bootstrap = async () => {
-      const {
-        loadDataStatus: loadData,
-        fetchModels: fetchM,
-        pollActiveJobsCount: pollJobs,
-        setUsername: setU,
-        setApiError: setErr,
-        setDemoMode: setDemo,
-      } = callbacksRef.current;
-
       try {
         setLoading(true);
-
-        if (!runtimeCapabilities.backendApi) {
-          const parsed = await fetchM();
-          setU('Artifact Studio');
-          setDemo(true);
-          setErr(parsed === null ? 'No compatible static research bundle was found.' : null);
-          return;
-        }
-
-        await Promise.all([
-          loadData(),
-          fetchM(),
-          pollJobs(),
-          apiClient.get<{ username: string }>('/api/system/me').then(data => {
-            if (data?.username) setU(data.username);
-          }).catch(() => {}),
-          apiClient.get<{ demo_mode: boolean }>('/api/system/health').then(data => {
-            if (data?.demo_mode) setDemo(true);
-          }).catch(() => {}),
-        ]);
-
-        setErr(null);
-      } catch (err) {
-        callbacksRef.current.setApiError(
-          runtimeCapabilities.backendApi
-            ? 'Cannot reach server. Check if the backend is running.'
-            : 'Cannot load the exported research bundle.',
-        );
+        const parsed = await fetchModels();
+        if (!active) return;
+        setApiError(parsed === null ? 'No compatible research bundle was found.' : null);
+      } catch {
+        if (active) setApiError('Cannot load the research bundle.');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
-    
-    bootstrap();
-  }, []);
+
+    void bootstrap();
+    return () => {
+      active = false;
+    };
+  }, [fetchModels, setApiError]);
 
   return {
     loading,
@@ -77,13 +47,5 @@ export function useAppBootstrap() {
     selectedModelId,
     setSelectedModelId,
     fetchModels,
-    loadDataStatus,
-    deleteModel,
-    jobs: {
-      activeJobId,
-      isPolling,
-      startPolling,
-      submitAndPoll
-    }
   };
 }

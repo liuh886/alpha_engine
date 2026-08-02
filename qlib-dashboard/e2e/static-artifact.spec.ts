@@ -60,7 +60,7 @@ async function assertNoHorizontalOverflow(page: Page) {
 async function openStudio(page: Page) {
   await page.goto('/#/');
   await expect(page.locator('#root')).not.toBeEmpty();
-  await expect(page.getByRole('heading', { name: 'Research Artifact Studio' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Decide what the evidence supports.' })).toBeVisible();
   await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
 }
 
@@ -116,7 +116,7 @@ test('installed shell reopens offline after first visit', async ({ page, context
   await openStudio(page);
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Research Artifact Studio' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Decide what the evidence supports.' })).toBeVisible();
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByText('Alpha Engine', { exact: true }).first()).toBeVisible();

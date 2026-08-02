@@ -4,13 +4,20 @@ import fnmatch
 import json
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 INVENTORY_PATH = PROJECT_ROOT / "docs" / "architecture" / "legacy_web_inventory.json"
 SCANNED_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".cjs", ".mjs", ".toml", ".yml", ".yaml"}
 SCANNED_NAMES = {"Dockerfile", "Makefile"}
+VALID_RETIREMENT_STATUSES = {
+    "deprecated_frozen",
+    "phase_1_frontend_cutover",
+    "phase_2_domain_extraction",
+    "phase_3_server_deletion",
+    "phase_4_repository_normalization",
+    "completed",
+}
 
 IMPORT_MARKER = re.compile(
     r"(?m)^\s*(?:from\s+(?:fastapi|uvicorn|slowapi)\b|import\s+(?:fastapi|uvicorn|slowapi)\b)"
@@ -31,10 +38,16 @@ def tracked_files() -> list[str]:
 
 def load_patterns() -> list[str]:
     payload = json.loads(INVENTORY_PATH.read_text(encoding="utf-8"))
-    if payload.get("status") != "deprecated_frozen":
-        raise RuntimeError("legacy Web inventory must remain in deprecated_frozen state during Phase 0")
+    status = payload.get("status")
+    if status not in VALID_RETIREMENT_STATUSES:
+        raise RuntimeError(
+            "legacy Web inventory must declare a recognized retirement phase; "
+            f"received {status!r}"
+        )
     if payload.get("rules", {}).get("allow_new_http_endpoints") is not False:
         raise RuntimeError("legacy Web inventory must prohibit new HTTP endpoints")
+    if payload.get("rules", {}).get("allow_new_frontend_api_calls") is not False:
+        raise RuntimeError("legacy Web inventory must prohibit new frontend API calls")
 
     patterns: list[str] = []
     for zone in payload.get("legacy_zones", []):
@@ -103,7 +116,7 @@ def main() -> int:
         )
         return 1
 
-    print("Legacy Web boundary is frozen; no unapproved dependency expansion detected.")
+    print("Legacy Web boundary remains controlled; no unapproved dependency expansion detected.")
     return 0
 
 

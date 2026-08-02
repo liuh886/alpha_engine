@@ -1,10 +1,24 @@
 {
-  "schema_version": "1.0.0",
-  "status": "deprecated_frozen",
+  "schema_version": "1.1.0",
+  "status": "phase_1_frontend_cutover",
   "parent_issue": 316,
+  "active_delivery_issue": 318,
   "target_web_product": "github_pages_pwa_research_artifact_studio",
   "target_frontend_boundary": "alpha-engine-bundle.json",
   "target_execution_boundary": "python_cli_scripts_workflows",
+  "completed_zones": [
+    {
+      "id": "frontend_connected_runtime_product_surface",
+      "completed_in": 318,
+      "evidence": [
+        "production route graph contains artifact views only",
+        "runtime modes are static_artifact and local_artifact only",
+        "application root has no auth provider or login guard",
+        "bootstrap performs no API health identity job or data-status requests",
+        "model selection exposes no mutation control"
+      ]
+    }
+  ],
   "legacy_zones": [
     {
       "id": "fastapi_entrypoint",
@@ -19,29 +33,21 @@
       "disposition": "classify_extract_then_delete"
     },
     {
-      "id": "frontend_connected_runtime",
-      "paths": [
-        "qlib-dashboard/src/lib/runtime-capabilities.ts",
-        "qlib-dashboard/src/lib/runtime-capability-matrix.ts",
-        "qlib-dashboard/src/lib/runtime-capability-matrix.test.ts",
-        "qlib-dashboard/src/components/ResearchContextBar.tsx",
-        "qlib-dashboard/src/components/ArtifactHome.tsx"
-      ],
-      "phase": 1,
-      "disposition": "remove_connected_research_mode"
-    },
-    {
-      "id": "frontend_api_clients_and_routes",
+      "id": "unreachable_frontend_api_modules",
       "paths": [
         "qlib-dashboard/src/lib/api-client.ts",
+        "qlib-dashboard/src/lib/api.ts",
+        "qlib-dashboard/src/lib/release-api.ts",
         "qlib-dashboard/src/api/",
-        "qlib-dashboard/src/hooks/",
+        "qlib-dashboard/src/hooks/useJobs.ts",
+        "qlib-dashboard/src/hooks/useDataStatus.ts",
+        "qlib-dashboard/src/hooks/useSystemHealth.ts",
         "qlib-dashboard/src/pages/",
-        "qlib-dashboard/e2e/",
+        "qlib-dashboard/e2e/demo-real-smoke.spec.ts",
         "qlib-dashboard/playwright.demo.config.ts"
       ],
       "phase": 1,
-      "disposition": "remove_or_replace_with_artifact_reads"
+      "disposition": "classify_and_physically_delete_after_artifact_view_dependency_scan"
     },
     {
       "id": "process_management",

@@ -1,18 +1,18 @@
-export type RuntimeMode = 'static_artifact' | 'local_artifact' | 'connected_research';
+export type RuntimeMode = 'static_artifact' | 'local_artifact';
 
 export interface RuntimeCapabilities {
   mode: RuntimeMode;
-  readOnly: boolean;
-  requiresAuthentication: boolean;
-  backendApi: boolean;
-  jobs: boolean;
-  mutations: boolean;
+  readOnly: true;
+  requiresAuthentication: false;
+  backendApi: false;
+  jobs: false;
+  mutations: false;
   localFiles: boolean;
-  offlineShell: boolean;
+  offlineShell: true;
 }
 
 const RUNTIME_STORAGE_KEY = 'alpha-engine-runtime-mode';
-const VALID_MODES: RuntimeMode[] = ['static_artifact', 'local_artifact', 'connected_research'];
+const VALID_MODES: RuntimeMode[] = ['static_artifact', 'local_artifact'];
 
 function isRuntimeMode(value: string | null | undefined): value is RuntimeMode {
   return Boolean(value && VALID_MODES.includes(value as RuntimeMode));
@@ -25,26 +25,26 @@ function detectRuntimeMode(): RuntimeMode {
   if (typeof window !== 'undefined') {
     const stored = window.localStorage.getItem(RUNTIME_STORAGE_KEY);
     if (isRuntimeMode(stored)) return stored;
-
-    if (window.location.hostname.endsWith('github.io')) {
-      return 'static_artifact';
-    }
   }
 
-  return 'connected_research';
+  return 'static_artifact';
 }
 
 export const runtimeMode = detectRuntimeMode();
 
+/**
+ * The browser product is permanently read-only. Python CLI commands and
+ * scheduled workflows own data refresh, training, backtests and export.
+ */
 export const runtimeCapabilities: RuntimeCapabilities = {
   mode: runtimeMode,
-  readOnly: runtimeMode !== 'connected_research',
-  requiresAuthentication: runtimeMode === 'connected_research',
-  backendApi: runtimeMode === 'connected_research',
-  jobs: runtimeMode === 'connected_research',
-  mutations: runtimeMode === 'connected_research',
+  readOnly: true,
+  requiresAuthentication: false,
+  backendApi: false,
+  jobs: false,
+  mutations: false,
   localFiles: runtimeMode === 'local_artifact',
-  offlineShell: runtimeMode !== 'connected_research',
+  offlineShell: true,
 };
 
 export function setPreferredRuntimeMode(mode: RuntimeMode): void {
