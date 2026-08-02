@@ -13,6 +13,15 @@ import yaml
 
 MODEL_VERSION = re.compile(r"^[A-Z]{2} x\d+\.\d+$")
 EXPECTED_MODELS = {"us_x1_0": "US x1.0", "cn_x1_0": "CN x1.0"}
+EXPECTED_XGB_RUNTIME = {
+    "objective": "rank:ndcg",
+    "tree_method": "hist",
+    "grow_policy": "lossguide",
+    "max_leaves": 31,
+    "max_depth": 0,
+    "learning_rate": 0.05,
+    "seed": 42,
+}
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -24,7 +33,9 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 
 def _find_repo_root(start: Path) -> Path:
     for candidate in (start.resolve(), *start.resolve().parents):
-        if (candidate / "pyproject.toml").is_file() and (candidate / "configs").is_dir():
+        if (candidate / "pyproject.toml").is_file() and (
+            candidate / "configs"
+        ).is_dir():
             return candidate
     raise FileNotFoundError("Could not locate Alpha Engine repository root")
 
@@ -34,6 +45,75 @@ def _single_calibration(spec: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(calibrations, list) or len(calibrations) != 1:
         raise ValueError("Frozen model spec must declare exactly one calibration")
     return dict(calibrations[0])
+
+
+def _validate_xgb_parameter_identity(
+    model_id: str,
+    config: dict[str, Any],
+    calibration: dict[str, Any],
+) -> None:
+    model = dict(config["model"])
+    identity = dict(config["candidate_calibration_identity"])
+    mapping = dict(identity["effective_xgb_mapping"])
+
+    if model.get("family") != "xgb":
+        raise ValueError(f"{model_id}: canonical model family must be xgb")
+    if model.get("parameter_identity_status") != "effective_runtime_verified":
+        raise ValueError(f"{model_id}: effective runtime identity is not verified")
+    if "min_data_in_leaf" in model:
+        raise ValueError(
+            f"{model_id}: min_data_in_leaf must not be represented as an "
+            "effective XGBoost runtime parameter"
+        )
+
+    for key, expected in EXPECTED_XGB_RUNTIME.items():
+        actual = model.get(key)
+        if isinstance(expected, float):
+            if abs(float(actual) - expected) > 1e-12:
+                raise ValueError(
+                    f"{model_id}: effective XGBoost {key}={actual!r}, "
+                    f"expected {expected!r}"
+                )
+        elif actual != expected:
+            raise ValueError(
+                f"{model_id}: effective XGBoost {key}={actual!r}, "
+                f"expected {expected!r}"
+            )
+
+    declared = {
+        "n_gain_bins": int(calibration["n_gain_bins"]),
+        "num_boost_round": int(calibration["num_boost_round"]),
+        "num_leaves": int(calibration["num_leaves"]),
+        "min_data_in_leaf": int(calibration["min_data_in_leaf"]),
+        "learning_rate": float(calibration["learning_rate"]),
+    }
+    recorded = {
+        "n_gain_bins": int(identity["n_gain_bins"]),
+        "num_boost_round": int(identity["num_boost_round"]),
+        "num_leaves": int(identity["legacy_num_leaves_field"]),
+        "min_data_in_leaf": int(identity["legacy_min_data_in_leaf_field"]),
+        "learning_rate": float(identity["legacy_learning_rate_field"]),
+    }
+    if declared != recorded:
+        raise ValueError(
+            f"{model_id}: frozen spec/legacy identity mismatch: "
+            f"{declared} != {recorded}"
+        )
+
+    if int(config["label"]["gain_bins"]) != declared["n_gain_bins"]:
+        raise ValueError(f"{model_id}: effective gain-bin identity mismatch")
+    if int(model["num_boost_round"]) != declared["num_boost_round"]:
+        raise ValueError(f"{model_id}: effective boosting-round identity mismatch")
+
+    expected_mapping = {
+        "n_gain_bins": "consumed",
+        "num_boost_round": "consumed",
+        "num_leaves": "not_consumed_by_xgb_adapter",
+        "min_data_in_leaf": "not_consumed_by_xgb_adapter",
+        "learning_rate": "not_consumed_by_xgb_adapter",
+    }
+    if mapping != expected_mapping:
+        raise ValueError(f"{model_id}: invalid XGBoost calibration mapping")
 
 
 def validate_model_config(
@@ -65,12 +145,6 @@ def validate_model_config(
     if config.get("trade_ready") is not False or config.get("research_only") is not True:
         raise ValueError(f"{model_id}: baseline must remain research-only")
 
-    model = config["model"]
-    if model.get("family") != "xgb" or model.get("objective") != "rank:ndcg":
-        raise ValueError(f"{model_id}: canonical model must be XGBoost rank:ndcg")
-    if int(model.get("seed", -1)) != 42:
-        raise ValueError(f"{model_id}: seed must be fixed at 42")
-
     strategy = config["strategy"]
     for key in ("holding_sessions", "rebalance_sessions"):
         if int(strategy.get(key, 0)) != 10:
@@ -90,25 +164,7 @@ def validate_model_config(
         raise ValueError(f"{model_id}: frozen spec must contain only xgb")
 
     calibration = _single_calibration(spec)
-    expected_calibration = {
-        "n_gain_bins": int(config["label"]["gain_bins"]),
-        "num_boost_round": int(model["num_boost_round"]),
-        "num_leaves": int(model["max_leaves"]),
-        "min_data_in_leaf": int(model["min_data_in_leaf"]),
-        "learning_rate": float(model["learning_rate"]),
-    }
-    actual_calibration = {
-        "n_gain_bins": int(calibration["n_gain_bins"]),
-        "num_boost_round": int(calibration["num_boost_round"]),
-        "num_leaves": int(calibration["num_leaves"]),
-        "min_data_in_leaf": int(calibration["min_data_in_leaf"]),
-        "learning_rate": float(calibration["learning_rate"]),
-    }
-    if actual_calibration != expected_calibration:
-        raise ValueError(
-            f"{model_id}: config/spec calibration mismatch: "
-            f"{actual_calibration} != {expected_calibration}"
-        )
+    _validate_xgb_parameter_identity(model_id, config, calibration)
 
     metadata = notebook.get("metadata", {}).get("alpha_engine", {})
     if notebook.get("nbformat") != 4 or metadata.get("model_id") != model_id:
@@ -122,6 +178,8 @@ def validate_model_config(
         expected_name,
         "compounded_relative_excess",
         "trade_ready=false",
+        "effective_runtime_parameters",
+        "learning_rate=0.05",
         str(config["evidence_identity"]["workflow_run_id"]),
         str(config["evidence_identity"]["artifact_id"]),
     ]
@@ -146,6 +204,7 @@ def validate_model_config(
         "provider_identity": config["provider_binding"][
             "canonical_evidence_provider_identity_sha256"
         ],
+        "effective_xgb_learning_rate": float(config["model"]["learning_rate"]),
         "trade_ready": False,
     }
 
@@ -168,7 +227,7 @@ def validate_registry(root: Path) -> dict[str, Any]:
         for model_id in sorted(EXPECTED_MODELS)
     ]
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "status": "baseline_model_registry_valid",
         "registry": str(registry_path.relative_to(root)),
         "models": models,
