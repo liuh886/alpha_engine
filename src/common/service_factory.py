@@ -1,3 +1,12 @@
+"""Pure Python service factories for Alpha Engine research workflows.
+
+These constructors replace the retired HTTP dependency module. They may be used
+from CLI commands, scheduled workflows, notebooks and tests without importing a
+Web framework.
+"""
+
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 
@@ -25,7 +34,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def get_job_service() -> JobService:
-    # Always fresh to respect environment changes in tests
     return JobService(db_path=resolve_metadata_db_path(PROJECT_ROOT), project_root=PROJECT_ROOT)
 
 
@@ -42,10 +50,7 @@ def get_backtest_service() -> BacktestService:
 
 
 def get_training_service() -> TrainingService:
-    return TrainingService(
-        project_root=PROJECT_ROOT,
-        python_exe=sys.executable,
-    )
+    return TrainingService(project_root=PROJECT_ROOT, python_exe=sys.executable)
 
 
 def get_model_index() -> ModelRegistryIndex:
@@ -53,10 +58,7 @@ def get_model_index() -> ModelRegistryIndex:
 
 
 def get_model_service() -> ModelService:
-    return ModelService(
-        project_root=PROJECT_ROOT,
-        model_index=get_model_index(),
-    )
+    return ModelService(project_root=PROJECT_ROOT, model_index=get_model_index())
 
 
 def get_data_service() -> DataService:
@@ -77,9 +79,15 @@ def get_evidence_ledger() -> EvidenceLedger:
     return EvidenceLedger()
 
 
+def get_report_index() -> ReportIndex:
+    return ReportIndex(db_path=resolve_metadata_db_path(PROJECT_ROOT))
+
+
 def get_report_service() -> ReportService:
     return ReportService(
-        project_root=PROJECT_ROOT, report_index=get_report_index(), job_service=get_job_service()
+        project_root=PROJECT_ROOT,
+        report_index=get_report_index(),
+        job_service=get_job_service(),
     )
 
 
@@ -93,10 +101,6 @@ def get_snapshot_index() -> DataSnapshotIndex:
 
 def get_quality_index() -> DataQualityIndex:
     return DataQualityIndex(db_path=resolve_metadata_db_path(PROJECT_ROOT))
-
-
-def get_report_index() -> ReportIndex:
-    return ReportIndex(db_path=resolve_metadata_db_path(PROJECT_ROOT))
 
 
 def get_curve_index() -> BacktestEquityCurveIndex:
