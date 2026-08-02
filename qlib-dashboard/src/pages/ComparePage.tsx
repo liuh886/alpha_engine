@@ -55,10 +55,11 @@ function buildEquitySeries(models: ModelData[]) {
 
     for (const row of report) {
       if (!row?.date) continue;
+      const date = String(row.date);
       const account = Number(row.account);
-      const current = rows.get(row.date) ?? { date: row.date };
+      const current: Record<string, string | number | null> = rows.get(date) ?? { date };
       current[model.id] = Number.isFinite(account) ? account / firstAccount - 1 : null;
-      rows.set(row.date, current);
+      rows.set(date, current);
     }
   }
   return Array.from(rows.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
