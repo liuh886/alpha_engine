@@ -6,16 +6,36 @@ on:
     paths:
       - ".github/workflows/selected-pool-event-population-ci.yml"
       - "configs/data/selected_pool_event_population_v1.yaml"
-      - "src/data/fundamentals/sec_companyfacts.py"
-      - "src/data/fundamentals/ashare_public_financials.py"
-      - "src/data/fundamentals/tushare_financials.py"
-      - "src/data/corporate_actions/ashare_public_actions.py"
-      - "src/data/corporate_actions/yfinance_events.py"
-      - "src/data/corporate_actions/tiingo_events.py"
+      - "src/data/selected_pool_event_population.py"
+      - "src/data/fundamentals/**"
+      - "src/data/corporate_actions/**"
+      - "scripts/data/populate_selected_pool_events.py"
       - "scripts/data/build_us_selected_sec_mapping.py"
       - "tests/test_selected_pool_event_population.py"
-      - "docs/research/ashare_open_source_provider_review_2026-08-02.md"
+      - "tests/test_selected_pool_event_readiness.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/selected-pool-event-population-ci.yml"
+      - "configs/data/selected_pool_event_population_v1.yaml"
+      - "src/data/selected_pool_event_population.py"
+      - "scripts/data/populate_selected_pool_events.py"
+      - "tests/test_selected_pool_event_readiness.py"
+  schedule:
+    - cron: "23 6 1 * *"
   workflow_dispatch:
+    inputs:
+      market:
+        description: "Live market population"
+        required: true
+        default: "both"
+        type: choice
+        options: [us, cn, both]
+      cutoff:
+        description: "Evidence cutoff (YYYY-MM-DD)"
+        required: true
+        default: "2026-07-31"
+        type: string
 
 concurrency:
   group: selected-pool-event-population-${{ github.event.pull_request.number || github.ref }}
@@ -41,51 +61,120 @@ jobs:
       - name: Ruff event population paths
         run: >-
           uv run ruff check
+          src/data/selected_pool_event_population.py
           src/data/fundamentals/sec_companyfacts.py
           src/data/fundamentals/ashare_public_financials.py
           src/data/fundamentals/tushare_financials.py
           src/data/corporate_actions/ashare_public_actions.py
           src/data/corporate_actions/yfinance_events.py
           src/data/corporate_actions/tiingo_events.py
+          scripts/data/populate_selected_pool_events.py
           scripts/data/build_us_selected_sec_mapping.py
           tests/test_selected_pool_event_population.py
+          tests/test_selected_pool_event_readiness.py
       - name: Mypy event population paths
         run: >-
           uv run mypy --follow-imports=skip
-          src/data/fundamentals/sec_companyfacts.py
-          src/data/fundamentals/ashare_public_financials.py
-          src/data/fundamentals/tushare_financials.py
-          src/data/corporate_actions/ashare_public_actions.py
-          src/data/corporate_actions/yfinance_events.py
-          src/data/corporate_actions/tiingo_events.py
-          scripts/data/build_us_selected_sec_mapping.py
-      - name: Test event normalizers
+          src/data/selected_pool_event_population.py
+          scripts/data/populate_selected_pool_events.py
+      - name: Test event population and stores
         run: >-
           uv run pytest
           tests/test_selected_pool_event_population.py
+          tests/test_selected_pool_event_readiness.py
           tests/test_fundamental_event_store_contract.py
           tests/test_corporate_action_store_contract.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-  sec-mapping-candidate:
-    if: github.event_name == 'workflow_dispatch'
+  fixture-artifacts:
+    if: github.event_name == 'pull_request'
     needs: contract
+    strategy:
+      matrix:
+        market: [us, cn]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Build current exact-pool SEC mapping candidate
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Build exact-pool fixture evidence
         run: >-
-          python scripts/data/build_us_selected_sec_mapping.py
-          --output artifacts/data/us_selected_equities_sec_cik_v3.yaml
-      - name: Upload reviewable mapping candidate
-        if: always()
+          uv run python scripts/data/populate_selected_pool_events.py
+          --market "${{ matrix.market }}"
+          --cutoff 2026-07-31
+          --fixture
+          --output-root "artifacts/data/event_population/${{ matrix.market }}"
+      - name: Verify every selected symbol has an explicit status
+        run: |
+          uv run python - "artifacts/data/event_population/${{ matrix.market }}/event_population_manifest.json" <<'PY'
+          import json, sys
+          from pathlib import Path
+          payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          assert payload["expected_symbol_count"] in {87, 130}
+          assert payload["fundamental_component"]["details"]["explicit_status_count"] == payload["expected_symbol_count"]
+          assert payload["corporate_action_component"]["details"]["explicit_status_count"] == payload["expected_symbol_count"]
+          assert payload["trade_ready"] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selected-pool-event-fixture-${{ matrix.market }}-${{ github.run_id }}
+          path: artifacts/data/event_population/${{ matrix.market }}
+          if-no-files-found: error
+
+  live-population:
+    if: github.event_name != 'pull_request'
+    needs: contract
+    strategy:
+      fail-fast: false
+      matrix:
+        market: [us, cn]
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Resolve requested market
+        id: selected
+        shell: bash
+        run: |
+          requested="${{ inputs.market || 'both' }}"
+          if [[ "$requested" == "both" || "$requested" == "${{ matrix.market }}" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.selected.outputs.run == 'true'
+      - uses: actions/setup-python@v5
+        if: steps.selected.outputs.run == 'true'
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        if: steps.selected.outputs.run == 'true'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Populate public primary event stores
+        if: steps.selected.outputs.run == 'true'
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: >-
+          uv run python scripts/data/populate_selected_pool_events.py
+          --market "${{ matrix.market }}"
+          --start 2021-01-01
+          --cutoff "${{ inputs.cutoff || '2026-07-31' }}"
+          --output-root "artifacts/data/event_population/${{ matrix.market }}"
+      - name: Upload source-bound event evidence
+        if: always() && steps.selected.outputs.run == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: us87-sec-cik-mapping-${{ github.run_id }}
-          path: artifacts/data/us_selected_equities_sec_cik_v3.yaml
-          if-no-files-found: error
+          name: selected-pool-event-live-${{ matrix.market }}-${{ github.run_id }}
+          path: artifacts/data/event_population/${{ matrix.market }}
+          if-no-files-found: warn
           retention-days: 90
