@@ -1,190 +1,127 @@
-import { useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, AlertCircle, FileCode2, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { apiFetch } from "@/lib/api";
-import { assetUrl, runtimeCapabilities } from "@/lib/runtime-capabilities";
-
-type DocResponse = {
-  ok: boolean;
-  path?: string;
-  content?: string;
-  updated_at?: number;
-};
+import { useEffect, useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { AlertCircle, FileCode2, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { assetUrl } from '@/lib/runtime-capabilities';
 
 function slugify(text: string): string {
-  return String(text || "")
+  return String(text || '')
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-");
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-');
 }
 
 export function MethodologyPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [content, setContent] = useState("");
-  const [docPath, setDocPath] = useState("");
-  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [error, setError] = useState('');
+  const [content, setContent] = useState('');
+  const staticPath = 'docs/methodology.md';
 
   const load = async () => {
     setLoading(true);
-    setError("");
+    setError('');
     try {
-      if (!runtimeCapabilities.backendApi) {
-        const staticPath = 'docs/methodology.md';
-        const resp = await fetch(assetUrl(staticPath), { cache: 'no-store' });
-        if (!resp.ok) {
-          setError(`Failed to load exported methodology: HTTP ${resp.status}`);
-          return;
-        }
-        setContent(await resp.text());
-        setDocPath(staticPath);
-        setUpdatedAt(null);
+      const response = await fetch(assetUrl(staticPath), { cache: 'no-store' });
+      if (!response.ok) {
+        setError(`Failed to load exported methodology: HTTP ${response.status}`);
         return;
       }
-
-      const resp = await apiFetch("/api/system/docs/methodology", { cache: "no-store" });
-      if (!resp.ok) {
-        setError(`Failed to load: HTTP ${resp.status}`);
+      const text = await response.text();
+      if (!text.trim()) {
+        setError('Methodology document is empty.');
         return;
       }
-      const json = (await resp.json()) as DocResponse;
-      if (!json?.ok || !json?.content) {
-        setError("Methodology document is empty.");
-        return;
-      }
-      setContent(json.content);
-      setDocPath(json.path || "");
-      setUpdatedAt(typeof json.updated_at === "number" ? json.updated_at : null);
+      setContent(text);
     } catch {
-      setError(runtimeCapabilities.backendApi
-        ? "Failed to load methodology from API."
-        : "Failed to load methodology from the exported research site.");
+      setError('Failed to load methodology from the exported research site.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
-  const updatedText = useMemo(() => {
-    if (!updatedAt) return runtimeCapabilities.backendApi ? "N/A" : "Bundled at site build";
-    return new Date(updatedAt * 1000).toLocaleString();
-  }, [updatedAt]);
-
-  const toc = useMemo(() => {
+  const headings = useMemo(() => {
     return content
-      .split(/\r?\n/)
-      .filter((line) => line.startsWith("## ") || line.startsWith("### "))
+      .split('\n')
+      .filter((line) => /^#{1,3}\s+/.test(line))
       .map((line) => {
-        const level = line.startsWith("### ") ? 3 : 2;
-        const text = line.replace(/^#{2,3}\s+/, "").trim();
-        return { text, id: slugify(text), level };
+        const level = line.match(/^#+/)?.[0].length || 1;
+        const title = line.replace(/^#+\s+/, '').trim();
+        return { level, title, id: slugify(title) };
       });
   }, [content]);
 
   if (loading) {
+    return <div className="flex min-h-72 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary/60" /></div>;
+  }
+
+  if (error) {
     return (
-      <div className="h-96 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary opacity-40" />
+      <div className="research-empty-state">
+        <AlertCircle className="mx-auto h-8 w-8 text-amber-500" />
+        <h2 className="mt-4 text-lg font-semibold">Methodology unavailable</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" className="mt-5 gap-2" onClick={() => void load()}>
+          <RefreshCw className="h-4 w-4" /> Retry
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto pb-20 text-left">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b pb-4 mb-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Training Methodology</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Complete reference for model training, evaluation, and research boundaries.
-          </p>
+    <div className="mx-auto grid max-w-[1400px] gap-6 pb-16 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <aside className="hidden lg:block">
+        <div className="sticky top-28 rounded-xl border bg-card p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">On this page</p>
+          <nav className="mt-3 space-y-1" aria-label="Methodology contents">
+            {headings.filter((heading) => heading.level <= 2).map((heading) => (
+              <a
+                key={heading.id}
+                href={`#${heading.id}`}
+                className={cn('block rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground', heading.level === 2 && 'pl-4')}
+              >
+                {heading.title}
+              </a>
+            ))}
+          </nav>
         </div>
-        <Button onClick={load} disabled={loading} variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-          <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} /> Refresh
-        </Button>
-      </div>
+      </aside>
 
-      {error ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400 flex gap-2">
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>{error}</span>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <Card className="lg:col-span-1 border border-border/60 bg-card/60 sticky top-20 self-start">
-            <CardHeader>
-              <CardTitle className="text-[10px] uppercase tracking-widest font-black flex items-center gap-2">
-                <FileCode2 className="h-4 w-4" /> Contents
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1 max-h-[60vh] overflow-auto pr-1">
-              {toc.map((x) => (
-                <a
-                  key={x.id}
-                  href={`#${x.id}`}
-                  className={cn(
-                    "block text-[11px] hover:text-primary transition-colors",
-                    x.level === 3 ? "pl-3" : "",
-                    "font-medium"
-                  )}
-                >
-                  {x.text}
-                </a>
-              ))}
-              <div className="pt-3 border-t border-border/60 mt-3">
-                <p className="text-muted-foreground uppercase text-[9px] font-bold">Source</p>
-                <p className="font-mono text-[10px] break-all">{docPath}</p>
-                <p className="text-muted-foreground uppercase text-[9px] font-bold mt-2">Updated</p>
-                <p className="font-mono text-[10px]">{updatedText}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-4 border border-border/60 bg-card/60">
-            <CardContent className="p-8">
-              <article className="prose prose-sm dark:prose-invert max-w-none
-                prose-headings:font-black prose-headings:tracking-tight
-                prose-h1:text-3xl prose-h1:border-b prose-h1:pb-4
-                prose-h2:text-xl prose-h2:mt-10 prose-h2:border-b prose-h2:pb-2
-                prose-h3:text-base
-                prose-table:text-xs prose-table:font-mono
-                prose-th:font-black prose-th:uppercase prose-th:text-[10px] prose-th:tracking-widest
-                prose-td:py-2
-                prose-code:text-xs prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
-                prose-pre:bg-muted prose-pre:text-xs
-                prose-hr:border-border/50
-              ">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    h1: ({ children }) => {
-                      const text = typeof children === "string" ? children : "";
-                      return <h1 id={slugify(text)}>{children}</h1>;
-                    },
-                    h2: ({ children }) => {
-                      const text = typeof children === "string" ? children : "";
-                      return <h2 id={slugify(text)}>{children}</h2>;
-                    },
-                    h3: ({ children }) => {
-                      const text = typeof children === "string" ? children : "";
-                      return <h3 id={slugify(text)}>{children}</h3>;
-                    },
-                  }}
-                >
-                  {content}
-                </ReactMarkdown>
-              </article>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <Card>
+        <CardHeader className="border-b">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Research contract</p>
+              <CardTitle className="mt-2 text-2xl">Methodology and interpretation boundaries</CardTitle>
+              <p className="mt-2 text-sm text-muted-foreground">This document is bundled at site build time and does not depend on a local server.</p>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              <FileCode2 className="h-4 w-4" /> {staticPath}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 md:p-9">
+          <article className="prose prose-slate max-w-none dark:prose-invert prose-headings:scroll-mt-32">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h1: ({ children }) => <h1 id={slugify(String(children))}>{children}</h1>,
+                h2: ({ children }) => <h2 id={slugify(String(children))}>{children}</h2>,
+                h3: ({ children }) => <h3 id={slugify(String(children))}>{children}</h3>,
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </article>
+        </CardContent>
+      </Card>
     </div>
   );
 }
