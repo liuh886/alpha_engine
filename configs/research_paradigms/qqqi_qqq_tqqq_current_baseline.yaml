@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 effective_date: "2026-08-02"
 strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
 current_research_baseline:
@@ -20,6 +20,42 @@ post_result_origin_retained: true
 cost_assumption:
   transaction_cost_bps_per_turnover_unit: 10.0
   frozen: true
+
+latest_research_decision:
+  evidence_date: "2026-08-02"
+  result_report: docs/research/qqqi_qqq_tqqq_v4_2_state2_tail_confirmation_result_2026-08-02.md
+  evidence_snapshot: docs/research/snapshots/qqqi_v4_2_state2_tail_confirmation_2026-08-02.json
+  state_2_tail_diagnostic:
+    state_2_episodes: 12
+    state_2_sessions: 129
+    top_ten_tail_overnight_loss_share: 0.2732792652
+    prior_close_warning_rate: 0.0
+    same_close_exit_signal_rate: 0.60
+    continuous_close_based_volatility_budget: rejected
+    reason: >-
+      The principal losses were generally realized intraday and no top-ten
+      tail session had a warning observable at the preceding close. A close-
+      based scale-down cannot avoid damage already realized before that close.
+  confirmation_ablation:
+    bridge_entry_confirmation: rejected
+    leverage_entry_confirmation: not_promoted
+    combined_risk_increase_confirmation: rejected
+    reason: >-
+      Leverage-entry confirmation improved full-sample metrics but only 5 of
+      12 affected events improved and late-segment CAGR was lower than v4.2.
+      The combined confirmation had a 50% event win rate and a negative late-
+      segment CAGR delta, failing the pre-registered gate.
+  baseline_action: retain_v4_2_unchanged
+  prospective_challenger_authorized: false
+  prohibited_follow_up:
+    - additional confirmation or persistence lengths
+    - alternative VIX or VXN thresholds
+    - alternative MA periods
+    - alternative bridge, SGOV or fixed TQQQ weights on the current sample
+  next_admissible_work:
+    - continue frozen v4.2 prospective monitoring
+    - measure real alert delivery and execution deviations
+    - treat intraday tail control as a separate strategy family with governed intraday data
 
 alert_decision_support:
   delivery:
@@ -55,17 +91,21 @@ alert_decision_support:
         常规路径，必须核查状态轨迹和数据完整性。
       next_confirmation: 按冻结规则持有，直到 VIX/VXN 压力或 MA20 退出条件触发。
       invalidation: VIX 或 VXN 进入压力状态，或 QQQ 连续跌破 MA20 条件。
-      principal_risk: 75% TQQQ 会放大隔夜跳空、波动聚集和路径依赖。
+      principal_risk: >-
+        75% TQQQ 会放大隔夜跳空、波动聚集和路径依赖；本轮诊断
+        显示主要尾部损失往往在交易日内形成，前一收盘没有预警。
     add_tqqq_leverage:
       confidence: 较高；样本内最强的状态转换
       historical_evidence: >-
         12个增加杠杆事件的20日平均相对收益优势约为 5.76 个百分点，
         中位数约 4.24 个百分点，正向比例约 91.7%；样本仍较短。
+        额外等待一天虽改善全样本指标，但仅5/12个受影响入场占优，
+        且后半段 CAGR 低于当前 v4.2，因此未被采用。
       next_confirmation: 继续持有 state 2，并监测 VIX、VXN 与 QQQ MA20 退出条件。
       invalidation: VIX 或 VXN 进入压力状态，或 QQQ 连续跌破 MA20 条件。
       principal_risk: >-
-        当前最大单日和最差5日损失主要来自该状态；收益信号强，
-        但它也是组合尾部风险的主要来源。
+        当前最大单日和最差5日损失主要来自该状态；最差10个杠杆日
+        前一收盘均无预警，日线收盘规则无法提前规避主要盘中损失。
     reduce_tqqq_leverage:
       confidence: 风险控制信号；不是收益最大化信号
       historical_evidence: >-
@@ -73,7 +113,9 @@ alert_decision_support:
         但平均改善后续最大回撤约 6.34 个百分点。
       next_confirmation: 若修复重新确认且波动率条件恢复，可再次进入 state 2。
       invalidation: 若长期防线或 VIX 压力条件继续恶化，将进一步返回 state 0。
-      principal_risk: 可能在快速反弹前过早去杠杆，但目标是压缩尾部损失。
+      principal_risk: >-
+        可能在快速反弹前过早去杠杆；同日收盘退出信号也无法撤销
+        当日盘中已经发生的损失。
     return_to_defense:
       confidence: 防守信号；优先保护资本
       historical_evidence: >-
@@ -102,3 +144,5 @@ guardrails:
   - No retrospective search over alternative bridge weights is permitted.
   - New challengers must compare against v4.2 under the same 10 bps cost convention.
   - Promotion beyond research baseline requires prospective evidence.
+  - No additional confirmation, persistence, threshold or fixed-weight search is permitted on the current sample.
+  - Intraday tail controls require a separate governed data and execution contract.

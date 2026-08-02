@@ -1,0 +1,77 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_state2_tail_diagnostics
+parent_experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Diagnose whether the current v4.2 baseline's leveraged state-2 tail losses
+  are dominated by abrupt overnight gaps, distributed intraday losses, or
+  delayed execution. The study preserves the frozen v4.2 signal trace,
+  portfolio mapping, next-open convention and official 10 bps transaction cost.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  current_baseline: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  diagnostic_only: true
+  no_signal_change: true
+  no_weight_change: true
+  no_threshold_search: true
+  no_volatility_target_search: true
+  signal_time: session_close_t
+  baseline_execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  fields: [date, open, close]
+  corporate_action_basis: adjusted
+  economic_sample_starts_at_common_tradable_window: true
+
+episode_analysis:
+  target_state: 2
+  top_tail_days: 10
+  loss_components:
+    - adjusted_open_to_close_intraday_contribution
+    - adjusted_close_to_next_open_overnight_contribution
+  warning_flags:
+    - vix_stress
+    - vxn_stress
+    - below_ma_short_n
+    - qqq_below_ma20
+  abrupt_episode_if:
+    overnight_loss_share_gte: 0.60
+    worst_day_share_of_mae_gte: 0.50
+
+execution_stress:
+  official_cost_bps_per_turnover_unit: 10.0
+  scenarios:
+    - baseline
+    - all_transitions_delay_1
+    - risk_increase_delay_1
+    - risk_reduction_delay_1
+    - baseline_plus_5bps
+    - baseline_plus_10bps
+    - baseline_plus_20bps
+  note: >-
+    Extra-cost and delay scenarios are robustness stresses only. They do not
+    replace the official 10 bps baseline or create candidate strategies.
+
+research_gate:
+  max_overnight_loss_share: 0.50
+  min_previous_close_warning_rate: 0.50
+  min_gradual_episode_rate: 0.50
+  max_risk_reduction_delay_cagr_delta: -0.03
+  eligible_direction: design_one_continuous_state2_volatility_budget_challenger
+  ineligible_gap_direction: >-
+    do_not_add_close_based_scaling; prioritize_gap_risk_and_low_risk_variant
+  ineligible_execution_direction: >-
+    study_exit_execution_reliability_before_new_risk_budget
+
+hypothesis_discipline:
+  - v4.2 remains the current research baseline throughout this diagnostic.
+  - No bridge weight, SGOV weight, MA period, VIX/VXN threshold or fixed TQQQ weight may change.
+  - The diagnostic must distinguish losses realized before the close from gaps after the close.
+  - A same-close exit signal cannot be credited with avoiding the following opening gap.
+  - A continuous state-2 risk-budget challenger is admissible only if all predeclared gates pass.
+  - Any future challenger must be defined in a separate contract and remain research-only.

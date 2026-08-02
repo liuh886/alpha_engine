@@ -1,0 +1,68 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_risk_confirmation_v4_3_research
+parent_experiment_id: qqqi_qqq_tqqq_v4_2_state2_tail_diagnostics
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+purpose: >-
+  Follow up the state-2 diagnostic result that a one-session persistence
+  requirement on risk-increasing transitions improved the retrospective
+  robustness scenario. Distinguish a mechanical one-session execution delay
+  from confirmation on 0->1 bridge entry, 1->2 leverage entry, and both
+  risk-increasing transitions.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  current_baseline: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  signal_trace_source: frozen_v4_2_close_decisions
+  official_cost_bps_per_turnover_unit: 10.0
+  no_weight_change: true
+  no_indicator_change: true
+  no_threshold_grid: true
+  no_automatic_promotion: true
+
+scenarios:
+  baseline:
+    description: current v4.2 next-open execution
+  fixed_execution_delay_1:
+    description: mechanical one-session delay with no persistence requirement
+  bridge_entry_confirmation_1:
+    description: require the 0->1 decision to persist one additional session
+  leverage_entry_confirmation_1:
+    description: require the 1->2 decision to persist one additional session
+  risk_increase_confirmation_1:
+    description: require every risk-increasing decision to persist one additional session
+  risk_reduction_confirmation_1:
+    description: diagnostic only; require risk reductions to persist one additional session
+  all_transitions_confirmation_1:
+    description: diagnostic only; require every transition to persist one additional session
+
+validation:
+  chronological_train_fraction: 0.60
+  compare_metrics:
+    - total_return
+    - cagr
+    - sharpe
+    - sortino
+    - max_drawdown
+    - calmar
+    - turnover_units
+  event_attribution:
+    - positive_event_rate
+    - top_positive_event_share
+    - total_turnover_saved
+
+promotion_gate:
+  max_drawdown_worsening_tolerance: 0.005
+  min_positive_event_rate: 0.60
+  max_top_positive_event_share: 0.50
+  require_early_segment_cagr_improvement: true
+  require_late_segment_cagr_improvement: true
+
+hypothesis_discipline:
+  - The result is a post-diagnostic hypothesis and cannot replace v4.2 directly.
+  - Exactly the bridge-entry, leverage-entry and combined risk-increase confirmations are tested.
+  - A mechanical fixed delay is included only to separate operational latency from confirmation.
+  - No alternative persistence length, bridge weight, leverage weight or indicator threshold is allowed.
+  - Passing the retrospective gate authorizes only a separately monitored prospective challenger.
+  - Failing any concentration or chronological gate rejects the challenger and leaves v4.2 unchanged.

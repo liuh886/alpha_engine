@@ -1,0 +1,164 @@
+{
+  "baseline": {
+    "decision": "retain_current_research_baseline",
+    "economic_sample": {
+      "end_date": "2026-07-30",
+      "observations": 627,
+      "start_date": "2024-01-30"
+    },
+    "experiment_id": "qqqi_qqq_tqqq_vxn_bridge_v4_2",
+    "metrics": {
+      "annual_volatility": 0.2562043325255105,
+      "cagr": 0.3305736153605818,
+      "calmar": 1.365249169575049,
+      "max_drawdown": -0.2421354017389973,
+      "observations": 627,
+      "sharpe": 1.2437177190860302,
+      "sortino": 1.8014632537695115,
+      "total_return": 1.0352649314376796,
+      "turnover_units": 55.0
+    },
+    "official_cost_bps_per_turnover_unit": 10.0,
+    "research_only": true,
+    "trade_ready": false
+  },
+  "confirmation_ablation": {
+    "bridge_entry_confirmation_1": {
+      "decision": "reject",
+      "metrics": {
+        "cagr": 0.3246855228641148,
+        "calmar": 1.3401160667461528,
+        "max_drawdown": -0.2422826794563745,
+        "sharpe": 1.2276903579736406,
+        "sortino": 1.7755615957431903,
+        "total_return": 1.0129295837514557,
+        "turnover_units": 54.0
+      },
+      "positive_event_rate": 0.6
+    },
+    "leverage_entry_confirmation_1": {
+      "decision": "do_not_promote_or_open_prospective_challenger",
+      "early_cagr_delta": 0.04488675650779296,
+      "late_cagr_delta": -0.007197385232495746,
+      "metrics": {
+        "cagr": 0.3564239617623748,
+        "calmar": 1.4720068456696893,
+        "max_drawdown": -0.242135401738997,
+        "sharpe": 1.354059532536243,
+        "sortino": 1.998416670180857,
+        "total_return": 1.1350711811459424,
+        "turnover_units": 37.5
+      },
+      "positive_event_rate": 0.4166666666666667,
+      "top_positive_event_share": 0.4501729760317868
+    },
+    "risk_increase_confirmation_1": {
+      "decision": "reject",
+      "metrics": {
+        "cagr": 0.3499945370361545,
+        "calmar": 1.4445758191407514,
+        "max_drawdown": -0.2422826794563745,
+        "sharpe": 1.3364377632357817,
+        "sortino": 1.969112277733453,
+        "total_return": 1.1099805219774098,
+        "turnover_units": 37.0
+      },
+      "research_gate": {
+        "gates": {
+          "cagr_improves": true,
+          "calmar_improves": true,
+          "early_segment_positive": true,
+          "late_segment_positive": false,
+          "max_drawdown_within_tolerance": true,
+          "positive_event_rate": false,
+          "sharpe_improves": true,
+          "sortino_improves": true,
+          "top_event_not_dominant": true,
+          "turnover_not_higher": true
+        },
+        "measured": {
+          "early_segment_cagr_delta": 0.038652667731030155,
+          "late_segment_cagr_delta": -0.013926250627791958,
+          "positive_event_rate": 0.5,
+          "top_positive_event_share": 0.4256427287841766,
+          "turnover_delta": -18.0
+        },
+        "next_direction": "retain_v4_2_and_reject_confirmation_challenger",
+        "passes_retrospective_research_gate": false,
+        "promotion_authorized": false
+      }
+    }
+  },
+  "evidence": {
+    "artifact_digest": "sha256:11f7803e47b13d6700a73303b61915f814efaaa97cc4240fabde7288e5cb25e0",
+    "artifact_id": 8828582862,
+    "notebooks": [
+      "notebooks/19_qqqi_qqq_tqqq_v4_2_state2_tail_diagnostics.ipynb",
+      "notebooks/20_qqqi_qqq_tqqq_v4_2_risk_confirmation_ablation.ipynb"
+    ],
+    "workflow_run_id": 30733002466
+  },
+  "evidence_date": "2026-08-02",
+  "execution": {
+    "cost_stress": {
+      "baseline_plus_10bps": {
+        "cagr": 0.3014467489617163,
+        "cagr_delta": -0.02912686639886547,
+        "max_drawdown": -0.2586023895531525,
+        "total_cost_bps_per_turnover_unit": 20.0
+      },
+      "baseline_plus_20bps": {
+        "cagr": 0.2729169496081472,
+        "cagr_delta": -0.05765666575243461,
+        "max_drawdown": -0.2807232399369497,
+        "total_cost_bps_per_turnover_unit": 30.0
+      },
+      "baseline_plus_5bps": {
+        "cagr": 0.3159345433001816,
+        "cagr_delta": -0.014639072060400215,
+        "max_drawdown": -0.2473003531480368,
+        "total_cost_bps_per_turnover_unit": 15.0
+      }
+    },
+    "mechanical_fixed_delay_1": {
+      "cagr": 0.3334605437588146,
+      "cagr_delta": 0.0028869283982327907,
+      "decision": "not_an_improvement",
+      "early_cagr_delta": 0.013137596631535131,
+      "late_cagr_delta": -0.015013852756357582,
+      "max_drawdown": -0.2715493971343724,
+      "max_drawdown_delta": -0.02941399539537515
+    }
+  },
+  "methodology_correction": {
+    "accepted_distinction": {
+      "bridge_entry_confirmation_1": "one additional session persistence for 0->1",
+      "fixed_execution_delay_1": "unconditional mechanical latency",
+      "leverage_entry_confirmation_1": "one additional session persistence for 1->2",
+      "risk_increase_confirmation_1": "one additional session persistence for all risk increases"
+    },
+    "decision": "no decision relies on ambiguous initial labels",
+    "initial_ambiguous_labels": "risk_increase_delay_1 and related labels implemented persistence confirmation"
+  },
+  "next_admissible_work": [
+    "continue v4.2 prospective monitoring",
+    "measure real alert and execution observations",
+    "do not continue retrospective persistence or threshold searches",
+    "treat intraday tail controls as a separate strategy family requiring governed intraday data",
+    "use blended QQQI/SGOV as the already-defined lower-risk profile"
+  ],
+  "schema_version": "1.0",
+  "state_2_tail": {
+    "abrupt_or_gap_dominated_rate": 0.6666666666666666,
+    "continuous_volatility_budget_eligible": false,
+    "decision": "reject_close_based_continuous_state2_volatility_budget",
+    "episode_count": 12,
+    "mean_overnight_loss_share": 0.266236023722919,
+    "negative_episode_rate": 0.4166666666666667,
+    "session_count": 129,
+    "top_tail_overnight_loss_share": 0.2732792651678498,
+    "top_tail_previous_close_warning_rate": 0.0,
+    "top_tail_same_close_exit_signal_rate": 0.6,
+    "worst_episode_net_return": -0.0785338899965026
+  }
+}
