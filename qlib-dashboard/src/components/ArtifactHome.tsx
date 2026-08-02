@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import {
+  Activity,
   ArrowRight,
   BookOpen,
   Boxes,
@@ -51,13 +52,16 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
               Decide what the evidence supports.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-              Review governed Alpha Engine datasets, model candidates, experiments and backtests from one versioned bundle. Every conclusion stays bound to its scope, cutoff, benchmark and source files.
+              Review the operating state of v4.2 and governed Alpha Engine datasets, model candidates, experiments and backtests from one read-only workspace. Every conclusion stays bound to its scope, cutoff, benchmark and source record.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Button onClick={() => navigate('/dashboard')} className="gap-2">
-                Review backtest evidence <ArrowRight className="h-4 w-4" />
+              <Button onClick={() => navigate('/operations')} className="gap-2">
+                Open v4.2 operations <Activity className="h-4 w-4" />
               </Button>
-              <Button onClick={() => navigate('/compare')} variant="outline" className="gap-2">
+              <Button onClick={() => navigate('/dashboard')} variant="outline" className="gap-2">
+                Review backtests <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button onClick={() => navigate('/compare')} variant="ghost" className="gap-2">
                 <GitCompareArrows className="h-4 w-4" /> Compare candidates
               </Button>
             </div>
@@ -82,7 +86,16 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <button
+          type="button"
+          className="rounded-xl border bg-card p-5 text-left transition-colors hover:border-primary/40"
+          onClick={() => navigate('/operations')}
+        >
+          <Activity className="mb-4 h-5 w-5 text-primary" />
+          <div className="font-bold">See what v4.2 recorded</div>
+          <p className="mt-2 text-sm text-muted-foreground">Separate the last executed signal-time allocation, close-time target and next-open outcome evidence.</p>
+        </button>
         <button
           type="button"
           className="rounded-xl border bg-card p-5 text-left transition-colors hover:border-primary/40"
@@ -133,7 +146,7 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
             <CardTitle className="flex items-center gap-2 text-sm"><ShieldCheck className="h-4 w-4 text-primary" /> Product boundary</CardTitle>
           </CardHeader>
           <CardContent className="text-sm leading-relaxed text-muted-foreground">
-            The studio does not refresh data, train models, run backtests, mutate registries or execute trades. Python CLI commands and scheduled workflows produce the artifacts; this interface reviews them.
+            Scheduled workflows refresh data, evaluate v4.2 and persist operating evidence. The browser only reads published artifacts and public ledger markers; it does not train, backtest, mutate registries or execute trades.
           </CardContent>
         </Card>
         <Card>
@@ -141,7 +154,7 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
             <CardTitle className="flex items-center gap-2 text-sm"><BookOpen className="h-4 w-4 text-primary" /> Interpretation boundary</CardTitle>
           </CardHeader>
           <CardContent className="text-sm leading-relaxed text-muted-foreground">
-            A positive historical result is not a promotion decision. Use Methodology to verify the fixed research contract, benchmark, costs, universe validity and required evidence gates.
+            A close-time target is not an executed position, and a positive historical result is not a promotion decision. Verify the data cutoff, execution evidence, costs and declared research gates before acting.
           </CardContent>
         </Card>
       </section>
