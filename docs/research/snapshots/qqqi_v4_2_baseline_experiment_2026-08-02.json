@@ -1,0 +1,145 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "qqqi_v4_2_baseline_experiment_2026-08-02",
+  "evidence_date": "2026-08-02",
+  "economic_sample": {
+    "start": "2024-01-30",
+    "end": "2026-07-30",
+    "observations": 627,
+    "return_measurement": "adjusted_open_to_adjusted_open",
+    "transaction_cost_bps_per_turnover_unit": 10.0
+  },
+  "baseline": {
+    "strategy": "qqqi_qqq_tqqq_vxn_bridge_v4_2",
+    "role": "current_research_baseline",
+    "research_only": true,
+    "trade_ready": false,
+    "total_return": 1.035195,
+    "cagr": 0.330556,
+    "annual_volatility": 0.256173,
+    "sharpe": 1.243783,
+    "sortino": 1.801439,
+    "max_drawdown": -0.242245,
+    "calmar": 1.364550,
+    "switch_count": 40,
+    "turnover_units": 55.0,
+    "transaction_cost_paid": 0.055
+  },
+  "historical_comparator": {
+    "strategy": "qqqi_qqq_tqqq_vxn_leverage_v4_1",
+    "total_return": 1.011050,
+    "cagr": 0.324189,
+    "annual_volatility": 0.258154,
+    "sharpe": 1.217605,
+    "sortino": 1.763379,
+    "max_drawdown": -0.244469,
+    "calmar": 1.326090,
+    "turnover_units": 71.0,
+    "transaction_cost_paid": 0.071
+  },
+  "state_1_lifecycle_attribution": {
+    "episode_count": 18,
+    "groups": {
+      "0_to_1_to_0": {
+        "episodes": 5,
+        "mean_sessions": 17.2,
+        "mean_v4_2_minus_v4_1_return": 0.002749,
+        "positive_delta_rate": 0.8,
+        "mean_drawdown_improvement": 0.004166,
+        "entry_turnover_saved": 5.0
+      },
+      "0_to_1_to_2": {
+        "episodes": 5,
+        "mean_sessions": 2.6,
+        "mean_v4_2_minus_v4_1_return": -0.002568,
+        "positive_delta_rate": 0.2,
+        "mean_drawdown_improvement": 0.000188,
+        "entry_turnover_saved": 5.0
+      },
+      "2_to_1_to_2": {
+        "episodes": 7,
+        "mean_sessions": 2.142857,
+        "mean_v4_2_minus_v4_1_return": 0.000570,
+        "positive_delta_rate": 0.571429,
+        "mean_drawdown_improvement": 0.001540
+      },
+      "2_to_1_to_0": {
+        "episodes": 1,
+        "mean_sessions": 16.0,
+        "mean_v4_2_minus_v4_1_return": -0.000446,
+        "mean_drawdown_improvement": 0.002556
+      }
+    }
+  },
+  "tail_risk": {
+    "v4_2": {
+      "expected_shortfall_95": -0.039280,
+      "worst_5d_return": -0.123072,
+      "worst_10d_return": -0.155747,
+      "worst_20d_return": -0.145808,
+      "maximum_underwater_run_sessions": 113,
+      "max_drawdown_recovery_sessions": 114,
+      "ulcer_index": 0.069760
+    },
+    "v4_1": {
+      "expected_shortfall_95": -0.039403,
+      "worst_5d_return": -0.123072,
+      "worst_10d_return": -0.158225,
+      "worst_20d_return": -0.148316,
+      "maximum_underwater_run_sessions": 114,
+      "max_drawdown_recovery_sessions": 115,
+      "ulcer_index": 0.070624
+    }
+  },
+  "sgov_challengers": {
+    "pure_sgov_defense": {
+      "decision": "reject_as_primary_architecture",
+      "total_return": 0.743881,
+      "cagr": 0.250458,
+      "annual_volatility": 0.171470,
+      "sharpe": 1.390359,
+      "sortino": 2.012161,
+      "max_drawdown": -0.210289,
+      "calmar": 1.191015,
+      "expected_shortfall_95": -0.027007,
+      "maximum_underwater_run_sessions": 207,
+      "ulcer_index": 0.079011
+    },
+    "qqqi_sgov_blended_defense": {
+      "decision": "retain_as_drawdown_focused_challenger",
+      "total_return": 0.903880,
+      "cagr": 0.295362,
+      "annual_volatility": 0.197478,
+      "sharpe": 1.410358,
+      "sortino": 2.041870,
+      "max_drawdown": -0.179106,
+      "calmar": 1.649088,
+      "expected_shortfall_95": -0.030545,
+      "maximum_underwater_run_sessions": 195,
+      "ulcer_index": 0.067556
+    }
+  },
+  "signal_alert_validation": {
+    "signal_date": "2026-07-31",
+    "current_state": 0,
+    "target_state": 1,
+    "target_weights": {"QQQI": 0.5, "QQQ": 0.5, "TQQQ": 0.0},
+    "fingerprint": "7bd5f606e67436360da1",
+    "should_alert": true,
+    "execution_time": "next_session_open"
+  },
+  "evidence": {
+    "experiment_suite": {
+      "workflow_run": 30730596122,
+      "artifact_id": 8827843430,
+      "sha256": "7a5feaa66b4d830969b5d1ffa3aef21ca1b98f6157be3af7062b40304c6c79e4"
+    },
+    "signal_alert_validation": {
+      "workflow_run": 30730596133,
+      "artifact_id": 8827841085,
+      "sha256": "2fec875e52d655dad94640f3a4fa8b622c1c3e8eb0f71ef4bcdc904fb4506d1a"
+    }
+  },
+  "companion_report": "docs/research/qqqi_qqq_tqqq_v4_2_baseline_experiment_result_2026-08-02.md",
+  "executed_notebook": "notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb"
+}
