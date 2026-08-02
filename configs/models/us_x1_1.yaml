@@ -1,0 +1,177 @@
+schema_version: '1.1'
+model_id: us_x1_1
+display_name: US x1.1
+release_date: '2026-08-02'
+status: baseline_research_active
+research_only: true
+trade_ready: false
+market: us
+benchmark: QQQ
+objective: Rank the governed US87 equity pool for 10-session forward return using the promoted Candidate A contract.
+lineage:
+  parent: us_x1_0
+  adopted_from_candidate: us_x1_1_candidate_a
+  candidate_source_pr: 363
+  adoption_decision: user_directed_baseline_promotion
+  supersedes_named_model: us_x1_0
+  promotion_note: Formal research baseline; not an operational or trade-ready promotion.
+universe:
+  universe_id: us_selected_equities_v2
+  source: configs/research_universes/us_selected_equities_v2.yaml
+  declared_candidate_count: 87
+  membership_mode: static_curated
+  survivorship_bias: true
+  listing_policy: no_prelisting_fill_coverage_qualified_static_members
+provider_binding:
+  policy: immutable_artifact_bound_snapshot
+  canonical_evidence_provider_identity_sha256: 2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95
+  start: '2021-01-04'
+  cutoff: '2026-07-31'
+  session_count: 1400
+  instrument_count: 88
+  snapshot_independent_performance_claim: false
+features:
+  library: configs/factor_libraries/us_ohlcv.yaml
+  group: momentum_volatility_volume
+  expressions:
+  - $close/Ref($close,10)-1
+  - $close/Ref($close,20)-1
+  - $close/Ref($close,5)-1
+  - Std($close/Ref($close,1)-1,10)
+  - Std($close/Ref($close,1)-1,20)
+  - $volume/Ref($volume,10)-1
+  - $volume/Mean($volume,20)-1
+label:
+  type: processed_daily_cross_sectional_percentile_gain
+  economic_return_expression: Ref($close, -10) / $close - 1
+  horizon_sessions: 10
+  gain_bins: 7
+candidate_calibration_identity:
+  source: configs/research_paradigms/us_x1_1_frozen_v1.yaml
+  n_gain_bins: 7
+  num_boost_round: 200
+  legacy_num_leaves_field: 31
+  legacy_min_data_in_leaf_field: 20
+  legacy_learning_rate_field: 0.03
+  effective_xgb_mapping:
+    n_gain_bins: consumed
+    num_boost_round: consumed
+    num_leaves: not_consumed_by_xgb_adapter
+    min_data_in_leaf: not_consumed_by_xgb_adapter
+    learning_rate: not_consumed_by_xgb_adapter
+model:
+  parameter_identity_status: effective_runtime_verified_legacy_schema
+  runtime_source: src/research/daily_ranker_model.py::fit_xgb_daily_ranker
+  calibration_mapping_source: src/research/qlib_execution_common.py::fit_ranker_scores
+  family: xgb
+  objective: rank:ndcg
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 31
+  max_depth: 0
+  learning_rate: 0.05
+  num_boost_round: 200
+  seed: 42
+  score_orientation: original
+strategy:
+  holding_sessions: 10
+  rebalance_sessions: 10
+  top_n: 15
+  bottom_n_diagnostic: 15
+  weighting: equal_weight
+  cost_bps: 20
+  benchmark_mode: reference_only
+frozen_research_spec: configs/research_paradigms/us_x1_1_frozen_v1.yaml
+backtest_evidence:
+  development:
+    period: 2024H1-2025H2
+    windows:
+    - window: 2024H1
+      total_return: 0.255190
+      benchmark_return: 0.194210
+      simple_excess: 0.060981
+      icir: 0.083575
+      rank_ic: 0.023978
+      top_bottom_spread: 0.010500
+      max_drawdown: -0.041583
+      turnover: 6.833333
+    - window: 2024H2
+      total_return: 0.469868
+      benchmark_return: 0.068419
+      simple_excess: 0.401449
+      icir: 0.209602
+      rank_ic: -0.025920
+      top_bottom_spread: 0.020000
+      max_drawdown: -0.099067
+      turnover: 6.700000
+    - window: 2025H1
+      total_return: 0.166855
+      benchmark_return: 0.077012
+      simple_excess: 0.089843
+      icir: 0.014727
+      rank_ic: 0.030905
+      top_bottom_spread: 0.009500
+      max_drawdown: -0.271527
+      turnover: 6.566667
+    - window: 2025H2
+      total_return: 0.517092
+      benchmark_return: 0.129391
+      simple_excess: 0.387701
+      icir: 0.603945
+      rank_ic: 0.135074
+      top_bottom_spread: 0.050344
+      max_drawdown: -0.135929
+      turnover: 6.166667
+    compounded_strategy_return: 2.266003271714039
+    compounded_benchmark_return: 0.5519837543758637
+    compounded_relative_excess_return: 1.1044055793145042
+    mean_icir: 0.22796225
+    mean_rank_ic: 0.04100925
+    mean_top_bottom_spread: 0.0225858925
+    positive_excess_windows: 4/4
+    worst_drawdown: -0.271527
+    strongest_positive_window_share: 0.42708521725068993
+    all_window_recurring_names:
+    - AAOI
+    - AEHR
+    - BE
+  consumed_reporting_window:
+    window: 2026H1
+    selection_eligible: false
+    total_return: 1.067216
+    benchmark_return: 0.155057
+    simple_excess_return: 0.912159
+    icir: 0.740142
+    rank_ic: 0.152309
+    max_drawdown: -0.068982
+    turnover: 5.233333
+evidence_identity:
+  candidate_source_pr: 363
+  workflow_run_id: 30737322468
+  artifact_id: 8830089966
+  artifact_digest: sha256:6638e37ea77a7183253de5f96ec466c2ac0eab66c6f47d58e1040d4421d7fd70
+  source_candidate_card: configs/models/candidates/us_x1_1_candidate_a.yaml
+  historical_baseline_restatement: false
+baseline_decision:
+  effective_at: '2026-08-02'
+  decision_authority: user
+  decision: promote_candidate_a_to_formal_research_baseline
+  independent_new_holdout_required_for_baseline_adoption: false
+  independent_new_holdout_still_required_for_trade_readiness: true
+known_limitations:
+- Static curated membership carries survivorship bias.
+- The worst development drawdown remains -27.15%.
+- AAOI, AEHR and BE recur in all four development final Top-15 lists.
+- The 2026H1 reporting window has already been consumed and cannot be reused for candidate selection.
+- XGBoost native regularization parameters are not yet identity-bound under Issue #357.
+- Sector and security contribution controls are not yet fully validated.
+- This is the formal research baseline, not a trade-ready model.
+next_version_gate:
+  candidate_version: US x1.2
+  required_experiments:
+  - fixed-score security and sector concentration controls under Issue #362
+  - seed and block-bootstrap score-rank and Top-15 stability
+  - 20/40/60 bps cost stress
+  - explicit XGBoost native parameter mapping under Issue #357
+  - bounded native-parameter search after the interface merges
+  - one new untouched challenge window before trade-readiness or operational promotion
