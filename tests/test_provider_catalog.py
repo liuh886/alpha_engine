@@ -38,6 +38,18 @@ def test_tushare_availability_depends_on_explicit_token(monkeypatch):
     assert provider_capability("tushare").available is True
 
 
+def test_tiingo_is_independent_and_credential_gated(monkeypatch):
+    monkeypatch.delenv("TIINGO_API_TOKEN", raising=False)
+    tiingo = provider_capability("tiingo")
+    yahoo = provider_capability("yfinance")
+    assert tiingo.available is False
+    assert tiingo.source_family == "tiingo_eod"
+    assert tiingo.independent_group != yahoo.independent_group
+    assert tiingo.corporate_actions is True
+    monkeypatch.setenv("TIINGO_API_TOKEN", "test-token")
+    assert provider_capability("tiingo").available is True
+
+
 def test_yahoo_declares_synthetic_amount_and_research_boundary():
     yahoo = provider_capability("yfinance")
     assert yahoo.amount_unit == "synthetic_close_times_volume"
