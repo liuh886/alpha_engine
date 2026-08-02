@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+import pytest
+
 from src.data.provider_snapshot_comparison import (
     compare_candidate_evidence,
     compare_refresh_manifests,
@@ -93,5 +95,9 @@ def test_candidate_metric_deltas_bind_exact_candidate_identity() -> None:
     new["candidates"][0]["compounded_relative_excess_return"] = 0.13
     result = compare_candidate_evidence(old, new, candidate_id=candidate)
     assert result["old_windows"] == result["new_windows"] == 4
-    assert result["metrics"]["compounded_total_return"]["delta"] == -0.1
-    assert result["metrics"]["compounded_relative_excess_return"]["delta"] == -0.07
+    assert result["metrics"]["compounded_total_return"]["delta"] == pytest.approx(
+        -0.1
+    )
+    assert result["metrics"]["compounded_relative_excess_return"][
+        "delta"
+    ] == pytest.approx(-0.07)
