@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   BookOpen,
   ClipboardList,
@@ -26,6 +27,7 @@ export interface RouteDefinition {
 }
 
 const HomePage = lazy(() => import('./pages/ArtifactStudioHomePage').then((m) => ({ default: m.ArtifactStudioHomePage })));
+const StrategyOperationsPage = lazy(() => import('./pages/StrategyOperationsPage').then((m) => ({ default: m.StrategyOperationsPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const EvidenceModelsPage = lazy(() => import('./pages/EvidenceModelsPage').then((m) => ({ default: m.EvidenceModelsPage })));
@@ -37,12 +39,13 @@ const ComparePage = lazy(() => import('./pages/ComparePage').then((m) => ({ defa
 const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then((m) => ({ default: m.MethodologyPage })));
 
 /**
- * The Web product exposes research artifacts only. Execution, mutation and
- * infrastructure routes belong to Python CLI/workflows and are intentionally
- * absent from the browser route graph.
+ * The Web product exposes read-only research artifacts and operating evidence.
+ * Model execution, data refresh, mutation and trading remain in Python
+ * CLI/workflows and are intentionally absent from the browser route graph.
  */
 export const routes: RouteDefinition[] = [
   { path: '', title: 'Research Overview', label: 'Overview', releaseLevel: 'release', navGroup: 'Workspace', icon: LayoutDashboard, component: HomePage },
+  { path: 'operations', title: 'v4.2 Operations', label: 'v4.2 Operations', releaseLevel: 'release', navGroup: 'Workspace', icon: Activity, component: StrategyOperationsPage },
   { path: 'library', title: 'Bundle Library', label: 'Library', releaseLevel: 'release', navGroup: 'Workspace', icon: FolderArchive, component: LibraryPage },
 
   { path: 'dashboard', title: 'Backtest Review', label: 'Backtests', releaseLevel: 'release', navGroup: 'Evidence', icon: FlaskConical, component: DashboardPage },
