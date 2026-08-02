@@ -1,0 +1,120 @@
+name: QQQI VXN v4.2 Signal Alert
+
+on:
+  schedule:
+    # Runs after the prior US session has closed and end-of-day data should be available.
+    - cron: "30 0 * * 2-6"
+  workflow_dispatch:
+    inputs:
+      end_date:
+        description: Optional exclusive market-data end date (YYYY-MM-DD)
+        required: false
+        type: string
+
+concurrency:
+  group: qqqi-vxn-v4-2-signal-alert
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  signal-alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate signal-alert implementation
+        run: |
+          uv run ruff check \
+            src/research/strategy_signal_alerts.py \
+            scripts/run_qqqi_vxn_v4_2_signal_alert.py \
+            tests/test_strategy_signal_alerts.py
+          uv run pytest tests/test_strategy_signal_alerts.py -q --tb=short
+      - name: Build governed QQQ QQQI TQQQ reference bundle
+        run: >-
+          uv run python scripts/data/build_etf_reference_bundle.py
+          --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+      - name: Run current v4.2 baseline monitor
+        run: >-
+          uv run python scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py
+          --end-date "${{ inputs.end_date }}"
+          --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          --output-dir artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor
+          --strategy-run-dir artifacts/strategy_runs
+      - name: Build next-open alert
+        id: alert
+        run: >-
+          uv run python scripts/run_qqqi_vxn_v4_2_signal_alert.py
+          --summary artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_summary.json
+          --output-dir artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2
+          --github-output "$GITHUB_OUTPUT"
+      - name: Upload signal and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqqi-vxn-v4-2-signal-${{ github.run_id }}
+          path: |
+            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json
+            artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_summary.json
+            artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2
+          if-no-files-found: error
+          retention-days: 90
+      - name: Create one deduplicated GitHub issue for a new signal
+        if: steps.alert.outputs.should_alert == 'true'
+        uses: actions/github-script@v7
+        env:
+          ALERT_FINGERPRINT: ${{ steps.alert.outputs.fingerprint }}
+          ALERT_TITLE: ${{ steps.alert.outputs.title }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = `<!-- signal-fingerprint:${process.env.ALERT_FINGERPRINT} -->`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100,
+            });
+            const exists = issues.some((item) =>
+              !item.pull_request && String(item.body || '').includes(marker)
+            );
+            if (exists) {
+              core.notice(`Signal ${process.env.ALERT_FINGERPRINT} was already reported.`);
+              return;
+            }
+            const report = fs.readFileSync(
+              'artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2/signal_alert.md',
+              'utf8'
+            );
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: process.env.ALERT_TITLE,
+              body: `@liuh886\n\n${report}`,
+            });
+      - name: Send optional Telegram alert
+        if: steps.alert.outputs.should_alert == 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            echo "Telegram secrets are not configured; GitHub Issue alert remains active."
+            exit 0
+          fi
+          curl --fail --silent --show-error \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text@artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2/signal_alert.md"
