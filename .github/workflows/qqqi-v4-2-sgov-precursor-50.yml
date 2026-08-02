@@ -1,0 +1,114 @@
+name: QQQI v4.2 SGOV Precursor 50
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqqi-v4-2-sgov-precursor-50.yml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_precursor_50_v4_5_research.yaml"
+      - "src/research/v4_2_sgov_precursor_50_experiment.py"
+      - "scripts/run_qqqi_v4_2_sgov_precursor_50_experiment.py"
+      - "tests/test_v4_2_sgov_precursor_50_experiment.py"
+      - "notebooks/23_qqqi_qqq_tqqq_v4_2_sgov_precursor_50.ipynb"
+      - "docs/research/qqqi_v4_2_sgov_precursor_50_program_2026-08-02.md"
+      - "docs/research/qqqi_qqq_tqqq_v4_2_sgov_precursor_50_result_2026-08-02.md"
+      - "docs/research/snapshots/qqqi_v4_2_sgov_precursor_50_2026-08-02.json"
+      - "docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-02.yaml"
+      - "docs/research/validation/qqqi_v4_2_sgov_precursor_50_pr361_2026-08-02.json"
+  workflow_dispatch:
+    inputs:
+      end_date:
+        description: Optional exclusive market-data end date (YYYY-MM-DD)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint and test 50 percent precursor experiment
+        run: |
+          uv run ruff check \
+            src/research/v4_2_sgov_precursor_50_experiment.py \
+            scripts/run_qqqi_v4_2_sgov_precursor_50_experiment.py \
+            tests/test_v4_2_sgov_precursor_50_experiment.py
+          uv run pytest \
+            tests/test_v4_2_sgov_precursor_50_experiment.py \
+            tests/test_v4_2_sgov_recovery_release_experiment.py \
+            tests/test_v4_2_sgov_defense_experiment.py \
+            tests/test_v4_2_sgov_episode_attribution.py \
+            tests/test_vxn_bridge_allocation_experiment.py \
+            tests/test_vxn_leverage_overlay_experiment.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Build governed ETF bundle with bounded retry
+        run: |
+          for attempt in 1 2 3; do
+            if uv run python scripts/data/build_etf_reference_bundle.py \
+              --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1; then
+              exit 0
+            fi
+            if [[ "$attempt" == "3" ]]; then
+              exit 1
+            fi
+            sleep $((attempt * 20))
+          done
+      - name: Run 50 percent TQQQ precursor comparison
+        run: >-
+          uv run python scripts/run_qqqi_v4_2_sgov_precursor_50_experiment.py
+          --end-date "${{ inputs.end_date }}"
+          --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          --output-dir
+          artifacts/evidence/qqqi_qqq_tqqq_v4_2_sgov_precursor_50_v4_5_research
+      - name: Execute 50 percent precursor notebook
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          import nbformat
+          from nbclient import NotebookClient
+
+          path = Path(
+              "notebooks/23_qqqi_qqq_tqqq_v4_2_sgov_precursor_50.ipynb"
+          )
+          notebook = nbformat.read(path, as_version=4)
+          executed = NotebookClient(
+              notebook,
+              timeout=900,
+              kernel_name="python3",
+              allow_errors=False,
+          ).execute(cwd=".")
+          for index, cell in enumerate(executed.cells):
+              if cell.cell_type != "code":
+                  continue
+              if cell.get("execution_count") is None:
+                  raise ValueError(f"unexecuted code cell: {index}")
+              for output in cell.get("outputs", []):
+                  if output.get("output_type") == "error":
+                      raise ValueError(f"notebook error in cell {index}: {output}")
+          nbformat.write(executed, path)
+          PY
+      - name: Upload evidence and executed notebook
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqqi-v4-2-sgov-precursor-50-${{ github.run_id }}
+          path: |
+            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json
+            artifacts/evidence/qqqi_qqq_tqqq_v4_2_sgov_precursor_50_v4_5_research
+            notebooks/23_qqqi_qqq_tqqq_v4_2_sgov_precursor_50.ipynb
+          if-no-files-found: error
+          retention-days: 90

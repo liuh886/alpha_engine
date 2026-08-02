@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.1",
+  "repository": "liuh886/alpha_engine",
+  "pull_request": 361,
+  "validated_on": "2026-08-02",
+  "validated_content_head_sha": "d72f7fd6b689bcb0514bf706979c6db995aeb9fd",
+  "receipt_commit_excluded_from_evidence_calculation": true,
+  "checks": {
+    "lint": "success",
+    "focused_tests": "success",
+    "governed_etf_bundle": "success",
+    "precursor_50_comparison": "success",
+    "same_precursor_dates_as_25_percent": "success",
+    "frozen_state_2_allocation": "success",
+    "notebook_23_execution": "success",
+    "artifact_upload": "success",
+    "alpha_engine_ci": "success",
+    "decision_evidence_contract_ci": "success",
+    "qqqi_vxn_research_bundle": "success",
+    "sgov_episode_attribution_revalidation": "success"
+  },
+  "decision": {
+    "v4_2_baseline": "retained",
+    "tqqq_precursor_25": "immutable_shadow_comparator",
+    "tqqq_precursor_50": "preferred_deferred_shadow_hypothesis",
+    "shadow_monitor_authorized": false,
+    "actionable_alert_authorized": false,
+    "direct_promotion_authorized": false,
+    "additional_precursor_weight_search": "not_authorized",
+    "next_stage_issue": 348
+  },
+  "canonical_research_evidence": {
+    "workflow_name": "QQQI v4.2 SGOV Precursor 50",
+    "run_id": 30737397224,
+    "conclusion": "success",
+    "artifact_id": 8830077965,
+    "artifact_name": "qqqi-v4-2-sgov-precursor-50-30737397224",
+    "artifact_digest": "sha256:8885741183b30177e70f380e0a6286c0b33d0aa375c279356592be5c0fca26c6",
+    "expires_on": "2026-10-31"
+  },
+  "final_content_revalidation": {
+    "workflow_name": "QQQI v4.2 SGOV Precursor 50",
+    "run_id": 30737532929,
+    "conclusion": "success",
+    "artifact_id": 8830124068,
+    "artifact_name": "qqqi-v4-2-sgov-precursor-50-30737532929",
+    "artifact_digest": "sha256:f59388bec6b82a236176a575c695af2e978c7775fe2656999d2aad66540e5f80",
+    "expires_on": "2026-10-31"
+  },
+  "gate_failures": {
+    "minimum_precursor_event_count": {
+      "observed": 3,
+      "required": 6
+    },
+    "unresolved_major_episode_count": {
+      "observed": 1,
+      "required_maximum": 0
+    }
+  }
+}
