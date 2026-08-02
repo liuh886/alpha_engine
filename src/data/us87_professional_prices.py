@@ -14,6 +14,7 @@ from src.data.provider_catalog import provider_manifest_entry
 
 SHARD_MANIFEST = "shard_manifest.json"
 BUNDLE_MANIFEST = "professional_price_manifest.json"
+_PROVIDER_BREAKER_ERRORS = {"rate_limited", "credential_or_entitlement"}
 
 
 class ProfessionalPriceBundleError(ValueError):
@@ -103,6 +104,14 @@ def _fetch(
         }
 
 
+def _circuit_attempt(reason: str) -> dict[str, Any]:
+    return {
+        "ok": False,
+        "error_class": "provider_circuit_open",
+        "error": f"provider skipped after shard-wide failure: {reason}",
+    }
+
+
 def build_professional_price_shard(
     *,
     root: str | Path,
@@ -135,13 +144,36 @@ def build_professional_price_shard(
 
     records: list[dict[str, Any]] = []
     hashes: dict[str, str] = {}
+    primary_open = primary_adapter is None
+    secondary_open = secondary_adapter is None
+    primary_reason = "provider_not_configured" if primary_open else ""
+    secondary_reason = "provider_not_configured" if secondary_open else ""
+    primary_calls = 0
+    secondary_calls = 0
+
     for symbol in selected:
-        primary, primary_attempt = _fetch(
-            primary_adapter, symbol=symbol, start=start, cutoff=cutoff
-        )
-        secondary, secondary_attempt = _fetch(
-            secondary_adapter, symbol=symbol, start=start, cutoff=cutoff
-        )
+        if primary_open:
+            primary, primary_attempt = None, _circuit_attempt(primary_reason)
+        else:
+            primary_calls += 1
+            primary, primary_attempt = _fetch(
+                primary_adapter, symbol=symbol, start=start, cutoff=cutoff
+            )
+            if primary_attempt.get("error_class") in _PROVIDER_BREAKER_ERRORS:
+                primary_open = True
+                primary_reason = str(primary_attempt.get("error_class"))
+
+        if secondary_open:
+            secondary, secondary_attempt = None, _circuit_attempt(secondary_reason)
+        else:
+            secondary_calls += 1
+            secondary, secondary_attempt = _fetch(
+                secondary_adapter, symbol=symbol, start=start, cutoff=cutoff
+            )
+            if secondary_attempt.get("error_class") in _PROVIDER_BREAKER_ERRORS:
+                secondary_open = True
+                secondary_reason = str(secondary_attempt.get("error_class"))
+
         reconciliation = reconcile_adjusted_bars(
             primary, secondary, symbol=symbol, settings=settings
         )
@@ -184,7 +216,7 @@ def build_professional_price_shard(
         )
 
     manifest = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "contract_id": contract.get("contract_id"),
         "pool_id": contract.get("pool", {}).get("pool_id"),
         "shard_index": shard_index,
@@ -194,6 +226,18 @@ def build_professional_price_shard(
         "cutoff": cutoff,
         "records": records,
         "files": dict(sorted(hashes.items())),
+        "provider_health": {
+            "tiingo": {
+                "attempted_symbols": primary_calls,
+                "circuit_open": primary_open,
+                "circuit_reason": primary_reason or None,
+            },
+            "polygon": {
+                "attempted_symbols": secondary_calls,
+                "circuit_open": secondary_open,
+                "circuit_reason": secondary_reason or None,
+            },
+        },
         "complete": all(
             row["status"]
             in {
