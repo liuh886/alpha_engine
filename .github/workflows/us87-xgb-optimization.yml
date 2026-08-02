@@ -3,7 +3,7 @@ name: US87 XGBoost Optimization
 on:
   pull_request:
     branches:
-      - research/selected-pool-ranker-retest-v1
+      - main
     paths:
       - "configs/research_paradigms/us_10d_xgb_optimization_dev_v1.yaml"
       - "scripts/run_us87_xgb_optimization.py"
