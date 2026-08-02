@@ -1,7 +1,7 @@
 """Attribute the deterministic US x1.1 2025H1 drawdown without model search.
 
 Phase A consumes the frozen provider and Experiment 007 score ledger. It first
-reproduces the canonical non-overlapping 10-session economics, then attributes
+reproduces canonical non-overlapping 10-session economics, then attributes
 name, volatility, beta and QQQ-regime contribution. Only independently
 pre-registered portfolio controls are evaluated. Sector analysis is deferred to
 Issue #366 and no online classification is used.
@@ -229,6 +229,32 @@ def _max_drawdown(nav: list[float]) -> float:
     return float((values / np.maximum.accumulate(values) - 1).min())
 
 
+def _effective_return_weights(
+    target: dict[str, float],
+    available_returns: dict[str, float],
+) -> dict[str, float]:
+    """Match canonical PortfolioIntent handling of missing forward returns.
+
+    The target gross exposure is preserved, while names without a valid return
+    are excluded and the remaining target weights are proportionally
+    re-normalized. For the ordinary fully invested baseline this is exactly the
+    legacy `valid_weight / total_valid_weight` rule.
+    """
+
+    gross_target = float(sum(target.values()))
+    valid = {
+        name: weight
+        for name, weight in target.items()
+        if name in available_returns and np.isfinite(available_returns[name])
+    }
+    valid_total = float(sum(valid.values()))
+    if gross_target <= 0 or valid_total <= 0:
+        return {}
+    return {
+        name: weight / valid_total * gross_target for name, weight in valid.items()
+    }
+
+
 def _evaluate(
     scores: pd.DataFrame,
     returns: dict[pd.Timestamp, dict[str, float]],
@@ -263,9 +289,10 @@ def _evaluate(
         abs_delta = sum(abs(value) for value in deltas.values())
         turnover = abs_delta / 2
         cost = turnover * cost_bps / 10_000
+        date_returns = returns.get(date, {})
+        effective_weights = _effective_return_weights(target, date_returns)
         gross_return = sum(
-            weight * returns.get(date, {}).get(name, 0.0)
-            for name, weight in target.items()
+            weight * date_returns[name] for name, weight in effective_weights.items()
         )
         net_return = gross_return - cost
         benchmark_return = float(benchmark.get(date, 0.0))
@@ -280,15 +307,27 @@ def _evaluate(
         indexed_rank = ranked.set_index("instrument")
         for name in names:
             target_weight = target.get(name, 0.0)
-            forward_return = returns.get(date, {}).get(name, 0.0)
-            gross_contribution = target_weight * forward_return
+            effective_weight = effective_weights.get(name, 0.0)
+            has_valid_return = name in date_returns and np.isfinite(date_returns[name])
+            forward_return = date_returns.get(name)
+            gross_contribution = (
+                effective_weight * float(forward_return)
+                if has_valid_return and forward_return is not None
+                else 0.0
+            )
             allocated_cost = cost * abs(deltas[name]) / abs_delta if abs_delta > 0 else 0.0
+            if target_weight <= 0:
+                position_role = "exit_cost_only"
+            elif not has_valid_return:
+                position_role = "held_missing_return"
+            else:
+                position_role = "held_valid_return"
             contribution_rows.append(
                 {
                     "period_index": period_index,
                     "rebalance_date": date,
                     "instrument": name,
-                    "position_role": "held" if target_weight > 0 else "exit_cost_only",
+                    "position_role": position_role,
                     "rank": (
                         int(indexed_rank.loc[name, "rank"])
                         if name in indexed_rank.index
@@ -300,6 +339,7 @@ def _evaluate(
                         else None
                     ),
                     "target_weight": target_weight,
+                    "effective_return_weight": effective_weight,
                     "trade_delta": deltas[name],
                     "forward_10d_return": forward_return,
                     "gross_contribution": gross_contribution,
@@ -319,6 +359,12 @@ def _evaluate(
                 "period_index": period_index,
                 "rebalance_date": date,
                 "gross_exposure": float(target_series.sum()),
+                "valid_return_exposure_before_rescale": float(
+                    sum(target.get(name, 0.0) for name in effective_weights)
+                ),
+                "missing_return_name_count": int(
+                    sum(name not in effective_weights for name in target)
+                ),
                 "turnover": turnover,
                 "cost": cost,
                 "gross_return": gross_return,
@@ -621,10 +667,7 @@ def run(
     leave_one_out = _leave_one_out(
         scores, returns, benchmark, closes, baseline, drawdown_rows
     )
-    variants = [
-        results[spec.strategy_id]["cost_stress"]["20"]
-        for spec in STRATEGIES[1:]
-    ]
+    variants = [results[spec.strategy_id]["cost_stress"]["20"] for spec in STRATEGIES[1:]]
     decision = _decision(baseline, variants, attribution, leave_one_out)
     payload = {
         "schema_version": "1.0",
