@@ -12,6 +12,10 @@ on:
       - "scripts/data/build_us87_professional_prices.py"
       - "tests/test_polygon_adapter.py"
       - "tests/test_us87_professional_prices.py"
+  push:
+    branches: ["data/us87-professional-provider-v1"]
+    paths:
+      - ".github/workflows/us87-professional-prices-ci.yml"
   workflow_dispatch:
     inputs:
       cutoff:
@@ -70,7 +74,9 @@ jobs:
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   live-shard:
-    if: github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[live-us87-shard-0]'))
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -88,15 +94,22 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
       - name: Build one quota-bounded professional shard
-        run: >-
-          uv run python scripts/data/build_us87_professional_prices.py
-          --cutoff "${{ inputs.cutoff }}"
-          --shard-index "${{ inputs.shard_index }}"
+        shell: bash
+        run: |
+          cutoff="${{ inputs.cutoff }}"
+          shard="${{ inputs.shard_index }}"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            cutoff="2026-07-31"
+            shard="0"
+          fi
+          uv run python scripts/data/build_us87_professional_prices.py \
+            --cutoff "$cutoff" \
+            --shard-index "$shard"
       - name: Upload resumable shard
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: us87-professional-${{ inputs.cutoff }}-shard-${{ inputs.shard_index }}
+          name: us87-professional-${{ github.run_id }}
           path: artifacts/data/us87_professional_prices_v1/shards
           if-no-files-found: error
           retention-days: 90
