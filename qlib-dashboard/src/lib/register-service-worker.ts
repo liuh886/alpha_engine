@@ -6,8 +6,25 @@ export function registerServiceWorker(): void {
 
   window.addEventListener('load', () => {
     const serviceWorkerUrl = new URL('sw.js', document.baseURI);
-    navigator.serviceWorker.register(serviceWorkerUrl, { scope: './' }).catch((error) => {
-      console.warn('[pwa] Service worker registration failed.', error);
-    });
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let refreshing = false;
+
+    if (hadController) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+    }
+
+    navigator.serviceWorker
+      .register(serviceWorkerUrl, {
+        scope: './',
+        updateViaCache: 'none',
+      })
+      .then((registration) => registration.update())
+      .catch((error) => {
+        console.warn('[pwa] Service worker registration failed.', error);
+      });
   });
 }
