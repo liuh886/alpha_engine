@@ -19,6 +19,11 @@ import {
   type V42RuntimeSnapshot,
   type V42Weights,
 } from '@/lib/v42-runtime';
+import {
+  fetchV42WorkflowHealth,
+  workflowHealthLabel,
+  type V42WorkflowHealthEntry,
+} from '@/lib/v42-workflow-health';
 
 const ASSETS: V42Asset[] = ['QQQI', 'QQQ', 'TQQQ'];
 
@@ -34,6 +39,13 @@ const STATE_LABELS: Record<number, string> = {
   1: 'Transition',
   2: 'Risk-on',
 };
+
+const WORKFLOW_TONE_CLASS = {
+  healthy: 'text-emerald-600 dark:text-emerald-400',
+  running: 'text-blue-600 dark:text-blue-400',
+  attention: 'text-amber-600 dark:text-amber-400',
+  unknown: 'text-muted-foreground',
+} as const;
 
 function formatPercent(value: unknown, digits = 1): string {
   return typeof value === 'number' && Number.isFinite(value)
@@ -94,8 +106,40 @@ function HorizonCell({ outcome }: { outcome?: V42HorizonOutcome }) {
   );
 }
 
+function WorkflowHealthCard({ entry }: { entry: V42WorkflowHealthEntry }) {
+  const health = workflowHealthLabel(entry);
+  return (
+    <div className="rounded-xl border bg-muted/15 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold">{entry.label}</p>
+          <p className="mt-1 font-mono text-[10px] text-muted-foreground">{entry.workflowFile}</p>
+        </div>
+        <Badge variant="outline" className={WORKFLOW_TONE_CLASS[health.tone]}>{health.label}</Badge>
+      </div>
+      {entry.run ? (
+        <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+          <p>Started {entry.run.run_started_at ? new Date(entry.run.run_started_at).toLocaleString() : 'time not declared'}</p>
+          <p className="font-mono">run {entry.run.id} · {entry.run.event} · {entry.run.head_sha.slice(0, 8)}</p>
+          <a
+            href={entry.run.html_url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+          >
+            Open workflow run <ArrowUpRight className="h-3 w-3" />
+          </a>
+        </div>
+      ) : (
+        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{entry.error || 'No workflow run is available.'}</p>
+      )}
+    </div>
+  );
+}
+
 export function StrategyOperationsPage() {
   const [snapshot, setSnapshot] = useState<V42RuntimeSnapshot | null>(null);
+  const [workflowHealth, setWorkflowHealth] = useState<V42WorkflowHealthEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,9 +147,15 @@ export function StrategyOperationsPage() {
     setLoading(true);
     setError(null);
     try {
-      setSnapshot(await fetchV42RuntimeSnapshot());
+      const [nextSnapshot, nextWorkflowHealth] = await Promise.all([
+        fetchV42RuntimeSnapshot(),
+        fetchV42WorkflowHealth(),
+      ]);
+      setSnapshot(nextSnapshot);
+      setWorkflowHealth(nextWorkflowHealth);
     } catch (runtimeError) {
       setSnapshot(null);
+      setWorkflowHealth([]);
       setError(runtimeError instanceof Error ? runtimeError.message : 'The v4.2 ledger is unavailable.');
     } finally {
       setLoading(false);
@@ -130,7 +180,7 @@ export function StrategyOperationsPage() {
       <div className="research-empty-state">
         <RefreshCw className="mx-auto h-7 w-7 animate-spin text-primary/70" />
         <h1 className="mt-4 text-lg font-semibold">Loading the public v4.2 ledger</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Reading durable signal and outcome markers from GitHub Issues.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Reading durable signals, outcomes and workflow health from GitHub.</p>
       </div>
     );
   }
@@ -153,7 +203,7 @@ export function StrategyOperationsPage() {
   const status = observation?.status || record.status;
   const statusLabel = STATUS_LABELS[status] || status.replaceAll('_', ' ');
   const execution = observation?.execution;
-  const monthly = snapshot?.latestMonthlySummary?.summary;
+  const monthly = snapshot.latestMonthlySummary?.summary;
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 pb-16">
@@ -221,6 +271,18 @@ export function StrategyOperationsPage() {
           </CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Automation health</CardTitle>
+          <p className="text-sm text-muted-foreground">Latest public GitHub Actions runs for the decision-alert and evidence-ledger chains.</p>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-2">
+          {workflowHealth.length > 0
+            ? workflowHealth.map((entry) => <WorkflowHealthCard key={entry.key} entry={entry} />)
+            : <p className="text-sm text-muted-foreground">Workflow health could not be loaded.</p>}
+        </CardContent>
+      </Card>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <AllocationPanel
