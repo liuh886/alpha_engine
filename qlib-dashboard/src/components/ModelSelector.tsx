@@ -1,140 +1,118 @@
-import { ModelData } from "@/lib/data-parser";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import type { ModelData } from '@/lib/data-parser';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+
+interface ModelSelectorProps {
+  models: ModelData[];
+  selectedModelId: string;
+  onSelect: (id: string) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
 
 export function ModelSelector({
-    models,
-    selectedModelId,
-    onSelect,
-    onDelete,
-    canDelete = true,
-    open,
-    onOpenChange
-}: {
-    models: ModelData[],
-    selectedModelId: string,
-    onSelect: (id: string) => void,
-    onDelete: (id: string) => void | Promise<void>,
-    canDelete?: boolean,
-    open: boolean,
-    onOpenChange: (open: boolean) => void
-}) {
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Select Backtest Run</DialogTitle>
-                </DialogHeader>
+  models,
+  selectedModelId,
+  onSelect,
+  open,
+  onOpenChange,
+}: ModelSelectorProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[82vh] max-w-5xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Select evidence record</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Change the active model or backtest record used by the comparison views. The underlying bundle remains read-only.
+          </p>
+        </DialogHeader>
 
-                <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[180px]">Date</TableHead>
-                                <TableHead>Market</TableHead>
-                                <TableHead>Metrics (Ann. Ret / IR / Sharpe)</TableHead>
-                                <TableHead>Strategy Params</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {models.map(m => {
-                                const isSelected = m.id === selectedModelId;
-                                const ret = m.backtest.metrics["Annualized Return"] ?? null;
-                                const ir = m.backtest.metrics["Information Ratio"] ?? null;
-                                const sharpe = m.backtest.metrics["Sharpe Ratio"] ?? null;
-                                const params = m.params || {};
-                                const meta = (params["meta"] || {}) as Record<string, unknown>;
-                                const strategyProfile = (meta?.strategy_profile || {}) as Record<string, unknown>;
-                                const strategy = (strategyProfile?.strategy || {}) as Record<string, unknown>;
-                                const universe = (strategyProfile?.universe || {}) as Record<string, unknown>;
-                                const universeFilters = (universe?.filters || {}) as Record<string, unknown>;
+        <div className="overflow-x-auto rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[220px]">Record</TableHead>
+                <TableHead className="min-w-[150px]">Scope</TableHead>
+                <TableHead className="min-w-[190px]">Performance</TableHead>
+                <TableHead className="min-w-[190px]">Research contract</TableHead>
+                <TableHead className="text-right">Selection</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {models.map((model) => {
+                const isSelected = model.id === selectedModelId;
+                const annualizedReturn = model.backtest.metrics['Annualized Return'] ?? null;
+                const informationRatio = model.backtest.metrics['Information Ratio'] ?? null;
+                const sharpe = model.backtest.metrics['Sharpe Ratio'] ?? null;
+                const params = model.params || {};
+                const meta = (params.meta || {}) as Record<string, unknown>;
+                const strategyProfile = (meta.strategy_profile || {}) as Record<string, unknown>;
+                const strategy = (strategyProfile.strategy || {}) as Record<string, unknown>;
+                const positionRule = (strategy.position_rule || {}) as Record<string, unknown>;
 
-                                const rebalance = strategy?.rebalance_frequency as string | undefined;
-                                const minHoldDays = strategy?.min_hold_days as number | undefined;
-                                const positionRule = (strategy?.position_rule || {}) as Record<string, unknown>;
-                                const topk = positionRule?.topk as number | undefined;
-                                const costsBps = strategy?.costs_bps as number | undefined;
-                                const minLiquidity = universeFilters?.min_liquidity as number | undefined;
+                const rebalance = strategy.rebalance_frequency as string | undefined;
+                const minHoldDays = strategy.min_hold_days as number | undefined;
+                const topk = positionRule.topk as number | undefined;
+                const costsBps = strategy.costs_bps as number | undefined;
 
-                                return (
-                                    <TableRow
-                                        key={m.id}
-                                        className={`cursor-pointer ${isSelected ? "bg-muted" : ""}`}
-                                        onClick={() => {
-                                            onSelect(m.id);
-                                            onOpenChange(false);
-                                        }}
-                                    >
-                                        <TableCell className="font-medium">
-                                            {m.name && (
-                                                <div className="text-xs font-semibold text-primary/80 uppercase tracking-tight" title={m.name}>
-                                                    {m.name}
-                                                </div>
-                                            )}
-                                            <div className="text-[10px] font-mono text-muted-foreground uppercase">{m.id}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className="uppercase font-black text-[9px] mb-1 tracking-widest">{m.market}</Badge>
-                                            <div className="text-[10px] text-muted-foreground flex flex-col font-medium">
-                                                <span>From: {m.backtest.meta.start || "N/A"}</span>
-                                                <span>To: {m.backtest.meta.end || "N/A"}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className={`text-sm ${ret > 0 ? "text-green-600" : "text-red-600"}`}>
-                                                {ret != null ? `${(ret * 100).toFixed(1)}%` : "N/A"}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                IR: {ir != null ? ir.toFixed(2) : "N/A"} | Sharpe:{" "}
-                                                {sharpe != null ? sharpe.toFixed(2) : "N/A"}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="text-xs space-y-1">
-                                                {rebalance && <div>Rebalance: {String(rebalance)}</div>}
-                                                {minHoldDays !== undefined && <div>Min Hold: {String(minHoldDays)}d</div>}
-                                                {topk !== undefined && <div>TopK: {String(topk)}</div>}
-                                                {costsBps !== undefined && <div>Costs: {String(costsBps)} bps</div>}
-                                                {minLiquidity !== undefined && <div>Min Liquidity: {String(minLiquidity)}</div>}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {ret !== null ? (
-                                                <Badge variant="default" className="text-[10px]">Has Data</Badge>
-                                            ) : (
-                                                <Badge variant="outline" className="text-[10px] text-muted-foreground">No Data</Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end items-center gap-2">
-                                                {isSelected && <Badge>Active</Badge>}
-                                                {canDelete && (
-                                                    <Button
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onDelete(m.id);
-                                                        }}
-                                                        title="Delete this run from mlruns/ and remove it from artifacts/dashboard/dashboard_db.json"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
+                return (
+                  <TableRow
+                    key={model.id}
+                    className={`cursor-pointer transition-colors hover:bg-muted/50 ${isSelected ? 'bg-muted' : ''}`}
+                    tabIndex={0}
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onSelect(model.id);
+                      onOpenChange(false);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onSelect(model.id);
+                        onOpenChange(false);
+                      }
+                    }}
+                  >
+                    <TableCell>
+                      <div className="font-semibold text-foreground">{model.name || 'Untitled record'}</div>
+                      <div className="mt-1 max-w-[260px] truncate font-mono text-[10px] text-muted-foreground" title={model.id}>
+                        {model.id}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="uppercase">{model.market}</Badge>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        <div>{model.backtest.meta.start || 'Start not declared'}</div>
+                        <div>{model.backtest.meta.end || 'End not declared'}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className={`font-mono text-sm font-semibold ${annualizedReturn !== null && annualizedReturn > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
+                        {annualizedReturn !== null ? `${(annualizedReturn * 100).toFixed(1)}% annualized` : 'Return unavailable'}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        IR {informationRatio !== null ? informationRatio.toFixed(2) : '—'} · Sharpe {sharpe !== null ? sharpe.toFixed(2) : '—'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <div>Rebalance: {rebalance || 'not declared'}</div>
+                        <div>Minimum hold: {minHoldDays !== undefined ? `${minHoldDays}d` : 'not declared'}</div>
+                        <div>Top-K: {topk !== undefined ? topk : 'not declared'}</div>
+                        <div>Costs: {costsBps !== undefined ? `${costsBps} bps` : 'not declared'}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {isSelected ? <Badge>Active</Badge> : <span className="text-xs text-muted-foreground">Select</span>}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
