@@ -1,0 +1,144 @@
+name: Alpha158 Canonical VWAP CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/alpha158-canonical-vwap-ci.yml"
+      - "configs/data/alpha158_panel_v1.yaml"
+      - "configs/data_contracts/model_data_bundle_v1.yaml"
+      - "src/data/canonical_vwap.py"
+      - "src/factors/panel.py"
+      - "scripts/data/build_canonical_vwap_provider.py"
+      - "tests/test_canonical_vwap.py"
+      - "tests/test_alpha158_panel.py"
+      - "docs/research/alpha158_canonical_vwap_execution_2026-08-02.md"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/alpha158-canonical-vwap-ci.yml"
+      - "configs/data/alpha158_panel_v1.yaml"
+      - "configs/data_contracts/model_data_bundle_v1.yaml"
+      - "src/data/canonical_vwap.py"
+      - "src/factors/panel.py"
+      - "scripts/data/build_canonical_vwap_provider.py"
+  schedule:
+    - cron: "41 7 2 * *"
+  workflow_dispatch:
+    inputs:
+      cutoff:
+        description: "Evidence cutoff (YYYY-MM-DD)"
+        required: true
+        default: "2026-07-31"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alpha158-canonical-vwap-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint canonical VWAP paths
+        run: >-
+          uv run ruff check
+          src/data/canonical_vwap.py
+          scripts/data/build_canonical_vwap_provider.py
+          tests/test_canonical_vwap.py
+          tests/test_alpha158_panel.py
+      - name: Type-check canonical VWAP paths
+        run: >-
+          uv run mypy --follow-imports=skip
+          src/data/canonical_vwap.py
+          scripts/data/build_canonical_vwap_provider.py
+      - name: Run canonical VWAP and Alpha158 contract tests
+        run: >-
+          uv run pytest
+          tests/test_canonical_vwap.py
+          tests/test_alpha158_panel.py
+          tests/test_model_data_bundle.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Verify US remains honestly blocked
+        run: >-
+          uv run python scripts/data/build_canonical_vwap_provider.py
+          --market us
+          --cutoff 2026-07-31
+          --output-root artifacts/data/canonical_vwap/us
+      - name: Check US blocker contract
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("artifacts/data/canonical_vwap/us/factor_panel_manifest.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          assert payload["status"] == "blocked"
+          assert payload["expected_symbol_count"] == 87
+          assert "synthetic amount" in payload["blocker"]
+          assert payload["trade_ready"] is False
+          PY
+
+  live-cn-panel:
+    if: github.event_name != 'pull_request'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Build exact CN130 canonical VWAP provider and Alpha158 panels
+        run: >-
+          uv run python scripts/data/build_canonical_vwap_provider.py
+          --market cn
+          --start 2021-01-01
+          --cutoff "${{ inputs.cutoff || '2026-07-31' }}"
+          --output-root artifacts/data/canonical_vwap/cn
+      - name: Print readiness decision
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("artifacts/data/canonical_vwap/cn/canonical_vwap_bundle.json")
+          if path.is_file():
+              payload = json.loads(path.read_text(encoding="utf-8"))
+              panel = payload["factor_panel_manifest"]
+              profiles = payload["model_data_manifest"]["training_profiles"]
+              target = next(row for row in profiles if row["profile_id"] == "cn_selected_alpha158_v1")
+              print(json.dumps({
+                  "panel_status": panel["status"],
+                  "ready_symbols": panel["ready_symbol_count"],
+                  "expected_symbols": panel["expected_symbol_count"],
+                  "training_profile": target,
+              }, indent=2))
+          else:
+              print("canonical_vwap_bundle.json was not created")
+          PY
+      - name: Upload provider, panels, quality and readiness indexes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpha158-canonical-vwap-cn-${{ github.run_id }}
+          path: artifacts/data/canonical_vwap/cn
+          if-no-files-found: warn
+          retention-days: 90
