@@ -34,6 +34,11 @@ data:
   required_symbols: [QQQI, QQQ, TQQQ, SGOV, ^VIX, ^VXN]
 
 allocation:
+  state_0_blended:
+    QQQI: 0.50
+    QQQ: 0.00
+    TQQQ: 0.00
+    SGOV: 0.50
   ordinary_state_1:
     QQQI: 0.25
     QQQ: 0.50
