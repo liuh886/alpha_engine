@@ -1,0 +1,98 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "qqqi_qqq_tqqq_v4_2_recovery_precursor_failure_taxonomy_v4_7_research",
+  "evidence_date": "2026-08-02",
+  "research_only": true,
+  "trade_ready": false,
+  "sample": {
+    "start": "2020-06-01",
+    "end": "2026-07-30",
+    "events": 15
+  },
+  "outcomes": {
+    "successful": 6,
+    "failed": 9,
+    "failed_reverted_before_state2": 3,
+    "failed_reached_state2": 6
+  },
+  "stable_features": [
+    {
+      "feature": "vix_return_5d",
+      "success_median": -0.2331900784314787,
+      "failure_median": -0.099030780733351,
+      "loo_full": 1.0,
+      "loo_early": 1.0
+    },
+    {
+      "feature": "vxn_return_5d",
+      "success_median": -0.2071776980965127,
+      "failure_median": -0.060309096873681,
+      "loo_full": 1.0,
+      "loo_early": 1.0
+    },
+    {
+      "feature": "vxn_close",
+      "success_median": 22.645000457763672,
+      "failure_median": 25.700000762939453,
+      "loo_full": 1.0,
+      "loo_early": 0.8333333333333334
+    },
+    {
+      "feature": "state_1_decision_age_sessions",
+      "success_median": 2.0,
+      "failure_median": 4.0,
+      "loo_full": 1.0,
+      "loo_early": 1.0
+    },
+    {
+      "feature": "vxn_return_1d",
+      "success_median": -0.0796441714749939,
+      "failure_median": -0.0378232168277766,
+      "loo_full": 1.0,
+      "loo_early": 0.9166666666666666
+    },
+    {
+      "feature": "qqq_distance_ma_short",
+      "success_median": 0.028280931663433,
+      "failure_median": 0.0091825260369815,
+      "loo_full": 1.0,
+      "loo_early": 1.0
+    },
+    {
+      "feature": "vix_close",
+      "success_median": 17.5,
+      "failure_median": 19.59000015258789,
+      "loo_full": 1.0,
+      "loo_early": 0.8333333333333334
+    },
+    {
+      "feature": "vxn_retreat_from_peak",
+      "success_median": -0.2444086514036958,
+      "failure_median": -0.1971964648840759,
+      "loo_full": 1.0,
+      "loo_early": 0.9166666666666666
+    }
+  ],
+  "chronology": {
+    "early": {
+      "success": 3,
+      "failure": 9
+    },
+    "late": {
+      "success": 3,
+      "failure": 0
+    }
+  },
+  "decision": {
+    "value": "monitor_features_prospectively_without_new_rule",
+    "prospective_feature_monitoring_justified": true,
+    "new_preregistered_trading_hypothesis_justified": false,
+    "model_change_authorized": false,
+    "actionable_alert_authorized": false
+  },
+  "canonical_evidence": {
+    "workflow_run": 30740263682,
+    "artifact_id": 8831040334,
+    "artifact_digest": "sha256:0e4d355e8e01cf71e66eb92622e77048627305e4d355ae2dd479389205252bfa"
+  }
+}
