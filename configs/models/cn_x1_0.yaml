@@ -1,4 +1,4 @@
-schema_version: '1.0'
+schema_version: '1.1'
 model_id: cn_x1_0
 display_name: CN x1.0
 release_date: '2026-08-02'
@@ -51,14 +51,29 @@ label:
   economic_return_expression: Ref($close, -10) / $close - 1
   horizon_sessions: 10
   gain_bins: 5
+candidate_calibration_identity:
+  source: configs/research_paradigms/cn_x1_0_frozen_v1.yaml
+  n_gain_bins: 5
+  num_boost_round: 100
+  legacy_num_leaves_field: 31
+  legacy_min_data_in_leaf_field: 10
+  legacy_learning_rate_field: 0.05
+  effective_xgb_mapping:
+    n_gain_bins: consumed
+    num_boost_round: consumed
+    num_leaves: not_consumed_by_xgb_adapter
+    min_data_in_leaf: not_consumed_by_xgb_adapter
+    learning_rate: not_consumed_by_xgb_adapter
 model:
+  parameter_identity_status: effective_runtime_verified
+  runtime_source: src/research/daily_ranker_model.py::fit_xgb_daily_ranker
+  calibration_mapping_source: src/research/qlib_execution_common.py::fit_ranker_scores
   family: xgb
   objective: rank:ndcg
   tree_method: hist
   grow_policy: lossguide
   max_leaves: 31
   max_depth: 0
-  min_data_in_leaf: 10
   learning_rate: 0.05
   num_boost_round: 100
   seed: 42
@@ -157,12 +172,17 @@ evidence_identity:
   artifact_id: 8828889722
   artifact_digest: sha256:8696b9d12a11b86f8732b571ea225fed3e6c23f27a29f977a7ed925d3bf08307
   result_report: docs/research/cn130_xgb_optimization_result_2026-08-02.md
+interpretation_correction:
+  prior_claim: The bounded grid compared stronger XGBoost regularization through min_data_in_leaf and learning-rate changes.
+  corrected_claim: The runtime compared feature groups, relevance bins and boosting rounds. XGBoost retained its fixed learning rate 0.05 and max_leaves 31; the legacy min_data_in_leaf and learning_rate fields were not consumed.
+  economic_result_status: unchanged
 known_limitations:
 - Static curated membership carries survivorship bias.
 - Provider snapshot drift changes historical candidate returns and remains under Issue #345.
 - Mean development Rank IC is only 0.0042 and two 2024 windows have negative Rank IC.
 - The model underperformed CSI 300 in 2025H2.
-- No alternative among eight bounded XGBoost variants justified replacement.
+- The historical candidate calibration schema contains LightGBM-oriented fields that were not consumed by XGBoost.
+- No alternative among eight bounded XGBoost identities justified replacement.
 next_version_gate:
   candidate_version: CN x1.1
   required_experiments:
@@ -170,4 +190,5 @@ next_version_gate:
   - bind immutable provider revision policy
   - sector, size, beta and volatility exposure decomposition
   - seed and block-bootstrap stability
+  - explicit XGBoost parameter mapping before any true regularization experiment
   - one new untouched challenge window after data governance passes
