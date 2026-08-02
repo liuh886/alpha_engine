@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "scripts/run_us_x1_1_drawdown_attribution_phase_a.py"
+      - "scripts/run_us_x1_1_drawdown_attribution_phase_a_canonical.py"
       - "tests/test_us_x1_1_drawdown_attribution_phase_a.py"
       - ".github/workflows/us-x1-1-drawdown-attribution-phase-a.yml"
       - "docs/research/us_x1_1_drawdown_attribution_phase_a_result_2026-08-02.md"
@@ -45,7 +46,7 @@ jobs:
           after="${{ github.event.after }}"
           changed="$(git diff --name-only "$before" "$after")"
           printf '%s\n' "$changed"
-          if printf '%s\n' "$changed" | grep -Eq '^(scripts/run_us_x1_1_drawdown_attribution_phase_a\.py|tests/test_us_x1_1_drawdown_attribution_phase_a\.py)$'; then
+          if printf '%s\n' "$changed" | grep -Eq '^(scripts/run_us_x1_1_drawdown_attribution_phase_a(_canonical)?\.py|tests/test_us_x1_1_drawdown_attribution_phase_a\.py)$'; then
             echo "evidence=true" >> "$GITHUB_OUTPUT"
           else
             echo "evidence=false" >> "$GITHUB_OUTPUT"
@@ -68,8 +69,11 @@ jobs:
         run: |
           uv run ruff check \
             scripts/run_us_x1_1_drawdown_attribution_phase_a.py \
+            scripts/run_us_x1_1_drawdown_attribution_phase_a_canonical.py \
             tests/test_us_x1_1_drawdown_attribution_phase_a.py
-          uv run mypy scripts/run_us_x1_1_drawdown_attribution_phase_a.py
+          uv run mypy \
+            scripts/run_us_x1_1_drawdown_attribution_phase_a.py \
+            scripts/run_us_x1_1_drawdown_attribution_phase_a_canonical.py
           uv run pytest \
             tests/test_us_x1_1_drawdown_attribution_phase_a.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
@@ -107,11 +111,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: liuh886/alpha_engine
           run-id: 30743067256
-      - name: Run Phase A attribution
+      - name: Align scores and run Phase A attribution
         run: >-
-          uv run python scripts/run_us_x1_1_drawdown_attribution_phase_a.py
+          uv run python scripts/run_us_x1_1_drawdown_attribution_phase_a_canonical.py
           --provider-uri artifacts/source/provider/provider_a/data/providers/us
-          --score-ledger artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1/ledgers/a/2025H1/scores.csv
+          --source-score-ledger artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1/ledgers/a/2025H1/scores.csv
           --reproduction-result artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1/deterministic_reproduction.json
           --output-dir artifacts/evidence/us_x1_1_drawdown_attribution_phase_a_v1
       - name: Verify governed attribution output
@@ -122,6 +126,8 @@ jobs:
           path = Path("artifacts/evidence/us_x1_1_drawdown_attribution_phase_a_v1/drawdown_attribution_phase_a.json")
           payload = json.loads(path.read_text(encoding="utf-8"))
           assert payload["provider_identity_sha256"] == "5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95"
+          assert payload["source_model_score_identity_sha256"] == "3e4390f38615118ab3ae0218e0d4df7855a82654b829584db47520685b7b0301"
+          assert payload["score_alignment"]["economic_rows"] <= payload["score_alignment"]["source_rows"]
           assert payload["baseline_reproduction_check"]["status"] == "exact_within_1e-6"
           assert payload["decision"]["decision"] in {
               "portfolio_control_path_supported",
@@ -133,6 +139,7 @@ jobs:
           assert payload["governance"]["sector_analysis"] == "deferred_pending_governed_map_issue_366"
           print(json.dumps({
               "decision": payload["decision"],
+              "score_alignment": payload["score_alignment"],
               "drawdown_path": payload["drawdown_path"],
               "top_negative_names": payload["contribution_attribution"]["top_negative_names"],
               "strategy_results": payload["strategy_results"],
