@@ -46,7 +46,13 @@ def tushare_indicator_to_events(
     field_map: Mapping[str, Mapping[str, str]],
     retrieved_at: str,
 ) -> list[FundamentalEvent]:
-    """Convert Tushare fina_indicator rows without using period end as availability."""
+    """Normalize Tushare observations for validation, not primary training.
+
+    Downstream model-data profiles must exclude source_provider values prefixed
+    with ``tushare_validation_`` from canonical fundamentals. They exist only to
+    compare field values and announcement timing against the public primary
+    path.
+    """
 
     events: list[FundamentalEvent] = []
     for raw in frame.to_dict(orient="records"):
@@ -78,7 +84,7 @@ def tushare_indicator_to_events(
                         "reported_at": reported_at,
                         "available_at": available_at,
                         "filing_type": "PERIODIC_REPORT",
-                        "source_provider": "tushare_fina_indicator",
+                        "source_provider": "tushare_validation_fina_indicator",
                         "source_document_id": (
                             f"{ts_code}:{announcement}:{period_end}:{source_field}"
                         ),
