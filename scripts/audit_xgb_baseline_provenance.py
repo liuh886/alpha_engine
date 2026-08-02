@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable, TypedDict
@@ -49,9 +50,17 @@ SKIP_DIRS = {
     "node_modules",
 }
 DECLARATION_PATHS = {
+    ".github/workflows/xgb-dual-market-improvement.yml",
     "configs/research_paradigms/xgb_dual_market_improvement_v1.yaml",
     "docs/research/xgb_dual_market_improvement_plan_2026-08-02.md",
+    "scripts/audit_xgb_baseline_provenance.py",
+    "tests/test_xgb_dual_market_improvement_contract.py",
 }
+HISTORY_SKIP_PREFIXES = (
+    ".playwright-cli/",
+    "data/",
+    "tests/",
+)
 MAX_TEXT_BYTES = 5_000_000
 
 
@@ -64,6 +73,7 @@ class Hit:
     line: int | None
     commit: str | None
     excerpt: str
+    classification: str
 
 
 def _run_git(repo_root: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -74,6 +84,29 @@ def _run_git(repo_root: Path, *args: str) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         text=True,
     )
+
+
+def _history_ref(repo_root: Path) -> str:
+    for candidate in ("origin/main", "main", "HEAD"):
+        result = _run_git(repo_root, "rev-parse", "--verify", candidate)
+        if result.returncode == 0:
+            return candidate
+    return "HEAD"
+
+
+def _classify_candidate(excerpt: str) -> str:
+    lowered = excerpt.lower()
+    if "icir" in lowered or "ic ir" in lowered:
+        return "metric_mismatch_icir"
+    if "relative excess" in lowered or "compounded_relative_excess" in lowered:
+        return "economic_metric_candidate"
+    if "复合超额" in excerpt:
+        return "economic_metric_candidate"
+    if "超额收益" in excerpt:
+        return "ambiguous_excess_context"
+    if "qqq" in lowered or "csi300" in lowered or "csi 300" in lowered:
+        return "benchmark_context_candidate"
+    return "numeric_collision"
 
 
 def _iter_text_files(repo_root: Path) -> Iterable[Path]:
@@ -105,6 +138,7 @@ def scan_worktree(repo_root: Path) -> list[Hit]:
             for market, baseline in BASELINES.items():
                 for token in baseline["tokens"]:
                     if token in line:
+                        excerpt = line.strip()[:500]
                         hits.append(
                             Hit(
                                 market=market,
@@ -113,7 +147,8 @@ def scan_worktree(repo_root: Path) -> list[Hit]:
                                 path=relative,
                                 line=line_number,
                                 commit=None,
-                                excerpt=line.strip()[:500],
+                                excerpt=excerpt,
+                                classification=_classify_candidate(excerpt),
                             )
                         )
     return hits
@@ -123,7 +158,7 @@ def _candidate_commits(repo_root: Path, token: str) -> list[str]:
     result = _run_git(
         repo_root,
         "log",
-        "--all",
+        _history_ref(repo_root),
         f"-S{token}",
         "--format=%H",
         "--no-merges",
@@ -133,9 +168,13 @@ def _candidate_commits(repo_root: Path, token: str) -> list[str]:
     return list(dict.fromkeys(line.strip() for line in result.stdout.splitlines() if line.strip()))
 
 
+def _skip_history_path(path: str) -> bool:
+    return path in DECLARATION_PATHS or path.startswith(HISTORY_SKIP_PREFIXES)
+
+
 def scan_history(repo_root: Path) -> list[Hit]:
     hits: list[Hit] = []
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str, str, str]] = set()
     for market, baseline in BASELINES.items():
         for token in baseline["tokens"]:
             for commit in _candidate_commits(repo_root, token):
@@ -147,12 +186,13 @@ def scan_history(repo_root: Path) -> list[Hit]:
                     if line.startswith("+++ b/"):
                         current_path = line[6:]
                         continue
-                    if token not in line or current_path in DECLARATION_PATHS:
+                    if token not in line or _skip_history_path(current_path):
                         continue
-                    key = (market, token, commit)
+                    key = (market, token, commit, current_path)
                     if key in seen:
                         continue
                     seen.add(key)
+                    excerpt = line.strip()[:500]
                     hits.append(
                         Hit(
                             market=market,
@@ -161,7 +201,8 @@ def scan_history(repo_root: Path) -> list[Hit]:
                             path=current_path or "<unknown>",
                             line=None,
                             commit=commit,
-                            excerpt=line.strip()[:500],
+                            excerpt=excerpt,
+                            classification=_classify_candidate(excerpt),
                         )
                     )
     return hits
@@ -172,23 +213,33 @@ def build_report(repo_root: Path) -> dict[str, object]:
 
     markets: dict[str, object] = {}
     for market, baseline in BASELINES.items():
-        market_hits = [asdict(hit) for hit in all_hits if hit.market == market]
+        selected = [hit for hit in all_hits if hit.market == market]
+        classifications = Counter(hit.classification for hit in selected)
+        meaningful = [
+            hit
+            for hit in selected
+            if hit.classification not in {"numeric_collision", "metric_mismatch_icir"}
+        ]
         markets[market] = {
             "reported_value": baseline["reported_value"],
             "benchmark": baseline["benchmark"],
-            "status": "provenance_candidates_found" if market_hits else "provenance_unresolved",
-            "candidate_count": len(market_hits),
-            "candidates": market_hits,
+            "status": "meaningful_candidates_found" if meaningful else "provenance_unresolved",
+            "candidate_count": len(selected),
+            "meaningful_candidate_count": len(meaningful),
+            "classification_counts": dict(sorted(classifications.items())),
+            "candidates": [asdict(hit) for hit in selected],
         }
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "status": "baseline_provenance_audit_completed",
+        "history_ref": _history_ref(repo_root),
         "repo_root": str(repo_root),
         "markets": markets,
         "interpretation": (
             "A token match is only a provenance candidate. Baseline verification requires "
-            "an experiment manifest, provider identity, exact configuration and economic outputs."
+            "an experiment manifest, provider identity, exact configuration and economic outputs. "
+            "ICIR and raw market-data numeric collisions are not excess-return evidence."
         ),
     }
 
