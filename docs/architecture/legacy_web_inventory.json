@@ -89,7 +89,13 @@
         "tests/test_api_*.py",
         "tests/*_api_*.py",
         "tests/test_system_router_*.py",
-        "tests/test_research_api_adapter.py"
+        "tests/test_research_api_adapter.py",
+        "tests/test_factor_analysis.py",
+        "tests/test_full_flow_smoke.py",
+        "tests/test_model_promotion_audit.py",
+        "tests/test_update_accounting.py",
+        "tests/test_walk_forward.py",
+        "tests/test_workflow_status_audit.py"
       ],
       "phase": 2,
       "disposition": "replace_with_service_cli_or_artifact_contract_tests"
