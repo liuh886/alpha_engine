@@ -26,6 +26,7 @@ import {
 } from '@/lib/v42-workflow-health';
 
 const ASSETS: V42Asset[] = ['QQQI', 'QQQ', 'TQQQ'];
+const HORIZON_COUNT = 7;
 
 const STATUS_LABELS: Record<string, string> = {
   awaiting_next_open: 'Awaiting next open',
@@ -96,24 +97,14 @@ function AllocationPanel({ title, subtitle, weights }: {
   );
 }
 
-function HorizonCell({ outcome }: { outcome?: V42HorizonOutcome }) {
-  if (!outcome) return <span className="text-muted-foreground">Pending</span>;
-  return (
-    <div className="space-y-1 font-mono text-xs">
-      <div>QQQ {formatPercent(outcome.qqq_return, 2)}</div>
-      <div>TQQQ {formatPercent(outcome.tqqq_return, 2)}</div>
-    </div>
-  );
-}
-
 function WorkflowHealthCard({ entry }: { entry: V42WorkflowHealthEntry }) {
   const health = workflowHealthLabel(entry);
   return (
     <div className="rounded-xl border bg-muted/15 p-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="font-semibold">{entry.label}</p>
-          <p className="mt-1 font-mono text-[10px] text-muted-foreground">{entry.workflowFile}</p>
+          <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">{entry.workflowFile}</p>
         </div>
         <Badge variant="outline" className={WORKFLOW_TONE_CLASS[health.tone]}>{health.label}</Badge>
       </div>
@@ -133,6 +124,16 @@ function WorkflowHealthCard({ entry }: { entry: V42WorkflowHealthEntry }) {
       ) : (
         <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{entry.error || 'No workflow run is available.'}</p>
       )}
+    </div>
+  );
+}
+
+function HorizonCell({ outcome }: { outcome?: V42HorizonOutcome }) {
+  if (!outcome) return <span className="text-muted-foreground">Pending</span>;
+  return (
+    <div className="space-y-1 font-mono text-xs">
+      <div>QQQ {formatPercent(outcome.qqq_return, 2)}</div>
+      <div>TQQQ {formatPercent(outcome.tqqq_return, 2)}</div>
     </div>
   );
 }
@@ -169,7 +170,6 @@ export function StrategyOperationsPage() {
   const event = snapshot?.latestStateChange ?? null;
   const record = event?.record ?? null;
   const observation = snapshot?.observation ?? null;
-  const features = record?.signal_close_features ?? {};
   const completed = useMemo(
     () => new Set(observation?.completed_horizons ?? []),
     [observation?.completed_horizons],
@@ -185,7 +185,7 @@ export function StrategyOperationsPage() {
     );
   }
 
-  if (error || !record || !event) {
+  if (error || !snapshot || !record || !event) {
     return (
       <div className="research-empty-state">
         <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
@@ -201,8 +201,9 @@ export function StrategyOperationsPage() {
   }
 
   const status = observation?.status || record.status;
-  const statusLabel = STATUS_LABELS[status] || status.replaceAll('_', ' ');
+  const statusLabel = STATUS_LABELS[status] || status.replace(/_/g, ' ');
   const execution = observation?.execution;
+  const features = record.signal_close_features;
   const monthly = snapshot.latestMonthlySummary?.summary;
 
   return (
@@ -237,39 +238,31 @@ export function StrategyOperationsPage() {
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Signal close</p>
-            <div className="mt-2 font-mono text-xl font-bold">{record.signal_date}</div>
-            <p className="mt-1 text-xs text-muted-foreground">Latest governed data: {observation?.as_of_data_date || record.latest_data_date_at_creation}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">State transition</p>
-            <div className="mt-2 text-xl font-bold">
-              {STATE_LABELS[record.current_state] || record.current_state} → {STATE_LABELS[record.target_state] || record.target_state}
-            </div>
-            <p className="mt-1 font-mono text-xs text-muted-foreground">{record.transition_type || 'transition not declared'}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Execution evidence</p>
-            <div className="mt-2 flex items-center gap-2 text-xl font-bold">
-              {execution?.execution_date ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Clock3 className="h-5 w-5 text-amber-500" />}
-              {execution?.execution_date ? execution.execution_date : 'Not observed'}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">The ledger records theoretical next-open evidence, not brokerage execution.</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Evidence progress</p>
-            <div className="mt-2 font-mono text-xl font-bold">{observation?.available_sessions ?? 0} sessions</div>
-            <p className="mt-1 text-xs text-muted-foreground">{completed.size}/7 declared outcome horizons complete.</p>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Signal close</p>
+          <div className="mt-2 font-mono text-xl font-bold">{record.signal_date}</div>
+          <p className="mt-1 text-xs text-muted-foreground">Latest governed data: {observation?.as_of_data_date || record.latest_data_date_at_creation}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">State transition</p>
+          <div className="mt-2 text-xl font-bold">
+            {STATE_LABELS[record.current_state] || record.current_state} → {STATE_LABELS[record.target_state] || record.target_state}
+          </div>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">{record.transition_type || 'transition not declared'}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Execution evidence</p>
+          <div className="mt-2 flex items-center gap-2 text-xl font-bold">
+            {execution?.execution_date ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Clock3 className="h-5 w-5 text-amber-500" />}
+            {execution?.execution_date || 'Not observed'}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Theoretical next-open evidence, not a brokerage fill.</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Evidence progress</p>
+          <div className="mt-2 font-mono text-xl font-bold">{observation?.available_sessions ?? 0} sessions</div>
+          <p className="mt-1 text-xs text-muted-foreground">{completed.size}/{HORIZON_COUNT} declared outcome horizons complete.</p>
+        </CardContent></Card>
       </section>
 
       <Card>
@@ -287,7 +280,7 @@ export function StrategyOperationsPage() {
       <section className="grid gap-4 lg:grid-cols-2">
         <AllocationPanel
           title="Last executed allocation at signal close"
-          subtitle="Immutable signal-time record. It may differ from a later brokerage position or a theoretical next-open transition."
+          subtitle="Immutable signal-time record. It may differ from a later brokerage position or theoretical next-open transition."
           weights={record.current_weights}
         />
         <AllocationPanel
@@ -331,21 +324,10 @@ export function StrategyOperationsPage() {
             <CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-4 w-4 text-primary" /> Operating boundary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-            <div className="flex gap-3">
-              <Database className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <p>Source: public GitHub Issue machine markers created by the scheduled v4.2 evidence workflow.</p>
-            </div>
-            <div className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <p>Fresh governed data at signal creation: <strong className="text-foreground">{record.data_freshness_ok ? 'passed' : 'failed'}</strong>.</p>
-            </div>
-            <div className="flex gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-              <p>25% and 50% TQQQ precursor allocations remain research comparators. They are not promoted targets.</p>
-            </div>
-            <p className="border-t pt-4 font-mono text-[10px]">
-              event {record.event_id} · fingerprint {record.fingerprint || 'not declared'}
-            </p>
+            <div className="flex gap-3"><Database className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p>Source: public GitHub Issue machine markers created by the scheduled v4.2 evidence workflow.</p></div>
+            <div className="flex gap-3"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p>Fresh governed data at signal creation: <strong className="text-foreground">{record.data_freshness_ok ? 'passed' : 'failed'}</strong>.</p></div>
+            <div className="flex gap-3"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /><p>25% and 50% TQQQ precursor allocations remain research comparators. They are not promoted targets.</p></div>
+            <p className="border-t pt-4 font-mono text-[10px]">event {record.event_id} · fingerprint {record.fingerprint || 'not declared'}</p>
           </CardContent>
         </Card>
       </section>
@@ -357,26 +339,16 @@ export function StrategyOperationsPage() {
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="px-3 py-3">Horizon</th>
-                <th className="px-3 py-3">Status</th>
-                <th className="px-3 py-3">Observed return</th>
-                <th className="px-3 py-3">Directional component</th>
-                <th className="px-3 py-3">Tracking / compounding</th>
-              </tr>
-            </thead>
+            <thead><tr className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
+              <th className="px-3 py-3">Horizon</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Observed return</th><th className="px-3 py-3">Directional component</th><th className="px-3 py-3">Tracking / compounding</th>
+            </tr></thead>
             <tbody>
               {record.outcome_horizons_sessions.map((horizon) => {
                 const outcome = observation?.outcomes?.[String(horizon)];
                 return (
                   <tr key={horizon} className="border-b last:border-0">
                     <td className="px-3 py-4 font-mono font-semibold">{horizon} sessions</td>
-                    <td className="px-3 py-4">
-                      <Badge variant={completed.has(horizon) ? 'secondary' : 'outline'}>
-                        {completed.has(horizon) ? 'Complete' : 'Pending'}
-                      </Badge>
-                    </td>
+                    <td className="px-3 py-4"><Badge variant={completed.has(horizon) ? 'secondary' : 'outline'}>{completed.has(horizon) ? 'Complete' : 'Pending'}</Badge></td>
                     <td className="px-3 py-4"><HorizonCell outcome={outcome} /></td>
                     <td className="px-3 py-4 font-mono text-xs">{formatPercent(outcome?.directional_leverage_component, 2)}</td>
                     <td className="px-3 py-4 font-mono text-xs">{formatPercent(outcome?.tracking_compounding_component, 2)}</td>
@@ -390,9 +362,7 @@ export function StrategyOperationsPage() {
 
       {monthly && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Monthly evidence accumulation · {monthly.month}</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-base">Monthly evidence accumulation · {monthly.month}</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div><p className="text-xs text-muted-foreground">New events</p><p className="mt-1 font-mono text-2xl font-bold">{monthly.event_count}</p></div>
             <div><p className="text-xs text-muted-foreground">State changes</p><p className="mt-1 font-mono text-2xl font-bold">{monthly.state_change_event_count}</p></div>
