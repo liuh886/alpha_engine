@@ -183,6 +183,18 @@ def _precursor_episode_rows(
 ) -> pd.DataFrame:
     """Measure each contiguous precursor episode against the static blend."""
 
+    if "precursor_active" not in candidate.daily:
+        return pd.DataFrame(
+            columns=[
+                "event_id",
+                "start_date",
+                "end_date",
+                "sessions",
+                "event_log_relative",
+                "event_relative_return",
+                *[f"relative_return_{horizon}d" for horizon in horizons],
+            ]
+        )
     active = candidate.daily["precursor_active"].astype(bool)
     starts = active & ~active.shift(1, fill_value=False)
     rows: list[dict[str, Any]] = []
@@ -417,7 +429,15 @@ def run_sgov_recovery_release_comparison(
             attribution_contract,
         )
         episodes[variant] = episode_table
-        events = _precursor_episode_rows(results[variant], static_blended, horizons)
+        uses_precursor = bool(
+            variant != "static_blended"
+            and release_contract["variants"][variant]["use_tqqq_precursor"]
+        )
+        events = (
+            _precursor_episode_rows(results[variant], static_blended, horizons)
+            if uses_precursor
+            else pd.DataFrame()
+        )
         precursor_events[variant] = events
         if variant != "static_blended":
             gates[variant] = _candidate_gate(
@@ -428,9 +448,7 @@ def run_sgov_recovery_release_comparison(
                 chronological,
                 events,
                 release_contract,
-                uses_precursor=bool(
-                    release_contract["variants"][variant]["use_tqqq_precursor"]
-                ),
+                uses_precursor=uses_precursor,
             )
 
     diagnostics = {
