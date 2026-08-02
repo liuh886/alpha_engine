@@ -3,21 +3,26 @@ name: Deploy Research Artifact Studio to Pages
 on:
   push:
     branches: ["main"]
-  pull_request:
-    branches: ["main"]
     paths:
-      - '.github/pages-bootstrap'
+      - "qlib-dashboard/**"
+      - "scripts/export_static_site_data.py"
+      - "scripts/export_research_bundle.py"
+      - "src/artifacts/research_bundle.py"
+      - "docs/methodology.md"
+      - "docs/contracts/alpha-engine-bundle.schema.json"
+      - "scripts/check_legacy_web_boundary.py"
+      - "docs/architecture/legacy_web_inventory.json"
+      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
-  issues: write
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-and-deploy:
@@ -26,10 +31,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout main
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Verify zero-server product boundary
         run: python scripts/check_legacy_web_boundary.py
@@ -57,7 +60,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install locked Python environment
         run: |
@@ -98,8 +101,6 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
@@ -109,20 +110,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Report deployment success
-        if: success()
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: |
-          SOURCE_SHA=$(git rev-parse HEAD)
-          gh issue comment 349 --body "Pages deployment succeeded for commit \`${SOURCE_SHA}\`. Published URL: ${PAGE_URL}"
-
-      - name: Report deployment failure
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          SOURCE_SHA=$(git rev-parse HEAD 2>/dev/null || echo unknown)
-          gh issue comment 349 --body "Pages deployment failed for commit \`${SOURCE_SHA}\`. Review the workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
