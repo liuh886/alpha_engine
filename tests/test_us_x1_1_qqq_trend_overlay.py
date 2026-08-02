@@ -6,6 +6,7 @@ from scripts.run_us_x1_1_qqq_trend_overlay import (
     WINDOWS,
     _aggregate,
     _candidate_gate,
+    _compare_selection_identity,
     _decision,
     _selection_ledger,
     _state_evidence,
@@ -29,6 +30,21 @@ def test_selection_ledger_uses_daily_fixed_top15() -> None:
     assert ledger["datetime"].nunique() == 11
     assert ledger.groupby("datetime")["target_weight"].sum().round(12).eq(1.0).all()
     assert ledger.groupby("datetime")["rank"].max().eq(15).all()
+
+
+def test_selection_identity_accepts_csv_weight_roundtrip() -> None:
+    observed = pd.DataFrame(
+        {
+            "datetime": pd.to_datetime(["2024-01-02"]),
+            "instrument": ["AAA"],
+            "score": [0.25],
+            "rank": [1],
+            "target_weight": [1.0 / 15.0],
+        }
+    )
+    expected = observed.copy()
+    expected["target_weight"] = 0.0666666666666666
+    _compare_selection_identity(observed, expected)
 
 
 def test_state_evidence_counts_reduced_risk_and_rebound_upside() -> None:
