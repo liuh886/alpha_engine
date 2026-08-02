@@ -5,6 +5,10 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
+from src.artifacts.repository_run_store import (
+    RepositoryRunStoreError,
+    import_local_run,
+)
 from src.data.data_recipe import (
     DataRecipeError,
     data_recipe_status,
@@ -76,6 +80,22 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--cutoff", default=None)
     run.add_argument("--refresh", action="store_true")
     run.add_argument("--source-etf-bundle", type=Path, default=None)
+
+    import_run = research_commands.add_parser(
+        "import-run",
+        help="Validate a local training/backtest run and copy it into data/research/runs.",
+    )
+    import_run.add_argument("source", type=Path)
+    import_run.add_argument(
+        "--publish",
+        action="store_true",
+        help="Add the imported run to data/research/catalog.json for bundle publication.",
+    )
+    import_run.add_argument(
+        "--set-primary",
+        action="store_true",
+        help="Attach the run as the published model's primary frontend backtest.",
+    )
     return parser
 
 
@@ -108,10 +128,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                 refresh=args.refresh,
                 source_etf_bundle=args.source_etf_bundle,
             )
+        elif args.group == "research" and args.research_command == "import-run":
+            payload = import_local_run(
+                args.source,
+                root=root,
+                publish=args.publish,
+                set_primary=args.set_primary,
+            )
         else:
             parser.error("unsupported command")
             return 2
-    except DataRecipeError as exc:
+    except (DataRecipeError, RepositoryRunStoreError) as exc:
         _render(
             {
                 "status": "blocked",
