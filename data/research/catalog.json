@@ -6,6 +6,10 @@
   "trade_ready": false,
   "published_models": [
     {
+      "model_id": "us_x1_1",
+      "source": "configs/models/us_x1_1.yaml"
+    },
+    {
       "model_id": "us_x1_0",
       "source": "configs/models/us_x1_0.yaml"
     },
@@ -17,6 +21,7 @@
   "published_runs": [],
   "notes": [
     "This catalog is the allow-list for evidence published to the Research Artifact Studio.",
+    "US x1.1 is the active US research baseline; US x1.0 remains immutable historical evidence.",
     "Candidate and evidence-revision files are not published unless explicitly added here.",
     "Large run artifacts must be hash-bound from data/research/runs or Git LFS before publication."
   ]
