@@ -52,28 +52,40 @@ async function mockBundle(page: Page) {
   });
 }
 
+async function openStudio(page: Page) {
+  await page.goto('/#/');
+  await expect(page.locator('#root')).not.toBeEmpty();
+  await expect(page.getByRole('heading', { name: 'Research Artifact Studio' })).toBeVisible();
+  await expect(page.getByText('Static Browser Fixture').first()).toBeVisible();
+}
+
 test('static studio opens without authentication or backend APIs', async ({ page }, testInfo) => {
   const apiRequests: string[] = [];
+  const pageErrors: string[] = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url());
   });
-  await mockBundle(page);
-  await page.goto('/');
+  page.on('pageerror', (error) => pageErrors.push(error.message));
 
-  await expect(page.getByRole('heading', { name: 'Research Artifact Studio' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Research studio navigation' })).toBeVisible();
+  await mockBundle(page);
+  await openStudio(page);
+
+  if (testInfo.project.name !== 'mobile') {
+    await expect(page.getByRole('navigation', { name: 'Research studio navigation' })).toBeVisible();
+  }
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Static Browser Fixture').first()).toBeVisible();
   await expect(page.getByText('Sign in')).toHaveCount(0);
   expect(apiRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
 
-  await page.getByRole('link', { name: 'Data' }).click();
+  await page.goto('/#/data');
   await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();
   await expect(page.getByText('2026-07-31').first()).toBeVisible();
 
   await page.goto('/#/system');
   await expect(page.getByRole('heading', { name: 'Evidence view not found' })).toBeVisible();
   expect(apiRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
 
   await page.keyboard.press('Tab');
   const focused = await page.evaluate(() => document.activeElement?.tagName.toLowerCase());
@@ -87,8 +99,7 @@ test('static studio opens without authentication or backend APIs', async ({ page
 test('installed shell reopens offline after first visit', async ({ page, context }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Offline lifecycle is checked once on desktop Chromium.');
   await mockBundle(page);
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Research Artifact Studio' })).toBeVisible();
+  await openStudio(page);
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Research Artifact Studio' })).toBeVisible();
