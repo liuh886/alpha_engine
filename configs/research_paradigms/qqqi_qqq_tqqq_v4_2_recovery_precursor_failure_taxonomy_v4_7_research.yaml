@@ -1,0 +1,81 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_recovery_precursor_failure_taxonomy_v4_7_research
+parent_experiment_id: qqqi_qqq_tqqq_v4_2_qqq_proxy_long_history_v4_6_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Explain the 15 frozen QQQ-proxy recovery-precursor events using only
+  information observable at the signal close or next-session open. Separate
+  successful and failed 50%-versus-25% TQQQ episodes without fitting a
+  classifier, changing thresholds, or authorizing a trading rule.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  sgov_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml
+  attribution_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_episode_attribution.yaml
+  prior_release_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_recovery_release_v4_4_research.yaml
+  bold_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_precursor_50_v4_5_research.yaml
+  proxy_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_qqq_proxy_long_history_v4_6_research.yaml
+  signal_trace_frozen: true
+  precursor_dates_frozen: true
+  weights_frozen: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  no_classifier: true
+  no_threshold_search: true
+  no_weight_search: true
+  no_production_change: true
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  required_symbols: [QQQI, QQQ, TQQQ, SGOV, ^VIX, ^VXN]
+  qqqi_proxy_method: exact_adjusted_bar_alias_from_qqq
+
+analysis:
+  event_horizons: [1, 5, 10, 20, 40]
+  excursion_horizon: 40
+  transition_horizon: 40
+  pre_execution_numeric_features:
+    - shock_memory_age_sessions
+    - shock_memory_remaining_sessions
+    - qqq_distance_ma_short
+    - qqq_distance_ma_medium
+    - qqq_distance_ma_long
+    - qqq_drawdown_at_signal
+    - qqq_return_63d_at_signal
+    - vix_close
+    - vix_normalization_margin
+    - vix_stress_margin
+    - vix_return_1d
+    - vix_return_5d
+    - vix_retreat_from_peak
+    - vxn_close
+    - vxn_normalization_margin
+    - vxn_stress_margin
+    - vxn_return_1d
+    - vxn_return_5d
+    - vxn_retreat_from_peak
+    - state_1_decision_age_sessions
+    - position_state_at_signal_close
+    - qqq_open_gap_at_execution
+    - tqqq_open_gap_at_execution
+
+validation:
+  minimum_event_count: 12
+  minimum_failed_event_count: 6
+  minimum_stable_feature_count: 2
+  minimum_loo_direction_stability: 0.80
+  minimum_pairwise_distance_from_half: 0.15
+  maximum_candidate_monitor_features: 5
+  require_late_segment_success_and_failure_for_new_rule: true
+
+decision_discipline:
+  - Stable descriptive separation may authorize prospective feature recording only.
+  - A new rule requires successes and failures in both chronological segments.
+  - Post-2024 all-success evidence cannot validate a separator by itself.
+  - Calendar period is never an admissible trading feature.
+  - No threshold is chosen from the 15 events.
+  - No classifier or score is fitted.
+  - Telegram targets and the v4.2 production alert remain unchanged.
