@@ -1,0 +1,33 @@
+{
+  "checks": {
+    "artifact_upload": "success",
+    "governed_etf_bundle": "success",
+    "lint_and_tests": "success",
+    "notebook_19_execution": "success",
+    "notebook_20_execution": "success",
+    "risk_confirmation_ablation": "success",
+    "state_2_tail_experiment": "success"
+  },
+  "decision": {
+    "bridge_entry_confirmation": "rejected",
+    "combined_risk_increase_confirmation": "rejected",
+    "continuous_state2_volatility_budget": "rejected",
+    "direct_promotion_authorized": false,
+    "leverage_entry_confirmation": "not_promoted",
+    "v4_2_baseline": "retained"
+  },
+  "pull_request": 339,
+  "repository": "liuh886/alpha_engine",
+  "schema_version": "1.0",
+  "validated_head_sha": "04cafba53cd2699ddb40221371158fe13d52cab1",
+  "validated_on": "2026-08-02",
+  "workflow": {
+    "artifact_digest": "sha256:11f7803e47b13d6700a73303b61915f814efaaa97cc4240fabde7288e5cb25e0",
+    "artifact_id": 8828582862,
+    "artifact_name": "qqqi-v4-2-state2-tail-30733002466",
+    "conclusion": "success",
+    "expires_on": "2026-10-31",
+    "name": "QQQI v4.2 State-2 Tail Experiment",
+    "run_id": 30733002466
+  }
+}
