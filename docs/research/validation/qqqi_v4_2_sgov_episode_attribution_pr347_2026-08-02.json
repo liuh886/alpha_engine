@@ -1,9 +1,10 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "repository": "liuh886/alpha_engine",
   "pull_request": 347,
   "validated_on": "2026-08-02",
-  "validated_head_sha": "abdb9e0640204c0b90121681fec429a74b710245",
+  "validated_content_head_sha": "e0bab3513dff5f809e8b8549f8e67623eb9ff7a8",
+  "receipt_commit_excluded_from_evidence_calculation": true,
   "checks": {
     "lint": "success",
     "focused_tests": "success",
@@ -11,21 +12,44 @@
     "sgov_episode_attribution": "success",
     "trough_alignment_correction": "success",
     "notebook_21_execution": "success",
-    "artifact_upload": "success"
+    "artifact_upload": "success",
+    "alpha_engine_ci": "success",
+    "decision_evidence_contract_ci": "success",
+    "qqqi_vxn_research_bundle": "success"
   },
   "decision": {
     "v4_2_baseline": "retained",
     "blended_sgov_profile": "retain_descriptive_drawdown_profile_only",
     "separate_prospective_monitor": "not_authorized",
-    "additional_sgov_weight_search": "not_authorized"
+    "additional_sgov_weight_search": "not_authorized",
+    "next_stage_issue": 348
   },
-  "workflow": {
-    "name": "QQQI v4.2 SGOV Episode Attribution",
+  "canonical_research_evidence": {
+    "workflow_name": "QQQI v4.2 SGOV Episode Attribution",
     "run_id": 30734414386,
     "conclusion": "success",
     "artifact_id": 8829046855,
     "artifact_name": "qqqi-v4-2-sgov-episode-attribution-30734414386",
     "artifact_digest": "sha256:da1d5f7c4b4b36ec21fbeecd6185030b2c7f5be95f8eb15eac21a2854257d55f",
     "expires_on": "2026-10-31"
+  },
+  "final_content_revalidation": {
+    "workflow_name": "QQQI v4.2 SGOV Episode Attribution",
+    "run_id": 30734595782,
+    "attempt": 2,
+    "conclusion": "success",
+    "artifact_id": 8829125236,
+    "artifact_name": "qqqi-v4-2-sgov-episode-attribution-30734595782",
+    "artifact_digest": "sha256:feb432f415bec0f13b1c5e2a65f320b1b5254af3f9cd6ccafa585c9ed58a73fa",
+    "expires_on": "2026-10-31"
+  },
+  "external_data_retry_record": {
+    "initial_attempt_conclusion": "failure",
+    "failure_stage": "build_governed_etf_bundle",
+    "cause": "temporary Yahoo Finance QQQ rate limit followed by a non-finite incomplete manifest value",
+    "research_code_and_tests_before_failure": "success",
+    "evidence_decision_from_failed_attempt": "none",
+    "retry_policy": "rerun failed workflow jobs without changing research code or contract",
+    "retry_conclusion": "success"
   }
 }
