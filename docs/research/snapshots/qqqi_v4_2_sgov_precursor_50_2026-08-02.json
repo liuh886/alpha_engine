@@ -1,0 +1,112 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "qqqi_qqq_tqqq_v4_2_sgov_precursor_50_v4_5_research",
+  "evidence_date": "2026-08-02",
+  "research_only": true,
+  "trade_ready": false,
+  "sample": {
+    "start": "2024-01-30",
+    "end": "2026-07-30",
+    "observations": 627
+  },
+  "candidate": {
+    "name": "tqqq_precursor_50",
+    "allocation": {
+      "QQQI": 0.0,
+      "SGOV": 0.0,
+      "QQQ": 0.5,
+      "TQQQ": 0.5
+    },
+    "formal_state_2_unchanged": true,
+    "same_precursor_dates_as_25_percent": true
+  },
+  "headline": {
+    "current_v4_2": {
+      "cagr": 0.330556,
+      "sharpe": 1.243783,
+      "max_drawdown": -0.242245,
+      "calmar": 1.36455
+    },
+    "tqqq_precursor_25": {
+      "cagr": 0.311978,
+      "sharpe": 1.472082,
+      "max_drawdown": -0.173533,
+      "calmar": 1.797805
+    },
+    "tqqq_precursor_50": {
+      "cagr": 0.324653,
+      "annual_volatility": 0.198494,
+      "sharpe": 1.516918,
+      "sortino": 2.209449,
+      "max_drawdown": -0.168858,
+      "calmar": 1.922647,
+      "turnover_units": 55.0,
+      "precursor_sessions": 6
+    }
+  },
+  "marginal_vs_25": {
+    "cagr_delta_pp": 1.2675767191728138,
+    "sharpe_delta": 0.044836335557358664,
+    "early_cagr_delta_pp": 1.567249508098234,
+    "late_cagr_delta_pp": 0.7248081713609578,
+    "maximum_drawdown_worsening_pp": 0.0,
+    "expected_shortfall_95_worsening_pp": 0.0,
+    "worst_5d_worsening_pp": 0.0,
+    "worst_20d_worsening_pp": 0.0
+  },
+  "events": {
+    "count": 3,
+    "sessions": 6,
+    "marginal_positive_rate_vs_25": 1.0,
+    "largest_marginal_benefit_share": 0.5949576465961783,
+    "rows": [
+      {
+        "start": "2024-08-16",
+        "end": "2024-08-21",
+        "sessions": 4,
+        "marginal_return_vs_25": 0.013421
+      },
+      {
+        "start": "2024-11-07",
+        "end": "2024-11-07",
+        "sessions": 1,
+        "marginal_return_vs_25": 0.004641
+      },
+      {
+        "start": "2026-04-09",
+        "end": "2026-04-09",
+        "sessions": 1,
+        "marginal_return_vs_25": 0.004456
+      }
+    ]
+  },
+  "major_drawdowns": {
+    "improvement_rate_vs_v4_2": 1.0,
+    "median_trough_protection_pp": 4.641341522212217,
+    "median_resolved_recovery_lag_sessions": -1.0,
+    "unresolved_episode_count": 1,
+    "longest_resolved_lag_sessions": 125
+  },
+  "tail_risk": {
+    "expected_shortfall_95": -0.03051337925598093,
+    "worst_5d_return": -0.11371386216760926,
+    "worst_20d_return": -0.12045991370642128,
+    "maximum_underwater_run_sessions": 194,
+    "ulcer_index": 0.06403742168748555
+  },
+  "gate": {
+    "shadow_monitor_authorized": false,
+    "failed_checks": [
+      "minimum_precursor_event_count",
+      "unresolved_major_episodes"
+    ]
+  },
+  "decision": "preferred_deferred_shadow_hypothesis",
+  "production_alert_change_authorized": false,
+  "direct_promotion_authorized": false,
+  "evidence": {
+    "workflow_run": 30737397224,
+    "artifact_id": 8830077965,
+    "artifact_digest": "sha256:8885741183b30177e70f380e0a6286c0b33d0aa375c279356592be5c0fca26c6"
+  }
+}
