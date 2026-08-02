@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "validation_id": "qqqi_v4_2_pr327_2026-08-02",
+  "pull_request": 327,
+  "current_research_baseline": "qqqi_qqq_tqqq_vxn_bridge_v4_2",
+  "historical_signal_comparator": "qqqi_qqq_tqqq_vxn_leverage_v4_1",
+  "research_only": true,
+  "trade_ready": false,
+  "cost_bps_per_turnover_unit": 10.0,
+  "validated_workflows": {
+    "experiment_suite": {
+      "run_id": 30730596122,
+      "artifact_id": 8827843430,
+      "artifact_sha256": "7a5feaa66b4d830969b5d1ffa3aef21ca1b98f6157be3af7062b40304c6c79e4",
+      "conclusion": "success",
+      "economic_sample_start": "2024-01-30",
+      "economic_sample_end": "2026-07-30",
+      "observations": 627,
+      "discarded_truncated_run": 30730468938
+    },
+    "signal_alert": {
+      "run_id": 30730596133,
+      "artifact_id": 8827841085,
+      "artifact_sha256": "2fec875e52d655dad94640f3a4fa8b622c1c3e8eb0f71ef4bcdc904fb4506d1a",
+      "conclusion": "success",
+      "deduplication_fingerprint": "7bd5f606e67436360da1"
+    }
+  },
+  "decisions": {
+    "v4_2": "current_research_baseline",
+    "pure_sgov_defense": "reject_as_primary_architecture",
+    "qqqi_sgov_blended_defense": "retain_as_drawdown_focused_challenger"
+  },
+  "notebooks": {
+    "rolling_baseline_review": "notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb",
+    "executed_experiment_suite": "notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb"
+  },
+  "data_caveat": "SGOV currently uses a direct adjusted daily research reference rather than the independently reconciled three-ETF governed bundle; any prospective promotion requires its data path to be governed and frozen.",
+  "final_full_repository_ci": "pending_on_this_receipt_commit"
+}
