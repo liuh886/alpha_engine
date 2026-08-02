@@ -1,8 +1,12 @@
 # US x1.1 growth log
 
-This log is the durable experiment ledger for the active US research baseline. It records successful, failed and null experiments. It does not imply trade readiness.
+**Ledger status:** current through Experiment 008 on 2026-08-02.
 
-## Baseline
+This is the durable experiment ledger for the active US research baseline. It
+records positive, negative, null and blocked results. It does not imply trade
+readiness.
+
+## Current baseline
 
 | Field | Value |
 |---|---|
@@ -16,148 +20,235 @@ This log is the durable experiment ledger for the active US research baseline. I
 | Portfolio | Top-15 equal weight |
 | Base cost | 20 bps |
 | Effective XGBoost runtime | gain7, 200 rounds, max leaves 31, learning rate 0.05, seed 42 |
-| Canonical provider identity | `2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95` |
+| Canonical provider | `2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95` |
 | Canonical workflow / artifact | `30737322468` / `8830089966` |
-| Development relative excess vs QQQ | +110.44% |
-| Worst development drawdown | -27.15% |
+| Development relative excess | +110.44% |
+| Worst canonical development drawdown | -27.15% |
 | Consumed reporting window | 2026H1 |
 
-US x1.0 remains immutable historical evidence. US x1.1 remains `research_only=true` and `trade_ready=false`.
+US x1.0 and canonical US x1.1 evidence remain immutable. US x1.1 remains
+`research_only=true` and `trade_ready=false`.
 
-## Version rules
+## Governance rules
 
-- Experiments never mutate US x1.1.
-- A supported compatible improvement may become a reviewed **US x1.2 candidate**.
-- A contract-breaking change requires US x2.0.
+- Experiments never mutate US x1.1 in place.
+- Provider identity is part of every model claim.
+- Complete accepted evidence retains source and provider snapshots.
+- Historical source revisions create new evidence revisions; they never replace
+  canonical evidence silently.
 - The consumed 2026H1 window cannot select another candidate.
-- A provider mismatch forces `data_blocked` for version promotion.
-- Accepted evidence must retain the full provider snapshot, not only its manifest.
-- Null, negative and non-reproducible results remain in this log.
+- A compatible model improvement may become a reviewed US x1.2 candidate.
+- A portfolio-control improvement remains separate from model versioning.
+- Failed, blocked and null experiments remain recorded.
 
-## Experiment 001 — establish US x1.1
+## Experiment ledger
 
-**Date:** 2026-08-02  
+### Experiment 001 — establish US x1.1
+
 **Issues / PRs:** #350, #363, #365, #371  
-**Decision:** Candidate A promoted to formal research baseline by user direction.
+**Decision:** establish Candidate A as the formal US x1.1 research baseline.
 
-### Result
+- compounded relative excess: +110.44%;
+- positive windows: 4/4;
+- mean ICIR: 0.2280;
+- mean Rank IC: 0.0410;
+- worst drawdown: -27.15%;
+- recurring final Top-15 names: AAOI, AEHR and BE.
 
-- 2024H1–2025H2 compounded relative excess vs QQQ: +110.44%.
-- Positive-excess windows: 4/4.
-- Mean ICIR: 0.2280.
-- Mean Rank IC: 0.0410.
-- Worst drawdown: -27.15%.
-- Strongest positive-window share: 42.71%.
-- AAOI, AEHR and BE appeared in every development final Top-15.
+The model improved broad-window balance over US x1.0 but retained material
+portfolio drawdown and recurring-name risk.
 
-### Learning
+### Experiment 002 — native XGBoost identity contract
 
-The `momentum_volatility_volume` feature family improved broad-window balance relative to the latest US x1.0 evidence. The model still has meaningful drawdown and recurring-name concentration. Promotion changed the research baseline, not the trade-readiness status.
-
-## Experiment 002 — native XGBoost identity contract
-
-**Date:** 2026-08-02  
 **Issue / PR:** #357 / #369  
 **Decision:** implementation foundation accepted; no model change.
 
-### Result
+- native leaves, depth, child weight, learning rate, sampling, L1/L2 and seed
+  are explicit;
+- unknown or ignored fields fail closed;
+- candidate and effective runtime identities are SHA-bound;
+- actual XGBoost fitting tests prove parameter propagation.
 
-- Added explicit native fields for leaves/depth, child weight, learning rate, sampling, L1/L2 and seed.
-- Unknown or ignored fields fail closed.
-- Candidate names and SHA-256 identities contain all effective native parameters.
-- Actual XGBoost fit and prediction tests proved parameter propagation.
+Historical LightGBM-shaped candidate names are no longer treated as proof that
+XGBoost consumed those fields.
 
-### Learning
+### Experiment 003 — six-candidate native XGBoost grid
 
-Historical PR #343/#344 candidate names included fields that were not consumed by XGBoost. Those experiments remain valid for factor group, gain-bin and round-count comparisons, but not for learning-rate or leaf-regularization attribution.
-
-## Experiment 003 — six-candidate native XGBoost grid
-
-**Date:** 2026-08-02  
 **Issue / PR:** #370 / #378  
-**Decision:** `data_blocked`  
-**Version consequence:** no US x1.2 candidate; US x1.1 unchanged.
+**Decision:** `data_blocked`; no US x1.2 candidate.
 
-### Evidence runs
+Two successful model runs used different same-day provider snapshots:
 
-| Run | Workflow / artifact | Digest | Provider | Replayable provider included |
-|---|---|---|---|---|
-| A | `30740184315` / `8831050347` | `sha256:31c5c05297bade69bb730f3df7815f043f390e2de59674db3bff151fd71d6776` | `a48bfc398b6207a0de1e38558f15caa4d096922572da2c78df636fc20aabf081` | no |
-| B | `30740473510` / `8831147387` | `sha256:67300e7d86876cd31110db9f00060b8c20a241cba93e38a7178f58eb08851e87` | `2238b2f7dc0130b536f70450992f1869a64cdbeab088623edf4eaeb59f8e6024` | yes, 621 files |
+| Run | Workflow / artifact | Provider |
+|---|---|---|
+| A | `30740184315` / `8831050347` | `a48bfc398b6207a0de1e38558f15caa4d096922572da2c78df636fc20aabf081` |
+| B | `30740473510` / `8831147387` | `2238b2f7dc0130b536f70450992f1869a64cdbeab088623edf4eaeb59f8e6024` |
 
-Neither provider matches canonical US x1.1. Run B is the retained replayable evidence snapshot.
+Stable learning across both snapshots:
 
-### Hypothesis
+- lower learning rate, row/column sampling and smaller leaf capacity increased
+  return;
+- no parameter candidate solved the deep drawdown;
+- all candidates retained positive 60 bps excess;
+- parameter ranking was provider-sensitive;
+- row/column sampling remained exploratory only.
 
-Native regularization may reduce the 2025H1 drawdown or selection instability while retaining broad-window excess.
+Full result:
+`docs/research/us_x1_1_native_xgb_grid_result_2026-08-02.md`.
 
-### Frozen fields
+### Experiment 004 — full US87 provider A/B audit
 
-- universe, benchmark and feature group;
-- label, holding and rebalance horizon;
-- Top-15 equal-weight portfolio role;
-- 20 bps base cost;
-- score orientation;
-- development windows 2024H1–2025H2.
+**Issue / PR:** #358 / #384  
+**Workflow / artifact:** `30741031977` / `8831306221`  
+**Decision:** `unexplained_provider_drift_blocking`, narrowed to adjusted-price
+floating recomputation.
 
-The consumed 2026H1 reporting window was not loaded.
+- 41/88 source files were identical;
+- 47/88 changed across hundreds of historical dates;
+- dates, rows, volume and factor remained identical;
+- OHLC changed proportionally within each date by sub-ppm amounts;
+- coarse rounding failed to create a safe deterministic identity.
 
-### Reproducibility result
+Provider generation was deterministic from fixed source CSVs. The unstable
+layer was upstream adjusted source retrieval.
 
-Model fitting was deterministic within both provider snapshots. The effective US x1.1 calibration reproduced identical scores when fitted twice in each window.
+### Experiment 005 — Yahoo adjustment-mode isolation
 
-Provider refresh was not deterministic:
+**Issue / PR:** #386 / #388  
+**Workflow / artifact:** `30741674075` / `8831499091`  
+**Decision:** `bounded_subset_reproducible`.
 
-- Run A and Run B had identical calendars and 88-instrument contracts;
-- provider identity changed again within the same day;
-- 47 of 88 source CSV hashes changed between full refreshes;
-- candidate economic rankings changed materially.
+Ten high-impact symbols were downloaded twice under adjusted+repair,
+adjusted-no-repair and raw+Adj Close modes.
 
-### Result range across the two snapshots
+- all three modes reproduced 10/10 exactly;
+- repair on/off was identical;
+- raw OHLCV and Adj Close were identical;
+- explicit adjustment matched yfinance auto-adjust within `1e-8`.
 
-| Calibration | Relative excess range, 20 bps | Worst drawdown range | Stable conclusion |
+`repair=True` was not supported as the root cause. The remaining likely layer
+was upstream historical adjustment snapshot timing or revision.
+
+Detailed data audit record:
+`docs/research/us_x1_1_data_reproducibility_experiments_2026-08-02.md`.
+
+### Experiment 006 — deterministic raw-plus-adjustment contract
+
+**Issue / PR:** #389 / #392  
+**Workflow / artifact:** `30742690159` / `8831837784`  
+**Decision:** `deterministic_raw_adjustment_contract_ready`.
+
+Frozen identities:
+
+| Layer | SHA-256 |
+|---|---|
+| Raw OHLCV + Adj Close snapshot | `3848fc1c474a408c67243b48d2c693bc7af531c3a6330069bd3e72bc609d19ad` |
+| Formula | `004d92900c94f687c827bd1b17d8e7ac8e163ec57c4386a2bafe2482b6554c49` |
+| Model-input tree | `1653a3d5ee0efdbed486aa1ac998ff9ff42baab15b9f09659bf443c41072f939` |
+| Qlib provider | `5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95` |
+
+Two independent materializations from the same raw snapshot matched exactly.
+The contract now retains raw OHLCV and Adj Close separately, derives adjusted
+prices through `us_raw_adjustment_v1`, and blocks any rewrite of a frozen
+historical prefix.
+
+Full result:
+`docs/research/us_raw_adjustment_contract_result_2026-08-02.md`.
+
+### Experiment 007 — deterministic US x1.1 reproduction
+
+**Issue / PR:** #393 / #394  
+**Workflow / artifact:** `30743067256` / `8831960659`  
+**Decision:** `us_x1_1_deterministic_on_revision_provider`.
+
+US x1.1 was fitted independently twice on provider `5c09d0...`. All four
+windows matched exactly on:
+
+- effective parameter identity;
+- complete scores;
+- ranks;
+- per-rebalance Top-15 selections;
+- raw returns;
+- 20/40/60 bps economics.
+
+Revision-provider result:
+
+| Metric | Canonical | Deterministic revision |
+|---|---:|---:|
+| Relative excess, 20 bps | +110.44% | +113.35% |
+| Worst drawdown | -27.15% | -33.88% |
+| Mean ICIR | 0.2280 | 0.2599 |
+| Mean Rank IC | 0.0410 | 0.0459 |
+
+Execution became reproducible, but the data revision materially worsened risk.
+Canonical US x1.1 therefore remained unchanged.
+
+Full result:
+`docs/research/us_x1_1_deterministic_reproduction_result_2026-08-02.md`.
+
+### Experiment 008 — 2025H1 drawdown attribution Phase A
+
+**Issue / PR:** #381 / #395  
+**Workflow / artifact:** `30743901477` / `8832228801`  
+**Decision:** `portfolio_control_path_supported`.
+
+The attribution engine first reproduced Experiment 007 exactly. Complete model
+scores were explicitly intersected with non-null raw 10-session returns before
+ranking, preserving both score identities.
+
+Drawdown path:
+
+- peak: 2025-02-03;
+- trough: 2025-04-01;
+- maximum drawdown: -33.88%;
+- no recovery within 2025H1.
+
+Mechanism findings:
+
+- APP, HIMX and TEM were the three largest negative names, but represented only
+  24.65% of total negative contribution;
+- excluding APP improved drawdown by only 1.56 percentage points;
+- loss was broad across volatility buckets;
+- low-beta contribution was worse than high-beta;
+- negative QQQ-trend periods represented 52.72% of negative contribution;
+- the initial -21.07% shock occurred while the QQQ trend was still positive.
+
+Independent portfolio controls:
+
+| Control | Excess | Max DD | Outcome |
 |---|---:|---:|---|
-| US x1.1 effective runtime | 85.07%–114.35% | -34.11% to -33.84% | strong excess; deep risk |
-| Lower learning rate / 300 rounds | 169.92%–172.96% | -39.29% to -37.35% | stable return uplift; worse tail risk |
-| Higher child weight | 113.15%–162.08% | -38.56% to -32.19% | materially provider-sensitive |
-| Row and column sampling 0.8 | 135.80%–164.19% | -35.01% to -33.71% | return uplift; no stable risk improvement |
-| Explicit regularization | 119.93%–137.45% | -36.61% to -34.94% | no drawdown solution |
-| Maximum leaves 15 | 162.09%–177.10% | -35.53% to -35.28% | stable return uplift; worse risk |
+| Baseline | +5.54% | -33.88% | baseline |
+| Top-20 equal | +1.74% | -33.92% | fail |
+| Inverse vol, 10% cap | +7.24% | -33.39% | fail drawdown gate |
+| Equal Top-15, 8% cap | +5.54% | -33.88% | mechanically null |
+| QQQ negative 20D trend, 50% gross | +7.62% | -27.66% | pass |
 
-Every candidate retained positive 60 bps relative excess in both runs. No challenger passed the drawdown gate in either run.
+The drawdown was not dominated by one name, high volatility or high beta. The
+trend overlay could not prevent the initial shock, but materially reduced the
+continuation phase.
 
-### Accepted learning
+Full result:
+`docs/research/us_x1_1_drawdown_attribution_phase_a_result_2026-08-02.md`.
 
-- Native XGBoost fields create genuinely different score and economic contracts.
-- Model fitting is deterministic on a frozen provider.
-- Lower learning rate, sampling and lower leaf capacity expose repeatable return uplift directions.
-- Parameter return rankings remain too provider-sensitive for candidate selection.
-- Parameter tuning alone does not solve the 2025H1 regime drawdown.
-- Full provider retention is now mandatory.
-- Data reproducibility is the first hard gate for x1.1 growth.
+## Current research queue
 
-### Rejected learning
+1. **#396 — multi-window QQQ trend overlay validation.** Compare baseline,
+   50% gross and cash under negative QQQ 20D trend across 2024H1–2025H2 and
+   20/40/60 bps.
+2. **#366 — governed US87 sector map.** Complete exact 87/87 source-bound
+   mapping before sector attribution, sector cap or leave-one-sector-out.
+3. **#381 Phase B.** Add sector contribution and concentration evidence after
+   #366; retain Phase A name and regime conclusions.
+4. **#362.** Reconcile the original portfolio-control issue with Phase A and
+   #396; close rejected controls and retain only supported contracts.
+5. Revisit native parameter challengers only after portfolio-risk controls are
+   resolved.
+6. Reserve a genuinely untouched future challenge window before any
+   operational claim.
 
-- No candidate may be called US x1.2.
-- Neither experimental run restates canonical US x1.1.
-- No single challenger is retained as uniquely preferred based on these runs.
-- Higher return cannot justify promotion while drawdown and source reproducibility fail.
+## Current conclusion
 
-### Next action
-
-- use replayable Run B for mechanism-level attribution only;
-- continue source/provider drift work under #358;
-- execute 2025H1 drawdown attribution under #381;
-- complete the governed sector map under #366;
-- test fixed-score portfolio controls under #362 before widening the parameter grid.
-
-Full result: `docs/research/us_x1_1_native_xgb_grid_result_2026-08-02.md`.
-
-## Active research queue
-
-1. Make the US provider refresh snapshot-reproducible and close the #358 data gate.
-2. Build the governed US87 sector map under #366.
-3. Attribute the 2025H1 drawdown under #381 using the frozen Run B provider.
-4. Execute the independent fixed-score portfolio variants under #362.
-5. Revisit parameter challengers only after data and portfolio-risk gates are resolved.
-6. Reserve a genuinely untouched future challenge window before any operational claim.
+US x1.1 has not become US x1.2. Its model execution and data contract are now
+reproducible, its 2025H1 drawdown has been decomposed, and one bounded portfolio
+control merits multi-window validation. The active task is risk-contract
+validation, not another blind parameter search.
