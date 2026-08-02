@@ -4,6 +4,8 @@
 
 `alpha-engine-bundle.json` is the stable, read-only boundary between governed Alpha Engine research pipelines and the GitHub Pages/PWA frontend. The browser must not discover arbitrary files, infer missing evidence, or depend on private FastAPI response shapes.
 
+The durable publication source is the Git-tracked repository research store under `data/research/`. Files under `artifacts/` are generated staging outputs and are not authoritative.
+
 ## Root layout
 
 ```text
@@ -19,6 +21,20 @@ research-bundle/
 ```
 
 `data/manifest.json` and `data/models.json` are required compatibility inputs for v1. Other files are indexed when present. The exporter copies bytes unchanged and records their SHA-256 identities.
+
+## Repository source
+
+`data/research/catalog.json` is the publication allow-list. Named models, accepted runs and reports are visible only when the catalog explicitly references them. Candidate files, local SQLite rows and temporary Actions artifacts are not public evidence by default.
+
+The repository exporter validates:
+
+- safe relative paths;
+- catalog/model identity agreement;
+- `research_only=true` and `trade_ready=false`;
+- declared report existence;
+- provider/data snapshot identity where supplied.
+
+Run-level curves, holdings and attribution enter the bundle only after they are promoted into immutable repository run records.
 
 ## Reader behavior
 
@@ -36,12 +52,15 @@ The first schema supports `model_index`, `static_export_manifest`, `backtest_ser
 
 ## Determinism
 
-The bundle ID is the SHA-256 of the ordered `path:sha256` inventory. With unchanged source bytes, two exports produce the same bundle ID and manifest ordering. Timestamps are inherited from the authoritative static export rather than generated as research evidence.
+The bundle ID is the SHA-256 of the ordered `path:sha256` inventory. With unchanged source bytes, two exports produce the same bundle ID and manifest ordering. Timestamps are inherited from the authoritative repository catalog rather than generated as research evidence.
 
 ## CLI
 
 ```bash
-python scripts/export_static_site_data.py --output artifacts/site/data
+python scripts/export_static_site_data.py \
+  --source repository \
+  --repository-catalog data/research/catalog.json \
+  --output artifacts/site/data
 mkdir -p artifacts/site/docs
 cp docs/methodology.md artifacts/site/docs/methodology.md
 python scripts/export_research_bundle.py \
@@ -51,9 +70,17 @@ python scripts/export_research_bundle.py \
 
 The command fails closed when required inputs are missing or when the output directory is placed inside the source directory.
 
+A local metadata database remains an explicit migration source only:
+
+```bash
+python scripts/export_static_site_data.py \
+  --source metadata-db \
+  --metadata-db artifacts/metadata/metadata.db
+```
+
 ## Compatibility policy
 
 - Major version: breaking reader contract.
 - Minor version: additive fields or artifact kinds.
 - Patch version: clarifications and validation fixes.
-- Legacy `dashboard_db.json` may be used only as an exporter input; it is not the canonical browser contract.
+- Legacy `metadata.db` or `dashboard_db.json` may be used only as explicit migration inputs; neither is the canonical browser contract or durable research store.
