@@ -141,7 +141,7 @@
   - [x] **T44.6: Security and command-execution hardening** ✅ — security_review.md, no P0/P1 open.
   - [x] **T44.7: Reliability and observability maturity** ✅ — operations_runbook.md 613 lines.
   - [x] **T44.8: Performance and resource launch budget** ✅ — performance_budget.md with measured metrics.
-  - [x] **T44.9: Packaging, deployment, and rollback path** ✅ — Dockerfile + docker-compose.yml + PM2 ecosystem.config.js.
+  - [x] **T44.9: Packaging, deployment, and rollback path** ✅ — Dockerfile + docker-compose.yml + PM2 retired process configuration.
   - [x] **T44.10: Documentation finalization and user handoff** ✅ — 12 release docs, model_training_experience.md, no contradictions.
   - [x] **T44.11: Final launch gate and signoff** ✅ — `python scripts/release_gate.py` → OVERALL: PASS.
 
@@ -294,7 +294,7 @@
   - [x] **T48.5 [P0] Make data update and platform health outcomes truthful**
     - Deliver: track configured, attempted, updated, reused, excluded, failed, and stale symbols by market; make snapshot, quality, provenance, and index persistence mandatory stages; propagate typed failure reasons through jobs, API, dashboard, and alerts.
     - Accept: zero/partial updates cannot print or return unconditional success; old CSV fallback is explicitly reported and policy-gated; missing quality records or index errors produce `unknown/failed`, never default `ok`; dashboard success requires the same published snapshot and 100% approved universe accounting.
-    - Done: `src/data/update_accounting.py` provides `UpdateAccountingReport` with per-market symbol tracking; `api_server.py` has `/api/health/live` and `/api/health/ready` endpoints returning 503 when snapshot/registry/dashboard DB are unavailable; `tests/test_update_accounting.py` has 31 tests.
+    - Done: `src/data/update_accounting.py` provides `UpdateAccountingReport` with per-market symbol tracking; `retired local server entrypoint` has `/api/health/live` and `/api/health/ready` endpoints returning 503 when snapshot/registry/dashboard DB are unavailable; `tests/test_update_accounting.py` has 31 tests.
   - [x] **T48.6 [P0] Rebuild CI and release gates as non-bypassable enforcement**
     - Deliver: run full ruff scope, mypy or an explicitly ratcheted typed scope, backend tests with a zero-unapproved-skip policy, frontend typecheck/lint/Vitest/build, Playwright, candidate verification, clean packaging, and evidence capture in CI; remove best-history selection and import/file-existence pseudo-gates.
     - Accept: the known ruff, frontend lint, and mypy failures block CI; skipped release-critical tests block signoff; the gate validates actual DataSnapshot and ModelArtifact checksums plus required metrics; local and CI commands are identical; generated evidence records command, revision, environment, exit code, duration, and output checksum.
@@ -306,7 +306,7 @@
   - [x] **T48.8 [P1] Close API contract, routing, and degraded-state defects**
     - Deliver: replace untyped mutation payloads with versioned Pydantic contracts; audit static/dynamic route ordering; return correct HTTP status and machine-readable error codes; require explicit artifact identities on model/data/backtest/portfolio operations.
     - Accept: `/api/models/health` reaches the health handler rather than `/{version_id}`; unknown fields/stages/markets are rejected; unavailable portfolio inputs cannot return an unqualified `ok: true`; list endpoints are bounded; contract tests exercise each success, validation, authorization, conflict, degraded, and failure path.
-    - Done: `api_server.py` route ordering fixed (duplicate `/api/system/me` removed); Pydantic response models added to health/version endpoints; `src/api/routers/backtest.py`, `data.py`, `portfolio.py` have `TrainingRunRequestV1`, `DataUpdateRequestV1` contracts requiring artifact identities; `tests/test_t48_api_contracts.py` covers validation, rejection, and degraded states.
+    - Done: `retired local server entrypoint` route ordering fixed (duplicate `/api/system/me` removed); Pydantic response models added to health/version endpoints; `src/api/routers/backtest.py`, `data.py`, `portfolio.py` have `TrainingRunRequestV1`, `DataUpdateRequestV1` contracts requiring artifact identities; `tests/test_t48_api_contracts.py` covers validation, rejection, and degraded states.
   - [x] **T48.9 [P1] Complete the frontend outcome chain against a real backend**
     - Deliver: migrate release workflows from raw `apiFetch` parsing to shared typed clients/query state; expose exact snapshot/model/run/evidence identities and blocked reasons; replace smoke-only Playwright with data update -> training -> reconstruction -> backtest -> comparison -> promotion/rejection -> secondary reuse journeys.
     - Accept: Playwright runs the production build against a deterministic backend plus one archived real candidate without stubbing the domain endpoints; refresh/navigation reconnects jobs; cross-page identities and metrics match; loading/empty/partial/stale/failed/blocked/success states are distinct; no browser-side domain scoring or silent fallback remains.
