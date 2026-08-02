@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.0",
+  "repository": "liuh886/alpha_engine",
+  "pull_request": 404,
+  "validated_on": "2026-08-02",
+  "validated_content_head_sha": "ba0424736e636f44f623ec3c347f5567e8ba8673",
+  "receipt_commit_excluded_from_evidence_calculation": true,
+  "checks": {
+    "ledger_contract_validation": "success",
+    "focused_unit_tests": "success",
+    "governed_etf_bundle": "success",
+    "frozen_v4_2_monitor_revalidation": "success",
+    "signal_alert_context_revalidation": "success",
+    "existing_issue_export": "success",
+    "event_record_validation": "success",
+    "state_change_fingerprint_deduplication": "success",
+    "active_precursor_episode_deduplication": "success",
+    "historical_precursor_reopen_prevention": "success",
+    "idempotent_horizon_updates": "success",
+    "monthly_summary_generation": "success",
+    "artifact_upload": "success",
+    "alpha_engine_ci": "success",
+    "decision_evidence_contract_ci": "success",
+    "qqqi_vxn_research_bundle": "success"
+  },
+  "decision": {
+    "v4_2_baseline": "retained_unchanged",
+    "prospective_ledger": "authorized_to_operate",
+    "github_issue_as_durable_record": true,
+    "actions_artifact_as_supporting_evidence_only": true,
+    "recovery_precursor_actionable": false,
+    "model_change_authorized": false,
+    "actionable_shadow_alert_authorized": false,
+    "telegram_target_change_authorized": false,
+    "operating_tracker_issue": 348
+  },
+  "canonical_research_evidence": {
+    "workflow_name": "QQQI v4.2 Prospective Evidence Ledger",
+    "run_id": 30750255649,
+    "conclusion": "success",
+    "artifact_id": 8834206496,
+    "artifact_name": "qqqi-v4-2-prospective-ledger-30750255649",
+    "artifact_digest": "sha256:a63dbde847b5ed565eee2ba5db47b44004da133bfc96795a56ffeed9f4da94ef",
+    "expires_on": "2026-10-31"
+  },
+  "initial_implementation_evidence": {
+    "run_id": 30750143744,
+    "artifact_id": 8834169106,
+    "artifact_digest": "sha256:09602cec6843e5706554c7c6dccac9c3806216ffaebdbd02eba9773c97bea71f"
+  },
+  "final_content_workflows": {
+    "alpha_engine_ci": 30750255666,
+    "decision_evidence_contract_ci": 30750255658,
+    "qqqi_vxn_research_bundle": 30750255661
+  },
+  "governed_dry_run": {
+    "latest_data_date": "2026-07-31",
+    "new_event_count": 1,
+    "material_update_count": 0,
+    "event_type": "state_change",
+    "event_id": "b302c720b8f56965c0c90883",
+    "signal_fingerprint": "7bd5f606e67436360da1",
+    "current_state": 0,
+    "target_state": 1,
+    "recovery_precursor_boolean": false,
+    "existing_signal_issue": 333,
+    "deduplication_action": "attach_ledger_record_to_existing_issue",
+    "completed_outcome_horizons": [],
+    "model_change_authorized": false
+  },
+  "remaining_operating_evidence": {
+    "next_open_date": "2026-08-03",
+    "next_open_outcome_available": false,
+    "reason": "The governed dry run occurred before the next US market open. The ledger correctly left all outcome horizons unresolved."
+  }
+}
