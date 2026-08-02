@@ -135,9 +135,16 @@ def _align_scores(scores: pd.DataFrame, raw_returns: pd.DataFrame) -> pd.DataFra
 
 
 def _selection_ledger(scores: pd.DataFrame) -> pd.DataFrame:
+    """Rebuild the daily Experiment 007 Top-15 identity ledger.
+
+    The evidence ledger contains Top-15 selections for every scored session.
+    Economic portfolio evaluation remains on the separate 10-session rebalance
+    schedule implemented by ``_evaluate``.
+    """
+
     dates = [pd.Timestamp(value) for value in sorted(scores["datetime"].unique())]
     rows: list[dict[str, Any]] = []
-    for date in dates[::REBALANCE_DAYS]:
+    for date in dates:
         ranked = _rank_day(scores.loc[scores["datetime"] == date].copy()).head(15)
         if len(ranked) != 15:
             raise ValueError(f"fewer than 15 eligible names on {date.date()}")
@@ -607,6 +614,7 @@ def run(
             spec.strategy_id: {
                 "top_n": spec.top_n,
                 "weighting": spec.weighting,
+                "rebalance_days": REBALANCE_DAYS,
                 "qqq_negative_trend_gross": spec.qqq_negative_trend_gross,
                 "trend_definition": "QQQ close[t-1] / close[t-21] - 1 < 0",
             }
@@ -616,7 +624,7 @@ def run(
             window: {
                 "source_score_sha256": inputs[window].score_sha256,
                 "economic_score_sha256": inputs[window].economic_score_sha256,
-                "top15_selection_sha256": inputs[window].selection_sha256,
+                "daily_top15_selection_sha256": inputs[window].selection_sha256,
                 "removed_score_rows_without_raw_forward_return": inputs[
                     window
                 ].removed_score_rows,
