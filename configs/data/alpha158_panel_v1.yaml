@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 contract_id: "alpha158_panel_v1"
 status: "active_research_factor_contract"
 research_only: true
@@ -26,6 +26,20 @@ field_policy:
   true_vwap_required: true
   synthetic_close_as_vwap_allowed: false
   synthetic_amount_divided_by_volume_allowed: false
+  allowed_vwap_semantics:
+    - "reported_vwap"
+    - "reported_turnover_divided_by_reported_volume"
+
+provider_role_policy:
+  source_role_manifest: "source_role_manifest.json"
+  canonical_role_required: true
+  canonical_training_eligible_required: true
+  validation_only_provider_forbidden: true
+  validation_only_sources:
+    - "tiingo"
+    - "polygon"
+    - "tushare"
+  validator_data_may_not_satisfy_required_fields: true
 
 panel:
   output_layout: "one_compressed_wide_csv_per_symbol"
