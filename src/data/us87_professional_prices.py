@@ -14,7 +14,8 @@ from src.data.provider_catalog import provider_manifest_entry
 
 SHARD_MANIFEST = "shard_manifest.json"
 BUNDLE_MANIFEST = "professional_price_manifest.json"
-_PROVIDER_BREAKER_ERRORS = {"rate_limited", "credential_or_entitlement"}
+_PROVIDER_WIDE_ERRORS = {"rate_limited", "credential_or_entitlement"}
+_VALIDATION_PASS = {"consensus", "explainable_corporate_action_difference"}
 
 
 class ProfessionalPriceBundleError(ValueError):
@@ -104,12 +105,28 @@ def _fetch(
         }
 
 
-def _circuit_attempt(reason: str) -> dict[str, Any]:
-    return {
-        "ok": False,
-        "error_class": "provider_circuit_open",
-        "error": f"provider skipped after shard-wide failure: {reason}",
-    }
+def _validator_status(
+    canonical: pd.DataFrame,
+    validator: pd.DataFrame | None,
+    *,
+    symbol: str,
+    settings: Mapping[str, Any],
+) -> dict[str, Any]:
+    if validator is None:
+        return {
+            "symbol": symbol,
+            "status": "provider_missing",
+            "canonical_present": True,
+            "validator_present": False,
+            "overlap_sessions": 0,
+            "reason": "validation provider unavailable",
+        }
+    return reconcile_adjusted_bars(
+        canonical,
+        validator,
+        symbol=symbol,
+        settings=dict(settings),
+    )
 
 
 def build_professional_price_shard(
@@ -119,8 +136,8 @@ def build_professional_price_shard(
     output_root: str | Path,
     cutoff: str,
     shard_index: int,
-    primary_adapter: MarketDataAdapter | None,
-    secondary_adapter: MarketDataAdapter | None,
+    canonical_adapter: MarketDataAdapter,
+    validation_adapters: Mapping[str, MarketDataAdapter | None],
 ) -> dict[str, Any]:
     repo = Path(root).resolve()
     contract_file = Path(contract_path)
@@ -144,77 +161,112 @@ def build_professional_price_shard(
 
     records: list[dict[str, Any]] = []
     hashes: dict[str, str] = {}
-    primary_open = primary_adapter is None
-    secondary_open = secondary_adapter is None
-    primary_reason = "provider_not_configured" if primary_open else ""
-    secondary_reason = "provider_not_configured" if secondary_open else ""
-    primary_calls = 0
-    secondary_calls = 0
+    circuits: dict[str, dict[str, Any]] = {}
+    for name, adapter in validation_adapters.items():
+        circuits[name] = {
+            "open": adapter is None,
+            "reason": "provider_not_configured" if adapter is None else "",
+            "opened_on_symbol": "",
+        }
 
     for symbol in selected:
-        if primary_open:
-            primary, primary_attempt = None, _circuit_attempt(primary_reason)
-        else:
-            primary_calls += 1
-            primary, primary_attempt = _fetch(
-                primary_adapter, symbol=symbol, start=start, cutoff=cutoff
-            )
-            if primary_attempt.get("error_class") in _PROVIDER_BREAKER_ERRORS:
-                primary_open = True
-                primary_reason = str(primary_attempt.get("error_class"))
-
-        if secondary_open:
-            secondary, secondary_attempt = None, _circuit_attempt(secondary_reason)
-        else:
-            secondary_calls += 1
-            secondary, secondary_attempt = _fetch(
-                secondary_adapter, symbol=symbol, start=start, cutoff=cutoff
-            )
-            if secondary_attempt.get("error_class") in _PROVIDER_BREAKER_ERRORS:
-                secondary_open = True
-                secondary_reason = str(secondary_attempt.get("error_class"))
-
-        reconciliation = reconcile_adjusted_bars(
-            primary, secondary, symbol=symbol, settings=settings
+        canonical, canonical_attempt = _fetch(
+            canonical_adapter, symbol=symbol, start=start, cutoff=cutoff
         )
-        if primary is not None and secondary is not None:
-            status = str(reconciliation["status"])
-            canonical = primary if status != "quarantine" else None
-        elif primary is not None:
-            status = "single_professional_source"
-            canonical = primary
-        elif secondary is not None:
-            status = "single_professional_source"
-            canonical = secondary
-        else:
-            status = "provider_missing"
-            canonical = None
+        validator_attempts: dict[str, dict[str, Any]] = {}
+        reconciliations: dict[str, dict[str, Any]] = {}
+        validator_frames: dict[str, pd.DataFrame] = {}
 
-        for provider, frame in (("tiingo", primary), ("polygon", secondary)):
-            if frame is None:
-                continue
-            path = output / "sources" / provider / f"{symbol}.csv"
-            path.parent.mkdir(parents=True, exist_ok=True)
-            frame.to_csv(path, index=False)
-            hashes[str(path.relative_to(output))] = _sha256(path)
-        canonical_path: str | None = None
         if canonical is not None:
-            path = output / "canonical" / f"{symbol}.csv"
-            path.parent.mkdir(parents=True, exist_ok=True)
-            canonical.to_csv(path, index=False)
-            canonical_path = str(path.relative_to(output))
-            hashes[canonical_path] = _sha256(path)
+            canonical_path = output / "canonical" / f"{symbol}.csv"
+            canonical_path.parent.mkdir(parents=True, exist_ok=True)
+            canonical.to_csv(canonical_path, index=False)
+            hashes[str(canonical_path.relative_to(output))] = _sha256(canonical_path)
+        else:
+            canonical_path = None
+
+        for name, adapter in validation_adapters.items():
+            circuit = circuits[name]
+            if circuit["open"]:
+                validator_attempts[name] = {
+                    "ok": False,
+                    "error_class": "provider_circuit_open",
+                    "reason": circuit["reason"],
+                    "opened_on_symbol": circuit["opened_on_symbol"],
+                }
+                validator = None
+            else:
+                validator, attempt = _fetch(
+                    adapter, symbol=symbol, start=start, cutoff=cutoff
+                )
+                validator_attempts[name] = attempt
+                if not attempt.get("ok") and attempt.get("error_class") in _PROVIDER_WIDE_ERRORS:
+                    circuit.update(
+                        {
+                            "open": True,
+                            "reason": str(attempt.get("error_class")),
+                            "opened_on_symbol": symbol,
+                        }
+                    )
+            if validator is not None:
+                validator_frames[name] = validator
+                path = output / "validators" / name / f"{symbol}.csv"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                validator.to_csv(path, index=False)
+                hashes[str(path.relative_to(output))] = _sha256(path)
+            if canonical is not None:
+                reconciliations[name] = _validator_status(
+                    canonical,
+                    validator,
+                    symbol=symbol,
+                    settings=settings,
+                )
+            else:
+                reconciliations[name] = {
+                    "symbol": symbol,
+                    "status": "canonical_missing",
+                    "canonical_present": False,
+                    "validator_present": validator is not None,
+                    "overlap_sessions": 0,
+                    "reason": "canonical source unavailable",
+                }
+
+        if canonical is None:
+            status = "canonical_missing"
+        elif any(row.get("status") == "quarantine" for row in reconciliations.values()):
+            status = "validation_conflict"
+        else:
+            present = sum(1 for row in reconciliations.values() if row.get("status") in _VALIDATION_PASS)
+            configured = len(validation_adapters)
+            if configured and present == configured:
+                status = "canonical_ready_validated"
+            elif present:
+                status = "canonical_ready_partially_validated"
+            else:
+                status = "canonical_ready_unvalidated"
+
         records.append(
             {
                 "symbol": symbol,
                 "status": status,
-                "canonical_path": canonical_path,
-                "primary_attempt": primary_attempt,
-                "secondary_attempt": secondary_attempt,
-                "reconciliation": reconciliation,
+                "canonical_path": (
+                    str(canonical_path.relative_to(output)) if canonical_path else None
+                ),
+                "canonical_attempt": canonical_attempt,
+                "validator_attempts": validator_attempts,
+                "reconciliations": reconciliations,
             }
         )
 
+    complete = all(
+        row["status"]
+        in {
+            "canonical_ready_unvalidated",
+            "canonical_ready_validated",
+            "canonical_ready_partially_validated",
+        }
+        for row in records
+    )
     manifest = {
         "schema_version": "1.1",
         "contract_id": contract.get("contract_id"),
@@ -226,27 +278,10 @@ def build_professional_price_shard(
         "cutoff": cutoff,
         "records": records,
         "files": dict(sorted(hashes.items())),
-        "provider_health": {
-            "tiingo": {
-                "attempted_symbols": primary_calls,
-                "circuit_open": primary_open,
-                "circuit_reason": primary_reason or None,
-            },
-            "polygon": {
-                "attempted_symbols": secondary_calls,
-                "circuit_open": secondary_open,
-                "circuit_reason": secondary_reason or None,
-            },
-        },
-        "complete": all(
-            row["status"]
-            in {
-                "consensus",
-                "explainable_corporate_action_difference",
-                "single_professional_source",
-            }
-            for row in records
-        ),
+        "provider_circuits": circuits,
+        "complete": complete,
+        "canonical_provider": canonical_adapter.name,
+        "validation_providers": list(validation_adapters),
         "research_only": True,
         "trade_ready": False,
     }
@@ -289,14 +324,18 @@ def finalize_professional_price_bundle(
         raise ProfessionalPriceBundleError(
             f"shard set is incomplete: missing={missing}, extra={extra}"
         )
+
     statuses = {symbol: str(records[symbol]["status"]) for symbol in expected_symbols}
-    dual = all(
-        value in {"consensus", "explainable_corporate_action_difference"}
+    validated = sum(
+        value in {"canonical_ready_validated", "canonical_ready_partially_validated"}
         for value in statuses.values()
     )
+    fully_validated = sum(
+        value == "canonical_ready_validated" for value in statuses.values()
+    )
     manifest = {
-        "schema_version": "1.0",
-        "component_id": "prices.us_selected_equities_v2.professional",
+        "schema_version": "1.1",
+        "component_id": "prices.us_selected_equities_v2.governed",
         "component_kind": "selected_pool_prices",
         "status": "ready",
         "market": "us",
@@ -308,12 +347,18 @@ def finalize_professional_price_bundle(
         "missing_symbols": [],
         "invalid_symbols": [],
         "quarantined_symbols": [],
-        "providers": ["tiingo", "polygon"] if dual else ["tiingo"],
-        "professional_source_ready": True,
-        "professional_corroborated": dual,
+        "canonical_provider": "yfinance",
+        "validation_providers": ["tiingo", "polygon"],
+        "validated_symbol_count": validated,
+        "fully_validated_symbol_count": fully_validated,
+        "validation_coverage_ratio": validated / len(expected_symbols),
+        "research_price_ready": True,
+        "professional_sources_validation_only": True,
+        "professional_source_ready": False,
         "symbol_statuses": statuses,
         "shard_manifests": shard_hashes,
         "provider_contracts": {
+            "yfinance": provider_manifest_entry("yfinance"),
             "tiingo": provider_manifest_entry("tiingo"),
             "polygon": provider_manifest_entry("polygon"),
         },
