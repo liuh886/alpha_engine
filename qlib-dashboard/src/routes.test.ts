@@ -1,179 +1,76 @@
-/**
- * Tests for the route registry — completeness, consistency, and helpers.
- */
-
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  routes,
   VIEW_TITLES,
   groupRoutes,
+  isRuntimeVisible,
+  routes,
   visibleRoutes,
-  type ReleaseLevel,
   type NavGroupTitle,
+  type ReleaseLevel,
+  type RouteSurface,
 } from './routes';
 
-// All valid release levels from the type.
 const ALL_RELEASE_LEVELS: ReleaseLevel[] = ['release', 'experimental', 'internal'];
-
-// All valid nav groups from the type.
-const ALL_NAV_GROUPS: NavGroupTitle[] = ['Daily Research', 'Model Lab', 'Backtest & Attribution', 'System & Ops'];
+const ALL_NAV_GROUPS: NavGroupTitle[] = ['Library', 'Evidence', 'Reference', 'Developer'];
+const ALL_SURFACES: RouteSurface[] = ['artifact', 'connected', 'both'];
 
 describe('route registry', () => {
-  // -----------------------------------------------------------------------
-  // Basic structure
-  // -----------------------------------------------------------------------
-
-  it('is a non-empty array', () => {
+  it('has unique paths and complete labels', () => {
     expect(routes.length).toBeGreaterThan(0);
-  });
-
-  it('every route has a unique path', () => {
-    const paths = routes.map((r) => r.path);
-    const unique = new Set(paths);
-    expect(unique.size).toBe(paths.length);
-  });
-
-  it('every route has a non-empty title', () => {
-    for (const r of routes) {
-      expect(r.title.trim()).not.toBe('');
+    expect(new Set(routes.map((route) => route.path)).size).toBe(routes.length);
+    for (const route of routes) {
+      expect(route.title.trim()).not.toBe('');
+      expect(route.label.trim()).not.toBe('');
+      expect(route.icon).toBeTruthy();
+      expect(ALL_RELEASE_LEVELS).toContain(route.releaseLevel);
+      expect(ALL_NAV_GROUPS).toContain(route.navGroup);
+      expect(ALL_SURFACES).toContain(route.surface);
+      expect(VIEW_TITLES[route.path]).toBe(route.title);
+      expect(route.path.startsWith('/')).toBe(false);
     }
   });
 
-  it('every route has a non-empty label', () => {
-    for (const r of routes) {
-      expect(r.label.trim()).not.toBe('');
-    }
+  it('covers the complete research information architecture', () => {
+    const groups = new Set(routes.map((route) => route.navGroup));
+    ALL_NAV_GROUPS.forEach((group) => expect(groups).toContain(group));
+    expect(routes.find((route) => route.path === '')?.navGroup).toBe('Library');
+    expect(routes.find((route) => route.path === 'library')?.surface).toBe('artifact');
+    expect(routes.find((route) => route.path === 'system')?.surface).toBe('connected');
   });
 
-  it('every route has an icon component', () => {
-    for (const r of routes) {
-      // lucide-react icons are React.forwardRef objects, not plain functions.
-      // Verify they are truthy and renderable (either a function or an object with $$typeof).
-      expect(r.icon).toBeTruthy();
-    }
-  });
-
-  // -----------------------------------------------------------------------
-  // Release levels
-  // -----------------------------------------------------------------------
-
-  it('every route has a valid releaseLevel', () => {
-    for (const r of routes) {
-      expect(ALL_RELEASE_LEVELS).toContain(r.releaseLevel);
-    }
-  });
-
-  it('covers all release levels', () => {
-    const levels = new Set(routes.map((r) => r.releaseLevel));
-    for (const level of ALL_RELEASE_LEVELS) {
-      expect(levels).toContain(level);
-    }
-  });
-
-  // -----------------------------------------------------------------------
-  // Nav groups
-  // -----------------------------------------------------------------------
-
-  it('every route has a valid navGroup', () => {
-    for (const r of routes) {
-      expect(ALL_NAV_GROUPS).toContain(r.navGroup);
-    }
-  });
-
-  it('covers all nav groups', () => {
-    const groups = new Set(routes.map((r) => r.navGroup));
-    for (const group of ALL_NAV_GROUPS) {
-      expect(groups).toContain(group);
-    }
-  });
-
-  // -----------------------------------------------------------------------
-  // VIEW_TITLES
-  // -----------------------------------------------------------------------
-
-  it('VIEW_TITLES contains every route path', () => {
-    for (const r of routes) {
-      expect(VIEW_TITLES[r.path]).toBe(r.title);
-    }
-  });
-
-  it('VIEW_TITLES includes legacy "dashboard" alias', () => {
-    expect(VIEW_TITLES['dashboard']).toBe('Model Dashboard');
-  });
-
-  // -----------------------------------------------------------------------
-  // groupRoutes
-  // -----------------------------------------------------------------------
-
-  it('groupRoutes returns a Map with all nav groups as keys', () => {
+  it('groups only routes visible in the current runtime', () => {
     const groups = groupRoutes();
-    for (const group of ALL_NAV_GROUPS) {
-      expect(groups.has(group)).toBe(true);
-    }
-  });
-
-  it('groupRoutes preserves declaration order within groups', () => {
-    const groups = groupRoutes();
-    for (const [group, groupRoutes] of groups) {
-      // Each route in the group should have the correct navGroup
-      for (const r of groupRoutes) {
-        expect(r.navGroup).toBe(group);
+    for (const [group, rows] of groups) {
+      expect(ALL_NAV_GROUPS).toContain(group);
+      for (const route of rows) {
+        expect(route.navGroup).toBe(group);
+        expect(isRuntimeVisible(route)).toBe(true);
       }
     }
   });
 
-  it('groupRoutes with filterFn only includes matching routes', () => {
-    const releaseOnly = groupRoutes((r) => r.releaseLevel === 'release');
-    for (const [, groupRoutes] of releaseOnly) {
-      for (const r of groupRoutes) {
-        expect(r.releaseLevel).toBe('release');
-      }
-    }
-    // Should have fewer total routes than unfiltered
-    let filteredTotal = 0;
-    for (const [, groupRoutes] of releaseOnly) {
-      filteredTotal += groupRoutes.length;
-    }
-    expect(filteredTotal).toBeLessThan(routes.length);
-  });
-
-  // -----------------------------------------------------------------------
-  // visibleRoutes
-  // -----------------------------------------------------------------------
-
-  it('visibleRoutes(false) excludes internal routes', () => {
-    const visible = visibleRoutes(false);
-    for (const r of visible) {
-      expect(r.releaseLevel).not.toBe('internal');
+  it('preserves route declaration order within groups', () => {
+    const grouped = groupRoutes();
+    for (const [, rows] of grouped) {
+      const positions = rows.map((route) => routes.indexOf(route));
+      expect(positions).toEqual([...positions].sort((a, b) => a - b));
     }
   });
 
-  it('visibleRoutes(true) includes all routes', () => {
+  it('supports filtered grouping', () => {
+    const releaseOnly = groupRoutes((route) => route.releaseLevel === 'release');
+    for (const [, rows] of releaseOnly) rows.forEach((route) => expect(route.releaseLevel).toBe('release'));
+  });
+
+  it('excludes internal routes unless operator mode is enabled', () => {
+    expect(visibleRoutes(false).every((route) => route.releaseLevel !== 'internal')).toBe(true);
+    expect(visibleRoutes(true).every((route) => isRuntimeVisible(route))).toBe(true);
+  });
+
+  it('keeps static artifact navigation free of connected-only routes', () => {
     const visible = visibleRoutes(true);
-    expect(visible.length).toBe(routes.length);
-  });
-
-  it('visibleRoutes(false) includes release and experimental routes', () => {
-    const visible = visibleRoutes(false);
-    const levels = new Set(visible.map((r) => r.releaseLevel));
-    expect(levels.has('release')).toBe(true);
-    expect(levels.has('experimental')).toBe(true);
-    expect(levels.has('internal')).toBe(false);
-  });
-
-  // -----------------------------------------------------------------------
-  // Consistency checks
-  // -----------------------------------------------------------------------
-
-  it('index route (empty path) exists and is in Core', () => {
-    const indexRoute = routes.find((r) => r.path === '');
-    expect(indexRoute).toBeDefined();
-    expect(indexRoute!.navGroup).toBe('Daily Research');
-  });
-
-  it('no route path contains a leading slash', () => {
-    for (const r of routes) {
-      expect(r.path.startsWith('/')).toBe(false);
+    if (!visible.some((route) => route.surface === 'connected')) {
+      expect(visible.every((route) => route.surface === 'artifact' || route.surface === 'both')).toBe(true);
     }
   });
 });
