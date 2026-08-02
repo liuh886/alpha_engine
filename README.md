@@ -7,10 +7,10 @@ AlphaEngine 用固定研究契约、时间有效的数据、walk-forward 验证�
 > **Current status — 2026-08-02**
 >
 > - AlphaEngine 是研究专用系统，没有模型达到 `trade_ready`。
-> - GitHub Pages/PWA **Research Artifact Studio** 是唯一支持的 Web 产品方向。
+> - GitHub Pages/PWA **Research Artifact Studio** 是唯一支持的 Web 产品。
 > - Python 数据、训练、回测与研究工作通过 CLI、脚本和工作流执行。
 > - 前端只读取版本化研究成果包，不负责训练、数据刷新、模型变更或交易执行。
-> - 原 FastAPI、本地登录 Web、PM2 和 API 容器架构已进入冻结退役期，见 [#316](https://github.com/liuh886/alpha_engine/issues/316)。
+> - 旧本地服务器、登录界面、进程管理和 API 容器架构已经完成退役。
 
 核心研究结论：
 
@@ -21,24 +21,24 @@ AlphaEngine 用固定研究契约、时间有效的数据、walk-forward 验证�
 
 ## 1. Web product: Research Artifact Studio
 
-The Research Artifact Studio is a static, installable PWA deployed through GitHub Pages:
+Research Artifact Studio 是通过 GitHub Pages 发布的静态、可安装 PWA：
 
-- no backend or login required;
-- opens the published example/research bundle;
-- opens a local Alpha Engine bundle from a directory, file set or ZIP;
-- verifies manifest paths, byte sizes and SHA-256 digests;
-- keeps selected local files in the browser and does not upload them;
-- supports an offline application shell after the first successful visit.
+- 不需要后端或登录；
+- 可读取公开发布的研究成果包；
+- 可从本地目录、文件集合或 ZIP 打开 Alpha Engine 成果包；
+- 校验 manifest 路径、文件大小和 SHA-256；
+- 本地文件只保留在浏览器内，不上传；
+- 首次成功访问后支持离线应用壳。
 
-Open the deployed application at:
+公开入口：
 
 - <https://liuh886.github.io/alpha_engine/>
 
-In **Library**, choose the published bundle or open a local folder/ZIP containing `alpha-engine-bundle.json`.
+在 **Library** 中选择公开成果，或打开包含 `alpha-engine-bundle.json` 的本地文件夹或 ZIP。
 
-## 2. Produce a research bundle
+## 2. 安装研究环境
 
-Alpha Engine uses Astral `uv`; `uv.lock` is the dependency source of truth.
+Alpha Engine 使用 Astral `uv`，`uv.lock` 是 Python 依赖来源：
 
 ```bash
 git clone https://github.com/liuh886/alpha_engine.git
@@ -46,7 +46,17 @@ cd alpha_engine
 uv sync --extra dev
 ```
 
-Run the required research pipeline, for example:
+常用检查：
+
+```bash
+make doctor
+make test
+make ci
+```
+
+## 3. 生成研究成果包
+
+先运行所需研究流程，例如：
 
 ```bash
 make data
@@ -54,13 +64,13 @@ make train-us
 make backtest
 ```
 
-Export the canonical frontend artifact:
+再导出前端唯一接受的成果边界：
 
 ```bash
 make research-bundle
 ```
 
-This produces:
+输出结构：
 
 ```text
 artifacts/research-bundle/
@@ -71,9 +81,9 @@ artifacts/research-bundle/
   docs/
 ```
 
-Open that folder from the PWA Library. The frontend reads only files declared by the manifest.
+前端只读取 manifest 声明的文件。缺失、摘要不匹配或版本不兼容都会明确失败，不会从其它来源补齐。
 
-## 3. Target architecture
+## 4. 当前架构
 
 ```text
 Python data/model/backtest pipelines
@@ -83,23 +93,23 @@ versioned research bundle + reports/notebooks
 GitHub Pages / PWA / local bundle reader
 ```
 
-Architecture rules:
+架构规则：
 
-- the Python research pipeline is authoritative;
-- `alpha-engine-bundle.json` is the frontend data boundary;
-- execution belongs to Python CLI/scripts/workflows;
-- the browser is read-only;
-- missing or incompatible evidence fails visibly;
-- no output authorizes live or automated trading.
+- Python 研究流水线是事实来源；
+- `alpha-engine-bundle.json` 是浏览器数据边界；
+- 执行属于 Python CLI、脚本和工作流；
+- 浏览器永久只读；
+- 缺失或不兼容证据必须显式失败；
+- 任何输出都不构成实盘或自动交易授权。
 
-The legacy-Web retirement policy and inventory are maintained in:
+退役记录和完成态门禁：
 
 - [`docs/architecture/legacy_web_retirement.md`](docs/architecture/legacy_web_retirement.md)
 - [`docs/architecture/legacy_web_inventory.json`](docs/architecture/legacy_web_inventory.json)
 
-## 4. Research contract
+## 5. 研究契约
 
-Both CN and US canonical research use a fixed 10-trading-day paradigm:
+CN 和 US 的标准研究都使用固定的 10 个交易日范式：
 
 | Property | Contract |
 | --- | --- |
@@ -112,48 +122,47 @@ Both CN and US canonical research use a fixed 10-trading-day paradigm:
 | Benchmark | CSI 300 for CN; QQQ for US |
 | Scope | `research_only=true` |
 
-Research execution is bound to versioned specs in `configs/research_paradigms/`. Missing benchmark dates, universe hashes, provider lineage, coverage evidence or minimum windows fail closed.
+研究执行绑定到 `configs/research_paradigms/` 中的版本化规范。基准日期、股票池哈希、provider lineage、覆盖证据或最小窗口缺失时均 fail closed。
 
-## 5. Universe validity
+## 6. Universe validity
 
-Static curated universes remain useful for exploratory diagnostics, but they are not unbiased historical opportunity sets.
+静态精选股票池适合探索性诊断，但不是无偏的历史机会集。
 
-The current US robustness path uses:
+当前 US 稳健性路径使用：
 
-- official Nasdaq-100 membership at each OOS half-year start;
-- the latest semiannual membership known on each training date;
-- manifest-bound provider identity and membership hashes;
-- explicit missing-symbol reporting rather than zero filling or current-member substitution.
+- 每个 OOS 半年窗口起点的 Nasdaq-100 官方成员；
+- 训练日期当时已知的最近一次半年度成员表；
+- manifest 绑定的 provider identity 和 membership hashes；
+- 显式报告缺失标的，而不是补零或替换为当前成分股。
 
-This is window-start/semiannual point-in-time research, not full daily PIT. China research still uses static curated membership and therefore remains survivorship-biased.
+这属于窗口起点/半年度 point-in-time 研究，不是每日完整 PIT。中国研究仍使用静态精选成员，因此仍存在幸存者偏差。
 
-## 6. Latest model-effectiveness finding
+## 7. 当前模型有效性判断
 
-The fixed LightGBM/XGBoost comparison uses the same features, processed daily rank target, 100-round budget, 10-session embargo, raw OOS returns, Top-15 portfolio, 20 bps cost and QQQ benchmark.
+固定 LightGBM/XGBoost 对比使用相同特征、processed daily rank target、100-round budget、10-session embargo、raw OOS returns、Top-15 portfolio、20 bps 成本和 QQQ 基准。
 
 | Candidate | Static curated relative excess | PIT NDX relative excess | PIT positive windows | PIT worst drawdown |
 | --- | ---: | ---: | ---: | ---: |
 | LightGBM LambdaRank | +65.04% | -20.49% | 1/4 | -26.11% |
 | XGBoost `rank:ndcg` | +70.35% | -34.08% | 1/4 | -25.59% |
 
-The algorithm-family difference is small compared with the universe-validity problem. The next approved experiment is frozen static-to-PIT attribution, not another hyperparameter or factor-window search.
+算法家族差异小于股票池有效性问题。下一项获批实验是冻结的 static-to-PIT 归因，而不是继续进行超参数或因子窗口搜索。
 
-## 7. Common commands
+## 8. 常用命令
 
 ```text
-make doctor           validate the Python research environment
-make data             update market data
-make train-us         run the configured US training path
-make train-cn         run the configured CN training path
-make backtest         run the configured backtest path
-make research-bundle  export the canonical versioned bundle
-make breakfast        generate the daily research brief
-make ci               run repository quality gates locally
+make doctor           检查 Python 研究环境
+make data             更新市场数据
+make train-us         运行 US 训练流程
+make train-cn         运行 CN 训练流程
+make backtest         运行标准回测流程
+make research-bundle  导出版本化研究成果包
+make static-pwa       构建零 API 的 Research Artifact Studio
+make breakfast        生成每日研究简报
+make ci               运行仓库质量门禁
 ```
 
-## 8. Frontend contributor workflow
-
-The frontend may be run as a static development server for UI work. It must not require or silently connect to FastAPI.
+## 9. 前端开发与验证
 
 ```bash
 cd qlib-dashboard
@@ -161,7 +170,7 @@ npm ci
 VITE_RUNTIME_MODE=static_artifact npm run dev
 ```
 
-Production validation:
+生产验收：
 
 ```bash
 cd qlib-dashboard
@@ -172,25 +181,15 @@ VITE_RUNTIME_MODE=static_artifact npm run build
 npx playwright test --config=playwright.static.config.ts
 ```
 
-## 9. Deprecated local-Web compatibility
-
-The following path is retained temporarily only for migration and removal work:
-
-```bash
-make legacy-web-dev
-```
-
-It starts the old Vite + FastAPI stack. Do not use it as the product quick start and do not add new endpoints, API calls, authentication behavior or operational UI.
-
-The compatibility alias `make dev`, PM2 launchers, API Docker/Compose stack, Basic Auth/CORS settings, API tests and `connected_research` mode will be removed in sequenced PRs under #316.
+生产前端只允许 `static_artifact` 和 `local_artifact` 两种来源模式；不得增加网络取数、后台任务或写操作。
 
 ## 10. Scope and safety
 
 - No browser-side model training.
 - No broker integration or order execution.
 - No hosted upload or cloud synchronization of local bundles.
-- No silent fallback from missing artifact evidence to backend data.
+- No silent fallback from missing artifact evidence to another data source.
 - No feature-importance view is presented as proof of factor effectiveness.
 - `research_only=true`, `trade_ready=false`.
 
-More detail is available in `docs/methodology.md`, `docs/product/frontend_artifact_studio.md`, `AGENTS.md` and `scripts/README.md`.
+更多说明见 `docs/methodology.md`、`docs/product/frontend_artifact_studio.md`、`AGENTS.md` 和 `scripts/README.md`。
