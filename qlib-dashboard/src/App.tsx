@@ -16,7 +16,7 @@ import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { setAuthHeaderProvider } from './lib/api';
 import { useAuth } from './lib/auth';
 import { runtimeCapabilities } from './lib/runtime-capabilities';
-import { routes, VIEW_TITLES } from './routes';
+import { isRuntimeVisible, routes, VIEW_TITLES } from './routes';
 import { useGlobalStore } from './store/globalStore';
 
 function PageLoader() {
@@ -28,7 +28,7 @@ function NotFound() {
     <div className="research-empty-state">
       <p className="text-6xl font-black text-muted-foreground/20">404</p>
       <h1 className="mt-3 text-xl font-semibold">Evidence view not found</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Return to the research overview and choose a declared artifact.</p>
+      <p className="mt-2 text-sm text-muted-foreground">This route is not available in the active runtime. Return to the research overview and choose a declared artifact.</p>
       <Button asChild variant="outline" className="mt-6"><Link to="/">Back to overview</Link></Button>
     </div>
   );
@@ -201,7 +201,7 @@ function AuthenticatedApp() {
             submitAndPoll={jobs.submitAndPoll}
           />
         }>
-          {routes.map((route) => {
+          {routes.filter(isRuntimeVisible).map((route) => {
             const Component = route.component;
             return <Route key={route.path} path={route.path} element={<Component models={models} />} />;
           })}
