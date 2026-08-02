@@ -18,7 +18,7 @@ Windows PowerShell:
 )
 ```
 
-Restart the terminal or PM2 process after changing the variable. The plaintext value is used only in the HTTP request header. Artifacts store its presence and SHA-256 identity, not the value itself.
+Restart the terminal or scheduled task after changing the variable. The plaintext value is used only in the HTTP request header. Artifacts store its presence and SHA-256 identity, not the value itself.
 
 For GitHub Actions, create a repository variable named `SEC_USER_AGENT`. When it is absent, the scheduled workflow uses the public repository URL as a non-secret project identity; a monitored contact value is still preferred.
 
@@ -57,7 +57,7 @@ Run:
 uv run python scripts/setup_cron.py
 ```
 
-On Windows, this writes `scripts/run_daily_us_decision.bat` and prints a Task Scheduler command for Tuesday through Saturday at 07:30 local time. On Linux or macOS, it adds `alpha-daily-us-decision` to `ecosystem.config.json` with the same schedule.
+On Windows, this writes `scripts/run_daily_us_decision.bat` and prints a Task Scheduler command for Tuesday through Saturday at 07:30 local time. On Linux or macOS, it writes an importable crontab fragment to `artifacts/alpha-engine.crontab` with the same schedule. Review it before installing with `crontab artifacts/alpha-engine.crontab`.
 
 07:30 local time is intentionally conservative for both China and Japan system time zones and covers US winter and summer market close.
 
@@ -96,7 +96,7 @@ The workflow summary reports:
 - `artifacts/decision_ledger/us/`
 - `artifacts/operations/`
 
-The Decision Desk reads the immutable ledger under `artifacts/decision_ledger`.
+Research Artifact Studio can display ledger evidence only when it is exported into a manifest-declared bundle.
 
 ## Failure interpretation
 
