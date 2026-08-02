@@ -8,9 +8,16 @@ import json
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, TypedDict
 
-BASELINES = {
+
+class Baseline(TypedDict):
+    reported_value: float
+    tokens: tuple[str, ...]
+    benchmark: str
+
+
+BASELINES: dict[str, Baseline] = {
     "us": {
         "reported_value": 0.8143,
         "tokens": ("81.43%", "81.43", "0.8143"),
@@ -161,9 +168,7 @@ def scan_history(repo_root: Path) -> list[Hit]:
 
 
 def build_report(repo_root: Path) -> dict[str, object]:
-    worktree_hits = scan_worktree(repo_root)
-    history_hits = scan_history(repo_root)
-    all_hits = worktree_hits + history_hits
+    all_hits = scan_worktree(repo_root) + scan_history(repo_root)
 
     markets: dict[str, object] = {}
     for market, baseline in BASELINES.items():
