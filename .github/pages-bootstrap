@@ -1,2 +1,2 @@
-bootstrap_commit=8217f9b7a86891beb544f43e07e94281876bf400
-purpose=trigger the restricted Pages deployment workflow from a same-repository pull request
+bootstrap_commit=f642386c1ea6566be7192d4d0bccd10f7b3152ce
+purpose=trigger the freshly registered Pages deployment workflow from a same-repository pull request
