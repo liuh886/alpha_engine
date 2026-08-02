@@ -56,6 +56,7 @@ def test_missing_returns_are_renormalized_to_target_gross() -> None:
     half_gross = {"AAA": 0.25, "BBB": 0.25}
     effective_half = _effective_return_weights(half_gross, {"AAA": 0.10})
     assert effective_half == {"AAA": 0.5}
+    assert _effective_return_weights(target, {}) == {}
 
 
 def test_evaluate_reconciles_exit_and_missing_return_costs() -> None:
