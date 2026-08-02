@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   BookOpen,
   Cpu,
@@ -26,6 +27,7 @@ export interface RouteDefinition {
 const HomePage = lazy(() => import('./pages/ArtifactStudioHomePage').then((m) => ({ default: m.ArtifactStudioHomePage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const StrategyOperationsPage = lazy(() => import('./pages/StrategyOperationsPage').then((m) => ({ default: m.StrategyOperationsPage })));
 const EvidenceModelsPage = lazy(() => import('./pages/EvidenceModelsPage').then((m) => ({ default: m.EvidenceModelsPage })));
 const EvidenceDataPage = lazy(() => import('./pages/EvidenceDataPage').then((m) => ({ default: m.EvidenceDataPage })));
 const EvidenceFactorsPage = lazy(() => import('./pages/EvidenceFactorsPage').then((m) => ({ default: m.EvidenceFactorsPage })));
@@ -34,12 +36,14 @@ const ComparePage = lazy(() => import('./pages/ComparePage').then((m) => ({ defa
 const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then((m) => ({ default: m.MethodologyPage })));
 
 /**
- * The Web product exposes accepted formal research artifacts only. Execution,
- * exploratory experiment journals and mutation routes remain outside the browser.
+ * The Web product exposes accepted formal research artifacts and a read-only
+ * operational evidence ledger. Execution, exploratory journals and mutation
+ * routes remain outside the browser.
  */
 export const routes: RouteDefinition[] = [
   { path: '', title: 'Research Overview', label: 'Overview', releaseLevel: 'release', navGroup: 'Workspace', icon: LayoutDashboard, component: HomePage },
   { path: 'library', title: 'Bundle Library', label: 'Library', releaseLevel: 'release', navGroup: 'Workspace', icon: FolderArchive, component: LibraryPage },
+  { path: 'operations', title: 'v4.2 Operations', label: 'Operations', releaseLevel: 'release', navGroup: 'Workspace', icon: Activity, component: StrategyOperationsPage },
 
   { path: 'dashboard', title: 'Formal Backtest Review', label: 'Backtests', releaseLevel: 'release', navGroup: 'Evidence', icon: BarChart3, component: DashboardPage },
   { path: 'models', title: 'Model Evidence', label: 'Models', releaseLevel: 'release', navGroup: 'Evidence', icon: Cpu, component: EvidenceModelsPage },
