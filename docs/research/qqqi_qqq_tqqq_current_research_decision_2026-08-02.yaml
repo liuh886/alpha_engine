@@ -1,4 +1,4 @@
-schema_version: "1.3"
+schema_version: "1.4"
 decision_date: "2026-08-02"
 strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
 research_only: true
@@ -13,6 +13,8 @@ current_baseline:
     v4.2 remains the only actionable research baseline. Product-specific QQQI
     evidence after 2024 favoured a 50% recovery precursor, but the QQQ proxy
     expanded the sample to 15 events and rejected structural 50% superiority.
+    The failure taxonomy found descriptive recovery-quality features but could
+    not validate them in the late segment because it contains no failures.
     Production target weights therefore remain unchanged.
 
 historical_comparator:
@@ -116,6 +118,48 @@ recovery_release_hypotheses:
       The combined rule inherited the unconditional QQQI-release weakness and
       failed to preserve positive protection in all five major troughs.
 
+recovery_failure_taxonomy:
+  experiment_id: qqqi_qqq_tqqq_v4_2_recovery_precursor_failure_taxonomy_v4_7_research
+  role: governed_diagnostic
+  evidence:
+    report: docs/research/qqqi_qqq_tqqq_v4_2_recovery_precursor_failure_taxonomy_result_2026-08-02.md
+    snapshot: docs/research/snapshots/qqqi_v4_2_recovery_precursor_failure_taxonomy_2026-08-02.json
+    workflow_run: 30740263682
+    artifact_id: 8831040334
+    artifact_digest: sha256:0e4d355e8e01cf71e66eb92622e77048627305e4d355ae2dd479389205252bfa
+  findings:
+    event_count: 15
+    successful_event_count: 6
+    failed_event_count: 9
+    failed_reverted_before_state_2: 3
+    failed_reached_state_2_but_extra_leverage_lost: 6
+    descriptively_stable_feature_count: 8
+    early_successful_events: 3
+    early_failed_events: 9
+    late_successful_events: 3
+    late_failed_events: 0
+    primary_prospective_fields:
+      - vix_return_5d
+      - vxn_return_5d
+      - vxn_close
+      - state_1_decision_age_sessions
+      - vxn_return_1d
+    secondary_descriptive_fields:
+      - qqq_distance_ma_short
+      - vix_close
+      - vxn_retreat_from_peak
+  prospective_feature_monitoring_justified: true
+  new_preregistered_trading_hypothesis_justified: false
+  model_change_authorized: false
+  actionable_alert_authorized: false
+  decision: monitor_features_prospectively_without_new_rule
+  reason: >-
+    Faster VIX/VXN compression, a fresher state-1 decision, lower VXN and a
+    stronger short repair separated successful and failed events in the full
+    and early samples and survived leave-one-event-out checks. The late sample
+    contains three successes and no failures, so no separator can yet be
+    validated across both chronological segments and no threshold may be chosen.
+
 closed_retrospective_directions:
   - bridge_weight_search
   - sgov_weight_search
@@ -129,17 +173,26 @@ closed_retrospective_directions:
   - recovery_precursor_persistence_search
   - additional_recovery_precursor_weight_search
   - qqq_proxy_weight_search
+  - recovery_precursor_feature_threshold_search
+  - recovery_precursor_classifier_fit
 
 active_next_stage:
   issue: 348
-  name: prospective_v4_2_alert_and_execution_evidence
+  name: prospective_v4_2_alert_execution_and_recovery_feature_evidence
   model_changes_authorized: false
   shadow_fields_allowed:
     - tqqq_release_precursor_boolean
-    - precursor_feature_values
     - hypothetical_25_percent_tqqq_allocation
     - hypothetical_50_percent_tqqq_allocation
     - marginal_50_vs_25_outcomes
+    - vix_return_5d
+    - vxn_return_5d
+    - vxn_close
+    - state_1_decision_age_sessions
+    - vxn_return_1d
+    - qqq_distance_ma_short
+    - vix_close
+    - vxn_retreat_from_peak
     - shadow_outcomes_without_actionable_alert
   required_records:
     - signal_and_governed_data_dates
@@ -153,19 +206,24 @@ active_next_stage:
     - confirmation_reversal_or_unresolved_status
   interpretation: >-
     Prospective QQQI observations may determine whether the post-2024 favourable
-    regime persists. They do not override the negative QQQ proxy long-history
-    evidence without a new, predeclared regime hypothesis.
+    regime persists and whether the descriptive feature directions survive a
+    future failed recovery. They do not authorize a rule or override the
+    negative QQQ-proxy long-history evidence.
+  reconsider_recovery_hypothesis_only_after:
+    late_or_prospective_failed_precursor_events_minimum: 1
+    feature_directions_rechecked_without_threshold_selection: true
+    rule: all_conditions_required
 
 next_admissible_research:
-  name: recovery_precursor_failure_taxonomy
+  name: prospective_recovery_feature_validation
   model_changes_authorized: false
   objective: >-
-    Explain the 15 QQQ-proxy precursor events, especially the failed 2020-2023
-    recoveries, using only already-frozen observable features. Determine whether
-    the post-2024 positive events occupy a distinguishable regime before any new
-    rule is proposed.
+    Record the frozen descriptive feature set on future actual-QQQI precursor
+    events and wait for both successful and failed outcomes before proposing a
+    separately pre-registered rule.
   prohibited:
     - retrospective_threshold_optimization
+    - classifier_fit
     - new_weight_grid
     - direct_signal_promotion
 
