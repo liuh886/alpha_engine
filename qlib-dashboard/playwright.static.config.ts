@@ -16,7 +16,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'node e2e/fixture-server.mjs',
+    command: 'node e2e/static-fixture-server.mjs',
     url: 'http://127.0.0.1:43173',
     reuseExistingServer: false,
     timeout: 15_000,
