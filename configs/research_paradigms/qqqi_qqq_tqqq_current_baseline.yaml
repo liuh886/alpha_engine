@@ -1,0 +1,28 @@
+schema_version: "1.0"
+effective_date: "2026-08-02"
+strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
+current_research_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  implementation: src/research/vxn_bridge_allocation_experiment.py
+  prospective_monitor: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor.yaml
+  reason: >-
+    The 50% QQQI / 50% QQQ bridge preserves the exact v4.1 signal trace while
+    reducing turnover and transaction-cost drag and improving the published
+    net return, Sharpe, Sortino, Calmar, volatility and maximum drawdown.
+historical_signal_comparator:
+  experiment_id: qqqi_qqq_tqqq_vxn_leverage_v4_1
+  contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_leverage_v4_1.yaml
+promotion_scope: research_baseline_only
+research_only: true
+trade_ready: false
+post_result_origin_retained: true
+cost_assumption:
+  transaction_cost_bps_per_turnover_unit: 10.0
+  frozen: true
+guardrails:
+  - v4.2 becomes the default research comparator, not an automatically trade-ready strategy.
+  - v4.1 remains an immutable historical signal benchmark.
+  - No retrospective search over alternative bridge weights is permitted.
+  - New challengers must compare against v4.2 under the same 10 bps cost convention.
+  - Promotion beyond research baseline requires prospective evidence.
