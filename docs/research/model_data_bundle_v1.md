@@ -58,6 +58,21 @@ The initial profiles cover:
 - US/CN selected-pool research requiring fundamentals and corporate actions;
 - the QQQI / QQQ / TQQQ rotation research line.
 
+### Mandatory pre-training command
+
+Building a readiness report is not sufficient. A model or strategy workflow must invoke the profile gate immediately before training or backtesting:
+
+```bash
+uv run python scripts/data/check_model_data_profile.py \
+  --bundle-root artifacts/data/model_data_bundle_v1 \
+  --profile us_selected_price_only_v1 \
+  --expected-pool-id us_selected_equities_v2 \
+  --maximum-evidence-cutoff 2026-07-31 \
+  --output artifacts/data/model_data_bundle_v1/us-training-gate.json
+```
+
+The command verifies source and frontend-index hashes again. It exits non-zero when the named profile is blocked, missing, bound to another pool, newer than the declared experiment cutoff or altered after the bundle was built. The resulting gate JSON is intended to be retained with the model evidence.
+
 ## Frontend indexes
 
 The builder emits three compact files that can be written directly into the static export's `data/` directory:
@@ -72,9 +87,9 @@ The research-bundle exporter classifies them as:
 - `data_component_index`;
 - `training_readiness_index`.
 
-The root `alpha-engine-bundle.json` also exposes the model-data bundle ID, evidence cutoff and readiness summary. The browser therefore reads the same gate results used by model training.
+The root `alpha-engine-bundle.json` also exposes the model-data bundle ID, evidence cutoff and readiness summary. The browser therefore reads the same gate results used by model training. It does not independently infer readiness from a chart, model metric or file name.
 
-## CLI
+## Build CLI
 
 ```bash
 uv run python scripts/data/build_model_data_bundle.py \
@@ -88,6 +103,22 @@ uv run python scripts/data/build_model_data_bundle.py \
 
 Additional fundamental, corporate-action and factor components use the same repeated `--component` argument. Components may supply the native known manifest schema or the normalized component schema.
 
+## Shared ETF provider product
+
+Credentialed ETF history is built once by `ETF Reference Bundle CI`. The v4.1 and v4.2 prospective monitors consume the exact successful artifact through `workflow_run`; they do not independently call Tiingo.
+
+Pull-request validation deliberately clears `TIINGO_API_TOKEN` and builds a Yahoo research fallback. This keeps code and strategy tests deterministic and prevents repeated PR commits from exhausting provider quotas. Professional status can only originate from the central live provider workflow.
+
+The ETF manifest distinguishes provider failures rather than collapsing them into missing data:
+
+- `rate_limited`;
+- `credential_or_entitlement`;
+- `provider_symbol_not_found`;
+- `provider_upstream_error`;
+- schema or reconciliation failures.
+
+Provider health includes attempted/successful symbol counts, success ratio, error-class counts, rate-limited symbols and successful-request latency.
+
 ## Tiingo credential evidence
 
 The ETF workflow treats `TIINGO_API_TOKEN` as usable only when all three ETFs:
@@ -98,7 +129,9 @@ The ETF workflow treats `TIINGO_API_TOKEN` as usable only when all three ETFs:
 - avoid `provider_missing` and `quarantine` states;
 - are selected from Tiingo in the canonical bundle.
 
-The workflow writes `tiingo_secret_status.json` containing only configuration/usability state, selected provider names and reconciliation results. The token value is never printed or persisted.
+Closing total-return reconciliation and opening execution-price reconciliation are separate. Closing returns retain the tighter distribution gate. Opening returns must pass bounded single-session, percentile, annual compounded-drift and full-period compounded-drift gates.
+
+The workflow writes `tiingo_secret_status.json` containing only configuration/usability state, provider health, selected provider names and reconciliation results. The token value is never printed or persisted.
 
 ## Boundaries
 
