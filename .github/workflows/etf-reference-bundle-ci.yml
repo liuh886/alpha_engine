@@ -1,0 +1,138 @@
+name: ETF Reference Bundle CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/etf-reference-bundle-ci.yml"
+      - "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
+      - "src/data/provider_catalog.py"
+      - "src/data/adapters/tiingo_adapter.py"
+      - "src/data/etf_reference_bundle.py"
+      - "src/research/etf_strategy_data.py"
+      - "scripts/data/build_etf_reference_bundle.py"
+      - "tests/test_provider_catalog.py"
+      - "tests/test_tiingo_adapter.py"
+      - "tests/test_etf_reference_bundle.py"
+      - "docs/research/qqqi_qqq_tqqq_provider_data_v1.md"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/etf-reference-bundle-ci.yml"
+      - "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
+      - "src/data/provider_catalog.py"
+      - "src/data/adapters/tiingo_adapter.py"
+      - "src/data/etf_reference_bundle.py"
+      - "src/research/etf_strategy_data.py"
+      - "scripts/data/build_etf_reference_bundle.py"
+      - "tests/test_provider_catalog.py"
+      - "tests/test_tiingo_adapter.py"
+      - "tests/test_etf_reference_bundle.py"
+      - "docs/research/qqqi_qqq_tqqq_provider_data_v1.md"
+  schedule:
+    - cron: "30 13 * * 6"
+  workflow_dispatch:
+    inputs:
+      require_professional:
+        description: "Require Tiingo plus independent reconciliation"
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: etf-reference-bundle-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff ETF provider paths
+        run: >-
+          uv run ruff check
+          src/data/provider_catalog.py
+          src/data/adapters/tiingo_adapter.py
+          src/data/etf_reference_bundle.py
+          src/research/etf_strategy_data.py
+          scripts/data/build_etf_reference_bundle.py
+          tests/test_provider_catalog.py
+          tests/test_tiingo_adapter.py
+          tests/test_etf_reference_bundle.py
+      - name: Mypy ETF provider paths
+        run: >-
+          uv run mypy --follow-imports=skip
+          src/data/provider_catalog.py
+          src/data/adapters/tiingo_adapter.py
+          src/data/etf_reference_bundle.py
+          src/research/etf_strategy_data.py
+          scripts/data/build_etf_reference_bundle.py
+      - name: Run ETF provider tests
+        run: >-
+          uv run pytest
+          tests/test_provider_catalog.py
+          tests/test_tiingo_adapter.py
+          tests/test_etf_reference_bundle.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  live-bundle:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Build current ETF bundle
+        shell: bash
+        run: |
+          extra=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.require_professional }}" = "true" ]; then
+            extra="--require-professional"
+          elif [ -n "$TIINGO_API_TOKEN" ]; then
+            extra="--require-professional"
+          fi
+          uv run python scripts/data/build_etf_reference_bundle.py \
+            --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1 \
+            $extra
+      - name: Verify strategy-data gate
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          assert payload["strategy_data_ready"] is True, payload
+          assert payload["symbols"] == ["QQQ", "QQQI", "TQQQ"], payload
+          assert payload["common_history_start"] is not None, payload
+          assert payload["trade_ready"] is False, payload
+          PY
+      - name: Upload ETF reference bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqqi-qqq-tqqq-reference-bundle-${{ github.run_id }}
+          path: artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          if-no-files-found: error
+          retention-days: 90
