@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { modelsApi } from '@/api/modelsApi';
-import { parseQlibData, ModelData } from '@/lib/data-parser';
+import { parseQlibData, type ModelData } from '@/lib/data-parser';
 import { useGlobalStore } from '@/store/globalStore';
 import { subscribeResearchBundle } from '@/lib/research-bundle';
 
 export function useModels() {
   const [models, setModels] = useState<ModelData[]>([]);
-  const selectedModelId = useGlobalStore((s) => s.selectedModelId);
-  const setGlobalModelId = useGlobalStore((s) => s.setSelectedModelId);
-  const setSelectedModelMarket = useGlobalStore((s) => s.setSelectedModelMarket);
+  const selectedModelId = useGlobalStore((state) => state.selectedModelId);
+  const setGlobalModelId = useGlobalStore((state) => state.setSelectedModelId);
+  const setSelectedModelMarket = useGlobalStore((state) => state.setSelectedModelMarket);
 
   const setSelectedModelId = useCallback(
     (id: string) => {
       setGlobalModelId(id);
-      const m = models.find((model) => model.id === id);
-      if (m?.market) setSelectedModelMarket(m.market.toLowerCase());
+      const model = models.find((candidate) => candidate.id === id);
+      if (model?.market) setSelectedModelMarket(model.market.toLowerCase());
     },
     [models, setGlobalModelId, setSelectedModelMarket],
   );
@@ -23,7 +23,10 @@ export function useModels() {
     async (opts?: { selectLatest?: boolean }) => {
       try {
         const json = await modelsApi.getDashboardDb();
-        if (json.generated_at) useGlobalStore.getState().setDataGeneratedAt(String(json.generated_at));
+        if (json.generated_at) {
+          useGlobalStore.getState().setDataGeneratedAt(String(json.generated_at));
+        }
+
         const parsed = parseQlibData(json);
         setModels(parsed);
 
@@ -38,32 +41,27 @@ export function useModels() {
           setGlobalModelId('');
           setSelectedModelMarket('us');
         }
+
         return parsed;
       } catch (error) {
-        console.error('Failed to fetch models', error);
+        console.error('Failed to load model evidence', error);
         return null;
       }
     },
     [setGlobalModelId, setSelectedModelMarket],
   );
 
-  useEffect(() => subscribeResearchBundle(() => { void fetchModels({ selectLatest: true }); }), [fetchModels]);
-
-  const deleteModel = useCallback(
-    async (versionId: string) => {
-      try {
-        const resp = await modelsApi.deleteModel(versionId);
-        if (resp.ok) {
-          await fetchModels({ selectLatest: true });
-          return true;
-        }
-        return false;
-      } catch {
-        return false;
-      }
-    },
+  useEffect(
+    () => subscribeResearchBundle(() => {
+      void fetchModels({ selectLatest: true });
+    }),
     [fetchModels],
   );
 
-  return { models, selectedModelId, setSelectedModelId, fetchModels, deleteModel };
+  return {
+    models,
+    selectedModelId,
+    setSelectedModelId,
+    fetchModels,
+  };
 }
