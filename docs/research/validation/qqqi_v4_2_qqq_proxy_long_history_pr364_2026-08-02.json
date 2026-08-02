@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "repository": "liuh886/alpha_engine",
+  "pull_request": 364,
+  "validated_on": "2026-08-02",
+  "validated_content_head_sha": "5f24ce40b0e964d42f29cc101d3e752d2544c368",
+  "receipt_commit_excluded_from_evidence_calculation": true,
+  "checks": {
+    "lint": "success",
+    "focused_tests": "success",
+    "governed_etf_bundle": "success",
+    "actual_qqqi_comparison": "success",
+    "qqq_proxy_long_history_comparison": "success",
+    "overlap_event_concordance": "success",
+    "notebook_24_execution": "success",
+    "artifact_upload": "success",
+    "alpha_engine_ci": "success",
+    "decision_evidence_contract_ci": "success",
+    "qqqi_vxn_research_bundle": "success",
+    "sgov_episode_attribution_revalidation": "success",
+    "precursor_50_revalidation": "success"
+  },
+  "decision": {
+    "v4_2_baseline": "retained",
+    "tqqq_precursor_25": "frozen_research_comparator",
+    "tqqq_precursor_50": "post_2024_regime_dependent_shadow_observation",
+    "preferred_shadow_status": "withdrawn",
+    "qqq_proxy_structural_support_for_50": false,
+    "actionable_model_authorized": false,
+    "direct_promotion_authorized": false,
+    "additional_weight_search": "not_authorized",
+    "next_research": "recovery_precursor_failure_taxonomy"
+  },
+  "canonical_research_evidence": {
+    "workflow_name": "QQQI v4.2 QQQ Proxy Long History",
+    "run_id": 30738861599,
+    "conclusion": "success",
+    "artifact_id": 8830582711,
+    "artifact_name": "qqqi-v4-2-qqq-proxy-long-history-30738861599",
+    "artifact_digest": "sha256:5a69cb3a3bb8dff9359cbcad313e9ec1b6f1fc9a56d47ef35af1471e3105c3ca",
+    "expires_on": "2026-10-31"
+  },
+  "final_content_revalidation": {
+    "workflow_name": "QQQI v4.2 QQQ Proxy Long History",
+    "run_id": 30739023880,
+    "conclusion": "success",
+    "artifact_id": 8830633389,
+    "artifact_name": "qqqi-v4-2-qqq-proxy-long-history-30739023880",
+    "artifact_digest": "sha256:6246d83b70658e07c026e01b1f144f0087ab2c8fc3a87fd4609201a2b6d7cfac",
+    "expires_on": "2026-10-31"
+  },
+  "final_content_workflows": {
+    "alpha_engine_ci": 30739023900,
+    "decision_evidence_contract_ci": 30739023881,
+    "qqqi_vxn_research_bundle": 30739023951,
+    "sgov_episode_attribution": 30739023909,
+    "sgov_precursor_50": 30739023878
+  },
+  "structural_gate_failures": {
+    "full_sample_cagr_delta_50_vs_25_pp": -1.2363337579192724,
+    "early_sample_cagr_delta_50_vs_25_pp": -2.815733834608425,
+    "marginal_event_positive_rate": 0.4,
+    "required_positive_rate": 0.6,
+    "sharpe_delta_50_vs_25": -0.05221703381915854,
+    "maximum_drawdown_worsening_pp": 1.331971719361913
+  }
+}
