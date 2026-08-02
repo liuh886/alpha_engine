@@ -43,6 +43,6 @@ research_commands:
     output_dir: "artifacts/evidence/qqqi_qqq_tqqq_vxn_v4_1_prospective_monitor"
     strategy_run_dir: "artifacts/strategy_runs"
   qqqi-vxn-v4.2:
-    runner: "scripts/run_qqqi_vxn_v4_2_prospective_monitor.py"
-    output_dir: "artifacts/evidence/qqqi_qqq_tqqq_vxn_v4_2_prospective_monitor"
+    runner: "scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py"
+    output_dir: "artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor"
     strategy_run_dir: "artifacts/strategy_runs"
