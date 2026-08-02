@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pandas as pd
@@ -50,6 +50,22 @@ class FakeAdapter:
             df=_bars(req.symbol),
             provider_symbol=req.symbol,
         )
+
+
+class FakeRateLimitError(ValueError):
+    error_class = "rate_limited"
+    status_code = 429
+    retry_after_seconds = None
+
+
+@dataclass
+class RateLimitedAdapter:
+    name: str = "tiingo"
+    calls: list[str] = field(default_factory=list)
+
+    def fetch_daily_bars(self, req: FetchRequest) -> FetchResult:
+        self.calls.append(req.symbol)
+        raise FakeRateLimitError("provider quota exhausted")
 
 
 def _contract(tmp_path: Path) -> Path:
@@ -143,3 +159,27 @@ def test_single_professional_source_is_explicit(tmp_path: Path):
     assert {row["status"] for row in shard["records"]} == {
         "single_professional_source"
     }
+
+
+def test_rate_limit_opens_one_shard_wide_provider_circuit(tmp_path: Path):
+    contract = _contract(tmp_path)
+    adapter = RateLimitedAdapter()
+    shard = build_professional_price_shard(
+        root=tmp_path,
+        contract_path=contract,
+        output_root=tmp_path / "output",
+        cutoff="2024-03-15",
+        shard_index=0,
+        primary_adapter=adapter,
+        secondary_adapter=None,
+    )
+    assert adapter.calls == ["AAPL"]
+    attempts = [row["primary_attempt"] for row in shard["records"]]
+    assert attempts[0]["error_class"] == "rate_limited"
+    assert attempts[1]["error_class"] == "provider_circuit_open"
+    assert shard["provider_health"]["tiingo"] == {
+        "attempted_symbols": 1,
+        "circuit_open": True,
+        "circuit_reason": "rate_limited",
+    }
+    assert shard["complete"] is False
