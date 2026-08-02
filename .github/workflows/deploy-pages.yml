@@ -8,6 +8,7 @@ on:
       - "data/research/**"
       - "configs/models/*.yaml"
       - "docs/research/**"
+      - "scripts/check_repository_model_runs.py"
       - "scripts/export_static_site_data.py"
       - "scripts/export_research_bundle.py"
       - "src/artifacts/repository_research_store.py"
@@ -74,6 +75,9 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen
 
+      - name: Validate primary model/run bindings
+        run: uv run python scripts/check_repository_model_runs.py
+
       - name: Export repository research evidence
         run: |
           uv run python scripts/export_static_site_data.py \
@@ -102,11 +106,16 @@ jobs:
           test -f _site/docs/methodology.md
           test -f _site/bundle/alpha-engine-bundle.json
           test -f _site/bundle/data/models.json
+          test -f _site/data/runs/us_x1_1-evidence-30737322468/run.json
+          test -f _site/data/runs/us_x1_0-evidence-30733686862/run.json
+          test -f _site/data/runs/cn_x1_0-evidence-30733728747/run.json
           grep -q '"schema_version": "1.0.0"' _site/bundle/alpha-engine-bundle.json
           grep -q '"source": "repository_research_store"' _site/data/manifest.json
           grep -q '"id": "us_x1_1"' _site/data/models.json
           grep -q '"id": "us_x1_0"' _site/data/models.json
           grep -q '"id": "cn_x1_0"' _site/data/models.json
+          grep -q '"primary_run_curve_unavailable"' _site/data/manifest.json
+          grep -q '"primary_run_provider_snapshot_unavailable"' _site/data/manifest.json
           ! grep -q 'metadata_db_missing' _site/bundle/alpha-engine-bundle.json
 
       - name: Setup Pages

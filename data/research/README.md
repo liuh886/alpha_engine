@@ -1,6 +1,6 @@
 # Repository Research Store
 
-`data/research/` is the durable, Git-backed source of truth for research evidence that may be consumed by Alpha Engine tools or published to the Research Artifact Studio.
+`data/research/` is the durable, Git-backed source of truth for research evidence consumed by Alpha Engine tools and the Research Artifact Studio.
 
 ## Authority boundary
 
@@ -14,20 +14,49 @@
 ```text
 data/research/
 ├── catalog.json
-├── models/<model_id>/model.json       # future normalized model records
 ├── runs/<run_id>/
 │   ├── run.json
 │   ├── metrics.json
-│   ├── equity_curve.json
+│   ├── equity_curve.json       # present only when an exact trace was retained
 │   ├── attribution.json
-│   ├── holdings.parquet               # optional, Git LFS when large
+│   ├── training_log.json
+│   ├── model.json
+│   ├── optional large files
 │   └── inventory.json
 └── releases/<release_id>/
     ├── release.json
     └── selected_runs.json
 ```
 
-Named model contracts enter the frontend only when allow-listed in `catalog.json`. Imported runs enter only when added to `published_runs`; a model uses a run as its main frontend evidence only when its catalog entry declares `primary_run_id`.
+Named model contracts remain under `configs/models/`. The catalog binds each published model to one primary immutable run.
+
+## Historical backfill boundary
+
+The accepted source artifacts for US x1.1, US x1.0 and CN x1.0 retained exact provider identities, effective contracts, window metrics and final selections, but did not retain portfolio-value traces or complete provider bytes.
+
+Those artifacts are normalized into Repository Run v1 without fabricating missing evidence:
+
+- exact metrics and selections are retained;
+- source workflow, artifact ID and digest are retained;
+- `equity_curve.json` is absent;
+- `run.json` explicitly records `unavailable_source_artifact_did_not_retain_trace`;
+- US exact replay remains blocked by Issue #358;
+- CN exact replay remains blocked by Issue #345.
+
+A historical period or daily curve must never be inferred from half-year returns or regenerated against a different provider identity.
+
+## Forward evidence contract
+
+New governed fixed-horizon workflows must retain, in the same artifact:
+
+- complete provider snapshot bytes and provider identity;
+- declared and effective model parameters;
+- aggregate and per-window metrics;
+- exact non-overlapping period NAV and benchmark trace;
+- target holdings and name contributions for every rebalance period;
+- model/run identity and research boundaries.
+
+The fixed-10D evaluator writes `backtest_traces` into every completed window artifact. These traces are explicitly **period traces**, not daily NAV claims. Optimization workflows fail closed when a completed candidate lacks trace points or holdings, and they upload the complete provider directory.
 
 ## Storage policy
 
@@ -36,13 +65,13 @@ Use ordinary Git for:
 - catalog and release manifests;
 - model/run identity;
 - metrics and gates;
-- compact equity curves;
+- compact period or daily curves;
 - attribution summaries;
 - SHA-256 inventories.
 
-Use Git LFS for accepted Parquet and model binaries. Pages checks out LFS objects before building the research bundle. Provider-restricted raw responses, credentials, unbounded caches and temporary training files must not be committed.
+Use Git LFS for accepted large Parquet or model binaries. Provider-restricted raw responses, credentials, unbounded caches and temporary training files must not be committed.
 
-Every durable run must bind:
+Every durable run binds:
 
 - run ID and model ID;
 - market, benchmark and universe;
@@ -53,35 +82,14 @@ Every durable run must bind:
 - `research_only=true` and `trade_ready=false`;
 - an inventory of every referenced file and SHA-256 digest.
 
-## Import workflow
+## Workflow
 
-Training and backtests first produce a standard local run directory under `artifacts/`. Import without publishing:
-
-```bash
-alpha research import-run artifacts/runs/<run_id>/repository-run
-```
-
-Publish to the frontend catalog and assign as the model's primary run:
-
-```bash
-alpha research import-run \
-  artifacts/runs/<run_id>/repository-run \
-  --publish \
-  --set-primary
-```
-
-The importer validates identity, windows, effective parameters, costs and the research boundary; calculates byte sizes and SHA-256 hashes; then copies the accepted files to the immutable `data/research/runs/<run_id>/` directory. Reusing the same run ID with different bytes fails closed.
-
-See `docs/contracts/REPOSITORY_RUN_V1.md` for the exact files and schemas.
-
-## End-to-end workflow
-
-1. Data preparation, training and backtests write staging outputs under `artifacts/`.
-2. `alpha research import-run` validates the staged run.
-3. Accepted evidence is copied into `data/research/runs/<run_id>/`.
-4. `--publish` updates `catalog.json`; `--set-primary` binds the run to a published model.
-5. Review and merge the resulting Git changes through a PR.
-6. GitHub Pages validates all inventory hashes and builds the browser bundle.
-7. Local SQLite indexes may be rebuilt from repository evidence for query speed.
+1. Training and backtests write staging outputs under `artifacts/`.
+2. The workflow retains provider bytes, metrics and exact period traces.
+3. `alpha research import-run` validates the staged Repository Run v1 directory.
+4. Accepted evidence is copied into immutable `data/research/runs/<run_id>/` through a PR.
+5. `data/research/catalog.json` binds the run to a published model.
+6. GitHub Pages builds the browser bundle from the repository store.
+7. `alpha research rebuild-index` reconstructs local SQLite indexes from the same Git data.
 
 Deleting `artifacts/` must not delete accepted research history.

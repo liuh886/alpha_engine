@@ -1,0 +1,74 @@
+name: Repository Model Run Bridge
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "data/research/**"
+      - "configs/models/*.yaml"
+      - "scripts/check_repository_model_runs.py"
+      - "src/artifacts/repository_research_store.py"
+      - "src/artifacts/repository_metadata_cache.py"
+      - "tests/test_repository_model_run_bridge.py"
+      - "tests/test_repository_research_store.py"
+      - ".github/workflows/repository-model-run-bridge.yml"
+  push:
+    branches: [main]
+    paths:
+      - "data/research/**"
+      - "configs/models/*.yaml"
+      - "scripts/check_repository_model_runs.py"
+      - "src/artifacts/repository_research_store.py"
+      - "src/artifacts/repository_metadata_cache.py"
+      - "tests/test_repository_model_run_bridge.py"
+      - "tests/test_repository_research_store.py"
+      - ".github/workflows/repository-model-run-bridge.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate code and immutable model/run bindings
+        run: |
+          uv run ruff check \
+            scripts/check_repository_model_runs.py \
+            src/artifacts/repository_research_store.py \
+            tests/test_repository_model_run_bridge.py
+          uv run mypy \
+            scripts/check_repository_model_runs.py \
+            src/artifacts/repository_research_store.py
+          uv run pytest \
+            tests/test_repository_model_run_bridge.py \
+            tests/test_repository_research_store.py \
+            tests/test_repository_metadata_cache.py \
+            -q --strict-markers --tb=short
+          uv run python scripts/check_repository_model_runs.py
+      - name: Prove frontend and SQLite reconstruction from Git data
+        run: |
+          rm -rf artifacts/site artifacts/research-bundle artifacts/metadata
+          uv run python scripts/export_static_site_data.py \
+            --source repository \
+            --repository-catalog data/research/catalog.json \
+            --output artifacts/site/data
+          uv run alpha research rebuild-index
+          test -f artifacts/site/data/models.json
+          test -f artifacts/site/data/runs/us_x1_1-evidence-30737322468/run.json
+          test -f artifacts/metadata/metadata.db
+          grep -q '"primary_run_curve_unavailable"' artifacts/site/data/manifest.json
+          grep -q '"run_id": "us_x1_1-evidence-30737322468"' artifacts/site/data/models.json
