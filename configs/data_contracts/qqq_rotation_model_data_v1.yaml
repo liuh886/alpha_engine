@@ -1,0 +1,30 @@
+schema_version: "1.0"
+contract_id: "qqq_rotation_model_data_v1"
+status: "active_governance_contract"
+research_only: true
+trade_ready: false
+
+component_statuses: [ready, partial, blocked, not_provided, not_applicable]
+component_kinds: [strategy_data_bundle]
+
+training_gate_policy:
+  fail_on_missing_required_component: true
+  fail_on_blocked_required_component: true
+  fail_on_component_hash_mismatch: true
+  fail_on_pool_identity_mismatch: true
+  fail_on_candidate_reference_overlap: true
+  fail_on_post_cutoff_evidence: true
+  optional_partial_components_are_visible: true
+  no_implicit_forward_fill: true
+  no_implicit_symbol_substitution: true
+
+profiles:
+  qqqi_qqq_tqqq_vix_vxn_rotation_v1:
+    market: "us"
+    candidate_pool_id: "qqqi_qqq_tqqq_reference_bundle_v1"
+    candidate_symbols: ["QQQI", "QQQ", "TQQQ"]
+    references: ["^VIX", "^VXN"]
+    required_components:
+      - component_id: "strategy.qqqi_qqq_tqqq_vix_vxn_v1"
+        accepted_statuses: ["ready"]
+        minimum_coverage_ratio: 1.0
