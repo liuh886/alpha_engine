@@ -1,13 +1,14 @@
 # Legacy Web Retirement Policy
 
-Status: **Phase 0 — frozen / deprecated**  
-Parent: #316
+Status: **Phase 1 — frontend product cutover in progress**  
+Parent: #316  
+Frontend delivery: #318
 
 ## Decision
 
 Alpha Engine's only supported Web product is the static **Research Artifact Studio** deployed through GitHub Pages and installable as a PWA.
 
-The legacy FastAPI/local-Web stack remains temporarily available only to support controlled migration. It is not the default product architecture and must not receive new features.
+The legacy FastAPI/local-Web stack remains temporarily available only to support controlled backend migration. It is no longer represented as a browser product and must not receive new features.
 
 ## Target boundary
 
@@ -21,14 +22,24 @@ GitHub Pages / PWA / local bundle reader
 
 The browser consumes `alpha-engine-bundle.json` and files declared by that manifest. Python execution remains in CLI commands, scripts and scheduled workflows.
 
+## Current frontend truth
+
+The frontend route graph contains artifact views only:
+
+- Overview and Library;
+- Backtests, Models, Compare, Data, Factors, Experiments and Reports;
+- Methodology.
+
+The application root has no authentication provider, login guard, server-health bootstrap, task polling, data refresh, mutation control or Developer navigation group. The two remaining runtime labels describe artifact source only: published or local.
+
 ## Frozen legacy surface
 
-The following areas are legacy migration zones:
+The following areas remain legacy migration zones:
 
 - `api_server.py`;
 - `src/api/`;
 - FastAPI/Uvicorn/SlowAPI imports;
-- frontend `connected_research` capability and API-only routes;
+- unused frontend API clients, polling hooks and connected-only pages pending physical deletion;
 - PM2 launchers and `ecosystem.config.js`;
 - API-oriented Docker/Compose startup;
 - local Basic Auth, CORS, API host/port and static-site mounting;
@@ -51,16 +62,22 @@ Changes inside these areas are allowed only when they reduce the retirement surf
 
 ### Phase 0 — freeze and inventory
 
-- make Pages/PWA and CLI the canonical entry points;
-- mark local Web documentation as deprecated;
-- record the migration inventory;
-- block new legacy dependencies in CI.
+Completed in #317:
+
+- Pages/PWA and CLI became the canonical entry points;
+- local Web documentation was marked deprecated;
+- the migration inventory was recorded;
+- CI began blocking new legacy dependencies.
 
 ### Phase 1 — remove connected frontend mode
 
-- remove `connected_research` and authentication UI;
-- remove API clients, polling hooks and backend-only routes;
-- preserve static/local artifact journeys.
+In progress in #318:
+
+- remove `connected_research` from production frontend code;
+- remove authentication and server bootstrap from the application root;
+- remove backend-only routes from the browser route graph;
+- preserve static/local bundle journeys;
+- then physically delete the now-unreachable connected UI modules.
 
 ### Phase 2 — extract domain services
 
@@ -101,5 +118,5 @@ No router is deleted until retained domain behavior has a non-HTTP owner.
 - Web: GitHub Pages/PWA Research Artifact Studio.
 - Data boundary: versioned research bundle.
 - Execution boundary: Python CLI/scripts/workflows.
-- Legacy local server: deprecated migration-only surface.
+- Legacy local server: deprecated backend migration-only surface.
 - Scope: `research_only=true`, `trade_ready=false`.
