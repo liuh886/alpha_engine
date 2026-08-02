@@ -71,6 +71,12 @@ def test_provenance_auditor_finds_candidates_without_verifying_them(tmp_path: Pa
     report = module.build_report(tmp_path)
 
     assert report["status"] == "baseline_provenance_audit_completed"
-    assert report["markets"]["us"]["status"] == "provenance_candidates_found"
-    assert report["markets"]["cn"]["status"] == "provenance_candidates_found"
+    assert report["markets"]["us"]["status"] == "meaningful_candidates_found"
+    assert report["markets"]["cn"]["status"] == "meaningful_candidates_found"
+    assert report["markets"]["us"]["classification_counts"] == {
+        "economic_metric_candidate": 2
+    }
+    assert report["markets"]["cn"]["classification_counts"] == {
+        "economic_metric_candidate": 2
+    }
     assert "only a provenance candidate" in report["interpretation"]
