@@ -1,4 +1,4 @@
-schema_version: "1.2"
+schema_version: "1.3"
 decision_date: "2026-08-02"
 strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
 research_only: true
@@ -10,10 +10,10 @@ current_baseline:
   alert_source: true
   decision: retain_unchanged
   reason: >-
-    v4.2 remains the only actionable research baseline. The 50% recovery
-    precursor nearly matches its CAGR while materially reducing historical
-    drawdown, but only three precursor events exist and one major drawdown is
-    unresolved. Production target weights therefore remain unchanged.
+    v4.2 remains the only actionable research baseline. Product-specific QQQI
+    evidence after 2024 favoured a 50% recovery precursor, but the QQQ proxy
+    expanded the sample to 15 events and rejected structural 50% superiority.
+    Production target weights therefore remain unchanged.
 
 historical_comparator:
   experiment_id: qqqi_qqq_tqqq_vxn_leverage_v4_1
@@ -42,64 +42,73 @@ recovery_release_hypotheses:
       CAGR and weakened protection in the current unresolved episode.
 
   tqqq_precursor_25:
-    role: immutable_shadow_comparator
+    role: frozen_research_comparator
     structure: {QQQI: 0.25, SGOV: 0.00, QQQ: 0.50, TQQQ: 0.25}
     evidence:
       report: docs/research/qqqi_qqq_tqqq_v4_2_sgov_recovery_release_result_2026-08-02.md
       snapshot: docs/research/snapshots/qqqi_v4_2_sgov_recovery_release_2026-08-02.json
       workflow_run: 30735777927
       artifact_id: 8829513797
-    findings:
+    actual_qqqi_findings:
       cagr: 0.311978
       sharpe: 1.472082
       max_drawdown: -0.173533
       precursor_events: 3
       precursor_sessions: 6
-    decision: retain_as_comparator_not_preferred_candidate
+    qqq_proxy_findings:
+      cagr: 0.329356
+      sharpe: 1.257291
+      max_drawdown: -0.256150
+      precursor_events: 15
+      precursor_sessions: 32
+    decision: retain_as_frozen_comparator_only
     actionable_alert_authorized: false
 
   tqqq_precursor_50:
-    role: preferred_deferred_shadow_hypothesis
+    role: post_2024_regime_dependent_shadow_observation
     structure: {QQQI: 0.00, SGOV: 0.00, QQQ: 0.50, TQQQ: 0.50}
     formal_state_2_unchanged: {QQQI: 0.00, SGOV: 0.00, QQQ: 0.25, TQQQ: 0.75}
-    evidence:
+    actual_qqqi_evidence:
       report: docs/research/qqqi_qqq_tqqq_v4_2_sgov_precursor_50_result_2026-08-02.md
       snapshot: docs/research/snapshots/qqqi_v4_2_sgov_precursor_50_2026-08-02.json
       workflow_run: 30737397224
       artifact_id: 8830077965
-      artifact_digest: sha256:8885741183b30177e70f380e0a6286c0b33d0aa375c279356592be5c0fca26c6
-    findings:
+    actual_qqqi_findings:
       cagr: 0.324653
       sharpe: 1.516918
-      sortino: 2.209449
       max_drawdown: -0.168858
-      calmar: 1.922647
       cagr_delta_vs_25_pp: 1.2675767191728138
-      cagr_gap_vs_v4_2_pp: -0.5902165129737957
-      early_cagr_delta_vs_25_pp: 1.567249508098234
-      late_cagr_delta_vs_25_pp: 0.7248081713609578
       precursor_events: 3
-      precursor_sessions: 6
       marginal_event_positive_rate_vs_25: 1.00
-      largest_marginal_event_benefit_share: 0.5949576465961783
-      major_trough_improvement_rate_vs_v4_2: 1.00
-      median_major_trough_protection_pp: 4.641341522212217
-      median_resolved_recovery_lag_sessions: -1.0
-      unresolved_major_episode_count: 1
+    qqq_proxy_evidence:
+      report: docs/research/qqqi_qqq_tqqq_v4_2_qqq_proxy_long_history_result_2026-08-02.md
+      snapshot: docs/research/snapshots/qqqi_v4_2_qqq_proxy_long_history_2026-08-02.json
+      workflow_run: 30738861599
+      artifact_id: 8830582711
+      artifact_digest: sha256:5a69cb3a3bb8dff9359cbcad313e9ec1b6f1fc9a56d47ef35af1471e3105c3ca
+    qqq_proxy_findings:
+      sample_start: "2020-06-01"
+      precursor_events: 15
+      precursor_sessions: 32
+      cagr: 0.316992
+      sharpe: 1.205074
+      max_drawdown: -0.269469
+      cagr_delta_vs_25_pp: -1.2363337579192724
+      early_cagr_delta_vs_25_pp: -2.815733834608425
+      late_cagr_delta_vs_25_pp: 1.121028043003669
+      marginal_event_positive_rate_vs_25: 0.40
+      overlap_sign_concordance_with_actual_qqqi: 1.00
+    structural_support_authorized: false
+    preferred_shadow_status: withdrawn
     shadow_monitor_authorized: false
     actionable_alert_authorized: false
     direct_promotion_authorized: false
     reason: >-
-      The 50% precursor dominates the 25% precursor on full, early and late
-      CAGR, Sharpe, maximum drawdown and measured tail risk. However, only three
-      historical events exist and one major episode remains unresolved. It is
-      therefore the preferred hypothesis to observe prospectively, not a target
-      allocation or Telegram instruction.
-    reconsider_only_after:
-      additional_prospective_precursor_events: 3
-      total_precursor_events_minimum: 6
-      unresolved_major_episode: resolved_or_formally_censored
-      rule: all_conditions_required
+      The 50% precursor improved all three observed post-2024 QQQI events and
+      the QQQ proxy reproduced their direction. However, the proxy added 12
+      earlier events and showed that 50% underperformed 25% in the full and
+      early samples, had only a 40% marginal event win rate, and produced worse
+      Sharpe and drawdown. The result is regime-dependent rather than structural.
 
   staged_qqqi_then_tqqq_release:
     decision: rejected_as_promoted_challenger
@@ -119,6 +128,7 @@ closed_retrospective_directions:
   - recovery_precursor_threshold_search
   - recovery_precursor_persistence_search
   - additional_recovery_precursor_weight_search
+  - qqq_proxy_weight_search
 
 active_next_stage:
   issue: 348
@@ -141,14 +151,23 @@ active_next_stage:
     - opening_gap_slippage_and_cost_deviation
     - realized_5_10_20_40_session_outcomes
     - confirmation_reversal_or_unresolved_status
-  precursor_50_review_gate:
-    total_precursor_events_minimum: 6
-    unresolved_major_episode: resolved_or_formally_censored
-    rule: all_conditions_required
-  reconsider_leverage_confirmation_only_after:
-    prospective_1_to_2_events: 8
-    monitoring_months: 24
-    rule: both_conditions_required
+  interpretation: >-
+    Prospective QQQI observations may determine whether the post-2024 favourable
+    regime persists. They do not override the negative QQQ proxy long-history
+    evidence without a new, predeclared regime hypothesis.
+
+next_admissible_research:
+  name: recovery_precursor_failure_taxonomy
+  model_changes_authorized: false
+  objective: >-
+    Explain the 15 QQQ-proxy precursor events, especially the failed 2020-2023
+    recoveries, using only already-frozen observable features. Determine whether
+    the post-2024 positive events occupy a distinguishable regime before any new
+    rule is proposed.
+  prohibited:
+    - retrospective_threshold_optimization
+    - new_weight_grid
+    - direct_signal_promotion
 
 intraday_research_boundary:
   status: feasibility_gate_only
