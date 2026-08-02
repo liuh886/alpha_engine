@@ -147,12 +147,14 @@ def test_professional_bundle_retains_distributions_splits_and_hashes(
     assert set(manifest["reconciliation_status"].values()) == {"consensus"}
     assert set(manifest["selected_providers"].values()) == {"tiingo"}
     actions = pd.read_csv(tmp_path / "corporate_actions.csv")
-    assert actions.loc[actions["symbol"].eq("QQQI"), "cash_distribution"].tolist() == [
-        pytest.approx(0.60)
-    ]
-    assert actions.loc[actions["symbol"].eq("TQQQ"), "split_factor"].tolist() == [
-        pytest.approx(2.0)
-    ]
+    qqqi_cash = actions.loc[
+        actions["symbol"].eq("QQQI"), "cash_distribution"
+    ].tolist()
+    tqqq_split = actions.loc[
+        actions["symbol"].eq("TQQQ"), "split_factor"
+    ].tolist()
+    assert qqqi_cash == pytest.approx([0.60])
+    assert tqqq_split == pytest.approx([2.0])
 
     bars, coverage, loaded = load_etf_reference_bundle(tmp_path)
     assert sorted(bars) == ["QQQ", "QQQI", "TQQQ"]
@@ -225,7 +227,6 @@ def test_reconciliation_can_explain_action_window_difference() -> None:
     primary = _bars("QQQI", start="2024-01-30", periods=25, professional=True)
     primary.loc[10, "cash_distribution"] = 0.60
     primary.loc[10, ["open", "high", "low", "close"]] *= 1.02
-    primary.loc[11, ["open", "high", "low", "close"]] *= 1.02
     result = reconcile_adjusted_bars(
         primary,
         fallback,
