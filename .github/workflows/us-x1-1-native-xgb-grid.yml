@@ -11,6 +11,7 @@ on:
       - "scripts/run_us_x1_1_native_xgb_grid.py"
       - "tests/test_us_x1_1_native_xgb_grid_contract.py"
       - "docs/research/us_x1_1_growth_log.md"
+      - "docs/research/us_x1_1_native_xgb_grid_result_2026-08-02.md"
       - ".github/workflows/us-x1-1-native-xgb-grid.yml"
   workflow_dispatch:
 
@@ -103,14 +104,14 @@ jobs:
           else:
               print("native_grid_decision.json was not created")
           PY
-      - name: Upload complete native-grid evidence
+      - name: Upload complete native-grid evidence and provider snapshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: us-x1-1-native-xgb-grid-${{ github.run_id }}
           path: |
             artifacts/selected_pool_price_refresh/us/artifacts
-            artifacts/selected_pool_price_refresh/us/data/providers/us/provider_manifest.json
+            artifacts/selected_pool_price_refresh/us/data/providers/us
             artifacts/evidence/us_x1_1_native_xgb_grid_v1
           if-no-files-found: error
           retention-days: 90
