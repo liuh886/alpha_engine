@@ -1,45 +1,20 @@
+import { useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import {
-  AlertTriangle,
-  ChevronsLeft,
-  ChevronsRight,
-  FlaskConical,
-  Orbit,
-} from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { cn } from '@/lib/utils';
-import { apiFetch } from '@/lib/api';
-import { runtimeCapabilities } from '@/lib/runtime-capabilities';
-import { useGlobalStore } from '../store/globalStore';
-import { groupRoutes } from '../routes';
+import { ChevronsLeft, ChevronsRight, Orbit } from 'lucide-react';
 import { useActiveResearchBundle } from '@/hooks/useActiveResearchBundle';
+import { cn } from '@/lib/utils';
+import { groupRoutes } from '@/routes';
+import { useGlobalStore } from '@/store/globalStore';
 
 export function Sidebar() {
-  const { sidebarCollapsed: collapsed, setSidebarCollapsed: setCollapsed, operatorMode, setOperatorMode } = useGlobalStore();
+  const collapsed = useGlobalStore((state) => state.sidebarCollapsed);
+  const setCollapsed = useGlobalStore((state) => state.setSidebarCollapsed);
   const location = useLocation();
   const bundle = useActiveResearchBundle();
-  const [panicConfirming, setPanicConfirming] = useState(false);
-  const [panicPending, setPanicPending] = useState(false);
-
-  const filteredGroups = useMemo(() => Array.from(groupRoutes())
-    .map(([title, items]) => ({
-      title,
-      items: items.filter((route) => route.releaseLevel !== 'internal' || operatorMode),
-    }))
-    .filter((group) => group.items.length > 0), [operatorMode]);
-
-  const handlePanicConfirm = async () => {
-    if (!runtimeCapabilities.mutations) return;
-    setPanicPending(true);
-    try {
-      await apiFetch('/api/system/panic', { method: 'POST' });
-    } catch (error) {
-      console.error('Panic failed:', error);
-    } finally {
-      setPanicPending(false);
-      setPanicConfirming(false);
-    }
-  };
+  const groups = useMemo(
+    () => Array.from(groupRoutes()).map(([title, items]) => ({ title, items })),
+    [],
+  );
 
   return (
     <aside className={cn('research-sidebar', collapsed ? 'research-sidebar-collapsed' : 'research-sidebar-expanded')}>
@@ -62,7 +37,7 @@ export function Sidebar() {
       )}
 
       <nav className="research-nav" aria-label="Research studio navigation">
-        {filteredGroups.map((group) => (
+        {groups.map((group) => (
           <section key={group.title} className="research-nav-group">
             {!collapsed && <h2>{group.title}</h2>}
             <div className="space-y-1">
@@ -82,8 +57,6 @@ export function Sidebar() {
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     {!collapsed && <span className="truncate">{item.label}</span>}
-                    {!collapsed && item.releaseLevel === 'experimental' && <span className="research-nav-tag">Beta</span>}
-                    {!collapsed && item.releaseLevel === 'internal' && <span className="research-nav-tag research-nav-tag-dev">Dev</span>}
                   </NavLink>
                 );
               })}
@@ -93,43 +66,16 @@ export function Sidebar() {
       </nav>
 
       <div className="research-sidebar-footer">
-        {runtimeCapabilities.backendApi && !collapsed && (
-          <button
-            type="button"
-            onClick={() => setOperatorMode(!operatorMode)}
-            className={cn('research-sidebar-action', operatorMode && 'research-sidebar-action-active')}
-          >
-            <FlaskConical className="h-3.5 w-3.5" />
-            <span>{operatorMode ? 'Developer tools visible' : 'Show developer tools'}</span>
-          </button>
-        )}
-
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
           className="research-sidebar-action justify-center"
           aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
         >
-          {collapsed ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" /><span>Collapse rail</span></>}
+          {collapsed
+            ? <ChevronsRight className="h-4 w-4" />
+            : <><ChevronsLeft className="h-4 w-4" /><span>Collapse rail</span></>}
         </button>
-
-        {runtimeCapabilities.mutations && (operatorMode || location.pathname.startsWith('/system')) && (
-          <div>
-            {!panicConfirming ? (
-              <button type="button" onClick={() => setPanicConfirming(true)} className="research-panic-button">
-                <AlertTriangle className="h-4 w-4" />{!collapsed && <span>Emergency halt</span>}
-              </button>
-            ) : (
-              <div className="research-panic-confirm">
-                {!collapsed && <p>Halt every active job?</p>}
-                <div className="flex gap-1">
-                  <button onClick={handlePanicConfirm} disabled={panicPending}>{panicPending ? '…' : 'Halt'}</button>
-                  <button onClick={() => setPanicConfirming(false)} disabled={panicPending}>Cancel</button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {!collapsed && (
           <div className="research-version">v{import.meta.env.VITE_APP_VERSION || 'dev'} · {import.meta.env.VITE_GIT_COMMIT_SHA || 'unknown'}</div>

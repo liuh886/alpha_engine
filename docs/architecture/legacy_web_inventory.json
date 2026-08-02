@@ -1,8 +1,8 @@
 {
-  "schema_version": "1.1.0",
-  "status": "phase_1_frontend_cutover",
+  "schema_version": "1.2.0",
+  "status": "phase_2_domain_extraction",
   "parent_issue": 316,
-  "active_delivery_issue": 318,
+  "active_delivery_issue": 319,
   "target_web_product": "github_pages_pwa_research_artifact_studio",
   "target_frontend_boundary": "alpha-engine-bundle.json",
   "target_execution_boundary": "python_cli_scripts_workflows",
@@ -16,6 +16,17 @@
         "application root has no auth provider or login guard",
         "bootstrap performs no API health identity job or data-status requests",
         "model selection exposes no mutation control"
+      ]
+    },
+    {
+      "id": "frontend_http_and_legacy_module_removal",
+      "completed_in": 318,
+      "evidence": [
+        "legacy operational and connected-only pages are physically deleted",
+        "frontend HTTP clients query hooks mutation hooks and demo-server tests are physically deleted",
+        "Compare Backtests Methodology and optional name resolution consume artifact evidence only",
+        "production frontend declares no /api endpoint literals",
+        "desktop tablet and mobile static PWA journeys pass with zero API requests and offline reload"
       ]
     }
   ],
@@ -31,23 +42,6 @@
       "paths": ["src/api/"],
       "phase": 2,
       "disposition": "classify_extract_then_delete"
-    },
-    {
-      "id": "unreachable_frontend_api_modules",
-      "paths": [
-        "qlib-dashboard/src/lib/api-client.ts",
-        "qlib-dashboard/src/lib/api.ts",
-        "qlib-dashboard/src/lib/release-api.ts",
-        "qlib-dashboard/src/api/",
-        "qlib-dashboard/src/hooks/useJobs.ts",
-        "qlib-dashboard/src/hooks/useDataStatus.ts",
-        "qlib-dashboard/src/hooks/useSystemHealth.ts",
-        "qlib-dashboard/src/pages/",
-        "qlib-dashboard/e2e/demo-real-smoke.spec.ts",
-        "qlib-dashboard/playwright.demo.config.ts"
-      ],
-      "phase": 1,
-      "disposition": "classify_and_physically_delete_after_artifact_view_dependency_scan"
     },
     {
       "id": "process_management",

@@ -1,207 +1,124 @@
-import { lazy, Suspense } from "react";
-import { BacktestData } from "@/lib/data-parser";
-import { OverviewCards } from "./OverviewCards";
-import { PerformanceCharts } from "./PerformanceCharts";
-import { PositionsTable } from "./PositionsTable";
-import { AttributionInterpretation } from "./AttributionInterpretation";
-import { ModelExplainability } from "./ModelExplainability";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ModelSpec } from "./ModelSpec";
-import { MetricsExpanded } from "./MetricsExpanded";
-import { HoldingsSummary } from "./HoldingsSummary";
-import { Calendar, Tag, Info, Database, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import type { ModelParams } from "@/lib/types";
-import { useGlobalStore } from "@/store/globalStore";
-import { navigateTo } from "@/routes";
+import { Calendar, Database, Info, Tag } from 'lucide-react';
+import type { BacktestData } from '@/lib/data-parser';
+import type { ModelParams } from '@/lib/types';
+import { AttributionInterpretation } from './AttributionInterpretation';
+import { HoldingsSummary } from './HoldingsSummary';
+import { MetricsExpanded } from './MetricsExpanded';
+import { ModelExplainability } from './ModelExplainability';
+import { ModelSpec } from './ModelSpec';
+import { OverviewCards } from './OverviewCards';
+import { PerformanceCharts } from './PerformanceCharts';
+import { PositionsTable } from './PositionsTable';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Heavy tab panels — loaded only when the user first opens that tab.
-// This avoids bundling Attribution (~22 kB), TradeLedger and AlphaDecomposition
-// into the initial chunk, improving first-paint time.
-const Attribution = lazy(() =>
-  import("./Attribution").then((m) => ({ default: m.Attribution }))
-);
-const TradeLedger = lazy(() =>
-  import("./TradeLedger").then((m) => ({ default: m.TradeLedger }))
-);
-const AlphaDecomposition = lazy(() =>
-  import("./AlphaDecomposition").then((m) => ({ default: m.AlphaDecomposition }))
-);
+function AttributionEvidence({ rows }: { rows: Array<{ instrument?: string; name?: string; value?: number }> | null | undefined }) {
+  const normalized = Array.isArray(rows)
+    ? rows
+      .filter((row) => typeof row?.value === 'number' && Number.isFinite(row.value))
+      .sort((a, b) => Math.abs(Number(b.value)) - Math.abs(Number(a.value)))
+    : [];
 
-/** Minimal loading indicator shown while a lazy tab chunk is being fetched. */
-function TabLoader() {
+  if (!normalized.length) {
+    return (
+      <div className="rounded-xl border border-dashed p-10 text-center">
+        <Info className="mx-auto h-7 w-7 text-muted-foreground/40" />
+        <p className="mt-3 text-sm font-medium">Attribution evidence is not declared</p>
+        <p className="mt-1 text-xs text-muted-foreground">The active bundle contains no normalized contribution table for this record.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center justify-center py-16 text-muted-foreground gap-2 text-sm">
-      <Loader2 className="h-4 w-4 animate-spin" />
-      Loading…
-    </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm">Contribution table</CardTitle>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Instrument</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead className="text-right">Contribution</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {normalized.slice(0, 100).map((row, index) => (
+              <TableRow key={`${row.instrument || row.name || 'row'}-${index}`}>
+                <TableCell className="font-mono text-xs">{row.instrument || '—'}</TableCell>
+                <TableCell>{row.name || row.instrument || 'Unknown'}</TableCell>
+                <TableCell className={`text-right font-mono ${Number(row.value) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {(Number(row.value) * 100).toFixed(3)}%
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
 
 export function Dashboard({ data, params }: { data: BacktestData; params?: ModelParams }) {
   const meta = data.meta;
-  const runId = String(params?.id ?? "");
-  const demoMode = useGlobalStore((s) => s.demoMode);
-  // Access typed field; fall back to empty string when not present.
-  const snapshotId = (params as ModelParams & { data_snapshot_id?: string })?.data_snapshot_id ?? "";
+  const snapshotId = (params as ModelParams & { data_snapshot_id?: string })?.data_snapshot_id ?? '';
+  const hasReport = Array.isArray(data.report) && data.report.length > 0;
 
   return (
-    <div className="space-y-5 max-w-[1400px] mx-auto pb-16">
-      <div className="border-b pb-4 flex items-end justify-between">
+    <div className="mx-auto max-w-[1400px] space-y-5 pb-16">
+      <section className="flex flex-wrap items-end justify-between gap-4 border-b pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1 font-mono">
-              <Calendar className="h-3 w-3" /> {meta.start} → {meta.end}
-            </span>
-            <span className="flex items-center gap-1">
-              <Tag className="h-3 w-3" /> {meta.benchmark}
-            </span>
-            {params?.id != null && (
-              <Badge variant="outline" className="font-mono text-[10px] py-0">
-                {String(params.id)}
-              </Badge>
-            )}
-            {snapshotId && (
-              <Badge variant="secondary" className="font-mono text-[10px] py-0 gap-1">
-                <Database className="h-2.5 w-2.5" /> {snapshotId.slice(0, 16)}
-              </Badge>
-            )}
-            <Badge
-              variant="secondary"
-              className={`font-mono text-[10px] py-0 ${
-                demoMode
-                  ? "text-blue-500 bg-blue-500/10"
-                  : "text-green-500 bg-green-500/10"
-              }`}
-            >
-              {demoMode ? "Demo" : "Live"}
-            </Badge>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Artifact evidence</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight">Backtest review</h2>
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1 font-mono"><Calendar className="h-3 w-3" /> {meta.start} → {meta.end}</span>
+            <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> {meta.benchmark}</span>
+            {params?.id != null && <Badge variant="outline" className="font-mono text-[10px]">{String(params.id)}</Badge>}
+            {snapshotId && <Badge variant="secondary" className="gap-1 font-mono text-[10px]"><Database className="h-3 w-3" /> {snapshotId.slice(0, 18)}</Badge>}
+            <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-300">Historical · read only</Badge>
           </div>
         </div>
-      </div>
+      </section>
 
       <OverviewCards metrics={data.metrics} />
 
-      {!data.report || data.report.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-lg bg-muted/30">
-          <Info className="h-8 w-8 text-muted-foreground/30 mb-2" />
-          <p className="text-muted-foreground text-sm mb-1">
-            No backtest report data available for this model.
+      {!hasReport ? (
+        <div className="rounded-xl border-2 border-dashed bg-muted/20 px-6 py-14 text-center">
+          <Info className="mx-auto h-8 w-8 text-muted-foreground/30" />
+          <p className="mt-3 text-sm font-medium">Daily backtest series is not declared</p>
+          <p className="mx-auto mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
+            Headline metrics remain visible, but the active bundle does not contain an equity curve or position history. Regenerate the research bundle from the Python workflow to add this evidence.
           </p>
-          <p className="text-muted-foreground text-xs mb-4">
-            Model metrics are shown above. Run a backtest to generate equity curve and position data.
-          </p>
-          <div className="flex gap-2">
-            {/* Use navigateTo() — never write window.location.hash directly */}
-            <button
-              className="px-3 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:opacity-90"
-              onClick={() => navigateTo('backtest')}
-            >
-              Run Backtest
-            </button>
-            <button
-              className="px-3 py-1.5 border border-border rounded text-xs hover:bg-muted"
-              onClick={() => navigateTo('models')}
-            >
-              Model Registry
-            </button>
-          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-          <div className="xl:col-span-2 space-y-5">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+          <div className="space-y-5 xl:col-span-2">
             <Tabs defaultValue="performance" className="w-full">
-              <div className="flex items-center justify-between mb-3 border-b pb-1">
-                <TabsList className="bg-transparent h-auto p-0 gap-4 border-none">
-                  <TabsTrigger
-                    value="performance"
-                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-2 text-sm"
-                  >
-                    Performance
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="positions"
-                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-2 text-sm"
-                  >
-                    Holdings
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="attribution"
-                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-2 text-sm"
-                  >
-                    Attribution
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="trades"
-                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-2 text-sm"
-                  >
-                    Trades
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="alpha"
-                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-2 text-sm"
-                  >
-                    Alpha
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+              <TabsList className="mb-4 grid w-full max-w-md grid-cols-3">
+                <TabsTrigger value="performance">Performance</TabsTrigger>
+                <TabsTrigger value="positions">Holdings</TabsTrigger>
+                <TabsTrigger value="attribution">Attribution</TabsTrigger>
+              </TabsList>
 
-              <TabsContent value="performance" className="mt-0 focus-visible:ring-0">
-                <section data-testid="backtest-performance-section">
-                  <PerformanceCharts report={data.report} />
-                </section>
+              <TabsContent value="performance" className="mt-0">
+                <section data-testid="backtest-performance-section"><PerformanceCharts report={data.report} /></section>
               </TabsContent>
 
-              <TabsContent value="positions" className="mt-0 focus-visible:ring-0">
-                <section data-testid="position-history-section">
-                  <PositionsTable positions={data.positions} report={data.report} />
-                </section>
+              <TabsContent value="positions" className="mt-0">
+                <section data-testid="position-history-section"><PositionsTable positions={data.positions} report={data.report} /></section>
               </TabsContent>
 
-              {/* Attribution, TradeLedger, AlphaDecomposition are lazy-loaded */}
-              <TabsContent value="attribution" className="mt-0 focus-visible:ring-0">
-                <section data-testid="attribution-section">
-                  <Suspense fallback={<TabLoader />}>
-                    <Attribution
-                      positions={data.positions}
-                      report={data.report}
-                      attribution={data.attribution}
-                    />
-                  </Suspense>
-                </section>
-              </TabsContent>
-
-              <TabsContent value="trades" className="mt-0 focus-visible:ring-0">
-                <section data-testid="trades-section">
-                  {runId ? (
-                    <Suspense fallback={<TabLoader />}>
-                      <TradeLedger runId={runId} />
-                    </Suspense>
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-8 text-center">No run ID available</p>
-                  )}
-                </section>
-              </TabsContent>
-
-              <TabsContent value="alpha" className="mt-0 focus-visible:ring-0">
-                <section data-testid="alpha-section">
-                  {runId ? (
-                    <Suspense fallback={<TabLoader />}>
-                      <AlphaDecomposition runId={runId} />
-                    </Suspense>
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-8 text-center">No run ID available</p>
-                  )}
-                </section>
+              <TabsContent value="attribution" className="mt-0">
+                <section data-testid="attribution-section"><AttributionEvidence rows={data.attribution} /></section>
               </TabsContent>
             </Tabs>
           </div>
 
           <div className="space-y-5">
-            <section data-testid="current-holdings-section">
-              <HoldingsSummary positions={data.positions} />
-            </section>
+            <section data-testid="current-holdings-section"><HoldingsSummary positions={data.positions} /></section>
             <AttributionInterpretation positions={data.positions} report={data.report} />
             <ModelExplainability featureImportance={data.featureImportance} />
             <MetricsExpanded metrics={data.metrics} indicators={data.indicators} />

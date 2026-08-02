@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import { HashRouter, Link, Outlet, Route, Routes, useLocation } from 'react-router-dom';
-import { ChevronDown, Database, Loader2, Moon, Sun } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Database, Loader2, Moon, Sun } from 'lucide-react';
 import type { ModelData } from './lib/data-parser';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileNavigation } from './components/MobileNavigation';
@@ -37,6 +37,7 @@ interface LayoutProps {
   selectorOpen: boolean;
   setSelectorOpen: (open: boolean) => void;
   loading: boolean;
+  loadError: string | null;
 }
 
 function Layout(props: LayoutProps) {
@@ -105,13 +106,17 @@ function Layout(props: LayoutProps) {
               </div>
               <Skeleton className="h-[360px] rounded-xl" />
             </div>
+          ) : props.loadError ? (
+            <div className="research-empty-state">
+              <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
+              <h2 className="mt-4 text-lg font-semibold">Research bundle unavailable</h2>
+              <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">{props.loadError}</p>
+              <Button asChild variant="outline" className="mt-5"><Link to="/library">Open bundle library</Link></Button>
+            </div>
           ) : (
             <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
-                <Outlet context={{
-                  models: props.models,
-                  selectedModelId: props.selectedModelId,
-                }} />
+                <Outlet context={{ models: props.models, selectedModelId: props.selectedModelId }} />
               </Suspense>
             </ErrorBoundary>
           )}
@@ -131,12 +136,7 @@ function Layout(props: LayoutProps) {
 
 function ArtifactStudioApp() {
   const [selectorOpen, setSelectorOpen] = useState(false);
-  const {
-    loading,
-    models,
-    selectedModelId,
-    setSelectedModelId,
-  } = useAppBootstrap();
+  const { loading, loadError, models, selectedModelId, setSelectedModelId } = useAppBootstrap();
 
   return (
     <HashRouter>
@@ -149,6 +149,7 @@ function ArtifactStudioApp() {
             selectorOpen={selectorOpen}
             setSelectorOpen={setSelectorOpen}
             loading={loading}
+            loadError={loadError}
           />
         }>
           {routes.map((route) => {

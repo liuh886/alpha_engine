@@ -4,18 +4,13 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { groupRoutes } from '@/routes';
-import { useGlobalStore } from '@/store/globalStore';
 
 export function MobileNavigation() {
   const location = useLocation();
-  const operatorMode = useGlobalStore((state) => state.operatorMode);
   const [open, setOpen] = useState(false);
   const groups = useMemo(
-    () => Array.from(groupRoutes()).map(([title, items]) => ({
-      title,
-      items: items.filter((route) => route.releaseLevel !== 'internal' || operatorMode),
-    })).filter((group) => group.items.length > 0),
-    [operatorMode],
+    () => Array.from(groupRoutes()).map(([title, items]) => ({ title, items })),
+    [],
   );
 
   useEffect(() => setOpen(false), [location.pathname]);
@@ -78,8 +73,6 @@ export function MobileNavigation() {
                         >
                           <Icon className="h-4 w-4 shrink-0" />
                           <span>{item.label}</span>
-                          {item.releaseLevel === 'experimental' && <span className="research-nav-tag">Beta</span>}
-                          {item.releaseLevel === 'internal' && <span className="research-nav-tag research-nav-tag-dev">Dev</span>}
                         </NavLink>
                       );
                     })}
