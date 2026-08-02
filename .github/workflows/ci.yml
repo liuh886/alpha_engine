@@ -32,8 +32,11 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
 
+      - name: Freeze legacy Web boundary
+        run: uv run python scripts/check_legacy_web_boundary.py
+
       - name: Ruff lint
-        run: uv run ruff check src api_server.py
+        run: uv run ruff check src api_server.py scripts/check_legacy_web_boundary.py
 
       - name: Mypy type check (ratcheted scope)
         run: uv run mypy src/release src/models/metric_contract.py
