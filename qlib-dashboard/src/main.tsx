@@ -1,19 +1,16 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
-import { ErrorBoundary } from './components/ErrorBoundary'
-import { AuthProvider } from './lib/auth'
-import { registerServiceWorker } from './lib/register-service-worker'
-import './index.css'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { registerServiceWorker } from './lib/register-service-worker';
+import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <App />
     </ErrorBoundary>
   </React.StrictMode>,
-)
+);
 
-registerServiceWorker()
+registerServiceWorker();
