@@ -35,18 +35,10 @@ function AttributionEvidence({ rows }: { rows: Array<{ instrument?: string; name
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm">Contribution table</CardTitle>
-      </CardHeader>
+      <CardHeader className="pb-3"><CardTitle className="text-sm">Contribution table</CardTitle></CardHeader>
       <CardContent className="overflow-x-auto">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Instrument</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead className="text-right">Contribution</TableHead>
-            </TableRow>
-          </TableHeader>
+          <TableHeader><TableRow><TableHead>Instrument</TableHead><TableHead>Name</TableHead><TableHead className="text-right">Contribution</TableHead></TableRow></TableHeader>
           <TableBody>
             {normalized.slice(0, 100).map((row, index) => (
               <TableRow key={`${row.instrument || row.name || 'row'}-${index}`}>
@@ -103,43 +95,25 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-          <div className="space-y-5 xl:col-span-2">
+          <div className="min-w-0 space-y-5 xl:col-span-2">
             <Tabs defaultValue="performance" className="w-full">
-              <TabsList className={`mb-4 grid w-full ${formal ? 'max-w-3xl grid-cols-5' : 'max-w-md grid-cols-3'}`}>
-                <TabsTrigger value="performance">Performance</TabsTrigger>
-                <TabsTrigger value="positions">Holdings</TabsTrigger>
-                {formal && <TabsTrigger value="trades">Trades</TabsTrigger>}
-                <TabsTrigger value="attribution">Attribution</TabsTrigger>
-                {formal && <TabsTrigger value="evidence">Evidence</TabsTrigger>}
+              <TabsList className="mb-4 flex h-auto w-full max-w-full justify-start gap-1 overflow-x-auto p-1">
+                <TabsTrigger className="shrink-0" value="performance">Performance</TabsTrigger>
+                <TabsTrigger className="shrink-0" value="positions">Holdings</TabsTrigger>
+                {formal && <TabsTrigger className="shrink-0" value="trades">Trades</TabsTrigger>}
+                <TabsTrigger className="shrink-0" value="attribution">Attribution</TabsTrigger>
+                {formal && <TabsTrigger className="shrink-0" value="evidence">Evidence</TabsTrigger>}
               </TabsList>
 
-              <TabsContent value="performance" className="mt-0">
-                <section data-testid="backtest-performance-section"><PerformanceCharts report={data.report} /></section>
-              </TabsContent>
-
-              <TabsContent value="positions" className="mt-0">
-                <section data-testid="position-history-section"><PositionsTable positions={data.positions} report={data.report} /></section>
-              </TabsContent>
-
-              {formal && (
-                <TabsContent value="trades" className="mt-0">
-                  <section data-testid="trade-ledger-section"><FormalBacktestTrades formal={formal} /></section>
-                </TabsContent>
-              )}
-
-              <TabsContent value="attribution" className="mt-0">
-                <section data-testid="attribution-section"><AttributionEvidence rows={data.attribution} /></section>
-              </TabsContent>
-
-              {formal && (
-                <TabsContent value="evidence" className="mt-0">
-                  <section data-testid="formal-evidence-section"><FormalBacktestEvidence formal={formal} /></section>
-                </TabsContent>
-              )}
+              <TabsContent value="performance" className="mt-0"><section data-testid="backtest-performance-section"><PerformanceCharts report={data.report} /></section></TabsContent>
+              <TabsContent value="positions" className="mt-0"><section data-testid="position-history-section"><PositionsTable positions={data.positions} report={data.report} /></section></TabsContent>
+              {formal && <TabsContent value="trades" className="mt-0"><section data-testid="trade-ledger-section"><FormalBacktestTrades formal={formal} /></section></TabsContent>}
+              <TabsContent value="attribution" className="mt-0"><section data-testid="attribution-section"><AttributionEvidence rows={data.attribution} /></section></TabsContent>
+              {formal && <TabsContent value="evidence" className="mt-0"><section data-testid="formal-evidence-section"><FormalBacktestEvidence formal={formal} /></section></TabsContent>}
             </Tabs>
           </div>
 
-          <div className="space-y-5">
+          <div className="min-w-0 space-y-5">
             <section data-testid="current-holdings-section"><HoldingsSummary positions={data.positions} /></section>
             <AttributionInterpretation positions={data.positions} report={data.report} />
             <ModelExplainability featureImportance={data.featureImportance} />
