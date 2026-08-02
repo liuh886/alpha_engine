@@ -1,4 +1,4 @@
-import { CircleCheck, Clock3, Database, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, Clock3, Database, ShieldAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useActiveResearchBundle } from '@/hooks/useActiveResearchBundle';
 import { runtimeCapabilities } from '@/lib/runtime-capabilities';
@@ -33,7 +33,7 @@ export function ResearchContextBar() {
         </Badge>
         {bundle && (
           <Badge variant="outline" className="context-badge hidden sm:flex text-emerald-700 dark:text-emerald-300">
-            <CircleCheck className="mr-1 h-3 w-3" /> {bundle.integrity === 'all_verified' ? 'Fully verified' : 'Core verified'}
+            <CheckCircle2 className="mr-1 h-3 w-3" /> {bundle.integrity === 'all_verified' ? 'Fully verified' : 'Core verified'}
           </Badge>
         )}
       </div>
