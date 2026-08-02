@@ -1,5 +1,6 @@
-const CACHE_NAME = 'alpha-engine-shell-v1';
+const CACHE_NAME = 'alpha-engine-shell-v2';
 const APP_ROOT = new URL('./', self.location.href);
+const FORMAL_BACKTEST_ROOT = new URL('./data/formal-backtests/', APP_ROOT);
 const SHELL_URLS = [
   new URL('./', APP_ROOT).toString(),
   new URL('./index.html', APP_ROOT).toString(),
@@ -28,7 +29,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Research bundles can be large and user-selected. Cache only the application shell.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -38,6 +38,21 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => caches.match(new URL('./index.html', APP_ROOT))),
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith(FORMAL_BACKTEST_ROOT.pathname)) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        try {
+          const response = await fetch(request);
+          if (response.ok) await cache.put(request, response.clone());
+          return response;
+        } catch {
+          return cache.match(request);
+        }
+      }),
     );
     return;
   }
