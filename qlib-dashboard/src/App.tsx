@@ -14,6 +14,7 @@ import { useGlobalStore } from './store/globalStore';
 import { setAuthHeaderProvider } from './lib/api';
 import { useAuth } from './lib/auth';
 import { AuthGuard } from './components/AuthGuard';
+import { runtimeCapabilities } from './lib/runtime-capabilities';
 import { VIEW_TITLES } from './routes';
 
 function PageLoader() {
@@ -35,6 +36,12 @@ function NotFound() {
     </div>
   );
 }
+
+const RUNTIME_LABELS = {
+  static_artifact: 'Static Artifact',
+  local_artifact: 'Local Artifact',
+  connected_research: 'Connected Research',
+} as const;
 
 function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, setSelectorOpen, consoleOpen, setConsoleOpen, handleDeleteModel, loading, refreshModels, refreshDataStatus, submitAndPoll }: {
   models: ModelData[];
@@ -70,20 +77,25 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <GlobalStatusBar
-          latestCalendarDay={latestCalendarDay}
-          qualityStatus={qualityStatus}
-          warnings={qualityWarnings}
-          activeJobsCount={activeJobsCount}
-          dataGeneratedAt={dataGeneratedAt}
-          apiError={apiError}
-          onOpenConsole={() => setConsoleOpen(true)}
-        />
+        {runtimeCapabilities.backendApi && (
+          <GlobalStatusBar
+            latestCalendarDay={latestCalendarDay}
+            qualityStatus={qualityStatus}
+            warnings={qualityWarnings}
+            activeJobsCount={activeJobsCount}
+            dataGeneratedAt={dataGeneratedAt}
+            apiError={apiError}
+            onOpenConsole={() => setConsoleOpen(true)}
+          />
+        )}
 
         <header className="h-11 border-b bg-card sticky top-0 z-40 px-5 flex items-center justify-between">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span className="font-semibold">{viewTitle}</span>
-            {demoMode && (
+            <span className="text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+              {RUNTIME_LABELS[runtimeCapabilities.mode]}
+            </span>
+            {demoMode && runtimeCapabilities.backendApi && (
               <span className="text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                 Demo Mode
               </span>
@@ -106,17 +118,20 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="h-3.5 w-px bg-border" />
-
             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
 
-            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Open console" onClick={() => setConsoleOpen(true)}><Bell className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => { if (confirm('Sign out?')) logout(); }}>
-              <User className="h-3.5 w-3.5" />
-              <span>{username}</span>
-            </Button>
+            {runtimeCapabilities.requiresAuthentication && (
+              <>
+                <div className="h-3.5 w-px bg-border" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Open console" onClick={() => setConsoleOpen(true)}><Bell className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => { if (confirm('Sign out?')) logout(); }}>
+                  <User className="h-3.5 w-3.5" />
+                  <span>{username}</span>
+                </Button>
+              </>
+            )}
           </div>
         </header>
 
@@ -144,13 +159,23 @@ function Layout({ models, selectedModelId, setSelectedModelId, selectorOpen, set
           )}
         </main>
 
-        <ModelSelector models={models} selectedModelId={selectedModelId} onSelect={setSelectedModelId} onDelete={handleDeleteModel} open={selectorOpen} onOpenChange={setSelectorOpen} />
-
-        <ConsoleModal
-          isOpen={consoleOpen}
-          onClose={() => setConsoleOpen(false)}
-          warnings={qualityWarnings}
+        <ModelSelector
+          models={models}
+          selectedModelId={selectedModelId}
+          onSelect={setSelectedModelId}
+          onDelete={handleDeleteModel}
+          canDelete={runtimeCapabilities.mutations}
+          open={selectorOpen}
+          onOpenChange={setSelectorOpen}
         />
+
+        {runtimeCapabilities.backendApi && (
+          <ConsoleModal
+            isOpen={consoleOpen}
+            onClose={() => setConsoleOpen(false)}
+            warnings={qualityWarnings}
+          />
+        )}
       </div>
     </div>
   );
@@ -162,7 +187,6 @@ import { routes } from './routes';
 function App() {
   const { authHeader } = useAuth();
 
-  // Wire up auth header provider for apiFetch
   useLayoutEffect(() => {
     setAuthHeaderProvider(authHeader);
     return () => setAuthHeaderProvider(null);
@@ -191,6 +215,7 @@ function AuthenticatedApp() {
   } = useAppBootstrap();
 
   const handleDeleteModel = async (id: string) => {
+    if (!runtimeCapabilities.mutations) return;
     await deleteModel(id);
   };
 

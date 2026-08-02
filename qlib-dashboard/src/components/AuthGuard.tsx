@@ -1,15 +1,15 @@
 /**
  * Route-level authentication guard.
  *
- * Wraps protected content so it is never rendered before the initial session
- * check resolves.  On session expiry (401) the guard automatically surfaces
- * the login page while preserving the browser URL — after re-authenticating
- * the user lands back on the page they were viewing.
+ * Connected research mode remains protected by the backend session. Static and
+ * local artifact modes are intentionally read-only and therefore bypass the
+ * backend login wall.
  */
 import type { ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { LoginPage } from '@/components/LoginPage';
+import { runtimeCapabilities } from '@/lib/runtime-capabilities';
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -17,6 +17,10 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { status } = useAuth();
+
+  if (!runtimeCapabilities.requiresAuthentication) {
+    return <>{children}</>;
+  }
 
   if (status === 'loading') {
     return (

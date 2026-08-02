@@ -6,6 +6,7 @@ import { Loader2, AlertCircle, FileCode2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
+import { assetUrl, runtimeCapabilities } from "@/lib/runtime-capabilities";
 
 type DocResponse = {
   ok: boolean;
@@ -33,6 +34,19 @@ export function MethodologyPage() {
     setLoading(true);
     setError("");
     try {
+      if (!runtimeCapabilities.backendApi) {
+        const staticPath = 'docs/methodology.md';
+        const resp = await fetch(assetUrl(staticPath), { cache: 'no-store' });
+        if (!resp.ok) {
+          setError(`Failed to load exported methodology: HTTP ${resp.status}`);
+          return;
+        }
+        setContent(await resp.text());
+        setDocPath(staticPath);
+        setUpdatedAt(null);
+        return;
+      }
+
       const resp = await apiFetch("/api/system/docs/methodology", { cache: "no-store" });
       if (!resp.ok) {
         setError(`Failed to load: HTTP ${resp.status}`);
@@ -47,7 +61,9 @@ export function MethodologyPage() {
       setDocPath(json.path || "");
       setUpdatedAt(typeof json.updated_at === "number" ? json.updated_at : null);
     } catch {
-      setError("Failed to load methodology from API.");
+      setError(runtimeCapabilities.backendApi
+        ? "Failed to load methodology from API."
+        : "Failed to load methodology from the exported research site.");
     } finally {
       setLoading(false);
     }
@@ -58,7 +74,7 @@ export function MethodologyPage() {
   }, []);
 
   const updatedText = useMemo(() => {
-    if (!updatedAt) return "N/A";
+    if (!updatedAt) return runtimeCapabilities.backendApi ? "N/A" : "Bundled at site build";
     return new Date(updatedAt * 1000).toLocaleString();
   }, [updatedAt]);
 
@@ -87,7 +103,7 @@ export function MethodologyPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Training Methodology</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Complete reference for model training, evaluation, and risk controls.
+            Complete reference for model training, evaluation, and research boundaries.
           </p>
         </div>
         <Button onClick={load} disabled={loading} variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
@@ -102,7 +118,6 @@ export function MethodologyPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* TOC */}
           <Card className="lg:col-span-1 border border-border/60 bg-card/60 sticky top-20 self-start">
             <CardHeader>
               <CardTitle className="text-[10px] uppercase tracking-widest font-black flex items-center gap-2">
@@ -132,7 +147,6 @@ export function MethodologyPage() {
             </CardContent>
           </Card>
 
-          {/* Content */}
           <Card className="lg:col-span-4 border border-border/60 bg-card/60">
             <CardContent className="p-8">
               <article className="prose prose-sm dark:prose-invert max-w-none

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Alpha Engine</title>
+  <desc id="desc">A rising research signal inside a dark rounded square.</desc>
+  <rect width="512" height="512" rx="112" fill="#0b0f14"/>
+  <path d="M112 360V152h48v160l72-88 56 52 64-116 42 24-94 170-62-58-70 86H112z" fill="#d7ff64"/>
+  <circle cx="352" cy="160" r="28" fill="#f7f9fb"/>
+</svg>

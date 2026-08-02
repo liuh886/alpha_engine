@@ -1,0 +1,65 @@
+name: Frontend Static PWA
+
+on:
+  pull_request:
+    paths:
+      - 'qlib-dashboard/**'
+      - '.github/workflows/frontend-static-pwa.yml'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-static-pwa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+
+      - name: Install dependencies
+        working-directory: qlib-dashboard
+        run: npm ci
+
+      - name: TypeScript
+        working-directory: qlib-dashboard
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: qlib-dashboard
+        run: npm run lint
+
+      - name: Unit tests
+        working-directory: qlib-dashboard
+        run: npm test -- --run
+
+      - name: Build static artifact studio
+        working-directory: qlib-dashboard
+        env:
+          VITE_RUNTIME_MODE: static_artifact
+        run: npm run build
+
+      - name: Validate PWA output
+        working-directory: qlib-dashboard
+        run: |
+          test -f dist/index.html
+          test -f dist/manifest.webmanifest
+          test -f dist/sw.js
+          test -f dist/icons/alpha-engine.svg
+          grep -q "Alpha Engine Research Studio" dist/index.html
+          grep -q '"display": "standalone"' dist/manifest.webmanifest
+
+      - name: Upload static build
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpha-engine-static-pwa
+          path: qlib-dashboard/dist
+          retention-days: 7

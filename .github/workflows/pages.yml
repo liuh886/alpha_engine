@@ -6,9 +6,9 @@ on:
     paths:
       - 'qlib-dashboard/**'
       - 'scripts/export_static_site_data.py'
+      - 'docs/methodology.md'
       - '.github/workflows/pages.yml'
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 permissions:
@@ -37,11 +37,18 @@ jobs:
           cache: 'npm'
           cache-dependency-path: qlib-dashboard/package-lock.json
 
-      - name: Build frontend
+      - name: Build static artifact studio
         working-directory: ./qlib-dashboard
+        env:
+          VITE_RUNTIME_MODE: static_artifact
         run: |
           npm ci
           npm run build
+          test -f dist/index.html
+          test -f dist/manifest.webmanifest
+          test -f dist/sw.js
+          test -f dist/icons/alpha-engine.svg
+          grep -q "Alpha Engine Research Studio" dist/index.html
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -55,10 +62,14 @@ jobs:
 
       - name: Assemble site
         run: |
-          mkdir -p _site
+          mkdir -p _site/docs
           cp -r qlib-dashboard/dist/* _site/
           cp -r artifacts/site/data _site/data 2>/dev/null || true
           cp -r artifacts/site/reports _site/reports 2>/dev/null || true
+          cp docs/methodology.md _site/docs/methodology.md
+          test -f _site/data/manifest.json
+          test -f _site/data/models.json
+          test -f _site/docs/methodology.md
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

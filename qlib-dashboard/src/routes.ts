@@ -3,8 +3,7 @@
  *
  * Each route carries a `releaseLevel` drawn from docs/release/scope.md.
  * The Sidebar uses this to decide visibility; App.tsx uses it to render
- * the <Route> tree.  Adding a new page = one entry here + the lazy import
- * in App.tsx.
+ * the <Route> tree. Adding a new page = one entry here + the lazy import.
  */
 
 import {
@@ -28,6 +27,7 @@ import {
   Radar,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
+import { runtimeCapabilities } from './lib/runtime-capabilities';
 
 export type ReleaseLevel = 'release' | 'experimental' | 'internal';
 
@@ -46,7 +46,7 @@ export interface RouteDefinition {
 
 import { lazy } from 'react';
 
-const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
+const HomePage = lazy(() => import('./pages/ArtifactStudioHomePage').then(m => ({ default: m.ArtifactStudioHomePage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const DecisionDeskPage = lazy(() => import('./pages/DecisionDeskPage').then(m => ({ default: m.DecisionDeskPage })));
 const StrategyPage = lazy(() => import('./pages/StrategyPage').then(m => ({ default: m.StrategyPage })));
@@ -68,10 +68,10 @@ const SystemPage = lazy(() => import('./pages/SystemPage').then(m => ({ default:
 const TopBottomPage = lazy(() => import('./components/TopBottomAnalysis').then(m => ({ default: m.TopBottomAnalysis })));
 
 export const routes: RouteDefinition[] = [
-  { path: '',              title: 'System Home',     label: 'Home',            releaseLevel: 'release',      navGroup: 'Daily Research', icon: LayoutDashboard, component: HomePage },
-  { path: 'dashboard',     title: 'Model Dashboard', label: 'Model Dashboard', releaseLevel: 'release',      navGroup: 'Daily Research', icon: LayoutDashboard, component: DashboardPage },
-  { path: 'decision-desk', title: 'Decision Desk',   label: 'Decision Desk',   releaseLevel: 'experimental', navGroup: 'Daily Research', icon: Radar, component: DecisionDeskPage },
-  { path: 'terminal',      title: 'Stock Terminal',  label: 'Stock Terminal',  releaseLevel: 'experimental', navGroup: 'Daily Research', icon: Terminal, component: StockTerminal },
+  { path: '',              title: 'Research Studio',   label: 'Home',            releaseLevel: 'release',      navGroup: 'Daily Research', icon: LayoutDashboard, component: HomePage },
+  { path: 'dashboard',     title: 'Model Dashboard',   label: 'Model Dashboard', releaseLevel: 'release',      navGroup: 'Daily Research', icon: LayoutDashboard, component: DashboardPage },
+  { path: 'decision-desk', title: 'Decision Desk',     label: 'Decision Desk',   releaseLevel: 'experimental', navGroup: 'Daily Research', icon: Radar, component: DecisionDeskPage },
+  { path: 'terminal',      title: 'Stock Terminal',    label: 'Stock Terminal',  releaseLevel: 'experimental', navGroup: 'Daily Research', icon: Terminal, component: StockTerminal },
 
   { path: 'models',          title: 'Model Registry',    label: 'Models',          releaseLevel: 'release',      navGroup: 'Model Lab', icon: Cpu, component: ModelsPage },
   { path: 'factors',         title: 'Factor Analysis',   label: 'Factor Analysis', releaseLevel: 'release',      navGroup: 'Model Lab', icon: BarChart3, component: FactorPage },
@@ -93,6 +93,12 @@ export const routes: RouteDefinition[] = [
   { path: 'docs',        title: 'Docs',            label: 'Docs',           releaseLevel: 'release',      navGroup: 'System & Ops', icon: FileText, component: DocsPage },
 ];
 
+const ARTIFACT_SAFE_PATHS = new Set(['', 'dashboard', 'models', 'compare', 'methodology']);
+
+function isRuntimeVisible(route: RouteDefinition): boolean {
+  return runtimeCapabilities.backendApi || ARTIFACT_SAFE_PATHS.has(route.path);
+}
+
 export const VIEW_TITLES: Record<string, string> = {
   ...Object.fromEntries(routes.map((r) => [r.path, r.title])),
 };
@@ -104,6 +110,7 @@ export function navigateTo(path: string): void {
 export function groupRoutes(filterFn?: (r: RouteDefinition) => boolean): Map<NavGroupTitle, RouteDefinition[]> {
   const groups = new Map<NavGroupTitle, RouteDefinition[]>();
   for (const r of routes) {
+    if (!isRuntimeVisible(r)) continue;
     if (filterFn && !filterFn(r)) continue;
     const arr = groups.get(r.navGroup) ?? [];
     arr.push(r);
@@ -114,6 +121,7 @@ export function groupRoutes(filterFn?: (r: RouteDefinition) => boolean): Map<Nav
 
 export function visibleRoutes(operatorMode: boolean): RouteDefinition[] {
   return routes.filter((r) => {
+    if (!isRuntimeVisible(r)) return false;
     if (r.releaseLevel === 'internal') return operatorMode;
     return true;
   });

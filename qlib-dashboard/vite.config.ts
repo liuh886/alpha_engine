@@ -21,6 +21,9 @@ try {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Relative URLs keep the single-file build, manifest, service worker and
+  // static research data valid under the GitHub Pages project sub-path.
+  base: './',
   plugins: [react(), viteSingleFile()],
   resolve: {
     alias: {
