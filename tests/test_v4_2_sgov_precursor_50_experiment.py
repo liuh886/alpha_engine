@@ -73,6 +73,7 @@ def test_precursor_50_uses_prior_close_without_lookahead() -> None:
     weights, precursor = precursor_50_weights(_reference(), _contract())
     assert not precursor.iloc[2]
     assert precursor.iloc[3]
+    assert precursor.iloc[5]
     assert weights.iloc[3]["QQQ"] == pytest.approx(0.50)
     assert weights.iloc[3]["TQQQ"] == pytest.approx(0.50)
     assert weights.iloc[3]["QQQI"] == pytest.approx(0.0)
@@ -99,7 +100,7 @@ def test_backtest_charges_ten_basis_points_per_turnover_unit() -> None:
     first = result.daily.iloc[0]
     assert first["turnover_units"] == pytest.approx(1.0)
     assert first["transaction_cost"] == pytest.approx(0.001)
-    assert result.metrics["precursor_sessions"] == 1
+    assert result.metrics["precursor_sessions"] == 2
 
 
 def test_invalid_precursor_weight_is_rejected() -> None:
