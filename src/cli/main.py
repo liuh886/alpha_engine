@@ -15,6 +15,7 @@ from src.artifacts.repository_run_store import (
 )
 from src.data.data_recipe import (
     DataRecipeError,
+    data_recipe_catalog,
     data_recipe_status,
     prepare_data_recipe,
     run_research_recipe,
@@ -49,11 +50,16 @@ def _build_parser() -> argparse.ArgumentParser:
     data = groups.add_parser("data", help="Prepare and inspect governed datasets.")
     data_commands = data.add_subparsers(dest="data_command", required=True)
 
+    data_commands.add_parser(
+        "list",
+        help="List recipes and research commands declared by the recipe registry.",
+    )
+
     prepare = data_commands.add_parser(
         "prepare",
         help="Build or reuse a governed dataset recipe.",
     )
-    prepare.add_argument("recipe", choices=("qqq-rotation",))
+    prepare.add_argument("recipe")
     prepare.add_argument("--cutoff", default=None)
     prepare.add_argument("--refresh", action="store_true")
     prepare.add_argument(
@@ -67,7 +73,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "status",
         help="Verify the current cached dataset recipe and profile gate.",
     )
-    status.add_argument("recipe", choices=("qqq-rotation",))
+    status.add_argument("recipe")
     status.add_argument("--cutoff", default=None)
 
     research = groups.add_parser("research", help="Run governed research workflows.")
@@ -76,11 +82,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "run",
         help="Prepare governed data, enforce the profile gate, then run research.",
     )
-    run.add_argument(
-        "command",
-        choices=("qqqi-vxn-v4.1", "qqqi-vxn-v4.2"),
-    )
-    run.add_argument("--recipe", default="qqq-rotation", choices=("qqq-rotation",))
+    run.add_argument("command")
+    run.add_argument("--recipe", default="qqq-rotation")
     run.add_argument("--cutoff", default=None)
     run.add_argument("--refresh", action="store_true")
     run.add_argument("--source-etf-bundle", type=Path, default=None)
@@ -120,7 +123,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     root = args.root.resolve()
 
     try:
-        if args.group == "data" and args.data_command == "prepare":
+        if args.group == "data" and args.data_command == "list":
+            payload = data_recipe_catalog(root)
+        elif args.group == "data" and args.data_command == "prepare":
             payload = prepare_data_recipe(
                 args.recipe,
                 root=root,
