@@ -77,8 +77,9 @@ test('static studio opens without authentication or backend APIs', async ({ page
 
   if (testInfo.project.name === 'mobile') {
     await page.getByRole('button', { name: 'Open research navigation' }).click();
-    await expect(page.getByRole('navigation', { name: 'Mobile research studio navigation' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Data' })).toBeVisible();
+    const mobileNavigation = page.getByRole('navigation', { name: 'Mobile research studio navigation' });
+    await expect(mobileNavigation).toBeVisible();
+    await expect(mobileNavigation.getByRole('link', { name: 'Data', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Close research navigation' }).first().click();
   } else {
     await expect(page.getByRole('navigation', { name: 'Research studio navigation' })).toBeVisible();
