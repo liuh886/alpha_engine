@@ -1,39 +1,50 @@
-.PHONY: doctor data train train-cn train-us train-cn-xgb train-us-xgb walk-forward-cn walk-forward-us backtest breakfast report dashboard all help test typecheck lint clean dev weekly-research check-decay weekly-report ci smoke
+.PHONY: doctor data train train-cn train-us train-cn-xgb train-us-xgb walk-forward-cn walk-forward-us backtest breakfast report dashboard all help test typecheck lint clean dev legacy-web-dev research-bundle weekly-research check-decay weekly-report ci smoke
 
 PYTHON = PYTHONPATH=. python3
 
 help:
-	@echo "Qlib Trading Assistant - Task Runner"
-	@echo "------------------------------------"
-	@echo "  make dev      Start development servers (Dashboard + API)"
-	@echo "  make doctor   Run environment self-check"
-	@echo "  make data     Update market data (default: cn)"
-	@echo "  make backtest Run zero-barrier backtest pipeline"
-	@echo "  make breakfast Generate daily trading report markdown"
-	@echo "  make lint     Format and lint code using Ruff and Prettier"
-	@echo "  make test     Run pytest test suite"
-	@echo "  make typecheck Run mypy type checking"
-	@echo "  make clean    Remove generated files"
-	@echo "  make weekly-research  Run full weekly research cycle"
-	@echo "  make check-decay      Check Active factors for alpha decay"
-	@echo "  make weekly-report    Generate weekly research report"
-	@echo "  make ci               Run all CI quality gates locally (mirrors GitHub Actions)"
-	@echo "  make smoke            Build Docker image, boot, validate health/readiness, restart, tear down"
+	@echo "Alpha Engine - Task Runner"
+	@echo "--------------------------"
+	@echo "  make doctor          Run environment self-check"
+	@echo "  make data            Update market data (default: cn)"
+	@echo "  make research-bundle Export the canonical static research bundle"
+	@echo "  make backtest        Run zero-barrier backtest pipeline"
+	@echo "  make breakfast       Generate daily research report markdown"
+	@echo "  make lint            Format and lint code using Ruff and Prettier"
+	@echo "  make test            Run pytest test suite"
+	@echo "  make typecheck       Run mypy type checking"
+	@echo "  make clean           Remove generated files"
+	@echo "  make weekly-research Run full weekly research cycle"
+	@echo "  make check-decay     Check Active factors for alpha decay"
+	@echo "  make weekly-report   Generate weekly research report"
+	@echo "  make ci              Run all CI quality gates locally"
+	@echo ""
+	@echo "Deprecated migration-only targets:"
+	@echo "  make dev             Compatibility alias; starts the legacy local Web stack"
+	@echo "  make legacy-web-dev  Start deprecated Vite + FastAPI development servers"
+	@echo "  make smoke           Validate deprecated API container stack"
 	@echo ""
 	@echo "Advanced/Internal Targets:"
-	@echo "  make train-cn      Train LGBM model for CN market"
-	@echo "  make train-us      Train LGBM model for US market"
-	@echo "  make train-cn-xgb  Train XGBoost model for CN market"
-	@echo "  make train-us-xgb  Train XGBoost model for US market"
-	@echo "  make walk-forward-cn  Walk-forward validation for CN market"
-	@echo "  make walk-forward-us  Walk-forward validation for US market"
-	@echo "  make report        Generate latest backtest reports (legacy)"
+	@echo "  make train-cn          Train LGBM model for CN market"
+	@echo "  make train-us          Train LGBM model for US market"
+	@echo "  make train-cn-xgb      Train XGBoost model for CN market"
+	@echo "  make train-us-xgb      Train XGBoost model for US market"
+	@echo "  make walk-forward-cn   Walk-forward validation for CN market"
+	@echo "  make walk-forward-us   Walk-forward validation for US market"
+	@echo "  make report            Generate latest backtest reports (legacy)"
 
 doctor:
 	$(PYTHON) scripts/doctor.py
 
 data:
 	$(PYTHON) scripts/update_data.py
+
+research-bundle:
+	@echo "Exporting static artifact source..."
+	@uv run python scripts/export_static_site_data.py --market all --output artifacts/site/data
+	@echo "Building versioned research bundle..."
+	@uv run python scripts/export_research_bundle.py --source artifacts/site --output artifacts/research-bundle
+	@echo "Open artifacts/research-bundle from the Research Artifact Studio Library."
 
 train-cn:
 	$(PYTHON) -m src.orchestrator run --market cn --tag LGBM_AUTO --profile configs/strategy_profile_cn.json
@@ -57,11 +68,16 @@ report:
 	$(PYTHON) -m src.reporting.generate --market all
 
 dev:
-	@echo "Starting Dashboard (Vite) and API Server in background..."
+	@echo "DEPRECATED: the FastAPI/local-Web stack is frozen and scheduled for removal under issue #316."
+	@$(MAKE) legacy-web-dev
+
+legacy-web-dev:
+	@echo "Starting deprecated Dashboard (Vite) and FastAPI server for migration compatibility..."
 	@cd qlib-dashboard && (npm run dev -- --port 5173 &)
 	@uv run python api_server.py &
-	@echo "Services started. View at http://localhost:5173"
-	@echo "Use 'kill %1' or 'kill %2' (or Ctrl+C for the API) to stop."
+	@echo "Legacy services started at http://localhost:5173 and http://localhost:8000"
+	@echo "Do not add new features or dependencies to this path."
+
 backtest:
 	@echo "Running Zero-Barrier Backtest..."
 	@uv run python -m src.orchestrator run --skip_train
@@ -100,6 +116,8 @@ clean:
 	rm -rf artifacts/tmp/*
 
 ci:
+	@echo "=== Gate 0: Legacy Web boundary ==="
+	uv run python scripts/check_legacy_web_boundary.py
 	@echo "=== Gate 1: Ruff lint ==="
 	ruff check .
 	@echo "=== Gate 2: Mypy type check (ratcheted scope) ==="
@@ -123,13 +141,12 @@ ci:
 	@echo "=== All CI gates passed ==="
 
 # ---------------------------------------------------------------------------
-# Smoke test: build image, boot container, validate health/readiness,
-# restart, verify persistence, then tear down.
-#
-# Requires: docker, curl.  No external services (Qlib, MLflow) needed.
+# DEPRECATED smoke test for the legacy API container stack.
+# Kept temporarily for controlled retirement under issue #316.
 # ---------------------------------------------------------------------------
 SMOKE_COMPOSE_FILE = docker-compose.smoke.yml
 smoke:
+	@echo "DEPRECATED: validating the legacy API container stack scheduled for removal under issue #316."
 	@echo "=== Smoke: building image ==="
 	docker compose -f docker-compose.yml build api
 	@echo "=== Smoke: generating ephemeral compose override ==="
@@ -179,4 +196,4 @@ smoke:
 	@echo "=== Smoke: tearing down ==="
 	docker compose -f docker-compose.yml -f $(SMOKE_COMPOSE_FILE) down -v
 	rm -f $(SMOKE_COMPOSE_FILE)
-	@echo "=== Smoke test PASSED ==="
+	@echo "=== Deprecated smoke test PASSED ==="
