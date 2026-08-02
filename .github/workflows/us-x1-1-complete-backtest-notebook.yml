@@ -1,0 +1,97 @@
+name: US x1.1 Complete Backtest Notebook
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "notebooks/models/us_x1_1_complete_backtest.ipynb"
+      - "src/research/us_x1_1_notebook_audit.py"
+      - "tests/test_us_x1_1_notebook_audit.py"
+      - ".github/workflows/us-x1-1-complete-backtest-notebook.yml"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  execute-notebook:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Validate notebook audit contract
+        run: |
+          uv run ruff check src/research/us_x1_1_notebook_audit.py tests/test_us_x1_1_notebook_audit.py
+          uv run mypy src/research/us_x1_1_notebook_audit.py
+          uv run pytest tests/test_us_x1_1_notebook_audit.py -q
+
+      - name: Download frozen deterministic provider
+        uses: actions/download-artifact@v4
+        with:
+          name: us-raw-adjustment-contract-30742690159
+          path: artifacts/source/provider
+          github-token: ${{ github.token }}
+          repository: liuh886/alpha_engine
+          run-id: 30742690159
+
+      - name: Download Experiment 007 ledgers
+        uses: actions/download-artifact@v4
+        with:
+          name: us-x1-1-deterministic-reproduction-30743067256
+          path: artifacts/source/reproduction
+          github-token: ${{ github.token }}
+          repository: liuh886/alpha_engine
+          run-id: 30743067256
+
+      - name: Execute complete backtest notebook
+        env:
+          US_X1_1_PROVIDER_ROOT: artifacts/source/provider/provider_a
+          US_X1_1_REPRO_ROOT: artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1
+          US_X1_1_OUTPUT_DIR: artifacts/evidence/us_x1_1_complete_backtest_notebook
+          US_X1_1_REFIT: "0"
+        run: |
+          mkdir -p artifacts/executed
+          uv run jupyter nbconvert \
+            --to notebook \
+            --execute notebooks/models/us_x1_1_complete_backtest.ipynb \
+            --output "$PWD/artifacts/executed/us_x1_1_complete_backtest.executed.ipynb" \
+            --ExecutePreprocessor.timeout=900
+
+      - name: Verify complete audit result
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("artifacts/evidence/us_x1_1_complete_backtest_notebook")
+          manifest = json.loads((root / "audit_manifest.json").read_text(encoding="utf-8"))
+          assert manifest["decision"] == "complete_backtest_reproduced"
+          assert manifest["all_identity_checks_passed"] is True
+          assert manifest["all_reproduction_checks_passed"] is True
+          assert manifest["row_counts"]["daily_signals.csv"] > 40_000
+          assert manifest["row_counts"]["rebalance_signals.csv"] == 720
+          assert manifest["row_counts"]["holdings.csv"] == 720
+          assert manifest["row_counts"]["period_returns.csv"] == 48
+          assert manifest["source_artifacts"]["provider_artifact_id"] == 8831837784
+          assert manifest["source_artifacts"]["reproduction_artifact_id"] == 8831960659
+          PY
+
+      - name: Upload executed notebook and audit tables
+        uses: actions/upload-artifact@v4
+        with:
+          name: us-x1-1-complete-backtest-notebook-${{ github.run_id }}
+          path: |
+            artifacts/executed/us_x1_1_complete_backtest.executed.ipynb
+            artifacts/evidence/us_x1_1_complete_backtest_notebook
+          if-no-files-found: error
+          retention-days: 90
