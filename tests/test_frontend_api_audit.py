@@ -1,7 +1,7 @@
 """Enforce the artifact-only browser boundary.
 
 The Research Artifact Studio is a static/local PWA. Production frontend source
-must not import the retired HTTP clients or contain browser API endpoint calls.
+must not import retired HTTP clients or contain browser API endpoint calls.
 """
 
 from __future__ import annotations
@@ -69,10 +69,11 @@ def test_production_frontend_contains_no_api_endpoint_literals() -> None:
 
 def test_browser_runtime_is_artifact_only() -> None:
     runtime = (FRONTEND_SRC / "lib" / "runtime-capabilities.ts").read_text(encoding="utf-8")
-    assert "connected_research" not in runtime
+    assert "export type RuntimeMode = 'static_artifact' | 'local_artifact';" in runtime
     assert "backendApi: false" in runtime
     assert "mutations: false" in runtime
     assert "jobs: false" in runtime
+    assert "requiresAuthentication: false" in runtime
 
     routes = (FRONTEND_SRC / "routes.ts").read_text(encoding="utf-8")
     for retired_route in ("system", "agent", "backtest", "data-manager", "arena", "strategy"):

@@ -1,8 +1,8 @@
 {
-  "schema_version": "1.2.0",
-  "status": "phase_2_domain_extraction",
+  "schema_version": "2.0.0",
+  "status": "completed",
   "parent_issue": 316,
-  "active_delivery_issue": 319,
+  "completed_through_issue": 320,
   "target_web_product": "github_pages_pwa_research_artifact_studio",
   "target_frontend_boundary": "alpha-engine-bundle.json",
   "target_execution_boundary": "python_cli_scripts_workflows",
@@ -28,113 +28,60 @@
         "production frontend declares no /api endpoint literals",
         "desktop tablet and mobile static PWA journeys pass with zero API requests and offline reload"
       ]
+    },
+    {
+      "id": "http_adapter_and_server_removal",
+      "completed_in": 319,
+      "evidence": [
+        "all FastAPI routers and schemas are deleted",
+        "api_server.py is deleted",
+        "retained domain behavior has Python service CLI workflow or artifact owners",
+        "repository-wide pytest collection prevents hidden imports of deleted adapters"
+      ]
+    },
+    {
+      "id": "deployment_and_runtime_stack_removal",
+      "completed_in": 320,
+      "evidence": [
+        "direct FastAPI Uvicorn and SlowAPI dependencies are removed",
+        "PM2 launchers and API-serving Docker Compose stack are deleted",
+        "API host port CORS and UI authentication settings are deleted",
+        "Makefile exposes research artifact and static PWA workflows only",
+        "server-only tests and localhost smoke paths are deleted"
+      ]
     }
   ],
-  "legacy_zones": [
+  "legacy_zones": [],
+  "external_protocols": [
     {
-      "id": "fastapi_entrypoint",
-      "paths": ["api_server.py"],
-      "phase": 3,
-      "disposition": "delete_after_router_extraction"
-    },
-    {
-      "id": "python_http_adapters",
-      "paths": ["src/api/"],
-      "phase": 2,
-      "disposition": "classify_extract_then_delete"
-    },
-    {
-      "id": "process_management",
-      "paths": [
-        "ecosystem.config.js",
-        "pm2_launcher.js",
-        "pm2_launcher.pyw"
-      ],
-      "phase": 3,
-      "disposition": "delete"
-    },
-    {
-      "id": "server_container_stack",
-      "paths": [
-        "Dockerfile",
-        "docker-compose.yml",
-        "docker-compose.*.yml",
-        "scripts/container-entrypoint.sh",
-        "scripts/container-healthcheck.py"
-      ],
-      "phase": 3,
-      "disposition": "remove_api_serving_stack_preserve_research_jobs_if_needed"
-    },
-    {
-      "id": "local_server_commands",
-      "paths": ["Makefile"],
-      "phase": 3,
-      "disposition": "remove_dev_and_smoke_server_targets"
-    },
-    {
-      "id": "server_dependencies_and_settings",
-      "paths": [
-        "pyproject.toml",
-        "uv.lock",
-        "src/common/runtime_settings.py",
-        ".env.example",
-        ".env.development.example"
-      ],
-      "phase": 3,
-      "disposition": "remove_fastapi_uvicorn_slowapi_auth_cors_and_api_settings"
-    },
-    {
-      "id": "api_tests",
-      "paths": [
-        "tests/test_api_*.py",
-        "tests/*_api_*.py",
-        "tests/test_system_router_*.py",
-        "tests/test_research_api_adapter.py",
-        "tests/test_factor_analysis.py",
-        "tests/test_full_flow_smoke.py",
-        "tests/test_model_promotion_audit.py",
-        "tests/test_update_accounting.py",
-        "tests/test_walk_forward.py",
-        "tests/test_workflow_status_audit.py"
-      ],
-      "phase": 2,
-      "disposition": "replace_with_service_cli_or_artifact_contract_tests"
-    },
-    {
-      "id": "incidental_legacy_code_references",
-      "paths": [
-        ".github/workflows/",
-        "src/common/logging.py",
-        "notebooks/_gen_pipeline_nb.py",
-        "notebooks/_build_pipeline_nb.py"
-      ],
-      "phase": 4,
-      "disposition": "remove_reference_during_repository_normalization"
-    },
-    {
-      "id": "legacy_server_documentation",
-      "paths": [
-        "README.md",
-        "DESIGN.md",
-        "docs/release/",
-        "scripts/README.md"
-      ],
-      "phase": 4,
-      "disposition": "rewrite_or_archive"
+      "id": "mcp_json_rpc",
+      "owner": "src/api/mcp_server.py",
+      "classification": "non_web_external_protocol",
+      "justification": "MCP exposes explicit JSON-RPC research tools and is not used by the browser product.",
+      "constraints": [
+        "must not host HTTP routes or static assets",
+        "must not become a frontend execution dependency",
+        "may retain transitive Web-framework packages only when required by the MCP distribution"
+      ]
     }
   ],
-  "frozen_markers": [
-    "fastapi",
-    "uvicorn",
-    "slowapi",
+  "prohibited_markers": [
     "connected_research",
-    "api_server.py"
+    "api_server.py",
+    "TRADING_UI_USER",
+    "TRADING_UI_PASSWORD",
+    "CORS_ORIGINS",
+    "API_HOST",
+    "API_PORT",
+    "pm2_launcher",
+    "ecosystem.config.js"
   ],
   "rules": {
     "allow_new_http_endpoints": false,
     "allow_new_frontend_api_calls": false,
     "allow_browser_mutations": false,
     "allow_domain_logic_only_in_router": false,
+    "allow_active_legacy_zones": false,
     "require_artifact_contract_for_new_reads": true,
     "require_cli_or_workflow_for_new_execution": true
   },

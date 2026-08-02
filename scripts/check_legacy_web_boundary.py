@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import fnmatch
 import json
 import re
 import subprocess
@@ -8,21 +7,33 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 INVENTORY_PATH = PROJECT_ROOT / "docs" / "architecture" / "legacy_web_inventory.json"
-SCANNED_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".cjs", ".mjs", ".toml", ".yml", ".yaml"}
-SCANNED_NAMES = {"Dockerfile", "Makefile"}
-VALID_RETIREMENT_STATUSES = {
-    "deprecated_frozen",
-    "phase_1_frontend_cutover",
-    "phase_2_domain_extraction",
-    "phase_3_server_deletion",
-    "phase_4_repository_normalization",
-    "completed",
+SCANNED_SUFFIXES = {
+    ".py",
+    ".pyw",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".cjs",
+    ".mjs",
+    ".toml",
+    ".yml",
+    ".yaml",
+    ".json",
+    ".md",
+    ".sh",
 }
-
-IMPORT_MARKER = re.compile(
+SCANNED_NAMES = {"Dockerfile", "Makefile", ".env.example"}
+POLICY_FILES = {
+    "scripts/check_legacy_web_boundary.py",
+    "docs/architecture/legacy_web_inventory.json",
+    "docs/architecture/legacy_web_retirement.md",
+}
+SERVER_IMPORT = re.compile(
     r"(?m)^\s*(?:from\s+(?:fastapi|uvicorn|slowapi)\b|import\s+(?:fastapi|uvicorn|slowapi)\b)"
 )
-TEXT_MARKERS = ("connected_research", "api_server.py")
+DIRECT_SERVER_DEPENDENCY = re.compile(
+    r'(?m)^\s*"(?:fastapi|uvicorn|slowapi)(?:[<>=!~].*)?",?\s*$'
+)
 
 
 def tracked_files() -> list[str]:
@@ -36,87 +47,74 @@ def tracked_files() -> list[str]:
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
-def load_patterns() -> list[str]:
+def load_policy() -> tuple[str, ...]:
     payload = json.loads(INVENTORY_PATH.read_text(encoding="utf-8"))
-    status = payload.get("status")
-    if status not in VALID_RETIREMENT_STATUSES:
-        raise RuntimeError(
-            "legacy Web inventory must declare a recognized retirement phase; "
-            f"received {status!r}"
-        )
-    if payload.get("rules", {}).get("allow_new_http_endpoints") is not False:
-        raise RuntimeError("legacy Web inventory must prohibit new HTTP endpoints")
-    if payload.get("rules", {}).get("allow_new_frontend_api_calls") is not False:
-        raise RuntimeError("legacy Web inventory must prohibit new frontend API calls")
+    if payload.get("status") != "completed":
+        raise RuntimeError("legacy Web inventory must be in completed state")
+    if payload.get("legacy_zones"):
+        raise RuntimeError("completed legacy Web inventory must contain no active legacy zones")
 
-    patterns: list[str] = []
-    for zone in payload.get("legacy_zones", []):
-        patterns.extend(str(path) for path in zone.get("paths", []))
-    return patterns
+    rules = payload.get("rules", {})
+    required_false = (
+        "allow_new_http_endpoints",
+        "allow_new_frontend_api_calls",
+        "allow_browser_mutations",
+        "allow_domain_logic_only_in_router",
+        "allow_active_legacy_zones",
+    )
+    for rule in required_false:
+        if rules.get(rule) is not False:
+            raise RuntimeError(f"legacy Web inventory must set {rule}=false")
 
-
-def matches_pattern(path: str, pattern: str) -> bool:
-    if pattern.endswith("/"):
-        return path.startswith(pattern)
-    if any(token in pattern for token in "*?["):
-        return fnmatch.fnmatch(path, pattern)
-    return path == pattern
+    markers = tuple(str(item) for item in payload.get("prohibited_markers", []))
+    if not markers:
+        raise RuntimeError("completed legacy Web inventory must declare prohibited markers")
+    return markers
 
 
-def is_legacy_allowed(path: str, patterns: list[str]) -> bool:
-    if path == "scripts/check_legacy_web_boundary.py":
-        return True
-    return any(matches_pattern(path, pattern) for pattern in patterns)
-
-
-def contains_marker(path: Path, content: str) -> list[str]:
+def scan_file(relative: str, content: str, prohibited: tuple[str, ...]) -> list[str]:
     markers: list[str] = []
-    if path.suffix == ".py" and IMPORT_MARKER.search(content):
+    path = Path(relative)
+    if path.suffix == ".py" and SERVER_IMPORT.search(content):
         markers.append("server-framework import")
-    markers.extend(marker for marker in TEXT_MARKERS if marker in content)
+    if relative == "pyproject.toml" and DIRECT_SERVER_DEPENDENCY.search(content):
+        markers.append("direct server dependency")
+    markers.extend(marker for marker in prohibited if marker in content)
     return markers
 
 
 def main() -> int:
-    patterns = load_patterns()
+    prohibited = load_policy()
     violations: list[tuple[str, list[str]]] = []
-    observed: list[tuple[str, list[str]]] = []
 
     for relative in tracked_files():
+        if relative in POLICY_FILES:
+            continue
         path = PROJECT_ROOT / relative
         if not path.is_file():
             continue
         if path.suffix not in SCANNED_SUFFIXES and path.name not in SCANNED_NAMES:
             continue
-
         try:
             content = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
 
-        markers = contains_marker(path, content)
-        if not markers:
-            continue
-
-        observed.append((relative, markers))
-        if not is_legacy_allowed(relative, patterns):
+        markers = scan_file(relative, content, prohibited)
+        if markers:
             violations.append((relative, markers))
 
-    print(f"Observed legacy Web markers in {len(observed)} tracked files.")
-    for relative, markers in observed:
-        print(f"  - {relative}: {', '.join(markers)}")
-
     if violations:
-        print("\nERROR: new legacy Web dependency detected outside the retirement inventory:")
+        print("ERROR: retired Web architecture markers remain:")
         for relative, markers in violations:
             print(f"  - {relative}: {', '.join(markers)}")
         print(
-            "\nMove reusable behavior to a pure Python service/CLI or artifact contract. "
-            "Only expand the inventory when the change demonstrably reduces a migration blocker."
+            "\nRemove the server/runtime reference. Browser reads belong in the research "
+            "bundle; execution belongs in Python CLI, scripts or workflows."
         )
         return 1
 
-    print("Legacy Web boundary remains controlled; no unapproved dependency expansion detected.")
+    print("Legacy Web retirement is complete: no active server architecture markers found.")
     return 0
 
 

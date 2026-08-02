@@ -19,10 +19,9 @@ _configured = False
 
 
 def setup_logging(*, development: bool = False) -> None:
-    """Configure logging for the entire application.
+    """Configure logging for Python CLI, workflow or integration startup.
 
-    Call once at startup (e.g. in api_server.py). Safe to call multiple times;
-    only the first call takes effect.
+    Safe to call multiple times; only the first call takes effect.
     """
     global _configured
     if _configured:
@@ -41,7 +40,6 @@ def setup_logging(*, development: bool = False) -> None:
             structlog.processors.format_exc_info,
         ]
 
-        # Configure stdlib logging first so structlog can route through it
         logging.basicConfig(
             format="%(message)s",
             stream=sys.stderr,

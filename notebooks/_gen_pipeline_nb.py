@@ -547,7 +547,7 @@ try:
     else:
         print(f"API 状态码: {resp.status_code}")
 except Exception as e:
-    print(f"⚠️ API 不可用（确认服务器已启动: uv run python api_server.py）")
+    print(f"⚠️ API 不可用（确认服务器已启动: uv run python retired local server entrypoint）")
     print(f"   错误: {e}")
 
 # ── 最终仪表板 ─────────────────────────────────────

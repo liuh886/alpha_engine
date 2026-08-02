@@ -1,104 +1,54 @@
 # Alpha Engine Quickstart
 
-Alpha Engine is a Python research engine with a static GitHub Pages/PWA viewer. A local FastAPI server is no longer the canonical product path.
+Alpha Engine 是 Python 量化研究引擎，Web 产品是静态 GitHub Pages/PWA Research Artifact Studio。
 
-> **Legacy notice**
->
-> The FastAPI/local-Web, PM2 and API-container paths are frozen and scheduled for staged removal under [#316](https://github.com/liuh886/alpha_engine/issues/316). They remain available only for migration compatibility.
+## 1. 直接查看研究成果
 
-## 1. Use the Research Artifact Studio
-
-Open the static application:
+打开：
 
 - <https://liuh886.github.io/alpha_engine/>
 
-The application:
+应用无需登录，可安装为 PWA，并支持：
 
-- requires no backend and no login;
-- can be installed as a PWA;
-- opens the published bundle or a local directory/file set/ZIP;
-- reads only files declared in `alpha-engine-bundle.json`;
-- does not upload selected local files;
-- reopens its application shell offline after the first successful visit.
+- 打开公开研究成果；
+- 打开本地目录、文件集合或 ZIP；
+- 校验 `alpha-engine-bundle.json`、路径、大小和 SHA-256；
+- 首次访问后离线加载应用壳。
 
-Use **Library** to select a research bundle.
-
-## 2. Install the Python research engine
-
-Prerequisites:
-
-| Tool | Requirement |
-| --- | --- |
-| Python | >= 3.10 |
-| `uv` | current release |
-| Git | current supported release |
-| Node.js/npm | only required for frontend contribution |
+## 2. 安装 Python 研究环境
 
 ```bash
 git clone https://github.com/liuh886/alpha_engine.git
 cd alpha_engine
 uv sync --extra dev
-```
-
-Run the environment check:
-
-```bash
 make doctor
 ```
 
-## 3. Run research tasks
-
-Common commands:
+## 3. 运行研究
 
 ```bash
 make data
-make train-us
-make train-cn
+make train-us       # 或 make train-cn
 make backtest
 ```
 
-These commands execute Python research workflows. They do not require a browser or local Web server.
+高级研究任务包括 walk-forward、因子衰减、每日决策和周度报告，统一通过 Makefile、Python 脚本或 GitHub Actions 执行。
 
-The fixed methodology is documented in [`docs/methodology.md`](../methodology.md).
-
-## 4. Export a versioned research bundle
-
-After the required metadata, reports and model artifacts exist:
+## 4. 导出成果包
 
 ```bash
 make research-bundle
 ```
 
-Equivalent explicit commands:
-
-```bash
-uv run python scripts/export_static_site_data.py \
-  --market all \
-  --output artifacts/site/data
-
-uv run python scripts/export_research_bundle.py \
-  --source artifacts/site \
-  --output artifacts/research-bundle
-```
-
-Expected output:
+然后在 PWA 的 **Library** 中打开：
 
 ```text
 artifacts/research-bundle/
-  alpha-engine-bundle.json
-  data/
-  reports/
-  notebooks/
-  docs/
 ```
 
-The exporter validates referenced paths, records byte sizes and SHA-256 digests, and fails closed when required source evidence is missing.
+成果包必须以 `alpha-engine-bundle.json` 为根。浏览器不会读取 manifest 外的文件，也不会向仓库或云端上传本地成果。
 
-Open `artifacts/research-bundle/` from the PWA Library. A ZIP of the same folder is supported as a fallback.
-
-## 5. Frontend development
-
-Frontend development uses the static artifact runtime by default:
+## 5. 前端开发
 
 ```bash
 cd qlib-dashboard
@@ -106,88 +56,33 @@ npm ci
 VITE_RUNTIME_MODE=static_artifact npm run dev
 ```
 
-This Vite server is a contributor tool, not a required production service. It must not depend on FastAPI.
+前端只支持：
 
-Run frontend validation:
-
-```bash
-npx tsc --noEmit
-npm run lint
-npm test
-VITE_RUNTIME_MODE=static_artifact npm run build
-npx playwright test --config=playwright.static.config.ts
+```text
+static_artifact
+local_artifact
 ```
 
-## 6. Repository validation
+不得增加后台任务、网络取数、认证或写操作。
 
-Run the local quality gates:
+## 6. 完整验证
 
 ```bash
 make ci
 ```
 
-The first gate checks that no new FastAPI, Uvicorn, SlowAPI, `connected_research` or `api_server.py` dependency appears outside the explicit retirement inventory.
-
-Retirement governance:
-
-- [`docs/architecture/legacy_web_retirement.md`](../architecture/legacy_web_retirement.md)
-- [`docs/architecture/legacy_web_inventory.json`](../architecture/legacy_web_inventory.json)
-
-## 7. Deprecated compatibility path
-
-The old local Web stack can still be started temporarily:
+静态浏览器验收：
 
 ```bash
-make legacy-web-dev
+cd qlib-dashboard
+npx playwright test --config=playwright.static.config.ts
 ```
 
-`make dev` is a compatibility alias and prints a deprecation warning.
+## 7. 研究边界
 
-The legacy stack includes:
-
-- FastAPI and `api_server.py`;
-- local Basic Auth and CORS;
-- Vite proxying to `/api`;
-- PM2 launchers;
-- API-serving Docker/Compose configuration;
-- connected frontend routes, job polling and mutation controls.
-
-Do not add new features to this path. A retained operation must first be moved into a pure Python service, CLI command, scheduled workflow or versioned artifact before its HTTP adapter is removed.
-
-## 8. Troubleshooting
-
-### Bundle export cannot find metadata
-
-Confirm the research pipeline has produced `artifacts/metadata/metadata.db`, then rerun the required data/training/backtest tasks.
-
-### The PWA rejects a bundle
-
-Check that:
-
-- `alpha-engine-bundle.json` is at the selected root;
-- every declared file exists;
-- files have not changed after the manifest was generated;
-- the schema major version is supported;
-- the bundle does not contain path traversal or unsupported ZIP features.
-
-### Local directory permission expired
-
-Reopen the bundle from Library and grant read permission again. The application never requires write permission.
-
-### Frontend development accidentally enters connected mode
-
-Set:
-
-```bash
-VITE_RUNTIME_MODE=static_artifact
-```
-
-Static and local modes must make zero `/api/*` requests.
-
-## Product boundary
-
-- Web product: GitHub Pages/PWA Research Artifact Studio.
-- Frontend data contract: `alpha-engine-bundle.json`.
-- Research execution: Python CLI/scripts/workflows.
-- Legacy local server: deprecated migration-only surface.
-- `research_only=true`, `trade_ready=false`.
+- `research_only=true`
+- `trade_ready=false`
+- 不连接券商或执行订单
+- 不在浏览器训练模型
+- 不用后端数据替代缺失证据
+- 特征重要性不等于因子有效性

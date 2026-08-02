@@ -1,7 +1,7 @@
 [project]
-name = "trading-assistant"
+name = "alpha-engine"
 version = "2.5.0"
-description = "AI-powered trading assistant for CN and US markets based on Microsoft Qlib."
+description = "Artifact-first quantitative research engine for CN and US markets based on Microsoft Qlib."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -21,12 +21,9 @@ dependencies = [
     "baostock",
     "akshare",
     "efinance",
-    "fastapi",
-    "uvicorn",
     "python-dotenv",
     "protobuf<4.0.0",
     "setuptools==69.5.1",
-    "slowapi",
     "tiktoken>=0.12.0",
     "pandera",
     "mcp",
@@ -64,9 +61,6 @@ target-version = "py310"
 extend-exclude = ["notebooks"]
 
 [tool.ruff.lint]
-# Keep the P0 CI lint gate focused on hard correctness. Import sorting,
-# pyupgrade, late-import cleanup, and unused-import cleanup should be re-enabled
-# through dedicated ratchet PRs after the legacy codebase is normalized.
 select = ["E", "F"]
 ignore = ["E501", "E402", "F401"]
 
@@ -74,12 +68,9 @@ ignore = ["E501", "E402", "F401"]
 known-first-party = ["src", "scripts", "tests"]
 
 [tool.ruff.lint.per-file-ignores]
-# Scripts and agents use sys.path manipulation before imports (E402 deferred).
 "scripts/*" = ["E402"]
 "tests/*" = ["E402"]
 "agents/*" = ["E402"]
-# Specific src/ files with legitimate late imports.
-"api_server.py" = ["E402"]
 "src/api/mcp_server.py" = ["E402"]
 "src/inference.py" = ["E402"]
 "src/research/service.py" = ["E402"]
@@ -87,10 +78,6 @@ known-first-party = ["src", "scripts", "tests"]
 # ---------------------------------------------------------------------------
 # Mypy — ratcheted scope
 # ---------------------------------------------------------------------------
-# Strategy: new modules added under src/ must pass mypy without overrides.
-# Existing modules with known errors are grandfathered via ignore_errors.
-# The critical path (src/release/, src/models/metric_contract.py) is checked
-# strictly by CI: ``mypy src/release src/models/metric_contract.py``.
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true
@@ -128,11 +115,11 @@ python_files = ["test_*.py"]
 addopts = "--strict-markers"
 markers = [
     "unit: fast pure unit tests that do not require external services or real market artifacts",
-    "contract: API/schema/artifact contract tests using local fakes or TestClient",
+    "contract: schema, artifact, CLI or integration contract tests using local fakes",
     "integration: tests crossing service/module boundaries or requiring heavier fixtures",
     "slow: tests that are valid but too slow for the default PR feedback loop",
-    "e2e: browser or live-server end-to-end tests",
+    "e2e: browser or workflow end-to-end tests",
     "benchmark: performance or baseline measurement tests; not required for PR correctness",
-    "manual: tests requiring local services, real data, credentials, or manual setup",
+    "manual: tests requiring real data, credentials, or manual setup",
     "approved_skip(reason): marks a test that is approved to be skipped with a documented reason",
 ]

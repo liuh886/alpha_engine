@@ -38,7 +38,7 @@ Pickle Artifacts (mlruns/{exp_id}/{run_id}/artifacts/)
     ↓
 build_dashboard_db.py → dashboard_db.json
     ↓
-FastAPI (api_server.py) → React Dashboard (qlib-dashboard/)
+FastAPI (retired local server entrypoint) → React Dashboard (qlib-dashboard/)
 ```
 
 ## Key Design Constraints

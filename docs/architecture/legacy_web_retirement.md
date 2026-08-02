@@ -1,122 +1,107 @@
 # Legacy Web Retirement Policy
 
-Status: **Phase 1 — frontend product cutover in progress**  
+Status: **Completed — 2026-08-02**  
 Parent: #316  
-Frontend delivery: #318
+Delivery: #317, #318, #319 and #320
 
-## Decision
+## Final decision
 
-Alpha Engine's only supported Web product is the static **Research Artifact Studio** deployed through GitHub Pages and installable as a PWA.
+Alpha Engine 的唯一 Web 产品是通过 GitHub Pages 发布、可安装为 PWA 的静态 **Research Artifact Studio**。
 
-The legacy FastAPI/local-Web stack remains temporarily available only to support controlled backend migration. It is no longer represented as a browser product and must not receive new features.
+浏览器只读取版本化研究成果，不承担身份认证、数据刷新、训练、回测执行、模型变更、任务控制、基础设施操作或交易执行。Python 研究能力通过 CLI、脚本和工作流保留。
 
-## Target boundary
+## Final boundary
 
 ```text
-Python research pipelines
-        ↓
-versioned research artifacts
-        ↓
-GitHub Pages / PWA / local bundle reader
+Python services / CLI / scripts / workflows
+                  ↓
+      versioned research artifact bundle
+                  ↓
+   GitHub Pages / PWA / local bundle reader
 ```
 
-The browser consumes `alpha-engine-bundle.json` and files declared by that manifest. Python execution remains in CLI commands, scripts and scheduled workflows.
+- 数据边界：`alpha-engine-bundle.json`；
+- 执行边界：Python CLI、脚本和工作流；
+- Web 模式：`static_artifact`、`local_artifact`；
+- 产品状态：`research_only=true`、`trade_ready=false`。
 
-## Current frontend truth
-
-The frontend route graph contains artifact views only:
-
-- Overview and Library;
-- Backtests, Models, Compare, Data, Factors, Experiments and Reports;
-- Methodology.
-
-The application root has no authentication provider, login guard, server-health bootstrap, task polling, data refresh, mutation control or Developer navigation group. The two remaining runtime labels describe artifact source only: published or local.
-
-## Frozen legacy surface
-
-The following areas remain legacy migration zones:
-
-- `api_server.py`;
-- `src/api/`;
-- FastAPI/Uvicorn/SlowAPI imports;
-- unused frontend API clients, polling hooks and connected-only pages pending physical deletion;
-- PM2 launchers and `ecosystem.config.js`;
-- API-oriented Docker/Compose startup;
-- local Basic Auth, CORS, API host/port and static-site mounting;
-- API contract/router tests and demo-server Playwright flows;
-- `make dev`, `make smoke` and localhost Web documentation.
-
-Changes inside these areas are allowed only when they reduce the retirement surface, fix a migration blocker, or extract reusable research-domain logic into a pure Python service/CLI.
-
-## Rules for new work
-
-1. Do not add new HTTP endpoints.
-2. Do not add new frontend `/api/*` calls.
-3. Do not add new authentication, polling, mutation or system-operation UI.
-4. Do not place research-domain logic only inside a router.
-5. New read use cases must be represented in the research bundle contract.
-6. New execution use cases must be implemented as pure Python services, CLI commands or workflows.
-7. Static and local artifact modes remain read-only and must not require localhost services.
-
-## Removal sequence
+## Completed removal
 
 ### Phase 0 — freeze and inventory
 
 Completed in #317:
 
-- Pages/PWA and CLI became the canonical entry points;
-- local Web documentation was marked deprecated;
-- the migration inventory was recorded;
-- CI began blocking new legacy dependencies.
+- Pages/PWA 和 CLI 成为规范入口；
+- 新服务器能力被冻结；
+- 迁移清单和 CI 边界建立。
 
-### Phase 1 — remove connected frontend mode
+### Phase 1 — frontend product cutover
 
-In progress in #318:
+Completed in #318 through PRs #329 and #334:
 
-- remove `connected_research` from production frontend code;
-- remove authentication and server bootstrap from the application root;
-- remove backend-only routes from the browser route graph;
-- preserve static/local bundle journeys;
-- then physically delete the now-unreachable connected UI modules.
+- 删除认证、服务探测、任务轮询和 Developer 产品面；
+- 生产路由只保留成果审阅；
+- Compare、Backtests、Methodology 和名称解析改为成果包原生；
+- 物理删除旧页面、HTTP 客户端、mutation/query hooks 和 demo-server 测试；
+- 桌面、平板、移动端、零网络取数和离线重载通过。
 
-### Phase 2 — extract domain services
+### Phase 2 — domain extraction and adapter deletion
 
-Classify every endpoint as:
+Completed in #319 through PRs #336 and #337:
 
-- replaced by artifact reads;
-- obsolete mutation/job control;
-- reusable research operation requiring CLI/service extraction;
-- duplicate or dead code.
+- 每个旧适配器完成 artifact-replaced、browser-control-retired、service-owned 或 dead 分类；
+- 模型、数据、回测、训练、研究、Evidence、Portfolio 和因子能力均有 Python 所有者；
+- 所有 HTTP router、schema 和临时 Python Web host 被删除；
+- endpoint 测试迁移为 service、CLI、artifact 或 domain contract；
+- 全仓 pytest collection 防止隐藏导入。
 
-No router is deleted until retained domain behavior has a non-HTTP owner.
+### Phase 3 — deployment and runtime deletion
 
-### Phase 3 — delete server and deployment stack
+Completed in #320 through PR #346:
 
-- delete FastAPI entrypoint and routers;
-- remove server dependencies and settings;
-- remove PM2/API Docker/Compose paths;
-- remove API-only tests and docs.
+- 删除进程管理器、窗口启动器、API 容器、Compose、entrypoint 和健康检查；
+- 删除直接 Web 服务器依赖；
+- 删除 host、port、跨域、UI 凭据和静态挂载设置；
+- Makefile 只保留研究、成果导出、静态 PWA 和质量门禁；
+- 本地自动化改为标准 crontab 或 Windows Task Scheduler；
+- 回撤风控改为 Python fail-closed 阻断信号；
+- 发布、运维、安全和快速开始文档改为成果优先架构。
 
-### Phase 4 — normalize repository language and CI
+## Permanent rules
 
-- remove dashboard-server terminology;
-- retain only Python research gates and static artifact/PWA gates;
-- publish a final deletion and migration manifest.
+1. 不增加浏览器数据端点或 HTTP 客户端。
+2. 不增加认证、轮询、mutation 或系统操作 UI。
+3. 新读取需求必须进入版本化成果包契约。
+4. 新执行需求必须进入 Python service、CLI、脚本或工作流。
+5. 领域逻辑不能只存在于协议适配层。
+6. 静态和本地成果模式永久只读。
+7. 缺失、不兼容或摘要不匹配的证据必须显式失败。
+8. 不得通过恢复本地服务器解决前端需求。
 
-## Required evidence for each deletion PR
+## External protocol exception
 
-- affected endpoint/route inventory;
-- retained replacement or explicit deletion rationale;
-- repository-wide reference scan;
-- Python research-contract tests;
-- deterministic bundle tests;
-- static PWA TypeScript, lint, unit, build and Playwright tests;
-- confirmation that static/local modes issue no `/api/*` request.
+MCP JSON-RPC integration 作为独立研究协议保留：
 
-## Current product truth
+- 不托管前端或静态文件；
+- 不成为浏览器运行依赖；
+- 不提供恢复旧 Web 产品的理由；
+- 传递依赖必须按 MCP 的独立协议边界解释和审查。
 
-- Web: GitHub Pages/PWA Research Artifact Studio.
-- Data boundary: versioned research bundle.
-- Execution boundary: Python CLI/scripts/workflows.
-- Legacy local server: deprecated backend migration-only surface.
-- Scope: `research_only=true`, `trade_ready=false`.
+## Enforcement
+
+`scripts/check_legacy_web_boundary.py` 要求：
+
+- 退役清单状态为 `completed`；
+- active legacy zones 为零；
+- 生产仓库中没有旧入口、进程管理、UI 凭据、跨域、服务 host/port 或服务器框架直接依赖；
+- 前端没有数据 endpoint literal 或已删除 HTTP 模块。
+
+任何违反项都会在研究测试之前阻断 CI。
+
+## Final product truth
+
+- Web：GitHub Pages/PWA Research Artifact Studio；
+- Data：manifest 声明的版本化研究成果；
+- Execution：Python CLI、脚本和 GitHub Actions；
+- Local files：浏览器本地读取，不上传；
+- Scope：研究专用，不构成交易授权。

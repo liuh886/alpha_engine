@@ -1,165 +1,71 @@
-# Container Deployment
+# Static PWA Deployment
 
-This deployment path packages the authenticated FastAPI API and the React UI in
-one image. The frontend is rebuilt from `qlib-dashboard/package-lock.json` in a
-Node 20 stage; local `dist`, data, reports, MLflow state, caches, and secrets are
-excluded from the build context. The runtime uses the Python 3.10 line used by
-CI and installs production dependencies from `uv.lock`.
+Alpha Engine 的唯一 Web 发布路径是 GitHub Pages 上的 Research Artifact Studio。浏览器产品由静态文件和版本化研究成果包组成，不运行 Python 服务。
 
-## Required Configuration
+## Build contract
 
-Set these values in the invoking shell or an external secret manager before
-running Compose. Do not bake them into the image or commit them to the repo.
+```bash
+make research-bundle
+make static-pwa
+```
+
+发布内容必须包含：
 
 ```text
-TRADING_UI_USER
-TRADING_UI_PASSWORD
-ALPHA_DEVELOPER_TOKEN
+qlib-dashboard/dist/
+  index.html
+  manifest.webmanifest
+  service worker assets
+
+artifacts/research-bundle/
+  alpha-engine-bundle.json
+  manifest-declared evidence files
 ```
 
-Compose rejects missing values during interpolation. The container entrypoint
-also rejects missing or placeholder values, a non-production environment, a
-missing UI build, or unwritable persistent paths. `.env` may be used locally by
-Compose for interpolation, but `.dockerignore` prevents it entering the image.
+GitHub Actions 的 Pages 工作流负责：
 
-## Build And Start
+1. 安装锁定的 Python 与 Node 依赖；
+2. 导出公开研究成果包；
+3. 运行 TypeScript、Lint、单元测试和静态构建；
+4. 校验 PWA manifest、service worker 和 bundle budget；
+5. 运行桌面、平板和移动端 Chromium 验收；
+6. 发布 Pages artifact。
 
-```powershell
-$env:TRADING_UI_USER = "operator"
-$env:TRADING_UI_PASSWORD = Read-Host "Dashboard password"
-$env:ALPHA_DEVELOPER_TOKEN = Read-Host "MCP token"
+## Runtime properties
 
-docker compose build --pull api
-docker compose up -d --no-build api
-docker compose ps
+- 浏览器不连接 Python 进程；
+- 不需要用户账号、服务端会话或网络端点；
+- 本地成果包不上传；
+- 首次成功访问后应用壳可离线加载；
+- 公开成果的真实性由 manifest、路径、字节数和 SHA-256 约束。
+
+## Rollback
+
+静态发布的回滚单位是 Git 提交或 Pages artifact：
+
+1. 确认上一已知良好提交；
+2. revert 引入问题的提交；
+3. 重新运行 Pages 工作流；
+4. 验证 Library、Evidence、Reference、离线重载和零网络请求。
+
+不要通过恢复旧服务器来回滚前端。研究执行仍由 Python CLI、脚本或 GitHub Actions 完成。
+
+## Acceptance
+
+发布前必须通过：
+
+```bash
+make ci
+cd qlib-dashboard
+npx playwright test --config=playwright.static.config.ts
 ```
 
-The default host binding is `127.0.0.1:8000`. The process listens on
-`0.0.0.0:8000` only inside the container so Docker port forwarding works.
+验收重点：
 
-For a trusted LAN, explicitly set `ALPHA_ENGINE_BIND_ADDRESS=0.0.0.0`, restrict
-the host firewall to the intended subnet, and use a TLS reverse proxy. Do not
-publish this single-user Basic Auth service directly to the public internet.
-Set `CORS_ORIGINS` to the exact externally visible origins when using a proxy.
-
-## Health And Smoke Checks
-
-The image health check verifies both `/api/public/health` and the built UI at
-`/`. Compose reports the service healthy only after both respond successfully.
-
-```powershell
-curl.exe --fail http://127.0.0.1:8000/api/public/health
-curl.exe --fail http://127.0.0.1:8000/
-curl.exe --fail --user "$env:TRADING_UI_USER`:$env:TRADING_UI_PASSWORD" `
-  http://127.0.0.1:8000/api/system/me
-docker inspect --format "{{.State.Health.Status}}" (docker compose ps -q api)
-```
-
-To prove startup fails closed, run the image without credentials. It must exit
-with code 64 and name the first missing variable:
-
-```powershell
-docker run --rm alpha-engine:local
-```
-
-## Persistent State
-
-Compose uses named volumes instead of host repository bind mounts:
-
-| Volume | Container path | Purpose |
-|---|---|---|
-| `alpha-engine-data` | `/app/data` | Qlib and source market data |
-| `alpha-engine-artifacts` | `/app/artifacts` | metadata, models, runs, evidence |
-| `alpha-engine-mlruns` | `/app/mlruns` | legacy/root MLflow state |
-| `alpha-engine-reports` | `/app/reports` | generated reports |
-| `alpha-engine-configs` | `/app/configs` | mutable runtime configuration |
-
-Set `ALPHA_ENGINE_VOLUME_PREFIX` before first startup to use a different volume
-set. The root filesystem is read-only; `/tmp` is a bounded tmpfs; Linux
-capabilities are dropped and the process runs as uid/gid `10001`.
-
-Persistence smoke test:
-
-```powershell
-docker compose exec api sh -c 'date -u > /app/artifacts/.persistence-smoke'
-docker compose restart api
-docker compose exec api test -s /app/artifacts/.persistence-smoke
-docker compose exec api rm /app/artifacts/.persistence-smoke
-```
-
-## Backup And Restore
-
-Stop writes before taking a consistent backup. Store the archive outside the
-repository and protect it as sensitive research data.
-
-```powershell
-docker compose stop api
-New-Item -ItemType Directory -Force backups | Out-Null
-$backup = (Resolve-Path backups).Path
-
-foreach ($name in @("data", "artifacts", "mlruns", "reports", "configs")) {
-  docker run --rm `
-    --mount "type=volume,src=alpha-engine-$name,dst=/source,readonly" `
-    --mount "type=bind,src=$backup,dst=/backup" `
-    alpine:3.22 tar -C /source -czf "/backup/$name.tgz" .
-}
-docker compose start api
-```
-
-Restore only while the service is stopped. The command below replaces a volume,
-so verify the backup path and volume name first.
-
-```powershell
-docker compose stop api
-$backup = (Resolve-Path backups).Path
-
-foreach ($name in @("data", "artifacts", "mlruns", "reports", "configs")) {
-  docker run --rm `
-    --mount "type=volume,src=alpha-engine-$name,dst=/target" `
-    --mount "type=bind,src=$backup,dst=/backup,readonly" `
-    alpine:3.22 sh -c "find /target -mindepth 1 -delete; tar -C /target -xzf /backup/$name.tgz"
-}
-docker compose start api
-```
-
-Repeat the health, authenticated API, and persistence checks after restore.
-
-## Upgrade, Migration, And Rollback
-
-Tag every verified image immutably, back up all volumes, then start the new
-image without rebuilding it:
-
-```powershell
-docker tag alpha-engine:local alpha-engine:2.5.0-<git-sha>
-$env:ALPHA_ENGINE_IMAGE = "alpha-engine:2.5.0-<git-sha>"
-docker compose up -d --no-build api
-```
-
-Alpha Engine currently has no standalone database migration command. Runtime
-SQLite stores are initialized by the application, so the volume backup is the
-migration boundary. For a release that changes a persisted schema, document and
-run its release-specific migration after backup and before admitting traffic.
-
-Rollback uses the previous verified image and, if the schema changed, the
-matching pre-upgrade volume backup:
-
-```powershell
-docker compose stop api
-$env:ALPHA_ENGINE_IMAGE = "alpha-engine:<previous-git-sha>"
-# Restore the matching backup here when the persisted schema changed.
-docker compose up -d --no-build api
-```
-
-## Artifact Inspection
-
-Before release, inspect image history and ensure the runtime has no ignored
-inputs or build-only dependency trees:
-
-```powershell
-docker history --no-trunc alpha-engine:local
-docker run --rm --entrypoint sh alpha-engine:local -c `
-  'find /app -name .env -o -name node_modules -o -name __pycache__ -o -name "*.pem" -o -name "*.key"'
-```
-
-The `find` command must produce no output. The empty persistent mount points are
-expected; source data and generated state must not be present in image layers.
+- 无登录墙；
+- 无浏览器数据接口请求；
+- 公开和本地成果均可打开；
+- 不兼容成果明确失败；
+- 三种视口无横向溢出；
+- 离线重载成功；
+- 旧运维路由不可达。

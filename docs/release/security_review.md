@@ -1,140 +1,88 @@
-# Security & Local Deployment Review
+# Security Review: Research Artifact Studio
 
-**Date:** 2026-06-19
-**Scope:** Alpha Engine local-only deployment (single-user, localhost-bound)
-**Reviewer:** Automated audit
+**Date:** 2026-08-02  
+**Scope:** Static PWA, local research bundles and Python research workflows
 
----
+## 1. Product boundary
 
-## 1. API Authentication (HTTP Basic Auth)
+Research Artifact Studio 是静态只读浏览器产品：
 
-**Verdict: PASS**
+- 不运行应用服务器；
+- 不维护用户会话；
+- 不提供浏览器任务执行或写入能力；
+- 不连接券商；
+- 不上传本地成果包；
+- 不把研究结果标记为可交易信号。
 
-All API routers are protected by `get_current_user` dependency which enforces HTTP Basic Auth.
+因此，旧架构中的服务认证、跨域策略、远程任务停止和运行时端口不再构成产品安全边界。
 
-- Credentials sourced from environment variables `TRADING_UI_USER` and `TRADING_UI_PASSWORD`.
-- Password comparison uses `secrets.compare_digest` (constant-time, resistant to timing attacks).
-- **Fail-closed**: if credentials are not configured, the server returns HTTP 500 rather than allowing unauthenticated access.
-- Every router declaration in `api_server.py` includes `dependencies=[Depends(get_current_user)]`.
-- Public endpoints are limited to `/health`, `/api/public/health`, and `/api/public/version` (read-only, no data exposure).
+## 2. 成果完整性
 
-**Source:** `api_server.py` lines 63-86
+每个成果包由 `alpha-engine-bundle.json` 约束：
 
----
+- schema version；
+- 规范化相对路径；
+- 文件字节数；
+- SHA-256；
+- research scope；
+- warnings 和 blocked gates；
+- 数据、模型、股票池、基准和时间窗口 identity。
 
-## 2. MCP Token Authentication
+目录穿越、摘要不匹配、不支持的版本或缺失必需文件均 fail closed。
 
-**Verdict: PASS-WITH-NOTE**
+## 3. 本地文件隐私
 
-MCP tools use a shared token (`ALPHA_DEVELOPER_TOKEN` env var) passed as a `token` parameter on every tool call.
+本地目录、文件集合或 ZIP 通过浏览器文件能力读取：
 
-- Every MCP tool calls `_verify_token(token)` before executing.
-- Comparison uses direct `==` (not `secrets.compare_digest`), which is a minor timing side-channel. Acceptable for local-only use.
-- **Note:** When `ALPHA_DEVELOPER_TOKEN` is unset, all tokens are accepted (development mode). A warning is logged. For production/deployment, this token MUST be set.
+- 不上传到 GitHub 或外部服务；
+- 目录 handle 仅在浏览器允许时保存在 IndexedDB；
+- 权限失效时必须由用户重新授权；
+- 浏览器缓存可由用户清理。
 
-**Source:** `src/api/mcp_server.py` lines 31-47
+公开 Pages 成果与本地成果在 UI 中明确区分。
 
----
+## 4. 浏览器攻击面
 
-## 3. Command Execution Allowlists
+主要风险与控制：
 
-**Verdict: PASS**
+| Risk | Control |
+| --- | --- |
+| 恶意 manifest 路径 | 拒绝绝对路径、父目录跳转和根目录逃逸 |
+| 被篡改成果 | 校验大小和 SHA-256 |
+| 超大文件或压缩包 | 文件数量和大小预算；拒绝不支持的 ZIP 格式 |
+| 不可信富文本 | 报告按受控方式呈现，不执行成果中的脚本 |
+| 网络数据静默替换 | 生产前端没有数据接口调用 |
+| 离线内容陈旧 | 显示成果发布日期、数据截止和 identity |
 
-The `/api/system/exec` endpoint uses a strict allowlist pattern.
+## 5. Python 研究环境
 
-- `_EXPLICIT_SAFE_COMMANDS`: Only two hardcoded commands: `data_update` and `arena_settle`, each mapped to a fixed argv prefix.
-- `_WORKFLOW_ACTIONS`: Only `train` and `backtest`, which are constructed via `WorkflowCommandEnvelope` (not user-supplied strings).
-- Unknown task keys are rejected with HTTP 400.
-- Args are sanitized: any arg containing `;` or `&` is dropped.
-- Commands are executed via `subprocess.Popen(list)` (no `shell=True`), preventing shell metacharacter injection.
+Python 研究流程仍可能使用数据源密钥或外部集成：
 
-**Source:** `src/api/routers/system.py` lines 147-221
+- 密钥只通过环境变量或 GitHub Secrets 提供；
+- `.env` 不提交；
+- SEC 数据源使用真实、可联系的 `SEC_USER_AGENT`；
+- 输出中不写入明文密钥；
+- 计划任务以最小权限运行；
+- 研究失败不得通过跳过质量门禁解决。
 
----
+独立 MCP JSON-RPC 工具可使用 `ALPHA_DEVELOPER_TOKEN`，但不得成为前端运行依赖或重新引入浏览器执行能力。
 
-## 4. CORS Configuration
+## 6. Supply chain
 
-**Verdict: PASS**
+- Python 依赖由 `uv.lock` 锁定；
+- Node 依赖由 `package-lock.json` 锁定；
+- CI 使用冻结安装；
+- 直接 Web 服务器依赖已从项目依赖移除；
+- MCP 所需的传递依赖按独立协议边界审查；
+- Pages 构建、PWA 产物、bundle budget 和 Chromium 验收进入发布门禁。
 
-CORS origins are allowlisted, not wildcarded.
+## 7. Residual limitations
 
-- Default origins: `localhost:5173`, `127.0.0.1:5173`, `localhost:8000`, `127.0.0.1:8000`.
-- Configurable via `CORS_ORIGINS` or `ALLOWED_ORIGINS` env var (comma-separated).
-- `allow_credentials=True` is set, which is correct for Basic Auth with cookies.
-- `allow_headers=["*"]` is acceptable for local development; restrict if exposing publicly.
+- ZIP64、加密 ZIP 和不支持的压缩方法会被拒绝；
+- 浏览器无法证明研究方法本身正确，只能验证已声明成果完整性；
+- 公开静态成果任何人可访问，不应包含秘密或受限数据；
+- 本系统仍为研究用途，不能替代交易风控、合规审批或人工判断。
 
-**Source:** `src/common/runtime_settings.py` lines 16-21, `api_server.py` lines 55-61
+## Verdict
 
----
-
-## 5. Static File Serving Security
-
-**Verdict: PASS**
-
-- Static files are served from `qlib-dashboard/dist` via FastAPI's built-in `StaticFiles`, which handles path traversal internally.
-- API routers are mounted **before** the static mount, so API routes take precedence.
-- The root `index.html` is served with `Cache-Control: no-cache, no-store, must-revalidate` and an ETag.
-- No directory listing is exposed.
-
-**Source:** `api_server.py` lines 211-229
-
----
-
-## 6. Secret Handling
-
-**Verdict: PASS**
-
-- `.env` is listed in `.gitignore` (line 57) and will not be committed.
-- `data/`, `artifacts/`, `mlruns/`, `*.log` are all gitignored, preventing accidental leakage of model artifacts or data files.
-- Credentials are loaded from environment variables, not hardcoded.
-- No API keys, passwords, or tokens appear in the source code.
-
-**Source:** `.gitignore`
-
----
-
-## 7. File Access Boundaries
-
-**Verdict: PASS**
-
-- `ArtifactGateway` uses a strict allowlist of known artifact keys (`dashboard-db`, `thought-stream`, `arenas`, etc.). Unknown keys raise `ValueError`.
-- `get_arena_leaderboard` rejects arena IDs containing `/` or `\`.
-- Report archive (`src/reporting/report_archive.py`) uses `Path.is_relative_to()` to prevent path traversal on output paths.
-- Dashboard DB deletion (`src/dashboard/run_deletion.py`) also uses `is_relative_to()` validation.
-- The `/api/system/paths` endpoint exposes filesystem paths (project root, data dir, etc.) but is behind auth.
-
-**Source:** `src/assistant/services/artifact_gateway.py`, `src/reporting/report_archive.py` lines 21-26
-
----
-
-## 8. Network Binding
-
-**Verdict: PASS-WITH-NOTE**
-
-- Default bind is `0.0.0.0:8000` (all interfaces). This is standard for Docker/container deployments.
-- For strictly local use, set `API_HOST=127.0.0.1` to prevent external access.
-- The `ecosystem.config.js` PM2 config should be reviewed to confirm host binding in production.
-
-**Source:** `src/common/runtime_settings.py` line 14
-
----
-
-## Known Limitations and Mitigations
-
-| # | Issue | Severity | Mitigation |
-|---|-------|----------|------------|
-| 1 | MCP dev mode accepts any token when `ALPHA_DEVELOPER_TOKEN` is unset | Medium | Always set this env var in deployment. Warning is logged on startup. |
-| 2 | MCP token comparison uses `==` instead of `secrets.compare_digest` | Low | Timing attack requires local network access. Acceptable for localhost-only. |
-| 3 | `allow_headers=["*"]` in CORS | Low | Restrict to specific headers if exposing beyond localhost. |
-| 4 | `0.0.0.0` default bind | Low | Set `API_HOST=127.0.0.1` for local-only use. |
-| 5 | `/api/system/paths` exposes internal directory structure | Low | Behind auth. Consider removing or redacting if not needed by dashboard. |
-| 6 | Command arg sanitization only filters `;` and `&` | Low | Mitigated by `Popen(list)` (no shell). Additional metacharacters are inert without shell interpretation. |
-
----
-
-## Summary
-
-Alpha Engine's security posture is appropriate for its intended deployment model (local single-user or small team behind a LAN). Authentication is enforced on all data-modifying endpoints, command execution is allowlisted with no shell injection surface, secrets are excluded from version control, and file access is bounded by allowlists and path validation. The two actionable items for hardening before any internet-exposed deployment are:
-
-1. Set `ALPHA_DEVELOPER_TOKEN` to disable MCP dev mode.
-2. Bind to `127.0.0.1` instead of `0.0.0.0`.
+静态成果阅读架构显著缩小了远程攻击面。发布安全的核心从“保护运行服务器”转为“限制公开内容、验证成果完整性、锁定供应链并保持浏览器永久只读”。

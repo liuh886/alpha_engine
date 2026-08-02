@@ -4,6 +4,12 @@ on:
   pull_request:
     paths:
       - 'qlib-dashboard/**'
+      - 'Makefile'
+      - 'pyproject.toml'
+      - '.env.example'
+      - 'src/common/runtime_settings.py'
+      - 'scripts/check_legacy_web_boundary.py'
+      - 'docs/architecture/legacy_web_inventory.json'
       - '.github/workflows/frontend-static-pwa.yml'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
@@ -19,6 +25,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify zero-server architecture boundary
+        run: python scripts/check_legacy_web_boundary.py
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -85,4 +94,5 @@ jobs:
         with:
           name: alpha-engine-static-pwa
           path: qlib-dashboard/dist
-          retention-days: 7
+          if-no-files-found: error
+          retention-days: 14

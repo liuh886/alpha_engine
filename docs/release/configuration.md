@@ -1,158 +1,70 @@
-# Configuration Reference
+# Research Configuration Reference
 
-Alpha Engine reads its configuration from environment variables, typically
-loaded from a `.env` file in the project root via `python-dotenv`.  Every
-variable has a built-in default, so a bare `python api_server.py` works
-out of the box for local development.
+Alpha Engine 的 Python 研究流程可通过 `.env` 或进程环境覆盖少量配置。Research Artifact Studio 是静态 PWA，不读取 `.env`，也不需要服务地址或用户凭据。
 
-## Quick Start
+## 安装
 
 ```bash
-cp .env.example .env
-# Edit .env — set at least TRADING_UI_USER and TRADING_UI_PASSWORD for production.
+uv sync --extra dev
+cp .env.example .env  # 仅在需要覆盖默认值时
 ```
 
----
+## 研究目录
 
-## Core
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `TRADING_CONFIG_DIR` | `configs/` | 策略、研究规范和工作流配置 |
+| `TRADING_DATA_DIR` | `data/` | 市场数据与数据治理产物 |
+| `TRADING_REPORTS_DIR` | `reports/` | 生成的研究报告 |
+| `TRADING_SCRIPTS_DIR` | `scripts/` | 本地研究脚本 |
+| `TRADING_ARTIFACTS_DIR` | `artifacts/` | 模型、运行、证据、成果包和元数据 |
+| `TRADING_ASSISTANT_METADATA_DB_PATH` | `artifacts/metadata/metadata.db` | 元数据 SQLite 路径 |
 
-| Variable | Default | Description |
-|---|---|---|
-| `ALPHA_ENGINE_ENV` | `development` | Set to `production` to disable verbose logging and enable stricter defaults. |
-| `API_HOST` | `0.0.0.0` | Network interface the API server binds to. Use `127.0.0.1` to restrict to localhost. |
-| `API_PORT` | `8000` | API server port. Also reads `PORT` as a fallback (for PaaS platforms like Heroku). |
-| `CORS_ORIGINS` | `http://localhost:5173, http://127.0.0.1:5173, http://localhost:8000, http://127.0.0.1:8000` | Comma-separated list of allowed CORS origins. Also reads `ALLOWED_ORIGINS`. |
+相对路径以仓库根目录解析。`TRADING_ARTIFACTS_DIR` 下会派生 `mlruns/`、`models/`、`runs/`、`archives/` 和 `dashboard/`。
 
-### Environment Modes
+## 风险和研究控制
 
-- **development** (default): Verbose logging, permissive CORS defaults.
-- **production**: Structured logging, tighter security posture.  Always set
-  `TRADING_UI_USER` and `TRADING_UI_PASSWORD` in production — the API returns
-  HTTP 500 on all protected endpoints when credentials are missing.
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `ALPHA_ENGINE_ENV` | `development` | Python 日志和运行环境标签 |
+| `ALPHA_ENGINE_MAX_DRAWDOWN_THRESHOLD` | `0.15` | 回撤风控阻断阈值 |
+| `SCORING_TIMEOUT_SEC` | `60` | 推理超时秒数 |
+| `MAX_LEVERAGE` | `1.0` | 最大组合杠杆 |
 
----
+回撤超过阈值时，`src.guardrails.risk_monitor` 返回阻断信号。调用方必须停止工作流或拒绝 promotion；不存在浏览器远程停止机制。
 
-## Authentication
+## 数据和研究集成
 
-| Variable | Default | Required? | Description |
-|---|---|---|---|
-| `TRADING_UI_USER` | *(none)* | Yes (production) | Username for HTTP Basic Auth on all `/api/*` routes. |
-| `TRADING_UI_PASSWORD` | *(none)* | Yes (production) | Password for HTTP Basic Auth. |
-| `ALPHA_DEVELOPER_TOKEN` | *(none)* | No | Token required by MCP tools. When unset, MCP tools accept any request (development mode). |
+| Variable | Required when |
+| --- | --- |
+| `SEC_USER_AGENT` | 使用 SEC Company Facts 数据源 |
+| `OPENAI_API_KEY` | 使用可选研究助手能力 |
+| `DATABASE_URL` | 使用扩展分析数据库 |
+| `TRADING_WEBHOOK_URL` | 发送工作流失败通知 |
+| `ALPHA_DEVELOPER_TOKEN` | 保护独立 MCP JSON-RPC 工具 |
 
-### How Auth Works
+MCP 是单独的外部协议，不是前端数据源或浏览器执行通道。
 
-The API uses HTTP Basic Authentication on every router except `/health` and
-`/api/public/*`.  If either `TRADING_UI_USER` or `TRADING_UI_PASSWORD` is
-unset, protected endpoints return 500 with a message instructing you to set
-the variables.  This is intentional — the server fails closed rather than
-running unauthenticated in production.
+## 成果包配置
 
-MCP tool authentication is separate: each tool accepts a `token` parameter
-that is compared against `ALPHA_DEVELOPER_TOKEN`.  When the env var is unset,
-all tokens are accepted.
-
----
-
-## Path Overrides
-
-All paths default to project-relative directories. Override them for custom
-layouts, Docker volumes, or multi-instance deployments.
-
-| Variable | Default | Description |
-|---|---|---|
-| `TRADING_CONFIG_DIR` | `configs/` | Strategy and workflow YAML configuration files. |
-| `TRADING_DATA_DIR` | `data/` | Market data storage. |
-| `TRADING_REPORTS_DIR` | `reports/` | Generated backtest and analysis reports. |
-| `TRADING_SCRIPTS_DIR` | `scripts/` | Operational scripts (data update, doctor, etc.). |
-| `TRADING_ARTIFACTS_DIR` | `artifacts/` | MLflow runs, model checkpoints, factor registry DB. |
-| `TRADING_STATIC_SITE_DIR` | `qlib-dashboard/dist/` | Built frontend assets served by the API. |
-| `TRADING_ASSISTANT_METADATA_DB_PATH` | `artifacts/metadata/metadata.db` | Override the metadata SQLite database path used by the job service, model registry, and other indices. |
-
-Relative paths are resolved against the project root (the directory containing
-`api_server.py`).
-
-### Derived Directories
-
-Several subdirectories are derived from `TRADING_ARTIFACTS_DIR` at runtime:
-
-- `{artifacts_dir}/mlruns` — MLflow experiment tracking
-- `{artifacts_dir}/models` — Serialized model artifacts
-- `{artifacts_dir}/runs` — Backtest run outputs
-- `{artifacts_dir}/archives` — Archived data snapshots
-
----
-
-## Risk and Limits
-
-| Variable | Default | Description |
-|---|---|---|
-| `ALPHA_ENGINE_MAX_DRAWDOWN_THRESHOLD` | `0.15` | Maximum drawdown (as a decimal) before the risk monitor triggers alerts. Value of `0.15` means 15%. |
-| `SCORING_TIMEOUT_SEC` | `60` | Timeout in seconds for model scoring/inference operations. |
-| `MAX_LEVERAGE` | `1.0` | Maximum portfolio leverage multiplier. `1.0` means no leverage. |
-
----
-
-## Integrations
-
-| Variable | Default | When Needed |
-|---|---|---|
-| `OPENAI_API_KEY` | *(none)* | Required only when using the research assistant LLM features. |
-| `DATABASE_URL` | *(none)* | Connection string for extended analytics storage. Falls back to SQLite if unset. |
-| `TRADING_WEBHOOK_URL` | *(none)* | Slack-compatible webhook URL. When set, job failure alerts are POSTed as JSON payloads. |
-
----
-
-## PM2 / Systemd Deployment
-
-When running under PM2, environment variables can be set in `ecosystem.config.js`
-under the `env` block. The bundled config sets:
-
-```javascript
-env: {
-    PYTHONPATH: baseDir,
-    PORT: 8000,
-    TRADING_STATIC_SITE_DIR: "qlib-dashboard/dist",
-    PYTHONUNBUFFERED: "1",
-}
+```bash
+make research-bundle
 ```
 
-Additional variables (auth credentials, API keys) should go in `.env` which is
-loaded automatically by `python-dotenv` at startup.
+浏览器边界固定为 `artifacts/research-bundle/alpha-engine-bundle.json`。manifest 外的文件不会被读取；文件大小、路径和 SHA-256 不匹配时加载失败。
 
----
+## 验证
 
-## Verification Checklist
+```bash
+make doctor
+make test
+make ci
+```
 
-Before deploying to production:
+提交前确认：
 
-1. **Auth is set**: `TRADING_UI_USER` and `TRADING_UI_PASSWORD` are both non-empty.
-2. **No secrets in git**: `.env` is listed in `.gitignore`. Only `.env.example` is committed.
-3. **Paths exist**: All overridden path directories exist and are writable by the process.
-4. **CORS is locked down**: `CORS_ORIGINS` contains only your actual frontend origin(s).
-5. **MCP token is set**: `ALPHA_DEVELOPER_TOKEN` is configured if the MCP server is exposed.
-
----
-
-## Variable Source Map
-
-This table shows where each variable is read in the codebase:
-
-| Variable | Source File |
-|---|---|
-| `ALPHA_ENGINE_ENV` | `src/common/runtime_settings.py` |
-| `API_HOST` | `src/common/runtime_settings.py` |
-| `API_PORT` / `PORT` | `src/common/runtime_settings.py` |
-| `CORS_ORIGINS` / `ALLOWED_ORIGINS` | `src/common/runtime_settings.py` |
-| `TRADING_UI_USER` | `src/common/runtime_settings.py` |
-| `TRADING_UI_PASSWORD` | `src/common/runtime_settings.py` |
-| `TRADING_CONFIG_DIR` | `src/common/runtime_settings.py` |
-| `TRADING_DATA_DIR` | `src/common/runtime_settings.py` |
-| `TRADING_REPORTS_DIR` | `src/common/runtime_settings.py` |
-| `TRADING_SCRIPTS_DIR` | `src/common/runtime_settings.py` |
-| `TRADING_ARTIFACTS_DIR` | `src/common/runtime_settings.py` |
-| `TRADING_STATIC_SITE_DIR` | `src/common/runtime_settings.py` |
-| `ALPHA_DEVELOPER_TOKEN` | `src/api/mcp_server.py` |
-| `ALPHA_ENGINE_MAX_DRAWDOWN_THRESHOLD` | `src/guardrails/risk_monitor.py` |
-| `TRADING_ASSISTANT_METADATA_DB_PATH` | `src/assistant/metadata_db.py` |
-| `TRADING_WEBHOOK_URL` | `src/assistant/job_service.py` |
+1. `.env` 和密钥未提交；
+2. 数据、模型、基准和股票池 identity 已进入 manifest；
+3. 成果包可重复导出；
+4. `research_only=true`、`trade_ready=false`；
+5. 浏览器没有网络取数、任务执行或写操作。
