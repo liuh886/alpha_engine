@@ -7,6 +7,7 @@ import { AuthGuard } from './components/AuthGuard';
 import { ConsoleModal } from './components/ConsoleModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { GlobalStatusBar } from './components/GlobalStatusBar';
+import { MobileNavigation } from './components/MobileNavigation';
 import { ModelSelector } from './components/ModelSelector';
 import { ResearchContextBar } from './components/ResearchContextBar';
 import { Sidebar } from './components/Sidebar';
@@ -16,7 +17,7 @@ import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { setAuthHeaderProvider } from './lib/api';
 import { useAuth } from './lib/auth';
 import { runtimeCapabilities } from './lib/runtime-capabilities';
-import { isRuntimeVisible, routes, VIEW_TITLES } from './routes';
+import { isRuntimeVisible, routes } from './routes';
 import { useGlobalStore } from './store/globalStore';
 
 function PageLoader() {
@@ -57,9 +58,10 @@ function Layout(props: LayoutProps) {
   } = useGlobalStore();
   const { logout } = useAuth();
   const currentPath = location.pathname.replace(/^\//, '');
-  const viewTitle = VIEW_TITLES[currentPath] ?? currentPath.replace('-', ' ');
+  const declaredRoute = routes.find((route) => route.path === currentPath);
+  const viewTitle = declaredRoute && isRuntimeVisible(declaredRoute) ? declaredRoute.title : 'Unavailable route';
   const selectedModel = props.models.find((model) => model.id === props.selectedModelId);
-  const showModelPicker = ['dashboard', 'models', 'compare'].includes(currentPath) && selectedModel;
+  const showModelPicker = Boolean(declaredRoute && isRuntimeVisible(declaredRoute) && ['dashboard', 'models', 'compare'].includes(currentPath) && selectedModel);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -86,7 +88,7 @@ function Layout(props: LayoutProps) {
             <p className="research-topbar-eyebrow">Alpha Engine / Evidence workspace</p>
             <div className="flex min-w-0 items-center gap-3">
               <h1 className="truncate">{viewTitle}</h1>
-              {showModelPicker && (
+              {showModelPicker && selectedModel && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -103,6 +105,7 @@ function Layout(props: LayoutProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            <MobileNavigation />
             <Button
               variant="ghost"
               size="icon"
