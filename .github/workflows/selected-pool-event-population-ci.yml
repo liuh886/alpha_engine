@@ -7,10 +7,14 @@ on:
       - ".github/workflows/selected-pool-event-population-ci.yml"
       - "configs/data/selected_pool_event_population_v1.yaml"
       - "src/data/fundamentals/sec_companyfacts.py"
+      - "src/data/fundamentals/ashare_public_financials.py"
       - "src/data/fundamentals/tushare_financials.py"
+      - "src/data/corporate_actions/ashare_public_actions.py"
+      - "src/data/corporate_actions/yfinance_events.py"
       - "src/data/corporate_actions/tiingo_events.py"
       - "scripts/data/build_us_selected_sec_mapping.py"
       - "tests/test_selected_pool_event_population.py"
+      - "docs/research/ashare_open_source_provider_review_2026-08-02.md"
   workflow_dispatch:
 
 concurrency:
@@ -38,7 +42,10 @@ jobs:
         run: >-
           uv run ruff check
           src/data/fundamentals/sec_companyfacts.py
+          src/data/fundamentals/ashare_public_financials.py
           src/data/fundamentals/tushare_financials.py
+          src/data/corporate_actions/ashare_public_actions.py
+          src/data/corporate_actions/yfinance_events.py
           src/data/corporate_actions/tiingo_events.py
           scripts/data/build_us_selected_sec_mapping.py
           tests/test_selected_pool_event_population.py
@@ -46,7 +53,10 @@ jobs:
         run: >-
           uv run mypy --follow-imports=skip
           src/data/fundamentals/sec_companyfacts.py
+          src/data/fundamentals/ashare_public_financials.py
           src/data/fundamentals/tushare_financials.py
+          src/data/corporate_actions/ashare_public_actions.py
+          src/data/corporate_actions/yfinance_events.py
           src/data/corporate_actions/tiingo_events.py
           scripts/data/build_us_selected_sec_mapping.py
       - name: Test event normalizers
@@ -62,8 +72,6 @@ jobs:
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
