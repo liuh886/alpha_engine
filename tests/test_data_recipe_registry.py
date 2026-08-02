@@ -118,6 +118,7 @@ def test_selected_pool_recipe_builds_and_reuses_provider_snapshot(
         "configs/data_recipes/us87_prices_v1.yaml",
         "configs/data_contracts/model_data_bundle_v1.yaml",
         "configs/research_universes/us_selected_equities_v2.yaml",
+        "configs/research_universes/cn_selected_equities_v3.yaml",
     )
     pool = yaml.safe_load(
         (tmp_path / "configs/research_universes/us_selected_equities_v2.yaml").read_text(
