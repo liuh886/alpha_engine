@@ -1,5 +1,7 @@
 # US x1.1 growth log
 
+**Ledger status:** current through Experiment 008 on 2026-08-02.
+
 This is the durable experiment ledger for the active US research baseline. It
 records positive, negative, null and blocked results. It does not imply trade
 readiness.
