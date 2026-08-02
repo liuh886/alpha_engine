@@ -52,6 +52,11 @@ async function mockBundle(page: Page) {
   });
 }
 
+async function assertNoHorizontalOverflow(page: Page) {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
+}
+
 async function openStudio(page: Page) {
   await page.goto('/#/');
   await expect(page.locator('#root')).not.toBeEmpty();
@@ -77,10 +82,14 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await expect(page.getByText('Sign in')).toHaveCount(0);
   expect(apiRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({ path: `test-results/static-artifact/overview-${testInfo.project.name}.png`, fullPage: true });
 
   await page.goto('/#/data');
   await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();
   await expect(page.locator('main').getByText('2026-07-31', { exact: true })).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({ path: `test-results/static-artifact/data-${testInfo.project.name}.png`, fullPage: true });
 
   await page.goto('/#/system');
   await expect(page.getByRole('heading', { name: 'Evidence view not found' })).toBeVisible();
@@ -90,10 +99,8 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await page.keyboard.press('Tab');
   const focused = await page.evaluate(() => document.activeElement?.tagName.toLowerCase());
   expect(['a', 'button', 'input']).toContain(focused);
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  expect(overflow).toBeLessThanOrEqual(2);
-
-  await page.screenshot({ path: `test-results/static-artifact/${testInfo.project.name}.png`, fullPage: true });
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({ path: `test-results/static-artifact/runtime-blocked-${testInfo.project.name}.png`, fullPage: true });
 });
 
 test('installed shell reopens offline after first visit', async ({ page, context }, testInfo) => {
