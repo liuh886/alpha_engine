@@ -103,8 +103,8 @@ class TestICContract:
 
     def test_nan_rows_are_filtered(self):
         pearson, rank = _compute_ic(
-            np.array([1.0, 2.0, np.nan, 4.0, 5.0, 6.0]),
-            np.array([2.0, 4.0, 6.0, np.nan, 10.0, 12.0]),
+            np.array([1.0, 2.0, np.nan, 4.0, 5.0, 6.0, 7.0]),
+            np.array([2.0, 4.0, 6.0, np.nan, 10.0, 12.0, 14.0]),
         )
         assert pearson == pytest.approx(1.0)
         assert rank == pytest.approx(1.0)
