@@ -1,57 +1,50 @@
 # HTTP Adapter Migration Matrix
 
-Status: **Phase 2 — domain extraction**  
+Status: **Completed**  
 Parent: #316  
-Delivery issue: #319
+Delivery: #319, PRs #336 and #337
 
-## Decision rule
+## Final decision rule
 
-An HTTP router is not a product boundary. Each router must be assigned one disposition:
+The browser is not an execution boundary. Every former HTTP use case was resolved as one of:
 
-1. **artifact-replaced** — read use case is covered by `alpha-engine-bundle.json` and the static/local PWA;
-2. **browser-control-retired** — task, mutation or infrastructure control has no place in the browser;
-3. **service-owned** — the router delegates to an existing pure Python service, script or workflow and the adapter may be deleted;
-4. **extract-first** — material research-domain behavior still lives in the router and must move before deletion;
-5. **dead/unmounted** — not part of the application and safe to delete.
+1. **artifact-replaced** — read use case is represented in `alpha-engine-bundle.json`;
+2. **browser-control-retired** — mutation, task and infrastructure controls were removed;
+3. **service-owned** — retained behavior has a Python service, CLI, script or workflow owner;
+4. **dead/unmounted** — unused adapter code was deleted.
 
-## Router matrix
+## Final disposition
 
-| Router | Read disposition | Write/execution disposition | Domain owner | Migration decision |
-| --- | --- | --- | --- | --- |
-| `artifacts.py` | Dashboard, comparison and generic JSON reads replaced by the versioned research bundle | none | artifact exporter and `ArtifactGateway` | delete in wave 1 |
-| `reports.py` | Report index/files replaced by manifest-declared reports and notebooks | export job replaced by `scripts/export_reports_zip.py` and bundle export | `ReportService`, export scripts | delete in wave 1 |
-| `jobs.py` | job status/log UI retired | cancel/rerun browser controls retired | CLI process and workflow owners | delete in wave 1 |
-| `system.py` | health, paths and docs are local-server concerns; methodology is exported statically | panic and arbitrary dashboard task execution retired; canonical commands already live in CLI/workflows | `src.workflows.commands`, scripts, Make targets | delete in wave 1 |
-| `chat.py` | no retained Web read use case | browser agent dispatch retired | `AgentRouter`, CLI/MCP owners | delete in wave 1 |
-| `tools.py` | capabilities are not a Web product | browser tool execution retired | `ResearchAssistant`, MCP/CLI owners | delete in wave 1 |
-| `arena.py` | leaderboard is optional research output and may be exported when needed | settle already owned by `scripts/arena_settle.py`; participant mutation is browser-only | `ArenaIndex`, `scripts/arena_settle.py` | delete in wave 1 |
-| `strategy.py` | config listing/content and plugin metadata are repository/CLI concerns | browser save/compile/validate controls retired; compiler and registry already independent | `StrategyCompilerService`, `StrategyRegistry`, factor compiler | delete in wave 1 |
-| `decision_desk.py` | no mounted route and no supported product use case | none | none | delete as dead code in wave 1 |
-| `models.py` | model list/details replaced by bundle model index | promote/delete remain service operations; health diagnostic must move to doctor/report evidence | `ModelService`, `ModelRegistryIndex`, promotion contracts | wave 2: document non-HTTP ownership, then delete |
-| `data.py` | status, lineage, completeness and names should be bundle evidence | update is CLI-owned; watchlist mutation and instrument sync are embedded and require extraction | `DataService`, snapshot/quality indexes, update scripts | extract-first |
-| `backtest.py` | runs, curves, ledger and attribution should be exported bundle evidence | run/train/delete browser controls retired; services already exist | `BacktestService`, `TrainingService`, orchestrator | wave 2 after export coverage check |
-| `walk_forward.py` | persisted result should be a declared artifact | in-memory job/persistence wrapper must become a pure Python runner/export path | `src.research.walk_forward` | extract-first |
-| `workflow.py` | workflow status is governance evidence, not a live Web requirement | background execution maps to existing workflow hooks and research workflow | governance service, workflow hooks, research workflow | wave 2 after CLI ownership check |
-| `portfolio.py` | portfolio check result should be an exported evidence artifact | no browser execution | portfolio constraint engine is mixed into router | extract-first, high risk |
-| `factors.py` | factor evidence should be exported through the bundle | scans/attribution are research executions | factor analysis/scanner/attribution modules | extract request models/cache helpers to service/CLI, then delete |
-| `research.py` | research records/results should be bundle evidence | research operations must be CLI/workflow-owned | research service/workflow modules | extract-first |
-| `evidence.py` | evidence reads should be bundle-native | evidence generation belongs to research/release workflows | evidence ledger and release modules | verify coverage, then delete |
-| `decay.py` | decay reports should be exported artifacts | computation belongs to factor research CLI/workflow | decay research modules | extract-first |
-| `stock_analysis.py` | per-symbol inspection should be a generated report/artifact, not a live endpoint | analysis execution belongs to CLI/research workflow | asset inspection/research services | extract-first |
+| Former area | Read disposition | Execution disposition | Retained owner |
+| --- | --- | --- | --- |
+| Artifacts and reports | Manifest-declared bundle files | Export scripts and workflows | `ArtifactGateway`, `ReportService`, bundle exporter |
+| Jobs and system controls | Not a browser product concern | CLI process, scheduler or workflow owner | Python scripts, Make targets, GitHub Actions |
+| Chat, tools and agent controls | No browser execution surface | Optional CLI/MCP research tools | `ResearchAssistant`, MCP JSON-RPC integration |
+| Arena and strategy administration | Export only when research evidence requires it | Standalone scripts and services | `ArenaIndex`, strategy services |
+| Models | Bundle model index and metrics | Promotion and registry operations remain Python-owned | `ModelService`, `ModelRegistryIndex`, promotion contracts |
+| Data | Bundle scope, lineage, coverage and quality evidence | Refresh and repair via CLI/workflows | `DataService`, Snapshot and quality indexes |
+| Backtests and walk-forward | Curves, holdings, metrics and validation artifacts | Orchestrator and research modules | `BacktestService`, `TrainingService`, `src.research.walk_forward` |
+| Portfolio and factors | Exported constraints, importance and diagnostics | Python research modules | Portfolio constraint engine, factor scanner/evaluator/attribution |
+| Research and evidence | Bundle records, reports and notebooks | Spec-bound workflow and evidence ledger | Research workflow, Evidence Ledger |
+| Decay and stock analysis | Generated research artifacts | Python scripts/workflows | Factor decay and asset-inspection modules |
 
-## Wave 1 deletion gates
+## Verification evidence
 
-Wave 1 may delete only adapters whose retained behavior already has a non-HTTP owner or whose browser behavior is explicitly retired.
+- all HTTP router and schema files are deleted;
+- the temporary Python Web host is deleted;
+- frontend source contains no data endpoint literals or HTTP clients;
+- full test collection prevents hidden imports of retired adapters;
+- service, CLI, artifact and research-domain tests replace endpoint tests;
+- static PWA browser acceptance verifies zero data requests and offline reload.
 
-Required checks:
+## Architecture after migration
 
-- remove router imports and registrations from `api_server.py`;
-- remove API-specific tests for deleted routes;
-- keep underlying indexes, services, agents, scripts and workflows intact;
-- do not alter Python research contracts;
-- update the retirement inventory after CI passes;
-- repository search must show no imports of deleted router modules.
+```text
+Python services / CLI / scripts / workflows
+                  ↓
+     versioned research artifact bundle
+                  ↓
+       static/local read-only PWA
+```
 
-## Target after wave 1
-
-The temporary FastAPI process, while it still exists, exposes only routers awaiting domain extraction. No endpoint may be retained merely because an old frontend once called it.
+No new adapter may be introduced to restore browser execution. New reads require an artifact contract; new execution belongs to Python CLI, scripts or workflows.
