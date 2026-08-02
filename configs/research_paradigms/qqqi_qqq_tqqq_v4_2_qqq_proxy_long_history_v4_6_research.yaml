@@ -1,0 +1,63 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_qqq_proxy_long_history_v4_6_research
+parent_experiment_id: qqqi_qqq_tqqq_v4_2_sgov_precursor_50_v4_5_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Expand recovery-precursor event evidence by mechanically replacing QQQI
+  returns with QQQ returns while keeping SGOV, TQQQ, the frozen v4.2 signal
+  trace, next-open execution, transaction costs and the 25% versus 50% TQQQ
+  precursor comparison unchanged.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  sgov_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml
+  attribution_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_episode_attribution.yaml
+  prior_release_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_recovery_release_v4_4_research.yaml
+  bold_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_precursor_50_v4_5_research.yaml
+  signal_trace_must_equal_v4_2: true
+  precursor_dates_must_equal_between_25_and_50: true
+  formal_state_2_must_remain_25_qqq_75_tqqq: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  proxy_cannot_authorize_actionable_trading: true
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  required_symbols: [QQQI, QQQ, TQQQ, SGOV, ^VIX, ^VXN]
+  common_tradable_window_after_proxy: true
+  expected_limiting_live_asset: SGOV
+
+proxy:
+  target_symbol: QQQI
+  source_symbol: QQQ
+  method: exact_adjusted_bar_alias
+  preserve_original_qqqi_for_overlap_validation: true
+  economic_interpretation: >-
+    The proxy tests recovery timing and leverage sizing only. It does not model
+    QQQI option premiums, distribution policy, tax character, fee drag or
+    covered-call path dependence.
+
+validation:
+  minimum_long_sample_precursor_events: 6
+  minimum_additional_events_vs_actual_qqqi_sample: 3
+  overlap_event_sign_concordance_min: 0.67
+  require_all_actual_events_matched_in_overlap: true
+  require_proxy_sample_start_before_actual_sample_start: true
+  require_long_sample_50_vs_25_full_cagr_delta_nonnegative: true
+  require_long_sample_50_vs_25_early_cagr_delta_nonnegative: true
+  require_long_sample_50_vs_25_late_cagr_delta_nonnegative: true
+  minimum_long_sample_marginal_event_positive_rate: 0.60
+  maximum_long_sample_largest_event_share: 0.50
+
+hypothesis_discipline:
+  - QQQ is the only new proxy admitted in this experiment.
+  - SGOV remains the actual defensive asset; no BIL or Treasury-rate backfill is used.
+  - No signal threshold, persistence length, allocation weight or cost assumption changes.
+  - The 25% and 50% precursor dates must remain identical.
+  - The actual QQQI sample remains the authoritative product-specific evidence.
+  - The QQQ proxy may strengthen or weaken structural confidence but cannot directly promote a model.
+  - No additional 35%, 40%, 60% or other TQQQ weight is tested.

@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "qqqi_qqq_tqqq_v4_2_qqq_proxy_long_history_v4_6_research",
+  "research_only": true,
+  "trade_ready": false,
+  "evidence_date": "2026-08-02",
+  "samples": {
+    "actual_qqqi": {
+      "start": "2024-01-30",
+      "end": "2026-07-30",
+      "observations": 627,
+      "precursor_events": 3
+    },
+    "qqq_proxy": {
+      "start": "2020-06-01",
+      "end": "2026-07-30",
+      "observations": 1549,
+      "precursor_events": 15,
+      "precursor_sessions": 32
+    }
+  },
+  "qqq_proxy_headline": {
+    "static_blended": {
+      "cagr": 0.346370,
+      "sharpe": 1.324738,
+      "max_drawdown": -0.236526
+    },
+    "tqqq_precursor_25": {
+      "cagr": 0.329356,
+      "sharpe": 1.257291,
+      "max_drawdown": -0.256150
+    },
+    "tqqq_precursor_50": {
+      "cagr": 0.316992,
+      "sharpe": 1.205074,
+      "max_drawdown": -0.269469
+    }
+  },
+  "marginal_50_vs_25": {
+    "full_sample_cagr_delta_pp": -1.2363337579192724,
+    "early_sample_cagr_delta_pp": -2.815733834608425,
+    "late_sample_cagr_delta_pp": 1.121028043003669,
+    "event_positive_rate": 0.4,
+    "largest_positive_event_share": 0.4225474658930472,
+    "maximum_drawdown_worsening_pp": 1.331971719361913,
+    "sharpe_delta": -0.05221703381915854
+  },
+  "overlap_validation": {
+    "matched_actual_events": 3,
+    "actual_event_count": 3,
+    "sign_concordance": 1.0
+  },
+  "decision": {
+    "structural_support_for_50_percent_hypothesis": false,
+    "actionable_model_authorized": false,
+    "direct_promotion_authorized": false,
+    "status": "regime_dependent_post_2024_observation_only"
+  },
+  "evidence": {
+    "workflow_run": 30738861599,
+    "artifact_id": 8830582711,
+    "artifact_digest": "sha256:5a69cb3a3bb8dff9359cbcad313e9ec1b6f1fc9a56d47ef35af1471e3105c3ca",
+    "notebook": "notebooks/24_qqqi_qqq_tqqq_v4_2_qqq_proxy_long_history.ipynb"
+  }
+}
