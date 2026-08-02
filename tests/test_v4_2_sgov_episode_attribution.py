@@ -36,7 +36,7 @@ def _contract(*, recovery_lag_max: int = 30) -> dict:
     return {
         "analysis": {
             "primary_major_episode_count": 2,
-            "chronological_split_fraction": 0.60,
+            "chronological_split_fraction": 0.50,
         },
         "prospective_monitor_gate": {
             "major_episode_drawdown_improvement_rate_min": 0.60,
@@ -83,6 +83,7 @@ def test_episode_attribution_records_drawdown_benefit_and_recovery_lag() -> None
     assert episodes.iloc[0]["drawdown_improvement_pp"] == pytest.approx(4.0)
     assert episodes.iloc[0]["recovery_lag_sessions"] == 1
     assert episodes.iloc[1]["drawdown_improvement_pp"] > 3.0
+    assert set(episodes["chronological_segment"]) == {"early", "late"}
     assert gate["prospective_monitor_authorized"]
     assert gate["checks"]["cagr_sacrifice"]
 
