@@ -9,6 +9,7 @@ on:
       - "configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml"
       - "src/research/v4_2_baseline_diagnostics.py"
       - "src/research/v4_2_sgov_defense_experiment.py"
+      - "scripts/promote_qqqi_v4_2_notebook_roles.py"
       - "scripts/run_qqqi_v4_2_baseline_diagnostics.py"
       - "scripts/run_qqqi_v4_2_sgov_defense_experiment.py"
       - "tests/test_v4_2_baseline_diagnostics.py"
@@ -22,6 +23,7 @@ on:
       - "configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml"
       - "src/research/v4_2_baseline_diagnostics.py"
       - "src/research/v4_2_sgov_defense_experiment.py"
+      - "scripts/promote_qqqi_v4_2_notebook_roles.py"
       - "scripts/run_qqqi_v4_2_baseline_diagnostics.py"
       - "scripts/run_qqqi_v4_2_sgov_defense_experiment.py"
   workflow_dispatch:
@@ -55,6 +57,7 @@ jobs:
           uv run ruff check \
             src/research/v4_2_baseline_diagnostics.py \
             src/research/v4_2_sgov_defense_experiment.py \
+            scripts/promote_qqqi_v4_2_notebook_roles.py \
             scripts/run_qqqi_v4_2_baseline_diagnostics.py \
             scripts/run_qqqi_v4_2_sgov_defense_experiment.py \
             tests/test_v4_2_baseline_diagnostics.py \
@@ -65,6 +68,8 @@ jobs:
             tests/test_vxn_bridge_allocation_experiment.py \
             tests/test_vxn_leverage_overlay_experiment.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Update rolling notebook role labels
+        run: uv run python scripts/promote_qqqi_v4_2_notebook_roles.py
       - name: Build governed ETF bundle
         env:
           TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
@@ -108,21 +113,25 @@ jobs:
                       raise ValueError(f'notebook error in cell {index}: {output}')
           nbformat.write(executed, path)
           PY
-      - name: Commit initial executed notebook to the PR branch
+      - name: Commit updated notebooks to the PR branch
         if: >-
           github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository
         run: |
-          if git diff --quiet -- notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb; then
-            echo "Notebook is already current."
+          if git diff --quiet -- \
+            notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb \
+            notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb; then
+            echo "Notebooks are already current."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb
-          git commit -m "research: save executed v4.2 experiment notebook"
+          git add \
+            notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb \
+            notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb
+          git commit -m "research: refresh v4.2 baseline notebooks"
           git push origin "HEAD:${{ github.head_ref }}"
-      - name: Upload evidence and executed notebook
+      - name: Upload evidence and executed notebooks
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -130,6 +139,7 @@ jobs:
           path: |
             artifacts/evidence/qqqi_qqq_tqqq_v4_2_baseline_diagnostics
             artifacts/evidence/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research
+            notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb
             notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb
           if-no-files-found: error
           retention-days: 90
