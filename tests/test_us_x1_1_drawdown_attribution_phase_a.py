@@ -8,6 +8,7 @@ from scripts.run_us_x1_1_drawdown_attribution_phase_a import (
     _decision,
     _drawdown_path,
     _evaluate,
+    _effective_return_weights,
 )
 
 
@@ -47,12 +48,22 @@ def test_cap_weights_preserves_sum_and_cap() -> None:
     assert float(result.max()) <= 0.5 + 1e-12
 
 
-def test_evaluate_reconciles_exit_costs() -> None:
+def test_missing_returns_are_renormalized_to_target_gross() -> None:
+    target = {"AAA": 0.5, "BBB": 0.5}
+    effective = _effective_return_weights(target, {"AAA": 0.10})
+    assert effective == {"AAA": 1.0}
+
+    half_gross = {"AAA": 0.25, "BBB": 0.25}
+    effective_half = _effective_return_weights(half_gross, {"AAA": 0.10})
+    assert effective_half == {"AAA": 0.5}
+
+
+def test_evaluate_reconciles_exit_and_missing_return_costs() -> None:
     scores = _scores()
     dates = sorted(scores["datetime"].unique())[::10]
     returns = {
-        pd.Timestamp(dates[0]): {"AAA": 0.10, "BBB": 0.00, "CCC": -0.10},
-        pd.Timestamp(dates[1]): {"AAA": -0.05, "BBB": 0.02, "CCC": 0.04},
+        pd.Timestamp(dates[0]): {"AAA": 0.10},
+        pd.Timestamp(dates[1]): {"BBB": 0.02, "CCC": 0.04},
     }
     benchmark = {pd.Timestamp(date): 0.01 for date in dates}
     result, periods, contributions = _evaluate(
@@ -66,6 +77,19 @@ def test_evaluate_reconciles_exit_costs() -> None:
     reconciled = contributions.groupby("period_index")["net_contribution"].sum()
     expected = periods.set_index("period_index")["net_return"]
     pd.testing.assert_series_equal(reconciled, expected, check_names=False)
+
+    first_aaa = contributions.loc[
+        (contributions["period_index"] == 0)
+        & (contributions["instrument"] == "AAA")
+    ].iloc[0]
+    first_bbb = contributions.loc[
+        (contributions["period_index"] == 0)
+        & (contributions["instrument"] == "BBB")
+    ].iloc[0]
+    assert float(first_aaa["effective_return_weight"]) == 1.0
+    assert first_bbb["position_role"] == "held_missing_return"
+    assert float(first_bbb["effective_return_weight"]) == 0.0
+
     exit_rows = contributions.loc[
         (contributions["period_index"] == 1)
         & (contributions["instrument"] == "AAA")
