@@ -1,0 +1,62 @@
+schema_version: '1.0'
+experiment_id: us_x1_0_robustness_v1
+issue: 355
+parent_model_id: us_x1_0
+parent_model_config: configs/models/us_x1_0.yaml
+frozen_research_spec: configs/research_paradigms/us_10d_xgb_optimization_frozen_v1.yaml
+status: preregistered
+research_only: true
+trade_ready: false
+hypothesis: US x1.0 remains economically positive under higher costs and leave-one-window-out tests, but tail risk or recurring selections may block immediate x1.1 design.
+provider:
+  required_identity_sha256: 4921168fee3afdcfb222568bed370a0273a5d8795ac57e4477184c1728384a5c
+  cutoff: '2026-07-31'
+  promotion_eligible_required: true
+candidate:
+  candidate_name: xgb:daily_ranker:risk_controlled_momentum:gain7_round200_leaves31_leaf20_lr0.03
+  orientation: original
+  identity_warning: The candidate name retains legacy fields; effective XGBoost learning_rate is 0.05 and min_data_in_leaf is not consumed.
+  effective_runtime:
+    objective: rank:ndcg
+    tree_method: hist
+    grow_policy: lossguide
+    max_leaves: 31
+    max_depth: 0
+    learning_rate: 0.05
+    seed: 42
+    n_gain_bins: 7
+    num_boost_round: 200
+windows:
+  development:
+  - 2024H1
+  - 2024H2
+  - 2025H1
+  - 2025H2
+  reporting_only_consumed_holdout:
+  - 2026H1
+  consumed_holdout_may_enter_decision: false
+stress_tests:
+  cost_bps:
+  - 20
+  - 40
+  - 60
+  method: linear_realized_turnover_cost_stress
+  method_note: Each window's recorded cumulative 20 bps costs are scaled linearly; this is a deterministic post-backtest stress, not an order-book simulation.
+  leave_one_window_out: true
+  final_top15_recurrence: true
+  full_security_contribution_claim_allowed: false
+block_conditions:
+  worst_development_drawdown_below: -0.25
+  minimum_names_present_in_all_development_final_top15: 5
+  maximum_strongest_positive_window_share: 0.55
+  leave_one_window_out_relative_excess_must_be_positive: true
+  sixty_bps_relative_excess_must_be_positive: true
+decisions:
+- robustness_supported_for_x1_1_design
+- tail_risk_or_concentration_blocks_x1_1
+- economics_not_cost_robust
+- data_blocked
+next_version_policy:
+  automatic_model_update: false
+  successful_result_creates: US x1.1 design candidate only
+  new_untouched_challenge_required: true
