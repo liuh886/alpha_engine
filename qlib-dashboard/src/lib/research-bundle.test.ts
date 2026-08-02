@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   FileSetBundleSource,
@@ -10,19 +9,24 @@ import {
 const originalCrypto = globalThis.crypto;
 
 function bytesFromDigestInput(data: BufferSource): Uint8Array {
-  if (data instanceof ArrayBuffer) return new Uint8Array(data);
-  return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  if (ArrayBuffer.isView(data)) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  return new Uint8Array(data);
+}
+
+function deterministicDigest(data: BufferSource): ArrayBuffer {
+  const input = bytesFromDigestInput(data);
+  const output = new Uint8Array(32);
+  input.forEach((byte, index) => {
+    const slot = index % output.length;
+    output[slot] = (output[slot] + byte + index * 17) % 256;
+  });
+  return output.buffer;
 }
 
 beforeAll(() => {
   vi.stubGlobal('crypto', {
     subtle: {
-      digest: async (_algorithm: AlgorithmIdentifier, data: BufferSource) => {
-        const hash = createHash('sha256').update(bytesFromDigestInput(data)).digest();
-        const bytes = new Uint8Array(hash.byteLength);
-        bytes.set(hash);
-        return bytes.buffer;
-      },
+      digest: async (_algorithm: AlgorithmIdentifier, data: BufferSource) => deterministicDigest(data),
     },
   });
 });
@@ -32,7 +36,8 @@ afterAll(() => {
 });
 
 async function digest(text: string): Promise<string> {
-  return createHash('sha256').update(text).digest('hex');
+  const value = deterministicDigest(new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(value), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function testFile(text: string, name: string, relativePath: string): File {
