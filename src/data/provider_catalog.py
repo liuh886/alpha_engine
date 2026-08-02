@@ -109,6 +109,23 @@ _PROVIDER_CATALOG: dict[str, ProviderCapability] = {
         trade_calendar=False,
         usage_note="Independent historical fallback with bounded socket behaviour.",
     ),
+    "tiingo": ProviderCapability(
+        name="tiingo",
+        source_family="tiingo_eod",
+        independent_group="tiingo_eod",
+        markets=("us",),
+        price_mode="adjusted_ohlcv_with_raw_and_action_fields",
+        volume_unit="shares",
+        amount_unit="synthetic_adjusted_close_times_volume",
+        corporate_actions=True,
+        trade_calendar=False,
+        credential_env="TIINGO_API_TOKEN",
+        research_only=True,
+        usage_note=(
+            "Credentialed professional US EOD source with adjusted and raw OHLCV, "
+            "cash-distribution and split-factor fields. Subscription terms apply."
+        ),
+    ),
     "yfinance": ProviderCapability(
         name="yfinance",
         source_family="yahoo_finance",

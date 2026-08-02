@@ -15,7 +15,7 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from src.research.etf_rotation_experiment import fetch_adjusted_daily_bars
+from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
 from src.research.strategy_experiment_journal import write_strategy_run_record
 from src.research.vix_rotation_experiment import config_from_contract
 from src.research.vxn_bridge_allocation_experiment import (
@@ -120,6 +120,12 @@ def main() -> int:
     )
     parser.add_argument("--end-date", default=None)
     parser.add_argument(
+        "--etf-data-bundle",
+        type=Path,
+        default=None,
+        help="Governed QQQ/QQQI/TQQQ bundle; VIX/VXN remain direct references.",
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path(
@@ -149,10 +155,11 @@ def main() -> int:
         boundaries["vix_symbol"],
         boundaries["vxn_symbol"],
     ]
-    bars, coverage = fetch_adjusted_daily_bars(
+    bars, coverage, data_identity = fetch_governed_etf_strategy_bars(
         symbols=list(dict.fromkeys(symbols)),
         start=bridge_contract["data"]["start_date"],
         end=args.end_date or bridge_contract["data"].get("end_date"),
+        bundle_dir=args.etf_data_bundle,
     )
     full_metrics, results, prepared, retrospective_diagnostics = (
         run_bridge_allocation_comparison(bars, bridge_contract)
@@ -232,6 +239,7 @@ def main() -> int:
             if not results[BRIDGE].daily.empty
             else None
         ),
+        "data_identity": data_identity,
         "prospective_metrics": prospective_metrics,
         "prospective_difference_summary": difference_summary,
         "baseline_latest_snapshot": baseline_snapshot,
@@ -246,6 +254,7 @@ def main() -> int:
             "Only returns dated on or after 2026-08-01 are prospective.",
             "v4.1 and bridge v4.2 state decisions remain identical.",
             "No bridge weight or signal parameter may change in this monitor.",
+            "QQQ, QQQI and TQQQ use the declared governed bundle when supplied.",
             "Full-history recomputation is context only.",
             "The workflow cannot promote either candidate.",
         ],
@@ -264,7 +273,7 @@ def main() -> int:
 
     output_files = sorted(path for path in output.iterdir() if path.is_file())
     manifest = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "prospective_monitoring": True,
         "monitoring_start_date": monitoring_start,
         "research_only": True,
@@ -273,6 +282,7 @@ def main() -> int:
         "monitor_contract_sha256": _sha256(args.monitor_contract),
         "bridge_contract": str(bridge_contract_path),
         "bridge_contract_sha256": _sha256(bridge_contract_path),
+        "data_identity": data_identity,
         "outputs": {path.name: _sha256(path) for path in output_files},
     }
     manifest_path = output / "evidence_manifest.json"
@@ -284,7 +294,7 @@ def main() -> int:
     created = datetime.now(timezone.utc).replace(microsecond=0)
     run_id = f"{created.strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
     record = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "experiment_id": monitor_contract["experiment_id"],
         "parent_experiment_id": monitor_contract["parent_experiment_id"],
         "run_id": run_id,
@@ -304,7 +314,7 @@ def main() -> int:
             "no_parameter_change": True,
         },
         "data": {
-            "provider": bridge_contract["data"]["provider"],
+            **data_identity,
             "latest_data_date": summary["latest_data_date"],
             "latest_economic_return_date": summary[
                 "latest_economic_return_date"
