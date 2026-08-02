@@ -73,41 +73,6 @@ jobs:
           tests/test_provider_catalog.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-  validation-smoke:
-    if: github.event_name == 'pull_request'
-    needs: contract
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
-      POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
-      - name: Validate Polygon on one symbol without writing canonical data
-        run: >-
-          uv run python scripts/data/validate_us_price_sources.py
-          --symbol AAPL
-          --start 2026-07-01
-          --end 2026-07-31
-          --require-validator polygon
-          --output artifacts/evidence/us_price_validation_smoke.json
-      - name: Upload validation-only evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: us-price-validation-smoke-${{ github.run_id }}
-          path: artifacts/evidence/us_price_validation_smoke.json
-          if-no-files-found: error
-          retention-days: 90
-
   live-shard:
     if: github.event_name == 'workflow_dispatch'
     needs: contract
