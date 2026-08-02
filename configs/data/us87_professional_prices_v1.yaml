@@ -1,0 +1,81 @@
+schema_version: "1.1"
+contract_id: "us87_governed_prices_v1"
+status: "active_research_data_contract"
+market: "us"
+research_only: true
+trade_ready: false
+
+pool:
+  pool_id: "us_selected_equities_v2"
+  spec: "configs/research_universes/us_selected_equities_v2.yaml"
+  candidate_count: 87
+  references: ["QQQ"]
+  reference_in_candidate_pool_allowed: false
+
+history:
+  requested_start: "2021-01-01"
+  end_policy: "explicit_cutoff_required"
+  adjusted_price_required: true
+  pre_listing_fill_allowed: false
+
+providers:
+  canonical:
+    name: "yfinance"
+    source_family: "yahoo_finance"
+    role: "primary_research_data"
+    eligible_for_training: true
+  validators:
+    - name: "tiingo"
+      credential_env: "TIINGO_API_TOKEN"
+      source_family: "tiingo_eod"
+      role: "validation_only"
+      eligible_for_training: false
+      may_replace_canonical: false
+    - name: "polygon"
+      credential_env: "POLYGON_API_KEY"
+      source_family: "polygon_sip"
+      role: "validation_only"
+      eligible_for_training: false
+      may_replace_canonical: false
+
+sharding:
+  shard_size: 10
+  deterministic_order: "pool_order_then_reference"
+  one_shard_per_live_invocation: true
+  finalization_requires_all_canonical_symbols: true
+  partial_shards_may_not_be_used_for_training: true
+  validator_failure_may_not_delete_canonical_data: true
+  provider_wide_rate_limit_opens_shard_circuit: true
+
+reconciliation:
+  minimum_overlap_sessions: 20
+  consensus_p99_adjusted_close_return_diff: 0.0015
+  consensus_max_adjusted_close_return_diff: 0.01
+  consensus_p99_adjusted_open_return_diff: 0.0025
+  consensus_max_adjusted_open_return_diff: 0.01
+  consensus_max_annual_compounded_open_return_drift: 0.003
+  consensus_max_full_period_compounded_open_return_drift: 0.003
+  material_return_difference: 0.01
+  corporate_action_window_sessions: 1
+
+symbol_statuses:
+  - "canonical_ready_unvalidated"
+  - "canonical_ready_validated"
+  - "canonical_ready_partially_validated"
+  - "canonical_missing"
+  - "validation_conflict"
+  - "quarantine"
+
+promotion:
+  research_price_ready_requires:
+    - "Yahoo canonical identity and adjusted bars pass"
+    - "all exact candidates and QQQ reference are present"
+    - "all canonical files and manifests are hash bound"
+  validation_evidence_requires:
+    - "Tiingo and Polygon are used only for return/action comparison"
+    - "validation sources never become canonical"
+    - "missing credentials or provider limits remain explicit"
+  validation_policy_note: >-
+    Professional validators can downgrade confidence or create a conflict record,
+    but they cannot silently replace Yahoo canonical data or become a training source.
+  automatic_trade_ready_promotion_allowed: false

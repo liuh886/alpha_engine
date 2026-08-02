@@ -1,0 +1,106 @@
+name: US87 Professional Prices CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/us87-professional-prices-ci.yml"
+      - "configs/data/us87_professional_prices_v1.yaml"
+      - "docs/research/us87_validation_source_policy_2026-08-02.md"
+      - "src/data/provider_catalog.py"
+      - "src/data/adapters/polygon_adapter.py"
+      - "src/data/us87_professional_prices.py"
+      - "scripts/data/build_us87_professional_prices.py"
+      - "scripts/data/validate_us_price_sources.py"
+      - "tests/test_polygon_adapter.py"
+      - "tests/test_us87_professional_prices.py"
+  workflow_dispatch:
+    inputs:
+      cutoff:
+        description: "Evidence cutoff YYYY-MM-DD"
+        required: true
+        type: string
+      shard_index:
+        description: "Deterministic shard index (0-based)"
+        required: true
+        type: number
+
+concurrency:
+  group: us87-professional-prices-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff professional providers
+        run: >-
+          uv run ruff check
+          src/data/provider_catalog.py
+          src/data/adapters/polygon_adapter.py
+          src/data/us87_professional_prices.py
+          scripts/data/build_us87_professional_prices.py
+          scripts/data/validate_us_price_sources.py
+          tests/test_polygon_adapter.py
+          tests/test_us87_professional_prices.py
+      - name: Mypy professional providers
+        run: >-
+          uv run mypy --follow-imports=skip
+          src/data/provider_catalog.py
+          src/data/adapters/polygon_adapter.py
+          src/data/us87_professional_prices.py
+          scripts/data/build_us87_professional_prices.py
+          scripts/data/validate_us_price_sources.py
+      - name: Test professional provider contracts
+        run: >-
+          uv run pytest
+          tests/test_polygon_adapter.py
+          tests/test_us87_professional_prices.py
+          tests/test_tiingo_adapter.py
+          tests/test_provider_catalog.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  live-shard:
+    if: github.event_name == 'workflow_dispatch'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+      POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Build one quota-bounded governed shard
+        run: >-
+          uv run python scripts/data/build_us87_professional_prices.py
+          --cutoff "${{ inputs.cutoff }}"
+          --shard-index "${{ inputs.shard_index }}"
+      - name: Upload canonical bars and validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: us87-governed-${{ inputs.cutoff }}-shard-${{ inputs.shard_index }}
+          path: artifacts/data/us87_professional_prices_v1/shards
+          if-no-files-found: error
+          retention-days: 90
