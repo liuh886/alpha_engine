@@ -1,0 +1,151 @@
+name: US x1.1 Deterministic Reproduction
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/run_us_x1_1_deterministic_reproduction.py"
+      - "tests/test_us_x1_1_deterministic_reproduction.py"
+      - "configs/models/us_x1_1.yaml"
+      - "configs/research_experiments/us_x1_1_native_xgb_calibration_v1.yaml"
+      - ".github/workflows/us-x1-1-deterministic-reproduction.yml"
+      - "docs/research/us_x1_1_deterministic_reproduction_result_2026-08-02.md"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: us-x1-1-deterministic-reproduction-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      evidence: ${{ steps.scope.outputs.evidence }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect evidence-affecting changes
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "evidence=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "${{ github.event.action }}" != "synchronize" ]]; then
+            echo "evidence=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          before="${{ github.event.before }}"
+          after="${{ github.event.after }}"
+          changed="$(git diff --name-only "$before" "$after")"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -Eq '^(scripts/run_us_x1_1_deterministic_reproduction\.py|tests/test_us_x1_1_deterministic_reproduction\.py|configs/models/us_x1_1\.yaml|configs/research_experiments/us_x1_1_native_xgb_calibration_v1\.yaml)$'; then
+            echo "evidence=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "evidence=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate reproduction contract
+        run: |
+          uv run ruff check \
+            scripts/run_us_x1_1_deterministic_reproduction.py \
+            tests/test_us_x1_1_deterministic_reproduction.py
+          uv run mypy scripts/run_us_x1_1_deterministic_reproduction.py
+          uv run pytest \
+            tests/test_us_x1_1_deterministic_reproduction.py \
+            tests/test_xgb_native_calibration.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  evidence:
+    needs:
+      - changes
+      - contract
+    if: needs.changes.outputs.evidence == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Download frozen deterministic provider artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: us-raw-adjustment-contract-30742690159
+          path: artifacts/source/us_raw_adjustment
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: liuh886/alpha_engine
+          run-id: 30742690159
+      - name: Verify source provider identity
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/source/us_raw_adjustment")
+          verification = json.loads((root / "verification.json").read_text(encoding="utf-8"))
+          assert verification["provider_identity"] == "5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95"
+          assert verification["instrument_count"] == 88
+          provider = root / "provider_a/data/providers/us/provider_manifest.json"
+          assert provider.is_file(), provider
+          PY
+      - name: Run exact US x1.1 twice
+        run: >-
+          uv run python scripts/run_us_x1_1_deterministic_reproduction.py
+          --provider-uri artifacts/source/us_raw_adjustment/provider_a/data/providers/us
+          --output-dir artifacts/evidence/us_x1_1_deterministic_reproduction_v1
+      - name: Verify governed decision
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("artifacts/evidence/us_x1_1_deterministic_reproduction_v1/deterministic_reproduction.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          assert payload["provider"]["matches_expected"] is True
+          assert payload["decision"]["deterministic_on_revision_provider"] is True
+          assert payload["decision"]["decision"] == "us_x1_1_deterministic_on_revision_provider"
+          assert payload["aggregate_identity_match"] is True
+          assert all(row["all_identities_match"] for row in payload["window_determinism"])
+          print(json.dumps({
+              "decision": payload["decision"],
+              "provider": payload["provider"],
+              "run_a": payload["run_a"],
+              "canonical_comparison": payload["canonical_comparison"],
+          }, indent=2))
+          PY
+      - name: Upload complete deterministic reproduction evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: us-x1-1-deterministic-reproduction-${{ github.run_id }}
+          path: |
+            artifacts/evidence/us_x1_1_deterministic_reproduction_v1
+            artifacts/source/us_raw_adjustment/verification.json
+            artifacts/source/us_raw_adjustment/provider_a/artifacts/raw_adjustment_contract_manifest.json
+            artifacts/source/us_raw_adjustment/provider_a/data/providers/us/provider_manifest.json
+          if-no-files-found: error
+          retention-days: 90
