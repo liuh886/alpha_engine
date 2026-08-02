@@ -45,9 +45,13 @@ const WORKFLOWS: Array<{
   },
 ];
 
+export function selectLatestOperationalRun(runs: V42WorkflowRun[]): V42WorkflowRun | null {
+  return runs.find((run) => run.event !== 'pull_request') ?? null;
+}
+
 async function fetchLatestRun(workflowFile: string): Promise<V42WorkflowRun | null> {
   const response = await fetch(
-    `${API_ROOT}/actions/workflows/${encodeURIComponent(workflowFile)}/runs?per_page=1`,
+    `${API_ROOT}/actions/workflows/${encodeURIComponent(workflowFile)}/runs?per_page=20`,
     {
       headers: {
         Accept: 'application/vnd.github+json',
@@ -63,7 +67,7 @@ async function fetchLatestRun(workflowFile: string): Promise<V42WorkflowRun | nu
   }
 
   const payload = await response.json() as WorkflowRunsResponse;
-  return payload.workflow_runs[0] ?? null;
+  return selectLatestOperationalRun(payload.workflow_runs);
 }
 
 export async function fetchV42WorkflowHealth(): Promise<V42WorkflowHealthEntry[]> {
