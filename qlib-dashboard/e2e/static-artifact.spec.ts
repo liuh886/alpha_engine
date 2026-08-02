@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex');
@@ -37,7 +37,7 @@ const bundleManifest = {
   ],
 };
 
-async function mockBundle(page: Parameters<typeof test>[0]['page']) {
+async function mockBundle(page: Page) {
   await page.route('**/bundle/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname.endsWith('/alpha-engine-bundle.json')) {
