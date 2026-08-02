@@ -1,0 +1,127 @@
+{
+  "schema_version": "1.0.0",
+  "status": "deprecated_frozen",
+  "parent_issue": 316,
+  "target_web_product": "github_pages_pwa_research_artifact_studio",
+  "target_frontend_boundary": "alpha-engine-bundle.json",
+  "target_execution_boundary": "python_cli_scripts_workflows",
+  "legacy_zones": [
+    {
+      "id": "fastapi_entrypoint",
+      "paths": ["api_server.py"],
+      "phase": 3,
+      "disposition": "delete_after_router_extraction"
+    },
+    {
+      "id": "python_http_adapters",
+      "paths": ["src/api/"],
+      "phase": 2,
+      "disposition": "classify_extract_then_delete"
+    },
+    {
+      "id": "frontend_connected_runtime",
+      "paths": [
+        "qlib-dashboard/src/lib/runtime-capabilities.ts",
+        "qlib-dashboard/src/lib/runtime-capability-matrix.ts",
+        "qlib-dashboard/src/components/ResearchContextBar.tsx",
+        "qlib-dashboard/src/components/ArtifactHome.tsx"
+      ],
+      "phase": 1,
+      "disposition": "remove_connected_research_mode"
+    },
+    {
+      "id": "frontend_api_clients_and_routes",
+      "paths": [
+        "qlib-dashboard/src/lib/api-client.ts",
+        "qlib-dashboard/src/api/",
+        "qlib-dashboard/src/hooks/",
+        "qlib-dashboard/src/pages/",
+        "qlib-dashboard/e2e/",
+        "qlib-dashboard/playwright.demo.config.ts"
+      ],
+      "phase": 1,
+      "disposition": "remove_or_replace_with_artifact_reads"
+    },
+    {
+      "id": "process_management",
+      "paths": [
+        "ecosystem.config.js",
+        "pm2_launcher.js",
+        "pm2_launcher.pyw"
+      ],
+      "phase": 3,
+      "disposition": "delete"
+    },
+    {
+      "id": "server_container_stack",
+      "paths": [
+        "Dockerfile",
+        "docker-compose.yml",
+        "docker-compose.*.yml",
+        "scripts/container-entrypoint.sh",
+        "scripts/container-healthcheck.py"
+      ],
+      "phase": 3,
+      "disposition": "remove_api_serving_stack_preserve_research_jobs_if_needed"
+    },
+    {
+      "id": "local_server_commands",
+      "paths": ["Makefile"],
+      "phase": 3,
+      "disposition": "remove_dev_and_smoke_server_targets"
+    },
+    {
+      "id": "server_dependencies_and_settings",
+      "paths": [
+        "pyproject.toml",
+        "uv.lock",
+        "src/common/runtime_settings.py",
+        ".env.example",
+        ".env.development.example"
+      ],
+      "phase": 3,
+      "disposition": "remove_fastapi_uvicorn_slowapi_auth_cors_and_api_settings"
+    },
+    {
+      "id": "api_tests",
+      "paths": [
+        "tests/test_api_*.py",
+        "tests/*_api_*.py",
+        "tests/test_system_router_*.py",
+        "tests/test_research_api_adapter.py"
+      ],
+      "phase": 2,
+      "disposition": "replace_with_service_cli_or_artifact_contract_tests"
+    },
+    {
+      "id": "legacy_server_documentation",
+      "paths": [
+        "README.md",
+        "DESIGN.md",
+        "docs/release/",
+        "scripts/README.md"
+      ],
+      "phase": 4,
+      "disposition": "rewrite_or_archive"
+    }
+  ],
+  "frozen_markers": [
+    "fastapi",
+    "uvicorn",
+    "slowapi",
+    "connected_research",
+    "api_server.py"
+  ],
+  "rules": {
+    "allow_new_http_endpoints": false,
+    "allow_new_frontend_api_calls": false,
+    "allow_browser_mutations": false,
+    "allow_domain_logic_only_in_router": false,
+    "require_artifact_contract_for_new_reads": true,
+    "require_cli_or_workflow_for_new_execution": true
+  },
+  "scope": {
+    "research_only": true,
+    "trade_ready": false
+  }
+}
