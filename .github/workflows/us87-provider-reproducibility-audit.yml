@@ -10,6 +10,7 @@ on:
       - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "src/data/adapters/yfinance_adapter.py"
+      - "docs/research/us87_provider_reproducibility_result_2026-08-02.md"
       - ".github/workflows/us87-provider-reproducibility-audit.yml"
   workflow_dispatch:
 
@@ -21,6 +22,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_evidence: ${{ steps.scope.outputs.run_evidence }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: scope
+        name: Detect evidence-affecting changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "run_evidence=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "${{ github.event.action }}" != "synchronize" ]]; then
+            echo "run_evidence=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          before="${{ github.event.before }}"
+          after="${{ github.event.after }}"
+          changed="$(git diff --name-only "$before" "$after")"
+          printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -Eq '^(scripts/audit_us_provider_refresh_reproducibility\.py|tests/test_us_provider_refresh_reproducibility_audit\.py|scripts/data/refresh_selected_pool_prices(_v2)?\.py|src/data/adapters/yfinance_adapter\.py)'; then
+            echo "run_evidence=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_evidence=false" >> "$GITHUB_OUTPUT"
+          fi
+
   contract:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -45,7 +77,10 @@ jobs:
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   evidence:
-    needs: contract
+    needs:
+      - changes
+      - contract
+    if: needs.changes.outputs.run_evidence == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 600
     steps:
