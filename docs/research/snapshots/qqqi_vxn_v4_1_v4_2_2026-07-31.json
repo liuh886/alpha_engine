@@ -1,7 +1,14 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "snapshot_id": "qqqi_vxn_v4_1_v4_2_2026-07-31",
   "evidence_date": "2026-07-31",
+  "baseline_decision": {
+    "effective_date": "2026-08-02",
+    "current_research_baseline": "qqqi_qqq_tqqq_vxn_bridge_v4_2",
+    "historical_signal_comparator": "qqqi_qqq_tqqq_vxn_leverage_v4_1",
+    "promotion_scope": "research_baseline_only",
+    "reason": "lower turnover with improved net metrics under the unchanged signal trace and 10 bps cost convention"
+  },
   "economic_return_sample": {
     "start": "2024-01-30",
     "end": "2026-07-30",
@@ -11,7 +18,8 @@
   "research_status": {
     "research_only": true,
     "trade_ready": false,
-    "prospective_monitoring_start": "2026-08-01"
+    "prospective_monitoring_start": "2026-08-01",
+    "transaction_cost_bps_per_turnover_unit": 10.0
   },
   "strategies": {
     "qqq_buy_and_hold": {
@@ -23,7 +31,7 @@
       "calmar": 0.911
     },
     "qqqi_qqq_tqqq_vxn_leverage_v4_1": {
-      "role": "frozen_prospective_baseline",
+      "role": "immutable_historical_signal_comparator",
       "state_0": {"QQQI": 1.0, "QQQ": 0.0, "TQQQ": 0.0},
       "state_1": {"QQQI": 0.0, "QQQ": 1.0, "TQQQ": 0.0},
       "state_2": {"QQQI": 0.0, "QQQ": 0.25, "TQQQ": 0.75},
@@ -40,7 +48,8 @@
       "partial_leverage_sessions": 129
     },
     "qqqi_qqq_tqqq_vxn_bridge_v4_2": {
-      "role": "post_result_prospective_challenger",
+      "role": "current_research_baseline",
+      "post_result_hypothesis": true,
       "state_0": {"QQQI": 1.0, "QQQ": 0.0, "TQQQ": 0.0},
       "state_1": {"QQQI": 0.5, "QQQ": 0.5, "TQQQ": 0.0},
       "state_2": {"QQQI": 0.0, "QQQ": 0.25, "TQQQ": 0.75},
@@ -109,10 +118,12 @@
     "docs/research/qqqi_qqq_tqqq_experiment_ledger.md",
     "docs/research/qqqi_qqq_tqqq_vxn_v4_1_full_backtest_review_2026-07-31.md",
     "docs/research/qqqi_qqq_tqqq_vxn_bridge_v4_2_result_2026-07-31.md",
-    "docs/research/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitoring.md"
+    "docs/research/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitoring.md",
+    "docs/research/qqqi_qqq_tqqq_v4_2_baseline_program_2026-08-02.md"
   ],
   "notebooks": {
     "immutable_v4_1_review": "notebooks/16_qqqi_qqq_tqqq_vxn_v4_1_backtest_review.ipynb",
-    "rolling_current_review": "notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb"
+    "rolling_current_review": "notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb",
+    "v4_2_experiment_suite": "notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb"
   }
 }
