@@ -8,9 +8,12 @@ on:
       - "configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml"
       - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
       - "src/research/strategy_signal_alerts.py"
+      - "src/research/vxn_prospective_monitor.py"
       - "scripts/run_qqqi_vxn_v4_2_signal_alert.py"
       - "tests/test_strategy_signal_alerts.py"
-      - "docs/research/qqqi_qqq_tqqq_v4_2_baseline_program_2026-08-02.md"
+      - "tests/test_vxn_prospective_monitor.py"
+      - "docs/research/qqqi_qqq_tqqq_v4_2_decision_alert_spec.md"
+      - "docs/research/qqqi_qqq_tqqq_next_optimization_plan_2026-08-02.md"
   schedule:
     # Runs after the prior US session has closed and end-of-day data should be available.
     - cron: "30 0 * * 2-6"
@@ -49,9 +52,14 @@ jobs:
         run: |
           uv run ruff check \
             src/research/strategy_signal_alerts.py \
+            src/research/vxn_prospective_monitor.py \
             scripts/run_qqqi_vxn_v4_2_signal_alert.py \
-            tests/test_strategy_signal_alerts.py
-          uv run pytest tests/test_strategy_signal_alerts.py -q --tb=short
+            tests/test_strategy_signal_alerts.py \
+            tests/test_vxn_prospective_monitor.py
+          uv run pytest \
+            tests/test_strategy_signal_alerts.py \
+            tests/test_vxn_prospective_monitor.py \
+            -q --tb=short
       - name: Build governed QQQ QQQI TQQQ reference bundle
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py
@@ -63,7 +71,7 @@ jobs:
           --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
           --output-dir artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor
           --strategy-run-dir artifacts/strategy_runs
-      - name: Build next-open alert
+      - name: Build next-open decision alert
         id: alert
         run: >-
           uv run python scripts/run_qqqi_vxn_v4_2_signal_alert.py
@@ -81,10 +89,11 @@ jobs:
             artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2
           if-no-files-found: warn
           retention-days: 90
-      - name: Create one deduplicated GitHub issue for a new signal
+      - name: Create one deduplicated GitHub issue for a fresh signal
         if: >-
           github.event_name != 'pull_request' &&
-          steps.alert.outputs.should_alert == 'true'
+          steps.alert.outputs.should_alert == 'true' &&
+          steps.alert.outputs.data_freshness_ok == 'true'
         uses: actions/github-script@v7
         env:
           ALERT_FINGERPRINT: ${{ steps.alert.outputs.fingerprint }}
@@ -117,10 +126,11 @@ jobs:
               body: `@${context.repo.owner}\n\n${report}`,
               assignees: [context.repo.owner],
             });
-      - name: Send optional Telegram alert
+      - name: Send decision-grade Telegram alert
         if: >-
           github.event_name != 'pull_request' &&
-          steps.alert.outputs.should_alert == 'true'
+          steps.alert.outputs.should_alert == 'true' &&
+          steps.alert.outputs.data_freshness_ok == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -132,4 +142,6 @@ jobs:
           curl --fail --silent --show-error \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text@artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2/signal_alert.md"
+            --data-urlencode \
+              "text@artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2/signal_alert_telegram.txt" \
+            --data-urlencode "disable_web_page_preview=true"

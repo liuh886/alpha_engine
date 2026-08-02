@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 effective_date: "2026-08-02"
 strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
 current_research_baseline:
@@ -20,6 +20,82 @@ post_result_origin_retained: true
 cost_assumption:
   transaction_cost_bps_per_turnover_unit: 10.0
   frozen: true
+
+alert_decision_support:
+  delivery:
+    github_issue: durable_audit_record
+    telegram: immediate_decision_card
+  freshness_policy: >-
+    A state-change alert is actionable only when the signal date equals the
+    latest governed market-data date. Stale signals are recorded but blocked.
+  execution_policy: >-
+    The model assumes execution at the next US session open. Data failures,
+    halts or extraordinary opening gaps must be recorded as explicit execution
+    deviations rather than silently changing the research evidence.
+  transitions:
+    open_risk_bridge:
+      confidence: 中等；低置信恢复阶段，不使用 TQQQ
+      historical_evidence: >-
+        正式样本中，5个 0→1→0 失败恢复周期里 v4.2 相对 v4.1
+        平均改善 0.275 个百分点，80% 的周期占优；在5个快速进入
+        0→1→2 的成功恢复周期中平均少获得 0.257 个百分点。
+      next_confirmation: >-
+        继续观察 QQQ 中期修复和二次确认；只有 VIX 正常化且 VXN
+        不处于压力状态时，冻结状态机才会进入 25% QQQ / 75% TQQQ。
+      invalidation: >-
+        若 QQQ 长期防线失守，或 VIX 进入压力状态且短期价格失败，
+        状态机将返回 QQQI 防守。
+      principal_risk: >-
+        该阶段容易反复，优势主要来自降低失败恢复的损失和换手，
+        并不表示已经确认新的上升趋势。
+    open_leveraged_recovery:
+      confidence: 较高但罕见；直接承担杠杆恢复风险
+      historical_evidence: >-
+        杠杆层是样本内最强的收益信号，但直接从防守进入杠杆并非
+        常规路径，必须核查状态轨迹和数据完整性。
+      next_confirmation: 按冻结规则持有，直到 VIX/VXN 压力或 MA20 退出条件触发。
+      invalidation: VIX 或 VXN 进入压力状态，或 QQQ 连续跌破 MA20 条件。
+      principal_risk: 75% TQQQ 会放大隔夜跳空、波动聚集和路径依赖。
+    add_tqqq_leverage:
+      confidence: 较高；样本内最强的状态转换
+      historical_evidence: >-
+        12个增加杠杆事件的20日平均相对收益优势约为 5.76 个百分点，
+        中位数约 4.24 个百分点，正向比例约 91.7%；样本仍较短。
+      next_confirmation: 继续持有 state 2，并监测 VIX、VXN 与 QQQ MA20 退出条件。
+      invalidation: VIX 或 VXN 进入压力状态，或 QQQ 连续跌破 MA20 条件。
+      principal_risk: >-
+        当前最大单日和最差5日损失主要来自该状态；收益信号强，
+        但它也是组合尾部风险的主要来源。
+    reduce_tqqq_leverage:
+      confidence: 风险控制信号；不是收益最大化信号
+      historical_evidence: >-
+        历史 TQQQ→非杠杆退出在20日收益上平均少约 3.40 个百分点，
+        但平均改善后续最大回撤约 6.34 个百分点。
+      next_confirmation: 若修复重新确认且波动率条件恢复，可再次进入 state 2。
+      invalidation: 若长期防线或 VIX 压力条件继续恶化，将进一步返回 state 0。
+      principal_risk: 可能在快速反弹前过早去杠杆，但目标是压缩尾部损失。
+    return_to_defense:
+      confidence: 防守信号；优先保护资本
+      historical_evidence: >-
+        历史 QQQ→QQQI 防守转换在20日收益上平均少约 0.61 个百分点，
+        但平均改善后续最大回撤约 3.97 个百分点。
+      next_confirmation: 等待新的冲击记忆、早期价格修复和 VIX 回落共同出现。
+      invalidation: 新的早期修复和 VIX 回落将重新开启 state 1。
+      principal_risk: 防守期间可能错过快速反弹，QQQI 也不是无风险现金资产。
+    exit_to_defense:
+      confidence: 强防守；退出杠杆与风险资产
+      historical_evidence: >-
+        该转换由长期价格防线或波动率压力触发，目标是阻止杠杆尾部损失继续扩大。
+      next_confirmation: 等待新的冲击记忆、早期价格修复和 VIX 回落共同出现。
+      invalidation: 新的早期修复和 VIX 回落将重新开启 state 1。
+      principal_risk: 极端市场中下一开盘可能已经出现明显跳空，实际滑点可能高于模型。
+    rebalance:
+      confidence: 未分类；需要人工检查状态轨迹
+      historical_evidence: 无独立历史证据。
+      next_confirmation: 核查冻结状态机、数据日期和目标权重。
+      invalidation: 任一数据完整性检查失败时禁止执行。
+      principal_risk: 未分类转换不应直接依赖自动提醒执行。
+
 guardrails:
   - v4.2 becomes the default research comparator, not an automatically trade-ready strategy.
   - v4.1 remains an immutable historical signal benchmark.

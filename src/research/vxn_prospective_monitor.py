@@ -1,4 +1,4 @@
-"""Prospective evidence helpers for the frozen v4.1 VXN leverage veto."""
+"""Prospective evidence helpers for the frozen v4.1/v4.2 VXN state machine."""
 
 from __future__ import annotations
 
@@ -171,12 +171,40 @@ def prospective_state_differences(
     return pd.DataFrame(rows, columns=columns)
 
 
+def _optional_float(row: pd.Series, column: str) -> float | None:
+    value = row.get(column)
+    if value is None or pd.isna(value):
+        return None
+    return float(value)
+
+
+def _relative_distance(value: float | None, reference: float | None) -> float | None:
+    if value is None or reference is None or abs(reference) <= 1e-12:
+        return None
+    return value / reference - 1.0
+
+
+def _latest_state_interval(daily: pd.DataFrame) -> tuple[str | None, int | None]:
+    if daily.empty or "position_state" not in daily.columns:
+        return None, None
+    states = daily["position_state"].astype(int)
+    current_state = int(states.iloc[-1])
+    change_positions = np.flatnonzero(states.ne(states.shift()).to_numpy(dtype=bool))
+    start_position = int(change_positions[-1]) if len(change_positions) else 0
+    if int(states.iloc[start_position]) != current_state:
+        raise AssertionError("latest state interval could not be resolved")
+    return (
+        states.index[start_position].date().isoformat(),
+        int(len(states) - start_position),
+    )
+
+
 def latest_monitor_snapshot(
     prepared: pd.DataFrame,
     overlay: StrategyResult,
     overlay_decisions: pd.DataFrame,
 ) -> dict[str, Any]:
-    """Report the latest executed position and latest close-derived next decision."""
+    """Report the executed position and a decision-grade latest close snapshot."""
 
     if prepared.empty:
         raise ValueError("prepared data is empty")
@@ -190,17 +218,70 @@ def latest_monitor_snapshot(
     if not overlay.daily.empty:
         latest_economic_date = overlay.daily.index[-1]
         latest_daily = overlay.daily.iloc[-1]
+        state_entry_date, state_age_sessions = _latest_state_interval(overlay.daily)
         executed = {
             "economic_date": latest_economic_date.date().isoformat(),
             "position_state": int(latest_daily["position_state"]),
             "position_label": str(latest_daily["position_label"]),
             "executed_reason": str(latest_daily["executed_reason"]),
+            "state_entry_date": state_entry_date,
+            "state_age_sessions": state_age_sessions,
             "weights": {
                 "QQQI": float(latest_daily["weight_QQQI"]),
                 "QQQ": float(latest_daily["weight_QQQ"]),
                 "TQQQ": float(latest_daily["weight_TQQQ"]),
             },
         }
+
+    qqq_close = _optional_float(latest_prepared, "qqq_close")
+    ma_short = _optional_float(latest_prepared, "ma_short")
+    ma_medium = _optional_float(latest_prepared, "ma_medium")
+    ma_long = _optional_float(latest_prepared, "ma_long")
+    price_context = {
+        "qqq_close": qqq_close,
+        "ma20": ma_short,
+        "ma50": ma_medium,
+        "ma200": ma_long,
+        "qqq_vs_ma20": _relative_distance(qqq_close, ma_short),
+        "qqq_vs_ma50": _relative_distance(qqq_close, ma_medium),
+        "qqq_vs_ma200": _relative_distance(qqq_close, ma_long),
+        "shock_drawdown_now": _optional_float(latest_prepared, "shock_drawdown_now"),
+        "shock_memory": bool(latest_prepared.get("shock_memory", False)),
+        "early_repair": bool(latest_prepared.get("early_repair", False)),
+        "medium_repair": bool(latest_prepared.get("medium_repair", False)),
+        "secondary_confirmation": bool(
+            latest_prepared.get("secondary_confirmation", False)
+        ),
+        "below_ma_short_n": bool(latest_prepared.get("below_ma_short_n", False)),
+        "long_break": bool(latest_prepared.get("long_break", False)),
+        "stress_price_failure": bool(
+            latest_prepared.get("stress_price_failure", False)
+        ),
+    }
+    volatility_context = {
+        "vix_close": _optional_float(latest_prepared, "vix_close"),
+        "vix_q_stress": _optional_float(latest_prepared, "vix_q_stress"),
+        "vix_q_normal": _optional_float(latest_prepared, "vix_q_normal"),
+        "vix_return_1d": _optional_float(latest_prepared, "vix_return_1d"),
+        "vix_return_5d": _optional_float(latest_prepared, "vix_return_5d"),
+        "vix_retreat_from_peak": _optional_float(
+            latest_prepared, "vix_retreat_from_peak"
+        ),
+        "vix_regime": str(latest_prepared.get("vix_regime", "unavailable")),
+        "vix_stress": bool(latest_prepared.get("vix_stress", False)),
+        "vix_easing": bool(latest_prepared.get("vix_easing", False)),
+        "vix_normalized": bool(latest_prepared.get("vix_normalized", False)),
+        "vxn_close": _optional_float(latest_prepared, "vxn_close"),
+        "vxn_q_stress": _optional_float(latest_prepared, "vxn_q_stress"),
+        "vxn_q_normal": _optional_float(latest_prepared, "vxn_q_normal"),
+        "vxn_return_1d": _optional_float(latest_prepared, "vxn_return_1d"),
+        "vxn_return_5d": _optional_float(latest_prepared, "vxn_return_5d"),
+        "vxn_retreat_from_peak": _optional_float(
+            latest_prepared, "vxn_retreat_from_peak"
+        ),
+        "vxn_regime": str(latest_prepared.get("vxn_regime", "unavailable")),
+        "vxn_stress": bool(latest_prepared.get("vxn_stress", False)),
+    }
 
     decision_state = int(latest_decision["decision_state"])
     return {
@@ -216,6 +297,8 @@ def latest_monitor_snapshot(
             "vix_easing": bool(latest_prepared["vix_easing"]),
             "vix_normalized": bool(latest_prepared["vix_normalized"]),
             "vxn_stress": bool(latest_prepared["vxn_stress"]),
+            "price_context": price_context,
+            "volatility_context": volatility_context,
         },
     }
 
