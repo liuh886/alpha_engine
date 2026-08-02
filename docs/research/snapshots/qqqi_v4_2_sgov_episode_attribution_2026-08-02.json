@@ -1,0 +1,138 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "qqqi_qqq_tqqq_v4_2_sgov_episode_attribution",
+  "evidence_date": "2026-08-02",
+  "economic_sample": {
+    "start": "2024-01-30",
+    "end": "2026-07-30",
+    "observations": 627
+  },
+  "research_only": true,
+  "trade_ready": false,
+  "baseline": "qqqi_qqq_tqqq_vxn_bridge_v4_2",
+  "challenger": "qqqi_sgov_blended_defense",
+  "methodology": {
+    "drawdown_comparison": "same_baseline_trough",
+    "recovery_lag": "separate_duration_dimension",
+    "double_counting_prevented": true,
+    "state_trace_unchanged": true,
+    "state_2_allocation_unchanged": true,
+    "cost_bps_per_turnover_unit": 10.0
+  },
+  "headline": {
+    "baseline": {
+      "cagr": 0.330556,
+      "annual_volatility": 0.256173,
+      "sharpe": 1.243783,
+      "sortino": 1.801439,
+      "max_drawdown": -0.242245,
+      "calmar": 1.36455,
+      "turnover_units": 55.0
+    },
+    "challenger": {
+      "cagr": 0.295362,
+      "annual_volatility": 0.197478,
+      "sharpe": 1.410358,
+      "sortino": 2.04187,
+      "max_drawdown": -0.179106,
+      "calmar": 1.649088,
+      "turnover_units": 55.0
+    }
+  },
+  "major_episode_gate": {
+    "major_episode_count": 5,
+    "drawdown_improvement_rate": 1.0,
+    "median_drawdown_improvement_pp": 4.376785187012489,
+    "median_recovery_lag_sessions": 57.0,
+    "unresolved_major_episode_count": 1,
+    "early_improvement_rate": 1.0,
+    "late_improvement_rate": 1.0,
+    "largest_episode_improvement_share": 0.4109890611235411,
+    "cagr_sacrifice_pp": 3.5194116513599383,
+    "checks": {
+      "drawdown_improvement_rate": true,
+      "median_drawdown_improvement": true,
+      "recovery_lag": false,
+      "early_consistency": true,
+      "late_consistency": true,
+      "episode_concentration": true,
+      "cagr_sacrifice": true
+    }
+  },
+  "major_episodes": [
+    {
+      "rank": 1,
+      "start": "2024-12-16",
+      "trough": "2025-04-04",
+      "baseline_drawdown": -0.2422450975054844,
+      "challenger_drawdown_at_baseline_trough": -0.1602501434187407,
+      "improvement_pp": 8.199495408674363,
+      "recovery_lag_sessions": 0
+    },
+    {
+      "rank": 2,
+      "start": "2024-07-10",
+      "trough": "2024-09-06",
+      "baseline_drawdown": -0.1690904072090007,
+      "challenger_drawdown_at_baseline_trough": -0.1488193711221507,
+      "improvement_pp": 2.027103608684999,
+      "recovery_lag_sessions": 114
+    },
+    {
+      "rank": 3,
+      "start": "2026-06-02",
+      "trough": "2026-07-29",
+      "baseline_drawdown": -0.1546410530905801,
+      "challenger_drawdown_at_baseline_trough": -0.1475818615889259,
+      "improvement_pp": 0.7059191501654238,
+      "recovery_lag_sessions": null
+    },
+    {
+      "rank": 4,
+      "start": "2026-01-27",
+      "trough": "2026-03-30",
+      "baseline_drawdown": -0.0879344246354558,
+      "challenger_drawdown_at_baseline_trough": -0.0415210434295698,
+      "improvement_pp": 4.641338120588601,
+      "recovery_lag_sessions": -4
+    },
+    {
+      "rank": 5,
+      "start": "2024-02-01",
+      "trough": "2024-04-19",
+      "baseline_drawdown": -0.0760424416227084,
+      "challenger_drawdown_at_baseline_trough": -0.0322745897525835,
+      "improvement_pp": 4.376785187012489,
+      "recovery_lag_sessions": 132
+    }
+  ],
+  "phase_state_log_relative": {
+    "stress": {
+      "state_0": 0.218031,
+      "state_1": 0.01305,
+      "state_2": 0.0
+    },
+    "recovery": {
+      "state_0": -0.172519,
+      "state_1": -0.019541,
+      "state_2": 0.0
+    },
+    "post_baseline_recovery_lag": {
+      "state_0": -0.007711,
+      "state_1": -0.018319,
+      "state_2": 0.0
+    }
+  },
+  "decision": {
+    "prospective_monitor_authorized": false,
+    "status": "retain_descriptive_drawdown_profile_only",
+    "reason": "consistent trough protection but recovery lag exceeds the pre-registered limit",
+    "v4_2_baseline_unchanged": true,
+    "additional_sgov_weight_search_authorized": false
+  },
+  "evidence": {
+    "workflow_run": 30734414386,
+    "artifact_id": 8829046855,
+    "artifact_digest": "sha256:da1d5f7c4b4b36ec21fbeecd6185030b2c7f5be95f8eb15eac21a2854257d55f"
+  }
+}
