@@ -11,6 +11,10 @@ on:
       - "tests/test_v4_2_sgov_precursor_50_experiment.py"
       - "notebooks/23_qqqi_qqq_tqqq_v4_2_sgov_precursor_50.ipynb"
       - "docs/research/qqqi_v4_2_sgov_precursor_50_program_2026-08-02.md"
+      - "docs/research/qqqi_qqq_tqqq_v4_2_sgov_precursor_50_result_2026-08-02.md"
+      - "docs/research/snapshots/qqqi_v4_2_sgov_precursor_50_2026-08-02.json"
+      - "docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-02.yaml"
+      - "docs/research/validation/qqqi_v4_2_sgov_precursor_50_pr361_2026-08-02.json"
   workflow_dispatch:
     inputs:
       end_date:
