@@ -1,37 +1,25 @@
 import { apiClient } from '@/lib/api-client';
-import { assetUrl, runtimeCapabilities } from '@/lib/runtime-capabilities';
+import { runtimeCapabilities } from '@/lib/runtime-capabilities';
+import {
+  getActiveResearchBundle,
+  loadStaticResearchBundle,
+  setActiveResearchBundle,
+} from '@/lib/research-bundle';
 
-async function getStaticDashboardDb(): Promise<any> {
-  const [manifestResponse, modelsResponse] = await Promise.all([
-    fetch(assetUrl('data/manifest.json'), { cache: 'no-store' }),
-    fetch(assetUrl('data/models.json'), { cache: 'no-store' }),
-  ]);
-
-  if (!manifestResponse.ok || !modelsResponse.ok) {
-    throw new Error('Static research data is unavailable or incomplete.');
+async function getArtifactDashboardDb(): Promise<any> {
+  let bundle = getActiveResearchBundle();
+  if (!bundle) {
+    bundle = await loadStaticResearchBundle();
+    setActiveResearchBundle(bundle);
   }
-
-  const [manifest, models] = await Promise.all([
-    manifestResponse.json(),
-    modelsResponse.json(),
-  ]);
-
-  if (!Array.isArray(models)) {
-    throw new Error('Static models index is invalid.');
-  }
-
-  return {
-    generated_at: manifest.generated_at ?? null,
-    snapshot_id: manifest.snapshot_id ?? 'static',
-    models,
-  };
+  return bundle.dashboard;
 }
 
 export const modelsApi = {
   getDashboardDb: () => (
     runtimeCapabilities.backendApi
       ? apiClient.get<any>('/api/artifacts/dashboard-db')
-      : getStaticDashboardDb()
+      : getArtifactDashboardDb()
   ),
   deleteModel: (versionId: string) => {
     if (!runtimeCapabilities.mutations) {
