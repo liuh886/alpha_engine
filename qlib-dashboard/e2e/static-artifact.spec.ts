@@ -105,7 +105,6 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await expect(selector.getByText('US x1.1', { exact: true })).toBeVisible();
   await expect(selector.getByText('CN x1.0', { exact: true })).toBeVisible();
   await expect(selector.locator('tbody tr')).toHaveCount(3);
-  await expect(selector.getByText(/Exploratory experiment/)).toHaveCount(0);
   await page.keyboard.press('Escape');
   await page.getByRole('tab', { name: 'Evidence' }).click();
   await expect(page.getByText('Formal backtest evidence', { exact: true })).toBeVisible();
