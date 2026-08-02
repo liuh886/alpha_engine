@@ -43,7 +43,7 @@ export function EvidenceDataPage() {
         <Card className="research-surface">
           <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><FileCheck2 className="h-4 w-4 text-primary" /> Artifact classes</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            {groups.map((group) => <div key={group.kind} className="flex items-center justify-between rounded-lg border px-3 py-2"><div><p className="text-sm font-medium">{group.kind.replaceAll('_', ' ')}</p><p className="text-[11px] text-muted-foreground">{group.count} files · {group.required} required</p></div><span className="font-mono text-xs">{formatBytes(group.bytes)}</span></div>)}
+            {groups.map((group) => <div key={group.kind} className="flex items-center justify-between rounded-lg border px-3 py-2"><div><p className="text-sm font-medium">{group.kind.replace(/_/g, ' ')}</p><p className="text-[11px] text-muted-foreground">{group.count} files · {group.required} required</p></div><span className="font-mono text-xs">{formatBytes(group.bytes)}</span></div>)}
           </CardContent>
         </Card>
 
