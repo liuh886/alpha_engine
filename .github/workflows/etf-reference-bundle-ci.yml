@@ -115,18 +115,49 @@ jobs:
           uv run python scripts/data/build_etf_reference_bundle.py \
             --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1 \
             $extra
-      - name: Verify strategy-data gate
+      - name: Verify strategy and professional-source gates
         run: |
           uv run python - <<'PY'
           import json
+          import os
           from pathlib import Path
 
-          path = Path("artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json")
+          root = Path("artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1")
+          path = root / "bundle_manifest.json"
           payload = json.loads(path.read_text(encoding="utf-8"))
           assert payload["strategy_data_ready"] is True, payload
           assert payload["symbols"] == ["QQQ", "QQQI", "TQQQ"], payload
           assert payload["common_history_start"] is not None, payload
           assert payload["trade_ready"] is False, payload
+
+          token_configured = bool(os.getenv("TIINGO_API_TOKEN", "").strip())
+          status = "not_configured"
+          if token_configured:
+              assert payload["professional_source_ready"] is True, payload
+              assert set(payload["selected_providers"].values()) == {"tiingo"}, payload
+              accepted = {"consensus", "explainable_corporate_action_difference"}
+              assert set(payload["reconciliation_status"].values()) <= accepted, payload
+              status = "usable"
+              print("::notice title=Tiingo secret usable::QQQ, QQQI and TQQQ passed Tiingo identity and independent reconciliation gates")
+          else:
+              assert payload["professional_source_ready"] is False, payload
+              print("::notice title=Tiingo secret not configured::Yahoo research fallback remains active")
+
+          secret_status = {
+              "schema_version": "1.0",
+              "credential_env": "TIINGO_API_TOKEN",
+              "token_configured": token_configured,
+              "status": status,
+              "professional_source_ready": payload["professional_source_ready"],
+              "selected_providers": payload["selected_providers"],
+              "reconciliation_status": payload["reconciliation_status"],
+              "research_only": True,
+              "trade_ready": False,
+          }
+          (root / "tiingo_secret_status.json").write_text(
+              json.dumps(secret_status, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
           PY
       - name: Upload ETF reference bundle
         if: always()
