@@ -34,7 +34,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   evidence:
@@ -42,8 +42,6 @@ jobs:
     timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -68,7 +66,7 @@ jobs:
             tests/test_vxn_bridge_allocation_experiment.py \
             tests/test_vxn_leverage_overlay_experiment.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Update rolling notebook role labels
+      - name: Update rolling notebook role labels in validation workspace
         run: uv run python scripts/promote_qqqi_v4_2_notebook_roles.py
       - name: Build governed ETF bundle
         env:
@@ -113,24 +111,6 @@ jobs:
                       raise ValueError(f'notebook error in cell {index}: {output}')
           nbformat.write(executed, path)
           PY
-      - name: Commit updated notebooks to the PR branch
-        if: >-
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          if git diff --quiet -- \
-            notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb \
-            notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb; then
-            echo "Notebooks are already current."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            notebooks/17_qqqi_qqq_tqqq_vxn_current_strategy_review.ipynb \
-            notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb
-          git commit -m "research: refresh v4.2 baseline notebooks"
-          git push origin "HEAD:${{ github.head_ref }}"
       - name: Upload evidence and executed notebooks
         if: always()
         uses: actions/upload-artifact@v4
