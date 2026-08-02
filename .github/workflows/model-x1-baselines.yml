@@ -1,4 +1,4 @@
-name: Baseline Model x1 Lifecycle
+name: Baseline Model Lifecycle
 
 on:
   pull_request:
@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - "configs/models/**"
-      - "configs/research_paradigms/cn_x1_0_frozen_v1.yaml"
-      - "notebooks/models/*_x1_0_baseline.ipynb"
+      - "configs/research_paradigms/*x1*_frozen_v1.yaml"
+      - "configs/research_experiments/us_x1_1_risk_control_v1.yaml"
+      - "notebooks/models/*_baseline.ipynb"
       - "docs/models/BASELINE_MODEL_GOVERNANCE.md"
       - "scripts/validate_model_x1_baselines.py"
       - "tests/test_model_x1_baselines.py"
+      - "tests/test_us_x1_1_baseline_contract.py"
       - ".github/workflows/model-x1-baselines.yml"
   workflow_dispatch:
 
@@ -37,13 +39,19 @@ jobs:
           uv sync --frozen --extra dev
       - name: Lint and type-check lifecycle validator
         run: |
-          uv run ruff check scripts/validate_model_x1_baselines.py tests/test_model_x1_baselines.py
+          uv run ruff check \
+            scripts/validate_model_x1_baselines.py \
+            tests/test_model_x1_baselines.py \
+            tests/test_us_x1_1_baseline_contract.py
           uv run mypy scripts/validate_model_x1_baselines.py
       - name: Validate model registry, specs and notebooks
         run: |
           uv run python scripts/validate_model_x1_baselines.py \
             --output artifacts/evidence/model_x1_baseline_registry.json
-          uv run pytest tests/test_model_x1_baselines.py -q --strict-markers --tb=short
+          uv run pytest \
+            tests/test_model_x1_baselines.py \
+            tests/test_us_x1_1_baseline_contract.py \
+            -q --strict-markers --tb=short
       - name: Upload model lifecycle evidence
         uses: actions/upload-artifact@v4
         with:
@@ -51,8 +59,12 @@ jobs:
           path: |
             artifacts/evidence/model_x1_baseline_registry.json
             configs/models
+            configs/research_paradigms/us_10d_xgb_optimization_frozen_v1.yaml
+            configs/research_paradigms/us_x1_1_frozen_v1.yaml
             configs/research_paradigms/cn_x1_0_frozen_v1.yaml
+            configs/research_experiments/us_x1_1_risk_control_v1.yaml
             notebooks/models/us_x1_0_baseline.ipynb
+            notebooks/models/us_x1_1_baseline.ipynb
             notebooks/models/cn_x1_0_baseline.ipynb
             docs/models/BASELINE_MODEL_GOVERNANCE.md
           if-no-files-found: error
