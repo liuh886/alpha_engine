@@ -8,9 +8,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 CANDIDATE = ROOT / "configs/models/candidates/us_x1_1_candidate_a.yaml"
-EXPERIMENT = (
-    ROOT / "configs/research_experiments/us_x1_1_candidate_a_risk_control_v1.yaml"
-)
+ACTIVE_MODEL = ROOT / "configs/models/us_x1_1.yaml"
+ACTIVE_EXPERIMENT = ROOT / "configs/research_experiments/us_x1_1_risk_control_v1.yaml"
 
 
 def _load(path: Path) -> dict:
@@ -27,14 +26,21 @@ def _relative(strategy: float, benchmark: float) -> float:
     return (1.0 + strategy) / (1.0 + benchmark) - 1.0
 
 
-def test_candidate_identity_and_effective_runtime_are_explicit() -> None:
+def test_candidate_identity_runtime_and_promotion_are_explicit() -> None:
     candidate = _load(CANDIDATE)
+    model = _load(ACTIVE_MODEL)
     assert candidate["candidate_id"] == "us_x1_1_candidate_a"
     assert candidate["parent_model_id"] == "us_x1_0"
-    assert candidate["status"] == "development_candidate"
-    assert candidate["release_status"] == "not_released"
+    assert candidate["promoted_model_id"] == "us_x1_1"
+    assert candidate["status"] == "promoted_candidate"
+    assert candidate["release_status"] == "promoted_as_us_x1_1"
+    assert candidate["promotion_record"]["promotion_pr"] == 365
+    assert candidate["promotion_record"]["promoted_config"] == (
+        "configs/models/us_x1_1.yaml"
+    )
     assert candidate["research_only"] is True
     assert candidate["trade_ready"] is False
+    assert model["model_id"] == candidate["promoted_model_id"]
     assert candidate["latest_snapshot_binding"]["provider_identity_sha256"] == (
         "2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95"
     )
@@ -64,25 +70,31 @@ def test_development_relative_excess_ties_exactly() -> None:
     assert float(development["worst_drawdown"]) < -0.22
 
 
-def test_candidate_improves_latest_x1_0_but_is_not_promoted() -> None:
+def test_candidate_improved_x1_0_and_is_now_historical_source_evidence() -> None:
     candidate = _load(CANDIDATE)
     comparison = candidate["comparison_to_latest_us_x1_0_revision"]
     assert comparison["candidate_a_relative_excess"] > comparison["us_x1_0_relative_excess"]
     assert comparison["candidate_a_worst_drawdown"] > comparison["us_x1_0_worst_drawdown"]
     assert comparison["candidate_a_strongest_window_share"] < comparison["us_x1_0_strongest_window_share"]
     assert comparison["candidate_a_all_window_recurring_name_count"] < comparison["us_x1_0_all_window_recurring_name_count"]
-    assert candidate["next_experiment"]["automatic_version_promotion"] is False
-    assert candidate["next_experiment"]["new_untouched_challenge_required"] is True
+    historical = candidate["historical_candidate_experiment"]
+    assert historical["status"] == "superseded_by_formal_baseline_contract"
+    assert historical["superseded_by"] == (
+        "configs/research_experiments/us_x1_1_risk_control_v1.yaml"
+    )
+    assert candidate["continuing_research"]["next_candidate_version"] == "US x1.2"
+    assert candidate["continuing_research"]["automatic_version_promotion"] is False
 
 
-def test_risk_control_experiment_is_fixed_and_bounded() -> None:
+def test_active_risk_control_experiment_is_fixed_and_bounded() -> None:
     candidate = _load(CANDIDATE)
-    experiment = _load(EXPERIMENT)
-    assert experiment["parent_candidate_id"] == candidate["candidate_id"]
+    experiment = _load(ACTIVE_EXPERIMENT)
+    assert experiment["parent_model_id"] == candidate["promoted_model_id"]
     assert experiment["snapshot"]["provider_identity_sha256"] == candidate[
         "latest_snapshot_binding"
     ]["provider_identity_sha256"]
     fixed = experiment["fixed_model"]
+    assert fixed["model_id"] == "us_x1_1"
     assert fixed["features_may_change"] is False
     assert fixed["label_may_change"] is False
     assert fixed["model_parameters_may_change"] is False
@@ -104,4 +116,4 @@ def test_risk_control_experiment_is_fixed_and_bounded() -> None:
     ]
     assert experiment["execution"]["cost_stress_bps"] == [20, 40, 60]
     assert experiment["version_policy"]["automatic_model_update"] is False
-    assert experiment["version_policy"]["may_create_x1_1"] is False
+    assert experiment["version_policy"]["may_propose_us_x1_2_candidate"] is True

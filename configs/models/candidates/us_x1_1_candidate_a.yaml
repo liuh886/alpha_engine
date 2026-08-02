@@ -1,14 +1,25 @@
-schema_version: '1.0'
+schema_version: '1.1'
 candidate_id: us_x1_1_candidate_a
 display_name: US x1.1 Candidate A
-status: development_candidate
-release_status: not_released
+status: promoted_candidate
+release_status: promoted_as_us_x1_1
 research_only: true
 trade_ready: false
 market: us
 benchmark: QQQ
 parent_model_id: us_x1_0
+promoted_model_id: us_x1_1
 objective: Improve broad-window excess and reduce selection concentration before portfolio risk controls.
+
+promotion_record:
+  decision: promoted_to_formal_research_baseline
+  effective_at: '2026-08-02'
+  decision_authority: user
+  promotion_pr: 365
+  promotion_commit: 4f2b49aa7ca3016d527ef2e2c99aab4959eaccbb
+  promoted_config: configs/models/us_x1_1.yaml
+  promoted_notebook: notebooks/models/us_x1_1_baseline.ipynb
+  operational_or_trade_ready: false
 
 latest_snapshot_binding:
   policy: immutable_artifact_bound_snapshot
@@ -144,21 +155,23 @@ comparison_to_latest_us_x1_0_revision:
   us_x1_0_all_window_recurring_name_count: 6
   candidate_a_all_window_recurring_name_count: 3
 
-next_experiment:
-  issue: 362
-  fixed_score_required: true
-  allowed_changes: portfolio_construction_only
-  variants:
-    - top20_equal_weight
-    - top15_inverse_vol20_capped
-    - top15_equal_weight_name_cap
-    - top15_sector_cap
-    - top15_qqq_trend_overlay
-  automatic_version_promotion: false
-  new_untouched_challenge_required: true
+historical_candidate_experiment:
+  contract: configs/research_experiments/us_x1_1_candidate_a_risk_control_v1.yaml
+  status: superseded_by_formal_baseline_contract
+  superseded_by: configs/research_experiments/us_x1_1_risk_control_v1.yaml
 
-blocking_reasons:
+continuing_research:
+  parent_model_id: us_x1_1
+  portfolio_issue: 362
+  native_parameter_issue: 357
+  native_grid_issue: 370
+  sector_map_issue: 366
+  next_candidate_version: US x1.2
+  automatic_version_promotion: false
+  new_untouched_challenge_required_for_operational_claims: true
+
+remaining_risks:
   - Worst development drawdown remains below the -22% target.
   - The 2026H1 window has already been consumed and is not independent validation.
-  - XGBoost native calibration identity is not yet implemented under Issue #357.
-  - Portfolio contribution and sector concentration controls have not yet been tested.
+  - Shared Qlib integration for native XGBoost calibration remains open under Issues #357 and #370.
+  - Portfolio contribution and sector concentration controls remain open under Issues #362 and #366.
