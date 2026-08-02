@@ -14,16 +14,16 @@ def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
-def test_pm2_setup_contains_post_close_daily_job(tmp_path: Path, monkeypatch) -> None:
+def test_posix_cron_contains_post_close_daily_job(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(setup_cron, "_project_root", lambda: tmp_path)
 
-    config_path = Path(setup_cron.setup_pm2_cron())
-    payload = json.loads(config_path.read_text(encoding="utf-8"))
-    apps = {row["name"]: row for row in payload["apps"]}
-    daily = apps["alpha-daily-us-decision"]
-    assert daily["cron_restart"] == "30 7 * * 2-6"
-    assert "run_latest_us_low_turnover_decision.py" in daily["args"]
-    assert daily["autorestart"] is False
+    cron_path = Path(setup_cron.setup_posix_cron())
+    content = cron_path.read_text(encoding="utf-8")
+
+    assert "30 7 * * 2-6" in content
+    assert "scripts/run_latest_us_low_turnover_decision.py" in content
+    assert "artifacts/logs/daily_us_decision.log" in content
+    assert "SEC_USER_AGENT must be available" in content
 
 
 def test_windows_setup_writes_fail_closed_daily_batch(
