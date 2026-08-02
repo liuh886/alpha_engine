@@ -1,0 +1,91 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_sgov_precursor_50_v4_5_research
+parent_experiment_id: qqqi_qqq_tqqq_v4_2_sgov_recovery_release_v4_4_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+purpose: >-
+  Test one deliberately bolder recovery precursor: when the existing frozen
+  v4.2 precursor is observable in executed state 1, move both the 25% SGOV
+  sleeve and the 25% QQQI sleeve into TQQQ, producing 50% QQQ / 50% TQQQ.
+  Compare its marginal economics directly with the already-studied 25% TQQQ
+  precursor without changing the formal v4.2 state machine.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  sgov_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml
+  attribution_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_episode_attribution.yaml
+  prior_release_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_recovery_release_v4_4_research.yaml
+  signal_trace_must_equal_v4_2: true
+  precursor_dates_must_equal_25_percent_variant: true
+  state_2_allocation_must_equal_v4_2: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  one_fixed_bold_weight_only: true
+  no_grid_search: true
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  common_tradable_window: true
+  corporate_action_basis: adjusted
+  required_symbols: [QQQI, QQQ, TQQQ, SGOV, ^VIX, ^VXN]
+
+allocation:
+  ordinary_state_1:
+    QQQI: 0.25
+    QQQ: 0.50
+    TQQQ: 0.00
+    SGOV: 0.25
+  precursor_50:
+    QQQI: 0.00
+    QQQ: 0.50
+    TQQQ: 0.50
+    SGOV: 0.00
+  formal_state_2:
+    QQQI: 0.00
+    QQQ: 0.25
+    TQQQ: 0.75
+    SGOV: 0.00
+
+precursor:
+  inherit_exactly_from_prior_experiment: true
+  require_shock_memory: true
+  require_medium_repair: true
+  require_vix_normalized: true
+  require_vxn_not_stressed: true
+  secondary_confirmation_required: false
+  maximum_tqqq_weight_before_state_2: 0.50
+
+validation:
+  chronological_train_fraction: 0.60
+  primary_major_episode_count: 5
+  event_horizons: [5, 10, 20, 40]
+  shadow_gate:
+    minimum_precursor_event_count: 6
+    marginal_event_positive_rate_vs_25_min: 0.67
+    largest_marginal_event_benefit_share_max: 0.65
+    full_sample_cagr_delta_vs_25_pp_min: 0.00
+    early_segment_cagr_delta_vs_25_pp_min: 0.00
+    late_segment_cagr_delta_vs_25_pp_min: 0.00
+    sharpe_delta_vs_25_min: -0.02
+    maximum_drawdown_worsening_vs_25_pp_max: 1.50
+    expected_shortfall_95_worsening_vs_25_pp_max: 0.75
+    worst_5d_worsening_vs_25_pp_max: 1.50
+    worst_20d_worsening_vs_25_pp_max: 2.00
+    major_episode_drawdown_improvement_rate_vs_v4_2_min: 0.80
+    median_major_episode_trough_protection_pp_min: 2.00
+    unresolved_major_episode_count_max: 0
+
+hypothesis_discipline:
+  - Exactly one new pre-state-2 allocation is admitted: 50% QQQ and 50% TQQQ.
+  - No 35%, 40%, 60% or other weight is tested.
+  - The precursor dates must be identical to the frozen 25% TQQQ precursor.
+  - The extra 25% TQQQ is funded by removing both 25% SGOV and 25% QQQI.
+  - Formal state 2 remains exactly 25% QQQ and 75% TQQQ.
+  - Incremental return must be judged against the 25% precursor, not only against static SGOV.
+  - Tail-risk and chronological stability are co-primary with CAGR.
+  - Passing authorizes only non-actionable shadow monitoring, never direct promotion.
+  - Production Telegram targets remain unchanged.
