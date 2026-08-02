@@ -1,0 +1,35 @@
+schema_version: "1.0"
+policy_id: "provider_snapshot_policy_v1"
+status: "active_governance_contract"
+research_only: true
+trade_ready: false
+
+identity:
+  bind_provider_identity_sha256: true
+  bind_cutoff: true
+  bind_pool_and_reference_hashes: true
+  bind_source_csv_inventory: true
+  bind_calendar_sha256: true
+  bind_features_sha256: true
+
+revision_policy:
+  old_snapshots_are_immutable: true
+  automatic_latest_snapshot_adoption: false
+  automatic_historical_result_restatement: false
+  full_file_hash_change_does_not_prove_historical_revision: true
+  appended_only_claim_requires_historical_prefix_hashes: true
+  historical_prefix_cutoff: "older snapshot cutoff"
+  exact_diff_tables_required_for_changed_prefixes: true
+
+experiment_policy:
+  frozen_experiments_must_name_snapshot_identity: true
+  reruns_on_new_snapshots_are_evidence_revisions: true
+  evidence_revisions_do_not_replace_original_runs: true
+  cross_snapshot_performance_claims_are_forbidden: true
+  model_search_blocked_when_drift_is_unexplained: true
+
+allowed_decisions:
+  - append_only_reproducible
+  - legitimate_historical_revision_explained
+  - pipeline_nondeterminism_fixed
+  - unexplained_provider_drift_blocking
