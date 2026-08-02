@@ -1,0 +1,83 @@
+name: Selected Pool Event Population CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/selected-pool-event-population-ci.yml"
+      - "configs/data/selected_pool_event_population_v1.yaml"
+      - "src/data/fundamentals/sec_companyfacts.py"
+      - "src/data/fundamentals/tushare_financials.py"
+      - "src/data/corporate_actions/tiingo_events.py"
+      - "scripts/data/build_us_selected_sec_mapping.py"
+      - "tests/test_selected_pool_event_population.py"
+  workflow_dispatch:
+
+concurrency:
+  group: selected-pool-event-population-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff event population paths
+        run: >-
+          uv run ruff check
+          src/data/fundamentals/sec_companyfacts.py
+          src/data/fundamentals/tushare_financials.py
+          src/data/corporate_actions/tiingo_events.py
+          scripts/data/build_us_selected_sec_mapping.py
+          tests/test_selected_pool_event_population.py
+      - name: Mypy event population paths
+        run: >-
+          uv run mypy --follow-imports=skip
+          src/data/fundamentals/sec_companyfacts.py
+          src/data/fundamentals/tushare_financials.py
+          src/data/corporate_actions/tiingo_events.py
+          scripts/data/build_us_selected_sec_mapping.py
+      - name: Test event normalizers
+        run: >-
+          uv run pytest
+          tests/test_selected_pool_event_population.py
+          tests/test_fundamental_event_store_contract.py
+          tests/test_corporate_action_store_contract.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  sec-mapping-candidate:
+    if: github.event_name == 'workflow_dispatch'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build current exact-pool SEC mapping candidate
+        run: >-
+          python scripts/data/build_us_selected_sec_mapping.py
+          --output artifacts/data/us_selected_equities_sec_cik_v3.yaml
+      - name: Upload reviewable mapping candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: us87-sec-cik-mapping-${{ github.run_id }}
+          path: artifacts/data/us_selected_equities_sec_cik_v3.yaml
+          if-no-files-found: error
+          retention-days: 90
