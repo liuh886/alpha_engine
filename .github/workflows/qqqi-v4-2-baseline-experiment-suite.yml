@@ -1,0 +1,135 @@
+name: QQQI v4.2 Baseline Experiment Suite
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqqi-v4-2-baseline-experiment-suite.yml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml"
+      - "src/research/v4_2_baseline_diagnostics.py"
+      - "src/research/v4_2_sgov_defense_experiment.py"
+      - "scripts/run_qqqi_v4_2_baseline_diagnostics.py"
+      - "scripts/run_qqqi_v4_2_sgov_defense_experiment.py"
+      - "tests/test_v4_2_baseline_diagnostics.py"
+      - "tests/test_v4_2_sgov_defense_experiment.py"
+      - "docs/research/qqqi_qqq_tqqq_v4_2_baseline_program_2026-08-02.md"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqqi-v4-2-baseline-experiment-suite.yml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml"
+      - "src/research/v4_2_baseline_diagnostics.py"
+      - "src/research/v4_2_sgov_defense_experiment.py"
+      - "scripts/run_qqqi_v4_2_baseline_diagnostics.py"
+      - "scripts/run_qqqi_v4_2_sgov_defense_experiment.py"
+  workflow_dispatch:
+    inputs:
+      end_date:
+        description: Optional exclusive market-data end date (YYYY-MM-DD)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint and test the experiment suite
+        run: |
+          uv run ruff check \
+            src/research/v4_2_baseline_diagnostics.py \
+            src/research/v4_2_sgov_defense_experiment.py \
+            scripts/run_qqqi_v4_2_baseline_diagnostics.py \
+            scripts/run_qqqi_v4_2_sgov_defense_experiment.py \
+            tests/test_v4_2_baseline_diagnostics.py \
+            tests/test_v4_2_sgov_defense_experiment.py
+          uv run pytest \
+            tests/test_v4_2_baseline_diagnostics.py \
+            tests/test_v4_2_sgov_defense_experiment.py \
+            tests/test_vxn_bridge_allocation_experiment.py \
+            tests/test_vxn_leverage_overlay_experiment.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Build governed ETF bundle
+        env:
+          TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+        run: >-
+          uv run python scripts/data/build_etf_reference_bundle.py
+          --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+      - name: Run state-cycle and tail diagnostics
+        run: >-
+          uv run python scripts/run_qqqi_v4_2_baseline_diagnostics.py
+          --end-date "${{ inputs.end_date }}"
+          --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          --output-dir artifacts/evidence/qqqi_qqq_tqqq_v4_2_baseline_diagnostics
+      - name: Run frozen SGOV defense experiment
+        run: >-
+          uv run python scripts/run_qqqi_v4_2_sgov_defense_experiment.py
+          --end-date "${{ inputs.end_date }}"
+          --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          --output-dir artifacts/evidence/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research
+      - name: Execute experiment notebook
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          import nbformat
+          from nbclient import NotebookClient
+
+          path = Path('notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb')
+          notebook = nbformat.read(path, as_version=4)
+          executed = NotebookClient(
+              notebook,
+              timeout=900,
+              kernel_name='python3',
+              allow_errors=False,
+          ).execute(cwd='.')
+          for index, cell in enumerate(executed.cells):
+              if cell.cell_type != 'code':
+                  continue
+              if cell.get('execution_count') is None:
+                  raise ValueError(f'unexecuted code cell: {index}')
+              for output in cell.get('outputs', []):
+                  if output.get('output_type') == 'error':
+                      raise ValueError(f'notebook error in cell {index}: {output}')
+          nbformat.write(executed, path)
+          PY
+      - name: Commit initial executed notebook to the PR branch
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          if git diff --quiet -- notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb; then
+            echo "Notebook is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb
+          git commit -m "research: save executed v4.2 experiment notebook"
+          git push origin "HEAD:${{ github.head_ref }}"
+      - name: Upload evidence and executed notebook
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqqi-v4-2-baseline-experiment-suite-${{ github.run_id }}
+          path: |
+            artifacts/evidence/qqqi_qqq_tqqq_v4_2_baseline_diagnostics
+            artifacts/evidence/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research
+            notebooks/18_qqqi_qqq_tqqq_v4_2_baseline_experiment_suite.ipynb
+          if-no-files-found: error
+          retention-days: 90
