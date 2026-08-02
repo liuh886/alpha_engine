@@ -1,6 +1,6 @@
 experiment_id: qqqi_qqq_tqqq_v4_2_sgov_episode_attribution
 parent_experiment_id: qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research
-schema_version: "1.0"
+schema_version: "1.1"
 research_only: true
 trade_ready: false
 post_result_hypothesis: true
@@ -35,8 +35,10 @@ analysis:
   episode_definition: >-
     Drawdown episodes are defined from the current v4.2 equity curve: a prior
     equity peak, the subsequent trough, and the first recovery to that peak.
-    The challenger is evaluated over the same start date and may recover before
-    or after the baseline.
+    Drawdown protection is measured for both strategies at the same baseline
+    trough. The challenger's later recovery date is a separate duration metric;
+    subsequent baseline episodes must not be counted twice against an earlier
+    event.
   primary_major_episode_count: 5
   chronological_split_fraction: 0.60
   relative_contribution_measure: log_wealth_difference
@@ -51,6 +53,7 @@ prospective_monitor_gate:
     Passing this gate authorizes only a separate research monitor for the
     already frozen blended allocation. It never replaces v4.2 and does not
     authorize another SGOV weight search.
+  drawdown_comparison_timestamp: baseline_trough
   major_episode_drawdown_improvement_rate_min: 0.60
   median_major_episode_drawdown_improvement_pp_min: 1.00
   median_major_episode_recovery_lag_sessions_max: 30
@@ -62,8 +65,9 @@ prospective_monitor_gate:
 hypothesis_discipline:
   - The 50/50 QQQI/SGOV defensive split is frozen; no alternative weights are admitted.
   - The current v4.2 signal trace, thresholds and state-2 allocation remain unchanged.
-  - Drawdown depth and recovery duration are evaluated jointly.
+  - Drawdown depth and recovery duration are evaluated jointly but never conflated.
   - Relative wealth is decomposed by phase and executed position state.
+  - Subsequent drawdowns cannot be double-counted against an earlier unrecovered challenger path.
   - A result dominated by one episode cannot authorize prospective monitoring.
   - Passing the gate authorizes monitoring only; promotion still requires prospective evidence.
   - Failing the gate retains the challenger as a descriptive low-risk profile only.
