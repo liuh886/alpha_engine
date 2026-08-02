@@ -14,7 +14,9 @@ import yaml
 
 from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
 from src.research.v4_2_sgov_defense_experiment import run_sgov_defense_comparison
-from src.research.v4_2_sgov_episode_attribution import attribute_sgov_drawdown_episodes
+from src.research.v4_2_sgov_episode_attribution_corrected import (
+    attribute_sgov_drawdown_episodes_at_baseline_trough,
+)
 
 
 def _sha256(path: Path) -> str:
@@ -91,7 +93,7 @@ def main() -> int:
     )
     baseline_key = contract["boundaries"]["baseline_variant"]
     challenger_key = contract["boundaries"]["challenger_variant"]
-    episodes, gate = attribute_sgov_drawdown_episodes(
+    episodes, gate = attribute_sgov_drawdown_episodes_at_baseline_trough(
         results[baseline_key], results[challenger_key], contract
     )
     phase_state = _phase_state_summary(episodes)
@@ -108,7 +110,7 @@ def main() -> int:
     phase_state.to_csv(output / "phase_state_log_relative_contribution.csv", index=False)
 
     summary = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "experiment_id": contract["experiment_id"],
         "parent_experiment_id": contract["parent_experiment_id"],
         "research_only": True,
@@ -143,7 +145,7 @@ def main() -> int:
         encoding="utf-8",
     )
     manifest = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "experiment_id": contract["experiment_id"],
         "outputs": {
             path.name: _sha256(path)
