@@ -56,7 +56,7 @@ async function openStudio(page: Page) {
   await page.goto('/#/');
   await expect(page.locator('#root')).not.toBeEmpty();
   await expect(page.getByRole('heading', { name: 'Research Artifact Studio' })).toBeVisible();
-  await expect(page.getByText('Static Browser Fixture').first()).toBeVisible();
+  await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
 }
 
 test('static studio opens without authentication or backend APIs', async ({ page }, testInfo) => {
