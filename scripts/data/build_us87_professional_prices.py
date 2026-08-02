@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build or finalize resumable professional US87 price shards."""
+"""Build or finalize resumable governed US87 price shards."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pathlib import Path
 
 from src.data.adapters.polygon_adapter import PolygonAdapter
 from src.data.adapters.tiingo_adapter import TiingoAdapter
+from src.data.adapters.yfinance_adapter import YFinanceAdapter
 from src.data.us87_professional_prices import (
     build_professional_price_shard,
     finalize_professional_price_bundle,
@@ -51,8 +52,11 @@ def main() -> int:
             output_root=args.output_root,
             cutoff=args.cutoff,
             shard_index=int(args.shard_index),
-            primary_adapter=tiingo if tiingo.client is not None else None,
-            secondary_adapter=polygon if polygon.client is not None else None,
+            canonical_adapter=YFinanceAdapter(),
+            validation_adapters={
+                "tiingo": tiingo if tiingo.client is not None else None,
+                "polygon": polygon if polygon.client is not None else None,
+            },
         )
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0 if payload.get("complete", True) else 2
