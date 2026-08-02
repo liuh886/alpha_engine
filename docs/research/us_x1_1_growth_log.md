@@ -30,8 +30,9 @@ US x1.0 remains immutable historical evidence. US x1.1 remains `research_only=tr
 - A supported compatible improvement may become a reviewed **US x1.2 candidate**.
 - A contract-breaking change requires US x2.0.
 - The consumed 2026H1 window cannot select another candidate.
-- A provider mismatch forces `data_blocked` for version promotion, even when comparative results are retained as noncanonical evidence.
-- Null and negative results remain in this log.
+- A provider mismatch forces `data_blocked` for version promotion.
+- Accepted evidence must retain the full provider snapshot, not only its manifest.
+- Null, negative and non-reproducible results remain in this log.
 
 ## Experiment 001 — establish US x1.1
 
@@ -74,10 +75,17 @@ Historical PR #343/#344 candidate names included fields that were not consumed b
 
 **Date:** 2026-08-02  
 **Issue / PR:** #370 / #378  
-**Workflow / artifact:** `30740184315` / `8831050347`  
-**Artifact digest:** `sha256:31c5c05297bade69bb730f3df7815f043f390e2de59674db3bff151fd71d6776`  
 **Decision:** `data_blocked`  
 **Version consequence:** no US x1.2 candidate; US x1.1 unchanged.
+
+### Evidence runs
+
+| Run | Workflow / artifact | Digest | Provider | Replayable provider included |
+|---|---|---|---|---|
+| A | `30740184315` / `8831050347` | `sha256:31c5c05297bade69bb730f3df7815f043f390e2de59674db3bff151fd71d6776` | `a48bfc398b6207a0de1e38558f15caa4d096922572da2c78df636fc20aabf081` | no |
+| B | `30740473510` / `8831147387` | `sha256:67300e7d86876cd31110db9f00060b8c20a241cba93e38a7178f58eb08851e87` | `2238b2f7dc0130b536f70450992f1869a64cdbeab088623edf4eaeb59f8e6024` | yes, 621 files |
+
+Neither provider matches canonical US x1.1. Run B is the retained replayable evidence snapshot.
 
 ### Hypothesis
 
@@ -94,68 +102,62 @@ Native regularization may reduce the 2025H1 drawdown or selection instability wh
 
 The consumed 2026H1 reporting window was not loaded.
 
-### Provider identity
+### Reproducibility result
 
-- canonical US x1.1 provider: `2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95`;
-- observed provider: `a48bfc398b6207a0de1e38558f15caa4d096922572da2c78df636fc20aabf081`;
-- provider match: false;
-- calendar and instrument hashes: unchanged;
-- changed source CSV hashes: 47 of 88.
+Model fitting was deterministic within both provider snapshots. The effective US x1.1 calibration reproduced identical scores when fitted twice in each window.
 
-This is source-data drift rather than a metadata-only change. Comparative results are retained as a noncanonical evidence revision, but cannot support a version decision.
+Provider refresh was not deterministic:
 
-### Result
+- Run A and Run B had identical calendars and 88-instrument contracts;
+- provider identity changed again within the same day;
+- 47 of 88 source CSV hashes changed between full refreshes;
+- candidate economic rankings changed materially.
 
-Compounded relative excess versus QQQ on the observed provider:
+### Result range across the two snapshots
 
-| Calibration | 20 bps | 60 bps | Positive windows | Worst drawdown | Strongest-window share |
-|---|---:|---:|---:|---:|---:|
-| US x1.1 effective runtime | 114.35% | 94.07% | 4/4 | -33.84% | 47.82% |
-| Lower learning rate / 300 rounds | **172.96%** | **147.35%** | 4/4 | **-39.29%** | 45.53% |
-| Higher child weight | 113.15% | 93.21% | 3/4 | -38.56% | 50.16% |
-| Row and column sampling 0.8 | **164.19%** | **140.63%** | 4/4 | -33.71% | **41.86%** |
-| Explicit regularization | 119.93% | 98.62% | 3/4 | -36.61% | 53.58% |
-| Maximum leaves 15 | **162.09%** | **139.30%** | 4/4 | -35.53% | 47.06% |
+| Calibration | Relative excess range, 20 bps | Worst drawdown range | Stable conclusion |
+|---|---:|---:|---|
+| US x1.1 effective runtime | 85.07%–114.35% | -34.11% to -33.84% | strong excess; deep risk |
+| Lower learning rate / 300 rounds | 169.92%–172.96% | -39.29% to -37.35% | stable return uplift; worse tail risk |
+| Higher child weight | 113.15%–162.08% | -38.56% to -32.19% | materially provider-sensitive |
+| Row and column sampling 0.8 | 135.80%–164.19% | -35.01% to -33.71% | return uplift; no stable risk improvement |
+| Explicit regularization | 119.93%–137.45% | -36.61% to -34.94% | no drawdown solution |
+| Maximum leaves 15 | 162.09%–177.10% | -35.53% to -35.28% | stable return uplift; worse risk |
 
-The deterministic repeat-fit check for the effective US x1.1 calibration passed in all four windows.
-
-### Gate result
-
-No challenger passed the drawdown gate. Every challenger needed either a three-percentage-point drawdown improvement or a worst drawdown above -22%.
-
-- lower learning rate generated the highest return, but worsened worst drawdown to -39.29%;
-- row/column sampling generated strong return and the best window balance, but improved drawdown by only 0.13 percentage point on the observed provider;
-- higher child weight and explicit regularization produced negative excess in 2025H1;
-- lower leaf capacity improved return but worsened drawdown.
+Every candidate retained positive 60 bps relative excess in both runs. No challenger passed the drawdown gate in either run.
 
 ### Accepted learning
 
-- Native XGBoost fields now create genuinely different score and economic contracts.
-- Nearby calibrations preserve positive 60 bps relative excess; transaction costs are not the central weakness.
-- Lower learning rate, sampling and smaller leaf capacity expose substantial return upside.
-- Parameter regularization alone does not solve the 2025H1 regime drawdown.
-- Row/column sampling is the most useful exploratory challenger because it improved return and window balance while retaining 90% mean final Top-15 overlap with US x1.1.
+- Native XGBoost fields create genuinely different score and economic contracts.
+- Model fitting is deterministic on a frozen provider.
+- Lower learning rate, sampling and lower leaf capacity expose repeatable return uplift directions.
+- Parameter return rankings remain too provider-sensitive for candidate selection.
+- Parameter tuning alone does not solve the 2025H1 regime drawdown.
+- Full provider retention is now mandatory.
+- Data reproducibility is the first hard gate for x1.1 growth.
 
 ### Rejected learning
 
-- No candidate may be called US x1.2 from this run.
-- Higher return does not establish a superior baseline when tail risk deteriorates.
-- These metrics do not restate canonical US x1.1 because the provider changed.
+- No candidate may be called US x1.2.
+- Neither experimental run restates canonical US x1.1.
+- No single challenger is retained as uniquely preferred based on these runs.
+- Higher return cannot justify promotion while drawdown and source reproducibility fail.
 
 ### Next action
 
-- retain row/column sampling as an exploratory challenger only;
-- prioritize provider reproducibility and full provider artifact retention;
-- proceed to fixed-score portfolio and concentration controls rather than expanding the parameter grid;
-- use the same drawdown attribution framework on US x1.1 and the sampling challenger after the data gate is resolved.
+- use replayable Run B for mechanism-level attribution only;
+- continue source/provider drift work under #358;
+- execute 2025H1 drawdown attribution under #381;
+- complete the governed sector map under #366;
+- test fixed-score portfolio controls under #362 before widening the parameter grid.
 
 Full result: `docs/research/us_x1_1_native_xgb_grid_result_2026-08-02.md`.
 
 ## Active research queue
 
-1. Preserve full provider snapshots in future evidence artifacts and continue drift attribution under #358.
+1. Make the US provider refresh snapshot-reproducible and close the #358 data gate.
 2. Build the governed US87 sector map under #366.
-3. Execute the fixed-score portfolio variants under #362.
-4. Decompose the 2025H1 drawdown and recurring-name contribution for US x1.1.
-5. Revisit row/column sampling only after the data and portfolio-risk gates are resolved.
+3. Attribute the 2025H1 drawdown under #381 using the frozen Run B provider.
+4. Execute the independent fixed-score portfolio variants under #362.
+5. Revisit parameter challengers only after data and portfolio-risk gates are resolved.
 6. Reserve a genuinely untouched future challenge window before any operational claim.
