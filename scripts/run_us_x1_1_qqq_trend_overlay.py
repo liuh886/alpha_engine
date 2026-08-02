@@ -163,13 +163,26 @@ def _frame_sha256(frame: pd.DataFrame, path: Path) -> str:
 
 
 def _compare_selection_identity(observed: pd.DataFrame, expected: pd.DataFrame) -> None:
+    """Compare parsed ledgers while leaving byte identity to the SHA gate.
+
+    CSV round-tripping can parse the canonical equal weight as the adjacent
+    machine float even though deterministic serialization is byte-identical.
+    Non-weight fields remain exact; the weight gets a one-femtounit tolerance,
+    followed by a strict serialized SHA-256 comparison in the caller.
+    """
+
+    exact_columns = ["datetime", "instrument", "score", "rank"]
     pd.testing.assert_frame_equal(
-        observed.reset_index(drop=True),
-        expected.reset_index(drop=True),
+        observed[exact_columns].reset_index(drop=True),
+        expected[exact_columns].reset_index(drop=True),
         check_exact=True,
         check_dtype=False,
         check_like=False,
     )
+    observed_weight = observed["target_weight"].to_numpy(dtype=float)
+    expected_weight = expected["target_weight"].to_numpy(dtype=float)
+    if not np.allclose(observed_weight, expected_weight, rtol=0.0, atol=1e-15):
+        raise AssertionError("selection target weights differ beyond CSV tolerance")
 
 
 def _compounded(values: pd.Series | list[float]) -> float:
