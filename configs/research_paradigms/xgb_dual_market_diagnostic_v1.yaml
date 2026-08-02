@@ -1,0 +1,62 @@
+schema_version: "1.0"
+diagnostic_id: "xgb_dual_market_diagnostic_v1"
+status: "active_diagnosis"
+research_only: true
+trade_ready: false
+baseline_identity_path: "configs/research_paradigms/xgb_dual_market_baseline_identity_v1.yaml"
+
+purpose:
+  question: "Where does each verified XGBoost baseline fail, and which improvement class is justified first?"
+  diagnosis_only: true
+  variant_search_authorized: false
+  final_challenge_consumed: false
+
+rules:
+  positive_excess_epsilon: 0.0
+  concentration_share_threshold: 0.50
+  us_tail_drawdown_threshold: -0.25
+  signal_alignment_mismatch_threshold: 2
+
+computed_diagnostics:
+  - "strongest and weakest benchmark-relative windows"
+  - "share of positive simple excess supplied by the strongest window"
+  - "worst drawdown window"
+  - "positive-excess windows with non-positive ICIR or Rank IC"
+  - "cross-window positive-excess consistency"
+  - "promotion-gate context from the verified baseline"
+
+market_decision_rules:
+  us:
+    primary_path: "tail_risk_and_concentration_first"
+    condition:
+      - "strongest_positive_excess_share >= concentration_share_threshold"
+      - "worst_window_drawdown <= us_tail_drawdown_threshold"
+    allowed_next_experiments:
+      - "security and sector contribution concentration"
+      - "tail-day and drawdown attribution"
+      - "seed and bootstrap stability"
+      - "Top-K breadth, turnover and cost sensitivity"
+      - "volatility scaling or market-state risk overlay"
+    deferred_until_data_gate:
+      - "Alpha158 factor-family additions"
+      - "PIT fundamental factor-family additions"
+  cn:
+    primary_path: "ranking_validity_and_exposure_first"
+    condition:
+      - "positive_excess_signal_mismatch_count >= signal_alignment_mismatch_threshold"
+    allowed_next_experiments:
+      - "sector, size, beta and volatility exposure attribution"
+      - "security contribution concentration"
+      - "seed, bootstrap and score-rank stability"
+      - "feature-family ablation"
+      - "bounded XGBoost objective and regularization comparison"
+    deferred_until_signal_gate:
+      - "portfolio optimization presented as model improvement"
+      - "risk overlay presented as proof of ranking alpha"
+
+stop_rules:
+  - "Do not optimize directly on the four observed baseline windows."
+  - "Do not interpret positive portfolio excess as ranking alpha when IC diagnostics disagree."
+  - "Do not add factor families before their governed data-readiness gates pass."
+  - "Do not authorize a final challenge evaluation from this diagnostic report."
+  - "Do not set trade_ready=true."
