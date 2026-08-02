@@ -1,2 +1,2 @@
-bootstrap_commit=f642386c1ea6566be7192d4d0bccd10f7b3152ce
-purpose=trigger the freshly registered Pages deployment workflow from a same-repository pull request
+bootstrap_commit=972f0f41f6a966bad983bec6e4577061dfa35836
+purpose=trigger Pages deployment after adding the explicit blocked empty export
