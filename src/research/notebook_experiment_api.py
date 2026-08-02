@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 
 from src.research.evaluation_context import TenDayEvaluationConfig
+from src.research.repository_run_trace import build_candidate_backtest_traces
 from src.research.signal_discovery import (
     CandidateKind,
     CandidateStatus,
@@ -134,7 +135,7 @@ def run_10d_experiment(
     benchmark_returns: pd.DataFrame | None = None,
     output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Run one fixed-10D experiment and optionally write a JSON artifact."""
+    """Run one fixed-10D experiment and retain Repository Run trace inputs."""
 
     report = compare_10d_candidates(
         candidates,
@@ -142,10 +143,26 @@ def run_10d_experiment(
         config=config,
         benchmark_returns=benchmark_returns,
     )
+    traces = build_candidate_backtest_traces(
+        candidates,
+        raw_returns,
+        benchmark_returns=benchmark_returns,
+        top_n=config.topk,
+        rebalance_days=config.rebalance_days,
+        benchmark=config.benchmark,
+        experiment_id=config.experiment_id or "",
+    )
     payload = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "config": config.to_dict(),
         "comparison_report": report,
+        "backtest_traces": traces,
+        "trace_contract": {
+            "frequency": "non_overlapping_forward_horizon",
+            "daily_nav_claim": False,
+            "research_only": True,
+            "trade_ready": False,
+        },
     }
     if output_dir is not None:
         out_dir = Path(output_dir)
