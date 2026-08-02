@@ -1,6 +1,6 @@
 # US x1.1 growth log
 
-**Ledger status:** current through Experiment 008 on 2026-08-02.
+**Ledger status:** current through Experiment 009 on 2026-08-02.
 
 This is the durable experiment ledger for the active US research baseline. It
 records positive, negative, null and blocked results. It does not imply trade
@@ -22,8 +22,9 @@ readiness.
 | Effective XGBoost runtime | gain7, 200 rounds, max leaves 31, learning rate 0.05, seed 42 |
 | Canonical provider | `2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95` |
 | Canonical workflow / artifact | `30737322468` / `8830089966` |
-| Development relative excess | +110.44% |
+| Canonical development relative excess | +110.44% |
 | Worst canonical development drawdown | -27.15% |
+| Deterministic revision provider | `5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95` |
 | Consumed reporting window | 2026H1 |
 
 US x1.0 and canonical US x1.1 evidence remain immutable. US x1.1 remains
@@ -36,6 +37,9 @@ US x1.0 and canonical US x1.1 evidence remain immutable. US x1.1 remains
 - Complete accepted evidence retains source and provider snapshots.
 - Historical source revisions create new evidence revisions; they never replace
   canonical evidence silently.
+- Source-model selection identity and economic-selection identity are retained
+  separately when raw forward-return availability changes the eligible cross
+  section.
 - The consumed 2026H1 window cannot select another candidate.
 - A compatible model improvement may become a reviewed US x1.2 candidate.
 - A portfolio-control improvement remains separate from model versioning.
@@ -76,8 +80,6 @@ XGBoost consumed those fields.
 
 **Issue / PR:** #370 / #378  
 **Decision:** `data_blocked`; no US x1.2 candidate.
-
-Two successful model runs used different same-day provider snapshots:
 
 | Run | Workflow / artifact | Provider |
 |---|---|---|
@@ -138,8 +140,6 @@ Detailed data audit record:
 **Workflow / artifact:** `30742690159` / `8831837784`  
 **Decision:** `deterministic_raw_adjustment_contract_ready`.
 
-Frozen identities:
-
 | Layer | SHA-256 |
 |---|---|
 | Raw OHLCV + Adj Close snapshot | `3848fc1c474a408c67243b48d2c693bc7af531c3a6330069bd3e72bc609d19ad` |
@@ -148,7 +148,7 @@ Frozen identities:
 | Qlib provider | `5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95` |
 
 Two independent materializations from the same raw snapshot matched exactly.
-The contract now retains raw OHLCV and Adj Close separately, derives adjusted
+The contract retains raw OHLCV and Adj Close separately, derives adjusted
 prices through `us_raw_adjustment_v1`, and blocks any rewrite of a frozen
 historical prefix.
 
@@ -165,13 +165,10 @@ US x1.1 was fitted independently twice on provider `5c09d0...`. All four
 windows matched exactly on:
 
 - effective parameter identity;
-- complete scores;
-- ranks;
-- per-rebalance Top-15 selections;
+- complete scores and ranks;
+- daily Top-15 source-selection ledgers;
 - raw returns;
 - 20/40/60 bps economics.
-
-Revision-provider result:
 
 | Metric | Canonical | Deterministic revision |
 |---|---:|---:|
@@ -192,9 +189,9 @@ Full result:
 **Workflow / artifact:** `30743901477` / `8832228801`  
 **Decision:** `portfolio_control_path_supported`.
 
-The attribution engine first reproduced Experiment 007 exactly. Complete model
-scores were explicitly intersected with non-null raw 10-session returns before
-ranking, preserving both score identities.
+The attribution engine first reproduced Experiment 007 exactly. Source-model
+scores and daily selections were retained separately from the economic score
+and selection layer after non-null raw forward-return alignment.
 
 Drawdown path:
 
@@ -221,34 +218,73 @@ Independent portfolio controls:
 | Top-20 equal | +1.74% | -33.92% | fail |
 | Inverse vol, 10% cap | +7.24% | -33.39% | fail drawdown gate |
 | Equal Top-15, 8% cap | +5.54% | -33.88% | mechanically null |
-| QQQ negative 20D trend, 50% gross | +7.62% | -27.66% | pass |
-
-The drawdown was not dominated by one name, high volatility or high beta. The
-trend overlay could not prevent the initial shock, but materially reduced the
-continuation phase.
+| QQQ negative 20D trend, 50% gross | +7.62% | -27.66% | advance to multi-window test |
 
 Full result:
 `docs/research/us_x1_1_drawdown_attribution_phase_a_result_2026-08-02.md`.
 
+### Experiment 009 — multi-window QQQ trend overlay
+
+**Issue / PR:** #396 / #400  
+**Workflow / artifact:** `30745446452` / `8832729580`  
+**Artifact digest:** `sha256:f58853fb4d6da2d722b63049ee25495649270a5b935b9837fcd4cf3d4cece740`  
+**Decision:** `trend_overlay_destroys_too_much_upside`.
+
+The fixed 50% and cash overlays were tested across 2024H1–2025H2 with exact
+Experiment 007 score identities and 20/40/60 bps cost stress. 2026H1 remained
+excluded.
+
+Aggregate 20 bps result:
+
+| Contract | Relative excess | Retained baseline excess | Worst DD | Positive windows | Average gross |
+|---|---:|---:|---:|---:|---:|
+| Baseline 100% | +113.35% | 100.00% | -33.88% | 4/4 | 100.0% |
+| QQQ-negative 50% | +86.91% | 76.68% | -27.66% | 4/4 | 87.5% |
+| QQQ-negative cash | +60.93% | 53.75% | -21.15% | 3/4 | 75.0% |
+
+Accepted learning:
+
+- the QQQ trend state explains and controls the continuation phase of the
+  2025H1 drawdown;
+- 50% and cash improved the 2025H1 drawdown by 6.21 and 12.73 percentage
+  points respectively;
+- both paths recovered by 2025-06-12 while baseline did not recover within
+  2025H1;
+- both overlays retained positive relative excess at 60 bps.
+
+Rejected candidate claims:
+
+- material drawdown benefit occurred in only 1/4 windows;
+- the 50% overlay retained only 76.68% of baseline compounded relative excess;
+- cash retained 53.75% and created negative excess in 2024H1;
+- 50% reduced excess without drawdown benefit in 2024H1 and 2025H2;
+- cash worsened the 2024H2 drawdown and delayed recovery by 28 days.
+
+Neither overlay becomes a portfolio-contract candidate. The four development
+windows are now consumed for this QQQ 20-session trend hypothesis; the same
+lookback or threshold must not be tuned on them.
+
+Full result:
+`docs/research/us_x1_1_qqq_trend_overlay_result_2026-08-02.md`.
+
 ## Current research queue
 
-1. **#396 — multi-window QQQ trend overlay validation.** Compare baseline,
-   50% gross and cash under negative QQQ 20D trend across 2024H1–2025H2 and
-   20/40/60 bps.
-2. **#366 — governed US87 sector map.** Complete exact 87/87 source-bound
+1. **#366 — governed US87 sector map.** Complete exact 87/87 source-bound
    mapping before sector attribution, sector cap or leave-one-sector-out.
-3. **#381 Phase B.** Add sector contribution and concentration evidence after
-   #366; retain Phase A name and regime conclusions.
-4. **#362.** Reconcile the original portfolio-control issue with Phase A and
-   #396; close rejected controls and retain only supported contracts.
-5. Revisit native parameter challengers only after portfolio-risk controls are
-   resolved.
-6. Reserve a genuinely untouched future challenge window before any
+2. **#381 Phase B.** Add governed sector contribution and concentration
+   evidence; retain the Phase A name and regime findings.
+3. **#362 governance closure.** Mark Top-20, inverse volatility, 8% name cap and
+   fixed QQQ trend overlays as rejected or null under their registered gates;
+   route the unresolved sector test through #366/#381.
+4. Revisit native parameter challengers only after sector-risk evidence is
+   complete; do not use the rejected QQQ overlay to rescue a model candidate.
+5. Reserve a genuinely untouched future challenge window before any
    operational claim.
 
 ## Current conclusion
 
-US x1.1 has not become US x1.2. Its model execution and data contract are now
-reproducible, its 2025H1 drawdown has been decomposed, and one bounded portfolio
-control merits multi-window validation. The active task is risk-contract
-validation, not another blind parameter search.
+US x1.1 has not become US x1.2. Model execution and the deterministic data
+contract are reproducible, the 2025H1 drawdown has been decomposed, and the
+fixed QQQ trend overlay has been rejected as a broad portfolio contract. The
+active research task is now governed sector attribution, not threshold tuning
+or another blind parameter search.
