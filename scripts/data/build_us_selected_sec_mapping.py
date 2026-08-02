@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import urllib.request
 from pathlib import Path
 
 import yaml
+
+from src.data.fundamentals.sec_companyfacts import resolve_sec_user_agent
 
 SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 
@@ -28,7 +29,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--user-agent",
-        default=os.getenv("SEC_USER_AGENT", "alpha-engine-research contact@example.com"),
+        default=None,
+        help="Optional override; a declared project identity is used by default.",
     )
     args = parser.parse_args()
 
@@ -40,7 +42,11 @@ def main() -> int:
 
     request = urllib.request.Request(
         SEC_TICKERS_URL,
-        headers={"Accept": "application/json", "User-Agent": args.user_agent},
+        headers={
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip, deflate",
+            "User-Agent": resolve_sec_user_agent(args.user_agent),
+        },
     )
     with urllib.request.urlopen(request, timeout=30) as response:
         payload = json.loads(response.read().decode("utf-8"))
@@ -55,13 +61,15 @@ def main() -> int:
     mapped = {symbol: lookup[symbol] for symbol in symbols if symbol in lookup}
     missing = [symbol for symbol in symbols if symbol not in lookup]
     output = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "mapping_id": "us_selected_equities_sec_cik_v3_candidate",
         "status": "ready_for_review" if not missing else "partial_requires_review",
         "pool_id": pool.get("pool_id"),
         "source": {
             "authority": "U.S. Securities and Exchange Commission",
             "url": SEC_TICKERS_URL,
+            "declared_user_agent": True,
+            "secret_required": False,
         },
         "expected_symbol_count": expected,
         "mapped_symbol_count": len(mapped),
