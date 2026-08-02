@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pandas as pd
 
 from scripts.audit_yahoo_adjustment_modes import (
@@ -15,7 +13,9 @@ from scripts.audit_yahoo_adjustment_modes import (
 def _raw_frame() -> pd.DataFrame:
     return pd.DataFrame(
         {
-            "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06"]),
+            "date": pd.to_datetime(
+                ["2025-01-02", "2025-01-03", "2025-01-06"]
+            ),
             "open": [10.0, 11.0, 12.0],
             "high": [11.0, 12.0, 13.0],
             "low": [9.0, 10.0, 11.0],
@@ -30,10 +30,11 @@ def _adjusted_frame() -> pd.DataFrame:
     return derive_adjusted_ohlc(_raw_frame())
 
 
-def _comparison(exact: bool = True) -> dict:
+def _comparison(*, exact: bool = True, material: bool | None = None) -> dict:
+    material_match = exact if material is None else material
     return {
         "exact_match": exact,
-        "material_match_1e_8": exact,
+        "material_match_1e_8": material_match,
         "row_calendar_match": True,
     }
 
@@ -44,21 +45,21 @@ def _summary() -> dict:
         "mode_reproducibility": {
             "raw_no_repair": {
                 symbol: {
-                    **_comparison(True),
+                    **_comparison(),
                     "raw_ohlcv_exact": True,
                     "adj_close_exact": True,
                 }
                 for symbol in symbols
             },
             "adjusted_no_repair": {
-                symbol: _comparison(True) for symbol in symbols
+                symbol: _comparison() for symbol in symbols
             },
             "adjusted_repair": {
-                symbol: _comparison(True) for symbol in symbols
+                symbol: _comparison() for symbol in symbols
             },
         },
         "derived_adjustment_comparison": {
-            pass_id: {symbol: _comparison(True) for symbol in symbols}
+            pass_id: {symbol: _comparison() for symbol in symbols}
             for pass_id in ("a", "b")
         },
     }
@@ -135,13 +136,19 @@ def test_decision_repair_induced_when_only_repair_mode_changes() -> None:
     assert decide(summary) == "repair_induced_nondeterminism"
 
 
-def test_decision_bounded_subset_reproducible() -> None:
-    assert decide(_summary()) == "bounded_subset_reproducible"
-
-
-def test_decision_mixed_when_derived_adjustment_differs() -> None:
+def test_decision_accepts_machine_scale_derived_roundoff() -> None:
     summary = _summary()
-    summary["derived_adjustment_comparison"]["b"]["BBB"][
-        "exact_match"
-    ] = False
+    summary["derived_adjustment_comparison"]["a"]["AAA"] = _comparison(
+        exact=False,
+        material=True,
+    )
+    assert decide(summary) == "bounded_subset_reproducible"
+
+
+def test_decision_mixed_when_derived_adjustment_differs_materially() -> None:
+    summary = _summary()
+    summary["derived_adjustment_comparison"]["b"]["BBB"] = _comparison(
+        exact=False,
+        material=False,
+    )
     assert decide(summary) == "mixed_or_unexplained_source_nondeterminism"
