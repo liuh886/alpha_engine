@@ -114,7 +114,8 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: process.env.ALERT_TITLE,
-              body: `@liuh886\n\n${report}`,
+              body: `@${context.repo.owner}\n\n${report}`,
+              assignees: [context.repo.owner],
             });
       - name: Send optional Telegram alert
         if: >-
