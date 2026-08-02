@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 registry_id: "reference_instrument_registry_v1"
 created_at: "2026-08-01"
 status: "active_governance_contract"
@@ -12,6 +12,7 @@ policy:
   provider_aliases_must_preserve_canonical_identity: true
   reference_membership_changes_require_new_version: true
   post_result_reference_changes_allowed: false
+  executable_etf_data_bundle: "configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"
 
 markets:
   us:
@@ -26,6 +27,8 @@ markets:
         portfolio_eligible_by_default: false
         fundamental_data_applicable: false
         corporate_actions_applicable: true
+        data_bundle_contract: "qqqi_qqq_tqqq_reference_bundle_v1"
+        adjusted_open_close_required: true
       TQQQ:
         canonical_symbol: "TQQQ"
         instrument_type: "leveraged_equity_etf"
@@ -36,6 +39,9 @@ markets:
         portfolio_eligible_by_default: false
         fundamental_data_applicable: false
         corporate_actions_applicable: true
+        data_bundle_contract: "qqqi_qqq_tqqq_reference_bundle_v1"
+        adjusted_open_close_required: true
+        split_factor_required: true
       QQQI:
         canonical_symbol: "QQQI"
         instrument_type: "income_equity_etf"
@@ -46,6 +52,10 @@ markets:
         portfolio_eligible_by_default: false
         fundamental_data_applicable: false
         corporate_actions_applicable: true
+        data_bundle_contract: "qqqi_qqq_tqqq_reference_bundle_v1"
+        adjusted_open_close_required: true
+        cash_distribution_required: true
+        pre_inception_fill_allowed: false
       VIX:
         canonical_symbol: "VIX"
         instrument_type: "volatility_index"
@@ -106,3 +116,4 @@ activation_requirements:
   - "an executable ETF requires explicit portfolio authorization in the strategy spec"
   - "an index cannot be substituted by a tracking ETF"
   - "reference registry identity is bound into every model or strategy manifest"
+  - "QQQ QQQI and TQQQ strategy evidence binds the ETF bundle manifest identity"
