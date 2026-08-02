@@ -23,6 +23,7 @@
       "paths": [
         "qlib-dashboard/src/lib/runtime-capabilities.ts",
         "qlib-dashboard/src/lib/runtime-capability-matrix.ts",
+        "qlib-dashboard/src/lib/runtime-capability-matrix.test.ts",
         "qlib-dashboard/src/components/ResearchContextBar.tsx",
         "qlib-dashboard/src/components/ArtifactHome.tsx"
       ],
@@ -92,6 +93,17 @@
       ],
       "phase": 2,
       "disposition": "replace_with_service_cli_or_artifact_contract_tests"
+    },
+    {
+      "id": "incidental_legacy_code_references",
+      "paths": [
+        ".github/workflows/",
+        "src/common/logging.py",
+        "notebooks/_gen_pipeline_nb.py",
+        "notebooks/_build_pipeline_nb.py"
+      ],
+      "phase": 4,
+      "disposition": "remove_reference_during_repository_normalization"
     },
     {
       "id": "legacy_server_documentation",
