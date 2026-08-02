@@ -104,11 +104,79 @@ def _pool_symbols(root: Path, contract: Mapping[str, Any], market: str) -> tuple
     return str(market_contract.get("pool_id", "")), symbols
 
 
-def _provider_manifest(provider_uri: Path) -> tuple[Path, str]:
+def _provider_manifest(provider_uri: Path) -> tuple[Path, str, dict[str, Any]]:
     path = provider_uri / "provider_manifest.json"
     if not path.is_file():
         raise FactorPanelError(f"provider manifest is missing: {path}")
-    return path, _sha256(path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise FactorPanelError("provider manifest must be a JSON object")
+    return path, _sha256(path), payload
+
+
+def _source_role_manifest(
+    provider_uri: Path,
+    policy: Mapping[str, Any],
+) -> tuple[Path, str | None, dict[str, Any] | None]:
+    name = str(policy.get("source_role_manifest", "source_role_manifest.json"))
+    path = provider_uri / name
+    if not path.is_file():
+        return path, None, None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise FactorPanelError("source-role manifest must be a JSON object")
+    return path, _sha256(path), payload
+
+
+def _provider_role_blocker(
+    payload: Mapping[str, Any] | None,
+    *,
+    policy: Mapping[str, Any],
+    field_policy: Mapping[str, Any],
+) -> str | None:
+    if payload is None:
+        return "canonical source-role manifest is unavailable"
+
+    role = str(payload.get("role", "")).strip().lower()
+    if bool(policy.get("canonical_role_required", True)) and role != "canonical":
+        return f"provider role is not canonical: {role or 'missing'}"
+    if bool(policy.get("canonical_training_eligible_required", True)) and (
+        payload.get("canonical_training_eligible") is not True
+    ):
+        return "provider is not canonical-training-eligible"
+    if bool(policy.get("validation_only_provider_forbidden", True)) and (
+        payload.get("validation_only") is True
+    ):
+        return "validation-only provider cannot satisfy Alpha158 fields"
+
+    forbidden = {
+        str(value).strip().lower()
+        for value in policy.get("validation_only_sources", [])
+        if str(value).strip()
+    }
+    declared_sources = {
+        str(value).strip().lower()
+        for value in payload.get("source_providers", [])
+        if str(value).strip()
+    }
+    if forbidden.intersection(declared_sources):
+        names = sorted(forbidden.intersection(declared_sources))
+        return f"validation-only source declared in canonical provider: {names}"
+
+    semantics = payload.get("field_semantics", {})
+    if not isinstance(semantics, dict):
+        return "provider field semantics are missing"
+    vwap_semantics = str(semantics.get("vwap", "")).strip()
+    allowed = {
+        str(value).strip()
+        for value in field_policy.get("allowed_vwap_semantics", [])
+        if str(value).strip()
+    }
+    if not vwap_semantics:
+        return "provider does not declare vwap semantics"
+    if allowed and vwap_semantics not in allowed:
+        return f"provider vwap semantics are not eligible: {vwap_semantics}"
+    return None
 
 
 def provider_field_coverage(provider_uri: Path, field: str) -> set[str]:
@@ -222,6 +290,52 @@ def _quality_rows(
     return rows
 
 
+def _blocked_manifest(
+    *,
+    output: Path,
+    market: str,
+    pool_id: str,
+    cutoff: str,
+    symbols: Sequence[str],
+    catalog_path: Path,
+    provider_manifest_path: Path,
+    provider_hash: str,
+    source_role_path: Path,
+    source_role_hash: str | None,
+    blocker: str,
+    field_coverage: Mapping[str, Sequence[str]] | None = None,
+) -> dict[str, Any]:
+    manifest = {
+        "schema_version": "1.1",
+        "component_id": f"factors.qlib_alpha158.panel.{market}.v1",
+        "component_kind": "factor_panel",
+        "status": "blocked",
+        "market": market,
+        "pool_id": pool_id,
+        "evidence_cutoff": cutoff,
+        "expected_symbol_count": len(symbols),
+        "ready_symbol_count": 0,
+        "coverage_ratio": 0.0,
+        "missing_symbols": [],
+        "invalid_symbols": list(symbols),
+        "quarantined_symbols": [],
+        "providers": ["qlib_provider"],
+        "professional_source_ready": None,
+        "catalog_path": str(catalog_path),
+        "catalog_sha256": _sha256(catalog_path),
+        "provider_manifest_path": str(provider_manifest_path),
+        "provider_manifest_sha256": provider_hash,
+        "source_role_manifest_path": str(source_role_path),
+        "source_role_manifest_sha256": source_role_hash,
+        "field_coverage": dict(field_coverage or {}),
+        "blocker": blocker,
+        "research_only": True,
+        "trade_ready": False,
+    }
+    _write_json(output / "factor_panel_manifest.json", manifest)
+    return manifest
+
+
 def build_alpha158_panel(
     *,
     root: str | Path,
@@ -251,7 +365,36 @@ def build_alpha158_panel(
     catalog_path = output / "factor_catalog.json"
     _write_json(catalog_path, catalog)
     provider = Path(provider_uri).resolve()
-    provider_manifest_path, provider_hash = _provider_manifest(provider)
+    provider_manifest_path, provider_hash, _ = _provider_manifest(provider)
+
+    role_policy = contract.get("provider_role_policy", {})
+    if not isinstance(role_policy, dict):
+        raise FactorPanelError("provider_role_policy must be a mapping")
+    field_policy = contract.get("field_policy", {})
+    if not isinstance(field_policy, dict):
+        raise FactorPanelError("field_policy must be a mapping")
+    source_role_path, source_role_hash, source_role = _source_role_manifest(
+        provider, role_policy
+    )
+    role_blocker = _provider_role_blocker(
+        source_role,
+        policy=role_policy,
+        field_policy=field_policy,
+    )
+    if role_blocker:
+        return _blocked_manifest(
+            output=output,
+            market=market_key,
+            pool_id=pool_id,
+            cutoff=cutoff,
+            symbols=symbols,
+            catalog_path=catalog_path,
+            provider_manifest_path=provider_manifest_path,
+            provider_hash=provider_hash,
+            source_role_path=source_role_path,
+            source_role_hash=source_role_hash,
+            blocker=role_blocker,
+        )
 
     required_fields = [str(value) for value in contract.get("required_provider_fields", [])]
     field_coverage = {
@@ -259,33 +402,20 @@ def build_alpha158_panel(
     }
     missing_vwap = sorted(set(symbols).difference(field_coverage.get("vwap", [])))
     if missing_vwap:
-        manifest = {
-            "schema_version": "1.0",
-            "component_id": f"factors.qlib_alpha158.panel.{market_key}.v1",
-            "component_kind": "factor_panel",
-            "status": "blocked",
-            "market": market_key,
-            "pool_id": pool_id,
-            "evidence_cutoff": cutoff,
-            "expected_symbol_count": len(symbols),
-            "ready_symbol_count": 0,
-            "coverage_ratio": 0.0,
-            "missing_symbols": [],
-            "invalid_symbols": missing_vwap,
-            "quarantined_symbols": [],
-            "providers": ["qlib_provider"],
-            "professional_source_ready": None,
-            "catalog_path": str(catalog_path),
-            "catalog_sha256": _sha256(catalog_path),
-            "provider_manifest_path": str(provider_manifest_path),
-            "provider_manifest_sha256": provider_hash,
-            "field_coverage": field_coverage,
-            "blocker": "true vwap field is unavailable for exact selected pool",
-            "research_only": True,
-            "trade_ready": False,
-        }
-        _write_json(output / "factor_panel_manifest.json", manifest)
-        return manifest
+        return _blocked_manifest(
+            output=output,
+            market=market_key,
+            pool_id=pool_id,
+            cutoff=cutoff,
+            symbols=missing_vwap,
+            catalog_path=catalog_path,
+            provider_manifest_path=provider_manifest_path,
+            provider_hash=provider_hash,
+            source_role_path=source_role_path,
+            source_role_hash=source_role_hash,
+            blocker="true vwap field is unavailable for exact selected pool",
+            field_coverage=field_coverage,
+        )
 
     engine = evaluator or QlibFactorEvaluator(provider_uri=provider, market=market_key)
     expressions = [definition.expression for definition in definitions]
@@ -337,7 +467,7 @@ def build_alpha158_panel(
     files[str(quality_path.relative_to(output))] = _sha256(quality_path)
     status = "ready" if len(ready_symbols) == len(symbols) else "partial"
     manifest = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "component_id": f"factors.qlib_alpha158.panel.{market_key}.v1",
         "component_kind": "factor_panel",
         "status": status,
@@ -359,6 +489,9 @@ def build_alpha158_panel(
         "catalog_sha256": _sha256(catalog_path),
         "provider_manifest_path": str(provider_manifest_path),
         "provider_manifest_sha256": provider_hash,
+        "source_role_manifest_path": str(source_role_path),
+        "source_role_manifest_sha256": source_role_hash,
+        "source_role": source_role,
         "field_coverage": field_coverage,
         "files": dict(sorted(files.items())),
         "research_only": True,
