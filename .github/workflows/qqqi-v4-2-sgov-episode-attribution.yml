@@ -15,6 +15,10 @@ on:
       - "notebooks/21_qqqi_qqq_tqqq_v4_2_sgov_episode_attribution.ipynb"
       - "docs/research/qqqi_v4_2_experiment_process_record_2026-08-02.md"
       - "docs/research/qqqi_v4_2_next_stage_experiment_program_2026-08-02.md"
+      - "docs/research/qqqi_qqq_tqqq_v4_2_sgov_episode_attribution_result_2026-08-02.md"
+      - "docs/research/snapshots/qqqi_v4_2_sgov_episode_attribution_2026-08-02.json"
+      - "docs/research/validation/qqqi_v4_2_sgov_episode_attribution_pr347_2026-08-02.json"
+      - "docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-02.yaml"
   workflow_dispatch:
     inputs:
       end_date:
