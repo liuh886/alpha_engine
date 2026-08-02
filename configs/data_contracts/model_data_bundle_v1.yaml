@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 contract_id: "model_data_bundle_v1"
 status: "active_governance_contract"
 research_only: true
@@ -103,6 +103,32 @@ profiles:
         minimum_coverage_ratio: 0.8
       - component_id: "corporate_actions.cn_selected_equities_v3"
         accepted_statuses: ["ready", "partial"]
+        minimum_coverage_ratio: 1.0
+
+  us_selected_alpha158_v1:
+    market: "us"
+    candidate_pool_id: "us_selected_equities_v2"
+    candidate_pool_spec: "configs/research_universes/us_selected_equities_v2.yaml"
+    references: ["QQQ"]
+    required_components:
+      - component_id: "prices.us_selected_equities_v2"
+        accepted_statuses: ["ready"]
+        minimum_coverage_ratio: 1.0
+      - component_id: "factors.qlib_alpha158.panel.us.v1"
+        accepted_statuses: ["ready"]
+        minimum_coverage_ratio: 1.0
+
+  cn_selected_alpha158_v1:
+    market: "cn"
+    candidate_pool_id: "cn_selected_equities_v3"
+    candidate_pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
+    references: ["000300.SH"]
+    required_components:
+      - component_id: "prices.cn_selected_equities_v3"
+        accepted_statuses: ["ready"]
+        minimum_coverage_ratio: 1.0
+      - component_id: "factors.qlib_alpha158.panel.cn.v1"
+        accepted_statuses: ["ready"]
         minimum_coverage_ratio: 1.0
 
   qqqi_qqq_tqqq_rotation_v1:
