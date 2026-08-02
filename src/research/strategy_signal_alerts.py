@@ -159,7 +159,7 @@ def render_signal_alert_markdown(alert: Mapping[str, Any]) -> str:
         "> Research-only signal. It is not an order and is not marked trade-ready.",
         "",
         f"- Signal date: **{alert['signal_date']} close**",
-        f"- Intended execution: **next US session open**",
+        "- Intended execution: **next US session open**",
         f"- Current state: **{alert['current_state_label']}**",
         f"- Target state: **{alert['target_state_label']}**",
         f"- Reason: `{alert['decision_reason']}`",
