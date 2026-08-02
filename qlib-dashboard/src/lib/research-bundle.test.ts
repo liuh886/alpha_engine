@@ -12,6 +12,23 @@ async function digest(text: string): Promise<string> {
   return Array.from(new Uint8Array(value), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+function testFile(text: string, name: string, relativePath: string): File {
+  const file = new File([text], name);
+  Object.defineProperties(file, {
+    webkitRelativePath: { value: relativePath },
+    text: { value: async () => text },
+    arrayBuffer: {
+      value: async () => {
+        const bytes = new TextEncoder().encode(text);
+        const copy = new Uint8Array(bytes.byteLength);
+        copy.set(bytes);
+        return copy.buffer;
+      },
+    },
+  });
+  return file;
+}
+
 async function files(tamperModels = false): Promise<File[]> {
   const models = '[{"id":"run-1","market":"us"}]';
   const exportManifest = '{"snapshot_id":"snapshot-1"}';
@@ -50,15 +67,11 @@ async function files(tamperModels = false): Promise<File[]> {
     ],
   };
 
-  const rows = [
-    new File([JSON.stringify(manifest)], 'alpha-engine-bundle.json'),
-    new File([tamperModels ? '[]' : models], 'models.json'),
-    new File([exportManifest], 'manifest.json'),
+  return [
+    testFile(JSON.stringify(manifest), 'alpha-engine-bundle.json', 'bundle/alpha-engine-bundle.json'),
+    testFile(tamperModels ? '[]' : models, 'models.json', 'bundle/data/models.json'),
+    testFile(exportManifest, 'manifest.json', 'bundle/data/manifest.json'),
   ];
-  Object.defineProperty(rows[0], 'webkitRelativePath', { value: 'bundle/alpha-engine-bundle.json' });
-  Object.defineProperty(rows[1], 'webkitRelativePath', { value: 'bundle/data/models.json' });
-  Object.defineProperty(rows[2], 'webkitRelativePath', { value: 'bundle/data/manifest.json' });
-  return rows;
 }
 
 describe('research bundle reader', () => {
