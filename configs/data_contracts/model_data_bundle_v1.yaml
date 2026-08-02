@@ -1,0 +1,116 @@
+schema_version: "1.0"
+contract_id: "model_data_bundle_v1"
+status: "active_governance_contract"
+research_only: true
+trade_ready: false
+
+component_statuses:
+  - ready
+  - partial
+  - blocked
+  - not_provided
+  - not_applicable
+
+component_kinds:
+  - selected_pool_prices
+  - etf_reference_bundle
+  - fundamental_coverage
+  - corporate_action_coverage
+  - factor_catalog
+  - factor_panel
+  - reference_registry
+
+required_component_fields:
+  - component_id
+  - component_kind
+  - status
+  - market
+  - manifest_path
+  - manifest_sha256
+  - evidence_cutoff
+  - expected_symbol_count
+  - ready_symbol_count
+  - coverage_ratio
+  - missing_symbols
+  - invalid_symbols
+  - quarantined_symbols
+  - providers
+
+frontend_indexes:
+  readiness: "data/model-data-readiness.json"
+  components: "data/data-components.json"
+  training_profiles: "data/training-profiles.json"
+
+training_gate_policy:
+  fail_on_missing_required_component: true
+  fail_on_blocked_required_component: true
+  fail_on_component_hash_mismatch: true
+  fail_on_pool_identity_mismatch: true
+  fail_on_candidate_reference_overlap: true
+  fail_on_post_cutoff_evidence: true
+  optional_partial_components_are_visible: true
+  no_implicit_forward_fill: true
+  no_implicit_symbol_substitution: true
+
+profiles:
+  us_selected_price_only_v1:
+    market: "us"
+    candidate_pool_id: "us_selected_equities_v2"
+    candidate_pool_spec: "configs/research_universes/us_selected_equities_v2.yaml"
+    references: ["QQQ"]
+    required_components:
+      - component_id: "prices.us_selected_equities_v2"
+        accepted_statuses: ["ready"]
+        minimum_coverage_ratio: 1.0
+
+  cn_selected_price_only_v1:
+    market: "cn"
+    candidate_pool_id: "cn_selected_equities_v3"
+    candidate_pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
+    references: ["000300.SH"]
+    required_components:
+      - component_id: "prices.cn_selected_equities_v3"
+        accepted_statuses: ["ready"]
+        minimum_coverage_ratio: 1.0
+
+  us_selected_price_plus_fundamentals_v1:
+    market: "us"
+    candidate_pool_id: "us_selected_equities_v2"
+    candidate_pool_spec: "configs/research_universes/us_selected_equities_v2.yaml"
+    references: ["QQQ"]
+    required_components:
+      - component_id: "prices.us_selected_equities_v2"
+        accepted_statuses: ["ready"]
+        minimum_coverage_ratio: 1.0
+      - component_id: "fundamentals.us_selected_equities_v2"
+        accepted_statuses: ["ready", "partial"]
+        minimum_coverage_ratio: 0.8
+      - component_id: "corporate_actions.us_selected_equities_v2"
+        accepted_statuses: ["ready", "partial"]
+        minimum_coverage_ratio: 1.0
+
+  cn_selected_price_plus_fundamentals_v1:
+    market: "cn"
+    candidate_pool_id: "cn_selected_equities_v3"
+    candidate_pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
+    references: ["000300.SH"]
+    required_components:
+      - component_id: "prices.cn_selected_equities_v3"
+        accepted_statuses: ["ready"]
+        minimum_coverage_ratio: 1.0
+      - component_id: "fundamentals.cn_selected_equities_v3"
+        accepted_statuses: ["ready", "partial"]
+        minimum_coverage_ratio: 0.8
+      - component_id: "corporate_actions.cn_selected_equities_v3"
+        accepted_statuses: ["ready", "partial"]
+        minimum_coverage_ratio: 1.0
+
+  qqqi_qqq_tqqq_rotation_v1:
+    market: "us"
+    candidate_pool_id: "qqqi_qqq_tqqq_reference_bundle_v1"
+    candidate_symbols: ["QQQI", "QQQ", "TQQQ"]
+    references: ["VIX", "VXN"]
+    required_components:
+      - component_id: "references.qqqi_qqq_tqqq_reference_bundle_v1"
+        accepted_statuses: ["ready"]
+        minimum_coverage_ratio: 1.0

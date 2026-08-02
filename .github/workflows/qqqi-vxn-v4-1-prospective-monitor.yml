@@ -18,19 +18,23 @@ on:
       - "tests/test_vxn_prospective_monitor.py"
       - "docs/research/qqqi_qqq_tqqq_vxn_v4_1_prospective_monitoring.md"
       - "docs/research/qqqi_qqq_tqqq_sequential_factor_cycle_2026-08-01.md"
-  schedule:
-    - cron: "0 14 * * 6"
+  workflow_run:
+    workflows: ["ETF Reference Bundle CI"]
+    branches: [main]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   prospective-monitor:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    env:
-      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -72,7 +76,19 @@ jobs:
           tests/test_vix_rotation_experiment.py
           tests/test_strategy_experiment_journal.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Build governed ETF reference bundle
+      - name: Download shared professional ETF bundle
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: qqqi-qqq-tqqq-reference-bundle-${{ github.event.workflow_run.id }}
+          path: artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Build PR validation ETF bundle without credentialed requests
+        if: github.event_name != 'workflow_run'
+        env:
+          TIINGO_API_TOKEN: ""
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py
           --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
@@ -82,13 +98,15 @@ jobs:
           --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
           --output-dir artifacts/evidence/qqqi_qqq_tqqq_vxn_v4_1_prospective_monitor
           --strategy-run-dir artifacts/strategy_runs
-      - name: Upload ETF data, prospective evidence and run record
+      - name: Upload ETF identity, prospective evidence and run record
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qqqi-vxn-v4-1-prospective-${{ github.run_id }}
           path: |
-            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json
+            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/coverage.csv
+            artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/reconciliation.csv
             artifacts/evidence/qqqi_qqq_tqqq_vxn_v4_1_prospective_monitor
             artifacts/strategy_runs/qqqi_qqq_tqqq_vxn_v4_1_prospective_monitor
           if-no-files-found: warn

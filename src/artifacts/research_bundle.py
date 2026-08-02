@@ -50,6 +50,12 @@ def _kind_for(path: PurePosixPath) -> str:
         return "model_index"
     if path.as_posix() == "data/manifest.json":
         return "static_export_manifest"
+    if path.as_posix() == "data/model-data-readiness.json":
+        return "data_readiness_index"
+    if path.as_posix() == "data/data-components.json":
+        return "data_component_index"
+    if path.as_posix() == "data/training-profiles.json":
+        return "training_readiness_index"
     if "curve" in path.parts or path.parent.name == "curves":
         return "backtest_series"
     if path.parts and path.parts[0] == "reports":
@@ -94,7 +100,9 @@ class ResearchBundleBuilder:
                 continue
             for item in root.rglob("*"):
                 if item.is_file():
-                    paths.append(PurePosixPath(item.relative_to(self.source_root).as_posix()))
+                    paths.append(
+                        PurePosixPath(item.relative_to(self.source_root).as_posix())
+                    )
         return sorted(paths, key=lambda item: item.as_posix())
 
     def build(self, *, title: str = "Alpha Engine Research Bundle") -> dict[str, Any]:
@@ -113,7 +121,9 @@ class ResearchBundleBuilder:
             shutil.copy2(source, destination)
             records.append(
                 ArtifactRecord(
-                    artifact_id=hashlib.sha256(safe.as_posix().encode("utf-8")).hexdigest()[:16],
+                    artifact_id=hashlib.sha256(
+                        safe.as_posix().encode("utf-8")
+                    ).hexdigest()[:16],
                     kind=_kind_for(safe),
                     path=safe.as_posix(),
                     media_type=_media_type(source),
@@ -123,13 +133,27 @@ class ResearchBundleBuilder:
                 )
             )
 
-        static_manifest = json.loads((self.source_root / "data/manifest.json").read_text(encoding="utf-8"))
-        models = json.loads((self.source_root / "data/models.json").read_text(encoding="utf-8"))
-        generated_at = static_manifest.get("generated_at") or datetime.now(timezone.utc).isoformat()
-        bundle_id_seed = "\n".join(f"{record.path}:{record.sha256}" for record in records)
+        static_manifest = json.loads(
+            (self.source_root / "data/manifest.json").read_text(encoding="utf-8")
+        )
+        models = json.loads(
+            (self.source_root / "data/models.json").read_text(encoding="utf-8")
+        )
+        generated_at = static_manifest.get("generated_at") or datetime.now(
+            timezone.utc
+        ).isoformat()
+        bundle_id_seed = "\n".join(
+            f"{record.path}:{record.sha256}" for record in records
+        )
         bundle_id = hashlib.sha256(bundle_id_seed.encode("utf-8")).hexdigest()
 
-        markets = sorted({str(row.get("market", "unknown")).lower() for row in models if isinstance(row, dict)})
+        markets = sorted(
+            {
+                str(row.get("market", "unknown")).lower()
+                for row in models
+                if isinstance(row, dict)
+            }
+        )
         manifest: dict[str, Any] = {
             "schema_version": BUNDLE_SCHEMA_VERSION,
             "frontend_reader_range": FRONTEND_READER_RANGE,
@@ -146,15 +170,35 @@ class ResearchBundleBuilder:
             },
             "warnings": list(static_manifest.get("warnings", [])),
             "blocked_gates": list(static_manifest.get("blocked_gates", [])),
-            "promotion_decision": static_manifest.get("promotion_decision", "not_declared"),
+            "promotion_decision": static_manifest.get(
+                "promotion_decision", "not_declared"
+            ),
             "artifacts": [asdict(record) for record in records],
         }
+        readiness_path = self.source_root / "data/model-data-readiness.json"
+        if readiness_path.is_file():
+            readiness = json.loads(readiness_path.read_text(encoding="utf-8"))
+            if not isinstance(readiness, dict):
+                raise BundleBuildError("model-data-readiness.json must be a mapping")
+            manifest["data_readiness"] = {
+                "bundle_id": readiness.get("bundle_id"),
+                "evidence_cutoff": readiness.get("evidence_cutoff"),
+                "summary": readiness.get("summary", {}),
+            }
         manifest_path = self.output_root / "alpha-engine-bundle.json"
-        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
         return manifest
 
 
-def build_research_bundle(source_root: Path, output_root: Path, *, title: str = "Alpha Engine Research Bundle") -> dict[str, Any]:
+def build_research_bundle(
+    source_root: Path,
+    output_root: Path,
+    *,
+    title: str = "Alpha Engine Research Bundle",
+) -> dict[str, Any]:
     return ResearchBundleBuilder(source_root, output_root).build(title=title)
 
 
@@ -179,4 +223,8 @@ def verify_bundle(bundle_root: Path) -> list[str]:
 
 def artifact_paths(manifest: dict[str, Any], kinds: Iterable[str]) -> list[str]:
     wanted = set(kinds)
-    return [str(item["path"]) for item in manifest.get("artifacts", []) if item.get("kind") in wanted]
+    return [
+        str(item["path"])
+        for item in manifest.get("artifacts", [])
+        if item.get("kind") in wanted
+    ]

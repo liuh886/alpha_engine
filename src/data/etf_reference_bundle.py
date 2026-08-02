@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections import Counter
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -55,12 +56,25 @@ def _load_contract(path: Path) -> dict[str, Any]:
 
 
 def _normalise_frame(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
-    required = {"date", "open", "high", "low", "close", "volume", "amount", "factor"}
+    required = {
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "amount",
+        "factor",
+    }
     missing = sorted(required.difference(frame.columns))
     if missing:
         raise ETFReferenceBundleError(f"{symbol} bars missing columns: {missing}")
     out = frame.copy()
-    out["date"] = pd.to_datetime(out["date"], errors="coerce").dt.tz_localize(None).dt.normalize()
+    out["date"] = (
+        pd.to_datetime(out["date"], errors="coerce")
+        .dt.tz_localize(None)
+        .dt.normalize()
+    )
     for column in required.difference({"date"}):
         out[column] = pd.to_numeric(out[column], errors="coerce")
     out = (
@@ -106,6 +120,37 @@ def _event_window_dates(
     return allowed
 
 
+def _compounded_return(series: pd.Series) -> float:
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    if values.empty:
+        return 0.0
+    return float((1.0 + values).prod() - 1.0)
+
+
+def _compounded_drift(primary: pd.Series, fallback: pd.Series) -> float:
+    primary_growth = 1.0 + _compounded_return(primary)
+    fallback_growth = 1.0 + _compounded_return(fallback)
+    if primary_growth <= 0.0 or fallback_growth <= 0.0:
+        return float("inf")
+    return abs(float(primary_growth / fallback_growth - 1.0))
+
+
+def _maximum_annual_open_drift(comparison: pd.DataFrame) -> float:
+    usable = comparison[
+        ["primary_open_return", "fallback_open_return"]
+    ].dropna()
+    if usable.empty:
+        return 0.0
+    drifts = [
+        _compounded_drift(
+            group["primary_open_return"],
+            group["fallback_open_return"],
+        )
+        for _, group in usable.groupby(usable.index.year)
+    ]
+    return max(drifts, default=0.0)
+
+
 def reconcile_adjusted_bars(
     primary: pd.DataFrame | None,
     fallback: pd.DataFrame | None,
@@ -143,10 +188,12 @@ def reconcile_adjusted_bars(
     comparison["primary_open_return"] = left.loc[common, "open"].pct_change()
     comparison["fallback_open_return"] = right.loc[common, "open"].pct_change()
     comparison["close_diff"] = (
-        comparison["primary_close_return"] - comparison["fallback_close_return"]
+        comparison["primary_close_return"]
+        - comparison["fallback_close_return"]
     ).abs()
     comparison["open_diff"] = (
-        comparison["primary_open_return"] - comparison["fallback_open_return"]
+        comparison["primary_open_return"]
+        - comparison["fallback_open_return"]
     ).abs()
     close_diff = comparison["close_diff"].dropna()
     open_diff = comparison["open_diff"].dropna()
@@ -154,15 +201,44 @@ def reconcile_adjusted_bars(
     max_close = float(close_diff.max()) if not close_diff.empty else 0.0
     p99_open = float(open_diff.quantile(0.99)) if not open_diff.empty else 0.0
     max_open = float(open_diff.max()) if not open_diff.empty else 0.0
+    full_period_open_drift = _compounded_drift(
+        comparison["primary_open_return"],
+        comparison["fallback_open_return"],
+    )
+    max_annual_open_drift = _maximum_annual_open_drift(comparison)
 
-    p99_limit = float(settings.get("consensus_p99_adjusted_close_return_diff", 0.001))
-    max_limit = float(settings.get("consensus_max_adjusted_close_return_diff", 0.01))
+    close_p99_limit = float(
+        settings.get("consensus_p99_adjusted_close_return_diff", 0.001)
+    )
+    close_max_limit = float(
+        settings.get("consensus_max_adjusted_close_return_diff", 0.01)
+    )
+    open_p99_limit = float(
+        settings.get(
+            "consensus_p99_adjusted_open_return_diff",
+            close_p99_limit,
+        )
+    )
+    open_max_limit = float(
+        settings.get(
+            "consensus_max_adjusted_open_return_diff",
+            close_max_limit,
+        )
+    )
+    annual_open_drift_limit = float(
+        settings.get("consensus_max_annual_compounded_open_return_drift", 0.002)
+    )
+    full_open_drift_limit = float(
+        settings.get("consensus_max_full_period_compounded_open_return_drift", 0.002)
+    )
     material_limit = float(settings.get("material_return_difference", 0.01))
     event_window = int(settings.get("corporate_action_window_sessions", 1))
     material_dates = {
         pd.Timestamp(value)
         for value in comparison.index[
-            comparison[["close_diff", "open_diff"]].max(axis=1).gt(material_limit)
+            comparison[["close_diff", "open_diff"]]
+            .max(axis=1)
+            .gt(material_limit)
         ]
     }
     allowed_event_dates = _event_window_dates(
@@ -171,20 +247,30 @@ def reconcile_adjusted_bars(
         event_window,
     )
 
-    if (
-        p99_close <= p99_limit
-        and max_close <= max_limit
-        and p99_open <= p99_limit
-        and max_open <= max_limit
-    ):
+    close_consensus = (
+        p99_close <= close_p99_limit and max_close <= close_max_limit
+    )
+    open_execution_consensus = (
+        p99_open <= open_p99_limit
+        and max_open <= open_max_limit
+        and max_annual_open_drift <= annual_open_drift_limit
+        and full_period_open_drift <= full_open_drift_limit
+    )
+    if close_consensus and open_execution_consensus:
         status = "consensus"
-        reason = "adjusted open and close returns agree within frozen tolerances"
+        reason = (
+            "closing total returns and opening execution returns agree within "
+            "their separate frozen distribution and compounded-drift tolerances"
+        )
     elif material_dates and material_dates.issubset(allowed_event_dates):
         status = "explainable_corporate_action_difference"
         reason = "material return differences are confined to Tiingo action windows"
     else:
         status = "quarantine"
-        reason = "adjusted return disagreement is not explained by recorded actions"
+        reason = (
+            "provider disagreement exceeds the close-return, open-return, or "
+            "compounded execution-drift contract"
+        )
 
     return {
         "symbol": symbol,
@@ -198,15 +284,26 @@ def reconcile_adjusted_bars(
         "max_abs_close_return_diff": max_close,
         "p99_abs_open_return_diff": p99_open,
         "max_abs_open_return_diff": max_open,
-        "material_difference_dates": [value.date().isoformat() for value in sorted(material_dates)],
-        "recorded_action_dates": [value.date().isoformat() for value in sorted(_event_dates(primary))],
+        "max_abs_annual_compounded_open_return_drift": max_annual_open_drift,
+        "abs_full_period_compounded_open_return_drift": full_period_open_drift,
+        "close_consensus": close_consensus,
+        "open_execution_consensus": open_execution_consensus,
+        "material_difference_dates": [
+            value.date().isoformat() for value in sorted(material_dates)
+        ],
+        "recorded_action_dates": [
+            value.date().isoformat() for value in sorted(_event_dates(primary))
+        ],
         "reason": reason,
     }
 
 
 def _corporate_actions(frame: pd.DataFrame | None, symbol: str) -> pd.DataFrame:
     columns = ["symbol", "date", "cash_distribution", "split_factor"]
-    if frame is None or not {"cash_distribution", "split_factor"}.issubset(frame.columns):
+    if frame is None or not {
+        "cash_distribution",
+        "split_factor",
+    }.issubset(frame.columns):
         return pd.DataFrame(columns=columns)
     out = frame[["date", "cash_distribution", "split_factor"]].copy()
     out["date"] = pd.to_datetime(out["date"], errors="coerce").dt.normalize()
@@ -217,10 +314,22 @@ def _corporate_actions(frame: pd.DataFrame | None, symbol: str) -> pd.DataFrame:
         out["split_factor"], errors="coerce"
     ).fillna(1.0)
     out = out.loc[
-        out["cash_distribution"].ne(0.0) | out["split_factor"].ne(1.0)
+        out["cash_distribution"].ne(0.0)
+        | out["split_factor"].ne(1.0)
     ].copy()
     out.insert(0, "symbol", symbol)
     return out[columns].reset_index(drop=True)
+
+
+def _error_class(exc: Exception) -> str:
+    declared = str(getattr(exc, "error_class", "")).strip()
+    if declared:
+        return declared
+    if isinstance(exc, ETFReferenceBundleError):
+        return "schema_or_reconciliation_error"
+    if isinstance(exc, ValueError):
+        return "invalid_provider_response"
+    return "data_fetch_error"
 
 
 def _fetch_source(
@@ -231,7 +340,11 @@ def _fetch_source(
     end: str | None,
 ) -> tuple[pd.DataFrame | None, dict[str, Any]]:
     if adapter is None:
-        return None, {"ok": False, "error": "provider is not configured"}
+        return None, {
+            "ok": False,
+            "error_class": "provider_not_configured",
+            "error": "provider is not configured",
+        }
     try:
         result = adapter.fetch_daily_bars(
             FetchRequest(symbol=symbol, market="us", start=start, end=end)
@@ -247,7 +360,64 @@ def _fetch_source(
             "metadata": dict(result.df.attrs.get("provider_metadata", {})),
         }
     except (DataFetchError, ETFReferenceBundleError, ValueError) as exc:
-        return None, {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        evidence: dict[str, Any] = {
+            "ok": False,
+            "error_class": _error_class(exc),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+        for attribute in (
+            "status_code",
+            "attempts",
+            "retry_after_seconds",
+            "rate_limit_reset",
+        ):
+            value = getattr(exc, attribute, None)
+            if value is not None:
+                evidence[attribute] = value
+        return None, evidence
+
+
+def _provider_health_summary(
+    coverage: pd.DataFrame,
+    *,
+    provider: str,
+    attempt_column: str,
+) -> dict[str, Any]:
+    attempts = [
+        json.loads(str(value))
+        for value in coverage[attempt_column].tolist()
+    ]
+    failures = [attempt for attempt in attempts if not attempt.get("ok")]
+    error_counts = Counter(
+        str(attempt.get("error_class", "unknown")) for attempt in failures
+    )
+    latencies = [
+        float(attempt.get("metadata", {}).get("elapsed_seconds"))
+        for attempt in attempts
+        if attempt.get("ok")
+        and attempt.get("metadata", {}).get("elapsed_seconds") is not None
+    ]
+    return {
+        "provider": provider,
+        "attempted_symbols": int(len(attempts)),
+        "successful_symbols": int(len(attempts) - len(failures)),
+        "failed_symbols": int(len(failures)),
+        "success_ratio": (
+            float((len(attempts) - len(failures)) / len(attempts))
+            if attempts
+            else 0.0
+        ),
+        "error_class_counts": dict(sorted(error_counts.items())),
+        "rate_limited_symbols": sorted(
+            str(row.symbol)
+            for row in coverage.itertuples()
+            if json.loads(str(getattr(row, attempt_column))).get("error_class")
+            == "rate_limited"
+        ),
+        "mean_elapsed_seconds": (
+            float(sum(latencies) / len(latencies)) if latencies else None
+        ),
+    }
 
 
 def build_etf_reference_bundle(
@@ -319,7 +489,9 @@ def build_etf_reference_bundle(
             canonical_path = root / "canonical" / f"{symbol}.csv"
             canonical_path.parent.mkdir(parents=True, exist_ok=True)
             canonical.to_csv(canonical_path, index=False)
-            file_hashes[str(canonical_path.relative_to(root))] = _sha256(canonical_path)
+            file_hashes[str(canonical_path.relative_to(root))] = _sha256(
+                canonical_path
+            )
             canonical_status = "ready"
 
         actions = _corporate_actions(primary, symbol)
@@ -354,9 +526,19 @@ def build_etf_reference_bundle(
             }
         )
 
-    coverage = pd.DataFrame(coverage_rows).sort_values("symbol").reset_index(drop=True)
-    reconciliations = pd.DataFrame(reconciliation_rows).sort_values("symbol").reset_index(drop=True)
-    all_actions = pd.concat(action_frames, ignore_index=True) if action_frames else pd.DataFrame()
+    coverage = (
+        pd.DataFrame(coverage_rows).sort_values("symbol").reset_index(drop=True)
+    )
+    reconciliations = (
+        pd.DataFrame(reconciliation_rows)
+        .sort_values("symbol")
+        .reset_index(drop=True)
+    )
+    all_actions = (
+        pd.concat(action_frames, ignore_index=True)
+        if action_frames
+        else pd.DataFrame()
+    )
     coverage_path = root / "coverage.csv"
     reconciliation_path = root / "reconciliation.csv"
     actions_path = root / "corporate_actions.csv"
@@ -387,12 +569,24 @@ def build_etf_reference_bundle(
         strategy_data_ready
         and coverage["professional_source_ok"].all()
         and coverage["fallback_source_ok"].all()
-        and reconciliations["status"].isin(
-            ["consensus", "explainable_corporate_action_difference"]
-        ).all()
+        and reconciliations["status"]
+        .isin(["consensus", "explainable_corporate_action_difference"])
+        .all()
     )
+    provider_health = {
+        "tiingo": _provider_health_summary(
+            coverage,
+            provider="tiingo",
+            attempt_column="primary_attempt",
+        ),
+        "yfinance": _provider_health_summary(
+            coverage,
+            provider="yfinance",
+            attempt_column="fallback_attempt",
+        ),
+    }
     manifest = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "bundle_id": str(contract["bundle_id"]),
         "research_only": True,
         "trade_ready": False,
@@ -412,6 +606,7 @@ def build_etf_reference_bundle(
         "reconciliation_status": {
             str(row.symbol): row.status for row in reconciliations.itertuples()
         },
+        "provider_health": provider_health,
         "provider_contracts": {
             "tiingo": provider_manifest_entry("tiingo"),
             "yfinance": provider_manifest_entry("yfinance"),
@@ -421,6 +616,8 @@ def build_etf_reference_bundle(
             "Yahoo-only bundles are research-usable but not professionally corroborated.",
             "No QQQI observations are synthesized before its actual first source row.",
             "Synthetic amount is diagnostic only and is not reported turnover.",
+            "Open-price reconciliation uses a separate distribution and compounded-drift gate because vendor opening prints are noisier than closing total returns.",
+            "Credential, rate-limit, upstream and validation failures remain distinct provider-health states.",
             "This bundle does not change or promote any strategy rule.",
         ],
     }
@@ -438,7 +635,9 @@ def load_etf_reference_bundle(
     root = Path(bundle_root).resolve()
     manifest_path = root / MANIFEST_NAME
     if not manifest_path.is_file():
-        raise ETFReferenceBundleError(f"ETF bundle manifest is missing: {manifest_path}")
+        raise ETFReferenceBundleError(
+            f"ETF bundle manifest is missing: {manifest_path}"
+        )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if require_strategy_ready and manifest.get("strategy_data_ready") is not True:
         raise ETFReferenceBundleError("ETF bundle is not strategy-data ready")
@@ -446,7 +645,9 @@ def load_etf_reference_bundle(
     requested = [str(symbol).strip().upper() for symbol in symbols]
     undeclared = sorted(set(requested).difference(manifest.get("symbols", [])))
     if undeclared:
-        raise ETFReferenceBundleError(f"ETF bundle does not declare symbols: {undeclared}")
+        raise ETFReferenceBundleError(
+            f"ETF bundle does not declare symbols: {undeclared}"
+        )
 
     bars: dict[str, pd.DataFrame] = {}
     for symbol in requested:
@@ -458,7 +659,8 @@ def load_etf_reference_bundle(
         actual_hash = _sha256(path)
         if actual_hash != expected_hash:
             raise ETFReferenceBundleError(
-                f"canonical ETF hash mismatch for {symbol}: {actual_hash} != {expected_hash}"
+                f"canonical ETF hash mismatch for {symbol}: "
+                f"{actual_hash} != {expected_hash}"
             )
         bars[symbol] = _normalise_frame(pd.read_csv(path), symbol)
 
