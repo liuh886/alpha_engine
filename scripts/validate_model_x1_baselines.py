@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the canonical US x1.0 and CN x1.0 model lifecycle contracts."""
+"""Validate the governed US and CN x1 baseline lifecycle contracts."""
 
 from __future__ import annotations
 
@@ -12,7 +12,12 @@ from typing import Any
 import yaml
 
 MODEL_VERSION = re.compile(r"^[A-Z]{2} x\d+\.\d+$")
-EXPECTED_MODELS = {"us_x1_0": "US x1.0", "cn_x1_0": "CN x1.0"}
+EXPECTED_MODELS = {
+    "us_x1_0": "US x1.0",
+    "us_x1_1": "US x1.1",
+    "cn_x1_0": "CN x1.0",
+}
+EXPECTED_ACTIVE_BASELINES = {"us": "us_x1_1", "cn": "cn_x1_0"}
 EXPECTED_XGB_RUNTIME = {
     "objective": "rank:ndcg",
     "tree_method": "hist",
@@ -21,6 +26,10 @@ EXPECTED_XGB_RUNTIME = {
     "max_depth": 0,
     "learning_rate": 0.05,
     "seed": 42,
+}
+VALID_PARAMETER_IDENTITY_STATUSES = {
+    "effective_runtime_verified",
+    "effective_runtime_verified_legacy_schema",
 }
 
 
@@ -58,7 +67,9 @@ def _validate_xgb_parameter_identity(
 
     if model.get("family") != "xgb":
         raise ValueError(f"{model_id}: canonical model family must be xgb")
-    if model.get("parameter_identity_status") != "effective_runtime_verified":
+    if model.get("parameter_identity_status") not in (
+        VALID_PARAMETER_IDENTITY_STATUSES
+    ):
         raise ValueError(f"{model_id}: effective runtime identity is not verified")
     if "min_data_in_leaf" in model:
         raise ValueError(
@@ -142,20 +153,24 @@ def validate_model_config(
         raise ValueError(f"{model_id}: invalid display_name")
     if entry.get("display_name") != expected_name:
         raise ValueError(f"{model_id}: registry display_name mismatch")
-    if config.get("trade_ready") is not False or config.get("research_only") is not True:
+    if config.get("trade_ready") is not False:
+        raise ValueError(f"{model_id}: baseline must remain trade_ready=false")
+    if config.get("research_only") is not True:
         raise ValueError(f"{model_id}: baseline must remain research-only")
 
     strategy = config["strategy"]
     for key in ("holding_sessions", "rebalance_sessions"):
         if int(strategy.get(key, 0)) != 10:
             raise ValueError(f"{model_id}: {key} must be 10")
-    if int(strategy.get("top_n", 0)) != 15 or int(strategy.get("cost_bps", 0)) != 20:
-        raise ValueError(f"{model_id}: Top-15 and 20 bps conventions must be frozen")
+    if int(strategy.get("top_n", 0)) != 15:
+        raise ValueError(f"{model_id}: Top-15 convention must be frozen")
+    if int(strategy.get("cost_bps", 0)) != 20:
+        raise ValueError(f"{model_id}: 20 bps convention must be frozen")
 
-    if spec.get("market") != config.get("market") or spec.get("benchmark") != config.get(
-        "benchmark"
-    ):
-        raise ValueError(f"{model_id}: frozen spec market/benchmark mismatch")
+    if spec.get("market") != config.get("market"):
+        raise ValueError(f"{model_id}: frozen spec market mismatch")
+    if spec.get("benchmark") != config.get("benchmark"):
+        raise ValueError(f"{model_id}: frozen spec benchmark mismatch")
     groups = spec["factor_library"]["groups"]
     if groups != [config["features"]["group"]]:
         raise ValueError(f"{model_id}: frozen spec factor group mismatch")
@@ -198,6 +213,7 @@ def validate_model_config(
     return {
         "model_id": model_id,
         "display_name": expected_name,
+        "status": str(entry["status"]),
         "config": str(config_path.relative_to(root)),
         "notebook": str(notebook_path.relative_to(root)),
         "frozen_spec": str(spec_path.relative_to(root)),
@@ -215,21 +231,30 @@ def validate_registry(root: Path) -> dict[str, Any]:
     if registry.get("trade_ready") is not False:
         raise ValueError("Registry must remain trade_ready=false")
     if set(registry.get("models", {})) != set(EXPECTED_MODELS):
-        raise ValueError("Registry must contain exactly US x1.0 and CN x1.0")
+        raise ValueError("Registry model set does not match governed versions")
+    if registry.get("active_baselines") != EXPECTED_ACTIVE_BASELINES:
+        raise ValueError("Registry active baseline mapping is invalid")
     policy = registry.get("versioning_policy", {})
     if policy.get("immutable_released_versions") is not True:
         raise ValueError("Released model versions must be immutable")
     if policy.get("final_holdout_reuse_for_selection_allowed") is not False:
         raise ValueError("Final holdout reuse must be forbidden")
+    if registry["models"]["us_x1_0"].get("superseded_by") != "us_x1_1":
+        raise ValueError("US x1.0 must be superseded by US x1.1")
+    if registry["models"]["us_x1_1"].get("status") != (
+        "baseline_research_active"
+    ):
+        raise ValueError("US x1.1 must be the active US research baseline")
 
     models = [
         validate_model_config(root, model_id, dict(registry["models"][model_id]))
         for model_id in sorted(EXPECTED_MODELS)
     ]
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "status": "baseline_model_registry_valid",
         "registry": str(registry_path.relative_to(root)),
+        "active_baselines": dict(registry["active_baselines"]),
         "models": models,
     }
 

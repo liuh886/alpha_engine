@@ -1,0 +1,70 @@
+# Formal US x1.1 research baseline promoted from Candidate A on 2026-08-02.
+# Development selection used 2024H1--2025H2. 2026H1 is consumed reporting evidence.
+schema_version: "1.1"
+experiment_id: "us_x1_1_frozen_v1"
+market: "us"
+benchmark: "QQQ"
+
+universe:
+  source: "configs/research_universes/us_selected_equities_v2.yaml"
+  market_key: "us"
+  universe_id: "us_selected_equities_v2"
+  membership_mode: "static_curated"
+  membership_as_of: "2026-08-01"
+  asset_type: "equity"
+  survivorship_bias: true
+  exact_pool_candidate_count: 87
+  min_symbols: 30
+  alignment_mode: "auto"
+  listing_policy: "no_prelisting_fill_coverage_qualified_static_members"
+
+factor_library:
+  source: "configs/factor_libraries/us_ohlcv.yaml"
+  groups:
+    - "momentum_volatility_volume"
+
+candidate_grid:
+  ranker:
+    model_families:
+      - "xgb"
+    calibrations:
+      - n_gain_bins: 7
+        num_boost_round: 200
+        num_leaves: 31
+        min_data_in_leaf: 20
+        learning_rate: 0.03
+  factor_baselines: []
+
+strategy:
+  horizon_days: 10
+  holding_days: 10
+  rebalance_days: 10
+  top_n: 15
+  bottom_n: 15
+  return_expression: "Ref($close, -10) / $close - 1"
+  return_provenance: "raw_forward_return"
+  research_only: true
+
+walk_forward:
+  requested_train_start: "2021-01-01"
+  test_end: "2026-06-30"
+  first_test_year: 2024
+  last_test_year: 2026
+  min_windows: 3
+  train_embargo_sessions: 10
+  partial_window_policy: "complete_windows_only"
+
+evaluation:
+  benchmark_mode: "reference_only"
+  metrics:
+    - "mean_icir"
+    - "mean_rank_ic"
+    - "mean_spread"
+    - "worst_drawdown"
+    - "ready_ratio"
+    - "positive_icir_ratio"
+    - "positive_spread_ratio"
+  gate_profile: "ten_day_model_gates_v1"
+
+outputs:
+  artifact_profile: "research_run_v1"
