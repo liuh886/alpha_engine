@@ -17,6 +17,7 @@ from src.data.etf_reference_bundle import (
 STRATEGY_SIGNAL_REFERENCES = ("^VIX", "^VXN")
 STRATEGY_DATA_SYMBOLS = (*ETF_REFERENCE_SYMBOLS, *STRATEGY_SIGNAL_REFERENCES)
 STRATEGY_MANIFEST_NAME = "strategy_data_manifest.json"
+ALLOWED_STRATEGY_ROLES = {"tradable", "signal_reference"}
 
 
 class StrategyDataBundleError(ValueError):
@@ -78,6 +79,32 @@ def _load_manifest(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _normalise_supplemental_contract(
+    supplemental_symbols: Sequence[str],
+    supplemental_roles: Mapping[str, str] | None,
+) -> tuple[tuple[str, ...], dict[str, str]]:
+    symbols: list[str] = []
+    roles: dict[str, str] = {}
+    declared_roles = supplemental_roles or {}
+    for value in supplemental_symbols:
+        symbol = str(value).strip().upper()
+        if not symbol or symbol in ETF_REFERENCE_SYMBOLS or symbol in symbols:
+            continue
+        role = str(declared_roles.get(symbol, "signal_reference")).strip()
+        if role not in ALLOWED_STRATEGY_ROLES:
+            raise StrategyDataBundleError(
+                f"unsupported strategy symbol role: {symbol}={role}"
+            )
+        symbols.append(symbol)
+        roles[symbol] = role
+    unknown_roles = sorted(set(declared_roles) - set(symbols))
+    if unknown_roles:
+        raise StrategyDataBundleError(
+            f"supplemental roles reference undeclared symbols: {unknown_roles}"
+        )
+    return tuple(symbols), roles
+
+
 def build_strategy_data_bundle(
     *,
     etf_bundle_root: str | Path,
@@ -87,6 +114,9 @@ def build_strategy_data_bundle(
     component_id: str = "strategy.qqqi_qqq_tqqq_vix_vxn_v1",
     pool_id: str = "qqqi_qqq_tqqq_reference_bundle_v1",
     reference_adapter: MarketDataAdapter | None = None,
+    supplemental_symbols: Sequence[str] = STRATEGY_SIGNAL_REFERENCES,
+    supplemental_roles: Mapping[str, str] | None = None,
+    bundle_id: str = "qqqi_qqq_tqqq_vix_vxn_strategy_data_v1",
 ) -> dict[str, Any]:
     """Build one immutable strategy data identity for tradables and signals."""
 
@@ -94,6 +124,11 @@ def build_strategy_data_bundle(
     output = Path(output_root).resolve()
     output.mkdir(parents=True, exist_ok=True)
     adapter = reference_adapter or YFinanceAdapter()
+    supplemental, supplemental_role_map = _normalise_supplemental_contract(
+        supplemental_symbols,
+        supplemental_roles,
+    )
+    symbols = (*ETF_REFERENCE_SYMBOLS, *supplemental)
 
     etf_bars, etf_coverage, etf_manifest = load_etf_reference_bundle(
         etf_root,
@@ -114,12 +149,12 @@ def build_strategy_data_bundle(
     }
     roles = {
         **{symbol: "tradable" for symbol in ETF_REFERENCE_SYMBOLS},
-        **{symbol: "signal_reference" for symbol in STRATEGY_SIGNAL_REFERENCES},
+        **supplemental_role_map,
     }
 
     missing: list[str] = []
-    reference_attempts: dict[str, dict[str, Any]] = {}
-    for symbol in STRATEGY_SIGNAL_REFERENCES:
+    supplemental_attempts: dict[str, dict[str, Any]] = {}
+    for symbol in supplemental:
         try:
             result = adapter.fetch_daily_bars(
                 FetchRequest(symbol=symbol, market="us", start=start, end=end)
@@ -127,8 +162,9 @@ def build_strategy_data_bundle(
             frame = _normalise_strategy_frame(result.df, symbol)
             frames[symbol] = frame
             providers[symbol] = result.provider
-            reference_attempts[symbol] = {
+            supplemental_attempts[symbol] = {
                 "ok": True,
+                "role": roles[symbol],
                 "provider": result.provider,
                 "provider_symbol": result.provider_symbol or symbol,
                 "rows": int(len(frame)),
@@ -137,14 +173,15 @@ def build_strategy_data_bundle(
             }
         except Exception as exc:
             missing.append(symbol)
-            reference_attempts[symbol] = {
+            supplemental_attempts[symbol] = {
                 "ok": False,
+                "role": roles[symbol],
                 "error": f"{type(exc).__name__}: {exc}",
             }
 
     file_hashes: dict[str, str] = {}
     coverage_rows: list[dict[str, Any]] = []
-    for symbol in STRATEGY_DATA_SYMBOLS:
+    for symbol in symbols:
         frame = frames.get(symbol)
         if frame is None:
             coverage_rows.append(
@@ -184,7 +221,7 @@ def build_strategy_data_bundle(
     file_hashes[str(coverage_path.relative_to(output))] = _sha256(coverage_path)
 
     ready_rows = coverage.loc[coverage["status"].eq("ready")]
-    expected = len(STRATEGY_DATA_SYMBOLS)
+    expected = len(symbols)
     ready = int(len(ready_rows))
     first_date: str | None = None
     last_date: str | None = None
@@ -200,8 +237,8 @@ def build_strategy_data_bundle(
 
     status = "ready" if ready == expected and first_date and last_date else "blocked"
     manifest: dict[str, Any] = {
-        "schema_version": "1.0",
-        "bundle_id": "qqqi_qqq_tqqq_vix_vxn_strategy_data_v1",
+        "schema_version": "1.1",
+        "bundle_id": bundle_id,
         "component_id": component_id,
         "component_kind": "strategy_data_bundle",
         "status": status,
@@ -222,7 +259,7 @@ def build_strategy_data_bundle(
         ),
         "research_only": True,
         "trade_ready": False,
-        "symbols": list(STRATEGY_DATA_SYMBOLS),
+        "symbols": list(symbols),
         "roles": roles,
         "files": dict(sorted(file_hashes.items())),
         "details": {
@@ -230,9 +267,10 @@ def build_strategy_data_bundle(
             "source_etf_manifest_path": str(etf_manifest_path),
             "source_etf_manifest_sha256": _sha256(etf_manifest_path),
             "selected_providers": providers,
-            "reference_attempts": reference_attempts,
+            "supplemental_attempts": supplemental_attempts,
             "etf_coverage_rows": int(len(etf_coverage)),
             "signal_references_are_non_tradable": True,
+            "role_contract_version": "1.0",
         },
     }
     _write_json(output / STRATEGY_MANIFEST_NAME, manifest)
@@ -248,6 +286,12 @@ def verify_strategy_data_bundle(bundle_root: str | Path) -> dict[str, Any]:
         )
     if manifest.get("trade_ready") is not False:
         raise StrategyDataBundleError("strategy data bundle violates trade-ready boundary")
+    symbols = [str(value).strip().upper() for value in manifest.get("symbols", [])]
+    roles = manifest.get("roles", {})
+    if not symbols or not isinstance(roles, dict) or set(symbols) != set(roles):
+        raise StrategyDataBundleError("strategy data symbol/role contract is invalid")
+    if any(str(role) not in ALLOWED_STRATEGY_ROLES for role in roles.values()):
+        raise StrategyDataBundleError("strategy data contains an unsupported symbol role")
     files = manifest.get("files", {})
     if not isinstance(files, dict):
         raise StrategyDataBundleError("strategy data file inventory must be a mapping")
@@ -266,12 +310,19 @@ def verify_strategy_data_bundle(bundle_root: str | Path) -> dict[str, Any]:
 def load_strategy_data_bundle(
     bundle_root: str | Path,
     *,
-    symbols: Sequence[str] = STRATEGY_DATA_SYMBOLS,
+    symbols: Sequence[str] | None = None,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, dict[str, Any]]:
     root = Path(bundle_root).resolve()
     manifest = verify_strategy_data_bundle(root)
-    declared = set(str(value) for value in manifest.get("symbols", []))
-    requested = [str(value).strip().upper() for value in symbols]
+    declared_order = [
+        str(value).strip().upper() for value in manifest.get("symbols", [])
+    ]
+    declared = set(declared_order)
+    requested = (
+        declared_order
+        if symbols is None
+        else [str(value).strip().upper() for value in symbols]
+    )
     missing = sorted(set(requested).difference(declared))
     if missing:
         raise StrategyDataBundleError(f"strategy bundle does not declare: {missing}")
