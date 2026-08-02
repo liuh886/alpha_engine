@@ -1,0 +1,23 @@
+schema_version: "1.0"
+registry_id: "data_recipe_registry_v1"
+status: "active_governance_contract"
+research_only: true
+trade_ready: false
+
+allowed_builders:
+  - strategy_bundle
+  - selected_pool_prices
+
+recipes:
+  qqq-rotation:
+    path: "configs/data_recipes/qqq_rotation_v1.yaml"
+    builder: "strategy_bundle"
+  qqq-rotation-sgov:
+    path: "configs/data_recipes/qqq_rotation_sgov_v1.yaml"
+    builder: "strategy_bundle"
+  us87-prices:
+    path: "configs/data_recipes/us87_prices_v1.yaml"
+    builder: "selected_pool_prices"
+  cn130-prices:
+    path: "configs/data_recipes/cn130_prices_v1.yaml"
+    builder: "selected_pool_prices"

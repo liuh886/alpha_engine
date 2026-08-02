@@ -1,0 +1,40 @@
+schema_version: "1.0"
+recipe_id: "cn130-prices"
+builder: "selected_pool_prices"
+status: "active_research_recipe"
+research_only: true
+trade_ready: false
+market: "cn"
+
+description: >-
+  Build or reuse the exact CN130 selected-pool Qlib provider as an immutable,
+  promotion-gated data product at a declared cutoff.
+
+history:
+  default_cutoff: null
+
+source_products:
+  output_root: "artifacts/data/selected_pool_prices/cn130"
+  provider_relative_path: "data/providers/cn"
+  model_data_bundle_root: "artifacts/data/model_data/cn130-prices"
+  frontend_data_dir: "artifacts/site/data"
+
+selected_pool_refresh:
+  market: "cn"
+  source_csv_dir: "data/csv_clean"
+  start: "2021-01-01"
+  max_rounds: 1
+  full_refresh: true
+
+model_data:
+  contract: "configs/data_contracts/model_data_bundle_v1.yaml"
+  component_id: "prices.cn_selected_equities_v3"
+  component_kind: "selected_pool_prices"
+  profile_id: "cn_selected_price_only_v1"
+  candidate_pool_id: "cn_selected_equities_v3"
+  market: "cn"
+
+cache:
+  pointer: "artifacts/cache/data_recipes/cn130-prices/latest.json"
+  reuse_requires_ready_profile: true
+  forbid_cross_cutoff_reuse: true

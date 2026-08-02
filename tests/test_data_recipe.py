@@ -11,6 +11,7 @@ from src.data.data_recipe import data_recipe_status, prepare_data_recipe
 
 
 CONFIG_PATHS = (
+    Path("configs/data_recipes/registry_v1.yaml"),
     Path("configs/data_recipes/qqq_rotation_v1.yaml"),
     Path("configs/data_contracts/qqq_rotation_model_data_v1.yaml"),
     Path("configs/data/qqqi_qqq_tqqq_reference_bundle_v1.yaml"),

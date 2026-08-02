@@ -6,15 +6,19 @@ on:
     paths:
       - ".github/workflows/researcher-data-cli-ci.yml"
       - "pyproject.toml"
+      - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "configs/data_contracts/qqq_rotation_model_data_v1.yaml"
-      - "configs/data_recipes/qqq_rotation_v1.yaml"
+      - "configs/data_contracts/qqq_rotation_sgov_model_data_v1.yaml"
+      - "configs/data_recipes/**"
       - "src/cli/**"
       - "src/data/data_recipe.py"
       - "src/data/model_data_profile.py"
       - "src/data/strategy_data_bundle.py"
       - "src/research/etf_strategy_data.py"
       - "scripts/data/check_model_data_profile.py"
+      - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "tests/test_data_recipe.py"
+      - "tests/test_data_recipe_registry.py"
       - "tests/test_researcher_cli.py"
       - "tests/test_strategy_data_bundle.py"
   push:
@@ -22,15 +26,19 @@ on:
     paths:
       - ".github/workflows/researcher-data-cli-ci.yml"
       - "pyproject.toml"
+      - "configs/data_contracts/model_data_bundle_v1.yaml"
       - "configs/data_contracts/qqq_rotation_model_data_v1.yaml"
-      - "configs/data_recipes/qqq_rotation_v1.yaml"
+      - "configs/data_contracts/qqq_rotation_sgov_model_data_v1.yaml"
+      - "configs/data_recipes/**"
       - "src/cli/**"
       - "src/data/data_recipe.py"
       - "src/data/model_data_profile.py"
       - "src/data/strategy_data_bundle.py"
       - "src/research/etf_strategy_data.py"
       - "scripts/data/check_model_data_profile.py"
+      - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "tests/test_data_recipe.py"
+      - "tests/test_data_recipe_registry.py"
       - "tests/test_researcher_cli.py"
       - "tests/test_strategy_data_bundle.py"
 
@@ -47,6 +55,7 @@ jobs:
     timeout-minutes: 30
     env:
       TIINGO_API_TOKEN: ""
+      TUSHARE_TOKEN: ""
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -57,9 +66,10 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Verify installed researcher command
+      - name: Verify installed researcher command and recipe discovery
         run: |
           uv run alpha --help
+          uv run alpha data list
           uv run alpha data prepare --help
           uv run alpha research run --help
       - name: Ruff researcher data paths
@@ -72,6 +82,7 @@ jobs:
           src/research/etf_strategy_data.py
           scripts/data/check_model_data_profile.py
           tests/test_data_recipe.py
+          tests/test_data_recipe_registry.py
           tests/test_researcher_cli.py
           tests/test_strategy_data_bundle.py
       - name: Mypy researcher data paths
@@ -87,6 +98,7 @@ jobs:
         run: >-
           uv run pytest
           tests/test_data_recipe.py
+          tests/test_data_recipe_registry.py
           tests/test_researcher_cli.py
           tests/test_strategy_data_bundle.py
           tests/test_model_data_profile_gate.py

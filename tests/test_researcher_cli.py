@@ -6,6 +6,22 @@ from pathlib import Path
 from src.cli import main as cli
 
 
+def test_data_list_renders_registry_catalog(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        cli,
+        "data_recipe_catalog",
+        lambda root: {
+            "recipes": [{"recipe_id": "us87-prices"}],
+            "research_only": True,
+            "trade_ready": False,
+        },
+    )
+    code = cli.main(["data", "list"])
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["recipes"][0]["recipe_id"] == "us87-prices"
+
+
 def test_data_prepare_command_renders_governed_result(monkeypatch, capsys) -> None:
     captured: dict[str, object] = {}
 

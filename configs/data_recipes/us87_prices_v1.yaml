@@ -1,0 +1,40 @@
+schema_version: "1.0"
+recipe_id: "us87-prices"
+builder: "selected_pool_prices"
+status: "active_research_recipe"
+research_only: true
+trade_ready: false
+market: "us"
+
+description: >-
+  Build or reuse the exact US87 selected-pool Qlib provider as an immutable,
+  promotion-gated data product at a declared cutoff.
+
+history:
+  default_cutoff: null
+
+source_products:
+  output_root: "artifacts/data/selected_pool_prices/us87"
+  provider_relative_path: "data/providers/us"
+  model_data_bundle_root: "artifacts/data/model_data/us87-prices"
+  frontend_data_dir: "artifacts/site/data"
+
+selected_pool_refresh:
+  market: "us"
+  source_csv_dir: "data/csv_clean"
+  start: "2021-01-01"
+  max_rounds: 1
+  full_refresh: true
+
+model_data:
+  contract: "configs/data_contracts/model_data_bundle_v1.yaml"
+  component_id: "prices.us_selected_equities_v2"
+  component_kind: "selected_pool_prices"
+  profile_id: "us_selected_price_only_v1"
+  candidate_pool_id: "us_selected_equities_v2"
+  market: "us"
+
+cache:
+  pointer: "artifacts/cache/data_recipes/us87-prices/latest.json"
+  reuse_requires_ready_profile: true
+  forbid_cross_cutoff_reuse: true
