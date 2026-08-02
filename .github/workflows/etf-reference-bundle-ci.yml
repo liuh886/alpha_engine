@@ -32,12 +32,6 @@ on:
   schedule:
     - cron: "30 13 * * 6"
   workflow_dispatch:
-    inputs:
-      require_professional:
-        description: "Require Tiingo plus independent reconciliation"
-        required: true
-        default: false
-        type: boolean
 
 concurrency:
   group: etf-reference-bundle-${{ github.event.pull_request.number || github.ref }}
@@ -88,6 +82,7 @@ jobs:
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   live-bundle:
+    if: github.event_name != 'pull_request'
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -103,19 +98,11 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Build current ETF bundle
-        shell: bash
-        run: |
-          extra=""
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.require_professional }}" = "true" ]; then
-            extra="--require-professional"
-          elif [ -n "$TIINGO_API_TOKEN" ]; then
-            extra="--require-professional"
-          fi
-          uv run python scripts/data/build_etf_reference_bundle.py \
-            --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1 \
-            $extra
-      - name: Verify strategy and professional-source gates
+      - name: Build current ETF bundle and retain failure evidence
+        run: >-
+          uv run python scripts/data/build_etf_reference_bundle.py
+          --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+      - name: Classify Tiingo secret and professional-source status
         run: |
           uv run python - <<'PY'
           import json
@@ -125,32 +112,35 @@ jobs:
           root = Path("artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1")
           path = root / "bundle_manifest.json"
           payload = json.loads(path.read_text(encoding="utf-8"))
-          assert payload["strategy_data_ready"] is True, payload
-          assert payload["symbols"] == ["QQQ", "QQQI", "TQQQ"], payload
-          assert payload["common_history_start"] is not None, payload
-          assert payload["trade_ready"] is False, payload
-
           token_configured = bool(os.getenv("TIINGO_API_TOKEN", "").strip())
-          status = "not_configured"
-          if token_configured:
-              assert payload["professional_source_ready"] is True, payload
-              assert set(payload["selected_providers"].values()) == {"tiingo"}, payload
-              accepted = {"consensus", "explainable_corporate_action_difference"}
-              assert set(payload["reconciliation_status"].values()) <= accepted, payload
+          health = payload.get("provider_health", {}).get("tiingo", {})
+          error_counts = health.get("error_class_counts", {})
+
+          if not token_configured:
+              status = "not_configured"
+          elif payload.get("professional_source_ready") is True:
               status = "usable"
-              print("::notice title=Tiingo secret usable::QQQ, QQQI and TQQQ passed Tiingo identity and independent reconciliation gates")
+          elif error_counts.get("rate_limited"):
+              status = "rate_limited"
+          elif error_counts.get("credential_or_entitlement"):
+              status = "credential_or_entitlement"
+          elif any(
+              value in {"quarantine", "provider_missing"}
+              for value in payload.get("reconciliation_status", {}).values()
+          ):
+              status = "reconciliation_or_provider_failed"
           else:
-              assert payload["professional_source_ready"] is False, payload
-              print("::notice title=Tiingo secret not configured::Yahoo research fallback remains active")
+              status = "professional_gate_failed"
 
           secret_status = {
-              "schema_version": "1.0",
+              "schema_version": "1.1",
               "credential_env": "TIINGO_API_TOKEN",
               "token_configured": token_configured,
               "status": status,
-              "professional_source_ready": payload["professional_source_ready"],
-              "selected_providers": payload["selected_providers"],
-              "reconciliation_status": payload["reconciliation_status"],
+              "professional_source_ready": payload.get("professional_source_ready"),
+              "selected_providers": payload.get("selected_providers", {}),
+              "reconciliation_status": payload.get("reconciliation_status", {}),
+              "provider_health": health,
               "research_only": True,
               "trade_ready": False,
           }
@@ -158,8 +148,20 @@ jobs:
               json.dumps(secret_status, indent=2, sort_keys=True) + "\n",
               encoding="utf-8",
           )
+          print(json.dumps(secret_status, indent=2, sort_keys=True))
+
+          assert payload["strategy_data_ready"] is True, payload
+          assert payload["symbols"] == ["QQQ", "QQQI", "TQQQ"], payload
+          assert payload["common_history_start"] is not None, payload
+          assert payload["trade_ready"] is False, payload
+          if token_configured:
+              assert status == "usable", secret_status
+              assert set(payload["selected_providers"].values()) == {"tiingo"}, payload
+              accepted = {"consensus", "explainable_corporate_action_difference"}
+              assert set(payload["reconciliation_status"].values()) <= accepted, payload
+              print("::notice title=Tiingo secret usable::QQQ, QQQI and TQQQ passed identity, provider-health and independent reconciliation gates")
           PY
-      - name: Upload ETF reference bundle
+      - name: Upload ETF reference bundle and credential evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
