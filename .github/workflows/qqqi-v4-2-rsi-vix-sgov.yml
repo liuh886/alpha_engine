@@ -8,6 +8,7 @@ on:
       - "configs/research_paradigms/qqqi_qqq_tqqq_v4_2_rsi_vix_adaptive_sgov_v4_9_research.yaml"
       - "src/research/v4_2_rsi_vix_sgov_experiment.py"
       - "scripts/run_qqqi_v4_2_rsi_vix_sgov_experiment.py"
+      - "scripts/finalize_qqqi_v4_2_rsi_vix_sgov_evidence.py"
       - "tests/test_v4_2_rsi_vix_sgov_experiment.py"
   workflow_dispatch:
     inputs:
@@ -40,6 +41,7 @@ jobs:
           uv run ruff check \
             src/research/v4_2_rsi_vix_sgov_experiment.py \
             scripts/run_qqqi_v4_2_rsi_vix_sgov_experiment.py \
+            scripts/finalize_qqqi_v4_2_rsi_vix_sgov_evidence.py \
             tests/test_v4_2_rsi_vix_sgov_experiment.py
           uv run pytest \
             tests/test_v4_2_rsi_vix_sgov_experiment.py \
@@ -64,6 +66,11 @@ jobs:
           uv run python scripts/run_qqqi_v4_2_rsi_vix_sgov_experiment.py
           --end-date "${{ inputs.end_date }}"
           --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+          --output-dir
+          artifacts/evidence/qqqi_qqq_tqqq_v4_2_rsi_vix_adaptive_sgov_v4_9_research
+      - name: Finalize episode signal and execution context
+        run: >-
+          uv run python scripts/finalize_qqqi_v4_2_rsi_vix_sgov_evidence.py
           --output-dir
           artifacts/evidence/qqqi_qqq_tqqq_v4_2_rsi_vix_adaptive_sgov_v4_9_research
       - name: Upload evidence and report
