@@ -8,7 +8,6 @@ import pytest
 
 from scripts.verify_formal_backtest_freshness import (
     FormalBacktestFreshnessError,
-    latest_completed_session,
     verify,
 )
 
@@ -26,6 +25,7 @@ def _fixture(
     range_end: str = "2026-07-31",
     receipt_required: bool = True,
     declared_cutoff: str = "2026-07-31",
+    next_close: str = "2026-08-03T20:00:00Z",
 ) -> Path:
     root = tmp_path / "formal"
     root.mkdir()
@@ -34,7 +34,7 @@ def _fixture(
         {
             "cutoff_policy": "latest_completed_trading_session",
             "markets": {"us": declared_cutoff},
-            "market_calendars": {"us": "XNYS"},
+            "next_session_close_utc": {"us": next_close},
             "required_models": ["model_a"],
             "freshness_receipt_required_models": (
                 ["model_a"] if receipt_required else []
@@ -79,33 +79,34 @@ def _fixture(
     return root
 
 
-def test_accepts_current_formal_package(tmp_path: Path) -> None:
+def test_accepts_before_next_session_close(tmp_path: Path) -> None:
     result = verify(
         _fixture(tmp_path),
         as_of="2026-08-03T02:16:00Z",
     )
     assert result["status"] == "current"
-    assert result["resolved_latest_sessions"] == {"us": "2026-07-31"}
+    assert result["next_session_close_utc"] == {
+        "us": "2026-08-03T20:00:00+00:00"
+    }
     assert result["verified_models"][0]["required_cutoff"] == "2026-07-31"
 
 
-def test_exchange_calendars_resolve_previous_completed_session() -> None:
-    import pandas as pd
-
-    as_of = pd.Timestamp("2026-08-03T02:16:00Z")
-    assert latest_completed_session("XNYS", as_of) == "2026-07-31"
-    assert latest_completed_session("XSHG", as_of) == "2026-07-31"
-
-
-def test_rejects_declared_cutoff_behind_exchange_calendar(tmp_path: Path) -> None:
-    root = _fixture(
-        tmp_path,
-        evidence_cutoff="2026-07-30",
-        range_end="2026-07-30",
-        declared_cutoff="2026-07-30",
-    )
+def test_rejects_at_next_session_close(tmp_path: Path) -> None:
+    root = _fixture(tmp_path)
     with pytest.raises(FormalBacktestFreshnessError, match="declared cutoff.*stale"):
-        verify(root, as_of="2026-08-03T02:16:00Z")
+        verify(root, as_of="2026-08-03T20:00:00Z")
+
+
+def test_rejects_after_next_session_close(tmp_path: Path) -> None:
+    root = _fixture(tmp_path)
+    with pytest.raises(FormalBacktestFreshnessError, match="next session closed"):
+        verify(root, as_of="2026-08-04T00:00:00Z")
+
+
+def test_rejects_naive_as_of_timestamp(tmp_path: Path) -> None:
+    root = _fixture(tmp_path)
+    with pytest.raises(FormalBacktestFreshnessError, match="must include a timezone"):
+        verify(root, as_of="2026-08-03T02:16:00")
 
 
 def test_accepts_current_provider_with_earlier_realized_range(tmp_path: Path) -> None:
