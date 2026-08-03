@@ -1,4 +1,4 @@
-"""Materialize immutable formal-package bases pinned to a Git commit."""
+"""Materialize immutable formal-release files pinned to a Git commit."""
 
 from __future__ import annotations
 
@@ -54,11 +54,7 @@ def _ensure_commit(root: Path, commit: str, *, fetch: bool) -> None:
 
 
 def materialize(
-    *,
-    repository_root: Path,
-    manifest_path: Path,
-    output_dir: Path,
-    fetch: bool = True,
+    *, repository_root: Path, manifest_path: Path, output_dir: Path, fetch: bool = True
 ) -> dict[str, Any]:
     manifest = _object(manifest_path)
     if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
@@ -66,40 +62,48 @@ def materialize(
     commit = str(manifest.get("base_commit") or "")
     if len(commit) != 40:
         raise FormalBaseMaterializationError("base_commit must be a full Git SHA")
-    models = manifest.get("models")
-    if not isinstance(models, dict) or set(models) != {"us_x1_1", "cn_x1_0"}:
-        raise FormalBaseMaterializationError("base manifest must define US x1.1 and CN x1.0")
+    files = manifest.get("files")
+    required = {"catalog", "qqqi_qqq_tqqq_v4_2", "us_x1_1", "cn_x1_0"}
+    if not isinstance(files, dict) or set(files) != required:
+        raise FormalBaseMaterializationError("base manifest must define the complete formal release")
 
     root = repository_root.resolve()
     _ensure_commit(root, commit, fetch=fetch)
     output_dir.mkdir(parents=True, exist_ok=True)
     records: dict[str, dict[str, Any]] = {}
-    for model_id in ("us_x1_1", "cn_x1_0"):
-        row = models[model_id]
+    output_names: set[str] = set()
+    for file_id in sorted(required):
+        row = files[file_id]
         if not isinstance(row, dict):
-            raise FormalBaseMaterializationError(f"invalid base row: {model_id}")
+            raise FormalBaseMaterializationError(f"invalid base row: {file_id}")
         source_path = str(row.get("path") or "")
+        output_name = str(row.get("output_name") or "")
         expected = str(row.get("sha256") or "").lower()
         if not source_path or source_path.startswith("/") or ".." in Path(source_path).parts:
             raise FormalBaseMaterializationError(f"unsafe base path: {source_path}")
+        if Path(output_name).name != output_name or not output_name.endswith(".json"):
+            raise FormalBaseMaterializationError(f"unsafe output name: {output_name}")
+        if output_name in output_names:
+            raise FormalBaseMaterializationError(f"duplicate output name: {output_name}")
+        output_names.add(output_name)
         if len(expected) != 64 or any(char not in "0123456789abcdef" for char in expected):
-            raise FormalBaseMaterializationError(f"invalid base digest: {model_id}")
+            raise FormalBaseMaterializationError(f"invalid base digest: {file_id}")
         payload = _git(root, "show", f"{commit}:{source_path}").stdout
         actual = hashlib.sha256(payload).hexdigest()
         if actual != expected:
             raise FormalBaseMaterializationError(
-                f"base digest mismatch for {model_id}: expected {expected}, got {actual}"
+                f"base digest mismatch for {file_id}: expected {expected}, got {actual}"
             )
-        target = output_dir / f"{model_id}.json"
+        target = output_dir / output_name
         target.write_bytes(payload)
-        records[model_id] = {
+        records[file_id] = {
             "source_path": source_path,
             "output_path": target.as_posix(),
             "sha256": actual,
             "size_bytes": len(payload),
         }
 
-    receipt = {
+    return {
         "schema_version": "1.0.0",
         "status": "materialized",
         "base_commit": commit,
@@ -107,17 +111,12 @@ def materialize(
         "research_only": True,
         "trade_ready": False,
     }
-    return receipt
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository-root", type=Path, default=Path.cwd())
-    parser.add_argument(
-        "--manifest",
-        type=Path,
-        default=Path("data/research/formal_backtests/base_manifest.json"),
-    )
+    parser.add_argument("--manifest", type=Path, default=Path("data/research/formal_backtests/base_manifest.json"))
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, default=None)
     parser.add_argument("--no-fetch", action="store_true")
