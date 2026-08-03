@@ -27,6 +27,16 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _string_set(payload: dict[str, Any], key: str) -> set[str]:
+    values = payload.get(key)
+    if not isinstance(values, list) or not values:
+        raise FormalBacktestFreshnessError(f"{key} is missing")
+    result = {str(value) for value in values}
+    if len(result) != len(values):
+        raise FormalBacktestFreshnessError(f"{key} contains duplicates")
+    return result
+
+
 def verify(root: Path) -> dict[str, Any]:
     root = root.resolve()
     policy = _object(root / "freshness.json")
@@ -37,28 +47,32 @@ def verify(root: Path) -> dict[str, Any]:
         raise FormalBacktestFreshnessError("freshness policy weakens research boundary")
 
     markets = policy.get("markets")
-    required = policy.get("required_models")
     records = catalog.get("records")
     if not isinstance(markets, dict) or not markets:
         raise FormalBacktestFreshnessError("market cutoffs are missing")
-    if not isinstance(required, list) or not required:
-        raise FormalBacktestFreshnessError("required model list is missing")
     if not isinstance(records, list):
         raise FormalBacktestFreshnessError("formal catalog records are missing")
+    required = _string_set(policy, "required_models")
+    receipt_required = _string_set(policy, "freshness_receipt_required_models")
+    end_required = _string_set(policy, "date_range_end_required_models")
+    if not receipt_required.issubset(required) or not end_required.issubset(required):
+        raise FormalBacktestFreshnessError(
+            "freshness receipt/date-end requirements exceed required_models"
+        )
 
     by_id = {
         str(row.get("model_id")): row
         for row in records
         if isinstance(row, dict) and row.get("model_id")
     }
-    if set(by_id) != set(str(value) for value in required):
+    if set(by_id) != required:
         raise FormalBacktestFreshnessError(
             "formal catalog does not exactly match freshness required_models"
         )
 
     verified: list[dict[str, Any]] = []
-    for model_id in required:
-        record = by_id[str(model_id)]
+    for model_id in sorted(required):
+        record = by_id[model_id]
         package_path = root / str(record.get("path") or "")
         if not package_path.is_file():
             raise FormalBacktestFreshnessError(f"{model_id}: package is missing")
@@ -77,31 +91,63 @@ def verify(root: Path) -> dict[str, Any]:
         market = str(package.get("market") or "")
         expected = str(markets.get(market) or "")
         if not expected:
-            raise FormalBacktestFreshnessError(f"{model_id}: no cutoff for market {market!r}")
+            raise FormalBacktestFreshnessError(
+                f"{model_id}: no cutoff for market {market!r}"
+            )
         actual = str(package.get("evidence_cutoff") or "")
+        if actual != expected:
+            raise FormalBacktestFreshnessError(
+                f"{model_id}: stale formal package; expected evidence_cutoff "
+                f"{expected}, found {actual!r}"
+            )
+
         date_range = package.get("date_range")
         end = str(date_range.get("end") or "") if isinstance(date_range, dict) else ""
-        freshness = package.get("freshness")
-        if actual != expected or end != expected:
+        if not end or end > expected:
             raise FormalBacktestFreshnessError(
-                f"{model_id}: stale formal package; expected {expected}, "
-                f"evidence_cutoff={actual!r}, date_range.end={end!r}"
+                f"{model_id}: invalid date_range.end={end!r} for cutoff {expected}"
             )
-        if not isinstance(freshness, dict):
-            raise FormalBacktestFreshnessError(f"{model_id}: freshness receipt is missing")
-        if freshness.get("status") != "current":
-            raise FormalBacktestFreshnessError(f"{model_id}: freshness status is not current")
-        if freshness.get("required_cutoff") != expected:
-            raise FormalBacktestFreshnessError(f"{model_id}: freshness cutoff mismatch")
-        if freshness.get("latest_completed_session") != expected:
-            raise FormalBacktestFreshnessError(f"{model_id}: latest session mismatch")
+        if model_id in end_required and end != expected:
+            raise FormalBacktestFreshnessError(
+                f"{model_id}: stale reporting range; expected {expected}, found {end!r}"
+            )
+
+        if model_id in receipt_required:
+            freshness = package.get("freshness")
+            if not isinstance(freshness, dict):
+                raise FormalBacktestFreshnessError(
+                    f"{model_id}: freshness receipt is missing"
+                )
+            if freshness.get("status") != "current":
+                raise FormalBacktestFreshnessError(
+                    f"{model_id}: freshness status is not current"
+                )
+            if freshness.get("required_cutoff") != expected:
+                raise FormalBacktestFreshnessError(
+                    f"{model_id}: freshness cutoff mismatch"
+                )
+            if freshness.get("latest_completed_session") != expected:
+                raise FormalBacktestFreshnessError(
+                    f"{model_id}: latest session mismatch"
+                )
+            realized_end = str(freshness.get("latest_realized_holding_end") or "")
+            if not realized_end or realized_end > expected:
+                raise FormalBacktestFreshnessError(
+                    f"{model_id}: invalid realized holding end {realized_end!r}"
+                )
+            if freshness.get("model_selection_reopened") is not False:
+                raise FormalBacktestFreshnessError(
+                    f"{model_id}: freshness update reopened model selection"
+                )
 
         verified.append(
             {
                 "model_id": model_id,
                 "market": market,
                 "required_cutoff": expected,
+                "date_range_end": end,
                 "package_sha256": observed_hash,
+                "freshness_receipt_required": model_id in receipt_required,
             }
         )
 
