@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 function sha256(text: string): string {
@@ -37,20 +39,19 @@ const bundleManifest = {
   ],
 };
 
-async function mockBundle(page: Page) {
-  await page.route('**/bundle/**', async (route) => {
-    const pathname = new URL(route.request().url()).pathname;
-    if (pathname.endsWith('/alpha-engine-bundle.json')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(bundleManifest) });
-    } else if (pathname.endsWith('/data/models.json')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: modelsText });
-    } else if (pathname.endsWith('/data/manifest.json')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: exportManifestText });
-    } else {
-      await route.fulfill({ status: 404, body: 'not declared' });
-    }
-  });
+async function installBundleFixture(): Promise<void> {
+  const root = resolve(process.cwd(), 'dist', 'bundle');
+  await mkdir(resolve(root, 'data'), { recursive: true });
+  await Promise.all([
+    writeFile(resolve(root, 'alpha-engine-bundle.json'), JSON.stringify(bundleManifest), 'utf8'),
+    writeFile(resolve(root, 'data', 'models.json'), modelsText, 'utf8'),
+    writeFile(resolve(root, 'data', 'manifest.json'), exportManifestText, 'utf8'),
+  ]);
 }
+
+test.beforeAll(async () => {
+  await installBundleFixture();
+});
 
 async function assertNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -75,7 +76,6 @@ test('static studio opens without authentication or backend APIs', async ({ page
   });
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
-  await mockBundle(page);
   await openStudio(page);
 
   if (testInfo.project.name === 'mobile') {
@@ -155,7 +155,6 @@ test('static studio opens without authentication or backend APIs', async ({ page
 
 test('installed shell reopens offline after first visit', async ({ page, context }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Offline lifecycle is checked once on desktop Chromium.');
-  await mockBundle(page);
   await openStudio(page);
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
