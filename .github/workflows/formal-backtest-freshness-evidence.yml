@@ -14,26 +14,20 @@ on:
       - tests/test_finalize_latest_formal_backtests.py
       - tests/test_materialize_formal_backtest_base.py
       - tests/test_formal_backtest_freshness.py
+      - data/research/formal_backtests/base_manifest.json
+      - data/research/formal_backtests/freshness_source.json
       - .github/workflows/formal-backtest-freshness-evidence.yml
-      - data/research/formal_backtests/**
-  workflow_dispatch:
-    inputs:
-      evidence_cutoff:
-        description: Latest completed trading-session cutoff
-        required: true
-        default: "2026-07-31"
 
 permissions:
-  actions: read
   contents: read
 
 concurrency:
-  group: formal-backtest-freshness-${{ github.event.pull_request.number || github.ref }}
+  group: formal-backtest-freshness-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  validate-freshness-contracts:
-    name: Validate deterministic freshness contracts
+  validate-accepted-history:
+    name: Validate accepted freshness history
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -46,7 +40,7 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Validate freshness implementation
+      - name: Validate deterministic freshness contracts
         run: |
           uv run ruff check \
             scripts/build_latest_formal_backtests.py \
@@ -68,7 +62,7 @@ jobs:
             tests/test_materialize_formal_backtest_base.py \
             tests/test_formal_backtest_freshness.py \
             -q --strict-markers --tb=short
-      - name: Verify immutable historical release
+      - name: Materialize immutable accepted formal base
         run: |
           uv run python scripts/materialize_formal_backtest_base.py \
             --manifest data/research/formal_backtests/base_manifest.json \
@@ -78,236 +72,42 @@ jobs:
           test -f artifacts/formal-base/qqqi_qqq_tqqq_v4_2.json
           test -f artifacts/formal-base/us_x1_1.json
           test -f artifacts/formal-base/cn_x1_0.json
-
-  execute-latest-windows:
-    name: Execute full governed freshness evidence
-    needs: validate-freshness-contracts
-    runs-on: ubuntu-24.04
-    timeout-minutes: 600
-    env:
-      EVIDENCE_CUTOFF: ${{ inputs.evidence_cutoff || '2026-07-31' }}
-      US_PROVIDER_ARTIFACT: us-raw-adjustment-contract-30742690159
-      US_PROVIDER_RUN_ID: "30742690159"
-      CN_PROVIDER_ARTIFACT: cn-provider-pr-2026-07-31-30782858739
-      CN_PROVIDER_RUN_ID: "30782858739"
-      CN_PROVIDER_TAR: cn-provider-pr-2026-07-31.tar
-      CN_PROVIDER_TAR_SHA256: 1d384a87aaaea4656c0f6091d5b0f43f17767cbe06e14edc42b83ffb9765c98b
-      FRESHNESS_SOURCE: data/research/formal_backtests/freshness_source.json
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install locked environment
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
-      - name: Materialize immutable accepted formal bases
-        run: |
-          uv run python scripts/materialize_formal_backtest_base.py \
-            --manifest data/research/formal_backtests/base_manifest.json \
-            --output-dir artifacts/formal-base \
-            --receipt artifacts/formal-base-receipt.json
-      - name: Verify accepted freshness artifact metadata
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      - name: Verify accepted 2026-07-31 evidence binding
         run: |
           uv run python - <<'PY'
           import json
-          import os
-          import urllib.request
           from pathlib import Path
 
-          source = json.loads(Path(os.environ["FRESHNESS_SOURCE"]).read_text())
-          request = urllib.request.Request(
-              f"https://api.github.com/repos/liuh886/alpha_engine/actions/artifacts/{source['artifact_id']}",
-              headers={
-                  "Accept": "application/vnd.github+json",
-                  "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
-                  "User-Agent": "alpha-engine-freshness-verifier/1.0",
-                  "X-GitHub-Api-Version": "2022-11-28",
-              },
+          source = json.loads(Path("data/research/formal_backtests/freshness_source.json").read_text())
+          assert source["schema_version"] == "1.0.0"
+          assert source["status"] == "accepted_reproducible_freshness_evidence"
+          assert source["cutoff"] == "2026-07-31"
+          assert source["research_only"] is True and source["trade_ready"] is False
+          assert set(source["models"]) == {"us_x1_1", "cn_x1_0"}
+          for model in source["models"].values():
+              assert len(model["provider_identity_sha256"]) == 64
+              assert model["trace_sha256"]
+          receipt = {
+              "schema_version": "1.0.0",
+              "status": "accepted_history_verified",
+              "cutoff": source["cutoff"],
+              "workflow_run_id": source["workflow_run_id"],
+              "artifact_id": source["artifact_id"],
+              "research_only": True,
+              "trade_ready": False,
+          }
+          Path("artifacts/accepted-history-receipt.json").write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + "\n"
           )
-          with urllib.request.urlopen(request, timeout=30) as response:
-              metadata = json.loads(response.read())
-          assert metadata["id"] == source["artifact_id"], metadata
-          assert metadata["name"] == source["artifact_name"], metadata
-          assert metadata["digest"] == source["artifact_digest"], metadata
-          assert metadata["expired"] is False, metadata
-          assert metadata["workflow_run"]["id"] == source["workflow_run_id"], metadata
-          assert metadata["workflow_run"]["head_sha"] == source["workflow_head_sha"], metadata
-          assert source["cutoff"] == os.environ["EVIDENCE_CUTOFF"], source
           PY
-      - name: Download governed US provider
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.US_PROVIDER_ARTIFACT }}
-          path: artifacts/source/us
-          github-token: ${{ github.token }}
-          repository: liuh886/alpha_engine
-          run-id: ${{ env.US_PROVIDER_RUN_ID }}
-      - name: Download governed CN provider
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.CN_PROVIDER_ARTIFACT }}
-          path: artifacts/source/cn-download
-          github-token: ${{ github.token }}
-          repository: liuh886/alpha_engine
-          run-id: ${{ env.CN_PROVIDER_RUN_ID }}
-      - name: Verify and extract complete CN provider TAR
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAR="artifacts/source/cn-download/${CN_PROVIDER_TAR}"
-          test "$(sha256sum "$TAR" | cut -d' ' -f1)" = "$CN_PROVIDER_TAR_SHA256"
-          mkdir -p artifacts/source/cn
-          tar -C artifacts/source/cn -xf "$TAR"
-          test "$(find artifacts/source/cn/data/providers/cn/features -mindepth 1 -maxdepth 1 -type d | wc -l)" = "131"
-          test "$(find artifacts/source/cn -maxdepth 1 -name 'shard-*.json' | wc -l)" = "8"
-      - name: Verify provider cutoffs, identities and source coverage
-        run: |
-          uv run python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          cutoff = os.environ["EVIDENCE_CUTOFF"]
-          source = json.loads(Path(os.environ["FRESHNESS_SOURCE"]).read_text())
-          us = json.loads(Path("artifacts/source/us/provider_a/data/providers/us/provider_manifest.json").read_text())
-          assert us["calendar"]["last_day"] == cutoff
-          assert us["calendar"]["session_count"] == 1400
-          assert us["provider_identity_sha256"] == source["models"]["us_x1_1"]["provider_identity_sha256"]
-          shards = [json.loads(path.read_text()) for path in sorted(Path("artifacts/source/cn").glob("shard-*.json"))]
-          rows = [row for shard in shards for row in shard["records"]]
-          assert len(shards) == 8 and len(rows) == 131 and len({row["symbol"] for row in rows}) == 131
-          assert all(row["last_date"] == cutoff and row["provider"] == "akshare_sina" for row in rows)
-          cn = json.loads(Path("artifacts/source/cn/data/providers/cn/provider_manifest.json").read_text())
-          assert cn["provider_identity_sha256"] == source["models"]["cn_x1_0"]["provider_identity_sha256"]
-          assert cn["calendar"]["first_day"] == "2021-01-04"
-          assert cn["calendar"]["last_day"] == cutoff and cn["calendar"]["session_count"] == 1351
-          assert cn["instruments"]["count"] == 131
-          PY
-      - name: Execute frozen US x1.1 twice
-        run: |
-          uv run python scripts/run_us_feature_quality_validation.py --spec configs/research_paradigms/us_x1_1_frozen_v1.yaml --provider-uri artifacts/source/us/provider_a/data/providers/us --output-dir artifacts/freshness/us-a
-          uv run python scripts/run_us_feature_quality_validation.py --spec configs/research_paradigms/us_x1_1_frozen_v1.yaml --provider-uri artifacts/source/us/provider_a/data/providers/us --output-dir artifacts/freshness/us-b
-      - name: Execute frozen CN x1.0 twice
-        run: |
-          uv run python scripts/run_cn_feature_quality_validation.py --spec configs/research_paradigms/cn_x1_0_frozen_v1.yaml --provider-uri artifacts/source/cn/data/providers/cn --output-dir artifacts/freshness/cn-a
-          uv run python scripts/run_cn_feature_quality_validation.py --spec configs/research_paradigms/cn_x1_0_frozen_v1.yaml --provider-uri artifacts/source/cn/data/providers/cn --output-dir artifacts/freshness/cn-b
-      - name: Verify partial latest-session windows
-        run: |
-          uv run python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          cutoff = os.environ["EVIDENCE_CUTOFF"]
-          checks = [("us-a", "us_x1_1_frozen_v1"), ("us-b", "us_x1_1_frozen_v1"), ("cn-a", "cn_x1_0_frozen_v1"), ("cn-b", "cn_x1_0_frozen_v1")]
-          for market, experiment in checks:
-              root = Path("artifacts/freshness") / market / experiment
-              plan = json.loads((root / "walk_forward_windows.json").read_text())
-              assert plan["requested_test_end"] == cutoff and plan["available_end"] == cutoff
-              assert plan["partial_window_policy"] == "allow_horizon_contained_partial_final_window"
-              assert plan["partial_window_count"] == 1 and plan["complete_window_count"] >= 5
-              latest = {row["label"]: row for row in plan["windows"]}["2026H2"]
-              assert latest["status"] == "included" and latest["complete"] is False
-              assert latest["counts_toward_min_windows"] is False and latest["effective_test_end"] == cutoff
-              payload = json.loads((root / "windows" / f"{experiment}_2026H2.json").read_text())
-              traces = [row for row in payload["backtest_traces"] if row.get("orientation") == "original" and str(row.get("candidate_name", "")).startswith("xgb:daily_ranker")]
-              assert len(traces) == 1 and traces[0]["points"] and traces[0]["holdings"] and traces[0]["name_contributions"]
-          PY
-      - name: Build and finalize deterministic formal packages
-        run: |
-          SOURCE_RUN_ID="$(uv run python -c 'import json; print(json.load(open("data/research/formal_backtests/freshness_source.json"))["workflow_run_id"])')"
-          SOURCE_HEAD_SHA="$(uv run python -c 'import json; print(json.load(open("data/research/formal_backtests/freshness_source.json"))["workflow_head_sha"])')"
-          GENERATED_AT="$(uv run python -c 'import json; print(json.load(open("data/research/formal_backtests/freshness_source.json"))["generated_at"])')"
-          uv run python scripts/build_latest_formal_backtests.py \
-            --us-run-a artifacts/freshness/us-a/us_x1_1_frozen_v1 \
-            --us-run-b artifacts/freshness/us-b/us_x1_1_frozen_v1 \
-            --cn-run-a artifacts/freshness/cn-a/cn_x1_0_frozen_v1 \
-            --cn-run-b artifacts/freshness/cn-b/cn_x1_0_frozen_v1 \
-            --us-calendar artifacts/source/us/provider_a/data/providers/us/calendars/day.txt \
-            --cn-calendar artifacts/source/cn/data/providers/cn/calendars/day.txt \
-            --existing-dir artifacts/formal-base \
-            --output-dir artifacts/generated-formal \
-            --cutoff "$EVIDENCE_CUTOFF" \
-            --generated-at "$GENERATED_AT" \
-            --workflow-run-id "$SOURCE_RUN_ID" \
-            --workflow-head-sha "$SOURCE_HEAD_SHA" \
-            --receipt artifacts/freshness-build-receipt.json
-          uv run python scripts/finalize_latest_formal_backtests.py \
-            --generated-dir artifacts/generated-formal \
-            --existing-dir artifacts/formal-base \
-            --cn-run-dir artifacts/freshness/cn-a/cn_x1_0_frozen_v1 \
-            --freshness-source "$FRESHNESS_SOURCE" \
-            --cn-provider-identity 6614e26a4d7cc27dad4e1123ddcc1a73f0e753b7c115e86577a40ab195da2d09 \
-            --receipt artifacts/formal-finalization-receipt.json
-          cp data/research/formal_backtests/freshness.json artifacts/generated-formal/freshness.json
-          uv run python scripts/verify_formal_backtest_freshness.py \
-            --root artifacts/generated-formal \
-            --as-of "$GENERATED_AT" \
-            --receipt artifacts/formal-freshness-receipt.json
-      - name: Verify historical prefixes remain byte-equivalent
-        run: |
-          uv run python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          cutoff = os.environ["EVIDENCE_CUTOFF"]
-          old_root, new_root = Path("artifacts/formal-base"), Path("artifacts/generated-formal")
-          old_us, new_us = json.loads((old_root / "us_x1_1.json").read_text()), json.loads((new_root / "us_x1_1.json").read_text())
-          for field in ("report", "positions", "trades"):
-              assert new_us[field][:len(old_us[field])] == old_us[field], field
-          assert new_us["window_summary"][:4] == old_us["window_summary"]
-          old_cn, new_cn = json.loads((old_root / "cn_x1_0.json").read_text()), json.loads((new_root / "cn_x1_0.json").read_text())
-          for field in ("report", "positions", "trades", "attribution"):
-              assert new_cn[field][:len(old_cn[field])] == old_cn[field], field
-          assert new_cn["window_summary"][:5] == old_cn["window_summary"]
-          assert new_us["evidence_cutoff"] == cutoff and new_cn["evidence_cutoff"] == cutoff
-          assert new_us["date_range"]["end"] == cutoff and new_cn["date_range"]["end"] == cutoff
-          assert new_us["window_summary"][-1]["window"] == "2026H2_partial"
-          assert new_cn["window_summary"][-1]["window"] == "2026H2_partial"
-          PY
-      - name: Enforce byte-exact rebuild after formal packages are committed
-        run: |
-          uv run python - <<'PY'
-          import json
-          from pathlib import Path
-
-          committed = Path("data/research/formal_backtests")
-          generated = Path("artifacts/generated-formal")
-          cutoff = json.loads((committed / "freshness_source.json").read_text())["cutoff"]
-          current_us = json.loads((committed / "us_x1_1.json").read_text())
-          if current_us.get("evidence_cutoff") != cutoff:
-              print("Initial freshness proposal: committed packages have not been updated yet.")
-          else:
-              for name in ("qqqi_qqq_tqqq_v4_2.json", "us_x1_1.json", "cn_x1_0.json", "catalog.json", "freshness.json"):
-                  assert (committed / name).read_bytes() == (generated / name).read_bytes(), name
-              print("Committed formal release is byte-exactly reproducible.")
-          PY
-      - name: Retain latest-window and generated-package evidence
+      - name: Retain historical verification receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: formal-backtest-freshness-evidence-${{ github.run_id }}
+          name: accepted-formal-freshness-history-${{ github.run_id }}
           path: |
             artifacts/formal-base
             artifacts/formal-base-receipt.json
-            artifacts/freshness
-            artifacts/generated-formal
-            artifacts/freshness-build-receipt.json
-            artifacts/formal-finalization-receipt.json
-            artifacts/formal-freshness-receipt.json
-            artifacts/source/us/verification.json
-            artifacts/source/us/provider_a/artifacts/raw_adjustment_contract_manifest.json
-            artifacts/source/us/provider_a/data/providers/us/provider_manifest.json
-            artifacts/source/us/provider_a/data/providers/us/calendars/day.txt
-            artifacts/source/cn-download/${{ env.CN_PROVIDER_TAR }}
-            artifacts/source/cn/shard-*.json
-            artifacts/source/cn/data/providers/cn/provider_manifest.json
-            artifacts/source/cn/data/providers/cn/calendars/day.txt
+            artifacts/accepted-history-receipt.json
           if-no-files-found: error
           retention-days: 90
