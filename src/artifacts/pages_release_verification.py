@@ -143,7 +143,10 @@ def fetch_bytes(base_url: str, path: str, *, timeout_seconds: float) -> bytes:
         },
     )
     with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
-        return response.read()
+        payload = response.read()
+    if not isinstance(payload, bytes):
+        raise ReleaseVerificationError(f"{path} response body must be bytes")
+    return payload
 
 
 def verify_once(
