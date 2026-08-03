@@ -9,9 +9,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import exchange_calendars as xcals  # type: ignore[import-untyped]
-import pandas as pd
-
 
 class FormalBacktestFreshnessError(ValueError):
     """Raised when the formal publication set is stale or internally inconsistent."""
@@ -43,42 +40,22 @@ def _string_set(
     return result
 
 
-def _as_of(value: str | None) -> pd.Timestamp | None:
+def _timestamp(value: str, *, label: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise FormalBacktestFreshnessError(f"invalid {label}: {value}") from exc
+    if parsed.tzinfo is None:
+        raise FormalBacktestFreshnessError(f"{label} must include a timezone")
+    return parsed.astimezone(timezone.utc)
+
+
+def _as_of(value: str | None) -> datetime | None:
     if value is None:
         return None
     if value == "now":
-        return pd.Timestamp(datetime.now(timezone.utc))
-    try:
-        parsed = pd.Timestamp(value)
-    except ValueError as exc:
-        raise FormalBacktestFreshnessError(f"invalid as-of timestamp: {value}") from exc
-    if parsed.tzinfo is None:
-        raise FormalBacktestFreshnessError("as-of timestamp must include a timezone")
-    return parsed.tz_convert("UTC")
-
-
-def latest_completed_session(calendar_name: str, as_of: pd.Timestamp) -> str:
-    try:
-        calendar = xcals.get_calendar(calendar_name)
-    except (KeyError, ValueError) as exc:
-        raise FormalBacktestFreshnessError(
-            f"unknown exchange calendar: {calendar_name}"
-        ) from exc
-    start = (as_of - pd.Timedelta(days=21)).tz_localize(None).normalize()
-    end = (as_of + pd.Timedelta(days=1)).tz_localize(None).normalize()
-    try:
-        sessions = calendar.sessions_in_range(start, end)
-        closes = calendar.schedule.loc[sessions, "close"]
-    except (KeyError, ValueError) as exc:
-        raise FormalBacktestFreshnessError(
-            f"unable to resolve calendar {calendar_name} around {as_of.isoformat()}"
-        ) from exc
-    completed = sessions[closes <= as_of]
-    if completed.empty:
-        raise FormalBacktestFreshnessError(
-            f"calendar {calendar_name} has no completed session near {as_of.isoformat()}"
-        )
-    return pd.Timestamp(completed[-1]).strftime("%Y-%m-%d")
+        return datetime.now(timezone.utc)
+    return _timestamp(value, label="as-of timestamp")
 
 
 def verify(root: Path, *, as_of: str | None = None) -> dict[str, Any]:
@@ -91,12 +68,12 @@ def verify(root: Path, *, as_of: str | None = None) -> dict[str, Any]:
         raise FormalBacktestFreshnessError("freshness policy weakens research boundary")
 
     markets = policy.get("markets")
-    calendar_names = policy.get("market_calendars")
+    next_closes = policy.get("next_session_close_utc")
     records = catalog.get("records")
     if not isinstance(markets, dict) or not markets:
         raise FormalBacktestFreshnessError("market cutoffs are missing")
-    if not isinstance(calendar_names, dict) or set(calendar_names) != set(markets):
-        raise FormalBacktestFreshnessError("market calendar bindings are incomplete")
+    if not isinstance(next_closes, dict) or set(next_closes) != set(markets):
+        raise FormalBacktestFreshnessError("next-session close bindings are incomplete")
     if not isinstance(records, list):
         raise FormalBacktestFreshnessError("formal catalog records are missing")
     required = _string_set(policy, "required_models")
@@ -112,17 +89,17 @@ def verify(root: Path, *, as_of: str | None = None) -> dict[str, Any]:
         )
 
     parsed_as_of = _as_of(as_of)
-    resolved_sessions: dict[str, str] = {}
-    if parsed_as_of is not None:
-        for market, calendar_name in calendar_names.items():
-            resolved = latest_completed_session(str(calendar_name), parsed_as_of)
+    parsed_next_closes: dict[str, str] = {}
+    for market, value in next_closes.items():
+        close = _timestamp(str(value), label=f"{market} next-session close")
+        parsed_next_closes[str(market)] = close.isoformat()
+        if parsed_as_of is not None and parsed_as_of >= close:
             declared = str(markets.get(market) or "")
-            resolved_sessions[str(market)] = resolved
-            if declared != resolved:
-                raise FormalBacktestFreshnessError(
-                    f"{market}: declared cutoff {declared!r} is stale; "
-                    f"latest completed {calendar_name} session is {resolved}"
-                )
+            raise FormalBacktestFreshnessError(
+                f"{market}: declared cutoff {declared!r} is stale at "
+                f"{parsed_as_of.isoformat()}; the next session closed at "
+                f"{close.isoformat()}"
+            )
 
     by_id = {
         str(row.get("model_id")): row
@@ -220,7 +197,7 @@ def verify(root: Path, *, as_of: str | None = None) -> dict[str, Any]:
         "status": "current",
         "cutoff_policy": policy["cutoff_policy"],
         "as_of": parsed_as_of.isoformat() if parsed_as_of is not None else None,
-        "resolved_latest_sessions": resolved_sessions,
+        "next_session_close_utc": parsed_next_closes,
         "verified_models": verified,
         "research_only": True,
         "trade_ready": False,
@@ -237,7 +214,7 @@ def main() -> None:
     parser.add_argument(
         "--as-of",
         default=None,
-        help="Timezone-aware timestamp or 'now'; when supplied, verify exchange calendars.",
+        help="Timezone-aware timestamp or 'now'; fail once the next session has closed.",
     )
     parser.add_argument("--receipt", type=Path, default=None)
     args = parser.parse_args()
