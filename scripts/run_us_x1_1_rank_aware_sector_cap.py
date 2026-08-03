@@ -898,8 +898,6 @@ def _run_once(
                     contributions.insert(1, "strategy_id", strategy_id)
                     selections.insert(0, "window", window)
                     selections.insert(1, "strategy_id", strategy_id)
-                    if not replacements.empty:
-                        replacements.insert(0, "window", window)
                     window_state[strategy_id] = {
                         "result": result,
                         "periods": periods,
