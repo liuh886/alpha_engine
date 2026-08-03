@@ -108,7 +108,35 @@ def _cross_window_cn_drawdown(
     return worst
 
 
-def finalize(generated_dir: Path, cn_run_dir: Path) -> dict[str, Any]:
+def _bind_cn_provider_identity(
+    package: dict[str, Any], provider_identity: str
+) -> str | None:
+    normalized = provider_identity.strip().lower()
+    if len(normalized) != 64 or any(char not in "0123456789abcdef" for char in normalized):
+        raise LatestFormalFinalizationError("invalid CN provider identity")
+    evidence = package.get("evidence")
+    if not isinstance(evidence, dict):
+        evidence = {}
+    freshness = evidence.get("freshness_evidence")
+    if not isinstance(freshness, dict):
+        freshness = {}
+    previous = freshness.get("provider_identity_sha256")
+    previous_identity = str(previous) if previous else None
+    freshness["provider_identity_sha256"] = normalized
+    if previous_identity and previous_identity != normalized:
+        freshness["superseded_provider_identity_sha256"] = previous_identity
+        freshness["provider_snapshot_revision_observed"] = True
+    evidence["freshness_evidence"] = freshness
+    package["evidence"] = evidence
+    return previous_identity
+
+
+def finalize(
+    generated_dir: Path,
+    cn_run_dir: Path,
+    *,
+    cn_provider_identity: str,
+) -> dict[str, Any]:
     us_path = generated_dir / "us_x1_1.json"
     cn_path = generated_dir / "cn_x1_0.json"
     catalog_path = generated_dir / "catalog.json"
@@ -130,6 +158,7 @@ def finalize(generated_dir: Path, cn_run_dir: Path) -> dict[str, Any]:
         raise LatestFormalFinalizationError("CN metrics are missing")
     metrics["Max Drawdown"] = worst
     cn["metrics"] = metrics
+    previous_cn_identity = _bind_cn_provider_identity(cn, cn_provider_identity)
 
     notes = cn.get("interpretation_notes")
     if not isinstance(notes, list):
@@ -140,6 +169,12 @@ def finalize(generated_dir: Path, cn_run_dir: Path) -> dict[str, Any]:
     )
     if note not in notes:
         notes.append(note)
+    revision_note = (
+        "The 2026-07-31 CN provider was independently reconstructed from the "
+        "current AkShare/Sina snapshot; its identity is retained explicitly."
+    )
+    if revision_note not in notes:
+        notes.append(revision_note)
     cn["interpretation_notes"] = notes
 
     us_notes = us.get("interpretation_notes")
@@ -172,6 +207,8 @@ def finalize(generated_dir: Path, cn_run_dir: Path) -> dict[str, Any]:
         "status": "finalized",
         "removed_inferred_ranks": {"us_x1_1": removed_us, "cn_x1_0": removed_cn},
         "cn_cross_window_max_drawdown": worst,
+        "cn_provider_identity_sha256": cn_provider_identity,
+        "superseded_cn_provider_identity_sha256": previous_cn_identity,
         "package_sha256": {
             "us_x1_1": _sha256(us_path),
             "cn_x1_0": _sha256(cn_path),
@@ -186,9 +223,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--generated-dir", type=Path, required=True)
     parser.add_argument("--cn-run-dir", type=Path, required=True)
+    parser.add_argument("--cn-provider-identity", required=True)
     parser.add_argument("--receipt", type=Path, default=None)
     args = parser.parse_args()
-    receipt = finalize(args.generated_dir, args.cn_run_dir)
+    receipt = finalize(
+        args.generated_dir,
+        args.cn_run_dir,
+        cn_provider_identity=args.cn_provider_identity,
+    )
     encoded = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
     if args.receipt is not None:
         args.receipt.parent.mkdir(parents=True, exist_ok=True)
