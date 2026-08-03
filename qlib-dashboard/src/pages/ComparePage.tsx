@@ -22,6 +22,8 @@ const METRICS: Array<{ aliases: string[]; label: string; format: 'pct' | 'number
   { aliases: ['Rank IC'], label: 'Rank IC', format: 'number', higherIsBetter: true },
 ];
 
+type EquityReportRow = { date?: unknown; account?: unknown };
+
 function formatMetric(value: number | null, format: 'pct' | 'number'): string {
   if (value === null) return 'Unavailable';
   return format === 'pct' ? `${(value * 100).toFixed(2)}%` : value.toFixed(3);
@@ -30,11 +32,13 @@ function formatMetric(value: number | null, format: 'pct' | 'number'): string {
 function buildEquitySeries(models: ModelData[]) {
   const rows = new Map<string, Record<string, string | number | null>>();
   for (const model of models) {
-    const report = Array.isArray(model.backtest?.report) ? model.backtest.report : [];
-    const firstAccount = Number(report.find((row) => Number.isFinite(Number(row.account)))?.account);
+    const report: EquityReportRow[] = Array.isArray(model.backtest?.report)
+      ? model.backtest.report
+      : [];
+    const firstAccount = Number(report.find((row: EquityReportRow) => Number.isFinite(Number(row.account)))?.account);
     if (!Number.isFinite(firstAccount) || firstAccount <= 0) continue;
     for (const row of report) {
-      if (!row?.date) continue;
+      if (!row.date) continue;
       const date = String(row.date);
       const account = Number(row.account);
       const current = rows.get(date) ?? { date };
