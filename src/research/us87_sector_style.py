@@ -221,20 +221,41 @@ def cap_sector_weights(
     sector_by_symbol: dict[str, str],
     cap: float,
 ) -> pd.Series:
-    """Cap aggregate sector exposure and redistribute excess deterministically."""
+    """Cap sector exposure; use rank-aware replacement for equal-weight selections."""
 
     if not 0 < cap <= 1:
         raise ValueError("sector cap must be in (0, 1]")
     result = weights.astype(float).copy()
     if result.empty or float(result.sum()) <= 0:
         return result
-    result /= float(result.sum())
     sectors = pd.Series(
         {symbol: sector_by_symbol.get(str(symbol), "") for symbol in result.index},
         dtype=object,
     )
     if sectors.eq("").any():
         raise ValueError("missing sector while applying sector cap")
+
+    positive = result.loc[result > 0]
+    if (result == 0).any() and len(positive) >= 2 and positive.nunique() == 1:
+        slots = len(positive)
+        max_names_per_sector = max(1, int(math.floor(cap * slots + 1e-12)))
+        selected: list[str] = []
+        counts: dict[str, int] = {}
+        for symbol in result.index:
+            sector = str(sectors.loc[symbol])
+            if counts.get(sector, 0) >= max_names_per_sector:
+                continue
+            selected.append(str(symbol))
+            counts[sector] = counts.get(sector, 0) + 1
+            if len(selected) == slots:
+                break
+        if len(selected) != slots:
+            raise ValueError("rank-aware sector cap cannot fill target position count")
+        capped = pd.Series(0.0, index=result.index, dtype=float)
+        capped.loc[selected] = 1.0 / slots
+        return capped
+
+    result /= float(result.sum())
     for _ in range(100):
         sector_weights = result.groupby(sectors).sum()
         over = sector_weights.loc[sector_weights > cap + 1e-12]
