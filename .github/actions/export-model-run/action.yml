@@ -1,0 +1,40 @@
+name: Export governed model run
+
+description: Export one Model Run Bundle v2 and update its channel catalog.
+
+inputs:
+  adapter:
+    description: Registered exporter adapter ID.
+    required: true
+  source:
+    description: Repository-relative source artifact path.
+    required: true
+  output-root:
+    description: Repository-relative bundle output root.
+    required: true
+  catalog:
+    description: Repository-relative channel catalog path.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Export governed run bundle
+      shell: bash
+      run: |
+        set -euo pipefail
+        uv run python scripts/export_model_run_bundle.py \
+          --adapter "${{ inputs.adapter }}" \
+          --source "${{ inputs.source }}" \
+          --output-root "${{ inputs.output-root }}" \
+          --catalog "${{ inputs.catalog }}"
+        uv run python - <<'PY'
+        import json
+        from pathlib import Path
+        from src.artifacts.model_run_bundle_v2 import validate_catalog
+        path = Path("${{ inputs.catalog }}")
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        validate_catalog(payload)
+        assert payload["research_only"] is True
+        assert payload["trade_ready"] is False
+        PY
