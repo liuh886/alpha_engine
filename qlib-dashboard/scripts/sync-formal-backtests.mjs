@@ -55,6 +55,17 @@ const nextSessionCloses = assertRecord(freshness.next_session_close_utc, 'Formal
 if (JSON.stringify(Object.keys(marketCutoffs).sort()) !== JSON.stringify(Object.keys(nextSessionCloses).sort())) {
   throw new Error('Formal freshness market and next-session-close bindings differ.');
 }
+const now = Date.now();
+for (const [market, rawClose] of Object.entries(nextSessionCloses)) {
+  const close = Date.parse(String(rawClose));
+  if (!Number.isFinite(close)) throw new Error(`Invalid next-session close for ${market}: ${String(rawClose)}`);
+  if (now >= close) {
+    throw new Error(
+      `Formal backtests are stale for ${market}: declared cutoff ${String(marketCutoffs[market])}; `
+      + `the next session closed at ${String(rawClose)}. Refresh formal evidence before publishing.`,
+    );
+  }
+}
 if (!Array.isArray(freshness.required_models) || freshness.required_models.length === 0) {
   throw new Error('Formal freshness required model list is missing.');
 }
