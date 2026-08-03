@@ -173,3 +173,22 @@ jobs:
           uv run python scripts/verify_pages_release.py \
             --base-url "$PAGE_URL" \
             --expected-commit "$GITHUB_SHA"
+
+      - name: Install live-browser runtime
+        working-directory: qlib-dashboard
+        run: npx playwright install --with-deps chromium
+
+      - name: Exercise all formal baselines on live Pages
+        working-directory: qlib-dashboard
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: npx playwright test --config=playwright.live.config.ts
+
+      - name: Upload live-browser evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-live-browser-evidence
+          path: qlib-dashboard/test-results/live-pages
+          if-no-files-found: ignore
+          retention-days: 14
