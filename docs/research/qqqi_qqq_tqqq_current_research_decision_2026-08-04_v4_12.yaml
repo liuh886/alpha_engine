@@ -1,0 +1,151 @@
+schema_version: "1.0"
+decision_date: "2026-08-04"
+strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    v4.12 successfully created a larger independent donor-event laboratory, but
+    the frozen cross-asset SGOV/TQQQ transfer strategy materially underperformed
+    v4.2. The donor model passed every preregistered OOF gate; the failure occurred
+    in target-domain transfer and in replacing the mature v4.2 state path with an
+    overly defensive structural regime. v4.2 therefore remains the only actionable
+    research baseline.
+
+cross_asset_sgov_tqqq_v4_12:
+  experiment_id: qqqi_qqq_tqqq_cross_asset_sgov_tqqq_transfer_v4_12_research
+  role: frozen_nonpromoted_cross_asset_event_experiment
+  objective: >-
+    Learn recovery-event quality from non-QQQ underlying/3x ETF pairs with
+    non-overlapping shock cycles and complete macro-cluster isolation, then apply
+    one frozen model to a target SGOV/TQQQ strategy.
+  evidence:
+    report: docs/research/qqqi_qqq_tqqq_cross_asset_sgov_tqqq_transfer_v4_12_result_2026-08-04.md
+    workflow_run: 30861846261
+    artifact_id: 8874630274
+    artifact_digest: sha256:31a70ccffba271ac8d07b08f3334cff756a6b77dc3bfcc4a36ffc8b8a317142f
+    manifest_file_count: 39
+  independent_event_design:
+    donor_pairs:
+      SPY: UPRO
+      IWM: TNA
+      DIA: UDOW
+      XLK: TECL
+      SOXX: SOXL
+      XLF: FAS
+    donor_cash_proxy: BIL
+    excluded_from_training: [QQQ, TQQQ, QQQI, SGOV, ^VXN]
+    asset_events: 85
+    macro_clusters: 31
+    donor_assets: 6
+    maximum_single_asset_event_share: 0.21176470588235294
+  donor_oof_findings:
+    roc_auc: 0.6572535991140642
+    spearman_ic: 0.2378737541528239
+    top_bottom_quartile_spread: 0.08188500111830338
+    positive_asset_spread_count: 5
+    largest_positive_cluster_contribution_share: 0.20818172002742308
+    donor_gate_passed: true
+  leave_one_asset_out_audit:
+    aggregate_roc_auc: 0.7491694352159468
+    aggregate_spearman_ic: 0.3816689466484268
+    aggregate_top_bottom_quartile_spread: 0.14989426517755183
+    interpretation: >-
+      Cross-asset information is not explained by one donor asset. Five donor
+      assets transfer positively; IWM is the material exception. This supports
+      retaining the donor event laboratory, not the original QQQ mapping.
+  target_domain_findings:
+    qqq_target_event_count: 4
+    target_event_period: "2020-10-12 through 2022-11-03"
+    high_probability_events: 2
+    medium_probability_events: 0
+    low_probability_events: 2
+    actual_product_period_target_events: 0
+    interpretation: >-
+      The four QQQ events show target-domain mismatch: both high-score events had
+      non-positive TQQQ-minus-SGOV outcomes, while the largest positive event was
+      classified low. Four observed target events are insufficient for calibration,
+      and probability inversion or threshold search is prohibited.
+  actual_product_findings:
+    sample_start: "2024-01-30"
+    sample_end: "2026-07-31"
+    observations: 613
+    current_v4_2_cagr: 0.315496
+    current_v4_2_max_drawdown: -0.24669
+    current_v4_2_calmar: 1.2789
+    joint_cagr: 0.11885
+    joint_max_drawdown: -0.10322
+    joint_calmar: 1.151
+    cagr_delta_pp: -19.6645
+    calmar_delta: -0.12747
+    joint_equals_structural_only: true
+    reason: no_target_recovery_events_in_actual_product_period
+  qqq_proxy_findings:
+    sample_start: "2020-06-01"
+    sample_end: "2026-07-31"
+    observations: 1535
+    v4_2_cagr: 0.35846
+    v4_2_max_drawdown: -0.38922
+    v4_2_calmar: 0.921
+    joint_cagr: 0.20070
+    joint_max_drawdown: -0.27775
+    joint_calmar: 0.723
+  decision: sgov_tqqq_transfer_does_not_stably_beat_v4_2
+  audit: audit_pass_nonpromotion_result_valid
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+
+research_answer:
+  more_independent_events_found: true
+  independent_event_method_validated: true
+  current_sgov_tqqq_strategy_beats_v4_2: false
+  reason: >-
+    The event-scarcity problem can be addressed with non-QQQ donor assets and
+    macro-cluster isolation. The remaining problem is target compatibility and
+    strategy architecture. Generic recovery probabilities should not replace the
+    full v4.2 state machine.
+
+retained_components:
+  - cross_asset_nonoverlapping_event_library
+  - complete_macro_cluster_oof_validation
+  - leave_one_asset_out_transfer_diagnostics
+  - exact_calendar_actual_and_proxy_comparisons
+  - sgov_tqqq_next_open_costed_runtime
+
+rejected_or_closed_directions:
+  - generic_donor_probability_direct_to_qqq
+  - full_replacement_of_v4_2_with_structural_sgov_tqqq_regime
+  - probability_inversion_from_four_qqq_events
+  - probability_threshold_search
+  - sgov_tqqq_weight_grid_search
+  - donor_feature_selection_after_target_results
+  - relaxing_donor_or_strategy_gates
+
+next_admissible_architecture:
+  name: donor_transfer_validated_state2_only_sgov_tqqq_budget
+  requirements:
+    - require_leave_one_asset_out_transfer_gate_before_target_use
+    - preserve_v4_2_state_0_and_state_1_allocations_and_transitions
+    - apply_sgov_tqqq_budget_only_inside_formal_v4_2_state_2
+    - construct_donor_episodes_that_are_analogous_to_formal_state_2_not_generic_recoveries
+    - separate_target_quarantine_and_prospective_primary_evidence
+    - prohibit_reuse_of_four_2020_2022_qqq_events_for_tuning
+  interpretation: >-
+    The next experiment must narrow the donor hypothesis to the same economic
+    decision made by v4.2: how much leveraged risk to hold after formal recovery
+    confirmation. It must not rebuild state 0 or state 1 and must not tune against
+    the already observed QQQ target events.
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false
