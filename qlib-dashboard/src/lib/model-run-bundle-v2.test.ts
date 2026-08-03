@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import manifestFixture from '../../../tests/fixtures/model_run_bundle_v2/manifest.json';
+import summaryFixture from '../../../tests/fixtures/model_run_bundle_v2/summary.json';
 import {
   canonicalJson,
   parseCanonicalMetricV2,
@@ -9,14 +9,10 @@ import {
   verifyModelRunBundleId,
 } from './model-run-bundle-v2';
 
-const fixtureRoot = resolve(process.cwd(), '../tests/fixtures/model_run_bundle_v2');
-const manifestFixture = JSON.parse(readFileSync(resolve(fixtureRoot, 'manifest.json'), 'utf8'));
-const summaryText = readFileSync(resolve(fixtureRoot, 'summary.json'), 'utf8');
-const summaryFixture = JSON.parse(summaryText);
-
 describe('Model Run Bundle v2', () => {
   it('parses the Python fixture and verifies cross-language identities', async () => {
     const manifest = parseModelRunBundleV2Manifest(manifestFixture);
+    const summaryText = canonicalJson(summaryFixture);
     expect(manifest.publication_channel).toBe('preview');
     expect(manifest.publication_status).toBe('ci_validated_preview');
     expect(manifest.research_only).toBe(true);
