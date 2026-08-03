@@ -9,10 +9,10 @@ const repositoryRoot = resolve(dashboardRoot, '..');
 const sourceRoot = join(repositoryRoot, 'data', 'research', 'formal_backtests');
 const targetRoot = join(dashboardRoot, 'public', 'data', 'formal-backtests');
 const freshnessPath = join(sourceRoot, 'freshness.json');
-const validationMode = process.env.FORMAL_BACKTEST_VALIDATION_MODE ?? 'published';
+const requestedValidationMode = process.env.FORMAL_BACKTEST_VALIDATION_MODE ?? 'auto';
 
-if (!['candidate', 'published'].includes(validationMode)) {
-  throw new Error(`Unsupported formal backtest validation mode: ${validationMode}`);
+if (!['auto', 'candidate', 'published'].includes(requestedValidationMode)) {
+  throw new Error(`Unsupported formal backtest validation mode: ${requestedValidationMode}`);
 }
 
 function assertRecord(value, label) {
@@ -55,6 +55,9 @@ async function readOptionalJson(path, label) {
 
 const { bytes: catalogBytes, value: catalog } = await readJson(join(sourceRoot, 'catalog.json'), 'Formal backtest catalog');
 const freshnessData = await readOptionalJson(freshnessPath, 'Formal backtest freshness policy');
+const validationMode = requestedValidationMode === 'auto'
+  ? (freshnessData === null ? 'candidate' : 'published')
+  : requestedValidationMode;
 if (validationMode === 'published' && freshnessData === null) {
   throw new Error('Published formal backtests require freshness.json.');
 }
