@@ -1,0 +1,100 @@
+name: Observe Pages release receipt
+
+on:
+  workflow_run:
+    workflows: ["Deploy Research Artifact Studio to Pages"]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: pages-release-receipt
+  cancel-in-progress: true
+
+jobs:
+  publish-receipt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout deployed revision
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Verify live Pages release
+        id: live_verify
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts
+          python scripts/verify_pages_release.py \
+            --base-url "https://liuh886.github.io/alpha_engine/" \
+            --expected-commit "${{ github.event.workflow_run.head_sha }}" \
+            > artifacts/pages-release-receipt.json \
+            2> artifacts/pages-release-error.log
+
+      - name: Publish observable deployment result
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECEIPT_COMMENT_ID: "5160974834"
+          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          VERIFY_OUTCOME: ${{ steps.live_verify.outcome }}
+          DEPLOYED_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEPLOY_RUN_ID: ${{ github.event.workflow_run.id }}
+          DEPLOY_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          PAGE_URL: "https://liuh886.github.io/alpha_engine/"
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          upstream = os.environ["UPSTREAM_CONCLUSION"]
+          verify = os.environ.get("VERIFY_OUTCOME", "skipped")
+          sha = os.environ["DEPLOYED_SHA"]
+          run_id = os.environ["DEPLOY_RUN_ID"]
+          run_url = os.environ["DEPLOY_RUN_URL"]
+          page_url = os.environ["PAGE_URL"]
+
+          if upstream != "success":
+              status = f"**failed before live verification** (`{upstream}`)"
+              detail = "The Pages deployment workflow did not complete successfully."
+          elif verify != "success":
+              status = "**failed live-origin verification**"
+              error_path = Path("artifacts/pages-release-error.log")
+              error = error_path.read_text(encoding="utf-8").strip() if error_path.exists() else "No verifier output was retained."
+              detail = f"The deployment completed, but the public origin did not satisfy the formal-release contract.\n\n```text\n{error[-3000:]}\n```"
+          else:
+              receipt = json.loads(Path("artifacts/pages-release-receipt.json").read_text(encoding="utf-8"))
+              models = ", ".join(f"`{model}`" for model in receipt["formal_models"])
+              status = "**verified against the live Pages origin**"
+              detail = (
+                  f"- Formal selector: {models}\n"
+                  "- Research boundary: `research_only=true`, `trade_ready=false`\n"
+                  "- Verification: cache-busted live `deployment.json`, formal catalog, package SHA-256/model identity and `Complete backtest review` shell marker"
+              )
+
+          body = f"""## Latest verified Pages deployment
+
+          Status: {status}
+
+          - Commit: `{sha}`
+          - Workflow run: [{run_id}]({run_url})
+          - Page URL: {page_url}
+
+          {detail}
+
+          This rolling receipt is written by an independent `workflow_run` observer after the Pages workflow terminates.
+          """
+          Path("/tmp/pages-release-comment.json").write_text(
+              json.dumps({"body": body}),
+              encoding="utf-8",
+          )
+          PY
+          gh api \
+            --method PATCH \
+            "repos/${GITHUB_REPOSITORY}/issues/comments/${RECEIPT_COMMENT_ID}" \
+            --input /tmp/pages-release-comment.json
