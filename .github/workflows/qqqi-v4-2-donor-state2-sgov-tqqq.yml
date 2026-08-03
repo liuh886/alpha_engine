@@ -9,6 +9,7 @@ on:
       - "src/research/v4_2_donor_state2_sgov_tqqq.py"
       - "src/research/v4_2_donor_state2_sgov_tqqq_runtime.py"
       - "scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq.py"
+      - "scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq_safe.py"
       - "tests/test_v4_2_donor_state2_sgov_tqqq.py"
       - "tests/test_v4_2_donor_state2_sgov_tqqq_runtime.py"
   workflow_dispatch:
@@ -41,6 +42,7 @@ jobs:
             src/research/v4_2_donor_state2_sgov_tqqq.py \
             src/research/v4_2_donor_state2_sgov_tqqq_runtime.py \
             scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq.py \
+            scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq_safe.py \
             tests/test_v4_2_donor_state2_sgov_tqqq.py \
             tests/test_v4_2_donor_state2_sgov_tqqq_runtime.py
           uv run pytest \
@@ -52,7 +54,7 @@ jobs:
       - name: Run governed donor state2 evidence with bounded retry
         run: |
           for attempt in 1 2 3; do
-            if uv run python scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq.py \
+            if uv run python scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq_safe.py \
               --end-date "${{ inputs.end_date }}" \
               --output-dir artifacts/evidence/qqqi_qqq_tqqq_donor_state2_sgov_tqqq_v4_13_research; then
               exit 0
