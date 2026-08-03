@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+
+import pytest
+
+from scripts.finalize_latest_formal_backtests import (
+    LatestFormalFinalizationError,
+    finalize,
+)
+
+
+def _write(path: Path, payload: dict[str, object]) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+    path.write_text(encoded, encoding="utf-8")
+    return hashlib.sha256(encoded.encode()).hexdigest()
+
+
+def _fixture(tmp_path: Path, *, bad_final: bool = False) -> tuple[Path, Path]:
+    generated = tmp_path / "generated"
+    run = tmp_path / "cn-run"
+    generated.mkdir()
+    historical_account = 1.2
+    partial_returns = [-0.1, 0.05]
+    final_account = historical_account
+    for value in partial_returns:
+        final_account *= 1.0 + value
+    if bad_final:
+        final_account += 0.01
+
+    us = {
+        "positions": [
+            {"date": "2025-12-01", "instrument": "OLD", "weight": 1.0, "rank": 1},
+            {
+                "date": "2026-07-01",
+                "instrument": "NEW",
+                "weight": 1.0,
+                "rank": 1,
+                "window": "2026H2_partial",
+            },
+        ],
+        "interpretation_notes": [],
+    }
+    cn = {
+        "positions": [
+            {"date": "2026-06-01", "instrument": "OLD", "weight": 1.0, "rank": 1},
+            {
+                "date": "2026-07-01",
+                "instrument": "NEW",
+                "weight": 1.0,
+                "rank": 1,
+                "window": "2026H2_partial",
+            },
+        ],
+        "report": [
+            {"date": "2025-12-31", "account": 1.3},
+            {"date": "2026-06-30", "account": historical_account},
+            {"date": "2026-07-31", "account": final_account},
+        ],
+        "metrics": {"Max Drawdown": -0.05},
+        "interpretation_notes": [],
+    }
+    us_digest = _write(generated / "us_x1_1.json", us)
+    cn_digest = _write(generated / "cn_x1_0.json", cn)
+    _write(
+        generated / "catalog.json",
+        {
+            "records": [
+                {"model_id": "us_x1_1", "path": "us_x1_1.json", "sha256": us_digest},
+                {"model_id": "cn_x1_0", "path": "cn_x1_0.json", "sha256": cn_digest},
+            ]
+        },
+    )
+    _write(
+        run / "walk_forward_windows.json",
+        {"experiment_id": "cn_fixture"},
+    )
+    _write(
+        run / "windows" / "cn_fixture_2026H2.json",
+        {
+            "backtest_traces": [
+                {
+                    "candidate_name": "xgb:daily_ranker:frozen",
+                    "orientation": "original",
+                    "points": [
+                        {"signal_date": "2026-07-01", "net_period_return": -0.1},
+                        {"signal_date": "2026-07-16", "net_period_return": 0.05},
+                    ],
+                }
+            ]
+        },
+    )
+    return generated, run
+
+
+def test_removes_only_inferred_extension_ranks_and_updates_hashes(tmp_path: Path) -> None:
+    generated, run = _fixture(tmp_path)
+    result = finalize(generated, run)
+    assert result["status"] == "finalized"
+    us = json.loads((generated / "us_x1_1.json").read_text(encoding="utf-8"))
+    cn = json.loads((generated / "cn_x1_0.json").read_text(encoding="utf-8"))
+    assert us["positions"][0]["rank"] == 1
+    assert "rank" not in us["positions"][1]
+    assert us["positions"][1]["rank_evidence"] == "not_retained"
+    assert "rank" not in cn["positions"][1]
+    assert cn["metrics"]["Max Drawdown"] == pytest.approx(-0.16923076923076918)
+    catalog = json.loads((generated / "catalog.json").read_text(encoding="utf-8"))
+    for row in catalog["records"]:
+        path = generated / row["path"]
+        assert row["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_rejects_non_reconciling_cn_path(tmp_path: Path) -> None:
+    generated, run = _fixture(tmp_path, bad_final=True)
+    with pytest.raises(LatestFormalFinalizationError, match="does not reconcile"):
+        finalize(generated, run)
