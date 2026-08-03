@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
   pages: write
   id-token: write
 
@@ -172,4 +173,45 @@ jobs:
         run: |
           uv run python scripts/verify_pages_release.py \
             --base-url "$PAGE_URL" \
-            --expected-commit "$GITHUB_SHA"
+            --expected-commit "$GITHUB_SHA" \
+            | tee artifacts/pages-release-receipt.json
+
+      - name: Publish latest verified Pages receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          RECEIPT_COMMENT_ID: "5160974834"
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          receipt = json.loads(Path("artifacts/pages-release-receipt.json").read_text())
+          models = ", ".join(f"`{model}`" for model in receipt["formal_models"])
+          run_url = (
+              f"https://github.com/{os.environ['GITHUB_REPOSITORY']}"
+              f"/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+          )
+          body = f"""## Latest verified Pages deployment
+
+          Status: **verified against the live Pages origin**
+
+          - Commit: `{receipt['commit_sha']}`
+          - Workflow run: [{os.environ['GITHUB_RUN_ID']}]({run_url})
+          - Page URL: {os.environ['PAGE_URL']}
+          - Formal selector: {models}
+          - Research boundary: `research_only=true`, `trade_ready=false`
+          - Verification: cache-busted live `deployment.json`, formal catalog, package SHA-256/model identity and `Complete backtest review` shell marker
+
+          This rolling receipt is updated only after the deployed site passes the post-deploy verifier.
+          """
+          Path("/tmp/pages-release-comment.json").write_text(
+              json.dumps({"body": body}),
+              encoding="utf-8",
+          )
+          PY
+          gh api \
+            --method PATCH \
+            "repos/${GITHUB_REPOSITORY}/issues/comments/${RECEIPT_COMMENT_ID}" \
+            --input /tmp/pages-release-comment.json
