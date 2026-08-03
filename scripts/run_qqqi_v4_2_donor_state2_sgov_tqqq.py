@@ -11,7 +11,7 @@ import pandas as pd
 import yaml
 
 from src.research.etf_rotation_experiment import fetch_adjusted_daily_bars
-from src.research.v4_2_donor_state2_sgov_tqqq import (
+from src.research.v4_2_donor_state2_sgov_tqqq_runtime import (
     run_donor_state2_sgov_tqqq,
 )
 
