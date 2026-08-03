@@ -1,0 +1,200 @@
+name: Seed CN Provider Sharded 2026-07-31
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/seed-cn-provider-sharded-2026-07-31.yml"
+      - "scripts/data/fetch_cn_provider_shard.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seed-cn-provider-sharded-2026-07-31
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Fetch exact AkShare/Sina shard
+        run: >-
+          uv run python scripts/data/fetch_cn_provider_shard.py
+          --output-root artifacts/shard-${{ matrix.shard }}
+          --shard-index ${{ matrix.shard }}
+          --shard-count 8
+          --start 2021-01-01
+          --cutoff 2026-07-31
+
+      - name: Upload shard evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cn-provider-shard-${{ matrix.shard }}
+          path: artifacts/shard-${{ matrix.shard }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+  aggregate:
+    needs: fetch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Download all shard evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cn-provider-shard-*
+          path: artifacts/shards
+          merge-multiple: true
+
+      - name: Verify exact pool and shard coverage
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifests = sorted(Path("artifacts/shards").glob("shard-*.json"))
+          assert len(manifests) == 8, manifests
+          rows = []
+          for path in manifests:
+              payload = json.loads(path.read_text(encoding="utf-8"))
+              assert payload["status"] == "complete", payload
+              assert payload["cutoff"] == "2026-07-31", payload
+              assert payload["provider"] == "akshare_sina", payload
+              assert payload["research_only"] is True, payload
+              assert payload["trade_ready"] is False, payload
+              rows.extend(payload["records"])
+          symbols = [row["symbol"] for row in rows]
+          assert len(symbols) == 131, len(symbols)
+          assert len(set(symbols)) == 131, symbols
+          assert all(row["last_date"] == "2026-07-31" for row in rows), rows
+          assert all(row["provider"] == "akshare_sina" for row in rows), rows
+          csvs = sorted(Path("artifacts/shards/csv").glob("*.csv"))
+          assert len(csvs) == 131, len(csvs)
+          PY
+
+      - name: Build exact Qlib provider
+        run: >-
+          uv run python scripts/build_market_providers.py
+          --market cn
+          --csv-dir artifacts/shards/csv
+          --output-root artifacts/provider
+          --start 2021-01-01
+          --end 2026-07-31
+
+      - name: Verify provider identity and dimensions
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          provider = json.loads(
+              Path("artifacts/provider/cn/provider_manifest.json")
+              .read_text(encoding="utf-8")
+          )
+          assert provider["provider_identity_sha256"] == (
+              "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8"
+          ), provider
+          assert provider["calendar"]["first_day"] == "2021-01-04", provider
+          assert provider["calendar"]["last_day"] == "2026-07-31", provider
+          assert provider["calendar"]["session_count"] == 1351, provider
+          assert provider["instruments"]["count"] == 131, provider
+          PY
+
+      - name: Archive complete provider before Actions upload
+        run: |
+          tar -C artifacts -cf artifacts/cn-provider-sharded-2026-07-31.tar \
+            provider/cn \
+            shards/shard-0.json \
+            shards/shard-1.json \
+            shards/shard-2.json \
+            shards/shard-3.json \
+            shards/shard-4.json \
+            shards/shard-5.json \
+            shards/shard-6.json \
+            shards/shard-7.json
+          test "$(tar -tf artifacts/cn-provider-sharded-2026-07-31.tar | grep -c '^provider/cn/features/')" -gt 100
+          tar -tf artifacts/cn-provider-sharded-2026-07-31.tar | grep -Fx 'provider/cn/calendars/day.txt'
+
+      - name: Upload immutable complete provider
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: cn-provider-sharded-2026-07-31-${{ github.run_id }}
+          path: artifacts/cn-provider-sharded-2026-07-31.tar
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Commit observable complete receipt
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        run: |
+          mkdir -p data/research/formal_promotions/freshness
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          archive = Path("artifacts/cn-provider-sharded-2026-07-31.tar")
+          payload = {
+              "schema_version": "1.0.0",
+              "status": "complete",
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_head_sha": os.environ["GITHUB_SHA"],
+              "artifact_id": int(os.environ["ARTIFACT_ID"]),
+              "artifact_name": f"cn-provider-sharded-2026-07-31-{os.environ['GITHUB_RUN_ID']}",
+              "artifact_digest": os.environ["ARTIFACT_DIGEST"],
+              "inner_tar_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+              "provider_identity_sha256": "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8",
+              "provider_cutoff": "2026-07-31",
+              "provider_calendar_sessions": 1351,
+              "source_mode": "eight_runner_akshare_sina_shards",
+              "selected_provider": "akshare_sina",
+              "source_symbol_count": 131,
+              "research_only": True,
+              "trade_ready": False,
+          }
+          Path(
+              "data/research/formal_promotions/freshness/cn-provider-sharded-seed-receipt.json"
+          ).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/formal_promotions/freshness/cn-provider-sharded-seed-receipt.json
+          git commit -m "research: record sharded CN provider freshness artifact"
+          git push origin HEAD:main
