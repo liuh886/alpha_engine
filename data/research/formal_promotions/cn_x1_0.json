@@ -27,9 +27,9 @@
     }
   },
   "durability": {
-    "status": "time_bounded_actions_artifact",
-    "on_expiry": "block_non_regenerable",
-    "approved_durable_location": null,
-    "non_regenerable_after_expiry": true
+    "status": "durable_repository_archive",
+    "on_expiry": "use_exact_repository_archive",
+    "approved_durable_location": "data/research/formal_promotions/archive/cn_x1_0.zip",
+    "non_regenerable_after_expiry": false
   }
 }
