@@ -1,11 +1,12 @@
 {
+  "expected_primary_source": "akshare_sina",
   "research_only": true,
   "schema_version": "1.0.0",
-  "source_mode": "governed_repository_csv_offline",
-  "started_at": "2026-08-03T03:13:15.120573+00:00",
+  "source_mode": "credential_aware_public_full_refresh",
+  "started_at": "2026-08-03T03:18:17.941512+00:00",
   "status": "started",
   "target_cutoff": "2026-07-31",
   "trade_ready": false,
-  "workflow_head_sha": "bf5e0879d8790c7e33b46cdde98de15601b92a5a",
-  "workflow_run_id": 30781243524
+  "workflow_head_sha": "05231e5d1b5849e4afa768bbdc09144a51af9309",
+  "workflow_run_id": 30781474521
 }
