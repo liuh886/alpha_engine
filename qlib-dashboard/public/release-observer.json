@@ -1,6 +1,7 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.0.1",
   "observer": "pages-release-receipt",
+  "observer_execution": "repository-root-pythonpath",
   "receipt_comment_id": 5160974834,
   "production_issue": 410
 }
