@@ -1,0 +1,78 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_post_defense_state2_accelerator_v4_10_research
+parent_experiment_id: qqqi_qqq_tqqq_v4_2_rsi_vix_adaptive_sgov_v4_9_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+purpose: >-
+  Test whether the exact frozen RSI×VIX SGOV defense can preserve its
+  large-drawdown protection while one single-use accelerator reallocates the
+  ordinary 25% QQQ sleeve to TQQQ only during the first formally confirmed
+  state-2 episode after a completed defense release.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  sgov_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml
+  attribution_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_episode_attribution.yaml
+  defense_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_rsi_vix_adaptive_sgov_v4_9_research.yaml
+  signal_trace_must_equal_v4_2: true
+  defense_trace_must_equal_v4_9: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  no_threshold_weight_delay_or_persistence_search: true
+  actionable_alert_changes_authorized: false
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  common_tradable_window: true
+  corporate_action_basis: adjusted
+  required_symbols: [QQQI, QQQ, TQQQ, SGOV, ^VIX, ^VXN]
+  actual_product_scope:
+    qqqi_history_must_be_real: true
+    synthetic_pre_inception_backfill: false
+  proxy_scope:
+    qqqi_defensive_component: QQQ
+    role: proxy_mechanism_only
+
+accelerator_rules:
+  arm_on_completed_defense_release: true
+  reset_arm_on_new_defense_activation: true
+  consume_on_first_subsequent_executed_state_2_episode: true
+  continue_only_while_executed_state_is_2: true
+  single_use_per_completed_defense_episode: true
+  no_precursor_or_delay: true
+
+allocations:
+  ordinary_state_2: {QQQI: 0.00, QQQ: 0.25, TQQQ: 0.75, SGOV: 0.00}
+  accelerated_state_2: {QQQI: 0.00, QQQ: 0.00, TQQQ: 1.00, SGOV: 0.00}
+
+comparators:
+  - current_v4_2
+  - rsi_vix_adaptive_sgov
+  - post_defense_state2_accelerator_tag_only
+  - rsi_vix_defense_state2_accelerator
+
+validation:
+  chronological_train_fraction: 0.60
+  event_horizons: [1, 2, 3, 5, 10]
+  promotion_gate:
+    max_drawdown_improvement_pp_min: 3.00
+    cagr_gap_pp_max: 1.50
+    defense_cagr_sacrifice_recovered_min: 0.6666666667
+    worst_20d_worsening_pp_max: 1.00
+    accelerator_event_positive_rate_min: 0.60
+    largest_positive_event_share_max: 0.50
+    turnover_increase_max: 0.25
+
+hypothesis_discipline:
+  - Run exactly four comparators on identical dates and costs.
+  - Reuse the v4.9 defense trace without changing RSI, VIX, SGOV or hysteresis.
+  - Test exactly one accelerated allocation: 100% TQQQ.
+  - Do not test 80%, 90%, duration caps, delays, precursors or exit overrides.
+  - Only the first formal state-2 episode after a completed defense release may accelerate.
+  - Actual and QQQ-proxy samples must be reported separately.
+  - Passing authorizes only a non-actionable shadow candidate.
+  - v4.2, Telegram targets and Issue 348 remain unchanged.
