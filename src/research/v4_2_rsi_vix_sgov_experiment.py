@@ -1,8 +1,9 @@
-"""Frozen RSI × VIX adaptive SGOV overlay for the QQQI/QQQ/TQQQ v4.2 family.
+"""Frozen RSI × VIX adaptive SGOV overlay for the QQQ v4.2 family.
 
-The module keeps the v4.2 decision trace and state-2 allocation unchanged. It
-tests whether a stateful SGOV sleeve can defend states 0/1 during joint price
-and volatility deterioration, then release when both repair.
+The experiment keeps the v4.2 state trace and state-2 allocation unchanged. It
+only replaces part of the state-0/state-1 risk sleeve with SGOV when a frozen
+close-time deterioration rule is active, then releases it at the next open
+after the corresponding repair rule is confirmed.
 """
 
 from __future__ import annotations
@@ -29,16 +30,30 @@ from src.research.vxn_bridge_allocation_experiment import (
     run_bridge_allocation_comparison,
 )
 
-
 VARIANTS = (
     "vix_only_adaptive_sgov",
     "rsi_only_adaptive_sgov",
     "rsi_vix_adaptive_sgov",
 )
 
+_OVERLAY_EPISODE_COLUMNS = (
+    "event_id",
+    "start_date",
+    "end_date",
+    "sessions",
+    "entry_state",
+    "entry_rsi_14",
+    "entry_vix_close",
+    "candidate_return",
+    "v4_2_return",
+    "relative_return",
+    "v4_2_episode_drawdown",
+    "false_defense",
+)
+
 
 def wilder_rsi(close: pd.Series, period: int = 14) -> pd.Series:
-    """Return Wilder RSI with an explicit arithmetic seed and recursive smoothing."""
+    """Calculate Wilder RSI with an arithmetic seed and recursive smoothing."""
 
     if period <= 0:
         raise ValueError("period must be positive")
@@ -67,9 +82,8 @@ def wilder_rsi(close: pd.Series, period: int = 14) -> pd.Series:
         block_loss = loss.loc[block_index]
         avg_gain = float(block_gain.iloc[1 : period + 1].mean())
         avg_loss = float(block_loss.iloc[1 : period + 1].mean())
-        seed_index = block_index[period]
 
-        def _rsi_from_averages(current_gain: float, current_loss: float) -> float:
+        def from_averages(current_gain: float, current_loss: float) -> float:
             if np.isclose(current_loss, 0.0):
                 return 100.0 if current_gain > 0.0 else 50.0
             if np.isclose(current_gain, 0.0):
@@ -77,7 +91,7 @@ def wilder_rsi(close: pd.Series, period: int = 14) -> pd.Series:
             relative_strength = current_gain / current_loss
             return float(100.0 - 100.0 / (1.0 + relative_strength))
 
-        result.loc[seed_index] = _rsi_from_averages(avg_gain, avg_loss)
+        result.loc[block_index[period]] = from_averages(avg_gain, avg_loss)
         for location in range(period + 1, len(block_index)):
             current_index = block_index[location]
             avg_gain = (
@@ -86,7 +100,7 @@ def wilder_rsi(close: pd.Series, period: int = 14) -> pd.Series:
             avg_loss = (
                 avg_loss * (period - 1) + float(block_loss.loc[current_index])
             ) / period
-            result.loc[current_index] = _rsi_from_averages(avg_gain, avg_loss)
+            result.loc[current_index] = from_averages(avg_gain, avg_loss)
     return result
 
 
@@ -95,7 +109,7 @@ def _overlay_close_trace(
     contract: Mapping[str, Any],
     variant: str,
 ) -> pd.DataFrame:
-    """Build the close-decided overlay trace before next-open shifting."""
+    """Build the stateful close-decided overlay trace before execution shifting."""
 
     if variant not in VARIANTS:
         raise ValueError(f"unknown overlay variant: {variant}")
@@ -114,7 +128,7 @@ def _overlay_close_trace(
     rsi_valid = reference_daily["rsi_14"].notna()
     rsi_weak = reference_daily["rsi_14"].lt(activation_threshold) & rsi_valid
     rsi_repaired = reference_daily["rsi_14"].gt(release_threshold) & rsi_valid
-    rsi_repair_count = (
+    rsi_release_confirmed = (
         rsi_repaired.astype(int)
         .rolling(release_closes, min_periods=release_closes)
         .sum()
@@ -134,10 +148,10 @@ def _overlay_close_trace(
         release = vix_repaired
     elif variant == "rsi_only_adaptive_sgov":
         activation = rsi_weak
-        release = rsi_repair_count
+        release = rsi_release_confirmed
     else:
         activation = rsi_weak & vix_stressed
-        release = rsi_repair_count & vix_repaired
+        release = rsi_release_confirmed & vix_repaired
 
     active = False
     states: list[bool] = []
@@ -157,7 +171,7 @@ def _overlay_close_trace(
         {
             "rsi_weak": rsi_weak.astype(bool),
             "rsi_repaired": rsi_repaired.astype(bool),
-            "rsi_release_confirmed": rsi_repair_count.fillna(False).astype(bool),
+            "rsi_release_confirmed": rsi_release_confirmed.fillna(False).astype(bool),
             "vix_stressed_for_overlay": vix_stressed.astype(bool),
             "vix_repaired_for_overlay": vix_repaired.astype(bool),
             "overlay_activation": activation.astype(bool),
@@ -176,13 +190,11 @@ def _weights_from_overlay(
     trace: pd.DataFrame,
     contract: Mapping[str, Any],
 ) -> tuple[pd.DataFrame, pd.Series]:
-    """Map the close trace to next-open weights without changing v4.2 state 2."""
+    """Map the close trace to next-open weights while preserving state 2."""
 
     allocations = contract["allocations"]
     states = reference_daily["position_state"].astype(int)
-    active_at_open = (
-        trace["overlay_active_at_close"].shift(1).fillna(False).astype(bool)
-    )
+    active_at_open = trace["overlay_active_at_close"].shift(1).fillna(False).astype(bool)
     active_at_open &= states.isin([0, 1])
 
     weights = pd.DataFrame(0.0, index=reference_daily.index, columns=list(ASSETS))
@@ -195,7 +207,6 @@ def _weights_from_overlay(
         raw = allocations[allocation_key]
         for asset in ASSETS:
             weights.loc[mask, asset] = float(raw.get(asset, 0.0))
-
     for state, allocation_key in ((0, "overlay_state_0"), (1, "overlay_state_1")):
         mask = states.eq(state) & active_at_open
         raw = allocations[allocation_key]
@@ -210,8 +221,7 @@ def _weights_from_overlay(
     expected_state_two = allocations["state_2_frozen"]
     for asset in ASSETS:
         if not np.allclose(
-            weights.loc[state_two, asset],
-            float(expected_state_two.get(asset, 0.0)),
+            weights.loc[state_two, asset], float(expected_state_two.get(asset, 0.0))
         ):
             raise AssertionError("overlay changed the frozen state-2 allocation")
     if bool(weights.loc[~states.isin([0, 1]), "SGOV"].gt(0.0).any()):
@@ -224,15 +234,15 @@ def run_adaptive_overlay_backtest(
     contract: Mapping[str, Any],
     variant: str,
 ) -> StrategyResult:
-    """Run one frozen adaptive overlay on the unchanged v4.2 state trace."""
+    """Execute one frozen adaptive overlay on the unchanged v4.2 trace."""
 
     daily = reference_daily.copy()
     trace = _overlay_close_trace(daily, contract, variant)
     daily = daily.join(trace)
     weights, active_at_open = _weights_from_overlay(daily, trace, contract)
     daily["overlay_active"] = active_at_open
-    daily["overlay_reason"] = (
-        daily["overlay_reason_at_close"].shift(1).fillna("initial_entry")
+    daily["overlay_reason"] = daily["overlay_reason_at_close"].shift(1).fillna(
+        "initial_entry"
     )
     for asset in ASSETS:
         daily[f"weight_{asset}"] = weights[asset]
@@ -253,7 +263,9 @@ def run_adaptive_overlay_backtest(
     daily["drawdown"] = daily["equity"] / daily["equity"].cummax() - 1.0
 
     metrics = _return_metrics(daily["net_return"], annual_risk_free_rate=0.0)
-    weight_changes = weights.loc[daily.index].ne(weights.loc[daily.index].shift()).any(axis=1)
+    weight_changes = weights.loc[daily.index].ne(weights.loc[daily.index].shift()).any(
+        axis=1
+    )
     metrics.update(
         {
             "strategy": variant,
@@ -293,7 +305,7 @@ def _overlay_episodes(
     baseline: StrategyResult,
     contract: Mapping[str, Any],
 ) -> pd.DataFrame:
-    """Attribute every contiguous SGOV episode against the current v4.2 baseline."""
+    """Attribute contiguous SGOV episodes against the same-date v4.2 path."""
 
     active = candidate.daily["overlay_active"].astype(bool)
     starts = active & ~active.shift(1, fill_value=False)
@@ -314,7 +326,9 @@ def _overlay_episodes(
         candidate_log = float(np.log1p(candidate_slice["net_return"]).sum())
         baseline_log = float(np.log1p(baseline_slice["net_return"]).sum())
         baseline_equity = (1.0 + baseline_slice["net_return"]).cumprod()
-        forward_drawdown = float(baseline_equity.div(baseline_equity.cummax()).sub(1.0).min())
+        forward_drawdown = float(
+            baseline_equity.div(baseline_equity.cummax()).sub(1.0).min()
+        )
         row: dict[str, Any] = {
             "event_id": f"overlay_{event_number:03d}",
             "start_date": start,
@@ -332,16 +346,13 @@ def _overlay_episodes(
         release_location = end_location + 1
         for horizon in horizons:
             stop = release_location + horizon
+            field = f"post_release_relative_return_{horizon}d"
             if release_location >= len(index) or stop > len(index):
-                row[f"post_release_relative_return_{horizon}d"] = np.nan
+                row[field] = np.nan
                 continue
-            candidate_window = candidate.daily["net_return"].iloc[
-                release_location:stop
-            ]
-            baseline_window = baseline.daily["net_return"].iloc[
-                release_location:stop
-            ]
-            row[f"post_release_relative_return_{horizon}d"] = float(
+            candidate_window = candidate.daily["net_return"].iloc[release_location:stop]
+            baseline_window = baseline.daily["net_return"].iloc[release_location:stop]
+            row[field] = float(
                 np.exp(
                     np.log1p(candidate_window).sum()
                     - np.log1p(baseline_window).sum()
@@ -349,10 +360,18 @@ def _overlay_episodes(
                 - 1.0
             )
         rows.append(row)
+    if not rows:
+        columns = [
+            *_OVERLAY_EPISODE_COLUMNS,
+            *[f"post_release_relative_return_{horizon}d" for horizon in horizons],
+        ]
+        return pd.DataFrame(columns=columns)
     return pd.DataFrame(rows)
 
 
-def _capture_ratio(strategy: pd.Series, benchmark: pd.Series, up: bool) -> float | None:
+def _capture_ratio(
+    strategy: pd.Series, benchmark: pd.Series, *, up: bool
+) -> float | None:
     aligned = pd.concat([strategy, benchmark], axis=1).dropna()
     if aligned.empty:
         return None
@@ -374,8 +393,10 @@ def _opportunity_metrics(result: StrategyResult) -> dict[str, Any]:
     top = qqq.ge(threshold)
     sgov_active = daily["weight_SGOV"].gt(0.0)
     return {
-        "upside_capture_vs_qqq": _capture_ratio(daily["net_return"], qqq, True),
-        "downside_capture_vs_qqq": _capture_ratio(daily["net_return"], qqq, False),
+        "upside_capture_vs_qqq": _capture_ratio(daily["net_return"], qqq, up=True),
+        "downside_capture_vs_qqq": _capture_ratio(
+            daily["net_return"], qqq, up=False
+        ),
         "qqq_top_decile_return_threshold": threshold,
         "qqq_top_decile_sessions": int(top.sum()),
         "qqq_top_decile_sessions_with_sgov": int((top & sgov_active).sum()),
@@ -385,21 +406,27 @@ def _opportunity_metrics(result: StrategyResult) -> dict[str, Any]:
     }
 
 
+def _median_recovery_lag(episodes: pd.DataFrame) -> float | None:
+    major = episodes.loc[episodes["major_episode"]].copy()
+    resolved = major.loc[major["recovery_lag_sessions"].notna()]
+    return float(resolved["recovery_lag_sessions"].median()) if len(resolved) else None
+
+
 def _gate(
     joint: StrategyResult,
     baseline: StrategyResult,
     single_factor_results: Mapping[str, StrategyResult],
     episodes: pd.DataFrame,
     chronological: pd.DataFrame,
-    drawdown_episodes: pd.DataFrame,
+    joint_drawdown_episodes: pd.DataFrame,
+    single_factor_drawdowns: Mapping[str, pd.DataFrame],
     contract: Mapping[str, Any],
 ) -> dict[str, Any]:
     thresholds = contract["validation"]["promotion_gate"]
-    major = drawdown_episodes.loc[drawdown_episodes["major_episode"]].copy()
-    resolved = major.loc[major["recovery_lag_sessions"].notna()]
-    median_lag = (
-        float(resolved["recovery_lag_sessions"].median()) if len(resolved) else None
-    )
+    major = joint_drawdown_episodes.loc[
+        joint_drawdown_episodes["major_episode"]
+    ].copy()
+    median_lag = _median_recovery_lag(joint_drawdown_episodes)
     max_drawdown_improvement = (
         float(joint.metrics["max_drawdown"]) - float(baseline.metrics["max_drawdown"])
     ) * 100.0
@@ -409,11 +436,7 @@ def _gate(
     improvement_rate = float(major["drawdown_improvement"].gt(0.0).mean())
     median_protection = float(major["drawdown_improvement_pp"].median())
 
-    event_values = (
-        episodes["relative_return"].astype(float)
-        if not episodes.empty
-        else pd.Series(dtype=float)
-    )
+    event_values = episodes["relative_return"].astype(float)
     positive = event_values.clip(lower=0.0)
     largest_share = (
         float(positive.max() / positive.sum())
@@ -422,24 +445,28 @@ def _gate(
     )
 
     chrono = chronological.set_index(["strategy", "segment"])
-    chronological_pass = True
-    for segment in ("early", "late"):
-        joint_calmar = float(chrono.loc[(joint.metrics["strategy"], segment), "calmar"])
-        baseline_calmar = float(
-            chrono.loc[(baseline.metrics["strategy"], segment), "calmar"]
-        )
-        chronological_pass &= joint_calmar >= baseline_calmar
+    chronological_pass = all(
+        float(chrono.loc[(joint.metrics["strategy"], segment), "calmar"])
+        >= float(chrono.loc[(baseline.metrics["strategy"], segment), "calmar"])
+        for segment in ("early", "late")
+    )
 
     comparisons: dict[str, dict[str, bool]] = {}
     win_counts: dict[str, int] = {}
+    comparator_recovery_lags: dict[str, float | None] = {}
     for key, comparator in single_factor_results.items():
+        comparator_lag = _median_recovery_lag(single_factor_drawdowns[key])
+        comparator_recovery_lags[key] = comparator_lag
         checks = {
-            "calmar": float(joint.metrics["calmar"]) > float(comparator.metrics["calmar"]),
+            "calmar": float(joint.metrics["calmar"])
+            > float(comparator.metrics["calmar"]),
             "sortino": float(joint.metrics["sortino"])
             > float(comparator.metrics["sortino"]),
             "max_drawdown": float(joint.metrics["max_drawdown"])
             > float(comparator.metrics["max_drawdown"]),
-            "recovery_lag": False,
+            "recovery_lag": median_lag is not None
+            and comparator_lag is not None
+            and median_lag < comparator_lag,
         }
         comparisons[key] = checks
         win_counts[key] = int(sum(checks.values()))
@@ -478,6 +505,7 @@ def _gate(
             "median_major_trough_protection_pp": median_protection,
             "cagr_sacrifice_pp": cagr_sacrifice,
             "median_recovery_lag_sessions": median_lag,
+            "single_factor_median_recovery_lag_sessions": comparator_recovery_lags,
             "largest_positive_event_share": largest_share,
             "turnover_limit": turnover_limit,
             "single_factor_comparisons": comparisons,
@@ -501,16 +529,16 @@ def run_rsi_vix_sgov_comparison(
     dict[str, pd.DataFrame],
     dict[str, Any],
 ]:
-    """Run the frozen baseline, static SGOV and three adaptive ablations."""
+    """Run v4.2, static SGOV and the three frozen adaptive ablations."""
 
-    _, bridge_results, _, _ = run_bridge_allocation_comparison(
-        bars, bridge_contract
-    )
+    _, bridge_results, _, _ = run_bridge_allocation_comparison(bars, bridge_contract)
     reference = _common_reference_daily(bridge_results[V4_2_KEY], bars)
-    qqq_close = _normalise_close(bars["QQQ"], "QQQ")
-    reference = reference.join(qqq_close.rename("qqq_close"), how="left")
+    if "qqq_close" not in reference.columns:
+        qqq_close = _normalise_close(bars["QQQ"], "QQQ")
+        reference = reference.join(qqq_close.rename("qqq_close"), how="left")
     reference["rsi_14"] = wilder_rsi(
-        reference["qqq_close"], period=int(overlay_contract["overlay_rules"]["rsi_period"])
+        reference["qqq_close"],
+        period=int(overlay_contract["overlay_rules"]["rsi_period"]),
     )
     reference = reference.dropna(subset=["rsi_14"]).copy()
 
@@ -578,6 +606,14 @@ def run_rsi_vix_sgov_comparison(
         overlay_episodes["rsi_vix_adaptive_sgov"],
         chronological,
         drawdown_episodes["rsi_vix_adaptive_sgov"],
+        {
+            "vix_only_adaptive_sgov": drawdown_episodes[
+                "vix_only_adaptive_sgov"
+            ],
+            "rsi_only_adaptive_sgov": drawdown_episodes[
+                "rsi_only_adaptive_sgov"
+            ],
+        },
         overlay_contract,
     )
 
@@ -600,12 +636,10 @@ def run_rsi_vix_sgov_comparison(
         "false_defense": {
             key: {
                 "episode_count": int(len(table)),
-                "false_defense_count": int(table["false_defense"].sum())
-                if not table.empty
-                else 0,
-                "false_defense_rate": float(table["false_defense"].mean())
-                if not table.empty
-                else None,
+                "false_defense_count": int(table["false_defense"].sum()),
+                "false_defense_rate": (
+                    float(table["false_defense"].mean()) if len(table) else None
+                ),
             }
             for key, table in overlay_episodes.items()
         },
