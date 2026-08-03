@@ -1,0 +1,85 @@
+name: Migrate Formal Baselines to Bundle v2
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/migrate-formal-bundles-v2.yml
+      - scripts/migrate_formal_v1_to_bundle_v2.py
+      - tests/test_migrate_formal_v1_to_bundle_v2.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: migrate-formal-bundles-v2-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  migrate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate migration implementation
+        run: |
+          uv run ruff check scripts/migrate_formal_v1_to_bundle_v2.py tests/test_migrate_formal_v1_to_bundle_v2.py
+          uv run mypy scripts/migrate_formal_v1_to_bundle_v2.py
+          uv run pytest tests/test_migrate_formal_v1_to_bundle_v2.py -q --strict-markers --tb=short
+      - name: Generate formal Bundle v2 twice
+        run: |
+          rm -rf artifacts/formal-v2-a artifacts/formal-v2-b data/research/formal_model_runs
+          uv run python scripts/migrate_formal_v1_to_bundle_v2.py \
+            --output-root artifacts/formal-v2-a \
+            --receipt artifacts/formal-v2-a-receipt.json
+          uv run python scripts/migrate_formal_v1_to_bundle_v2.py \
+            --output-root artifacts/formal-v2-b \
+            --receipt artifacts/formal-v2-b-receipt.json
+          diff -qr artifacts/formal-v2-a artifacts/formal-v2-b
+          cmp artifacts/formal-v2-a-receipt.json artifacts/formal-v2-b-receipt.json
+          cp -a artifacts/formal-v2-a data/research/formal_model_runs
+      - name: Verify committed formal catalog boundary
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+
+          root = Path('data/research/formal_model_runs')
+          catalog = json.loads((root / 'catalog.json').read_text())
+          validate_catalog(catalog)
+          assert catalog['channel'] == 'formal'
+          assert catalog['research_only'] is True and catalog['trade_ready'] is False
+          assert len(catalog['records']) == 3
+          assert {row['model_version_id'] for row in catalog['records']} == {
+              'qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0'
+          }
+          for row in catalog['records']:
+              manifest = json.loads((root / row['manifest_path']).read_text())
+              validate_manifest(manifest)
+              assert manifest['publication_channel'] == 'formal'
+              assert manifest['publication_status'] == 'accepted_formal_baseline'
+              assert manifest['research_only'] is True and manifest['trade_ready'] is False
+          PY
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/migrate-formal-bundles-v2.yml
+      - name: Commit generated formal bundles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/formal_model_runs .github/workflows/migrate-formal-bundles-v2.yml
+          git diff --cached --check
+          git commit -m "data: publish formal Model Run Bundle v2 artifacts"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
