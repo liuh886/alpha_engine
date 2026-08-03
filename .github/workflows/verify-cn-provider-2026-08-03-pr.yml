@@ -41,7 +41,7 @@ jobs:
           --start 2021-01-01
           --base-cutoff 2026-07-31
           --cutoff 2026-08-03
-          --append-provider efinance
+          --append-provider akshare
       - name: Upload shard evidence
         uses: actions/upload-artifact@v4
         with:
@@ -84,7 +84,7 @@ jobs:
               assert payload['status'] == 'complete', payload
               assert payload['base_cutoff'] == '2026-07-31', payload
               assert payload['cutoff'] == '2026-08-03', payload
-              assert payload['provider'] == 'akshare_sina_plus_efinance_append', payload
+              assert payload['provider'] == 'akshare_sina_plus_akshare_append', payload
               assert payload['append_semantics'] == 'one_session_append_with_proportional_overlap_anchor_v1', payload
               rows.extend(payload['records'])
           symbols = [row['symbol'] for row in rows]
@@ -92,7 +92,7 @@ jobs:
           assert all(row['base_last_date'] == '2026-07-31' for row in rows), rows
           assert all(row['last_date'] == '2026-08-03' for row in rows), rows
           assert all(row['base_provider'] == 'akshare_sina' for row in rows), rows
-          assert all(row['append_provider'] == 'efinance' for row in rows), rows
+          assert all(row['append_provider'] == 'akshare' for row in rows), rows
           assert all(row['row_count'] == row['base_row_count'] + 1 for row in rows), rows
           assert all(row['reconciliation']['price_ratio_spread'] <= row['reconciliation']['price_ratio_spread_tolerance'] for row in rows), rows
           assert len(list(Path('artifacts/shards/csv_base').glob('*.csv'))) == 131
@@ -142,7 +142,7 @@ jobs:
               'cutoff': '2026-08-03',
               'base_provider_identity_sha256': base['provider_identity_sha256'],
               'provider_identity_sha256': provider['provider_identity_sha256'],
-              'append_source': 'efinance',
+              'append_source': 'akshare_eastmoney',
               'append_semantics': 'one_session_append_with_proportional_overlap_anchor_v1',
               'calendar_session_count': provider['calendar']['session_count'],
               'instrument_count': provider['instruments']['count'],
