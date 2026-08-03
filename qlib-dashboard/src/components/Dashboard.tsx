@@ -1,7 +1,8 @@
 import { Calendar, Database, Info, Tag } from 'lucide-react';
 import type { BacktestData } from '@/lib/data-parser';
+import type { FormalBacktestPackage } from '@/lib/formal-backtest';
 import type { ModelParams } from '@/lib/types';
-import { projectFormalEvidence } from '@/lib/formal-evidence';
+import { projectFormalPackage } from '@/lib/formal-evidence';
 import { AttributionInterpretation } from './AttributionInterpretation';
 import { FormalBacktestEvidence, FormalBacktestTrades } from './FormalBacktestEvidence';
 import { HoldingsSummary } from './HoldingsSummary';
@@ -60,14 +61,11 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
   const meta = data.meta;
   const snapshotId = (params as ModelParams & { data_snapshot_id?: string })?.data_snapshot_id ?? '';
   const hasReport = Array.isArray(data.report) && data.report.length > 0;
-  const modelLike = {
-    id: String(params?.id ?? ''),
-    model_type: String((params as Record<string, unknown> | undefined)?.model_type ?? ''),
-    metrics: data.metrics,
-    backtest: data,
-  } as any;
-  const projection = projectFormalEvidence(modelLike);
-  const formal = projection.formal;
+  const formal = (data as BacktestData & { formalBacktest?: FormalBacktestPackage }).formalBacktest ?? null;
+  const projection = projectFormalPackage(formal, {
+    id: String(params?.id ?? formal?.model_id ?? ''),
+    model_type: typeof params?.model_type === 'string' ? params.model_type : '',
+  });
   const completeness = formal?.evidence_completeness.status;
   const metricUnavailableReason = formal?.evidence_completeness.status === 'partial'
     ? 'Unavailable in the retained formal source evidence.'
