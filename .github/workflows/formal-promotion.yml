@@ -10,8 +10,10 @@ on:
       - "scripts/build_formal_model_backtests.py"
       - "scripts/formal_promotion.py"
       - "scripts/materialize_durable_formal_archives.py"
+      - "scripts/materialize_formal_backtest_base.py"
       - "tests/test_formal_promotion.py"
       - "tests/test_materialize_durable_formal_archives.py"
+      - "tests/test_materialize_formal_backtest_base.py"
 
 permissions:
   contents: read
@@ -44,15 +46,27 @@ jobs:
           uv run ruff check \
             scripts/formal_promotion.py \
             scripts/materialize_durable_formal_archives.py \
+            scripts/materialize_formal_backtest_base.py \
             tests/test_formal_promotion.py \
-            tests/test_materialize_durable_formal_archives.py
+            tests/test_materialize_durable_formal_archives.py \
+            tests/test_materialize_formal_backtest_base.py
           uv run mypy \
             scripts/formal_promotion.py \
-            scripts/materialize_durable_formal_archives.py
+            scripts/materialize_durable_formal_archives.py \
+            scripts/materialize_formal_backtest_base.py
           uv run pytest \
             tests/test_formal_promotion.py \
             tests/test_materialize_durable_formal_archives.py \
+            tests/test_materialize_formal_backtest_base.py \
             -q --strict-markers --tb=short
+
+      - name: Materialize immutable historical formal release
+        run: |
+          mkdir -p artifacts/formal-promotion
+          uv run python scripts/materialize_formal_backtest_base.py \
+            --manifest data/research/formal_backtests/base_manifest.json \
+            --output-dir artifacts/formal-promotion/historical-base \
+            --receipt artifacts/formal-promotion/historical-base-receipt.json
 
       - name: Materialize exact durable source archives
         shell: bash
@@ -65,10 +79,18 @@ jobs:
             --receipt artifacts/formal-promotion/archive-receipt.json \
             2>&1 | tee artifacts/formal-promotion/archive.log
 
-      - name: Reproduce and byte-compare formal packages
+      - name: Reproduce and byte-compare historical formal bases
         shell: bash
         run: |
           set -o pipefail
+          cp artifacts/formal-promotion/historical-base/catalog.json \
+            data/research/formal_backtests/catalog.json
+          cp artifacts/formal-promotion/historical-base/qqqi_qqq_tqqq_v4_2.json \
+            data/research/formal_backtests/qqqi_qqq_tqqq_v4_2.json
+          cp artifacts/formal-promotion/historical-base/us_x1_1.json \
+            data/research/formal_backtests/us_x1_1.json
+          cp artifacts/formal-promotion/historical-base/cn_x1_0.json \
+            data/research/formal_backtests/cn_x1_0.json
           uv run python scripts/formal_promotion.py verify \
             --manifest-dir data/research/formal_promotions \
             --archive-dir artifacts/formal-promotion/archives \

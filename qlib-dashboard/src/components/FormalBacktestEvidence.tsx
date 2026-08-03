@@ -7,9 +7,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 const WINDOW_COLUMNS: Array<{ keys: string[]; label: string; kind?: 'percent' | 'number' | 'text' }> = [
   { keys: ['window'], label: 'Window' },
   { keys: ['segment'], label: 'Segment' },
+  { keys: ['complete'], label: 'Complete' },
+  { keys: ['counts_toward_model_selection'], label: 'Model selection' },
   { keys: ['strategy'], label: 'Strategy' },
   { keys: ['start', 'start_date'], label: 'Start' },
-  { keys: ['end', 'end_date'], label: 'End' },
+  { keys: ['end', 'end_date', 'last_signal_date'], label: 'Last signal' },
+  { keys: ['latest_realized_holding_end'], label: 'Realized through' },
+  { keys: ['provider_cutoff'], label: 'Data cutoff' },
   { keys: ['net_strategy_return', 'total_return', 'cagr'], label: 'Strategy return', kind: 'percent' },
   { keys: ['qqq_return', 'benchmark_return'], label: 'Benchmark', kind: 'percent' },
   { keys: ['simple_excess_return'], label: 'Excess', kind: 'percent' },
@@ -135,11 +139,14 @@ export function FormalBacktestEvidence({ formal }: { formal: FormalBacktestPacka
   const workflowRun = Number(formal.evidence.workflow_run_id);
   const artifactId = formal.evidence.artifact_id;
   const digest = String(formal.evidence.artifact_digest ?? '');
+  const freshness = formal.freshness && typeof formal.freshness === 'object' && !Array.isArray(formal.freshness)
+    ? formal.freshness as Record<string, unknown>
+    : null;
   const completenessRows = Object.entries(formal.evidence_completeness)
     .filter(([key]) => key !== 'status' && key !== 'missing')
     .filter(([, value]) => typeof value === 'string');
   const evidenceRows = Object.entries(formal.evidence)
-    .filter(([key]) => !['exports_sha256', 'row_counts'].includes(key))
+    .filter(([key]) => !['exports_sha256', 'row_counts', 'freshness_evidence'].includes(key))
     .filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value));
   const rowCounts = formal.evidence.row_counts && typeof formal.evidence.row_counts === 'object'
     ? Object.entries(formal.evidence.row_counts as Record<string, unknown>)
@@ -167,6 +174,22 @@ export function FormalBacktestEvidence({ formal }: { formal: FormalBacktestPacka
           <div className="research-stat"><dt>Benchmark</dt><dd>{formal.benchmark}</dd></div>
         </CardContent>
       </Card>
+
+      {freshness && (
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+          <div className="flex gap-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+            <div>
+              <p className="text-sm font-semibold">Current through the declared market session</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Provider cutoff {String(freshness.latest_completed_session ?? formal.evidence_cutoff)}.
+                {' '}Latest realized holding end {String(freshness.latest_realized_holding_end ?? 'not declared')}.
+                {freshness.partial_final_window ? ` ${String(freshness.partial_final_window)} is reporting-only and does not reopen model selection.` : ''}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!complete && formal.evidence_completeness.missing.length > 0 && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
