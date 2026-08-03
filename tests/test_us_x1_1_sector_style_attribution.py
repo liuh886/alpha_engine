@@ -141,6 +141,25 @@ def test_sector_cap_redistributes_and_preserves_sum() -> None:
     assert float(grouped.max()) <= 0.40 + 1e-9
 
 
+def test_equal_weight_sector_cap_uses_rank_order_and_keeps_position_count() -> None:
+    ranked = [f"T{index}" for index in range(8)] + [f"I{index}" for index in range(7)]
+    ranked += [f"H{index}" for index in range(5)]
+    weights = pd.Series(0.0, index=ranked)
+    weights.iloc[:15] = 1 / 15
+    sectors = {
+        **{f"T{index}": "Technology" for index in range(8)},
+        **{f"I{index}": "Industrials" for index in range(7)},
+        **{f"H{index}": "Health Care" for index in range(5)},
+    }
+    capped = cap_sector_weights(weights, sectors, 0.30)
+    selected = capped.loc[capped > 0]
+    grouped = selected.groupby(pd.Series(sectors)).sum()
+    assert len(selected) == 15
+    assert list(selected.index[:4]) == ["T0", "T1", "T2", "T3"]
+    assert abs(float(selected.sum()) - 1.0) < 1e-12
+    assert float(grouped.max()) <= 0.30 + 1e-12
+
+
 def test_negative_loss_share_uses_negative_rows() -> None:
     frame = pd.DataFrame(
         {
