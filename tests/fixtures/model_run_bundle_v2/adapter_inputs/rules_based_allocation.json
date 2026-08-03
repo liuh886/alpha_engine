@@ -1,0 +1,105 @@
+{
+  "model_family_id": "rotation_fixture",
+  "model_version_id": "rotation_v1",
+  "run_id": "rotation_v1_run_001",
+  "model_kind": "rules_based_allocation",
+  "publication_channel": "preview",
+  "publication_status": "ci_validated_preview",
+  "generated_at": "2026-08-03T08:30:00Z",
+  "evidence_cutoff": "2026-07-31",
+  "research_only": true,
+  "trade_ready": false,
+  "comparability_key": {
+    "market": "us",
+    "universe_id": "qqq_etf_reference_v1",
+    "benchmark_id": "qqq",
+    "start": "2024-01-01",
+    "end": "2026-07-31",
+    "trace_frequency": "daily",
+    "horizon": "one_session",
+    "rebalance_contract_id": "state_transition_v1",
+    "cost_contract_id": "next_open_10bps"
+  },
+  "sections": [
+    {
+      "section_id": "summary",
+      "availability_status": "available",
+      "required_for_model_kind": true,
+      "reason": null,
+      "payload": {
+        "schema_version": "2.0.0",
+        "display_name": "Rotation fixture",
+        "metrics": [
+          {
+            "metric_id": "total_return",
+            "value": 0.24,
+            "unit": "ratio",
+            "direction": "higher_is_better",
+            "estimator": "compounded",
+            "annualization": null,
+            "sample_count": 500,
+            "scope": "full_observed_window",
+            "availability_status": "available",
+            "unavailable_reason": null
+          },
+          {
+            "metric_id": "rank_ic",
+            "value": null,
+            "unit": "decimal",
+            "direction": "higher_is_better",
+            "estimator": null,
+            "annualization": null,
+            "sample_count": null,
+            "scope": "full_observed_window",
+            "availability_status": "not_applicable",
+            "unavailable_reason": "Rank IC is not applicable to a rules-based allocation model."
+          }
+        ]
+      }
+    },
+    {
+      "section_id": "performance",
+      "availability_status": "available",
+      "required_for_model_kind": true,
+      "reason": null,
+      "payload": {
+        "schema_version": "2.0.0",
+        "trace_frequency": "daily",
+        "strategy": [{"date": "2026-07-31", "value": 1.24}],
+        "benchmark": [{"date": "2026-07-31", "value": 1.15}]
+      }
+    },
+    {
+      "section_id": "portfolio",
+      "availability_status": "available",
+      "required_for_model_kind": true,
+      "reason": null,
+      "payload": {
+        "schema_version": "2.0.0",
+        "state": "QQQ",
+        "weights": [{"date": "2026-07-31", "instrument": "QQQ", "weight": 1.0}]
+      }
+    },
+    {
+      "section_id": "trades",
+      "availability_status": "available",
+      "required_for_model_kind": true,
+      "reason": null,
+      "payload": {"schema_version": "2.0.0", "rows": []}
+    },
+    {
+      "section_id": "attribution",
+      "availability_status": "not_applicable",
+      "required_for_model_kind": false,
+      "reason": "Stock-selection attribution is not applicable to this allocation fixture.",
+      "payload": null
+    },
+    {
+      "section_id": "decision",
+      "availability_status": "not_computed",
+      "required_for_model_kind": false,
+      "reason": "No governed decision receipt was produced for this fixture.",
+      "payload": null
+    }
+  ]
+}
