@@ -5,16 +5,16 @@ import { useModels } from './useModels';
 export function useAppBootstrap() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const { models, selectedModelId, setSelectedModelId, fetchModels } = useModels();
+  const workspace = useModels();
 
   useEffect(() => {
     let active = true;
     const bootstrap = async () => {
       setLoading(true);
       setLoadError(null);
-      const parsed = await fetchModels();
+      const parsed = await workspace.fetchModels();
       if (!active) return;
-      if (parsed === null) setLoadError('No compatible research bundle was found.');
+      if (parsed === null) setLoadError('No compatible governed research bundle was found.');
       setLoading(false);
     };
 
@@ -22,14 +22,11 @@ export function useAppBootstrap() {
     return () => {
       active = false;
     };
-  }, [fetchModels]);
+  }, [workspace.fetchModels]);
 
   return {
     loading,
     loadError,
-    models,
-    selectedModelId,
-    setSelectedModelId,
-    fetchModels,
+    ...workspace,
   };
 }
