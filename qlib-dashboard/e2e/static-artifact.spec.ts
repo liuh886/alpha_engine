@@ -85,14 +85,14 @@ test('static studio opens without authentication or backend APIs', async ({ page
     await expect(mobileNavigation.getByRole('link', { name: 'Runs', exact: true })).toBeVisible();
     await expect(mobileNavigation.getByRole('link', { name: 'Data', exact: true })).toBeVisible();
     await expect(mobileNavigation.getByRole('link', { name: 'Experiments', exact: true })).toHaveCount(0);
-    await expect(mobileNavigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
+    await expect(mobileNavigation.getByRole('link', { name: 'Backtests', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Close research navigation' }).first().click();
   } else {
     const navigation = page.getByRole('navigation', { name: 'Research studio navigation' });
     await expect(navigation).toBeVisible();
     await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toBeVisible();
     await expect(navigation.getByRole('link', { name: 'Experiments', exact: true })).toHaveCount(0);
-    await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
+    await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toBeVisible();
   }
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Sign in')).toHaveCount(0);
