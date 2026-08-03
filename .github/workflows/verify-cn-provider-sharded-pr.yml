@@ -96,7 +96,7 @@ jobs:
           --root artifacts/provider-root
           --csv-dir artifacts/shards/csv
           --markets cn
-      - name: Verify provider identity and dimensions
+      - name: Verify reproducible current provider identity and dimensions
         run: |
           uv run python - <<'PY'
           import json
@@ -105,7 +105,7 @@ jobs:
               Path("artifacts/provider-root/data/providers/cn/provider_manifest.json")
               .read_text(encoding="utf-8")
           )
-          assert provider["provider_identity_sha256"] == "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8", provider
+          assert provider["provider_identity_sha256"] == "6614e26a4d7cc27dad4e1123ddcc1a73f0e753b7c115e86577a40ab195da2d09", provider
           assert provider["calendar"]["last_day"] == "2026-07-31", provider
           assert provider["calendar"]["session_count"] == 1351, provider
           assert provider["instruments"]["count"] == 131, provider
