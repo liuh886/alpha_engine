@@ -86,7 +86,7 @@ def fetch_shard(
         "status": "complete",
         "market": "cn",
         "pool_id": binding.pool_id,
-        "pool_hash": binding.pool_hash,
+        "pool_contract_sha256": _sha256(binding.pool_spec),
         "candidate_count": len(candidates),
         "total_symbol_count": len(all_symbols),
         "shard_index": shard_index,
