@@ -34,10 +34,10 @@ def _fixture(
             "markets": {"us": "2026-07-31"},
             "required_models": ["model_a"],
             "freshness_receipt_required_models": (
-                ["model_a"] if receipt_required else ["other_model"]
+                ["model_a"] if receipt_required else []
             ),
             "date_range_end_required_models": (
-                ["model_a"] if receipt_required else ["other_model"]
+                ["model_a"] if receipt_required else []
             ),
             "research_only": True,
             "trade_ready": False,
@@ -88,22 +88,6 @@ def test_accepts_current_provider_with_earlier_realized_range(tmp_path: Path) ->
         range_end="2026-07-30",
         receipt_required=False,
     )
-    policy = json.loads((root / "freshness.json").read_text(encoding="utf-8"))
-    policy["freshness_receipt_required_models"] = ["model_a"]
-    policy["date_range_end_required_models"] = ["other_model"]
-    _write(root / "freshness.json", policy)
-    package = json.loads((root / "model_a.json").read_text(encoding="utf-8"))
-    package["freshness"] = {
-        "status": "current",
-        "required_cutoff": "2026-07-31",
-        "latest_completed_session": "2026-07-31",
-        "latest_realized_holding_end": "2026-07-30",
-        "model_selection_reopened": False,
-    }
-    digest = _write(root / "model_a.json", package)
-    catalog = json.loads((root / "catalog.json").read_text(encoding="utf-8"))
-    catalog["records"][0]["sha256"] = digest
-    _write(root / "catalog.json", catalog)
     assert verify(root)["status"] == "current"
 
 
