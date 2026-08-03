@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, CheckCircle2, CircleSlash2, Filter, Search } from 'lucide-react';
+import { formatEvidenceLabel } from '@/lib/format-evidence-label';
 import { governedRunQuery, type GovernedRunSummary } from '@/lib/governed-run';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 import { cn } from '@/lib/utils';
@@ -145,11 +146,11 @@ export function RunsPage() {
             <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
               <div><dt className="text-muted-foreground">Market</dt><dd className="mt-0.5 font-medium">{run.market}</dd></div>
               <div><dt className="text-muted-foreground">Cutoff</dt><dd className="mt-0.5 font-medium">{run.evidenceCutoff || 'not declared'}</dd></div>
-              <div><dt className="text-muted-foreground">Kind</dt><dd className="mt-0.5 font-medium">{run.modelKind.replaceAll('_', ' ')}</dd></div>
-              <div><dt className="text-muted-foreground">Verdict</dt><dd className="mt-0.5 font-medium">{run.decisionStatus.replaceAll('_', ' ')}</dd></div>
+              <div><dt className="text-muted-foreground">Kind</dt><dd className="mt-0.5 font-medium">{formatEvidenceLabel(run.modelKind)}</dd></div>
+              <div><dt className="text-muted-foreground">Verdict</dt><dd className="mt-0.5 font-medium">{formatEvidenceLabel(run.decisionStatus)}</dd></div>
             </dl>
             <div className="mt-auto flex items-center justify-between border-t pt-4 text-xs">
-              <span className="truncate text-muted-foreground">{run.publicationStatus.replaceAll('_', ' ')}</span>
+              <span className="truncate text-muted-foreground">{formatEvidenceLabel(run.publicationStatus)}</span>
               <span className="flex items-center gap-1 font-semibold text-primary">Review <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
             </div>
           </button>
