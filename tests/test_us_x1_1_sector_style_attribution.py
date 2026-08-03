@@ -142,14 +142,17 @@ def test_sector_cap_redistributes_and_preserves_sum() -> None:
 
 
 def test_equal_weight_sector_cap_uses_rank_order_and_keeps_position_count() -> None:
-    ranked = [f"T{index}" for index in range(8)] + [f"I{index}" for index in range(7)]
+    ranked = [f"T{index}" for index in range(8)]
+    ranked += [f"I{index}" for index in range(7)]
     ranked += [f"H{index}" for index in range(5)]
+    ranked += [f"C{index}" for index in range(5)]
     weights = pd.Series(0.0, index=ranked)
     weights.iloc[:15] = 1 / 15
     sectors = {
         **{f"T{index}": "Technology" for index in range(8)},
         **{f"I{index}": "Industrials" for index in range(7)},
         **{f"H{index}": "Health Care" for index in range(5)},
+        **{f"C{index}": "Consumer Discretionary" for index in range(5)},
     }
     capped = cap_sector_weights(weights, sectors, 0.30)
     selected = capped.loc[capped > 0]
