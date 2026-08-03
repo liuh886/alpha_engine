@@ -8,6 +8,11 @@ const dashboardRoot = resolve(scriptDir, '..');
 const repositoryRoot = resolve(dashboardRoot, '..');
 const sourceRoot = join(repositoryRoot, 'data', 'research', 'formal_backtests');
 const targetRoot = join(dashboardRoot, 'public', 'data', 'formal-backtests');
+const validationMode = process.env.FORMAL_BACKTEST_VALIDATION_MODE ?? 'published';
+
+if (!['candidate', 'published'].includes(validationMode)) {
+  throw new Error(`Unsupported formal backtest validation mode: ${validationMode}`);
+}
 
 function assertRecord(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -55,17 +60,21 @@ const nextSessionCloses = assertRecord(freshness.next_session_close_utc, 'Formal
 if (JSON.stringify(Object.keys(marketCutoffs).sort()) !== JSON.stringify(Object.keys(nextSessionCloses).sort())) {
   throw new Error('Formal freshness market and next-session-close bindings differ.');
 }
-const now = Date.now();
-for (const [market, rawClose] of Object.entries(nextSessionCloses)) {
-  const close = Date.parse(String(rawClose));
-  if (!Number.isFinite(close)) throw new Error(`Invalid next-session close for ${market}: ${String(rawClose)}`);
-  if (now >= close) {
-    throw new Error(
-      `Formal backtests are stale for ${market}: declared cutoff ${String(marketCutoffs[market])}; `
-      + `the next session closed at ${String(rawClose)}. Refresh formal evidence before publishing.`,
-    );
+
+if (validationMode === 'published') {
+  const now = Date.now();
+  for (const [market, rawClose] of Object.entries(nextSessionCloses)) {
+    const close = Date.parse(String(rawClose));
+    if (!Number.isFinite(close)) throw new Error(`Invalid next-session close for ${market}: ${String(rawClose)}`);
+    if (now >= close) {
+      throw new Error(
+        `Formal backtests are stale for ${market}: declared cutoff ${String(marketCutoffs[market])}; `
+        + `the next session closed at ${String(rawClose)}. Refresh formal evidence before publishing.`,
+      );
+    }
   }
 }
+
 if (!Array.isArray(freshness.required_models) || freshness.required_models.length === 0) {
   throw new Error('Formal freshness required model list is missing.');
 }
@@ -90,7 +99,7 @@ for (const rawEntry of catalog.records) {
   const market = String(payload.market ?? '');
   const requiredCutoff = String(marketCutoffs[market] ?? '');
   if (!requiredCutoff) throw new Error(`Formal freshness cutoff is missing for ${modelId}/${market}.`);
-  if (payload.evidence_cutoff !== requiredCutoff) {
+  if (validationMode === 'published' && payload.evidence_cutoff !== requiredCutoff) {
     throw new Error(`Formal backtest is stale: ${modelId}; expected ${requiredCutoff}, found ${String(payload.evidence_cutoff)}.`);
   }
   acceptedFiles.push({ filename, bytes });
@@ -109,6 +118,6 @@ for (const { filename } of acceptedFiles) {
 }
 
 console.log(
-  `Published ${acceptedFiles.length} current formal model backtests from ${sourceRoot}. `
+  `Published ${acceptedFiles.length} ${validationMode}-validated formal model backtests from ${sourceRoot}. `
   + `Catalog SHA-256: ${sha256(catalogBytes)}; freshness SHA-256: ${sha256(freshnessBytes)}`,
 );
