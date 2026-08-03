@@ -48,14 +48,20 @@ jobs:
       - name: Fetch exact immutable source artifacts
         env:
           GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
+          mkdir -p artifacts/formal-promotion
+          set -o pipefail
           uv run python scripts/formal_promotion.py fetch \
             --manifest-dir data/research/formal_promotions \
             --archive-dir artifacts/formal-promotion/archives \
-            --receipt artifacts/formal-promotion/fetch-receipt.json
+            --receipt artifacts/formal-promotion/fetch-receipt.json \
+            2>&1 | tee artifacts/formal-promotion/fetch.log
 
       - name: Reproduce and byte-compare formal packages
+        shell: bash
         run: |
+          set -o pipefail
           uv run python scripts/formal_promotion.py verify \
             --manifest-dir data/research/formal_promotions \
             --archive-dir artifacts/formal-promotion/archives \
@@ -63,7 +69,8 @@ jobs:
             --generated-dir artifacts/formal-promotion/generated \
             --committed-dir data/research/formal_backtests \
             --receipt artifacts/formal-promotion/promotion-receipt.json \
-            --summary artifacts/formal-promotion/promotion-summary.md
+            --summary artifacts/formal-promotion/promotion-summary.md \
+            2>&1 | tee artifacts/formal-promotion/verify.log
           cat artifacts/formal-promotion/promotion-summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retain promotion verification evidence
