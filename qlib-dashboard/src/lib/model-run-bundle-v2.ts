@@ -197,6 +197,7 @@ export async function sha256Text(value: string): Promise<string> {
 }
 
 export async function verifyModelRunBundleId(manifest: ModelRunBundleV2Manifest): Promise<boolean> {
-  const { bundle_id: _bundleId, ...identityPayload } = manifest;
+  const identityPayload = { ...manifest } as Record<string, unknown>;
+  delete identityPayload.bundle_id;
   return (await sha256Text(canonicalJson(identityPayload))) === manifest.bundle_id;
 }
