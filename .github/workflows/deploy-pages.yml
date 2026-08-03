@@ -3,24 +3,6 @@ name: Deploy Research Artifact Studio to Pages
 on:
   push:
     branches: ["main"]
-    paths:
-      - "qlib-dashboard/**"
-      - "data/research/**"
-      - "configs/models/*.yaml"
-      - "docs/research/**"
-      - "scripts/check_repository_model_runs.py"
-      - "scripts/export_static_site_data.py"
-      - "scripts/export_research_bundle.py"
-      - "scripts/verify_pages_release.py"
-      - "src/artifacts/pages_release_verification.py"
-      - "tests/test_pages_release_verification.py"
-      - "src/artifacts/repository_research_store.py"
-      - "src/artifacts/research_bundle.py"
-      - "docs/methodology.md"
-      - "docs/contracts/alpha-engine-bundle.schema.json"
-      - "scripts/check_legacy_web_boundary.py"
-      - "docs/architecture/legacy_web_inventory.json"
-      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -33,7 +15,65 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect-impact:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.impact.outputs.deploy }}
+      reason: ${{ steps.impact.outputs.reason }}
+      matched_paths_json: ${{ steps.impact.outputs.matched_paths_json }}
+    steps:
+      - name: Checkout publication graph
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Resolve Pages publication impact
+        id: impact
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            python scripts/detect_pages_impact.py \
+              --manual \
+              --github-output "$GITHUB_OUTPUT"
+          else
+            python scripts/detect_pages_impact.py \
+              --before "$BEFORE_SHA" \
+              --after "$AFTER_SHA" \
+              --github-output "$GITHUB_OUTPUT"
+          fi
+          cat artifacts/pages-impact-decision.json
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          decision = json.loads(
+              Path("artifacts/pages-impact-decision.json").read_text(encoding="utf-8")
+          )
+          matched = ", ".join(f"`{path}`" for path in decision["matched_paths"]) or "none"
+          print("### Pages publication impact")
+          print()
+          print(f"- Deploy: `{str(decision['deploy']).lower()}`")
+          print(f"- Reason: `{decision['reason']}`")
+          print(f"- Matched paths: {matched}")
+          PY
+
+      - name: Record impact decision
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-impact-decision
+          path: artifacts/pages-impact-decision.json
+          if-no-files-found: error
+          retention-days: 14
+
   build-and-deploy:
+    needs: detect-impact
+    if: ${{ needs.detect-impact.outputs.deploy == 'true' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -91,13 +131,17 @@ jobs:
       - name: Validate release verification contract
         run: |
           uv run ruff check \
+            scripts/detect_pages_impact.py \
             scripts/verify_pages_release.py \
             src/artifacts/pages_release_verification.py \
+            tests/test_pages_impact.py \
             tests/test_pages_release_verification.py
           uv run mypy \
+            scripts/detect_pages_impact.py \
             scripts/verify_pages_release.py \
             src/artifacts/pages_release_verification.py
           uv run pytest \
+            tests/test_pages_impact.py \
             tests/test_pages_release_verification.py \
             -q --strict-markers --tb=short
 
@@ -117,6 +161,9 @@ jobs:
             --output artifacts/research-bundle
 
       - name: Assemble site
+        env:
+          IMPACT_REASON: ${{ needs.detect-impact.outputs.reason }}
+          MATCHED_PATHS_JSON: ${{ needs.detect-impact.outputs.matched_paths_json }}
         run: |
           mkdir -p _site/docs _site/data
           cp -r qlib-dashboard/dist/. _site/
@@ -125,7 +172,24 @@ jobs:
           cp docs/methodology.md _site/docs/methodology.md
           cp -r artifacts/research-bundle _site/bundle
           cp docs/contracts/alpha-engine-bundle.schema.json _site/docs/alpha-engine-bundle.schema.json
-          printf '{"commit_sha":"%s","workflow_run_id":"%s"}\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > _site/deployment.json
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "commit_sha": os.environ["GITHUB_SHA"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "publication_impact": {
+                  "reason": os.environ["IMPACT_REASON"],
+                  "matched_paths": json.loads(os.environ["MATCHED_PATHS_JSON"]),
+              },
+          }
+          Path("_site/deployment.json").write_text(
+              json.dumps(payload, separators=(",", ":")) + "\n",
+              encoding="utf-8",
+          )
+          PY
           touch _site/.nojekyll
           test -f _site/index.html
           test -f _site/deployment.json
