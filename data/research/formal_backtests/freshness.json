@@ -6,9 +6,9 @@
     "us": "2026-07-31",
     "cn": "2026-07-31"
   },
-  "market_calendars": {
-    "us": "XNYS",
-    "cn": "XSHG"
+  "next_session_close_utc": {
+    "us": "2026-08-03T20:00:00Z",
+    "cn": "2026-08-03T07:00:00Z"
   },
   "required_models": [
     "qqqi_qqq_tqqq_v4_2",
