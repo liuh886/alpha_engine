@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0.0",
+  "status": "accepted_reproducible_incremental_cn_freshness_evidence",
+  "market": "cn",
+  "model_id": "cn_x1_0",
+  "cutoff": "2026-08-03",
+  "previous_cutoff": "2026-07-31",
+  "generated_at": "2026-08-03T09:15:00Z",
+  "next_session_close_utc": "2026-08-04T07:00:00Z",
+  "workflow_run_id": 30801029527,
+  "workflow_head_sha": "9b7647dce727205e73904619c4d9f6ee111db3a2",
+  "artifact_id": 8850832595,
+  "artifact_name": "cn-formal-freshness-candidate-2026-08-03-30801029527",
+  "artifact_digest": "sha256:d1401326337b3148617d58ab4c2bc98f0baf4fad1360e826c345d53a5367f7b0",
+  "provider_workflow_run_id": 30800135063,
+  "provider_artifact_id": 8850463785,
+  "provider_artifact_name": "cn-provider-2026-08-03-30800135063",
+  "provider_artifact_digest": "sha256:711b7e33e578a92a87d5056b61b4a026c58da878878ee53b504a5e0d629395cc",
+  "provider_tar_sha256": "320d02b48ac8b4381d82e776ac60b26cb844ce11f9a0b7cddfd60cae1b896546",
+  "provider_identity_sha256": "abae71f037571a9a847d4582e0bea9fabdd71796cac54a70aa7c6d07b668eeb0",
+  "trace_sha256": {
+    "2026H2": "1ef5c8ac621de93f90404936a69387b70ce8e5be64cf0c9678d4eb3327cbe3d5"
+  },
+  "independent_execution_count": 2,
+  "model_selection_reopened": false,
+  "automatic_promotion": false,
+  "research_only": true,
+  "trade_ready": false
+}
