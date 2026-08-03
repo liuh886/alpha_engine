@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -16,13 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
           show-progress: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -32,14 +35,26 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
 
+      - name: Inventory and enforce CI governance
+        run: uv run python scripts/check_ci_governance.py --output artifacts/ci-workflow-inventory.json --enforce
+
+      - name: Upload CI workflow inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-workflow-inventory
+          path: artifacts/ci-workflow-inventory.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Freeze legacy Web boundary
         run: uv run python scripts/check_legacy_web_boundary.py
 
       - name: Ruff lint
-        run: uv run ruff check src scripts/check_legacy_web_boundary.py
+        run: uv run ruff check src scripts/check_legacy_web_boundary.py scripts/check_ci_governance.py
 
       - name: Mypy type check (ratcheted scope)
-        run: uv run mypy src/release src/models/metric_contract.py
+        run: uv run mypy src/release src/models/metric_contract.py scripts/check_ci_governance.py
 
       - name: Pytest collection
         if: github.event_name == 'pull_request'
@@ -94,12 +109,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
 

@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install uv and locked dependencies
@@ -44,7 +44,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: automation/refresh-qqqi-vxn-current-notebook
           delete-branch: true
-          commit-message: research: refresh QQQI VXN current strategy notebook
+          commit-message: "research: refresh QQQI VXN current strategy notebook"
           title: "research: refresh QQQI VXN current strategy notebook"
           body: |
             Automated refresh of the rolling QQQI / QQQ / TQQQ strategy notebook.
