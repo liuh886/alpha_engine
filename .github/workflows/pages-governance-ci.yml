@@ -1,0 +1,44 @@
+name: Pages Governance CI
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/deploy-pages.yml"
+      - ".github/workflows/pages-release-receipt.yml"
+      - ".github/workflows/pages-governance-ci.yml"
+      - "scripts/detect_pages_impact.py"
+      - "tests/test_pages_impact.py"
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/deploy-pages.yml"
+      - ".github/workflows/pages-release-receipt.yml"
+      - ".github/workflows/pages-governance-ci.yml"
+      - "scripts/detect_pages_impact.py"
+      - "tests/test_pages_impact.py"
+
+permissions:
+  contents: read
+
+jobs:
+  publication-impact-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Validate impact detector
+        run: |
+          uv run ruff check scripts/detect_pages_impact.py tests/test_pages_impact.py
+          uv run mypy scripts/detect_pages_impact.py
+          uv run pytest tests/test_pages_impact.py -q --strict-markers --tb=short
