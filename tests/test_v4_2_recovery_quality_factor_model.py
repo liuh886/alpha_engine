@@ -10,6 +10,7 @@ from src.research.etf_rotation_experiment import StrategyResult
 from src.research.v4_2_recovery_quality_factor_model import (
     _episode_budget_trace,
     _forward_sum,
+    _prediction_metrics,
     _state_one_age,
     fit_walk_forward_factor_model,
     run_factor_budget_backtest,
@@ -31,6 +32,20 @@ def test_forward_sum_starts_after_signal_close() -> None:
     assert result.iloc[0] == 5.0
     assert result.iloc[1] == 7.0
     assert result.iloc[2:].isna().all()
+
+
+def test_single_class_validation_keeps_non_auc_evidence() -> None:
+    table = pd.DataFrame(
+        {
+            "probability": [0.10, 0.30, 0.70, 0.90],
+            "positive_marginal_return": [1, 1, 1, 1],
+            "future_marginal_log_return_10d": [0.01, 0.02, 0.03, 0.04],
+        }
+    )
+    metrics = _prediction_metrics(table, require_both_classes=False)
+    assert np.isnan(metrics["roc_auc"])
+    assert metrics["class_count"] == 1
+    assert metrics["top_bottom_quartile_spread"] > 0.0
 
 
 def test_state_one_age_resets_outside_state_one() -> None:
