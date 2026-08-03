@@ -17,8 +17,6 @@ jobs:
   seed:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
-    env:
-      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,6 +38,7 @@ jobs:
               "workflow_head_sha": os.environ["GITHUB_SHA"],
               "started_at": datetime.now(timezone.utc).isoformat(),
               "target_cutoff": "2026-07-31",
+              "source_mode": "governed_repository_csv",
               "research_only": True,
               "trade_ready": False,
           }
@@ -62,9 +61,6 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-
-      - name: Require configured CN source credential
-        run: test -n "$TUSHARE_TOKEN"
 
       - name: Build complete promotion-eligible CN provider
         run: >-
@@ -135,6 +131,7 @@ jobs:
               "artifact_digest": os.environ["ARTIFACT_DIGEST"],
               "provider_identity_sha256": "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8",
               "provider_cutoff": "2026-07-31",
+              "source_mode": "governed_repository_csv",
               "research_only": True,
               "trade_ready": False,
           }
