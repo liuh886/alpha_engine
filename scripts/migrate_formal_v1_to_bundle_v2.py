@@ -232,9 +232,9 @@ def build_plan(source_path: Path, *, catalog_sha256: str) -> RunExportPlan:
     start = str(date_range.get("start") or "")
     end = str(date_range.get("end") or "")
     evidence_cutoff = str(package.get("evidence_cutoff") or "")
-    if end != evidence_cutoff:
+    if not start or not end or not evidence_cutoff or end > evidence_cutoff:
         raise FormalV1MigrationError(
-            f"formal date range/cutoff mismatch: {model_id}: {end}/{evidence_cutoff}"
+            f"formal date range exceeds evidence cutoff: {model_id}: {start}/{end}/{evidence_cutoff}"
         )
     report = _list(package, "report")
     positions = _list(package, "positions")
@@ -437,7 +437,7 @@ def migrate(source_root: Path, output_root: Path) -> dict[str, Any]:
                 output_root=output_root,
             )
         )
-    catalog = update_catalog(
+    update_catalog(
         manifests,
         catalog_path=output_root / "catalog.json",
         channel="formal",
