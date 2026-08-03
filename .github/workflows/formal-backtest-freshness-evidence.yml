@@ -25,6 +25,8 @@ jobs:
   execute-latest-windows:
     runs-on: ubuntu-24.04
     timeout-minutes: 600
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,16 +49,18 @@ jobs:
           repository: liuh886/alpha_engine
           run-id: 30742690159
 
-      - name: Download CN provider through 2026-07-31
-        uses: actions/download-artifact@v4
-        with:
-          name: cn130-xgb-optimization-30733728747
-          path: artifacts/source/cn
-          github-token: ${{ github.token }}
-          repository: liuh886/alpha_engine
-          run-id: 30733728747
+      - name: Build complete CN provider through 2026-07-31
+        run: >-
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py
+          --market cn
+          --source-csv-dir data/csv_clean
+          --output-root artifacts/source/cn
+          --start 2021-01-01
+          --cutoff 2026-07-31
+          --max-rounds 1
+          --full-refresh
 
-      - name: Verify provider cutoffs
+      - name: Verify provider cutoffs and identities
         run: |
           uv run python - <<'PY'
           import json
@@ -68,15 +72,28 @@ jobs:
           )
           assert us.get("calendar", {}).get("last_day") == "2026-07-31", us
           assert us.get("calendar", {}).get("session_count") == 1400, us
+          assert us.get("provider_identity_sha256") == (
+              "5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95"
+          ), us
 
           cn_refresh = json.loads(
               Path(
-                  "artifacts/source/cn/selected_pool_price_refresh/cn/artifacts/"
+                  "artifacts/source/cn/artifacts/"
                   "selected_pool_price_refresh_manifest.json"
               ).read_text(encoding="utf-8")
           )
           assert cn_refresh.get("cutoff") == "2026-07-31", cn_refresh
+          assert cn_refresh.get("status") == "selected_pool_price_refresh_ready", cn_refresh
           assert cn_refresh.get("promotion_eligible") is True, cn_refresh
+          assert not cn_refresh.get("failures"), cn_refresh
+
+          cn_provider = json.loads(
+              Path("artifacts/source/cn/data/providers/cn/provider_manifest.json")
+              .read_text(encoding="utf-8")
+          )
+          assert cn_provider.get("provider_identity_sha256") == (
+              "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8"
+          ), cn_provider
           PY
 
       - name: Execute frozen US x1.1 through 2026-07-31
@@ -90,7 +107,7 @@ jobs:
         run: >-
           uv run python scripts/run_cn_feature_quality_validation.py
           --spec configs/research_paradigms/cn_x1_0_frozen_v1.yaml
-          --provider-uri artifacts/source/cn/selected_pool_price_refresh/cn/data/providers/cn
+          --provider-uri artifacts/source/cn/data/providers/cn
           --output-dir artifacts/freshness/cn
 
       - name: Verify partial latest-session evidence
@@ -132,6 +149,15 @@ jobs:
               assert len(original) == 1, original
               assert original[0]["test_end"] <= "2026-07-31", original[0]
               assert original[0]["test_end"] >= "2026-07-01", original[0]
+              traces = [
+                  row for row in payload.get("backtest_traces", [])
+                  if row.get("orientation") == "original"
+                  and str(row.get("candidate_name", "")).startswith("xgb:daily_ranker")
+              ]
+              assert len(traces) == 1, traces
+              assert traces[0]["points"], traces[0]
+              assert traces[0]["holdings"], traces[0]
+              assert traces[0]["name_contributions"], traces[0]
           PY
 
       - name: Retain latest-window evidence
@@ -144,6 +170,8 @@ jobs:
             artifacts/source/us/verification.json
             artifacts/source/us/provider_a/artifacts/raw_adjustment_contract_manifest.json
             artifacts/source/us/provider_a/data/providers/us/provider_manifest.json
-            artifacts/source/cn/selected_pool_price_refresh/cn/artifacts/selected_pool_price_refresh_manifest.json
+            artifacts/source/cn/artifacts/selected_pool_price_refresh_manifest.json
+            artifacts/source/cn/data/providers/cn/provider_manifest.json
+            artifacts/source/cn/data/providers/cn/calendars/day.txt
           if-no-files-found: error
           retention-days: 90
