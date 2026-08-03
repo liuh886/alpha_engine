@@ -1,0 +1,124 @@
+name: Current Formal Backtest Integrity
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - data/research/formal_backtests/catalog.json
+      - data/research/formal_backtests/freshness.json
+      - data/research/formal_backtests/cn_x1_0.json
+      - data/research/formal_backtests/us_x1_1.json
+      - data/research/formal_backtests/qqqi_qqq_tqqq_v4_2.json
+      - data/research/formal_backtests/cn_freshness_source_2026_08_03.json
+      - scripts/promote_cn_formal_freshness.py
+      - scripts/verify_formal_backtest_freshness.py
+      - .github/workflows/current-formal-backtest-integrity.yml
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: current-formal-integrity-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  reproduce-current-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PRIOR_RELEASE_COMMIT: b79e8cf5cc9002e789b0bd66ebc493fd7586b3b6
+      SOURCE_PATH: data/research/formal_backtests/cn_freshness_source_2026_08_03.json
+      ARTIFACT_RUN_ID: "30801029527"
+      ARTIFACT_ID: "8850832595"
+      ARTIFACT_NAME: cn-formal-freshness-candidate-2026-08-03-30801029527
+      ARTIFACT_DIGEST: sha256:d1401326337b3148617d58ab4c2bc98f0baf4fad1360e826c345d53a5367f7b0
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate incremental promoter
+        run: |
+          uv run ruff check scripts/promote_cn_formal_freshness.py
+          uv run mypy scripts/promote_cn_formal_freshness.py
+      - name: Verify accepted artifact metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          source = json.loads(Path(os.environ["SOURCE_PATH"]).read_text())
+          request = urllib.request.Request(
+              f"https://api.github.com/repos/liuh886/alpha_engine/actions/artifacts/{os.environ['ARTIFACT_ID']}",
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
+                  "User-Agent": "alpha-engine-current-formal-integrity/1.0",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              metadata = json.loads(response.read())
+          assert metadata["id"] == int(os.environ["ARTIFACT_ID"]), metadata
+          assert metadata["name"] == os.environ["ARTIFACT_NAME"], metadata
+          assert metadata["digest"] == os.environ["ARTIFACT_DIGEST"], metadata
+          assert metadata["expired"] is False, metadata
+          assert metadata["workflow_run"]["id"] == int(os.environ["ARTIFACT_RUN_ID"]), metadata
+          assert source["artifact_id"] == metadata["id"]
+          assert source["artifact_digest"] == metadata["digest"]
+          PY
+      - name: Download accepted incremental CN evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: artifacts/incremental-cn
+          github-token: ${{ github.token }}
+          repository: liuh886/alpha_engine
+          run-id: ${{ env.ARTIFACT_RUN_ID }}
+      - name: Materialize prior formal release
+        run: |
+          mkdir -p artifacts/reproduced-formal
+          git show "$PRIOR_RELEASE_COMMIT:data/research/formal_backtests/cn_x1_0.json" > artifacts/reproduced-formal/cn_x1_0.json
+          git show "$PRIOR_RELEASE_COMMIT:data/research/formal_backtests/catalog.json" > artifacts/reproduced-formal/catalog.json
+          git show "$PRIOR_RELEASE_COMMIT:data/research/formal_backtests/freshness.json" > artifacts/reproduced-formal/freshness.json
+          cp data/research/formal_backtests/us_x1_1.json artifacts/reproduced-formal/us_x1_1.json
+          cp data/research/formal_backtests/qqqi_qqq_tqqq_v4_2.json artifacts/reproduced-formal/qqqi_qqq_tqqq_v4_2.json
+      - name: Reproduce current multi-market release
+        run: |
+          uv run python scripts/promote_cn_formal_freshness.py \
+            --root artifacts/reproduced-formal \
+            --artifact-root artifacts/incremental-cn \
+            --source "$SOURCE_PATH" \
+            --receipt artifacts/current-formal-reproduction-receipt.json
+          uv run python scripts/verify_formal_backtest_freshness.py \
+            --root artifacts/reproduced-formal \
+            --as-of 2026-08-03T09:15:00Z \
+            --receipt artifacts/current-formal-freshness-receipt.json
+      - name: Enforce byte-exact current release
+        run: |
+          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json cn_x1_0.json catalog.json freshness.json; do
+            cmp "artifacts/reproduced-formal/$name" "data/research/formal_backtests/$name"
+          done
+      - name: Retain current release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-formal-backtest-integrity-${{ github.run_id }}
+          path: |
+            artifacts/current-formal-reproduction-receipt.json
+            artifacts/current-formal-freshness-receipt.json
+            artifacts/reproduced-formal
+          if-no-files-found: error
+          retention-days: 90
