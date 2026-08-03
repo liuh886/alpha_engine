@@ -119,9 +119,9 @@ jobs:
 
       - name: Assemble site
         run: |
-          mkdir -p _site/docs
-          cp -r qlib-dashboard/dist/* _site/
-          cp -r artifacts/site/data _site/data
+          mkdir -p _site/docs _site/data
+          cp -r qlib-dashboard/dist/. _site/
+          cp -r artifacts/site/data/. _site/data/
           cp -r artifacts/site/reports _site/reports
           cp docs/methodology.md _site/docs/methodology.md
           cp -r artifacts/research-bundle _site/bundle
