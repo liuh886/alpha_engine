@@ -78,7 +78,7 @@ function Layout(props: LayoutProps) {
     if (!props.runs.length || !location.search) return;
     const linked = selectRunFromQuery(props.runs, location.search);
     if (linked && linked.key !== props.activeRunKey) props.selectRun(linked);
-  }, [location.search, props]);
+  }, [location.search, props.activeRunKey, props.runs, props.selectRun]);
 
   const outletContext: RunWorkspaceContext = {
     models: props.models,
@@ -92,7 +92,7 @@ function Layout(props: LayoutProps) {
 
   return (
     <div className="research-app-shell">
-      <Sidebar />
+      <Sidebar activeRun={activeRun} />
       <div className="research-workspace">
         <header className="research-topbar">
           <div className="min-w-0">
