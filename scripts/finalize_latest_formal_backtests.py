@@ -36,6 +36,50 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _digest(value: object, *, label: str, prefixed: bool = False) -> str:
+    text = str(value or "").lower()
+    expected_length = 71 if prefixed else 64
+    if len(text) != expected_length:
+        raise LatestFormalFinalizationError(f"invalid {label}")
+    body = text[7:] if prefixed and text.startswith("sha256:") else text
+    if prefixed and not text.startswith("sha256:"):
+        raise LatestFormalFinalizationError(f"invalid {label}")
+    if any(char not in "0123456789abcdef" for char in body):
+        raise LatestFormalFinalizationError(f"invalid {label}")
+    return text
+
+
+def _freshness_source(path: Path) -> dict[str, Any]:
+    source = _read(path)
+    if source.get("status") != "accepted_reproducible_freshness_evidence":
+        raise LatestFormalFinalizationError("freshness source is not accepted")
+    if source.get("research_only") is not True or source.get("trade_ready") is not False:
+        raise LatestFormalFinalizationError("freshness source weakens research boundary")
+    if source.get("cutoff") != "2026-07-31":
+        raise LatestFormalFinalizationError("freshness source cutoff mismatch")
+    run_id = source.get("workflow_run_id")
+    artifact_id = source.get("artifact_id")
+    if not isinstance(run_id, int) or run_id <= 0 or not isinstance(artifact_id, int) or artifact_id <= 0:
+        raise LatestFormalFinalizationError("freshness source run/artifact identity is invalid")
+    head = str(source.get("workflow_head_sha") or "")
+    if len(head) != 40 or any(char not in "0123456789abcdef" for char in head):
+        raise LatestFormalFinalizationError("freshness source head SHA is invalid")
+    _digest(source.get("artifact_digest"), label="freshness artifact digest", prefixed=True)
+    models = source.get("models")
+    if not isinstance(models, dict) or set(models) != {"us_x1_1", "cn_x1_0"}:
+        raise LatestFormalFinalizationError("freshness source model allow-list mismatch")
+    for model_id, row in models.items():
+        if not isinstance(row, dict):
+            raise LatestFormalFinalizationError(f"invalid freshness source row: {model_id}")
+        _digest(row.get("provider_identity_sha256"), label=f"{model_id} provider identity")
+        traces = row.get("trace_sha256")
+        if not isinstance(traces, dict) or not traces:
+            raise LatestFormalFinalizationError(f"{model_id} source traces are missing")
+        for label, digest in traces.items():
+            _digest(digest, label=f"{model_id}/{label} trace digest")
+    return source
+
+
 def _cn_partial_trace(run_dir: Path) -> dict[str, Any]:
     plan = _read(run_dir / "walk_forward_windows.json")
     experiment_id = str(plan.get("experiment_id") or "")
@@ -69,13 +113,8 @@ def _position_rows(package: dict[str, Any], *, label: str) -> list[dict[str, Any
 
 
 def _strip_inferred_extension_ranks(
-    package: dict[str, Any],
-    accepted: dict[str, Any],
-    *,
-    label: str,
+    package: dict[str, Any], accepted: dict[str, Any], *, label: str
 ) -> tuple[int, int]:
-    """Remove inferred ranks only from rows appended after the accepted prefix."""
-
     generated_rows = _position_rows(package, label=label)
     accepted_rows = _position_rows(accepted, label=f"accepted {label}")
     prefix_length = len(accepted_rows)
@@ -87,7 +126,6 @@ def _strip_inferred_extension_ranks(
         raise LatestFormalFinalizationError(
             f"{label} accepted position prefix was rewritten before finalization"
         )
-
     removed = 0
     for row in generated_rows[prefix_length:]:
         if "rank" in row:
@@ -97,9 +135,7 @@ def _strip_inferred_extension_ranks(
     return removed, prefix_length
 
 
-def _cross_window_cn_drawdown(
-    package: dict[str, Any], trace: dict[str, Any]
-) -> float:
+def _cross_window_cn_drawdown(package: dict[str, Any], trace: dict[str, Any]) -> float:
     report = package.get("report")
     metrics = package.get("metrics")
     points = trace.get("points")
@@ -107,9 +143,7 @@ def _cross_window_cn_drawdown(
         raise LatestFormalFinalizationError("CN formal report is incomplete")
     if not isinstance(metrics, dict) or not isinstance(points, list) or not points:
         raise LatestFormalFinalizationError("CN trace metrics are incomplete")
-
-    historical = report[:-1]
-    historical_accounts = [float(row["account"]) for row in historical]
+    historical_accounts = [float(row["account"]) for row in report[:-1]]
     if any(not math.isfinite(value) or value <= 0 for value in historical_accounts):
         raise LatestFormalFinalizationError("CN historical account path is invalid")
     account = historical_accounts[-1]
@@ -124,42 +158,69 @@ def _cross_window_cn_drawdown(
         account *= 1.0 + period_return
         peak = max(peak, account)
         worst = min(worst, account / peak - 1.0)
-
-    final_account = float(report[-1]["account"])
-    if not math.isclose(account, final_account, rel_tol=0.0, abs_tol=1e-10):
+    if not math.isclose(account, float(report[-1]["account"]), rel_tol=0.0, abs_tol=1e-10):
         raise LatestFormalFinalizationError(
             "CN partial path does not reconcile to generated final account"
         )
     return worst
 
 
-def _bind_cn_provider_identity(
-    package: dict[str, Any], provider_identity: str
-) -> str | None:
-    normalized = provider_identity.strip().lower()
-    if len(normalized) != 64 or any(char not in "0123456789abcdef" for char in normalized):
-        raise LatestFormalFinalizationError("invalid CN provider identity")
+def _freshness(package: dict[str, Any], *, model_id: str) -> dict[str, Any]:
     evidence = package.get("evidence")
     if not isinstance(evidence, dict):
         evidence = {}
     freshness = evidence.get("freshness_evidence")
     if not isinstance(freshness, dict):
         freshness = {}
+    evidence["freshness_evidence"] = freshness
+    package["evidence"] = evidence
+    if package.get("model_id") != model_id:
+        raise LatestFormalFinalizationError(f"package identity mismatch: {model_id}")
+    return freshness
+
+
+def _bind_cn_provider_identity(package: dict[str, Any], provider_identity: str) -> str | None:
+    normalized = _digest(provider_identity, label="CN provider identity")
+    freshness = _freshness(package, model_id="cn_x1_0")
     previous = freshness.get("provider_identity_sha256")
     previous_identity = str(previous) if previous else None
     freshness["provider_identity_sha256"] = normalized
     if previous_identity and previous_identity != normalized:
         freshness["superseded_provider_identity_sha256"] = previous_identity
         freshness["provider_snapshot_revision_observed"] = True
-    evidence["freshness_evidence"] = freshness
-    package["evidence"] = evidence
     return previous_identity
+
+
+def _bind_freshness_source(
+    package: dict[str, Any], *, model_id: str, source: dict[str, Any]
+) -> None:
+    if package.get("evidence_cutoff") != source["cutoff"]:
+        raise LatestFormalFinalizationError(f"{model_id} cutoff/source mismatch")
+    if package.get("generated_at") != source["generated_at"]:
+        raise LatestFormalFinalizationError(f"{model_id} generated_at/source mismatch")
+    model_source = source["models"][model_id]
+    freshness = _freshness(package, model_id=model_id)
+    if freshness.get("provider_identity_sha256") != model_source["provider_identity_sha256"]:
+        raise LatestFormalFinalizationError(f"{model_id} provider/source mismatch")
+    if freshness.get("trace_sha256") != model_source["trace_sha256"]:
+        raise LatestFormalFinalizationError(f"{model_id} trace/source mismatch")
+    freshness.update(
+        {
+            "source_status": source["status"],
+            "workflow_run_id": str(source["workflow_run_id"]),
+            "workflow_head_sha": source["workflow_head_sha"],
+            "artifact_id": source["artifact_id"],
+            "artifact_name": source["artifact_name"],
+            "artifact_digest": source["artifact_digest"],
+        }
+    )
 
 
 def finalize(
     generated_dir: Path,
     existing_dir: Path,
     cn_run_dir: Path,
+    freshness_source_path: Path,
     *,
     cn_provider_identity: str,
 ) -> dict[str, Any]:
@@ -171,16 +232,13 @@ def finalize(
     accepted_us = _read(existing_dir / "us_x1_1.json")
     accepted_cn = _read(existing_dir / "cn_x1_0.json")
     catalog = _read(catalog_path)
+    source = _freshness_source(freshness_source_path)
 
     removed_us, us_prefix_length = _strip_inferred_extension_ranks(
-        us,
-        accepted_us,
-        label="US x1.1",
+        us, accepted_us, label="US x1.1"
     )
     removed_cn, cn_prefix_length = _strip_inferred_extension_ranks(
-        cn,
-        accepted_cn,
-        label="CN x1.0",
+        cn, accepted_cn, label="CN x1.0"
     )
     if removed_us == 0 or removed_cn == 0:
         raise LatestFormalFinalizationError(
@@ -195,41 +253,34 @@ def finalize(
     metrics["Max Drawdown"] = worst
     cn["metrics"] = metrics
     previous_cn_identity = _bind_cn_provider_identity(cn, cn_provider_identity)
+    _bind_freshness_source(us, model_id="us_x1_1", source=source)
+    _bind_freshness_source(cn, model_id="cn_x1_0", source=source)
 
-    notes = cn.get("interpretation_notes")
-    if not isinstance(notes, list):
-        notes = []
     note = (
         "Latest-window position ranks are not displayed because the retained "
         "trace contains equal-weight membership but no auditable rank ordering."
     )
-    if note not in notes:
-        notes.append(note)
+    for package in (us, cn):
+        notes = package.get("interpretation_notes")
+        if not isinstance(notes, list):
+            notes = []
+        if note not in notes:
+            notes.append(note)
+        package["interpretation_notes"] = notes
     revision_note = (
         "The 2026-07-31 CN provider was independently reconstructed from the "
         "current AkShare/Sina snapshot; its identity is retained explicitly."
     )
-    if revision_note not in notes:
-        notes.append(revision_note)
-    cn["interpretation_notes"] = notes
-
-    us_notes = us.get("interpretation_notes")
-    if not isinstance(us_notes, list):
-        us_notes = []
-    if note not in us_notes:
-        us_notes.append(note)
-    us["interpretation_notes"] = us_notes
+    cn_notes = cn["interpretation_notes"]
+    if revision_note not in cn_notes:
+        cn_notes.append(revision_note)
 
     _write(us_path, us)
     _write(cn_path, cn)
-
     records = catalog.get("records")
     if not isinstance(records, list):
         raise LatestFormalFinalizationError("formal catalog records are missing")
-    by_id = {
-        "us_x1_1": _sha256(us_path),
-        "cn_x1_0": _sha256(cn_path),
-    }
+    by_id = {"us_x1_1": _sha256(us_path), "cn_x1_0": _sha256(cn_path)}
     for row in records:
         if not isinstance(row, dict):
             raise LatestFormalFinalizationError("formal catalog row is invalid")
@@ -249,10 +300,13 @@ def finalize(
         "cn_cross_window_max_drawdown": worst,
         "cn_provider_identity_sha256": cn_provider_identity,
         "superseded_cn_provider_identity_sha256": previous_cn_identity,
-        "package_sha256": {
-            "us_x1_1": _sha256(us_path),
-            "cn_x1_0": _sha256(cn_path),
+        "freshness_source": {
+            "workflow_run_id": source["workflow_run_id"],
+            "workflow_head_sha": source["workflow_head_sha"],
+            "artifact_id": source["artifact_id"],
+            "artifact_digest": source["artifact_digest"],
         },
+        "package_sha256": {"us_x1_1": _sha256(us_path), "cn_x1_0": _sha256(cn_path)},
         "catalog_sha256": _sha256(catalog_path),
         "research_only": True,
         "trade_ready": False,
@@ -264,6 +318,7 @@ def main() -> None:
     parser.add_argument("--generated-dir", type=Path, required=True)
     parser.add_argument("--existing-dir", type=Path, required=True)
     parser.add_argument("--cn-run-dir", type=Path, required=True)
+    parser.add_argument("--freshness-source", type=Path, required=True)
     parser.add_argument("--cn-provider-identity", required=True)
     parser.add_argument("--receipt", type=Path, default=None)
     args = parser.parse_args()
@@ -271,6 +326,7 @@ def main() -> None:
         args.generated_dir,
         args.existing_dir,
         args.cn_run_dir,
+        args.freshness_source,
         cn_provider_identity=args.cn_provider_identity,
     )
     encoded = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
