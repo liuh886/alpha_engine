@@ -1,0 +1,104 @@
+schema_version: "1.0"
+asset_id: "us87_sector_industry_v1"
+pool_id: "us_selected_equities_v2"
+candidate_count: 87
+benchmark_symbols_excluded: ["QQQ"]
+classification_standard: "alpha_engine_us_research_sector_v1"
+standard_note: "Research classification based on issuer primary business; not licensed GICS, ICB, TRBC or BICS data."
+source_provider: "issuer_primary_business_and_sec_identity_review"
+source_effective_date: "2026-08-03"
+retrieval_date: "2026-08-03"
+records_sha256: "a9493d111de9ab2a6a4cadbb9feb1219ffa33291bd2db1d006124cf7c1747cd2"
+governance:
+  immutable_versioned_asset: true
+  exact_pool_match_required: true
+  missing_duplicate_unknown_fail_closed: true
+  research_only: true
+records:
+  AAOI: {"entity":"Applied Optoelectronics, Inc.","sector":"Technology","industry":"Communications Equipment","confidence":"high"}
+  AAPL: {"entity":"Apple Inc.","sector":"Technology","industry":"Technology Hardware","confidence":"high"}
+  ABBNY: {"entity":"ABB Ltd","sector":"Industrials","industry":"Electrical Equipment","confidence":"high"}
+  ADP: {"entity":"Automatic Data Processing, Inc.","sector":"Industrials","industry":"Human Resources & Payroll Services","confidence":"high"}
+  ADSK: {"entity":"Autodesk, Inc.","sector":"Technology","industry":"Application Software","confidence":"high"}
+  ALAB: {"entity":"Astera Labs, Inc.","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  AMAT: {"entity":"Applied Materials, Inc.","sector":"Technology","industry":"Semiconductor Equipment","confidence":"high"}
+  AMD: {"entity":"Advanced Micro Devices, Inc.","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  AMZN: {"entity":"Amazon.com, Inc.","sector":"Consumer Discretionary","industry":"Broadline Retail","confidence":"high"}
+  ANET: {"entity":"Arista Networks, Inc.","sector":"Technology","industry":"Communications Equipment","confidence":"high"}
+  APP: {"entity":"AppLovin Corporation","sector":"Technology","industry":"Application Software & Digital Advertising","confidence":"medium"}
+  ARM: {"entity":"Arm Holdings plc","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  ASML: {"entity":"ASML Holding N.V.","sector":"Technology","industry":"Semiconductor Equipment","confidence":"high"}
+  AVGO: {"entity":"Broadcom Inc.","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  AXON: {"entity":"Axon Enterprise, Inc.","sector":"Industrials","industry":"Security & Defense Technology","confidence":"medium"}
+  BE: {"entity":"Bloom Energy Corporation","sector":"Industrials","industry":"Electrical Equipment","confidence":"high"}
+  BKNG: {"entity":"Booking Holdings Inc.","sector":"Consumer Discretionary","industry":"Travel Services","confidence":"high"}
+  BKR: {"entity":"Baker Hughes Company","sector":"Energy","industry":"Oilfield Services","confidence":"high"}
+  CDNS: {"entity":"Cadence Design Systems, Inc.","sector":"Technology","industry":"Electronic Design Automation Software","confidence":"high"}
+  CEG: {"entity":"Constellation Energy Corporation","sector":"Utilities","industry":"Independent Power Producers","confidence":"high"}
+  COHR: {"entity":"Coherent Corp.","sector":"Technology","industry":"Electronic & Photonic Components","confidence":"high"}
+  COST: {"entity":"Costco Wholesale Corporation","sector":"Consumer Staples","industry":"Consumer Staples Distribution & Retail","confidence":"high"}
+  CPRT: {"entity":"Copart, Inc.","sector":"Industrials","industry":"Commercial Services","confidence":"high"}
+  CRCL: {"entity":"Circle Internet Group, Inc.","sector":"Financials","industry":"Digital Financial Services","confidence":"medium"}
+  CRWD: {"entity":"CrowdStrike Holdings, Inc.","sector":"Technology","industry":"Cybersecurity Software","confidence":"high"}
+  CSCO: {"entity":"Cisco Systems, Inc.","sector":"Technology","industry":"Communications Equipment","confidence":"high"}
+  CTAS: {"entity":"Cintas Corporation","sector":"Industrials","industry":"Commercial Services","confidence":"high"}
+  DASH: {"entity":"DoorDash, Inc.","sector":"Consumer Discretionary","industry":"Food Delivery Platforms","confidence":"high"}
+  DDOG: {"entity":"Datadog, Inc.","sector":"Technology","industry":"Application Software","confidence":"high"}
+  EA: {"entity":"Electronic Arts Inc.","sector":"Communication Services","industry":"Interactive Entertainment","confidence":"high"}
+  EME: {"entity":"EMCOR Group, Inc.","sector":"Industrials","industry":"Construction & Engineering","confidence":"high"}
+  ETN: {"entity":"Eaton Corporation plc","sector":"Industrials","industry":"Electrical Equipment","confidence":"high"}
+  FANG: {"entity":"Diamondback Energy, Inc.","sector":"Energy","industry":"Oil & Gas Exploration & Production","confidence":"high"}
+  FIX: {"entity":"Comfort Systems USA, Inc.","sector":"Industrials","industry":"Construction & Engineering","confidence":"high"}
+  FN: {"entity":"Fabrinet","sector":"Technology","industry":"Electronic Manufacturing Services","confidence":"high"}
+  GEHC: {"entity":"GE HealthCare Technologies Inc.","sector":"Health Care","industry":"Health Care Equipment","confidence":"high"}
+  GOOGL: {"entity":"Alphabet Inc.","sector":"Communication Services","industry":"Interactive Media & Services","confidence":"high"}
+  HON: {"entity":"Honeywell International Inc.","sector":"Industrials","industry":"Industrial Conglomerates","confidence":"high"}
+  HOOD: {"entity":"Robinhood Markets, Inc.","sector":"Financials","industry":"Capital Markets","confidence":"high"}
+  INTC: {"entity":"Intel Corporation","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  INTU: {"entity":"Intuit Inc.","sector":"Technology","industry":"Application Software","confidence":"high"}
+  IREN: {"entity":"IREN Limited","sector":"Technology","industry":"Data Center & Digital Infrastructure","confidence":"medium"}
+  ISRG: {"entity":"Intuitive Surgical, Inc.","sector":"Health Care","industry":"Health Care Equipment","confidence":"high"}
+  KLAC: {"entity":"KLA Corporation","sector":"Technology","industry":"Semiconductor Equipment","confidence":"high"}
+  LIN: {"entity":"Linde plc","sector":"Materials","industry":"Industrial Gases","confidence":"high"}
+  LITE: {"entity":"Lumentum Holdings Inc.","sector":"Technology","industry":"Communications Equipment","confidence":"high"}
+  LRCX: {"entity":"Lam Research Corporation","sector":"Technology","industry":"Semiconductor Equipment","confidence":"high"}
+  MELI: {"entity":"MercadoLibre, Inc.","sector":"Consumer Discretionary","industry":"Broadline Retail","confidence":"high"}
+  META: {"entity":"Meta Platforms, Inc.","sector":"Communication Services","industry":"Interactive Media & Services","confidence":"high"}
+  MPWR: {"entity":"Monolithic Power Systems, Inc.","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  MRVL: {"entity":"Marvell Technology, Inc.","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  MSFT: {"entity":"Microsoft Corporation","sector":"Technology","industry":"Systems Software","confidence":"high"}
+  MU: {"entity":"Micron Technology, Inc.","sector":"Technology","industry":"Memory Semiconductors","confidence":"high"}
+  NBIS: {"entity":"Nebius Group N.V.","sector":"Technology","industry":"AI Infrastructure & Cloud Services","confidence":"medium"}
+  NFLX: {"entity":"Netflix, Inc.","sector":"Communication Services","industry":"Movies & Entertainment","confidence":"high"}
+  NVDA: {"entity":"NVIDIA Corporation","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  ORLY: {"entity":"O'Reilly Automotive, Inc.","sector":"Consumer Discretionary","industry":"Automotive Retail","confidence":"high"}
+  PANW: {"entity":"Palo Alto Networks, Inc.","sector":"Technology","industry":"Cybersecurity Software","confidence":"high"}
+  PDD: {"entity":"PDD Holdings Inc.","sector":"Consumer Discretionary","industry":"Broadline Retail","confidence":"high"}
+  PEP: {"entity":"PepsiCo, Inc.","sector":"Consumer Staples","industry":"Beverages","confidence":"high"}
+  PLTR: {"entity":"Palantir Technologies Inc.","sector":"Technology","industry":"Application Software","confidence":"high"}
+  PWR: {"entity":"Quanta Services, Inc.","sector":"Industrials","industry":"Construction & Engineering","confidence":"high"}
+  QCOM: {"entity":"QUALCOMM Incorporated","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  REGN: {"entity":"Regeneron Pharmaceuticals, Inc.","sector":"Health Care","industry":"Biotechnology","confidence":"high"}
+  ROP: {"entity":"Roper Technologies, Inc.","sector":"Industrials","industry":"Industrial Technology","confidence":"high"}
+  SBGSY: {"entity":"Schneider Electric SE","sector":"Industrials","industry":"Electrical Equipment","confidence":"high"}
+  SHOP: {"entity":"Shopify Inc.","sector":"Technology","industry":"E-Commerce Software","confidence":"high"}
+  SNPS: {"entity":"Synopsys, Inc.","sector":"Technology","industry":"Electronic Design Automation Software","confidence":"high"}
+  SNDK: {"entity":"Sandisk Corporation","sector":"Technology","industry":"Data Storage","confidence":"medium"}
+  TEM: {"entity":"Tempus AI, Inc.","sector":"Health Care","industry":"Health Care Technology","confidence":"medium"}
+  TIGO: {"entity":"Millicom International Cellular S.A.","sector":"Communication Services","industry":"Wireless Telecommunications","confidence":"high","manual_override":"Explicit user-approved entity binding: Millicom International Cellular; never Tigo Energy."}
+  TYGO: {"entity":"Tigo Energy, Inc.","sector":"Industrials","industry":"Electrical Components & Solar Technology","confidence":"medium"}
+  TMUS: {"entity":"T-Mobile US, Inc.","sector":"Communication Services","industry":"Wireless Telecommunications","confidence":"high"}
+  TSLA: {"entity":"Tesla, Inc.","sector":"Consumer Discretionary","industry":"Automobiles","confidence":"high"}
+  TTWO: {"entity":"Take-Two Interactive Software, Inc.","sector":"Communication Services","industry":"Interactive Entertainment","confidence":"high"}
+  VRT: {"entity":"Vertiv Holdings Co","sector":"Industrials","industry":"Electrical Equipment & Data Center Infrastructure","confidence":"medium"}
+  VRTX: {"entity":"Vertex Pharmaceuticals Incorporated","sector":"Health Care","industry":"Biotechnology","confidence":"high"}
+  WDC: {"entity":"Western Digital Corporation","sector":"Technology","industry":"Data Storage","confidence":"high"}
+  WMT: {"entity":"Walmart Inc.","sector":"Consumer Staples","industry":"Consumer Staples Distribution & Retail","confidence":"high"}
+  HIMS: {"entity":"Hims & Hers Health, Inc.","sector":"Health Care","industry":"Health Care Services","confidence":"medium"}
+  HIMX: {"entity":"Himax Technologies, Inc.","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  NOK: {"entity":"Nokia Oyj","sector":"Technology","industry":"Communications Equipment","confidence":"high"}
+  TSM: {"entity":"Taiwan Semiconductor Manufacturing Company Limited","sector":"Technology","industry":"Semiconductor Foundry","confidence":"high"}
+  CRDO: {"entity":"Credo Technology Group Holding Ltd","sector":"Technology","industry":"Semiconductors","confidence":"high"}
+  ORCL: {"entity":"Oracle Corporation","sector":"Technology","industry":"Enterprise Software","confidence":"high"}
+  POET: {"entity":"POET Technologies Inc.","sector":"Technology","industry":"Photonic Components","confidence":"high"}
+  AEHR: {"entity":"Aehr Test Systems","sector":"Technology","industry":"Semiconductor Equipment","confidence":"high"}
