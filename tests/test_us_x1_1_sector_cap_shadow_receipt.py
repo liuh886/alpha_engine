@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -60,8 +61,18 @@ def test_receipt_is_schema_valid_and_pre_outcome(tmp_path: Path) -> None:
     assert receipt["summary"]["baseline_names"] == 15
     assert receipt["summary"]["challenger_names"] == 15
     assert receipt["summary"]["challenger_max_sector_weight"] <= 4 / 15 + 1e-12
-    assert receipt["summary"]["baseline_expected_turnover"] == 0.5
-    assert receipt["summary"]["challenger_expected_turnover"] == 0.5
+    assert math.isclose(
+        float(receipt["summary"]["baseline_expected_turnover"]),
+        0.5,
+        rel_tol=0,
+        abs_tol=1e-12,
+    )
+    assert math.isclose(
+        float(receipt["summary"]["challenger_expected_turnover"]),
+        0.5,
+        rel_tol=0,
+        abs_tol=1e-12,
+    )
 
     receipt_root = Path(str(result["receipt_root"]))
     audit = pd.read_csv(receipt_root / "scores_and_selections.csv")
