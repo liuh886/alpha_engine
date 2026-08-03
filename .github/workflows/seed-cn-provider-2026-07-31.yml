@@ -11,12 +11,12 @@ permissions:
 
 concurrency:
   group: seed-cn-provider-2026-07-31
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   seed:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,7 +38,8 @@ jobs:
               "workflow_head_sha": os.environ["GITHUB_SHA"],
               "started_at": datetime.now(timezone.utc).isoformat(),
               "target_cutoff": "2026-07-31",
-              "source_mode": "governed_repository_csv_offline",
+              "source_mode": "credential_aware_public_full_refresh",
+              "expected_primary_source": "akshare_sina",
               "research_only": True,
               "trade_ready": False,
           }
@@ -62,52 +63,18 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
 
-      - name: Require complete governed repository CSV snapshot
-        run: |
-          uv run python - <<'PY'
-          from pathlib import Path
-
-          from scripts.data.refresh_selected_pool_prices import (
-              BENCHMARKS,
-              _audit_source,
-              _load_pool,
-          )
-          from src.research.selected_pool_guard import resolve_selected_pool
-
-          root = Path.cwd()
-          binding = resolve_selected_pool(
-              "cn",
-              registry_path=root / "configs/pools/selected_pool_registry_v1.yaml",
-              authoritative=True,
-              require_data_ready=False,
-          )
-          candidates = _load_pool(binding.pool_spec, "cn")
-          required = [*candidates, BENCHMARKS["cn"]]
-          audits = {
-              symbol: _audit_source(root / "data/csv_clean" / f"{symbol}.csv", symbol)
-              for symbol in required
-          }
-          blocked = {
-              symbol: audit
-              for symbol, audit in audits.items()
-              if audit.get("status") != "ready"
-              or audit.get("last_date") != "2026-07-31"
-          }
-          assert not blocked, blocked
-          assert len(required) == 131, len(required)
-          PY
-
-      - name: Build isolated provider without external fetches
+      - name: Rebuild all 130 equities and CSI 300 through 2026-07-31
         run: >-
-          uv run python scripts/data/refresh_selected_pool_prices.py
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py
           --market cn
           --source-csv-dir data/csv_clean
           --output-root artifacts/source/cn
           --start 2021-01-01
           --cutoff 2026-07-31
           --max-rounds 1
+          --full-refresh
 
-      - name: Verify exact provider identity and cutoff
+      - name: Verify promotion eligibility, source semantics and exact snapshot
         run: |
           uv run python - <<'PY'
           import json
@@ -119,14 +86,14 @@ jobs:
           )
           assert refresh.get("cutoff") == "2026-07-31", refresh
           assert refresh.get("status") == "selected_pool_price_refresh_ready", refresh
-          assert refresh.get("refresh_mode") == "repair_only", refresh
-          assert refresh.get("target_count") == 0, refresh
-          assert refresh.get("all_sources_ready") is True, refresh
+          assert refresh.get("refresh_mode") == "full", refresh
+          assert refresh.get("target_count") == 131, refresh
+          assert refresh.get("promotion_eligible") is True, refresh
           assert not refresh.get("failures"), refresh
-          assert all(
-              row.get("action") == "copied_verified_source"
-              for row in refresh.get("records", [])
-          ), refresh
+          assert not refresh.get("quarantined_symbols"), refresh
+          selected = refresh.get("selected_providers", {})
+          assert len(selected) == 131, len(selected)
+          assert set(selected.values()) == {"akshare_sina"}, set(selected.values())
 
           provider = json.loads(
               Path("artifacts/source/cn/data/providers/cn/provider_manifest.json")
@@ -135,32 +102,42 @@ jobs:
           assert provider.get("provider_identity_sha256") == (
               "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8"
           ), provider
-          calendar = Path("artifacts/source/cn/data/providers/cn/calendars/day.txt")
-          assert calendar.read_text(encoding="utf-8").splitlines()[-1] == "2026-07-31"
+          assert provider.get("calendar", {}).get("last_day") == "2026-07-31", provider
+          assert provider.get("calendar", {}).get("session_count") == 1351, provider
+          assert provider.get("instruments", {}).get("count") == 131, provider
           PY
 
-      - name: Upload complete immutable provider snapshot
+      - name: Archive provider into a regular tar before upload
+        run: |
+          tar -C artifacts/source/cn -cf artifacts/cn-provider-2026-07-31.tar \
+            artifacts/selected_pool_price_refresh_manifest.json \
+            data/providers/cn
+          test "$(tar -tf artifacts/cn-provider-2026-07-31.tar | grep -c '^data/providers/cn/features/')" -gt 100
+          tar -tf artifacts/cn-provider-2026-07-31.tar | grep -Fx 'data/providers/cn/calendars/day.txt'
+
+      - name: Upload complete immutable provider tar
         id: upload
         uses: actions/upload-artifact@v4
         with:
           name: cn-provider-2026-07-31-${{ github.run_id }}
-          path: |
-            artifacts/source/cn/artifacts/selected_pool_price_refresh_manifest.json
-            artifacts/source/cn/data/providers/cn
+          path: artifacts/cn-provider-2026-07-31.tar
           if-no-files-found: error
           retention-days: 90
+          compression-level: 0
 
-      - name: Commit observable seed receipt
+      - name: Commit observable complete receipt
         env:
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
           ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
         run: |
           mkdir -p data/research/formal_promotions/freshness
           python - <<'PY'
+          import hashlib
           import json
           import os
           from pathlib import Path
 
+          archive = Path("artifacts/cn-provider-2026-07-31.tar")
           payload = {
               "schema_version": "1.0.0",
               "status": "complete",
@@ -169,11 +146,13 @@ jobs:
               "artifact_id": int(os.environ["ARTIFACT_ID"]),
               "artifact_name": f"cn-provider-2026-07-31-{os.environ['GITHUB_RUN_ID']}",
               "artifact_digest": os.environ["ARTIFACT_DIGEST"],
+              "inner_tar_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
               "provider_identity_sha256": "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8",
               "provider_cutoff": "2026-07-31",
-              "source_mode": "governed_repository_csv_offline",
+              "provider_calendar_sessions": 1351,
+              "source_mode": "credential_aware_public_full_refresh",
+              "selected_provider": "akshare_sina",
               "source_symbol_count": 131,
-              "external_fetch_count": 0,
               "research_only": True,
               "trade_ready": False,
           }
@@ -184,5 +163,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/research/formal_promotions/freshness/cn-provider-seed-receipt.json
-          git commit -m "research: record CN provider freshness artifact"
+          git commit -m "research: record complete CN provider freshness artifact"
           git push origin HEAD:main
