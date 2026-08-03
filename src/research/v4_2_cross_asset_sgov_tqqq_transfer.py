@@ -443,6 +443,37 @@ def _pipeline(contract: Mapping[str, Any]) -> Pipeline:
     )
 
 
+def _probability_groups(valid: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    """Use quartiles when available and deterministic halves for tiny folds."""
+
+    ordered = valid.sort_values("probability").copy()
+    if len(ordered) >= 4:
+        quartile = pd.qcut(
+            ordered["probability"].rank(method="first"),
+            4,
+            labels=False,
+            duplicates="drop",
+        )
+        if quartile.notna().any():
+            minimum = quartile.min()
+            maximum = quartile.max()
+            bottom = ordered.loc[
+                quartile.eq(minimum), "event_excess_log_return"
+            ]
+            top = ordered.loc[
+                quartile.eq(maximum), "event_excess_log_return"
+            ]
+            if len(bottom) and len(top):
+                return bottom.astype(float), top.astype(float)
+
+    split = max(len(ordered) // 2, 1)
+    bottom = ordered.iloc[:split]["event_excess_log_return"].astype(float)
+    top = ordered.iloc[split:]["event_excess_log_return"].astype(float)
+    if top.empty:
+        top = bottom.copy()
+    return bottom, top
+
+
 def _prediction_metrics(table: pd.DataFrame) -> dict[str, Any]:
     valid = table.dropna(
         subset=["probability", "positive_event_excess", "event_excess_log_return"]
@@ -452,11 +483,7 @@ def _prediction_metrics(table: pd.DataFrame) -> dict[str, Any]:
     probability = valid["probability"].astype(float)
     label = valid["positive_event_excess"].astype(int)
     continuous = valid["event_excess_log_return"].astype(float)
-    quartile = pd.qcut(
-        probability.rank(method="first"), 4, labels=False, duplicates="drop"
-    )
-    bottom = continuous.loc[quartile.eq(int(quartile.min()))]
-    top = continuous.loc[quartile.eq(int(quartile.max()))]
+    bottom, top = _probability_groups(valid)
     return {
         "observations": int(len(valid)),
         "positive_rate": float(label.mean()),
