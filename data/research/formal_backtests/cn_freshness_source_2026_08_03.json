@@ -22,6 +22,7 @@
     "2026H2": "1ef5c8ac621de93f90404936a69387b70ce8e5be64cf0c9678d4eb3327cbe3d5"
   },
   "independent_execution_count": 2,
+  "promotion_commit_sha": "e549539113fa569e47b102e43df468aeed107cc3",
   "model_selection_reopened": false,
   "automatic_promotion": false,
   "research_only": true,
