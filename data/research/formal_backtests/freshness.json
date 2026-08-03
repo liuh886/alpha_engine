@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "cutoff_policy": "latest_completed_trading_session",
+  "declared_at": "2026-08-03T02:30:00Z",
+  "markets": {
+    "us": "2026-07-31",
+    "cn": "2026-07-31"
+  },
+  "next_session_close_utc": {
+    "us": "2026-08-03T20:00:00Z",
+    "cn": "2026-08-03T07:00:00Z"
+  },
+  "required_models": [
+    "qqqi_qqq_tqqq_v4_2",
+    "us_x1_1",
+    "cn_x1_0"
+  ],
+  "freshness_receipt_required_models": [
+    "us_x1_1",
+    "cn_x1_0"
+  ],
+  "date_range_end_required_models": [
+    "us_x1_1",
+    "cn_x1_0"
+  ],
+  "research_only": true,
+  "trade_ready": false
+}

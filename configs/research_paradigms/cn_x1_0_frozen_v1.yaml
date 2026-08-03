@@ -40,12 +40,13 @@ strategy:
   research_only: true
 walk_forward:
   requested_train_start: '2021-01-01'
-  test_end: '2026-06-30'
+  test_end: '2026-07-31'
   first_test_year: 2024
   last_test_year: 2026
   min_windows: 3
   train_embargo_sessions: 10
-  partial_window_policy: complete_windows_only
+  partial_window_policy: allow_horizon_contained_partial_final_window
+  min_partial_window_eligible_sessions: 10
 evaluation:
   benchmark_mode: reference_only
   metrics:
