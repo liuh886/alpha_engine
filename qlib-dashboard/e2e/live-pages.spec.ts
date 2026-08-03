@@ -1,132 +1,134 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const FORMAL_MODELS = ['QQQ Rotation v4.2', 'US x1.1', 'CN x1.0'] as const;
-const REQUIRED_FRESHNESS_CUTOFF = '2026-07-31';
+const FORMAL_VERSIONS = ['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0'] as const;
 
-type FormalPackage = {
-  model_id?: string;
-  evidence_cutoff?: string;
-  date_range?: { end?: string };
-  trades?: unknown[];
+type FormalCatalog = {
+  schema_version?: string;
+  channel?: string;
+  research_only?: boolean;
+  trade_ready?: boolean;
+  records?: Array<{
+    model_version_id?: string;
+    bundle_id?: string;
+    manifest_path?: string;
+    manifest_sha256?: string;
+    publication_status?: string;
+  }>;
 };
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 async function assertNoHorizontalOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
-async function fetchFormalPackage(page: Page, modelId: string): Promise<FormalPackage> {
-  const packageUrl = new URL(`data/formal-backtests/${modelId}.json`, page.url());
-  packageUrl.searchParams.set('live_acceptance', Date.now().toString());
-  const response = await page.request.get(packageUrl.toString(), {
+async function fetchFormalCatalog(page: Page): Promise<FormalCatalog> {
+  const url = new URL('data/formal-model-runs/catalog.json', page.url());
+  url.searchParams.set('live_acceptance', Date.now().toString());
+  const response = await page.request.get(url.toString(), {
     headers: { 'cache-control': 'no-cache', pragma: 'no-cache' },
   });
-  expect(response.ok(), `failed to load ${packageUrl.toString()}`).toBeTruthy();
-  return response.json() as Promise<FormalPackage>;
+  expect(response.ok(), `failed to load ${url.toString()}`).toBeTruthy();
+  return response.json() as Promise<FormalCatalog>;
 }
 
-async function openSelector(page: Page) {
-  const trigger = page.getByRole('button', {
-    name: /QQQ Rotation v4\.2|US x1\.1|CN x1\.0/,
-  }).first();
-  await expect(trigger).toBeVisible();
-  await trigger.click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: 'Select formal baseline' })).toBeVisible();
-  await expect(dialog.getByTestId('formal-model-card')).toHaveCount(3);
-  for (const model of FORMAL_MODELS) {
-    await expect(dialog.getByText(model, { exact: true })).toBeVisible();
+async function openRun(page: Page, model: typeof FORMAL_MODELS[number]): Promise<void> {
+  await page.goto(`?live_acceptance=${Date.now()}#/runs`, { waitUntil: 'networkidle' });
+  await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
+  const catalog = page.getByRole('region', { name: 'Governed model runs' });
+  await expect(catalog.getByRole('button', { name: new RegExp(model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
+  await catalog.getByRole('button', { name: new RegExp(model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
+  await expect(page.getByRole('heading', { name: model })).toBeVisible();
+}
+
+async function exerciseAvailableEvidence(page: Page): Promise<void> {
+  const tabs = page.getByRole('tablist', { name: 'Run capability evidence' });
+  for (const label of ['Summary', 'Alpha', 'Risk', 'Robustness', 'Portfolio']) {
+    await expect(tabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
   }
-  await expect(dialog.getByText('US x1.0', { exact: true })).toHaveCount(0);
-  return dialog;
+  await expect(page.getByText('Source:', { exact: true }).first()).toBeVisible();
+
+  await tabs.getByRole('tab', { name: 'Alpha', exact: true }).click();
+  await expect(page.getByText(/performance\.json/)).toBeVisible();
+  await tabs.getByRole('tab', { name: 'Risk', exact: true }).click();
+  await expect(page.getByText(/risk\.json/)).toBeVisible();
+  await tabs.getByRole('tab', { name: 'Robustness', exact: true }).click();
+  await expect(page.getByText(/robustness\.json/)).toBeVisible();
+  await tabs.getByRole('tab', { name: 'Portfolio', exact: true }).click();
+  await expect(page.getByText(/portfolio\.json/)).toBeVisible();
 }
 
-async function selectModel(page: Page, model: typeof FORMAL_MODELS[number]): Promise<void> {
-  const dialog = await openSelector(page);
-  await dialog.getByTestId('formal-model-card').filter({ hasText: model }).click();
-  await expect(page.getByRole('button', { name: new RegExp(escapeRegExp(model)) }).first()).toBeVisible();
-  await expect(dialog).toBeHidden();
-}
-
-test('live Pages renders every governed formal baseline end to end', async ({ page }, testInfo) => {
+test('live Pages renders all governed formal Bundle v2 baselines end to end', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   const failedRequiredResponses: string[] = [];
+  const legacyRequests: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
+  page.on('request', (request) => {
+    if (request.url().includes('/data/formal-backtests/')) legacyRequests.push(request.url());
+  });
   page.on('response', (response) => {
     const url = response.url();
-    if (response.status() >= 400 && (url.includes('/bundle/') || url.includes('/data/formal-backtests/') || url.includes('/assets/'))) {
+    if (
+      response.status() >= 400
+      && (url.includes('/bundle/')
+        || url.includes('/data/formal-model-runs/')
+        || url.includes('/data/model-runs/')
+        || url.includes('/data/model-decisions/')
+        || url.includes('/assets/'))
+    ) {
       failedRequiredResponses.push(`${response.status()} ${url}`);
     }
   });
 
-  await page.goto(`?live_acceptance=${Date.now()}#/dashboard`, { waitUntil: 'networkidle' });
-  await expect(page.getByRole('heading', { name: 'Complete backtest review' })).toBeVisible();
+  await page.goto(`?live_acceptance=${Date.now()}#/runs`, { waitUntil: 'networkidle' });
+  await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Experiments', { exact: true })).toHaveCount(0);
-  await expect(page.getByText(/Ann: null|IR: null/)).toHaveCount(0);
 
-  const initialDialog = await openSelector(page);
-  await page.keyboard.press('Escape');
-  await expect(initialDialog).toBeHidden();
+  const catalogRegion = page.getByRole('region', { name: 'Governed model runs' });
+  for (const model of FORMAL_MODELS) {
+    await expect(catalogRegion.getByRole('button', { name: new RegExp(model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
+  }
+  await expect(catalogRegion.getByText('formal', { exact: true })).toHaveCount(3);
+  await expect(catalogRegion.getByText('US x1.0', { exact: true })).toHaveCount(0);
 
-  await expect(page.getByRole('button', { name: /QQQ Rotation v4\.2/ }).first()).toBeVisible();
-  const v42Curve = page.getByTestId('equity-curve-container');
-  await expect(v42Curve).toBeVisible();
-  const v42PointCount = Number(await v42Curve.getAttribute('data-strategy-point-count'));
-  expect(v42PointCount).toBeGreaterThan(600);
-  await expect(page.getByText('Retained allocation contributions', { exact: true })).toBeVisible();
-  await expect(page.getByText(/stock picking ability/i)).toHaveCount(0);
-  await page.getByRole('tab', { name: 'Evidence' }).click();
-  await expect(page.getByText('Formal backtest evidence', { exact: true })).toBeVisible();
-  await expect(page.getByText('Complete retained trace', { exact: true })).toBeVisible();
+  const formalCatalog = await fetchFormalCatalog(page);
+  expect(formalCatalog.schema_version).toBe('2.0.0');
+  expect(formalCatalog.channel).toBe('formal');
+  expect(formalCatalog.research_only).toBe(true);
+  expect(formalCatalog.trade_ready).toBe(false);
+  expect(formalCatalog.records).toHaveLength(3);
+  expect(new Set(formalCatalog.records?.map((record) => record.model_version_id))).toEqual(new Set(FORMAL_VERSIONS));
+  for (const record of formalCatalog.records ?? []) {
+    expect(record.publication_status).toBe('accepted_formal_baseline');
+    expect(record.bundle_id).toMatch(/^[a-f0-9]{64}$/);
+    expect(record.manifest_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(record.manifest_path).toMatch(/manifest\.json$/);
+  }
+
+  await openRun(page, 'QQQ Rotation v4.2');
+  await exerciseAvailableEvidence(page);
+  await expect(page.getByText(/trades\.json/)).toBeVisible();
+  await expect(page.getByText(/attribution\.json/)).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
-  const usPackage = await fetchFormalPackage(page, 'us_x1_1');
-  expect(usPackage.model_id).toBe('us_x1_1');
-  expect(usPackage.evidence_cutoff).toBe(REQUIRED_FRESHNESS_CUTOFF);
-  expect(usPackage.date_range?.end).toBe(REQUIRED_FRESHNESS_CUTOFF);
-  expect(Array.isArray(usPackage.trades)).toBeTruthy();
-  const usTradeRowCount = usPackage.trades?.length ?? 0;
-  expect(usTradeRowCount).toBeGreaterThan(1_075);
-
-  await selectModel(page, 'US x1.1');
-  await expect(page.getByText('Complete retained evidence', { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Holdings' }).click();
-  await expect(page.getByText(/Positions Snapshot:/)).toBeVisible();
-  await expect(page.getByText('15 Assets', { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Trades' }).click();
-  await expect(page.getByText('Complete transaction ledger', { exact: true })).toBeVisible();
-  await expect(page.getByText(`${usTradeRowCount.toLocaleString('en-US')} rows`, { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Attribution' }).click();
-  await expect(page.getByText('Contribution table', { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Evidence' }).click();
-  await expect(page.getByText('Complete retained trace', { exact: true })).toBeVisible();
+  await openRun(page, 'US x1.1');
+  await exerciseAvailableEvidence(page);
+  await expect(page.getByText(/trades\.json/)).toBeVisible();
+  await expect(page.getByText(/attribution\.json/)).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
-  const cnPackage = await fetchFormalPackage(page, 'cn_x1_0');
-  expect(cnPackage.model_id).toBe('cn_x1_0');
-  expect(cnPackage.evidence_cutoff).toBe(REQUIRED_FRESHNESS_CUTOFF);
-  expect(cnPackage.date_range?.end).toBe(REQUIRED_FRESHNESS_CUTOFF);
-
-  await selectModel(page, 'CN x1.0');
-  await expect(page.getByText('Partial retained evidence', { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Holdings' }).click();
-  await expect(page.getByText(/Positions Snapshot:/)).toBeVisible();
-  await expect(page.getByText('15 Assets', { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Trades' }).click();
-  await expect(page.getByText('Transaction ledger was not retained', { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Attribution' }).click();
-  await expect(page.getByText('Attribution evidence is not declared', { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Evidence' }).click();
-  await expect(page.getByText('Source evidence is incomplete', { exact: true })).toBeVisible();
-  await expect(page.getByText('rebalance trade ledger', { exact: true })).toBeVisible();
+  await openRun(page, 'CN x1.0');
+  await exerciseAvailableEvidence(page);
+  await expect(page.getByRole('heading', { name: 'Trades unavailable' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Attribution unavailable' })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
   expect(pageErrors).toEqual([]);
   expect(failedRequiredResponses).toEqual([]);
-  await page.screenshot({ path: `test-results/live-pages/formal-baselines-${testInfo.project.name}.png`, fullPage: true });
+  expect(legacyRequests).toEqual([]);
+  await page.screenshot({
+    path: `test-results/live-pages/formal-bundle-v2-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
 });
