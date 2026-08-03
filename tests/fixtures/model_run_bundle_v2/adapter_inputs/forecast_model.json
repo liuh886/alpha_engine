@@ -1,0 +1,93 @@
+{
+  "model_family_id": "forecast_fixture",
+  "model_version_id": "forecast_v1",
+  "run_id": "forecast_v1_run_001",
+  "model_kind": "forecast_model",
+  "publication_channel": "preview",
+  "publication_status": "blocked",
+  "generated_at": "2026-08-03T08:30:00Z",
+  "evidence_cutoff": "2026-07-31",
+  "research_only": true,
+  "trade_ready": false,
+  "comparability_key": {
+    "market": "us",
+    "universe_id": "forecast_fixture_pool",
+    "benchmark_id": "qqq",
+    "start": "2025-01-01",
+    "end": "2026-07-31",
+    "trace_frequency": "daily",
+    "horizon": "five_sessions",
+    "rebalance_contract_id": "no_portfolio_contract",
+    "cost_contract_id": "not_applicable"
+  },
+  "sections": [
+    {
+      "section_id": "summary",
+      "availability_status": "available",
+      "required_for_model_kind": true,
+      "reason": null,
+      "payload": {
+        "schema_version": "2.0.0",
+        "display_name": "Forecast fixture",
+        "metrics": [
+          {
+            "metric_id": "ic",
+            "value": 0.022,
+            "unit": "decimal",
+            "direction": "higher_is_better",
+            "estimator": "pearson",
+            "annualization": null,
+            "sample_count": 250,
+            "scope": "observed_predictions",
+            "availability_status": "available",
+            "unavailable_reason": null
+          },
+          {
+            "metric_id": "turnover",
+            "value": null,
+            "unit": "ratio",
+            "direction": "lower_is_better",
+            "estimator": null,
+            "annualization": null,
+            "sample_count": null,
+            "scope": "portfolio",
+            "availability_status": "not_applicable",
+            "unavailable_reason": "This forecast fixture does not declare a portfolio."
+          }
+        ]
+      }
+    },
+    {
+      "section_id": "performance",
+      "availability_status": "not_applicable",
+      "required_for_model_kind": false,
+      "reason": "No portfolio performance is defined for this forecast fixture.",
+      "payload": null
+    },
+    {
+      "section_id": "diagnostics",
+      "availability_status": "available",
+      "required_for_model_kind": true,
+      "reason": null,
+      "payload": {
+        "schema_version": "2.0.0",
+        "calibration": [{"bucket": 1, "predicted": 0.01, "observed": 0.008}],
+        "blocked_gates": ["independent_validation"]
+      }
+    },
+    {
+      "section_id": "portfolio",
+      "availability_status": "not_applicable",
+      "required_for_model_kind": false,
+      "reason": "No portfolio is defined for this forecast fixture.",
+      "payload": null
+    },
+    {
+      "section_id": "decision",
+      "availability_status": "not_computed",
+      "required_for_model_kind": false,
+      "reason": "No governed decision receipt was produced for this fixture.",
+      "payload": null
+    }
+  ]
+}
