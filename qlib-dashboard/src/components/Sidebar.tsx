@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, Orbit } from 'lucide-react';
 import { useActiveResearchBundle } from '@/hooks/useActiveResearchBundle';
+import { formatEvidenceLabel } from '@/lib/format-evidence-label';
 import type { GovernedRunSummary } from '@/lib/governed-run';
 import { cn } from '@/lib/utils';
 import { groupRoutes } from '@/routes';
@@ -37,7 +38,7 @@ export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary |
           </div>
           <div className="research-bundle-title">{activeRun?.title || bundle?.manifest.title || 'Loading bundle'}</div>
           <div className="research-bundle-meta">Cutoff {activeRun?.evidenceCutoff || bundle?.manifest.evidence_cutoff || 'not declared'}</div>
-          {activeRun && <div className="mt-1 truncate text-[10px] text-muted-foreground">{activeRun.publicationStatus.replaceAll('_', ' ')}</div>}
+          {activeRun && <div className="mt-1 truncate text-[10px] text-muted-foreground">{formatEvidenceLabel(activeRun.publicationStatus)}</div>}
         </div>
       )}
 
