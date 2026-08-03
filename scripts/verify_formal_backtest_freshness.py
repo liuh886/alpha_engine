@@ -27,9 +27,11 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _string_set(payload: dict[str, Any], key: str) -> set[str]:
+def _string_set(
+    payload: dict[str, Any], key: str, *, allow_empty: bool = False
+) -> set[str]:
     values = payload.get(key)
-    if not isinstance(values, list) or not values:
+    if not isinstance(values, list) or (not values and not allow_empty):
         raise FormalBacktestFreshnessError(f"{key} is missing")
     result = {str(value) for value in values}
     if len(result) != len(values):
@@ -53,8 +55,12 @@ def verify(root: Path) -> dict[str, Any]:
     if not isinstance(records, list):
         raise FormalBacktestFreshnessError("formal catalog records are missing")
     required = _string_set(policy, "required_models")
-    receipt_required = _string_set(policy, "freshness_receipt_required_models")
-    end_required = _string_set(policy, "date_range_end_required_models")
+    receipt_required = _string_set(
+        policy, "freshness_receipt_required_models", allow_empty=True
+    )
+    end_required = _string_set(
+        policy, "date_range_end_required_models", allow_empty=True
+    )
     if not receipt_required.issubset(required) or not end_required.issubset(required):
         raise FormalBacktestFreshnessError(
             "freshness receipt/date-end requirements exceed required_models"
