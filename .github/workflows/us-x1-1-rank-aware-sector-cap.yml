@@ -1,0 +1,177 @@
+name: US x1.1 Rank-Aware Sector Cap
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml"
+      - "scripts/run_us_x1_1_rank_aware_sector_cap.py"
+      - "scripts/run_us_x1_1_rank_aware_sector_cap_canonical.py"
+      - "tests/test_us_x1_1_rank_aware_sector_cap.py"
+      - "tests/test_us_x1_1_rank_aware_sector_cap_canonical.py"
+      - ".github/workflows/us-x1-1-rank-aware-sector-cap.yml"
+      - "docs/research/us_x1_1_growth_log.md"
+      - "docs/research/us_x1_1_rank_aware_sector_cap_result_2026-08-03.md"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: us-x1-1-rank-aware-sector-cap-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate frozen experiment contract
+        run: |
+          uv run ruff check \
+            scripts/run_us_x1_1_rank_aware_sector_cap.py \
+            scripts/run_us_x1_1_rank_aware_sector_cap_canonical.py \
+            tests/test_us_x1_1_rank_aware_sector_cap.py \
+            tests/test_us_x1_1_rank_aware_sector_cap_canonical.py
+          uv run mypy \
+            scripts/run_us_x1_1_rank_aware_sector_cap.py \
+            scripts/run_us_x1_1_rank_aware_sector_cap_canonical.py
+          uv run pytest \
+            tests/test_us_x1_1_rank_aware_sector_cap.py \
+            tests/test_us_x1_1_rank_aware_sector_cap_canonical.py \
+            tests/test_us_x1_1_sector_style_attribution.py \
+            tests/test_us_x1_1_drawdown_attribution_phase_a.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+          uv run python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          path = Path("configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml")
+          payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+          assert payload["experiment_id"] == "us_x1_1_rank_aware_sector_cap_v1"
+          assert payload["parent_model"]["pool_count"] == 87
+          assert payload["challenger"]["maximum_names_per_sector"] == 4
+          assert payload["governance"]["automatic_model_update"] is False
+          PY
+
+  evidence:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Download frozen provider
+        uses: actions/download-artifact@v4
+        with:
+          name: us-raw-adjustment-contract-30742690159
+          path: artifacts/source/provider
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: liuh886/alpha_engine
+          run-id: 30742690159
+      - name: Download deterministic US x1.1 ledgers
+        uses: actions/download-artifact@v4
+        with:
+          name: us-x1-1-deterministic-reproduction-30743067256
+          path: artifacts/source/reproduction
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: liuh886/alpha_engine
+          run-id: 30743067256
+      - name: Execute repeated rank-aware sector-cap evidence
+        run: >-
+          uv run python scripts/run_us_x1_1_rank_aware_sector_cap_canonical.py
+          --provider-uri artifacts/source/provider/provider_a/data/providers/us
+          --score-ledger-root artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1/ledgers/a
+          --reproduction-result artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1/deterministic_reproduction.json
+          --output-dir artifacts/evidence/us_x1_1_rank_aware_sector_cap_v1
+      - name: Verify governed decision output
+        run: |
+          uv run python - <<'PY'
+          import json
+          import math
+          from pathlib import Path
+
+          root = Path("artifacts/evidence/us_x1_1_rank_aware_sector_cap_v1")
+          payload = json.loads(
+              (root / "rank_aware_sector_cap_result.json").read_text(encoding="utf-8")
+          )
+          assert payload["provider_identity_sha256"] == "5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95"
+          assert payload["pool_count"] == 87
+          assert payload["contract"]["maximum_names_per_sector"] == 4
+          assert payload["repeated_materialization"]["status"] == "exact"
+          assert payload["repeated_materialization"]["run_a_tree_sha256"] == payload["repeated_materialization"]["run_b_tree_sha256"]
+          assert payload["decision"]["decision"] in {
+              "rank_aware_sector_cap_supported_for_shadow",
+              "sector_cap_reduces_risk_but_costs_too_much_alpha",
+              "sector_cap_improvement_is_window_specific",
+              "sector_cap_adds_no_value",
+              "data_blocked",
+          }
+          assert payload["decision"]["automatic_model_update"] is False
+          assert payload["decision"]["creates_us_x1_2_candidate"] is False
+          assert payload["governance"]["uses_2026H1_for_selection"] is False
+          assert len(payload["identity_checks"]) == 4
+          assert all(row["baseline_status"] == "exact_within_1e-6" for row in payload["identity_checks"])
+          for row in payload["aggregates"]:
+              expected = (
+                  (1 + row["compounded_total_return"])
+                  / (1 + row["compounded_benchmark_return"])
+                  - 1
+              )
+              assert math.isclose(
+                  row["compounded_relative_excess"],
+                  expected,
+                  rel_tol=0,
+                  abs_tol=1e-12,
+              )
+              assert row["relative_excess_definition"] == "strategy_nav_divided_by_benchmark_nav_minus_1"
+          baseline20 = next(
+              row for row in payload["aggregates"]
+              if row["strategy_id"] == "baseline_top15_equal" and row["cost_bps"] == 20
+          )
+          assert math.isclose(
+              baseline20["compounded_relative_excess"],
+              1.133460,
+              rel_tol=0,
+              abs_tol=1e-5,
+          )
+          assert (root / "run_a" / "ledgers" / "selection_audit.csv").exists()
+          assert (root / "run_a" / "ledgers" / "replacement_impact.csv").exists()
+          assert (root / "run_a" / "summaries" / "2025H2_period_degradation.csv").exists()
+          print(json.dumps({
+              "decision": payload["decision"],
+              "aggregates": payload["aggregates"],
+              "overlap_summary": payload["overlap_summary"],
+              "phase_2025H1": payload["phase_2025H1"],
+              "degradation_2025H2": payload["degradation_2025H2"],
+          }, indent=2))
+          PY
+      - name: Upload complete candidate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: us-x1-1-rank-aware-sector-cap-${{ github.run_id }}
+          path: |
+            artifacts/evidence/us_x1_1_rank_aware_sector_cap_v1
+            configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml
+            artifacts/source/provider/verification.json
+            artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1/run_identity_manifest.json
+          if-no-files-found: error
+          retention-days: 90

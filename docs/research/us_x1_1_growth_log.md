@@ -1,23 +1,24 @@
 # US x1.1 growth log
 
-**Ledger status:** current through Experiment 009 on 2026-08-02.
+**Ledger status:** current through Experiment 012 on 2026-08-03.
 
-This is the durable experiment ledger for the active US research baseline. It
-records positive, negative, null and blocked results. It does not imply trade
-readiness.
+This is the durable cumulative experiment ledger for the active US research
+baseline. It records positive, negative, null and blocked results. Detailed
+ledgers remain in the linked result documents and workflow artifacts. Nothing in
+this file implies trade readiness.
 
-## Current baseline
+## Current baseline and active challenger
 
 | Field | Value |
 |---|---|
-| Model | US x1.1 |
-| Status | active research baseline |
+| Active model | US x1.1 |
+| Model status | active research baseline |
 | Parent | US x1.0 |
-| Universe | `us_selected_equities_v2` |
+| Candidate universe | fixed `us_selected_equities_v2`, 87 equities |
 | Benchmark | QQQ |
 | Feature group | `momentum_volatility_volume` |
 | Label / holding / rebalance | 10 / 10 / 10 sessions |
-| Portfolio | Top-15 equal weight |
+| Baseline portfolio | Top-15 equal weight |
 | Base cost | 20 bps |
 | Effective XGBoost runtime | gain7, 200 rounds, max leaves 31, learning rate 0.05, seed 42 |
 | Canonical provider | `2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95` |
@@ -26,9 +27,12 @@ readiness.
 | Worst canonical development drawdown | -27.15% |
 | Deterministic revision provider | `5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95` |
 | Consumed reporting window | 2026H1 |
+| Active portfolio-control challenger | rank-aware Top-15 sector cap, max four names per sector |
+| Challenger status | supported for frozen shadow validation only |
 
 US x1.0 and canonical US x1.1 evidence remain immutable. US x1.1 remains
-`research_only=true` and `trade_ready=false`.
+`research_only=true` and `trade_ready=false`. The sector-cap challenger is a
+separate portfolio contract; it is not US x1.2.
 
 ## Governance rules
 
@@ -40,10 +44,15 @@ US x1.0 and canonical US x1.1 evidence remain immutable. US x1.1 remains
 - Source-model selection identity and economic-selection identity are retained
   separately when raw forward-return availability changes the eligible cross
   section.
-- The consumed 2026H1 window cannot select another candidate.
+- The fixed US87 pool is the research domain; no pool-external generalization is
+  claimed or tested.
+- The consumed 2026H1 window cannot select or tune another candidate.
 - A compatible model improvement may become a reviewed US x1.2 candidate.
 - A portfolio-control improvement remains separate from model versioning.
 - Failed, blocked and null experiments remain recorded.
+- Passing consumed development evidence only permits shadow validation.
+- Any change to the sector ceiling, classification, exception list, Top-15 rule
+  or rebalance contract restarts the future challenge clock.
 
 ## Experiment ledger
 
@@ -162,13 +171,8 @@ Full result:
 **Decision:** `us_x1_1_deterministic_on_revision_provider`.
 
 US x1.1 was fitted independently twice on provider `5c09d0...`. All four
-windows matched exactly on:
-
-- effective parameter identity;
-- complete scores and ranks;
-- daily Top-15 source-selection ledgers;
-- raw returns;
-- 20/40/60 bps economics.
+windows matched exactly on effective parameters, complete scores and ranks,
+daily Top-15 source selections, raw returns and 20/40/60 bps economics.
 
 | Metric | Canonical | Deterministic revision |
 |---|---:|---:|
@@ -206,11 +210,10 @@ Mechanism findings:
   24.65% of total negative contribution;
 - excluding APP improved drawdown by only 1.56 percentage points;
 - loss was broad across volatility buckets;
-- low-beta contribution was worse than high-beta;
 - negative QQQ-trend periods represented 52.72% of negative contribution;
 - the initial -21.07% shock occurred while the QQQ trend was still positive.
 
-Independent portfolio controls:
+Independent controls:
 
 | Control | Excess | Max DD | Outcome |
 |---|---:|---:|---|
@@ -230,61 +233,140 @@ Full result:
 **Artifact digest:** `sha256:f58853fb4d6da2d722b63049ee25495649270a5b935b9837fcd4cf3d4cece740`  
 **Decision:** `trend_overlay_destroys_too_much_upside`.
 
-The fixed 50% and cash overlays were tested across 2024H1–2025H2 with exact
-Experiment 007 score identities and 20/40/60 bps cost stress. 2026H1 remained
-excluded.
-
-Aggregate 20 bps result:
-
 | Contract | Relative excess | Retained baseline excess | Worst DD | Positive windows | Average gross |
 |---|---:|---:|---:|---:|---:|
 | Baseline 100% | +113.35% | 100.00% | -33.88% | 4/4 | 100.0% |
 | QQQ-negative 50% | +86.91% | 76.68% | -27.66% | 4/4 | 87.5% |
 | QQQ-negative cash | +60.93% | 53.75% | -21.15% | 3/4 | 75.0% |
 
-Accepted learning:
-
-- the QQQ trend state explains and controls the continuation phase of the
-  2025H1 drawdown;
-- 50% and cash improved the 2025H1 drawdown by 6.21 and 12.73 percentage
-  points respectively;
-- both paths recovered by 2025-06-12 while baseline did not recover within
-  2025H1;
-- both overlays retained positive relative excess at 60 bps.
-
-Rejected candidate claims:
-
-- material drawdown benefit occurred in only 1/4 windows;
-- the 50% overlay retained only 76.68% of baseline compounded relative excess;
-- cash retained 53.75% and created negative excess in 2024H1;
-- 50% reduced excess without drawdown benefit in 2024H1 and 2025H2;
-- cash worsened the 2024H2 drawdown and delayed recovery by 28 days.
-
-Neither overlay becomes a portfolio-contract candidate. The four development
-windows are now consumed for this QQQ 20-session trend hypothesis; the same
-lookback or threshold must not be tuned on them.
+The overlay controlled the continuation phase of the 2025H1 drawdown but
+materially destroyed upside elsewhere. Neither fixed overlay became a portfolio
+contract. The same trend lookback or threshold must not be tuned on these
+consumed windows.
 
 Full result:
 `docs/research/us_x1_1_qqq_trend_overlay_result_2026-08-02.md`.
 
+### Experiment 010 — QQQ beta-residual target
+
+**Issue / PR:** #422 / #425  
+**Workflow / artifact:** `30776268639` / `8842169424`  
+**Artifact digest:** `sha256:ba0489194946b59293c4b609b36a752a7a5a72d7f54fe1a38356418e4980333a`  
+**Decision:** `beta_residual_adds_no_value`.
+
+The experiment kept the fixed US87 pool, features, XGBoost runtime, windows and
+portfolio contract unchanged. It replaced the raw ten-session target with a
+stock-specific QQQ beta-residual target using trailing 60-session beta with at
+least 40 paired observations.
+
+A naive `stock return - QQQ return` control proved exactly rank-equivalent to
+the raw target under the daily cross-sectional ranker and therefore was not a
+new model.
+
+On the beta-compatible comparison sample:
+
+| Metric | Raw-target baseline | Beta-residual target |
+|---|---:|---:|
+| 20 bps strategy return | +239.76% | +193.69% |
+| 20 bps relative excess | +118.92% | +89.24% |
+| Worst drawdown | -38.77% | -38.26% |
+| Mean selected beta | 1.854 | 1.893 |
+
+The challenger materially changed rankings but retained only 75.04% of baseline
+relative excess, failed to lower beta, worsened QQQ-down performance and
+increased window concentration. The target path is closed; US x1.1 remains
+unchanged.
+
+### Experiment 011 — governed sector, style and 2025H1 mechanism attribution
+
+**Issues / PR:** #366, #381 / #430  
+**Workflow / artifact:** `30778065622` / `8842736844`  
+**Artifact digest:** `sha256:7b577b7c0147bbc11cd04c27374f77f82f7580f454dcfe4c142abd7ac2dd093b`  
+**Decision:** `mixed_sector_style_regime`.
+
+The run added an immutable 87/87 governed sector and industry map, point-in-time
+market-style snapshots and complete sector/style contribution ledgers.
+
+2025H1 mechanism findings:
+
+- maximum sector weight: 86.67%;
+- Technology share of negative contribution: 70.26%;
+- high-volatility share of negative contribution: 87.98%;
+- high-beta share of negative contribution: 83.73%;
+- QQQ negative-trend loss share: 52.72%, below the regime-dominance gate;
+- the drawdown was not dominated by one name or one narrow industry.
+
+The most accurate interpretation is a broad high-beta/high-volatility Technology
+selection shock amplified by sector concentration. A corrected rank-aware
+sector-cap diagnostic warranted an independently pre-registered portfolio
+experiment; no model or portfolio contract was updated in this attribution run.
+
+Full result:
+`docs/research/us_x1_1_sector_style_attribution_result_2026-08-03.md`.
+
+### Experiment 012 — rank-aware US87 sector cap
+
+**Issue / PR:** #432 / #433  
+**Workflow / artifact:** `30779386691` / `8843152145`  
+**Artifact digest:** `sha256:9ced02f9329d7c955a6166ee0303bf523c0a7e030fb9b7d8ea8a7f0a2bb4e3fc`  
+**Decision:** `rank_aware_sector_cap_supported_for_shadow`.
+
+The challenger scans the complete US x1.1 ranking, selects exactly 15 equal
+weight names, and admits no more than four names from one governed sector. All
+other model, data, score, return, cost and timing contracts remain frozen.
+
+Aggregate canonical economics:
+
+| Contract | Cost | Strategy return | Relative excess | Worst DD | Turnover | Strongest-window share |
+|---|---:|---:|---:|---:|---:|---:|
+| Baseline | 20 bps | +231.11% | +113.35% | -33.88% | 25.67 | 48.72% |
+| Sector cap | 20 bps | **+242.76%** | **+120.85%** | **-29.36%** | **22.53** | **32.91%** |
+| Sector cap | 60 bps | +213.82% | +102.21% | -29.93% | 22.53 | 33.52% |
+
+Every pre-registered development gate passed:
+
+- 4/4 positive simple-excess windows;
+- positive 60 bps compounded relative excess;
+- 106.62% baseline relative-excess retention;
+- +4.52 percentage-point worst-drawdown improvement;
+- turnover at 87.79% of baseline;
+- strongest positive-window share below 55%;
+- exact two-run materialization identity.
+
+The result is not uniformly superior. In 2025H2 the challenger returned 24.91%
+versus 60.13% for baseline and worsened drawdown from -19.38% to -26.07%. It
+frequently removed high-ranked Technology winners such as ALAB, IREN, SNDK,
+AEHR, LITE and MU. Mean Top-15 overlap was 61.81%, with 5.73 replacements per
+rebalance and a maximum selected rank of 46.
+
+The contract therefore advances only to frozen prospective shadow validation.
+It does not replace US x1.1, create US x1.2 or establish trade readiness.
+
+Full result:
+`docs/research/us_x1_1_rank_aware_sector_cap_result_2026-08-03.md`.
+
 ## Current research queue
 
-1. **#366 — governed US87 sector map.** Complete exact 87/87 source-bound
-   mapping before sector attribution, sector cap or leave-one-sector-out.
-2. **#381 Phase B.** Add governed sector contribution and concentration
-   evidence; retain the Phase A name and regime findings.
-3. **#362 governance closure.** Mark Top-20, inverse volatility, 8% name cap and
-   fixed QQQ trend overlays as rejected or null under their registered gates;
-   route the unresolved sector test through #366/#381.
-4. Revisit native parameter challengers only after sector-risk evidence is
-   complete; do not use the rejected QQQ overlay to rescue a model candidate.
-5. Reserve a genuinely untouched future challenge window before any
+1. Freeze the Experiment 012 sector-cap contract and begin prospective shadow
+   evidence from the first eligible rebalance after 2026-08-03.
+2. Retain baseline and challenger signals before outcomes exist, with hashes,
+   selections, replacement pairs, expected turnover and data/provider identity.
+3. Do not use 2026H1 or the consumed 2024H1–2025H2 development windows to tune
+   the four-name sector ceiling, classification or exception rules.
+4. Reserve an untouched six-month shadow challenge before any acceptance or
    operational claim.
+5. Close #362 portfolio-control governance using the cumulative evidence:
+   Top-20, inverse volatility, 8% name cap and fixed QQQ overlays are rejected or
+   null; the rank-aware sector cap is the only supported shadow path.
+6. Do not resume broad model-parameter search until prospective portfolio-risk
+   evidence is available.
 
 ## Current conclusion
 
-US x1.1 has not become US x1.2. Model execution and the deterministic data
-contract are reproducible, the 2025H1 drawdown has been decomposed, and the
-fixed QQQ trend overlay has been rejected as a broad portfolio contract. The
-active research task is now governed sector attribution, not threshold tuning
-or another blind parameter search.
+US x1.1 remains the active fixed-US87 research baseline. Its deterministic data
+and execution contract are reproducible, the 2025H1 drawdown mechanism is now
+understood, the beta-residual target and fixed QQQ overlays are rejected, and a
+rank-aware sector-cap portfolio control has passed consumed development gates.
+
+The next research phase is prospective shadow validation of the frozen
+sector-cap contract. No US x1.2 candidate exists and nothing is trade ready.

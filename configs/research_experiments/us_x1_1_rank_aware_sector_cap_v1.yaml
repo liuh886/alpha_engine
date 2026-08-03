@@ -1,0 +1,87 @@
+schema_version: "1.0"
+experiment_id: "us_x1_1_rank_aware_sector_cap_v1"
+issue: 432
+status: "pre_registered"
+research_only: true
+trade_ready: false
+
+parent_model:
+  model_id: "us_x1_1"
+  pool_id: "us_selected_equities_v2"
+  pool_count: 87
+  benchmark: "QQQ"
+  provider_identity_sha256: "5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95"
+  score_source_artifact: 8831960659
+
+frozen_components:
+  pool_membership: true
+  sector_classification: "configs/research_classifications/us87_sector_industry_v1.yaml"
+  model_scores: true
+  features: true
+  label: true
+  xgboost_parameters: true
+  training_windows: true
+  economic_return_definition: true
+  rebalance_sessions: 10
+  costs_bps: [20, 40, 60]
+  development_windows:
+    - "2024H1"
+    - "2024H2"
+    - "2025H1"
+    - "2025H2"
+  consumed_reporting_window:
+    - "2026H1"
+
+baseline:
+  top_n: 15
+  weighting: "equal"
+  sector_constraint: null
+
+challenger:
+  top_n: 15
+  weighting: "equal"
+  scan_order:
+    score: "descending"
+    tie_breaker: "instrument_ascending"
+  maximum_names_per_sector: 4
+  effective_maximum_sector_weight: 0.26666666666666666
+  fill_contract: "scan_complete_eligible_cross_section_until_exactly_15"
+  fail_closed_if_unfillable: true
+  redistribute_weight_across_full_pool: false
+
+required_evidence:
+  - "complete_rank_and_selection_ledgers"
+  - "replacement_pair_ledger"
+  - "holding_and_contribution_ledgers"
+  - "sector_exposure_hhi_and_contribution"
+  - "overlap_rank_displacement_and_turnover"
+  - "cost_stress_20_40_60_bps"
+  - "qqq_up_down_and_market_style_attribution"
+  - "leave_one_sector_sensitivity"
+  - "leave_one_replacement_sensitivity"
+  - "2025H1_shock_and_continuation"
+  - "2025H2_degradation_analysis"
+  - "strongest_window_contribution_share"
+  - "exact_repeated_materialization_identity"
+
+development_gates:
+  all_four_windows_positive_excess: true
+  compounded_relative_excess_60bps_positive: true
+  retained_baseline_relative_excess_20bps_minimum: 0.90
+  worst_window_drawdown_improvement_minimum: 0.04
+  turnover_ratio_maximum: 1.15
+  strongest_positive_window_share_maximum: 0.55
+  deterministic_repeated_materialization: true
+
+decision_taxonomy:
+  - "rank_aware_sector_cap_supported_for_shadow"
+  - "sector_cap_reduces_risk_but_costs_too_much_alpha"
+  - "sector_cap_improvement_is_window_specific"
+  - "sector_cap_adds_no_value"
+  - "data_blocked"
+
+governance:
+  automatic_model_update: false
+  creates_us_x1_2_candidate: false
+  passing_development_evidence_only_allows_shadow: true
+  untouched_future_six_month_window_required_for_acceptance: true
