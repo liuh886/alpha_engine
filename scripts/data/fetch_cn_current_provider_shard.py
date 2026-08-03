@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import time
 from pathlib import Path
@@ -37,6 +38,7 @@ def fetch_shard(
         authoritative=True,
         require_data_ready=False,
     )
+    pool_hash = hashlib.sha256(binding.pool_spec.read_bytes()).hexdigest()
     candidates = _load_pool(binding.pool_spec, "cn")
     all_symbols = sorted({*candidates, BENCHMARKS["cn"]})
     if len(candidates) != 130 or len(all_symbols) != 131:
@@ -116,7 +118,7 @@ def fetch_shard(
         "status": "complete",
         "market": "cn",
         "pool_id": binding.pool_id,
-        "pool_hash": binding.pool_hash,
+        "pool_hash": pool_hash,
         "candidate_count": len(candidates),
         "total_symbol_count": len(all_symbols),
         "shard_index": shard_index,
