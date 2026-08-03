@@ -93,17 +93,18 @@ jobs:
       - name: Build exact Qlib provider
         run: >-
           uv run python scripts/build_market_providers.py
-          --market cn
+          --root artifacts/provider-root
           --csv-dir artifacts/shards/csv
-          --output-root artifacts/provider
-          --start 2021-01-01
-          --end 2026-07-31
+          --markets cn
       - name: Verify provider identity and dimensions
         run: |
           uv run python - <<'PY'
           import json
           from pathlib import Path
-          provider = json.loads(Path("artifacts/provider/cn/provider_manifest.json").read_text(encoding="utf-8"))
+          provider = json.loads(
+              Path("artifacts/provider-root/data/providers/cn/provider_manifest.json")
+              .read_text(encoding="utf-8")
+          )
           assert provider["provider_identity_sha256"] == "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8", provider
           assert provider["calendar"]["last_day"] == "2026-07-31", provider
           assert provider["calendar"]["session_count"] == 1351, provider
@@ -111,9 +112,13 @@ jobs:
           PY
       - name: Archive complete provider before upload
         run: |
-          tar -C artifacts -cf artifacts/cn-provider-pr-2026-07-31.tar provider/cn shards
-          test "$(tar -tf artifacts/cn-provider-pr-2026-07-31.tar | grep -c '^provider/cn/features/')" -gt 100
-          tar -tf artifacts/cn-provider-pr-2026-07-31.tar | grep -Fx 'provider/cn/calendars/day.txt'
+          tar -C artifacts/provider-root -cf artifacts/cn-provider-pr-2026-07-31.tar \
+            data/providers/cn
+          tar -C artifacts/shards -rf artifacts/cn-provider-pr-2026-07-31.tar \
+            shard-0.json shard-1.json shard-2.json shard-3.json \
+            shard-4.json shard-5.json shard-6.json shard-7.json
+          test "$(tar -tf artifacts/cn-provider-pr-2026-07-31.tar | grep -c '^data/providers/cn/features/')" -gt 100
+          tar -tf artifacts/cn-provider-pr-2026-07-31.tar | grep -Fx 'data/providers/cn/calendars/day.txt'
       - name: Upload complete verified provider
         uses: actions/upload-artifact@v4
         with:
