@@ -56,20 +56,45 @@ def _cn_partial_trace(run_dir: Path) -> dict[str, Any]:
     return traces[0]
 
 
-def _strip_inferred_ranks(package: dict[str, Any]) -> int:
+def _position_rows(package: dict[str, Any], *, label: str) -> list[dict[str, Any]]:
     positions = package.get("positions")
     if not isinstance(positions, list):
-        raise LatestFormalFinalizationError("formal positions are missing")
-    removed = 0
+        raise LatestFormalFinalizationError(f"{label} formal positions are missing")
+    rows: list[dict[str, Any]] = []
     for row in positions:
         if not isinstance(row, dict):
-            raise LatestFormalFinalizationError("formal position row is invalid")
-        window = str(row.get("window") or "")
-        if window in {"2026H1", "2026H2_partial"} and "rank" in row:
+            raise LatestFormalFinalizationError(f"{label} formal position row is invalid")
+        rows.append(row)
+    return rows
+
+
+def _strip_inferred_extension_ranks(
+    package: dict[str, Any],
+    accepted: dict[str, Any],
+    *,
+    label: str,
+) -> tuple[int, int]:
+    """Remove inferred ranks only from rows appended after the accepted prefix."""
+
+    generated_rows = _position_rows(package, label=label)
+    accepted_rows = _position_rows(accepted, label=f"accepted {label}")
+    prefix_length = len(accepted_rows)
+    if len(generated_rows) < prefix_length:
+        raise LatestFormalFinalizationError(
+            f"{label} generated positions are shorter than the accepted prefix"
+        )
+    if generated_rows[:prefix_length] != accepted_rows:
+        raise LatestFormalFinalizationError(
+            f"{label} accepted position prefix was rewritten before finalization"
+        )
+
+    removed = 0
+    for row in generated_rows[prefix_length:]:
+        if "rank" in row:
             row.pop("rank")
             row["rank_evidence"] = "not_retained"
             removed += 1
-    return removed
+    return removed, prefix_length
 
 
 def _cross_window_cn_drawdown(
@@ -133,6 +158,7 @@ def _bind_cn_provider_identity(
 
 def finalize(
     generated_dir: Path,
+    existing_dir: Path,
     cn_run_dir: Path,
     *,
     cn_provider_identity: str,
@@ -142,10 +168,20 @@ def finalize(
     catalog_path = generated_dir / "catalog.json"
     us = _read(us_path)
     cn = _read(cn_path)
+    accepted_us = _read(existing_dir / "us_x1_1.json")
+    accepted_cn = _read(existing_dir / "cn_x1_0.json")
     catalog = _read(catalog_path)
 
-    removed_us = _strip_inferred_ranks(us)
-    removed_cn = _strip_inferred_ranks(cn)
+    removed_us, us_prefix_length = _strip_inferred_extension_ranks(
+        us,
+        accepted_us,
+        label="US x1.1",
+    )
+    removed_cn, cn_prefix_length = _strip_inferred_extension_ranks(
+        cn,
+        accepted_cn,
+        label="CN x1.0",
+    )
     if removed_us == 0 or removed_cn == 0:
         raise LatestFormalFinalizationError(
             "expected inferred ranks were not present in generated extensions"
@@ -205,6 +241,10 @@ def finalize(
     return {
         "schema_version": "1.0.0",
         "status": "finalized",
+        "accepted_position_prefix_lengths": {
+            "us_x1_1": us_prefix_length,
+            "cn_x1_0": cn_prefix_length,
+        },
         "removed_inferred_ranks": {"us_x1_1": removed_us, "cn_x1_0": removed_cn},
         "cn_cross_window_max_drawdown": worst,
         "cn_provider_identity_sha256": cn_provider_identity,
@@ -222,12 +262,14 @@ def finalize(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--generated-dir", type=Path, required=True)
+    parser.add_argument("--existing-dir", type=Path, required=True)
     parser.add_argument("--cn-run-dir", type=Path, required=True)
     parser.add_argument("--cn-provider-identity", required=True)
     parser.add_argument("--receipt", type=Path, default=None)
     args = parser.parse_args()
     receipt = finalize(
         args.generated_dir,
+        args.existing_dir,
         args.cn_run_dir,
         cn_provider_identity=args.cn_provider_identity,
     )
