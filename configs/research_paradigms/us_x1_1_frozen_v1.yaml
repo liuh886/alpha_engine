@@ -1,5 +1,6 @@
 # Formal US x1.1 research baseline promoted from Candidate A on 2026-08-02.
-# Development selection used 2024H1--2025H2. 2026H1 is consumed reporting evidence.
+# Development selection used 2024H1--2025H2. Later windows are reporting-only
+# evidence and never participate in model selection or automatic promotion.
 schema_version: "1.1"
 experiment_id: "us_x1_1_frozen_v1"
 market: "us"
@@ -47,12 +48,13 @@ strategy:
 
 walk_forward:
   requested_train_start: "2021-01-01"
-  test_end: "2026-06-30"
+  test_end: "2026-07-31"
   first_test_year: 2024
   last_test_year: 2026
   min_windows: 3
   train_embargo_sessions: 10
-  partial_window_policy: "complete_windows_only"
+  partial_window_policy: "allow_horizon_contained_partial_final_window"
+  min_partial_window_eligible_sessions: 10
 
 evaluation:
   benchmark_mode: "reference_only"
