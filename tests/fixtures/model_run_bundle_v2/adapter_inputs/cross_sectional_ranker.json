@@ -1,0 +1,110 @@
+{
+  "model_family_id": "ranker_fixture",
+  "model_version_id": "ranker_v1",
+  "run_id": "ranker_v1_run_001",
+  "model_kind": "cross_sectional_ranker",
+  "publication_channel": "preview",
+  "publication_status": "ci_validated_preview",
+  "generated_at": "2026-08-03T08:30:00Z",
+  "evidence_cutoff": "2026-07-31",
+  "research_only": true,
+  "trade_ready": false,
+  "comparability_key": {
+    "market": "us",
+    "universe_id": "ranker_fixture_pool",
+    "benchmark_id": "qqq",
+    "start": "2024-01-01",
+    "end": "2026-07-31",
+    "trace_frequency": "rebalance_period",
+    "horizon": "10_sessions",
+    "rebalance_contract_id": "top15_10_session",
+    "cost_contract_id": "next_open_10bps"
+  },
+  "sections": [
+    {
+      "section_id": "summary",
+      "availability_status": "available",
+      "required_for_model_kind": true,
+      "reason": null,
+      "payload": {
+        "schema_version": "2.0.0",
+        "display_name": "Ranker fixture",
+        "metrics": [
+          {
+            "metric_id": "annualized_return",
+            "value": 0.17,
+            "unit": "ratio",
+            "direction": "higher_is_better",
+            "estimator": "geometric",
+            "annualization": "252_sessions",
+            "sample_count": 504,
+            "scope": "full_observed_window",
+            "availability_status": "available",
+            "unavailable_reason": null
+          },
+          {
+            "metric_id": "rank_ic",
+            "value": 0.031,
+            "unit": "decimal",
+            "direction": "higher_is_better",
+            "estimator": "spearman",
+            "annualization": null,
+            "sample_count": 49,
+            "scope": "complete_windows",
+            "availability_status": "available",
+            "unavailable_reason": null
+          }
+        ]
+      }
+    },
+    {
+      "section_id": "performance",
+      "availability_status": "available",
+      "required_for_model_kind": true,
+      "reason": null,
+      "payload": {
+        "schema_version": "2.0.0",
+        "trace_frequency": "rebalance_period",
+        "strategy": [{"date": "2026-07-31", "value": 1.31}],
+        "benchmark": [{"date": "2026-07-31", "value": 1.14}]
+      }
+    },
+    {
+      "section_id": "portfolio",
+      "availability_status": "available",
+      "required_for_model_kind": true,
+      "reason": null,
+      "payload": {
+        "schema_version": "2.0.0",
+        "holdings": [{"date": "2026-07-31", "instrument": "AAPL", "weight": 0.0666666667}]
+      }
+    },
+    {
+      "section_id": "trades",
+      "availability_status": "available",
+      "required_for_model_kind": true,
+      "reason": null,
+      "payload": {
+        "schema_version": "2.0.0",
+        "rows": [{"date": "2026-07-31", "instrument": "AAPL", "action": "rebalance"}]
+      }
+    },
+    {
+      "section_id": "attribution",
+      "availability_status": "available",
+      "required_for_model_kind": false,
+      "reason": null,
+      "payload": {
+        "schema_version": "2.0.0",
+        "rows": [{"instrument": "AAPL", "value": 0.012, "semantics": "retained_period_contribution"}]
+      }
+    },
+    {
+      "section_id": "decision",
+      "availability_status": "not_computed",
+      "required_for_model_kind": false,
+      "reason": "No governed decision receipt was produced for this fixture.",
+      "payload": null
+    }
+  ]
+}
