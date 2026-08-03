@@ -1,0 +1,119 @@
+name: Seed CN Provider 2026-07-31
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/seed-cn-provider-2026-07-31.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seed-cn-provider-2026-07-31
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Require configured CN source credential
+        run: test -n "$TUSHARE_TOKEN"
+
+      - name: Build complete promotion-eligible CN provider
+        run: >-
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py
+          --market cn
+          --source-csv-dir data/csv_clean
+          --output-root artifacts/source/cn
+          --start 2021-01-01
+          --cutoff 2026-07-31
+          --max-rounds 1
+          --full-refresh
+
+      - name: Verify exact provider identity and cutoff
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          refresh = json.loads(
+              Path("artifacts/source/cn/artifacts/selected_pool_price_refresh_manifest.json")
+              .read_text(encoding="utf-8")
+          )
+          assert refresh.get("cutoff") == "2026-07-31", refresh
+          assert refresh.get("status") == "selected_pool_price_refresh_ready", refresh
+          assert refresh.get("promotion_eligible") is True, refresh
+          assert not refresh.get("failures"), refresh
+
+          provider = json.loads(
+              Path("artifacts/source/cn/data/providers/cn/provider_manifest.json")
+              .read_text(encoding="utf-8")
+          )
+          assert provider.get("provider_identity_sha256") == (
+              "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8"
+          ), provider
+          calendar = Path("artifacts/source/cn/data/providers/cn/calendars/day.txt")
+          assert calendar.read_text(encoding="utf-8").splitlines()[-1] == "2026-07-31"
+          PY
+
+      - name: Upload complete immutable provider snapshot
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: cn-provider-2026-07-31-${{ github.run_id }}
+          path: |
+            artifacts/source/cn/artifacts/selected_pool_price_refresh_manifest.json
+            artifacts/source/cn/data/providers/cn
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Commit observable seed receipt
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        run: |
+          mkdir -p data/research/formal_promotions/freshness
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "schema_version": "1.0.0",
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_head_sha": os.environ["GITHUB_SHA"],
+              "artifact_id": int(os.environ["ARTIFACT_ID"]),
+              "artifact_name": f"cn-provider-2026-07-31-{os.environ['GITHUB_RUN_ID']}",
+              "artifact_digest": os.environ["ARTIFACT_DIGEST"],
+              "provider_identity_sha256": "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8",
+              "provider_cutoff": "2026-07-31",
+              "research_only": True,
+              "trade_ready": False,
+          }
+          Path(
+              "data/research/formal_promotions/freshness/cn-provider-seed-receipt.json"
+          ).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/formal_promotions/freshness/cn-provider-seed-receipt.json
+          git commit -m "research: record CN provider freshness artifact"
+          git push origin HEAD:main
