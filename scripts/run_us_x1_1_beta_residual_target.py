@@ -43,7 +43,6 @@ from src.research.relative_return_target import (
     benchmark_series_by_date,
     estimate_trailing_market_beta,
     make_beta_residual_forward_returns,
-    make_naive_benchmark_excess_returns,
     prove_naive_rank_invariance,
 )
 from src.research.rolling_windows import purge_training_tail
@@ -92,6 +91,15 @@ def _frame_identity(frame: pd.DataFrame) -> str:
             ],
         }
     )
+
+
+def _write_table(path: Path, frame: pd.DataFrame) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    output = frame.copy()
+    for column in output.columns:
+        if pd.api.types.is_datetime64_any_dtype(output[column]):
+            output[column] = output[column].dt.strftime("%Y-%m-%d")
+    output.to_csv(path, index=False, lineterminator="\n", float_format="%.17g")
 
 
 def _cross_sectional_metrics(
@@ -226,12 +234,13 @@ def _selection_comparison(
         suffixes=("_baseline", "_challenger"),
         validate="one_to_one",
     )
-    correlations = merged.groupby("datetime", sort=True).apply(
-        lambda group: group["score_baseline"].corr(
+    correlations: list[float] = []
+    for _, group in merged.groupby("datetime", sort=True):
+        correlation = group["score_baseline"].corr(
             group["score_challenger"], method="spearman"
-        ),
-        include_groups=False,
-    )
+        )
+        if pd.notna(correlation):
+            correlations.append(float(correlation))
     dates = sorted(pd.Timestamp(value) for value in merged["datetime"].unique())
     rebalance_dates = dates[::REBALANCE_DAYS]
     overlaps: list[float] = []
@@ -257,7 +266,7 @@ def _selection_comparison(
         )
     return {
         "n_rebalances": len(rebalance_dates),
-        "mean_score_rank_correlation": float(correlations.dropna().mean()),
+        "mean_score_rank_correlation": float(np.mean(correlations)),
         "mean_top15_overlap": float(np.mean(overlaps)),
         "mean_absolute_rank_migration": float(np.mean(migrations)),
     }
@@ -313,10 +322,11 @@ def _leave_one_name_out(holdings: pd.DataFrame, periods: pd.DataFrame) -> pd.Dat
                     & (model_holdings["period_index"] == period.period_index)
                     & (model_holdings["instrument"] != instrument)
                 ]
-                if selected.empty:
-                    gross = float(period.gross_return)
-                else:
-                    gross = float(selected["raw_return"].mean())
+                gross = (
+                    float(period.gross_return)
+                    if selected.empty
+                    else float(selected["raw_return"].mean())
+                )
                 counterfactual.append(gross - float(period.transaction_cost))
             rows.append(
                 {
@@ -493,8 +503,7 @@ def run(root: Path, *, provider_uri: Path, output_dir: Path) -> dict[str, Any]:
         lookback_sessions=BETA_LOOKBACK,
         minimum_observations=BETA_MIN_OBSERVATIONS,
     )
-    beta_export = beta_ledger.reset_index()
-    _write_ledger(output_dir / "beta_ledger.csv", beta_export)
+    _write_ledger(output_dir / "beta_ledger.csv", beta_ledger.reset_index())
 
     for window in windows:
         dates = eligible_dates[window.label]
@@ -616,9 +625,9 @@ def run(root: Path, *, provider_uri: Path, output_dir: Path) -> dict[str, Any]:
                     test_features,
                 )
                 score_ledger = _score_ledger(scores)
-                score_hash = _frame_identity(score_ledger.set_index(
-                    ["datetime", "instrument"]
-                ))
+                score_hash = _frame_identity(
+                    score_ledger.set_index(["datetime", "instrument"])
+                )
                 deterministic_hashes[model_name].append(score_hash)
                 if repeat == "a":
                     first_scores = scores
@@ -643,6 +652,7 @@ def run(root: Path, *, provider_uri: Path, output_dir: Path) -> dict[str, Any]:
         comparisons.append(comparison)
 
         for model_name, scores in fitted.items():
+            frame_x, frame_y, _ = targets[model_name]
             cost_stress = {
                 str(cost): _stress_result(
                     scores,
@@ -738,11 +748,11 @@ def run(root: Path, *, provider_uri: Path, output_dir: Path) -> dict[str, Any]:
 
     _write_ledger(output_dir / "periods.csv", periods)
     _write_ledger(output_dir / "holdings.csv", holdings)
-    _write_ledger(
+    _write_table(
         output_dir / "security_attribution.csv",
         _security_attribution(holdings),
     )
-    _write_ledger(
+    _write_table(
         output_dir / "leave_one_name_out.csv",
         _leave_one_name_out(holdings, periods),
     )
