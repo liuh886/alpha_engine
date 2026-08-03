@@ -68,18 +68,21 @@ jobs:
               status = "**failed live-origin verification**"
               error_path = Path("artifacts/pages-release-error.log")
               error = error_path.read_text(encoding="utf-8").strip() if error_path.exists() else "No verifier output was retained."
-              detail = f"The deployment completed, but the public origin did not satisfy the formal-release contract.\n\n```text\n{error[-3000:]}\n```"
+              detail = f"The deployment completed, but the public origin did not satisfy the frontend release contracts.\n\n```text\n{error[-3000:]}\n```"
           else:
               receipt = json.loads(Path("artifacts/pages-release-receipt.json").read_text(encoding="utf-8"))
               models = ", ".join(f"`{model}`" for model in receipt["formal_models"])
+              required = ", ".join(f"`{path}`" for path in receipt["required_bundle_artifacts"])
               status = "**verified against the live Pages origin**"
               detail = (
+                  f"- Research bundle: `{receipt['bundle_id']}`\n"
+                  f"- Required bundle artifacts: {required}\n"
                   f"- Formal selector: {models}\n"
                   "- Research boundary: `research_only=true`, `trade_ready=false`\n"
-                  "- Verification: cache-busted live `deployment.json`, formal catalog, package SHA-256/model identity and `Complete backtest review` shell marker"
+                  "- Verification: cache-busted live deployment identity, required bundle size/SHA-256/source contract, formal catalog and package identity, and complete-backtest shell marker"
               )
 
-          body = f"""## Latest verified Pages deployment
+          body = f"""## Latest Pages deployment attempt
 
           Status: {status}
 
@@ -89,7 +92,7 @@ jobs:
 
           {detail}
 
-          This rolling receipt is written by an independent `workflow_run` observer after the Pages workflow terminates.
+          This rolling receipt is written only by the independent `workflow_run` observer after the Pages workflow terminates.
           """
           Path("/tmp/pages-release-comment.json").write_text(
               json.dumps({"body": body}),
