@@ -90,7 +90,13 @@ test('live Pages renders all governed formal Bundle v2 baselines end to end', as
     await expect(catalogRegion.getByRole('button', { name: new RegExp(model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
   }
   await expect(catalogRegion.getByText('formal', { exact: true })).toHaveCount(3);
-  await expect(catalogRegion.getByText('US x1.0', { exact: true })).toHaveCount(0);
+
+  // The unified workspace may expose non-formal repository or local runs, but they must
+  // remain visibly segregated and must never enter the formal Bundle v2 allow-list.
+  const legacyLocalRun = catalogRegion.getByRole('button').filter({ hasText: 'US x1.0' });
+  await expect(legacyLocalRun).toHaveCount(1);
+  await expect(legacyLocalRun.getByText('local', { exact: true })).toBeVisible();
+  await expect(legacyLocalRun.getByText('formal', { exact: true })).toHaveCount(0);
 
   const formalCatalog = await fetchFormalCatalog(page);
   expect(formalCatalog.schema_version).toBe('2.0.0');
@@ -99,6 +105,7 @@ test('live Pages renders all governed formal Bundle v2 baselines end to end', as
   expect(formalCatalog.trade_ready).toBe(false);
   expect(formalCatalog.records).toHaveLength(3);
   expect(new Set(formalCatalog.records?.map((record) => record.model_version_id))).toEqual(new Set(FORMAL_VERSIONS));
+  expect(formalCatalog.records?.some((record) => record.model_version_id === 'us_x1_0')).toBe(false);
   for (const record of formalCatalog.records ?? []) {
     expect(record.publication_status).toBe('accepted_formal_baseline');
     expect(record.bundle_id).toMatch(/^[a-f0-9]{64}$/);
