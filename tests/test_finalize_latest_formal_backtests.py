@@ -11,6 +11,9 @@ from scripts.finalize_latest_formal_backtests import (
     finalize,
 )
 
+CURRENT_IDENTITY = "6614e26a4d7cc27dad4e1123ddcc1a73f0e753b7c115e86577a40ab195da2d09"
+OLD_IDENTITY = "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8"
+
 
 def _write(path: Path, payload: dict[str, object]) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -61,6 +64,11 @@ def _fixture(tmp_path: Path, *, bad_final: bool = False) -> tuple[Path, Path]:
             {"date": "2026-07-31", "account": final_account},
         ],
         "metrics": {"Max Drawdown": -0.05},
+        "evidence": {
+            "freshness_evidence": {
+                "provider_identity_sha256": OLD_IDENTITY,
+            }
+        },
         "interpretation_notes": [],
     }
     us_digest = _write(generated / "us_x1_1.json", us)
@@ -98,8 +106,14 @@ def _fixture(tmp_path: Path, *, bad_final: bool = False) -> tuple[Path, Path]:
 
 def test_removes_only_inferred_extension_ranks_and_updates_hashes(tmp_path: Path) -> None:
     generated, run = _fixture(tmp_path)
-    result = finalize(generated, run)
+    result = finalize(
+        generated,
+        run,
+        cn_provider_identity=CURRENT_IDENTITY,
+    )
     assert result["status"] == "finalized"
+    assert result["cn_provider_identity_sha256"] == CURRENT_IDENTITY
+    assert result["superseded_cn_provider_identity_sha256"] == OLD_IDENTITY
     us = json.loads((generated / "us_x1_1.json").read_text(encoding="utf-8"))
     cn = json.loads((generated / "cn_x1_0.json").read_text(encoding="utf-8"))
     assert us["positions"][0]["rank"] == 1
@@ -107,6 +121,10 @@ def test_removes_only_inferred_extension_ranks_and_updates_hashes(tmp_path: Path
     assert us["positions"][1]["rank_evidence"] == "not_retained"
     assert "rank" not in cn["positions"][1]
     assert cn["metrics"]["Max Drawdown"] == pytest.approx(-0.16923076923076918)
+    freshness = cn["evidence"]["freshness_evidence"]
+    assert freshness["provider_identity_sha256"] == CURRENT_IDENTITY
+    assert freshness["superseded_provider_identity_sha256"] == OLD_IDENTITY
+    assert freshness["provider_snapshot_revision_observed"] is True
     catalog = json.loads((generated / "catalog.json").read_text(encoding="utf-8"))
     for row in catalog["records"]:
         path = generated / row["path"]
@@ -116,4 +134,14 @@ def test_removes_only_inferred_extension_ranks_and_updates_hashes(tmp_path: Path
 def test_rejects_non_reconciling_cn_path(tmp_path: Path) -> None:
     generated, run = _fixture(tmp_path, bad_final=True)
     with pytest.raises(LatestFormalFinalizationError, match="does not reconcile"):
-        finalize(generated, run)
+        finalize(
+            generated,
+            run,
+            cn_provider_identity=CURRENT_IDENTITY,
+        )
+
+
+def test_rejects_invalid_provider_identity(tmp_path: Path) -> None:
+    generated, run = _fixture(tmp_path)
+    with pytest.raises(LatestFormalFinalizationError, match="invalid CN provider identity"):
+        finalize(generated, run, cn_provider_identity="not-a-digest")
