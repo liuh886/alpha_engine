@@ -1,4 +1,4 @@
-"""Validate the live GitHub Pages release against the governed frontend contracts."""
+"""Validate the live GitHub Pages release against governed artifact contracts."""
 
 from __future__ import annotations
 
@@ -9,22 +9,22 @@ import urllib.parse
 import urllib.request
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from pathlib import PurePosixPath
 
-EXPECTED_FORMAL_MODELS: tuple[tuple[str, str], ...] = (
-    ("qqqi_qqq_tqqq_v4_2", "QQQ Rotation v4.2"),
-    ("us_x1_1", "US x1.1"),
-    ("cn_x1_0", "CN x1.0"),
+from src.artifacts.model_run_bundle_v2 import (
+    ModelRunBundleV2Error,
+    validate_catalog as validate_model_run_catalog,
+    validate_manifest as validate_model_run_manifest,
 )
-EXPECTED_BUNDLE_MODEL_IDS = {"us_x1_1", "cn_x1_0"}
-EXPECTED_EXCLUDED_CLASSES = {
-    "exploratory_experiment",
-    "candidate_grid",
-    "rejected_candidate",
-    "shadow_strategy",
+
+EXPECTED_FORMAL_MODELS: dict[str, str] = {
+    "qqqi_qqq_tqqq_v4_2": "QQQ Rotation v4.2",
+    "us_x1_1": "US x1.1",
+    "cn_x1_0": "CN x1.0",
 }
+EXPECTED_BUNDLE_MODEL_IDS = {"us_x1_1", "cn_x1_0"}
 EXPECTED_REQUIRED_BUNDLE_KINDS = {"model_index", "static_export_manifest"}
-SHELL_MARKER = "Complete backtest review"
+SHELL_MARKER = "Governed Model Runs"
 
 
 class ReleaseVerificationError(RuntimeError):
@@ -32,10 +32,21 @@ class ReleaseVerificationError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class PublishedRecord:
-    model_id: str
-    display_name: str
+class PublishedFormalRun:
+    model_family_id: str
+    model_version_id: str
+    run_id: str
+    bundle_id: str
+    manifest_path: str
+    manifest_sha256: str
+    evidence_cutoff: str
+
+
+@dataclass(frozen=True)
+class PublishedSection:
+    section_id: str
     path: str
+    byte_size: int
     sha256: str
 
 
@@ -53,6 +64,12 @@ def _mapping(value: object, *, label: str) -> Mapping[str, object]:
     return value
 
 
+def _sequence(value: object, *, label: str) -> Sequence[object]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise ReleaseVerificationError(f"{label} must be a list")
+    return value
+
+
 def _string(value: object, *, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise ReleaseVerificationError(f"{label} must be a non-empty string")
@@ -61,9 +78,10 @@ def _string(value: object, *, label: str) -> str:
 
 def _safe_path(value: object, *, label: str) -> str:
     path = _string(value, label=label).replace("\\", "/")
-    if path.startswith("/") or ".." in path.split("/"):
+    pure = PurePosixPath(path)
+    if pure.is_absolute() or ".." in pure.parts:
         raise ReleaseVerificationError(f"{label} is unsafe")
-    return path
+    return pure.as_posix()
 
 
 def _digest(value: object, *, label: str) -> str:
@@ -89,67 +107,138 @@ def validate_deployment(payload: object, *, expected_commit: str) -> None:
         )
 
 
-def validate_catalog(payload: object) -> tuple[PublishedRecord, ...]:
-    catalog = _mapping(payload, label="formal catalog")
-    if catalog.get("research_only") is not True:
-        raise ReleaseVerificationError("formal catalog must retain research_only=true")
-    if catalog.get("trade_ready") is not False:
-        raise ReleaseVerificationError("formal catalog must retain trade_ready=false")
-    if catalog.get("publication_policy") != "formal_named_baselines_only":
-        raise ReleaseVerificationError("unexpected formal catalog publication policy")
+def validate_formal_catalog(payload: object) -> tuple[PublishedFormalRun, ...]:
+    catalog = _mapping(payload, label="formal Bundle v2 catalog")
+    try:
+        validate_model_run_catalog(catalog)
+    except ModelRunBundleV2Error as exc:
+        raise ReleaseVerificationError(f"invalid formal Bundle v2 catalog: {exc}") from exc
+    if catalog.get("channel") != "formal":
+        raise ReleaseVerificationError("formal catalog channel must be formal")
+    if catalog.get("research_only") is not True or catalog.get("trade_ready") is not False:
+        raise ReleaseVerificationError("formal catalog research boundary is invalid")
 
-    excluded = catalog.get("excluded_record_classes")
-    if not isinstance(excluded, Sequence) or isinstance(excluded, (str, bytes)):
-        raise ReleaseVerificationError("excluded_record_classes must be a list")
-    if set(excluded) != EXPECTED_EXCLUDED_CLASSES:
-        raise ReleaseVerificationError("formal catalog exclusion classes changed")
-
-    records_value = catalog.get("records")
-    if not isinstance(records_value, Sequence) or isinstance(records_value, (str, bytes)):
-        raise ReleaseVerificationError("formal catalog records must be a list")
-
-    records: list[PublishedRecord] = []
-    observed_models: list[tuple[str, str]] = []
-    for index, value in enumerate(records_value):
+    records: list[PublishedFormalRun] = []
+    observed_versions: set[str] = set()
+    for index, value in enumerate(_sequence(catalog.get("records"), label="formal catalog records")):
         record = _mapping(value, label=f"formal catalog record {index}")
-        model_id = _string(record.get("model_id"), label=f"record {index}.model_id")
-        display_name = _string(
-            record.get("display_name"), label=f"record {index}.display_name"
-        )
-        path = _safe_path(record.get("path"), label=f"record {index}.path")
-        digest = _digest(record.get("sha256"), label=f"record {index}.sha256")
+        version = _string(record.get("model_version_id"), label=f"record {index}.model_version_id")
+        if version not in EXPECTED_FORMAL_MODELS:
+            raise ReleaseVerificationError(f"unexpected formal model version: {version}")
+        if version in observed_versions:
+            raise ReleaseVerificationError(f"duplicate formal model version: {version}")
+        observed_versions.add(version)
         if record.get("publication_status") != "accepted_formal_baseline":
-            raise ReleaseVerificationError(f"{model_id} is not an accepted formal baseline")
-        if record.get("display_order") != index + 1:
-            raise ReleaseVerificationError(f"{model_id} has an unexpected display order")
-        observed_models.append((model_id, display_name))
-        records.append(PublishedRecord(model_id, display_name, path, digest))
-
-    if tuple(observed_models) != EXPECTED_FORMAL_MODELS:
-        raise ReleaseVerificationError(
-            f"unexpected formal model allow-list: {observed_models!r}"
+            raise ReleaseVerificationError(f"{version} is not an accepted formal baseline")
+        records.append(
+            PublishedFormalRun(
+                model_family_id=_string(record.get("model_family_id"), label=f"record {index}.model_family_id"),
+                model_version_id=version,
+                run_id=_string(record.get("run_id"), label=f"record {index}.run_id"),
+                bundle_id=_digest(record.get("bundle_id"), label=f"record {index}.bundle_id"),
+                manifest_path=_safe_path(record.get("manifest_path"), label=f"record {index}.manifest_path"),
+                manifest_sha256=_digest(record.get("manifest_sha256"), label=f"record {index}.manifest_sha256"),
+                evidence_cutoff=_string(record.get("evidence_cutoff"), label=f"record {index}.evidence_cutoff"),
+            )
         )
-    if any(record.model_id == "us_x1_0" for record in records):
-        raise ReleaseVerificationError("US x1.0 must not re-enter the formal catalog")
+    if observed_versions != set(EXPECTED_FORMAL_MODELS):
+        raise ReleaseVerificationError(
+            f"unexpected formal model allow-list: {sorted(observed_versions)}"
+        )
     return tuple(records)
 
 
-def validate_record_bytes(record: PublishedRecord, payload: bytes) -> None:
+def validate_formal_manifest(
+    record: PublishedFormalRun,
+    payload: bytes,
+) -> tuple[Mapping[str, object], tuple[PublishedSection, ...]]:
     digest = hashlib.sha256(payload).hexdigest()
-    if digest != record.sha256:
+    if digest != record.manifest_sha256:
         raise ReleaseVerificationError(
-            f"digest mismatch for {record.model_id}: expected {record.sha256}, found {digest}"
+            f"manifest digest mismatch for {record.model_version_id}: "
+            f"expected {record.manifest_sha256}, found {digest}"
         )
-    package = _mapping(_json(payload, label=record.path), label=record.path)
-    if package.get("model_id") != record.model_id:
-        raise ReleaseVerificationError(f"model identity mismatch in {record.path}")
-    if package.get("research_only") is not True or package.get("trade_ready") is not False:
-        raise ReleaseVerificationError(f"research boundary mismatch in {record.path}")
+    manifest = _mapping(_json(payload, label=record.manifest_path), label=record.manifest_path)
+    try:
+        validate_model_run_manifest(manifest)
+    except ModelRunBundleV2Error as exc:
+        raise ReleaseVerificationError(
+            f"invalid formal manifest for {record.model_version_id}: {exc}"
+        ) from exc
+    expected_identity = (
+        record.model_family_id,
+        record.model_version_id,
+        record.run_id,
+        record.bundle_id,
+        record.evidence_cutoff,
+    )
+    actual_identity = (
+        manifest.get("model_family_id"),
+        manifest.get("model_version_id"),
+        manifest.get("run_id"),
+        manifest.get("bundle_id"),
+        manifest.get("evidence_cutoff"),
+    )
+    if actual_identity != expected_identity:
+        raise ReleaseVerificationError(
+            f"catalog/manifest identity mismatch for {record.model_version_id}"
+        )
+    if manifest.get("publication_channel") != "formal" or manifest.get("publication_status") != "accepted_formal_baseline":
+        raise ReleaseVerificationError(f"formal channel/status mismatch for {record.model_version_id}")
+    if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
+        raise ReleaseVerificationError(f"research boundary mismatch for {record.model_version_id}")
+
+    sections: list[PublishedSection] = []
+    for index, value in enumerate(_sequence(manifest.get("sections"), label="manifest sections")):
+        section = _mapping(value, label=f"manifest section {index}")
+        if section.get("availability_status") != "available":
+            continue
+        byte_size = section.get("byte_size")
+        if isinstance(byte_size, bool) or not isinstance(byte_size, int) or byte_size < 0:
+            raise ReleaseVerificationError(f"invalid section byte_size for {record.model_version_id}")
+        sections.append(
+            PublishedSection(
+                section_id=_string(section.get("section_id"), label=f"section {index}.section_id"),
+                path=_safe_path(section.get("path"), label=f"section {index}.path"),
+                byte_size=byte_size,
+                sha256=_digest(section.get("sha256"), label=f"section {index}.sha256"),
+            )
+        )
+    if not any(section.section_id == "summary" for section in sections):
+        raise ReleaseVerificationError(f"summary section is unavailable for {record.model_version_id}")
+    return manifest, tuple(sections)
 
 
-def validate_bundle_manifest(
-    payload: object,
-) -> tuple[str, tuple[PublishedBundleArtifact, ...]]:
+def validate_formal_section(
+    record: PublishedFormalRun,
+    section: PublishedSection,
+    payload: bytes,
+) -> None:
+    if len(payload) != section.byte_size:
+        raise ReleaseVerificationError(
+            f"section size mismatch for {record.model_version_id}/{section.section_id}: "
+            f"expected {section.byte_size}, found {len(payload)}"
+        )
+    digest = hashlib.sha256(payload).hexdigest()
+    if digest != section.sha256:
+        raise ReleaseVerificationError(
+            f"section digest mismatch for {record.model_version_id}/{section.section_id}: "
+            f"expected {section.sha256}, found {digest}"
+        )
+    decoded = _json(payload, label=f"{record.model_version_id}/{section.path}")
+    if section.section_id != "summary":
+        return
+    summary = _mapping(decoded, label=f"{record.model_version_id} summary")
+    if summary.get("model_version_id") != record.model_version_id or summary.get("run_id") != record.run_id:
+        raise ReleaseVerificationError(f"summary identity mismatch for {record.model_version_id}")
+    if summary.get("display_name") != EXPECTED_FORMAL_MODELS[record.model_version_id]:
+        raise ReleaseVerificationError(f"summary display name mismatch for {record.model_version_id}")
+    if summary.get("research_only") is not True or summary.get("trade_ready") is not False:
+        raise ReleaseVerificationError(f"summary research boundary mismatch for {record.model_version_id}")
+    _digest(summary.get("source_package_sha256"), label=f"{record.model_version_id}.source_package_sha256")
+
+
+def validate_bundle_manifest(payload: object) -> tuple[str, tuple[PublishedBundleArtifact, ...]]:
     bundle = _mapping(payload, label="research bundle manifest")
     schema_version = _string(bundle.get("schema_version"), label="bundle.schema_version")
     if schema_version.split(".", 1)[0] != "1":
@@ -157,69 +246,46 @@ def validate_bundle_manifest(
     if bundle.get("research_only") is not True or bundle.get("trade_ready") is not False:
         raise ReleaseVerificationError("research bundle boundary is invalid")
     bundle_id = _digest(bundle.get("bundle_id"), label="bundle.bundle_id")
-
-    artifacts_value = bundle.get("artifacts")
-    if not isinstance(artifacts_value, Sequence) or isinstance(
-        artifacts_value, (str, bytes)
-    ):
-        raise ReleaseVerificationError("research bundle artifacts must be a list")
-
     required: list[PublishedBundleArtifact] = []
-    for index, value in enumerate(artifacts_value):
+    for index, value in enumerate(_sequence(bundle.get("artifacts"), label="research bundle artifacts")):
         artifact = _mapping(value, label=f"bundle artifact {index}")
         if artifact.get("required") is not True:
             continue
-        kind = _string(artifact.get("kind"), label=f"bundle artifact {index}.kind")
-        path = _safe_path(artifact.get("path"), label=f"bundle artifact {index}.path")
         byte_size = artifact.get("byte_size")
         if isinstance(byte_size, bool) or not isinstance(byte_size, int) or byte_size < 0:
-            raise ReleaseVerificationError(
-                f"bundle artifact {index}.byte_size must be a non-negative integer"
+            raise ReleaseVerificationError(f"bundle artifact {index}.byte_size is invalid")
+        required.append(
+            PublishedBundleArtifact(
+                kind=_string(artifact.get("kind"), label=f"bundle artifact {index}.kind"),
+                path=_safe_path(artifact.get("path"), label=f"bundle artifact {index}.path"),
+                byte_size=byte_size,
+                sha256=_digest(artifact.get("sha256"), label=f"bundle artifact {index}.sha256"),
             )
-        digest = _digest(
-            artifact.get("sha256"), label=f"bundle artifact {index}.sha256"
         )
-        required.append(PublishedBundleArtifact(kind, path, byte_size, digest))
-
     observed_kinds = {artifact.kind for artifact in required}
     if not EXPECTED_REQUIRED_BUNDLE_KINDS.issubset(observed_kinds):
         missing = sorted(EXPECTED_REQUIRED_BUNDLE_KINDS - observed_kinds)
-        raise ReleaseVerificationError(
-            f"research bundle is missing required artifact kinds: {missing}"
-        )
+        raise ReleaseVerificationError(f"research bundle is missing required artifact kinds: {missing}")
     return bundle_id, tuple(required)
 
 
-def validate_bundle_artifact_bytes(
-    artifact: PublishedBundleArtifact, payload: bytes
-) -> None:
+def validate_bundle_artifact_bytes(artifact: PublishedBundleArtifact, payload: bytes) -> None:
     if len(payload) != artifact.byte_size:
-        raise ReleaseVerificationError(
-            f"bundle artifact size mismatch for {artifact.path}: "
-            f"expected {artifact.byte_size}, found {len(payload)}"
-        )
-    digest = hashlib.sha256(payload).hexdigest()
-    if digest != artifact.sha256:
-        raise ReleaseVerificationError(
-            f"bundle artifact digest mismatch for {artifact.path}: "
-            f"expected {artifact.sha256}, found {digest}"
-        )
-
+        raise ReleaseVerificationError(f"bundle artifact size mismatch for {artifact.path}")
+    if hashlib.sha256(payload).hexdigest() != artifact.sha256:
+        raise ReleaseVerificationError(f"bundle artifact digest mismatch for {artifact.path}")
     decoded = _json(payload, label=artifact.path)
     if artifact.kind == "model_index":
-        if not isinstance(decoded, Sequence) or isinstance(decoded, (str, bytes)):
-            raise ReleaseVerificationError("bundle model index must be a list")
-        model_ids: list[str] = []
-        for index, value in enumerate(decoded):
-            model = _mapping(value, label=f"bundle model {index}")
-            model_ids.append(_string(model.get("id"), label=f"bundle model {index}.id"))
+        models = _sequence(decoded, label="bundle model index")
+        model_ids = [
+            _string(_mapping(value, label=f"bundle model {index}").get("id"), label=f"bundle model {index}.id")
+            for index, value in enumerate(models)
+        ]
         if len(model_ids) != len(set(model_ids)):
             raise ReleaseVerificationError("bundle model index contains duplicate IDs")
         missing = EXPECTED_BUNDLE_MODEL_IDS - set(model_ids)
         if missing:
-            raise ReleaseVerificationError(
-                f"bundle model index is missing formal metadata sources: {sorted(missing)}"
-            )
+            raise ReleaseVerificationError(f"bundle model index is missing metadata sources: {sorted(missing)}")
     elif artifact.kind == "static_export_manifest":
         manifest = _mapping(decoded, label="static export manifest")
         if manifest.get("source") != "repository_research_store":
@@ -227,9 +293,8 @@ def validate_bundle_artifact_bytes(
         if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
             raise ReleaseVerificationError("static export research boundary is invalid")
         blocked = manifest.get("blocked_gates", [])
-        if isinstance(blocked, Sequence) and not isinstance(blocked, (str, bytes)):
-            if "metadata_db_missing" in blocked:
-                raise ReleaseVerificationError("static export fell back to missing metadata DB")
+        if isinstance(blocked, Sequence) and not isinstance(blocked, (str, bytes)) and "metadata_db_missing" in blocked:
+            raise ReleaseVerificationError("static export fell back to missing metadata DB")
 
 
 def validate_shell(payload: bytes) -> None:
@@ -251,7 +316,7 @@ def fetch_bytes(base_url: str, path: str, *, timeout_seconds: float) -> bytes:
             "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
             "Cache-Control": "no-cache, no-store, max-age=0",
             "Pragma": "no-cache",
-            "User-Agent": "alpha-engine-pages-release-verifier/1.1",
+            "User-Agent": "alpha-engine-pages-release-verifier/2.0",
         },
     )
     with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
@@ -261,36 +326,33 @@ def fetch_bytes(base_url: str, path: str, *, timeout_seconds: float) -> bytes:
     return payload
 
 
-def verify_once(
-    *, base_url: str, expected_commit: str, timeout_seconds: float
-) -> dict[str, object]:
+def verify_once(*, base_url: str, expected_commit: str, timeout_seconds: float) -> dict[str, object]:
     deployment_bytes = fetch_bytes(base_url, "deployment.json", timeout_seconds=timeout_seconds)
     validate_deployment(_json(deployment_bytes, label="deployment.json"), expected_commit=expected_commit)
 
-    bundle_bytes = fetch_bytes(
-        base_url, "bundle/alpha-engine-bundle.json", timeout_seconds=timeout_seconds
-    )
+    bundle_bytes = fetch_bytes(base_url, "bundle/alpha-engine-bundle.json", timeout_seconds=timeout_seconds)
     bundle_id, required_artifacts = validate_bundle_manifest(
         _json(bundle_bytes, label="bundle/alpha-engine-bundle.json")
     )
     for artifact in required_artifacts:
-        payload = fetch_bytes(
-            base_url,
-            f"bundle/{artifact.path}",
-            timeout_seconds=timeout_seconds,
-        )
+        payload = fetch_bytes(base_url, f"bundle/{artifact.path}", timeout_seconds=timeout_seconds)
         validate_bundle_artifact_bytes(artifact, payload)
 
-    catalog_path = "data/formal-backtests/catalog.json"
+    formal_root = "data/formal-model-runs"
+    catalog_path = f"{formal_root}/catalog.json"
     catalog_bytes = fetch_bytes(base_url, catalog_path, timeout_seconds=timeout_seconds)
-    records = validate_catalog(_json(catalog_bytes, label=catalog_path))
+    records = validate_formal_catalog(_json(catalog_bytes, label=catalog_path))
+    section_count = 0
     for record in records:
-        payload = fetch_bytes(
-            base_url,
-            f"data/formal-backtests/{record.path}",
-            timeout_seconds=timeout_seconds,
-        )
-        validate_record_bytes(record, payload)
+        manifest_path = f"{formal_root}/{record.manifest_path}"
+        manifest_bytes = fetch_bytes(base_url, manifest_path, timeout_seconds=timeout_seconds)
+        _, sections = validate_formal_manifest(record, manifest_bytes)
+        manifest_parent = PurePosixPath(record.manifest_path).parent
+        for section in sections:
+            relative_path = (manifest_parent / section.path).as_posix()
+            payload = fetch_bytes(base_url, f"{formal_root}/{relative_path}", timeout_seconds=timeout_seconds)
+            validate_formal_section(record, section, payload)
+            section_count += 1
 
     shell_bytes = fetch_bytes(base_url, "index.html", timeout_seconds=timeout_seconds)
     validate_shell(shell_bytes)
@@ -300,7 +362,8 @@ def verify_once(
         "commit_sha": expected_commit,
         "bundle_id": bundle_id,
         "required_bundle_artifacts": [artifact.path for artifact in required_artifacts],
-        "formal_models": [record.model_id for record in records],
+        "formal_models": sorted(record.model_version_id for record in records),
+        "formal_sections_verified": section_count,
         "research_only": True,
         "trade_ready": False,
     }
@@ -324,7 +387,7 @@ def verify_with_retries(
                 expected_commit=expected_commit,
                 timeout_seconds=timeout_seconds,
             )
-        except Exception as exc:  # bounded retry must include temporary network failures
+        except Exception as exc:  # bounded retry includes temporary network/CDN propagation failures
             last_error = exc
             if attempt < attempts:
                 time.sleep(delay_seconds)

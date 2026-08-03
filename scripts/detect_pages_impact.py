@@ -24,12 +24,17 @@ DIRECT_EXACT_PATHS = {
     "scripts/export_research_bundle.py",
     "scripts/export_static_site_data.py",
     "scripts/verify_pages_release.py",
+    "src/artifacts/model_run_bundle_v2.py",
+    "src/artifacts/model_run_decision.py",
+    "src/artifacts/model_run_exporter.py",
     "src/artifacts/pages_release_verification.py",
     "src/artifacts/repository_research_store.py",
     "src/artifacts/research_bundle.py",
 }
 DIRECT_PREFIXES = (
-    "data/research/formal_backtests/",
+    "data/research/formal_model_runs/",
+    "data/research/model_runs/",
+    "data/research/model_decisions/",
     "qlib-dashboard/",
 )
 RESULT_REPORT_PATTERN = re.compile(r"^\s*result_report\s*:\s*(?P<value>.+?)\s*$")

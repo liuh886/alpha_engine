@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   VIEW_TITLES,
   groupRoutes,
-  isRuntimeVisible,
   routes,
   visibleRoutes,
   type NavGroupTitle,
@@ -27,7 +26,7 @@ describe('artifact-only route registry', () => {
     }
   });
 
-  it('covers the governed artifact information architecture', () => {
+  it('covers the governed Bundle v2 information architecture', () => {
     const visible = visibleRoutes(false);
     const groups = new Set(visible.map((route) => route.navGroup));
     ALL_NAV_GROUPS.forEach((group) => expect(groups).toContain(group));
@@ -36,23 +35,18 @@ describe('artifact-only route registry', () => {
     expect(visible.find((route) => route.path === 'review')?.navGroup).toBe('Workspace');
     expect(visible.find((route) => route.path === 'decisions')?.navGroup).toBe('Workspace');
     expect(visible.find((route) => route.path === 'library')?.navGroup).toBe('Workspace');
-    expect(routes.some((route) => route.path === 'system')).toBe(false);
-    expect(routes.some((route) => route.path === 'agent')).toBe(false);
-    expect(routes.some((route) => route.path === 'backtest')).toBe(false);
+    for (const removed of ['dashboard', 'models', 'system', 'agent', 'backtest']) {
+      expect(routes.some((route) => route.path === removed)).toBe(false);
+    }
   });
 
-  it('groups every navigation-visible artifact route and excludes compatibility routes', () => {
+  it('groups every declared runtime route', () => {
     const groups = groupRoutes();
     for (const [group, rows] of groups) {
       expect(ALL_NAV_GROUPS).toContain(group);
-      for (const route of rows) {
-        expect(route.navGroup).toBe(group);
-        expect(isRuntimeVisible(route)).toBe(true);
-      }
+      rows.forEach((route) => expect(route.navGroup).toBe(group));
     }
-    const grouped = Array.from(groups.values()).flat();
-    expect(grouped).toEqual(routes.filter(isRuntimeVisible));
-    expect(routes.filter((route) => !isRuntimeVisible(route)).map((route) => route.path)).toEqual(['dashboard', 'models']);
+    expect(Array.from(groups.values()).flat()).toEqual(routes);
   });
 
   it('preserves route declaration order within groups', () => {
@@ -70,9 +64,8 @@ describe('artifact-only route registry', () => {
     }
   });
 
-  it('returns the same navigation routes regardless of operator mode', () => {
-    const expected = routes.filter(isRuntimeVisible);
-    expect(visibleRoutes(false)).toEqual(expected);
-    expect(visibleRoutes(true)).toEqual(expected);
+  it('returns the same routes regardless of operator mode', () => {
+    expect(visibleRoutes(false)).toEqual(routes);
+    expect(visibleRoutes(true)).toEqual(routes);
   });
 });

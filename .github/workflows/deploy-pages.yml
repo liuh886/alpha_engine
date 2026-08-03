@@ -37,9 +37,7 @@ jobs:
           AFTER_SHA: ${{ github.sha }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            python scripts/detect_pages_impact.py \
-              --manual \
-              --github-output "$GITHUB_OUTPUT"
+            python scripts/detect_pages_impact.py --manual --github-output "$GITHUB_OUTPUT"
           else
             python scripts/detect_pages_impact.py \
               --before "$BEFORE_SHA" \
@@ -51,9 +49,7 @@ jobs:
           import json
           from pathlib import Path
 
-          decision = json.loads(
-              Path("artifacts/pages-impact-decision.json").read_text(encoding="utf-8")
-          )
+          decision = json.loads(Path("artifacts/pages-impact-decision.json").read_text(encoding="utf-8"))
           matched = ", ".join(f"`{path}`" for path in decision["matched_paths"]) or "none"
           print("### Pages publication impact")
           print()
@@ -105,17 +101,35 @@ jobs:
           test -f dist/manifest.webmanifest
           test -f dist/sw.js
           test -f dist/icons/alpha-engine.svg
-          test -f dist/data/formal-backtests/catalog.json
-          test -f dist/data/formal-backtests/qqqi_qqq_tqqq_v4_2.json
-          test -f dist/data/formal-backtests/us_x1_1.json
-          test -f dist/data/formal-backtests/cn_x1_0.json
+          test -f dist/data/formal-model-runs/catalog.json
+          test ! -e dist/data/formal-backtests
           grep -q "Alpha Engine Research Studio" dist/index.html
-          grep -q "Complete backtest review" dist/index.html
-          grep -q '"model_id":"qqqi_qqq_tqqq_v4_2"' dist/data/formal-backtests/catalog.json
-          grep -q '"model_id":"us_x1_1"' dist/data/formal-backtests/catalog.json
-          grep -q '"model_id":"cn_x1_0"' dist/data/formal-backtests/catalog.json
-          ! grep -q '"model_id":"us_x1_0"' dist/data/formal-backtests/catalog.json
+          grep -q "Governed Model Runs" dist/index.html
           grep -q '"display": "standalone"' dist/manifest.webmanifest
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = path.resolve('dist/data/formal-model-runs');
+          const catalog = JSON.parse(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'));
+          if (catalog.schema_version !== '2.0.0' || catalog.channel !== 'formal') throw new Error('invalid formal v2 catalog');
+          if (catalog.research_only !== true || catalog.trade_ready !== false) throw new Error('invalid formal research boundary');
+          const expected = new Set(['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0']);
+          if (catalog.records.length !== 3) throw new Error('formal catalog must contain exactly three records');
+          for (const record of catalog.records) {
+            if (!expected.delete(record.model_version_id)) throw new Error(`unexpected formal version: ${record.model_version_id}`);
+            const manifestPath = path.join(root, record.manifest_path);
+            if (!fs.existsSync(manifestPath)) throw new Error(`missing manifest: ${record.manifest_path}`);
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            if (manifest.bundle_id !== record.bundle_id) throw new Error(`bundle mismatch: ${record.model_version_id}`);
+            if (manifest.publication_channel !== 'formal' || manifest.publication_status !== 'accepted_formal_baseline') throw new Error(`status mismatch: ${record.model_version_id}`);
+            for (const section of manifest.sections) {
+              if (section.availability_status !== 'available') continue;
+              const sectionPath = path.join(path.dirname(manifestPath), section.path);
+              if (!fs.existsSync(sectionPath)) throw new Error(`missing section: ${record.model_version_id}/${section.section_id}`);
+            }
+          }
+          if (expected.size) throw new Error(`missing formal versions: ${[...expected].join(', ')}`);
+          NODE
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -195,10 +209,8 @@ jobs:
           test -f _site/deployment.json
           test -f _site/data/manifest.json
           test -f _site/data/models.json
-          test -f _site/data/formal-backtests/catalog.json
-          test -f _site/data/formal-backtests/qqqi_qqq_tqqq_v4_2.json
-          test -f _site/data/formal-backtests/us_x1_1.json
-          test -f _site/data/formal-backtests/cn_x1_0.json
+          test -f _site/data/formal-model-runs/catalog.json
+          test ! -e _site/data/formal-backtests
           test -f _site/docs/methodology.md
           test -f _site/bundle/alpha-engine-bundle.json
           test -f _site/bundle/data/models.json
@@ -210,13 +222,38 @@ jobs:
           grep -q '"id": "us_x1_1"' _site/data/models.json
           grep -q '"id": "us_x1_0"' _site/data/models.json
           grep -q '"id": "cn_x1_0"' _site/data/models.json
-          grep -q '"model_id":"qqqi_qqq_tqqq_v4_2"' _site/data/formal-backtests/catalog.json
-          grep -q '"model_id":"us_x1_1"' _site/data/formal-backtests/catalog.json
-          grep -q '"model_id":"cn_x1_0"' _site/data/formal-backtests/catalog.json
-          ! grep -q '"model_id":"us_x1_0"' _site/data/formal-backtests/catalog.json
           grep -q '"primary_run_curve_unavailable"' _site/data/manifest.json
           grep -q '"primary_run_provider_snapshot_unavailable"' _site/data/manifest.json
           ! grep -q 'metadata_db_missing' _site/bundle/alpha-engine-bundle.json
+          uv run python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+
+          root = Path('_site/data/formal-model-runs')
+          catalog = json.loads((root / 'catalog.json').read_text(encoding='utf-8'))
+          validate_catalog(catalog)
+          assert catalog['channel'] == 'formal'
+          assert catalog['research_only'] is True and catalog['trade_ready'] is False
+          assert {row['model_version_id'] for row in catalog['records']} == {
+              'qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0'
+          }
+          for row in catalog['records']:
+              manifest_path = root / row['manifest_path']
+              manifest_bytes = manifest_path.read_bytes()
+              assert hashlib.sha256(manifest_bytes).hexdigest() == row['manifest_sha256']
+              manifest = json.loads(manifest_bytes)
+              validate_manifest(manifest)
+              assert manifest['bundle_id'] == row['bundle_id']
+              for section in manifest['sections']:
+                  if section['availability_status'] != 'available':
+                      continue
+                  section_path = manifest_path.parent / section['path']
+                  payload = section_path.read_bytes()
+                  assert len(payload) == section['byte_size']
+                  assert hashlib.sha256(payload).hexdigest() == section['sha256']
+          PY
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

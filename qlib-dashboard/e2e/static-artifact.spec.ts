@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 function sha256(text: string): string {
@@ -37,20 +39,19 @@ const bundleManifest = {
   ],
 };
 
-async function mockBundle(page: Page) {
-  await page.route('**/bundle/**', async (route) => {
-    const pathname = new URL(route.request().url()).pathname;
-    if (pathname.endsWith('/alpha-engine-bundle.json')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(bundleManifest) });
-    } else if (pathname.endsWith('/data/models.json')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: modelsText });
-    } else if (pathname.endsWith('/data/manifest.json')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: exportManifestText });
-    } else {
-      await route.fulfill({ status: 404, body: 'not declared' });
-    }
-  });
+async function installBundleFixture(): Promise<void> {
+  const root = resolve(process.cwd(), 'dist', 'bundle');
+  await mkdir(resolve(root, 'data'), { recursive: true });
+  await Promise.all([
+    writeFile(resolve(root, 'alpha-engine-bundle.json'), JSON.stringify(bundleManifest), 'utf8'),
+    writeFile(resolve(root, 'data', 'models.json'), modelsText, 'utf8'),
+    writeFile(resolve(root, 'data', 'manifest.json'), exportManifestText, 'utf8'),
+  ]);
 }
+
+test.beforeAll(async () => {
+  await installBundleFixture();
+});
 
 async function assertNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -66,13 +67,15 @@ async function openStudio(page: Page) {
 
 test('static studio opens without authentication or backend APIs', async ({ page }, testInfo) => {
   const apiRequests: string[] = [];
+  const legacyFormalRequests: string[] = [];
   const pageErrors: string[] = [];
   page.on('request', (request) => {
-    if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url());
+    const pathname = new URL(request.url()).pathname;
+    if (pathname.startsWith('/api/')) apiRequests.push(request.url());
+    if (pathname.includes('/data/formal-backtests/')) legacyFormalRequests.push(request.url());
   });
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
-  await mockBundle(page);
   await openStudio(page);
 
   if (testInfo.project.name === 'mobile') {
@@ -82,12 +85,14 @@ test('static studio opens without authentication or backend APIs', async ({ page
     await expect(mobileNavigation.getByRole('link', { name: 'Runs', exact: true })).toBeVisible();
     await expect(mobileNavigation.getByRole('link', { name: 'Data', exact: true })).toBeVisible();
     await expect(mobileNavigation.getByRole('link', { name: 'Experiments', exact: true })).toHaveCount(0);
+    await expect(mobileNavigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Close research navigation' }).first().click();
   } else {
     const navigation = page.getByRole('navigation', { name: 'Research studio navigation' });
     await expect(navigation).toBeVisible();
     await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toBeVisible();
     await expect(navigation.getByRole('link', { name: 'Experiments', exact: true })).toHaveCount(0);
+    await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
   }
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Sign in')).toHaveCount(0);
@@ -104,25 +109,29 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await expect(catalog.getByRole('button', { name: /CN x1\.0/ })).toBeVisible();
   await expect(catalog.getByText('formal', { exact: true })).toHaveCount(3);
   await catalog.getByRole('button', { name: /QQQ Rotation v4\.2/ }).click();
-  await expect(page).toHaveURL(/#\/review\?channel=formal&family=qqqi_qqq_tqqq_v4_2/);
+  await expect(page).toHaveURL(/#\/review\?channel=formal&family=qqq_rotation&version=qqqi_qqq_tqqq_v4_2/);
   await expect(page.getByRole('heading', { name: 'QQQ Rotation v4.2' })).toBeVisible();
   const capabilityTabs = page.getByRole('tablist', { name: 'Run capability evidence' });
-  await expect(capabilityTabs.getByRole('tab', { name: 'Summary' })).toBeVisible();
-  await expect(capabilityTabs.getByRole('tab', { name: 'Alpha' })).toBeVisible();
-  await expect(capabilityTabs.getByRole('tab', { name: 'Risk' })).toBeVisible();
-  await expect(capabilityTabs.getByRole('tab', { name: 'Robustness' })).toBeVisible();
-  await expect(capabilityTabs.getByRole('tab', { name: 'Portfolio' })).toBeVisible();
+  for (const label of ['Summary', 'Alpha', 'Risk', 'Robustness', 'Portfolio']) {
+    await expect(capabilityTabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
+  }
   await expect(page.getByText('Source:', { exact: true }).first()).toBeVisible();
   await capabilityTabs.getByRole('tab', { name: 'Alpha' }).click();
-  await expect(page.getByRole('heading', { name: 'Strategy, benchmark and excess paths' })).toBeVisible();
+  await expect(page.getByText(/performance\.json/)).toBeVisible();
   await capabilityTabs.getByRole('tab', { name: 'Risk' }).click();
-  await expect(page.getByText('Declared tail evidence unavailable', { exact: true })).toBeVisible();
+  await expect(page.getByText(/risk\.json/)).toBeVisible();
+  await capabilityTabs.getByRole('tab', { name: 'Robustness' }).click();
+  await expect(page.getByText(/robustness\.json/)).toBeVisible();
+  await capabilityTabs.getByRole('tab', { name: 'Portfolio' }).click();
+  await expect(page.getByText(/portfolio\.json/)).toBeVisible();
+  await expect(page.getByText(/trades\.json/)).toBeVisible();
+  await expect(page.getByText(/attribution\.json/)).toBeVisible();
   await assertNoHorizontalOverflow(page);
   await page.screenshot({ path: `test-results/static-artifact/governed-review-${testInfo.project.name}.png`, fullPage: true });
 
   await page.goto('/#/dashboard');
-  await expect(page.getByRole('heading', { name: 'Complete backtest review' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /QQQ Rotation v4\.2/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Evidence view not found' })).toBeVisible();
+  await expect(page.locator('.research-topbar').getByRole('heading', { name: 'Unavailable route' })).toBeVisible();
 
   await page.goto('/#/data');
   await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();
@@ -134,6 +143,7 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await expect(page.getByRole('heading', { name: 'Evidence view not found' })).toBeVisible();
   await expect(page.locator('.research-topbar').getByRole('heading', { name: 'Unavailable route' })).toBeVisible();
   expect(apiRequests).toEqual([]);
+  expect(legacyFormalRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 
   await page.keyboard.press('Tab');
@@ -145,7 +155,6 @@ test('static studio opens without authentication or backend APIs', async ({ page
 
 test('installed shell reopens offline after first visit', async ({ page, context }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Offline lifecycle is checked once on desktop Chromium.');
-  await mockBundle(page);
   await openStudio(page);
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();

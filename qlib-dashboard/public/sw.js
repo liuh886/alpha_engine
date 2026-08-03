@@ -1,6 +1,11 @@
-const CACHE_NAME = 'alpha-engine-shell-v3';
+const CACHE_NAME = 'alpha-engine-shell-v4';
 const APP_ROOT = new URL('./', self.location.href);
-const FORMAL_BACKTEST_ROOT = new URL('./data/formal-backtests/', APP_ROOT);
+const RESEARCH_ROOTS = [
+  new URL('./bundle/', APP_ROOT).pathname,
+  new URL('./data/formal-model-runs/', APP_ROOT).pathname,
+  new URL('./data/model-runs/', APP_ROOT).pathname,
+  new URL('./data/model-decisions/', APP_ROOT).pathname,
+];
 const SHELL_URLS = [
   new URL('./', APP_ROOT).toString(),
   new URL('./index.html', APP_ROOT).toString(),
@@ -23,15 +28,12 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
@@ -48,7 +50,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname.startsWith(FORMAL_BACKTEST_ROOT.pathname)) {
+  if (RESEARCH_ROOTS.some((root) => url.pathname.startsWith(root))) {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
         try {
