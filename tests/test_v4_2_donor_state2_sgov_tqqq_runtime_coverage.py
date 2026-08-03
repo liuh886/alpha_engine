@@ -8,6 +8,7 @@ import yaml
 
 from src.research.v4_2_donor_state2_sgov_tqqq_runtime_coverage import (
     _coverage_safe_variant_weight,
+    build_all_target_state2_prediction_rows,
     predict_target_episodes_with_coverage,
 )
 
@@ -30,10 +31,28 @@ def _row(contract: dict, *, year: int, number: int) -> dict:
         "execution_date": pd.Timestamp(year=year, month=5, day=2),
         "episode_end_date": pd.Timestamp(year=year, month=5, day=15),
         "holding_sessions": 10,
+        "signal_row_available": True,
     }
     for feature in contract["features"]:
         row[feature] = 0.1 + 0.01 * number
     return row
+
+
+def _donor(contract: dict) -> pd.DataFrame:
+    rows = []
+    rng = np.random.default_rng(31)
+    for number in range(20):
+        latent = 1.0 if number % 2 == 0 else -1.0
+        row = {
+            "underlying": "SPY" if number < 10 else "IWM",
+            "positive_episode_excess": int(latent > 0),
+            "signal_close_date": pd.Timestamp("2010-01-04")
+            + pd.Timedelta(days=number * 100),
+        }
+        for feature in contract["features"]:
+            row[feature] = latent + rng.normal(scale=0.1)
+        rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def test_unavailable_year_retains_baseline_without_fake_probability() -> None:
@@ -63,20 +82,7 @@ def test_unavailable_year_retains_baseline_without_fake_probability() -> None:
 def test_available_year_uses_donor_only_model() -> None:
     contract = _contract()
     target = pd.DataFrame([_row(contract, year=2018, number=1)])
-    rows = []
-    rng = np.random.default_rng(31)
-    for number in range(20):
-        latent = 1.0 if number % 2 == 0 else -1.0
-        row = {
-            "underlying": "SPY" if number < 10 else "IWM",
-            "positive_episode_excess": int(latent > 0),
-            "signal_close_date": pd.Timestamp("2010-01-04")
-            + pd.Timedelta(days=number * 100),
-        }
-        for feature in contract["features"]:
-            row[feature] = latent + rng.normal(scale=0.1)
-        rows.append(row)
-    donor = pd.DataFrame(rows)
+    donor = _donor(contract)
     predicted = predict_target_episodes_with_coverage(
         target, donor, contract
     )
@@ -88,3 +94,34 @@ def test_available_year_uses_donor_only_model() -> None:
         "high",
     }
     assert predicted.iloc[0]["training_episode_count"] == len(donor)
+
+
+def test_missing_target_feature_uses_frozen_median_imputer() -> None:
+    contract = _contract()
+    target_row = _row(contract, year=2018, number=1)
+    target_row[contract["features"][0]] = np.nan
+    target = pd.DataFrame([target_row])
+    predicted = predict_target_episodes_with_coverage(
+        target, _donor(contract), contract
+    )
+    assert bool(predicted.iloc[0]["probability_available"])
+    assert 0.0 <= float(predicted.iloc[0]["probability"]) <= 1.0
+
+
+def test_builder_retains_episode_with_missing_features() -> None:
+    contract = _contract()
+    index = pd.date_range("2018-01-02", periods=6, freq="B")
+    baseline = pd.DataFrame(
+        {"position_state": [1, 1, 2, 2, 2, 1]}, index=index
+    )
+    feature_frame = pd.DataFrame(
+        {feature: [np.nan] * len(index) for feature in contract["features"]},
+        index=index,
+    )
+    rows = build_all_target_state2_prediction_rows(
+        baseline, feature_frame, features=contract["features"]
+    )
+    assert len(rows) == 1
+    assert rows.iloc[0]["execution_date"] == index[2]
+    assert rows.iloc[0]["episode_end_date"] == index[4]
+    assert bool(rows.iloc[0]["signal_row_available"])
