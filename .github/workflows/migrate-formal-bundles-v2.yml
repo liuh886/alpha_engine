@@ -33,9 +33,20 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Apply mechanical lint fix
+      - name: Apply bounded migration fixes
         run: |
           sed -i 's/^    catalog = update_catalog(/    update_catalog(/' scripts/migrate_formal_v1_to_bundle_v2.py
+          uv run python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/migrate_formal_v1_to_bundle_v2.py')
+          text = path.read_text()
+          old = '''    if end != evidence_cutoff:\n        raise FormalV1MigrationError(\n            f"formal date range/cutoff mismatch: {model_id}: {end}/{evidence_cutoff}"\n        )\n'''
+          new = '''    if not start or not end or not evidence_cutoff or end > evidence_cutoff:\n        raise FormalV1MigrationError(\n            f"formal date range exceeds evidence cutoff: {model_id}: {start}/{end}/{evidence_cutoff}"\n        )\n'''
+          if old not in text:
+              raise SystemExit('expected date-bound block not found')
+          path.write_text(text.replace(old, new))
+          PY
       - name: Validate migration implementation
         run: |
           uv run ruff check scripts/migrate_formal_v1_to_bundle_v2.py tests/test_migrate_formal_v1_to_bundle_v2.py
