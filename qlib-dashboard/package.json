@@ -6,7 +6,8 @@
   "scripts": {
     "sync:formal-backtests": "node scripts/sync-formal-backtests.mjs",
     "sync:model-runs": "node scripts/sync-model-runs.mjs",
-    "sync:research-assets": "npm run sync:formal-backtests && npm run sync:model-runs",
+    "sync:model-decisions": "node scripts/sync-model-decisions.mjs",
+    "sync:research-assets": "npm run sync:formal-backtests && npm run sync:model-runs && npm run sync:model-decisions",
     "dev": "npm run sync:research-assets && vite",
     "build": "npm run sync:research-assets && vite build",
     "preview": "vite preview",
