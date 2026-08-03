@@ -7,6 +7,7 @@ import pandas as pd
 import yaml
 
 from src.research.v4_2_cross_asset_sgov_tqqq_transfer import (
+    _prediction_metrics,
     _target_weight_schedules,
     assign_macro_clusters,
     build_nonoverlapping_events,
@@ -53,6 +54,20 @@ def test_macro_clusters_use_complete_date_windows() -> None:
         "macro_002",
         "macro_003",
     ]
+
+
+def test_small_cluster_metrics_use_deterministic_halves() -> None:
+    table = pd.DataFrame(
+        {
+            "probability": [0.2, 0.8],
+            "positive_event_excess": [0, 1],
+            "event_excess_log_return": [-0.03, 0.05],
+        }
+    )
+    metrics = _prediction_metrics(table)
+    assert metrics["observations"] == 2
+    assert metrics["roc_auc"] == 1.0
+    assert np.isclose(metrics["top_bottom_quartile_spread"], 0.08)
 
 
 def _synthetic_donor_events() -> pd.DataFrame:
