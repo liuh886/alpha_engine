@@ -7,7 +7,9 @@ on:
     paths:
       - "configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml"
       - "scripts/run_us_x1_1_rank_aware_sector_cap.py"
+      - "scripts/run_us_x1_1_rank_aware_sector_cap_canonical.py"
       - "tests/test_us_x1_1_rank_aware_sector_cap.py"
+      - "tests/test_us_x1_1_rank_aware_sector_cap_canonical.py"
       - ".github/workflows/us-x1-1-rank-aware-sector-cap.yml"
       - "docs/research/us_x1_1_growth_log.md"
       - "docs/research/us_x1_1_rank_aware_sector_cap_result_2026-08-03.md"
@@ -39,10 +41,15 @@ jobs:
         run: |
           uv run ruff check \
             scripts/run_us_x1_1_rank_aware_sector_cap.py \
-            tests/test_us_x1_1_rank_aware_sector_cap.py
-          uv run mypy scripts/run_us_x1_1_rank_aware_sector_cap.py
+            scripts/run_us_x1_1_rank_aware_sector_cap_canonical.py \
+            tests/test_us_x1_1_rank_aware_sector_cap.py \
+            tests/test_us_x1_1_rank_aware_sector_cap_canonical.py
+          uv run mypy \
+            scripts/run_us_x1_1_rank_aware_sector_cap.py \
+            scripts/run_us_x1_1_rank_aware_sector_cap_canonical.py
           uv run pytest \
             tests/test_us_x1_1_rank_aware_sector_cap.py \
+            tests/test_us_x1_1_rank_aware_sector_cap_canonical.py \
             tests/test_us_x1_1_sector_style_attribution.py \
             tests/test_us_x1_1_drawdown_attribution_phase_a.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
@@ -90,7 +97,7 @@ jobs:
           run-id: 30743067256
       - name: Execute repeated rank-aware sector-cap evidence
         run: >-
-          uv run python scripts/run_us_x1_1_rank_aware_sector_cap.py
+          uv run python scripts/run_us_x1_1_rank_aware_sector_cap_canonical.py
           --provider-uri artifacts/source/provider/provider_a/data/providers/us
           --score-ledger-root artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1/ledgers/a
           --reproduction-result artifacts/source/reproduction/evidence/us_x1_1_deterministic_reproduction_v1/deterministic_reproduction.json
@@ -99,6 +106,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import json
+          import math
           from pathlib import Path
 
           root = Path("artifacts/evidence/us_x1_1_rank_aware_sector_cap_v1")
@@ -122,6 +130,29 @@ jobs:
           assert payload["governance"]["uses_2026H1_for_selection"] is False
           assert len(payload["identity_checks"]) == 4
           assert all(row["baseline_status"] == "exact_within_1e-6" for row in payload["identity_checks"])
+          for row in payload["aggregates"]:
+              expected = (
+                  (1 + row["compounded_total_return"])
+                  / (1 + row["compounded_benchmark_return"])
+                  - 1
+              )
+              assert math.isclose(
+                  row["compounded_relative_excess"],
+                  expected,
+                  rel_tol=0,
+                  abs_tol=1e-12,
+              )
+              assert row["relative_excess_definition"] == "strategy_nav_divided_by_benchmark_nav_minus_1"
+          baseline20 = next(
+              row for row in payload["aggregates"]
+              if row["strategy_id"] == "baseline_top15_equal" and row["cost_bps"] == 20
+          )
+          assert math.isclose(
+              baseline20["compounded_relative_excess"],
+              1.133460,
+              rel_tol=0,
+              abs_tol=1e-5,
+          )
           assert (root / "run_a" / "ledgers" / "selection_audit.csv").exists()
           assert (root / "run_a" / "ledgers" / "replacement_impact.csv").exists()
           assert (root / "run_a" / "summaries" / "2025H2_period_degradation.csv").exists()
