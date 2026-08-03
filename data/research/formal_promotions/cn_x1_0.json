@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0.0",
+  "model_id": "cn_x1_0",
+  "package_path": "data/research/formal_backtests/cn_x1_0.json",
+  "evidence_cutoff": "2026-06-15",
+  "research_only": true,
+  "trade_ready": false,
+  "source": {
+    "kind": "github_actions_artifact",
+    "repository": "liuh886/alpha_engine",
+    "workflow_run_id": 30733728747,
+    "workflow_head_sha": "7d72078fdc19fc5fecfc32372b67af2436a29094",
+    "artifact_id": 8828889722,
+    "artifact_name": "cn130-xgb-optimization-30733728747",
+    "artifact_digest": "sha256:8696b9d12a11b86f8732b571ea225fed3e6c23f27a29f977a7ed925d3bf08307",
+    "expires_at": "2026-10-31T05:13:06Z",
+    "source_layout": {
+      "materialize_under": "cn",
+      "required_paths": [
+        "evidence/cn130_xgb_optimization_v1/challenge/cn_10d_xgb_baseline_challenge_v1/frontend_payload.json",
+        "evidence/cn130_xgb_optimization_v1/challenge/cn_10d_xgb_baseline_challenge_v1/windows/cn_10d_xgb_baseline_challenge_v1_2024H1.json",
+        "evidence/cn130_xgb_optimization_v1/challenge/cn_10d_xgb_baseline_challenge_v1/windows/cn_10d_xgb_baseline_challenge_v1_2024H2.json",
+        "evidence/cn130_xgb_optimization_v1/challenge/cn_10d_xgb_baseline_challenge_v1/windows/cn_10d_xgb_baseline_challenge_v1_2025H1.json",
+        "evidence/cn130_xgb_optimization_v1/challenge/cn_10d_xgb_baseline_challenge_v1/windows/cn_10d_xgb_baseline_challenge_v1_2025H2.json",
+        "evidence/cn130_xgb_optimization_v1/challenge/cn_10d_xgb_baseline_challenge_v1/windows/cn_10d_xgb_baseline_challenge_v1_2026H1.json"
+      ]
+    }
+  },
+  "durability": {
+    "status": "time_bounded_actions_artifact",
+    "on_expiry": "block_non_regenerable",
+    "approved_durable_location": null,
+    "non_regenerable_after_expiry": true
+  }
+}

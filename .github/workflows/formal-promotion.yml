@@ -1,0 +1,91 @@
+name: Formal Baseline Promotion Verification
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/formal-promotion.yml"
+      - "data/research/formal_promotions/**"
+      - "data/research/formal_backtests/**"
+      - "scripts/build_formal_model_backtests.py"
+      - "scripts/formal_promotion.py"
+      - "scripts/run_formal_promotion.py"
+      - "tests/test_formal_promotion.py"
+      - "tests/test_formal_promotion_transport.py"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: formal-promotion-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify-formal-promotion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout proposed formal release
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Validate promotion verifier
+        run: |
+          uv run ruff check \
+            scripts/formal_promotion.py \
+            scripts/run_formal_promotion.py \
+            tests/test_formal_promotion.py \
+            tests/test_formal_promotion_transport.py
+          uv run mypy scripts/formal_promotion.py scripts/run_formal_promotion.py
+          uv run pytest \
+            tests/test_formal_promotion.py \
+            tests/test_formal_promotion_transport.py \
+            -q --strict-markers --tb=short
+
+      - name: Fetch exact immutable source artifacts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p artifacts/formal-promotion
+          set -o pipefail
+          uv run python scripts/run_formal_promotion.py fetch \
+            --manifest-dir data/research/formal_promotions \
+            --archive-dir artifacts/formal-promotion/archives \
+            --receipt artifacts/formal-promotion/fetch-receipt.json \
+            2>&1 | tee artifacts/formal-promotion/fetch.log
+
+      - name: Reproduce and byte-compare formal packages
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run python scripts/run_formal_promotion.py verify \
+            --manifest-dir data/research/formal_promotions \
+            --archive-dir artifacts/formal-promotion/archives \
+            --source-root artifacts/formal-promotion/source \
+            --generated-dir artifacts/formal-promotion/generated \
+            --committed-dir data/research/formal_backtests \
+            --receipt artifacts/formal-promotion/promotion-receipt.json \
+            --summary artifacts/formal-promotion/promotion-summary.md \
+            2>&1 | tee artifacts/formal-promotion/verify.log
+          cat artifacts/formal-promotion/promotion-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain promotion verification evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: formal-promotion-verification
+          path: artifacts/formal-promotion
+          if-no-files-found: error
+          retention-days: 30
