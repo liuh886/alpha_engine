@@ -4,10 +4,13 @@ import sys
 import traceback
 from pathlib import Path
 
-from scripts.run_qqqi_v4_2_donor_state2_sgov_tqqq import (
-    DEFAULT_OUTPUT,
-    main,
+import scripts.run_qqqi_v4_2_donor_state2_sgov_tqqq as runner
+from src.research.v4_2_donor_state2_sgov_tqqq_runtime_coverage import (
+    run_donor_state2_sgov_tqqq,
 )
+
+runner.run_donor_state2_sgov_tqqq = run_donor_state2_sgov_tqqq
+DEFAULT_OUTPUT = runner.DEFAULT_OUTPUT
 
 
 def _output_dir(argv: list[str]) -> Path:
@@ -22,7 +25,7 @@ def _output_dir(argv: list[str]) -> Path:
 
 if __name__ == "__main__":
     try:
-        raise SystemExit(main())
+        raise SystemExit(runner.main())
     except SystemExit:
         raise
     except Exception:
