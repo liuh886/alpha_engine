@@ -5,14 +5,16 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import time
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
 from scripts.data.refresh_selected_pool_prices import BENCHMARKS, _load_pool
+from src.data.adapters.akshare_adapter import AkShareAdapter
 from src.data.adapters.akshare_sina_adapter import AkShareSinaAdapter
-from src.data.adapters.base import FetchRequest
+from src.data.adapters.base import FetchRequest, FetchResult
 from src.data.adapters.efinance_adapter import EFinanceAdapter
 from src.research.selected_pool_guard import resolve_selected_pool
 
@@ -40,6 +42,24 @@ def _normalize(frame: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _fetch_with_retries(
+    adapter: AkShareAdapter | EFinanceAdapter,
+    request: FetchRequest,
+    *,
+    attempts: int = 4,
+) -> FetchResult:
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return adapter.fetch_daily_bars(request)
+        except Exception as exc:  # provider/network errors are recorded by the caller
+            last_error = exc
+            if attempt < attempts:
+                time.sleep(float(attempt * 2))
+    assert last_error is not None
+    raise last_error
+
+
 def _append_current_session(
     *,
     symbol: str,
@@ -53,7 +73,8 @@ def _append_current_session(
     if len(overlap) != 1 or len(appended) != 1:
         raise RuntimeError(
             f"{symbol}: append provider must contain exact overlap/current rows; "
-            f"overlap={len(overlap)} current={len(appended)}"
+            f"overlap={len(overlap)} current={len(appended)} "
+            f"available={overlap_and_append['date'].tolist()}"
         )
     accepted_overlap = base.loc[base["date"] == base_cutoff]
     if len(accepted_overlap) != 1:
@@ -114,7 +135,7 @@ def fetch_shard(
 ) -> dict[str, Any]:
     if shard_count < 1 or not 0 <= shard_index < shard_count:
         raise ValueError("invalid shard index/count")
-    if append_provider not in {None, "efinance"}:
+    if append_provider not in {None, "akshare", "efinance"}:
         raise ValueError(f"unsupported append provider: {append_provider}")
     if bool(base_cutoff) != bool(append_provider):
         raise ValueError("base_cutoff and append_provider must be declared together")
@@ -141,9 +162,15 @@ def fetch_shard(
     if base_cutoff:
         base_csv_root.mkdir(parents=True, exist_ok=True)
     base_adapter = AkShareSinaAdapter(min_interval_seconds=0.75)
-    current_adapter = EFinanceAdapter() if append_provider == "efinance" else None
+    current_adapter: AkShareAdapter | EFinanceAdapter | None
+    if append_provider == "akshare":
+        current_adapter = AkShareAdapter()
+    elif append_provider == "efinance":
+        current_adapter = EFinanceAdapter()
+    else:
+        current_adapter = None
     records: list[dict[str, Any]] = []
-    for symbol in selected:
+    for position, symbol in enumerate(selected):
         requested_base_cutoff = base_cutoff or cutoff
         base_result = base_adapter.fetch_daily_bars(
             FetchRequest(
@@ -162,13 +189,16 @@ def fetch_shard(
 
         reconciliation: dict[str, Any] | None = None
         if current_adapter is not None and base_cutoff is not None:
-            current_result = current_adapter.fetch_daily_bars(
+            if position:
+                time.sleep(0.75)
+            current_result = _fetch_with_retries(
+                current_adapter,
                 FetchRequest(
                     symbol=symbol,
                     market="cn",
                     start=base_cutoff,
                     end=cutoff,
-                )
+                ),
             )
             current_frame = _normalize(current_result.df)
             frame, reconciliation = _append_current_session(
@@ -191,7 +221,7 @@ def fetch_shard(
         record: dict[str, Any] = {
             "symbol": symbol,
             "provider": (
-                "akshare_sina_plus_efinance_append"
+                f"akshare_sina_plus_{append_provider}_append"
                 if current_result is not None
                 else base_result.provider
             ),
@@ -228,7 +258,7 @@ def fetch_shard(
         "base_cutoff": base_cutoff,
         "cutoff": cutoff,
         "provider": (
-            "akshare_sina_plus_efinance_append"
+            f"akshare_sina_plus_{append_provider}_append"
             if append_provider
             else "akshare_sina"
         ),
@@ -257,7 +287,7 @@ def main() -> None:
     parser.add_argument("--start", default="2021-01-01")
     parser.add_argument("--cutoff", default="2026-07-31")
     parser.add_argument("--base-cutoff", default=None)
-    parser.add_argument("--append-provider", choices=["efinance"], default=None)
+    parser.add_argument("--append-provider", choices=["akshare", "efinance"], default=None)
     args = parser.parse_args()
     manifest = fetch_shard(
         output_root=args.output_root,
