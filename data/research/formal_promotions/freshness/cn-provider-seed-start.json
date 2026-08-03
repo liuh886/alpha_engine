@@ -1,11 +1,11 @@
 {
   "research_only": true,
   "schema_version": "1.0.0",
-  "source_mode": "governed_repository_csv",
-  "started_at": "2026-08-03T03:05:44.786973+00:00",
+  "source_mode": "governed_repository_csv_offline",
+  "started_at": "2026-08-03T03:13:15.120573+00:00",
   "status": "started",
   "target_cutoff": "2026-07-31",
   "trade_ready": false,
-  "workflow_head_sha": "2b381ea7210be0b81eaf21f8d796728c89f36caf",
-  "workflow_run_id": 30780890898
+  "workflow_head_sha": "bf5e0879d8790c7e33b46cdde98de15601b92a5a",
+  "workflow_run_id": 30781243524
 }
