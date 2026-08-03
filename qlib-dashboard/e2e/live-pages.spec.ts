@@ -1,6 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const FORMAL_MODELS = ['QQQ Rotation v4.2', 'US x1.1', 'CN x1.0'] as const;
+const REQUIRED_FRESHNESS_CUTOFF = '2026-07-31';
+
+type FormalPackage = {
+  model_id?: string;
+  evidence_cutoff?: string;
+  date_range?: {
+    end?: string;
+  };
+  trades?: unknown[];
+};
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -9,6 +19,19 @@ function escapeRegExp(value: string): string {
 async function assertNoHorizontalOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(2);
+}
+
+async function fetchFormalPackage(page: Page, modelId: string): Promise<FormalPackage> {
+  const packageUrl = new URL(`data/formal-backtests/${modelId}.json`, page.url());
+  packageUrl.searchParams.set('live_acceptance', Date.now().toString());
+  const response = await page.request.get(packageUrl.toString(), {
+    headers: {
+      'cache-control': 'no-cache',
+      pragma: 'no-cache',
+    },
+  });
+  expect(response.ok(), `failed to load ${packageUrl.toString()}`).toBeTruthy();
+  return response.json() as Promise<FormalPackage>;
 }
 
 async function openSelector(page: Page) {
@@ -68,7 +91,15 @@ test('live Pages renders every governed formal baseline end to end', async ({ pa
   await expect(page.getByText('Complete retained trace', { exact: true })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
-  // US x1.1: exact holdings, transactions and attribution must all render.
+  // US x1.1: verify the live formal package and its rendered ledgers agree.
+  const usPackage = await fetchFormalPackage(page, 'us_x1_1');
+  expect(usPackage.model_id).toBe('us_x1_1');
+  expect(usPackage.evidence_cutoff).toBe(REQUIRED_FRESHNESS_CUTOFF);
+  expect(usPackage.date_range?.end).toBe(REQUIRED_FRESHNESS_CUTOFF);
+  expect(Array.isArray(usPackage.trades)).toBeTruthy();
+  const usTradeRowCount = usPackage.trades?.length ?? 0;
+  expect(usTradeRowCount).toBeGreaterThan(1_075);
+
   await selectModel(page, 'US x1.1');
   await expect(page.getByText('Complete retained evidence', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Holdings' }).click();
@@ -76,7 +107,9 @@ test('live Pages renders every governed formal baseline end to end', async ({ pa
   await expect(page.getByText('15 Assets', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Trades' }).click();
   await expect(page.getByText('Complete transaction ledger', { exact: true })).toBeVisible();
-  await expect(page.getByText('1,075 rows', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(`${usTradeRowCount.toLocaleString('en-US')} rows`, { exact: true }),
+  ).toBeVisible();
   await page.getByRole('tab', { name: 'Attribution' }).click();
   await expect(page.getByText('Contribution table', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Evidence' }).click();
@@ -84,6 +117,11 @@ test('live Pages renders every governed formal baseline end to end', async ({ pa
   await assertNoHorizontalOverflow(page);
 
   // CN x1.0: partial evidence must stay explicit; missing ledgers are never fabricated.
+  const cnPackage = await fetchFormalPackage(page, 'cn_x1_0');
+  expect(cnPackage.model_id).toBe('cn_x1_0');
+  expect(cnPackage.evidence_cutoff).toBe(REQUIRED_FRESHNESS_CUTOFF);
+  expect(cnPackage.date_range?.end).toBe(REQUIRED_FRESHNESS_CUTOFF);
+
   await selectModel(page, 'CN x1.0');
   await expect(page.getByText('Partial retained evidence', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Holdings' }).click();
