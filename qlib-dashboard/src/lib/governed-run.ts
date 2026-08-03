@@ -34,6 +34,7 @@ export interface GovernedRunSummary {
   summary: Record<string, unknown>;
   manifest: ModelRunBundleV2Manifest | null;
   modelData: ModelData | null;
+  /** Transitional type-only field; the production loader never populates v1 formal packages. */
   formalPackage: FormalBacktestPackage | null;
   loadWarnings: string[];
 }
@@ -52,7 +53,7 @@ interface ModelRunCatalogRecord {
 
 interface ModelRunCatalog {
   schema_version: '2.0.0';
-  channel: 'preview';
+  channel: 'preview' | 'formal';
   generated_at: string;
   records: ModelRunCatalogRecord[];
   research_only: true;
@@ -78,48 +79,54 @@ function safeRelativeJsonPath(value: unknown, label: string): string {
   return path;
 }
 
-function modelRunAssetRoot(): string {
+function assetRoot(channel: 'formal' | 'preview'): string {
   const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
-  return `${base}data/model-runs/`;
+  return channel === 'formal'
+    ? `${base}data/formal-model-runs/`
+    : `${base}data/model-runs/`;
 }
 
-async function fetchText(path: string): Promise<string> {
-  const response = await fetch(`${modelRunAssetRoot()}${path}`, { cache: 'no-cache' });
-  if (!response.ok) throw new Error(`Model-run asset request failed (${response.status}): ${path}`);
+async function fetchText(channel: 'formal' | 'preview', path: string): Promise<string> {
+  const response = await fetch(`${assetRoot(channel)}${path}`, { cache: 'no-cache' });
+  if (!response.ok) throw new Error(`${channel} model-run asset request failed (${response.status}): ${path}`);
   return response.text();
 }
 
-function parseCatalog(value: unknown): ModelRunCatalog {
-  if (!isRecord(value) || value.schema_version !== '2.0.0' || value.channel !== 'preview') {
-    throw new Error('Preview model-run catalog contract is invalid.');
+function parseCatalog(value: unknown, expectedChannel: 'formal' | 'preview'): ModelRunCatalog {
+  if (!isRecord(value) || value.schema_version !== '2.0.0' || value.channel !== expectedChannel) {
+    throw new Error(`${expectedChannel} model-run catalog contract is invalid.`);
   }
   if (value.research_only !== true || value.trade_ready !== false || !Array.isArray(value.records)) {
-    throw new Error('Preview model-run catalog research boundary is invalid.');
+    throw new Error(`${expectedChannel} model-run catalog research boundary is invalid.`);
   }
   const identities = new Set<string>();
   const records = value.records.map((raw, index): ModelRunCatalogRecord => {
-    if (!isRecord(raw)) throw new Error(`Preview catalog record ${index} is invalid.`);
+    if (!isRecord(raw)) throw new Error(`${expectedChannel} catalog record ${index} is invalid.`);
     const identity = `${String(raw.model_family_id)}:${String(raw.model_version_id)}:${String(raw.run_id)}`;
-    if (identities.has(identity)) throw new Error(`Duplicate preview run identity: ${identity}`);
+    if (identities.has(identity)) throw new Error(`Duplicate ${expectedChannel} run identity: ${identity}`);
     identities.add(identity);
     const manifestSha = String(raw.manifest_sha256 ?? '');
     const bundleId = String(raw.bundle_id ?? '');
-    if (!SHA256.test(manifestSha) || !SHA256.test(bundleId)) throw new Error(`Preview digest is invalid: ${identity}`);
+    if (!SHA256.test(manifestSha) || !SHA256.test(bundleId)) throw new Error(`${expectedChannel} digest is invalid: ${identity}`);
+    const publicationStatus = String(raw.publication_status) as ModelRunStatus;
+    if (expectedChannel === 'formal' && publicationStatus !== 'accepted_formal_baseline') {
+      throw new Error(`Non-formal record entered formal catalog: ${identity}`);
+    }
     return {
       model_family_id: String(raw.model_family_id ?? ''),
       model_version_id: String(raw.model_version_id ?? ''),
       run_id: String(raw.run_id ?? ''),
       bundle_id: bundleId,
       model_kind: String(raw.model_kind) as ModelRunKind,
-      publication_status: String(raw.publication_status) as ModelRunStatus,
-      manifest_path: safeRelativeJsonPath(raw.manifest_path, 'preview manifest path'),
+      publication_status: publicationStatus,
+      manifest_path: safeRelativeJsonPath(raw.manifest_path, `${expectedChannel} manifest path`),
       manifest_sha256: manifestSha,
       evidence_cutoff: String(raw.evidence_cutoff ?? ''),
     };
   });
   return {
     schema_version: '2.0.0',
-    channel: 'preview',
+    channel: expectedChannel,
     generated_at: String(value.generated_at ?? ''),
     records,
     research_only: true,
@@ -129,47 +136,6 @@ function parseCatalog(value: unknown): ModelRunCatalog {
 
 function runKey(channel: ModelRunChannel, family: string, version: string, run: string): string {
   return `${channel}:${family}:${version}:${run}`;
-}
-
-function formalKind(modelId: string): ModelRunKind {
-  return modelId === 'qqqi_qqq_tqqq_v4_2' ? 'rules_based_allocation' : 'cross_sectional_ranker';
-}
-
-export function adaptFormalRuns(packages: FormalBacktestPackage[], models: ModelData[]): GovernedRunSummary[] {
-  const byId = new Map(models.map((model) => [model.id, model]));
-  return packages.map((formal) => {
-    const family = formal.model_id;
-    const version = formal.model_id;
-    const evidenceStatus: RunEvidenceStatus = formal.evidence_completeness.status === 'complete' ? 'complete' : 'partial';
-    return {
-      key: runKey('formal', family, version, formal.backtest_id),
-      modelFamilyId: family,
-      modelVersionId: version,
-      runId: formal.backtest_id,
-      bundleId: null,
-      title: formal.display_name,
-      modelKind: formalKind(formal.model_id),
-      channel: 'formal',
-      publicationStatus: 'accepted_formal_baseline',
-      market: formal.market,
-      benchmark: formal.benchmark,
-      generatedAt: formal.generated_at,
-      evidenceCutoff: formal.evidence_cutoff,
-      evidenceStatus,
-      decisionStatus: 'absent',
-      manifestPath: null,
-      manifestSha256: null,
-      summary: {
-        metrics: formal.metrics,
-        evidence_completeness: formal.evidence_completeness,
-        interpretation_notes: formal.interpretation_notes,
-      },
-      manifest: null,
-      modelData: byId.get(formal.model_id) ?? null,
-      formalPackage: formal,
-      loadWarnings: ['Temporary v1 formal adapter; migration is completed in PR 7.'],
-    };
-  });
 }
 
 export function adaptLocalRuns(models: ModelData[]): GovernedRunSummary[] {
@@ -216,47 +182,50 @@ function summaryText(summary: Record<string, unknown>, key: string, fallback: st
   return typeof value === 'string' && value.trim() ? value : fallback;
 }
 
-async function loadPreviewRecord(record: ModelRunCatalogRecord): Promise<GovernedRunSummary> {
-  const manifestText = await fetchText(record.manifest_path);
+async function loadCatalogRecord(
+  channel: 'formal' | 'preview',
+  record: ModelRunCatalogRecord,
+): Promise<GovernedRunSummary> {
+  const manifestText = await fetchText(channel, record.manifest_path);
   if ((await sha256Text(manifestText)) !== record.manifest_sha256) {
-    throw new Error(`Preview manifest SHA-256 mismatch: ${record.model_family_id}/${record.run_id}`);
+    throw new Error(`${channel} manifest SHA-256 mismatch: ${record.model_family_id}/${record.run_id}`);
   }
   const manifest = parseModelRunBundleV2Manifest(JSON.parse(manifestText) as unknown);
   if (!(await verifyModelRunBundleId(manifest)) || manifest.bundle_id !== record.bundle_id) {
-    throw new Error(`Preview bundle identity mismatch: ${record.model_family_id}/${record.run_id}`);
+    throw new Error(`${channel} bundle identity mismatch: ${record.model_family_id}/${record.run_id}`);
   }
-  if (manifest.publication_channel !== 'preview' || manifest.publication_status !== record.publication_status) {
-    throw new Error(`Preview channel/status mismatch: ${record.model_family_id}/${record.run_id}`);
+  if (manifest.publication_channel !== channel || manifest.publication_status !== record.publication_status) {
+    throw new Error(`${channel} channel/status mismatch: ${record.model_family_id}/${record.run_id}`);
   }
   const summarySection = manifest.sections.find((section) => section.section_id === 'summary');
   if (!summarySection || summarySection.availability_status !== 'available' || !summarySection.path || !summarySection.sha256) {
-    throw new Error(`Required preview summary is unavailable: ${record.model_family_id}/${record.run_id}`);
+    throw new Error(`Required ${channel} summary is unavailable: ${record.model_family_id}/${record.run_id}`);
   }
   const base = record.manifest_path.includes('/')
     ? record.manifest_path.slice(0, record.manifest_path.lastIndexOf('/') + 1)
     : '';
-  const summaryPath = safeRelativeJsonPath(`${base}${summarySection.path}`, 'preview summary path');
-  const summaryTextValue = await fetchText(summaryPath);
+  const summaryPath = safeRelativeJsonPath(`${base}${summarySection.path}`, `${channel} summary path`);
+  const summaryTextValue = await fetchText(channel, summaryPath);
   if ((await sha256Text(summaryTextValue)) !== summarySection.sha256 || new TextEncoder().encode(summaryTextValue).byteLength !== summarySection.byte_size) {
-    throw new Error(`Required preview summary integrity mismatch: ${record.model_family_id}/${record.run_id}`);
+    throw new Error(`Required ${channel} summary integrity mismatch: ${record.model_family_id}/${record.run_id}`);
   }
   const parsed = JSON.parse(summaryTextValue) as unknown;
-  if (!isRecord(parsed)) throw new Error(`Preview summary must be an object: ${record.model_family_id}/${record.run_id}`);
+  if (!isRecord(parsed)) throw new Error(`${channel} summary must be an object: ${record.model_family_id}/${record.run_id}`);
   const optionalWarnings = manifest.sections
-    .filter((section) => !section.required_for_model_kind && section.availability_status !== 'available')
+    .filter((section) => section.section_id !== 'decision' && !section.required_for_model_kind && section.availability_status !== 'available')
     .map((section) => `${section.section_id}: ${section.reason ?? section.availability_status}`);
   const requiredBlocked = manifest.sections.some(
     (section) => section.required_for_model_kind && section.availability_status !== 'available',
   );
   return {
-    key: runKey('preview', manifest.model_family_id, manifest.model_version_id, manifest.run_id),
+    key: runKey(channel, manifest.model_family_id, manifest.model_version_id, manifest.run_id),
     modelFamilyId: manifest.model_family_id,
     modelVersionId: manifest.model_version_id,
     runId: manifest.run_id,
     bundleId: manifest.bundle_id,
     title: summaryTitle(parsed, record),
     modelKind: manifest.model_kind,
-    channel: 'preview',
+    channel,
     publicationStatus: manifest.publication_status,
     market: manifest.comparability_key.market,
     benchmark: manifest.comparability_key.benchmark_id,
@@ -274,18 +243,20 @@ async function loadPreviewRecord(record: ModelRunCatalogRecord): Promise<Governe
   };
 }
 
-export async function loadPreviewRuns(): Promise<GovernedRunLoadResult> {
+async function loadCatalogRuns(channel: 'formal' | 'preview'): Promise<GovernedRunLoadResult> {
   let catalogText: string;
   try {
-    catalogText = await fetchText('catalog.json');
+    catalogText = await fetchText(channel, 'catalog.json');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('(404)')) return { runs: [], errors: [] };
+    if (channel === 'preview' && message.includes('(404)')) return { runs: [], errors: [] };
     return { runs: [], errors: [message] };
   }
   try {
-    const catalog = parseCatalog(JSON.parse(catalogText) as unknown);
-    const settled = await Promise.allSettled(catalog.records.map(loadPreviewRecord));
+    const catalog = parseCatalog(JSON.parse(catalogText) as unknown, channel);
+    const settled = await Promise.allSettled(
+      catalog.records.map((record) => loadCatalogRecord(channel, record)),
+    );
     const runs: GovernedRunSummary[] = [];
     const errors: string[] = [];
     settled.forEach((result) => {
@@ -298,8 +269,19 @@ export async function loadPreviewRuns(): Promise<GovernedRunLoadResult> {
   }
 }
 
+export function loadFormalRuns(): Promise<GovernedRunLoadResult> {
+  return loadCatalogRuns('formal');
+}
+
+export function loadPreviewRuns(): Promise<GovernedRunLoadResult> {
+  return loadCatalogRuns('preview');
+}
+
 export async function loadRunSection(run: GovernedRunSummary, sectionId: string): Promise<unknown> {
-  if (!run.manifest || !run.manifestPath) throw new Error(`Run section is not v2-backed: ${run.key}`);
+  if (!run.manifest || !run.manifestPath || run.channel === 'local') {
+    throw new Error(`Run section is not Bundle v2-backed: ${run.key}`);
+  }
+  const channel = run.channel;
   const section = run.manifest.sections.find((candidate) => candidate.section_id === sectionId);
   if (!section) throw new Error(`Section is undeclared: ${sectionId}`);
   if (section.availability_status !== 'available' || !section.path || !section.sha256 || section.byte_size === null) {
@@ -307,7 +289,7 @@ export async function loadRunSection(run: GovernedRunSummary, sectionId: string)
   }
   const base = run.manifestPath.includes('/') ? run.manifestPath.slice(0, run.manifestPath.lastIndexOf('/') + 1) : '';
   const path = safeRelativeJsonPath(`${base}${section.path}`, `${sectionId} path`);
-  const text = await fetchText(path);
+  const text = await fetchText(channel, path);
   if ((await sha256Text(text)) !== section.sha256 || new TextEncoder().encode(text).byteLength !== section.byte_size) {
     throw new Error(`Section integrity mismatch: ${run.key}/${sectionId}`);
   }
