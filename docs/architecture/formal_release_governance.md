@@ -61,26 +61,27 @@ Traces and screenshots are retained as `pages-live-browser-evidence`.
 
 ## Formal baseline promotion contract
 
-A formal package change is reviewed through `.github/workflows/formal-promotion.yml`. The workflow is PR-only and has read-only repository and Actions permissions. It never edits a package, changes a catalog, merges a pull request or promotes a model automatically.
+A formal package change is reviewed through `.github/workflows/formal-promotion.yml`. The workflow is PR-only and has read-only repository permissions. It never edits a package, changes a catalog, merges a pull request or promotes a model automatically.
 
 Each model has an explicit manifest under `data/research/formal_promotions/` containing:
 
 - model and package identity;
 - evidence cutoff;
-- exact workflow run and workflow head commit;
-- exact Actions artifact ID, name and SHA-256 digest;
-- declared artifact expiration;
+- original workflow run, workflow head commit, artifact ID, name and SHA-256 digest;
+- original Actions artifact expiration for provenance;
 - archive layout and all files required by the deterministic builder;
-- durability status and the required behavior after expiration.
+- the approved durable repository location.
 
-The workflow fetches the exact declared artifact, verifies its current GitHub metadata and digest, safely extracts it, checks every required source path, regenerates all formal packages in a temporary directory and byte-compares the result with the proposed committed packages and catalog. It emits a JSON receipt and a human-readable diff summary.
+The exact verified source ZIP bytes are retained under `data/research/formal_promotions/archive/`. The three archives total approximately 2.7 MB and remain normal binary Git objects rather than LFS pointers, so historical checkout and reproduction do not depend on expiring Actions storage or separate LFS retention.
 
-A time-bounded artifact is never replaced with a newer workflow output. Once the declared artifact is expired, missing or digest-inconsistent, verification fails with the baseline marked non-regenerable until an approved durable archive is introduced through a separate reviewed change.
+The promotion workflow verifies that each repository ZIP SHA-256 exactly matches the original Actions artifact digest, copies it into an isolated materialization directory, safely extracts it, checks every required source path, regenerates all formal packages in a temporary directory and byte-compares the result with the proposed committed packages and catalog. It emits a JSON receipt and a human-readable diff summary.
 
-The current v4.2 Actions artifact is the nearest-term durability risk because its declared expiration is 2026-08-15. Preserving it beyond that date requires a separately governed durable evidence location; silently rebuilding v4.2 against newer bytes is prohibited.
+The original Actions artifacts remain recorded as provenance, but their expiration no longer affects reproduction of accepted baselines. No newer provider bytes may be substituted: a changed or missing repository archive fails verification. Introducing or replacing a durable archive requires a reviewed PR with matching manifest, digest and byte-exact package reproduction.
+
+A short-lived branch-only workflow was used once to download the three exact artifacts, verify their fixed SHA-256 values and commit the ZIP bytes to the governance branch. That workflow was removed before merge; no archive-writing workflow or elevated contents permission remains on `main`.
 
 ## Browser runtime caching assessment
 
-Node package downloads already use the package-manager cache. The production deployment continues to install the Playwright Chromium runtime with `--with-deps` for each required release. A shared browser binary cache is intentionally not introduced in this governance change because Playwright browser revisions and Linux system dependencies must remain aligned with the checked-in lockfile and current runner image.
+Node package downloads already use the package-manager cache. The production deployment continues to install the Playwright Chromium runtime with `--with-deps` for each required release. A shared browser binary cache is intentionally not introduced because Playwright browser revisions and Linux system dependencies must remain aligned with the checked-in lockfile and current runner image.
 
 Caching may be reconsidered after measuring deployment cost, preferably through a pinned and reviewed runner image or an explicit Playwright browser revision cache key. Any optimization must preserve the same fresh-context, public-origin acceptance semantics.
