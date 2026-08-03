@@ -42,20 +42,15 @@ async function openRun(page: Page, model: typeof FORMAL_MODELS[number]): Promise
 }
 
 async function exerciseAvailableEvidence(page: Page): Promise<void> {
-  const tabs = page.getByRole('tablist', { name: 'Run capability evidence' });
-  for (const label of ['Summary', 'Alpha', 'Risk', 'Robustness', 'Portfolio']) {
+  const tabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
+  for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
     await expect(tabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
   }
-  await expect(page.getByText('Source:', { exact: true }).first()).toBeVisible();
-
-  await tabs.getByRole('tab', { name: 'Alpha', exact: true }).click();
-  await expect(page.getByText(/performance\.json/)).toBeVisible();
-  await tabs.getByRole('tab', { name: 'Risk', exact: true }).click();
-  await expect(page.getByText(/risk\.json/)).toBeVisible();
-  await tabs.getByRole('tab', { name: 'Robustness', exact: true }).click();
-  await expect(page.getByText(/robustness\.json/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Strategy, benchmark and excess path' })).toBeVisible();
+  await tabs.getByRole('tab', { name: 'Risk & robustness', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Retained window robustness' })).toBeVisible();
   await tabs.getByRole('tab', { name: 'Portfolio', exact: true }).click();
-  await expect(page.getByText(/portfolio\.json/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Frozen portfolio contract' })).toBeVisible();
 }
 
 test('live Pages renders all governed formal Bundle v2 baselines end to end', async ({ page }, testInfo) => {
@@ -115,19 +110,25 @@ test('live Pages renders all governed formal Bundle v2 baselines end to end', as
 
   await openRun(page, 'QQQ Rotation v4.2');
   await exerciseAvailableEvidence(page);
-  await expect(page.getByText(/trades\.json/)).toBeVisible();
-  await expect(page.getByText(/attribution\.json/)).toBeVisible();
+  await page.getByRole('tab', { name: 'Trades', exact: true }).click();
+  await expect(page.getByText('Trade ledger unavailable')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Attribution', exact: true }).click();
+  await expect(page.getByText('Attribution unavailable')).toHaveCount(0);
   await assertNoHorizontalOverflow(page);
 
   await openRun(page, 'US x1.1');
   await exerciseAvailableEvidence(page);
-  await expect(page.getByText(/trades\.json/)).toBeVisible();
-  await expect(page.getByText(/attribution\.json/)).toBeVisible();
+  await page.getByRole('tab', { name: 'Trades', exact: true }).click();
+  await expect(page.getByText('Trade ledger unavailable')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Attribution', exact: true }).click();
+  await expect(page.getByText('Attribution unavailable')).toHaveCount(0);
   await assertNoHorizontalOverflow(page);
 
   await openRun(page, 'CN x1.0');
   await exerciseAvailableEvidence(page);
-  await expect(page.getByRole('heading', { name: 'Trades unavailable' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Trades', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Trade ledger unavailable' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Attribution', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Attribution unavailable' })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
