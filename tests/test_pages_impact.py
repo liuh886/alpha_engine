@@ -37,12 +37,15 @@ def test_frontend_change_deploys(tmp_path: Path) -> None:
     assert decision.reason == "publication_dependency_changed"
 
 
-def test_formal_package_change_deploys(tmp_path: Path) -> None:
+def test_model_run_bundle_changes_deploy(tmp_path: Path) -> None:
     root = _repository(tmp_path)
-    decision = decide_impact(
-        ["data/research/formal_backtests/us_x1_1.json"], repository_root=root
-    )
-    assert decision.deploy is True
+    for path in (
+        "data/research/formal_model_runs/us_ranker/us_x1_1/run/manifest.json",
+        "data/research/model_runs/us_ranker/us_candidate/run/summary.json",
+        "data/research/model_decisions/catalog.json",
+    ):
+        decision = decide_impact([path], repository_root=root)
+        assert decision.deploy is True, path
 
 
 def test_referenced_model_run_and_report_deploy(tmp_path: Path) -> None:
@@ -76,6 +79,7 @@ def test_catalog_and_release_runtime_changes_deploy(tmp_path: Path) -> None:
     for path in (
         "data/research/catalog.json",
         "scripts/export_static_site_data.py",
+        "src/artifacts/model_run_bundle_v2.py",
         ".github/workflows/pages-release-receipt.yml",
     ):
         decision = decide_impact([path], repository_root=root)
