@@ -8,6 +8,7 @@ import pytest
 
 from scripts.verify_formal_backtest_freshness import (
     FormalBacktestFreshnessError,
+    latest_completed_session,
     verify,
 )
 
@@ -24,6 +25,7 @@ def _fixture(
     evidence_cutoff: str = "2026-07-31",
     range_end: str = "2026-07-31",
     receipt_required: bool = True,
+    declared_cutoff: str = "2026-07-31",
 ) -> Path:
     root = tmp_path / "formal"
     root.mkdir()
@@ -31,7 +33,8 @@ def _fixture(
         root / "freshness.json",
         {
             "cutoff_policy": "latest_completed_trading_session",
-            "markets": {"us": "2026-07-31"},
+            "markets": {"us": declared_cutoff},
+            "market_calendars": {"us": "XNYS"},
             "required_models": ["model_a"],
             "freshness_receipt_required_models": (
                 ["model_a"] if receipt_required else []
@@ -55,8 +58,8 @@ def _fixture(
     if receipt_required:
         package["freshness"] = {
             "status": "current",
-            "required_cutoff": "2026-07-31",
-            "latest_completed_session": "2026-07-31",
+            "required_cutoff": declared_cutoff,
+            "latest_completed_session": declared_cutoff,
             "latest_realized_holding_end": "2026-07-30",
             "model_selection_reopened": False,
         }
@@ -77,9 +80,32 @@ def _fixture(
 
 
 def test_accepts_current_formal_package(tmp_path: Path) -> None:
-    result = verify(_fixture(tmp_path))
+    result = verify(
+        _fixture(tmp_path),
+        as_of="2026-08-03T02:16:00Z",
+    )
     assert result["status"] == "current"
+    assert result["resolved_latest_sessions"] == {"us": "2026-07-31"}
     assert result["verified_models"][0]["required_cutoff"] == "2026-07-31"
+
+
+def test_exchange_calendars_resolve_previous_completed_session() -> None:
+    import pandas as pd
+
+    as_of = pd.Timestamp("2026-08-03T02:16:00Z")
+    assert latest_completed_session("XNYS", as_of) == "2026-07-31"
+    assert latest_completed_session("XSHG", as_of) == "2026-07-31"
+
+
+def test_rejects_declared_cutoff_behind_exchange_calendar(tmp_path: Path) -> None:
+    root = _fixture(
+        tmp_path,
+        evidence_cutoff="2026-07-30",
+        range_end="2026-07-30",
+        declared_cutoff="2026-07-30",
+    )
+    with pytest.raises(FormalBacktestFreshnessError, match="declared cutoff.*stale"):
+        verify(root, as_of="2026-08-03T02:16:00Z")
 
 
 def test_accepts_current_provider_with_earlier_realized_range(tmp_path: Path) -> None:
