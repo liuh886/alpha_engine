@@ -11,6 +11,14 @@
     "us_x1_1",
     "cn_x1_0"
   ],
+  "freshness_receipt_required_models": [
+    "us_x1_1",
+    "cn_x1_0"
+  ],
+  "date_range_end_required_models": [
+    "us_x1_1",
+    "cn_x1_0"
+  ],
   "research_only": true,
   "trade_ready": false
 }
