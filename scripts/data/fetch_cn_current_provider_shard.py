@@ -17,7 +17,7 @@ from scripts.data.fetch_cn_provider_shard import (
 from scripts.data.refresh_selected_pool_prices import BENCHMARKS, _load_pool
 from src.data.adapters.akshare_sina_adapter import AkShareSinaAdapter
 from src.data.adapters.base import FetchRequest
-from src.data.adapters.sina_close_snapshot_adapter import SinaCloseSnapshotAdapter
+from src.data.adapters.tencent_fqkline_adapter import TencentFqKlineAdapter
 from src.research.selected_pool_guard import resolve_selected_pool
 
 
@@ -55,7 +55,7 @@ def fetch_shard(
     csv_root.mkdir(parents=True, exist_ok=True)
     base_csv_root.mkdir(parents=True, exist_ok=True)
     base_adapter = AkShareSinaAdapter(min_interval_seconds=0.75)
-    close_adapter = SinaCloseSnapshotAdapter()
+    append_adapter = TencentFqKlineAdapter()
     records: list[dict[str, Any]] = []
 
     for position, symbol in enumerate(selected):
@@ -74,7 +74,7 @@ def fetch_shard(
             )
         if position:
             time.sleep(0.5)
-        close_result = close_adapter.fetch_daily_bars(
+        append_result = append_adapter.fetch_daily_bars(
             FetchRequest(
                 symbol=symbol,
                 market="cn",
@@ -82,11 +82,11 @@ def fetch_shard(
                 end=cutoff,
             )
         )
-        close_frame = _normalize(close_result.df)
+        append_frame = _normalize(append_result.df)
         extended, reconciliation = _append_current_session(
             symbol=symbol,
             base=base_frame,
-            overlap_and_append=close_frame,
+            overlap_and_append=append_frame,
             base_cutoff=base_cutoff,
             cutoff=cutoff,
         )
@@ -97,11 +97,11 @@ def fetch_shard(
         records.append(
             {
                 "symbol": symbol,
-                "provider": "akshare_sina_plus_sina_close_snapshot",
+                "provider": "akshare_sina_plus_tencent_fqkline",
                 "base_provider": base_result.provider,
                 "base_provider_symbol": base_result.provider_symbol,
-                "append_provider": close_result.provider,
-                "append_provider_symbol": close_result.provider_symbol,
+                "append_provider": append_result.provider,
+                "append_provider_symbol": append_result.provider_symbol,
                 "row_count": int(len(extended)),
                 "base_row_count": int(len(base_frame)),
                 "first_date": str(extended.iloc[0]["date"]),
@@ -114,7 +114,7 @@ def fetch_shard(
         )
 
     manifest = {
-        "schema_version": "1.2.0",
+        "schema_version": "1.3.0",
         "status": "complete",
         "market": "cn",
         "pool_id": binding.pool_id,
@@ -127,9 +127,9 @@ def fetch_shard(
         "start": start,
         "base_cutoff": base_cutoff,
         "cutoff": cutoff,
-        "provider": "akshare_sina_plus_sina_close_snapshot",
-        "append_provider": "sina_close_snapshot",
-        "append_semantics": "one_completed_session_with_raw_overlap_anchor_v1",
+        "provider": "akshare_sina_plus_tencent_fqkline",
+        "append_provider": "tencent_fqkline",
+        "append_semantics": "one_completed_qfq_session_with_overlap_anchor_v1",
         "records": records,
         "research_only": True,
         "trade_ready": False,
