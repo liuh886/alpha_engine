@@ -7,6 +7,7 @@ on:
       - ".github/workflows/qqqi-v4-2-cross-asset-sgov-tqqq-transfer.yml"
       - "configs/research_paradigms/qqqi_qqq_tqqq_cross_asset_sgov_tqqq_transfer_v4_12_research.yaml"
       - "src/research/v4_2_cross_asset_sgov_tqqq_transfer.py"
+      - "src/research/v4_2_cross_asset_sgov_tqqq_transfer_runtime.py"
       - "scripts/run_qqqi_v4_2_cross_asset_sgov_tqqq_transfer.py"
       - "tests/test_v4_2_cross_asset_sgov_tqqq_transfer.py"
   workflow_dispatch:
@@ -37,6 +38,7 @@ jobs:
         run: |
           uv run ruff check \
             src/research/v4_2_cross_asset_sgov_tqqq_transfer.py \
+            src/research/v4_2_cross_asset_sgov_tqqq_transfer_runtime.py \
             scripts/run_qqqi_v4_2_cross_asset_sgov_tqqq_transfer.py \
             tests/test_v4_2_cross_asset_sgov_tqqq_transfer.py
           uv run pytest \
