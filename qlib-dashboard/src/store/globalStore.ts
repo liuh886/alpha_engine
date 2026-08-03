@@ -26,6 +26,8 @@ interface GlobalState {
   setDataGeneratedAt: (timestamp: string) => void;
   selectedModelId: string;
   setSelectedModelId: (id: string) => void;
+  activeRunKey: string;
+  setActiveRunKey: (key: string) => void;
 }
 
 export const useGlobalStore = create<GlobalState>((set) => ({
@@ -43,4 +45,9 @@ export const useGlobalStore = create<GlobalState>((set) => ({
   setDataGeneratedAt: (dataGeneratedAt) => set({ dataGeneratedAt }),
   selectedModelId: '',
   setSelectedModelId: (selectedModelId) => set({ selectedModelId }),
+  activeRunKey: readSession<string>('activeRunKey', ''),
+  setActiveRunKey: (activeRunKey) => {
+    writeSession('activeRunKey', activeRunKey);
+    set({ activeRunKey });
+  },
 }));

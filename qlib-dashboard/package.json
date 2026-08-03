@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "sync:formal-backtests": "node scripts/sync-formal-backtests.mjs",
-    "dev": "npm run sync:formal-backtests && vite",
-    "build": "npm run sync:formal-backtests && vite build",
+    "sync:model-runs": "node scripts/sync-model-runs.mjs",
+    "sync:research-assets": "npm run sync:formal-backtests && npm run sync:model-runs",
+    "dev": "npm run sync:research-assets && vite",
+    "build": "npm run sync:research-assets && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
@@ -35,8 +37,8 @@
     "react-router-dom": "^7.15.1",
     "recharts": "^2.12.0",
     "remark-gfm": "^4.0.1",
-    "tailwind-merge": "^2.6.1",
-    "tailwindcss-animate": "^1.0.7",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

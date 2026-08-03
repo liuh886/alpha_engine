@@ -2,11 +2,13 @@ import { useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, Orbit } from 'lucide-react';
 import { useActiveResearchBundle } from '@/hooks/useActiveResearchBundle';
+import { formatEvidenceLabel } from '@/lib/format-evidence-label';
+import type { GovernedRunSummary } from '@/lib/governed-run';
 import { cn } from '@/lib/utils';
 import { groupRoutes } from '@/routes';
 import { useGlobalStore } from '@/store/globalStore';
 
-export function Sidebar() {
+export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary | null }) {
   const collapsed = useGlobalStore((state) => state.sidebarCollapsed);
   const setCollapsed = useGlobalStore((state) => state.setSidebarCollapsed);
   const location = useLocation();
@@ -30,9 +32,13 @@ export function Sidebar() {
 
       {!collapsed && (
         <div className="research-bundle-card">
-          <div className="research-bundle-label">Active evidence</div>
-          <div className="research-bundle-title">{bundle?.manifest.title || 'Loading bundle'}</div>
-          <div className="research-bundle-meta">Cutoff {bundle?.manifest.evidence_cutoff || 'not declared'}</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="research-bundle-label">Active evidence</div>
+            {activeRun && <span className="rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase">{activeRun.channel}</span>}
+          </div>
+          <div className="research-bundle-title">{activeRun?.title || bundle?.manifest.title || 'Loading bundle'}</div>
+          <div className="research-bundle-meta">Cutoff {activeRun?.evidenceCutoff || bundle?.manifest.evidence_cutoff || 'not declared'}</div>
+          {activeRun && <div className="mt-1 truncate text-[10px] text-muted-foreground">{formatEvidenceLabel(activeRun.publicationStatus)}</div>}
         </div>
       )}
 
