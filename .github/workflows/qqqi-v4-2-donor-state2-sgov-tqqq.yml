@@ -8,10 +8,12 @@ on:
       - "configs/research_paradigms/qqqi_qqq_tqqq_donor_state2_sgov_tqqq_v4_13_research.yaml"
       - "src/research/v4_2_donor_state2_sgov_tqqq.py"
       - "src/research/v4_2_donor_state2_sgov_tqqq_runtime.py"
+      - "src/research/v4_2_donor_state2_sgov_tqqq_runtime_coverage.py"
       - "scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq.py"
       - "scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq_safe.py"
       - "tests/test_v4_2_donor_state2_sgov_tqqq.py"
       - "tests/test_v4_2_donor_state2_sgov_tqqq_runtime.py"
+      - "tests/test_v4_2_donor_state2_sgov_tqqq_runtime_coverage.py"
   workflow_dispatch:
     inputs:
       end_date:
@@ -41,13 +43,16 @@ jobs:
           uv run ruff check \
             src/research/v4_2_donor_state2_sgov_tqqq.py \
             src/research/v4_2_donor_state2_sgov_tqqq_runtime.py \
+            src/research/v4_2_donor_state2_sgov_tqqq_runtime_coverage.py \
             scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq.py \
             scripts/run_qqqi_v4_2_donor_state2_sgov_tqqq_safe.py \
             tests/test_v4_2_donor_state2_sgov_tqqq.py \
-            tests/test_v4_2_donor_state2_sgov_tqqq_runtime.py
+            tests/test_v4_2_donor_state2_sgov_tqqq_runtime.py \
+            tests/test_v4_2_donor_state2_sgov_tqqq_runtime_coverage.py
           uv run pytest \
             tests/test_v4_2_donor_state2_sgov_tqqq.py \
             tests/test_v4_2_donor_state2_sgov_tqqq_runtime.py \
+            tests/test_v4_2_donor_state2_sgov_tqqq_runtime_coverage.py \
             tests/test_v4_2_cross_asset_sgov_tqqq_transfer.py \
             tests/test_vxn_bridge_allocation_experiment.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
