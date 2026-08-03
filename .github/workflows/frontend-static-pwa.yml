@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'qlib-dashboard/**'
+      - 'data/research/formal_backtests/**'
       - 'Makefile'
       - 'pyproject.toml'
       - '.env.example'
@@ -17,22 +18,27 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: frontend-static-pwa-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-static-pwa:
     runs-on: ubuntu-latest
     env:
       VITE_RUNTIME_MODE: static_artifact
+      FORMAL_BACKTEST_VALIDATION_MODE: candidate
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Verify zero-server architecture boundary
         run: python scripts/check_legacy_web_boundary.py
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
 
