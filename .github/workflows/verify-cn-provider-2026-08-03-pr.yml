@@ -32,14 +32,16 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Fetch exact AkShare/Sina shard
+      - name: Rebuild accepted prefix and append one current session
         run: >-
           uv run python scripts/data/fetch_cn_provider_shard.py
           --output-root artifacts/shard-${{ matrix.shard }}
           --shard-index ${{ matrix.shard }}
           --shard-count 8
           --start 2021-01-01
+          --base-cutoff 2026-07-31
           --cutoff 2026-08-03
+          --append-provider efinance
       - name: Upload shard evidence
         uses: actions/upload-artifact@v4
         with:
@@ -69,7 +71,7 @@ jobs:
           pattern: cn-provider-2026-08-03-shard-*
           path: artifacts/shards
           merge-multiple: true
-      - name: Verify exact pool and source coverage
+      - name: Verify exact pool and append coverage
         run: |
           uv run python - <<'PY'
           import json
@@ -80,16 +82,40 @@ jobs:
           for path in manifests:
               payload = json.loads(path.read_text(encoding='utf-8'))
               assert payload['status'] == 'complete', payload
+              assert payload['base_cutoff'] == '2026-07-31', payload
               assert payload['cutoff'] == '2026-08-03', payload
-              assert payload['provider'] == 'akshare_sina', payload
+              assert payload['provider'] == 'akshare_sina_plus_efinance_append', payload
+              assert payload['append_semantics'] == 'one_session_append_with_proportional_overlap_anchor_v1', payload
               rows.extend(payload['records'])
           symbols = [row['symbol'] for row in rows]
           assert len(symbols) == 131 and len(set(symbols)) == 131, symbols
+          assert all(row['base_last_date'] == '2026-07-31' for row in rows), rows
           assert all(row['last_date'] == '2026-08-03' for row in rows), rows
-          assert all(row['provider'] == 'akshare_sina' for row in rows), rows
+          assert all(row['base_provider'] == 'akshare_sina' for row in rows), rows
+          assert all(row['append_provider'] == 'efinance' for row in rows), rows
+          assert all(row['row_count'] == row['base_row_count'] + 1 for row in rows), rows
+          assert all(row['reconciliation']['price_ratio_spread'] <= row['reconciliation']['price_ratio_spread_tolerance'] for row in rows), rows
+          assert len(list(Path('artifacts/shards/csv_base').glob('*.csv'))) == 131
           assert len(list(Path('artifacts/shards/csv').glob('*.csv'))) == 131
           PY
-      - name: Build exact Qlib provider
+      - name: Rebuild and verify immutable 2026-07-31 provider prefix
+        run: |
+          uv run python scripts/build_market_providers.py \
+            --root artifacts/base-provider-root \
+            --csv-dir artifacts/shards/csv_base \
+            --markets cn
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          provider = json.loads(
+              Path('artifacts/base-provider-root/data/providers/cn/provider_manifest.json').read_text()
+          )
+          assert provider['provider_identity_sha256'] == '6614e26a4d7cc27dad4e1123ddcc1a73f0e753b7c115e86577a40ab195da2d09', provider
+          assert provider['calendar']['last_day'] == '2026-07-31', provider
+          assert provider['calendar']['session_count'] == 1351, provider
+          assert provider['instruments']['count'] == 131, provider
+          PY
+      - name: Build exact appended Qlib provider
         run: >-
           uv run python scripts/build_market_providers.py
           --root artifacts/provider-root
@@ -100,17 +126,24 @@ jobs:
           uv run python - <<'PY'
           import json
           from pathlib import Path
+          base_path = Path('artifacts/base-provider-root/data/providers/cn/provider_manifest.json')
           path = Path('artifacts/provider-root/data/providers/cn/provider_manifest.json')
+          base = json.loads(base_path.read_text(encoding='utf-8'))
           provider = json.loads(path.read_text(encoding='utf-8'))
           assert provider['calendar']['first_day'] == '2021-01-04', provider
           assert provider['calendar']['last_day'] == '2026-08-03', provider
           assert provider['calendar']['session_count'] == 1352, provider
           assert provider['instruments']['count'] == 131, provider
+          assert provider['provider_identity_sha256'] != base['provider_identity_sha256'], provider
           receipt = {
-              'schema_version': '1.0.0',
+              'schema_version': '1.1.0',
               'status': 'complete',
+              'base_cutoff': '2026-07-31',
               'cutoff': '2026-08-03',
+              'base_provider_identity_sha256': base['provider_identity_sha256'],
               'provider_identity_sha256': provider['provider_identity_sha256'],
+              'append_source': 'efinance',
+              'append_semantics': 'one_session_append_with_proportional_overlap_anchor_v1',
               'calendar_session_count': provider['calendar']['session_count'],
               'instrument_count': provider['instruments']['count'],
               'workflow_run_id': '${{ github.run_id }}',
@@ -130,6 +163,8 @@ jobs:
             shard-0.json shard-1.json shard-2.json shard-3.json \
             shard-4.json shard-5.json shard-6.json shard-7.json
           tar -C artifacts -rf artifacts/cn-provider-2026-08-03.tar provider-receipt.json
+          tar -C artifacts/base-provider-root -rf artifacts/cn-provider-2026-08-03.tar \
+            data/providers/cn/provider_manifest.json data/providers/cn/calendars/day.txt
           test "$(tar -tf artifacts/cn-provider-2026-08-03.tar | grep -c '^data/providers/cn/features/')" -gt 100
           tar -tf artifacts/cn-provider-2026-08-03.tar | grep -Fx 'data/providers/cn/calendars/day.txt'
       - name: Upload complete verified provider
