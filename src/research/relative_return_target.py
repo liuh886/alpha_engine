@@ -234,12 +234,13 @@ def prove_naive_rank_invariance(
 ) -> dict[str, int | bool]:
     """Prove that same-date benchmark subtraction preserves daily ranks."""
 
+    stock_sorted = stock_forward_returns.sort_index()
     naive = make_naive_benchmark_excess_returns(
-        stock_forward_returns,
+        stock_sorted,
         benchmark_forward_returns,
     )
-    raw_rank = make_daily_rank_target(stock_forward_returns)
-    naive_rank = make_daily_rank_target(naive)
+    raw_rank = make_daily_rank_target(stock_sorted).sort_index()
+    naive_rank = make_daily_rank_target(naive).sort_index()
     valid = raw_rank.notna() & naive_rank.notna()
     if not raw_rank.loc[valid].equals(naive_rank.loc[valid]):
         raise ValueError("naive benchmark subtraction changed same-date ranks")
