@@ -1,6 +1,7 @@
 import { AlertTriangle, Archive, BadgeCheck, CircleSlash2, FileCheck2 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { Dashboard } from '@/components/Dashboard';
+import { formatEvidenceLabel } from '@/lib/format-evidence-label';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
 function StatusPanel({ title, children }: { title: string; children: React.ReactNode }) {
@@ -22,7 +23,7 @@ export function RunReviewPage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border px-2 py-1 text-[10px] font-bold uppercase">{run.channel}</span>
-              <span className="text-xs text-muted-foreground">{run.publicationStatus.replaceAll('_', ' ')}</span>
+              <span className="text-xs text-muted-foreground">{formatEvidenceLabel(run.publicationStatus)}</span>
             </div>
             <h2 className="mt-2 text-xl font-semibold">{run.title}</h2>
             <p className="mt-1 text-xs text-muted-foreground">Run {run.runId} · evidence cutoff {run.evidenceCutoff}</p>
@@ -50,7 +51,7 @@ export function RunReviewPage() {
           <div>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 font-bold uppercase text-amber-700 dark:text-amber-300">{run.channel}</span>
-              <span className="text-muted-foreground">{run.publicationStatus.replaceAll('_', ' ')}</span>
+              <span className="text-muted-foreground">{formatEvidenceLabel(run.publicationStatus)}</span>
             </div>
             <h2 className="mt-3 text-2xl font-semibold">{run.title}</h2>
             <p className="mt-1 break-all text-sm text-muted-foreground">{run.modelFamilyId} / {run.modelVersionId} / {run.runId}</p>
@@ -59,7 +60,7 @@ export function RunReviewPage() {
             <div><dt className="text-muted-foreground">Market</dt><dd className="mt-1 font-semibold">{run.market}</dd></div>
             <div><dt className="text-muted-foreground">Cutoff</dt><dd className="mt-1 font-semibold">{run.evidenceCutoff}</dd></div>
             <div><dt className="text-muted-foreground">Evidence</dt><dd className="mt-1 font-semibold">{run.evidenceStatus}</dd></div>
-            <div><dt className="text-muted-foreground">Decision</dt><dd className="mt-1 font-semibold">{run.decisionStatus.replaceAll('_', ' ')}</dd></div>
+            <div><dt className="text-muted-foreground">Decision</dt><dd className="mt-1 font-semibold">{formatEvidenceLabel(run.decisionStatus)}</dd></div>
           </dl>
         </div>
       </section>
@@ -74,7 +75,7 @@ export function RunReviewPage() {
               <div key={section.section_id} className="flex items-start justify-between gap-3 rounded-lg border p-3">
                 <div className="flex min-w-0 items-start gap-2">
                   {section.availability_status === 'available' ? <FileCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> : section.required_for_model_kind ? <CircleSlash2 className="mt-0.5 h-4 w-4 shrink-0 text-red-500" /> : <Archive className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
-                  <div><div className="font-semibold">{section.section_id}</div><div className="mt-0.5 text-muted-foreground">{section.reason || section.availability_status.replaceAll('_', ' ')}</div></div>
+                  <div><div className="font-semibold">{section.section_id}</div><div className="mt-0.5 text-muted-foreground">{section.reason || formatEvidenceLabel(section.availability_status)}</div></div>
                 </div>
                 <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px]">{section.required_for_model_kind ? 'required' : 'optional'}</span>
               </div>
