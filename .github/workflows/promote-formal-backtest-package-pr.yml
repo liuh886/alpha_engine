@@ -1,0 +1,78 @@
+name: Promote Formal Backtest Package PR
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/promote-formal-backtest-package-pr.yml
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: promote-formal-backtest-package-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  promote:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout PR head branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Download accepted deterministic package evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: formal-backtest-freshness-evidence-30788014893
+          path: artifacts/evidence
+          github-token: ${{ github.token }}
+          repository: liuh886/alpha_engine
+          run-id: 30788014893
+      - name: Verify and install formal release atomically
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import shutil
+          from pathlib import Path
+
+          source = Path("artifacts/evidence/generated-formal")
+          target = Path("data/research/formal_backtests")
+          expected = {
+              "qqqi_qqq_tqqq_v4_2.json": "fc5b325254895d8292f86c317fa2c343ca2ebab834c606ac94c318c7664b2a6f",
+              "us_x1_1.json": "560a9c4762ee670048dd29f9df2f2846873c8088994ef5888ea60d544f19f00c",
+              "cn_x1_0.json": "29e93a695f613cfbb7afef2d1c9f9388f4aa8aef54460b3a15bb403a440d6b22",
+              "catalog.json": "304f80b57554a4ff80a526a55d31db1dcabf495c8db968998593787e32204320",
+              "freshness.json": "31db61038d08a9384ec40bcf311ecb955a66ffefda7bb53eb35bf6095926f374",
+          }
+          for name, digest in expected.items():
+              path = source / name
+              assert path.is_file(), path
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == digest, name
+          for model_id, name in (("us_x1_1", "us_x1_1.json"), ("cn_x1_0", "cn_x1_0.json")):
+              payload = json.loads((source / name).read_text())
+              freshness = payload["evidence"]["freshness_evidence"]
+              assert payload["model_id"] == model_id
+              assert payload["evidence_cutoff"] == "2026-07-31"
+              assert payload["date_range"]["end"] == "2026-07-31"
+              assert payload["window_summary"][-1]["window"] == "2026H2_partial"
+              assert freshness["workflow_run_id"] == "30787595662"
+              assert freshness["workflow_head_sha"] == "31e3be50a26943f89747e65416e0701cfb9fbd95"
+              assert freshness["artifact_id"] == 8845852422
+              assert freshness["artifact_digest"] == "sha256:33e3f40acd81e50578985656272d5b5ea45edffa061a652f7cb1012e94932e75"
+          target.mkdir(parents=True, exist_ok=True)
+          for name in expected:
+              shutil.copyfile(source / name, target / name)
+          PY
+          git rm .github/workflows/promote-formal-backtest-package-pr.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/formal_backtests
+          git diff --cached --check
+          git commit -m "data: refresh formal backtests through 2026-07-31"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
