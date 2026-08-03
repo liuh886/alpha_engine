@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths:
       - .github/workflows/verify-cn-provider-2026-08-03-pr.yml
+      - scripts/data/fetch_cn_current_provider_shard.py
       - scripts/data/fetch_cn_provider_shard.py
+      - src/data/adapters/sina_close_snapshot_adapter.py
 
 permissions:
   contents: read
@@ -32,16 +34,15 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Rebuild accepted prefix and append one current session
+      - name: Rebuild accepted prefix and append one completed close snapshot
         run: >-
-          uv run python scripts/data/fetch_cn_provider_shard.py
+          uv run python scripts/data/fetch_cn_current_provider_shard.py
           --output-root artifacts/shard-${{ matrix.shard }}
           --shard-index ${{ matrix.shard }}
           --shard-count 8
           --start 2021-01-01
           --base-cutoff 2026-07-31
           --cutoff 2026-08-03
-          --append-provider akshare
       - name: Upload shard evidence
         uses: actions/upload-artifact@v4
         with:
@@ -84,15 +85,15 @@ jobs:
               assert payload['status'] == 'complete', payload
               assert payload['base_cutoff'] == '2026-07-31', payload
               assert payload['cutoff'] == '2026-08-03', payload
-              assert payload['provider'] == 'akshare_sina_plus_akshare_append', payload
-              assert payload['append_semantics'] == 'one_session_append_with_proportional_overlap_anchor_v1', payload
+              assert payload['provider'] == 'akshare_sina_plus_sina_close_snapshot', payload
+              assert payload['append_semantics'] == 'one_completed_session_with_raw_overlap_anchor_v1', payload
               rows.extend(payload['records'])
           symbols = [row['symbol'] for row in rows]
           assert len(symbols) == 131 and len(set(symbols)) == 131, symbols
           assert all(row['base_last_date'] == '2026-07-31' for row in rows), rows
           assert all(row['last_date'] == '2026-08-03' for row in rows), rows
           assert all(row['base_provider'] == 'akshare_sina' for row in rows), rows
-          assert all(row['append_provider'] == 'akshare' for row in rows), rows
+          assert all(row['append_provider'] == 'sina_close_snapshot' for row in rows), rows
           assert all(row['row_count'] == row['base_row_count'] + 1 for row in rows), rows
           assert all(row['reconciliation']['price_ratio_spread'] <= row['reconciliation']['price_ratio_spread_tolerance'] for row in rows), rows
           assert len(list(Path('artifacts/shards/csv_base').glob('*.csv'))) == 131
@@ -136,14 +137,14 @@ jobs:
           assert provider['instruments']['count'] == 131, provider
           assert provider['provider_identity_sha256'] != base['provider_identity_sha256'], provider
           receipt = {
-              'schema_version': '1.1.0',
+              'schema_version': '1.2.0',
               'status': 'complete',
               'base_cutoff': '2026-07-31',
               'cutoff': '2026-08-03',
               'base_provider_identity_sha256': base['provider_identity_sha256'],
               'provider_identity_sha256': provider['provider_identity_sha256'],
-              'append_source': 'akshare_eastmoney',
-              'append_semantics': 'one_session_append_with_proportional_overlap_anchor_v1',
+              'append_source': 'sina_close_snapshot',
+              'append_semantics': 'one_completed_session_with_raw_overlap_anchor_v1',
               'calendar_session_count': provider['calendar']['session_count'],
               'instrument_count': provider['instruments']['count'],
               'workflow_run_id': '${{ github.run_id }}',
