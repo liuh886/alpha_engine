@@ -93,6 +93,8 @@ estimator:
 
 strategy:
   structural_tqqq_weight: 0.75
+  probability_low_below: 0.45
+  probability_high_at_or_above: 0.60
   structural_conditions:
     qqq_above_ma200: true
     ma50_above_ma200: true
