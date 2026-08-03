@@ -8,9 +8,11 @@ on:
       - "configs/research_paradigms/cn_x1_0_frozen_v1.yaml"
       - "scripts/build_latest_formal_backtests.py"
       - "scripts/finalize_latest_formal_backtests.py"
+      - "scripts/materialize_formal_backtest_base.py"
       - "scripts/verify_formal_backtest_freshness.py"
       - "tests/test_build_latest_formal_backtests.py"
       - "tests/test_finalize_latest_formal_backtests.py"
+      - "tests/test_materialize_formal_backtest_base.py"
       - "tests/test_formal_backtest_freshness.py"
       - ".github/workflows/formal-backtest-freshness-evidence.yml"
       - "data/research/formal_backtests/**"
@@ -46,19 +48,30 @@ jobs:
           uv run ruff check \
             scripts/build_latest_formal_backtests.py \
             scripts/finalize_latest_formal_backtests.py \
+            scripts/materialize_formal_backtest_base.py \
             scripts/verify_formal_backtest_freshness.py \
             tests/test_build_latest_formal_backtests.py \
             tests/test_finalize_latest_formal_backtests.py \
+            tests/test_materialize_formal_backtest_base.py \
             tests/test_formal_backtest_freshness.py
           uv run mypy \
             scripts/build_latest_formal_backtests.py \
             scripts/finalize_latest_formal_backtests.py \
+            scripts/materialize_formal_backtest_base.py \
             scripts/verify_formal_backtest_freshness.py
           uv run pytest \
             tests/test_build_latest_formal_backtests.py \
             tests/test_finalize_latest_formal_backtests.py \
+            tests/test_materialize_formal_backtest_base.py \
             tests/test_formal_backtest_freshness.py \
             -q --strict-markers --tb=short
+
+      - name: Materialize immutable accepted formal bases
+        run: |
+          uv run python scripts/materialize_formal_backtest_base.py \
+            --manifest data/research/formal_backtests/base_manifest.json \
+            --output-dir artifacts/formal-base \
+            --receipt artifacts/formal-base-receipt.json
 
       - name: Download US provider through 2026-07-31
         uses: actions/download-artifact@v4
@@ -210,7 +223,7 @@ jobs:
             --cn-run-b artifacts/freshness/cn-b/cn_x1_0_frozen_v1 \
             --us-calendar artifacts/source/us/provider_a/data/providers/us/calendars/day.txt \
             --cn-calendar artifacts/source/cn/data/providers/cn/calendars/day.txt \
-            --existing-dir data/research/formal_backtests \
+            --existing-dir artifacts/formal-base \
             --output-dir artifacts/generated-formal \
             --cutoff 2026-07-31 \
             --generated-at "$GENERATED_AT" \
@@ -219,7 +232,7 @@ jobs:
             --receipt artifacts/freshness-build-receipt.json
           uv run python scripts/finalize_latest_formal_backtests.py \
             --generated-dir artifacts/generated-formal \
-            --existing-dir data/research/formal_backtests \
+            --existing-dir artifacts/formal-base \
             --cn-run-dir artifacts/freshness/cn-a/cn_x1_0_frozen_v1 \
             --cn-provider-identity "$CN_PROVIDER_IDENTITY" \
             --receipt artifacts/formal-finalization-receipt.json
@@ -236,7 +249,7 @@ jobs:
           import json
           from pathlib import Path
 
-          old_root = Path("data/research/formal_backtests")
+          old_root = Path("artifacts/formal-base")
           new_root = Path("artifacts/generated-formal")
           old_us = json.loads((old_root / "us_x1_1.json").read_text(encoding="utf-8"))
           new_us = json.loads((new_root / "us_x1_1.json").read_text(encoding="utf-8"))
@@ -266,6 +279,8 @@ jobs:
         with:
           name: formal-backtest-freshness-evidence-${{ github.run_id }}
           path: |
+            artifacts/formal-base
+            artifacts/formal-base-receipt.json
             artifacts/freshness
             artifacts/generated-formal
             artifacts/freshness-build-receipt.json
