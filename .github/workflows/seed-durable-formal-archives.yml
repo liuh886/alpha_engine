@@ -1,0 +1,68 @@
+name: Seed Durable Formal Archives
+
+on:
+  push:
+    branches: ["governance/durable-formal-evidence-v1"]
+    paths:
+      - ".github/workflows/seed-durable-formal-archives.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: seed-durable-formal-archives
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governance branch
+        uses: actions/checkout@v4
+        with:
+          ref: governance/durable-formal-evidence-v1
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Download exact source archives
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf data/research/formal_promotions/archive
+          mkdir -p data/research/formal_promotions/archive artifacts/formal-archive-seed
+          uv run python scripts/run_formal_promotion.py fetch \
+            --manifest-dir data/research/formal_promotions \
+            --archive-dir data/research/formal_promotions/archive \
+            --receipt artifacts/formal-archive-seed/fetch-receipt.json
+          test "$(sha256sum data/research/formal_promotions/archive/cn_x1_0.zip | cut -d' ' -f1)" = "8696b9d12a11b86f8732b571ea225fed3e6c23f27a29f977a7ed925d3bf08307"
+          test "$(sha256sum data/research/formal_promotions/archive/qqqi_qqq_tqqq_v4_2.zip | cut -d' ' -f1)" = "3b4962b11796ee72ec4f74cca12ddf0d40800cf5417af4e42dabfb3a3d81abbf"
+          test "$(sha256sum data/research/formal_promotions/archive/us_x1_1.zip | cut -d' ' -f1)" = "3fa7adfc034252b0cd36217dd041670975a070be6b27683a987db32ce95bc809"
+
+      - name: Commit immutable archives to governance branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/formal_promotions/archive
+          git diff --cached --stat
+          git commit -m "governance: retain exact formal source archives"
+          git push origin HEAD:governance/durable-formal-evidence-v1
+
+      - name: Retain seed receipt
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: durable-formal-archive-seed
+          path: artifacts/formal-archive-seed
+          if-no-files-found: error
+          retention-days: 14
