@@ -1,0 +1,171 @@
+name: CN Formal Freshness Candidate 2026-08-03
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/cn-formal-freshness-candidate-2026-08-03.yml
+      - configs/research_paradigms/cn_x1_0_frozen_v1_2026_08_03.yaml
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: cn-formal-freshness-candidate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  execute:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      PROVIDER_RUN_ID: "30800135063"
+      PROVIDER_ARTIFACT_ID: "8850463785"
+      PROVIDER_ARTIFACT: cn-provider-2026-08-03-30800135063
+      PROVIDER_ARTIFACT_DIGEST: sha256:711b7e33e578a92a87d5056b61b4a026c58da878878ee53b504a5e0d629395cc
+      PROVIDER_TAR_SHA256: 320d02b48ac8b4381d82e776ac60b26cb844ce11f9a0b7cddfd60cae1b896546
+      PROVIDER_IDENTITY: abae71f037571a9a847d4582e0bea9fabdd71796cac54a70aa7c6d07b668eeb0
+      CUTOFF: "2026-08-03"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Verify provider artifact metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          artifact_id = int(os.environ['PROVIDER_ARTIFACT_ID'])
+          request = urllib.request.Request(
+              f'https://api.github.com/repos/liuh886/alpha_engine/actions/artifacts/{artifact_id}',
+              headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': f"Bearer {os.environ['GITHUB_TOKEN']}",
+                  'User-Agent': 'alpha-engine-cn-freshness/1.0',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              metadata = json.loads(response.read())
+          assert metadata['id'] == artifact_id, metadata
+          assert metadata['name'] == os.environ['PROVIDER_ARTIFACT'], metadata
+          assert metadata['digest'] == os.environ['PROVIDER_ARTIFACT_DIGEST'], metadata
+          assert metadata['expired'] is False, metadata
+          assert metadata['workflow_run']['id'] == int(os.environ['PROVIDER_RUN_ID']), metadata
+          PY
+      - name: Download governed CN provider
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PROVIDER_ARTIFACT }}
+          path: artifacts/provider-download
+          github-token: ${{ github.token }}
+          repository: liuh886/alpha_engine
+          run-id: ${{ env.PROVIDER_RUN_ID }}
+      - name: Verify and extract provider
+        run: |
+          set -euo pipefail
+          TAR=artifacts/provider-download/cn-provider-2026-08-03.tar
+          test "$(sha256sum "$TAR" | cut -d' ' -f1)" = "$PROVIDER_TAR_SHA256"
+          mkdir -p artifacts/provider
+          tar -C artifacts/provider -xf "$TAR"
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path('artifacts/provider')
+          receipt = json.loads((root / 'provider-receipt.json').read_text())
+          manifest = json.loads((root / 'data/providers/cn/provider_manifest.json').read_text())
+          assert receipt['status'] == 'complete'
+          assert receipt['cutoff'] == os.environ['CUTOFF']
+          assert receipt['provider_identity_sha256'] == os.environ['PROVIDER_IDENTITY']
+          assert manifest['provider_identity_sha256'] == os.environ['PROVIDER_IDENTITY']
+          assert manifest['calendar']['last_day'] == os.environ['CUTOFF']
+          assert manifest['calendar']['session_count'] == 1352
+          assert manifest['instruments']['count'] == 131
+          PY
+      - name: Execute frozen CN x1.0 twice
+        run: |
+          uv run python scripts/run_cn_feature_quality_validation.py \
+            --spec configs/research_paradigms/cn_x1_0_frozen_v1_2026_08_03.yaml \
+            --provider-uri artifacts/provider/data/providers/cn \
+            --output-dir artifacts/freshness/cn-a
+          uv run python scripts/run_cn_feature_quality_validation.py \
+            --spec configs/research_paradigms/cn_x1_0_frozen_v1_2026_08_03.yaml \
+            --provider-uri artifacts/provider/data/providers/cn \
+            --output-dir artifacts/freshness/cn-b
+      - name: Verify duplicate trace identity and write candidate receipt
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from scripts.build_latest_formal_backtests import _trace, _trace_hash, _validate_trace
+
+          roots = [
+              Path('artifacts/freshness/cn-a/cn_x1_0_frozen_v1'),
+              Path('artifacts/freshness/cn-b/cn_x1_0_frozen_v1'),
+          ]
+          traces = []
+          for root in roots:
+              plan = json.loads((root / 'walk_forward_windows.json').read_text())
+              assert plan['requested_test_end'] == os.environ['CUTOFF'], plan
+              assert plan['available_end'] == os.environ['CUTOFF'], plan
+              assert plan['partial_window_count'] == 1, plan
+              latest = {row['label']: row for row in plan['windows']}['2026H2']
+              assert latest['status'] == 'included' and latest['complete'] is False, latest
+              assert latest['counts_toward_min_windows'] is False, latest
+              assert latest['effective_test_end'] == os.environ['CUTOFF'], latest
+              _, trace = _trace(root, '2026H2')
+              _validate_trace(trace)
+              traces.append(trace)
+          hashes = [_trace_hash(trace) for trace in traces]
+          assert hashes[0] == hashes[1], hashes
+          receipt = {
+              'schema_version': '1.0.0',
+              'status': 'candidate_reproducible_cn_freshness_evidence',
+              'cutoff': os.environ['CUTOFF'],
+              'generated_at': '2026-08-03T09:15:00Z',
+              'provider': {
+                  'workflow_run_id': int(os.environ['PROVIDER_RUN_ID']),
+                  'artifact_id': int(os.environ['PROVIDER_ARTIFACT_ID']),
+                  'artifact_name': os.environ['PROVIDER_ARTIFACT'],
+                  'artifact_digest': os.environ['PROVIDER_ARTIFACT_DIGEST'],
+                  'tar_sha256': os.environ['PROVIDER_TAR_SHA256'],
+                  'provider_identity_sha256': os.environ['PROVIDER_IDENTITY'],
+              },
+              'trace_sha256': {'2026H2': hashes[0]},
+              'independent_execution_count': 2,
+              'workflow_run_id': int(os.environ['GITHUB_RUN_ID']),
+              'workflow_head_sha': os.environ['GITHUB_SHA'],
+              'research_only': True,
+              'trade_ready': False,
+          }
+          Path('artifacts/cn-freshness-candidate-receipt.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n'
+          )
+          print(json.dumps(receipt, sort_keys=True))
+          PY
+      - name: Upload candidate freshness evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cn-formal-freshness-candidate-2026-08-03-${{ github.run_id }}
+          path: |
+            artifacts/cn-freshness-candidate-receipt.json
+            artifacts/freshness
+            artifacts/provider/provider-receipt.json
+            artifacts/provider/data/providers/cn/provider_manifest.json
+            artifacts/provider/data/providers/cn/calendars/day.txt
+          if-no-files-found: error
+          retention-days: 90
