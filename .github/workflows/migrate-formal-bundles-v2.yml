@@ -33,6 +33,9 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
+      - name: Apply mechanical lint fix
+        run: |
+          sed -i 's/^    catalog = update_catalog(/    update_catalog(/' scripts/migrate_formal_v1_to_bundle_v2.py
       - name: Validate migration implementation
         run: |
           uv run ruff check scripts/migrate_formal_v1_to_bundle_v2.py tests/test_migrate_formal_v1_to_bundle_v2.py
@@ -79,7 +82,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/research/formal_model_runs .github/workflows/migrate-formal-bundles-v2.yml
+          git add \
+            scripts/migrate_formal_v1_to_bundle_v2.py \
+            data/research/formal_model_runs \
+            .github/workflows/migrate-formal-bundles-v2.yml
           git diff --cached --check
           git commit -m "data: publish formal Model Run Bundle v2 artifacts"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
