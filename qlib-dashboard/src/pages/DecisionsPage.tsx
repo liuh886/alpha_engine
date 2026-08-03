@@ -1,5 +1,6 @@
 import { FileQuestion, ShieldCheck } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
+import { formatEvidenceLabel } from '@/lib/format-evidence-label';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
 export function DecisionsPage() {
@@ -24,7 +25,7 @@ export function DecisionsPage() {
         <h3 className="mt-4 text-lg font-semibold">No completed decision receipt</h3>
         <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">
           {activeRun
-            ? `${activeRun.title} declares decision status “${activeRun.decisionStatus.replaceAll('_', ' ')}”. PR 6 will add verified decision.json loading and review.`
+            ? `${activeRun.title} declares decision status “${formatEvidenceLabel(activeRun.decisionStatus)}”. PR 6 will add verified decision.json loading and review.`
             : 'Select a governed run. Absent and pending receipts remain explicit rather than being replaced by browser heuristics.'}
         </p>
       </section>
