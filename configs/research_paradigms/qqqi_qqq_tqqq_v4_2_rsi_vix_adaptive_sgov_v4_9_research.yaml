@@ -1,0 +1,78 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_rsi_vix_adaptive_sgov_v4_9_research
+parent_experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+purpose: >-
+  Test whether one pre-registered Wilder RSI(14) and VIX joint regime overlay
+  can use SGOV only during confirmed deterioration, then release it during
+  confirmed repair, while preserving the exact v4.2 signal trace and state-2
+  allocation.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  sgov_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml
+  attribution_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_episode_attribution.yaml
+  signal_trace_must_equal_v4_2: true
+  state_2_allocation_must_equal_v4_2: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  no_threshold_weight_period_or_persistence_search: true
+  actionable_alert_changes_authorized: false
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  common_tradable_window: true
+  corporate_action_basis: adjusted
+  required_symbols: [QQQI, QQQ, TQQQ, SGOV, ^VIX, ^VXN]
+  actual_product_scope:
+    qqqi_history_must_be_real: true
+    synthetic_pre_inception_backfill: false
+  proxy_scope:
+    qqqi_defensive_component: QQQ
+    role: proxy_mechanism_only
+
+overlay_rules:
+  rsi_method: wilder
+  rsi_period: 14
+  activation_rsi_below: 45.0
+  release_rsi_above: 50.0
+  release_confirmation_closes: 2
+  joint_activation_requires_vix_stress: true
+  joint_release_requires_vix_easing_or_normalization: true
+  high_rsi_is_not_an_exit_signal: true
+  hysteresis_is_frozen: true
+
+allocations:
+  base_state_0: {QQQI: 1.00, QQQ: 0.00, TQQQ: 0.00, SGOV: 0.00}
+  base_state_1: {QQQI: 0.50, QQQ: 0.50, TQQQ: 0.00, SGOV: 0.00}
+  overlay_state_0: {QQQI: 0.50, QQQ: 0.00, TQQQ: 0.00, SGOV: 0.50}
+  overlay_state_1: {QQQI: 0.25, QQQ: 0.50, TQQQ: 0.00, SGOV: 0.25}
+  state_2_frozen: {QQQI: 0.00, QQQ: 0.25, TQQQ: 0.75, SGOV: 0.00}
+
+validation:
+  chronological_train_fraction: 0.60
+  primary_major_episode_count: 5
+  event_horizons: [5, 10, 20, 40]
+  false_defense_forward_drawdown_threshold: 0.03
+  promotion_gate:
+    max_drawdown_improvement_pp_min: 2.00
+    major_trough_improvement_rate_min: 0.60
+    cagr_sacrifice_pp_max: 2.00
+    median_recovery_lag_sessions_max: 20
+    single_factor_metrics_to_beat_min: 2
+    largest_positive_event_share_max: 0.60
+    turnover_increase_max: 0.20
+
+hypothesis_discipline:
+  - Run exactly five comparators on identical dates and costs.
+  - Do not change RSI period, thresholds, confirmation length or SGOV weights.
+  - Do not fit a classifier or search a threshold grid.
+  - State 2 remains exactly 25% QQQ and 75% TQQQ.
+  - The actual-product sample and QQQ proxy sample must be reported separately.
+  - Passing authorizes only a non-actionable shadow candidate.
+  - v4.2 and Issue 348 remain unchanged.
