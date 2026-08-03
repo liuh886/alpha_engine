@@ -1,0 +1,158 @@
+schema_version: "1.0"
+decision_date: "2026-08-03"
+strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-02.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    The post-defense formal-state-2 accelerator recovered most of the CAGR lost
+    by the frozen RSI×VIX defense while retaining material maximum-drawdown
+    protection, but it failed the preregistered late-segment Calmar, event
+    concentration and turnover gates. v4.2 therefore remains the only
+    actionable research baseline.
+
+prior_rsi_vix_defense:
+  experiment_id: qqqi_qqq_tqqq_v4_2_rsi_vix_adaptive_sgov_v4_9_research
+  evidence:
+    report: docs/research/qqqi_qqq_tqqq_v4_2_rsi_vix_adaptive_sgov_result_2026-08-03.md
+    workflow_run: 30814242368
+    artifact_id: 8856045059
+    artifact_digest: sha256:e42f10f9d72c54dc2a8ad958dc51c93013c35f1c477515bac4a80c526d332f9c
+  actual_findings:
+    cagr: 0.290959
+    max_drawdown: -0.185978
+    calmar: 1.564481
+  decision: retain_as_frozen_defense_comparator_only
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+
+post_defense_state2_accelerator:
+  experiment_id: qqqi_qqq_tqqq_v4_2_post_defense_state2_accelerator_v4_10_research
+  role: frozen_nonpromoted_mechanism_candidate
+  structure:
+    defense: exact_v4_9_rsi_vix_sgov_trace
+    arm: one_completed_defense_release
+    trigger: first_subsequent_executed_formal_state_2_episode
+    ordinary_state_2: {QQQI: 0.00, SGOV: 0.00, QQQ: 0.25, TQQQ: 0.75}
+    accelerated_state_2: {QQQI: 0.00, SGOV: 0.00, QQQ: 0.00, TQQQ: 1.00}
+    single_use_per_defense_episode: true
+  evidence:
+    report: docs/research/qqqi_qqq_tqqq_v4_2_post_defense_state2_accelerator_result_2026-08-03.md
+    workflow_run: 30816493780
+    artifact_id: 8856964914
+    artifact_digest: sha256:81a0d01224ff622ab3e99396914953bd772abe1c408db539f54c740e22fbc337
+  actual_product_findings:
+    sample_start: "2024-02-20"
+    sample_end: "2026-07-30"
+    observations: 613
+    v4_2_cagr: 0.335757
+    v4_2_max_drawdown: -0.242245
+    v4_2_calmar: 1.386022
+    defense_only_cagr: 0.290959
+    combined_cagr: 0.326817
+    combined_max_drawdown: -0.191090
+    combined_calmar: 1.710277
+    cagr_gap_vs_v4_2_pp: 0.894028
+    max_drawdown_improvement_vs_v4_2_pp: 5.115513
+    defense_cagr_sacrifice_recovered_fraction: 0.800448
+    accelerated_sessions: 61
+    accelerator_events: 5
+    positive_event_rate: 0.80
+    largest_positive_event_share: 0.900033
+    turnover_units: 70.0
+    turnover_increase_vs_v4_2: 0.272727
+    late_segment_calmar: 3.349981
+    v4_2_late_segment_calmar: 3.617963
+  qqq_proxy_findings:
+    sample_start: "2020-06-19"
+    sample_end: "2026-07-30"
+    observations: 1535
+    v4_2_cagr: 0.345475
+    defense_only_cagr: 0.308131
+    combined_cagr: 0.339498
+    v4_2_max_drawdown: -0.389252
+    combined_max_drawdown: -0.372828
+    v4_2_calmar: 0.887537
+    combined_calmar: 0.910601
+    accelerated_sessions: 226
+    accelerator_events: 11
+    positive_event_rate: 0.818182
+    largest_positive_event_share: 0.416331
+  gates:
+    passed:
+      - maximum_drawdown_improves_at_least_3pp
+      - cagr_gap_vs_v4_2_no_more_than_1_5pp
+      - recover_at_least_two_thirds_of_defense_cagr_sacrifice
+      - full_sample_calmar_not_below_v4_2
+      - worst_20_session_return_not_materially_worse
+      - accelerator_event_positive_rate_at_least_60_percent
+      - actual_and_proxy_cagr_delta_vs_defense_agree
+      - actual_and_proxy_calmar_delta_vs_defense_agree
+    failed:
+      - late_segment_calmar_not_below_v4_2
+      - largest_positive_event_share_no_more_than_50_percent
+      - turnover_increase_no_more_than_25_percent
+  decision: accelerator_not_chronologically_stable
+  audit: audit_pass_nonpromotion_result_valid
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+  interpretation: >-
+    The accelerator mechanism is economically meaningful: it recovered 80% of
+    the defense-only CAGR sacrifice and kept a 5.12 percentage-point maximum
+    drawdown improvement versus v4.2. However, almost all actual-sample positive
+    marginal benefit came from the 2026-04-10 to 2026-05-11 episode, late-sample
+    Calmar remained below v4.2, and turnover exceeded the frozen limit. The
+    result is promising but not sufficiently independent or stable for shadow
+    promotion.
+
+closed_retrospective_directions_added_2026_08_03:
+  - post_defense_state2_tqqq_weight_search
+  - post_defense_state2_duration_cap_search
+  - post_defense_state2_delay_search
+  - post_defense_state2_exit_override_search
+  - post_defense_state2_event_classifier_fit
+  - relaxing_preregistered_turnover_gate_after_result
+
+active_next_stage:
+  issue: 348
+  name: prospective_v4_2_alert_execution_feature_and_path_evidence
+  model_changes_authorized: false
+  baseline_alerts_unchanged: true
+  optional_nonactionable_fields_added:
+    - frozen_rsi_vix_defense_active
+    - completed_defense_release_arm_boolean
+    - hypothetical_post_defense_state2_accelerator_active
+    - hypothetical_post_defense_state2_accelerator_arm_id
+    - hypothetical_100_percent_tqqq_weight
+    - marginal_100_vs_75_percent_tqqq_outcome
+    - accelerator_episode_entry_and_exit_dates
+    - accelerator_episode_qqq_and_tqqq_path
+  reconsider_accelerator_only_after:
+    new_actual_qqqi_accelerator_events_minimum: 3
+    largest_historical_positive_event_share_below: 0.60
+    late_segment_calmar_rechecked_without_rule_change: true
+    no_weight_duration_delay_or_exit_search: true
+    separately_preregistered_promotion_review_required: true
+    rule: all_conditions_required
+
+next_admissible_research:
+  name: prospective_post_defense_state2_accelerator_validation
+  objective: >-
+    Record the exact frozen accelerator counterfactual on future actual-QQQI
+    defense-to-state-2 transitions without changing live weights. Accumulate
+    independent events before reconsidering whether the 2026 benefit generalizes.
+  prohibited:
+    - retrospective_weight_optimization
+    - retrospective_duration_selection
+    - retrospective_delay_selection
+    - classifier_fit
+    - direct_signal_promotion
