@@ -66,7 +66,8 @@ jobs:
               Path("artifacts/source/us/provider_a/data/providers/us/provider_manifest.json")
               .read_text(encoding="utf-8")
           )
-          assert us.get("end_time") == "2026-07-31", us
+          assert us.get("calendar", {}).get("last_day") == "2026-07-31", us
+          assert us.get("calendar", {}).get("session_count") == 1400, us
 
           cn_refresh = json.loads(
               Path(
