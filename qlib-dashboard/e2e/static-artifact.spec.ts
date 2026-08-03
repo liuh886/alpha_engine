@@ -120,7 +120,7 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await page.screenshot({ path: `test-results/static-artifact/governed-review-${testInfo.project.name}.png`, fullPage: true });
 
   await page.goto('/#/backtests');
-  await expect(page.getByRole('heading', { name: 'Formal Backtests', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Formal Backtests', exact: true, level: 2 })).toBeVisible();
   const baselines = page.getByRole('region', { name: 'Accepted formal backtest baselines' });
   await expect(baselines.getByRole('button', { name: /QQQ Rotation v4\.2/ })).toBeVisible();
   await expect(baselines.getByRole('button', { name: /US x1\.1/ })).toBeVisible();
@@ -130,7 +130,7 @@ test('static studio opens without authentication or backend APIs', async ({ page
 
   await page.goto('/#/dashboard');
   await expect(page).toHaveURL(/#\/backtests$/);
-  await expect(page.getByRole('heading', { name: 'Formal Backtests', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Formal Backtests', exact: true, level: 2 })).toBeVisible();
 
   await page.goto('/#/data');
   await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();
