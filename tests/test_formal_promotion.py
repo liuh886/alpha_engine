@@ -49,6 +49,17 @@ def _manifest(path: Path, *, expires_at: str = "2030-01-01T00:00:00Z") -> Path:
     return path
 
 
+def _metadata(*, expires_at: str = "2030-01-01T00:00:00Z") -> dict:
+    return {
+        "id": 456,
+        "name": "demo-source",
+        "digest": "sha256:" + "b" * 64,
+        "expired": False,
+        "expires_at": expires_at,
+        "workflow_run": {"id": 123, "head_sha": "a" * 40},
+    }
+
+
 def test_manifest_requires_research_boundary_and_safe_package_path(tmp_path: Path) -> None:
     path = _manifest(tmp_path / "demo.json")
     manifest = load_manifest(path)
@@ -63,13 +74,7 @@ def test_manifest_requires_research_boundary_and_safe_package_path(tmp_path: Pat
 
 def test_artifact_metadata_is_identity_bound_and_expiry_blocks(tmp_path: Path) -> None:
     manifest = load_manifest(_manifest(tmp_path / "demo.json"))
-    metadata = {
-        "id": 456,
-        "name": "demo-source",
-        "digest": "sha256:" + "b" * 64,
-        "expired": False,
-        "workflow_run": {"id": 123},
-    }
+    metadata = _metadata()
     validate_artifact_metadata(
         manifest,
         metadata,
@@ -84,14 +89,23 @@ def test_artifact_metadata_is_identity_bound_and_expiry_blocks(tmp_path: Path) -
             now=datetime(2029, 1, 1, tzinfo=timezone.utc),
         )
 
+    metadata = _metadata()
+    metadata["workflow_run"]["head_sha"] = "c" * 40
+    with pytest.raises(FormalPromotionError, match="head SHA mismatch"):
+        validate_artifact_metadata(
+            manifest,
+            metadata,
+            now=datetime(2029, 1, 1, tzinfo=timezone.utc),
+        )
+
+    expired_at = "2028-01-01T00:00:00Z"
     expired = load_manifest(
-        _manifest(tmp_path / "expired.json", expires_at="2028-01-01T00:00:00Z")
+        _manifest(tmp_path / "expired.json", expires_at=expired_at)
     )
-    metadata["digest"] = "sha256:" + "b" * 64
     with pytest.raises(FormalPromotionError, match="declared source expired"):
         validate_artifact_metadata(
             expired,
-            metadata,
+            _metadata(expires_at=expired_at),
             now=datetime(2029, 1, 1, tzinfo=timezone.utc),
         )
 
