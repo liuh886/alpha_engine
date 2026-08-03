@@ -6,9 +6,7 @@ const REQUIRED_FRESHNESS_CUTOFF = '2026-07-31';
 type FormalPackage = {
   model_id?: string;
   evidence_cutoff?: string;
-  date_range?: {
-    end?: string;
-  };
+  date_range?: { end?: string };
   trades?: unknown[];
 };
 
@@ -25,10 +23,7 @@ async function fetchFormalPackage(page: Page, modelId: string): Promise<FormalPa
   const packageUrl = new URL(`data/formal-backtests/${modelId}.json`, page.url());
   packageUrl.searchParams.set('live_acceptance', Date.now().toString());
   const response = await page.request.get(packageUrl.toString(), {
-    headers: {
-      'cache-control': 'no-cache',
-      pragma: 'no-cache',
-    },
+    headers: { 'cache-control': 'no-cache', pragma: 'no-cache' },
   });
   expect(response.ok(), `failed to load ${packageUrl.toString()}`).toBeTruthy();
   return response.json() as Promise<FormalPackage>;
@@ -42,7 +37,7 @@ async function openSelector(page: Page) {
   await trigger.click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: 'Select formal baseline' })).toBeVisible();
-  await expect(dialog.locator('tbody tr')).toHaveCount(3);
+  await expect(dialog.getByTestId('formal-model-card')).toHaveCount(3);
   for (const model of FORMAL_MODELS) {
     await expect(dialog.getByText(model, { exact: true })).toBeVisible();
   }
@@ -52,7 +47,7 @@ async function openSelector(page: Page) {
 
 async function selectModel(page: Page, model: typeof FORMAL_MODELS[number]): Promise<void> {
   const dialog = await openSelector(page);
-  await dialog.locator('tbody tr').filter({ hasText: model }).click();
+  await dialog.getByTestId('formal-model-card').filter({ hasText: model }).click();
   await expect(page.getByRole('button', { name: new RegExp(escapeRegExp(model)) }).first()).toBeVisible();
   await expect(dialog).toBeHidden();
 }
@@ -63,10 +58,7 @@ test('live Pages renders every governed formal baseline end to end', async ({ pa
   page.on('pageerror', (error) => pageErrors.push(error.message));
   page.on('response', (response) => {
     const url = response.url();
-    if (
-      response.status() >= 400
-      && (url.includes('/bundle/') || url.includes('/data/formal-backtests/') || url.includes('/assets/'))
-    ) {
+    if (response.status() >= 400 && (url.includes('/bundle/') || url.includes('/data/formal-backtests/') || url.includes('/assets/'))) {
       failedRequiredResponses.push(`${response.status()} ${url}`);
     }
   });
@@ -75,23 +67,24 @@ test('live Pages renders every governed formal baseline end to end', async ({ pa
   await expect(page.getByRole('heading', { name: 'Complete backtest review' })).toBeVisible();
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Experiments', { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/Ann: null|IR: null/)).toHaveCount(0);
 
   const initialDialog = await openSelector(page);
   await page.keyboard.press('Escape');
   await expect(initialDialog).toBeHidden();
 
-  // QQQ Rotation v4.2: complete daily trace and evidence identity.
   await expect(page.getByRole('button', { name: /QQQ Rotation v4\.2/ }).first()).toBeVisible();
   const v42Curve = page.getByTestId('equity-curve-container');
   await expect(v42Curve).toBeVisible();
   const v42PointCount = Number(await v42Curve.getAttribute('data-strategy-point-count'));
   expect(v42PointCount).toBeGreaterThan(600);
+  await expect(page.getByText('Retained allocation contributions', { exact: true })).toBeVisible();
+  await expect(page.getByText(/stock picking ability/i)).toHaveCount(0);
   await page.getByRole('tab', { name: 'Evidence' }).click();
   await expect(page.getByText('Formal backtest evidence', { exact: true })).toBeVisible();
   await expect(page.getByText('Complete retained trace', { exact: true })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
-  // US x1.1: verify the live formal package and its rendered ledgers agree.
   const usPackage = await fetchFormalPackage(page, 'us_x1_1');
   expect(usPackage.model_id).toBe('us_x1_1');
   expect(usPackage.evidence_cutoff).toBe(REQUIRED_FRESHNESS_CUTOFF);
@@ -107,16 +100,13 @@ test('live Pages renders every governed formal baseline end to end', async ({ pa
   await expect(page.getByText('15 Assets', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Trades' }).click();
   await expect(page.getByText('Complete transaction ledger', { exact: true })).toBeVisible();
-  await expect(
-    page.getByText(`${usTradeRowCount.toLocaleString('en-US')} rows`, { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText(`${usTradeRowCount.toLocaleString('en-US')} rows`, { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Attribution' }).click();
   await expect(page.getByText('Contribution table', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Evidence' }).click();
   await expect(page.getByText('Complete retained trace', { exact: true })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
-  // CN x1.0: partial evidence must stay explicit; missing ledgers are never fabricated.
   const cnPackage = await fetchFormalPackage(page, 'cn_x1_0');
   expect(cnPackage.model_id).toBe('cn_x1_0');
   expect(cnPackage.evidence_cutoff).toBe(REQUIRED_FRESHNESS_CUTOFF);
@@ -138,8 +128,5 @@ test('live Pages renders every governed formal baseline end to end', async ({ pa
 
   expect(pageErrors).toEqual([]);
   expect(failedRequiredResponses).toEqual([]);
-  await page.screenshot({
-    path: `test-results/live-pages/formal-baselines-${testInfo.project.name}.png`,
-    fullPage: true,
-  });
+  await page.screenshot({ path: `test-results/live-pages/formal-baselines-${testInfo.project.name}.png`, fullPage: true });
 });

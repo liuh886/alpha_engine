@@ -2,6 +2,7 @@ import { Calendar, Database, Info, Tag } from 'lucide-react';
 import type { BacktestData } from '@/lib/data-parser';
 import type { FormalBacktestPackage } from '@/lib/formal-backtest';
 import type { ModelParams } from '@/lib/types';
+import { projectFormalPackage } from '@/lib/formal-evidence';
 import { AttributionInterpretation } from './AttributionInterpretation';
 import { FormalBacktestEvidence, FormalBacktestTrades } from './FormalBacktestEvidence';
 import { HoldingsSummary } from './HoldingsSummary';
@@ -60,8 +61,15 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
   const meta = data.meta;
   const snapshotId = (params as ModelParams & { data_snapshot_id?: string })?.data_snapshot_id ?? '';
   const hasReport = Array.isArray(data.report) && data.report.length > 0;
-  const formal = (data as BacktestData & { formalBacktest?: FormalBacktestPackage }).formalBacktest;
+  const formal = (data as BacktestData & { formalBacktest?: FormalBacktestPackage }).formalBacktest ?? null;
+  const projection = projectFormalPackage(formal, {
+    id: String(params?.id ?? formal?.model_id ?? ''),
+    model_type: typeof params?.model_type === 'string' ? params.model_type : '',
+  });
   const completeness = formal?.evidence_completeness.status;
+  const metricUnavailableReason = formal?.evidence_completeness.status === 'partial'
+    ? 'Unavailable in the retained formal source evidence.'
+    : 'Not computed or not declared by the formal package.';
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 pb-16">
@@ -83,7 +91,7 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
         </div>
       </section>
 
-      <OverviewCards metrics={data.metrics} />
+      <OverviewCards metrics={data.metrics} unavailableReason={metricUnavailableReason} />
 
       {!hasReport ? (
         <div className="rounded-xl border-2 border-dashed bg-muted/20 px-6 py-14 text-center">
@@ -108,14 +116,18 @@ export function Dashboard({ data, params }: { data: BacktestData; params?: Model
               <TabsContent value="performance" className="mt-0"><section data-testid="backtest-performance-section"><PerformanceCharts report={data.report} /></section></TabsContent>
               <TabsContent value="positions" className="mt-0"><section data-testid="position-history-section"><PositionsTable positions={data.positions} report={data.report} /></section></TabsContent>
               {formal && <TabsContent value="trades" className="mt-0"><section data-testid="trade-ledger-section"><FormalBacktestTrades formal={formal} /></section></TabsContent>}
-              <TabsContent value="attribution" className="mt-0"><section data-testid="attribution-section"><AttributionEvidence rows={data.attribution} /></section></TabsContent>
+              <TabsContent value="attribution" className="mt-0"><section data-testid="attribution-section"><AttributionEvidence rows={projection.attribution} /></section></TabsContent>
               {formal && <TabsContent value="evidence" className="mt-0"><section data-testid="formal-evidence-section"><FormalBacktestEvidence formal={formal} /></section></TabsContent>}
             </Tabs>
           </div>
 
           <div className="min-w-0 space-y-5">
             <section data-testid="current-holdings-section"><HoldingsSummary positions={data.positions} /></section>
-            <AttributionInterpretation positions={data.positions} report={data.report} />
+            <AttributionInterpretation
+              rows={projection.attribution}
+              modelKind={projection.modelKind}
+              availabilityReason={projection.attributionAvailability}
+            />
             <ModelExplainability featureImportance={data.featureImportance} />
             <MetricsExpanded metrics={data.metrics} indicators={data.indicators} />
             {params && <ModelSpec params={params} />}
