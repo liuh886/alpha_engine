@@ -34,7 +34,7 @@ describe('Model Run Bundle v2', () => {
 
   it('fails closed on weakened boundaries and fabricated files', () => {
     expect(() => parseModelRunBundleV2Manifest({ ...manifestFixture, trade_ready: true })).toThrow('research boundary');
-    const sections = structuredClone(manifestFixture.sections);
+    const sections = structuredClone(manifestFixture.sections) as Array<Record<string, unknown>>;
     sections[1] = {
       ...sections[1],
       path: 'performance.json',
