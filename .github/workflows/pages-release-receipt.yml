@@ -6,6 +6,7 @@ on:
     types: [completed]
 
 permissions:
+  actions: read
   contents: read
   issues: write
 
@@ -17,15 +18,62 @@ jobs:
   publish-receipt:
     runs-on: ubuntu-latest
     steps:
+      - name: Download upstream impact decision
+        id: impact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          mkdir -p artifacts/upstream
+          for attempt in 1 2 3 4 5; do
+            if gh run download "$UPSTREAM_RUN_ID" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name pages-impact-decision \
+              --dir artifacts/upstream; then
+              break
+            fi
+            sleep 3
+          done
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          output = Path(os.environ["GITHUB_OUTPUT"])
+          decision_path = Path("artifacts/upstream/pages-impact-decision.json")
+          if not decision_path.is_file():
+              with output.open("a", encoding="utf-8") as handle:
+                  handle.write("available=false\n")
+                  handle.write("deploy=true\n")
+                  handle.write("reason=impact_decision_unavailable\n")
+                  handle.write("matched_paths_json=[]\n")
+              raise SystemExit(0)
+
+          decision = json.loads(decision_path.read_text(encoding="utf-8"))
+          with output.open("a", encoding="utf-8") as handle:
+              handle.write("available=true\n")
+              handle.write(
+                  f"deploy={'true' if decision.get('deploy') is True else 'false'}\n"
+              )
+              handle.write(f"reason={decision.get('reason', 'unknown')}\n")
+              handle.write(
+                  "matched_paths_json="
+                  + json.dumps(
+                      decision.get("matched_paths", []), separators=(",", ":")
+                  )
+                  + "\n"
+              )
+          PY
+
       - name: Checkout deployed revision
-        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        if: ${{ github.event.workflow_run.conclusion == 'success' && steps.impact.outputs.available == 'true' && steps.impact.outputs.deploy == 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Verify live Pages release
         id: live_verify
-        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        if: ${{ github.event.workflow_run.conclusion == 'success' && steps.impact.outputs.available == 'true' && steps.impact.outputs.deploy == 'true' }}
         continue-on-error: true
         env:
           PYTHONPATH: ${{ github.workspace }}
@@ -37,11 +85,15 @@ jobs:
             > artifacts/pages-release-receipt.json \
             2> artifacts/pages-release-error.log
 
-      - name: Publish observable deployment result
+      - name: Publish observable workflow decision
         if: ${{ always() }}
         env:
           GH_TOKEN: ${{ github.token }}
           RECEIPT_COMMENT_ID: "5160974834"
+          IMPACT_AVAILABLE: ${{ steps.impact.outputs.available }}
+          IMPACT_DEPLOY: ${{ steps.impact.outputs.deploy }}
+          IMPACT_REASON: ${{ steps.impact.outputs.reason }}
+          MATCHED_PATHS_JSON: ${{ steps.impact.outputs.matched_paths_json }}
           UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           VERIFY_OUTCOME: ${{ steps.live_verify.outcome }}
           DEPLOYED_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -54,6 +106,10 @@ jobs:
           import os
           from pathlib import Path
 
+          impact_available = os.environ.get("IMPACT_AVAILABLE") == "true"
+          deploy = os.environ.get("IMPACT_DEPLOY") == "true"
+          impact_reason = os.environ.get("IMPACT_REASON", "unknown")
+          matched = json.loads(os.environ.get("MATCHED_PATHS_JSON") or "[]")
           upstream = os.environ["UPSTREAM_CONCLUSION"]
           verify = os.environ.get("VERIFY_OUTCOME", "skipped")
           sha = os.environ["DEPLOYED_SHA"]
@@ -61,28 +117,68 @@ jobs:
           run_url = os.environ["DEPLOY_RUN_URL"]
           page_url = os.environ["PAGE_URL"]
 
-          if upstream != "success":
+          matched_text = ", ".join(f"`{path}`" for path in matched) or "none"
+
+          if not impact_available:
+              status = "**failed governance observation**"
+              detail = (
+                  "The upstream workflow did not retain a readable publication-impact "
+                  "decision. The observer fails closed and does not claim a deployment."
+              )
+          elif not deploy and upstream == "success":
+              status = "**skipped — no publication impact**"
+              detail = (
+                  f"- Impact reason: `{impact_reason}`\n"
+                  f"- Changed paths matched to publication graph: {matched_text}\n"
+                  "- Live Pages origin was intentionally left unchanged."
+              )
+          elif upstream != "success":
               status = f"**failed before live verification** (`{upstream}`)"
-              detail = "The Pages deployment workflow did not complete successfully."
+              detail = (
+                  f"- Impact reason: `{impact_reason}`\n"
+                  f"- Matched publication dependencies: {matched_text}\n"
+                  "- The Pages deployment workflow did not complete successfully."
+              )
           elif verify != "success":
               status = "**failed live-origin verification**"
               error_path = Path("artifacts/pages-release-error.log")
-              error = error_path.read_text(encoding="utf-8").strip() if error_path.exists() else "No verifier output was retained."
-              detail = f"The deployment completed, but the public origin did not satisfy the frontend release contracts.\n\n```text\n{error[-3000:]}\n```"
+              error = (
+                  error_path.read_text(encoding="utf-8").strip()
+                  if error_path.exists()
+                  else "No verifier output was retained."
+              )
+              detail = (
+                  f"- Impact reason: `{impact_reason}`\n"
+                  f"- Matched publication dependencies: {matched_text}\n"
+                  "The deployment completed, but the public origin did not satisfy "
+                  f"the frontend release contracts.\n\n```text\n{error[-3000:]}\n```"
+              )
           else:
-              receipt = json.loads(Path("artifacts/pages-release-receipt.json").read_text(encoding="utf-8"))
-              models = ", ".join(f"`{model}`" for model in receipt["formal_models"])
-              required = ", ".join(f"`{path}`" for path in receipt["required_bundle_artifacts"])
+              receipt = json.loads(
+                  Path("artifacts/pages-release-receipt.json").read_text(
+                      encoding="utf-8"
+                  )
+              )
+              models = ", ".join(
+                  f"`{model}`" for model in receipt["formal_models"]
+              )
+              required = ", ".join(
+                  f"`{path}`" for path in receipt["required_bundle_artifacts"]
+              )
               status = "**verified against the live Pages origin**"
               detail = (
+                  f"- Impact reason: `{impact_reason}`\n"
+                  f"- Matched publication dependencies: {matched_text}\n"
                   f"- Research bundle: `{receipt['bundle_id']}`\n"
                   f"- Required bundle artifacts: {required}\n"
                   f"- Formal selector: {models}\n"
                   "- Research boundary: `research_only=true`, `trade_ready=false`\n"
-                  "- Verification: cache-busted live deployment identity, required bundle size/SHA-256/source contract, formal catalog and package identity, and complete-backtest shell marker"
+                  "- Verification: cache-busted live deployment identity, required "
+                  "bundle size/SHA-256/source contract, formal catalog and package "
+                  "identity, complete-backtest shell marker, and live browser gate"
               )
 
-          body = f"""## Latest Pages deployment attempt
+          body = f"""## Latest Pages workflow decision
 
           Status: {status}
 
@@ -92,7 +188,9 @@ jobs:
 
           {detail}
 
-          This rolling receipt is written only by the independent `workflow_run` observer after the Pages workflow terminates.
+          This rolling receipt is written only by the independent `workflow_run`
+          observer after the publication-impact decision and any required deployment
+          terminate.
           """
           Path("/tmp/pages-release-comment.json").write_text(
               json.dumps({"body": body}),
