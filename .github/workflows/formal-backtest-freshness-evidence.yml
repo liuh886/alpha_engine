@@ -219,6 +219,7 @@ jobs:
             --receipt artifacts/freshness-build-receipt.json
           uv run python scripts/finalize_latest_formal_backtests.py \
             --generated-dir artifacts/generated-formal \
+            --existing-dir data/research/formal_backtests \
             --cn-run-dir artifacts/freshness/cn-a/cn_x1_0_frozen_v1 \
             --cn-provider-identity "$CN_PROVIDER_IDENTITY" \
             --receipt artifacts/formal-finalization-receipt.json
