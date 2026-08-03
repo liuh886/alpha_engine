@@ -1,0 +1,155 @@
+experiment_id: qqqi_qqq_tqqq_cross_asset_sgov_tqqq_transfer_v4_12_research
+parent_experiment_id: qqqi_qqq_tqqq_v4_2_recovery_quality_factor_v4_11_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: false
+purpose: >-
+  Learn recovery-event quality from non-QQQ donor assets with complete
+  macro-cluster isolation, then evaluate one frozen SGOV/TQQQ transfer strategy
+  against actual and QQQ-proxy v4.2 without using target events for fitting.
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  transaction_cost_bps_per_turnover_unit: 10.0
+  annual_risk_free_rate: 0.0
+  target_symbols_excluded_from_training: [QQQ, TQQQ, QQQI, SGOV, ^VXN]
+  target_baseline: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  baseline_alerts_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+
+data:
+  start_date: "2008-01-01"
+  end_date: null
+  model_development_end: "2023-12-29"
+  donor_cash_proxy: BIL
+  target_cash_asset: SGOV
+  risk_reference: ^VIX
+  v4_2_target_volatility_reference: ^VXN
+  donor_pairs:
+    SPY: UPRO
+    IWM: TNA
+    DIA: UDOW
+    XLK: TECL
+    SOXX: SOXL
+    XLF: FAS
+  target_pair:
+    underlying: QQQ
+    leveraged: TQQQ
+  required_symbols:
+    [SPY, UPRO, IWM, TNA, DIA, UDOW, XLK, TECL, SOXX, SOXL, XLF, FAS,
+     QQQ, TQQQ, QQQI, BIL, SGOV, ^VIX, ^VXN]
+
+event_definition:
+  drawdown_window_sessions: 63
+  shock_drawdown: 0.10
+  ma_short: 20
+  ma_medium: 50
+  ma_long: 200
+  ma_slope_sessions: 5
+  vix_retreat_from_20d_high: 0.15
+  vix_high_window: 20
+  vix_percentile_window: 252
+  vix_stress_quantile: 0.80
+  vix_structural_normal_quantile: 0.60
+  below_ma_short_exit_sessions: 2
+  max_event_holding_sessions: 20
+  cycle_recovery_drawdown: 0.05
+  cycle_cooldown_sessions: 40
+  macro_cluster_calendar_days: 30
+
+features:
+  - underlying_return_5d
+  - underlying_return_20d
+  - underlying_distance_ma20
+  - underlying_distance_ma50
+  - underlying_ma20_slope_5d
+  - underlying_realized_volatility_20d
+  - underlying_drawdown_63d
+  - vix_return_5d
+  - vix_retreat_from_20d_high
+  - vix_percentile_252d
+  - donor_breadth_above_ma20
+  - donor_breadth_above_ma50
+
+label:
+  name: leveraged_minus_bil_event_log_return
+  positive_condition: strictly_greater_than_zero
+  event_horizon: frozen_event_exit
+
+estimator:
+  pipeline: median_imputer_standard_scaler_l2_logistic_regression
+  penalty: l2
+  C: 1.0
+  class_weight: balanced
+  solver: liblinear
+  max_iter: 2000
+  random_state: 42
+  validation: leave_one_macro_cluster_out
+  probability_inversion_allowed: false
+
+strategy:
+  structural_tqqq_weight: 0.75
+  structural_conditions:
+    qqq_above_ma200: true
+    ma50_above_ma200: true
+    vix_below_rolling_quantile: 0.60
+  recovery_override:
+    low:
+      condition: "p < 0.45"
+      SGOV: 1.00
+      TQQQ: 0.00
+    medium:
+      condition: "0.45 <= p < 0.60"
+      SGOV: 0.50
+      TQQQ: 0.50
+    high:
+      condition: "p >= 0.60"
+      SGOV: 0.00
+      TQQQ: 1.00
+  no_daily_probability_resizing: true
+
+comparators:
+  - current_v4_2
+  - qqq_proxy_v4_2
+  - buy_hold_sgov
+  - static_50_sgov_50_tqqq
+  - structural_only
+  - event_only
+  - joint_structural_event
+
+validation:
+  event_horizons: [5, 10, 20]
+  donor_gate:
+    minimum_asset_events: 30
+    minimum_macro_clusters: 8
+    aggregate_oof_auc_min: 0.55
+    aggregate_oof_spearman_ic_min: 0.05
+    top_bottom_quartile_spread_positive: true
+    positive_asset_spread_count_min: 4
+    largest_positive_cluster_contribution_max: 0.30
+    maximum_single_asset_event_share: 0.40
+  strategy_gate:
+    actual_cagr_improvement_vs_v4_2_pp_min: 1.0
+    actual_max_drawdown_worsening_vs_v4_2_pp_max: 2.0
+    actual_calmar_improvement_vs_v4_2_min: 0.10
+    actual_sortino_not_below_v4_2: true
+    positive_relative_calendar_years_min: 2
+    largest_positive_target_event_share_max: 0.50
+    turnover_increase_vs_v4_2_max: 0.50
+    ablation_metrics_to_beat_min: 2
+    require_actual_proxy_cagr_direction_match: true
+    require_actual_proxy_calmar_direction_match: true
+
+hypothesis_discipline:
+  - QQQ, TQQQ and QQQI are final target-evaluation assets only.
+  - Donor event construction admits at most one event per non-overlapping shock cycle.
+  - Events in the same macro date cluster are never split across training and validation.
+  - Donor assets, thresholds, features, estimator and allocations are frozen before evidence.
+  - BIL is a donor-label cash proxy; SGOV is the actual target defensive asset.
+  - No target result may be used to invert probabilities or redesign the donor model.
+  - Passing authorizes at most a non-actionable shadow challenger.
+  - v4.2 and actionable alerts remain unchanged regardless of result.
