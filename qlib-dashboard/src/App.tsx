@@ -1,7 +1,10 @@
-import { Suspense, useEffect, useState } from 'react';
-import { HashRouter, Link, Outlet, Route, Routes, useLocation } from 'react-router-dom';
-import { AlertTriangle, ChevronDown, Database, Loader2, Moon, Sun } from 'lucide-react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { HashRouter, Link, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { AlertTriangle, ChevronDown, Database, Layers3, Loader2, Moon, Sun } from 'lucide-react';
 import type { ModelData } from './lib/data-parser';
+import type { GovernedRunSummary } from './lib/governed-run';
+import { selectRunFromQuery } from './lib/governed-run';
+import type { RunWorkspaceContext } from './lib/run-workspace';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileNavigation } from './components/MobileNavigation';
 import { ModelSelector } from './components/ModelSelector';
@@ -23,9 +26,9 @@ function NotFound() {
       <p className="text-6xl font-black text-muted-foreground/20">404</p>
       <h1 className="mt-3 text-xl font-semibold">Evidence view not found</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        This route is not part of the Research Artifact Studio. Return to the overview and choose a declared artifact view.
+        This route is not part of the governed research workspace. Return to Runs and choose a declared artifact.
       </p>
-      <Button asChild variant="outline" className="mt-6"><Link to="/">Back to overview</Link></Button>
+      <Button asChild variant="outline" className="mt-6"><Link to="/runs">Open Runs</Link></Button>
     </div>
   );
 }
@@ -34,6 +37,10 @@ interface LayoutProps {
   models: ModelData[];
   selectedModelId: string;
   setSelectedModelId: (id: string) => void;
+  runs: GovernedRunSummary[];
+  activeRunKey: string;
+  selectRun: (run: GovernedRunSummary) => void;
+  runLoadErrors: string[];
   selectorOpen: boolean;
   setSelectorOpen: (open: boolean) => void;
   loading: boolean;
@@ -42,20 +49,46 @@ interface LayoutProps {
 
 function Layout(props: LayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { theme, setTheme } = useGlobalStore();
   const currentPath = location.pathname.replace(/^\//, '');
   const declaredRoute = routes.find((route) => route.path === currentPath);
   const viewTitle = declaredRoute?.title ?? 'Unavailable route';
   const selectedModel = props.models.find((model) => model.id === props.selectedModelId);
-  const showModelPicker = Boolean(
+  const activeRun = useMemo(
+    () => props.runs.find((run) => run.key === props.activeRunKey) ?? props.runs[0] ?? null,
+    [props.activeRunKey, props.runs],
+  );
+  const showLegacyModelPicker = Boolean(
     declaredRoute
-    && ['dashboard', 'models', 'compare'].includes(currentPath)
+    && ['dashboard', 'models'].includes(currentPath)
     && selectedModel,
+  );
+  const showRunPicker = Boolean(
+    declaredRoute
+    && ['review', 'compare', 'decisions'].includes(currentPath)
+    && activeRun,
   );
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  useEffect(() => {
+    if (!props.runs.length || !location.search) return;
+    const linked = selectRunFromQuery(props.runs, location.search);
+    if (linked && linked.key !== props.activeRunKey) props.selectRun(linked);
+  }, [location.search, props]);
+
+  const outletContext: RunWorkspaceContext = {
+    models: props.models,
+    selectedModelId: props.selectedModelId,
+    runs: props.runs,
+    activeRunKey: props.activeRunKey,
+    activeRun,
+    runLoadErrors: props.runLoadErrors,
+    selectRun: props.selectRun,
+  };
 
   return (
     <div className="research-app-shell">
@@ -63,10 +96,23 @@ function Layout(props: LayoutProps) {
       <div className="research-workspace">
         <header className="research-topbar">
           <div className="min-w-0">
-            <p className="research-topbar-eyebrow">Alpha Engine / Research Artifact Studio</p>
+            <p className="research-topbar-eyebrow">Alpha Engine / Governed Research Studio</p>
             <div className="flex min-w-0 items-center gap-3">
               <h1 className="truncate">{viewTitle}</h1>
-              {showModelPicker && selectedModel && (
+              {showRunPicker && activeRun && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/runs')}
+                  className="h-7 max-w-[420px] gap-1.5 border-primary/20 bg-background/70 text-xs"
+                >
+                  <Layers3 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="truncate font-medium">{activeRun.title}</span>
+                  <span className="rounded bg-muted px-1 py-0.5 text-[9px] font-bold uppercase">{activeRun.channel}</span>
+                  <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+                </Button>
+              )}
+              {showLegacyModelPicker && selectedModel && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -116,7 +162,7 @@ function Layout(props: LayoutProps) {
           ) : (
             <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
-                <Outlet context={{ models: props.models, selectedModelId: props.selectedModelId }} />
+                <Outlet context={outletContext} />
               </Suspense>
             </ErrorBoundary>
           )}
@@ -136,25 +182,29 @@ function Layout(props: LayoutProps) {
 
 function ArtifactStudioApp() {
   const [selectorOpen, setSelectorOpen] = useState(false);
-  const { loading, loadError, models, selectedModelId, setSelectedModelId } = useAppBootstrap();
+  const workspace = useAppBootstrap();
 
   return (
     <HashRouter>
       <Routes>
         <Route element={
           <Layout
-            models={models}
-            selectedModelId={selectedModelId}
-            setSelectedModelId={setSelectedModelId}
+            models={workspace.models}
+            selectedModelId={workspace.selectedModelId}
+            setSelectedModelId={workspace.setSelectedModelId}
+            runs={workspace.runs}
+            activeRunKey={workspace.activeRunKey}
+            selectRun={workspace.selectRun}
+            runLoadErrors={workspace.runLoadErrors}
             selectorOpen={selectorOpen}
             setSelectorOpen={setSelectorOpen}
-            loading={loading}
-            loadError={loadError}
+            loading={workspace.loading}
+            loadError={workspace.loadError}
           />
         }>
           {routes.map((route) => {
             const Component = route.component;
-            return <Route key={route.path} path={route.path} element={<Component models={models} />} />;
+            return <Route key={route.path} path={route.path} element={<Component models={workspace.models} />} />;
           })}
           <Route path="*" element={<NotFound />} />
         </Route>
