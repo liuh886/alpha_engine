@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0.0",
+  "repository": "liuh886/alpha_engine",
+  "default_branch": "main",
+  "package_manager": "none",
+  "package_scope_note": "Frontend npm ownership remains under qlib-dashboard and is governed by its existing locked CI.",
+  "governed_workflows": [
+    ".github/workflows/ci-governance.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/frontend-static-pwa.yml"
+  ],
+  "required_pr_workflows": [
+    ".github/workflows/ci-governance.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/frontend-static-pwa.yml"
+  ],
+  "release_workflows": [
+    ".github/workflows/deploy-pages.yml",
+    ".github/workflows/formal-promotion.yml"
+  ],
+  "advisory_workflows": [],
+  "artifact_retention_days": {
+    "pr_diagnostics": 14,
+    "deployable_build": 7,
+    "durable_evidence": 90
+  },
+  "retention_exceptions": {
+    ".github/workflows/ci.yml": 30
+  },
+  "dependency_audit": {
+    "production_high_critical": "blocking",
+    "development_tooling": "advisory"
+  },
+  "branch_protection": {
+    "settings_managed_outside_repository": true,
+    "recommended_required_checks": [
+      "Alpha Engine CI / backend",
+      "Alpha Engine CI / frontend",
+      "Frontend Static PWA / build-static-pwa",
+      "CI Governance / Policy"
+    ]
+  }
+}
