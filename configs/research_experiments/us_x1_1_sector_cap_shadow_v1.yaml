@@ -1,0 +1,93 @@
+schema_version: "1.0"
+shadow_contract_id: "us_x1_1_sector_cap_shadow_v1"
+issue: 436
+status: "frozen_receipt_infrastructure"
+research_only: true
+trade_ready: false
+
+prospective_boundary:
+  first_signal_must_be_strictly_after: "2026-08-03"
+  historical_backfill_as_prospective_allowed: false
+  minimum_completed_rebalances: 12
+  minimum_calendar_months: 6
+  minimum_qqq_down_periods_for_full_risk_conclusion: 3
+
+candidate_domain:
+  pool_id: "us_selected_equities_v2"
+  pool_path: "configs/research_universes/us_selected_equities_v2.yaml"
+  pool_count: 87
+  benchmark: "QQQ"
+  benchmark_is_candidate: false
+  classification_path: "configs/research_classifications/us87_sector_industry_v1.yaml"
+  classification_file_sha256: "9de371456eadd7f34ed0fb40bf8d12f9899187beeb0b3a75a335b046e9ec7cf4"
+  classification_records_sha256: "a9493d111de9ab2a6a4cadbb9feb1219ffa33291bd2db1d006124cf7c1747cd2"
+
+model_contract:
+  model_id: "us_x1_1"
+  feature_group: "momentum_volatility_volume"
+  label_horizon_sessions: 10
+  holding_sessions: 10
+  rebalance_sessions: 10
+  xgboost_effective_runtime:
+    booster: "gbtree"
+    importance_type: "gain"
+    num_boost_round: 200
+    max_leaves: 31
+    learning_rate: 0.05
+    seed: 42
+  same_score_ledger_for_baseline_and_challenger: true
+  parameter_or_feature_change_allowed_during_clock: false
+
+baseline_portfolio:
+  top_n: 15
+  weighting: "equal"
+  scan_order:
+    score: "descending"
+    tie_breaker: "instrument_ascending"
+
+challenger_portfolio:
+  top_n: 15
+  weighting: "equal"
+  maximum_names_per_sector: 4
+  maximum_sector_weight: 0.26666666666666666
+  scan_complete_rank_until_filled: true
+  fail_closed_if_unfillable: true
+  manual_exceptions_allowed: false
+
+receipt_contract:
+  schema_path: "schemas/research/us_x1_1_sector_cap_shadow_receipt_v1.schema.json"
+  complete_score_rows_required: 87
+  outcomes_available_at_creation: false
+  append_only: true
+  immutable_after_creation: true
+  required_execution_conventions:
+    - "research_close_to_forward_close"
+    - "t_plus_1_executable_separate_ledger"
+  required_cost_stress_bps: [20, 40, 60]
+
+shadow_gates:
+  complete_pre_outcome_receipts_required: true
+  exact_receipt_reproduction_required: true
+  maximum_sector_weight: 0.26666666666666666
+  challenger_40bps_relative_excess_positive: true
+  baseline_positive_excess_retention_minimum: 0.80
+  challenger_turnover_ratio_maximum: 1.15
+  challenger_drawdown_worse_tolerance: 0.02
+  drawdown_improvement_or_qqq_down_loss_improvement:
+    minimum_drawdown_improvement: 0.02
+    minimum_qqq_down_loss_improvement: 0.15
+  maximum_single_replacement_difference_share: 0.35
+
+decision_taxonomy:
+  - "sector_cap_shadow_supported_for_review"
+  - "sector_cap_shadow_alpha_cost_too_high"
+  - "sector_cap_shadow_risk_benefit_not_observed"
+  - "sector_cap_shadow_stress_evidence_limited"
+  - "prospective_receipt_integrity_failed"
+  - "data_blocked"
+
+governance:
+  creates_us_x1_2_candidate: false
+  automatic_model_update: false
+  first_eligible_rebalance_date_status: "resolve_from_formal_schedule_in_code"
+  rule_change_restarts_clock: true
