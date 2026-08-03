@@ -109,6 +109,12 @@ def _number(value: Any, digits: int = 3) -> str:
     return f"{float(value):.{digits}f}"
 
 
+def _integer(value: Any) -> str:
+    if value is None or pd.isna(value):
+        return "0"
+    return str(int(value))
+
+
 def _markdown_table(headers: list[str], rows: list[list[str]]) -> str:
     lines = [
         "| " + " | ".join(headers) + " |",
@@ -216,7 +222,7 @@ def _report(
                 _pct(row["max_drawdown"]),
                 _number(row["calmar"]),
                 _number(row["turnover_units"], 1),
-                str(int(row.get("accelerated_sessions", 0) or 0)),
+                _integer(row.get("accelerated_sessions")),
             ]
         )
 
