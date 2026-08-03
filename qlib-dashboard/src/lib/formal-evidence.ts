@@ -23,6 +23,11 @@ export interface FormalEvidenceProjection {
   costAvailability: string;
 }
 
+interface ModelKindIdentity {
+  id?: string;
+  model_type?: string;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -36,7 +41,7 @@ export function getFormalBacktest(model: ModelData): FormalBacktestPackage | nul
 
 export function inferFormalModelKind(
   formal: FormalBacktestPackage | null,
-  model?: Pick<ModelData, 'id' | 'model_type'>,
+  model?: ModelKindIdentity,
 ): FormalModelKind {
   const modelId = formal?.model_id ?? model?.id ?? '';
   const modelType = String(model?.model_type ?? '').toLowerCase();
@@ -86,8 +91,10 @@ export function projectFormalMetric(
   };
 }
 
-export function projectFormalEvidence(model: ModelData): FormalEvidenceProjection {
-  const formal = getFormalBacktest(model);
+export function projectFormalPackage(
+  formal: FormalBacktestPackage | null,
+  model?: ModelKindIdentity,
+): FormalEvidenceProjection {
   const contract = isRecord(formal?.portfolio_contract)
     ? formal.portfolio_contract
     : {};
@@ -114,6 +121,10 @@ export function projectFormalEvidence(model: ModelData): FormalEvidenceProjectio
       ? evidenceReason(formal, 'costs')
       : 'Declared by formal.portfolio_contract.',
   };
+}
+
+export function projectFormalEvidence(model: ModelData): FormalEvidenceProjection {
+  return projectFormalPackage(getFormalBacktest(model), model);
 }
 
 export function modelKindLabel(kind: FormalModelKind): string {
