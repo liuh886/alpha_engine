@@ -9,7 +9,9 @@ on:
       - "data/research/formal_backtests/**"
       - "scripts/build_formal_model_backtests.py"
       - "scripts/formal_promotion.py"
+      - "scripts/run_formal_promotion.py"
       - "tests/test_formal_promotion.py"
+      - "tests/test_formal_promotion_transport.py"
 
 permissions:
   actions: read
@@ -34,15 +36,21 @@ jobs:
 
       - name: Install locked environment
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
+          curl -LsSf https://astr.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
 
       - name: Validate promotion verifier
         run: |
-          uv run ruff check scripts/formal_promotion.py tests/test_formal_promotion.py
-          uv run mypy scripts/formal_promotion.py
-          uv run pytest tests/test_formal_promotion.py \
+          uv run ruff check \
+            scripts/formal_promotion.py \
+            scripts/run_formal_promotion.py \
+            tests/test_formal_promotion.py \
+            tests/test_formal_promotion_transport.py
+          uv run mypy scripts/formal_promotion.py scripts/run_formal_promotion.py
+          uv run pytest \
+            tests/test_formal_promotion.py \
+            tests/test_formal_promotion_transport.py \
             -q --strict-markers --tb=short
 
       - name: Fetch exact immutable source artifacts
@@ -52,7 +60,7 @@ jobs:
         run: |
           mkdir -p artifacts/formal-promotion
           set -o pipefail
-          uv run python scripts/formal_promotion.py fetch \
+          uv run python scripts/run_formal_promotion.py fetch \
             --manifest-dir data/research/formal_promotions \
             --archive-dir artifacts/formal-promotion/archives \
             --receipt artifacts/formal-promotion/fetch-receipt.json \
@@ -62,7 +70,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          uv run python scripts/formal_promotion.py verify \
+          uv run python scripts/run_formal_promotion.py verify \
             --manifest-dir data/research/formal_promotions \
             --archive-dir artifacts/formal-promotion/archives \
             --source-root artifacts/formal-promotion/source \
