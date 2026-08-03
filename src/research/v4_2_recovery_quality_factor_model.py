@@ -160,11 +160,18 @@ def _pipeline(contract: Mapping[str, Any]) -> Pipeline:
     )
 
 
-def _prediction_metrics(table: pd.DataFrame) -> dict[str, Any]:
+def _prediction_metrics(
+    table: pd.DataFrame,
+    *,
+    require_both_classes: bool = True,
+) -> dict[str, Any]:
     valid = table.dropna(
         subset=["probability", "positive_marginal_return", "future_marginal_log_return_10d"]
     ).copy()
-    if valid.empty or valid["positive_marginal_return"].nunique() < 2:
+    if valid.empty:
+        raise ValueError("prediction sample is empty")
+    class_count = int(valid["positive_marginal_return"].nunique())
+    if require_both_classes and class_count < 2:
         raise ValueError("prediction sample requires both label classes")
     probability = valid["probability"].astype(float)
     label = valid["positive_marginal_return"].astype(int)
@@ -176,7 +183,10 @@ def _prediction_metrics(table: pd.DataFrame) -> dict[str, Any]:
     return {
         "observations": int(len(valid)),
         "positive_rate": float(label.mean()),
-        "roc_auc": float(roc_auc_score(label, probability)),
+        "class_count": class_count,
+        "roc_auc": (
+            float(roc_auc_score(label, probability)) if class_count >= 2 else np.nan
+        ),
         "brier_score": float(brier_score_loss(label, probability)),
         "spearman_ic": float(probability.corr(continuous, method="spearman")),
         "top_quartile_mean_marginal_log_return": float(top.mean()),
@@ -230,7 +240,7 @@ def fit_walk_forward_factor_model(
         predicted["probability"] = probability
         predicted["validation_year"] = year
         oof_parts.append(predicted)
-        metrics = _prediction_metrics(predicted)
+        metrics = _prediction_metrics(predicted, require_both_classes=False)
         metrics.update(
             {
                 "validation_year": year,
@@ -246,7 +256,7 @@ def fit_walk_forward_factor_model(
         raise ValueError("no valid walk-forward folds were produced")
     oof = pd.concat(oof_parts).sort_index()
     fold_metrics = pd.DataFrame(fold_rows).sort_values("validation_year")
-    aggregate = _prediction_metrics(oof)
+    aggregate = _prediction_metrics(oof, require_both_classes=True)
     positive_spreads = fold_metrics["top_bottom_quartile_spread"].clip(lower=0.0)
     aggregate["validation_years"] = int(len(fold_metrics))
     aggregate["positive_validation_year_rate"] = float(
