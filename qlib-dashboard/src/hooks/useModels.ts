@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { modelsApi } from '@/api/modelsApi';
 import { parseQlibData, type ModelData } from '@/lib/data-parser';
-import { attachFormalBacktests, loadFormalBacktestPackages } from '@/lib/formal-backtest';
 import {
-  adaptFormalRuns,
   adaptLocalRuns,
+  loadFormalRuns,
   loadPreviewRuns,
   type GovernedRunSummary,
 } from '@/lib/governed-run';
@@ -16,6 +15,12 @@ const CHANNEL_ORDER: Record<GovernedRunSummary['channel'], number> = {
   preview: 1,
   local: 2,
 };
+
+const REQUIRED_FORMAL_VERSIONS = new Set([
+  'qqqi_qqq_tqqq_v4_2',
+  'us_x1_1',
+  'cn_x1_0',
+]);
 
 function sortRuns(runs: GovernedRunSummary[]): GovernedRunSummary[] {
   return [...runs].sort((left, right) => (
@@ -36,20 +41,36 @@ export function useModels() {
 
   const selectRun = useCallback((run: GovernedRunSummary) => {
     setActiveRunKey(run.key);
-    if (run.modelData) setSelectedModelId(run.modelData.id);
+    const modelId = run.modelData?.id || run.modelVersionId;
+    if (modelId) setSelectedModelId(modelId);
   }, [setActiveRunKey, setSelectedModelId]);
 
   const fetchModels = useCallback(async (opts?: { selectLatest?: boolean }) => {
     try {
       const json = await modelsApi.getDashboardDb();
       const repositoryModels = parseQlibData(json);
-      const formalPackages = await loadFormalBacktestPackages();
-      const formalModels = attachFormalBacktests(repositoryModels, formalPackages);
-      const formalIds = new Set(formalPackages.map((record) => record.model_id));
-      const localModels = repositoryModels.filter((model) => !formalIds.has(model.id));
-      const preview = await loadPreviewRuns();
+      const [formal, preview] = await Promise.all([
+        loadFormalRuns(),
+        loadPreviewRuns(),
+      ]);
+      if (formal.errors.length > 0) {
+        throw new Error(`Formal Bundle v2 validation failed: ${formal.errors.join(' | ')}`);
+      }
+      const formalVersions = new Set(formal.runs.map((run) => run.modelVersionId));
+      if (
+        formal.runs.length !== REQUIRED_FORMAL_VERSIONS.size
+        || [...REQUIRED_FORMAL_VERSIONS].some((version) => !formalVersions.has(version))
+      ) {
+        throw new Error('Formal Bundle v2 catalog does not exactly contain QQQ Rotation v4.2, US x1.1 and CN x1.0.');
+      }
+      const byId = new Map(repositoryModels.map((model) => [model.id, model]));
+      const formalRuns = formal.runs.map((run) => ({
+        ...run,
+        modelData: byId.get(run.modelVersionId) ?? null,
+      }));
+      const localModels = repositoryModels.filter((model) => !formalVersions.has(model.id));
       const governedRuns = sortRuns([
-        ...adaptFormalRuns(formalPackages, formalModels),
+        ...formalRuns,
         ...preview.runs,
         ...adaptLocalRuns(localModels),
       ]);
@@ -57,7 +78,7 @@ export function useModels() {
       useGlobalStore.getState().setDataGeneratedAt(
         generatedDates.length > 0 ? generatedDates[generatedDates.length - 1] : String(json.generated_at || ''),
       );
-      setModels(formalModels);
+      setModels(repositoryModels);
       setRuns(governedRuns);
       setRunLoadErrors(preview.errors);
 
@@ -70,7 +91,7 @@ export function useModels() {
         setActiveRunKey('');
         setSelectedModelId('');
       }
-      return formalModels;
+      return repositoryModels;
     } catch (error) {
       console.error('Failed to load governed model runs', error);
       setModels([]);

@@ -24,16 +24,13 @@ export interface RouteDefinition {
   icon: ComponentType<{ className?: string }>;
   label: string;
   component: ComponentType<any>;
-  navVisible?: boolean;
 }
 
 const HomePage = lazy(() => import('./pages/ArtifactStudioHomePage').then((m) => ({ default: m.ArtifactStudioHomePage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const RunsPage = lazy(() => import('./pages/RunsPage').then((m) => ({ default: m.RunsPage })));
 const RunReviewPage = lazy(() => import('./pages/RunReviewPage').then((m) => ({ default: m.RunReviewPage })));
-const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const StrategyOperationsPage = lazy(() => import('./pages/StrategyOperationsPage').then((m) => ({ default: m.StrategyOperationsPage })));
-const EvidenceModelsPage = lazy(() => import('./pages/EvidenceModelsPage').then((m) => ({ default: m.EvidenceModelsPage })));
 const EvidenceDataPage = lazy(() => import('./pages/EvidenceDataPage').then((m) => ({ default: m.EvidenceDataPage })));
 const EvidenceFactorsPage = lazy(() => import('./pages/EvidenceFactorsPage').then((m) => ({ default: m.EvidenceFactorsPage })));
 const EvidenceReportsPage = lazy(() => import('./pages/EvidenceReportsPage').then((m) => ({ default: m.EvidenceReportsPage })));
@@ -41,7 +38,7 @@ const ComparePage = lazy(() => import('./pages/ComparePage').then((m) => ({ defa
 const DecisionsPage = lazy(() => import('./pages/DecisionsPage').then((m) => ({ default: m.DecisionsPage })));
 const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then((m) => ({ default: m.MethodologyPage })));
 
-/** Static, read-only research navigation. Hidden legacy routes remain URL-compatible only during v1 migration. */
+/** Static, read-only research navigation after the formal Bundle v2 cutover. */
 export const routes: RouteDefinition[] = [
   { path: '', title: 'Research Overview', label: 'Overview', releaseLevel: 'release', navGroup: 'Workspace', icon: LayoutDashboard, component: HomePage },
   { path: 'runs', title: 'Governed Model Runs', label: 'Runs', releaseLevel: 'release', navGroup: 'Workspace', icon: ListTree, component: RunsPage },
@@ -56,14 +53,7 @@ export const routes: RouteDefinition[] = [
   { path: 'reports', title: 'Reports & Notebooks', label: 'Reports', releaseLevel: 'release', navGroup: 'Evidence', icon: ScrollText, component: EvidenceReportsPage },
 
   { path: 'methodology', title: 'Methodology & Boundaries', label: 'Methodology', releaseLevel: 'release', navGroup: 'Reference', icon: BookOpen, component: MethodologyPage },
-
-  { path: 'dashboard', title: 'Legacy Formal Backtest Review', label: 'Backtests', releaseLevel: 'internal', navGroup: 'Evidence', icon: BarChart3, component: DashboardPage, navVisible: false },
-  { path: 'models', title: 'Legacy Model Evidence', label: 'Models', releaseLevel: 'internal', navGroup: 'Evidence', icon: FileCheck2, component: EvidenceModelsPage, navVisible: false },
 ];
-
-export function isRuntimeVisible(route: RouteDefinition): boolean {
-  return route.navVisible !== false;
-}
 
 export const VIEW_TITLES: Record<string, string> = Object.fromEntries(routes.map((route) => [route.path, route.title]));
 
@@ -74,7 +64,6 @@ export function navigateTo(path: string): void {
 export function groupRoutes(filterFn?: (route: RouteDefinition) => boolean): Map<NavGroupTitle, RouteDefinition[]> {
   const groups = new Map<NavGroupTitle, RouteDefinition[]>();
   for (const route of routes) {
-    if (!isRuntimeVisible(route)) continue;
     if (filterFn && !filterFn(route)) continue;
     const rows = groups.get(route.navGroup) ?? [];
     rows.push(route);
@@ -84,5 +73,5 @@ export function groupRoutes(filterFn?: (route: RouteDefinition) => boolean): Map
 }
 
 export function visibleRoutes(_operatorMode: boolean): RouteDefinition[] {
-  return routes.filter(isRuntimeVisible);
+  return routes;
 }
