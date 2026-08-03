@@ -38,6 +38,7 @@
         "pool_file_sha256",
         "classification_file_sha256",
         "classification_records_sha256",
+        "shadow_contract_file_sha256",
         "score_input_sha256",
         "provider_snapshot_identity",
         "repository_commit",
@@ -49,6 +50,7 @@
         "pool_file_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "classification_file_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "classification_records_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "shadow_contract_file_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "score_input_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "provider_snapshot_identity": {"type": "string", "minLength": 8},
         "repository_commit": {"type": "string", "minLength": 7},
@@ -80,19 +82,25 @@
       "additionalProperties": false,
       "required": [
         "score_rows",
+        "eligible_score_rows",
         "baseline_names",
         "challenger_names",
         "overlap_count",
         "replacement_count",
+        "baseline_expected_turnover",
+        "challenger_expected_turnover",
         "challenger_max_sector_weight",
         "challenger_sector_hhi"
       ],
       "properties": {
         "score_rows": {"const": 87},
+        "eligible_score_rows": {"type": "integer", "minimum": 15, "maximum": 87},
         "baseline_names": {"const": 15},
         "challenger_names": {"const": 15},
         "overlap_count": {"type": "integer", "minimum": 0, "maximum": 15},
         "replacement_count": {"type": "integer", "minimum": 0, "maximum": 15},
+        "baseline_expected_turnover": {"type": "number", "minimum": 0},
+        "challenger_expected_turnover": {"type": "number", "minimum": 0},
         "challenger_max_sector_weight": {"type": "number", "maximum": 0.266666666666667},
         "challenger_sector_hhi": {"type": "number", "minimum": 0, "maximum": 1}
       }
