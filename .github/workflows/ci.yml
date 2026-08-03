@@ -156,3 +156,4 @@ jobs:
           name: frontend-build
           path: qlib-dashboard/dist/
           if-no-files-found: warn
+          retention-days: 7
