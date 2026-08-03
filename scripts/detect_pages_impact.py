@@ -30,6 +30,9 @@ DIRECT_EXACT_PATHS = {
 }
 DIRECT_PREFIXES = (
     "data/research/formal_backtests/",
+    "data/research/formal_model_runs/",
+    "data/research/model_runs/",
+    "data/research/model_decisions/",
     "qlib-dashboard/",
 )
 RESULT_REPORT_PATTERN = re.compile(r"^\s*result_report\s*:\s*(?P<value>.+?)\s*$")
