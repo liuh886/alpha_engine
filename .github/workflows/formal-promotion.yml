@@ -9,12 +9,11 @@ on:
       - "data/research/formal_backtests/**"
       - "scripts/build_formal_model_backtests.py"
       - "scripts/formal_promotion.py"
-      - "scripts/run_formal_promotion.py"
+      - "scripts/materialize_durable_formal_archives.py"
       - "tests/test_formal_promotion.py"
-      - "tests/test_formal_promotion_transport.py"
+      - "tests/test_materialize_durable_formal_archives.py"
 
 permissions:
-  actions: read
   contents: read
 
 concurrency:
@@ -40,37 +39,37 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
 
-      - name: Validate promotion verifier
+      - name: Validate durable promotion contracts
         run: |
           uv run ruff check \
             scripts/formal_promotion.py \
-            scripts/run_formal_promotion.py \
+            scripts/materialize_durable_formal_archives.py \
             tests/test_formal_promotion.py \
-            tests/test_formal_promotion_transport.py
-          uv run mypy scripts/formal_promotion.py scripts/run_formal_promotion.py
+            tests/test_materialize_durable_formal_archives.py
+          uv run mypy \
+            scripts/formal_promotion.py \
+            scripts/materialize_durable_formal_archives.py
           uv run pytest \
             tests/test_formal_promotion.py \
-            tests/test_formal_promotion_transport.py \
+            tests/test_materialize_durable_formal_archives.py \
             -q --strict-markers --tb=short
 
-      - name: Fetch exact immutable source artifacts
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      - name: Materialize exact durable source archives
         shell: bash
         run: |
           mkdir -p artifacts/formal-promotion
           set -o pipefail
-          uv run python scripts/run_formal_promotion.py fetch \
+          uv run python scripts/materialize_durable_formal_archives.py \
             --manifest-dir data/research/formal_promotions \
-            --archive-dir artifacts/formal-promotion/archives \
-            --receipt artifacts/formal-promotion/fetch-receipt.json \
-            2>&1 | tee artifacts/formal-promotion/fetch.log
+            --output-dir artifacts/formal-promotion/archives \
+            --receipt artifacts/formal-promotion/archive-receipt.json \
+            2>&1 | tee artifacts/formal-promotion/archive.log
 
       - name: Reproduce and byte-compare formal packages
         shell: bash
         run: |
           set -o pipefail
-          uv run python scripts/run_formal_promotion.py verify \
+          uv run python scripts/formal_promotion.py verify \
             --manifest-dir data/research/formal_promotions \
             --archive-dir artifacts/formal-promotion/archives \
             --source-root artifacts/formal-promotion/source \
