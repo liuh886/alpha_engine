@@ -1,0 +1,120 @@
+experiment_id: qqqi_qqq_tqqq_v4_2_recovery_quality_factor_v4_11_research
+parent_experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+purpose: >-
+  Test whether one compact walk-forward recovery-quality model can rank the
+  next ten-session marginal value of TQQQ versus QQQ and use that score only to
+  set the risk budget for an otherwise unchanged formal v4.2 state-2 episode.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  transaction_cost_bps_per_turnover_unit: 10.0
+  state_0_and_state_1_must_equal_v4_2: true
+  state_trace_must_equal_v4_2: true
+  score_frozen_for_contiguous_state_2_episode: true
+  actionable_alert_changes_authorized: false
+  issue_348_changes_authorized: false
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  required_symbols: [QQQI, QQQ, TQQQ, QQQE, ^VIX, ^VXN]
+  proxy_defensive_component: QQQ
+  model_development_end: "2023-12-29"
+  reserved_holdout_start: "2024-01-02"
+  actual_product_history_must_be_real: true
+  synthetic_pre_inception_qqqi_backfill: false
+
+label:
+  horizon_sessions: 10
+  definition: future_tqqq_minus_qqq_log_return
+  first_return_starts_after_signal_close: true
+  positive_class_if_strictly_above_zero: true
+
+features:
+  - qqq_return_5d
+  - qqq_return_20d
+  - qqq_distance_ma20
+  - qqq_distance_ma50
+  - qqq_distance_ma200
+  - qqq_realized_volatility_20d
+  - qqq_downside_volatility_20d
+  - vix_return_5d
+  - vix_retreat_from_20d_high
+  - vix_percentile_252d
+  - vxn_return_5d
+  - vxn_retreat_from_20d_high
+  - vxn_vix_level_ratio
+  - qqqe_qqq_ratio_return_5d
+  - qqqe_qqq_ratio_distance_ma20
+  - state_1_age_sessions
+
+estimator:
+  imputer: median
+  scaler: standard
+  model: logistic_regression
+  penalty: l2
+  C: 1.0
+  class_weight: balanced
+  solver: liblinear
+  max_iter: 2000
+  random_state: 0
+  no_feature_selection: true
+  no_hyperparameter_search: true
+  no_post_result_calibration: true
+
+walk_forward:
+  minimum_training_years: 4
+  first_validation_year: 2017
+  last_validation_year: 2023
+  purge_sessions: 10
+  training_expands_by_calendar_year: true
+
+strategy_mapping:
+  probability_low_below: 0.40
+  probability_high_at_or_above: 0.60
+  low_state_2: {QQQI: 0.00, QQQ: 0.50, TQQQ: 0.50}
+  baseline_state_2: {QQQI: 0.00, QQQ: 0.25, TQQQ: 0.75}
+  high_state_2: {QQQI: 0.00, QQQ: 0.00, TQQQ: 1.00}
+  decision_read_once_at_episode_entry: true
+  no_daily_resizing_inside_episode: true
+
+comparators:
+  - current_v4_2
+  - factor_defensive_ablation
+  - factor_offensive_ablation
+  - factor_joint_budget
+
+validation:
+  factor_gate:
+    aggregate_oof_auc_min: 0.55
+    aggregate_oof_spearman_ic_min: 0.05
+    top_bottom_quartile_spread_positive: true
+    positive_validation_year_rate_min: 0.60
+    largest_positive_year_share_max: 0.50
+  strategy_gate:
+    cagr_improvement_vs_v4_2_pp_min: 1.00
+    max_drawdown_worsening_vs_v4_2_pp_max: 1.00
+    calmar_improvement_vs_v4_2_min: 0.10
+    sortino_not_below_v4_2: true
+    positive_relative_calendar_years_min: 2
+    largest_positive_episode_share_max: 0.50
+    turnover_increase_max: 0.25
+    ablation_metrics_to_beat_min: 2
+    actual_proxy_direction_agreement_required: true
+  event_horizons: [1, 2, 3, 5, 10, 20]
+
+hypothesis_discipline:
+  - Use exactly the frozen feature list and one logistic estimator.
+  - Do not change the ten-session label horizon.
+  - Do not change probability thresholds or 50/75/100 percent TQQQ budgets.
+  - Do not combine this experiment with RSI/VIX SGOV defense or v4.10.
+  - Do not fit separate market-regime models.
+  - The reserved 2024-plus period may never enter estimator fitting.
+  - Passing authorizes only a non-actionable shadow challenger.
