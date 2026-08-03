@@ -1,0 +1,10 @@
+{
+  "research_only": true,
+  "schema_version": "1.0.0",
+  "started_at": "2026-08-03T03:03:49.058071+00:00",
+  "status": "started",
+  "target_cutoff": "2026-07-31",
+  "trade_ready": false,
+  "workflow_head_sha": "2ddb3dad094b7caad184ea0bfacc8d0dd7cdf0f7",
+  "workflow_run_id": 30780807178
+}
