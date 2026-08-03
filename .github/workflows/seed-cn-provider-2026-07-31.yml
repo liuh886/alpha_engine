@@ -16,7 +16,7 @@ concurrency:
 jobs:
   seed:
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,7 +38,7 @@ jobs:
               "workflow_head_sha": os.environ["GITHUB_SHA"],
               "started_at": datetime.now(timezone.utc).isoformat(),
               "target_cutoff": "2026-07-31",
-              "source_mode": "governed_repository_csv",
+              "source_mode": "governed_repository_csv_offline",
               "research_only": True,
               "trade_ready": False,
           }
@@ -62,16 +62,50 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
 
-      - name: Build complete promotion-eligible CN provider
+      - name: Require complete governed repository CSV snapshot
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+
+          from scripts.data.refresh_selected_pool_prices import (
+              BENCHMARKS,
+              _audit_source,
+              _load_pool,
+          )
+          from src.research.selected_pool_guard import resolve_selected_pool
+
+          root = Path.cwd()
+          binding = resolve_selected_pool(
+              "cn",
+              registry_path=root / "configs/pools/selected_pool_registry_v1.yaml",
+              authoritative=True,
+              require_data_ready=False,
+          )
+          candidates = _load_pool(binding.pool_spec, "cn")
+          required = [*candidates, BENCHMARKS["cn"]]
+          audits = {
+              symbol: _audit_source(root / "data/csv_clean" / f"{symbol}.csv", symbol)
+              for symbol in required
+          }
+          blocked = {
+              symbol: audit
+              for symbol, audit in audits.items()
+              if audit.get("status") != "ready"
+              or audit.get("last_date") != "2026-07-31"
+          }
+          assert not blocked, blocked
+          assert len(required) == 131, len(required)
+          PY
+
+      - name: Build isolated provider without external fetches
         run: >-
-          uv run python scripts/data/refresh_selected_pool_prices_v2.py
+          uv run python scripts/data/refresh_selected_pool_prices.py
           --market cn
           --source-csv-dir data/csv_clean
           --output-root artifacts/source/cn
           --start 2021-01-01
           --cutoff 2026-07-31
           --max-rounds 1
-          --full-refresh
 
       - name: Verify exact provider identity and cutoff
         run: |
@@ -85,8 +119,14 @@ jobs:
           )
           assert refresh.get("cutoff") == "2026-07-31", refresh
           assert refresh.get("status") == "selected_pool_price_refresh_ready", refresh
-          assert refresh.get("promotion_eligible") is True, refresh
+          assert refresh.get("refresh_mode") == "repair_only", refresh
+          assert refresh.get("target_count") == 0, refresh
+          assert refresh.get("all_sources_ready") is True, refresh
           assert not refresh.get("failures"), refresh
+          assert all(
+              row.get("action") == "copied_verified_source"
+              for row in refresh.get("records", [])
+          ), refresh
 
           provider = json.loads(
               Path("artifacts/source/cn/data/providers/cn/provider_manifest.json")
@@ -131,7 +171,9 @@ jobs:
               "artifact_digest": os.environ["ARTIFACT_DIGEST"],
               "provider_identity_sha256": "bf5fa1373a0b5ebfedcd90c2cf3c4748300efd2b25da0adfbfb1daab8c6405d8",
               "provider_cutoff": "2026-07-31",
-              "source_mode": "governed_repository_csv",
+              "source_mode": "governed_repository_csv_offline",
+              "source_symbol_count": 131,
+              "external_fetch_count": 0,
               "research_only": True,
               "trade_ready": False,
           }
