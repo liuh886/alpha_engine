@@ -87,7 +87,7 @@ jobs:
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen
+          uv sync --frozen --extra dev
 
       - name: Validate release verification contract
         run: |
