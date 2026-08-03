@@ -35,14 +35,27 @@ def benchmark_series_by_date(
     *,
     name: str,
 ) -> pd.Series:
-    """Return one benchmark observation per date from a Qlib-style frame."""
+    """Return one benchmark observation per normalized date.
 
-    values = _validate_single_column_frame(
-        benchmark_returns,
-        name=name,
-        require_instrument=False,
-    )
-    dates = pd.DatetimeIndex(values.index.get_level_values("datetime")).normalize()
+    Qlib feature reads use a ``(datetime, instrument)`` MultiIndex, while the
+    governed benchmark loader returns a single dated index. Both forms are
+    accepted and normalized to one observation per date.
+    """
+
+    if benchmark_returns.shape[1] != 1:
+        raise ValueError(f"{name} must contain exactly one column")
+    if isinstance(benchmark_returns.index, pd.MultiIndex):
+        values = _validate_single_column_frame(
+            benchmark_returns,
+            name=name,
+            require_instrument=False,
+        )
+        dates = pd.DatetimeIndex(
+            values.index.get_level_values("datetime")
+        ).normalize()
+    else:
+        values = benchmark_returns.iloc[:, 0].astype(float).sort_index()
+        dates = pd.DatetimeIndex(values.index).normalize()
     dated = pd.Series(values.to_numpy(dtype=float), index=dates, name=name)
     if dated.index.has_duplicates:
         duplicate_dates = dated.index[dated.index.duplicated()].unique()
