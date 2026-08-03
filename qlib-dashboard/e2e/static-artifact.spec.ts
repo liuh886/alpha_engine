@@ -106,7 +106,17 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await catalog.getByRole('button', { name: /QQQ Rotation v4\.2/ }).click();
   await expect(page).toHaveURL(/#\/review\?channel=formal&family=qqqi_qqq_tqqq_v4_2/);
   await expect(page.getByRole('heading', { name: 'QQQ Rotation v4.2' })).toBeVisible();
-  await expect(page.getByText('Research evidence only · not trade ready', { exact: true })).toBeVisible();
+  const capabilityTabs = page.getByRole('tablist', { name: 'Run capability evidence' });
+  await expect(capabilityTabs.getByRole('tab', { name: 'Summary' })).toBeVisible();
+  await expect(capabilityTabs.getByRole('tab', { name: 'Alpha' })).toBeVisible();
+  await expect(capabilityTabs.getByRole('tab', { name: 'Risk' })).toBeVisible();
+  await expect(capabilityTabs.getByRole('tab', { name: 'Robustness' })).toBeVisible();
+  await expect(capabilityTabs.getByRole('tab', { name: 'Portfolio' })).toBeVisible();
+  await expect(page.getByText('Source:', { exact: true }).first()).toBeVisible();
+  await capabilityTabs.getByRole('tab', { name: 'Alpha' }).click();
+  await expect(page.getByRole('heading', { name: 'Strategy, benchmark and excess paths' })).toBeVisible();
+  await capabilityTabs.getByRole('tab', { name: 'Risk' }).click();
+  await expect(page.getByText('Declared tail evidence unavailable', { exact: true })).toBeVisible();
   await assertNoHorizontalOverflow(page);
   await page.screenshot({ path: `test-results/static-artifact/governed-review-${testInfo.project.name}.png`, fullPage: true });
 
