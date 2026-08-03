@@ -39,10 +39,25 @@ async function readJson(path, label) {
 }
 
 const { bytes: catalogBytes, value: catalog } = await readJson(join(sourceRoot, 'catalog.json'), 'Formal backtest catalog');
+const { bytes: freshnessBytes, value: freshness } = await readJson(join(sourceRoot, 'freshness.json'), 'Formal backtest freshness policy');
 if (catalog.schema_version !== '1.0.0') throw new Error('Unsupported formal backtest catalog schema.');
 if (catalog.publication_policy !== 'formal_named_baselines_only') throw new Error('Formal catalog publication policy is invalid.');
 if (catalog.research_only !== true || catalog.trade_ready !== false) throw new Error('Formal catalog research boundary is invalid.');
 if (!Array.isArray(catalog.records) || catalog.records.length === 0) throw new Error('Formal catalog contains no records.');
+if (freshness.schema_version !== '1.0.0' || freshness.cutoff_policy !== 'latest_completed_trading_session') {
+  throw new Error('Formal freshness policy is invalid.');
+}
+if (freshness.research_only !== true || freshness.trade_ready !== false) {
+  throw new Error('Formal freshness research boundary is invalid.');
+}
+const marketCutoffs = assertRecord(freshness.markets, 'Formal freshness market cutoffs');
+const nextSessionCloses = assertRecord(freshness.next_session_close_utc, 'Formal freshness next-session closes');
+if (JSON.stringify(Object.keys(marketCutoffs).sort()) !== JSON.stringify(Object.keys(nextSessionCloses).sort())) {
+  throw new Error('Formal freshness market and next-session-close bindings differ.');
+}
+if (!Array.isArray(freshness.required_models) || freshness.required_models.length === 0) {
+  throw new Error('Formal freshness required model list is missing.');
+}
 
 const seen = new Set();
 const acceptedFiles = [];
@@ -61,14 +76,28 @@ for (const rawEntry of catalog.records) {
   if (payload.research_only !== true || payload.trade_ready !== false) throw new Error(`Formal backtest research boundary is invalid: ${modelId}`);
   if (!Array.isArray(payload.report) || payload.report.length === 0) throw new Error(`Formal backtest has no retained performance path: ${modelId}`);
   if (!payload.evidence_completeness || typeof payload.evidence_completeness.status !== 'string') throw new Error(`Formal backtest completeness is missing: ${modelId}`);
+  const market = String(payload.market ?? '');
+  const requiredCutoff = String(marketCutoffs[market] ?? '');
+  if (!requiredCutoff) throw new Error(`Formal freshness cutoff is missing for ${modelId}/${market}.`);
+  if (payload.evidence_cutoff !== requiredCutoff) {
+    throw new Error(`Formal backtest is stale: ${modelId}; expected ${requiredCutoff}, found ${String(payload.evidence_cutoff)}.`);
+  }
   acceptedFiles.push({ filename, bytes });
+}
+
+if (seen.size !== freshness.required_models.length || freshness.required_models.some((modelId) => !seen.has(String(modelId)))) {
+  throw new Error('Formal catalog does not exactly match freshness required_models.');
 }
 
 await rm(targetRoot, { recursive: true, force: true });
 await mkdir(targetRoot, { recursive: true });
 await copyFile(join(sourceRoot, 'catalog.json'), join(targetRoot, 'catalog.json'));
+await copyFile(join(sourceRoot, 'freshness.json'), join(targetRoot, 'freshness.json'));
 for (const { filename } of acceptedFiles) {
   await copyFile(join(sourceRoot, filename), join(targetRoot, filename));
 }
 
-console.log(`Published ${acceptedFiles.length} formal model backtests from ${sourceRoot}. Catalog SHA-256: ${sha256(catalogBytes)}`);
+console.log(
+  `Published ${acceptedFiles.length} current formal model backtests from ${sourceRoot}. `
+  + `Catalog SHA-256: ${sha256(catalogBytes)}; freshness SHA-256: ${sha256(freshnessBytes)}`,
+);
