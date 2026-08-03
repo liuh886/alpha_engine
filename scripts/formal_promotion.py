@@ -20,6 +20,7 @@ from typing import Any, Iterable
 DEFAULT_MANIFEST_DIR = Path("data/research/formal_promotions")
 DEFAULT_COMMITTED_DIR = Path("data/research/formal_backtests")
 DEFAULT_BUILDER = Path("scripts/build_formal_model_backtests.py")
+GITHUB_ACCEPT = "application/vnd.github+json"
 
 
 class FormalPromotionError(ValueError):
@@ -50,10 +51,8 @@ class PromotionManifest:
     on_expiry: str
 
 
-def _safe_path(value: str, *, allow_dot: bool = False) -> str:
+def _safe_path(value: str) -> str:
     normalized = value.replace("\\", "/").strip()
-    if allow_dot and normalized == ".":
-        return normalized
     path = PurePosixPath(normalized)
     if not normalized or path.is_absolute() or ".." in path.parts:
         raise FormalPromotionError(f"unsafe relative path: {value!r}")
@@ -128,11 +127,15 @@ def load_manifest(path: Path) -> PromotionManifest:
     durability = payload.get("durability")
     if not isinstance(durability, dict):
         raise FormalPromotionError(f"durability declaration missing: {path}")
-    status = str(durability.get("status") or "")
+    durability_status = str(durability.get("status") or "")
     on_expiry = str(durability.get("on_expiry") or "")
-    if status not in {"durable_repository_archive", "time_bounded_actions_artifact"}:
+    allowed = {"durable_repository_archive", "time_bounded_actions_artifact"}
+    if durability_status not in allowed:
         raise FormalPromotionError(f"unsupported durability status: {path}")
-    if status == "time_bounded_actions_artifact" and on_expiry != "block_non_regenerable":
+    if (
+        durability_status == "time_bounded_actions_artifact"
+        and on_expiry != "block_non_regenerable"
+    ):
         raise FormalPromotionError(f"time-bounded source must block after expiry: {path}")
 
     try:
@@ -167,7 +170,7 @@ def load_manifest(path: Path) -> PromotionManifest:
         package_path=package_path,
         evidence_cutoff=evidence_cutoff,
         source=source,
-        durability_status=status,
+        durability_status=durability_status,
         on_expiry=on_expiry,
     )
 
@@ -203,9 +206,15 @@ def validate_artifact_metadata(
         raise FormalPromotionError(
             f"{manifest.model_id}: source artifact is expired and non-regenerable"
         )
+    if metadata.get("expires_at") != source.expires_at:
+        raise FormalPromotionError(f"{manifest.model_id}: artifact expiry mismatch")
     workflow = metadata.get("workflow_run")
-    if not isinstance(workflow, dict) or int(workflow.get("id", -1)) != source.workflow_run_id:
+    if not isinstance(workflow, dict):
+        raise FormalPromotionError(f"{manifest.model_id}: workflow identity missing")
+    if int(workflow.get("id", -1)) != source.workflow_run_id:
         raise FormalPromotionError(f"{manifest.model_id}: workflow run mismatch")
+    if workflow.get("head_sha") != source.workflow_head_sha:
+        raise FormalPromotionError(f"{manifest.model_id}: workflow head SHA mismatch")
     if now >= _parse_time(source.expires_at):
         raise FormalPromotionError(
             f"{manifest.model_id}: declared source expired at {source.expires_at}; "
@@ -213,11 +222,11 @@ def validate_artifact_metadata(
         )
 
 
-def _request(url: str, token: str, *, accept: str) -> urllib.request.Request:
+def _request(url: str, token: str) -> urllib.request.Request:
     return urllib.request.Request(
         url,
         headers={
-            "Accept": accept,
+            "Accept": GITHUB_ACCEPT,
             "Authorization": f"Bearer {token}",
             "User-Agent": "alpha-engine-formal-promotion/1.0",
             "X-GitHub-Api-Version": "2022-11-28",
@@ -243,10 +252,7 @@ def fetch_sources(
             f"{source.artifact_id}"
         )
         try:
-            with urllib.request.urlopen(
-                _request(api_root, token, accept="application/vnd.github+json"),
-                timeout=30,
-            ) as response:
+            with urllib.request.urlopen(_request(api_root, token), timeout=30) as response:
                 metadata = json.loads(response.read())
         except (urllib.error.URLError, json.JSONDecodeError) as exc:
             raise FormalPromotionError(
@@ -259,8 +265,7 @@ def fetch_sources(
         archive = archive_dir / f"{manifest.model_id}.zip"
         try:
             with urllib.request.urlopen(
-                _request(f"{api_root}/zip", token, accept="application/octet-stream"),
-                timeout=120,
+                _request(f"{api_root}/zip", token), timeout=120
             ) as response, archive.open("wb") as handle:
                 shutil.copyfileobj(response, handle)
         except (OSError, urllib.error.URLError) as exc:
@@ -276,8 +281,11 @@ def fetch_sources(
         fetched.append(
             {
                 "model_id": manifest.model_id,
+                "workflow_run_id": source.workflow_run_id,
+                "workflow_head_sha": source.workflow_head_sha,
                 "artifact_id": source.artifact_id,
                 "artifact_digest": observed,
+                "expires_at": source.expires_at,
                 "archive": archive.as_posix(),
             }
         )
@@ -286,19 +294,18 @@ def fetch_sources(
 
 def _safe_extract(archive: Path, destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
+    destination_root = destination.resolve()
     with zipfile.ZipFile(archive) as bundle:
         for info in bundle.infolist():
             relative = PurePosixPath(info.filename)
             if relative.is_absolute() or ".." in relative.parts:
                 raise FormalPromotionError(f"unsafe archive member: {info.filename}")
-            mode = info.external_attr >> 16
-            if stat.S_ISLNK(mode):
+            if stat.S_ISLNK(info.external_attr >> 16):
                 raise FormalPromotionError(
                     f"archive symlink is not allowed: {info.filename}"
                 )
-            target = destination.joinpath(*relative.parts)
-            resolved = target.resolve()
-            if destination.resolve() not in resolved.parents and resolved != destination.resolve():
+            resolved = destination.joinpath(*relative.parts).resolve()
+            if resolved != destination_root and destination_root not in resolved.parents:
                 raise FormalPromotionError(
                     f"archive member escapes destination: {info.filename}"
                 )
@@ -411,18 +418,21 @@ def verify_reproduction(
     if generated_dir.exists():
         shutil.rmtree(generated_dir)
     generated_dir.mkdir(parents=True)
-    subprocess.run(
-        [
-            sys.executable,
-            str(repository_root / builder),
-            "--source-root",
-            str(source_root),
-            "--output-dir",
-            str(generated_dir),
-        ],
-        cwd=repository_root,
-        check=True,
-    )
+    try:
+        subprocess.run(
+            [
+                sys.executable,
+                str(repository_root / builder),
+                "--source-root",
+                str(source_root),
+                "--output-dir",
+                str(generated_dir),
+            ],
+            cwd=repository_root,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise FormalPromotionError("deterministic formal package builder failed") from exc
 
     generated_catalog_bytes = (generated_dir / "catalog.json").read_bytes()
     committed_catalog_bytes = (committed_dir / "catalog.json").read_bytes()
@@ -471,8 +481,8 @@ def verify_reproduction(
             raise FormalPromotionError(
                 f"{manifest.model_id}: committed catalog hash mismatch"
             )
-        equal = generated_bytes == committed_bytes
-        if not equal:
+        byte_exact = generated_bytes == committed_bytes
+        if not byte_exact:
             diffs.append(
                 _diff(f"{manifest.model_id}.json", committed_bytes, generated_bytes)
             )
@@ -484,17 +494,16 @@ def verify_reproduction(
                 "evidence_cutoff": manifest.evidence_cutoff,
                 "generated_sha256": generated_hash,
                 "committed_sha256": committed_hash,
-                "byte_exact": equal,
+                "byte_exact": byte_exact,
             }
         )
 
-    catalog_equal = generated_catalog_bytes == committed_catalog_bytes
-    if not catalog_equal:
+    catalog_exact = generated_catalog_bytes == committed_catalog_bytes
+    if not catalog_exact:
         diffs.append(_diff("catalog.json", committed_catalog_bytes, generated_catalog_bytes))
-
     status = (
         "verified"
-        if catalog_equal and all(row["byte_exact"] for row in results)
+        if catalog_exact and all(row["byte_exact"] for row in results)
         else "mismatch"
     )
     receipt = {
@@ -504,13 +513,12 @@ def verify_reproduction(
         "generator_sha256": _sha256_file(repository_root / builder),
         "research_only": True,
         "trade_ready": False,
-        "catalog_byte_exact": catalog_equal,
+        "catalog_byte_exact": catalog_exact,
         "models": results,
     }
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
     receipt_path.write_text(
-        json.dumps(receipt, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
+        json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
 
     table = [
@@ -529,7 +537,7 @@ def verify_reproduction(
     table.extend(
         [
             "",
-            f"Catalog byte exact: `{str(catalog_equal).lower()}`",
+            f"Catalog byte exact: `{str(catalog_exact).lower()}`",
             "",
             "No files are edited or promoted by this verification workflow.",
         ]
@@ -549,21 +557,26 @@ def _now(value: str | None) -> datetime:
     return _parse_time(value) if value else datetime.now(timezone.utc)
 
 
+def _write_status(path: Path | None, payload: dict[str, Any]) -> None:
+    if path is None:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=(
-            "Fetch and byte-verify formal baseline packages from immutable evidence."
-        )
+        description="Fetch and byte-verify formal baselines from immutable evidence."
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    commands = parser.add_subparsers(dest="command", required=True)
 
-    fetch_parser = subparsers.add_parser("fetch")
+    fetch_parser = commands.add_parser("fetch")
     fetch_parser.add_argument("--manifest-dir", type=Path, default=DEFAULT_MANIFEST_DIR)
     fetch_parser.add_argument("--archive-dir", type=Path, required=True)
     fetch_parser.add_argument("--now")
     fetch_parser.add_argument("--receipt", type=Path)
 
-    verify_parser = subparsers.add_parser("verify")
+    verify_parser = commands.add_parser("verify")
     verify_parser.add_argument("--manifest-dir", type=Path, default=DEFAULT_MANIFEST_DIR)
     verify_parser.add_argument("--archive-dir", type=Path, required=True)
     verify_parser.add_argument("--source-root", type=Path, required=True)
@@ -575,40 +588,36 @@ def main() -> None:
 
     args = parser.parse_args()
     repository_root = Path(".").resolve()
-    manifests = load_manifests(repository_root / args.manifest_dir)
-
-    if args.command == "fetch":
-        fetched = fetch_sources(
-            manifests,
-            archive_dir=repository_root / args.archive_dir,
-            token=os.environ.get("GITHUB_TOKEN", ""),
-            now=_now(args.now),
-        )
-        if args.receipt:
-            receipt_path = repository_root / args.receipt
-            receipt_path.parent.mkdir(parents=True, exist_ok=True)
-            receipt_path.write_text(
-                json.dumps({"status": "fetched", "sources": fetched}, indent=2)
-                + "\n",
-                encoding="utf-8",
+    receipt_path = repository_root / args.receipt if args.receipt else None
+    try:
+        manifests = load_manifests(repository_root / args.manifest_dir)
+        if args.command == "fetch":
+            fetched = fetch_sources(
+                manifests,
+                archive_dir=repository_root / args.archive_dir,
+                token=os.environ.get("GITHUB_TOKEN", ""),
+                now=_now(args.now),
             )
-        print(json.dumps({"status": "fetched", "sources": fetched}, sort_keys=True))
-        return
+            payload = {"status": "fetched", "sources": fetched}
+            _write_status(receipt_path, payload)
+            print(json.dumps(payload, sort_keys=True))
+            return
 
-    archive_dir = repository_root / args.archive_dir
-    source_root = repository_root / args.source_root
-    receipt = verify_reproduction(
-        manifests,
-        repository_root=repository_root,
-        archive_dir=archive_dir,
-        source_root=source_root,
-        generated_dir=repository_root / args.generated_dir,
-        committed_dir=repository_root / args.committed_dir,
-        builder=args.builder,
-        receipt_path=repository_root / args.receipt,
-        summary_path=repository_root / args.summary,
-    )
-    print(json.dumps(receipt, sort_keys=True))
+        receipt = verify_reproduction(
+            manifests,
+            repository_root=repository_root,
+            archive_dir=repository_root / args.archive_dir,
+            source_root=repository_root / args.source_root,
+            generated_dir=repository_root / args.generated_dir,
+            committed_dir=repository_root / args.committed_dir,
+            builder=args.builder,
+            receipt_path=repository_root / args.receipt,
+            summary_path=repository_root / args.summary,
+        )
+        print(json.dumps(receipt, sort_keys=True))
+    except FormalPromotionError as exc:
+        _write_status(receipt_path, {"status": "blocked", "error": str(exc)})
+        raise
 
 
 if __name__ == "__main__":
