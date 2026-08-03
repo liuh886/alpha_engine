@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alpha-engine.local/contracts/model-run-bundle-v2/manifest.schema.json",
+  "title": "Model Run Bundle v2 manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "model_family_id",
+    "model_version_id",
+    "run_id",
+    "bundle_id",
+    "model_kind",
+    "publication_channel",
+    "publication_status",
+    "generated_at",
+    "evidence_cutoff",
+    "research_only",
+    "trade_ready",
+    "comparability_key",
+    "sections"
+  ],
+  "properties": {
+    "schema_version": { "const": "2.0.0" },
+    "model_family_id": { "$ref": "#/$defs/slug" },
+    "model_version_id": { "$ref": "#/$defs/slug" },
+    "run_id": { "$ref": "#/$defs/slug" },
+    "bundle_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "model_kind": { "enum": ["rules_based_allocation", "cross_sectional_ranker", "forecast_model"] },
+    "publication_channel": { "enum": ["local", "preview", "formal"] },
+    "publication_status": { "enum": ["local_only", "ci_validated_preview", "accepted_formal_baseline", "rejected", "blocked"] },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "evidence_cutoff": { "type": "string", "format": "date" },
+    "research_only": { "const": true },
+    "trade_ready": { "const": false },
+    "comparability_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["market", "universe_id", "benchmark_id", "start", "end", "trace_frequency", "horizon", "rebalance_contract_id", "cost_contract_id"],
+      "properties": {
+        "market": { "type": "string", "minLength": 1 },
+        "universe_id": { "$ref": "#/$defs/slug" },
+        "benchmark_id": { "$ref": "#/$defs/slug" },
+        "start": { "type": "string", "format": "date" },
+        "end": { "type": "string", "format": "date" },
+        "trace_frequency": { "type": "string", "minLength": 1 },
+        "horizon": { "type": "string", "minLength": 1 },
+        "rebalance_contract_id": { "$ref": "#/$defs/slug" },
+        "cost_contract_id": { "$ref": "#/$defs/slug" }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "section-availability.schema.json" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "publication_channel": { "const": "formal" } } },
+      "then": { "properties": { "publication_status": { "const": "accepted_formal_baseline" } } }
+    },
+    {
+      "if": { "properties": { "publication_status": { "const": "accepted_formal_baseline" } } },
+      "then": { "properties": { "publication_channel": { "const": "formal" } } }
+    }
+  ],
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$" }
+  }
+}

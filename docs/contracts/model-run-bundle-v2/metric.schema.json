@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alpha-engine.local/contracts/model-run-bundle-v2/metric.schema.json",
+  "title": "Model Run Bundle v2 canonical metric",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "metric_id",
+    "value",
+    "unit",
+    "direction",
+    "estimator",
+    "annualization",
+    "sample_count",
+    "scope",
+    "availability_status",
+    "unavailable_reason"
+  ],
+  "properties": {
+    "metric_id": {
+      "enum": [
+        "total_return",
+        "annualized_return",
+        "benchmark_return",
+        "excess_return",
+        "annualized_volatility",
+        "sharpe_ratio",
+        "information_ratio",
+        "max_drawdown",
+        "turnover",
+        "transaction_cost",
+        "ic",
+        "rank_ic",
+        "icir"
+      ]
+    },
+    "value": { "type": ["number", "null"] },
+    "unit": { "enum": ["ratio", "decimal", "count", "bps"] },
+    "direction": { "enum": ["higher_is_better", "lower_is_better", "descriptive"] },
+    "estimator": { "type": ["string", "null"] },
+    "annualization": { "type": ["string", "null"] },
+    "sample_count": { "type": ["integer", "null"], "minimum": 0 },
+    "scope": { "type": "string", "minLength": 1 },
+    "availability_status": {
+      "enum": ["available", "not_applicable", "not_computed", "not_retained", "blocked_by_source"]
+    },
+    "unavailable_reason": { "type": ["string", "null"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "availability_status": { "const": "available" } } },
+      "then": {
+        "properties": {
+          "value": { "type": "number" },
+          "unavailable_reason": { "type": "null" }
+        }
+      },
+      "else": {
+        "properties": {
+          "value": { "type": "null" },
+          "unavailable_reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  ]
+}

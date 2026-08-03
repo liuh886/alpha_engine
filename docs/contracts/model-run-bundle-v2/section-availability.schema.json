@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alpha-engine.local/contracts/model-run-bundle-v2/section-availability.schema.json",
+  "title": "Model Run Bundle v2 section declaration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["section_id", "availability_status", "required_for_model_kind", "reason", "path", "sha256", "byte_size", "media_type"],
+  "properties": {
+    "section_id": {
+      "enum": ["summary", "performance", "risk", "robustness", "portfolio", "trades", "attribution", "diagnostics", "lineage", "decision"]
+    },
+    "availability_status": {
+      "enum": ["available", "not_applicable", "not_computed", "not_retained", "blocked_by_source"]
+    },
+    "required_for_model_kind": { "type": "boolean" },
+    "reason": { "type": ["string", "null"] },
+    "path": { "type": ["string", "null"], "pattern": "^[a-z0-9][a-z0-9._/-]*\\.json$" },
+    "sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "byte_size": { "type": ["integer", "null"], "minimum": 0 },
+    "media_type": { "type": ["string", "null"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "availability_status": { "const": "available" } } },
+      "then": {
+        "properties": {
+          "reason": { "type": "null" },
+          "path": { "type": "string" },
+          "sha256": { "type": "string" },
+          "byte_size": { "type": "integer" },
+          "media_type": { "const": "application/json" }
+        }
+      },
+      "else": {
+        "properties": {
+          "reason": { "type": "string", "minLength": 1 },
+          "path": { "type": "null" },
+          "sha256": { "type": "null" },
+          "byte_size": { "type": "null" },
+          "media_type": { "type": "null" }
+        }
+      }
+    }
+  ]
+}

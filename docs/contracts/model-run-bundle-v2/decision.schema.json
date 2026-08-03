@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alpha-engine.local/contracts/model-run-bundle-v2/decision.schema.json",
+  "title": "Model Run Bundle v2 research decision receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "bundle_id", "verdict", "status", "generated_at", "research_only", "trade_ready", "gates", "supporting_evidence", "contradictory_evidence", "interpretation_limits", "failure_modes", "next_permitted_validation_step"],
+  "properties": {
+    "schema_version": { "const": "2.0.0" },
+    "run_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$" },
+    "bundle_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "verdict": { "enum": ["supported", "not_supported", "blocked"] },
+    "status": { "enum": ["pending_review", "completed"] },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "research_only": { "const": true },
+    "trade_ready": { "const": false },
+    "gates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/claim" }
+    },
+    "supporting_evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/claim" }
+    },
+    "contradictory_evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/claim" }
+    },
+    "interpretation_limits": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "failure_modes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "next_permitted_validation_step": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_id", "outcome", "statement", "source_path", "source_sha256"],
+      "properties": {
+        "claim_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$" },
+        "outcome": { "enum": ["passed", "failed", "blocked", "informational"] },
+        "statement": { "type": "string", "minLength": 1 },
+        "source_path": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]*\\.json$" },
+        "source_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}
