@@ -46,8 +46,8 @@ def test_naive_benchmark_subtraction_preserves_daily_ranks() -> None:
 
     naive = make_naive_benchmark_excess_returns(stock, benchmark)
     pd.testing.assert_series_equal(
-        make_daily_rank_target(stock),
-        make_daily_rank_target(naive),
+        make_daily_rank_target(stock.sort_index()).sort_index(),
+        make_daily_rank_target(naive).sort_index(),
         check_names=False,
     )
     assert prove_naive_rank_invariance(stock, benchmark) == {
@@ -77,9 +77,7 @@ def test_trailing_beta_is_point_in_time_and_stock_specific() -> None:
         minimum_observations=4,
     )
 
-    assert beta.loc[(dates[2], "A"), "beta"] != beta.loc[
-        (dates[2], "A"), "beta"
-    ]
+    assert np.isnan(beta.loc[(dates[2], "A"), "beta"])
     assert beta.loc[(dates[3], "A"), "beta"] == pytest.approx(2.0)
     assert beta.loc[(dates[3], "B"), "beta"] == pytest.approx(0.5)
     assert beta.loc[(dates[-1], "A"), "paired_observations"] == 5
@@ -111,7 +109,10 @@ def test_beta_residual_can_change_cross_sectional_order() -> None:
     beta_index = stock_forward.index
     beta = pd.DataFrame(
         {
-            "beta": [2.0 if instrument == "A" else 0.5 for _, instrument in beta_index],
+            "beta": [
+                2.0 if instrument == "A" else 0.5
+                for _, instrument in beta_index
+            ],
             "paired_observations": [60] * len(beta_index),
         },
         index=beta_index,
