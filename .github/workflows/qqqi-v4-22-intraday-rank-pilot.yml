@@ -8,24 +8,23 @@ on:
       - "configs/research_paradigms/qqqi_state2_intraday_rank_pilot_v4_22_research.yaml"
       - "src/research/v4_22_intraday_rank_pilot.py"
       - "src/research/v4_22_intraday_rank_pilot_runtime.py"
-      - "scripts/run_qqqi_v4_22_intraday_rank_pilot.py"
+      - "src/research/v4_22_intraday_snapshot_runtime.py"
+      - "scripts/run_qqqi_v4_22_intraday_rank_pilot_snapshot.py"
       - "tests/test_v4_22_intraday_rank_pilot.py"
       - "tests/test_v4_22_intraday_rank_pilot_runtime.py"
+      - "tests/test_v4_22_intraday_snapshot_runtime.py"
       - "tests/test_v4_22_intraday_runtime.py"
-      - "src/data/adapters/polygon_intraday_adapter.py"
       - "src/data/adapters/yfinance_open_close_research_adapter.py"
-      - "src/research/v4_21_state2_intraday_preflight.py"
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   evidence:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
-    env:
-      POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
@@ -41,24 +40,43 @@ jobs:
           uv run ruff check \
             src/research/v4_22_intraday_rank_pilot.py \
             src/research/v4_22_intraday_rank_pilot_runtime.py \
-            scripts/run_qqqi_v4_22_intraday_rank_pilot.py \
+            src/research/v4_22_intraday_snapshot_runtime.py \
+            scripts/run_qqqi_v4_22_intraday_rank_pilot_snapshot.py \
             tests/test_v4_22_intraday_rank_pilot.py \
             tests/test_v4_22_intraday_rank_pilot_runtime.py \
+            tests/test_v4_22_intraday_snapshot_runtime.py \
             tests/test_v4_22_intraday_runtime.py
       - name: Test v4.22 and inherited intraday contracts
         run: |
           uv run pytest \
             tests/test_v4_22_intraday_rank_pilot.py \
             tests/test_v4_22_intraday_rank_pilot_runtime.py \
+            tests/test_v4_22_intraday_snapshot_runtime.py \
             tests/test_v4_22_intraday_runtime.py \
             tests/test_polygon_intraday_adapter.py \
             tests/test_yfinance_open_close_research_adapter.py \
             tests/test_v4_21_state2_intraday_preflight.py \
             tests/test_vxn_bridge_allocation_experiment.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Run governed recent-history pilot
+      - name: Download frozen outcome-free v4.21 Phase 0 snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          uv run python scripts/run_qqqi_v4_22_intraday_rank_pilot.py \
+          mkdir -p artifacts/input/v4_21_phase0
+          curl --location --fail --silent --show-error \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/8879966050/zip" \
+            --output /tmp/v4_21_phase0.zip
+          unzip -q /tmp/v4_21_phase0.zip -d artifacts/input/v4_21_phase0
+          test -f artifacts/input/v4_21_phase0/opening_alignment.csv
+          test -f artifacts/input/v4_21_phase0/intraday_source_coverage.csv
+          test -f artifacts/input/v4_21_phase0/manifest.json
+      - name: Run governed recent-history pilot from frozen input
+        run: |
+          uv run python scripts/run_qqqi_v4_22_intraday_rank_pilot_snapshot.py \
+            --snapshot-dir artifacts/input/v4_21_phase0 \
             --output-dir artifacts/evidence/qqqi_state2_intraday_rank_pilot_v4_22_research
       - name: Upload v4.22 evidence
         if: always()
