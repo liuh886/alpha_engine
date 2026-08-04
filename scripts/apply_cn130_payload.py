@@ -1,20 +1,26 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PAYLOAD = ROOT / ".github" / "cn130_payload.tar.gz.b64"
-REMOVE = [
-    PAYLOAD,
-    ROOT / "scripts" / "apply_cn130_payload.py",
-    ROOT / ".github" / "workflows" / "cn130-apply-payload.yml",
-]
+PARTS = sorted((ROOT / ".github").glob("cn130_payload.part*"))
+EXPECTED_SHA256 = "a50ace21ad8d9f4acdf7df9500a47936b1c34ccdb0f673f80179b71f367ede09"
 
-encoded = PAYLOAD.read_text(encoding="utf-8").strip()
+if len(PARTS) != 8:
+    raise RuntimeError(f"expected 8 payload parts, found {len(PARTS)}")
+
+encoded = "".join(path.read_text(encoding="utf-8") for path in PARTS)
 data = base64.b64decode(encoded, validate=True)
+observed_sha256 = hashlib.sha256(data).hexdigest()
+if observed_sha256 != EXPECTED_SHA256:
+    raise RuntimeError(
+        f"payload sha256 mismatch: {observed_sha256} != {EXPECTED_SHA256}"
+    )
+
 with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
     for member in archive.getmembers():
         target = (ROOT / member.name).resolve()
@@ -22,5 +28,11 @@ with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
             raise RuntimeError(f"unsafe payload member: {member.name}")
     archive.extractall(ROOT)
 
-for path in REMOVE:
+remove = [
+    ROOT / ".github" / "cn130_payload.tar.gz.b64",
+    *PARTS,
+    ROOT / "scripts" / "apply_cn130_payload.py",
+    ROOT / ".github" / "workflows" / "cn130-apply-payload.yml",
+]
+for path in remove:
     path.unlink(missing_ok=True)
