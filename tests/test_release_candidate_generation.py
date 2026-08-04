@@ -1321,6 +1321,7 @@ def test_vectorized_wf_uses_raw_label_expression(
         market="cn", train_start="2024-01-01", train_end="2025-12-15",
         test_window_months=1, step_months=1, n_estimators=1,
         matrix_cache_dir=tmp_path / "matrix-cache",
+        split_workers=1,
     )
 
     # The vectorized path loads raw label expression at index 1+ (after features)
@@ -1334,10 +1335,23 @@ def test_vectorized_wf_uses_raw_label_expression(
         market="cn", train_start="2024-01-01", train_end="2025-12-15",
         test_window_months=1, step_months=1, n_estimators=1,
         matrix_cache_dir=tmp_path / "matrix-cache",
+        split_workers=1,
     )
     assert _feat_call[0] == first_fetch_count
     assert cached.matrix_cache_status == "exact_identity_hit"
     assert cached.matrix_cache_key == result.matrix_cache_key
+    parallel = walk_forward_vectorized(
+        market="cn", train_start="2024-01-01", train_end="2025-12-15",
+        test_window_months=1, step_months=1, n_estimators=1,
+        matrix_cache_dir=tmp_path / "matrix-cache",
+        split_workers=2,
+        model_threads=1,
+    )
+    assert _feat_call[0] == first_fetch_count
+    assert parallel.split_workers == 2
+    assert [split.split_id for split in parallel.splits] == sorted(
+        split.split_id for split in parallel.splits
+    )
     # IC should be computed and finite
     for sr in result.splits:
         if sr.status == "success":
