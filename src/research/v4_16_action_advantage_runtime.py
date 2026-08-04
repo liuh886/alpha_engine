@@ -13,6 +13,23 @@ from src.research.v4_14_multifactor_event_discovery import (
     build_multifactor_feature_frame,
 )
 
+_EVENT_COLUMNS = (
+    "sample",
+    "fold",
+    "event_family",
+    "action",
+    "event_id",
+    "signal_close_date",
+    "execution_date",
+    "event_end_date",
+    "holding_sessions",
+    "predicted_advantage",
+    "second_best_advantage",
+    "predicted_margin",
+    "realized_advantage",
+    "win",
+)
+
 
 def build_action_advantage_frame(
     bars: Mapping[str, pd.DataFrame],
@@ -65,21 +82,46 @@ def build_action_advantage_frame(
     return frame, tuple(feature_names), target_names
 
 
+_ORIGINAL_SELECT_ADVANTAGE_EVENTS = core.select_advantage_events
+
+
+def select_advantage_events(
+    predictions: pd.DataFrame,
+    contract: Mapping[str, Any],
+    *,
+    sample: str,
+) -> pd.DataFrame:
+    """Run the frozen selector and preserve a stable schema for no-event samples."""
+
+    events = _ORIGINAL_SELECT_ADVANTAGE_EVENTS(
+        predictions, contract, sample=sample
+    )
+    if events.empty:
+        return pd.DataFrame(columns=list(_EVENT_COLUMNS))
+    missing = [column for column in _EVENT_COLUMNS if column not in events.columns]
+    if missing:
+        raise AssertionError(f"action event ledger missing columns: {missing}")
+    return events.loc[:, list(_EVENT_COLUMNS)].copy()
+
+
 def run_action_advantage_model(
     bars: Mapping[str, pd.DataFrame],
     proxy_baseline_daily: pd.DataFrame,
     contract: Mapping[str, Any],
 ) -> core.AdvantageModelResult:
-    """Run the core experiment with the corrected deterministic frame builder."""
+    """Run the core experiment with deterministic frame and event contracts."""
 
-    original = core.build_action_advantage_frame
+    original_frame = core.build_action_advantage_frame
+    original_select = core.select_advantage_events
     core.build_action_advantage_frame = build_action_advantage_frame
+    core.select_advantage_events = select_advantage_events
     try:
         return core.run_action_advantage_model(
             bars, proxy_baseline_daily, contract
         )
     finally:
-        core.build_action_advantage_frame = original
+        core.build_action_advantage_frame = original_frame
+        core.select_advantage_events = original_select
 
 
 run_action_advantage_policy = core.run_action_advantage_policy
