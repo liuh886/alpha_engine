@@ -78,6 +78,39 @@ def _pick_value_column(frame: pd.DataFrame, source: Mapping[str, Any]) -> str:
     return candidates[-1]
 
 
+def _numeric(series: pd.Series) -> pd.Series:
+    clean = (
+        series.astype("string")
+        .str.strip()
+        .str.replace(",", "", regex=False)
+        .replace({".": pd.NA, "": pd.NA, "nan": pd.NA})
+    )
+    return pd.to_numeric(clean, errors="coerce")
+
+
+def _cboe_computed_ratio(frame: pd.DataFrame) -> pd.Series:
+    columns = [str(column) for column in frame.columns]
+    call_candidates = [
+        column
+        for column in columns
+        if "CALL" in column.upper() and "RATIO" not in column.upper()
+    ]
+    put_candidates = [
+        column
+        for column in columns
+        if "PUT" in column.upper() and "RATIO" not in column.upper()
+    ]
+    if not call_candidates or not put_candidates:
+        if len(columns) < 3:
+            return pd.Series(np.nan, index=frame.index, dtype=float)
+        call_column, put_column = columns[1], columns[2]
+    else:
+        call_column, put_column = call_candidates[0], put_candidates[0]
+    calls = _numeric(frame[call_column])
+    puts = _numeric(frame[put_column])
+    return puts.div(calls.replace(0.0, np.nan))
+
+
 def _parse_csv(raw: bytes, source: Mapping[str, Any]) -> pd.DataFrame:
     frame = pd.read_csv(BytesIO(raw))
     if frame.empty:
@@ -85,8 +118,14 @@ def _parse_csv(raw: bytes, source: Mapping[str, Any]) -> pd.DataFrame:
     frame.columns = [str(column).strip() for column in frame.columns]
     date_column = _pick_date_column(frame)
     value_column = _pick_value_column(frame, source)
-    dates = pd.to_datetime(frame[date_column], errors="coerce").dt.tz_localize(None).dt.normalize()
-    values = pd.to_numeric(frame[value_column].replace(".", np.nan), errors="coerce")
+    dates = (
+        pd.to_datetime(frame[date_column], format="mixed", errors="coerce")
+        .dt.tz_localize(None)
+        .dt.normalize()
+    )
+    values = _numeric(frame[value_column])
+    if str(source.get("provider")) == "Cboe Exchange":
+        values = values.fillna(_cboe_computed_ratio(frame))
     output = pd.DataFrame({"observation_date": dates, "value": values})
     output = output.dropna(subset=["observation_date"]).sort_values("observation_date")
     return output.reset_index(drop=True)
@@ -111,13 +150,14 @@ def _safe_decision_dates(
 def _maximum_gap_sessions(
     dates: pd.DatetimeIndex, reference: pd.DatetimeIndex
 ) -> int | None:
-    if len(dates) < 2:
+    if len(reference) == 0:
         return None
-    positions = reference.get_indexer(dates)
+    positions = np.unique(reference.get_indexer(dates))
     positions = positions[positions >= 0]
-    if len(positions) < 2:
-        return None
-    return int(np.maximum(np.diff(positions) - 1, 0).max())
+    boundaries = np.concatenate(
+        [np.asarray([-1], dtype=int), positions, np.asarray([len(reference)], dtype=int)]
+    )
+    return int(np.maximum(np.diff(boundaries) - 1, 0).max())
 
 
 def _numeric_probe(
@@ -158,8 +198,9 @@ def _numeric_probe(
         covered = safe_dates.intersection(required_calendar)
         coverage = len(covered) / len(required_calendar) if len(required_calendar) else 0.0
         gap = _maximum_gap_sessions(covered, required_calendar)
-        first = parsed["observation_date"].min()
-        last = parsed["observation_date"].max()
+        valid = parsed.loc[parsed["value"].notna()]
+        first = valid["observation_date"].min() if not valid.empty else pd.NaT
+        last = valid["observation_date"].max() if not valid.empty else pd.NaT
         revision = str(source["revision_classification"])
         revision_safe = revision in {"non_revising_archive", "vintage_safe"}
         license_classification = str(source["license_classification"])
@@ -195,6 +236,7 @@ def _numeric_probe(
             "url": str(source["url"]),
             "fetch_succeeded": True,
             "rows": int(len(parsed)),
+            "usable_rows": int(parsed["value"].notna().sum()),
             "first_observation_date": first,
             "last_observation_date": last,
             "duplicate_observation_dates": duplicate_dates,
@@ -218,6 +260,7 @@ def _numeric_probe(
             "url": str(source.get("url", "")),
             "fetch_succeeded": False,
             "rows": 0,
+            "usable_rows": 0,
             "first_observation_date": None,
             "last_observation_date": None,
             "duplicate_observation_dates": None,
@@ -238,10 +281,11 @@ def _non_numeric_probe(
     source_id: str, source: Mapping[str, Any]
 ) -> SourceProbe:
     source_type = str(source["source_type"])
-    if source_type == "documentation_only":
-        reason = "documentation_only_no_numeric_history"
-    else:
-        reason = "canonical_source_unresolved"
+    reason = (
+        "documentation_only_no_numeric_history"
+        if source_type == "documentation_only"
+        else "canonical_source_unresolved"
+    )
     audit = {
         "source_id": source_id,
         "family": str(source["family"]),
@@ -250,6 +294,7 @@ def _non_numeric_probe(
         "url": str(source.get("url", "")),
         "fetch_succeeded": source_type == "documentation_only",
         "rows": 0,
+        "usable_rows": 0,
         "first_observation_date": None,
         "last_observation_date": None,
         "duplicate_observation_dates": None,
@@ -275,12 +320,11 @@ def run_new_information_phase0(
     calendar = pd.DatetimeIndex(qqq_calendar).tz_localize(None).normalize().sort_values()
     probes: dict[str, SourceProbe] = {}
     for source_id, source in contract["sources"].items():
-        if str(source["source_type"]) == "csv":
-            probes[source_id] = _numeric_probe(
-                source_id, source, calendar, contract, fetcher
-            )
-        else:
-            probes[source_id] = _non_numeric_probe(source_id, source)
+        probes[source_id] = (
+            _numeric_probe(source_id, source, calendar, contract, fetcher)
+            if str(source["source_type"]) == "csv"
+            else _non_numeric_probe(source_id, source)
+        )
     source_audit = pd.DataFrame([probe.audit for probe in probes.values()])
     availability_parts = [
         probe.availability for probe in probes.values() if not probe.availability.empty
@@ -358,11 +402,7 @@ def run_new_information_phase0(
         )
         for fold in contract["folds"]:
             start = pd.Timestamp(fold["start"])
-            end = (
-                pd.Timestamp(fold["end"])
-                if fold.get("end")
-                else calendar.max()
-            )
+            end = pd.Timestamp(fold["end"]) if fold.get("end") else calendar.max()
             reference = calendar[(calendar >= start) & (calendar <= end)]
             observed = safe_dates.intersection(reference)
             fold_rows.append(
