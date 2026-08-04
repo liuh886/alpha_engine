@@ -1,9 +1,9 @@
 name: CN130 Tail Source Export
 
 on:
-  push:
+  pull_request:
     branches:
-      - research/cn130-tail-factor-discovery-v1
+      - research/cn130-cross-sectional-ranking-v1
     paths:
       - .github/workflows/cn130-tail-source-export.yml
   workflow_dispatch:
