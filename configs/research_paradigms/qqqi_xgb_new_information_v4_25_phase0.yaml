@@ -1,0 +1,154 @@
+experiment_id: qqqi_xgb_new_information_v4_25_phase0
+parent_experiment_id: qqqi_xgb_adjacent_path_utility_v4_24_research
+schema_version: "1.0"
+phase: 0
+research_only: true
+trade_ready: false
+outcome_calculation_authorized: false
+purpose: >-
+  Audit point-in-time safety, public-source continuity, licensing, revision risk
+  and decision-date coverage for genuinely new option-tail, direct-credit,
+  breadth and positioning information before any further XGBoost outcome model.
+
+boundaries:
+  decision_time: us_equity_regular_session_close
+  qqq_calendar_start: "2011-01-03"
+  actual_window_start: "2024-01-01"
+  required_history_start: "2011-01-03"
+  minimum_decision_date_coverage: 0.95
+  maximum_unexplained_gap_sessions: 5
+  maximum_feature_correlation: 0.95
+  no_outcomes: true
+  no_future_returns: true
+  no_path_utility: true
+  no_xgboost_training: true
+  no_action_selection: true
+  no_portfolio: true
+  no_synthetic_backfill: true
+  v4_2_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+
+qqq_calendar:
+  provider: yahoo_adjusted_open_close_research_adapter
+  symbol: QQQ
+  start_date: "2010-01-01"
+
+sources:
+  cboe_total_put_call_archive:
+    family: option_tail_pricing
+    provider: Cboe Exchange
+    source_type: csv
+    url: https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/totalpc.csv
+    expected_columns: [DATE, TOTAL CALL VOLUME, TOTAL PUT VOLUME, TOTAL PUT/CALL RATIO]
+    observation_frequency: daily
+    nominal_timing: end_of_us_options_session
+    safe_lag_qqq_sessions: 1
+    revision_classification: non_revising_archive
+    license_classification: public_web_internal_research_only
+    required_for_family: true
+  cboe_equity_put_call_archive:
+    family: option_tail_pricing
+    provider: Cboe Exchange
+    source_type: csv
+    url: https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/equitypc.csv
+    expected_columns: [DATE, EQUITY CALL VOLUME, EQUITY PUT VOLUME, EQUITY PUT/CALL RATIO]
+    observation_frequency: daily
+    nominal_timing: end_of_us_options_session
+    safe_lag_qqq_sessions: 1
+    revision_classification: non_revising_archive
+    license_classification: public_web_internal_research_only
+    required_for_family: true
+  cboe_skew_methodology:
+    family: option_tail_pricing
+    provider: Cboe Global Indices
+    source_type: documentation_only
+    url: https://cdn.cboe.com/api/global/us_indices/governance/Consultation-Regarding-Proposed-Changes-to-the-Cboe-SKEW-Index.pdf
+    observation_frequency: daily_close
+    nominal_timing: once_per_day_at_us_close
+    safe_lag_qqq_sessions: 1
+    revision_classification: methodology_change_and_history_recalculation_risk
+    license_classification: documentation_only
+    required_for_family: true
+  fred_high_yield_oas:
+    family: direct_credit_spreads
+    provider: Federal Reserve Bank of St. Louis / ICE Data Indices
+    source_type: csv
+    series_id: BAMLH0A0HYM2
+    url: https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2
+    observation_frequency: daily_close
+    nominal_timing: published_after_observation_date
+    safe_lag_qqq_sessions: 1
+    revision_classification: current_revised_history_no_vintage_contract
+    license_classification: ice_top_level_data_internal_use_only
+    required_for_family: true
+  fred_corporate_oas:
+    family: direct_credit_spreads
+    provider: Federal Reserve Bank of St. Louis / ICE Data Indices
+    source_type: csv
+    series_id: BAMLC0A0CM
+    url: https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLC0A0CM
+    observation_frequency: daily_close
+    nominal_timing: published_after_observation_date
+    safe_lag_qqq_sessions: 1
+    revision_classification: current_revised_history_no_vintage_contract
+    license_classification: ice_top_level_data_internal_use_only
+    required_for_family: true
+  survivorship_safe_breadth:
+    family: survivorship_safe_breadth
+    provider: unresolved
+    source_type: unavailable
+    observation_frequency: daily
+    revision_classification: unresolved
+    license_classification: unresolved
+    required_for_family: true
+  option_positioning:
+    family: option_positioning
+    provider: unresolved
+    source_type: unavailable
+    observation_frequency: daily
+    revision_classification: unresolved
+    license_classification: unresolved
+    required_for_family: true
+
+families:
+  option_tail_pricing:
+    required_sources:
+      - cboe_total_put_call_archive
+      - cboe_equity_put_call_archive
+      - cboe_skew_methodology
+    minimum_distinct_features: 2
+  direct_credit_spreads:
+    required_sources:
+      - fred_high_yield_oas
+      - fred_corporate_oas
+    minimum_distinct_features: 2
+  survivorship_safe_breadth:
+    required_sources: [survivorship_safe_breadth]
+    minimum_distinct_features: 2
+  option_positioning:
+    required_sources: [option_positioning]
+    minimum_distinct_features: 2
+
+folds:
+  - {fold: fold_2016_2017, start: "2016-01-01", end: "2017-12-29"}
+  - {fold: fold_2018_2019, start: "2018-01-01", end: "2019-12-31"}
+  - {fold: fold_2020_2021, start: "2020-01-01", end: "2021-12-31"}
+  - {fold: fold_2022_2023, start: "2022-01-01", end: "2023-12-29"}
+  - {fold: actual_2024_plus, start: "2024-01-01", end: null}
+
+decision_taxonomy:
+  none: new_information_phase0_no_family_admissible
+  option_tail_pricing: new_information_phase0_option_tail_admitted
+  direct_credit_spreads: new_information_phase0_direct_credit_admitted
+  survivorship_safe_breadth: new_information_phase0_breadth_admitted
+  multiple: new_information_phase0_multiple_families_admitted
+
+hypothesis_discipline:
+  - Source identity, coverage and point-in-time rules are evaluated before any outcome label exists.
+  - Current revised history is not treated as vintage-safe without a provider contract.
+  - A documentation-only source cannot satisfy numeric coverage.
+  - A family fails when any required source is unavailable, too short, discontinuous, revision-unsafe or license-incompatible.
+  - Public archive truncation is recorded as evidence and may not be filled from an unrelated provider.
+  - No rejected family may be partially mined for an outcome experiment.
+  - A later model requires a separate issue and frozen transformation contract.
