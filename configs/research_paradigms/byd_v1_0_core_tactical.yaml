@@ -1,0 +1,141 @@
+schema_version: "1.0"
+experiment_id: byd_v1_0_core_tactical
+parent_issue: 500
+status: frozen_research_contract
+research_only: true
+trade_ready: false
+prospective_confirmation_required: true
+
+purpose: >-
+  Preserve BYD's long-term return while using a bounded tactical sleeve to
+  reduce medium-frequency drawdown. This follows the rejected binary timing
+  screen and does not reopen its parameter search.
+
+instrument:
+  canonical_id: CN.002594
+  ticker: 002594.SZ
+  provider_symbol: "002594"
+  name: 比亚迪
+  market: cn
+  currency: CNY
+
+portfolio:
+  assets: [BYD, CASH]
+  minimum_position: 0.50
+  maximum_position: 1.00
+  allow_short: false
+  allow_leverage: false
+  cash_return_assumption: 0.0
+  primary_benchmark: buy_hold_byd
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  same_close_execution_forbidden: true
+  intraday_data_forbidden: true
+  post_result_parameter_change_forbidden: true
+
+data:
+  history_start: "2010-01-01"
+  cutoff: "2026-08-03"
+  provider_policy:
+    selection: first_complete_single_provider
+    ordered_providers: [baostock, akshare, yfinance]
+    attempts_per_provider: 2
+    retry_delay_seconds: 2
+    forbid_cross_provider_stitching: true
+    record_all_attempts: true
+  require_exact_cutoff: true
+  forbid_forward_fill: true
+  forbid_cross_provider_stitching: true
+  forbid_mixed_adjustment: true
+  require_manifest_sha256: true
+
+windows:
+  development_start: "2012-01-01"
+  development_end: "2022-12-31"
+  validation_start: "2023-01-01"
+  validation_end: "2024-12-31"
+  retrospective_holdout_start: "2025-01-01"
+  retrospective_holdout_end: "2026-08-03"
+
+candidates:
+  - id: core75_regime_mom_120
+    risk_on: close_above_sma120_and_momentum20_positive
+    risk_off: close_below_sma120_and_momentum60_negative
+    risk_on_position: 1.00
+    risk_off_position: 0.75
+  - id: core50_regime_mom_120
+    risk_on: close_above_sma120_and_momentum20_positive
+    risk_off: close_below_sma120_and_momentum60_negative
+    risk_on_position: 1.00
+    risk_off_position: 0.50
+  - id: core75_regime_60_200
+    risk_on: close_above_sma200_and_sma60_above_sma200
+    risk_off: close_below_sma120_and_sma60_below_sma200
+    risk_on_position: 1.00
+    risk_off_position: 0.75
+  - id: core50_regime_60_200
+    risk_on: close_above_sma200_and_sma60_above_sma200
+    risk_off: close_below_sma120_and_sma60_below_sma200
+    risk_on_position: 1.00
+    risk_off_position: 0.50
+  - id: core75_dd20_recovery10
+    risk_off: drawdown252_at_or_below_minus20pct_and_close_below_sma120
+    risk_on: drawdown252_at_or_above_minus10pct_and_close_above_sma60
+    risk_on_position: 1.00
+    risk_off_position: 0.75
+  - id: core50_dd20_recovery10
+    risk_off: drawdown252_at_or_below_minus20pct_and_close_below_sma120
+    risk_on: drawdown252_at_or_above_minus10pct_and_close_above_sma60
+    risk_on_position: 1.00
+    risk_off_position: 0.50
+  - id: core75_momentum_20_120
+    risk_on: close_above_sma120_and_momentum20_positive
+    risk_off: close_below_sma120_or_momentum20_negative
+    risk_on_position: 1.00
+    risk_off_position: 0.75
+
+costs:
+  primary_bps_per_turnover_unit: 20
+  stress_bps_per_turnover_unit: [10, 20, 40]
+  charge_initial_entry: true
+  charge_every_position_change: true
+
+selection_gates:
+  minimum_selection_cagr_retention: 0.95
+  selection_calmar_not_below_buy_hold: true
+  minimum_selection_drawdown_improvement_percentage_points: 2
+  validation_total_return_must_be_positive: true
+  maximum_validation_cagr_shortfall_percentage_points: 1
+  validation_calmar_not_below_buy_hold: true
+  minimum_validation_drawdown_improvement_percentage_points: 4
+  maximum_round_trips_per_year: 2
+  stress_40_total_return_must_be_positive: true
+  maximum_largest_positive_defense_episode_share: 0.50
+
+selection_order:
+  - selection_cagr_desc
+  - validation_calmar_desc
+  - validation_max_drawdown_desc
+  - selection_turnover_asc
+
+retrospective_holdout_gates:
+  total_return_must_be_positive: true
+  cagr_not_below_buy_hold: true
+  calmar_not_below_buy_hold: true
+  minimum_drawdown_improvement_percentage_points: 4
+  stress_40_total_return_must_be_positive: true
+  not_unanimously_worse: true
+
+outputs:
+  required:
+    - summary.json
+    - report.md
+    - candidate_summary.csv
+    - defense_episodes.csv
+    - byd_ohlcv.csv
+  selected_candidate_only:
+    - selected_daily.csv
+    - selected_trades.csv

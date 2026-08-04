@@ -1,0 +1,143 @@
+schema_version: "1.0"
+experiment_id: byd_single_asset_v1_0
+parent_issue: 496
+status: frozen_research_contract
+research_only: true
+trade_ready: false
+
+purpose: >-
+  Select at most one interpretable medium-frequency long/cash strategy for BYD
+  A shares using frozen development and validation evidence, then perform one
+  contradiction check on the 2025-plus quarantine window.
+
+instrument:
+  canonical_id: CN.002594
+  ticker: 002594.SZ
+  provider_symbol: "002594"
+  name: 比亚迪
+  market: cn
+  currency: CNY
+  asset_role: executable_single_equity
+
+portfolio:
+  assets: [BYD, CASH]
+  allow_short: false
+  allow_leverage: false
+  cash_return_assumption: 0.0
+  primary_benchmark: buy_hold_byd
+  secondary_context_benchmark: CSI300
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  decision_frequency: daily
+  intended_holding_horizon: medium_frequency_multi_session
+  same_close_execution_forbidden: true
+  intraday_data_forbidden: true
+  post_result_parameter_change_forbidden: true
+
+data:
+  history_start: "2010-01-01"
+  cutoff: "2026-08-03"
+  required_columns: [date, open, high, low, close, volume]
+  provider_policy:
+    selection: first_complete_single_provider
+    ordered_providers: [baostock, akshare, yfinance]
+    attempts_per_provider: 2
+    retry_delay_seconds: 2
+    forbid_cross_provider_stitching: true
+    record_all_attempts: true
+  providers:
+    baostock:
+      endpoint: query_history_k_data_plus
+      adjustment: adjustflag_2_qfq
+      period: daily
+    akshare:
+      endpoint: stock_zh_a_hist
+      upstream: eastmoney
+      adjustment: qfq
+      period: daily
+    yfinance:
+      endpoint: download
+      provider_symbol: 002594.SZ
+      adjustment: auto_adjust_true_repair_true
+      period: daily
+      promotion_note: independent_public_fallback_for_single_asset_research
+  require_exact_cutoff: true
+  forbid_forward_fill: true
+  forbid_cross_provider_stitching: true
+  forbid_mixed_adjustment: true
+  require_manifest_sha256: true
+
+windows:
+  development_start: "2012-01-01"
+  development_end: "2022-12-31"
+  validation_start: "2023-01-01"
+  validation_end: "2024-12-31"
+  quarantine_start: "2025-01-01"
+  quarantine_end: "2026-08-03"
+
+candidates:
+  - id: trend_20_60
+    entry: close_above_sma60_and_sma20_above_sma60
+    exit: close_below_sma20_or_sma20_below_sma60
+  - id: breakout_55_20
+    entry: close_above_prior_55_session_high
+    exit: close_below_prior_20_session_low
+  - id: momentum_20_120
+    entry: close_above_sma120_and_20_session_return_positive
+    exit: close_below_sma120_or_20_session_return_negative
+  - id: rsi_trend_reversion
+    entry: close_above_sma120_and_rsi14_below_35
+    exit: close_below_sma120_or_rsi14_above_55
+  - id: bollinger_trend_reversion
+    entry: close_above_sma120_and_close_below_lower_20_2_band
+    exit: close_below_sma120_or_close_at_or_above_sma20
+
+costs:
+  primary_bps_per_turnover_unit: 20
+  stress_bps_per_turnover_unit: [10, 20, 40]
+  charge_initial_entry: true
+  charge_every_position_change: true
+
+selection_gates:
+  calmar_above_buy_hold: true
+  minimum_drawdown_improvement_or_sortino_improvement:
+    max_drawdown_percentage_points: 8
+    sortino: 0.20
+  maximum_cagr_shortfall_percentage_points: 5
+  minimum_positive_relative_year_fraction: 0.50
+  maximum_round_trips_per_year: 12
+  maximum_largest_positive_year_share: 0.50
+  stress_40_total_return_must_be_positive: true
+  total_return_ex_best_trade_must_be_positive: true
+
+selection_order:
+  - validation_calmar_desc
+  - validation_max_drawdown_desc
+  - validation_cagr_desc
+  - validation_turnover_asc
+
+quarantine_gates:
+  total_return_must_be_positive: true
+  calmar_not_below_buy_hold: true
+  maximum_drawdown_disadvantage_percentage_points: 3
+  cagr_and_sortino_cannot_both_be_lower: true
+  total_return_ex_best_trade_must_be_positive: true
+  stress_40_total_return_floor: -0.05
+
+decisions:
+  supported: byd_v1_0_supported
+  unsupported: byd_v1_0_not_supported
+  data_blocked: data_blocked
+
+outputs:
+  required:
+    - summary.json
+    - report.md
+    - candidate_summary.csv
+    - byd_ohlcv.csv
+  selected_candidate_only:
+    - selected_daily.csv
+    - selected_trades.csv
