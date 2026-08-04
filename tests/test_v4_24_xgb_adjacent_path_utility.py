@@ -43,6 +43,15 @@ def test_contract_has_four_ordered_states_and_no_action_descriptors() -> None:
     assert all(np.isclose(value.sum(), 1.0) for value in weights.values())
 
 
+def test_row_geometry_scaling_is_audited_and_fixed() -> None:
+    contract = _contract()
+    audit = contract["compatibility_audit"]
+    assert audit["discarded_artifact_workflow_run"] == 30939933439
+    assert audit["outcomes_used_for_scaling"] is False
+    assert float(contract["model"]["min_child_weight"]) == 4.0
+    assert int(contract["model"]["minimum_unique_test_probabilities"]) == 2
+
+
 def test_path_utility_includes_entry_exit_cost_and_mae_penalty() -> None:
     contract = _contract()
     result = _path_statistics(
