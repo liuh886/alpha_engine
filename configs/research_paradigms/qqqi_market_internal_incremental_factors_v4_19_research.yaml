@@ -1,0 +1,210 @@
+experiment_id: qqqi_market_internal_incremental_factors_v4_19_research
+parent_experiment_id: qqqi_tqqq_sgov_voo_state_specific_residual_actions_v4_18_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+new_information_hypothesis: true
+purpose: >-
+  Test whether four genuinely new market-internal information families add
+  stable chronological action-advantage information beyond the frozen v4.16
+  twenty-nine-input VIX/VXN/RSI20/Bollinger/QQQ-VOO comparator. No portfolio
+  policy is allowed until at least one complete family passes Phase 1.
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  label_round_trip_cost_bps: 20.0
+  no_pre_inception_backfill: true
+  no_portfolio_policy_in_phase_1: true
+  family_blocks_are_indivisible: true
+  family_fdr_alpha: 0.10
+  baseline_alerts_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+
+data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  existing_required_symbols: [QQQ, TQQQ, VOO, BIL, SGOV, QQQI, ^VIX, ^VXN]
+  candidate_symbols:
+    implied_volatility_term_structure: [^VIX9D, ^VIX, ^VIX3M, ^VVIX]
+    credit_duration_risk_appetite: [HYG, LQD, SHY, IEF, TLT]
+    breadth_size_participation: [SPY, RSP, IWM, VOO]
+  coverage:
+    maximum_missing_session_rate: 0.02
+    maximum_unexplained_gap_trading_sessions: 5
+    require_unique_dates: true
+    require_positive_finite_adjusted_open_close: true
+    exact_calendar_intersections: true
+    record_first_last_session: true
+    record_provider_identity: true
+    reject_inadmissible_source_before_outcomes: true
+
+base_comparator:
+  source_experiment: qqqi_tqqq_sgov_voo_action_advantage_v4_16_research
+  estimator: Ridge
+  alpha: 100.0
+  imputer: median
+  scaler: standard
+  base_features:
+    - vol_max_percentile_252
+    - vol_max_return_5d
+    - vol_min_retreat_20d
+    - vxn_vix_ratio_z63
+    - vxn_minus_vix_percentile
+    - vxn_minus_vix_return_5d
+    - qqq_rsi20
+    - qqq_bollinger_pct_b_20_2
+    - qqq_bollinger_bandwidth_z63
+    - qqq_distance_ma20
+    - qqq_distance_ma50
+    - qqq_distance_ma200
+    - qqq_ma20_slope_5d
+    - qqq_drawdown_63d
+    - qqq_realized_volatility_20d
+    - qqq_minus_voo_return_5d
+    - qqq_minus_voo_return_20d
+    - qqq_voo_rs_distance_ma20
+    - qqq_voo_trend_gap
+    - qqq_voo_bollinger_gap
+    - voo_distance_ma200
+  interactions:
+    - interaction_vol_percentile_rsi
+    - interaction_vol_retreat_bollinger
+    - interaction_vxn_vix_rs
+    - interaction_bandwidth_ma20_slope
+    - interaction_drawdown_vol_retreat
+    - interaction_ma200_rs
+    - interaction_realized_vol_bollinger
+    - interaction_vol_spread_relative_return
+  total_inputs: 29
+
+training:
+  sample_every_sessions: 10
+  global_anchor_position: 0
+  embargo_sessions: 10
+  minimum_training_samples: 100
+  model_comparison_allowed: false
+  alpha_search_allowed: false
+  feature_selection_allowed: false
+
+outer_folds:
+  - {fold: fold_2016_2017, train_start: "2011-01-03", train_end: "2015-12-31", test_start: "2016-01-01", test_end: "2017-12-29"}
+  - {fold: fold_2018_2019, train_start: "2011-01-03", train_end: "2017-12-29", test_start: "2018-01-01", test_end: "2019-12-31"}
+  - {fold: fold_2020_2021, train_start: "2011-01-03", train_end: "2019-12-31", test_start: "2020-01-01", test_end: "2021-12-31"}
+  - {fold: fold_2022_2023, train_start: "2011-01-03", train_end: "2021-12-31", test_start: "2022-01-01", test_end: "2023-12-29"}
+
+action_targets:
+  - cash_defense_advantage_10d
+  - broad_equity_advantage_10d
+  - nasdaq_core_advantage_10d
+  - nasdaq_acceleration_advantage_5d
+
+families:
+  implied_volatility_term_structure:
+    required_symbols: [^VIX9D, ^VIX, ^VIX3M, ^VVIX]
+    minimum_feature_block:
+      - vix9d_vix_ratio
+      - vix9d_vix_ratio_z63
+      - vix_vix3m_ratio
+      - vix_vix3m_ratio_z63
+      - volatility_curve_slope_front_three_month
+      - vvix_percentile_252
+      - vvix_return_5d
+      - term_structure_inverted
+      - sessions_since_term_structure_inversion
+  volatility_risk_premium:
+    required_symbols: [^VIX, ^VXN, QQQ, VOO]
+    minimum_feature_block:
+      - broad_implied_minus_realized_vol_20d
+      - nasdaq_implied_minus_realized_vol_20d
+      - broad_implied_realized_ratio_20d
+      - nasdaq_implied_realized_ratio_20d
+      - broad_volatility_risk_premium_return_5d
+      - nasdaq_volatility_risk_premium_return_5d
+      - broad_volatility_risk_premium_percentile_252
+      - nasdaq_volatility_risk_premium_percentile_252
+      - nasdaq_minus_broad_volatility_risk_premium
+  credit_duration_risk_appetite:
+    required_symbols: [HYG, LQD, SHY, IEF, TLT]
+    minimum_feature_block:
+      - hyg_lqd_return_5d
+      - hyg_lqd_return_20d
+      - hyg_shy_return_20d
+      - lqd_ief_return_20d
+      - tlt_shy_return_20d
+      - credit_risk_ratio_distance_ma20
+      - duration_risk_ratio_distance_ma20
+      - credit_duration_trend_agreement
+  breadth_size_participation:
+    required_symbols: [SPY, RSP, IWM]
+    minimum_feature_block:
+      - rsp_spy_return_5d
+      - rsp_spy_return_20d
+      - iwm_spy_return_5d
+      - iwm_spy_return_20d
+      - rsp_spy_distance_ma20
+      - iwm_spy_distance_ma20
+      - breadth_size_trend_agreement
+      - breadth_confirmation_with_qqq
+      - sessions_since_breadth_confirmation_change
+
+phase_1_comparison:
+  comparator: exact_29_input_base_ridge
+  candidate: exact_base_plus_complete_family_block
+  identical_samples_and_embargo: true
+  outer_predictions_only: true
+  no_action_thresholds: true
+  no_portfolio_policy: true
+  metrics:
+    - action_spearman_ic
+    - action_top_bottom_quintile_spread
+    - action_state_cell_ic
+    - incremental_oof_r_squared
+    - incremental_oof_mae
+    - coefficient_cosine_stability
+    - leave_one_era_out_family_contribution
+    - source_coverage_by_fold
+    - improvement_without_best_year
+
+multiple_testing:
+  families_tested: 4
+  method: benjamini_hochberg
+  alpha: 0.10
+  individual_feature_selection_prohibited: true
+
+validation:
+  family_admission:
+    fdr_qvalue_max: 0.10
+    actions_ic_improvement_min: 2
+    action_ic_improvement_threshold: 0.03
+    actions_quintile_spread_improvement_min: 2
+    large_action_observations_min: 1000
+    maximum_large_action_ic_degradation: -0.03
+    action_state_cells_ic_improvement_min: 4
+    coefficient_cosine_similarity_median_min: 0.50
+    positive_outer_eras_min: 3
+    improvement_without_best_year_nonnegative: true
+    maximum_single_era_positive_share: 0.40
+    maximum_single_macro_cluster_positive_share: 0.30
+
+phase_2_boundary:
+  requires_at_least_one_admitted_family: true
+  admitted_families_enter_as_complete_blocks: true
+  ridge_alpha_unchanged: true
+  labels_sampling_embargo_unchanged: true
+  state_treatment_frozen_before_phase_2_results: true
+  discrete_actions_only: true
+  historical_success_authorizes_shadow_only: true
+
+hypothesis_discipline:
+  - Phase 0 data admissibility occurs before any outcome calculation.
+  - Inadmissible source series and their dependent family are rejected without substitution.
+  - Each information family is tested as one complete frozen block.
+  - Exactly four family-level tests receive Benjamini-Hochberg correction.
+  - The comparator model, alpha, labels, samples and embargo are identical for every family.
+  - No portfolio policy is evaluated in Phase 1.
+  - Passing Phase 1 admits a family only to a separately frozen Phase 2 experiment.
+  - v4.2, Telegram and Issue348 remain unchanged regardless of results.
