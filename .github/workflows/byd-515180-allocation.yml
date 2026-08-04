@@ -1,0 +1,132 @@
+name: BYD 515180 Core Dividend Research
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/data/etf_515180_canonical.py"
+      - "src/research/byd_515180_allocation.py"
+      - "src/research/byd_515180_execution.py"
+      - "scripts/data/build_515180_canonical_bundle.py"
+      - "scripts/run_byd_515180_allocation.py"
+      - "tests/test_etf_515180_canonical.py"
+      - "tests/test_byd_515180_allocation.py"
+      - ".github/workflows/byd-515180-allocation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Verify immutable BYD canonical snapshot
+        run: >-
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz"
+          | sha256sum --check --strict
+      - name: Ruff frozen research files
+        run: >-
+          uv run ruff check
+          src/data/etf_515180_canonical.py
+          src/research/byd_515180_allocation.py
+          src/research/byd_515180_execution.py
+          scripts/data/build_515180_canonical_bundle.py
+          scripts/run_byd_515180_allocation.py
+          tests/test_etf_515180_canonical.py
+          tests/test_byd_515180_allocation.py
+      - name: Run contract tests
+        run: >-
+          uv run pytest
+          tests/test_etf_515180_canonical.py
+          tests/test_byd_515180_allocation.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  canonical-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: contract-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Build 515180 canonical data
+        run: >-
+          uv run python scripts/data/build_515180_canonical_bundle.py
+          --start 2019-11-26
+          --cutoff 2026-08-03
+          --secondary-retries 3
+          --output-dir artifacts/data/515180_canonical_v1
+      - name: Upload canonical data evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: 515180-canonical-v1
+          path: artifacts/data/515180_canonical_v1
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce canonical quality gate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path("artifacts/data/515180_canonical_v1/manifest.json").read_text())
+          print(json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True))
+          if manifest.get("data_quality_status") != "canonical_v1_pass":
+              raise SystemExit("515180 canonical quality gate failed; model job is blocked")
+          PY
+
+  model-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: canonical-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Download 515180 canonical data
+        uses: actions/download-artifact@v4
+        with:
+          name: 515180-canonical-v1
+          path: artifacts/data/515180_canonical_v1
+      - name: Extract immutable BYD canonical data
+        run: |
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          mkdir -p artifacts/data/byd_canonical_v1
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
+      - name: Run governed allocation research
+        run: >-
+          uv run python scripts/run_byd_515180_allocation.py
+          --byd-dir artifacts/data/byd_canonical_v1
+          --etf-dir artifacts/data/515180_canonical_v1
+          --output-dir artifacts/research/byd_515180_allocation
+      - name: Publish report summary
+        run: cat artifacts/research/byd_515180_allocation/README.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload complete model evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-515180-allocation-evidence
+          path: artifacts/research/byd_515180_allocation
+          if-no-files-found: error
+          retention-days: 30
