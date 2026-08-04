@@ -1,0 +1,44 @@
+name: BYD Prospective One-Time Patch
+
+on:
+  push:
+    branches:
+      - research/byd-prospective-shadow-ledger
+    paths:
+      - ".github/workflows/byd-prospective-one-time-patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/byd-prospective-shadow-ledger
+          fetch-depth: 0
+      - name: Apply deterministic compatibility fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/research/byd_prospective_shadow.py")
+          text = path.read_text(encoding="utf-8")
+          old_hash = "provider_payload_sha = dataframe_sha256(provider[list(required)])"
+          new_hash = "provider_payload_sha = dataframe_sha256(\n        provider[[\"date\", *PRICE_COLUMNS, \"volume\", \"adj_close\"]]\n    )"
+          old_mask = "mask = dataset.index.gt(signal_date) & dataset[\"open_research_eligible\"].astype(bool)"
+          new_mask = "mask = (dataset.index > signal_date) & dataset[\"open_research_eligible\"].astype(bool)"
+          if old_hash not in text or old_mask not in text:
+              raise SystemExit("expected prospective patch anchors were not found")
+          text = text.replace(old_hash, new_hash).replace(old_mask, new_mask)
+          path.write_text(text, encoding="utf-8")
+          PY
+          rm .github/workflows/byd-prospective-one-time-patch.yml
+      - name: Commit patch and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/research/byd_prospective_shadow.py .github/workflows/byd-prospective-one-time-patch.yml
+          git commit -m "fix: stabilize prospective ledger compatibility"
+          git push origin HEAD:research/byd-prospective-shadow-ledger
