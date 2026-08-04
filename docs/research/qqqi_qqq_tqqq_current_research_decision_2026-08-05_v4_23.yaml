@@ -1,0 +1,225 @@
+schema_version: "1.0"
+decision_date: "2026-08-05"
+strategy_family: qqqi_xgb_lambdarank_state_machine
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04_v4_22.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    v4.23 found non-random within-date action-ranking information, but failed
+    preregistered regret, top-two accuracy and feature-concentration gates. The
+    ranker collapsed almost entirely to 100 percent TQQQ or 100 percent cash and
+    did not learn a stable five-state allocation machine. Phase 2 portfolio
+    construction was therefore skipped before any promotion comparison.
+
+xgb_lambdarank_v4_23:
+  experiment_id: qqqi_xgb_lambdarank_state_machine_v4_23_research
+  role: frozen_nonpromoted_grouped_action_ranker
+  issue: 512
+  pull_request: 526
+  evidence:
+    report: docs/research/qqqi_xgb_lambdarank_state_machine_v4_23_result_2026-08-05.md
+    workflow_run: 30933201200
+    artifact_id: 8902023278
+    artifact_digest: sha256:d0422f2fb1b0d89380c76eecdbb7c1aa38fc0439c3fc846a773b96e1375fb08d
+    manifest_file_count: 16
+    manifest_hashes_verified: 16
+    source_data_through: "2026-08-04"
+  frozen_architecture:
+    estimator: native_xgboost_ranker
+    objective: rank:ndcg
+    evaluation_metric: ndcg_at_1
+    total_inputs: 39
+    actions: [defense, balanced, core, leveraged, accelerated]
+    decision_sample_every_sessions: 10
+    holding_sessions: 10
+    embargo_sessions: 10
+    transaction_cost_bps_per_turnover_unit: 10.0
+    outer_folds: 4
+    placebo_trials: 20
+    direct_return_magnitude_prediction: false
+    continuous_weight_optimization: false
+    parameter_search: false
+  data_audit:
+    provider: yahoo_adjusted_open_close_research_adapter
+    provider_adjusted_open_close_preserved: true
+    synthetic_high_low_used_for_range_features: false
+    qqqi_pre_inception_backfill_used: false
+    oof_decision_groups: 201
+    oof_action_rows: 1005
+    actual_complete_label_groups: 62
+  embargo_audit:
+    first_discarded_run_used_wrong_unit: true
+    first_discarded_run_interpretation: ten_complete_decision_groups
+    corrected_interpretation: trading_sessions_on_ten_session_grid
+    intervening_decision_groups_per_fold: 1
+    corrected_training_groups: [125, 176, 226, 276]
+    leakage_detected: false
+  phase1_ranking_gate:
+    passed: false
+    selected_ndcg_at_1: 0.545273631840796
+    v4_2_action_comparator_ndcg_at_1: 0.30613598673300174
+    ndcg_improvement: 0.23913764510779428
+    selected_mean_regret: 0.03616892305286094
+    comparator_mean_regret: 0.04003048433415813
+    regret_reduction: 0.09646551485768817
+    median_selected_advantage_vs_v4_2: 0.005646186727794992
+    positive_outer_folds: 3
+    selected_top_two_rate: 0.5522388059701493
+    placebo_beat_rate: 1.0
+    largest_positive_year_share: 0.1654979903354273
+    largest_positive_macro_cluster_share: 0.0585879505895164
+    advantage_without_best_year: 0.5724893312066128
+    advantage_without_best_macro_cluster: 0.30815272378512
+    largest_single_feature_shap_share: 0.3265381622767748
+    largest_feature_family_shap_share: 0.7349422198368701
+    passed_checks:
+      - ndcg_improvement
+      - positive_median_advantage
+      - positive_outer_folds
+      - placebo
+      - year_concentration
+      - macro_cluster_concentration
+      - without_best_year
+      - without_best_macro_cluster
+    failed_checks:
+      - regret_reduction
+      - selected_top_two_rate
+      - single_feature_concentration
+      - feature_family_concentration
+  fold_evidence:
+    fold_2016_2017:
+      groups: 51
+      ndcg_improvement: 0.2509803921568627
+      regret_reduction: 0.3316
+      top_two_rate: 0.5490
+      aggregate_advantage_vs_v4_2: 0.4307
+    fold_2018_2019:
+      groups: 50
+      ndcg_improvement: 0.22133333333333333
+      regret_reduction: 0.1498
+      top_two_rate: 0.56
+      aggregate_advantage_vs_v4_2: 0.2790
+    fold_2020_2021:
+      groups: 50
+      ndcg_improvement: 0.316
+      regret_reduction: 0.12
+      top_two_rate: 0.64
+      aggregate_advantage_vs_v4_2: 0.2439
+    fold_2022_2023:
+      groups: 50
+      ndcg_improvement: 0.168
+      regret_reduction: -0.1068
+      top_two_rate: 0.46
+      aggregate_advantage_vs_v4_2: -0.3523
+  action_selection:
+    defense:
+      selected_blocks: 37
+      top_two_rate: 0.2973
+      median_advantage_vs_v4_2: -0.0096
+      aggregate_advantage_vs_v4_2: -0.4591
+    balanced:
+      selected_blocks: 0
+      supported: false
+    core:
+      selected_blocks: 2
+      top_two_rate: 0.0
+      supported: false
+    leveraged:
+      selected_blocks: 0
+      supported: false
+    accelerated:
+      selected_blocks: 162
+      top_two_rate: 0.6173
+      median_advantage_vs_v4_2: 0.0114
+      aggregate_advantage_vs_v4_2: 1.0604
+  feature_concentration:
+    candidate_action_family_share: 0.7349422198368701
+    qqq_price_path_family_share: 0.078256
+    volatility_family_share: 0.058558
+    credit_duration_family_share: 0.057010
+    relative_strength_family_share: 0.056801
+    v4_2_context_family_share: 0.014433
+    largest_feature: candidate_qqq_weight
+    largest_feature_share: 0.3265381622767748
+  actual_diagnostic:
+    phase2_portfolio_generated: false
+    use_for_promotion_authorized: false
+    complete_groups: 62
+    accelerated_selections: 53
+    defense_selections: 9
+    other_action_selections: 0
+    top_two_rate: 0.5645161290322581
+    median_advantage_vs_v4_2: 0.0076942635850495
+    aggregate_block_advantage_vs_v4_2: 0.4926952863840156
+    interpretation: >-
+      The quarantine output repeats the extreme-action collapse and cannot
+      override the failed OOF regret, top-two and concentration gates.
+  phase2_policy_gate:
+    passed: false
+    skipped: true
+    reason: phase1_ranking_gate_failed
+  actual_contradiction_gate:
+    passed: false
+    skipped: true
+    reason: phase2_not_authorized
+  decision: xgb_action_ranking_not_supported
+  audit: audit_pass_nonpromotion_result_valid
+  prospective_shadow_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+  baseline_and_alerts_unchanged: true
+
+structural_diagnosis:
+  nonlinear_ranking_information_exists: true
+  stable_five_state_machine_found: false
+  primary_failure: >-
+    Ranking terminal ten-session return across convex cash, QQQ and TQQQ
+    mixtures makes extreme actions structurally dominant. The ranker therefore
+    learns a strong action prior rather than sufficiently stable market-state
+    timing across all five allocations.
+  evidence:
+    - 199 of 201 OOF selections are defense or accelerated.
+    - Candidate-action descriptors supply approximately 73.5 percent of mean absolute SHAP.
+    - The 2022-2023 fold has negative regret improvement and aggregate advantage.
+    - Mean regret improves only 9.65 percent and top-two accuracy is 55.22 percent.
+
+retained_components:
+  - grouped_market_state_action_rank_dataset
+  - exact_cost_aware_within_date_relevance_labels
+  - native_xgboost_lambdarank_implementation
+  - chronological_outer_fold_and_placebo_framework
+  - gain_and_shap_family_concentration_audit
+  - fail_closed_phase1_before_phase2_runtime
+  - audited_adjusted_open_close_research_adapter
+  - ten_session_embargo_translation_for_ten_session_grid
+
+closed_retrospective_directions:
+  - reduce_regret_or_top_two_gates
+  - remove_balanced_core_or_leveraged_after_results
+  - promote_accelerated_only
+  - promote_defense_accelerated_binary_policy
+  - change_xgboost_parameters_on_current_history
+  - select_features_from_shap
+  - change_action_weights
+  - change_relevance_labels_or_ten_session_horizon
+  - use_positive_actual_diagnostic_to_override_oof_failure
+  - change_v4_2_or_telegram_from_v4_23
+
+next_admissible_research:
+  boundary: >-
+    Any future retrospective experiment must be separately preregistered and
+    use a genuinely different target that values path risk or drawdown. It may
+    not be presented as a v4.23 threshold, action or parameter extension.
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false
