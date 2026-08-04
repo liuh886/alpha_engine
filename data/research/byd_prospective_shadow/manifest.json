@@ -1,0 +1,25 @@
+{
+  "append_only": true,
+  "base_adjusted_sha256": "0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960",
+  "base_manifest_sha256": "06202b594b036b0c815e4ffb46e9f3d14ba647d699aad0fd927f1665142a363e",
+  "base_snapshot_sha256": "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179",
+  "baseline_cutoff": "2026-08-03",
+  "cost_scenarios_bps": [
+    20,
+    40
+  ],
+  "first_signal_date": null,
+  "generated_at_utc": null,
+  "last_signal_date": null,
+  "ledger_sha256": "85829d1e274373d05694ddf2cef42e250302d4b616be0ad4b9cd5a1f39dfd1dd",
+  "observation_count": 0,
+  "observation_sha256": {},
+  "outcome_count": 0,
+  "outcome_settlement": "immutable_daily_observations_only",
+  "prospective_eligible_observation_count": 0,
+  "provider_history_may_not_overwrite_existing_observations": true,
+  "research_only": true,
+  "schema_version": "byd_prospective_shadow_v2",
+  "shadow_only": true,
+  "trade_ready": false
+}
