@@ -1,0 +1,119 @@
+name: BYD 515180 Prospective Sleeve
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/research/byd_515180_prospective.py"
+      - "scripts/run_byd_515180_prospective.py"
+      - "tests/test_byd_515180_prospective.py"
+      - "data/research/byd_515180_prospective/**"
+      - "docs/research/byd_515180_prospective.md"
+      - ".github/workflows/byd-515180-prospective.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/research/byd_515180_prospective.py"
+      - "scripts/run_byd_515180_prospective.py"
+      - "tests/test_byd_515180_prospective.py"
+      - "data/research/byd_prospective_shadow/observations/**"
+      - "docs/research/byd_515180_prospective.md"
+      - ".github/workflows/byd-515180-prospective.yml"
+  schedule:
+    - cron: "45 11 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: byd-515180-prospective
+  cancel-in-progress: false
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Verify immutable bases
+        run: |
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > 515180-canonical-v1-artifact.zip
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  515180-canonical-v1-artifact.zip" | sha256sum --check --strict
+      - name: Lint prospective sleeve
+        run: >-
+          uv run ruff check
+          src/research/byd_515180_prospective.py
+          scripts/run_byd_515180_prospective.py
+          tests/test_byd_515180_prospective.py
+      - name: Run prospective sleeve contract tests
+        run: >-
+          uv run pytest
+          tests/test_byd_515180_prospective.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  live-update:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: contract-tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Extract immutable 515180 base
+        run: |
+          set -euo pipefail
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > 515180-canonical-v1-artifact.zip
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  515180-canonical-v1-artifact.zip" | sha256sum --check --strict
+          mkdir -p artifacts/data/515180_canonical_v1
+          unzip -q 515180-canonical-v1-artifact.zip -d artifacts/data/515180_canonical_v1
+      - name: Append immutable paired evidence
+        run: >-
+          uv run python scripts/run_byd_515180_prospective.py
+          --byd-store data/research/byd_prospective_shadow
+          --etf-baseline-dir artifacts/data/515180_canonical_v1
+          --store-dir data/research/byd_515180_prospective
+          --as-of "$(date -u +%F)"
+          --secondary-retries 2
+      - name: Verify append-only scope
+        run: |
+          set -euo pipefail
+          unexpected="$(git status --porcelain | awk '{print $2}' | grep -v '^data/research/byd_515180_prospective/' || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "Unexpected prospective updater changes:"
+            echo "$unexpected"
+            exit 1
+          fi
+      - name: Commit new immutable evidence
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- data/research/byd_515180_prospective && \
+             [[ -z "$(git ls-files --others --exclude-standard data/research/byd_515180_prospective)" ]]; then
+            echo "No new paired prospective evidence"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/byd_515180_prospective
+          git commit -m "research: append BYD 515180 prospective evidence"
+          git push origin HEAD:main
