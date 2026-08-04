@@ -1,0 +1,114 @@
+name: CN130 Tail and Factor Discovery Evidence
+
+on:
+  pull_request:
+    branches:
+      - research/cn130-cross-sectional-ranking-v1
+    paths:
+      - configs/research_experiments/cn130_tail_factor_discovery_v1.yaml
+      - docs/research/cn130_tail_factor_discovery_*.md
+      - data/research/cn130_tail_factor_discovery_v1/**
+      - src/research/cn130_tail_factor_discovery.py
+      - scripts/run_cn130_tail_factor_discovery.py
+      - tests/test_cn130_tail_factor_discovery.py
+      - .github/workflows/cn130-tail-factor-discovery-evidence.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cn130-tail-factor-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PROVIDER_ARTIFACT_ID: '8850463785'
+      PYTHONPATH: .
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint and focused tests
+        run: |
+          uv run ruff check \
+            src/research/cn130_tail_factor_discovery.py \
+            scripts/run_cn130_tail_factor_discovery.py \
+            tests/test_cn130_tail_factor_discovery.py
+          uv run pytest \
+            tests/test_cn130_tail_factor_discovery.py \
+            tests/test_cn130_cross_sectional_ranking.py \
+            tests/test_daily_ranker_missing_data.py \
+            -q --strict-markers --tb=short
+      - name: Download immutable CN provider artifact
+        run: |
+          mkdir -p .research/provider-artifact .research/provider
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PROVIDER_ARTIFACT_ID}/zip" \
+            > .research/provider-artifact.zip
+          unzip -q .research/provider-artifact.zip -d .research/provider-artifact
+          tar -xf .research/provider-artifact/cn-provider-2026-08-03.tar -C .research/provider
+          test -f .research/provider/data/providers/cn/provider_manifest.json
+      - name: Rebuild frozen score ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          provider="$PWD/.research/provider/data/providers/cn"
+          cells="$PWD/.research/cells"
+          mkdir -p "$cells"
+          for window in 2024H1 2024H2 2025H1 2025H2 2026H1 2026H2_PARTIAL; do
+            for batch in r0r1 r2 r4; do
+              uv run python scripts/run_cn130_ranking_batch.py \
+                --provider-dir "$provider" \
+                --output-dir "$cells" \
+                --window "$window" \
+                --batch "$batch"
+            done
+          done
+      - name: Run discovery twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          provider="$PWD/.research/provider/data/providers/cn"
+          for run in a b; do
+            uv run python scripts/run_cn130_tail_factor_discovery.py \
+              --provider-dir "$provider" \
+              --ledger-dir "$PWD/.research/cells" \
+              --output-dir "$PWD/.research/run-${run}"
+          done
+      - name: Verify deterministic and committed evidence
+        run: |
+          diff -ru .research/run-a .research/run-b
+          diff -u docs/research/cn130_tail_factor_discovery_result_2026-08-05.md .research/run-a/report.md
+          diff -u data/research/cn130_tail_factor_discovery_v1/decision.json .research/run-a/decision.json
+          diff -u data/research/cn130_tail_factor_discovery_v1/tail_portfolio_selection_summary.csv .research/run-a/tail_portfolio_selection_summary.csv
+          diff -u data/research/cn130_tail_factor_discovery_v1/tail_portfolio_reporting_summary.csv .research/run-a/tail_portfolio_reporting_summary.csv
+          diff -u data/research/cn130_tail_factor_discovery_v1/factor_summary.csv .research/run-a/factor_summary.csv
+          diff -u data/research/cn130_tail_factor_discovery_v1/factor_family_summary.csv .research/run-a/factor_family_summary.csv
+      - name: Package complete evidence
+        run: |
+          mkdir -p artifacts/cn130-tail-factor
+          cp -R .research/run-a artifacts/cn130-tail-factor/final
+          cp -R .research/cells artifacts/cn130-tail-factor/score-ledgers
+          cp configs/research_experiments/cn130_tail_factor_discovery_v1.yaml artifacts/cn130-tail-factor/
+          cp docs/research/cn130_tail_factor_discovery_experiment_log_2026-08-05.md artifacts/cn130-tail-factor/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cn130-tail-factor-discovery-${{ github.run_id }}
+          path: artifacts/cn130-tail-factor/
+          if-no-files-found: error
+          retention-days: 30
