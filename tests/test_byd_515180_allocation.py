@@ -3,9 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from src.research.byd_515180_allocation import (
-    PROMOTABLE,
-    build_decisions,
+from src.research.byd_515180_allocation import PROMOTABLE, build_decisions
+from src.research.byd_515180_execution import (
     execute_next_common_open,
     run_allocation,
 )
@@ -56,13 +55,23 @@ def test_frozen_candidate_family_and_weight_sums() -> None:
         assert (frame >= 0.0).all().all()
 
 
+def test_first_overlap_interval_starts_in_cash() -> None:
+    common, signals = synthetic_common()
+    decision = build_decisions(common, signals)["v1_dividend_75_25"]
+    executed = execute_next_common_open(decision, common["common_open_eligible"])
+    assert executed.iloc[0].to_dict() == {
+        "position_byd_weight": 0.0,
+        "position_etf_weight": 0.0,
+        "position_cash_weight": 1.0,
+    }
+    assert executed.iloc[1]["position_byd_weight"] == decision.iloc[0]["byd_weight"]
+
+
 def test_next_common_open_does_not_advance_on_ineligible_open() -> None:
     common, signals = synthetic_common()
     decision = build_decisions(common, signals)["v1_dividend_75_25"]
     executed = execute_next_common_open(decision, common["common_open_eligible"])
-    # Day 3 is ineligible, so the previous executed allocation persists.
     assert executed.iloc[2].equals(executed.iloc[1])
-    # The day-2 close decision can only execute on the next eligible open, day 4.
     assert executed.iloc[3]["position_byd_weight"] == decision.iloc[2]["byd_weight"]
 
 
@@ -85,6 +94,7 @@ def test_cost_charged_on_both_legs_of_rotation() -> None:
     common, signals = synthetic_common()
     decision = build_decisions(common, signals)["v1_dividend_75_25"]
     result = run_allocation("candidate", common, decision, cost_bps=20.0)
-    # A 75/25 to 100/0 switch has 0.50 turnover units across both legs.
     assert (result.daily["turnover_units"] >= 0.0).all()
-    assert np.isclose(result.daily["cost"], result.daily["turnover_units"] * 0.002).all()
+    assert np.isclose(
+        result.daily["cost"], result.daily["turnover_units"] * 0.002
+    ).all()
