@@ -46,8 +46,7 @@ def _sha256(path: Path) -> str:
 def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
-        + "\n",
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
 
@@ -71,8 +70,7 @@ def _write_jsonl(path: Path, events: Iterable[Any]) -> int:
     with path.open("w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(
-                json.dumps(row, ensure_ascii=False, sort_keys=True, allow_nan=False)
-                + "\n"
+                json.dumps(row, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n"
             )
     return len(rows)
 
@@ -92,9 +90,7 @@ def _validate_populations(
         )
     for symbol, population in populations.items():
         if population.symbol.upper() != symbol:
-            raise SelectedPoolEventPopulationError(
-                f"population symbol identity mismatch: {symbol}"
-            )
+            raise SelectedPoolEventPopulationError(f"population symbol identity mismatch: {symbol}")
         if population.status not in ALLOWED_SYMBOL_STATUSES:
             raise SelectedPoolEventPopulationError(
                 f"unsupported population status: {population.status}"
@@ -127,9 +123,7 @@ def _apply_evidence_cutoff(
     filtered: dict[str, SymbolPopulation] = {}
     removed: dict[str, int] = {}
     for symbol, population in populations.items():
-        events = [
-            event for event in population.events if _availability_date(event) <= cutoff
-        ]
+        events = [event for event in population.events if _availability_date(event) <= cutoff]
         removed[symbol] = len(population.events) - len(events)
         status = population.status
         if not events and population.events and status in {"ready", "partial"}:
@@ -174,18 +168,10 @@ def _coverage_rows(
                 "event_count": len(events),
                 "first_event_date": min(available_dates) if available_dates else None,
                 "latest_event_date": max(available_dates) if available_dates else None,
-                "first_available_date": (
-                    min(available_dates) if available_dates else None
-                ),
-                "latest_available_date": (
-                    max(available_dates) if available_dates else None
-                ),
-                "first_effective_date": (
-                    min(effective_dates) if effective_dates else None
-                ),
-                "latest_effective_date": (
-                    max(effective_dates) if effective_dates else None
-                ),
+                "first_available_date": (min(available_dates) if available_dates else None),
+                "latest_available_date": (max(available_dates) if available_dates else None),
+                "first_effective_date": (min(effective_dates) if effective_dates else None),
+                "latest_effective_date": (max(effective_dates) if effective_dates else None),
                 "excluded_after_cutoff": int(cutoff_removed.get(symbol, 0)),
                 "fields_or_types": dict(sorted(field_counts.items())),
                 "providers": sorted(set(population.providers)),
@@ -204,8 +190,7 @@ def _component_status(kind: str, rows: Sequence[Mapping[str, Any]]) -> tuple[str
         ready = sum(
             1
             for row in rows
-            if str(row["status"]) in {"ready", "partial"}
-            and int(row.get("event_count", 0)) > 0
+            if str(row["status"]) in {"ready", "partial"} and int(row.get("event_count", 0)) > 0
         )
     if blocked:
         status = "partial" if ready else "blocked"
@@ -232,18 +217,9 @@ def _component_manifest(
         for row in rows
         if str(row["status"]) in {"provider_missing", "identity_missing"}
     )
-    invalid = sorted(
-        str(row["symbol"])
-        for row in rows
-        if str(row["status"]) == "conflict"
-    )
+    invalid = sorted(str(row["symbol"]) for row in rows if str(row["status"]) == "conflict")
     providers = sorted(
-        {
-            str(provider)
-            for row in rows
-            for provider in row.get("providers", [])
-            if str(provider)
-        }
+        {str(provider) for row in rows for provider in row.get("providers", []) if str(provider)}
     )
     expected = len(rows)
     return {
@@ -255,19 +231,11 @@ def _component_manifest(
         "pool_id": pool_id,
         "evidence_cutoff": evidence_cutoff,
         "first_date": min(
-            (
-                str(row["first_event_date"])
-                for row in rows
-                if row.get("first_event_date")
-            ),
+            (str(row["first_event_date"]) for row in rows if row.get("first_event_date")),
             default=None,
         ),
         "last_date": max(
-            (
-                str(row["latest_event_date"])
-                for row in rows
-                if row.get("latest_event_date")
-            ),
+            (str(row["latest_event_date"]) for row in rows if row.get("latest_event_date")),
             default=None,
         ),
         "expected_symbol_count": expected,
@@ -300,6 +268,7 @@ def build_selected_pool_event_artifacts(
     corporate_actions: Mapping[str, SymbolPopulation],
     evidence_cutoff: str,
     output_root: str | Path,
+    source_reuse: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Write two event stores and their direct model-data component manifests."""
 
@@ -309,9 +278,7 @@ def build_selected_pool_event_artifacts(
     try:
         cutoff = date.fromisoformat(evidence_cutoff)
     except ValueError as exc:
-        raise SelectedPoolEventPopulationError(
-            "evidence_cutoff must be an ISO date"
-        ) from exc
+        raise SelectedPoolEventPopulationError("evidence_cutoff must be an ISO date") from exc
     fundamentals, fundamental_removed = _apply_evidence_cutoff(
         fundamentals,
         cutoff=cutoff,
@@ -333,11 +300,7 @@ def build_selected_pool_event_artifacts(
     )
     _write_jsonl(
         corporate_path,
-        (
-            event
-            for symbol in normalized_symbols
-            for event in corporate_actions[symbol].events
-        ),
+        (event for symbol in normalized_symbols for event in corporate_actions[symbol].events),
     )
 
     fundamental_rows = _coverage_rows(
@@ -374,9 +337,7 @@ def build_selected_pool_event_artifacts(
         events_path=corporate_path,
     )
     _write_json(output / "fundamentals/component_manifest.json", fundamental_manifest)
-    _write_json(
-        output / "corporate_actions/component_manifest.json", corporate_manifest
-    )
+    _write_json(output / "corporate_actions/component_manifest.json", corporate_manifest)
     root_manifest = {
         "schema_version": "1.0",
         "bundle_id": f"{pool_id}_event_population_v1",
@@ -397,5 +358,7 @@ def build_selected_pool_event_artifacts(
         "research_only": True,
         "trade_ready": False,
     }
+    if source_reuse is not None:
+        root_manifest["source_reuse"] = dict(source_reuse)
     _write_json(output / "event_population_manifest.json", root_manifest)
     return root_manifest
