@@ -29,8 +29,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: byd-515180-prospective
-  cancel-in-progress: false
+  group: byd-515180-prospective-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
+  cancel-in-progress: true
 
 jobs:
   contract-tests:
