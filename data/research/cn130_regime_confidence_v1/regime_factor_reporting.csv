@@ -1,0 +1,3 @@
+window,n_dates,mean_rank_ic,rank_icir,positive_daily_rank_ic_ratio,mean_incremental_rank_ic,mean_top_bottom_spread
+2026H1,116,-0.03276759523,-0.1509113453,0.4655172414,-0.00739758543,-0.03092216196
+2026H2_PARTIAL,13,0.3058425808,1.156510632,0.7692307692,0.1529642702,0.1201192077

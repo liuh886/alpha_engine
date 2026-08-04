@@ -13,9 +13,7 @@ research_only: true
 trade_ready: false
 promotion_allowed: false
 periods:
-  calibration:
-    start: 2022-01-01
-    end: 2023-12-31
+  calibration: [2022-01-01, 2023-12-31]
   validation:
     - [2024H1, 2024-01-01, 2024-06-30]
     - [2024H2, 2024-07-01, 2024-12-31]
@@ -25,14 +23,23 @@ periods:
     - [2026H1, 2026-01-01, 2026-06-30]
     - [2026H2_PARTIAL, 2026-07-01, 2026-12-31]
 market_states:
-  risk_on:
-    rule: close_above_ma120_and_ret20_positive_and_drawdown120_above_minus_8pct
-  repair:
-    rule: drawdown120_at_or_below_minus_8pct_and_ret20_positive
-  risk_off:
-    rule: close_below_ma120_and_ret20_nonpositive
-  neutral:
-    rule: otherwise
+  risk_on: close_above_ma120_and_ret20_positive_and_drawdown120_above_minus_8pct
+  repair: drawdown120_at_or_below_minus_8pct_and_ret20_positive
+  risk_off: close_below_ma120_and_ret20_nonpositive
+  neutral: otherwise
+regime_factors:
+  - trend_efficiency_20
+  - momentum_10
+  - momentum_20
+  - reversal_3
+  - distance_low_20
+  - volume_price_confirmation_20
+  - downside_volatility_20
+  - intraday_range_20
+  - drawdown_63
+  - recovery_from_low_20
+  - amihud_20
+  - residual_momentum_20
 factor_calibration:
   minimum_state_dates: 40
   minimum_absolute_mean_rank_ic: 0.01
@@ -42,20 +49,18 @@ factor_calibration:
   weights: equal
   signs: frozen_from_calibration_mean_rank_ic
 confidence_variants:
-  - always_invested
-  - fourth_sector_score_calibration_q25
-  - sector_gap_calibration_q25
-  - combined_calibration_q25
-  - risk_off_half_cash
-  - risk_off_full_cash
+  fixed_thresholds:
+    fourth_sector_score: 0.80
+    top4_mean_minus_sector_median: 0.10
+  variants:
+    - always_invested
+    - fourth_sector_score_fixed_0_80
+    - sector_gap_fixed_0_10
+    - combined_fixed_thresholds
+    - risk_off_half_cash
+    - risk_off_full_cash
 cost_bps: [10, 20, 40]
-decision_taxonomy:
-  - confidence_gate_not_supported_regime_model_not_supported
-  - confidence_gate_supported_regime_model_not_supported
-  - confidence_gate_not_supported_regime_model_supported
-  - confidence_gate_supported_regime_model_supported
-  - data_blocked
 integrity:
-  selection_returns_must_not_set_thresholds: true
+  validation_returns_must_not_set_thresholds: true
   validation_returns_must_not_set_factor_signs_or_weights: true
   reporting_windows_excluded_from_selection: true

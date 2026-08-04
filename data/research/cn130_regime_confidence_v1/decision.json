@@ -1,0 +1,209 @@
+{
+  "confidence_gate_supported": false,
+  "creates_cn_x1_1_candidate": false,
+  "decision": "confidence_gate_not_supported_regime_model_not_supported",
+  "regime_factor_summary": {
+    "mean_incremental_rank_ic": -0.011666425590380029,
+    "mean_top_bottom_spread": -0.003980738557856961,
+    "mean_window_rank_ic": -0.002656035025251552,
+    "mean_window_rank_icir": -7.759921903299771e-06,
+    "minimum_leave_one_window_mean_rank_ic": -0.029287249511677136,
+    "positive_windows": 2,
+    "support_gate_pass": false,
+    "worst_window_rank_ic": -0.08350073647182558
+  },
+  "regime_model_supported": false,
+  "research_only": true,
+  "selected_state_factors": {
+    "neutral": [
+      {
+        "calibration_mean_rank_ic": 0.0714911445845263,
+        "factor": "amihud_20",
+        "factor_id": "amihud_20__global",
+        "family": "liquidity",
+        "mode": "global",
+        "n_dates": 54,
+        "sign": 1
+      },
+      {
+        "calibration_mean_rank_ic": -0.07127446512949971,
+        "factor": "intraday_range_20",
+        "factor_id": "intraday_range_20__sector_relative",
+        "family": "risk_quality",
+        "mode": "sector_relative",
+        "n_dates": 54,
+        "sign": -1
+      },
+      {
+        "calibration_mean_rank_ic": -0.04896220643094772,
+        "factor": "distance_low_20",
+        "factor_id": "distance_low_20__sector_relative",
+        "family": "breakout_position",
+        "mode": "sector_relative",
+        "n_dates": 54,
+        "sign": -1
+      },
+      {
+        "calibration_mean_rank_ic": 0.042071237118763,
+        "factor": "volume_price_confirmation_20",
+        "factor_id": "volume_price_confirmation_20__global",
+        "family": "volume_price",
+        "mode": "global",
+        "n_dates": 54,
+        "sign": 1
+      },
+      {
+        "calibration_mean_rank_ic": -0.03279283419268294,
+        "factor": "reversal_3",
+        "factor_id": "reversal_3__global",
+        "family": "short_reversal",
+        "mode": "global",
+        "n_dates": 54,
+        "sign": -1
+      }
+    ],
+    "repair": [
+      {
+        "calibration_mean_rank_ic": 0.05557634858257234,
+        "factor": "trend_efficiency_20",
+        "factor_id": "trend_efficiency_20__sector_relative",
+        "family": "trend_momentum",
+        "mode": "sector_relative",
+        "n_dates": 90,
+        "sign": 1
+      },
+      {
+        "calibration_mean_rank_ic": 0.0436847792066064,
+        "factor": "drawdown_63",
+        "factor_id": "drawdown_63__global",
+        "family": "drawdown_recovery",
+        "mode": "global",
+        "n_dates": 90,
+        "sign": 1
+      },
+      {
+        "calibration_mean_rank_ic": 0.04234808914602949,
+        "factor": "distance_low_20",
+        "factor_id": "distance_low_20__global",
+        "family": "breakout_position",
+        "mode": "global",
+        "n_dates": 90,
+        "sign": 1
+      },
+      {
+        "calibration_mean_rank_ic": -0.03710599493998412,
+        "factor": "downside_volatility_20",
+        "factor_id": "downside_volatility_20__global",
+        "family": "risk_quality",
+        "mode": "global",
+        "n_dates": 90,
+        "sign": -1
+      },
+      {
+        "calibration_mean_rank_ic": 0.032624207344948065,
+        "factor": "residual_momentum_20",
+        "factor_id": "residual_momentum_20__global",
+        "family": "relative_strength",
+        "mode": "global",
+        "n_dates": 90,
+        "sign": 1
+      }
+    ],
+    "risk_off": [
+      {
+        "calibration_mean_rank_ic": -0.06128986441897916,
+        "factor": "residual_momentum_20",
+        "factor_id": "residual_momentum_20__global",
+        "family": "relative_strength",
+        "mode": "global",
+        "n_dates": 293,
+        "sign": -1
+      },
+      {
+        "calibration_mean_rank_ic": 0.053406749165724465,
+        "factor": "amihud_20",
+        "factor_id": "amihud_20__global",
+        "family": "liquidity",
+        "mode": "global",
+        "n_dates": 293,
+        "sign": 1
+      },
+      {
+        "calibration_mean_rank_ic": -0.05089029806535404,
+        "factor": "drawdown_63",
+        "factor_id": "drawdown_63__global",
+        "family": "drawdown_recovery",
+        "mode": "global",
+        "n_dates": 293,
+        "sign": -1
+      },
+      {
+        "calibration_mean_rank_ic": -0.04934277106258821,
+        "factor": "momentum_10",
+        "factor_id": "momentum_10__global",
+        "family": "trend_momentum",
+        "mode": "global",
+        "n_dates": 293,
+        "sign": -1
+      },
+      {
+        "calibration_mean_rank_ic": -0.030357355852754085,
+        "factor": "distance_low_20",
+        "factor_id": "distance_low_20__sector_relative",
+        "family": "breakout_position",
+        "mode": "sector_relative",
+        "n_dates": 293,
+        "sign": -1
+      }
+    ],
+    "risk_on": [
+      {
+        "calibration_mean_rank_ic": -0.1881158861247813,
+        "factor": "intraday_range_20",
+        "factor_id": "intraday_range_20__global",
+        "family": "risk_quality",
+        "mode": "global",
+        "n_dates": 47,
+        "sign": -1
+      },
+      {
+        "calibration_mean_rank_ic": -0.11367007149728572,
+        "factor": "distance_low_20",
+        "factor_id": "distance_low_20__global",
+        "family": "breakout_position",
+        "mode": "global",
+        "n_dates": 47,
+        "sign": -1
+      },
+      {
+        "calibration_mean_rank_ic": -0.10959883698424515,
+        "factor": "momentum_20",
+        "factor_id": "momentum_20__global",
+        "family": "trend_momentum",
+        "mode": "global",
+        "n_dates": 47,
+        "sign": -1
+      },
+      {
+        "calibration_mean_rank_ic": 0.08980359850092232,
+        "factor": "amihud_20",
+        "factor_id": "amihud_20__global",
+        "family": "liquidity",
+        "mode": "global",
+        "n_dates": 47,
+        "sign": 1
+      },
+      {
+        "calibration_mean_rank_ic": 0.057943758205310024,
+        "factor": "volume_price_confirmation_20",
+        "factor_id": "volume_price_confirmation_20__sector_relative",
+        "family": "volume_price",
+        "mode": "sector_relative",
+        "n_dates": 47,
+        "sign": 1
+      }
+    ]
+  },
+  "supported_confidence_variants": [],
+  "trade_ready": false
+}
