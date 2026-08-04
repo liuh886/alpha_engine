@@ -28,6 +28,8 @@ from src.research.byd_prospective_shadow import (
     chain_link_provider_history,
 )
 
+MAX_ENVELOPE_REPAIR_PCT = 0.002
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -49,6 +51,56 @@ def _flatten_yahoo(frame: pd.DataFrame) -> pd.DataFrame:
         for column in out.columns
     ]
     return out
+
+
+def _audit_and_repair_envelope(
+    frame: pd.DataFrame,
+) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
+    """Apply the frozen canonical high/low envelope policy.
+
+    Open, close and volume remain immutable. A small provider inconsistency may
+    only raise high or lower low enough to contain open and close. Every repair
+    is returned as explicit metadata; a larger violation blocks the run.
+    """
+
+    repaired = frame.copy(deep=True)
+    audit: list[dict[str, Any]] = []
+    blocked: list[str] = []
+    for index, row in frame.iterrows():
+        required_high = max(float(row["open"]), float(row["close"]))
+        required_low = min(float(row["open"]), float(row["close"]))
+        high_gap = max(required_high - float(row["high"]), 0.0)
+        low_gap = max(float(row["low"]) - required_low, 0.0)
+        scale = max(abs(float(row["close"])), 1e-12)
+        violation_pct = max(high_gap, low_gap) / scale
+        if violation_pct <= 0.0:
+            continue
+        within_tolerance = violation_pct <= MAX_ENVELOPE_REPAIR_PCT
+        date = pd.Timestamp(row["date"]).strftime("%Y-%m-%d")
+        audit.append(
+            {
+                "date": date,
+                "provider_open": float(row["open"]),
+                "provider_high": float(row["high"]),
+                "provider_low": float(row["low"]),
+                "provider_close": float(row["close"]),
+                "high_gap": high_gap,
+                "low_gap": low_gap,
+                "violation_pct": violation_pct,
+                "within_repair_tolerance": within_tolerance,
+            }
+        )
+        if not within_tolerance:
+            blocked.append(date)
+            continue
+        repaired.loc[index, "high"] = max(float(row["high"]), required_high)
+        repaired.loc[index, "low"] = min(float(row["low"]), required_low)
+    if blocked:
+        raise RuntimeError(
+            "Yahoo 515180 OHLC envelope violations exceed tolerance: "
+            + ", ".join(blocked)
+        )
+    return repaired, audit
 
 
 def _fetch_yahoo(as_of: str) -> tuple[pd.DataFrame, dict[str, Any]]:
@@ -108,13 +160,7 @@ def _fetch_yahoo(as_of: str) -> tuple[pd.DataFrame, dict[str, Any]]:
     market = ["open", "high", "low", "close", "volume", "adj_close"]
     if out[market].isna().any().any():
         raise RuntimeError("Yahoo 515180 payload contains missing market fields")
-    invalid = (
-        out["high"].lt(out[["open", "close"]].max(axis=1))
-        | out["low"].gt(out[["open", "close"]].min(axis=1))
-    )
-    if invalid.any():
-        dates = out.loc[invalid, "date"].dt.strftime("%Y-%m-%d").tolist()
-        raise RuntimeError(f"Yahoo 515180 OHLC envelope invalid: {dates}")
+    out, envelope_audit = _audit_and_repair_envelope(out)
     return out[["date", *numeric]], {
         "provider": "yfinance",
         "provider_symbol": "515180.SS",
@@ -124,6 +170,14 @@ def _fetch_yahoo(as_of: str) -> tuple[pd.DataFrame, dict[str, Any]]:
         "repair": True,
         "actions": True,
         "raw_and_adjusted_close_same_response": True,
+        "envelope_policy": {
+            "max_repair_pct": MAX_ENVELOPE_REPAIR_PCT,
+            "open_close_volume_immutable": True,
+            "high_only_raised": True,
+            "low_only_lowered": True,
+            "repaired_rows": len(envelope_audit),
+            "audit": envelope_audit,
+        },
     }
 
 
