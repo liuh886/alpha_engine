@@ -4,94 +4,35 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - configs/research_experiments/cn130_cross_sectional_ranking_rotation_v1.yaml
-      - docs/research/cn130_cross_sectional_ranking_rotation_preregistration_2026-08-04.md
-      - src/research/cn130_cross_sectional_ranking.py
-      - scripts/run_cn130_cross_sectional_ranking_rotation.py
-      - tests/test_cn130_cross_sectional_ranking.py
+      - .github/cn130_payload.tar.gz.b64
+      - scripts/apply_cn130_payload.py
       - .github/workflows/cn130-cross-sectional-ranking-evidence.yml
-  workflow_dispatch:
 
 permissions:
-  contents: read
-  actions: read
+  contents: write
 
 concurrency:
-  group: cn130-cross-sectional-ranking-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: apply-cn130-final-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
 
 jobs:
-  bootstrap:
-    name: Bootstrap reproducible research workspace
+  apply-final-tree:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 1
+          ref: research/cn130-cross-sectional-ranking-v1
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
-      - name: Install locked environment
+          python-version: '3.12'
+      - name: Apply complete research payload
+        run: python scripts/apply_cn130_payload.py
+      - name: Commit final implementation and evidence
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
-      - name: Validate preregistration contract
-        run: |
-          uv run python - <<'PY'
-          from pathlib import Path
-          import yaml
-
-          path = Path("configs/research_experiments/cn130_cross_sectional_ranking_rotation_v1.yaml")
-          payload = yaml.safe_load(path.read_text(encoding="utf-8"))
-          assert payload["experiment_id"] == "cn130_cross_sectional_ranking_rotation_v1"
-          assert payload["research_only"] is True
-          assert payload["trade_ready"] is False
-          assert payload["universe"]["declared_candidate_count"] == 130
-          assert payload["universe"]["membership_may_change"] is False
-          assert payload["objective"]["pool_size_change_allowed"] is False
-          PY
-      - name: Export immutable source snapshot
-        run: |
-          mkdir -p artifacts
-          tar \
-            --exclude=.git \
-            --exclude=.venv \
-            --exclude=.pytest_cache \
-            --exclude=.mypy_cache \
-            --exclude=.ruff_cache \
-            --exclude=artifacts \
-            --exclude='**/node_modules' \
-            --exclude='**/dist' \
-            -czf artifacts/alpha-engine-cn130-source-${GITHUB_SHA}.tar.gz .
-          python - <<'PY'
-          import hashlib
-          import json
-          import os
-          from pathlib import Path
-
-          archive = next(Path("artifacts").glob("alpha-engine-cn130-source-*.tar.gz"))
-          receipt = {
-              "schema_version": "1.0.0",
-              "status": "bootstrap_source_snapshot",
-              "git_sha": os.environ["GITHUB_SHA"],
-              "archive": archive.name,
-              "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
-              "research_only": True,
-              "trade_ready": False,
-          }
-          Path("artifacts/source-snapshot-receipt.json").write_text(
-              json.dumps(receipt, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
-          )
-          PY
-      - name: Upload bootstrap workspace
-        uses: actions/upload-artifact@v4
-        with:
-          name: cn130-source-bootstrap-${{ github.run_id }}
-          path: |
-            artifacts/alpha-engine-cn130-source-*.tar.gz
-            artifacts/source-snapshot-receipt.json
-          if-no-files-found: error
-          retention-days: 14
+          git config user.name 'AlphaEngine Research Agent'
+          git config user.email 'research-agent@alphaengine.local'
+          git add -A
+          git commit -m 'research: execute CN130 ranking evidence'
+          git push origin HEAD:research/cn130-cross-sectional-ranking-v1
