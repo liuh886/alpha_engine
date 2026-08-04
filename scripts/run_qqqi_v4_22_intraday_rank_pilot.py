@@ -78,8 +78,16 @@ def _common_calendar(
     common_set = set(common)
     for symbol in (left, right):
         frame = bars[symbol].copy()
-        dates = pd.to_datetime(frame["date"], errors="coerce").dt.tz_localize(None).dt.normalize()
-        bars[symbol] = frame.loc[dates.isin(common_set)].sort_values("date").reset_index(drop=True)
+        dates = (
+            pd.to_datetime(frame["date"], errors="coerce")
+            .dt.tz_localize(None)
+            .dt.normalize()
+        )
+        bars[symbol] = (
+            frame.loc[dates.isin(common_set)]
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
     audit["left_rows_after"] = int(len(bars[left]))
     audit["right_rows_after"] = int(len(bars[right]))
     return audit
@@ -117,6 +125,26 @@ def _write_manifest(
     _write_json(output / "manifest.json", manifest)
 
 
+def _coverage_errors(coverage: pd.DataFrame) -> list[dict[str, Any]]:
+    if coverage.empty:
+        return [{"error": "intraday coverage table is empty"}]
+    columns = [
+        column
+        for column in (
+            "symbol",
+            "admissible",
+            "pages",
+            "pagination_completed",
+            "rows",
+            "sessions",
+            "fetch_error",
+        )
+        if column in coverage.columns
+    ]
+    failed = coverage.loc[~coverage["admissible"].fillna(False), columns]
+    return failed.to_dict(orient="records")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--contract", type=Path, default=DEFAULT_CONTRACT)
@@ -131,6 +159,7 @@ def main() -> int:
     bridge_contract = yaml.safe_load(bridge_path.read_text(encoding="utf-8"))
     output = args.output_dir
     output.mkdir(parents=True, exist_ok=True)
+    source_context: dict[str, Any] = {}
     try:
         warmup_start = str(parent_contract["daily_data"]["start_date"])
         daily_bars, daily_coverage = fetch_adjusted_daily_bars(
@@ -146,30 +175,9 @@ def main() -> int:
             _common_calendar(daily_bars, "^VIX", "^VXN"),
             _common_calendar(daily_bars, "HYG", "LQD"),
         ]
-        _, results, _, _ = run_bridge_allocation_comparison(
-            daily_bars, bridge_contract
-        )
-        baseline = results[
-            str(contract["daily_data"]["baseline_result_key"])
-        ]
-        intraday_bars, intraday_coverage = fetch_intraday_bars(contract)
-        if not bool(intraday_coverage["admissible"].fillna(False).all()):
-            raise ValueError(
-                "one or more governed intraday sources are inadmissible"
-            )
-        result = run_intraday_rank_pilot(
-            intraday_bars,
-            daily_bars,
-            baseline.daily,
-            contract,
-        )
-
         daily_coverage["runtime_warmup_start"] = warmup_start
         daily_coverage.to_csv(
             output / "daily_source_coverage.csv", index=False
-        )
-        intraday_coverage.to_csv(
-            output / "intraday_source_coverage.csv", index=False
         )
         _write_json(
             output / "runtime_calendar_audit.json",
@@ -182,6 +190,45 @@ def main() -> int:
                     "non-common VIX/VXN dates from breaking the 63-session z-score"
                 ),
             },
+        )
+        source_context.update(
+            {
+                "runtime_warmup_start": warmup_start,
+                "runtime_calendar_audit": calendar_audit,
+            }
+        )
+
+        _, results, _, _ = run_bridge_allocation_comparison(
+            daily_bars, bridge_contract
+        )
+        baseline = results[
+            str(contract["daily_data"]["baseline_result_key"])
+        ]
+        intraday_bars, intraday_coverage = fetch_intraday_bars(contract)
+        intraday_coverage.to_csv(
+            output / "intraday_source_coverage.csv", index=False
+        )
+        failed_sources = _coverage_errors(intraday_coverage)
+        source_context["intraday_source_failures"] = failed_sources
+        _write_json(
+            output / "intraday_source_diagnostics.json",
+            {
+                "all_sources_admissible": not failed_sources,
+                "failed_sources": failed_sources,
+                "records": intraday_coverage.to_dict(orient="records"),
+            },
+        )
+        if failed_sources:
+            raise ValueError(
+                "one or more governed intraday sources are inadmissible: "
+                + json.dumps(_safe(failed_sources), ensure_ascii=False)
+            )
+
+        result = run_intraday_rank_pilot(
+            intraday_bars,
+            daily_bars,
+            baseline.daily,
+            contract,
         )
         result.frame.reset_index().to_csv(
             output / "feature_label_frame.csv", index=False
@@ -216,8 +263,7 @@ def main() -> int:
             "shadow_authorization_possible": False,
             "decision": result.decision,
             "feature_names": list(result.feature_names),
-            "runtime_warmup_start": warmup_start,
-            "runtime_calendar_audit": calendar_audit,
+            **source_context,
             "score_metrics": result.score_metrics,
             "feasibility_gate": result.feasibility_gate,
             "tail_metrics": result.tail_metrics,
@@ -247,6 +293,7 @@ def main() -> int:
             "error_type": type(exc).__name__,
             "error": str(exc),
             "traceback": traceback.format_exc(),
+            **source_context,
             "v4_2_unchanged": True,
             "telegram_unchanged": True,
             "issue_348_unchanged": True,
