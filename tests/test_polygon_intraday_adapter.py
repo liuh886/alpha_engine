@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 import pytest
@@ -16,60 +16,59 @@ def _millis(value: str) -> int:
     return int(pd.Timestamp(value).timestamp() * 1000)
 
 
+def _bar(timestamp: str, price: float, volume: float = 1000.0) -> dict:
+    return {
+        "t": _millis(timestamp),
+        "o": price,
+        "h": price + 2.0,
+        "l": price - 1.0,
+        "c": price + 1.0,
+        "v": volume,
+        "vw": price + 0.5,
+        "n": 250,
+    }
+
+
 @dataclass
 class FakePolygonIntradayClient:
     returned_ticker: str = "QQQ"
     paginated: bool = False
+    endless: bool = False
+    calls: list[tuple[str, dict | None]] = field(default_factory=list)
 
     def get_json(self, path: str, *, params=None):
-        if path.startswith("v3/reference/tickers/"):
-            return {
-                "status": "OK",
-                "results": {
-                    "ticker": self.returned_ticker,
-                    "name": "Invesco QQQ Trust",
-                    "market": "stocks",
-                    "primary_exchange": "XNAS",
-                    "type": "ETF",
-                    "active": True,
-                    "list_date": "1999-03-10",
-                    "composite_figi": "BBG000BSWKH7",
-                },
-            }
-        if path.startswith("v2/aggs/ticker/"):
+        self.calls.append((path, params))
+        if path == "v2/aggs/next":
             payload = {
                 "status": "OK",
+                "ticker": self.returned_ticker,
                 "results": [
-                    {
-                        "t": _millis("2026-07-30 13:00:00+00:00"),
-                        "o": 499.0,
-                        "h": 500.0,
-                        "l": 498.0,
-                        "c": 499.5,
-                        "v": 100.0,
-                    },
-                    {
-                        "t": _millis("2026-07-30 13:30:00+00:00"),
-                        "o": 500.0,
-                        "h": 503.0,
-                        "l": 499.0,
-                        "c": 502.0,
-                        "v": 1000.0,
-                        "vw": 501.2,
-                        "n": 250,
-                    },
-                    {
-                        "t": _millis("2026-07-30 14:00:00+00:00"),
-                        "o": 502.0,
-                        "h": 504.0,
-                        "l": 501.0,
-                        "c": 503.0,
-                        "v": 800.0,
-                    },
+                    _bar("2026-07-30 14:00:00+00:00", 502.0, 800.0)
                 ],
             }
-            if self.paginated:
-                payload["next_url"] = "https://api.polygon.io/v2/aggs/next"
+            if self.endless:
+                payload["next_url"] = (
+                    "https://api.polygon.io/v2/aggs/next?cursor=again&apiKey=secret"
+                )
+            return payload
+        if path.startswith("v2/aggs/ticker/"):
+            results = [
+                _bar("2026-07-30 13:00:00+00:00", 499.0, 100.0),
+                _bar("2026-07-30 13:30:00+00:00", 500.0, 1000.0),
+            ]
+            payload = {
+                "status": "OK",
+                "ticker": self.returned_ticker,
+                "results": results,
+            }
+            if self.paginated or self.endless:
+                payload["next_url"] = (
+                    "https://api.polygon.io/v2/aggs/next?cursor=abc&apiKey=secret"
+                )
+            else:
+                payload["results"].append(
+                    _bar("2026-07-30 14:00:00+00:00", 502.0, 800.0)
+                )
             return payload
         raise AssertionError(path)
 
@@ -83,6 +82,7 @@ def _request(**overrides):
         "multiplier": 30,
         "timespan": "minute",
         "regular_session_only": True,
+        "request_delay_seconds": 0.0,
     }
     values.update(overrides)
     return PolygonIntradayRequest(**values)
@@ -102,18 +102,38 @@ def test_polygon_intraday_filters_regular_session_and_preserves_timezone():
         "2026-07-30",
         "2026-07-30",
     ]
-    assert result.df.iloc[0]["vwap"] == pytest.approx(501.2)
+    assert result.df.iloc[0]["vwap"] == pytest.approx(500.5)
     metadata = result.df.attrs["provider_metadata"]
-    assert metadata["request_count"] == 2
+    assert metadata["request_count"] == 1
+    assert metadata["pages"] == 1
+    assert metadata["pagination_completed"] is True
     assert metadata["multiplier"] == 30
     assert metadata["timezone"] == "America/New_York"
 
 
-def test_polygon_intraday_rejects_pagination_or_truncation():
-    with pytest.raises(DataFetchError, match="requires pagination"):
+def test_polygon_intraday_completes_pagination_without_forwarding_api_key():
+    client = FakePolygonIntradayClient(paginated=True)
+    result = PolygonIntradayAdapter(client=client).fetch_aggregate_bars(
+        _request()
+    )
+    assert result.df["timestamp_et"].dt.strftime("%H:%M").tolist() == [
+        "09:30",
+        "10:00",
+    ]
+    metadata = result.df.attrs["provider_metadata"]
+    assert metadata["pages"] == 2
+    assert metadata["pagination_used"] is True
+    assert metadata["pagination_completed"] is True
+    assert metadata["raw_results_count"] == 3
+    assert client.calls[1][0] == "v2/aggs/next"
+    assert client.calls[1][1] == {"cursor": "abc"}
+
+
+def test_polygon_intraday_rejects_unbounded_pagination():
+    with pytest.raises(DataFetchError, match="exceeded max_pages"):
         PolygonIntradayAdapter(
-            client=FakePolygonIntradayClient(paginated=True)
-        ).fetch_aggregate_bars(_request())
+            client=FakePolygonIntradayClient(endless=True)
+        ).fetch_aggregate_bars(_request(max_pages=2))
 
 
 def test_polygon_intraday_rejects_identity_substitution():
@@ -132,27 +152,13 @@ def test_polygon_intraday_requires_explicit_credential(monkeypatch):
 def test_polygon_intraday_dst_open_alignment():
     class DstClient(FakePolygonIntradayClient):
         def get_json(self, path: str, *, params=None):
-            if path.startswith("v3/reference/tickers/"):
-                return super().get_json(path, params=params)
+            self.calls.append((path, params))
             return {
                 "status": "OK",
+                "ticker": "QQQ",
                 "results": [
-                    {
-                        "t": _millis("2026-01-05 14:30:00+00:00"),
-                        "o": 500.0,
-                        "h": 501.0,
-                        "l": 499.0,
-                        "c": 500.5,
-                        "v": 1000.0,
-                    },
-                    {
-                        "t": _millis("2026-07-06 13:30:00+00:00"),
-                        "o": 510.0,
-                        "h": 511.0,
-                        "l": 509.0,
-                        "c": 510.5,
-                        "v": 1000.0,
-                    },
+                    _bar("2026-01-05 14:30:00+00:00", 500.0),
+                    _bar("2026-07-06 13:30:00+00:00", 510.0),
                 ],
             }
 
