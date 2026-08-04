@@ -45,6 +45,24 @@ intraday_data:
   request_delay_seconds: 13.0
   inter_symbol_delay_seconds: 13.0
 
+frozen_phase0_snapshot:
+  purpose: outcome_free_intraday_input_reuse
+  source_experiment: qqqi_state2_intraday_meta_label_v4_21_research
+  workflow_run: 30876906097
+  artifact_id: 8879966050
+  artifact_digest: sha256:9009846acd7121fea0509204d4ca551e3d62e386e06d945f3364634bacf8a951
+  generated_before_any_v4_22_outcome: true
+  outcome_calculation_authorized_in_source_run: false
+  strategy_calculation_performed_in_source_run: false
+  required_files:
+    opening_alignment.csv: 8ebe966956ad04f550923344cb7e8a9a82be6e9782670f46e32d5b1b721293d3
+    intraday_source_coverage.csv: a1ef8549f47c987abf16899058c65481c524baa69e53ced9ae463af9c7333a13
+    manifest.json: null
+  expected_alignment_rows: 500
+  expected_usable_rows: 499
+  live_refetch_fallback_allowed: true
+  repository_commit_of_vendor_rows_allowed: false
+
 daily_data:
   adapter: yfinance_open_close_research
   start_date: "2024-01-01"
@@ -148,6 +166,7 @@ possible_decisions:
 
 hypothesis_discipline:
   - The two folds were fixed from event availability before any outcome was calculated.
+  - The Phase 0 alignment artifact was generated before any v4.22 label or outcome and is reused byte-for-byte.
   - All ten inputs enter as one indivisible block.
   - The model, C, score percentile, action and holding end are fixed.
   - This pilot has no shadow, alert, allocation or promotion authority.
