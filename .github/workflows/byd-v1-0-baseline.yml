@@ -67,9 +67,10 @@ jobs:
       - name: Run frozen BYD V1.0 evidence
         run: >-
           uv run python scripts/run_byd_v1_0.py
-          --fetch-akshare
+          --fetch-provider auto
           --output-dir artifacts/research/byd_v1_0
-      - name: Upload BYD V1.0 evidence
+      - name: Upload BYD V1.0 evidence or blocker
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: byd-v1-0-evidence
