@@ -10,10 +10,10 @@ from src.research.v4_16_action_advantage_model import (
     ACTION_KEYS,
     _embargo_train_end,
     _model_pipeline,
-    select_advantage_events,
 )
 from src.research.v4_16_action_advantage_runtime import (
     build_action_advantage_frame,
+    select_advantage_events,
 )
 
 CONTRACT = Path(
@@ -158,7 +158,8 @@ def test_acceleration_eligibility_blocks_extended_or_stressed_signal() -> None:
     frame.loc[index[10], "predicted_nasdaq_acceleration"] = 0.02
     frame.loc[index[10], "vol_max_percentile_252"] = 0.90
     events = select_advantage_events(frame, _contract(), sample="unit")
-    assert not events["event_family"].eq("nasdaq_acceleration").any()
+    assert events.empty
+    assert "event_family" in events.columns
 
 
 def test_broad_equity_requires_voo_above_ma200() -> None:
