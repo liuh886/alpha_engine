@@ -5,8 +5,20 @@ import pytest
 
 from scripts.run_byd_515180_prospective import (
     MAX_ENVELOPE_REPAIR_PCT,
+    PROVIDER_ANCHOR_LOOKBACK_DAYS,
     _audit_and_repair_envelope,
+    _provider_request_start,
 )
+from src.research.byd_515180_prospective import ETF_CUTOFF
+
+
+def test_provider_request_starts_before_frozen_anchor() -> None:
+    requested = pd.Timestamp(_provider_request_start())
+    anchor = pd.Timestamp(ETF_CUTOFF)
+    assert requested == anchor - pd.Timedelta(
+        days=PROVIDER_ANCHOR_LOOKBACK_DAYS
+    )
+    assert requested < anchor
 
 
 def test_small_envelope_violation_repairs_only_high_low() -> None:
