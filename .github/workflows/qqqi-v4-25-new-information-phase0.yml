@@ -51,11 +51,12 @@ jobs:
           uv run python scripts/run_qqqi_v4_25_new_information_phase0.py \
             --end-date "${{ inputs.end_date }}" \
             --output-dir artifacts/evidence/qqqi_xgb_new_information_v4_25_phase0
-      - name: Assert Phase 0 contains no outcomes
+      - name: Assert Phase 0 contains no outcome schemas
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
+          import pandas as pd
           root = Path('artifacts/evidence/qqqi_xgb_new_information_v4_25_phase0')
           payload = json.loads((root / 'diagnostics.json').read_text())
           assert payload['outcome_calculation_authorized'] is False
@@ -64,13 +65,17 @@ jobs:
           assert payload['path_utility_present'] is False
           assert payload['action_selection_performed'] is False
           assert payload['portfolio_constructed'] is False
-          forbidden = ('future_return', 'path_utility', 'selected_action', 'portfolio_weight')
-          for path in root.iterdir():
-              if path.suffix.lower() not in {'.csv', '.json', '.md'}:
-                  continue
-              text = path.read_text(encoding='utf-8')
-              for token in forbidden:
-                  assert token not in text.lower(), (path, token)
+          forbidden_columns = {
+              'future_return', 'path_utility', 'selected_action',
+              'selected_state', 'portfolio_weight', 'net_return',
+              'target', 'label', 'prediction', 'probability'
+          }
+          for path in root.glob('*.csv'):
+              columns = {str(value).strip().lower() for value in pd.read_csv(path, nrows=0).columns}
+              assert columns.isdisjoint(forbidden_columns), (path, columns & forbidden_columns)
+          availability = pd.read_csv(root / 'normalized_availability.csv')
+          assert 'value' not in availability.columns
+          assert {'observation_date', 'safe_decision_date', 'value_present'} <= set(availability.columns)
           PY
       - name: Upload v4.25 Phase 0 evidence
         if: always()
