@@ -1,0 +1,155 @@
+experiment_id: qqqi_state2_intraday_rank_pilot_v4_22_research
+parent_experiment_id: qqqi_state2_intraday_meta_label_v4_21_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+pilot_only: true
+shadow_authorization_possible: false
+purpose: >-
+  Use the currently available recent Polygon history only to test whether the
+  frozen ten-input first-thirty-minute state-2 meta-label contains basic
+  chronological ranking information worth continued prospective collection.
+
+boundaries:
+  baseline: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  eligible_position_state: 2
+  signal_time: "10:00 America/New_York"
+  execution_time: "10:00 America/New_York"
+  outcome_end: next_regular_session_open
+  baseline_state2_weights: {QQQI: 0.0, QQQ: 0.25, TQQQ: 0.75}
+  overlay_weights: {QQQI: 0.0, QQQ: 1.0, TQQQ: 0.0}
+  transaction_cost_bps_per_turnover_unit: 10.0
+  exact_drift_adjusted_turnover: true
+  no_synthetic_intraday_backfill: true
+  no_yahoo_intraday_substitution: true
+  no_probability_calibration_claim: true
+  no_shadow_or_promotion_authority: true
+  v4_2_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+
+intraday_data:
+  inherit_adapter: src/data/adapters/polygon_intraday_adapter.py
+  provider: polygon
+  credential_env: POLYGON_API_KEY
+  symbols: [QQQ, TQQQ, SPY]
+  start_date: "2024-08-05"
+  end_date: "2026-08-03"
+  multiplier: 30
+  timespan: minute
+  adjusted: true
+  regular_session_only: true
+  maximum_results: 50000
+  require_complete_pagination: true
+  max_pages: 10
+  request_delay_seconds: 13.0
+  inter_symbol_delay_seconds: 13.0
+
+daily_data:
+  adapter: yfinance_open_close_research
+  start_date: "2024-01-01"
+  end_date: "2026-08-03"
+  required_symbols: [QQQ, TQQQ, VOO, BIL, SGOV, QQQI, ^VIX, ^VXN, HYG, LQD]
+  bridge_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  baseline_result_key: rotation_vxn_bridge_v4_2_50_50
+
+features:
+  names:
+    - qqq_gap_from_previous_regular_close
+    - qqq_first30_return
+    - qqq_opening_range_ratio_to_trailing20_median
+    - qqq_opening_volume_percentile_trailing60
+    - qqq_minus_spy_first30_return
+    - tqqq_tracking_residual_first30
+    - prior_vxn_vix_ratio_z63
+    - prior_hyg_lqd_return_20d
+    - prior_credit_risk_ratio_distance_ma20
+    - state2_episode_age
+  expected_count: 10
+  trailing_statistics_use_prior_sessions_only: true
+  feature_selection_allowed: false
+  interactions_allowed: false
+  window_search_allowed: false
+
+label:
+  name: delever_to_qqq_net_advantage
+  positive_when: overlay_net_return_greater_than_exact_state2_baseline
+  baseline_path: drifted_25_qqq_75_tqqq
+  overlay_path: same_first30_then_100_qqq
+  include_1000_switch_cost: true
+  include_next_open_reconciliation_cost_difference: true
+  next_target_source: frozen_v4_2_next_session_weights
+
+model:
+  estimator: LogisticRegression
+  penalty: l2
+  C: 1.0
+  solver: liblinear
+  class_weight: balanced
+  max_iter: 1000
+  random_state: 0
+  imputer: median
+  scaler: standard
+  training_score_percentile_trigger: 0.80
+  model_comparison_allowed: false
+  hyperparameter_search_allowed: false
+  score_percentile_search_allowed: false
+
+outer_folds:
+  - fold: fold_2025_h2
+    train_start: "2024-08-05"
+    train_end: "2025-06-30"
+    test_start: "2025-07-01"
+    test_end: "2025-12-31"
+    expected_population_before_feature_completeness: {train: 70, test: 23}
+  - fold: fold_2026
+    train_start: "2024-08-05"
+    train_end: "2025-12-31"
+    test_start: "2026-01-01"
+    test_end: "2026-08-03"
+    expected_population_before_feature_completeness: {train: 93, test: 36}
+
+training:
+  minimum_complete_training_events: 40
+  require_both_label_classes: true
+  score_threshold_source: training_population_only
+  test_refit_allowed: false
+
+placebo:
+  deterministic_seeds: 100
+  base_seed: 20260804
+  frequency_matched_within_fold: true
+  paths_beaten_rate_min: 0.80
+
+validation:
+  feasibility_gate:
+    both_folds_trainable: true
+    roc_auc_min: 0.58
+    spearman_score_advantage_min: 0.10
+    top_quintile_positive_rate_lift_min: 0.10
+    top_quintile_median_advantage_min: 0.0
+    triggered_sessions_min: 10
+    macro_clusters_min: 6
+    positive_test_folds_min: 2
+    largest_positive_event_share_max: 0.30
+    without_best_event_min: 0.0
+    without_best_month_min: 0.0
+    placebo_paths_beaten_rate_min: 0.80
+  tail_and_path_gate:
+    worst_state2_session_worsening_max: 0.0
+    worst_five_state2_mean_improvement_min: 0.0
+    maximum_drawdown_worsening_pp_max: 0.0
+    incremental_turnover_ratio_max: 0.30
+
+possible_decisions:
+  - intraday_rank_mechanism_worth_prospective_collection
+  - intraday_rank_mechanism_not_supported_in_recent_history
+  - intraday_rank_pilot_inconclusive_due_to_sample_or_class_coverage
+
+hypothesis_discipline:
+  - The two folds were fixed from event availability before any outcome was calculated.
+  - All ten inputs enter as one indivisible block.
+  - The model, C, score percentile, action and holding end are fixed.
+  - This pilot has no shadow, alert, allocation or promotion authority.
+  - No single fold, month, feature or action may be selected after outcomes.
+  - v4.2, Telegram and Issue 348 remain unchanged for every possible result.
