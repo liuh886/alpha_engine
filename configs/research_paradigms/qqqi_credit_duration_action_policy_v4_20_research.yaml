@@ -1,0 +1,216 @@
+experiment_id: qqqi_credit_duration_action_policy_v4_20_research
+parent_experiment_id: qqqi_market_internal_incremental_factors_v4_19_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+phase: 2
+purpose: >-
+  Test whether the complete credit-and-duration risk-appetite block admitted by
+  v4.19 converts stable chronological ranking information into calibrated,
+  event-valid and portfolio-useful action advantages relative to frozen v4.2.
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  transaction_cost_bps_per_turnover_unit: 10.0
+  label_round_trip_cost_bps: 20.0
+  annual_risk_free_rate: 0.0
+  no_pre_inception_backfill: true
+  complete_family_block_only: true
+  historical_success_authorizes_shadow_only: true
+  baseline_alerts_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+
+data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  required_symbols: [QQQ, TQQQ, VOO, BIL, SGOV, QQQI, ^VIX, ^VXN, HYG, LQD, SHY, IEF, TLT]
+  actual_product_start: "2024-01-01"
+
+base_comparator:
+  source_experiment: qqqi_tqqq_sgov_voo_action_advantage_v4_16_research
+  base_features:
+    - vol_max_percentile_252
+    - vol_max_return_5d
+    - vol_min_retreat_20d
+    - vxn_vix_ratio_z63
+    - vxn_minus_vix_percentile
+    - vxn_minus_vix_return_5d
+    - qqq_rsi20
+    - qqq_bollinger_pct_b_20_2
+    - qqq_bollinger_bandwidth_z63
+    - qqq_distance_ma20
+    - qqq_distance_ma50
+    - qqq_distance_ma200
+    - qqq_ma20_slope_5d
+    - qqq_drawdown_63d
+    - qqq_realized_volatility_20d
+    - qqq_minus_voo_return_5d
+    - qqq_minus_voo_return_20d
+    - qqq_voo_rs_distance_ma20
+    - qqq_voo_trend_gap
+    - qqq_voo_bollinger_gap
+    - voo_distance_ma200
+  interactions:
+    - {name: interaction_vol_percentile_rsi, left: vol_max_percentile_252, right: qqq_rsi20_centered}
+    - {name: interaction_vol_retreat_bollinger, left: vol_min_retreat_20d, right: qqq_bollinger_pct_b_20_2}
+    - {name: interaction_vxn_vix_rs, left: vxn_vix_ratio_z63, right: qqq_voo_rs_distance_ma20}
+    - {name: interaction_bandwidth_ma20_slope, left: qqq_bollinger_bandwidth_z63, right: qqq_ma20_slope_5d}
+    - {name: interaction_drawdown_vol_retreat, left: qqq_drawdown_63d, right: vol_min_retreat_20d}
+    - {name: interaction_ma200_rs, left: qqq_distance_ma200, right: qqq_voo_rs_distance_ma20}
+    - {name: interaction_realized_vol_bollinger, left: qqq_realized_volatility_20d, right: qqq_bollinger_pct_b_20_2}
+    - {name: interaction_vol_spread_relative_return, left: vxn_minus_vix_percentile, right: qqq_minus_voo_return_20d}
+  total_inputs: 29
+
+credit_duration_block:
+  source_experiment: qqqi_market_internal_incremental_factors_v4_19_research
+  required_symbols: [HYG, LQD, SHY, IEF, TLT]
+  features:
+    - hyg_lqd_return_5d
+    - hyg_lqd_return_20d
+    - hyg_shy_return_20d
+    - lqd_ief_return_20d
+    - tlt_shy_return_20d
+    - credit_risk_ratio_distance_ma20
+    - duration_risk_ratio_distance_ma20
+    - credit_duration_trend_agreement
+  expected_count: 8
+  candidate_total_inputs: 37
+
+model:
+  estimator: Ridge
+  alpha: 100.0
+  fit_intercept: true
+  imputer: median
+  scaler: standard
+  model_comparison_allowed: false
+  feature_selection_allowed: false
+  added_interactions_allowed: false
+
+training:
+  sample_every_sessions: 10
+  global_anchor_position: 0
+  embargo_sessions: 10
+  minimum_training_samples: 100
+  advantage_threshold: 0.0050
+  action_margin_threshold: 0.0025
+  cooldown_sessions: 5
+  macro_cluster_calendar_days: 30
+  exact_same_rows_base_candidate: true
+
+outer_folds:
+  - {fold: fold_2016_2017, train_start: "2011-01-03", train_end: "2015-12-31", test_start: "2016-01-01", test_end: "2017-12-29"}
+  - {fold: fold_2018_2019, train_start: "2011-01-03", train_end: "2017-12-29", test_start: "2018-01-01", test_end: "2019-12-31"}
+  - {fold: fold_2020_2021, train_start: "2011-01-03", train_end: "2019-12-31", test_start: "2020-01-01", test_end: "2021-12-31"}
+  - {fold: fold_2022_2023, train_start: "2011-01-03", train_end: "2021-12-31", test_start: "2022-01-01", test_end: "2023-12-29"}
+
+actions:
+  cash_defense:
+    target: cash_defense_advantage_10d
+    holding_sessions: 10
+    action: SGOV_DEFENSE
+    eligibility: always
+  broad_equity:
+    target: broad_equity_advantage_10d
+    holding_sessions: 10
+    action: BROAD_EQUITY
+    eligibility: voo_above_ma200
+  nasdaq_core:
+    target: nasdaq_core_advantage_10d
+    holding_sessions: 10
+    action: NASDAQ_INCOME
+    eligibility: always
+  nasdaq_acceleration:
+    target: nasdaq_acceleration_advantage_5d
+    holding_sessions: 5
+    action: NASDAQ_ACCELERATE
+    eligibility: healthy_acceleration
+
+action_lattice:
+  SGOV_DEFENSE: {cash: 1.00}
+  BROAD_EQUITY: {VOO: 1.00}
+  NASDAQ_INCOME: {QQQI: 1.00}
+  NASDAQ_ACCELERATE: {QQQ: 0.25, TQQQ: 0.75}
+  priority: [cash_defense, broad_equity, nasdaq_core, nasdaq_acceleration]
+
+eligibility:
+  acceleration_qqq_distance_ma20_max: 0.05
+  acceleration_vol_percentile_max: 0.80
+  acceleration_requires_qqq_above_ma200: true
+  broad_equity_requires_voo_above_ma200: true
+
+validation:
+  ranking_gate:
+    action_ic_improvement_threshold: 0.03
+    actions_passing_ic_improvement_min: 3
+    all_actions_nonnegative_ic_improvement: true
+    actions_positive_quintile_spread_improvement_min: 3
+    action_state_cells_passing_ic_improvement_min: 8
+    large_action_observations_min: 1000
+    maximum_large_action_ic_degradation: -0.03
+    coefficient_cosine_similarity_median_min: 0.50
+    positive_outer_eras_min: 4
+    improvement_without_best_era_min: 0.0
+    largest_positive_era_share_max: 0.40
+    largest_positive_macro_cluster_share_max: 0.30
+  calibration_gate:
+    maximum_action_mae_ratio: 1.05
+    actions_mae_not_worse_min: 2
+    maximum_absolute_prediction_bias: 0.005
+    calibration_slope_min: 0.50
+    calibration_slope_max: 1.50
+    actions_calibration_slope_in_range_min: 3
+    minimum_calibration_slope: 0.0
+    high_score_threshold: 0.005
+    high_score_actions_nonnegative_mean_realized_min: 3
+    pooled_high_score_error_not_worse_than_base: true
+  event_gate:
+    triggered_precision_lift_min: 0.10
+    median_triggered_advantage_min: 0.0
+    minimum_macro_clusters: 8
+    largest_positive_cluster_share_max: 0.30
+    without_best_year_min: 0.0
+    without_best_cluster_min: 0.0
+    precision_improvement_vs_v4_16_min: 0.05
+    median_advantage_improvement_vs_v4_16_min: 0.002
+  portfolio_gate:
+    cagr_improvement_vs_v4_2_pp_min: 1.50
+    max_drawdown_worsening_pp_max: 1.00
+    calmar_improvement_vs_v4_2_min: 0.10
+    sortino_not_below_v4_2: true
+    positive_calendar_year_rate_min: 0.70
+    turnover_increase_max: 0.40
+    largest_family_positive_share_max: 0.50
+    largest_event_positive_share_max: 0.20
+    without_best_year_min: 0.0
+    without_best_cluster_min: 0.0
+    ablation_metric_wins_min: 2
+    cagr_improvement_vs_v4_16_min: 0.0
+    calmar_improvement_vs_v4_16_min: 0.0
+  actual_contradiction_gate:
+    cagr_and_calmar_both_below_v4_2_allowed: false
+    max_drawdown_worsening_vs_v4_2_pp_max: 2.00
+    cagr_and_calmar_both_below_v4_16_allowed: false
+    median_actual_event_advantage_min: 0.0
+    pre_inception_backfill_allowed: false
+
+comparators:
+  - frozen_v4_2
+  - same_endpoint_v4_16
+  - credit_duration_v4_20
+  - ablation_cash_defense
+  - ablation_broad_equity
+  - ablation_nasdaq_core
+  - ablation_nasdaq_acceleration
+
+hypothesis_discipline:
+  - The complete eight-feature credit-duration block is indivisible.
+  - The exact v4.16 twenty-nine-input model is reproduced on identical rows.
+  - Model family, alpha, labels, sampling, embargo, score thresholds, actions, horizons and costs are unchanged.
+  - No state interactions, state-specific models or continuous weights are permitted.
+  - Ranking, calibration, events, OOF portfolio and actual-product evidence are separate hard gates.
+  - Historical success authorizes only a prospective non-actionable shadow ledger.
+  - v4.2, Telegram and Issue 348 remain unchanged regardless of results.

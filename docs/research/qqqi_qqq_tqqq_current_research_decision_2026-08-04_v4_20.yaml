@@ -1,0 +1,214 @@
+schema_version: "1.0"
+decision_date: "2026-08-04"
+strategy_family: qqqi_qqq_tqqq_credit_duration_action_policy
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04_v4_19.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    The v4.20 credit-duration candidate reproduced the v4.19 ranking benefit but
+    failed calibration, event, OOF portfolio and 2024-plus actual-product gates.
+    It improved a same-endpoint failed v4.16 comparator but remained materially
+    inferior to frozen v4.2.
+
+credit_duration_phase2_v4_20:
+  experiment_id: qqqi_credit_duration_action_policy_v4_20_research
+  role: frozen_nonpromoted_credit_duration_phase2
+  evidence:
+    report: docs/research/qqqi_credit_duration_action_policy_v4_20_result_2026-08-04.md
+    workflow_run: 30872756976
+    artifact_id: 8878449655
+    artifact_digest: sha256:44257759b53d4dd6435f769e574179a187933ce27539ec499340821aedce7487
+    manifest_file_count: 96
+  frozen_models:
+    comparator_inputs: 29
+    candidate_inputs: 37
+    estimator: multi_output_ridge
+    alpha: 100.0
+    admitted_credit_duration_features: 8
+    training_sample_every_sessions: 10
+    embargo_sessions: 10
+    advantage_threshold: 0.005
+    action_margin_threshold: 0.0025
+    transaction_cost_bps_per_turnover_unit: 10.0
+  leakage_and_execution_audit:
+    base_candidate_training_rows_identical: true
+    base_candidate_test_rows_identical: true
+    outer_embargo_trading_sessions: [18, 11, 14, 19]
+    target_window_used_for_fit: false
+    signal_time: close
+    execution_time: next_open
+    daily_weights_sum_to_one: true
+    transaction_cost_recomputed: true
+    strategy_metrics_recomputed: true
+  ranking_gate:
+    passed: true
+    actions_passing_ic_improvement_0_03: 3
+    actions_nonnegative_ic_improvement: 4
+    actions_positive_quintile_spread_improvement: 4
+    action_state_cells_passing_ic_improvement_0_03: 9
+    positive_outer_eras: 4
+    coefficient_cosine_similarity_median: 0.7602332600741973
+    improvement_without_best_era: 0.14638557296196125
+    largest_positive_era_share: 0.2906709202109461
+    largest_positive_macro_cluster_share: 0.1125199797561588
+    pooled_action_ic_improvement:
+      cash_defense: 0.085952
+      broad_equity: 0.067647
+      nasdaq_core: 0.037256
+      nasdaq_acceleration: 0.000379
+  calibration_gate:
+    passed: false
+    actions_mae_not_worse: 0
+    actions_calibration_slope_in_range: 0
+    actions_with_nonnegative_high_score_realized_mean: 1
+    candidate_pooled_high_score_mae: 0.03328044073649498
+    base_error_on_candidate_high_score_dates: 0.030284949779354208
+    action_evidence:
+      cash_defense:
+        mae_ratio: 1.005494
+        bias: 0.004140
+        calibration_slope: -0.205736
+        high_score_mean_realized: -0.013791
+      broad_equity:
+        mae_ratio: 1.027075
+        bias: 0.004963
+        calibration_slope: 0.195390
+        high_score_mean_realized: -0.002446
+      nasdaq_core:
+        mae_ratio: 1.078463
+        bias: 0.003492
+        calibration_slope: 0.273335
+        high_score_mean_realized: -0.001061
+      nasdaq_acceleration:
+        mae_ratio: 1.011897
+        bias: 0.000072
+        calibration_slope: -0.064999
+        high_score_mean_realized: 0.000787
+  event_gate:
+    passed: false
+    same_endpoint_v4_16:
+      events: 69
+      precision: 0.3188405797101449
+      precision_lift: -0.01366439046878154
+      median_advantage: -0.002
+      advantage_without_best_year: -0.6040611012854963
+      advantage_without_best_cluster: -0.6285783990442148
+    credit_duration_v4_20:
+      events: 78
+      macro_clusters: 53
+      precision: 0.358974358974359
+      precision_lift: 0.026469388795432536
+      median_advantage: -0.002
+      advantage_without_best_year: -0.5183067726296087
+      advantage_without_best_cluster: -0.5103824899709946
+    precision_improvement_vs_v4_16: 0.040133779264214076
+    median_advantage_improvement_vs_v4_16: 0.0
+  oof_portfolio:
+    sample_start: "2016-01-04"
+    sample_end: "2023-12-29"
+    observations: 2012
+    frozen_v4_2:
+      cagr: 0.274932
+      max_drawdown: -0.389218
+      sortino: 1.447903
+      calmar: 0.706371
+      turnover_units: 106.5
+    same_endpoint_v4_16:
+      cagr: 0.171633
+      max_drawdown: -0.422731
+      sortino: 0.998943
+      calmar: 0.406010
+      turnover_units: 309.0
+    credit_duration_v4_20:
+      cagr: 0.185041
+      max_drawdown: -0.401363
+      sortino: 1.039381
+      calmar: 0.461033
+      turnover_units: 349.0
+    cagr_delta_pp_vs_v4_2: -8.989064
+    max_drawdown_worsening_pp: 1.214516
+    calmar_delta_vs_v4_2: -0.245338
+    cagr_delta_pp_vs_v4_16: 1.340814
+    calmar_delta_vs_v4_16: 0.055022
+    positive_calendar_year_rate: 0.125
+    turnover_increase: 2.276995
+    largest_family_positive_share: 0.772310
+    largest_event_positive_share: 0.101059
+    relative_return_without_best_year: -0.914490
+    relative_return_without_best_cluster: -0.487146
+    gate_passed: false
+  actual_product:
+    sample_start: "2024-01-30"
+    sample_end: "2026-07-31"
+    frozen_v4_2:
+      cagr: 0.327213
+      max_drawdown: -0.242135
+      sortino: 1.788017
+      calmar: 1.351369
+      turnover_units: 55.0
+    same_endpoint_v4_16:
+      cagr: 0.127533
+      max_drawdown: -0.368621
+      sortino: 0.816353
+      calmar: 0.345974
+      turnover_units: 82.0
+    credit_duration_v4_20:
+      cagr: 0.238374
+      max_drawdown: -0.275075
+      sortino: 1.350699
+      calmar: 0.866577
+      turnover_units: 108.0
+    cagr_delta_pp_vs_v4_2: -8.883909
+    max_drawdown_worsening_pp: 3.294079
+    calmar_delta_vs_v4_2: -0.484792
+    cagr_delta_pp_vs_v4_16: 11.084067
+    calmar_delta_vs_v4_16: 0.520603
+    median_actual_event_advantage: -0.002
+    pre_inception_backfill_used: false
+    contradiction_gate_passed: false
+  decision: credit_duration_phase2_calibration_gate_failed
+  audit: audit_pass_nonpromotion_result_valid
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+  baseline_and_alerts_unchanged: true
+
+retained_research_fact:
+  statement: >-
+    The complete credit-duration block provides stable chronological ranking
+    information beyond the existing twenty-nine market-price and volatility
+    inputs, but its predicted advantage magnitude is not calibrated and its
+    fixed-threshold event policy does not improve frozen v4.2.
+
+closed_retrospective_directions:
+  - fixed_0_50_percent_credit_duration_action_threshold
+  - selecting_cash_defense_from_actual_only
+  - selecting_nasdaq_acceleration_from_oof_only
+  - selecting_a_subset_of_eight_credit_duration_features
+  - changing_credit_duration_windows_or_directions
+  - changing_ridge_alpha_or_model_family_from_v4_20
+  - lowering_advantage_or_margin_thresholds
+  - adding_state_interactions_or_state_specific_models
+  - continuous_weight_optimization
+  - adding_credit_duration_to_v4_2_or_telegram
+
+next_admissible_research:
+  primary: prospective_v4_2_evidence_under_issue_348
+  retrospective_boundary: >-
+    Do not continue tuning the credit-duration action policy on the same history.
+    Any future retrospective experiment must begin with a genuinely new,
+    independently sourced and preregistered information family rather than a
+    modification of v4.20 thresholds, model architecture or action subsets.
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false
