@@ -8,6 +8,7 @@ import yaml
 
 from src.research.v4_19_incremental_market_internals import (
     _evaluate_family,
+    _rolling_percentile,
     audit_source_admissibility,
     benjamini_hochberg,
     build_market_internal_feature_blocks,
@@ -121,6 +122,16 @@ def test_close_features_do_not_change_before_future_perturbation() -> None:
         )
 
 
+def test_observation_percentile_survives_sparse_calendar_gap() -> None:
+    index = pd.date_range("2010-01-04", periods=600, freq="B")
+    series = pd.Series(np.arange(600, dtype=float), index=index)
+    series.iloc[400] = np.nan
+    percentile = _rolling_percentile(series, 252)
+    assert np.isnan(percentile.iloc[400])
+    assert np.isfinite(percentile.iloc[401])
+    assert np.isclose(percentile.iloc[401], 1.0)
+
+
 def test_phase_zero_rejects_only_dependent_missing_family() -> None:
     index = pd.date_range("2010-01-04", periods=900, freq="B")
     bars = _all_bars(index)
@@ -168,7 +179,7 @@ def test_family_comparator_uses_identical_shared_rows() -> None:
             0.01 * np.sin(location / (position + 13.0))
             + 0.002 * np.cos(location / 19.0)
         )
-    frame["position_state"] = location.astype(int) % 3
+    frame["v4_2_execution_state"] = location.astype(int) % 3
     frame["global_training_sample"] = (
         location.astype(int) % 10
     ) == 0
@@ -189,6 +200,7 @@ def test_family_comparator_uses_identical_shared_rows() -> None:
         _contract(),
     )
     assert not predictions.empty
+    assert predictions["position_state"].notna().all()
     for action in (
         "cash_defense",
         "broad_equity",
