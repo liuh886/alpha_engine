@@ -29,6 +29,7 @@ from src.research.byd_prospective_shadow import (
 )
 
 MAX_ENVELOPE_REPAIR_PCT = 0.002
+PROVIDER_ANCHOR_LOOKBACK_DAYS = 7
 
 
 def _parse_args() -> argparse.Namespace:
@@ -39,6 +40,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--as-of", default=None)
     parser.add_argument("--secondary-retries", type=int, default=2)
     return parser.parse_args()
+
+
+def _provider_request_start() -> str:
+    return (
+        pd.Timestamp(ETF_CUTOFF)
+        - pd.Timedelta(days=PROVIDER_ANCHOR_LOOKBACK_DAYS)
+    ).strftime("%Y-%m-%d")
 
 
 def _flatten_yahoo(frame: pd.DataFrame) -> pd.DataFrame:
@@ -106,12 +114,13 @@ def _audit_and_repair_envelope(
 def _fetch_yahoo(as_of: str) -> tuple[pd.DataFrame, dict[str, Any]]:
     import yfinance as yf
 
+    provider_start = _provider_request_start()
     provider_end = (
         pd.Timestamp(as_of) + pd.Timedelta(days=1)
     ).strftime("%Y-%m-%d")
     frame = yf.download(
         "515180.SS",
-        start=ETF_CUTOFF,
+        start=provider_start,
         end=provider_end,
         progress=False,
         auto_adjust=False,
@@ -160,11 +169,19 @@ def _fetch_yahoo(as_of: str) -> tuple[pd.DataFrame, dict[str, Any]]:
     market = ["open", "high", "low", "close", "volume", "adj_close"]
     if out[market].isna().any().any():
         raise RuntimeError("Yahoo 515180 payload contains missing market fields")
+    anchor = pd.Timestamp(ETF_CUTOFF)
+    if anchor not in set(out["date"]):
+        available = out["date"].dt.strftime("%Y-%m-%d").tolist()
+        raise RuntimeError(
+            "Yahoo 515180 payload still omits frozen anchor "
+            f"{ETF_CUTOFF}; available dates: {available}"
+        )
     out, envelope_audit = _audit_and_repair_envelope(out)
     return out[["date", *numeric]], {
         "provider": "yfinance",
         "provider_symbol": "515180.SS",
-        "start": ETF_CUTOFF,
+        "requested_start": provider_start,
+        "frozen_anchor": ETF_CUTOFF,
         "provider_end_exclusive": provider_end,
         "auto_adjust": False,
         "repair": True,
