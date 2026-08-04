@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - "src/data/etf_515180_canonical.py"
+      - "src/data/etf_515180_quality_v2.py"
       - "src/research/byd_515180_allocation.py"
       - "src/research/byd_515180_execution.py"
       - "scripts/data/build_515180_canonical_bundle.py"
       - "scripts/data/build_515180_canonical_bundle_v2.py"
+      - "scripts/data/fetch_515180_secondary_v2.py"
       - "scripts/run_byd_515180_allocation.py"
       - "tests/test_etf_515180_canonical.py"
       - "tests/test_byd_515180_allocation.py"
@@ -40,10 +42,12 @@ jobs:
         run: >-
           uv run ruff check
           src/data/etf_515180_canonical.py
+          src/data/etf_515180_quality_v2.py
           src/research/byd_515180_allocation.py
           src/research/byd_515180_execution.py
           scripts/data/build_515180_canonical_bundle.py
           scripts/data/build_515180_canonical_bundle_v2.py
+          scripts/data/fetch_515180_secondary_v2.py
           scripts/run_byd_515180_allocation.py
           tests/test_etf_515180_canonical.py
           tests/test_byd_515180_allocation.py
