@@ -44,6 +44,19 @@ def test_forward_label_starts_at_next_open_and_ends_ten_sessions_later() -> None
     assert np.isclose(dataset[FORWARD_RETURN_COLUMN].iloc[position], expected)
 
 
+def test_quarantined_entry_or_exit_open_removes_forward_label() -> None:
+    bars = _bars(700)
+    position = 300
+    bars.loc[position + 1, "open"] = np.nan
+    dataset, _ = build_factor_dataset(bars)
+    assert np.isnan(dataset[FORWARD_RETURN_COLUMN].iloc[position])
+
+    bars = _bars(700)
+    bars.loc[position + 11, "open"] = np.nan
+    dataset, _ = build_factor_dataset(bars)
+    assert np.isnan(dataset[FORWARD_RETURN_COLUMN].iloc[position])
+
+
 def test_future_mutation_does_not_change_prior_features() -> None:
     bars = _bars(900)
     dataset_a, factors_a = build_factor_dataset(bars)
