@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import ast
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -98,3 +101,13 @@ def test_cost_charged_on_both_legs_of_rotation() -> None:
     assert np.isclose(
         result.daily["cost"], result.daily["turnover_units"] * 0.002
     ).all()
+
+
+def test_allocation_module_cannot_redefine_execution_engine() -> None:
+    source = Path("src/research/byd_515180_allocation.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    function_names = {
+        node.name for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    assert "execute_next_common_open" not in function_names
+    assert "run_allocation" not in function_names
