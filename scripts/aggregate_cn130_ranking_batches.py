@@ -236,7 +236,7 @@ def markdown_report(identity: dict[str, Any], windows: pd.DataFrame, reporting: 
     for row in reporting.sort_values(["window", "ranking_id", "feature_family"]).itertuples(index=False):
         lines.append(f"| {row.window} | {row.ranking_id} | {row.feature_family} | {int(row.n_dates)} | {row.mean_rank_ic:.4f} | {row.mean_top_bottom_spread:.2%} |")
     lines.extend(["", "2026H1 的全面转强与 2026H2 部分窗口的全面反转共同说明：信号方向高度依赖市场状态。R4-momentum 在2026H2将 Rank IC 从 R0 的约 -0.550 缓和至约 -0.185，但仍未恢复为正。", "", "## 诊断性 Top15 经济结果", "", "这些结果仅用于说明排序统计与组合收益可能脱钩，不用于反向选择模型，也未开启 P1–P5 轮动搜索。", "", "| 候选 | 特征族 | 资格 | 成本 | 总收益 | 沪深300 | 复合相对超额 | 最大回撤 | 正超额窗口 |", "|---|---|---|---:|---:|---:|---:|---:|---:|"])
-    for row in economic.loc[economic["cost_bps"] == 20].sort_values("compounded_relative_excess_return", ascending=False).itertuples(index=False):
+    for row in economic.loc[economic["cost_bps"] == 20].sort_values(["compounded_relative_excess_return", "ranking_id", "feature_family"], ascending=[False, True, True], kind="mergesort").itertuples(index=False):
         lines.append(f"| {row.ranking_id} | {row.feature_family} | {row.target_status} | 20bps | {row.total_return:.2%} | {row.benchmark_return:.2%} | {row.compounded_relative_excess_return:.2%} | {row.max_drawdown:.2%} | {int(row.positive_excess_windows)}/4 |")
     lines.extend([
         "",

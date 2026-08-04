@@ -135,8 +135,8 @@
 | r2_industry_relative_rank | volume_volatility | eligible | 20bps | 108.33% | 39.29% | 49.57% | -27.29% | 3/4 |
 | r3_risk_residual_rank | momentum_reversal | ineligible_partial_r3 | 20bps | 87.57% | 39.29% | 34.66% | -24.48% | 3/4 |
 | r2_industry_relative_rank | momentum_reversal | eligible | 20bps | 85.51% | 39.29% | 33.18% | -20.39% | 2/4 |
-| r1_benchmark_relative_rank | current_cn_ohlcv | eligible | 20bps | 84.71% | 39.29% | 32.61% | -21.60% | 4/4 |
 | r0_cn_x1_0_raw_return_rank | current_cn_ohlcv | eligible | 20bps | 84.71% | 39.29% | 32.61% | -21.60% | 4/4 |
+| r1_benchmark_relative_rank | current_cn_ohlcv | eligible | 20bps | 84.71% | 39.29% | 32.61% | -21.60% | 4/4 |
 | r3_risk_residual_rank | governed_technical_extension | ineligible_partial_r3 | 20bps | 76.81% | 39.29% | 26.93% | -29.15% | 2/4 |
 | r4_two_stage_hierarchical_rank | volume_volatility | eligible | 20bps | 74.50% | 39.29% | 25.27% | -17.76% | 3/4 |
 | r3_risk_residual_rank | current_cn_ohlcv | ineligible_partial_r3 | 20bps | 73.85% | 39.29% | 24.81% | -23.69% | 3/4 |
