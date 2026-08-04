@@ -37,7 +37,7 @@ def _bars(symbol: str, index: pd.DatetimeIndex, scale: float) -> pd.DataFrame:
 
 
 def _synthetic_inputs() -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
-    index = pd.date_range("2010-01-04", periods=420, freq="B")
+    index = pd.date_range("2010-01-04", periods=620, freq="B")
     bars = {
         "QQQ": _bars("QQQ", index, 1.0),
         "TQQQ": _bars("TQQQ", index, 1.8),
