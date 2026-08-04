@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   VIEW_TITLES,
   groupRoutes,
+  isRuntimeVisible,
   routes,
   visibleRoutes,
   type NavGroupTitle,
@@ -32,21 +33,26 @@ describe('artifact-only route registry', () => {
     ALL_NAV_GROUPS.forEach((group) => expect(groups).toContain(group));
     expect(visible.find((route) => route.path === '')?.navGroup).toBe('Workspace');
     expect(visible.find((route) => route.path === 'runs')?.navGroup).toBe('Workspace');
+    expect(visible.find((route) => route.path === 'backtests')?.navGroup).toBe('Workspace');
     expect(visible.find((route) => route.path === 'review')?.navGroup).toBe('Workspace');
     expect(visible.find((route) => route.path === 'decisions')?.navGroup).toBe('Workspace');
     expect(visible.find((route) => route.path === 'library')?.navGroup).toBe('Workspace');
-    for (const removed of ['dashboard', 'models', 'system', 'agent', 'backtest']) {
+    expect(routes.find((route) => route.path === 'dashboard')?.navVisible).toBe(false);
+    for (const removed of ['models', 'system', 'agent', 'backtest']) {
       expect(routes.some((route) => route.path === removed)).toBe(false);
     }
   });
 
-  it('groups every declared runtime route', () => {
+  it('groups every navigation-visible route and excludes compatibility redirects', () => {
     const groups = groupRoutes();
     for (const [group, rows] of groups) {
       expect(ALL_NAV_GROUPS).toContain(group);
-      rows.forEach((route) => expect(route.navGroup).toBe(group));
+      rows.forEach((route) => {
+        expect(route.navGroup).toBe(group);
+        expect(isRuntimeVisible(route)).toBe(true);
+      });
     }
-    expect(Array.from(groups.values()).flat()).toEqual(routes);
+    expect(Array.from(groups.values()).flat()).toEqual(routes.filter(isRuntimeVisible));
   });
 
   it('preserves route declaration order within groups', () => {
@@ -65,7 +71,7 @@ describe('artifact-only route registry', () => {
   });
 
   it('returns the same routes regardless of operator mode', () => {
-    expect(visibleRoutes(false)).toEqual(routes);
-    expect(visibleRoutes(true)).toEqual(routes);
+    expect(visibleRoutes(false)).toEqual(routes.filter(isRuntimeVisible));
+    expect(visibleRoutes(true)).toEqual(routes.filter(isRuntimeVisible));
   });
 });

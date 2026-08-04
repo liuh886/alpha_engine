@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { HashRouter, Link, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, ChevronDown, Database, Layers3, Loader2, Moon, Sun } from 'lucide-react';
 import type { ModelData } from './lib/data-parser';
@@ -50,6 +50,7 @@ interface LayoutProps {
 function Layout(props: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const mainRef = useRef<HTMLElement>(null);
   const { theme, setTheme } = useGlobalStore();
   const currentPath = location.pathname.replace(/^\//, '');
   const declaredRoute = routes.find((route) => route.path === currentPath);
@@ -66,13 +67,17 @@ function Layout(props: LayoutProps) {
   );
   const showRunPicker = Boolean(
     declaredRoute
-    && ['review', 'compare', 'decisions'].includes(currentPath)
+    && ['backtests', 'review', 'compare', 'decisions'].includes(currentPath)
     && activeRun,
   );
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!props.runs.length || !location.search) return;
@@ -104,7 +109,7 @@ function Layout(props: LayoutProps) {
                   variant="outline"
                   size="sm"
                   onClick={() => navigate('/runs')}
-                  className="h-7 max-w-[420px] gap-1.5 border-primary/20 bg-background/70 text-xs"
+                  className="hidden h-7 max-w-[420px] gap-1.5 border-primary/20 bg-background/70 text-xs sm:inline-flex"
                 >
                   <Layers3 className="h-3.5 w-3.5 shrink-0 text-primary" />
                   <span className="truncate font-medium">{activeRun.title}</span>
@@ -144,7 +149,7 @@ function Layout(props: LayoutProps) {
 
         <ResearchContextBar />
 
-        <main className="research-main">
+        <main ref={mainRef} className="research-main">
           {props.loading ? (
             <div className="space-y-6">
               <div className="grid gap-4 md:grid-cols-3">

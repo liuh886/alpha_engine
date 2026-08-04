@@ -85,14 +85,14 @@ test('static studio opens without authentication or backend APIs', async ({ page
     await expect(mobileNavigation.getByRole('link', { name: 'Runs', exact: true })).toBeVisible();
     await expect(mobileNavigation.getByRole('link', { name: 'Data', exact: true })).toBeVisible();
     await expect(mobileNavigation.getByRole('link', { name: 'Experiments', exact: true })).toHaveCount(0);
-    await expect(mobileNavigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
+    await expect(mobileNavigation.getByRole('link', { name: 'Backtests', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Close research navigation' }).first().click();
   } else {
     const navigation = page.getByRole('navigation', { name: 'Research studio navigation' });
     await expect(navigation).toBeVisible();
     await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toBeVisible();
     await expect(navigation.getByRole('link', { name: 'Experiments', exact: true })).toHaveCount(0);
-    await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
+    await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toBeVisible();
   }
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Sign in')).toHaveCount(0);
@@ -111,27 +111,26 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await catalog.getByRole('button', { name: /QQQ Rotation v4\.2/ }).click();
   await expect(page).toHaveURL(/#\/review\?channel=formal&family=qqq_rotation&version=qqqi_qqq_tqqq_v4_2/);
   await expect(page.getByRole('heading', { name: 'QQQ Rotation v4.2' })).toBeVisible();
-  const capabilityTabs = page.getByRole('tablist', { name: 'Run capability evidence' });
-  for (const label of ['Summary', 'Alpha', 'Risk', 'Robustness', 'Portfolio']) {
-    await expect(capabilityTabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
+  const formalTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
+  for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
+    await expect(formalTabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
   }
-  await expect(page.getByText('Source:', { exact: true }).first()).toBeVisible();
-  await capabilityTabs.getByRole('tab', { name: 'Alpha' }).click();
-  await expect(page.getByText(/performance\.json/)).toBeVisible();
-  await capabilityTabs.getByRole('tab', { name: 'Risk' }).click();
-  await expect(page.getByText(/risk\.json/)).toBeVisible();
-  await capabilityTabs.getByRole('tab', { name: 'Robustness' }).click();
-  await expect(page.getByText(/robustness\.json/)).toBeVisible();
-  await capabilityTabs.getByRole('tab', { name: 'Portfolio' }).click();
-  await expect(page.getByText(/portfolio\.json/)).toBeVisible();
-  await expect(page.getByText(/trades\.json/)).toBeVisible();
-  await expect(page.getByText(/attribution\.json/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Strategy, benchmark and excess path' })).toBeVisible();
   await assertNoHorizontalOverflow(page);
   await page.screenshot({ path: `test-results/static-artifact/governed-review-${testInfo.project.name}.png`, fullPage: true });
 
+  await page.goto('/#/backtests');
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Formal Backtests', exact: true, level: 2 })).toBeVisible();
+  const baselines = page.getByRole('region', { name: 'Accepted formal backtest baselines' });
+  await expect(baselines.getByRole('button', { name: /QQQ Rotation v4\.2/ })).toBeVisible();
+  await expect(baselines.getByRole('button', { name: /US x1\.1/ })).toBeVisible();
+  await expect(baselines.getByRole('button', { name: /CN x1\.0/ })).toBeVisible();
+  await expect(page.getByTestId('formal-backtest-review')).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+
   await page.goto('/#/dashboard');
-  await expect(page.getByRole('heading', { name: 'Evidence view not found' })).toBeVisible();
-  await expect(page.locator('.research-topbar').getByRole('heading', { name: 'Unavailable route' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/backtests$/);
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Formal Backtests', exact: true, level: 2 })).toBeVisible();
 
   await page.goto('/#/data');
   await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();

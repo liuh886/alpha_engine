@@ -55,7 +55,7 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
               Review accepted formal backtests, governed data lineage and the read-only v4.2 operating ledger. Every conclusion stays bound to its scope, cutoff, benchmark and retained source evidence.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Button onClick={() => navigate('/dashboard')} className="gap-2">
+              <Button onClick={() => navigate('/backtests')} className="gap-2">
                 Review formal backtests <ArrowRight className="h-4 w-4" />
               </Button>
               <Button onClick={() => navigate('/operations')} variant="outline" className="gap-2">
@@ -90,7 +90,7 @@ export function ArtifactHome({ models, generatedAt, latestModel }: ArtifactHomeP
         <button
           type="button"
           className="rounded-xl border bg-card p-5 text-left transition-colors hover:border-primary/40"
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/backtests')}
         >
           <FileText className="mb-4 h-5 w-5 text-primary" />
           <div className="font-bold">Review retained performance</div>
