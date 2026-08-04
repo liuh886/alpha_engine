@@ -1,0 +1,243 @@
+# BYD / 515180 core-dividend allocation
+
+- Overlap: `2019-11-26` to `2026-08-03`
+- Sessions: `1610`
+- Common eligible opens: `1598`
+- Execution: prior-close decision, next common independently confirmed eligible open
+- First overlap interval starts in cash
+- Costs: 20 bps primary, 40 bps stress
+- Historical freshness: `false`
+
+## Full-overlap 20 bps ranking
+
+| model             |      cagr |   total_return |   max_drawdown |   calmar |   round_trips_per_year |
+|:------------------|----------:|---------------:|---------------:|---------:|-----------------------:|
+| binary_100_0      | 0.336652  |        5.37703 |      -0.452024 | 0.744767 |               6.89124  |
+| recovery_50_50    | 0.34718   |        5.7046  |      -0.472616 | 0.734593 |               3.52393  |
+| fixed_75_25       | 0.29929   |        4.32115 |      -0.414022 | 0.722885 |               0.156619 |
+| v1_dividend_75_25 | 0.350728  |        5.81814 |      -0.487392 | 0.719602 |               1.05718  |
+| recovery_75_25    | 0.346799  |        5.69249 |      -0.500693 | 0.692638 |               1.84027  |
+| byd_v1_cash       | 0.335234  |        5.33394 |      -0.489782 | 0.684455 |               1.01802  |
+| byd100            | 0.342659  |        5.56223 |      -0.530364 | 0.646083 |               0.156619 |
+| etf100            | 0.0992655 |        0.82994 |      -0.182278 | 0.544583 |               0.156619 |
+
+## Governed decisions
+
+```json
+{
+  "governance": {
+    "binary_100_0_promotable": false,
+    "fresh_holdout": false,
+    "primary_candidate": "v1_dividend_75_25",
+    "research_only": true,
+    "trade_ready": false
+  },
+  "recovery_50_50": {
+    "decision": "improved_but_not_outperforming",
+    "fixed_validation_20bps": {
+      "annual_volatility": 0.2955873162092063,
+      "cagr": 0.06583475209955436,
+      "calmar": 0.17116831652945727,
+      "max_drawdown": -0.3846199660918235,
+      "mean_byd_weight": 0.8109504132231405,
+      "mean_etf_weight": 0.1890495867768595,
+      "round_trips_per_year": 3.90495867768595,
+      "sessions": 484.0,
+      "sharpe": 0.3607311642136748,
+      "total_return": 0.13026985231627997,
+      "turnover_units": 15.0,
+      "years": 1.9206349206349207
+    },
+    "full_20bps": {
+      "annual_volatility": 0.41784043585636943,
+      "cagr": 0.3471803682896619,
+      "calmar": 0.7345934217205076,
+      "max_drawdown": -0.4726156783115796,
+      "mean_byd_weight": 0.8203853325046613,
+      "mean_etf_weight": 0.1752641392169049,
+      "round_trips_per_year": 3.523927905531386,
+      "sessions": 1609.0,
+      "sharpe": 0.9204219837436671,
+      "total_return": 5.704603708476388,
+      "turnover_units": 45.0,
+      "years": 6.384920634920635
+    },
+    "full_40bps": {
+      "annual_volatility": 0.4179594215707801,
+      "cagr": 0.3282800014410516,
+      "calmar": 0.6696384586887392,
+      "max_drawdown": -0.4902346888556508,
+      "mean_byd_weight": 0.8203853325046613,
+      "mean_etf_weight": 0.1752641392169049,
+      "round_trips_per_year": 3.523927905531386,
+      "sessions": 1609.0,
+      "sharpe": 0.8864348836657829,
+      "total_return": 5.126247354432521,
+      "turnover_units": 45.0,
+      "years": 6.384920634920635
+    },
+    "gates": {
+      "full_cagr_not_below_v1_cash": true,
+      "largest_positive_period_share_le_60pct": false,
+      "retrospective_total_within_1pp": true,
+      "risk_improvement": true,
+      "round_trips_per_year_le_3": false,
+      "stress_calmar_not_below_v1_cash": true,
+      "validation_total_within_1pp": true
+    },
+    "largest_positive_period_share": 0.8190937580614108,
+    "retrospective_2025_plus_20bps": {
+      "annual_volatility": 0.31476361603636477,
+      "cagr": 0.08636950357737194,
+      "calmar": 0.2656602211095566,
+      "max_drawdown": -0.3251126691705707,
+      "mean_byd_weight": 0.7356020942408377,
+      "mean_etf_weight": 0.2643979057591623,
+      "round_trips_per_year": 3.298429319371728,
+      "sessions": 382.0,
+      "sharpe": 0.41822792026602573,
+      "total_return": 0.13380252788979274,
+      "turnover_units": 10.0,
+      "years": 1.5158730158730158
+    }
+  },
+  "recovery_75_25": {
+    "decision": "improved_but_not_outperforming",
+    "fixed_validation_20bps": {
+      "annual_volatility": 0.31187732497758863,
+      "cagr": 0.06513556738457282,
+      "calmar": 0.15455204497836475,
+      "max_drawdown": -0.4214474638215945,
+      "mean_byd_weight": 0.9054752066115702,
+      "mean_etf_weight": 0.09452479338842976,
+      "round_trips_per_year": 1.952479338842975,
+      "sessions": 484.0,
+      "sharpe": 0.3556425100568579,
+      "total_return": 0.12884621996355916,
+      "turnover_units": 7.5,
+      "years": 1.9206349206349207
+    },
+    "full_20bps": {
+      "annual_volatility": 0.43206695428784464,
+      "cagr": 0.34679896807548993,
+      "calmar": 0.6926381058064285,
+      "max_drawdown": -0.5006928801177015,
+      "mean_byd_weight": 0.9080174021131138,
+      "mean_etf_weight": 0.08763206960845245,
+      "round_trips_per_year": 1.8402734617775014,
+      "sessions": 1609.0,
+      "sharpe": 0.903383440726212,
+      "total_return": 5.69249346798028,
+      "turnover_units": 23.5,
+      "years": 6.384920634920635
+    },
+    "full_40bps": {
+      "annual_volatility": 0.4320964349109312,
+      "cagr": 0.33691594346662135,
+      "calmar": 0.6618114366249233,
+      "max_drawdown": -0.5090814767191247,
+      "mean_byd_weight": 0.9080174021131138,
+      "mean_etf_weight": 0.08763206960845245,
+      "round_trips_per_year": 1.8402734617775014,
+      "sessions": 1609.0,
+      "sharpe": 0.8862860394126568,
+      "total_return": 5.38505564361458,
+      "turnover_units": 23.5,
+      "years": 6.384920634920635
+    },
+    "gates": {
+      "full_cagr_not_below_v1_cash": true,
+      "largest_positive_period_share_le_60pct": true,
+      "retrospective_total_within_1pp": true,
+      "risk_improvement": false,
+      "round_trips_per_year_le_3": true,
+      "stress_calmar_not_below_v1_cash": false,
+      "validation_total_within_1pp": true
+    },
+    "largest_positive_period_share": 0.43871380770030205,
+    "retrospective_2025_plus_20bps": {
+      "annual_volatility": 0.32843999641658894,
+      "cagr": 0.054988862724675736,
+      "calmar": 0.14523444735314728,
+      "max_drawdown": -0.37862135138619446,
+      "mean_byd_weight": 0.8678010471204188,
+      "mean_etf_weight": 0.13219895287958114,
+      "round_trips_per_year": 1.649214659685864,
+      "sessions": 382.0,
+      "sharpe": 0.32492527948361505,
+      "total_return": 0.08452814304412892,
+      "turnover_units": 5.0,
+      "years": 1.5158730158730158
+    }
+  },
+  "v1_dividend_75_25": {
+    "decision": "supported",
+    "fixed_validation_20bps": {
+      "annual_volatility": 0.3072186309458862,
+      "cagr": 0.07306555138040394,
+      "calmar": 0.17673824298091667,
+      "max_drawdown": -0.41341109964691225,
+      "mean_byd_weight": 0.8910123966942148,
+      "mean_etf_weight": 0.10898760330578512,
+      "round_trips_per_year": 1.4318181818181819,
+      "sessions": 484.0,
+      "sharpe": 0.3804778069887972,
+      "total_return": 0.14504314438470245,
+      "turnover_units": 5.5,
+      "years": 1.9206349206349207
+    },
+    "full_20bps": {
+      "annual_volatility": 0.42641198424305166,
+      "cagr": 0.3507281328887262,
+      "calmar": 0.719602054894396,
+      "max_drawdown": -0.4873917889800866,
+      "mean_byd_weight": 0.8910814170292107,
+      "mean_etf_weight": 0.1045680546923555,
+      "round_trips_per_year": 1.0571783716594156,
+      "sessions": 1609.0,
+      "sharpe": 0.9165893557043164,
+      "total_return": 5.818140854238716,
+      "turnover_units": 13.5,
+      "years": 6.384920634920635
+    },
+    "full_40bps": {
+      "annual_volatility": 0.42642205393624977,
+      "cagr": 0.34503029843669664,
+      "calmar": 0.6998506729369158,
+      "max_drawdown": -0.49300559644928355,
+      "mean_byd_weight": 0.8910814170292107,
+      "mean_etf_weight": 0.1045680546923555,
+      "round_trips_per_year": 1.0571783716594156,
+      "sessions": 1609.0,
+      "sharpe": 0.9066509784062421,
+      "total_return": 5.63657541510138,
+      "turnover_units": 13.5,
+      "years": 6.384920634920635
+    },
+    "gates": {
+      "full_cagr_not_below_v1_cash": true,
+      "largest_positive_period_share_le_60pct": true,
+      "retrospective_total_within_1pp": true,
+      "risk_improvement": true,
+      "round_trips_per_year_le_3": true,
+      "stress_calmar_not_below_v1_cash": true,
+      "validation_total_within_1pp": true
+    },
+    "largest_positive_period_share": 0.3698211934473231,
+    "retrospective_2025_plus_20bps": {
+      "annual_volatility": 0.3226091433130113,
+      "cagr": 0.06136714672269439,
+      "calmar": 0.16455948023822034,
+      "max_drawdown": -0.37291772332932627,
+      "mean_byd_weight": 0.8547120418848168,
+      "mean_etf_weight": 0.14528795811518325,
+      "round_trips_per_year": 0.9895287958115183,
+      "sessions": 382.0,
+      "sharpe": 0.34387482086693516,
+      "total_return": 0.09448301542175086,
+      "turnover_units": 3.0,
+      "years": 1.5158730158730158
+    }
+  }
+}
+```

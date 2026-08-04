@@ -1,0 +1,125 @@
+name: BYD 515180 Core Dividend Research
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/data/etf_515180_canonical.py"
+      - "src/data/etf_515180_quality_v2.py"
+      - "src/research/byd_515180_allocation.py"
+      - "src/research/byd_515180_execution.py"
+      - "scripts/data/build_515180_canonical_bundle.py"
+      - "scripts/data/build_515180_canonical_bundle_v2.py"
+      - "scripts/data/fetch_515180_secondary_v2.py"
+      - "scripts/run_byd_515180_allocation.py"
+      - "tests/test_etf_515180_canonical.py"
+      - "tests/test_byd_515180_allocation.py"
+      - "data/research/515180_canonical_v1_artifact.zip.b64"
+      - "docs/evidence/byd_515180_allocation/**"
+      - "docs/research/byd_515180_core_dividend.md"
+      - ".github/workflows/byd-515180-allocation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract-and-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Verify immutable snapshots
+        run: |
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > 515180-canonical-v1-artifact.zip
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  515180-canonical-v1-artifact.zip" | sha256sum --check --strict
+          mkdir -p artifacts/data/515180_canonical_v1 artifacts/data/byd_canonical_v1
+          unzip -q 515180-canonical-v1-artifact.zip -d artifacts/data/515180_canonical_v1
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
+      - name: Verify exact 515180 internal identities
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path("artifacts/data/515180_canonical_v1/manifest.json").read_text())
+          exact = {
+              "schema_version": "cn_etf_canonical_total_return_v1",
+              "symbol": "515180.SH",
+              "cutoff": "2026-08-03",
+              "data_quality_status": "canonical_v1_pass",
+              "raw_sha256": "67c80e12908cbcccaa1d5ab2833563ff8db6f02deebc81247f6be50aa957a6e5",
+              "factor_sha256": "e0e3b031716b79d0259e23712d35c0c2b46142709b8d76cbca761621fcf98751",
+              "adjusted_sha256": "2173afbe2fcbc8875de55ce0ff9bcb25b1c9f184c5cd273ade682244393c67a5",
+              "actions_sha256": "d6efca5c7c1f1459f5c78953baec2b6ee26685489162e17b694215fffcc7f92b",
+              "session_audit_sha256": "a85a466307e3965b80259cd9d65d88db330dc0c2fb210ff8e77f354b863475df",
+              "manifest_sha256": "7f19639e6540ebb71eac7e52dab270df4b20b59bcf764c2dc6843045de21e4ec",
+          }
+          for key, expected in exact.items():
+              if manifest.get(key) != expected:
+                  raise SystemExit(f"515180 identity mismatch for {key}: {manifest.get(key)!r} != {expected!r}")
+          PY
+      - name: Lint and run frozen contract tests
+        run: |
+          uv run ruff check \
+            src/data/etf_515180_canonical.py \
+            src/data/etf_515180_quality_v2.py \
+            src/research/byd_515180_allocation.py \
+            src/research/byd_515180_execution.py \
+            scripts/data/build_515180_canonical_bundle.py \
+            scripts/data/build_515180_canonical_bundle_v2.py \
+            scripts/data/fetch_515180_secondary_v2.py \
+            scripts/run_byd_515180_allocation.py \
+            tests/test_etf_515180_canonical.py \
+            tests/test_byd_515180_allocation.py
+          uv run pytest \
+            tests/test_etf_515180_canonical.py \
+            tests/test_byd_515180_allocation.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Reproduce governed model evidence offline
+        run: >-
+          uv run python scripts/run_byd_515180_allocation.py
+          --byd-dir artifacts/data/byd_canonical_v1
+          --etf-dir artifacts/data/515180_canonical_v1
+          --output-dir artifacts/research/byd_515180_allocation
+      - name: Require byte-stable key evidence
+        run: |
+          set -euo pipefail
+          for file in summary.json evaluation.csv correlation_diagnostics.csv conditional_complementarity.csv README.md; do
+            diff -u "docs/evidence/byd_515180_allocation/$file" "artifacts/research/byd_515180_allocation/$file"
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path("artifacts/research/byd_515180_allocation/summary.json").read_text())
+          primary = summary["governed_decisions"]["v1_dividend_75_25"]
+          if primary["decision"] != "supported":
+              raise SystemExit("primary candidate decision drifted")
+          governance = summary["governed_decisions"]["governance"]
+          if governance != {
+              "binary_100_0_promotable": False,
+              "fresh_holdout": False,
+              "primary_candidate": "v1_dividend_75_25",
+              "research_only": True,
+              "trade_ready": False,
+          }:
+              raise SystemExit(f"governance drifted: {governance!r}")
+          PY
+      - name: Publish evidence summary
+        run: cat artifacts/research/byd_515180_allocation/README.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload reproduced evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-515180-offline-reproduced-evidence
+          path: artifacts/research/byd_515180_allocation
+          if-no-files-found: error
+          retention-days: 30

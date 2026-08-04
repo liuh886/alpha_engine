@@ -1,0 +1,7 @@
+,measure,value
+0,daily_return_correlation,0.308685847274
+1,weekly_return_correlation,0.238982739989
+2,20_session_return_correlation,0.137978136622
+3,simultaneous_daily_loss_rate,0.261490683230
+4,median_60d_rolling_correlation,0.256513430935
+5,p90_abs_total_return_reconciliation_error,0.000000116349
