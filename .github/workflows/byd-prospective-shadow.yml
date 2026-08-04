@@ -1,0 +1,105 @@
+name: BYD Prospective Shadow Ledger
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/research/byd_prospective_shadow.py"
+      - "scripts/run_byd_prospective_shadow.py"
+      - "tests/test_byd_prospective_shadow.py"
+      - "data/research/byd_prospective_shadow/**"
+      - ".github/workflows/byd-prospective-shadow.yml"
+  schedule:
+    - cron: "30 11 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: byd-prospective-shadow
+  cancel-in-progress: false
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Verify immutable canonical base
+        run: >-
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz"
+          | sha256sum --check --strict
+      - name: Ruff prospective ledger
+        run: >-
+          uv run ruff check
+          src/research/byd_prospective_shadow.py
+          scripts/run_byd_prospective_shadow.py
+          tests/test_byd_prospective_shadow.py
+      - name: Run prospective contract tests
+        run: >-
+          uv run pytest tests/test_byd_prospective_shadow.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  live-update:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: contract-tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Extract immutable canonical base
+        run: |
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          mkdir -p artifacts/data/byd_canonical_v1
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz \
+            -C artifacts/data/byd_canonical_v1
+      - name: Append prospective shadow evidence
+        run: >-
+          uv run python scripts/run_byd_prospective_shadow.py
+          --baseline-dir artifacts/data/byd_canonical_v1
+          --store-dir data/research/byd_prospective_shadow
+          --as-of "$(date -u +%F)"
+          --secondary-retries 2
+      - name: Verify append-only scope
+        run: |
+          set -euo pipefail
+          unexpected="$(git status --porcelain | awk '{print $2}' | grep -v '^data/research/byd_prospective_shadow/' || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "Unexpected prospective updater changes:"
+            echo "$unexpected"
+            exit 1
+          fi
+      - name: Commit new immutable evidence
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- data/research/byd_prospective_shadow && \
+             [[ -z "$(git ls-files --others --exclude-standard data/research/byd_prospective_shadow)" ]]; then
+            echo "No new prospective evidence"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/byd_prospective_shadow
+          git commit -m "research: append BYD prospective shadow evidence"
+          git push origin HEAD:main
