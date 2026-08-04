@@ -5,7 +5,7 @@ on:
     branches:
       - research/cn130-tail-factor-discovery-v1
     paths:
-      - .github/cn130_regime_payload.b64
+      - .github/cn130_regime_payload.part*
       - scripts/apply_cn130_regime_payload.py
       - .github/workflows/cn130-regime-payload-apply.yml
   workflow_dispatch:
