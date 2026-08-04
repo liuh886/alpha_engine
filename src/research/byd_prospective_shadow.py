@@ -146,7 +146,9 @@ def chain_link_provider_history(
     provider = _normalise_dates(provider_history)
     for column in (*PRICE_COLUMNS, "volume", "adj_close"):
         provider[column] = pd.to_numeric(provider[column], errors="raise").astype(float)
-    provider_payload_sha = dataframe_sha256(provider[list(required)])
+    provider_payload_sha = dataframe_sha256(
+        provider[["date", *PRICE_COLUMNS, "volume", "adj_close"]]
+    )
 
     baseline_anchor = baseline.loc[baseline["date"].eq(BASELINE_DATE)]
     provider_anchor = provider.loc[provider["date"].eq(BASELINE_DATE)]
@@ -370,7 +372,7 @@ def _atomic_json_record(path: Path, value: dict[str, Any]) -> str:
 
 
 def _eligible_dates_after(dataset: pd.DataFrame, signal_date: pd.Timestamp) -> list[pd.Timestamp]:
-    mask = dataset.index.gt(signal_date) & dataset["open_research_eligible"].astype(bool)
+    mask = (dataset.index > signal_date) & dataset["open_research_eligible"].astype(bool)
     return list(dataset.index[mask])
 
 
