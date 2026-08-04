@@ -132,7 +132,7 @@ def test_family_horizons_execute_next_open() -> None:
 
 def test_transition_rule_catalog_remains_bounded() -> None:
     rules = enumerate_transition_rules(_contract())
-    assert len(rules) == 126
+    assert len(rules) == 162
     assert len({rule.rule_id for rule in rules}) == len(rules)
     assert all(2 <= rule.condition_count <= 3 for rule in rules)
     rotation = [rule for rule in rules if rule.event_family == "broad_rotation"]
