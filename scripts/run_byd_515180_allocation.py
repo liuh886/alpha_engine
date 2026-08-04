@@ -17,8 +17,8 @@ from src.research.byd_515180_allocation import (
     evaluation_table,
     governed_decisions,
     prepare_common_dataset,
-    run_allocation,
 )
+from src.research.byd_515180_execution import run_allocation
 
 
 def parse_args() -> argparse.Namespace:
@@ -80,7 +80,10 @@ def main() -> None:
         write_csv(output / "decisions" / f"{name}.csv", decision)
         write_csv(output / "daily" / f"{name}_20bps.csv", results_20[name].daily)
         write_csv(output / "daily" / f"{name}_40bps.csv", results_40[name].daily)
-        write_csv(output / "trades" / f"{name}_20bps.csv", results_20[name].trades.set_index("date"))
+        write_csv(
+            output / "trades" / f"{name}_20bps.csv",
+            results_20[name].trades.set_index("date"),
+        )
     for name, table in concentration_tables.items():
         write_csv(output / "concentration" / f"{name}.csv", table)
 
@@ -110,13 +113,23 @@ def main() -> None:
         f"- Overlap: `{summary['overlap_first_date']}` to `{summary['overlap_last_date']}`",
         f"- Sessions: `{summary['overlap_sessions']}`",
         f"- Common eligible opens: `{summary['common_eligible_opens']}`",
-        "- Execution: close decision, next common independently confirmed eligible open",
+        "- Execution: prior-close decision, next common independently confirmed eligible open",
+        "- First overlap interval starts in cash",
         "- Costs: 20 bps primary, 40 bps stress",
         "- Historical freshness: `false`",
         "",
         "## Full-overlap 20 bps ranking",
         "",
-        full[["model", "cagr", "total_return", "max_drawdown", "calmar", "round_trips_per_year"]].to_markdown(index=False),
+        full[
+            [
+                "model",
+                "cagr",
+                "total_return",
+                "max_drawdown",
+                "calmar",
+                "round_trips_per_year",
+            ]
+        ].to_markdown(index=False),
         "",
         "## Governed decisions",
         "",
