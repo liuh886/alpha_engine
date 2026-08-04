@@ -47,6 +47,7 @@ def test_secondary_disagreement_quarantines_open_without_substitution() -> None:
     raw = make_raw()
     secondary = raw.copy()
     secondary.loc[100, "open"] *= 1.05
+    secondary.loc[100, "high"] = secondary.loc[100, "open"] * 1.001
     cutoff = raw["date"].iloc[-1].strftime("%Y-%m-%d")
     adjusted_close = raw[["date", "close"]].rename(columns={"close": "adjusted_close"})
     bundle, _ = build_515180_bundle(
