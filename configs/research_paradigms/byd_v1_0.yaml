@@ -43,7 +43,7 @@ data:
   required_columns: [date, open, high, low, close, volume]
   provider_policy:
     selection: first_complete_single_provider
-    ordered_providers: [baostock, akshare]
+    ordered_providers: [baostock, akshare, yfinance]
     attempts_per_provider: 2
     retry_delay_seconds: 2
     forbid_cross_provider_stitching: true
@@ -58,6 +58,12 @@ data:
       upstream: eastmoney
       adjustment: qfq
       period: daily
+    yfinance:
+      endpoint: download
+      provider_symbol: 002594.SZ
+      adjustment: auto_adjust_true_repair_true
+      period: daily
+      promotion_note: independent_public_fallback_for_single_asset_research
   require_exact_cutoff: true
   forbid_forward_fill: true
   forbid_cross_provider_stitching: true
