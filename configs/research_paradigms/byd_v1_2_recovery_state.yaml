@@ -1,0 +1,80 @@
+schema_version: "1.0"
+experiment_id: byd_v1_2_recovery_state
+parent_issue: 513
+status: frozen_before_result
+research_only: true
+trade_ready: false
+prospective_confirmation_required: true
+
+canonical_data:
+  materialization: governed_canonical_build_pipeline
+  schema: byd_canonical_adjusted_ohlcv_v1
+  adjusted_sha256: 0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960
+  manifest_sha256: 06202b594b036b0c815e4ffb46e9f3d14ba647d699aad0fd927f1665142a363e
+  cutoff: "2026-08-03"
+  open_label_policy: entry_and_exit_open_must_be_independently_confirmed_and_not_quarantined
+  require_exact_adjusted_hash: true
+  require_exact_manifest_identity: true
+  forbid_provider_substitution_after_materialization: true
+  forbid_cross_provider_stitching: true
+
+model_family: preregistered_interpretable_state_machine
+factor_representatives:
+  long_horizon_reversal:
+    - drawdown_252
+    - mom_120
+  recovery_confirmation:
+    - distance_from_low_20
+  momentum_transition:
+    - momentum_accel_20_60
+  open_market_structure:
+    - open_return_autocorr_20
+
+rules:
+  core_position: 0.75
+  full_position: 1.00
+  trend_expansion:
+    drawdown_252_above: -0.10
+    mom_120_above: 0.0
+  recovery_entry:
+    drawdown_252_at_or_below: -0.15
+    distance_from_low_20_at_or_above: 0.05
+    require_one_of:
+      - momentum_accel_20_60_above_0
+      - open_return_autocorr_20_above_0
+  deterioration_exit:
+    drawdown_252_at_or_below: -0.15
+    distance_from_low_20_below: 0.03
+    momentum_accel_20_60_at_or_below: 0.0
+
+execution:
+  signal_time: session_close_t
+  execution_time: next_independently_confirmed_eligible_open
+  defer_on_quarantined_open: true
+  allow_short: false
+  allow_leverage: false
+  post_result_rule_change_forbidden: true
+
+costs:
+  primary_bps_per_turnover_unit: 20
+  stress_bps_per_turnover_unit: 40
+  charge_initial_entry: true
+  charge_every_position_change: true
+
+historical_support_gates:
+  minimum_cagr_retention_vs_buy_hold: 0.95
+  minimum_drawdown_improvement_vs_buy_hold_percentage_points: 3
+  calmar_not_below_buy_hold: true
+  validation_total_return_positive: true
+  validation_drawdown_improvement_percentage_points: 3
+  stress_40_total_return_positive: true
+  maximum_round_trips_per_year: 2
+  maximum_largest_positive_defense_episode_share: 0.50
+  not_dominated_by_canonical_v1_0: true
+
+validation_governance:
+  all_history_through_cutoff_already_observed: true
+  fresh_holdout_available: false
+  historical_result_is_explanatory_only: true
+  prospective_start_date: "2026-08-04"
+  model_promotion_requires_prospective_confirmation: true
