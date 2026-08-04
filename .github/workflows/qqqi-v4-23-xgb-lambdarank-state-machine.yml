@@ -10,9 +10,11 @@ on:
       - "src/research/v4_23_xgb_lambdarank_model.py"
       - "src/research/v4_23_xgb_lambdarank_policy.py"
       - "src/research/v4_23_xgb_lambdarank_state_machine.py"
+      - "src/research/v4_23_xgb_lambdarank_embargo.py"
       - "scripts/run_qqqi_v4_23_xgb_lambdarank_state_machine.py"
       - "scripts/run_qqqi_v4_23_xgb_lambdarank_open_close.py"
       - "tests/test_v4_23_xgb_lambdarank_state_machine.py"
+      - "tests/test_v4_23_xgb_lambdarank_embargo.py"
   workflow_dispatch:
     inputs:
       end_date:
@@ -44,13 +46,16 @@ jobs:
             src/research/v4_23_xgb_lambdarank_model.py \
             src/research/v4_23_xgb_lambdarank_policy.py \
             src/research/v4_23_xgb_lambdarank_state_machine.py \
+            src/research/v4_23_xgb_lambdarank_embargo.py \
             scripts/run_qqqi_v4_23_xgb_lambdarank_state_machine.py \
             scripts/run_qqqi_v4_23_xgb_lambdarank_open_close.py \
-            tests/test_v4_23_xgb_lambdarank_state_machine.py
+            tests/test_v4_23_xgb_lambdarank_state_machine.py \
+            tests/test_v4_23_xgb_lambdarank_embargo.py
       - name: Test v4.23 and inherited research contracts
         run: |
           uv run pytest \
             tests/test_v4_23_xgb_lambdarank_state_machine.py \
+            tests/test_v4_23_xgb_lambdarank_embargo.py \
             tests/test_v4_20_credit_duration_action_policy.py \
             tests/test_v4_19_incremental_market_internals.py \
             tests/test_v4_16_action_advantage_model.py \
