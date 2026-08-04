@@ -101,7 +101,7 @@ def test_ineligible_open_does_not_advance_position() -> None:
     assert executed.iloc[2]["position_byd_weight"] == 1.0
 
 
-def test_two_leg_rotation_costs_both_assets() -> None:
+def test_two_leg_rotation_costs_both_assets_and_cash() -> None:
     records = [
         _paired("2026-08-04", 0.75),
         _paired("2026-08-05", 1.0),
@@ -120,8 +120,8 @@ def test_two_leg_rotation_costs_both_assets() -> None:
         "v1_dividend_75_25",
         cost_bps=20.0,
     )
-    assert np.isclose(daily.iloc[1]["turnover_units"], 1.0)
-    assert np.isclose(daily.iloc[1]["cost"], 0.002)
+    assert np.isclose(daily.iloc[1]["turnover_units"], 2.0)
+    assert np.isclose(daily.iloc[1]["cost"], 0.004)
     assert np.isclose(daily.iloc[2]["turnover_units"], 0.5)
     assert np.isclose(daily.iloc[2]["cost"], 0.001)
 
