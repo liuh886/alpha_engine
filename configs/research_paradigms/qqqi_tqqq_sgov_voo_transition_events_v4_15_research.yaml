@@ -1,0 +1,159 @@
+experiment_id: qqqi_tqqq_sgov_voo_transition_events_v4_15_research
+parent_experiment_id: qqqi_tqqq_sgov_voo_multifactor_events_v4_14_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_mechanism_hypothesis: true
+purpose: >-
+  Replace persistent static factor states with first crossings, first confirmations,
+  volatility retreats and compression-to-expansion transitions while preserving
+  the v4.14 information set, chronological FDR discipline and fixed action lattice.
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  transaction_cost_bps_per_turnover_unit: 10.0
+  annual_risk_free_rate: 0.0
+  no_qqqi_pre_inception_backfill: true
+  historical_success_authorizes_shadow_only: true
+  baseline_alerts_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+
+data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  required_symbols: [QQQ, TQQQ, VOO, BIL, SGOV, QQQI, ^VIX, ^VXN]
+  actual_product_start: "2024-01-01"
+
+transition_rules:
+  confirmation_window_sessions: 3
+  cooldown_sessions: 5
+  minimum_development_events: 6
+  maximum_active_session_fraction: 0.10
+  selected_rules_per_family: 3
+  executed_rule_rank_per_family: 1
+  fdr_alpha: 0.10
+  macro_cluster_calendar_days: 30
+  repair_and_acceleration_extension_cap: 0.05
+  maximum_conditions: 3
+
+outer_folds:
+  - {fold: fold_2016_2017, train_start: "2011-01-03", train_end: "2015-12-31", test_start: "2016-01-01", test_end: "2017-12-29"}
+  - {fold: fold_2018_2019, train_start: "2011-01-03", train_end: "2017-12-29", test_start: "2018-01-01", test_end: "2019-12-31"}
+  - {fold: fold_2020_2021, train_start: "2011-01-03", train_end: "2019-12-31", test_start: "2020-01-01", test_end: "2021-12-31"}
+  - {fold: fold_2022_2023, train_start: "2011-01-03", train_end: "2021-12-31", test_start: "2022-01-01", test_end: "2023-12-29"}
+
+families:
+  defense:
+    target: cash_minus_qqq
+    holding_sessions: 10
+    action: SGOV_DEFENSE
+    eligibility: always
+    volatility_transitions:
+      [dual_vol_stress_onset, dual_vol_spike_onset, tech_vol_premium_onset]
+    price_transitions:
+      [rsi20_cross_down_35, bollinger_pct_b_cross_down_0_10, fresh_ma20_breakdown, bandwidth_expansion_onset]
+    cross_transitions:
+      [qqq_voo_rs_cross_down, qqq_voo_bollinger_gap_cross_down, qqq_voo_return20_cross_down]
+    cross_required: false
+  repair:
+    target: qqq_minus_cash
+    holding_sessions: 10
+    action: NASDAQ_INCOME
+    eligibility: extension_capped
+    volatility_transitions:
+      [dual_vol_retreat_confirmed, tech_vol_premium_repaired, vol_normalization_cross]
+    price_transitions:
+      [rsi20_cross_up_45, bollinger_pct_b_cross_up_0_50, fresh_ma20_breakout, bandwidth_compression_release]
+    cross_transitions:
+      [qqq_voo_rs_cross_up, qqq_voo_bollinger_gap_cross_up, qqq_voo_return20_cross_up]
+    cross_required: false
+  tech_acceleration:
+    target: tqqq_minus_qqq
+    holding_sessions: 5
+    action: NASDAQ_ACCELERATE
+    eligibility: extension_capped
+    volatility_transitions:
+      [dual_vol_retreat_confirmed, tech_vol_premium_repaired, vol_normalization_cross]
+    price_transitions:
+      [rsi20_cross_up_55, bollinger_pct_b_cross_up_0_80, fresh_ma20_breakout, bandwidth_compression_release]
+    cross_transitions:
+      [qqq_voo_rs_cross_up, qqq_voo_bollinger_gap_cross_up, qqq_voo_return20_cross_up]
+    cross_required: false
+  broad_rotation:
+    target: voo_minus_qqq
+    holding_sessions: 10
+    action: BROAD_EQUITY
+    eligibility: voo_long_trend_positive
+    volatility_transitions:
+      [tech_vol_premium_onset, dual_vol_spike_onset]
+    price_transitions:
+      [rsi20_cross_down_50, bollinger_pct_b_cross_down_0_50, fresh_ma20_breakdown]
+    cross_transitions:
+      [qqq_voo_rs_cross_down, qqq_voo_bollinger_gap_cross_down, qqq_voo_return20_cross_down]
+    cross_required: true
+
+transition_definitions:
+  dual_vol_stress_onset: {kind: cross_up, feature: vol_max_percentile_252, threshold: 0.80}
+  dual_vol_spike_onset: {kind: cross_up, feature: vol_max_return_5d, threshold: 0.15}
+  dual_vol_retreat_confirmed: {kind: vol_retreat_confirmed}
+  tech_vol_premium_onset: {kind: cross_up, feature: vxn_vix_ratio_z63, threshold: 1.00}
+  tech_vol_premium_repaired: {kind: tech_premium_repaired}
+  vol_normalization_cross: {kind: vol_normalization_cross}
+  rsi20_cross_down_35: {kind: cross_down, feature: qqq_rsi20, threshold: 35.0}
+  rsi20_cross_down_50: {kind: cross_down, feature: qqq_rsi20, threshold: 50.0}
+  rsi20_cross_up_45: {kind: cross_up, feature: qqq_rsi20, threshold: 45.0}
+  rsi20_cross_up_55: {kind: cross_up, feature: qqq_rsi20, threshold: 55.0}
+  bollinger_pct_b_cross_down_0_10: {kind: cross_down, feature: qqq_bollinger_pct_b_20_2, threshold: 0.10}
+  bollinger_pct_b_cross_down_0_50: {kind: cross_down, feature: qqq_bollinger_pct_b_20_2, threshold: 0.50}
+  bollinger_pct_b_cross_up_0_50: {kind: cross_up, feature: qqq_bollinger_pct_b_20_2, threshold: 0.50}
+  bollinger_pct_b_cross_up_0_80: {kind: cross_up, feature: qqq_bollinger_pct_b_20_2, threshold: 0.80}
+  fresh_ma20_breakdown: {kind: cross_down, feature: qqq_distance_ma20, threshold: 0.0}
+  fresh_ma20_breakout: {kind: cross_up, feature: qqq_distance_ma20, threshold: 0.0}
+  bandwidth_compression_release: {kind: compression_release}
+  bandwidth_expansion_onset: {kind: cross_up, feature: qqq_bollinger_bandwidth_z63, threshold: 1.0}
+  qqq_voo_rs_cross_down: {kind: cross_down, feature: qqq_voo_rs_distance_ma20, threshold: 0.0}
+  qqq_voo_rs_cross_up: {kind: cross_up, feature: qqq_voo_rs_distance_ma20, threshold: 0.0}
+  qqq_voo_bollinger_gap_cross_down: {kind: cross_down, feature: qqq_voo_bollinger_gap, threshold: -0.20}
+  qqq_voo_bollinger_gap_cross_up: {kind: cross_up, feature: qqq_voo_bollinger_gap, threshold: 0.0}
+  qqq_voo_return20_cross_down: {kind: cross_down, feature: qqq_minus_voo_return_20d, threshold: -0.03}
+  qqq_voo_return20_cross_up: {kind: cross_up, feature: qqq_minus_voo_return_20d, threshold: 0.0}
+
+action_lattice:
+  SGOV_DEFENSE: {cash: 1.00}
+  BROAD_EQUITY: {VOO: 1.00}
+  NASDAQ_INCOME: {QQQI: 1.00}
+  NASDAQ_ACCELERATE: {QQQ: 0.25, TQQQ: 0.75}
+  priority: [defense, broad_rotation, repair, tech_acceleration]
+
+validation:
+  event_quality:
+    minimum_macro_clusters: 8
+    positive_outer_fold_rate_min: 0.70
+    conditional_win_rate_lift_min: 0.10
+    median_excess_return_min: 0.0
+    largest_positive_cluster_share_max: 0.30
+    largest_positive_event_share_max: 0.25
+    recurrence_rate_min: 0.50
+  portfolio_shadow_gate:
+    cagr_improvement_vs_v4_2_pp_min: 1.50
+    max_drawdown_worsening_pp_max: 1.00
+    calmar_improvement_vs_v4_2_min: 0.10
+    sortino_not_below_v4_2: true
+    positive_calendar_year_rate_min: 0.70
+    largest_family_positive_share_max: 0.50
+    largest_event_positive_share_max: 0.20
+    turnover_increase_max: 0.40
+
+hypothesis_discipline:
+  - The v4.14 factor set is reused without adding a new factor family.
+  - Transition primitives and thresholds are frozen before evidence.
+  - Required transitions must occur within the fixed three-session confirmation window.
+  - Repair and acceleration use a fixed plus-five-percent MA20 extension cap.
+  - Actions and family holding periods are fixed before evidence.
+  - Development FDR selects rules and outer results never modify the contract.
+  - Historical success authorizes only a prospective shadow ledger.
+  - v4.2, Telegram and Issue 348 remain unchanged regardless of results.
