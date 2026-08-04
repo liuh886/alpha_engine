@@ -42,7 +42,11 @@ intraday_data:
   opening_bar_start: "09:30"
   opening_bar_end: "10:00"
   maximum_results: 50000
-  reject_pagination_or_truncation: true
+  require_complete_pagination: true
+  max_pages: 10
+  request_delay_seconds: 13.0
+  inter_symbol_delay_seconds: 13.0
+  silent_truncation_allowed: false
 
 phase_0:
   development_start: "2018-01-01"
@@ -71,11 +75,14 @@ required_daily_symbols:
   - LQD
 
 daily_data:
-  provider: yfinance_via_alphaengine_adapter
+  provider: yfinance_open_close_research
   start_date: "2017-01-01"
   end_date: "2026-08-03"
   bridge_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
   baseline_result_key: rotation_vxn_bridge_v4_2_50_50
+  provider_adjusted_open_close_preserved: true
+  high_low_synthetic_envelope_only: true
+  range_features_authorized: false
 
 features:
   intraday:
@@ -191,6 +198,7 @@ hypothesis_discipline:
   - Only state-2 sessions may differ from v4.2.
   - The first observation window is fixed at thirty minutes.
   - The only overlay action is one hundred percent QQQ until the next open.
+  - Complete Polygon pagination is mandatory; silent truncation is prohibited.
   - The ten inputs, logistic model, C and top-quintile trigger are frozen before evidence.
   - Quarantine outcomes cannot revise any experiment field.
   - A full pass authorizes only a non-actionable prospective shadow ledger.
