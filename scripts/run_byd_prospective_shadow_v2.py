@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Append v2 BYD shadow observations and settle from sealed records only."""
+"""Append v2 BYD observations and settle only from sealed daily records."""
 
 from __future__ import annotations
 
@@ -12,15 +12,17 @@ from typing import Any, Callable
 
 import pandas as pd
 
-from src.research.byd_prospective_evidence_v2 import (
-    enrich_observations,
-    persist_shadow_store_v2,
-)
+from src.research.byd_prospective_evidence_v2 import enrich_observations
 from src.research.byd_prospective_shadow import (
     audit_independent_raw,
     build_extended_inputs,
     chain_link_provider_history,
     make_signal_observations,
+)
+from src.research.byd_prospective_store import (
+    apply_immutable_shadow_schedule,
+    persist_immutable_shadow_store,
+    read_observations,
 )
 
 
@@ -91,7 +93,8 @@ def _fetch_yahoo(as_of: str) -> tuple[pd.DataFrame, dict[str, Any]]:
         out[column] = pd.to_numeric(out[column], errors="coerce")
     out["dividends"] = out["dividends"].fillna(0.0)
     out["stock_splits"] = out["stock_splits"].fillna(0.0)
-    if out[["open", "high", "low", "close", "volume", "adj_close"]].isna().any().any():
+    market_columns = ["open", "high", "low", "close", "volume", "adj_close"]
+    if out[market_columns].isna().any().any():
         raise RuntimeError("Yahoo prospective payload contains missing market fields")
     return out[["date", *numeric]], {
         "provider": "yfinance",
@@ -192,13 +195,6 @@ def _fetch_secondary(
     )
 
 
-def _existing_signal_dates(store_dir: Path) -> set[str]:
-    observation_dir = store_dir / "observations"
-    if not observation_dir.exists():
-        return set()
-    return {path.stem for path in observation_dir.glob("*.json")}
-
-
 def main() -> None:
     args = _parse_args()
     as_of = args.as_of or pd.Timestamp.utcnow().strftime("%Y-%m-%d")
@@ -236,28 +232,37 @@ def main() -> None:
         audit,
     )
     observed_at = datetime.now(timezone.utc).isoformat()
-    observations, _, _ = make_signal_observations(
+    candidates, dataset, _ = make_signal_observations(
         extended_adjusted,
         extended_sessions,
         extension,
         audit,
         observed_at_utc=observed_at,
     )
-    observations = enrich_observations(
-        observations,
+    existing_records = read_observations(args.store_dir)
+    existing_dates = {row["signal_date"] for row in existing_records}
+    candidate_new = [
+        row for row in candidates if row["signal_date"] not in existing_dates
+    ]
+    candidate_new = enrich_observations(
+        candidate_new,
         extension,
         audit,
         provider_history,
         primary_provider="yfinance_unadjusted_plus_adj_close",
     )
-    existing = _existing_signal_dates(args.store_dir)
-    new_observations = [
-        row for row in observations if row["signal_date"] not in existing
-    ]
+    new_observations = apply_immutable_shadow_schedule(
+        candidate_new,
+        existing_records,
+        dataset,
+    )
     for observation in new_observations:
         observation["provider_parameters"] = primary_meta
         observation["secondary_attempts"] = attempts
-    manifest = persist_shadow_store_v2(args.store_dir, new_observations)
+    manifest = persist_immutable_shadow_store(
+        args.store_dir,
+        new_observations,
+    )
     print(
         json.dumps(
             {
