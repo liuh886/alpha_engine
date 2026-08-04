@@ -7,13 +7,13 @@ import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PARTS = sorted((ROOT / ".github").glob("cn130_payload.part*"))
+CHUNKS = sorted((ROOT / ".github").glob("cn130_payload.chunk*"))
 EXPECTED_SHA256 = "a50ace21ad8d9f4acdf7df9500a47936b1c34ccdb0f673f80179b71f367ede09"
 
-if len(PARTS) != 8:
-    raise RuntimeError(f"expected 8 payload parts, found {len(PARTS)}")
+if len(CHUNKS) != 16:
+    raise RuntimeError(f"expected 16 payload chunks, found {len(CHUNKS)}")
 
-encoded = "".join(path.read_text(encoding="utf-8") for path in PARTS)
+encoded = "".join(path.read_text(encoding="utf-8") for path in CHUNKS)
 data = base64.b64decode(encoded, validate=True)
 observed_sha256 = hashlib.sha256(data).hexdigest()
 if observed_sha256 != EXPECTED_SHA256:
@@ -30,7 +30,8 @@ with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
 
 remove = [
     ROOT / ".github" / "cn130_payload.tar.gz.b64",
-    *PARTS,
+    *(ROOT / ".github").glob("cn130_payload.part*"),
+    *CHUNKS,
     ROOT / "scripts" / "apply_cn130_payload.py",
     ROOT / ".github" / "workflows" / "cn130-apply-payload.yml",
 ]
