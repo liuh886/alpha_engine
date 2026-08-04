@@ -5,16 +5,21 @@ on:
     branches: [main]
     paths:
       - "src/research/byd_prospective_shadow.py"
-      - "scripts/run_byd_prospective_shadow.py"
+      - "src/research/byd_prospective_evidence_v2.py"
+      - "scripts/run_byd_prospective_shadow_v2.py"
       - "tests/test_byd_prospective_shadow.py"
+      - "tests/test_byd_prospective_evidence_v2.py"
       - "data/research/byd_prospective_shadow/**"
+      - "docs/research/byd_prospective_shadow_ledger.md"
       - ".github/workflows/byd-prospective-shadow.yml"
   push:
     branches: [main]
     paths:
       - "src/research/byd_prospective_shadow.py"
-      - "scripts/run_byd_prospective_shadow.py"
+      - "src/research/byd_prospective_evidence_v2.py"
+      - "scripts/run_byd_prospective_shadow_v2.py"
       - "tests/test_byd_prospective_shadow.py"
+      - "tests/test_byd_prospective_evidence_v2.py"
       - "data/research/byd_prospective_shadow/**"
       - "docs/research/byd_prospective_shadow_ledger.md"
       - ".github/workflows/byd-prospective-shadow.yml"
@@ -51,11 +56,15 @@ jobs:
         run: >-
           uv run ruff check
           src/research/byd_prospective_shadow.py
-          scripts/run_byd_prospective_shadow.py
+          src/research/byd_prospective_evidence_v2.py
+          scripts/run_byd_prospective_shadow_v2.py
           tests/test_byd_prospective_shadow.py
+          tests/test_byd_prospective_evidence_v2.py
       - name: Run prospective contract tests
         run: >-
-          uv run pytest tests/test_byd_prospective_shadow.py
+          uv run pytest
+          tests/test_byd_prospective_shadow.py
+          tests/test_byd_prospective_evidence_v2.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   live-update:
@@ -83,9 +92,9 @@ jobs:
           mkdir -p artifacts/data/byd_canonical_v1
           tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz \
             -C artifacts/data/byd_canonical_v1
-      - name: Append prospective shadow evidence
+      - name: Append immutable prospective shadow evidence
         run: >-
-          uv run python scripts/run_byd_prospective_shadow.py
+          uv run python scripts/run_byd_prospective_shadow_v2.py
           --baseline-dir artifacts/data/byd_canonical_v1
           --store-dir data/research/byd_prospective_shadow
           --as-of "$(date -u +%F)"
