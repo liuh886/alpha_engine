@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 
+test.use({ serviceWorkers: 'block' });
+
 function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex');
 }
@@ -230,7 +232,7 @@ test('v4.2 operations displays only durable read-only evidence', async ({ page }
   await expect(page.getByText('Read-only ledger', { exact: true })).toBeVisible();
   await expect(page.getByText('Last executed allocation at signal close', { exact: true })).toBeVisible();
   await expect(page.getByText('Close-time target allocation', { exact: true })).toBeVisible();
-  await expect(page.getByText('2 sessions', { exact: true })).toBeVisible();
+  await expect(page.getByText('2 sessions', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Succeeded', { exact: true })).toHaveCount(2);
   await expect(page.getByText('Sign in')).toHaveCount(0);
   expect(pageErrors).toEqual([]);
