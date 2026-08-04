@@ -1,8 +1,10 @@
-# BYD V1.0：单标的中频基准研究
+# BYD V1.0：单标的规则基线
+
+> **定位纠正：**BYD V1.0 不是 XGBoost 模型，也没有在长期总收益或 CAGR 上跑赢比亚迪买入持有。它只证明了一个低换手的 75%/100% 规则可以略微改善回撤与 Calmar。因此，V1.0 的正式身份是 `rule_baseline`，不能被描述为已经找到“适合比亚迪、获取最大利益”的专有模型。Issue #503 将以动量因子研究和 walk-forward XGBoost 建立真正的 BYD V1.1 候选。
 
 ## 1. 模型类型
 
-AlphaEngine 的 CN x1.0 是横截面模型：在固定股票池中比较不同股票。BYD V1.0 是单标的时间序列模型：只面对比亚迪 A 股 `002594.SZ`，在每个交易日收盘后决定下一交易日开盘的目标仓位。
+AlphaEngine 的 CN x1.0 是横截面模型：在固定股票池中比较不同股票。BYD V1.0 是单标的时间序列**规则基线**：只面对比亚迪 A 股 `002594.SZ`，在每个交易日收盘后决定下一交易日开盘的目标仓位。
 
 因此，BYD V1.0 不使用单股票无法定义的 Rank IC、Top-N 或 Bottom-N，而使用：
 
@@ -43,9 +45,9 @@ AlphaEngine 的 CN x1.0 是横截面模型：在固定股票池中比较不同�
 - 50% 与 75% 核心仓位；
 - 无滞回的动量对照。
 
-## 4. BYD V1.0 正式规则
+## 4. BYD V1.0 规则基线
 
-唯一通过全部门槛的候选为：
+唯一通过原规则型风险调整门槛的候选为：
 
 `core75_regime_mom_120`
 
@@ -74,6 +76,8 @@ AlphaEngine 的 CN x1.0 是横截面模型：在固定股票池中比较不同�
 | 平均比亚迪仓位 | 89.33% | 100.00% |
 | 年化完整进出等价 | 0.65 | 0.00 |
 
+这组结果说明 V1.0 **没有跑赢比亚迪自身**：CAGR 低 0.84 个百分点，累计收益少约 103.53 个百分点。其价值仅在于回撤改善约 2.53 个百分点和 Calmar 小幅提高。
+
 ### 2023–2024 固定验证
 
 | 指标 | BYD V1.0 | 买入持有 |
@@ -92,7 +96,7 @@ AlphaEngine 的 CN x1.0 是横截面模型：在固定股票池中比较不同�
 | 最大回撤 | -37.83% | -42.94% |
 | Calmar | 0.1178 | 0.0519 |
 
-2025 年后的结果通过了全部冻结否证门槛，但必须标记为 `retrospective_holdout`，不能描述为前瞻证据。
+2025 年后的结果通过了原冻结否证门槛，但必须标记为 `retrospective_holdout`，不能描述为前瞻证据，也不能抵消长期选择区间未跑赢买入持有的事实。
 
 ## 6. 数据与成本纪律
 
@@ -107,9 +111,9 @@ AlphaEngine 的 CN x1.0 是横截面模型：在固定股票池中比较不同�
 
 自动数据顺序为 BaoStock、AkShare/Eastmoney、Yahoo。每次运行只能接受一个供应商的完整历史，并记录全部尝试。此次 BaoStock 和 AkShare 在 GitHub 托管运行器上失败，最终整段历史均来自 Yahoo。
 
-## 7. 当前状态与边界
+## 7. 当前状态与下一阶段
 
-截至 `2026-08-03` 收盘，模型为下一开盘生成的目标是：
+截至 `2026-08-03` 收盘，规则基线为下一开盘生成的目标是：
 
 - 75% 比亚迪；
 - 25% 现金。
@@ -118,8 +122,11 @@ AlphaEngine 的 CN x1.0 是横截面模型：在固定股票池中比较不同�
 
 BYD V1.0 当前状态：
 
+- `baseline_role=rule_baseline`；
+- `model_family=deterministic_rules`；
+- `xgboost=false`；
+- `beat_buy_and_hold=false`；
 - `research_only=true`；
-- `trade_ready=false`；
-- `prospective_confirmation_required=true`。
+- `trade_ready=false`。
 
-下一阶段只允许在规则、阈值和仓位档位完全不变的情况下进行前瞻影子运行。完整静态证据位于 `docs/evidence/byd_v1_0_core_tactical/`。
+下一阶段不是继续微调 V1.0 的均线阈值，而是执行 Issue #503：先验证 BYD 的时间序列动量因子，再用固定参数、严格 embargo 的 walk-forward XGBoost 回归器挑战买入持有和 V1.0。完整 V1.0 静态证据位于 `docs/evidence/byd_v1_0_core_tactical/`。
