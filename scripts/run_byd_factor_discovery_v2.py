@@ -47,6 +47,9 @@ def _report(result, manifest: dict[str, object]) -> str:
             f"- Cutoff: `{manifest.get('cutoff')}`",
             f"- Adjusted SHA-256: `{manifest.get('adjusted_sha256')}`",
             f"- Cross-provider stitching: `{manifest.get('cross_provider_stitching')}`",
+            f"- Secondary provider: `{manifest.get('secondary_provider')}`",
+            f"- Quarantined open rows: `{manifest.get('quarantined_open_rows')}`",
+            f"- Open-label policy: `{manifest.get('open_label_policy')}`",
             "",
             "## Evaluation periods",
             "",
@@ -61,6 +64,7 @@ def _report(result, manifest: dict[str, object]) -> str:
             "- A positive orientation means a larger factor value is associated with a higher future 10-session open-to-open return.",
             "- A negative orientation means the economic factor should be inverted before use.",
             "- Shortlisting requires sign consistency in at least four of five periods, median oriented IC >= 0.02, and worst-period oriented IC >= -0.01.",
+            "- Any label whose next-open entry or ten-session exit uses a quarantined open is removed rather than repaired from another provider.",
             "- This report discovers hypotheses; it does not define a tradable model or reuse the old holdout as fresh evidence.",
         ]
     ) + "\n"
@@ -74,7 +78,32 @@ def main() -> None:
     manifest = json.loads((canonical / "manifest.json").read_text(encoding="utf-8"))
     if manifest.get("cross_provider_stitching") is not False:
         raise RuntimeError("canonical bundle permits cross-provider stitching")
+    if not manifest.get("secondary_provider"):
+        raise RuntimeError("canonical bundle lacks an independent raw-source audit")
+
     adjusted = pd.read_csv(canonical / "adjusted_ohlcv.csv")
+    sessions = pd.read_csv(canonical / "session_audit.csv")
+    required_session_columns = {"date", "open_research_eligible"}
+    if not required_session_columns <= set(sessions.columns):
+        raise RuntimeError("session audit lacks open research eligibility")
+    sessions["open_research_eligible"] = sessions["open_research_eligible"].astype(
+        str
+    ).str.lower().map({"true": True, "false": False})
+    if sessions["open_research_eligible"].isna().any():
+        raise RuntimeError("invalid open research eligibility values")
+    adjusted = adjusted.merge(
+        sessions[["date", "open_research_eligible"]],
+        on="date",
+        how="left",
+        validate="one_to_one",
+    )
+    if adjusted["open_research_eligible"].isna().any():
+        raise RuntimeError("adjusted rows missing session-audit eligibility")
+    # Do not replace disputed opens from a secondary source. NaN makes open
+    # features unavailable on the disputed session and automatically removes
+    # any forward label using that session as entry or exit.
+    adjusted.loc[~adjusted["open_research_eligible"], "open"] = float("nan")
+
     result = discover_factors(adjusted)
     result.diagnostics.to_csv(
         output / "factor_diagnostics.csv", index=False, float_format="%.12f"
@@ -92,6 +121,8 @@ def main() -> None:
         "status": "exploratory_factor_discovery_complete",
         "trade_ready": False,
         "canonical_adjusted_sha256": manifest.get("adjusted_sha256"),
+        "secondary_provider": manifest.get("secondary_provider"),
+        "quarantined_open_rows": manifest.get("quarantined_open_rows"),
         "factor_count": int(len(result.diagnostics)),
         "shortlist_count": int(len(result.shortlist)),
         "top_factors": result.shortlist["factor"].head(20).tolist(),
