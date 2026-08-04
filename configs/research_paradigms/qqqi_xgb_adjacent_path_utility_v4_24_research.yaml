@@ -1,12 +1,28 @@
 experiment_id: qqqi_xgb_adjacent_path_utility_v4_24_research
 parent_experiment_id: qqqi_xgb_lambdarank_state_machine_v4_23_research
-schema_version: "1.0"
+schema_version: "1.1"
 research_only: true
 trade_ready: false
 purpose: >-
   Test whether three fixed shallow XGBoost classifiers can learn adjacent
   path-utility transitions across a four-level SGOV/BIL, QQQ and TQQQ risk
   ladder without terminal-return endpoint ranking or candidate-action priors.
+
+compatibility_audit:
+  discarded_artifact_workflow_run: 30939933439
+  discarded_artifact_id: 8904708915
+  discarded_artifact_digest: sha256:6ab0b71c675ff868d9c82e5982e227c0ea157eb1e21ad6a60b2c9228c0ac8050
+  rejection_reason: >-
+    Reusing v4.23 min_child_weight 20 on one-row-per-date edge classifiers
+    produced constant probabilities in all six fold-edge cells in the first
+    two outer folds. The artifact is implementation-incompatible and may not
+    support an economic conclusion.
+  mechanical_scaling_rule: >-
+    v4.23 trained on five action rows per decision group. v4.24 trains one row
+    per decision date per edge. Preserve the same per-decision regularization
+    scale by multiplying min_child_weight by 1/5: 20 * 1/5 = 4.
+  outcomes_used_for_scaling: false
+  all_other_targets_parameters_and_gates_unchanged: true
 
 boundaries:
   signal_time: session_close_t
@@ -96,7 +112,7 @@ model:
   max_depth: 3
   learning_rate: 0.03
   boosting_rounds: 300
-  min_child_weight: 20
+  min_child_weight: 4.0
   subsample: 0.80
   colsample_bytree: 0.80
   reg_lambda: 10.0
@@ -108,6 +124,7 @@ model:
   early_stopping_allowed: false
   parameter_search_allowed: false
   feature_selection_allowed: false
+  minimum_unique_test_probabilities: 2
 
 training:
   minimum_groups: 100
@@ -189,10 +206,12 @@ feature_families:
     - next_open_weight_TQQQ
 
 hypothesis_discipline:
-  - The path utility, MAE penalty, state lattice, edges, features and model parameters are frozen before outcomes.
+  - The path utility, MAE penalty, state lattice, edges, features and all parameters other than the audited row-geometry scaling are frozen before valid outcomes.
+  - The discarded constant-prediction artifact is retained only as implementation evidence and may not support an economic conclusion.
   - Edge models never receive candidate-state descriptors.
   - Every ten-session label block is non-overlapping and outer folds use the audited ten-session embargo translation.
   - No outer-fold observation enters fitting, feature selection, calibration or threshold construction.
+  - Every fold-edge test output must contain at least two distinct probabilities or the run fails before evidence publication.
   - The ordinal policy always starts at defense and traverses adjacent edges at the fixed 0.50 threshold.
   - Phase 2 is fail-closed unless every Phase 1 gate passes.
   - Historical success authorizes prospective shadow observation only.
