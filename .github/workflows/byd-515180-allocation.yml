@@ -61,119 +61,64 @@ jobs:
           tests/test_byd_515180_allocation.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-  canonical-data:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    needs: contract-tests
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen
-      - name: Build 515180 canonical data
-        run: >-
-          uv run python scripts/data/build_515180_canonical_bundle_v2.py
-          --start 2019-11-26
-          --cutoff 2026-08-03
-          --secondary-retries 3
-          --output-dir artifacts/data/515180_canonical_v1
-      - name: Upload canonical data or blocker evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: 515180-canonical-v1
-          path: artifacts/data/515180_canonical_v1
-          if-no-files-found: error
-          retention-days: 30
-      - name: Enforce exact canonical identity
-        run: |
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          manifest = json.loads(Path("artifacts/data/515180_canonical_v1/manifest.json").read_text())
-          print(json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True))
-          exact = {
-              "data_quality_status": "canonical_v1_pass",
-              "adjusted_sha256": "2173afbe2fcbc8875de55ce0ff9bcb25b1c9f184c5cd273ade682244393c67a5",
-              "manifest_sha256": "7f19639e6540ebb71eac7e52dab270df4b20b59bcf764c2dc6843045de21e4ec",
-              "cutoff": "2026-08-03",
-          }
-          for key, expected in exact.items():
-              if manifest.get(key) != expected:
-                  raise SystemExit(f"515180 exact identity drift for {key}: {manifest.get(key)!r} != {expected!r}")
-          PY
-
-  model-evidence:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    needs: canonical-data
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen
-      - name: Download 515180 canonical data
-        uses: actions/download-artifact@v4
-        with:
-          name: 515180-canonical-v1
-          path: artifacts/data/515180_canonical_v1
-      - name: Extract immutable BYD canonical data
-        run: |
-          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
-          mkdir -p artifacts/data/byd_canonical_v1
-          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
-      - name: Run governed allocation research
-        run: >-
-          uv run python scripts/run_byd_515180_allocation.py
-          --byd-dir artifacts/data/byd_canonical_v1
-          --etf-dir artifacts/data/515180_canonical_v1
-          --output-dir artifacts/research/byd_515180_allocation
-      - name: Publish report summary
-        run: cat artifacts/research/byd_515180_allocation/README.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload complete model evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: byd-515180-allocation-evidence
-          path: artifacts/research/byd_515180_allocation
-          if-no-files-found: error
-          retention-days: 30
-
-  materialize-exact-evidence:
+  materialize-authoritative-run:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [canonical-data, model-evidence]
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Download exact run artifacts
+      - name: Download passed 515180 canonical artifact
         uses: actions/download-artifact@v4
         with:
-          pattern: "*515180*"
-          path: artifacts/downloaded
-          merge-multiple: false
-      - name: Materialize deterministic snapshot and static evidence
+          name: 515180-canonical-v1
+          path: artifacts/data/515180_canonical_v1
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: liuh886/alpha_engine
+          run-id: 30933294861
+      - name: Download passed allocation evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: byd-515180-allocation-evidence
+          path: artifacts/research/byd_515180_allocation
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: liuh886/alpha_engine
+          run-id: 30933294861
+      - name: Verify authoritative identities
         run: |
           set -euo pipefail
-          data_dir="artifacts/downloaded/515180-canonical-v1"
-          model_dir="artifacts/downloaded/byd-515180-allocation-evidence"
-          test -f "$data_dir/manifest.json"
-          test -f "$model_dir/summary.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path("artifacts/data/515180_canonical_v1/manifest.json").read_text())
+          exact = {
+              "schema_version": "cn_etf_canonical_total_return_v1",
+              "symbol": "515180.SH",
+              "cutoff": "2026-08-03",
+              "data_quality_status": "canonical_v1_pass",
+              "raw_sha256": "67c80e12908cbcccaa1d5ab2833563ff8db6f02deebc81247f6be50aa957a6e5",
+              "factor_sha256": "e0e3b031716b79d0259e23712d35c0c2b46142709b8d76cbca761621fcf98751",
+              "adjusted_sha256": "2173afbe2fcbc8875de55ce0ff9bcb25b1c9f184c5cd273ade682244393c67a5",
+              "actions_sha256": "d6efca5c7c1f1459f5c78953baec2b6ee26685489162e17b694215fffcc7f92b",
+              "session_audit_sha256": "a85a466307e3965b80259cd9d65d88db330dc0c2fb210ff8e77f354b863475df",
+              "manifest_sha256": "7f19639e6540ebb71eac7e52dab270df4b20b59bcf764c2dc6843045de21e4ec",
+          }
+          for key, expected in exact.items():
+              if manifest.get(key) != expected:
+                  raise SystemExit(f"authoritative 515180 identity mismatch for {key}: {manifest.get(key)!r} != {expected!r}")
+          summary = json.loads(Path("artifacts/research/byd_515180_allocation/summary.json").read_text())
+          decision = summary["governed_decisions"]["v1_dividend_75_25"]["decision"]
+          if decision != "supported":
+              raise SystemExit(f"authoritative decision drifted: {decision!r}")
+          PY
+      - name: Materialize deterministic snapshot and evidence
+        run: |
+          set -euo pipefail
           mkdir -p data/research docs/evidence/byd_515180_allocation
           (
-            cd "$data_dir"
+            cd artifacts/data/515180_canonical_v1
             find . -type f -print0 | sort -z | tar --null -T - \
               --sort=name \
               --mtime='UTC 2026-08-03 00:00:00' \
@@ -182,18 +127,18 @@ jobs:
           )
           echo "86e2bde20fce70ff093d66acfbc89523b8039861ed67cc202eee67c9b6802eee  515180-canonical-v1-snapshot.tar.xz" | sha256sum --check --strict
           base64 -w 76 515180-canonical-v1-snapshot.tar.xz > data/research/515180_canonical_v1_snapshot.tar.xz.b64
-          cp "$model_dir/summary.json" docs/evidence/byd_515180_allocation/summary.json
-          cp "$model_dir/evaluation.csv" docs/evidence/byd_515180_allocation/evaluation.csv
-          cp "$model_dir/correlation_diagnostics.csv" docs/evidence/byd_515180_allocation/correlation_diagnostics.csv
-          cp "$model_dir/conditional_complementarity.csv" docs/evidence/byd_515180_allocation/conditional_complementarity.csv
-          cp "$model_dir/README.md" docs/evidence/byd_515180_allocation/README.md
+          cp artifacts/research/byd_515180_allocation/summary.json docs/evidence/byd_515180_allocation/summary.json
+          cp artifacts/research/byd_515180_allocation/evaluation.csv docs/evidence/byd_515180_allocation/evaluation.csv
+          cp artifacts/research/byd_515180_allocation/correlation_diagnostics.csv docs/evidence/byd_515180_allocation/correlation_diagnostics.csv
+          cp artifacts/research/byd_515180_allocation/conditional_complementarity.csv docs/evidence/byd_515180_allocation/conditional_complementarity.csv
+          cp artifacts/research/byd_515180_allocation/README.md docs/evidence/byd_515180_allocation/README.md
           rm -f .github/workflows/materialize-515180-canonical-snapshot.yml
-      - name: Commit only when evidence is new
+      - name: Commit immutable evidence when absent
         run: |
           set -euo pipefail
           if git diff --quiet -- data/research/515180_canonical_v1_snapshot.tar.xz.b64 docs/evidence/byd_515180_allocation .github/workflows/materialize-515180-canonical-snapshot.yml && \
              [[ -z "$(git ls-files --others --exclude-standard data/research/515180_canonical_v1_snapshot.tar.xz.b64 docs/evidence/byd_515180_allocation)" ]]; then
-            echo "Exact evidence already materialized"
+            echo "Authoritative evidence already materialized"
             exit 0
           fi
           git config user.name "github-actions[bot]"
