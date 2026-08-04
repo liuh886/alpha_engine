@@ -1,0 +1,75 @@
+{
+  "decision": "tail_signal_supported_factor_rebuild_required",
+  "factors": {
+    "factor_model_rebuild_authorized": false,
+    "nonredundant_supported_factors": [],
+    "supported_factor_ids": [],
+    "supported_family_count": 0,
+    "supported_family_ids": []
+  },
+  "research_only": true,
+  "tail": {
+    "supporting_score_sources": [
+      {
+        "feature_family": "current_cn_ohlcv",
+        "global_neighbor_pass_count": 1,
+        "ranking_id": "r0_cn_x1_0_raw_return_rank",
+        "sector_variant_pass_count": 5,
+        "tail_source_supported": true
+      },
+      {
+        "feature_family": "current_cn_ohlcv",
+        "global_neighbor_pass_count": 1,
+        "ranking_id": "r2_industry_relative_rank",
+        "sector_variant_pass_count": 4,
+        "tail_source_supported": true
+      },
+      {
+        "feature_family": "momentum_reversal",
+        "global_neighbor_pass_count": 0,
+        "ranking_id": "r2_industry_relative_rank",
+        "sector_variant_pass_count": 2,
+        "tail_source_supported": true
+      },
+      {
+        "feature_family": "momentum_reversal",
+        "global_neighbor_pass_count": 2,
+        "ranking_id": "r4_two_stage_hierarchical_rank",
+        "sector_variant_pass_count": 2,
+        "tail_source_supported": true
+      }
+    ],
+    "tail_signal_supported": true,
+    "tail_source_support": [
+      {
+        "feature_family": "current_cn_ohlcv",
+        "global_neighbor_pass_count": 1,
+        "ranking_id": "r0_cn_x1_0_raw_return_rank",
+        "sector_variant_pass_count": 5,
+        "tail_source_supported": true
+      },
+      {
+        "feature_family": "current_cn_ohlcv",
+        "global_neighbor_pass_count": 1,
+        "ranking_id": "r2_industry_relative_rank",
+        "sector_variant_pass_count": 4,
+        "tail_source_supported": true
+      },
+      {
+        "feature_family": "momentum_reversal",
+        "global_neighbor_pass_count": 0,
+        "ranking_id": "r2_industry_relative_rank",
+        "sector_variant_pass_count": 2,
+        "tail_source_supported": true
+      },
+      {
+        "feature_family": "momentum_reversal",
+        "global_neighbor_pass_count": 2,
+        "ranking_id": "r4_two_stage_hierarchical_rank",
+        "sector_variant_pass_count": 2,
+        "tail_source_supported": true
+      }
+    ]
+  },
+  "trade_ready": false
+}

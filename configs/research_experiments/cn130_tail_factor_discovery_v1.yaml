@@ -1,0 +1,68 @@
+schema_version: '1.0'
+experiment_id: cn130_tail_factor_discovery_v1
+parent_issue: 523
+parent_experiment: cn130_cross_sectional_ranking_rotation_v1
+research_only: true
+trade_ready: false
+universe:
+  pool_id: cn_selected_equities_v3
+  declared_candidate_count: 130
+  membership_may_change: false
+benchmark: '000300'
+provider:
+  cutoff: '2026-08-03'
+  artifact_id: 8850463785
+horizon_sessions: 10
+execution_delay_sessions: 1
+rebalance_sessions: 10
+selection_windows: [2024H1, 2024H2, 2025H1, 2025H2]
+reporting_only_windows: [2026H1, 2026H2_PARTIAL]
+stage_a:
+  frozen_score_cells:
+    - [r0_cn_x1_0_raw_return_rank, current_cn_ohlcv]
+    - [r2_industry_relative_rank, current_cn_ohlcv]
+    - [r2_industry_relative_rank, momentum_reversal]
+    - [r4_two_stage_hierarchical_rank, momentum_reversal]
+  portfolio_variants:
+    - global_top3
+    - global_top5
+    - global_top8
+    - global_top10
+    - global_top15
+    - global_top5_sector_cap1
+    - global_top5_sector_cap2
+    - sector_3x1
+    - sector_4x1
+    - sector_5x1
+    - sector_3x2
+  sector_score: mean_top3_cross_sectional_score_percentile
+  costs_bps: [10, 20, 40]
+  support_gate:
+    minimum_positive_excess_windows: 3
+    minimum_relative_excess_20bps: 0.0
+    minimum_relative_excess_40bps: 0.0
+    maximum_name_absolute_contribution_share: 0.35
+    maximum_sector_absolute_contribution_share: 0.55
+    minimum_leave_one_name_relative_excess: 0.0
+    minimum_leave_one_sector_relative_excess: 0.0
+    required_supported_neighboring_variants: 2
+stage_b:
+  factor_direction_is_predeclared: true
+  select_by_portfolio_return: false
+  evaluate_global_and_sector_relative: true
+  support_gate:
+    minimum_mean_window_rank_ic: 0.015
+    minimum_positive_windows: 3
+    minimum_worst_window_rank_ic: -0.01
+    minimum_mean_incremental_rank_ic: 0.005
+    minimum_mean_top_bottom_spread: 0.0025
+    minimum_leave_one_window_mean_rank_ic: 0.005
+  family_authorization:
+    minimum_supported_families: 2
+    minimum_supported_nonredundant_factors: 4
+    maximum_pairwise_rank_correlation: 0.80
+decisions:
+  - tail_signal_not_supported_factor_rebuild_required
+  - tail_signal_supported_factor_rebuild_required
+  - factor_families_supported_model_rebuild_authorized
+  - data_blocked

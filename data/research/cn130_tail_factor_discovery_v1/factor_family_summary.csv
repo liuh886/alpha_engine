@@ -1,0 +1,17 @@
+family_id,family,mode,member_count,mean_window_rank_ic,positive_windows,worst_window_rank_ic,mean_incremental_rank_ic,mean_top_bottom_spread,minimum_leave_one_window_mean_rank_ic,support_gate_pass
+liquidity__global,liquidity,global,2,0.01161849258,1,-0.0361437076,0.006225584728,-0.002355102697,-0.01468521832,False
+risk_quality__sector_relative,risk_quality,sector_relative,7,0.01114290059,2,-0.07941013545,0.01271836053,-0.01004267578,-0.009912563772,False
+short_reversal__global,short_reversal,global,3,0.008624685954,2,-0.04686378486,0.002586711103,-0.0008447473443,-0.01052467024,False
+liquidity__sector_relative,liquidity,sector_relative,2,0.005039378701,1,-0.02595481263,3.519201803e-05,-0.002992370703,-0.01720739669,False
+short_reversal__sector_relative,short_reversal,sector_relative,3,0.004906753531,2,-0.02447482996,-0.0007053606267,-0.000945569118,-0.005178285745,False
+breakout_position__sector_relative,breakout_position,sector_relative,5,0.001707222603,2,-0.0556562668,0.01347017751,0.002990148617,-0.02501821321,False
+drawdown_recovery__sector_relative,drawdown_recovery,sector_relative,4,0.0002171589504,2,-0.07172264084,0.009368026928,0.002836988117,-0.02803004005,False
+trend_momentum__sector_relative,trend_momentum,sector_relative,9,-0.001364248735,2,-0.07024284748,0.006833609894,0.002883709511,-0.02671495366,False
+risk_quality__global,risk_quality,global,7,-0.003961749,2,-0.1410306661,-0.004312833905,-0.01289715232,-0.03544897865,False
+relative_strength__sector_relative,relative_strength,sector_relative,2,-0.004724484356,2,-0.0578880837,0.005609848994,0.004376904001,-0.02765310348,False
+breakout_position__global,breakout_position,global,5,-0.005069793313,2,-0.08181803278,0.00986421243,0.002869219385,-0.03060589347,False
+trend_momentum__global,trend_momentum,global,9,-0.005857659757,2,-0.1058243358,0.004223662007,0.004546125187,-0.02985768476,False
+volume_price__global,volume_price,global,5,-0.007690689964,2,-0.03011561287,-0.006155869208,0.002240365347,-0.01664905506,False
+drawdown_recovery__global,drawdown_recovery,global,4,-0.009311972503,2,-0.1060476657,0.002253913206,0.002136657336,-0.03531616405,False
+volume_price__sector_relative,volume_price,sector_relative,5,-0.01155288967,2,-0.03748706596,-0.01025363471,0.000443004304,-0.02008443641,False
+relative_strength__global,relative_strength,global,2,-0.01368633078,2,-0.09113717286,-0.00186701884,0.002881481131,-0.03486664551,False
