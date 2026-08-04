@@ -1,0 +1,249 @@
+schema_version: '1.0'
+experiment_id: cn130_cross_sectional_ranking_rotation_v1
+issue: 509
+parent_model_id: cn_x1_0
+research_only: true
+trade_ready: false
+
+objective:
+  primary: validate stable 10-session cross-sectional ranking before portfolio rotation
+  pool_size_change_allowed: false
+  model_and_portfolio_may_be_selected_together: false
+  automatic_model_update: false
+
+universe:
+  pool_id: cn_selected_equities_v3
+  pool_config: configs/research_universes/cn_selected_equities_v3.yaml
+  declared_candidate_count: 130
+  membership_may_change: false
+  benchmark: '000300'
+  benchmark_candidate_eligible: false
+
+snapshot:
+  policy: immutable_manifest_required_before_execution
+  provider_identity_sha256: bind_before_execution
+  provider_cutoff: bind_before_execution
+  pool_hash: bind_before_execution
+  calendar_identity: bind_before_execution
+  adjustment_identity: bind_before_execution
+  factor_panel_identity: bind_before_execution
+  provider_drift_issue: 345
+  snapshot_independent_claim_allowed: false
+  execution_blocked_until_all_identities_bound: true
+
+fixed_economics:
+  forward_horizon_sessions: 10
+  holding_sessions: 10
+  rebalance_sessions: 10
+  execution_time: next_valid_trading_session
+  base_cost_bps: 20
+  cost_stress_bps:
+    - 10
+    - 20
+    - 40
+  shorting_allowed: false
+  leverage_allowed: false
+  cash_allowed: true
+
+windows:
+  development_selection:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+  consumed_reporting_only:
+    - 2026H1
+  prospective_reporting_only:
+    - 2026H2
+  consumed_or_prospective_windows_may_enter_selection: false
+
+metadata_gate:
+  required_security_fields:
+    - sector_level_1
+    - sector_level_2_or_economic_basket
+    - log_market_cap
+    - beta_60
+    - beta_120
+    - realized_volatility_20
+    - realized_volatility_60
+    - liquidity_bucket
+    - lifecycle_status
+    - tradability_status
+  taxonomy_may_change_after_performance: false
+  metadata_may_remove_candidates: false
+
+ranking_stage:
+  selection_metric_priority:
+    - rank_ic_consistency
+    - rank_icir
+    - top_bottom_spread_consistency
+    - score_rank_stability
+    - leave_one_sector_out_stability
+    - exposure_independence
+    - economic_return_tiebreaker_only
+  portfolio_return_primary_for_ranking_selection: false
+
+  candidates:
+    - ranking_id: r0_cn_x1_0_raw_return_rank
+      label: processed_daily_cross_sectional_percentile_gain
+      label_economics: raw_forward_10d_return
+      normalization: global_cross_section
+      feature_family: cn_balanced_ohlcv
+      model_family: xgb_rank_ndcg
+
+    - ranking_id: r1_benchmark_relative_rank
+      label: forward_10d_return_minus_csi300_forward_10d_return
+      normalization: global_cross_section
+      feature_family: governed_family_ladder
+      model_family: xgb_rank_ndcg
+
+    - ranking_id: r2_industry_relative_rank
+      label: forward_10d_return_minus_same_date_sector_median
+      normalization: within_sector_then_global_comparable_percentile
+      feature_family: governed_family_ladder
+      model_family: xgb_rank_ndcg
+
+    - ranking_id: r3_risk_residual_rank
+      label: point_in_time_residual_forward_10d_return
+      residual_controls:
+        - sector_level_1
+        - log_market_cap
+        - beta_60
+        - realized_volatility_20
+      normalization: global_cross_section
+      feature_family: governed_family_ladder
+      model_family: xgb_rank_ndcg
+
+    - ranking_id: r4_two_stage_hierarchical_rank
+      label: benchmark_or_industry_relative_forward_10d_return
+      sector_score_weight: 0.35
+      within_sector_security_score_weight: 0.65
+      weights_may_change_after_results: false
+      model_family: xgb_rank_ndcg
+
+  governed_family_ladder:
+    - current_cn_ohlcv
+    - readiness_passed_alpha158_families
+    - pit_fundamental_family_only_after_coverage_gate
+  arbitrary_individual_factor_search_allowed: false
+  feature_family_ablation_required: true
+
+ranking_support_gate:
+  require_all:
+    - mean_oos_rank_ic_positive
+    - positive_top_bottom_spread_window_ratio_at_least_0_60
+    - strongest_positive_window_share_below_0_50
+    - leave_one_sector_out_direction_stable
+    - no_single_sector_or_small_name_set_dominates
+    - seed_and_block_bootstrap_rank_stability_acceptable
+    - alpha_not_explained_only_by_beta_or_volatility
+  failure_decision: cn130_cross_sectional_ranking_not_supported
+
+rotation_stage:
+  starts_only_after_frozen_ranking_decision: true
+  ranking_rule_may_change_during_rotation_comparison: false
+
+  variants:
+    - portfolio_id: p0_top15_equal_weight
+      top_k: 15
+      weighting: equal_weight
+      sector_cap: null
+      rank_buffer: 0
+      gross_exposure_states:
+        strong: 1.0
+
+    - portfolio_id: p1_topk_breadth
+      top_k_grid:
+        - 5
+        - 8
+        - 10
+        - 15
+      selection_must_use_multimetric_gate: true
+
+    - portfolio_id: p2_sector_capped_global_rank
+      top_k: bind_from_p1_without_reopening_ranking
+      maximum_sector_weight: 0.25
+      maximum_economic_basket_weight: 0.20
+      maximum_names_per_sector: 3
+
+    - portfolio_id: p3_hierarchical_sector_rotation
+      maximum_selected_sectors: 3
+      selected_names_per_sector: fixed_before_execution
+      forced_selection: false
+      cash_when_no_sector_passes: true
+
+    - portfolio_id: p4_rank_buffered_rotation
+      top_k: bind_from_p1_without_reopening_ranking
+      exit_rank_buffer: 5
+      per_security_threshold_search_allowed: false
+
+    - portfolio_id: p5_confidence_scaled_exposure
+      exposure_states:
+        weak: 0.0
+        medium: 0.5
+        strong: 1.0
+      confidence_inputs:
+        - predicted_top_bottom_separation
+        - score_dispersion
+        - eligible_breadth
+        - rank_stability
+      thresholds_must_be_preregistered_before_execution: true
+
+required_ledgers:
+  per_rebalance:
+    - date
+    - instrument
+    - score
+    - cross_sectional_rank
+    - realized_forward_10d_return
+    - benchmark_relative_return
+    - sector_relative_return
+    - sector_level_1
+    - sector_level_2_or_economic_basket
+    - log_market_cap
+    - beta_60
+    - realized_volatility_20
+    - liquidity_bucket
+    - lifecycle_status
+    - tradability_status
+    - selected
+    - target_weight
+    - gross_contribution
+    - cost_contribution
+    - net_contribution
+  required_attribution:
+    - sector_allocation
+    - within_sector_selection
+    - market_beta
+    - size_exposure
+    - volatility_exposure
+    - timing_and_cash
+    - turnover_reduction
+    - top_1_5_10_security_contribution_share
+    - leave_one_sector_out
+    - leave_one_security_out
+    - leave_one_window_out
+
+rotation_support_gate:
+  require_all:
+    - improves_interpretably_vs_csi300_and_cn130_equal_weight
+    - multiple_windows_positive
+    - max_drawdown_not_worse_than_cn_x1_0
+    - single_sector_positive_excess_share_below_0_35
+    - top_five_security_positive_excess_share_below_0_50
+    - twenty_and_forty_bps_direction_stable
+    - neighboring_topk_direction_stable
+    - leave_one_sector_out_positive
+  supported_decision: cn_x1_1_candidate_supported
+  alternative_decisions:
+    - cn130_ranking_supported_rotation_not_supported
+    - cn130_cross_sectional_ranking_not_supported
+    - data_blocked
+
+stop_rules:
+  - no_pool_membership_change
+  - no_post_result_taxonomy_change
+  - no_model_and_portfolio_joint_search
+  - no_portfolio_return_override_of_negative_rank_evidence
+  - no_reuse_of_2026h1_or_2026h2_for_selection
+  - no_automatic_promotion
