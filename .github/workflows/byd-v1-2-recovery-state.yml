@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - "data/research/byd_canonical_v1_snapshot.tar.xz"
       - "src/research/byd_v1_2_recovery_state.py"
       - "scripts/run_byd_v1_2_recovery_state.py"
       - "configs/research_paradigms/byd_v1_2_recovery_state.yaml"
@@ -13,6 +14,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "data/research/byd_canonical_v1_snapshot.tar.xz"
       - "src/research/byd_v1_2_recovery_state.py"
       - "scripts/run_byd_v1_2_recovery_state.py"
       - "configs/research_paradigms/byd_v1_2_recovery_state.yaml"
@@ -22,7 +24,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   contract-tests:
@@ -55,6 +57,42 @@ jobs:
     needs: contract-tests
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          fetch-depth: 0
+      - name: Materialize immutable canonical snapshot once
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          snapshot="data/research/byd_canonical_v1_snapshot.tar.xz"
+          expected_archive_sha="0ed3203dca68aa3277efe48f5cce63536073a0eaa7cd08b537adfcc0dae40688"
+          if [[ ! -f "$snapshot" ]]; then
+            mkdir -p /tmp/byd-sealed data/research
+            curl --fail --location \
+              --header "Authorization: Bearer ${GH_TOKEN}" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/8882573557/zip" \
+              --output /tmp/byd-sealed.zip
+            unzip -q /tmp/byd-sealed.zip -d /tmp/byd-sealed
+            root="/tmp/byd-sealed/data/byd_canonical_v1"
+            test "$(jq -r .schema_version "$root/manifest.json")" = "byd_canonical_adjusted_ohlcv_v1"
+            test "$(jq -r .adjusted_sha256 "$root/manifest.json")" = "0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960"
+            test "$(jq -r .manifest_sha256 "$root/manifest.json")" = "06202b594b036b0c815e4ffb46e9f3d14ba647d699aad0fd927f1665142a363e"
+            tar --sort=name --mtime='UTC 1970-01-01' \
+              --owner=0 --group=0 --numeric-owner \
+              -C "$root" -cJf "$snapshot" \
+              adjusted_ohlcv.csv session_audit.csv manifest.json \
+              quarantined_open_dates.csv
+            echo "${expected_archive_sha}  ${snapshot}" | sha256sum --check --strict
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$snapshot"
+            git commit -m "data: pin immutable BYD canonical v1 snapshot"
+            git push origin "HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}"
+          else
+            echo "${expected_archive_sha}  ${snapshot}" | sha256sum --check --strict
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -63,25 +101,12 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen
-      - name: Rebuild governed canonical BYD data
-        run: >-
-          uv run python scripts/data/build_byd_canonical_bundle.py
-          --start 2011-06-30
-          --cutoff 2026-08-03
-          --output-dir artifacts/data/byd_canonical_v1
-      - name: Finalize factor-event and volume semantics
-        run: >-
-          uv run python scripts/data/finalize_byd_canonical_evidence.py
-          --canonical-dir artifacts/data/byd_canonical_v1
-      - name: Require independent unadjusted audit
-        run: >-
-          uv run python scripts/data/audit_byd_secondary_raw.py
-          --canonical-dir artifacts/data/byd_canonical_v1
-          --retries 1
-      - name: Seal canonical manifest
-        run: >-
-          uv run python scripts/data/seal_byd_canonical_manifest.py
-          --canonical-dir artifacts/data/byd_canonical_v1
+      - name: Extract immutable canonical snapshot
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/data/byd_canonical_v1
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz \
+            -C artifacts/data/byd_canonical_v1
       - name: Run frozen V1.2 research
         run: >-
           uv run python scripts/run_byd_v1_2_recovery_state.py
@@ -94,6 +119,7 @@ jobs:
         with:
           name: byd-v1-2-recovery-state-evidence
           path: |
+            data/research/byd_canonical_v1_snapshot.tar.xz
             artifacts/data/byd_canonical_v1/manifest.json
             artifacts/data/byd_canonical_v1/quarantined_open_dates.csv
             artifacts/research/byd_v1_2_recovery_state
