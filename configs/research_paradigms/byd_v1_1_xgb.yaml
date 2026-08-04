@@ -1,0 +1,141 @@
+schema_version: "1.0"
+experiment_id: byd_v1_1_xgb_momentum
+parent_issue: 503
+status: frozen_research_contract
+research_only: true
+trade_ready: false
+
+purpose: >-
+  Test whether a time-series XGBoost regressor using pre-registered momentum
+  features can beat both BYD buy-and-hold and the BYD V1.0 rule baseline after
+  next-open execution and explicit transaction costs.
+
+instrument:
+  canonical_id: CN.002594
+  ticker: 002594.SZ
+  provider_symbol: "002594"
+  name: 比亚迪
+  market: cn
+  currency: CNY
+
+benchmark_context:
+  canonical_id: CSI300
+  provider_symbol: "000300"
+  yahoo_symbol: 000300.SS
+  optional_for_run: true
+  missing_policy: disable_relative_features_and_record_reason
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  target: open_t_plus_11_div_open_t_plus_1_minus_1
+  target_horizon_sessions: 10
+  decision_step_sessions: 10
+  refit_step_sessions: 20
+  same_close_execution_forbidden: true
+  random_split_forbidden: true
+  future_fill_forbidden: true
+  post_result_feature_addition_forbidden: true
+  post_result_parameter_change_forbidden: true
+
+data:
+  history_start: "2010-01-01"
+  cutoff: "2026-08-03"
+  provider_policy:
+    selection: first_complete_single_provider
+    ordered_providers: [baostock, akshare, yfinance]
+    attempts_per_provider: 2
+    retry_delay_seconds: 2
+    forbid_cross_provider_stitching: true
+    record_all_attempts: true
+  require_exact_cutoff: true
+  forbid_forward_fill: true
+  forbid_cross_provider_stitching: true
+  forbid_mixed_adjustment: true
+  require_manifest_sha256: true
+
+windows:
+  development_start: "2012-01-01"
+  development_end: "2022-12-31"
+  oos_prediction_start: "2016-01-01"
+  validation_start: "2023-01-01"
+  validation_end: "2024-12-31"
+  retrospective_holdout_start: "2025-01-01"
+  retrospective_holdout_end: "2026-08-03"
+
+xgboost:
+  objective: reg:squarederror
+  tree_method: hist
+  max_depth: 3
+  min_child_weight: 20.0
+  learning_rate: 0.03
+  subsample: 0.80
+  colsample_bytree: 0.80
+  reg_alpha: 1.0
+  reg_lambda: 10.0
+  num_boost_round: 300
+  seed: 42
+  decision_step_sessions: 10
+  refit_step_sessions: 20
+  label_horizon_sessions: 10
+  minimum_training_samples: 756
+
+position_mappings:
+  xgb_binary_0_100:
+    positive_prediction: 1.00
+    nonpositive_prediction: 0.00
+  xgb_core75_100:
+    positive_prediction: 1.00
+    nonpositive_prediction: 0.75
+  xgb_four_state:
+    prediction_at_or_above_2pct: 1.00
+    prediction_0_to_2pct: 0.75
+    prediction_minus_2_to_0pct: 0.50
+    prediction_at_or_below_minus_2pct: 0.00
+
+costs:
+  primary_bps_per_turnover_unit: 20
+  stress_bps_per_turnover_unit: [20, 40]
+  cash_return_assumption: 0.0
+
+fixed_baselines:
+  - buy_hold_byd
+  - byd_v1_rule_core75_regime_mom_120
+  - best_development_single_momentum_factor
+  - constant_75pct_byd
+
+validation_gates:
+  cagr_above_buy_hold: true
+  cagr_above_v1_rule: true
+  total_return_above_buy_hold: true
+  total_return_above_v1_rule: true
+  maximum_drawdown_disadvantage_vs_buy_hold_percentage_points: 3
+  calmar_not_below_v1_rule: true
+  stress_40_total_return_above_v1_rule: true
+  maximum_positive_quarter_contribution_share: 0.60
+  prediction_spearman_must_be_positive: true
+  maximum_single_feature_mean_gain_share: 0.40
+  minimum_oos_years_direction_hit_rate_above_50pct: 3
+
+retrospective_holdout_gates:
+  total_return_must_be_positive: true
+  cagr_not_below_v1_rule: true
+  total_return_not_below_v1_rule: true
+  maximum_drawdown_disadvantage_vs_buy_hold_percentage_points: 3
+  stress_40_total_return_must_be_positive: true
+
+outputs:
+  required:
+    - summary.json
+    - report.md
+    - factor_diagnostics.csv
+    - factor_correlation.csv
+    - predictions.csv
+    - fit_manifest.csv
+    - feature_importance.csv
+    - aggregate_feature_importance.csv
+    - candidate_summary.csv
+    - byd_ohlcv.csv
+  selected_candidate_only:
+    - selected_daily.csv
+    - selected_trades.csv
