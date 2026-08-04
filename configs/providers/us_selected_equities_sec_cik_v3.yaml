@@ -104,9 +104,10 @@ symbols:
 declared_exceptions:
   SBGSY:
     entity: "Schneider Electric SE unsponsored ADR"
+    entity_id: "SELECTED_POOL_ENTITY:SCHNEIDER_ELECTRIC_SE"
     status: "no_sec_registrant_companyfacts"
     evidence: "SEC filing disclosure states Schneider Electric SE is not Exchange Act registered"
-    handling: "retain candidate; emit explicit identity_missing for SEC Companyfacts only"
+    handling: "retain candidate; block SEC Companyfacts only and keep corporate-action adapters independent"
 
 governance:
   exact_pool_coverage_required: true

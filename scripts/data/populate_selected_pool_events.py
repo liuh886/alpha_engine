@@ -74,7 +74,11 @@ def _sec_mapping(
             title = ""
         if len(cik) != 10 or not cik.isdigit():
             raise ValueError(f"invalid reviewed CIK for {normalized_symbol}")
-        mapping[normalized_symbol] = {"cik": cik, "title": title}
+        mapping[normalized_symbol] = {
+            "cik": cik,
+            "title": title,
+            "entity_id": f"CIK{cik}",
+        }
     expected = set(symbols)
     if not set(mapping).issubset(expected):
         raise ValueError("SEC identity mapping contains symbols outside selected pool")
@@ -83,6 +87,21 @@ def _sec_mapping(
     }
     if expected - set(mapping) != declared_missing:
         raise ValueError("SEC identity mapping missing-symbol declaration is stale")
+    exceptions = payload.get("declared_exceptions", {})
+    if not isinstance(exceptions, dict):
+        raise ValueError("SEC identity mapping exceptions must be a mapping")
+    for symbol in declared_missing:
+        exception = exceptions.get(symbol)
+        if not isinstance(exception, dict):
+            raise ValueError(f"missing SEC identity exception for {symbol}")
+        entity_id = str(exception.get("entity_id", "")).strip()
+        if not entity_id:
+            raise ValueError(f"missing non-SEC entity_id for {symbol}")
+        mapping[symbol] = {
+            "cik": "",
+            "title": str(exception.get("entity", "")).strip(),
+            "entity_id": entity_id,
+        }
     return mapping
 
 
@@ -117,47 +136,48 @@ def _populate_us(
     fundamentals: dict[str, SymbolPopulation] = {}
     actions: dict[str, SymbolPopulation] = {}
     for symbol in symbols:
-        identity = mapping.get(symbol)
-        if identity is None:
-            fundamentals[symbol] = SymbolPopulation(
-                symbol, "identity_missing", [], ["sec_companyfacts"], "ticker-to-CIK missing"
-            )
-            actions[symbol] = SymbolPopulation(
-                symbol, "identity_missing", [], ["yfinance_actions"], "ticker-to-CIK missing"
-            )
-            continue
+        identity = mapping[symbol]
         cik = identity["cik"]
-        try:
-            payload = sec.fetch_companyfacts(cik)
-            events = companyfacts_to_events(
-                payload,
-                symbol=symbol,
-                cik=cik,
-                exchange="US",
-                field_map=field_map,
-                retrieved_at=retrieved_at,
-            )
+        if not cik:
             fundamentals[symbol] = SymbolPopulation(
                 symbol,
-                "ready" if events else "partial",
-                events,
-                ["sec_companyfacts"],
-            )
-        except Exception as exc:
-            fundamentals[symbol] = SymbolPopulation(
-                symbol,
-                "provider_missing",
+                "identity_missing",
                 [],
                 ["sec_companyfacts"],
-                f"{type(exc).__name__}: {exc}",
+                "SEC registrant CIK is not applicable or unavailable",
             )
+        else:
+            try:
+                payload = sec.fetch_companyfacts(cik)
+                events = companyfacts_to_events(
+                    payload,
+                    symbol=symbol,
+                    cik=cik,
+                    exchange="US",
+                    field_map=field_map,
+                    retrieved_at=retrieved_at,
+                )
+                fundamentals[symbol] = SymbolPopulation(
+                    symbol,
+                    "ready" if events else "partial",
+                    events,
+                    ["sec_companyfacts"],
+                )
+            except Exception as exc:
+                fundamentals[symbol] = SymbolPopulation(
+                    symbol,
+                    "provider_missing",
+                    [],
+                    ["sec_companyfacts"],
+                    f"{type(exc).__name__}: {exc}",
+                )
         try:
             frame = fetch_yfinance_actions(symbol)
             events = yfinance_actions_to_corporate_actions(
                 frame,
                 symbol=symbol,
                 exchange="US",
-                entity_id=f"CIK{cik}",
+                entity_id=identity["entity_id"],
                 retrieved_at=retrieved_at,
             )
             actions[symbol] = SymbolPopulation(
