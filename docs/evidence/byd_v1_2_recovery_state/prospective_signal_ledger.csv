@@ -1,0 +1,2 @@
+model_id,canonical_adjusted_sha256,signal_date,prospective_start_date,execution_date,target_position,drawdown_252,mom_120,distance_from_low_20,momentum_accel_20_60,open_return_autocorr_20,status,realized_return
+byd_v1_2_recovery_state,0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960,2026-08-03,2026-08-04,,1.000000000000,-0.168833974681,0.043049845020,0.099035386140,0.135127059296,-0.177731829757,model_rejected_no_prospective_promotion,
