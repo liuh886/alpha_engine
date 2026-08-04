@@ -54,6 +54,7 @@ def derive_adjusted_vwap(
     volume_unit: str,
     amount_unit: str,
     envelope_tolerance: float = 1e-6,
+    price_tick_size: float = 0.01,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Align raw/qfq bars and derive adjusted VWAP from reported turnover.
 
@@ -71,6 +72,8 @@ def derive_adjusted_vwap(
             f"{symbol}: canonical units must be shares and CNY, got "
             f"volume={volume_unit}, amount={amount_unit}"
         )
+    if not np.isfinite(price_tick_size) or price_tick_size <= 0:
+        raise CanonicalVwapError(f"{symbol}: price_tick_size must be positive")
     raw = _normalise(raw_frame, label=f"{symbol} raw")
     adjusted = _normalise(adjusted_frame, label=f"{symbol} adjusted")
     if "amount" not in raw.columns:
@@ -128,14 +131,25 @@ def derive_adjusted_vwap(
     if not np.isfinite(adjusted_vwap).all() or (adjusted_vwap <= 0).any():
         raise CanonicalVwapError(f"{symbol}: adjusted VWAP is invalid")
 
-    tolerance = np.maximum(merged["close"].abs() * envelope_tolerance, 1e-8)
-    below = adjusted_vwap < (merged["low"] - tolerance)
-    above = adjusted_vwap > (merged["high"] + tolerance)
+    relative_tolerance = np.maximum(
+        merged["close"].abs() * envelope_tolerance, 1e-8
+    )
+    below_distance = (merged["low"] - adjusted_vwap).clip(lower=0.0)
+    above_distance = (adjusted_vwap - merged["high"]).clip(lower=0.0)
+    envelope_distance = np.maximum(below_distance, above_distance)
+    strict_violations = envelope_distance > relative_tolerance
+    # Sina publishes adjusted OHLC to two decimals while turnover and volume retain
+    # materially higher precision. Half a tick is the maximum nearest-tick error.
+    rounding_tolerance = np.maximum(relative_tolerance, price_tick_size / 2.0)
+    below = adjusted_vwap < (merged["low"] - rounding_tolerance)
+    above = adjusted_vwap > (merged["high"] + rounding_tolerance)
     envelope_violations = int((below | above).sum())
     if envelope_violations:
+        max_distance = float(envelope_distance[below | above].max())
         raise CanonicalVwapError(
             f"{symbol}: adjusted VWAP violates adjusted OHLC envelope on "
-            f"{envelope_violations} sessions"
+            f"{envelope_violations} sessions; max_distance={max_distance:.8f}, "
+            f"half_tick={price_tick_size / 2.0:.8f}"
         )
 
     result = merged[["date", "open", "high", "low", "close"]].copy()
@@ -156,6 +170,10 @@ def derive_adjusted_vwap(
         "amount_is_reported": True,
         "raw_adjusted_volume_exact_match": True,
         "envelope_violations": 0,
+        "rounded_envelope_tolerance_sessions": int(strict_violations.sum()),
+        "max_envelope_rounding_distance": float(envelope_distance.max()),
+        "price_tick_size": float(price_tick_size),
+        "maximum_rounding_tolerance": float(price_tick_size / 2.0),
         "adjustment_ratio_min": float(adjustment_ratio.min()),
         "adjustment_ratio_max": float(adjustment_ratio.max()),
         "research_only": True,

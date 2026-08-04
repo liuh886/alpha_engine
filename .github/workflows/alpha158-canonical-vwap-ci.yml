@@ -7,11 +7,14 @@ on:
       - ".github/workflows/alpha158-canonical-vwap-ci.yml"
       - "configs/data/alpha158_panel_v1.yaml"
       - "configs/data_contracts/model_data_bundle_v1.yaml"
+      - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
       - "src/data/canonical_vwap.py"
       - "src/factors/panel.py"
+      - "src/factors/governance.py"
       - "scripts/data/build_canonical_vwap_provider.py"
       - "tests/test_canonical_vwap.py"
       - "tests/test_alpha158_panel.py"
+      - "tests/test_factor_governance.py"
       - "docs/research/alpha158_canonical_vwap_execution_2026-08-02.md"
   push:
     branches: [main]
@@ -19,8 +22,10 @@ on:
       - ".github/workflows/alpha158-canonical-vwap-ci.yml"
       - "configs/data/alpha158_panel_v1.yaml"
       - "configs/data_contracts/model_data_bundle_v1.yaml"
+      - "configs/factor_knowledge/historical_factor_cards_v1.yaml"
       - "src/data/canonical_vwap.py"
       - "src/factors/panel.py"
+      - "src/factors/governance.py"
       - "scripts/data/build_canonical_vwap_provider.py"
   schedule:
     - cron: "41 7 2 * *"
@@ -57,9 +62,11 @@ jobs:
         run: >-
           uv run ruff check
           src/data/canonical_vwap.py
+          src/factors/governance.py
           scripts/data/build_canonical_vwap_provider.py
           tests/test_canonical_vwap.py
           tests/test_alpha158_panel.py
+          tests/test_factor_governance.py
       - name: Type-check canonical VWAP paths
         run: >-
           uv run mypy --follow-imports=skip
@@ -70,6 +77,7 @@ jobs:
           uv run pytest
           tests/test_canonical_vwap.py
           tests/test_alpha158_panel.py
+          tests/test_factor_governance.py
           tests/test_model_data_bundle.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: Verify US remains honestly blocked
@@ -106,6 +114,16 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
+      - name: Restore exact-cutoff CN source pairs
+        id: vwap-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            artifacts/data/canonical_vwap/cn/raw
+            artifacts/data/canonical_vwap/cn/qfq
+            artifacts/data/canonical_vwap/cn/cache_metadata
+          key: >-
+            ${{ runner.os }}-alpha158-vwap-cn-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}
       - name: Build exact CN130 canonical VWAP provider and Alpha158 panels
         run: >-
           uv run python scripts/data/build_canonical_vwap_provider.py
@@ -113,6 +131,15 @@ jobs:
           --start 2021-01-01
           --cutoff "${{ inputs.cutoff || '2026-07-31' }}"
           --output-root artifacts/data/canonical_vwap/cn
+      - name: Save exact-cutoff CN source pairs
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            artifacts/data/canonical_vwap/cn/raw
+            artifacts/data/canonical_vwap/cn/qfq
+            artifacts/data/canonical_vwap/cn/cache_metadata
+          key: ${{ steps.vwap-cache.outputs.cache-primary-key }}
       - name: Print readiness decision
         if: always()
         run: |

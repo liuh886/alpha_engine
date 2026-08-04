@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -28,7 +27,6 @@ from src.data.fundamentals.ashare_public_financials import (
 from src.data.fundamentals.sec_companyfacts import (
     SecCompanyFactsClient,
     companyfacts_to_events,
-    resolve_sec_user_agent,
 )
 from src.data.model_data_bundle import ComponentSpec, build_model_data_bundle
 from src.data.selected_pool_event_population import (
@@ -36,7 +34,6 @@ from src.data.selected_pool_event_population import (
     build_selected_pool_event_artifacts,
 )
 
-SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 STATEMENTS = ("资产负债表", "利润表", "现金流量表")
 
 
@@ -55,25 +52,38 @@ def _symbols(pool: dict[str, Any]) -> list[str]:
     return values
 
 
-def _sec_mapping(symbols: list[str]) -> dict[str, dict[str, str]]:
-    request = urllib.request.Request(
-        SEC_TICKERS_URL,
-        headers={
-            "Accept": "application/json",
-            "User-Agent": resolve_sec_user_agent(),
-        },
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.loads(response.read().decode("utf-8"))
-    lookup = {
-        str(row["ticker"]).strip().upper(): {
-            "cik": str(int(row["cik_str"])).zfill(10),
-            "title": str(row.get("title", "")).strip(),
-        }
-        for row in payload.values()
-        if isinstance(row, dict) and row.get("ticker") and row.get("cik_str") is not None
+def _sec_mapping(
+    symbols: list[str], identity_mapping_path: Path
+) -> dict[str, dict[str, str]]:
+    """Load the reviewed SEC identity contract without runtime ticker discovery."""
+
+    payload = _load_yaml(identity_mapping_path)
+    if str(payload.get("pool_id", "")) != "us_selected_equities_v2":
+        raise ValueError("SEC identity mapping pool_id mismatch")
+    rows = payload.get("symbols")
+    if not isinstance(rows, dict):
+        raise ValueError("SEC identity mapping symbols must be a mapping")
+    mapping: dict[str, dict[str, str]] = {}
+    for symbol, row in rows.items():
+        normalized_symbol = str(symbol).strip().upper()
+        if isinstance(row, dict):
+            cik = str(row.get("cik", "")).strip()
+            title = str(row.get("title", "")).strip()
+        else:
+            cik = str(row).strip()
+            title = ""
+        if len(cik) != 10 or not cik.isdigit():
+            raise ValueError(f"invalid reviewed CIK for {normalized_symbol}")
+        mapping[normalized_symbol] = {"cik": cik, "title": title}
+    expected = set(symbols)
+    if not set(mapping).issubset(expected):
+        raise ValueError("SEC identity mapping contains symbols outside selected pool")
+    declared_missing = {
+        str(value).strip().upper() for value in payload.get("missing_symbols", [])
     }
-    return {symbol: lookup[symbol] for symbol in symbols if symbol in lookup}
+    if expected - set(mapping) != declared_missing:
+        raise ValueError("SEC identity mapping missing-symbol declaration is stale")
+    return mapping
 
 
 def _cn_exchange(symbol: str) -> str:
@@ -99,8 +109,10 @@ def _populate_us(
     symbols: list[str],
     field_map: dict[str, Any],
     retrieved_at: str,
+    *,
+    identity_mapping_path: Path,
 ) -> tuple[dict[str, SymbolPopulation], dict[str, SymbolPopulation]]:
-    mapping = _sec_mapping(symbols)
+    mapping = _sec_mapping(symbols, identity_mapping_path)
     sec = SecCompanyFactsClient()
     fundamentals: dict[str, SymbolPopulation] = {}
     actions: dict[str, SymbolPopulation] = {}
@@ -279,6 +291,7 @@ def main() -> int:
             symbols,
             contract["fundamental_fields"]["us"],
             retrieved_at,
+            identity_mapping_path=Path(str(market_contract["identity_mapping"])),
         )
     else:
         fundamentals, actions = _populate_cn(

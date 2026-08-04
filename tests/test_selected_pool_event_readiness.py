@@ -14,7 +14,7 @@ from src.data.selected_pool_event_population import (
 )
 
 
-def _fundamental(symbol: str):
+def _fundamental(symbol: str, *, available_at: str = "2026-02-02T00:00:00+00:00"):
     return normalize_event_record(
         {
             "market": "us",
@@ -25,7 +25,7 @@ def _fundamental(symbol: str):
             "fiscal_year": 2025,
             "fiscal_period": "FY",
             "reported_at": "2026-02-01T00:00:00+00:00",
-            "available_at": "2026-02-02T00:00:00+00:00",
+            "available_at": available_at,
             "filing_type": "10-K",
             "source_provider": "sec_companyfacts",
             "source_document_id": f"filing:{symbol}",
@@ -45,7 +45,12 @@ def _fundamental(symbol: str):
     )
 
 
-def _action(symbol: str):
+def _action(
+    symbol: str,
+    *,
+    announced_at: str = "2026-03-01T00:00:00+00:00",
+    effective_date: str = "2026-03-05",
+):
     return normalize_corporate_action(
         {
             "market": "us",
@@ -53,11 +58,11 @@ def _action(symbol: str):
             "exchange": "US",
             "entity_id": f"CIK:{symbol}",
             "event_type": "cash_dividend",
-            "announced_at": "2026-03-01T00:00:00+00:00",
-            "ex_date": "2026-03-05",
+            "announced_at": announced_at,
+            "ex_date": effective_date,
             "record_date": "",
             "pay_date": "",
-            "effective_date": "2026-03-05",
+            "effective_date": effective_date,
             "cash_amount": 0.5,
             "currency": "USD",
             "split_ratio": None,
@@ -129,3 +134,66 @@ def test_fails_when_any_selected_symbol_has_no_explicit_status(tmp_path: Path) -
             evidence_cutoff="2026-07-31",
             output_root=tmp_path,
         )
+
+
+def test_filters_events_by_knowledge_date_without_dropping_preannounced_action(
+    tmp_path: Path,
+) -> None:
+    fundamentals = {
+        "AAA": SymbolPopulation(
+            "AAA",
+            "ready",
+            [_fundamental("AAA", available_at="2026-08-01T00:00:00+00:00")],
+            ["sec_companyfacts"],
+        )
+    }
+    actions = {
+        "AAA": SymbolPopulation(
+            "AAA",
+            "ready",
+            [
+                _action(
+                    "AAA",
+                    announced_at="2026-07-24T00:00:00+00:00",
+                    effective_date="2026-08-03",
+                ),
+                _action(
+                    "AAA",
+                    announced_at="2026-08-01T00:00:00+00:00",
+                    effective_date="2026-08-07",
+                ),
+            ],
+            ["yfinance_actions"],
+        )
+    }
+    manifest = build_selected_pool_event_artifacts(
+        market="us",
+        pool_id="fixture_pool",
+        symbols=["AAA"],
+        fundamentals=fundamentals,
+        corporate_actions=actions,
+        evidence_cutoff="2026-07-31",
+        output_root=tmp_path,
+    )
+
+    assert manifest["cutoff_filter"] == {
+        "availability_policy": (
+            "fundamentals.available_at; corporate_actions.announced_at_or_effective_date"
+        ),
+        "fundamental_events_excluded": 1,
+        "corporate_action_events_excluded": 1,
+    }
+    assert (tmp_path / "fundamentals/events.jsonl").read_text() == ""
+    action_rows = [
+        json.loads(line)
+        for line in (tmp_path / "corporate_actions/events.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert [row["effective_date"] for row in action_rows] == ["2026-08-03"]
+    coverage = json.loads(
+        (tmp_path / "corporate_actions/coverage.json").read_text(encoding="utf-8")
+    )
+    assert coverage[0]["latest_event_date"] == "2026-07-24"
+    assert coverage[0]["latest_effective_date"] == "2026-08-03"
+    assert coverage[0]["excluded_after_cutoff"] == 1

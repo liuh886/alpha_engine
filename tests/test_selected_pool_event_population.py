@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
+import yaml
 
 from src.data.corporate_actions.ashare_public_actions import (
     eastmoney_dividend_to_events,
@@ -25,6 +28,26 @@ from src.data.fundamentals.tushare_financials import tushare_indicator_to_events
 
 
 RETRIEVED = "2026-08-02T00:00:00+00:00"
+
+
+def test_us87_sec_mapping_is_exact_and_keeps_tigo_tygo_distinct():
+    pool = yaml.safe_load(
+        Path("configs/research_universes/us_selected_equities_v2.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    mapping = yaml.safe_load(
+        Path("configs/providers/us_selected_equities_sec_cik_v3.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    expected = set(pool["symbols"])
+    mapped = set(mapping["symbols"])
+    missing = set(mapping["missing_symbols"])
+    assert mapped | missing == expected
+    assert mapped & missing == set()
+    assert mapping["mapped_symbol_count"] == len(mapped) == 86
+    assert mapping["symbols"]["TIGO"] != mapping["symbols"]["TYGO"]
 
 
 def test_sec_client_has_non_secret_declared_user_agent(monkeypatch):
