@@ -9,6 +9,15 @@ on:
       - "tests/test_byd_prospective_shadow.py"
       - "data/research/byd_prospective_shadow/**"
       - ".github/workflows/byd-prospective-shadow.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/research/byd_prospective_shadow.py"
+      - "scripts/run_byd_prospective_shadow.py"
+      - "tests/test_byd_prospective_shadow.py"
+      - "data/research/byd_prospective_shadow/**"
+      - "docs/research/byd_prospective_shadow_ledger.md"
+      - ".github/workflows/byd-prospective-shadow.yml"
   schedule:
     - cron: "30 11 * * 1-5"
   workflow_dispatch:
