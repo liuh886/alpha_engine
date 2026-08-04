@@ -76,14 +76,23 @@ def _rolling_zscore(series: pd.Series, window: int = 63) -> pd.Series:
 
 
 def _rolling_percentile(series: pd.Series, window: int = 252) -> pd.Series:
+    """Rank the current value against the last N observed values.
+
+    Sparse source-calendar gaps remain missing on their own dates, but do not
+    invalidate the following N exchange sessions.  This is observation-window
+    arithmetic, not synthetic price backfilling.
+    """
+
     def _last_rank(values: np.ndarray) -> float:
         if len(values) == 0 or not np.isfinite(values[-1]):
             return np.nan
         return float(np.mean(values <= values[-1]))
 
-    return series.rolling(window, min_periods=window).apply(
+    observed = series.dropna()
+    ranked = observed.rolling(window, min_periods=window).apply(
         _last_rank, raw=True
     )
+    return ranked.reindex(series.index)
 
 
 def _sessions_since_change(flag: pd.Series) -> pd.Series:
@@ -581,11 +590,12 @@ def _evaluate_family(
         )
         output = shared_test[list(targets)].copy()
         output["fold"] = fold
-        state = (
-            shared_test["position_state"]
-            if "position_state" in shared_test.columns
-            else pd.Series(np.nan, index=shared_test.index)
-        )
+        if "v4_2_execution_state" in shared_test.columns:
+            state = shared_test["v4_2_execution_state"]
+        elif "position_state" in shared_test.columns:
+            state = shared_test["position_state"]
+        else:
+            state = pd.Series(np.nan, index=shared_test.index)
         output["position_state"] = pd.to_numeric(state, errors="coerce")
         for position, action in enumerate(ACTION_KEYS):
             output[f"base_predicted_{action}"] = baseline_prediction[:, position]
