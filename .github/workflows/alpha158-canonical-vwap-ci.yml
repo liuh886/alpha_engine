@@ -106,6 +106,16 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
+      - name: Restore exact-cutoff CN source pairs
+        id: vwap-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            artifacts/data/canonical_vwap/cn/raw
+            artifacts/data/canonical_vwap/cn/qfq
+            artifacts/data/canonical_vwap/cn/cache_metadata
+          key: >-
+            ${{ runner.os }}-alpha158-vwap-cn-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml') }}-${{ inputs.cutoff || '2026-07-31' }}
       - name: Build exact CN130 canonical VWAP provider and Alpha158 panels
         run: >-
           uv run python scripts/data/build_canonical_vwap_provider.py
@@ -113,6 +123,15 @@ jobs:
           --start 2021-01-01
           --cutoff "${{ inputs.cutoff || '2026-07-31' }}"
           --output-root artifacts/data/canonical_vwap/cn
+      - name: Save exact-cutoff CN source pairs
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            artifacts/data/canonical_vwap/cn/raw
+            artifacts/data/canonical_vwap/cn/qfq
+            artifacts/data/canonical_vwap/cn/cache_metadata
+          key: ${{ steps.vwap-cache.outputs.cache-primary-key }}
       - name: Print readiness decision
         if: always()
         run: |
