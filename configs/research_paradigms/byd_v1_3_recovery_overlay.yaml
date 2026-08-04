@@ -1,0 +1,91 @@
+schema_version: "1.0"
+experiment_id: byd_v1_3_recovery_overlay
+parent_issue: 516
+status: frozen_before_result
+research_only: true
+trade_ready: false
+prospective_confirmation_required: true
+
+canonical_data:
+  materialization: repository_pinned_immutable_snapshot
+  snapshot_path: data/research/byd_canonical_v1_snapshot.tar.xz
+  snapshot_sha256: 2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179
+  schema: byd_canonical_adjusted_ohlcv_v1
+  adjusted_sha256: 0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960
+  manifest_sha256: 06202b594b036b0c815e4ffb46e9f3d14ba647d699aad0fd927f1665142a363e
+  cutoff: "2026-08-03"
+  open_label_policy: entry_and_exit_open_must_be_independently_confirmed_and_not_quarantined
+  network_refetch_during_model_research: forbidden
+  provider_substitution: forbidden
+  cross_provider_stitching: forbidden
+
+model_family: canonical_v1_0_plus_event_triggered_recovery_overlay
+base_model:
+  id: core75_regime_mom_120
+  core_position: 0.75
+  full_position: 1.00
+  risk_on:
+    close_above_sma_120: true
+    mom_20_above: 0.0
+  risk_off:
+    close_below_sma_120: true
+    mom_60_below: 0.0
+  modifications_allowed: false
+
+overlay:
+  target_position: 1.00
+  only_when_base_target: 0.75
+  trigger_requires_false_to_true_transition: true
+  holding_eligible_open_intervals: 10
+  same_branch_cooldown_eligible_opens: 10
+  overlapping_trigger_extension: forbidden
+  quarantined_opens_count_toward_clocks: false
+  branches:
+    bear_sideways_low_vol:
+      market_state:
+        - bear
+        - sideways
+      vol_state: low
+      drawdown_252_at_or_below: -0.15
+      distance_from_low_20_at_or_above: 0.05
+      open_return_autocorr_20_above: 0.0
+    bull_high_vol:
+      market_state:
+        - bull
+      vol_state: high
+      drawdown_252_at_or_below: -0.10
+      distance_from_low_20_at_or_above: 0.05
+      momentum_accel_20_60_above: 0.0
+
+execution:
+  signal_time: session_close_t
+  execution_time: next_independently_confirmed_eligible_open
+  defer_on_quarantined_open: true
+  allow_short: false
+  allow_leverage: false
+  post_result_rule_change_forbidden: true
+
+costs:
+  primary_bps_per_turnover_unit: 20
+  stress_bps_per_turnover_unit: 40
+  charge_every_position_change: true
+
+historical_support_gates:
+  maximum_cagr_shortfall_vs_v1_0_percentage_points: 0.25
+  maximum_drawdown_worsening_vs_v1_0_percentage_points: 0.50
+  calmar_strictly_above_v1_0: true
+  validation_total_return_at_least_v1_0: true
+  validation_maximum_drawdown_worsening_percentage_points: 1.00
+  retrospective_2025_plus_maximum_total_return_shortfall_percentage_points: 1.00
+  stress_40_calmar_not_below_v1_0_stress_40: true
+  maximum_incremental_round_trips_per_year: 0.50
+  minimum_overlay_events: 10
+  maximum_largest_positive_episode_share: 0.50
+  maximum_positive_benefit_single_period_share: 0.60
+
+validation_governance:
+  all_history_through_cutoff_already_observed: true
+  fresh_holdout_available: false
+  historical_result_is_explanatory_only: true
+  prospective_start_date: "2026-08-04"
+  model_promotion_requires_prospective_confirmation: true
