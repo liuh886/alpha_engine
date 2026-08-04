@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -31,8 +32,13 @@ def fetch_intraday_bars(
     resolved = adapter or PolygonIntradayAdapter()
     bars: dict[str, pd.DataFrame] = {}
     rows: list[dict[str, Any]] = []
-    for raw_symbol in specification["symbols"]:
+    inter_symbol_delay = float(
+        specification.get("inter_symbol_delay_seconds", 0.0)
+    )
+    for position, raw_symbol in enumerate(specification["symbols"]):
         symbol = str(raw_symbol).upper()
+        if position > 0 and inter_symbol_delay > 0.0:
+            time.sleep(inter_symbol_delay)
         try:
             result = resolved.fetch_aggregate_bars(
                 PolygonIntradayRequest(
@@ -47,22 +53,37 @@ def fetch_intraday_bars(
                         specification["regular_session_only"]
                     ),
                     maximum_results=int(specification["maximum_results"]),
+                    max_pages=int(specification.get("max_pages", 10)),
+                    request_delay_seconds=float(
+                        specification.get("request_delay_seconds", 0.0)
+                    ),
                 )
             )
             frame = result.df.copy()
             bars[symbol] = frame
             metadata = dict(frame.attrs.get("provider_metadata", {}))
+            pagination_complete = bool(
+                metadata.get("pagination_completed", False)
+            )
+            require_complete = bool(
+                specification.get("require_complete_pagination", True)
+            )
             rows.append(
                 {
                     "symbol": symbol,
                     "provider": result.provider,
                     "provider_symbol": result.provider_symbol,
+                    "identity_source": metadata.get("identity_source"),
                     "first_timestamp_utc": frame["timestamp_utc"].min(),
                     "last_timestamp_utc": frame["timestamp_utc"].max(),
                     "first_session": frame["session_date"].min(),
                     "last_session": frame["session_date"].max(),
                     "rows": int(len(frame)),
                     "sessions": int(frame["session_date"].nunique()),
+                    "raw_results_count": metadata.get("raw_results_count"),
+                    "pages": metadata.get("pages"),
+                    "pagination_used": metadata.get("pagination_used"),
+                    "pagination_completed": pagination_complete,
                     "duplicate_timestamps": bool(
                         frame["timestamp_utc"].duplicated().any()
                     ),
@@ -76,11 +97,8 @@ def fetch_intraday_bars(
                         .all()
                         .all()
                     ),
-                    "pagination_present": bool(
-                        metadata.get("pagination_present", False)
-                    ),
                     "fetch_error": None,
-                    "admissible": True,
+                    "admissible": pagination_complete or not require_complete,
                 }
             )
         except Exception as exc:
@@ -89,15 +107,19 @@ def fetch_intraday_bars(
                     "symbol": symbol,
                     "provider": "polygon_intraday",
                     "provider_symbol": symbol,
+                    "identity_source": None,
                     "first_timestamp_utc": None,
                     "last_timestamp_utc": None,
                     "first_session": None,
                     "last_session": None,
                     "rows": 0,
                     "sessions": 0,
+                    "raw_results_count": None,
+                    "pages": None,
+                    "pagination_used": None,
+                    "pagination_completed": False,
                     "duplicate_timestamps": None,
                     "positive_finite_ohlcv": False,
-                    "pagination_present": None,
                     "fetch_error": f"{type(exc).__name__}: {exc}",
                     "admissible": False,
                 }
@@ -106,7 +128,10 @@ def fetch_intraday_bars(
 
 
 def _opening_table(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
-    local_minutes = frame["timestamp_et"].dt.hour * 60 + frame["timestamp_et"].dt.minute
+    local_minutes = (
+        frame["timestamp_et"].dt.hour * 60
+        + frame["timestamp_et"].dt.minute
+    )
     opening = frame.loc[local_minutes.eq(9 * 60 + 30)].copy()
     if opening["session_date"].duplicated().any():
         raise DataFetchError(f"duplicate opening bars for {symbol}")
@@ -145,7 +170,9 @@ def build_opening_alignment(
     bars: Mapping[str, pd.DataFrame],
     contract: Mapping[str, Any],
 ) -> pd.DataFrame:
-    required = [str(value).upper() for value in contract["intraday_data"]["symbols"]]
+    required = [
+        str(value).upper() for value in contract["intraday_data"]["symbols"]
+    ]
     missing = [symbol for symbol in required if symbol not in bars]
     if missing:
         return pd.DataFrame()
@@ -232,10 +259,14 @@ def audit_phase0(
         start=str(phase["quarantine_start"]),
         end=str(contract["intraday_data"]["end_date"]),
     )
-    population = pd.concat(
-        [frame for frame in (development, quarantine) if not frame.empty],
-        ignore_index=True,
-    ) if (not development.empty or not quarantine.empty) else pd.DataFrame()
+    population = (
+        pd.concat(
+            [frame for frame in (development, quarantine) if not frame.empty],
+            ignore_index=True,
+        )
+        if (not development.empty or not quarantine.empty)
+        else pd.DataFrame()
+    )
 
     required_symbols = [
         str(value).upper() for value in contract["intraday_data"]["symbols"]
@@ -244,12 +275,20 @@ def audit_phase0(
         len(source_coverage) == len(required_symbols)
         and source_coverage["admissible"].fillna(False).all()
     )
+    pagination_complete = bool(
+        len(source_coverage) == len(required_symbols)
+        and source_coverage["pagination_completed"].fillna(False).all()
+    )
     development_start = pd.Timestamp(phase["development_start"])
     development_end = pd.Timestamp(phase["development_end"])
-    development_alignment = alignment.loc[
-        (alignment.index >= development_start)
-        & (alignment.index <= development_end)
-    ] if not alignment.empty else pd.DataFrame()
+    development_alignment = (
+        alignment.loc[
+            (alignment.index >= development_start)
+            & (alignment.index <= development_end)
+        ]
+        if not alignment.empty
+        else pd.DataFrame()
+    )
     missing_rate = (
         float(1.0 - development_alignment["all_openings_present"].mean())
         if not development_alignment.empty
@@ -273,6 +312,7 @@ def audit_phase0(
         )
     checks = {
         "sources_admissible": sources_admissible,
+        "complete_pagination": pagination_complete,
         "opening_bar_missing_rate": missing_rate
         <= float(phase["maximum_missing_opening_bar_rate"]),
         "complete_development_years": complete_years
@@ -284,8 +324,9 @@ def audit_phase0(
         "state2_weights_match_contract": state2_weights_valid,
         "next_open_available": bool(
             not alignment.empty
-            and alignment.loc[alignment["all_openings_present"], "all_next_opens_present"]
-            .mean()
+            and alignment.loc[
+                alignment["all_openings_present"], "all_next_opens_present"
+            ].mean()
             >= 1.0 - float(phase["maximum_missing_opening_bar_rate"])
         ),
     }
@@ -299,7 +340,16 @@ def audit_phase0(
             "aligned_sessions": int(len(alignment)),
             "usable_aligned_sessions": int(
                 alignment["usable_session"].sum()
-            ) if not alignment.empty else 0,
+            )
+            if not alignment.empty
+            else 0,
+            "total_pages": int(
+                pd.to_numeric(source_coverage["pages"], errors="coerce")
+                .fillna(0)
+                .sum()
+            )
+            if not source_coverage.empty
+            else 0,
         },
         "passed": bool(all(checks.values())),
     }
