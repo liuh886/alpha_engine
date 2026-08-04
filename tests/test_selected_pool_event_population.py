@@ -5,7 +5,11 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from scripts.data.populate_selected_pool_events import _populate_us, _sec_mapping
+from scripts.data.populate_selected_pool_events import (
+    _populate_cn,
+    _populate_us,
+    _sec_mapping,
+)
 
 from src.data.corporate_actions.ashare_public_actions import (
     eastmoney_dividend_to_events,
@@ -34,14 +38,10 @@ RETRIEVED = "2026-08-02T00:00:00+00:00"
 
 def test_us87_sec_mapping_is_exact_and_keeps_tigo_tygo_distinct():
     pool = yaml.safe_load(
-        Path("configs/research_universes/us_selected_equities_v2.yaml").read_text(
-            encoding="utf-8"
-        )
+        Path("configs/research_universes/us_selected_equities_v2.yaml").read_text(encoding="utf-8")
     )
     mapping = yaml.safe_load(
-        Path("configs/providers/us_selected_equities_sec_cik_v3.yaml").read_text(
-            encoding="utf-8"
-        )
+        Path("configs/providers/us_selected_equities_sec_cik_v3.yaml").read_text(encoding="utf-8")
     )
     expected = set(pool["symbols"])
     mapped = set(mapping["symbols"])
@@ -98,6 +98,84 @@ def test_non_sec_entity_still_populates_independent_corporate_actions(
     assert actions["SBGSY"].providers == ["yfinance_actions"]
 
 
+def test_cn_sources_are_reused_only_for_the_exact_cutoff(monkeypatch, tmp_path: Path) -> None:
+    calls = {"disclosures": 0, "statements": 0, "actions": 0}
+
+    class FinancialClient:
+        def fetch_disclosures(self, **_kwargs):
+            calls["disclosures"] += 1
+            return pd.DataFrame()
+
+        def fetch_statement(self, **_kwargs):
+            calls["statements"] += 1
+            return pd.DataFrame()
+
+    class ActionClient:
+        def fetch_dividends(self, **_kwargs):
+            calls["actions"] += 1
+            return pd.DataFrame(
+                [
+                    {
+                        "报告期": "2025-12-31",
+                        "最新公告日期": "2026-05-20",
+                        "股权登记日": "2026-05-27",
+                        "除权除息日": "2026-05-28",
+                        "现金红利发放日": "2026-05-28",
+                        "现金分红-现金分红比例": 5.0,
+                        "送转股份-送转总比例": 0.0,
+                    }
+                ]
+            )
+
+    financial_client = FinancialClient()
+    action_client = ActionClient()
+    monkeypatch.setattr(
+        "scripts.data.populate_selected_pool_events.AsharePublicFinancialClient",
+        lambda: financial_client,
+    )
+    monkeypatch.setattr(
+        "scripts.data.populate_selected_pool_events.AsharePublicActionClient",
+        lambda: action_client,
+    )
+
+    first_fundamentals, first_actions, first_reuse = _populate_cn(
+        ["000425"],
+        {},
+        "2026-08-04T00:00:00+00:00",
+        start_date="2021-01-01",
+        end_date="2026-07-31",
+        source_cache_root=tmp_path,
+    )
+    assert first_fundamentals["000425"].status == "partial"
+    assert first_reuse["fundamentals"]["source_fetch_count"] == 1
+    assert first_reuse["corporate_actions"]["source_fetch_count"] == 1
+    assert calls == {"disclosures": 1, "statements": 3, "actions": 1}
+    first_retrieved_at = first_actions["000425"].events[0].retrieved_at
+
+    _, second_actions, second_reuse = _populate_cn(
+        ["000425"],
+        {},
+        "2026-08-05T00:00:00+00:00",
+        start_date="2021-01-01",
+        end_date="2026-07-31",
+        source_cache_root=tmp_path,
+    )
+    assert calls == {"disclosures": 1, "statements": 3, "actions": 1}
+    assert second_reuse["fundamentals"]["exact_cutoff_reuse_count"] == 1
+    assert second_reuse["corporate_actions"]["exact_cutoff_reuse_count"] == 1
+    assert second_actions["000425"].events[0].retrieved_at == first_retrieved_at
+
+    _populate_cn(
+        ["000425"],
+        {},
+        "2026-08-05T00:00:00+00:00",
+        start_date="2021-01-01",
+        end_date="2026-08-01",
+        source_cache_root=tmp_path,
+    )
+    assert calls == {"disclosures": 2, "statements": 6, "actions": 2}
+
+
 def test_sec_client_has_non_secret_declared_user_agent(monkeypatch):
     monkeypatch.delenv("SEC_USER_AGENT", raising=False)
     assert resolve_sec_user_agent() == DEFAULT_SEC_USER_AGENT
@@ -134,9 +212,7 @@ def test_sec_companyfacts_uses_conservative_post_filing_availability():
         symbol="AAPL",
         cik="0000320193",
         exchange="XNAS",
-        field_map={
-            "Revenues": {"field": "revenue", "unit": "USD", "currency": "USD"}
-        },
+        field_map={"Revenues": {"field": "revenue", "unit": "USD", "currency": "USD"}},
         retrieved_at=RETRIEVED,
     )
     assert len(events) == 1
@@ -208,9 +284,7 @@ def test_tushare_fundamentals_are_validation_only():
         symbol="000001",
         ts_code="000001.SZ",
         exchange="SZSE",
-        field_map={
-            "eps": {"field": "basic_eps", "unit": "CNY/shares", "currency": "CNY"}
-        },
+        field_map={"eps": {"field": "basic_eps", "unit": "CNY/shares", "currency": "CNY"}},
         retrieved_at=RETRIEVED,
     )
     assert len(events) == 1
@@ -285,10 +359,13 @@ def test_tiingo_actions_are_explicit_validation_evidence():
     assert all(event.effective_date == "2026-06-02" for event in events)
 
     no_fields = frame.drop(columns=["cash_distribution", "split_factor"])
-    assert tiingo_bars_to_corporate_actions(
-        no_fields,
-        symbol="AAPL",
-        exchange="XNAS",
-        entity_id="CIK0000320193",
-        retrieved_at=RETRIEVED,
-    ) == []
+    assert (
+        tiingo_bars_to_corporate_actions(
+            no_fields,
+            symbol="AAPL",
+            exchange="XNAS",
+            entity_id="CIK0000320193",
+            retrieved_at=RETRIEVED,
+        )
+        == []
+    )
