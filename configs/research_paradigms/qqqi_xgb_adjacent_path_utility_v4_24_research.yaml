@@ -1,0 +1,199 @@
+experiment_id: qqqi_xgb_adjacent_path_utility_v4_24_research
+parent_experiment_id: qqqi_xgb_lambdarank_state_machine_v4_23_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Test whether three fixed shallow XGBoost classifiers can learn adjacent
+  path-utility transitions across a four-level SGOV/BIL, QQQ and TQQQ risk
+  ladder without terminal-return endpoint ranking or candidate-action priors.
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  transaction_cost_bps_per_turnover_unit: 10.0
+  no_qqqi_pre_inception_backfill: true
+  historical_success_authorizes_shadow_only: true
+  v4_2_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+
+data:
+  provider: yahoo_adjusted_open_close_research_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  required_symbols: [QQQ, TQQQ, VOO, BIL, SGOV, QQQI, HYG, LQD, SHY, IEF, TLT, ^VIX, ^VXN]
+  actual_product_start: "2024-01-01"
+
+decision:
+  sample_every_sessions: 10
+  global_anchor_position: 0
+  holding_sessions: 10
+  embargo_sessions: 10
+  transaction_cost_bps_per_turnover_unit: 10.0
+  mae_penalty: 0.50
+  probability_threshold: 0.50
+  macro_cluster_calendar_days: 30
+
+states:
+  order: [defense, bridge, core, leveraged]
+  weights:
+    defense: {cash: 1.00, QQQ: 0.00, TQQQ: 0.00}
+    bridge: {cash: 0.50, QQQ: 0.50, TQQQ: 0.00}
+    core: {cash: 0.00, QQQ: 1.00, TQQQ: 0.00}
+    leveraged: {cash: 0.00, QQQ: 0.25, TQQQ: 0.75}
+  edges:
+    - {edge: defense_vs_bridge, lower: defense, higher: bridge, seed_offset: 0}
+    - {edge: bridge_vs_core, lower: bridge, higher: core, seed_offset: 1}
+    - {edge: core_vs_leveraged, lower: core, higher: leveraged, seed_offset: 2}
+
+features:
+  market:
+    - vol_max_percentile_252
+    - vol_max_return_5d
+    - vol_min_retreat_20d
+    - vxn_vix_ratio_z63
+    - vxn_minus_vix_percentile
+    - vxn_minus_vix_return_5d
+    - qqq_rsi20
+    - qqq_bollinger_pct_b_20_2
+    - qqq_bollinger_bandwidth_z63
+    - qqq_distance_ma20
+    - qqq_distance_ma50
+    - qqq_distance_ma200
+    - qqq_ma20_slope_5d
+    - qqq_drawdown_63d
+    - qqq_realized_volatility_20d
+    - qqq_minus_voo_return_5d
+    - qqq_minus_voo_return_20d
+    - qqq_voo_rs_distance_ma20
+    - qqq_voo_trend_gap
+    - qqq_voo_bollinger_gap
+    - voo_distance_ma200
+  credit_duration:
+    - hyg_lqd_return_5d
+    - hyg_lqd_return_20d
+    - hyg_shy_return_20d
+    - lqd_ief_return_20d
+    - tlt_shy_return_20d
+    - credit_risk_ratio_distance_ma20
+    - duration_risk_ratio_distance_ma20
+    - credit_duration_trend_agreement
+  state_context:
+    - next_open_state_0
+    - next_open_state_1
+    - next_open_state_2
+    - next_open_weight_QQQI
+    - next_open_weight_QQQ
+    - next_open_weight_TQQQ
+  total_inputs: 35
+
+model:
+  objective: binary:logistic
+  eval_metric: logloss
+  tree_method: hist
+  max_depth: 3
+  learning_rate: 0.03
+  boosting_rounds: 300
+  min_child_weight: 20
+  subsample: 0.80
+  colsample_bytree: 0.80
+  reg_lambda: 10.0
+  reg_alpha: 1.0
+  gamma: 0.10
+  max_bin: 64
+  seed: 20260805
+  nthread: 2
+  early_stopping_allowed: false
+  parameter_search_allowed: false
+  feature_selection_allowed: false
+
+training:
+  minimum_groups: 100
+
+outer_folds:
+  - {fold: fold_2016_2017, train_start: "2011-01-03", train_end: "2015-12-31", test_start: "2016-01-01", test_end: "2017-12-29"}
+  - {fold: fold_2018_2019, train_start: "2011-01-03", train_end: "2017-12-29", test_start: "2018-01-01", test_end: "2019-12-31"}
+  - {fold: fold_2020_2021, train_start: "2011-01-03", train_end: "2019-12-31", test_start: "2020-01-01", test_end: "2021-12-31"}
+  - {fold: fold_2022_2023, train_start: "2011-01-03", train_end: "2021-12-31", test_start: "2022-01-01", test_end: "2023-12-29"}
+
+validation:
+  phase1:
+    mean_edge_auc_min: 0.58
+    minimum_edge_auc_min: 0.52
+    mean_balanced_accuracy_min: 0.55
+    utility_regret_reduction_min: 0.20
+    median_utility_advantage_min: 0.0
+    positive_outer_folds_min: 3
+    top_two_rate_min: 0.60
+    minimum_state_selections: 10
+    maximum_state_selection_share: 0.60
+    largest_positive_year_share_max: 0.35
+    largest_positive_cluster_share_max: 0.25
+    placebo_beat_rate_min: 0.90
+    largest_single_feature_shap_share_max: 0.20
+    largest_feature_family_shap_share_max: 0.50
+  placebo_trials: 20
+  phase2:
+    cagr_improvement_pp_min: 1.50
+    max_drawdown_worsening_pp_max: 1.00
+    calmar_improvement_min: 0.10
+    sortino_not_below_v4_2: true
+    positive_calendar_years_min: 6
+    turnover_increase_max: 0.75
+    largest_state_positive_share_max: 0.50
+  actual:
+    max_drawdown_worsening_pp_max: 1.00
+
+feature_families:
+  volatility:
+    - vol_max_percentile_252
+    - vol_max_return_5d
+    - vol_min_retreat_20d
+    - vxn_vix_ratio_z63
+    - vxn_minus_vix_percentile
+    - vxn_minus_vix_return_5d
+  qqq_price_path:
+    - qqq_rsi20
+    - qqq_bollinger_pct_b_20_2
+    - qqq_bollinger_bandwidth_z63
+    - qqq_distance_ma20
+    - qqq_distance_ma50
+    - qqq_distance_ma200
+    - qqq_ma20_slope_5d
+    - qqq_drawdown_63d
+    - qqq_realized_volatility_20d
+  relative_strength:
+    - qqq_minus_voo_return_5d
+    - qqq_minus_voo_return_20d
+    - qqq_voo_rs_distance_ma20
+    - qqq_voo_trend_gap
+    - qqq_voo_bollinger_gap
+    - voo_distance_ma200
+  credit_duration:
+    - hyg_lqd_return_5d
+    - hyg_lqd_return_20d
+    - hyg_shy_return_20d
+    - lqd_ief_return_20d
+    - tlt_shy_return_20d
+    - credit_risk_ratio_distance_ma20
+    - duration_risk_ratio_distance_ma20
+    - credit_duration_trend_agreement
+  v4_2_context:
+    - next_open_state_0
+    - next_open_state_1
+    - next_open_state_2
+    - next_open_weight_QQQI
+    - next_open_weight_QQQ
+    - next_open_weight_TQQQ
+
+hypothesis_discipline:
+  - The path utility, MAE penalty, state lattice, edges, features and model parameters are frozen before outcomes.
+  - Edge models never receive candidate-state descriptors.
+  - Every ten-session label block is non-overlapping and outer folds use the audited ten-session embargo translation.
+  - No outer-fold observation enters fitting, feature selection, calibration or threshold construction.
+  - The ordinal policy always starts at defense and traverses adjacent edges at the fixed 0.50 threshold.
+  - Phase 2 is fail-closed unless every Phase 1 gate passes.
+  - Historical success authorizes prospective shadow observation only.
+  - v4.2, Telegram and Issue 348 remain unchanged regardless of result.
