@@ -1,22 +1,26 @@
 schema_version: "1.0"
 experiment_id: byd_v1_2_recovery_state
 parent_issue: 513
-status: frozen_before_result
+status: completed_not_supported
 research_only: true
 trade_ready: false
-prospective_confirmation_required: true
+prospective_confirmation_required: false
 
 canonical_data:
-  materialization: governed_canonical_build_pipeline
+  materialization: repository_pinned_immutable_snapshot
+  snapshot_path: data/research/byd_canonical_v1_snapshot.tar.xz
+  snapshot_sha256: 2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179
   schema: byd_canonical_adjusted_ohlcv_v1
   adjusted_sha256: 0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960
   manifest_sha256: 06202b594b036b0c815e4ffb46e9f3d14ba647d699aad0fd927f1665142a363e
   cutoff: "2026-08-03"
   open_label_policy: entry_and_exit_open_must_be_independently_confirmed_and_not_quarantined
+  require_exact_snapshot_hash: true
   require_exact_adjusted_hash: true
   require_exact_manifest_identity: true
-  forbid_provider_substitution_after_materialization: true
-  forbid_cross_provider_stitching: true
+  network_refetch_during_model_research: forbidden
+  provider_substitution_after_materialization: forbidden
+  cross_provider_stitching: forbidden
 
 model_family: preregistered_interpretable_state_machine
 factor_representatives:
@@ -72,9 +76,32 @@ historical_support_gates:
   maximum_largest_positive_defense_episode_share: 0.50
   not_dominated_by_canonical_v1_0: true
 
+result:
+  decision: byd_v1_2_not_supported
+  failed_gates:
+    - full_drawdown_improvement_3pp
+    - not_dominated_by_v1_0
+  full_history:
+    cagr: 0.19559903712786175
+    total_return: 11.273507865747478
+    max_drawdown: -0.5391589071826224
+    calmar: 0.3627855063175447
+    exposure: 0.9132739609838847
+    round_trips_per_year: 0.970737913486005
+  retrospective_2025_plus:
+    total_return: -0.020796844782946078
+    cagr: -0.0137683903738407
+    max_drawdown: -0.4129317881898482
+  canonical_v1_0_full_history:
+    cagr: 0.1957987984133931
+    total_return: 11.302321762856518
+    max_drawdown: -0.5368815683729564
+    calmar: 0.36469644321515843
+
 validation_governance:
   all_history_through_cutoff_already_observed: true
   fresh_holdout_available: false
   historical_result_is_explanatory_only: true
-  prospective_start_date: "2026-08-04"
-  model_promotion_requires_prospective_confirmation: true
+  prospective_ledger_created_but_model_rejected: true
+  post_result_parameter_change: forbidden
+  next_model_must_use_new_frozen_contract: true
