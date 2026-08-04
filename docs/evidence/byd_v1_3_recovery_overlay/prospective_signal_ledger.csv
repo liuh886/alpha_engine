@@ -1,0 +1,2 @@
+model_id,canonical_adjusted_sha256,signal_date,prospective_start_date,execution_date,base_target_position,overlay_active,overlay_branch,target_position,branch_a_condition,branch_b_condition,status,realized_incremental_return
+byd_v1_3_recovery_overlay,0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960,2026-08-03,2026-08-04,,0.750000000000,false,,0.750000000000,false,false,model_rejected_shadow_observation_only,
