@@ -1,0 +1,123 @@
+schema_version: "1.0"
+decision_date: "2026-08-04"
+strategy_family: qqqi_qqq_tqqq_state2_intraday_overlay
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04_v4_20.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  issue_348_changes_authorized: false
+
+structural_synthesis:
+  conclusion: >-
+    v4.2 is a strong slow daily regime engine. Completed daily factor, transition,
+    regularized action, state-conditioned and credit-duration experiments did not
+    produce a stable replacement. The accepted state-2 tail audit found that major
+    leveraged losses were predominantly formed intraday and were not observable at
+    the preceding close. The next distinct information horizon is therefore an
+    intraday meta-label overlay above, not inside, frozen v4.2.
+  retained_evidence:
+    - v4_2_daily_state_machine_is_not_reopened
+    - leverage_entry_confirmation_is_a_hypothesis_not_a_promoted_rule
+    - credit_duration_information_improves_ranking_but_not_magnitude_calibration
+    - fixed_daily_action_overrides_add_excess_turnover_and_underperform
+    - intraday_tail_control_requires_governed_intraday_data
+
+state2_intraday_meta_label_v4_21_phase0:
+  experiment_id: qqqi_state2_intraday_meta_label_v4_21_research
+  role: intraday_data_preflight
+  issue: 494
+  pull_request: 495
+  evidence:
+    report: docs/research/qqqi_state2_intraday_meta_label_v4_21_phase0_result_2026-08-04.md
+    workflow_run: 30876906097
+    artifact_id: 8879966050
+    artifact_digest: sha256:9009846acd7121fea0509204d4ca551e3d62e386e06d945f3364634bacf8a951
+    manifest_file_count: 5
+    manifest_hashes_verified: true
+  proposed_overlay:
+    eligible_state: 2
+    observation_window: first_30_minutes
+    decision_time: "10:00 America/New_York"
+    baseline_weights: {QQQ: 0.25, TQQQ: 0.75}
+    overlay_weights: {QQQ: 1.0}
+    holding_end: next_regular_session_open
+    model: l2_logistic_regression
+    action_score_rule: top_20_percent_of_training_scores
+  polygon_coverage:
+    source_family: polygon_sip
+    first_session: "2024-08-05"
+    last_session: "2026-08-03"
+    common_sessions: 500
+    common_usable_sessions_with_next_open: 499
+    total_pages: 28
+    qqq: {regular_session_rows: 6475, pages: 9, pagination_completed: true}
+    spy: {regular_session_rows: 6475, pages: 9, pagination_completed: true}
+    tqqq: {regular_session_rows: 6475, pages: 10, pagination_completed: true}
+    source_identity_passed: true
+    timestamp_uniqueness_passed: true
+    positive_finite_ohlcv_passed: true
+    dst_alignment_passed: true
+  population:
+    development_2018_2023_state2_sessions: 0
+    quarantine_2024_plus_state2_sessions: 129
+    state2_weights_match_frozen_v4_2: true
+  phase0_gate:
+    sources_admissible: true
+    complete_pagination: true
+    next_open_available: true
+    quarantine_state2_sessions: true
+    complete_development_years: false
+    development_state2_sessions: false
+    opening_bar_missing_rate_over_declared_development_window: false
+    passed: false
+  decision: intraday_phase0_failed_no_outcomes_authorized
+  audit: audit_pass_phase0_nonauthorization_valid
+  outcome_calculation_authorized: false
+  strategy_calculation_performed: false
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+
+permitted_next_research:
+  recent_history_feasibility_pilot:
+    purpose: >-
+      Test whether the frozen ten-input first-30-minute score has any basic
+      chronological ranking signal within the available 2024-08 to 2026-08 data.
+      This pilot is hypothesis triage only and cannot authorize a shadow strategy.
+    required_boundaries:
+      - use_all_ten_frozen_v4_21_inputs
+      - same_l2_logistic_c_1
+      - same_top_quintile_training_score_trigger
+      - fixed_chronological_split_before_outcomes
+      - no_model_feature_window_or_threshold_search
+      - no_v4_2_or_telegram_change
+      - no_shadow_authorization_from_pilot
+  formal_validation:
+    requirements:
+      - accumulate_new_prospective_intraday_events_or_obtain_longer_professional_history
+      - preserve_a_future_window_not_used_for_design_or_fit
+      - require_independent_tail_and_portfolio_validation
+
+closed_or_prohibited_directions:
+  - use_2024_plus_events_as_both_training_and_independent_validation
+  - synthetic_intraday_backfill
+  - recent_only_yahoo_intraday_substitution
+  - shorter_opening_window_search
+  - alternative_score_percentile_search
+  - feature_subset_selection
+  - model_or_hyperparameter_comparison
+  - intraday_stop_or_continuous_leverage_search
+  - direct_historical_promotion
+  - changing_v4_2_telegram_or_issue_348
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false
