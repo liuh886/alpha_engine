@@ -1,0 +1,213 @@
+schema_version: "1.0"
+decision_date: "2026-08-05"
+strategy_family: qqqi_xgb_new_information_phase0
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-05_v4_24.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    v4.23 found nonlinear terminal-action ranking information but collapsed to
+    convex endpoint priors. v4.24 removed action descriptors and used adjacent
+    path-aware targets, but the existing 35 daily features failed OOF timing
+    and actual-window gates. v4.25 then found no complete new public information
+    family with the required 2011-current, point-in-time-safe coverage. No new
+    XGBoost outcome model is authorized.
+
+xgboost_research_status:
+  most_recent_model_experiment:
+    experiment_id: qqqi_xgb_adjacent_path_utility_v4_24_research
+    decision: xgb_adjacent_path_utility_not_supported
+    role: frozen_nonpromoted_model_evidence
+  most_recent_data_experiment:
+    experiment_id: qqqi_xgb_new_information_v4_25_phase0
+    role: frozen_new_information_source_audit
+    issue: 536
+    pull_request: 538
+    decision: new_information_phase0_no_family_admissible
+    evidence:
+      source_registry: docs/research/qqqi_xgb_new_information_v4_25_source_registry_2026-08-05.md
+      report: docs/research/qqqi_xgb_new_information_v4_25_phase0_result_2026-08-05.md
+      workflow_run: 30942331850
+      artifact_id: 8905643282
+      artifact_digest: sha256:5d4e67f81c09106a37db174b6f43182defe8c64bfa714e8163b87ab58f8fec62
+      contract_sha256: 36c9c815f7c2da9dcc499922978db10422f639a8bd8fae5ec5dbf2ba1fc94fb3
+      manifest_file_count: 8
+      manifest_hashes_verified: 8
+      qqq_calendar_through: "2026-08-04"
+      source_data_through: "2026-07-31"
+    phase: 0
+    outcome_calculation_authorized: false
+    xgboost_training_performed: false
+    future_returns_present: false
+    path_utility_present: false
+    action_selection_performed: false
+    portfolio_constructed: false
+    admitted_families: []
+
+source_audit:
+  cboe_total_put_call_archive:
+    family: option_tail_pricing
+    provider: Cboe Exchange
+    raw_rows: 3253
+    usable_rows: 3253
+    first_observation_date: "2006-11-01"
+    last_observation_date: "2019-10-04"
+    safe_decision_date_coverage: 0.562644
+    maximum_unexplained_gap_sessions: 1714
+    fold_coverage:
+      fold_2016_2017: 1.0
+      fold_2018_2019: 0.882704
+      fold_2020_2021: 0.0
+      fold_2022_2023: 0.0
+      actual_2024_plus: 0.0
+    revision_classification: non_revising_archive
+    admissible: false
+    rejection_reason: insufficient_decision_date_coverage,unexplained_gap_exceeds_limit
+  cboe_equity_put_call_archive:
+    family: option_tail_pricing
+    provider: Cboe Exchange
+    raw_rows: 3253
+    usable_rows: 3253
+    first_observation_date: "2006-11-01"
+    last_observation_date: "2019-10-04"
+    safe_decision_date_coverage: 0.562644
+    maximum_unexplained_gap_sessions: 1714
+    fold_coverage:
+      fold_2016_2017: 1.0
+      fold_2018_2019: 0.882704
+      fold_2020_2021: 0.0
+      fold_2022_2023: 0.0
+      actual_2024_plus: 0.0
+    revision_classification: non_revising_archive
+    admissible: false
+    rejection_reason: insufficient_decision_date_coverage,unexplained_gap_exceeds_limit
+  cboe_skew_methodology:
+    family: option_tail_pricing
+    provider: Cboe Global Indices
+    source_type: documentation_only
+    numeric_history_present: false
+    revision_classification: methodology_change_and_history_recalculation_risk
+    admissible: false
+    rejection_reason: documentation_only_no_numeric_history
+  fred_high_yield_oas:
+    family: direct_credit_spreads
+    series_id: BAMLH0A0HYM2
+    raw_rows: 792
+    usable_rows: 784
+    first_observation_date: "2023-08-07"
+    last_observation_date: "2026-07-31"
+    safe_decision_date_coverage: 0.191120
+    maximum_unexplained_gap_sessions: 3169
+    fold_coverage:
+      fold_2016_2017: 0.0
+      fold_2018_2019: 0.0
+      fold_2020_2021: 0.0
+      fold_2022_2023: 0.201597
+      actual_2024_plus: 0.998459
+    revision_classification: current_revised_history_no_vintage_contract
+    admissible: false
+    rejection_reason: >-
+      history_starts_after_required_date,insufficient_decision_date_coverage,
+      unexplained_gap_exceeds_limit,revision_or_vintage_safety_not_proven
+  fred_corporate_oas:
+    family: direct_credit_spreads
+    series_id: BAMLC0A0CM
+    raw_rows: 792
+    usable_rows: 783
+    first_observation_date: "2023-08-07"
+    last_observation_date: "2026-07-31"
+    safe_decision_date_coverage: 0.190865
+    maximum_unexplained_gap_sessions: 3169
+    fold_coverage:
+      fold_2016_2017: 0.0
+      fold_2018_2019: 0.0
+      fold_2020_2021: 0.0
+      fold_2022_2023: 0.201597
+      actual_2024_plus: 0.996918
+    revision_classification: current_revised_history_no_vintage_contract
+    admissible: false
+    rejection_reason: >-
+      history_starts_after_required_date,insufficient_decision_date_coverage,
+      unexplained_gap_exceeds_limit,revision_or_vintage_safety_not_proven
+  survivorship_safe_breadth:
+    provider: unresolved
+    admissible: false
+    rejection_reason: canonical_source_unresolved
+  option_positioning:
+    provider: unresolved
+    admissible: false
+    rejection_reason: canonical_source_unresolved
+
+family_decisions:
+  option_tail_pricing:
+    admissible: false
+    reason: >-
+      Cboe total and equity put/call archives end in 2019, while SKEW has no
+      configured immutable numeric history and carries methodology-recalculation risk.
+  direct_credit_spreads:
+    admissible: false
+    reason: >-
+      Public FRED/ICE OAS history begins in August 2023 and lacks a vintage-safe
+      contract for the governed 2011-current study.
+  survivorship_safe_breadth:
+    admissible: false
+    reason: canonical point-in-time-safe source unresolved
+  option_positioning:
+    admissible: false
+    reason: canonical transparent historical source unresolved
+
+structural_diagnosis:
+  current_xgboost_model_capacity_is_primary_blocker: false
+  existing_daily_feature_set_exhausted: true
+  admissible_new_information_found: false
+  primary_blocker: >-
+    No complete genuinely new information family currently satisfies the
+    governed long-history, point-in-time, revision and source-integrity gates.
+    Training another XGBoost model would require either invalid source splicing,
+    revised-history leakage, survivorship reconstruction or a shortened sample.
+  evidence:
+    - Cboe put/call archives are complete only through October 2019.
+    - Public direct-credit series provide near-complete recent coverage but no 2011 development history.
+    - SKEW numeric vintage history, survivorship-safe breadth and transparent positioning sources remain unresolved.
+    - The Phase 0 artifact contains no outcomes and admits no family.
+
+retained_components:
+  - xgboost_research_synthesis_through_v4_24
+  - official_source_registry
+  - raw_and_normalized_source_hash_ledger
+  - observation_to_safe_decision_date_mapping
+  - leading_and_trailing_gap_audit
+  - fold_level_source_coverage
+  - no_outcome_artifact_schema_guard
+  - indivisible_family_admission_gate
+
+closed_retrospective_directions:
+  - splice_pre_2019_and_post_2019_put_call_sources
+  - use_current_revised_oas_as_vintage_history
+  - reconstruct_breadth_from_current_constituents
+  - use_opaque_option_positioning_scores
+  - shorten_governed_history_to_2023_plus
+  - relax_source_coverage_after_results
+  - retune_v4_23_or_v4_24_on_same_information
+  - train_v4_26_without_a_new_phase0_admission
+
+next_admissible_research:
+  status: blocked_pending_new_data
+  requirements:
+    - licensed continuous option-tail history with documented timestamps
+    - or vintage-safe direct-credit history back to 2011
+    - or authoritative survivorship-safe breadth history
+    - or another genuinely independent family passing a separate Phase 0 contract
+  direct_model_continuation_authorized: false
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false
