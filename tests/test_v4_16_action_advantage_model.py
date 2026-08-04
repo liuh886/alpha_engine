@@ -51,6 +51,11 @@ def _inputs() -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     }
     baseline = pd.DataFrame(index=index)
     baseline["net_return"] = 0.001
+    baseline["position_state"] = np.where(
+        np.arange(len(index)) % 90 < 30,
+        2,
+        1,
+    )
     return bars, baseline
 
 
