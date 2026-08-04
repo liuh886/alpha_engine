@@ -1,0 +1,61 @@
+schema_version: "1.0"
+experiment_id: cn130_regime_confidence_v1
+issue: 531
+parent_pr: 524
+market: cn
+universe: cn_selected_equities_v3
+benchmark: "000300"
+provider_identity_sha256: abae71f037571a9a847d4582e0bea9fabdd71796cac54a70aa7c6d07b668eeb0
+horizon_sessions: 10
+execution_delay_sessions: 1
+rebalance_sessions: 10
+research_only: true
+trade_ready: false
+promotion_allowed: false
+periods:
+  calibration:
+    start: 2022-01-01
+    end: 2023-12-31
+  validation:
+    - [2024H1, 2024-01-01, 2024-06-30]
+    - [2024H2, 2024-07-01, 2024-12-31]
+    - [2025H1, 2025-01-01, 2025-06-30]
+    - [2025H2, 2025-07-01, 2025-12-31]
+  reporting_only:
+    - [2026H1, 2026-01-01, 2026-06-30]
+    - [2026H2_PARTIAL, 2026-07-01, 2026-12-31]
+market_states:
+  risk_on:
+    rule: close_above_ma120_and_ret20_positive_and_drawdown120_above_minus_8pct
+  repair:
+    rule: drawdown120_at_or_below_minus_8pct_and_ret20_positive
+  risk_off:
+    rule: close_below_ma120_and_ret20_nonpositive
+  neutral:
+    rule: otherwise
+factor_calibration:
+  minimum_state_dates: 40
+  minimum_absolute_mean_rank_ic: 0.01
+  maximum_factors_per_state: 5
+  maximum_factors_per_family_per_state: 1
+  correlation_cap: 0.80
+  weights: equal
+  signs: frozen_from_calibration_mean_rank_ic
+confidence_variants:
+  - always_invested
+  - fourth_sector_score_calibration_q25
+  - sector_gap_calibration_q25
+  - combined_calibration_q25
+  - risk_off_half_cash
+  - risk_off_full_cash
+cost_bps: [10, 20, 40]
+decision_taxonomy:
+  - confidence_gate_not_supported_regime_model_not_supported
+  - confidence_gate_supported_regime_model_not_supported
+  - confidence_gate_not_supported_regime_model_supported
+  - confidence_gate_supported_regime_model_supported
+  - data_blocked
+integrity:
+  selection_returns_must_not_set_thresholds: true
+  validation_returns_must_not_set_factor_signs_or_weights: true
+  reporting_windows_excluded_from_selection: true
