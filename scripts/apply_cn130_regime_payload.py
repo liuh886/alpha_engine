@@ -5,7 +5,7 @@ import hashlib
 import tarfile
 from pathlib import Path
 
-EXPECTED_SHA256 = "393a1cca34a0d1899356de827f9f59ff64d3edbd79b7dec693501d8c5cdec02e"
+EXPECTED_SHA256 = "780d90f36d10eaf2d4137b6656f88943158774cb51d8ca4cad1fd781004d059b"
 
 root = Path.cwd()
 part_paths = sorted((root / ".github").glob("cn130_regime_payload.part*"))
