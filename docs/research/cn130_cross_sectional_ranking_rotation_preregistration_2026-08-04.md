@@ -165,3 +165,14 @@ The experiment must end with exactly one:
 - `data_blocked`.
 
 No decision updates CN x1.0 automatically. A supported candidate requires a separate reviewed version proposal and new untouched validation evidence.
+
+## Implementation clarification frozen before the complete run
+
+The execution implementation makes the following deterministic clarifications:
+
+- basic support requires positive mean OOS Rank IC, positive Top-minus-Bottom spread in at least three of four selection windows, and no single positive window contributing 50% or more of total positive spread;
+- R1 is tested for rank-label identity before fitting because subtracting one same-date benchmark return cannot change cross-sectional ranks;
+- R3 proper is blocked when point-in-time market capitalization is absent. A sector/beta/volatility/liquidity-proxy residual is retained only as an explicitly ineligible diagnostic;
+- R4 uses an aggregate sector ranker plus the global industry-relative security model, converts security scores to within-sector percentiles, and combines them at the frozen 35%/65% weights. Tiny date-by-sector LambdaRank query groups are prohibited because they are statistically unstable and operationally inefficient;
+- complete score ledgers are partitioned by window, ranking candidate and feature family, then gzip-compressed. Partitioning changes storage only, not evidence content;
+- 2026H1 and partial 2026H2 are reporting-only and cannot change selection or support decisions.

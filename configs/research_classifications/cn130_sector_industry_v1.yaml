@@ -1,0 +1,664 @@
+schema_version: '1.0'
+asset_id: cn130_sector_industry_v1
+market: cn
+pool_id: cn_selected_equities_v3
+as_of: '2026-08-04'
+status: research_taxonomy
+research_only: true
+trade_ready: false
+post_result_changes_allowed: false
+source_policy: manual entity-level classification, frozen before experiment execution
+market_cap_available: false
+market_cap_note: The bound OHLCV provider does not contain point-in-time shares outstanding
+  or market capitalization. No liquidity proxy is presented as market cap.
+symbols:
+  '000001':
+    entity: 平安银行
+    sector: Financials
+    industry: Banks
+    confidence: high
+  '000063':
+    entity: 中兴通讯
+    sector: Technology
+    industry: Communications Equipment
+    confidence: high
+  '000100':
+    entity: TCL科技
+    sector: Technology
+    industry: Display Panels
+    confidence: high
+  '000333':
+    entity: 美的集团
+    sector: Consumer Discretionary
+    industry: Home Appliances
+    confidence: high
+  000338:
+    entity: 潍柴动力
+    sector: Industrials
+    industry: Engines and Powertrain
+    confidence: high
+  000408:
+    entity: 藏格矿业
+    sector: Materials
+    industry: Potash and Lithium Mining
+    confidence: high
+  '000425':
+    entity: 徐工机械
+    sector: Industrials
+    industry: Construction Machinery
+    confidence: high
+  000538:
+    entity: 云南白药
+    sector: Health Care
+    industry: Traditional Chinese Medicine
+    confidence: high
+  000568:
+    entity: 泸州老窖
+    sector: Consumer Staples
+    industry: Baijiu
+    confidence: high
+  000596:
+    entity: 古井贡酒
+    sector: Consumer Staples
+    industry: Baijiu
+    confidence: high
+  '000651':
+    entity: 格力电器
+    sector: Consumer Discretionary
+    industry: Home Appliances
+    confidence: high
+  '000661':
+    entity: 长春高新
+    sector: Health Care
+    industry: Biotechnology
+    confidence: high
+  '000725':
+    entity: 京东方A
+    sector: Technology
+    industry: Display Panels
+    confidence: high
+  000768:
+    entity: 中航西飞
+    sector: Industrials
+    industry: Aerospace and Defense
+    confidence: high
+  000858:
+    entity: 五粮液
+    sector: Consumer Staples
+    industry: Baijiu
+    confidence: high
+  000895:
+    entity: 双汇发展
+    sector: Consumer Staples
+    industry: Packaged Foods and Meat
+    confidence: high
+  000938:
+    entity: 紫光股份
+    sector: Technology
+    industry: IT Infrastructure
+    confidence: high
+  000963:
+    entity: 华东医药
+    sector: Health Care
+    industry: Pharmaceuticals
+    confidence: high
+  000977:
+    entity: 浪潮信息
+    sector: Technology
+    industry: Servers and Computing Hardware
+    confidence: high
+  000999:
+    entity: 华润三九
+    sector: Health Care
+    industry: Pharmaceuticals
+    confidence: high
+  '002001':
+    entity: 新和成
+    sector: Materials
+    industry: Specialty Chemicals and Nutrition
+    confidence: high
+  '002007':
+    entity: 华兰生物
+    sector: Health Care
+    industry: Biotechnology
+    confidence: high
+  '002027':
+    entity: 分众传媒
+    sector: Communication Services
+    industry: Advertising Media
+    confidence: high
+  002049:
+    entity: 紫光国微
+    sector: Technology
+    industry: Semiconductors
+    confidence: high
+  '002050':
+    entity: 三花智控
+    sector: Industrials
+    industry: Thermal Management Components
+    confidence: high
+  '002142':
+    entity: 宁波银行
+    sector: Financials
+    industry: Banks
+    confidence: high
+  002179:
+    entity: 中航光电
+    sector: Industrials
+    industry: Aerospace Electronic Components
+    confidence: high
+  '002202':
+    entity: 金风科技
+    sector: Industrials
+    industry: Wind Turbine Equipment
+    confidence: high
+  '002222':
+    entity: 福晶科技
+    sector: Technology
+    industry: Optical Components
+    confidence: high
+  '002230':
+    entity: 科大讯飞
+    sector: Technology
+    industry: AI Software
+    confidence: high
+  '002241':
+    entity: 歌尔股份
+    sector: Technology
+    industry: Consumer Electronics Components
+    confidence: high
+  '002311':
+    entity: 海大集团
+    sector: Consumer Staples
+    industry: Animal Nutrition and Feed
+    confidence: high
+  '002352':
+    entity: 顺丰控股
+    sector: Industrials
+    industry: Logistics and Delivery
+    confidence: high
+  '002371':
+    entity: 北方华创
+    sector: Technology
+    industry: Semiconductor Equipment
+    confidence: high
+  '002410':
+    entity: 广联达
+    sector: Technology
+    industry: Enterprise and Construction Software
+    confidence: high
+  '002415':
+    entity: 海康威视
+    sector: Technology
+    industry: Security Electronics
+    confidence: high
+  '002456':
+    entity: 欧菲光
+    sector: Technology
+    industry: Optical and Camera Components
+    confidence: high
+  '002460':
+    entity: 赣锋锂业
+    sector: Materials
+    industry: Lithium Materials
+    confidence: high
+  '002463':
+    entity: 沪电股份
+    sector: Technology
+    industry: Printed Circuit Boards
+    confidence: high
+  '002466':
+    entity: 天齐锂业
+    sector: Materials
+    industry: Lithium Materials
+    confidence: high
+  '002475':
+    entity: 立讯精密
+    sector: Technology
+    industry: Electronic Manufacturing Services
+    confidence: high
+  002493:
+    entity: 荣盛石化
+    sector: Materials
+    industry: Petrochemicals
+    confidence: high
+  002518:
+    entity: 科士达
+    sector: Industrials
+    industry: Power Electronics and Data Center Equipment
+    confidence: high
+  002594:
+    entity: 比亚迪
+    sector: Consumer Discretionary
+    industry: Automobiles
+    confidence: high
+  '002600':
+    entity: 领益智造
+    sector: Technology
+    industry: Electronic Manufacturing Services
+    confidence: high
+  '002601':
+    entity: 龙佰集团
+    sector: Materials
+    industry: Titanium Dioxide and Pigments
+    confidence: high
+  '002602':
+    entity: 世纪华通
+    sector: Communication Services
+    industry: Interactive Entertainment
+    confidence: high
+  002648:
+    entity: 卫星化学
+    sector: Materials
+    industry: Petrochemicals
+    confidence: high
+  002709:
+    entity: 天赐材料
+    sector: Materials
+    industry: Battery Chemicals
+    confidence: high
+  '002714':
+    entity: 牧原股份
+    sector: Consumer Staples
+    industry: Livestock and Meat
+    confidence: high
+  002837:
+    entity: 英维克
+    sector: Industrials
+    industry: Thermal Management and Data Center Equipment
+    confidence: high
+  '300015':
+    entity: 爱尔眼科
+    sector: Health Care
+    industry: Health Care Services
+    confidence: high
+  '300017':
+    entity: 网宿科技
+    sector: Technology
+    industry: CDN and Cloud Infrastructure
+    confidence: high
+  '300033':
+    entity: 同花顺
+    sector: Technology
+    industry: Financial Software
+    confidence: high
+  '300059':
+    entity: 东方财富
+    sector: Financials
+    industry: Capital Markets and Online Brokerage
+    confidence: high
+  '300124':
+    entity: 汇川技术
+    sector: Industrials
+    industry: Industrial Automation
+    confidence: high
+  '300133':
+    entity: 华策影视
+    sector: Communication Services
+    industry: Film and Television
+    confidence: high
+  '300408':
+    entity: 三环集团
+    sector: Technology
+    industry: Electronic Components and Ceramics
+    confidence: high
+  '300548':
+    entity: 长芯博创
+    sector: Technology
+    industry: Optical Communications
+    confidence: high
+  '300750':
+    entity: 宁德时代
+    sector: Industrials
+    industry: Battery Manufacturing
+    confidence: high
+  '300782':
+    entity: 卓胜微
+    sector: Technology
+    industry: Radio Frequency Semiconductors
+    confidence: high
+  '301291':
+    entity: 明阳电气
+    sector: Industrials
+    industry: Electrical Equipment
+    confidence: high
+  '301308':
+    entity: 江波龙
+    sector: Technology
+    industry: Memory and Data Storage
+    confidence: high
+  '301309':
+    entity: 德明利
+    sector: Technology
+    industry: Memory and Data Storage
+    confidence: high
+  '301666':
+    entity: 大普微
+    sector: Technology
+    industry: Enterprise Data Storage
+    confidence: high
+  '600009':
+    entity: 上海机场
+    sector: Industrials
+    industry: Airports
+    confidence: high
+  '600019':
+    entity: 宝钢股份
+    sector: Materials
+    industry: Steel
+    confidence: high
+  '600026':
+    entity: 中远海能
+    sector: Industrials
+    industry: Energy Shipping
+    confidence: high
+  '600030':
+    entity: 中信证券
+    sector: Financials
+    industry: Capital Markets
+    confidence: high
+  '600031':
+    entity: 三一重工
+    sector: Industrials
+    industry: Construction Machinery
+    confidence: high
+  '600036':
+    entity: 招商银行
+    sector: Financials
+    industry: Banks
+    confidence: high
+  '600150':
+    entity: 中国船舶
+    sector: Industrials
+    industry: Shipbuilding
+    confidence: high
+  '600184':
+    entity: 光电股份
+    sector: Industrials
+    industry: Defense Electronics and Optics
+    confidence: high
+  '600276':
+    entity: 恒瑞医药
+    sector: Health Care
+    industry: Pharmaceuticals
+    confidence: high
+  '600309':
+    entity: 万华化学
+    sector: Materials
+    industry: Specialty Chemicals
+    confidence: high
+  '600406':
+    entity: 国电南瑞
+    sector: Industrials
+    industry: Grid Automation
+    confidence: high
+  '600426':
+    entity: 华鲁恒升
+    sector: Materials
+    industry: Commodity and Specialty Chemicals
+    confidence: high
+  '600436':
+    entity: 片仔癀
+    sector: Health Care
+    industry: Traditional Chinese Medicine
+    confidence: high
+  '600438':
+    entity: 通威股份
+    sector: Materials
+    industry: Solar Silicon and Agriculture
+    confidence: high
+  '600487':
+    entity: 亨通光电
+    sector: Industrials
+    industry: Optical Cable and Power Cable
+    confidence: high
+  '600519':
+    entity: 贵州茅台
+    sector: Consumer Staples
+    industry: Baijiu
+    confidence: high
+  '600522':
+    entity: 中天科技
+    sector: Industrials
+    industry: Optical Cable and Power Cable
+    confidence: high
+  '600547':
+    entity: 山东黄金
+    sector: Materials
+    industry: Gold Mining
+    confidence: high
+  '600570':
+    entity: 恒生电子
+    sector: Technology
+    industry: Financial Software
+    confidence: high
+  '600588':
+    entity: 用友网络
+    sector: Technology
+    industry: Enterprise Software
+    confidence: high
+  '600690':
+    entity: 海尔智家
+    sector: Consumer Discretionary
+    industry: Home Appliances
+    confidence: high
+  '600760':
+    entity: 中航沈飞
+    sector: Industrials
+    industry: Aerospace and Defense
+    confidence: high
+  '600809':
+    entity: 山西汾酒
+    sector: Consumer Staples
+    industry: Baijiu
+    confidence: high
+  '600845':
+    entity: 宝信软件
+    sector: Technology
+    industry: Industrial Software and Data Centers
+    confidence: high
+  '600875':
+    entity: 东方电气
+    sector: Industrials
+    industry: Power Generation Equipment
+    confidence: high
+  '600887':
+    entity: 伊利股份
+    sector: Consumer Staples
+    industry: Dairy Products
+    confidence: high
+  '600893':
+    entity: 航发动力
+    sector: Industrials
+    industry: Aerospace Engines
+    confidence: high
+  '600900':
+    entity: 长江电力
+    sector: Utilities
+    industry: Hydropower
+    confidence: high
+  '600938':
+    entity: 中国海油
+    sector: Energy
+    industry: Oil and Gas Exploration and Production
+    confidence: high
+  '601012':
+    entity: 隆基绿能
+    sector: Industrials
+    industry: Solar Equipment
+    confidence: high
+  '601088':
+    entity: 中国神华
+    sector: Energy
+    industry: Coal and Integrated Energy
+    confidence: high
+  '601138':
+    entity: 工业富联
+    sector: Technology
+    industry: Electronic Manufacturing Services
+    confidence: high
+  '601318':
+    entity: 中国平安
+    sector: Financials
+    industry: Insurance
+    confidence: high
+  '601600':
+    entity: 中国铝业
+    sector: Materials
+    industry: Aluminum
+    confidence: high
+  '601633':
+    entity: 长城汽车
+    sector: Consumer Discretionary
+    industry: Automobiles
+    confidence: high
+  '601698':
+    entity: 中国卫通
+    sector: Communication Services
+    industry: Satellite Communications
+    confidence: high
+  '601728':
+    entity: 中国电信
+    sector: Communication Services
+    industry: Telecommunications Services
+    confidence: high
+  '601766':
+    entity: 中国中车
+    sector: Industrials
+    industry: Rail Equipment
+    confidence: high
+  '601808':
+    entity: 中海油服
+    sector: Energy
+    industry: Oilfield Services
+    confidence: high
+  '601838':
+    entity: 成都银行
+    sector: Financials
+    industry: Banks
+    confidence: high
+  '601857':
+    entity: 中国石油
+    sector: Energy
+    industry: Integrated Oil and Gas
+    confidence: high
+  '601872':
+    entity: 招商轮船
+    sector: Industrials
+    industry: Marine Transportation
+    confidence: high
+  '601877':
+    entity: 正泰电器
+    sector: Industrials
+    industry: Electrical Equipment
+    confidence: high
+  '601888':
+    entity: 中国中免
+    sector: Consumer Discretionary
+    industry: Travel Retail
+    confidence: high
+  '601899':
+    entity: 紫金矿业
+    sector: Materials
+    industry: Diversified Mining
+    confidence: high
+  '601919':
+    entity: 中远海控
+    sector: Industrials
+    industry: Container Shipping
+    confidence: high
+  '601985':
+    entity: 中国核电
+    sector: Utilities
+    industry: Nuclear Power
+    confidence: high
+  '603160':
+    entity: 汇顶科技
+    sector: Technology
+    industry: Semiconductors
+    confidence: high
+  '603259':
+    entity: 药明康德
+    sector: Health Care
+    industry: Life Sciences Services
+    confidence: high
+  '603260':
+    entity: 合盛硅业
+    sector: Materials
+    industry: Industrial Silicon
+    confidence: high
+  '603288':
+    entity: 海天味业
+    sector: Consumer Staples
+    industry: Packaged Foods and Condiments
+    confidence: high
+  '603369':
+    entity: 今世缘
+    sector: Consumer Staples
+    industry: Baijiu
+    confidence: high
+  '603392':
+    entity: 万泰生物
+    sector: Health Care
+    industry: Vaccines and Diagnostics
+    confidence: high
+  '603501':
+    entity: 韦尔股份
+    sector: Technology
+    industry: Image Sensor Semiconductors
+    confidence: high
+  '603629':
+    entity: 利通电子
+    sector: Technology
+    industry: Electronic Components and Manufacturing
+    confidence: high
+  '603658':
+    entity: 安图生物
+    sector: Health Care
+    industry: Diagnostics
+    confidence: high
+  '603799':
+    entity: 华友钴业
+    sector: Materials
+    industry: Battery Metals
+    confidence: high
+  '603806':
+    entity: 福斯特
+    sector: Materials
+    industry: Solar Encapsulation Materials
+    confidence: high
+  '603899':
+    entity: 晨光股份
+    sector: Consumer Discretionary
+    industry: Stationery and Consumer Products
+    confidence: high
+  '603986':
+    entity: 兆易创新
+    sector: Technology
+    industry: Memory Semiconductors
+    confidence: high
+  '603993':
+    entity: 洛阳钼业
+    sector: Materials
+    industry: Diversified Mining
+    confidence: high
+  '688008':
+    entity: 澜起科技
+    sector: Technology
+    industry: Semiconductors
+    confidence: high
+  '688521':
+    entity: 芯原股份
+    sector: Technology
+    industry: Semiconductor IP and Design Services
+    confidence: high
+  '688525':
+    entity: 佰维存储
+    sector: Technology
+    industry: Memory and Data Storage
+    confidence: high
+  '688676':
+    entity: 金盘科技
+    sector: Industrials
+    industry: Transformers and Electrical Equipment
+    confidence: high

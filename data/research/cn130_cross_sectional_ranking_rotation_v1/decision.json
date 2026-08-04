@@ -1,0 +1,14 @@
+{
+  "automatic_promotion": false,
+  "basic_gate_pass_count": 0,
+  "creates_cn_x1_1_candidate": false,
+  "decision": "cn130_cross_sectional_ranking_not_supported",
+  "reasons": [
+    "no eligible candidate passed all ranking-first basic gates",
+    "R1 is cross-sectionally rank-equivalent to R0",
+    "full R3 is data-blocked by missing PIT market capitalization",
+    "2024 windows show negative ranking direction for all candidate architectures"
+  ],
+  "rotation_stage_opened": false,
+  "winner": null
+}

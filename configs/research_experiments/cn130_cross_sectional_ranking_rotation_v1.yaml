@@ -116,6 +116,9 @@ ranking_stage:
 
     - ranking_id: r4_two_stage_hierarchical_rank
       label: benchmark_or_industry_relative_forward_10d_return
+      sector_stage: sector_median_features_xgb_rank_ndcg
+      security_stage: global_industry_relative_xgb_score_then_within_sector_percentile
+      small_date_sector_query_groups_prohibited: true
       sector_score_weight: 0.35
       within_sector_security_score_weight: 0.65
       weights_may_change_after_results: false
@@ -129,6 +132,17 @@ ranking_stage:
   feature_family_ablation_required: true
 
 ranking_support_gate:
+  exact_basic_thresholds:
+    mean_oos_rank_ic: greater_than_0
+    positive_top_bottom_spread_windows: at_least_3_of_4
+    strongest_positive_window_share: below_0_50
+    target_status: eligible
+  exact_full_thresholds:
+    minimum_leave_one_sector_rank_ic: greater_than_0
+    mean_maximum_sector_share_top15: at_most_0_40
+    block_bootstrap_rank_ic_p05: greater_than_minus_0_005
+    seed_mean_rank_correlation: at_least_0_90
+    seed_mean_top15_overlap: at_least_0_65
   require_all:
     - mean_oos_rank_ic_positive
     - positive_top_bottom_spread_window_ratio_at_least_0_60
@@ -168,7 +182,7 @@ rotation_stage:
 
     - portfolio_id: p3_hierarchical_sector_rotation
       maximum_selected_sectors: 3
-      selected_names_per_sector: fixed_before_execution
+      selected_names_per_sector: 3
       forced_selection: false
       cash_when_no_sector_passes: true
 
@@ -182,6 +196,15 @@ rotation_stage:
         weak: 0.0
         medium: 0.5
         strong: 1.0
+      exact_thresholds:
+        strong:
+          predicted_score_separation_z: at_least_1_0
+          breadth_above_ma50: at_least_0_50
+          prior_topk_overlap: at_least_0_40
+        medium:
+          predicted_score_separation_z: at_least_0_50
+          breadth_above_ma50: at_least_0_35
+        otherwise: weak
       confidence_inputs:
         - predicted_top_bottom_separation
         - score_dispersion
