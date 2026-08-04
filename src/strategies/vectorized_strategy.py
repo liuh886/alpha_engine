@@ -30,8 +30,8 @@ logger = get_logger(__name__)
 class VectorizedBiweeklyStrategy(BaseSignalStrategy):
     """Vectorized biweekly strategy using pre-computed signals.
 
-    When precomputed_signals is provided, uses vectorized operations instead
-    of per-bar D.features() calls. Falls back to standard behavior otherwise.
+    Authoritative use requires precomputed signals.  Missing evidence fails
+    closed instead of silently changing engines mid-run.
     """
 
     # Class-level shared precomputed signals (set before backtest starts)
@@ -51,6 +51,7 @@ class VectorizedBiweeklyStrategy(BaseSignalStrategy):
         forbid_all_trade_at_limit: bool = True,
         use_risk_manager: bool = False,
         risk_config: dict | None = None,
+        require_precomputed: bool = True,
         **kwargs,
     ):
         kwargs.pop("n_drop", None)
@@ -64,6 +65,7 @@ class VectorizedBiweeklyStrategy(BaseSignalStrategy):
         self.sell_score_threshold = sell_score_threshold
         self.only_tradable = only_tradable
         self.forbid_all_trade_at_limit = forbid_all_trade_at_limit
+        self.require_precomputed = require_precomputed
         self.entry_dates: dict[str, date] = {}
 
         # Risk management
@@ -104,6 +106,11 @@ class VectorizedBiweeklyStrategy(BaseSignalStrategy):
             pred_score = self._precomputed.get_scores_on_date(prediction_dt)
             if pred_score.empty:
                 return TradeDecisionWO([], self)
+        elif getattr(self, "require_precomputed", True):
+            raise RuntimeError(
+                "VectorizedBiweeklyStrategy requires manifest-bound precomputed "
+                "signals; refusing slow-path fallback"
+            )
         else:
             pred_score = self.signal.get_signal(start_time=pred_start_time, end_time=pred_end_time)
             if isinstance(pred_score, pd.DataFrame):

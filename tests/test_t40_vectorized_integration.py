@@ -144,6 +144,25 @@ def test_is_vectorized_strategy_handles_missing_config():
     assert _is_vectorized_strategy({}) is False
 
 
+def test_vectorized_precompute_missing_contract_fails_closed():
+    from types import SimpleNamespace
+
+    import pandas as pd
+    import pytest
+
+    from src.research.backtest import (
+        VectorizedPrecomputeError,
+        _precompute_for_vectorized,
+    )
+
+    with pytest.raises(VectorizedPrecomputeError, match="refusing"):
+        _precompute_for_vectorized(
+            pd.DataFrame({"score": [1.0]}),
+            SimpleNamespace(handler_kwargs={}),
+            {"strategy": {"class": "VectorizedBiweeklyStrategy"}},
+        )
+
+
 # ---------------------------------------------------------------------------
 # Profile JSON: vectorized flag presence
 # ---------------------------------------------------------------------------

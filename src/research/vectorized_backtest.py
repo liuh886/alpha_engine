@@ -308,6 +308,10 @@ class BacktestResult:
     costs: float = 0.0
     net_return: float | None = None
     information_ratio: float = 0.0
+    execution_mode: str = "fast_array_research"
+    authoritative_execution: bool = False
+    research_only: bool = True
+    trade_ready: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -333,6 +337,10 @@ class BacktestResult:
             "n_periods": self.n_periods,
             "test_start": self.test_start,
             "test_end": self.test_end,
+            "execution_mode": self.execution_mode,
+            "authoritative_execution": self.authoritative_execution,
+            "research_only": self.research_only,
+            "trade_ready": self.trade_ready,
         }
 
 
