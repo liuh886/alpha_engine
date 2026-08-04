@@ -68,16 +68,24 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen
       - name: Fetch exact-cutoff CSI300 context
+        id: csi300
+        continue-on-error: true
         run: >-
           uv run python scripts/fetch_csi300_for_byd_v1_1.py
           --output-csv artifacts/research/byd_v1_1_xgb_input/csi300.csv
           --manifest artifacts/research/byd_v1_1_xgb_input/csi300_manifest.json
-      - name: Run frozen BYD V1.1 evidence
-        run: >-
-          uv run python scripts/run_byd_v1_1_xgb.py
-          --fetch-provider auto
-          --benchmark-csv artifacts/research/byd_v1_1_xgb_input/csi300.csv
-          --output-dir artifacts/research/byd_v1_1_xgb
+      - name: Run frozen BYD V1.1 evidence with available context
+        run: |
+          if [ -f artifacts/research/byd_v1_1_xgb_input/csi300.csv ]; then
+            uv run python scripts/run_byd_v1_1_xgb.py \
+              --fetch-provider auto \
+              --benchmark-csv artifacts/research/byd_v1_1_xgb_input/csi300.csv \
+              --output-dir artifacts/research/byd_v1_1_xgb
+          else
+            uv run python scripts/run_byd_v1_1_xgb.py \
+              --fetch-provider auto \
+              --output-dir artifacts/research/byd_v1_1_xgb
+          fi
       - name: Copy benchmark identity into evidence
         if: always()
         run: |
