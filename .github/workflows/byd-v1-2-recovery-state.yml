@@ -1,0 +1,101 @@
+name: BYD V1.2 Recovery State
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/research/byd_v1_2_recovery_state.py"
+      - "scripts/run_byd_v1_2_recovery_state.py"
+      - "configs/research_paradigms/byd_v1_2_recovery_state.yaml"
+      - "tests/test_byd_v1_2_recovery_state.py"
+      - "docs/research/byd_v1_2_recovery_state.md"
+      - ".github/workflows/byd-v1-2-recovery-state.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/research/byd_v1_2_recovery_state.py"
+      - "scripts/run_byd_v1_2_recovery_state.py"
+      - "configs/research_paradigms/byd_v1_2_recovery_state.yaml"
+      - "tests/test_byd_v1_2_recovery_state.py"
+      - "docs/research/byd_v1_2_recovery_state.md"
+      - ".github/workflows/byd-v1-2-recovery-state.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff V1.2 research
+        run: >-
+          uv run ruff check
+          src/research/byd_v1_2_recovery_state.py
+          scripts/run_byd_v1_2_recovery_state.py
+          tests/test_byd_v1_2_recovery_state.py
+      - name: Run V1.2 contract tests
+        run: >-
+          uv run pytest tests/test_byd_v1_2_recovery_state.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: contract-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Rebuild governed canonical BYD data
+        run: >-
+          uv run python scripts/data/build_byd_canonical_bundle.py
+          --start 2011-06-30
+          --cutoff 2026-08-03
+          --output-dir artifacts/data/byd_canonical_v1
+      - name: Finalize factor-event and volume semantics
+        run: >-
+          uv run python scripts/data/finalize_byd_canonical_evidence.py
+          --canonical-dir artifacts/data/byd_canonical_v1
+      - name: Require independent unadjusted audit
+        run: >-
+          uv run python scripts/data/audit_byd_secondary_raw.py
+          --canonical-dir artifacts/data/byd_canonical_v1
+          --retries 1
+      - name: Seal canonical manifest
+        run: >-
+          uv run python scripts/data/seal_byd_canonical_manifest.py
+          --canonical-dir artifacts/data/byd_canonical_v1
+      - name: Run frozen V1.2 research
+        run: >-
+          uv run python scripts/run_byd_v1_2_recovery_state.py
+          --canonical-dir artifacts/data/byd_canonical_v1
+          --contract configs/research_paradigms/byd_v1_2_recovery_state.yaml
+          --output-dir artifacts/research/byd_v1_2_recovery_state
+      - name: Upload V1.2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-v1-2-recovery-state-evidence
+          path: |
+            artifacts/data/byd_canonical_v1/manifest.json
+            artifacts/data/byd_canonical_v1/quarantined_open_dates.csv
+            artifacts/research/byd_v1_2_recovery_state
+          if-no-files-found: error
+          retention-days: 30
