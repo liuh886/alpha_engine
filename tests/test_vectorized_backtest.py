@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from src.research.vectorized_backtest import (
     AdapterBacktestConfig,
@@ -373,6 +374,13 @@ def test_missing_precomputed_date_does_not_fall_back_to_another_signal_source():
     decision = strategy.generate_trade_decision()
 
     assert decision.get_decision() == []
+
+
+def test_missing_precomputed_bundle_fails_closed():
+    strategy = _uninitialized_vectorized_strategy(None, object())
+
+    with pytest.raises(RuntimeError, match="refusing slow-path fallback"):
+        strategy.generate_trade_decision()
 
 
 def test_precomputed_lookup_uses_ordinary_shifted_prediction_calendar():

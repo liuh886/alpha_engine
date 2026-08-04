@@ -188,6 +188,10 @@ class WalkForwardResult:
     n_success: int = 0
     n_failed: int = 0
     n_skipped: int = 0
+    matrix_cache_key: str | None = None
+    matrix_cache_status: str = "not_applicable"
+    model_threads: int = 1
+    split_workers: int = 1
 
     def aggregate(self) -> None:
         """Compute summary statistics from split IC values.
@@ -1062,6 +1066,13 @@ def walk_forward_vectorized(
     training_objective: str = "regression",
     min_train_months: int = 12,
     feature_profile: str = "alpha158",
+    use_model_matrix_cache: bool = True,
+    matrix_cache_dir: str | Path | None = None,
+    refresh_model_matrix_cache: bool = False,
+    split_workers: int | None = None,
+    model_threads: int | None = None,
+    _selected_split_ids: frozenset[int] | None = None,
+    _provider_sha256: str | None = None,
 ) -> WalkForwardResult:
     """Vectorized walk-forward — pre-loads features once, trains LightGBM directly.
 
@@ -1084,6 +1095,16 @@ def walk_forward_vectorized(
             recorded as ``status='skipped'``.  Default 12.  Must be >= 1.
         feature_profile: ``"alpha158"`` (default) or the predeclared
             ``"curated_us_momentum"`` research profile.
+        use_model_matrix_cache: Reuse an exact-identity, manifest-bound matrix
+            snapshot across runs.  A provider, pool, factor, label, benchmark
+            or time-boundary change invalidates the snapshot.
+        matrix_cache_dir: Optional cache root.  Defaults to the governed
+            artifacts cache directory.
+        refresh_model_matrix_cache: Rebuild even when an exact snapshot exists.
+        split_workers: Maximum concurrent walk-forward windows.  By default a
+            hardware-aware budget is used.
+        model_threads: Maximum LightGBM threads per concurrent window.  By
+            default a hardware-aware budget is used.
     """
     import lightgbm as lgb
     from qlib.contrib.data.loader import Alpha158DL
@@ -1106,7 +1127,8 @@ def walk_forward_vectorized(
         )
 
     train_end = train_end or default_train_end()
-    safe_qlib_init(build_qlib_init_cfg(None, market=market))
+    qlib_cfg = build_qlib_init_cfg(None, market=market)
+    safe_qlib_init(qlib_cfg)
 
     # --- Load symbols ---
     instr_path = Path("data/watchlist/instruments") / f"{market}.txt"
@@ -1142,22 +1164,92 @@ def walk_forward_vectorized(
         "%Y-%m-%d"
     )
 
-    log.info("Vectorized WF: loading", n_features=len(all_exprs))
-    X_all = D.features(symbols, all_exprs, start_time=train_start, end_time=full_end)
-    y_all = D.features(symbols, label_expr, start_time=train_start, end_time=full_end)
-    X_all = _normalize_qlib_index(X_all)
-    y_all = _normalize_qlib_index(y_all)
+    from src.common.paths import ARTIFACTS_DIR
+    from src.research.model_matrix_cache import (
+        fingerprint_model_provider,
+        load_model_matrix_snapshot,
+        model_matrix_cache_key,
+        write_model_matrix_snapshot,
+    )
+
+    provider_uri = qlib_cfg.get("provider_uri", "data/watchlist")
+    if not isinstance(provider_uri, (str, Path)):
+        raise ValueError("Model matrix caching requires a local Qlib provider path")
+    provider_root = Path(provider_uri)
+    provider_sha256 = _provider_sha256 or fingerprint_model_provider(
+        provider_root,
+        instrument_file=instr_path,
+        symbols=symbols,
+    )
+    cache_identity = {
+        "schema_version": "1.0",
+        "market": market,
+        "provider_sha256": provider_sha256,
+        "symbols": symbols,
+        "feature_profile": feature_profile,
+        "feature_expressions": [str(value) for value in all_exprs],
+        "label_expression": [str(value) for value in label_expr],
+        "train_start": train_start,
+        "full_end": full_end,
+        "benchmark_symbol": benchmark_symbol,
+    }
+    cache_key = model_matrix_cache_key(cache_identity)
+    cache_base = (
+        Path(matrix_cache_dir)
+        if matrix_cache_dir is not None
+        else ARTIFACTS_DIR / "cache" / "model_matrices"
+    )
+    cache_path = cache_base / cache_key
+    snapshot = None
+    if use_model_matrix_cache and not refresh_model_matrix_cache:
+        snapshot = load_model_matrix_snapshot(cache_path, identity=cache_identity)
+
+    cache_status = "disabled"
+    benchmark_data = None
+    if snapshot is not None:
+        X_all = snapshot.features
+        y_all = snapshot.labels
+        benchmark_data = snapshot.benchmark
+        cache_status = "exact_identity_hit"
+        log.info(
+            "Vectorized WF: model matrix cache hit",
+            cache_key=cache_key,
+            X_shape=X_all.shape,
+        )
+    else:
+        log.info("Vectorized WF: loading", n_features=len(all_exprs))
+        X_all = D.features(symbols, all_exprs, start_time=train_start, end_time=full_end)
+        y_all = D.features(symbols, label_expr, start_time=train_start, end_time=full_end)
+        X_all = _normalize_qlib_index(X_all)
+        y_all = _normalize_qlib_index(y_all)
+        if benchmark_symbol:
+            benchmark_data = D.features(
+                [benchmark_symbol],
+                label_expr,
+                start_time=train_start,
+                end_time=full_end,
+            )
+            if isinstance(benchmark_data.index, pd.MultiIndex):
+                benchmark_data = benchmark_data.xs(
+                    benchmark_symbol, level="instrument"
+                )
+        if use_model_matrix_cache:
+            write_model_matrix_snapshot(
+                cache_path,
+                identity=cache_identity,
+                features=X_all,
+                labels=y_all,
+                benchmark=benchmark_data,
+            )
+            cache_status = (
+                "refreshed" if refresh_model_matrix_cache else "built"
+            )
+
     X_all = X_all.fillna(0.0)
     y_series = y_all.iloc[:, 0]
     if benchmark_symbol:
-        benchmark_data = D.features(
-            [benchmark_symbol],
-            label_expr,
-            start_time=train_start,
-            end_time=full_end,
-        )
-        if isinstance(benchmark_data.index, pd.MultiIndex):
-            benchmark_data = benchmark_data.xs(benchmark_symbol, level="instrument")
+        if benchmark_data is None:
+            raise RuntimeError("Benchmark matrix missing from model matrix snapshot")
         benchmark_returns = benchmark_data.iloc[:, 0]
         y_series = _subtract_benchmark_by_date(y_series, benchmark_returns)
     log.info("Vectorized WF: loaded", X_shape=X_all.shape)
@@ -1186,9 +1278,23 @@ def walk_forward_vectorized(
         step_months=step_months,
         min_train_months=min_train_months,
     )
+    from src.research.resource_budget import resolve_training_resource_budget
+
+    resource_budget = resolve_training_resource_budget(
+        task_count=len(splits),
+        split_workers=split_workers if use_model_matrix_cache else 1,
+        model_threads=model_threads,
+    )
     if not splits:
         log.warning("Vectorized WF: no splits")
-        r = WalkForwardResult(market=market, model_type="lgbm_vectorized")
+        r = WalkForwardResult(
+            market=market,
+            model_type="lgbm_vectorized",
+            matrix_cache_key=cache_key,
+            matrix_cache_status=cache_status,
+            model_threads=resource_budget.threads_per_model,
+            split_workers=resource_budget.split_workers,
+        )
         r.aggregate()
         return r
 
@@ -1201,7 +1307,93 @@ def walk_forward_vectorized(
             f"history before first evaluation"
         ),
     )
-    result = WalkForwardResult(market=market, model_type="lgbm_vectorized")
+    result = WalkForwardResult(
+        market=market,
+        model_type="lgbm_vectorized",
+        matrix_cache_key=cache_key,
+        matrix_cache_status=cache_status,
+        model_threads=resource_budget.threads_per_model,
+        split_workers=resource_budget.split_workers,
+    )
+
+    if resource_budget.split_workers > 1 and _selected_split_ids is None:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        log.info(
+            "Vectorized WF: bounded parallel execution",
+            split_workers=resource_budget.split_workers,
+            model_threads=resource_budget.threads_per_model,
+            logical_cpus=resource_budget.logical_cpus,
+            physical_cpus=resource_budget.physical_cpus,
+            available_memory_gb=resource_budget.available_memory_gb,
+        )
+        del X_all, y_all, y_series, benchmark_data
+        future_to_split = {}
+        with ThreadPoolExecutor(
+            max_workers=resource_budget.split_workers,
+            thread_name_prefix="alpha-wf",
+        ) as executor:
+            for split_id in range(len(splits)):
+                future = executor.submit(
+                    walk_forward_vectorized,
+                    market=market,
+                    train_start=train_start,
+                    train_end=train_end,
+                    test_window_months=test_window_months,
+                    step_months=step_months,
+                    n_estimators=n_estimators,
+                    learning_rate=learning_rate,
+                    label_horizon=label_horizon,
+                    benchmark_symbol=benchmark_symbol,
+                    training_objective=training_objective,
+                    min_train_months=min_train_months,
+                    feature_profile=feature_profile,
+                    use_model_matrix_cache=True,
+                    matrix_cache_dir=cache_base,
+                    refresh_model_matrix_cache=False,
+                    split_workers=1,
+                    model_threads=resource_budget.threads_per_model,
+                    _selected_split_ids=frozenset({split_id}),
+                    _provider_sha256=provider_sha256,
+                )
+                future_to_split[future] = split_id
+            for future in as_completed(future_to_split):
+                split_id = future_to_split[future]
+                try:
+                    child_result = future.result()
+                    result.splits.extend(child_result.splits)
+                except Exception as exc:
+                    ts, te, vs, ve = splits[split_id]
+                    log.exception(
+                        "Vectorized WF parallel split failed",
+                        split_id=split_id,
+                        error=str(exc),
+                    )
+                    result.splits.append(
+                        SplitResult(
+                            split_id=split_id,
+                            train_start=ts,
+                            train_end=te,
+                            test_start=vs,
+                            test_end=ve,
+                            ic=None,
+                            rank_ic=None,
+                            status="failed",
+                            error_message=str(exc),
+                        )
+                    )
+        result.splits.sort(key=lambda value: value.split_id)
+        result.aggregate()
+        log.info(
+            "Vectorized WF parallel done",
+            market=market,
+            n_splits=len(splits),
+            n_ok=result.n_success,
+            mean_ic=result.mean_ic,
+            ic_ir=result.ic_ir,
+            consistency=result.consistency_score,
+        )
+        return result
 
     from src.research.cross_sectional_training import (
         compute_relevance_labels,
@@ -1220,7 +1412,7 @@ def walk_forward_vectorized(
         "bagging_fraction": 1.0,
         "lambda_l1": 1.0,
         "lambda_l2": 10.0,
-        "num_threads": 20,
+        "num_threads": resource_budget.threads_per_model,
         "verbosity": -1,
         "min_data_in_leaf": 100,
         "seed": 42,
@@ -1249,6 +1441,8 @@ def walk_forward_vectorized(
     dates_all = X_all.index.get_level_values("datetime")
 
     for split_id, (ts, te, vs, ve) in enumerate(splits):
+        if _selected_split_ids is not None and split_id not in _selected_split_ids:
+            continue
         safe_train_end = te  # fallback for exception handler
         # --- Compute safe endpoints for train→valid→test boundaries ---
         if label_horizon > 0:

@@ -33,9 +33,7 @@ class SignalFrame:
         if not isinstance(self.scores.index, pd.MultiIndex):
             raise ValueError("SignalFrame scores must use a MultiIndex")
         if set(self.scores.index.names) != {"datetime", "instrument"}:
-            raise ValueError(
-                "SignalFrame index levels must be named 'datetime' and 'instrument'"
-            )
+            raise ValueError("SignalFrame index levels must be named 'datetime' and 'instrument'")
 
 
 @dataclass(frozen=True)
@@ -156,34 +154,46 @@ def score_to_equal_weight_intent(
         raise ValueError("top_n must be positive")
 
     if evaluation_dates is None:
-        dates = tuple(
-            sorted(signal_frame.scores.index.get_level_values("datetime").unique())
-        )
+        dates = tuple(sorted(signal_frame.scores.index.get_level_values("datetime").unique()))
     else:
         dates = tuple(pd.Timestamp(item) for item in evaluation_dates)
     if not dates:
         raise ValueError("evaluation_dates must not be empty")
 
     rebalance_dates = dates[:: signal_frame.rebalance_days]
-    rows: list[tuple[pd.Timestamp, str, float]] = []
-    for date in rebalance_dates:
-        try:
-            daily_scores = signal_frame.scores.xs(date, level="datetime")["score"]
-        except KeyError:
-            continue
-        if len(daily_scores) < top_n:
-            continue
-        selected = daily_scores.nlargest(top_n)
-        weight = 1.0 / top_n
-        rows.extend((date, str(symbol), weight) for symbol in selected.index)
+    score_series = signal_frame.scores["score"]
+    instrument_order = pd.Index(score_series.index.get_level_values("instrument").unique())
+    score_matrix = score_series.unstack(level="instrument").reindex(
+        index=pd.DatetimeIndex(rebalance_dates), columns=instrument_order
+    )
+    presence = (
+        pd.Series(True, index=score_series.index)
+        .unstack(level="instrument")
+        .reindex(index=pd.DatetimeIndex(rebalance_dates), columns=instrument_order)
+        .fillna(False)
+        .to_numpy(dtype=bool)
+    )
+    score_values = score_matrix.to_numpy(dtype=float, na_value=np.nan)
+    sortable = np.where(
+        presence,
+        np.nan_to_num(score_values, nan=-np.finfo(float).max),
+        -np.inf,
+    )
+    ranked_indices = np.argsort(-sortable, axis=1, kind="stable")[:, :top_n]
+    populated = presence.sum(axis=1) >= top_n
+    selected_dates = np.repeat(
+        np.asarray(rebalance_dates, dtype="datetime64[ns]")[populated], top_n
+    )
+    selected_instruments = instrument_order.to_numpy()[ranked_indices[populated]].reshape(-1)
+    weight = 1.0 / top_n
 
-    if rows:
-        index = pd.MultiIndex.from_tuples(
-            [(date, symbol) for date, symbol, _ in rows],
+    if len(selected_dates):
+        index = pd.MultiIndex.from_arrays(
+            [pd.to_datetime(selected_dates), selected_instruments.astype(str)],
             names=["datetime", "instrument"],
         )
         target_weights = pd.DataFrame(
-            {"target_weight": [weight for _, _, weight in rows]},
+            {"target_weight": np.full(len(index), weight, dtype=float)},
             index=index,
         )
     else:
@@ -206,24 +216,6 @@ def score_to_equal_weight_intent(
     )
 
 
-def _returns_map(returns: pd.DataFrame) -> dict[str, dict[str, float]]:
-    result: dict[str, dict[str, float]] = {}
-    dates = sorted(returns.index.get_level_values("datetime").unique())
-    for date in dates:
-        try:
-            row = returns.loc[date]
-            if isinstance(row, pd.DataFrame):
-                row = row.iloc[:, 0]
-            result[str(date)[:10]] = {
-                str(symbol): float(value)
-                for symbol, value in row.items()
-                if not np.isnan(value)
-            }
-        except (KeyError, TypeError):
-            result[str(date)[:10]] = {}
-    return result
-
-
 def evaluate_portfolio_intent(
     intent: PortfolioIntent,
     returns: pd.DataFrame,
@@ -240,74 +232,76 @@ def evaluate_portfolio_intent(
     if list(returns.columns) != ["return"]:
         raise ValueError("returns must contain exactly one 'return' column")
 
-    return_lookup = _returns_map(returns)
-    benchmark_series = None
-    if benchmark_returns is not None:
-        benchmark_series = benchmark_returns[benchmark_returns.columns[0]]
+    rebalance_index = pd.DatetimeIndex(intent.rebalance_dates)
+    if intent.target_weights.empty:
+        weight_values = np.zeros((len(rebalance_index), 0), dtype=float)
+        instruments = pd.Index([], dtype=object)
+    else:
+        target_matrix = intent.target_weights["target_weight"].unstack(level="instrument")
+        instruments = target_matrix.columns
+        target_matrix = target_matrix.reindex(index=rebalance_index).ffill().fillna(0.0)
+        weight_values = target_matrix.to_numpy(dtype=float)
 
-    portfolio_values = [float(initial_capital)]
-    benchmark_values = [float(initial_capital)]
-    period_returns: list[float] = []
-    benchmark_period_returns: list[float] = []
-    current_holdings: dict[str, float] = {}
-    total_turnover = 0.0
-    total_cost = 0.0
+    previous_weights = np.vstack(
+        [np.zeros((1, weight_values.shape[1]), dtype=float), weight_values[:-1]]
+    )
+    period_turnover_values = np.abs(weight_values - previous_weights).sum(axis=1) / 2.0
+    cost_values = period_turnover_values * cost_bps / 10_000.0
 
-    for date in intent.rebalance_dates:
-        target = intent.weights_for(date)
-        period_turnover = 0.0
-        cost = 0.0
-        if target is not None:
-            symbols = set(current_holdings) | set(target)
-            period_turnover = (
-                sum(
-                    abs(target.get(symbol, 0.0) - current_holdings.get(symbol, 0.0))
-                    for symbol in symbols
-                )
-                / 2.0
-            )
-            cost = period_turnover * cost_bps / 10_000.0
-            current_holdings = target
+    if len(instruments):
+        return_matrix = (
+            returns.iloc[:, 0]
+            .unstack(level="instrument")
+            .reindex(index=rebalance_index, columns=instruments)
+        )
+        return_values = return_matrix.to_numpy(dtype=float, na_value=np.nan)
+        valid_returns = np.isfinite(return_values)
+        valid_weights = np.where(valid_returns, weight_values, 0.0)
+        valid_weight_sums = valid_weights.sum(axis=1)
+        gross_returns = np.divide(
+            (valid_weights * np.where(valid_returns, return_values, 0.0)).sum(axis=1),
+            valid_weight_sums,
+            out=np.zeros(len(rebalance_index), dtype=float),
+            where=valid_weight_sums > 0.0,
+        )
+        period_return_values = np.where(valid_weight_sums > 0.0, gross_returns - cost_values, 0.0)
+    else:
+        period_return_values = np.zeros(len(rebalance_index), dtype=float)
 
-        total_turnover += period_turnover
-        total_cost += cost
-        daily = return_lookup.get(str(date)[:10], {})
-        if current_holdings and daily:
-            valid = {
-                symbol: weight
-                for symbol, weight in current_holdings.items()
-                if symbol in daily
-            }
-            if valid:
-                total_weight = sum(valid.values())
-                portfolio_return = (
-                    sum((valid[symbol] / total_weight) * daily[symbol] for symbol in valid)
-                    - cost
-                )
-            else:
-                portfolio_return = 0.0
-        else:
-            portfolio_return = 0.0
+    if benchmark_returns is None:
+        benchmark_return_values = np.zeros(len(rebalance_index), dtype=float)
+    else:
+        benchmark_return_values = (
+            pd.to_numeric(benchmark_returns.iloc[:, 0].reindex(rebalance_index), errors="coerce")
+            .fillna(0.0)
+            .to_numpy(dtype=float)
+        )
 
-        portfolio_values.append(portfolio_values[-1] * (1.0 + portfolio_return))
-        period_returns.append(portfolio_return)
-
-        benchmark_return = 0.0
-        if benchmark_series is not None and date in benchmark_series.index:
-            raw = float(benchmark_series.loc[date])
-            benchmark_return = 0.0 if np.isnan(raw) else raw
-        benchmark_values.append(benchmark_values[-1] * (1.0 + benchmark_return))
-        benchmark_period_returns.append(benchmark_return)
+    portfolio_array = np.concatenate(
+        (
+            np.asarray([initial_capital], dtype=float),
+            initial_capital * np.cumprod(1.0 + period_return_values),
+        )
+    )
+    benchmark_array = np.concatenate(
+        (
+            np.asarray([initial_capital], dtype=float),
+            initial_capital * np.cumprod(1.0 + benchmark_return_values),
+        )
+    )
+    portfolio_values = portfolio_array.tolist()
+    benchmark_values = benchmark_array.tolist()
+    period_returns = period_return_values.tolist()
+    benchmark_period_returns = benchmark_return_values.tolist()
+    total_turnover = float(period_turnover_values.sum())
+    total_cost = float(cost_values.sum())
 
     total_return = portfolio_values[-1] / portfolio_values[0] - 1.0
     benchmark_return = benchmark_values[-1] / benchmark_values[0] - 1.0
     excess_return = total_return - benchmark_return
 
-    portfolio_array = np.asarray(portfolio_values, dtype=float)
-    max_drawdown = float(
-        (portfolio_array / np.maximum.accumulate(portfolio_array) - 1.0).min()
-    )
-    returns_array = np.asarray(period_returns, dtype=float)
+    max_drawdown = float((portfolio_array / np.maximum.accumulate(portfolio_array) - 1.0).min())
+    returns_array = period_return_values
     return_std = float(returns_array.std())
     periods_per_year = 252.0 / intent.rebalance_days
     sharpe_ratio = (
@@ -317,23 +311,15 @@ def evaluate_portfolio_intent(
     )
     n_periods = len(period_returns)
     years = n_periods * intent.rebalance_days / 252.0
-    annual_return = (
-        float((1.0 + total_return) ** (1.0 / years) - 1.0) if years > 0 else 0.0
-    )
-    volatility = (
-        float(returns_array.std() * np.sqrt(periods_per_year))
-        if n_periods > 0
-        else 0.0
-    )
+    annual_return = float((1.0 + total_return) ** (1.0 / years) - 1.0) if years > 0 else 0.0
+    volatility = float(returns_array.std() * np.sqrt(periods_per_year)) if n_periods > 0 else 0.0
 
     information_ratio = 0.0
     if benchmark_period_returns and len(benchmark_period_returns) == n_periods:
         excess = returns_array - np.asarray(benchmark_period_returns, dtype=float)
         tracking_error = float(excess.std() * np.sqrt(periods_per_year))
         annual_benchmark = (
-            float((1.0 + benchmark_return) ** (1.0 / years) - 1.0)
-            if years > 0
-            else 0.0
+            float((1.0 + benchmark_return) ** (1.0 / years) - 1.0) if years > 0 else 0.0
         )
         if tracking_error > 1e-10:
             information_ratio = (annual_return - annual_benchmark) / tracking_error

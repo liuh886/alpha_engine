@@ -11,6 +11,10 @@ logger = get_logger(__name__)
 _VECTORIZED_STRATEGY_CLASS = "VectorizedBiweeklyStrategy"
 
 
+class VectorizedPrecomputeError(RuntimeError):
+    """Required vectorized Qlib execution evidence could not be prepared."""
+
+
 def _is_vectorized_strategy(port_analysis_config: dict) -> bool:
     """Check whether the port_analysis_config targets the vectorized strategy."""
     strat_cfg = port_analysis_config.get("strategy", {})
@@ -21,7 +25,7 @@ def _precompute_for_vectorized(
     pred_score: pd.DataFrame,
     dataset: object,
     port_analysis_config: dict,
-) -> None:
+) -> dict[str, int | str]:
     """Pre-compute signals for VectorizedBiweeklyStrategy before backtest.
 
     Must be called BEFORE PortAnaRecord.generate() so the class-level
@@ -30,6 +34,10 @@ def _precompute_for_vectorized(
     try:
         from src.strategies.vectorized_engine import VectorizedSignalPrecomputer
         from src.strategies.vectorized_strategy import VectorizedBiweeklyStrategy
+
+        # A failed refresh must never leave a prior run's class-level evidence
+        # available to the next authoritative execution.
+        VectorizedBiweeklyStrategy.set_precomputed(None)
 
         # Resolve instruments and date range from dataset config
         handler_kwargs = (
@@ -42,11 +50,10 @@ def _precompute_for_vectorized(
         end_time = handler_kwargs.get("end_time")
 
         if not instruments or not start_time or not end_time:
-            logger.warning(
-                "vectorized_precompute_skipped",
-                reason="missing instruments or date range from dataset",
+            raise VectorizedPrecomputeError(
+                "Missing instruments or date range from dataset; refusing "
+                "unverified slow-path fallback"
             )
-            return
 
         backtest_cfg = port_analysis_config.get("backtest", {})
         bt_start = backtest_cfg.get("start_time", start_time)
@@ -61,8 +68,9 @@ def _precompute_for_vectorized(
         )
 
         if close_df.empty:
-            logger.warning("vectorized_precompute_skipped", reason="empty close data")
-            return
+            raise VectorizedPrecomputeError(
+                "Empty close data; refusing unverified slow-path fallback"
+            )
 
         precomputer = VectorizedSignalPrecomputer(ma_window=60)
         signals = precomputer.precompute_from_frame(close_df, pred_df=pred_score)
@@ -73,8 +81,18 @@ def _precompute_for_vectorized(
             n_dates=len(signals.dates),
             n_instruments=len(signals.instruments),
         )
+        return {
+            "status": "complete",
+            "n_dates": len(signals.dates),
+            "n_instruments": len(signals.instruments),
+        }
+    except VectorizedPrecomputeError:
+        raise
     except Exception as exc:
-        logger.warning("vectorized_precompute_failed", error=str(exc))
+        raise VectorizedPrecomputeError(
+            "Vectorized Qlib precomputation failed; refusing unverified "
+            f"slow-path fallback: {exc}"
+        ) from exc
 
 
 def run_backtest(
@@ -98,16 +116,31 @@ def run_backtest(
         labels = dataset.prepare(segments="test", col_set="label", data_key=DataHandler.DK_L)
 
     if recorder:
+        from src.research.backtest_execution_policy import build_execution_receipt
+
+        precompute_status = "not_required"
         # Pre-compute signals for vectorized strategy before PortAnaRecord
         if _is_vectorized_strategy(port_analysis_config):
-            _precompute_for_vectorized(pred_score, dataset, port_analysis_config)
+            precompute = _precompute_for_vectorized(
+                pred_score, dataset, port_analysis_config
+            )
+            precompute_status = str(precompute["status"])
+        execution_receipt = build_execution_receipt(
+            "authoritative_qlib", precompute_status=precompute_status
+        )
 
         # Save both with and without .pkl suffix so PortAnaRecord's
         # SignalRecord dependency check (which looks for pred.pkl/label.pkl)
         # passes. R.save_objects uses the key as-is, while SignalRecord.generate
         # saves as pred.pkl.
         R.save_objects(pred=pred_score, label=labels)
-        R.save_objects(**{"pred.pkl": pred_score, "label.pkl": labels})
+        R.save_objects(
+            **{
+                "pred.pkl": pred_score,
+                "label.pkl": labels,
+                "backtest_execution_receipt": execution_receipt.to_dict(),
+            }
+        )
         pa_record = PortAnaRecord(recorder, port_analysis_config)
         pa_record.generate()
 
