@@ -93,7 +93,7 @@ jobs:
         run: >-
           uv run python scripts/data/audit_byd_secondary_raw.py
           --canonical-dir artifacts/data/byd_canonical_v1
-          --retries 3
+          --retries 1
       - name: Seal final canonical manifest
         run: >-
           uv run python scripts/data/seal_byd_canonical_manifest.py
