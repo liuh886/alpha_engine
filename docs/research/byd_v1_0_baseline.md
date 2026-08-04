@@ -45,13 +45,19 @@ V1.0 只允许：
 
 2025-01-01 至 2026-08-03 为固定隔离期。该区间只能用于否证，不能用于修改均线、RSI、布林带、突破窗口或成本。只有选择门槛和隔离门槛同时通过，获胜规则才可命名为 BYD V1.0。
 
-## 5. 输出
+## 5. 数据供应商纪律
+
+自动证据运行采用预先冻结的顺序：BaoStock 前复权完整历史优先，AkShare/Eastmoney 前复权完整历史次之。这个顺序仅解决供应商技术可用性，不依据任何策略结果选择。
+
+一次运行必须从首日至 `2026-08-03` 全部使用同一个供应商。禁止把两个供应商的区间拼接，也禁止在结果已知后按收益选择数据源。manifest 会记录每次供应商尝试、最终采用者、接口、复权方式、首末日期、行数和 SHA-256。
+
+## 6. 输出
 
 运行命令：
 
 ```bash
 uv run python scripts/run_byd_v1_0.py \
-  --fetch-akshare \
+  --fetch-provider auto \
   --output-dir artifacts/research/byd_v1_0
 ```
 
@@ -62,10 +68,11 @@ uv run python scripts/run_byd_v1_0.py \
 - `selected_daily.csv`：获选候选每日信号、仓位、收益、成本与回撤；
 - `selected_trades.csv`：逐笔交易；
 - `byd_ohlcv.csv`：本次运行实际使用的数据；
-- `report.md`：面向人工审阅的研究报告。
+- `report.md`：面向人工审阅的研究报告；
+- `data_blocked.json`：所有冻结供应商均失败时的显式阻塞证据。
 
-数据 manifest 记录供应商、接口、复权方式、首末日期、行数和 SHA-256。若 `2026-08-03` 数据不存在，运行失败为 `data_blocked`，不使用较旧数据冒充最新基准。
+若 `2026-08-03` 数据不存在，运行失败为 `data_blocked`，不使用较旧数据冒充最新基准。
 
-## 6. 版本结论
+## 7. 版本结论
 
 本研究首先建立的是**单标的研究范式**。即便历史门槛通过，BYD V1.0 仍保持 `research_only=true`、`trade_ready=false`。后续只有在固定规则下积累前瞻信号与执行证据，才可讨论是否进入影子运行。
