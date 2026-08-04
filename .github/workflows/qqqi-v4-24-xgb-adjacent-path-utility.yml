@@ -12,6 +12,7 @@ on:
       - "src/research/v4_24_xgb_adjacent_path_policy.py"
       - "src/research/v4_24_xgb_adjacent_path_state_machine.py"
       - "scripts/run_qqqi_v4_24_xgb_adjacent_path_utility.py"
+      - "scripts/validate_qqqi_v4_24_probability_geometry.py"
       - "tests/test_v4_24_xgb_adjacent_path_utility.py"
   workflow_dispatch:
     inputs:
@@ -45,6 +46,7 @@ jobs:
             src/research/v4_24_xgb_adjacent_path_policy.py \
             src/research/v4_24_xgb_adjacent_path_state_machine.py \
             scripts/run_qqqi_v4_24_xgb_adjacent_path_utility.py \
+            scripts/validate_qqqi_v4_24_probability_geometry.py \
             tests/test_v4_24_xgb_adjacent_path_utility.py
       - name: Test v4.24 and inherited research contracts
         run: |
@@ -69,6 +71,10 @@ jobs:
             rm -rf artifacts/evidence/qqqi_xgb_adjacent_path_utility_v4_24_research
             sleep $((attempt * 30))
           done
+      - name: Validate edge probability geometry
+        run: |
+          uv run python scripts/validate_qqqi_v4_24_probability_geometry.py \
+            --output-dir artifacts/evidence/qqqi_xgb_adjacent_path_utility_v4_24_research
       - name: Upload v4.24 evidence
         if: always()
         uses: actions/upload-artifact@v4
