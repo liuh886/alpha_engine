@@ -14,11 +14,14 @@ on:
       - "scripts/run_byd_515180_allocation.py"
       - "tests/test_etf_515180_canonical.py"
       - "tests/test_byd_515180_allocation.py"
+      - "data/research/515180_canonical_v1_snapshot.tar.xz.b64"
+      - "docs/evidence/byd_515180_allocation/**"
       - ".github/workflows/byd-515180-allocation.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  actions: read
+  contents: write
 
 jobs:
   contract-tests:
@@ -87,15 +90,22 @@ jobs:
           path: artifacts/data/515180_canonical_v1
           if-no-files-found: error
           retention-days: 30
-      - name: Enforce canonical quality gate
+      - name: Enforce exact canonical identity
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           manifest = json.loads(Path("artifacts/data/515180_canonical_v1/manifest.json").read_text())
           print(json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True))
-          if manifest.get("data_quality_status") != "canonical_v1_pass":
-              raise SystemExit("515180 canonical quality gate failed; model job is blocked")
+          exact = {
+              "data_quality_status": "canonical_v1_pass",
+              "adjusted_sha256": "2173afbe2fcbc8875de55ce0ff9bcb25b1c9f184c5cd273ade682244393c67a5",
+              "manifest_sha256": "7f19639e6540ebb71eac7e52dab270df4b20b59bcf764c2dc6843045de21e4ec",
+              "cutoff": "2026-08-03",
+          }
+          for key, expected in exact.items():
+              if manifest.get(key) != expected:
+                  raise SystemExit(f"515180 exact identity drift for {key}: {manifest.get(key)!r} != {expected!r}")
           PY
 
   model-evidence:
@@ -137,3 +147,58 @@ jobs:
           path: artifacts/research/byd_515180_allocation
           if-no-files-found: error
           retention-days: 30
+
+  materialize-exact-evidence:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [canonical-data, model-evidence]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Download exact run artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*515180*"
+          path: artifacts/downloaded
+          merge-multiple: false
+      - name: Materialize deterministic snapshot and static evidence
+        run: |
+          set -euo pipefail
+          data_dir="artifacts/downloaded/515180-canonical-v1"
+          model_dir="artifacts/downloaded/byd-515180-allocation-evidence"
+          test -f "$data_dir/manifest.json"
+          test -f "$model_dir/summary.json"
+          mkdir -p data/research docs/evidence/byd_515180_allocation
+          (
+            cd "$data_dir"
+            find . -type f -print0 | sort -z | tar --null -T - \
+              --sort=name \
+              --mtime='UTC 2026-08-03 00:00:00' \
+              --owner=0 --group=0 --numeric-owner \
+              -cJf "$GITHUB_WORKSPACE/515180-canonical-v1-snapshot.tar.xz"
+          )
+          echo "86e2bde20fce70ff093d66acfbc89523b8039861ed67cc202eee67c9b6802eee  515180-canonical-v1-snapshot.tar.xz" | sha256sum --check --strict
+          base64 -w 76 515180-canonical-v1-snapshot.tar.xz > data/research/515180_canonical_v1_snapshot.tar.xz.b64
+          cp "$model_dir/summary.json" docs/evidence/byd_515180_allocation/summary.json
+          cp "$model_dir/evaluation.csv" docs/evidence/byd_515180_allocation/evaluation.csv
+          cp "$model_dir/correlation_diagnostics.csv" docs/evidence/byd_515180_allocation/correlation_diagnostics.csv
+          cp "$model_dir/conditional_complementarity.csv" docs/evidence/byd_515180_allocation/conditional_complementarity.csv
+          cp "$model_dir/README.md" docs/evidence/byd_515180_allocation/README.md
+          rm -f .github/workflows/materialize-515180-canonical-snapshot.yml
+      - name: Commit only when evidence is new
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- data/research/515180_canonical_v1_snapshot.tar.xz.b64 docs/evidence/byd_515180_allocation .github/workflows/materialize-515180-canonical-snapshot.yml && \
+             [[ -z "$(git ls-files --others --exclude-standard data/research/515180_canonical_v1_snapshot.tar.xz.b64 docs/evidence/byd_515180_allocation)" ]]; then
+            echo "Exact evidence already materialized"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/515180_canonical_v1_snapshot.tar.xz.b64 docs/evidence/byd_515180_allocation
+          git add -u .github/workflows/materialize-515180-canonical-snapshot.yml || true
+          git commit -m "research: freeze exact 515180 canonical allocation evidence"
+          git push origin HEAD:${{ github.head_ref }}
