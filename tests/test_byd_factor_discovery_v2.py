@@ -27,7 +27,7 @@ def _bars(periods: int = 1800) -> pd.DataFrame:
             "high": high,
             "low": low,
             "close": close,
-            "volume": rng.integers(1_000_000, 20_000_000, periods),
+            "volume": rng.integers(1_000_000, 20_000_000, periods).astype(float),
         }
     )
 
@@ -36,7 +36,11 @@ def test_forward_label_starts_at_next_open_and_ends_ten_sessions_later() -> None
     bars = _bars(700)
     dataset, _ = build_factor_dataset(bars)
     position = 300
-    expected = dataset["open"].iloc[position + 11] / dataset["open"].iloc[position + 1] - 1.0
+    expected = (
+        dataset["open"].iloc[position + 11]
+        / dataset["open"].iloc[position + 1]
+        - 1.0
+    )
     assert np.isclose(dataset[FORWARD_RETURN_COLUMN].iloc[position], expected)
 
 
@@ -44,7 +48,8 @@ def test_future_mutation_does_not_change_prior_features() -> None:
     bars = _bars(900)
     dataset_a, factors_a = build_factor_dataset(bars)
     changed = bars.copy()
-    changed.loc[changed.index >= 820, ["open", "high", "low", "close", "volume"]] *= 1.5
+    columns = ["open", "high", "low", "close", "volume"]
+    changed.loc[changed.index >= 820, columns] *= 1.5
     dataset_b, factors_b = build_factor_dataset(changed)
     assert factors_a == factors_b
     cutoff = dataset_a.index[819]
