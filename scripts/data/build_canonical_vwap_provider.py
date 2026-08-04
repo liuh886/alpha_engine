@@ -18,6 +18,7 @@ from src.data.canonical_vwap import (
     write_source_role_manifest,
 )
 from src.data.model_data_bundle import ComponentSpec, build_model_data_bundle
+from src.factors.governance import build_factor_governance_manifest
 from src.factors.panel import build_alpha158_panel
 
 
@@ -167,6 +168,15 @@ def _write_us_blocker(
         "trade_ready": False,
     }
     _write_json(output_root / "factor_panel_manifest.json", blocker)
+    blocker["factor_governance_manifest"] = build_factor_governance_manifest(
+        root=Path.cwd(),
+        market="us",
+        pool_id=pool_id,
+        evidence_cutoff=cutoff,
+        factor_panel_manifest=blocker,
+        model_data_manifest=None,
+        output_path=output_root / "factor_governance_manifest.json",
+    )
     return blocker
 
 
@@ -370,6 +380,15 @@ def build_cn(
         evidence_cutoff=cutoff,
         frontend_data_dir=frontend,
     )
+    factor_governance = build_factor_governance_manifest(
+        root=Path.cwd(),
+        market="cn",
+        pool_id=pool_id,
+        evidence_cutoff=cutoff,
+        factor_panel_manifest=panel_manifest,
+        model_data_manifest=model_manifest,
+        output_path=output_root / "factor_governance_manifest.json",
+    )
     result = {
         "schema_version": "1.0",
         "market": "cn",
@@ -381,6 +400,7 @@ def build_cn(
         "price_component_manifest": price_manifest,
         "factor_panel_manifest": panel_manifest,
         "model_data_manifest": model_manifest,
+        "factor_governance_manifest": factor_governance,
         "status": panel_manifest.get("status"),
         "research_only": True,
         "trade_ready": False,
