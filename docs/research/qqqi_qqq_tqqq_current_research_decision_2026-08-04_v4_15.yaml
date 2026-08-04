@@ -1,0 +1,171 @@
+schema_version: "1.0"
+decision_date: "2026-08-04"
+strategy_family: qqqi_qqq_tqqq_sgov_voo_transition_events
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04_v4_14.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    v4.15 converted the v4.14 continuous factor states into fresh crossings and
+    confirmations, but only one repair rule passed development FDR and its three
+    outer events produced one win and two losses. The OOF policy reduced CAGR and
+    Calmar and no full-development family passed FDR for the actual window.
+
+transition_events_v4_15:
+  experiment_id: qqqi_tqqq_sgov_voo_transition_events_v4_15_research
+  role: frozen_nonpromoted_transition_event_experiment
+  evidence:
+    report: docs/research/qqqi_tqqq_sgov_voo_transition_events_v4_15_result_2026-08-04.md
+    workflow_run: 30866733584
+    artifact_id: 8876384191
+    artifact_digest: sha256:99b9cec70ace42659ecb2023095890332a5e4155e65a6c4241dc568a336d1c14
+    manifest_file_count: 50
+  search_boundary:
+    transition_primitives: 24
+    unique_rule_structures: 162
+    development_evaluations: 648
+    outer_folds: 4
+    confirmation_window_sessions: 3
+    repair_acceleration_extension_cap: 0.05
+    minimum_development_events: 6
+    fdr_alpha: 0.10
+    transaction_cost_bps_per_turnover_unit: 10.0
+  family_findings:
+    defense:
+      fdr_passing_executable_windows: 0
+      outer_events: 0
+      passed: false
+    tech_acceleration:
+      fdr_passing_executable_windows: 0
+      outer_events: 0
+      passed: false
+    broad_rotation:
+      fdr_passing_executable_windows: 0
+      outer_events: 0
+      passed: false
+    repair:
+      fdr_passing_executable_windows: 1
+      selected_rule: repair__vol_normalization_cross__bollinger_pct_b_cross_up_0_50__qqq_voo_return20_cross_up
+      selected_motif: repair__vol_repair__bollinger_cross__cross_return20
+      development_events: 6
+      development_fdr_qvalue: 0.085595
+      outer_events: 3
+      outer_macro_clusters: 3
+      positive_events: 1
+      negative_events: 2
+      median_excess_return: -0.004692
+      mean_excess_return: 0.002853
+      conditional_win_rate_lift: -0.371617
+      largest_positive_event_share: 1.0
+      motif_recurrence_rate: 0.25
+      passed: false
+  rare_nonactionable_motif:
+    rule: repair__tech_vol_premium_repaired__bandwidth_compression_release__qqq_voo_return20_cross_up
+    historical_events: 4
+    historical_win_rate: 1.0
+    median_excess_return: 0.025792
+    decision: reject_due_to_insufficient_independent_events
+    reason: >-
+      The same four historical events recur in expanding development windows.
+      They do not satisfy the frozen minimum of six events and cannot enter outer
+      validation or support a dedicated rule.
+  oof_portfolio:
+    sample_start: "2016-01-04"
+    sample_end: "2023-12-29"
+    observations: 2012
+    frozen_v4_2:
+      cagr: 0.274932
+      sharpe: 1.016261
+      sortino: 1.447903
+      max_drawdown: -0.389218
+      calmar: 0.706371
+      turnover_units: 106.5
+    full_transition_policy:
+      cagr: 0.273542
+      sharpe: 1.021795
+      sortino: 1.461660
+      max_drawdown: -0.391652
+      calmar: 0.698431
+      turnover_units: 114.5
+    cagr_delta_pp: -0.139040
+    calmar_delta: -0.007940
+    max_drawdown_worsening_pp: 0.243394
+    turnover_increase: 0.075117
+    portfolio_gate_passed: false
+  actual_product:
+    sample_start: "2024-01-30"
+    sample_end: "2026-07-31"
+    observations: 628
+    selected_families: []
+    actual_events: 0
+    best_full_development_qvalues:
+      defense: 1.0
+      repair: 0.379049
+      tech_acceleration: 0.745845
+      broad_rotation: 0.427652
+    policy_equal_v4_2: true
+    interpretation: >-
+      No family passed development FDR, so the actual policy made no changes.
+      This is a fail-closed result and not evidence of actual-window success.
+  decision: no_fresh_transition_event_family_stable
+  audit: audit_pass_nonpromotion_result_valid
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+  baseline_and_alerts_unchanged: true
+
+combined_v4_14_v4_15_answer:
+  persistent_static_rules_stable: false
+  fresh_transition_rules_stable: false
+  useful_factor_interactions_exist: true
+  interpretation: >-
+    Continuous VIX/VXN, RSI20, Bollinger and QQQ/VOO information contains local
+    interactions, but fixed-threshold AND grammars either overgeneralize persistent
+    states or become too sparse when converted to fresh transitions. More threshold
+    enumeration is not justified.
+
+retained_components:
+  - continuous_vix_vxn_rsi20_bollinger_qqq_voo_feature_builder
+  - fresh_transition_impulse_builder
+  - three_session_confirmation_window
+  - extension_cap_and_family_specific_horizons
+  - chronological_fdr_outer_validation
+  - fixed_action_policy_and_audit_runtime
+
+closed_retrospective_directions:
+  - current_162_transition_and_rules
+  - relaxing_minimum_event_count
+  - relaxing_fdr_alpha
+  - extending_confirmation_window
+  - changing_horizons_from_three_outer_events
+  - building_a_special_rule_from_four_rare_historical_events
+  - further_fixed_threshold_and_enumeration_on_current_history
+  - changing_v4_2_from_v4_15
+
+next_admissible_research:
+  name: strongly_regularized_multitask_action_advantage_model
+  objective: >-
+    Use the same continuous factor set in one fixed, strongly regularized model
+    per discrete action advantage rather than enumerating more Boolean thresholds.
+  required_boundaries:
+    - no_model_family_comparison
+    - fixed_regularization_before_results
+    - nonoverlapping_or_purged_training_labels
+    - chronological_walk_forward_with_embargo
+    - macro_cluster_and_era_diagnostics
+    - discrete_actions_only
+    - event_only_when_score_freshly_crosses_training_threshold
+    - no_continuous_weight_optimization
+    - historical_success_authorizes_shadow_only
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false

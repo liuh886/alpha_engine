@@ -1,0 +1,156 @@
+schema_version: "1.0"
+decision_date: "2026-08-04"
+strategy_family: qqqi_qqq_tqqq_market_internal_incremental_information
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04_v4_16.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    v4.19 evaluated new information families only. It did not construct a
+    portfolio policy. One family passed the preregistered Phase 1 information
+    gate, but this authorizes only a separately frozen Phase 2 experiment.
+
+incremental_market_internals_v4_19:
+  experiment_id: qqqi_market_internal_incremental_factors_v4_19_research
+  role: phase_1_complete_family_screen
+  evidence:
+    report: docs/research/qqqi_market_internal_incremental_factors_v4_19_result_2026-08-04.md
+    workflow_run: 30871963432
+    artifact_id: 8878196663
+    artifact_digest: sha256:8e81bdd853c1ae9d813e073ea5cf4922d6630d1b3eca580590f84f761dfb8163
+    manifest_file_count: 42
+    market_data_end: "2026-08-03"
+  phase_0:
+    completed: true
+    provider: yfinance_via_alphaengine_adapter
+    families_source_admissible: 4
+    synthetic_backfill_used: false
+    exact_calendar_intersections: true
+    sparse_observation_windows_preserved: true
+  frozen_comparison:
+    base_inputs: 29
+    estimator: ridge
+    alpha: 100.0
+    action_targets: 4
+    global_sample_every_sessions: 10
+    embargo_sessions: 10
+    outer_folds: 4
+    family_tests: 4
+    fdr_method: benjamini_hochberg
+    fdr_alpha: 0.10
+    portfolio_policy_evaluated: false
+  leakage_audit:
+    base_and_candidate_shared_rows: true
+    target_window_used_for_fit: false
+    outer_embargo_trading_sessions: [18, 11, 14, 19]
+    close_observable_features_only: true
+    future_perturbation_test_passed: true
+  family_results:
+    implied_volatility_term_structure:
+      raw_pvalue: 0.772751
+      qvalue: 0.772751
+      actions_ic_improvement_gate: 0
+      actions_quintile_spread_improvement: 3
+      action_state_cells_ic_improvement: 4
+      positive_outer_eras: 2
+      admitted: false
+    volatility_risk_premium:
+      raw_pvalue: 0.772751
+      qvalue: 0.772751
+      actions_ic_improvement_gate: 0
+      actions_quintile_spread_improvement: 4
+      action_state_cells_ic_improvement: 4
+      positive_outer_eras: 1
+      admitted: false
+    credit_duration_risk_appetite:
+      raw_pvalue: 0.0106353759765625
+      qvalue: 0.04254150390625
+      actions_ic_improvement_gate: 3
+      actions_quintile_spread_improvement: 4
+      action_state_cells_ic_improvement: 9
+      positive_outer_eras: 4
+      coefficient_cosine_similarity_median: 0.7602378107417707
+      improvement_without_best_era: 0.1463426093930581
+      largest_positive_era_share: 0.29065572974866544
+      largest_positive_macro_cluster_share: 0.11252016617888534
+      admitted: true
+    breadth_size_participation:
+      raw_pvalue: 0.598190
+      qvalue: 0.772751
+      actions_ic_improvement_gate: 0
+      actions_quintile_spread_improvement: 3
+      action_state_cells_ic_improvement: 5
+      positive_outer_eras: 1
+      admitted: false
+  admitted_family:
+    name: credit_duration_risk_appetite
+    complete_block_features:
+      - hyg_lqd_return_5d
+      - hyg_lqd_return_20d
+      - hyg_shy_return_20d
+      - lqd_ief_return_20d
+      - tlt_shy_return_20d
+      - credit_risk_ratio_distance_ma20
+      - duration_risk_ratio_distance_ma20
+      - credit_duration_trend_agreement
+    pooled_action_ic_improvements:
+      cash_defense: 0.085947
+      broad_equity: 0.067640
+      nasdaq_core: 0.037249
+      nasdaq_acceleration: 0.000374
+    calibration_warning:
+      all_action_mae_improvements_positive: false
+      all_action_r_squared_improvements_positive: false
+      interpretation: >-
+        The family improves chronological ranking and quintile separation but
+        does not improve absolute advantage calibration. Phase 2 must preserve
+        separate rank, calibration, event and portfolio gates.
+  decision: credit_duration_risk_appetite_family_admitted_to_phase_2_only
+  audit: audit_pass_phase_1_family_admission_valid
+  phase_2_authorized: true
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+  baseline_and_alerts_unchanged: true
+
+closed_directions:
+  - implied_volatility_term_structure_as_complete_block
+  - volatility_risk_premium_as_complete_block
+  - breadth_size_participation_as_complete_block
+  - selecting_individual_features_from_failed_families
+  - combining_failed_families_with_credit_duration
+  - changing_family_windows_after_phase_1_results
+  - using_phase_1_predicted_magnitude_as_action_threshold
+
+next_admissible_research:
+  name: credit_duration_incremental_action_policy_phase_2
+  objective: >-
+    Add the complete admitted credit-and-duration block to the exact v4.16
+    29-input comparator, retain the same Ridge alpha, targets, non-overlapping
+    sampling, embargo, discrete actions and event thresholds, and test whether
+    ranking improvement survives calibration, event, OOF portfolio and
+    2024-plus actual-product gates.
+  required_boundaries:
+    - complete_eight_feature_credit_duration_block
+    - exact_v4_16_twenty_nine_input_comparator
+    - same_multi_output_ridge_alpha_100
+    - same_four_action_targets
+    - same_ten_session_sampling_and_embargo
+    - same_advantage_and_margin_thresholds
+    - explicit_calibration_gate
+    - exact_oof_event_and_portfolio_comparison
+    - exact_2024_plus_actual_contradiction_check
+    - same_endpoint_v4_16_reproduction
+    - no_direct_historical_promotion
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false

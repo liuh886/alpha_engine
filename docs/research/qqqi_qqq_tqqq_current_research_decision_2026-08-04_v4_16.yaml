@@ -1,0 +1,214 @@
+schema_version: "1.0"
+decision_date: "2026-08-04"
+strategy_family: qqqi_qqq_tqqq_sgov_voo_action_advantage
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04_v4_15.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    v4.16 used one fixed strongly regularized multi-output Ridge model and produced
+    stable cross-fold coefficients, but only Nasdaq core achieved OOF IC above
+    0.05. Triggered events had negative median advantage, the OOF portfolio
+    materially underperformed v4.2, and the 2024-plus actual window contradicted
+    the policy with substantially lower CAGR and worse drawdown.
+
+regularized_action_advantage_v4_16:
+  experiment_id: qqqi_tqqq_sgov_voo_action_advantage_v4_16_research
+  role: frozen_nonpromoted_unconditioned_action_advantage_model
+  evidence:
+    report: docs/research/qqqi_tqqq_sgov_voo_action_advantage_v4_16_result_2026-08-04.md
+    workflow_run: 30867928989
+    artifact_id: 8876808125
+    artifact_digest: sha256:d6848b0aee3f2fd58042a995a57050d9df38f897b045a79dd07ccc1e563846c6
+    manifest_file_count: 48
+  frozen_model:
+    estimator: multi_output_ridge
+    alpha: 100.0
+    base_features: 21
+    declared_interactions: 8
+    total_inputs: 29
+    training_sample_every_sessions: 10
+    embargo_sessions: 10
+    advantage_threshold: 0.005
+    action_margin_threshold: 0.0025
+    label_round_trip_cost_bps: 20.0
+    execution_transaction_cost_bps_per_turnover_unit: 10.0
+  leakage_audit:
+    training_samples_strictly_every_ten_sessions: true
+    outer_embargo_trading_sessions: [18, 11, 14, 19]
+    target_window_used_for_fit: false
+    next_open_execution: true
+  action_model_evidence:
+    cash_defense:
+      observations: 2012
+      spearman_ic: -0.024150
+      top_bottom_quintile_spread: -0.008900
+      unconditional_positive_rate: 0.356859
+      mean_realized_advantage: -0.012409
+    broad_equity:
+      observations: 2012
+      spearman_ic: 0.015123
+      top_bottom_quintile_spread: -0.000855
+      unconditional_positive_rate: 0.388171
+      mean_realized_advantage: -0.007219
+    nasdaq_core:
+      observations: 2012
+      spearman_ic: 0.098899
+      top_bottom_quintile_spread: 0.001356
+      unconditional_positive_rate: 0.117793
+      mean_realized_advantage: -0.005135
+    nasdaq_acceleration:
+      observations: 2012
+      spearman_ic: -0.008509
+      top_bottom_quintile_spread: -0.002318
+      unconditional_positive_rate: 0.467197
+      mean_realized_advantage: 0.001000
+    actions_passing_ic_gate: 1
+    actions_with_positive_quintile_spread: 1
+    model_gate_passed: false
+  coefficient_stability:
+    pairwise_cosine_min: 0.510
+    pairwise_cosine_max: 0.936
+    pairwise_cosine_median: 0.756865
+    interpretation: >-
+      Strong regularization produced stable parameter vectors. The failure is not
+      coefficient noise; the stable mapping does not correctly rank most action
+      advantages across regimes.
+  oof_triggered_events:
+    total_events: 67
+    macro_clusters: 46
+    triggered_precision: 0.34328
+    pooled_unconditional_positive_rate: 0.33250
+    precision_lift: 0.01078
+    median_realized_advantage: -0.0020
+    largest_positive_cluster_share: 0.1961
+    without_best_year_advantage: -0.6733
+    by_action:
+      cash_defense: {events: 21, win_rate: 0.3333, median_advantage: -0.0103, mean_advantage: -0.0195}
+      broad_equity: {events: 3, win_rate: 0.3333, median_advantage: -0.0108, mean_advantage: -0.0034}
+      nasdaq_core: {events: 8, win_rate: 0.0, median_advantage: -0.0020, mean_advantage: -0.0019}
+      nasdaq_acceleration: {events: 35, win_rate: 0.4286, median_advantage: -0.0020, mean_advantage: -0.0047}
+  oof_portfolio:
+    sample_start: "2016-01-04"
+    sample_end: "2023-12-29"
+    observations: 2012
+    frozen_v4_2:
+      cagr: 0.274932
+      sharpe: 1.016261
+      sortino: 1.447903
+      max_drawdown: -0.389218
+      calmar: 0.706371
+      turnover_units: 106.5
+    full_action_policy:
+      cagr: 0.166254
+      sharpe: 0.6879
+      sortino: 0.9581
+      max_drawdown: -0.422375
+      calmar: 0.39362
+      turnover_units: 309.5
+    cagr_delta_pp: -10.8678
+    calmar_delta: -0.31275
+    max_drawdown_worsening_pp: 3.3157
+    positive_calendar_year_rate: 0.25
+    turnover_increase: 1.9061
+    portfolio_gate_passed: false
+  actual_product:
+    sample_start: "2024-01-30"
+    sample_end: "2026-07-31"
+    observations: 628
+    total_events: 11
+    event_counts: {nasdaq_acceleration: 8, cash_defense: 2, nasdaq_core: 1, broad_equity: 0}
+    frozen_v4_2:
+      cagr: 0.327214
+      sharpe: 1.2345
+      sortino: 1.7880
+      max_drawdown: -0.242134
+      calmar: 1.35137
+      turnover_units: 55.0
+    full_action_policy:
+      cagr: 0.232403
+      sharpe: 0.8964
+      sortino: 1.2285
+      max_drawdown: -0.352551
+      calmar: 0.65920
+      turnover_units: 81.0
+    cagr_delta_pp: -9.4811
+    calmar_delta: -0.69217
+    max_drawdown_worsening_pp: 11.0417
+    contradiction_gate_passed: false
+  decision: regularized_action_advantage_model_not_stable
+  audit: audit_pass_nonpromotion_result_valid
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+  baseline_and_alerts_unchanged: true
+
+structural_diagnosis:
+  missing_information: current_frozen_v4_2_execution_state_and_weights
+  evidence:
+    - >-
+      Action advantage is defined relative to the current v4.2 path, but the model
+      only observed market factors and not the baseline allocation being replaced.
+    - >-
+      Eight OOF Nasdaq-core triggers all failed; several realized advantages were
+      exactly the frozen label cost, consistent with selecting an economically
+      identical action relative to the proxy baseline.
+    - >-
+      Cash-defense and acceleration scores often reacted to stress or trend already
+      represented in the v4.2 state machine, creating redundant or contradictory
+      overrides.
+  interpretation: >-
+    The next experiment should isolate whether explicit state and weight conditioning
+    resolves the structural target mismatch. It must keep the same Ridge family,
+    alpha, base factor set, sampling, embargo, action thresholds and discrete actions.
+
+retained_components:
+  - continuous_vix_vxn_rsi20_bollinger_qqq_voo_feature_set
+  - eight_declared_interactions
+  - nonoverlapping_ten_session_training_samples
+  - ten_session_embargo
+  - fixed_multi_output_ridge_and_coefficient_stability_evidence
+  - fresh_action_score_crossing_ledger
+  - fixed_action_policy_ablations_and_actual_contradiction_audit
+
+closed_retrospective_directions:
+  - current_unconditioned_multi_output_ridge
+  - lowering_advantage_threshold
+  - lowering_action_margin_threshold
+  - changing_ridge_alpha
+  - selecting_or_removing_features_after_results
+  - deleting_cash_or_acceleration_actions_after_results
+  - replacing_ridge_with_tree_or_boosting_models
+  - changing_v4_2_from_v4_16
+
+next_admissible_research:
+  name: state_conditioned_incremental_action_advantage_model
+  objective: >-
+    Add the frozen v4.2 current execution state and weights to the same Ridge model,
+    and allow only actions that materially differ from the current baseline weights
+    to compete. This tests one structural omission while keeping all other model,
+    label and event boundaries unchanged.
+  required_boundaries:
+    - same_twenty_one_base_features
+    - same_eight_declared_market_interactions
+    - same_multi_output_ridge_alpha_100
+    - add_v4_2_state_one_hot_and_current_weights
+    - preregister_state_market_interactions
+    - action_weight_l1_novelty_guard
+    - same_ten_session_sampling_and_embargo
+    - same_advantage_and_margin_thresholds
+    - action_by_state_evidence
+    - discrete_actions_only
+    - no_direct_historical_promotion
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false

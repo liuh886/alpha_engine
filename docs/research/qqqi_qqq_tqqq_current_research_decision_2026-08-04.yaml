@@ -1,0 +1,164 @@
+schema_version: "1.0"
+decision_date: "2026-08-04"
+strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-03.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    The preregistered v4.11 recovery-quality model failed every pre-2024
+    walk-forward factor gate. Its 2024-plus portfolio improvement came entirely
+    from one 2025 high-score state-2 episode and did not validate a stable
+    multi-factor risk-budget model. v4.2 therefore remains the only actionable
+    research baseline.
+
+recovery_quality_factor_v4_11:
+  experiment_id: qqqi_qqq_tqqq_v4_2_recovery_quality_factor_v4_11_research
+  role: frozen_nonpromoted_factor_experiment
+  objective: >-
+    Predict the next ten-session marginal log return of TQQQ versus QQQ and use
+    one prior-close probability to freeze a 50%, 75% or 100% TQQQ budget for a
+    contiguous formal v4.2 state-2 episode.
+  model_contract:
+    feature_count: 16
+    estimator: median_imputer_standard_scaler_l2_logistic_regression
+    C: 1.0
+    class_weight: balanced
+    label_horizon_sessions: 10
+    walk_forward_validation_years: [2018, 2019, 2020, 2021, 2022, 2023]
+    purge_sessions: 10
+    model_development_end: "2023-12-29"
+    reserved_holdout_start: "2024-01-02"
+    strategy_mapping:
+      low_probability: {condition: "p < 0.40", QQQ: 0.50, TQQQ: 0.50}
+      baseline_probability: {condition: "0.40 <= p < 0.60", QQQ: 0.25, TQQQ: 0.75}
+      high_probability: {condition: "p >= 0.60", QQQ: 0.00, TQQQ: 1.00}
+  evidence:
+    report: docs/research/qqqi_qqq_tqqq_v4_2_recovery_quality_factor_result_2026-08-04.md
+    workflow_run: 30832121362
+    artifact_id: 8863347560
+    artifact_digest: sha256:6a7c7885d5377a46e0856eb9a3bc28ce0003ad72adf630a976ccddf358450dce
+  factor_findings:
+    oof_observations: 679
+    oof_roc_auc: 0.3962408223201175
+    oof_spearman_ic: -0.1616624717581586
+    top_bottom_quartile_spread: -0.03588301871261215
+    positive_validation_year_rate: 0.16666666666666666
+    largest_positive_year_share: 1.0
+    factor_gate_passed: false
+  actual_product_findings:
+    sample_start: "2024-01-30"
+    sample_end: "2026-07-30"
+    observations: 627
+    v4_2_cagr: 0.330555659206172
+    joint_cagr: 0.347555300893738
+    v4_2_max_drawdown: -0.2422450975054844
+    joint_max_drawdown: -0.2422450975054844
+    v4_2_calmar: 1.3645504598857292
+    joint_calmar: 1.4347258395430247
+    cagr_delta_pp: 1.6999641687565958
+    calmar_delta: 0.07017537965729548
+    turnover_increase: 0.009090909090909038
+    state_2_episode_count: 12
+    low_score_episode_count: 0
+    high_score_episode_count: 1
+    changed_episode_count: 1
+    positive_relative_calendar_years: 1
+    largest_positive_episode_share: 1.0
+    only_changed_episode:
+      entry_date: "2025-06-02"
+      exit_date: "2025-08-01"
+      probability: 0.7237583770538107
+      relative_return: 0.03209158767469744
+  proxy_holdout_findings:
+    sample_start: "2024-01-02"
+    sample_end: "2026-07-30"
+    observations: 646
+    v4_2_cagr: 0.3656397778303677
+    joint_cagr: 0.38257132526002535
+    v4_2_max_drawdown: -0.2744073168576874
+    joint_max_drawdown: -0.2744073168576874
+    v4_2_calmar: 1.3324709487247206
+    joint_calmar: 1.3941731934882544
+  gates:
+    factor_gate_failed:
+      - aggregate_oof_auc
+      - aggregate_oof_spearman_ic
+      - top_bottom_quartile_spread
+      - positive_validation_year_rate
+      - largest_positive_year_share
+    strategy_gate_passed:
+      - cagr_improvement
+      - max_drawdown_not_materially_worse
+      - sortino_not_below
+      - turnover
+      - beats_defensive_ablation
+      - actual_proxy_cagr_direction
+      - actual_proxy_calmar_direction
+    strategy_gate_failed:
+      - calmar_improvement
+      - positive_relative_calendar_years
+      - event_concentration
+      - beats_offensive_ablation
+  decision: recovery_quality_factor_has_no_stable_oof_signal
+  audit: audit_pass_nonpromotion_result_valid
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+  interpretation: >-
+    The apparent holdout gain is not admissible evidence of model skill. The
+    model ranked future marginal leverage returns in the wrong direction across
+    the aggregated pre-2024 walk-forward sample, produced no low-score state-2
+    episode in the actual holdout, and changed the portfolio in only one 2025
+    episode. The joint model therefore collapsed to the offensive ablation.
+
+research_answer:
+  expand_factor_model_and_optimize_strategy_now: false
+  reason: >-
+    Information expansion may eventually be necessary to beat a mature rule
+    baseline, but model expansion and strategy optimization must not be fitted
+    together. The frozen v4.11 sequence tested factor skill first and found no
+    stable OOF signal, so a more complex model or jointly tuned mapping is not
+    justified on the current history.
+
+closed_retrospective_directions_added_2026_08_04:
+  - recovery_quality_probability_inversion
+  - recovery_quality_label_horizon_search
+  - recovery_quality_feature_selection
+  - recovery_quality_model_class_search
+  - recovery_quality_probability_threshold_search
+  - recovery_quality_state2_weight_search
+  - recovery_quality_regime_specific_models
+  - combining_v4_11_with_rsi_vix_sgov_or_v4_10
+  - relaxing_factor_gates_after_holdout_result
+
+active_next_stage:
+  issue: 348
+  name: prospective_v4_2_alert_execution_feature_and_path_evidence
+  model_changes_authorized: false
+  baseline_alerts_unchanged: true
+  optional_nonactionable_fields_added:
+    - frozen_v4_11_recovery_quality_probability
+    - frozen_v4_11_probability_bucket
+    - frozen_v4_11_hypothetical_state2_budget
+  interpretation: >-
+    The frozen v4.11 score may be recorded prospectively as diagnostic evidence,
+    but it cannot change weights or alerts. Reconsideration requires independent
+    future state-2 episodes and a separately preregistered hypothesis; the current
+    sample may not be used to redesign the model.
+
+alpha158_boundary:
+  status: retain_for_cross_sectional_stock_models
+  applicable_universes: [US87, CN130]
+  direct_qqq_timing_import_authorized: false
+  reason: >-
+    Alpha158 is a governed cross-sectional feature library. Its existence does
+    not justify importing the full panel into a single-index regime-timing model
+    without a separate economic target, data contract and independent holdout.
