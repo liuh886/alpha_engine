@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/selected-pool-event-population-ci.yml"
       - "configs/data/selected_pool_event_population_v1.yaml"
+      - "configs/providers/us_selected_equities_sec_cik_v3.yaml"
       - "src/data/selected_pool_event_population.py"
       - "src/data/fundamentals/**"
       - "src/data/corporate_actions/**"
@@ -18,6 +19,7 @@ on:
     paths:
       - ".github/workflows/selected-pool-event-population-ci.yml"
       - "configs/data/selected_pool_event_population_v1.yaml"
+      - "configs/providers/us_selected_equities_sec_cik_v3.yaml"
       - "src/data/selected_pool_event_population.py"
       - "scripts/data/populate_selected_pool_events.py"
       - "tests/test_selected_pool_event_readiness.py"
