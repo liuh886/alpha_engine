@@ -1,0 +1,259 @@
+schema_version: "1.0"
+decision_date: "2026-08-05"
+strategy_family: qqqi_xgb_adjacent_path_utility
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-05_v4_23.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    v4.24 removed the v4.23 action-prior mechanism and tested a path-aware
+    adjacent-state target. The final audited edge models produced diversified
+    state selections and feature importance, but failed OOF discrimination,
+    utility regret, cross-fold consistency, top-two and placebo gates. The
+    2024+ quarantine evidence was also negative.
+
+xgb_adjacent_path_utility_v4_24:
+  experiment_id: qqqi_xgb_adjacent_path_utility_v4_24_research
+  role: frozen_nonpromoted_adjacent_path_utility_model
+  issue: 530
+  pull_request: 533
+  evidence:
+    synthesis: docs/research/qqqi_xgboost_research_synthesis_v4_14_v4_24_2026-08-05.md
+    report: docs/research/qqqi_xgb_adjacent_path_utility_v4_24_result_2026-08-05.md
+    workflow_run: 30940446053
+    artifact_id: 8904922382
+    artifact_digest: sha256:589b88fba1fc344eb0f26ce9c919d3aac8c0e6f50e0f5a2b7245febcf88c1b02
+    manifest_file_count: 18
+    manifest_hashes_verified: 18
+    source_data_through: "2026-08-04"
+  invalid_compatibility_artifact:
+    workflow_run: 30939933439
+    artifact_id: 8904708915
+    artifact_digest: sha256:6ab0b71c675ff868d9c82e5982e227c0ea157eb1e21ad6a60b2c9228c0ac8050
+    decision_use_authorized: false
+    reason: >-
+      min_child_weight 20 was inherited from a five-row-per-group ranker and
+      generated constant probabilities in six early fold-edge cells when used
+      on one-row-per-date classifiers.
+    correction: mechanical_row_geometry_scaling_20_times_one_fifth_equals_4
+    outcomes_used_for_correction: false
+  frozen_architecture:
+    estimator: three_native_xgboost_binary_classifiers
+    objective: binary_logistic
+    total_inputs: 35
+    candidate_action_descriptors: false
+    states: [defense, bridge, core, leveraged]
+    edges: [defense_vs_bridge, bridge_vs_core, core_vs_leveraged]
+    path_utility: terminal_net_return_plus_0_50_times_mae
+    decision_sample_every_sessions: 10
+    holding_sessions: 10
+    embargo_sessions: 10
+    transaction_cost_bps_per_turnover_unit: 10.0
+    probability_threshold: 0.50
+    max_depth: 3
+    learning_rate: 0.03
+    boosting_rounds: 300
+    min_child_weight: 4.0
+    parameter_search: false
+    feature_selection: false
+    early_stopping: false
+  data_audit:
+    provider: yahoo_adjusted_open_close_research_adapter
+    provider_adjusted_open_close_preserved: true
+    synthetic_high_low_used_for_range_features: false
+    qqqi_pre_inception_backfill_used: false
+    oof_decision_groups: 201
+    actual_complete_groups: 62
+    probability_geometry_cells: 12
+    probability_geometry_cells_passed: 12
+  embargo_audit:
+    corrected_interpretation: trading_sessions_on_ten_session_grid
+    intervening_decision_groups_per_fold: 1
+    training_groups: [125, 176, 226, 276]
+    leakage_detected: false
+  phase1_gate:
+    passed: false
+    mean_edge_auc: 0.48829036584820223
+    minimum_edge_auc: 0.46237231603085266
+    mean_balanced_accuracy: 0.4966459238474072
+    selected_mean_utility_regret: 0.04364443626349848
+    baseline_mean_utility_regret: 0.03719539584607271
+    utility_regret_reduction: -0.17338276070818304
+    median_utility_advantage_vs_v4_2: 0.0
+    total_utility_advantage_vs_v4_2: -1.2962571239025795
+    positive_outer_folds: 1
+    top_two_rate: 0.48756218905472637
+    minimum_state_selections: 19
+    maximum_state_selection_share: 0.3880597014925373
+    placebo_beat_rate: 0.30
+    largest_single_feature_shap_share: 0.10480069533333637
+    largest_feature_family_shap_share: 0.28572484489776895
+    passed_checks:
+      - minimum_state_selections
+      - maximum_state_selection_share
+      - year_concentration
+      - cluster_concentration
+      - single_feature_concentration
+      - feature_family_concentration
+    failed_checks:
+      - mean_edge_auc
+      - minimum_edge_auc
+      - mean_balanced_accuracy
+      - utility_regret_reduction
+      - median_utility_advantage
+      - positive_outer_folds
+      - top_two_rate
+      - placebo
+      - without_best_year
+      - without_best_cluster
+  edge_evidence:
+    defense_vs_bridge:
+      positive_rate: 0.611940
+      roc_auc: 0.462372
+      balanced_accuracy: 0.475453
+      brier_score: 0.264126
+    bridge_vs_core:
+      positive_rate: 0.577114
+      roc_auc: 0.483367
+      balanced_accuracy: 0.489554
+      brier_score: 0.273747
+    core_vs_leveraged:
+      positive_rate: 0.517413
+      roc_auc: 0.519132
+      balanced_accuracy: 0.524931
+      brier_score: 0.272213
+  fold_evidence:
+    fold_2016_2017:
+      utility_regret_reduction: 0.153639
+      top_two_rate: 0.549020
+      total_utility_advantage_vs_v4_2: 0.174183
+    fold_2018_2019:
+      utility_regret_reduction: -0.161367
+      top_two_rate: 0.520000
+      total_utility_advantage_vs_v4_2: -0.293501
+    fold_2020_2021:
+      utility_regret_reduction: -0.291762
+      top_two_rate: 0.460000
+      total_utility_advantage_vs_v4_2: -0.599310
+    fold_2022_2023:
+      utility_regret_reduction: -0.233895
+      top_two_rate: 0.420000
+      total_utility_advantage_vs_v4_2: -0.577630
+  state_selection:
+    defense:
+      selected_blocks: 55
+      selection_share: 0.273632
+      top_two_rate: 0.345455
+      median_utility_advantage_vs_v4_2: -0.015097
+    bridge:
+      selected_blocks: 19
+      selection_share: 0.094527
+      top_two_rate: 0.526316
+      median_utility_advantage_vs_v4_2: 0.003385
+    core:
+      selected_blocks: 49
+      selection_share: 0.243781
+      top_two_rate: 0.571429
+      median_utility_advantage_vs_v4_2: 0.0
+    leveraged:
+      selected_blocks: 78
+      selection_share: 0.388060
+      top_two_rate: 0.525641
+      median_utility_advantage_vs_v4_2: 0.0
+  feature_concentration:
+    credit_duration_family_share: 0.285725
+    qqq_price_path_family_share: 0.252011
+    relative_strength_family_share: 0.231894
+    volatility_family_share: 0.191467
+    v4_2_context_family_share: 0.038903
+    largest_feature: qqq_minus_voo_return_5d
+    largest_feature_share: 0.104801
+  actual_diagnostic:
+    phase2_portfolio_generated: false
+    use_for_promotion_authorized: false
+    complete_groups: 62
+    state_selections:
+      defense: 29
+      bridge: 5
+      core: 6
+      leveraged: 22
+    mean_utility_advantage_vs_v4_2: -0.007104269527056267
+    median_utility_advantage_vs_v4_2: -0.0026211971132093
+    aggregate_utility_advantage_vs_v4_2: -0.4404647106774886
+    top_two_rate: 0.532258064516129
+    utility_regret_reduction: -0.1851415582967355
+  phase2_policy_gate:
+    passed: false
+    skipped: true
+    reason: phase1_gate_failed
+  actual_contradiction_gate:
+    passed: false
+    skipped: true
+    reason: phase2_not_authorized
+  decision: xgb_adjacent_path_utility_not_supported
+  audit: audit_pass_nonpromotion_result_valid
+  prospective_shadow_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+  baseline_and_alerts_unchanged: true
+
+structural_diagnosis:
+  nonlinear_terminal_action_prior_exists: true
+  stable_adjacent_path_timing_found: false
+  state_diversity_failure: false
+  feature_concentration_failure: false
+  primary_failure: >-
+    After static action descriptors were removed, current daily price,
+    volatility, relative-strength and credit/duration features did not predict
+    which adjacent state would deliver better ten-session path utility. The
+    model selected all four states but increased regret relative to v4.2.
+  evidence:
+    - Mean edge AUC was below 0.50 and only one edge was slightly above random.
+    - Utility regret worsened 17.34 percent versus frozen v4.2.
+    - Only the 2016-2017 outer fold had positive total utility advantage.
+    - The observed model beat only 30 percent of deterministic placebos.
+    - The actual 2024+ window repeated negative utility advantage and regret.
+
+retained_components:
+  - xgboost_research_synthesis_through_v4_24
+  - exact_cost_aware_state_path_utility_frame
+  - adjacent_edge_classifier_framework
+  - ordinal_no_skip_state_traversal
+  - probability_geometry_audit
+  - chronological_outer_fold_and_placebo_framework
+  - diversified_gain_and_shap_audit
+  - fail_closed_phase1_before_phase2_runtime
+  - audited_adjusted_open_close_research_adapter
+
+closed_retrospective_directions:
+  - retune_v4_23_or_v4_24
+  - change_mae_penalty_on_current_history
+  - change_ten_session_horizon
+  - probability_threshold_search
+  - select_only_core_vs_leveraged_after_result
+  - remove_defense_or_bridge_after_result
+  - cash_tqqq_binary_policy
+  - shap_feature_selection
+  - deeper_trees_or_new_booster_on_same_35_features
+  - continuous_weight_optimization
+  - change_v4_2_or_telegram_from_v4_24
+
+next_admissible_research:
+  boundary: >-
+    Any further XGBoost experiment must first prove coverage and admissibility
+    for genuinely new close-observable information, such as option skew and
+    tail pricing, dealer or option positioning proxies, survivorship-safe
+    breadth data, or direct credit-spread levels. No outcome model may run
+    before the new information audit passes.
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false
