@@ -24,6 +24,9 @@ from src.research.vxn_bridge_allocation_experiment import (
 DEFAULT_CONTRACT = Path(
     "configs/research_paradigms/qqqi_state2_intraday_rank_pilot_v4_22_research.yaml"
 )
+PARENT_CONTRACT = Path(
+    "configs/research_paradigms/qqqi_state2_intraday_meta_label_v4_21_research.yaml"
+)
 DEFAULT_OUTPUT = Path(
     "artifacts/evidence/qqqi_state2_intraday_rank_pilot_v4_22_research"
 )
@@ -54,10 +57,39 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _common_calendar(
+    bars: dict[str, pd.DataFrame], left: str, right: str
+) -> dict[str, Any]:
+    left_dates = pd.DatetimeIndex(
+        pd.to_datetime(bars[left]["date"], errors="coerce")
+    ).tz_localize(None).normalize()
+    right_dates = pd.DatetimeIndex(
+        pd.to_datetime(bars[right]["date"], errors="coerce")
+    ).tz_localize(None).normalize()
+    common = left_dates.intersection(right_dates).sort_values()
+    audit = {
+        "pair": f"{left}|{right}",
+        "left_rows_before": int(len(bars[left])),
+        "right_rows_before": int(len(bars[right])),
+        "common_rows": int(len(common)),
+        "first_common_date": common.min() if len(common) else None,
+        "last_common_date": common.max() if len(common) else None,
+    }
+    common_set = set(common)
+    for symbol in (left, right):
+        frame = bars[symbol].copy()
+        dates = pd.to_datetime(frame["date"], errors="coerce").dt.tz_localize(None).dt.normalize()
+        bars[symbol] = frame.loc[dates.isin(common_set)].sort_values("date").reset_index(drop=True)
+    audit["left_rows_after"] = int(len(bars[left]))
+    audit["right_rows_after"] = int(len(bars[right]))
+    return audit
+
+
 def _write_manifest(
     output: Path,
     *,
     contract_path: Path,
+    parent_contract_path: Path,
     bridge_path: Path,
     decision: str,
 ) -> None:
@@ -75,6 +107,8 @@ def _write_manifest(
         "shadow_authorization_possible": False,
         "contract_path": str(contract_path),
         "contract_sha256": _sha256(contract_path),
+        "parent_contract_path": str(parent_contract_path),
+        "parent_contract_sha256": _sha256(parent_contract_path),
         "bridge_contract_path": str(bridge_path),
         "bridge_contract_sha256": _sha256(bridge_path),
         "decision": decision,
@@ -86,27 +120,43 @@ def _write_manifest(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--contract", type=Path, default=DEFAULT_CONTRACT)
+    parser.add_argument("--parent-contract", type=Path, default=PARENT_CONTRACT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
     contract = yaml.safe_load(args.contract.read_text(encoding="utf-8"))
+    parent_contract = yaml.safe_load(
+        args.parent_contract.read_text(encoding="utf-8")
+    )
     bridge_path = Path(contract["daily_data"]["bridge_contract"])
     bridge_contract = yaml.safe_load(bridge_path.read_text(encoding="utf-8"))
     output = args.output_dir
     output.mkdir(parents=True, exist_ok=True)
     try:
+        warmup_start = str(parent_contract["daily_data"]["start_date"])
         daily_bars, daily_coverage = fetch_adjusted_daily_bars(
-            symbols=[str(value) for value in contract["daily_data"]["required_symbols"]],
-            start=str(contract["daily_data"]["start_date"]),
+            symbols=[
+                str(value)
+                for value in contract["daily_data"]["required_symbols"]
+            ],
+            start=warmup_start,
             end=str(contract["daily_data"]["end_date"]),
             adapter=YFinanceOpenCloseResearchAdapter(),
         )
+        calendar_audit = [
+            _common_calendar(daily_bars, "^VIX", "^VXN"),
+            _common_calendar(daily_bars, "HYG", "LQD"),
+        ]
         _, results, _, _ = run_bridge_allocation_comparison(
             daily_bars, bridge_contract
         )
-        baseline = results[str(contract["daily_data"]["baseline_result_key"])]
+        baseline = results[
+            str(contract["daily_data"]["baseline_result_key"])
+        ]
         intraday_bars, intraday_coverage = fetch_intraday_bars(contract)
         if not bool(intraday_coverage["admissible"].fillna(False).all()):
-            raise ValueError("one or more governed intraday sources are inadmissible")
+            raise ValueError(
+                "one or more governed intraday sources are inadmissible"
+            )
         result = run_intraday_rank_pilot(
             intraday_bars,
             daily_bars,
@@ -114,9 +164,24 @@ def main() -> int:
             contract,
         )
 
-        daily_coverage.to_csv(output / "daily_source_coverage.csv", index=False)
+        daily_coverage["runtime_warmup_start"] = warmup_start
+        daily_coverage.to_csv(
+            output / "daily_source_coverage.csv", index=False
+        )
         intraday_coverage.to_csv(
             output / "intraday_source_coverage.csv", index=False
+        )
+        _write_json(
+            output / "runtime_calendar_audit.json",
+            {
+                "warmup_start_source": str(args.parent_contract),
+                "warmup_start": warmup_start,
+                "common_calendar_pairs": calendar_audit,
+                "reason": (
+                    "restore the frozen v4.21 state population and prevent "
+                    "non-common VIX/VXN dates from breaking the 63-session z-score"
+                ),
+            },
         )
         result.frame.reset_index().to_csv(
             output / "feature_label_frame.csv", index=False
@@ -124,7 +189,9 @@ def main() -> int:
         result.predictions.reset_index().to_csv(
             output / "oof_predictions.csv", index=False
         )
-        result.fold_coverage.to_csv(output / "fold_coverage.csv", index=False)
+        result.fold_coverage.to_csv(
+            output / "fold_coverage.csv", index=False
+        )
         result.fold_coefficients.to_csv(
             output / "fold_coefficients.csv", index=False
         )
@@ -134,7 +201,9 @@ def main() -> int:
         result.triggered_events.reset_index().to_csv(
             output / "triggered_events.csv", index=False
         )
-        result.placebo_paths.to_csv(output / "placebo_paths.csv", index=False)
+        result.placebo_paths.to_csv(
+            output / "placebo_paths.csv", index=False
+        )
         result.strategy_metrics.to_csv(output / "strategy_metrics.csv")
         for name, daily in result.strategy_daily.items():
             daily.reset_index().to_csv(
@@ -147,6 +216,8 @@ def main() -> int:
             "shadow_authorization_possible": False,
             "decision": result.decision,
             "feature_names": list(result.feature_names),
+            "runtime_warmup_start": warmup_start,
+            "runtime_calendar_audit": calendar_audit,
             "score_metrics": result.score_metrics,
             "feasibility_gate": result.feasibility_gate,
             "tail_metrics": result.tail_metrics,
@@ -159,6 +230,7 @@ def main() -> int:
         _write_manifest(
             output,
             contract_path=args.contract,
+            parent_contract_path=args.parent_contract,
             bridge_path=bridge_path,
             decision=result.decision,
         )
@@ -186,6 +258,7 @@ def main() -> int:
         _write_manifest(
             output,
             contract_path=args.contract,
+            parent_contract_path=args.parent_contract,
             bridge_path=bridge_path,
             decision=decision,
         )
