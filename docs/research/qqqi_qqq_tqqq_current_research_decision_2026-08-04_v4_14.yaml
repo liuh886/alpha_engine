@@ -1,0 +1,175 @@
+schema_version: "1.0"
+decision_date: "2026-08-04"
+strategy_family: qqqi_qqq_tqqq_sgov_voo_multifactor_events
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04_v4_13.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    v4.14 found one locally useful technology-acceleration interaction but no
+    event family passed the preregistered cross-fold event-quality gates. The
+    nested OOF policy improved CAGR only 0.405 percentage points, reduced
+    Sortino and was concentrated in one family and one time window. No full-
+    development rule passed FDR for the 2024-plus actual window.
+
+multifactor_events_v4_14:
+  experiment_id: qqqi_tqqq_sgov_voo_multifactor_events_v4_14_research
+  role: frozen_nonpromoted_static_state_event_discovery
+  evidence:
+    report: docs/research/qqqi_tqqq_sgov_voo_multifactor_events_v4_14_result_2026-08-04.md
+    workflow_run: 30865938765
+    artifact_id: 8876110253
+    artifact_digest: sha256:45f7c3a6c560031ac28af9705d6754cf6de652a335aa394366411bdd313fbf14
+    manifest_file_count: 49
+  search_boundary:
+    unique_rule_structures: 360
+    development_evaluations: 1440
+    outer_folds: 4
+    outer_test_period: "2016-01-04 through 2023-12-29"
+    rule_logic: AND
+    minimum_conditions: 2
+    maximum_conditions: 3
+    holding_sessions: 10
+    cooldown_sessions: 5
+    fdr_alpha: 0.10
+    transaction_cost_bps_per_turnover_unit: 10.0
+  event_family_findings:
+    defense:
+      fdr_passing_development_windows: 0
+      outer_events: 0
+      event_gate_passed: false
+    repair:
+      fdr_passing_development_windows: 0
+      outer_events: 0
+      event_gate_passed: false
+    broad_rotation:
+      fdr_passing_development_windows: 0
+      outer_events: 0
+      event_gate_passed: false
+    tech_acceleration:
+      fdr_passing_development_windows: 1
+      passing_development_fold: fold_2020_2021
+      selected_rule: tech_acceleration__no_tech_vol_spike__above_ma20_2pct__qqq_bollinger_leads
+      development_events: 18
+      development_win_rate: 0.8888888889
+      development_win_rate_lift: 0.23548
+      development_mean_excess_return: 0.035767
+      development_median_excess_return: 0.025439
+      development_fdr_qvalue: 0.086667
+      outer_events: 12
+      outer_macro_clusters: 8
+      outer_positive_events: 10
+      outer_negative_events: 2
+      outer_median_excess_return: 0.015674
+      outer_win_rate_lift: 0.069288
+      rule_recurrence_rate: 0.25
+      event_gate_passed: false
+      failed_gates:
+        - positive_outer_fold_rate
+        - conditional_win_rate_lift
+        - positive_cluster_concentration
+        - performance_without_best_year
+        - rule_recurrence
+  oof_portfolio:
+    sample_start: "2016-01-04"
+    sample_end: "2023-12-29"
+    observations: 2012
+    frozen_v4_2:
+      cagr: 0.2749
+      sortino: 1.448
+      max_drawdown: -0.3892
+      calmar: 0.706
+      turnover_units: 106.5
+    full_event_policy:
+      cagr: 0.2790
+      sortino: 1.412
+      max_drawdown: -0.3892
+      calmar: 0.717
+      turnover_units: 101.5
+    cagr_delta_pp: 0.405234
+    calmar_delta: 0.010412
+    positive_calendar_year_rate: 0.125
+    largest_event_positive_share: 0.422556
+    largest_family_positive_share: 1.0
+    turnover_change: -0.046948
+    portfolio_gate_passed: false
+  actual_product:
+    sample_start: "2024-01-30"
+    sample_end: "2026-07-31"
+    observations: 628
+    selected_families: []
+    actual_events: 0
+    best_full_development_qvalues:
+      defense: 1.0
+      repair: 0.915113
+      tech_acceleration: 0.127973
+      broad_rotation: 0.961363
+    policy_equal_v4_2: true
+    interpretation: >-
+      This is a fail-closed result, not an actual-window validation success. No
+      rule passed the frozen 10 percent FDR requirement, so no new action was
+      taken.
+  decision: no_multifactor_event_family_stable
+  audit: audit_pass_nonpromotion_result_valid
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+  baseline_and_alerts_unchanged: true
+
+research_answer:
+  static_multifactor_states_reveal_some_useful_events: true
+  stable_event_family_found: false
+  robust_policy_beats_v4_2: false
+  most_promising_motif: >-
+    Benign or retreating VIX/VXN conditions combined with a fresh QQQ trend or
+    Bollinger-strength signal and confirmation versus VOO. Static persistence
+    alone is insufficient and can admit overextended entries.
+
+retained_components:
+  - vix_vxn_rsi20_bollinger_qqq_voo_feature_builder
+  - bounded_two_or_three_condition_rule_grammar
+  - development_fdr_and_chronological_outer_folds
+  - nonoverlapping_event_ledger
+  - fixed_action_lattice_and_conflict_priority
+  - oof_and_actual_feasibility_runtime
+  - exact_daily_weight_cost_and_event_attribution
+
+closed_retrospective_directions:
+  - relax_fdr_alpha_on_current_history
+  - add_a_fourth_condition_to_the_2020_2021_rule
+  - retune_existing_static_thresholds
+  - treat_2020_2021_tech_acceleration_as_stable
+  - promote_static_defense_repair_or_rotation_rules
+  - change_v4_2_from_v4_14_historical_results
+
+next_admissible_research:
+  name: transition_and_freshness_event_discovery
+  rationale: >-
+    The strongest static-state rule mixed healthy early breakouts with two
+    costly overextended entries. The next contract should represent crossings,
+    first confirmations, volatility retreat and compression-to-expansion edges
+    rather than persistent states.
+  allowed_transition_families:
+    - rsi20_crossings
+    - bollinger_percent_b_crossings
+    - bollinger_compression_to_expansion
+    - vix_vxn_high_to_retreat_confirmation
+    - qqq_voo_relative_strength_crossings
+    - fresh_ma20_breakout_and_failed_breakout
+  prohibited:
+    - reuse_outer_outcomes_to_change_v4_14_thresholds
+    - increase_rule_condition_count_above_three
+    - continuous_weight_optimization
+    - direct_promotion_from_historical_transition_results
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false
