@@ -10,7 +10,11 @@ def _intraday_frame(symbol: str, sessions: pd.DatetimeIndex) -> pd.DataFrame:
     rows = []
     for session in sessions:
         local = pd.Timestamp(session).tz_localize("America/New_York")
-        for minute, scale in (("09:30", 1.0), ("10:00", 1.001), ("15:30", 1.002)):
+        for minute, scale in (
+            ("09:30", 1.0),
+            ("10:00", 1.001),
+            ("15:30", 1.002),
+        ):
             timestamp_et = pd.Timestamp(
                 f"{session.date().isoformat()} {minute}",
                 tz="America/New_York",
@@ -32,7 +36,7 @@ def _intraday_frame(symbol: str, sessions: pd.DatetimeIndex) -> pd.DataFrame:
             )
     frame = pd.DataFrame(rows)
     frame.attrs["provider_metadata"] = {
-        "pagination_present": False,
+        "pagination_completed": True,
         "provider_symbol": symbol,
     }
     return frame
@@ -47,6 +51,17 @@ def _baseline(index: pd.DatetimeIndex, state2_every: int) -> pd.DataFrame:
     frame["weight_TQQQ"] = np.where(state == 2, 0.75, 0.0)
     frame["net_return"] = 0.001
     return frame
+
+
+def _coverage(admissible: list[bool]) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "symbol": ["QQQ", "TQQQ", "SPY"],
+            "admissible": admissible,
+            "pagination_completed": admissible,
+            "pages": [2, 2, 2],
+        }
+    )
 
 
 def _contract() -> dict:
@@ -73,23 +88,19 @@ def test_phase0_passes_with_complete_opening_and_next_open_coverage():
         symbol: _intraday_frame(symbol, sessions)
         for symbol in ("QQQ", "TQQQ", "SPY")
     }
-    source_coverage = pd.DataFrame(
-        {
-            "symbol": ["QQQ", "TQQQ", "SPY"],
-            "admissible": [True, True, True],
-        }
-    )
     proxy = _baseline(sessions, state2_every=5)
     actual = _baseline(sessions, state2_every=4)
     result = audit_phase0(
         bars,
-        source_coverage,
+        _coverage([True, True, True]),
         proxy,
         actual,
         _contract(),
     )
     assert result.gate["passed"] is True
+    assert result.gate["checks"]["complete_pagination"] is True
     assert result.gate["checks"]["state2_weights_match_contract"] is True
+    assert result.gate["metrics"]["total_pages"] == 6
     assert set(result.state2_population["sample"]) == {
         "development_proxy",
         "quarantine_actual",
@@ -102,21 +113,16 @@ def test_phase0_fails_when_one_source_is_inadmissible():
         symbol: _intraday_frame(symbol, sessions)
         for symbol in ("QQQ", "TQQQ", "SPY")
     }
-    source_coverage = pd.DataFrame(
-        {
-            "symbol": ["QQQ", "TQQQ", "SPY"],
-            "admissible": [True, False, True],
-        }
-    )
     result = audit_phase0(
         bars,
-        source_coverage,
+        _coverage([True, False, True]),
         _baseline(sessions, 5),
         _baseline(sessions, 4),
         _contract(),
     )
     assert result.gate["passed"] is False
     assert result.gate["checks"]["sources_admissible"] is False
+    assert result.gate["checks"]["complete_pagination"] is False
 
 
 def test_phase0_requires_exact_frozen_state2_weights():
@@ -125,18 +131,12 @@ def test_phase0_requires_exact_frozen_state2_weights():
         symbol: _intraday_frame(symbol, sessions)
         for symbol in ("QQQ", "TQQQ", "SPY")
     }
-    source_coverage = pd.DataFrame(
-        {
-            "symbol": ["QQQ", "TQQQ", "SPY"],
-            "admissible": [True, True, True],
-        }
-    )
     proxy = _baseline(sessions, 5)
     proxy.loc[proxy["position_state"].eq(2), "weight_QQQ"] = 0.50
     proxy.loc[proxy["position_state"].eq(2), "weight_TQQQ"] = 0.50
     result = audit_phase0(
         bars,
-        source_coverage,
+        _coverage([True, True, True]),
         proxy,
         _baseline(sessions, 4),
         _contract(),
