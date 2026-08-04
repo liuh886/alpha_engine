@@ -1,0 +1,80 @@
+name: BYD SMA ATR Claim Verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/research/byd_sma_atr_claim.py"
+      - "scripts/run_byd_sma_atr_claim.py"
+      - "tests/test_byd_sma_atr_claim.py"
+      - "docs/research/byd_sma_atr_claim.md"
+      - "docs/evidence/byd_sma_atr_claim/**"
+      - ".github/workflows/byd-sma-atr-claim.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Verify immutable canonical snapshot
+        run: >-
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz"
+          | sha256sum --check --strict
+      - name: Ruff frozen research files
+        run: >-
+          uv run ruff check
+          src/research/byd_sma_atr_claim.py
+          scripts/run_byd_sma_atr_claim.py
+          tests/test_byd_sma_atr_claim.py
+      - name: Run frozen contract tests
+        run: >-
+          uv run pytest tests/test_byd_sma_atr_claim.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  canonical-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: contract-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Extract immutable canonical snapshot
+        run: |
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          mkdir -p artifacts/data/byd_canonical_v1
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz \
+            -C artifacts/data/byd_canonical_v1
+      - name: Run governed claim verification
+        run: >-
+          uv run python scripts/run_byd_sma_atr_claim.py
+          --snapshot-dir artifacts/data/byd_canonical_v1
+          --output-dir artifacts/byd_sma_atr_claim
+      - name: Publish report summary
+        run: cat artifacts/byd_sma_atr_claim/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: byd-sma-atr-claim-evidence
+          path: artifacts/byd_sma_atr_claim
+          if-no-files-found: error
+          retention-days: 30
