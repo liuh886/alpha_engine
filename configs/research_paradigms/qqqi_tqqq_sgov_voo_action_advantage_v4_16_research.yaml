@@ -1,0 +1,155 @@
+experiment_id: qqqi_tqqq_sgov_voo_action_advantage_v4_16_research
+parent_experiment_id: qqqi_tqqq_sgov_voo_transition_events_v4_15_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_mechanism_hypothesis: true
+purpose: >-
+  Use one fixed strongly regularized multi-output Ridge model to combine the
+  retained VIX, VXN, RSI20, Bollinger and QQQ-versus-VOO continuous factors and
+  estimate four discrete action advantages relative to the frozen v4.2 path.
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  transaction_cost_bps_per_turnover_unit: 10.0
+  label_round_trip_cost_bps: 20.0
+  annual_risk_free_rate: 0.0
+  no_qqqi_pre_inception_backfill: true
+  historical_success_authorizes_shadow_only: true
+  baseline_alerts_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+
+data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  required_symbols: [QQQ, TQQQ, VOO, BIL, SGOV, QQQI, ^VIX, ^VXN]
+  actual_product_start: "2024-01-01"
+
+base_features:
+  - vol_max_percentile_252
+  - vol_max_return_5d
+  - vol_min_retreat_20d
+  - vxn_vix_ratio_z63
+  - vxn_minus_vix_percentile
+  - vxn_minus_vix_return_5d
+  - qqq_rsi20
+  - qqq_bollinger_pct_b_20_2
+  - qqq_bollinger_bandwidth_z63
+  - qqq_distance_ma20
+  - qqq_distance_ma50
+  - qqq_distance_ma200
+  - qqq_ma20_slope_5d
+  - qqq_drawdown_63d
+  - qqq_realized_volatility_20d
+  - qqq_minus_voo_return_5d
+  - qqq_minus_voo_return_20d
+  - qqq_voo_rs_distance_ma20
+  - qqq_voo_trend_gap
+  - qqq_voo_bollinger_gap
+  - voo_distance_ma200
+
+interactions:
+  - {name: interaction_vol_percentile_rsi, left: vol_max_percentile_252, right: qqq_rsi20_centered}
+  - {name: interaction_vol_retreat_bollinger, left: vol_min_retreat_20d, right: qqq_bollinger_pct_b_20_2}
+  - {name: interaction_vxn_vix_rs, left: vxn_vix_ratio_z63, right: qqq_voo_rs_distance_ma20}
+  - {name: interaction_bandwidth_ma20_slope, left: qqq_bollinger_bandwidth_z63, right: qqq_ma20_slope_5d}
+  - {name: interaction_drawdown_vol_retreat, left: qqq_drawdown_63d, right: vol_min_retreat_20d}
+  - {name: interaction_ma200_rs, left: qqq_distance_ma200, right: qqq_voo_rs_distance_ma20}
+  - {name: interaction_realized_vol_bollinger, left: qqq_realized_volatility_20d, right: qqq_bollinger_pct_b_20_2}
+  - {name: interaction_vol_spread_relative_return, left: vxn_minus_vix_percentile, right: qqq_minus_voo_return_20d}
+
+model:
+  estimator: Ridge
+  alpha: 100.0
+  fit_intercept: true
+  imputer: median
+  scaler: standard
+  random_state_required: false
+  model_comparison_allowed: false
+  feature_selection_allowed: false
+
+training:
+  sample_every_sessions: 10
+  global_anchor_position: 0
+  embargo_sessions: 10
+  minimum_training_samples: 100
+  advantage_threshold: 0.0050
+  action_margin_threshold: 0.0025
+  cooldown_sessions: 5
+  macro_cluster_calendar_days: 30
+
+outer_folds:
+  - {fold: fold_2016_2017, train_start: "2011-01-03", train_end: "2015-12-31", test_start: "2016-01-01", test_end: "2017-12-29"}
+  - {fold: fold_2018_2019, train_start: "2011-01-03", train_end: "2017-12-29", test_start: "2018-01-01", test_end: "2019-12-31"}
+  - {fold: fold_2020_2021, train_start: "2011-01-03", train_end: "2019-12-31", test_start: "2020-01-01", test_end: "2021-12-31"}
+  - {fold: fold_2022_2023, train_start: "2011-01-03", train_end: "2021-12-31", test_start: "2022-01-01", test_end: "2023-12-29"}
+
+actions:
+  cash_defense:
+    target: cash_defense_advantage_10d
+    holding_sessions: 10
+    action: SGOV_DEFENSE
+    eligibility: always
+  broad_equity:
+    target: broad_equity_advantage_10d
+    holding_sessions: 10
+    action: BROAD_EQUITY
+    eligibility: voo_above_ma200
+  nasdaq_core:
+    target: nasdaq_core_advantage_10d
+    holding_sessions: 10
+    action: NASDAQ_INCOME
+    eligibility: always
+  nasdaq_acceleration:
+    target: nasdaq_acceleration_advantage_5d
+    holding_sessions: 5
+    action: NASDAQ_ACCELERATE
+    eligibility: healthy_acceleration
+
+action_lattice:
+  SGOV_DEFENSE: {cash: 1.00}
+  BROAD_EQUITY: {VOO: 1.00}
+  NASDAQ_INCOME: {QQQI: 1.00}
+  NASDAQ_ACCELERATE: {QQQ: 0.25, TQQQ: 0.75}
+  priority: [cash_defense, broad_equity, nasdaq_core, nasdaq_acceleration]
+
+eligibility:
+  acceleration_qqq_distance_ma20_max: 0.05
+  acceleration_vol_percentile_max: 0.80
+  acceleration_requires_qqq_above_ma200: true
+  broad_equity_requires_voo_above_ma200: true
+
+validation:
+  model_gate:
+    action_ic_min: 0.05
+    actions_passing_ic_min: 3
+    actions_positive_quintile_spread_min: 3
+    triggered_precision_lift_min: 0.10
+    median_triggered_advantage_min: 0.0
+    minimum_macro_clusters: 8
+    largest_positive_cluster_share_max: 0.30
+    coefficient_cosine_similarity_median_min: 0.50
+  portfolio_shadow_gate:
+    cagr_improvement_vs_v4_2_pp_min: 1.50
+    max_drawdown_worsening_pp_max: 1.00
+    calmar_improvement_vs_v4_2_min: 0.10
+    sortino_not_below_v4_2: true
+    positive_calendar_year_rate_min: 0.70
+    largest_family_positive_share_max: 0.50
+    largest_event_positive_share_max: 0.20
+    turnover_increase_max: 0.40
+    actual_max_drawdown_worsening_pp_max: 2.00
+
+hypothesis_discipline:
+  - The model family, alpha, features, interactions and thresholds are frozen before evidence.
+  - Training labels use every tenth session from one global anchor and a ten-session embargo.
+  - Target-window observations never enter fitting or threshold construction.
+  - Events occur only on a fresh crossing of the fixed predicted-advantage and margin thresholds.
+  - Actions, horizons and eligibility guards are fixed before evidence.
+  - No continuous weights or model comparison is permitted.
+  - Historical success authorizes only a prospective shadow ledger.
+  - v4.2, Telegram and Issue 348 remain unchanged regardless of results.
