@@ -55,7 +55,16 @@ jobs:
       - name: Export immutable source snapshot
         run: |
           mkdir -p artifacts
-          tar --exclude=.git --exclude=artifacts -czf artifacts/alpha-engine-cn130-source-${GITHUB_SHA}.tar.gz .
+          tar \
+            --exclude=.git \
+            --exclude=.venv \
+            --exclude=.pytest_cache \
+            --exclude=.mypy_cache \
+            --exclude=.ruff_cache \
+            --exclude=artifacts \
+            --exclude='**/node_modules' \
+            --exclude='**/dist' \
+            -czf artifacts/alpha-engine-cn130-source-${GITHUB_SHA}.tar.gz .
           python - <<'PY'
           import hashlib
           import json
