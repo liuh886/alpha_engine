@@ -35,7 +35,7 @@ def _parse_args() -> argparse.Namespace:
     source.add_argument("--input-csv", type=Path)
     source.add_argument(
         "--fetch-provider",
-        choices=("auto", "baostock", "akshare"),
+        choices=("auto", "baostock", "akshare", "yfinance"),
         help="Use one complete provider for the full history; auto follows the frozen order.",
     )
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -124,6 +124,32 @@ def _fetch_baostock(contract: dict[str, Any]) -> tuple[pd.DataFrame, dict[str, A
     return frame, metadata
 
 
+def _fetch_yfinance(contract: dict[str, Any]) -> tuple[pd.DataFrame, dict[str, Any]]:
+    from src.data.adapters.base import FetchRequest
+    from src.data.adapters.yfinance_adapter import YFinanceAdapter
+
+    instrument = contract["instrument"]
+    start = str(contract["data"]["history_start"])
+    cutoff = str(contract["data"]["cutoff"])
+    request = FetchRequest(
+        symbol=str(instrument["provider_symbol"]),
+        market="cn",
+        start=start,
+        end=cutoff,
+    )
+    result = YFinanceAdapter().fetch_daily_bars(request)
+    metadata = {
+        "provider": "yfinance_auto_adjusted",
+        "provider_endpoint": "download",
+        "provider_symbol": result.provider_symbol,
+        "period": "daily",
+        "start_date": start,
+        "end_date": cutoff,
+        "adjustment": "auto_adjust=true_repair=true",
+    }
+    return result.df, metadata
+
+
 def _load_csv(path: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
     frame = pd.read_csv(path)
     return frame, {"provider": "local_csv", "path": str(path)}
@@ -149,6 +175,7 @@ def _fetch_governed_provider(
     fetchers: dict[str, ProviderFetcher] = {
         "baostock": _fetch_baostock,
         "akshare": _fetch_akshare,
+        "yfinance": _fetch_yfinance,
     }
     policy = contract["data"]["provider_policy"]
     ordered = list(policy["ordered_providers"])
