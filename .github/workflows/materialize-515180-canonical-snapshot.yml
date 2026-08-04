@@ -1,0 +1,66 @@
+name: Materialize 515180 Canonical Snapshot
+
+on:
+  push:
+    branches:
+      - research/byd-515180-core-dividend
+    paths:
+      - .github/workflows/materialize-515180-canonical-snapshot.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/byd-515180-core-dividend
+          fetch-depth: 0
+      - name: Download exact passed canonical artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: 515180-canonical-v1
+          path: artifacts/data/515180_canonical_v1
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: liuh886/alpha_engine
+          run-id: 30933294861
+      - name: Download exact model evidence artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: byd-515180-allocation-evidence
+          path: artifacts/research/byd_515180_allocation
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: liuh886/alpha_engine
+          run-id: 30933294861
+      - name: Build deterministic encoded snapshot
+        run: |
+          set -euo pipefail
+          mkdir -p data/research docs/evidence/byd_515180_allocation
+          (
+            cd artifacts/data/515180_canonical_v1
+            find . -type f -print0 | sort -z | tar --null -T - \
+              --sort=name \
+              --mtime='UTC 2026-08-03 00:00:00' \
+              --owner=0 --group=0 --numeric-owner \
+              -cJf "$GITHUB_WORKSPACE/515180-canonical-v1-snapshot.tar.xz"
+          )
+          echo "86e2bde20fce70ff093d66acfbc89523b8039861ed67cc202eee67c9b6802eee  515180-canonical-v1-snapshot.tar.xz" | sha256sum --check --strict
+          base64 -w 76 515180-canonical-v1-snapshot.tar.xz > data/research/515180_canonical_v1_snapshot.tar.xz.b64
+          cp artifacts/research/byd_515180_allocation/summary.json docs/evidence/byd_515180_allocation/summary.json
+          cp artifacts/research/byd_515180_allocation/evaluation.csv docs/evidence/byd_515180_allocation/evaluation.csv
+          cp artifacts/research/byd_515180_allocation/correlation_diagnostics.csv docs/evidence/byd_515180_allocation/correlation_diagnostics.csv
+          cp artifacts/research/byd_515180_allocation/conditional_complementarity.csv docs/evidence/byd_515180_allocation/conditional_complementarity.csv
+          cp artifacts/research/byd_515180_allocation/README.md docs/evidence/byd_515180_allocation/README.md
+          rm -f .github/workflows/materialize-515180-canonical-snapshot.yml
+      - name: Commit immutable data and evidence
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/515180_canonical_v1_snapshot.tar.xz.b64 docs/evidence/byd_515180_allocation .github/workflows/materialize-515180-canonical-snapshot.yml
+          git commit -m "research: freeze exact 515180 canonical allocation evidence"
+          git push origin HEAD:research/byd-515180-core-dividend
