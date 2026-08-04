@@ -7,6 +7,8 @@ on:
       - "src/data/byd_canonical_bundle.py"
       - "src/research/byd_factor_discovery_v2.py"
       - "scripts/data/build_byd_canonical_bundle.py"
+      - "scripts/data/finalize_byd_canonical_evidence.py"
+      - "scripts/data/audit_byd_secondary_raw.py"
       - "scripts/run_byd_factor_discovery_v2.py"
       - "tests/test_byd_canonical_bundle.py"
       - "tests/test_byd_factor_discovery_v2.py"
@@ -17,6 +19,8 @@ on:
       - "src/data/byd_canonical_bundle.py"
       - "src/research/byd_factor_discovery_v2.py"
       - "scripts/data/build_byd_canonical_bundle.py"
+      - "scripts/data/finalize_byd_canonical_evidence.py"
+      - "scripts/data/audit_byd_secondary_raw.py"
       - "scripts/run_byd_factor_discovery_v2.py"
       - "tests/test_byd_canonical_bundle.py"
       - "tests/test_byd_factor_discovery_v2.py"
@@ -46,6 +50,8 @@ jobs:
           src/data/byd_canonical_bundle.py
           src/research/byd_factor_discovery_v2.py
           scripts/data/build_byd_canonical_bundle.py
+          scripts/data/finalize_byd_canonical_evidence.py
+          scripts/data/audit_byd_secondary_raw.py
           scripts/run_byd_factor_discovery_v2.py
           tests/test_byd_canonical_bundle.py
           tests/test_byd_factor_discovery_v2.py
@@ -76,6 +82,15 @@ jobs:
           --start 2011-06-30
           --cutoff 2026-08-03
           --output-dir artifacts/data/byd_canonical_v1
+      - name: Finalize factor-event and volume semantics
+        run: >-
+          uv run python scripts/data/finalize_byd_canonical_evidence.py
+          --canonical-dir artifacts/data/byd_canonical_v1
+      - name: Require an independent unadjusted raw source
+        run: >-
+          uv run python scripts/data/audit_byd_secondary_raw.py
+          --canonical-dir artifacts/data/byd_canonical_v1
+          --retries 3
       - name: Run factor discovery on canonical adjusted series
         run: >-
           uv run python scripts/run_byd_factor_discovery_v2.py
