@@ -1,0 +1,85 @@
+name: QQQI v4.23 XGBoost LambdaRank State Machine
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqqi-v4-23-xgb-lambdarank-state-machine.yml"
+      - "configs/research_paradigms/qqqi_xgb_lambdarank_state_machine_v4_23_research.yaml"
+      - "src/research/v4_23_xgb_lambdarank_data.py"
+      - "src/research/v4_23_xgb_lambdarank_model.py"
+      - "src/research/v4_23_xgb_lambdarank_policy.py"
+      - "src/research/v4_23_xgb_lambdarank_state_machine.py"
+      - "src/research/v4_23_xgb_lambdarank_embargo.py"
+      - "scripts/run_qqqi_v4_23_xgb_lambdarank_state_machine.py"
+      - "scripts/run_qqqi_v4_23_xgb_lambdarank_open_close.py"
+      - "tests/test_v4_23_xgb_lambdarank_state_machine.py"
+      - "tests/test_v4_23_xgb_lambdarank_embargo.py"
+  workflow_dispatch:
+    inputs:
+      end_date:
+        description: Optional exclusive market-data end date (YYYY-MM-DD)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint v4.23
+        run: |
+          uv run ruff check \
+            src/research/v4_23_xgb_lambdarank_data.py \
+            src/research/v4_23_xgb_lambdarank_model.py \
+            src/research/v4_23_xgb_lambdarank_policy.py \
+            src/research/v4_23_xgb_lambdarank_state_machine.py \
+            src/research/v4_23_xgb_lambdarank_embargo.py \
+            scripts/run_qqqi_v4_23_xgb_lambdarank_state_machine.py \
+            scripts/run_qqqi_v4_23_xgb_lambdarank_open_close.py \
+            tests/test_v4_23_xgb_lambdarank_state_machine.py \
+            tests/test_v4_23_xgb_lambdarank_embargo.py
+      - name: Test v4.23 and inherited research contracts
+        run: |
+          uv run pytest \
+            tests/test_v4_23_xgb_lambdarank_state_machine.py \
+            tests/test_v4_23_xgb_lambdarank_embargo.py \
+            tests/test_v4_20_credit_duration_action_policy.py \
+            tests/test_v4_19_incremental_market_internals.py \
+            tests/test_v4_16_action_advantage_model.py \
+            tests/test_vxn_bridge_allocation_experiment.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Run governed v4.23 evidence
+        run: |
+          for attempt in 1 2 3; do
+            if uv run python scripts/run_qqqi_v4_23_xgb_lambdarank_open_close.py \
+              --end-date "${{ inputs.end_date }}" \
+              --output-dir artifacts/evidence/qqqi_xgb_lambdarank_state_machine_v4_23_research; then
+              exit 0
+            fi
+            if [[ "$attempt" == "3" ]]; then
+              exit 1
+            fi
+            rm -rf artifacts/evidence/qqqi_xgb_lambdarank_state_machine_v4_23_research
+            sleep $((attempt * 30))
+          done
+      - name: Upload v4.23 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqqi-v4-23-xgb-lambdarank-${{ github.run_id }}
+          path: artifacts/evidence/qqqi_xgb_lambdarank_state_machine_v4_23_research
+          if-no-files-found: error
+          retention-days: 90

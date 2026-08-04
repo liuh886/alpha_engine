@@ -1,0 +1,218 @@
+experiment_id: qqqi_xgb_lambdarank_state_machine_v4_23_research
+parent_issue: 512
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Test whether one fixed shallow XGBoost LambdaRank model can learn nonlinear
+  market-state-action interactions and rank five frozen ten-session allocation
+  states without predicting return magnitude or modifying v4.2.
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  no_random_split: true
+  no_early_stopping_on_outer_test: true
+  no_parameter_search: true
+  no_feature_selection: true
+  no_continuous_weights: true
+  no_qqqi_pre_inception_backfill: true
+  historical_success_authorizes_shadow_only: true
+  direct_promotion_authorized: false
+  baseline_alerts_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+
+data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  actual_product_start: "2024-01-01"
+  required_symbols:
+    - QQQ
+    - TQQQ
+    - VOO
+    - BIL
+    - SGOV
+    - QQQI
+    - ^VIX
+    - ^VXN
+    - HYG
+    - LQD
+    - SHY
+    - IEF
+    - TLT
+
+features:
+  market:
+    - vol_max_percentile_252
+    - vol_max_return_5d
+    - vol_min_retreat_20d
+    - vxn_vix_ratio_z63
+    - vxn_minus_vix_percentile
+    - vxn_minus_vix_return_5d
+    - qqq_rsi20
+    - qqq_bollinger_pct_b_20_2
+    - qqq_bollinger_bandwidth_z63
+    - qqq_distance_ma20
+    - qqq_distance_ma50
+    - qqq_distance_ma200
+    - qqq_ma20_slope_5d
+    - qqq_drawdown_63d
+    - qqq_realized_volatility_20d
+    - qqq_minus_voo_return_5d
+    - qqq_minus_voo_return_20d
+    - qqq_voo_rs_distance_ma20
+    - qqq_voo_trend_gap
+    - qqq_voo_bollinger_gap
+    - voo_distance_ma200
+  credit_duration:
+    - hyg_lqd_return_5d
+    - hyg_lqd_return_20d
+    - hyg_shy_return_20d
+    - lqd_ief_return_20d
+    - tlt_shy_return_20d
+    - credit_risk_ratio_distance_ma20
+    - duration_risk_ratio_distance_ma20
+    - credit_duration_trend_agreement
+  state:
+    - next_open_state_0
+    - next_open_state_1
+    - next_open_state_2
+    - next_open_weight_QQQI
+    - next_open_weight_QQQ
+    - next_open_weight_TQQQ
+  action:
+    - candidate_cash_weight
+    - candidate_qqq_weight
+    - candidate_tqqq_weight
+    - candidate_l1_from_v4_2_proxy
+  total_inputs: 39
+  families:
+    qqq_price_path:
+      - qqq_rsi20
+      - qqq_bollinger_pct_b_20_2
+      - qqq_bollinger_bandwidth_z63
+      - qqq_distance_ma20
+      - qqq_distance_ma50
+      - qqq_distance_ma200
+      - qqq_ma20_slope_5d
+      - qqq_drawdown_63d
+      - qqq_realized_volatility_20d
+    volatility:
+      - vol_max_percentile_252
+      - vol_max_return_5d
+      - vol_min_retreat_20d
+      - vxn_vix_ratio_z63
+      - vxn_minus_vix_percentile
+      - vxn_minus_vix_return_5d
+    relative_strength:
+      - qqq_minus_voo_return_5d
+      - qqq_minus_voo_return_20d
+      - qqq_voo_rs_distance_ma20
+      - qqq_voo_trend_gap
+      - qqq_voo_bollinger_gap
+      - voo_distance_ma200
+    credit_duration:
+      - hyg_lqd_return_5d
+      - hyg_lqd_return_20d
+      - hyg_shy_return_20d
+      - lqd_ief_return_20d
+      - tlt_shy_return_20d
+      - credit_risk_ratio_distance_ma20
+      - duration_risk_ratio_distance_ma20
+      - credit_duration_trend_agreement
+    v4_2_context:
+      - next_open_state_0
+      - next_open_state_1
+      - next_open_state_2
+      - next_open_weight_QQQI
+      - next_open_weight_QQQ
+      - next_open_weight_TQQQ
+    candidate_action:
+      - candidate_cash_weight
+      - candidate_qqq_weight
+      - candidate_tqqq_weight
+      - candidate_l1_from_v4_2_proxy
+
+decision:
+  sample_every_sessions: 10
+  global_anchor_position: 0
+  holding_sessions: 10
+  embargo_sessions: 10
+  transaction_cost_bps_per_turnover_unit: 10.0
+  macro_cluster_calendar_days: 30
+
+actions:
+  defense: {cash: 1.00, QQQ: 0.00, TQQQ: 0.00}
+  balanced: {cash: 0.50, QQQ: 0.50, TQQQ: 0.00}
+  core: {cash: 0.00, QQQ: 1.00, TQQQ: 0.00}
+  leveraged: {cash: 0.00, QQQ: 0.25, TQQQ: 0.75}
+  accelerated: {cash: 0.00, QQQ: 0.00, TQQQ: 1.00}
+  historical_cash_symbol: BIL
+  actual_cash_symbol: SGOV
+  order: [defense, balanced, core, leveraged, accelerated]
+
+model:
+  estimator: native_xgboost_ranker
+  objective: rank:ndcg
+  eval_metric: ndcg@1
+  tree_method: hist
+  max_depth: 3
+  learning_rate: 0.03
+  boosting_rounds: 300
+  min_child_weight: 20.0
+  subsample: 0.80
+  colsample_bytree: 0.80
+  reg_lambda: 10.0
+  reg_alpha: 1.0
+  gamma: 0.10
+  max_bin: 64
+  seed: 20260804
+  nthread: 2
+
+training:
+  minimum_groups: 80
+
+outer_folds:
+  - {fold: fold_2016_2017, train_start: "2011-01-03", train_end: "2015-12-31", test_start: "2016-01-01", test_end: "2017-12-29"}
+  - {fold: fold_2018_2019, train_start: "2011-01-03", train_end: "2017-12-29", test_start: "2018-01-01", test_end: "2019-12-31"}
+  - {fold: fold_2020_2021, train_start: "2011-01-03", train_end: "2019-12-31", test_start: "2020-01-01", test_end: "2021-12-31"}
+  - {fold: fold_2022_2023, train_start: "2011-01-03", train_end: "2021-12-31", test_start: "2022-01-01", test_end: "2023-12-29"}
+
+validation:
+  macro_cluster_calendar_days: 30
+  placebo_trials: 20
+  phase1:
+    ndcg_improvement_min: 0.05
+    regret_reduction_min: 0.20
+    median_advantage_min: 0.0
+    positive_outer_folds_min: 3
+    top_two_rate_min: 0.60
+    minimum_selected_groups_per_action: 20
+    largest_positive_year_share_max: 0.35
+    largest_positive_cluster_share_max: 0.25
+    placebo_beat_rate_min: 0.90
+    largest_single_feature_share_max: 0.20
+    largest_feature_family_share_max: 0.50
+  phase2:
+    cagr_improvement_pp_min: 1.50
+    max_drawdown_worsening_pp_max: 1.00
+    calmar_improvement_min: 0.10
+    positive_calendar_years_min: 6
+    turnover_increase_max: 0.75
+    largest_action_positive_share_max: 0.50
+  actual:
+    max_drawdown_worsening_pp_max: 1.00
+
+hypothesis_discipline:
+  - Every decision date is one five-action ranking group.
+  - Labels are within-date relevance ranks of exact ten-session net action returns.
+  - The model never receives future returns as features.
+  - Outer test folds are untouched and have a ten-session embargo.
+  - No parameter, feature, action, horizon or threshold search is permitted.
+  - SHAP and gain are diagnostic only and cannot select a second model.
+  - Phase 2 is skipped unless every Phase 1 ranking check passes.
+  - Historical success authorizes only prospective shadow observation.
+  - v4.2, Telegram and Issue 348 remain unchanged for every result.
