@@ -1,4 +1,4 @@
-name: CN130 Tail Source Export
+name: CN130 Tail Payload Apply
 
 on:
   pull_request:
@@ -6,35 +6,31 @@ on:
       - research/cn130-cross-sectional-ranking-v1
     paths:
       - .github/workflows/cn130-tail-source-export.yml
+      - .github/cn130_tail_payload.part*
+      - scripts/apply_cn130_tail_payload.py
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  export:
+  apply:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: research/cn130-tail-factor-discovery-v1
           fetch-depth: 1
-      - name: Export source
-        run: |
-          mkdir -p artifacts
-          tar \
-            --exclude=.git \
-            --exclude=.venv \
-            --exclude=.pytest_cache \
-            --exclude=.mypy_cache \
-            --exclude=.ruff_cache \
-            --exclude=artifacts \
-            --exclude='**/node_modules' \
-            --exclude='**/dist' \
-            -czf artifacts/alpha-engine-cn130-tail-source-${GITHUB_SHA}.tar.gz .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/setup-python@v6
         with:
-          name: cn130-tail-source-${{ github.run_id }}
-          path: artifacts/alpha-engine-cn130-tail-source-*.tar.gz
-          if-no-files-found: error
-          retention-days: 3
+          python-version: '3.12'
+      - name: Verify and apply research payload
+        run: python scripts/apply_cn130_tail_payload.py
+      - name: Commit implementation and evidence
+        run: |
+          git config user.name 'AlphaEngine Research Agent'
+          git config user.email 'research-agent@alphaengine.local'
+          git add -A
+          git commit -m 'research: execute CN130 tail and factor discovery'
+          git push origin HEAD:research/cn130-tail-factor-discovery-v1
