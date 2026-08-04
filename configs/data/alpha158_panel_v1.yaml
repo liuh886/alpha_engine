@@ -50,7 +50,12 @@ panel:
 
 quality:
   legal_warmup_policy: "factor_minimum_lookback"
-  post_warmup_nan_policy: "report_and_block_factor_symbol_pair"
+  source_availability_field: "canonical_close"
+  lifecycle_and_tradability_unavailable_sessions_excluded: true
+  lookback_restarts_after_unavailable_session: true
+  formula_undefined_nan_policy: "preserve_and_report"
+  insufficient_lifecycle_history_status: "not_yet_applicable"
+  not_yet_applicable_does_not_change_pool_membership: true
   infinity_policy: "block"
   constant_factor_policy: "report"
   near_constant_unique_ratio_threshold: 0.001

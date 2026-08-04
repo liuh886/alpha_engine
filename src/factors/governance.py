@@ -121,6 +121,9 @@ def build_factor_governance_manifest(
             "coverage_ratio": factor_panel_manifest.get("coverage_ratio", 0.0),
             "catalog_sha256": factor_panel_manifest.get("catalog_sha256"),
             "invalid_symbols": factor_panel_manifest.get("invalid_symbols", []),
+            "not_yet_applicable_symbols": factor_panel_manifest.get(
+                "not_yet_applicable_symbols", []
+            ),
             "blocker": factor_panel_manifest.get("blocker"),
         },
         "historical_research_memory": {

@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from src.factors.panel import build_alpha158_panel
+from src.factors.panel import _quality_rows, build_alpha158_panel
+from src.factors.sets.qlib_alpha158 import load_alpha158_definitions
 
 
 @dataclass
@@ -24,6 +25,74 @@ class FakeEvaluator:
                 np.arange(len(index), dtype=float) * (column + 1) / 10000.0
             )
         return pd.DataFrame(values, index=index, columns=list(expressions))
+
+
+class ShortListingEvaluator(FakeEvaluator):
+    def evaluate(self, *, symbols, expressions, start, end):
+        frame = super().evaluate(
+            symbols=symbols,
+            expressions=expressions,
+            start=start,
+            end=end,
+        )
+        if expressions == ["$close"]:
+            dates = frame.index.get_level_values("datetime")
+            instruments = frame.index.get_level_values("instrument")
+            cutoff = sorted(set(dates))[-30]
+            frame.loc[(instruments == "BBB") & (dates < cutoff), "$close"] = np.nan
+        return frame
+
+
+def test_quality_uses_source_availability_and_preserves_formula_nan() -> None:
+    definition = load_alpha158_definitions()[0]
+    dates = pd.bdate_range("2026-01-01", periods=8)
+    frame = pd.DataFrame(
+        {definition.factor_id: [np.nan, np.nan, np.nan, 1.0, 2.0, np.nan, 4.0, 5.0]},
+        index=dates,
+    )
+    availability = pd.Series(
+        [np.nan, np.nan, np.nan, 10.0, 10.0, 10.0, 10.0, 10.0],
+        index=dates,
+    )
+
+    row = _quality_rows(
+        frame,
+        symbol="AAA",
+        definitions=[definition],
+        source_availability=availability,
+        minimum_rows=2,
+        near_constant_threshold=0.001,
+    )[0]
+
+    assert row["status"] == "ready_with_formula_nan"
+    assert row["source_available_rows"] == 5
+    assert row["source_unavailable_rows"] == 3
+    assert row["eligible_rows"] == 5
+    assert row["nan_rows"] == 1
+    assert row["reasons"] == "formula_undefined_nan_preserved"
+
+
+def test_quality_restarts_rolling_eligibility_after_source_gap() -> None:
+    definition = next(
+        row for row in load_alpha158_definitions() if row.minimum_lookback == 5
+    )
+    dates = pd.bdate_range("2026-01-01", periods=12)
+    frame = pd.DataFrame({definition.factor_id: np.arange(12.0)}, index=dates)
+    availability = pd.Series(10.0, index=dates)
+    availability.iloc[6] = np.nan
+
+    row = _quality_rows(
+        frame,
+        symbol="AAA",
+        definitions=[definition],
+        source_availability=availability,
+        minimum_rows=1,
+        near_constant_threshold=0.001,
+    )[0]
+
+    assert row["status"] == "ready"
+    assert row["eligible_rows"] == 1
+    assert row["source_unavailable_rows"] == 1
 
 
 def _fixture(
@@ -144,6 +213,25 @@ def test_alpha158_panel_writes_exact_factor_order_and_quality(tmp_path: Path):
     assert len(quality) == 2 * 158
     assert set(quality["status"]) == {"ready"}
     assert manifest["trade_ready"] is False
+
+
+def test_short_listing_is_explicitly_not_yet_applicable(tmp_path: Path) -> None:
+    root, contract, provider = _fixture(tmp_path, include_vwap=True)
+    manifest = build_alpha158_panel(
+        root=root,
+        contract_path=contract,
+        provider_uri=provider,
+        market="us",
+        start="2024-01-02",
+        cutoff="2024-05-31",
+        output_root=tmp_path / "output",
+        evaluator=ShortListingEvaluator(),
+    )
+
+    assert manifest["status"] == "partial"
+    assert manifest["ready_symbol_count"] == 1
+    assert manifest["invalid_symbols"] == []
+    assert manifest["not_yet_applicable_symbols"] == ["BBB"]
 
 
 def test_alpha158_panel_blocks_without_true_vwap(tmp_path: Path):

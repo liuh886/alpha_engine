@@ -8,7 +8,7 @@ from typing import Any, Mapping, Protocol, Sequence
 
 import numpy as np
 import pandas as pd
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from src.factors.definition import FactorDefinition
 from src.factors.sets.qlib_alpha158 import load_alpha158_definitions
@@ -231,28 +231,41 @@ def _quality_rows(
     *,
     symbol: str,
     definitions: Sequence[FactorDefinition],
+    source_availability: pd.Series,
     minimum_rows: int,
     near_constant_threshold: float,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    available = pd.to_numeric(
+        source_availability.reindex(frame.index), errors="coerce"
+    ).notna()
     for definition in definitions:
         values = pd.to_numeric(frame.get(definition.factor_id), errors="coerce")
-        warmup = min(int(definition.minimum_lookback), len(values))
-        post = values.iloc[warmup:]
+        lookback = int(definition.minimum_lookback)
+        if lookback:
+            required_observations = lookback + 1
+            eligible = (
+                available.astype(int)
+                .rolling(required_observations, min_periods=required_observations)
+                .sum()
+                .eq(required_observations)
+            )
+        else:
+            eligible = available
+        post = values.loc[eligible]
         finite = post.replace([np.inf, -np.inf], np.nan)
         nan_count = int(finite.isna().sum())
         inf_count = int(np.isinf(post.to_numpy(dtype=float, na_value=np.nan)).sum())
         finite_values = finite.dropna()
         unique = int(finite_values.nunique(dropna=True))
         unique_ratio = float(unique / len(finite_values)) if len(finite_values) else 0.0
-        status = "ready"
+        status = "ready_with_formula_nan" if nan_count else "ready"
         reasons: list[str] = []
         if len(finite_values) < minimum_rows:
             status = "blocked"
             reasons.append("insufficient_post_warmup_rows")
         if nan_count:
-            status = "blocked"
-            reasons.append("post_warmup_nan")
+            reasons.append("formula_undefined_nan_preserved")
         if inf_count:
             status = "blocked"
             reasons.append("infinite_values")
@@ -266,7 +279,10 @@ def _quality_rows(
                 "factor_id": definition.factor_id,
                 "implementation_hash": definition.implementation_hash,
                 "minimum_lookback": definition.minimum_lookback,
-                "warmup_rows": warmup,
+                "warmup_rows": lookback,
+                "source_available_rows": int(available.sum()),
+                "source_unavailable_rows": int((~available).sum()),
+                "eligible_rows": int(eligible.sum()),
                 "post_warmup_rows": int(len(post)),
                 "finite_rows": int(len(finite_values)),
                 "nan_rows": nan_count,
@@ -428,6 +444,14 @@ def build_alpha158_panel(
     )
     if len(evaluated.columns) != len(definitions):
         raise FactorPanelError("evaluated Alpha158 column count mismatch")
+    source_evaluated = engine.evaluate(
+        symbols=symbols,
+        expressions=["$close"],
+        start=start,
+        end=cutoff,
+    )
+    if len(source_evaluated.columns) != 1:
+        raise FactorPanelError("canonical close availability evaluation failed")
 
     quality_settings = contract.get("quality", {})
     minimum_rows = int(quality_settings.get("minimum_post_warmup_rows", 20))
@@ -438,9 +462,11 @@ def build_alpha158_panel(
     quality_rows: list[dict[str, Any]] = []
     ready_symbols: list[str] = []
     invalid_symbols: list[str] = []
+    not_yet_applicable_symbols: list[str] = []
     for symbol in symbols:
         frame = _symbol_frame(evaluated, symbol, factor_ids)
-        if frame.empty:
+        source_frame = _symbol_frame(source_evaluated, symbol, ["source_close"])
+        if frame.empty or source_frame.empty:
             invalid_symbols.append(symbol)
             continue
         frame.index.name = "date"
@@ -452,14 +478,26 @@ def build_alpha158_panel(
             frame,
             symbol=symbol,
             definitions=definitions,
+            source_availability=source_frame["source_close"],
             minimum_rows=minimum_rows,
             near_constant_threshold=near_constant,
         )
         quality_rows.extend(symbol_quality)
-        if all(row["status"] == "ready" for row in symbol_quality):
+        if all(
+            row["status"] in {"ready", "ready_with_formula_nan"}
+            for row in symbol_quality
+        ):
             ready_symbols.append(symbol)
         else:
-            invalid_symbols.append(symbol)
+            blocked_rows = [row for row in symbol_quality if row["status"] == "blocked"]
+            if blocked_rows and all(
+                str(row["reasons"]).split("|")
+                == ["insufficient_post_warmup_rows"]
+                for row in blocked_rows
+            ):
+                not_yet_applicable_symbols.append(symbol)
+            else:
+                invalid_symbols.append(symbol)
 
     quality = pd.DataFrame(quality_rows)
     quality_path = output / "factor_quality.csv.gz"
@@ -481,6 +519,7 @@ def build_alpha158_panel(
         "coverage_ratio": float(len(ready_symbols) / len(symbols)),
         "missing_symbols": [],
         "invalid_symbols": sorted(set(invalid_symbols)),
+        "not_yet_applicable_symbols": sorted(set(not_yet_applicable_symbols)),
         "quarantined_symbols": [],
         "providers": ["qlib_provider"],
         "professional_source_ready": None,
@@ -493,6 +532,14 @@ def build_alpha158_panel(
         "source_role_manifest_sha256": source_role_hash,
         "source_role": source_role,
         "field_coverage": field_coverage,
+        "quality_policy": {
+            "availability_field": "canonical_close",
+            "lookback_requires_consecutive_available_sessions": True,
+            "source_unavailable_sessions_excluded_from_factor_eligibility": True,
+            "formula_undefined_nan_policy": "preserve_and_report",
+            "infinite_value_policy": "block",
+            "minimum_finite_rows": minimum_rows,
+        },
         "files": dict(sorted(files.items())),
         "research_only": True,
         "trade_ready": False,
