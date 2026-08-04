@@ -1,4 +1,4 @@
-"""Run v4.23 with the audited Yahoo adjusted-open/close research adapter."""
+"""Run v4.23 with audited daily data and the session-correct embargo."""
 
 from __future__ import annotations
 
@@ -7,10 +7,13 @@ from typing import Any, Sequence
 import pandas as pd
 
 import scripts.run_qqqi_v4_23_xgb_lambdarank_state_machine as runner
+import src.research.v4_23_xgb_lambdarank_model as rank_model
+import src.research.v4_23_xgb_lambdarank_state_machine as state_machine
 from src.data.adapters.yfinance_open_close_research_adapter import (
     YFinanceOpenCloseResearchAdapter,
 )
 from src.research.etf_rotation_experiment import fetch_adjusted_daily_bars
+from src.research.v4_23_xgb_lambdarank_embargo import embargo_train_end
 
 
 def _fetch_open_close(
@@ -35,6 +38,8 @@ def _fetch_open_close(
 
 def main() -> int:
     runner.fetch_adjusted_daily_bars = _fetch_open_close
+    rank_model.embargo_train_end = embargo_train_end
+    state_machine.embargo_train_end = embargo_train_end
     return runner.main()
 
 
