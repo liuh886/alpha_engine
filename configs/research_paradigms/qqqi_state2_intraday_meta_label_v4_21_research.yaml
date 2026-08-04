@@ -1,0 +1,196 @@
+experiment_id: qqqi_state2_intraday_meta_label_v4_21_research
+parent_experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+strategy_family: state2_intraday_tail_overlay
+purpose: >-
+  Keep frozen v4.2 as the slow daily allocation engine and test whether
+  first-thirty-minute information can rank state-2 sessions where temporarily
+  de-levering the remaining session from 25% QQQ / 75% TQQQ to 100% QQQ
+  improves the exact open-to-next-open net path.
+
+boundaries:
+  daily_primary_model_unchanged: true
+  eligible_position_state: 2
+  signal_time: "10:00 America/New_York"
+  execution_time: "10:00 America/New_York"
+  overlay_holding_end: next_regular_session_open
+  baseline_state2_weights: {QQQ: 0.25, TQQQ: 0.75}
+  overlay_weights: {QQQ: 1.00}
+  transaction_cost_bps_per_turnover_unit: 10.0
+  no_intraday_backfill: true
+  no_recent_only_yahoo_fallback: true
+  no_probability_calibration_claim: true
+  historical_success_authorizes_shadow_only: true
+  v4_2_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+
+intraday_data:
+  provider: polygon
+  credential_env: POLYGON_API_KEY
+  source_family: polygon_sip
+  symbols: [QQQ, TQQQ, SPY]
+  start_date: "2018-01-01"
+  end_date: "2026-08-03"
+  multiplier: 30
+  timespan: minute
+  adjusted: true
+  regular_session_only: true
+  timezone: America/New_York
+  opening_bar_start: "09:30"
+  opening_bar_end: "10:00"
+  maximum_results: 50000
+  reject_pagination_or_truncation: true
+
+phase_0:
+  development_start: "2018-01-01"
+  development_end: "2023-12-29"
+  quarantine_start: "2024-01-01"
+  minimum_complete_development_years: 3
+  minimum_development_state2_sessions: 150
+  minimum_quarantine_state2_sessions: 60
+  maximum_missing_opening_bar_rate: 0.02
+  require_unique_symbol_timestamp: true
+  require_positive_finite_ohlcv: true
+  require_next_session_open: true
+  require_provider_identity: true
+  reject_before_outcomes: true
+
+required_daily_symbols:
+  - QQQ
+  - TQQQ
+  - VOO
+  - BIL
+  - SGOV
+  - QQQI
+  - ^VIX
+  - ^VXN
+  - HYG
+  - LQD
+
+daily_data:
+  provider: yfinance_via_alphaengine_adapter
+  start_date: "2017-01-01"
+  end_date: "2026-08-03"
+  bridge_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  baseline_result_key: rotation_vxn_bridge_v4_2_50_50
+
+features:
+  intraday:
+    - qqq_gap_from_previous_regular_close
+    - qqq_first30_return
+    - qqq_opening_range_ratio_to_trailing20_median
+    - qqq_opening_volume_percentile_trailing60
+    - qqq_minus_spy_first30_return
+    - tqqq_tracking_residual_first30
+  prior_close:
+    - prior_vxn_vix_ratio_z63
+    - prior_hyg_lqd_return_20d
+    - prior_credit_risk_ratio_distance_ma20
+    - state2_episode_age
+  expected_count: 10
+  added_interactions_allowed: false
+  feature_selection_allowed: false
+  window_search_allowed: false
+
+label:
+  name: delever_to_qqq_net_advantage
+  positive_when: overlay_net_return_greater_than_frozen_v4_2
+  include_intraday_switch_cost: true
+  include_next_open_rebalance_cost_difference: true
+  outcome_end: next_regular_session_open
+
+model:
+  estimator: LogisticRegression
+  penalty: l2
+  C: 1.0
+  solver: liblinear
+  class_weight: balanced
+  max_iter: 1000
+  random_state: 0
+  imputer: median
+  scaler: standard
+  model_comparison_allowed: false
+  probability_threshold_allowed: false
+  training_score_percentile_trigger: 0.80
+
+outer_folds:
+  - fold: fold_2020
+    train_start: "2018-01-02"
+    train_end: "2019-12-31"
+    test_start: "2020-01-01"
+    test_end: "2020-12-31"
+  - fold: fold_2021
+    train_start: "2018-01-02"
+    train_end: "2020-12-31"
+    test_start: "2021-01-01"
+    test_end: "2021-12-31"
+  - fold: fold_2022
+    train_start: "2018-01-02"
+    train_end: "2021-12-31"
+    test_start: "2022-01-01"
+    test_end: "2022-12-30"
+  - fold: fold_2023
+    train_start: "2018-01-02"
+    train_end: "2022-12-30"
+    test_start: "2023-01-01"
+    test_end: "2023-12-29"
+
+training:
+  minimum_training_events: 40
+  require_both_label_classes: true
+  score_threshold_source: training_population
+  quarantine_fit_end: "2023-12-29"
+  quarantine_refit_allowed: false
+
+placebo:
+  deterministic_seeds: 100
+  frequency_matched: true
+  minimum_paths_beaten_rate: 0.80
+
+validation:
+  meta_label_gate:
+    roc_auc_min: 0.58
+    spearman_score_advantage_min: 0.10
+    top_quintile_positive_rate_lift_min: 0.10
+    top_quintile_median_advantage_min: 0.0
+    positive_development_years_min: 3
+    triggered_sessions_min: 20
+    macro_clusters_min: 8
+    largest_positive_event_share_max: 0.20
+    largest_positive_year_share_max: 0.40
+  portfolio_gate:
+    cagr_improvement_pp_min: 1.00
+    maximum_drawdown_worsening_pp_max: 0.0
+    calmar_improvement_min: 0.10
+    sortino_not_below_baseline: true
+    turnover_increase_max: 0.30
+    worst_state2_session_improvement_pp_min: 1.00
+    worst_five_state2_mean_improvement_min: 0.0
+    without_best_event_positive: true
+    without_best_year_positive: true
+    beats_always_delever_metrics_min: 3
+  quarantine_gate:
+    cagr_and_calmar_not_both_below_baseline: true
+    maximum_drawdown_worsening_pp_max: 1.00
+    median_triggered_advantage_min: 0.0
+    worst_five_state2_mean_improvement_min: 0.0
+    largest_positive_event_share_max: 0.30
+    pre_inception_backfill_allowed: false
+
+comparators:
+  - frozen_v4_2
+  - always_delever_state2_at_1000
+  - deterministic_frequency_matched_placebo
+  - rank_triggered_intraday_meta_label
+
+hypothesis_discipline:
+  - Intraday information is a new time horizon, not a modification of daily v4.2.
+  - Only state-2 sessions may differ from v4.2.
+  - The first observation window is fixed at thirty minutes.
+  - The only overlay action is one hundred percent QQQ until the next open.
+  - The ten inputs, logistic model, C and top-quintile trigger are frozen before evidence.
+  - Quarantine outcomes cannot revise any experiment field.
+  - A full pass authorizes only a non-actionable prospective shadow ledger.
