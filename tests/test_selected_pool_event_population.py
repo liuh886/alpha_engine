@@ -5,6 +5,8 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from scripts.data.populate_selected_pool_events import _populate_us, _sec_mapping
+
 from src.data.corporate_actions.ashare_public_actions import (
     eastmoney_dividend_to_events,
 )
@@ -48,6 +50,52 @@ def test_us87_sec_mapping_is_exact_and_keeps_tigo_tygo_distinct():
     assert mapped & missing == set()
     assert mapping["mapped_symbol_count"] == len(mapped) == 86
     assert mapping["symbols"]["TIGO"] != mapping["symbols"]["TYGO"]
+    runtime = _sec_mapping(
+        list(pool["symbols"]),
+        Path("configs/providers/us_selected_equities_sec_cik_v3.yaml"),
+    )
+    assert runtime["SBGSY"] == {
+        "cik": "",
+        "title": "Schneider Electric SE unsponsored ADR",
+        "entity_id": "SELECTED_POOL_ENTITY:SCHNEIDER_ELECTRIC_SE",
+    }
+
+
+def test_non_sec_entity_still_populates_independent_corporate_actions(
+    monkeypatch, tmp_path: Path
+) -> None:
+    mapping_path = tmp_path / "mapping.yaml"
+    mapping_path.write_text(
+        yaml.safe_dump(
+            {
+                "pool_id": "us_selected_equities_v2",
+                "symbols": {},
+                "missing_symbols": ["SBGSY"],
+                "declared_exceptions": {
+                    "SBGSY": {
+                        "entity": "Schneider Electric SE unsponsored ADR",
+                        "entity_id": "SELECTED_POOL_ENTITY:SCHNEIDER_ELECTRIC_SE",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "scripts.data.populate_selected_pool_events.fetch_yfinance_actions",
+        lambda _symbol: pd.DataFrame(),
+    )
+
+    fundamentals, actions = _populate_us(
+        ["SBGSY"],
+        {},
+        RETRIEVED,
+        identity_mapping_path=mapping_path,
+    )
+
+    assert fundamentals["SBGSY"].status == "identity_missing"
+    assert actions["SBGSY"].status == "no_event_observed"
+    assert actions["SBGSY"].providers == ["yfinance_actions"]
 
 
 def test_sec_client_has_non_secret_declared_user_agent(monkeypatch):
