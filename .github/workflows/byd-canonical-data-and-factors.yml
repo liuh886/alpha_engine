@@ -1,0 +1,93 @@
+name: BYD Canonical Data and Factors
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/data/byd_canonical_bundle.py"
+      - "src/research/byd_factor_discovery_v2.py"
+      - "scripts/data/build_byd_canonical_bundle.py"
+      - "scripts/run_byd_factor_discovery_v2.py"
+      - "tests/test_byd_canonical_bundle.py"
+      - "tests/test_byd_factor_discovery_v2.py"
+      - ".github/workflows/byd-canonical-data-and-factors.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/data/byd_canonical_bundle.py"
+      - "src/research/byd_factor_discovery_v2.py"
+      - "scripts/data/build_byd_canonical_bundle.py"
+      - "scripts/run_byd_factor_discovery_v2.py"
+      - "tests/test_byd_canonical_bundle.py"
+      - "tests/test_byd_factor_discovery_v2.py"
+      - ".github/workflows/byd-canonical-data-and-factors.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Ruff canonical data and factors
+        run: >-
+          uv run ruff check
+          src/data/byd_canonical_bundle.py
+          src/research/byd_factor_discovery_v2.py
+          scripts/data/build_byd_canonical_bundle.py
+          scripts/run_byd_factor_discovery_v2.py
+          tests/test_byd_canonical_bundle.py
+          tests/test_byd_factor_discovery_v2.py
+      - name: Run contract tests
+        run: >-
+          uv run pytest
+          tests/test_byd_canonical_bundle.py
+          tests/test_byd_factor_discovery_v2.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: contract-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Build canonical BYD data bundle
+        run: >-
+          uv run python scripts/data/build_byd_canonical_bundle.py
+          --start 2011-06-30
+          --cutoff 2026-08-03
+          --output-dir artifacts/data/byd_canonical_v1
+      - name: Run factor discovery on canonical adjusted series
+        run: >-
+          uv run python scripts/run_byd_factor_discovery_v2.py
+          --canonical-dir artifacts/data/byd_canonical_v1
+          --output-dir artifacts/research/byd_factor_discovery_v2
+      - name: Upload canonical data and factor evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-canonical-data-and-factor-evidence
+          path: |
+            artifacts/data/byd_canonical_v1
+            artifacts/research/byd_factor_discovery_v2
+          if-no-files-found: error
+          retention-days: 30
