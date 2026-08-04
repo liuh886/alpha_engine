@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import time
 import traceback
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,9 @@ from src.data.adapters.yfinance_open_close_research_adapter import (
 )
 from src.research.etf_rotation_experiment import fetch_adjusted_daily_bars
 from src.research.v4_21_state2_intraday_preflight import fetch_intraday_bars
-from src.research.v4_22_intraday_rank_pilot import run_intraday_rank_pilot
+from src.research.v4_22_intraday_rank_pilot_runtime import (
+    run_intraday_rank_pilot_runtime,
+)
 from src.research.vxn_bridge_allocation_experiment import (
     run_bridge_allocation_comparison,
 )
@@ -30,6 +33,8 @@ PARENT_CONTRACT = Path(
 DEFAULT_OUTPUT = Path(
     "artifacts/evidence/qqqi_state2_intraday_rank_pilot_v4_22_research"
 )
+_SOURCE_FETCH_ATTEMPTS = 3
+_SOURCE_RETRY_DELAY_SECONDS = 60.0
 
 
 def _safe(value: Any) -> Any:
@@ -145,6 +150,37 @@ def _coverage_errors(coverage: pd.DataFrame) -> list[dict[str, Any]]:
     return failed.to_dict(orient="records")
 
 
+def _fetch_intraday_with_retries(
+    contract: dict[str, Any], output: Path
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, list[dict[str, Any]]]:
+    attempts: list[dict[str, Any]] = []
+    final_bars: dict[str, pd.DataFrame] = {}
+    final_coverage = pd.DataFrame()
+    for attempt in range(1, _SOURCE_FETCH_ATTEMPTS + 1):
+        started = time.perf_counter()
+        bars, coverage = fetch_intraday_bars(contract)
+        coverage.to_csv(
+            output / f"intraday_source_coverage_attempt_{attempt}.csv",
+            index=False,
+        )
+        failures = _coverage_errors(coverage)
+        attempts.append(
+            {
+                "attempt": attempt,
+                "elapsed_seconds": time.perf_counter() - started,
+                "all_sources_admissible": not failures,
+                "failed_sources": failures,
+            }
+        )
+        final_bars = bars
+        final_coverage = coverage
+        if not failures:
+            break
+        if attempt < _SOURCE_FETCH_ATTEMPTS:
+            time.sleep(_SOURCE_RETRY_DELAY_SECONDS * attempt)
+    return final_bars, final_coverage, attempts
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--contract", type=Path, default=DEFAULT_CONTRACT)
@@ -204,16 +240,32 @@ def main() -> int:
         baseline = results[
             str(contract["daily_data"]["baseline_result_key"])
         ]
-        intraday_bars, intraday_coverage = fetch_intraday_bars(contract)
+        intraday_bars, intraday_coverage, source_attempts = (
+            _fetch_intraday_with_retries(contract, output)
+        )
         intraday_coverage.to_csv(
             output / "intraday_source_coverage.csv", index=False
         )
         failed_sources = _coverage_errors(intraday_coverage)
-        source_context["intraday_source_failures"] = failed_sources
+        source_context.update(
+            {
+                "intraday_source_fetch_policy": {
+                    "maximum_attempts": _SOURCE_FETCH_ATTEMPTS,
+                    "retry_delay_seconds": _SOURCE_RETRY_DELAY_SECONDS,
+                    "outcome_independent": True,
+                },
+                "intraday_source_attempts": source_attempts,
+                "intraday_source_failures": failed_sources,
+            }
+        )
         _write_json(
             output / "intraday_source_diagnostics.json",
             {
                 "all_sources_admissible": not failed_sources,
+                "fetch_policy": source_context[
+                    "intraday_source_fetch_policy"
+                ],
+                "attempts": source_attempts,
                 "failed_sources": failed_sources,
                 "records": intraday_coverage.to_dict(orient="records"),
             },
@@ -224,7 +276,7 @@ def main() -> int:
                 + json.dumps(_safe(failed_sources), ensure_ascii=False)
             )
 
-        result = run_intraday_rank_pilot(
+        result = run_intraday_rank_pilot_runtime(
             intraday_bars,
             daily_bars,
             baseline.daily,
