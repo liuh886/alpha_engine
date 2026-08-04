@@ -3,7 +3,7 @@ decision_date: "2026-08-05"
 strategy_family: qqqi_xgb_lambdarank_state_machine
 research_only: true
 trade_ready: false
-supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04_v4_22.yaml
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04_v4_21.yaml
 
 current_baseline:
   experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
