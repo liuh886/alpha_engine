@@ -41,13 +41,26 @@ data:
   history_start: "2010-01-01"
   cutoff: "2026-08-03"
   required_columns: [date, open, high, low, close, volume]
-  primary_source:
-    provider: akshare
-    endpoint: stock_zh_a_hist
-    adjustment: qfq
-    period: daily
+  provider_policy:
+    selection: first_complete_single_provider
+    ordered_providers: [baostock, akshare]
+    attempts_per_provider: 2
+    retry_delay_seconds: 2
+    forbid_cross_provider_stitching: true
+    record_all_attempts: true
+  providers:
+    baostock:
+      endpoint: query_history_k_data_plus
+      adjustment: adjustflag_2_qfq
+      period: daily
+    akshare:
+      endpoint: stock_zh_a_hist
+      upstream: eastmoney
+      adjustment: qfq
+      period: daily
   require_exact_cutoff: true
   forbid_forward_fill: true
+  forbid_cross_provider_stitching: true
   forbid_mixed_adjustment: true
   require_manifest_sha256: true
 
