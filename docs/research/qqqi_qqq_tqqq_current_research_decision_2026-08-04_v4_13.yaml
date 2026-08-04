@@ -1,0 +1,192 @@
+schema_version: "1.0"
+decision_date: "2026-08-04"
+strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-04_v4_12.yaml
+
+current_baseline:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: current_research_baseline
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  reason: >-
+    v4.13 found a large formal state-2 donor episode set and a locally positive
+    2017-2019 target result, but failed the complete macro-cluster donor gate,
+    failed the preregistered primary Calmar threshold and reversed materially in
+    both the 2020-2023 quarantine window and the 2024-plus actual-product window.
+    v4.2 therefore remains the only actionable research baseline.
+
+donor_state2_sgov_tqqq_v4_13:
+  experiment_id: qqqi_qqq_tqqq_donor_state2_sgov_tqqq_v4_13_research
+  role: frozen_nonpromoted_state2_risk_budget_experiment
+  objective: >-
+    Preserve the complete v4.2 state trace and state-0/state-1 allocations while
+    using donor formal state-2 analogs to choose one frozen 50%, 75% or 100% TQQQ
+    budget, with BIL or SGOV as the remaining state-2 sleeve.
+  evidence:
+    report: docs/research/qqqi_qqq_tqqq_donor_state2_sgov_tqqq_v4_13_result_2026-08-04.md
+    workflow_run: 30864102710
+    artifact_id: 8875454941
+    artifact_digest: sha256:b9bbabd4e4ef2e362906a469a2b3394d7a812612721086d30c98bf5f74a5ba00
+    manifest_file_count: 52
+  frozen_boundaries:
+    target_symbols_excluded_from_training: [QQQ, TQQQ, QQQI, SGOV, ^VXN]
+    target_state_trace_equal_v4_2: true
+    state_0_allocation_equal_v4_2: true
+    state_1_allocation_equal_v4_2: true
+    signal_time: session_close_t
+    execution_time: next_session_open_t_plus_1
+    transaction_cost_bps_per_turnover_unit: 10.0
+    state_2_mapping:
+      low: {condition: "p < 0.40", cash: 0.50, TQQQ: 0.50}
+      medium: {condition: "0.40 <= p < 0.60", cash: 0.25, TQQQ: 0.75}
+      high: {condition: "p >= 0.60", cash: 0.00, TQQQ: 1.00}
+  donor_evidence:
+    formal_state_2_episodes: 205
+    macro_clusters: 55
+    donor_assets: 6
+    positive_label_rate: 0.4146341463414634
+    maximum_single_asset_episode_share: 0.24390243902439024
+    macro_cluster_oof:
+      roc_auc: 0.5373529411764706
+      spearman_ic: 0.04168210499923389
+      top_bottom_quartile_spread: -0.004122800518246712
+      largest_positive_cluster_contribution_share: 0.1056
+      passed: false
+    leave_one_asset_out:
+      roc_auc: 0.5985294117647059
+      spearman_ic: 0.12606454848100734
+      top_bottom_quartile_spread: 0.027222874679680827
+      positive_asset_spread_count: 5
+      passed: true
+    interpretation: >-
+      Asset transfer contains useful information, but complete macro-cluster OOF
+      shows insufficient cross-time and cross-regime stability. The remaining
+      bottleneck is independent temporal regimes rather than the number of asset
+      episodes.
+  primary_target_2017_2019:
+    sample_start: "2017-01-03"
+    sample_end: "2019-12-31"
+    observations: 754
+    predicted_episodes: 7
+    model_coverage_rate: 1.0
+    bucket_counts: {low: 3, medium: 1, high: 3}
+    frozen_v4_2:
+      cagr: 0.234305
+      max_drawdown: -0.224567
+      sortino: 1.5712
+      calmar: 1.04337
+      turnover_units: 40.0
+    joint_donor_budget:
+      cagr: 0.248124
+      max_drawdown: -0.224550
+      sortino: 1.6634
+      calmar: 1.10499
+      turnover_units: 45.0
+    cagr_delta_pp: 1.38185
+    calmar_delta: 0.06162
+    positive_relative_calendar_years: 2
+    largest_positive_episode_share: 0.4563
+    primary_gate_passed: false
+    failed_gate: calmar_improvement_vs_v4_2_min
+  quarantine_target_2020_2023:
+    sample_start: "2020-01-02"
+    sample_end: "2023-12-29"
+    observations: 1006
+    predicted_episodes: 12
+    frozen_v4_2_cagr: 0.344581
+    joint_cagr: 0.259450
+    frozen_v4_2_calmar: 0.88532
+    joint_calmar: 0.68575
+    cagr_delta_pp: -8.5131
+    calmar_delta: -0.19957
+    contradiction: true
+  actual_product_2024_plus:
+    sample_start: "2024-01-30"
+    sample_end: "2026-07-31"
+    observations: 613
+    predicted_episodes: 12
+    model_coverage_rate: 1.0
+    median_imputed_signal_episodes: 7
+    bucket_counts: {low: 5, medium: 2, high: 5}
+    frozen_v4_2:
+      cagr: 0.315496
+      max_drawdown: -0.246690
+      sortino: 1.7280
+      calmar: 1.27892
+      turnover_units: 55.0
+    joint_donor_budget:
+      cagr: 0.253545
+      max_drawdown: -0.274546
+      sortino: 1.4975
+      calmar: 0.92351
+      turnover_units: 65.0
+    cagr_delta_pp: -6.1951
+    calmar_delta: -0.35541
+    max_drawdown_worsening_pp: 2.7856
+    contradiction: true
+  gates:
+    donor_gate_passed: false
+    primary_gate_passed: false
+    contradiction_gate_passed: false
+  decision: donor_formal_state2_transfer_signal_not_stable
+  audit: audit_pass_nonpromotion_result_valid
+  shadow_monitor_authorized: false
+  actionable_alert_authorized: false
+  direct_promotion_authorized: false
+  baseline_and_alerts_unchanged: true
+
+research_answer:
+  more_independent_asset_events_found: true
+  more_formal_state2_events_found: true
+  robust_sgov_tqqq_strategy_beats_v4_2: false
+  reason: >-
+    Independent event quantity is now sufficient, but the donor relationship is
+    not stable across macro time clusters. A local 2017-2019 improvement reverses
+    in later quarantined and actual periods, so it cannot support a shadow or an
+    actionable strategy.
+
+retained_components:
+  - cross_asset_nonoverlapping_event_library
+  - donor_formal_state2_episode_library
+  - complete_macro_cluster_oof_validation
+  - leave_one_asset_out_transfer_validation
+  - target_year_donor_only_walk_forward
+  - target_episode_full_coverage_with_frozen_median_imputation
+  - exact_state_trace_state2_only_cash_budget_runtime
+  - primary_quarantine_actual_evidence_separation
+
+closed_retrospective_directions:
+  - current_fourteen_feature_logistic_state2_model
+  - current_0_40_0_60_probability_thresholds
+  - current_50_75_100_tqqq_mapping
+  - probability_inversion_from_later_target_results
+  - target_qqq_calibration
+  - donor_feature_selection_after_target_results
+  - alternative_classifier_search_on_current_history
+  - relaxing_primary_calmar_gate
+  - combining_v4_13_with_v4_10_v4_11_or_rsi_vix_sgov
+
+next_admissible_research:
+  problem: independent_temporal_regime_coverage
+  not_allowed:
+    - further_asset_slicing_on_2008_2026_history
+    - threshold_or_weight_grid_search
+    - using_qqq_target_episodes_for_training
+    - changing_v4_2_alerts
+  admissible_paths:
+    - prospective_formal_state2_episode_collection_under_issue_348
+    - preregistered_longer_history_donor_proxies_only_after_daily_reset_replication_validation_against_actual_3x_etf_overlap
+  interpretation: >-
+    Any continuation must add genuinely independent time regimes, not more model
+    degrees of freedom. A synthetic daily-reset 3x donor extension would require
+    a separate contract, overlap replication gates and target exclusion before it
+    can be used; it is not authorized by this decision.
+
+active_prospective_program:
+  issue: 348
+  baseline_alerts_unchanged: true
+  model_changes_authorized: false
