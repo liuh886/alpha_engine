@@ -1,10 +1,10 @@
 schema_version: "1.0"
 experiment_id: byd_v1_3_recovery_overlay
 parent_issue: 516
-status: frozen_before_result
+status: completed_not_supported
 research_only: true
 trade_ready: false
-prospective_confirmation_required: true
+prospective_confirmation_required: false
 
 canonical_data:
   materialization: repository_pinned_immutable_snapshot
@@ -83,9 +83,47 @@ historical_support_gates:
   maximum_largest_positive_episode_share: 0.50
   maximum_positive_benefit_single_period_share: 0.60
 
+result:
+  decision: byd_v1_3_not_supported
+  completed_overlay_events: 25
+  failed_gates:
+    - largest_positive_period_share_cap
+  full_history:
+    cagr: 0.19470078052117956
+    total_return: 11.144807443150642
+    max_drawdown: -0.5161648841277046
+    calmar: 0.3772065325870988
+    exposure: 0.9060642092746737
+    round_trips_per_year: 1.0419847328244274
+  canonical_v1_0_full_history:
+    cagr: 0.1957987984133931
+    total_return: 11.302321762856518
+    max_drawdown: -0.5368815683729564
+    calmar: 0.36469644321515843
+    exposure: 0.8891013384321223
+    round_trips_per_year: 0.6323155216284988
+  fixed_validation_2023_2024:
+    v1_3_total_return: 0.12348463871643633
+    v1_0_total_return: 0.1205447833247335
+    v1_3_max_drawdown: -0.4161456475802741
+    v1_0_max_drawdown: -0.41387895188925816
+  retrospective_2025_plus:
+    v1_3_total_return: 0.06666547435798242
+    v1_0_total_return: 0.06829161541376427
+    v1_3_max_drawdown: -0.37920339601317765
+    v1_0_max_drawdown: -0.37825743919479326
+  incremental_round_trips_per_year: 0.4096692111959287
+  largest_positive_episode_share: 0.15724517243089908
+  largest_positive_period_share: 0.8953429156153153
+  positive_benefit_by_period:
+    development: 0.167513977295
+    fixed_validation: 0.011202370676
+    retrospective_2025_plus: 0.008377977075
+
 validation_governance:
   all_history_through_cutoff_already_observed: true
   fresh_holdout_available: false
   historical_result_is_explanatory_only: true
-  prospective_start_date: "2026-08-04"
-  model_promotion_requires_prospective_confirmation: true
+  prospective_ledger_created_but_model_rejected: true
+  post_result_parameter_change: forbidden
+  successor_historical_narrowing_from_observed_event_results: forbidden
