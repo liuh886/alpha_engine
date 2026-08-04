@@ -66,7 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           snapshot="data/research/byd_canonical_v1_snapshot.tar.xz"
-          expected_archive_sha="0ed3203dca68aa3277efe48f5cce63536073a0eaa7cd08b537adfcc0dae40688"
+          expected_archive_sha="2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179"
           if [[ ! -f "$snapshot" ]]; then
             mkdir -p /tmp/byd-sealed data/research
             curl --fail --location \
