@@ -28,11 +28,54 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _cache_key(identity: Mapping[str, Any]) -> str:
+def model_matrix_cache_key(identity: Mapping[str, Any]) -> str:
+    """Return the canonical content key for a model-matrix identity."""
     encoded = json.dumps(
         dict(identity), sort_keys=True, separators=(",", ":"), allow_nan=False
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def fingerprint_model_provider(
+    provider_root: str | Path,
+    *,
+    instrument_file: str | Path,
+    symbols: list[str],
+) -> str:
+    """Hash the exact provider inputs that can affect a matrix build.
+
+    The digest includes the governed instrument file, daily calendar and all
+    available daily binary fields for the requested symbols.  Missing symbol
+    directories remain visible in the digest instead of being silently
+    ignored.
+    """
+    root = Path(provider_root)
+    instrument_path = Path(instrument_file)
+    digest = hashlib.sha256()
+
+    def _include(label: str, path: Path) -> None:
+        digest.update(label.encode("utf-8"))
+        digest.update(b"\0")
+        if not path.is_file():
+            digest.update(b"MISSING\0")
+            return
+        digest.update(str(path.stat().st_size).encode("ascii"))
+        digest.update(b"\0")
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+
+    _include("instrument_file", instrument_path)
+    _include("calendar/day.txt", root / "calendars" / "day.txt")
+    for symbol in sorted(set(symbols)):
+        feature_dir = root / "features" / symbol.lower()
+        files = sorted(feature_dir.glob("*.day.bin")) if feature_dir.is_dir() else []
+        if not files:
+            digest.update(f"symbol/{symbol}/MISSING\0".encode("utf-8"))
+            continue
+        for path in files:
+            _include(f"symbol/{symbol}/{path.name}", path)
+    return digest.hexdigest()
 
 
 def _save_array(root: Path, name: str, values: np.ndarray) -> dict[str, Any]:
@@ -108,7 +151,7 @@ def write_model_matrix_snapshot(
 
     manifest = {
         "schema_version": "1.0",
-        "cache_key": _cache_key(identity),
+        "cache_key": model_matrix_cache_key(identity),
         "identity": dict(identity),
         "feature_columns": [str(column) for column in features.columns],
         "label_columns": [str(column) for column in labels.columns],
@@ -141,7 +184,7 @@ def load_model_matrix_snapshot(
     if (
         manifest.get("schema_version") != "1.0"
         or manifest.get("identity") != dict(identity)
-        or manifest.get("cache_key") != _cache_key(identity)
+        or manifest.get("cache_key") != model_matrix_cache_key(identity)
         or manifest.get("research_only") is not True
         or manifest.get("trade_ready") is not False
     ):

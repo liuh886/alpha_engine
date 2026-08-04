@@ -1320,6 +1320,7 @@ def test_vectorized_wf_uses_raw_label_expression(
     result = walk_forward_vectorized(
         market="cn", train_start="2024-01-01", train_end="2025-12-15",
         test_window_months=1, step_months=1, n_estimators=1,
+        matrix_cache_dir=tmp_path / "matrix-cache",
     )
 
     # The vectorized path loads raw label expression at index 1+ (after features)
@@ -1328,6 +1329,15 @@ def test_vectorized_wf_uses_raw_label_expression(
     assert "Ref($close, -10)" in expr_str or "Ref($close, -1)" in expr_str, (
         f"Expected raw label expression, got {_fetched_exprs}"
     )
+    first_fetch_count = _feat_call[0]
+    cached = walk_forward_vectorized(
+        market="cn", train_start="2024-01-01", train_end="2025-12-15",
+        test_window_months=1, step_months=1, n_estimators=1,
+        matrix_cache_dir=tmp_path / "matrix-cache",
+    )
+    assert _feat_call[0] == first_fetch_count
+    assert cached.matrix_cache_status == "exact_identity_hit"
+    assert cached.matrix_cache_key == result.matrix_cache_key
     # IC should be computed and finite
     for sr in result.splits:
         if sr.status == "success":
