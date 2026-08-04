@@ -53,7 +53,7 @@ jobs:
             --output-dir artifacts/evidence/qqqi_xgb_new_information_v4_25_phase0
       - name: Assert Phase 0 contains no outcome schemas
         run: |
-          python - <<'PY'
+          uv run python - <<'PY'
           import json
           from pathlib import Path
           import pandas as pd
