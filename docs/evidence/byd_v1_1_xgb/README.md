@@ -1,19 +1,16 @@
 # BYD V1.1 momentum-factor and XGBoost evidence
 
-## Status
+## Final status
 
-- Final research decision: `byd_v1_1_xgb_not_supported`
+- Decision: `byd_v1_1_xgb_not_supported`
 - PR: `#504`
 - Issue: `#503`
-- Evidence run: `30879667536`
-- Evidence artifact: `8880822242`
-- Artifact ZIP SHA-256: `37b663b859c97404eddd5aeace6baa4763da7cfb1072a3cb1aad40a7aff2a06f`
 - Model family: expanding walk-forward XGBoost regression
 - Objective: `reg:squarederror`
 - Target: next-open to ten-session-later-open return
 - Status: `research_only=true`, `trade_ready=false`
 
-BYD V1.0 is not an XGBoost model. It remains a deterministic 75%/100% rule baseline and did not beat BYD buy-and-hold over 2012–2024.
+BYD V1.0 is not an XGBoost model. It is a deterministic 75%/100% rule baseline and did not beat BYD buy-and-hold over 2012–2024.
 
 ## Frozen model contract
 
@@ -27,96 +24,125 @@ BYD V1.0 is not an XGBoost model. It remains a deterministic 75%/100% rule basel
 - no random split, grid search, validation-driven feature selection, or same-close execution;
 - 20 bps primary transaction cost and 40 bps stress cost.
 
-## Fixed 2023–2024 validation
+## Two exact-cutoff provider runs
+
+The same frozen model was run against two complete, single-provider BYD histories ending on 2026-08-03. The results were materially different.
+
+### Run A — AkShare/Eastmoney qfq
+
+- Workflow run: `30879667536`;
+- Artifact: `8880822242`;
+- rows: 3,654;
+- SHA-256: `652c1943d844ecb2bb79f832d6f2f320451dce262b9d810cd502304c194212b9`.
+
+The four-state mapping passed all 2023–2024 validation gates:
 
 | Strategy | Total return | CAGR | Max drawdown | Calmar |
 | --- | ---: | ---: | ---: | ---: |
 | BYD buy-and-hold | 12.48% | 6.31% | -47.12% | 0.1340 |
-| BYD V1.0 rule baseline | 12.38% | 6.26% | -42.57% | 0.1471 |
-| Best development-only single factor | 11.07% | 5.62% | -23.93% | 0.2347 |
-| Constant 75% BYD | 11.53% | 5.85% | -37.47% | 0.1561 |
-| XGB binary 0/100 | 5.82% | 2.99% | -25.06% | 0.1193 |
-| XGB core 75/100 | 12.13% | 6.14% | -41.98% | 0.1463 |
+| BYD V1.0 rule | 12.38% | 6.26% | -42.57% | 0.1471 |
 | XGB four-state | **14.99%** | **7.54%** | **-35.67%** | **0.2114** |
 
-The four-state mapping was the only mapping to pass every frozen validation gate. It used 0%, 50%, 75%, or 100% BYD according to the fixed predicted-return thresholds.
+However, it failed the 2025+ holdout:
 
-## Prediction quality through 2024
+- XGB total return: -1.30%;
+- V1.0 total return: +7.09%;
+- XGB CAGR: -0.86%;
+- XGB 40 bps total return: -2.87%.
 
-- OOS samples: 219;
-- Spearman correlation: 0.0905;
-- Pearson correlation: 0.0305;
-- direction hit rate: 54.79%;
-- seven calendar years had hit rate above 50%;
-- maximum mean feature gain share: 7.27%, below the 40% concentration cap.
+This run alone was already insufficient for promotion.
 
-This is weak but non-zero predictive evidence. The model did not depend on one dominant feature.
+### Run B — Yahoo auto-adjusted
 
-## 2025–2026-08-03 retrospective holdout
+- Workflow run: `30880157979`;
+- Artifact: `8881014575`;
+- artifact ZIP SHA-256: `57a1617cee0c06bc0761a25841c5c00aa9d29a9e268d9304d06faf0404a88b74`;
+- rows: 3,663;
+- BYD SHA-256: `a5f67fcb90cebbfe95229c847e5a145d57246a012054c61cb668e5add0301dc5`.
 
-The validation winner failed the holdout contradiction test:
+No XGBoost mapping passed the fixed validation gates:
 
-| Metric | XGB four-state | BYD V1.0 rule |
-| --- | ---: | ---: |
-| Total return | -1.30% | 7.09% |
-| CAGR | -0.86% | 4.63% |
-| XGB max drawdown | -30.41% | — |
-| XGB 40 bps total return | -2.87% | — |
+| Strategy | Total return | CAGR | Max drawdown | Calmar |
+| --- | ---: | ---: | ---: | ---: |
+| BYD buy-and-hold | 12.22% | 6.19% | -45.82% | 0.1350 |
+| BYD V1.0 rule | 12.05% | 6.11% | -41.39% | 0.1475 |
+| XGB binary 0/100 | 11.59% | 5.87% | -24.31% | 0.2416 |
+| XGB core 75/100 | 13.40% | 6.76% | -40.17% | 0.1684 |
+| XGB four-state | -7.13% | -3.78% | -31.68% | -0.1193 |
 
-Failed gates:
+Although the core 75/100 mapping beat the two return baselines, the underlying OOS prediction relationship failed its required gate:
 
-- positive holdout return;
-- CAGR not below V1.0;
-- total return not below V1.0;
-- positive return at 40 bps.
+- OOS Spearman: -0.0024;
+- OOS Pearson: -0.0690;
+- direction hit rate: 49.77%;
+- only three years above 50% hit rate.
 
-Therefore the validation winner cannot be promoted, and the final result remains `byd_v1_1_xgb_not_supported`.
+The mapping therefore cannot be promoted as a predictive model.
 
-## Momentum-factor findings
+## Provider-sensitivity diagnosis
 
-The clearest result is that BYD's useful 10-session information is not conventional trend-following momentum. The more stable factors mostly point to **medium/long-horizon reversal and drawdown recovery**.
+The two adjusted histories are not equivalent representations of the same economic return stream:
 
-| Factor | Economic orientation | Development Spearman | Validation Spearman | Holdout Spearman | Interpretation |
-| --- | --- | ---: | ---: | ---: | --- |
-| `drawdown_120` | deeper drawdown is more constructive | 0.0834 | 0.0790 | 0.2242 | strongest cross-period reversal evidence |
-| `drawdown_252` | deeper drawdown is more constructive | 0.1275 | 0.0492 | 0.0634 | stable but weak long-drawdown recovery signal |
-| `distance_from_low_20` | stronger rebound from recent low | 0.1017 | 0.1284 | 0.0908 | positive rank relation, but weak standalone economic monotonicity |
-| `trend_slope_120` | weaker prior long trend is more constructive | 0.0920 | 0.0362 | 0.0498 | long-horizon reversal rather than continuation |
-| `mom_120` | weaker 120-day momentum is more constructive | 0.0663 | 0.0263 | 0.1968 | another reversal signal |
-| `mom_2` | very short momentum continuation | 0.0746 | 0.0461 | 0.0216 | only short-horizon continuation signal with consistent sign |
+- common-date open-return correlation is approximately 0.9568;
+- mean absolute daily open-return difference is approximately 0.64 percentage points;
+- 591 common sessions differ by more than 1 percentage point in open return;
+- early AkShare qfq prices are compressed to low, two-decimal values, magnifying rounding error in adjusted returns;
+- the provider histories also differ on several suspended or zero-volume sessions.
 
-These factors are candidates for future **state-conditioned** research, not standalone trading rules. Several have positive rank correlation but weak or contradictory quintile spreads and direction hit rates, so none is yet strong enough to name as a dedicated BYD factor model.
+For example, on 2012-08-06 AkShare qfq close changed by approximately +27.13%, while Yahoo adjusted close changed by approximately +7.22%. This is far too large to treat as harmless provider noise.
 
-## Data boundary
+Therefore, the positive AkShare validation result is not robust enough to establish a model. The stricter conclusion is rejection until a canonical high-precision adjusted-price product is defined and audited.
 
-- BYD provider: AkShare/Eastmoney qfq;
-- rows: 3,654;
-- range: 2011-06-30 to 2026-08-03;
-- BYD SHA-256: `652c1943d844ecb2bb79f832d6f2f320451dce262b9d810cd502304c194212b9`.
+## Momentum-factor findings robust across both providers
 
-CSI300-relative features were pre-registered but could not be enabled:
+The factors below retained the same economic orientation and positive time-series Spearman sign in development, validation, and holdout under both histories.
 
-- Yahoo history failed the repository OHLC consistency envelope;
-- AkShare/Eastmoney index requests were closed by the upstream server;
-- the repository's existing `data/csv_source/000300.csv` ends on 2026-06-25 and cannot be silently extended or substituted;
-- no tracking ETF was used as a replacement.
+| Factor | Orientation | AkShare validation IC | Yahoo validation IC | AkShare holdout IC | Yahoo holdout IC | Interpretation |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| `distance_from_low_20` | stronger rebound | 0.1284 | 0.1256 | 0.0908 | 0.0984 | short recovery state |
+| `distance_from_low_60` | stronger rebound | 0.0955 | 0.0932 | 0.0141 | 0.0222 | weaker medium recovery state |
+| `drawdown_120` | deeper drawdown is constructive | 0.0790 | 0.0678 | 0.2242 | 0.2047 | strongest robust reversal signal |
+| `mom_2` | short continuation | 0.0461 | 0.0502 | 0.0216 | 0.0281 | weak very-short momentum |
+| `drawdown_252` | deeper drawdown is constructive | 0.0492 | 0.0357 | 0.0634 | 0.0456 | long drawdown recovery |
+| `trend_slope_120` | weaker prior slope is constructive | 0.0362 | 0.0291 | 0.0498 | 0.0395 | long-horizon reversal |
+| `mom_120` | weaker prior momentum is constructive | 0.0263 | 0.0209 | 0.1968 | 0.1833 | long-horizon reversal |
+| `close_to_sma200` | lower long-trend position is constructive | 0.0180 | 0.0106 | 0.0890 | 0.0745 | weak long mean reversion |
 
-The evidence therefore represents the complete BYD-only momentum model. CSI300-relative research remains data-blocked rather than implicitly omitted.
+The robust picture is not conventional trend-following momentum. BYD's more repeatable 10-session information appears to be a combination of:
 
-## Latest frozen snapshot
+1. rebound strength after a recent low;
+2. medium/long drawdown recovery;
+3. long-horizon reversal;
+4. a much weaker two-session continuation component.
 
-After the 2026-08-03 close:
+These remain factor hypotheses, not standalone trading models. Their absolute ICs are modest, and several lack clean quintile monotonicity or direction hit rates above 50%.
 
-- predicted next-10-session return: -0.07%;
-- binary mapping target: 0% BYD;
-- core mapping target: 75% BYD;
-- four-state mapping target: 50% BYD.
+## CSI300-relative feature boundary
 
-These are research outputs, not orders or personal investment advice.
+CSI300-relative and residual-momentum features were pre-registered but could not be enabled reliably:
+
+- Yahoo index data failed the repository OHLC consistency envelope;
+- AkShare index requests were disconnected upstream in the final evidence run;
+- the repository's existing `data/csv_source/000300.csv` ends on 2026-06-25 and cannot be used as an exact 2026-08-03 history;
+- no tracking ETF or stale index data was substituted.
+
+The workflow records the blocker and executes the complete BYD-only feature contract.
+
+## Latest snapshots are provider-sensitive
+
+The 2026-08-03 close produced different model outputs:
+
+- AkShare run predicted -0.07% over the next ten sessions and mapped to 50% in the four-state rule;
+- Yahoo run predicted +0.50% and mapped to 75% in the four-state rule.
+
+Neither output is suitable for execution because the model itself is rejected and the input data product is not yet canonical.
 
 ## Research conclusion
 
-XGBoost was useful as a diagnostic nonlinear combiner and produced a real validation improvement, but the advantage did not survive the 2025+ regime. The immediate next step should not be a parameter grid around the failed model. Further work requires either:
+The answer to the XGBoost question is negative for the present contract:
 
-1. a governed exact-cutoff CSI300/sector benchmark data product so the pre-registered relative features can be tested; or
-2. a new, separately frozen state-conditioned hypothesis built around drawdown recovery versus trend continuation, evaluated on future prospective evidence rather than reusing the same holdout for tuning.
+- XGBoost can fit a weak nonlinear signal and may look superior in one validation slice;
+- the apparent advantage fails either the holdout test or the cross-provider reproducibility test;
+- no BYD V1.1 model has yet run robustly enough to beat BYD itself.
+
+The next scientifically valid step is not hyperparameter tuning. It is to establish a high-precision canonical BYD adjusted-price series, reconcile suspended sessions, and then freeze a new state-conditioned hypothesis around drawdown recovery and rebound strength. The existing 2025+ holdout cannot be reused as an untouched promotion window after that redesign.
