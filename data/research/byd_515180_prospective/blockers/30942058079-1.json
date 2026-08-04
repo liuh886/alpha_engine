@@ -1,0 +1,14 @@
+{
+  "as_of": "2026-08-04",
+  "commit_sha": "ff4942bcad2eea696f9901075c6a783f2c6f37ac",
+  "exit_status": 1,
+  "github_run_attempt": "1",
+  "github_run_id": "30942058079",
+  "kind": "live_update_blocker",
+  "log_sha256": "ac831598c0b305f7ab76ab8f8f0a927599d9c8f2203a6d1526e9a1d140358e63",
+  "log_tail": "Traceback (most recent call last):\n  File \"/home/runner/work/alpha_engine/alpha_engine/scripts/run_byd_515180_prospective.py\", line 290, in <module>\n    main()\n  File \"/home/runner/work/alpha_engine/alpha_engine/scripts/run_byd_515180_prospective.py\", line 213, in main\n    extension = chain_link_provider_history(\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/alpha_engine/alpha_engine/src/research/byd_prospective_shadow.py\", line 156, in chain_link_provider_history\n    raise RuntimeError(\"baseline and provider must each contain the frozen anchor\")\nRuntimeError: baseline and provider must each contain the frozen anchor\n",
+  "observed_at_utc": "2026-08-04T19:11:42.533378+00:00",
+  "research_only": true,
+  "schema_version": "byd_515180_prospective_blocker_v1",
+  "trade_ready": false
+}
