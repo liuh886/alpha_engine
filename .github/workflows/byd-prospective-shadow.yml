@@ -6,6 +6,7 @@ on:
     paths:
       - "src/research/byd_prospective_shadow.py"
       - "src/research/byd_prospective_evidence_v2.py"
+      - "src/research/byd_prospective_store.py"
       - "scripts/run_byd_prospective_shadow_v2.py"
       - "tests/test_byd_prospective_shadow.py"
       - "tests/test_byd_prospective_evidence_v2.py"
@@ -17,6 +18,7 @@ on:
     paths:
       - "src/research/byd_prospective_shadow.py"
       - "src/research/byd_prospective_evidence_v2.py"
+      - "src/research/byd_prospective_store.py"
       - "scripts/run_byd_prospective_shadow_v2.py"
       - "tests/test_byd_prospective_shadow.py"
       - "tests/test_byd_prospective_evidence_v2.py"
@@ -57,6 +59,7 @@ jobs:
           uv run ruff check
           src/research/byd_prospective_shadow.py
           src/research/byd_prospective_evidence_v2.py
+          src/research/byd_prospective_store.py
           scripts/run_byd_prospective_shadow_v2.py
           tests/test_byd_prospective_shadow.py
           tests/test_byd_prospective_evidence_v2.py
