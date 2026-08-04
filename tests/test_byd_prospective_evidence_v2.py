@@ -10,8 +10,6 @@ import pytest
 from src.research.byd_prospective_evidence_v2 import (
     SHADOW_SCHEMA_V2,
     enrich_observations,
-    mature_outcomes_from_observations,
-    persist_shadow_store_v2,
 )
 from src.research.byd_prospective_shadow import (
     BASELINE_DATE,
@@ -19,6 +17,11 @@ from src.research.byd_prospective_shadow import (
     build_extended_inputs,
     chain_link_provider_history,
     make_signal_observations,
+)
+from src.research.byd_prospective_store import (
+    apply_immutable_shadow_schedule,
+    mature_outcomes_from_immutable_observations,
+    persist_immutable_shadow_store,
 )
 
 
@@ -75,7 +78,10 @@ def _provider(baseline: pd.DataFrame, periods: int = 30) -> pd.DataFrame:
     return frame
 
 
-def _observations(periods: int = 30) -> list[dict[str, object]]:
+def _context(
+    periods: int = 30,
+    observed_at: str = "2026-08-04T10:00:00+00:00",
+) -> tuple[list[dict[str, object]], pd.DataFrame]:
     baseline, sessions = _baseline()
     provider = _provider(baseline, periods)
     extension = chain_link_provider_history(baseline, provider)
@@ -90,25 +96,27 @@ def _observations(periods: int = 30) -> list[dict[str, object]]:
         extension,
         audit,
     )
-    base, _, _ = make_signal_observations(
+    base, dataset, _ = make_signal_observations(
         adjusted,
         extended_sessions,
         extension,
         audit,
-        observed_at_utc="2026-08-04T10:00:00+00:00",
+        observed_at_utc=observed_at,
         primary_provider="synthetic_primary",
     )
-    return enrich_observations(
+    enriched = enrich_observations(
         base,
         extension,
         audit,
         provider,
         primary_provider="synthetic_primary",
     )
+    final = apply_immutable_shadow_schedule(enriched, [], dataset)
+    return final, dataset
 
 
 def test_v2_observation_seals_prices_actions_and_audit() -> None:
-    observations = _observations(3)
+    observations, _ = _context(3)
     first = observations[0]
     assert first["schema_version"] == SHADOW_SCHEMA_V2
     assert first["observation_mode"] == "same_session_post_close"
@@ -132,66 +140,54 @@ def test_v2_observation_seals_prices_actions_and_audit() -> None:
 
 
 def test_outcomes_use_only_sealed_observation_prices() -> None:
-    observations = _observations(30)
-    outcomes = mature_outcomes_from_observations(observations)
+    observations, _ = _context(30)
+    outcomes = mature_outcomes_from_immutable_observations(observations)
     assert outcomes
     first = outcomes[0]
     assert first["settlement_source"] == "immutable_daily_observations_only"
+    assert len(first["settlement_input_sha256"]) == 64
     assert set(first["cost_scenarios_bps"]) == {"20", "40"}
 
     changed = json.loads(json.dumps(observations))
     changed[-1]["chain_linked_adjusted_ohlcv"]["open"] *= 1.25
-    changed_outcomes = mature_outcomes_from_observations(changed)
+    changed_outcomes = mature_outcomes_from_immutable_observations(changed)
     assert changed_outcomes != outcomes
-
-    restored = mature_outcomes_from_observations(observations)
-    assert restored == outcomes
+    assert mature_outcomes_from_immutable_observations(observations) == outcomes
 
 
-def test_store_rejects_changed_existing_observation(tmp_path: Path) -> None:
-    observations = _observations(30)
-    first = persist_shadow_store_v2(tmp_path, observations)
-    second = persist_shadow_store_v2(tmp_path, observations)
-    assert first["ledger_sha256"] == second["ledger_sha256"]
+def test_store_is_idempotent_and_rejects_changed_record(tmp_path: Path) -> None:
+    observations, _ = _context(30)
+    first = persist_immutable_shadow_store(tmp_path, observations)
+    second = persist_immutable_shadow_store(tmp_path, observations)
+    assert first == second
     assert first["cost_scenarios_bps"] == [20, 40]
     assert first["outcome_settlement"] == "immutable_daily_observations_only"
 
     changed = json.loads(json.dumps(observations[0]))
     changed["primary_raw_ohlcv"]["close"] *= 1.01
     with pytest.raises(RuntimeError, match="append-only record drift"):
-        persist_shadow_store_v2(tmp_path, [changed])
+        persist_immutable_shadow_store(tmp_path, [changed])
+
+
+def test_existing_shadow_state_cannot_be_rewritten() -> None:
+    observations, dataset = _context(8)
+    existing = observations[:5]
+    candidate = observations[5:]
+    continued = apply_immutable_shadow_schedule(candidate, existing, dataset)
+    assert len(continued) == 3
+
+    changed = json.loads(json.dumps(existing))
+    changed[0]["shadow_target_position"] = (
+        1.0 if changed[0]["shadow_target_position"] == 0.75 else 0.75
+    )
+    with pytest.raises(RuntimeError, match="immutable shadow target drift"):
+        apply_immutable_shadow_schedule(candidate, changed, dataset)
 
 
 def test_catch_up_record_is_not_counted_as_prospective() -> None:
-    observations = _observations(2)
-    observations[0]["observed_at_utc"] = "2026-08-08T10:00:00+00:00"
-    baseline, sessions = _baseline()
-    provider = _provider(baseline, 2)
-    extension = chain_link_provider_history(baseline, provider)
-    audit = audit_independent_raw(
-        extension.primary_raw_new,
-        extension.primary_raw_new.copy(),
-        secondary_provider="synthetic_independent_raw",
+    observations, _ = _context(
+        2,
+        observed_at="2026-08-08T10:00:00+00:00",
     )
-    adjusted, extended_sessions = build_extended_inputs(
-        baseline,
-        sessions,
-        extension,
-        audit,
-    )
-    base, _, _ = make_signal_observations(
-        adjusted,
-        extended_sessions,
-        extension,
-        audit,
-        observed_at_utc="2026-08-08T10:00:00+00:00",
-    )
-    enriched = enrich_observations(
-        base,
-        extension,
-        audit,
-        provider,
-        primary_provider="synthetic_primary",
-    )
-    assert enriched[0]["observation_mode"] == "catch_up_backfill"
-    assert enriched[0]["prospective_eligible"] is False
+    assert observations[0]["observation_mode"] == "catch_up_backfill"
+    assert observations[0]["prospective_eligible"] is False
