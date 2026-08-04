@@ -1,0 +1,33 @@
+{
+  "append_only": true,
+  "baseline_cutoff": "2026-08-03",
+  "byd_observations_are_referenced_not_recomputed": true,
+  "completed_defense_episode_count": 0,
+  "cost_scenarios_bps": [
+    20.0,
+    40.0
+  ],
+  "etf_adjusted_sha256": "2173afbe2fcbc8875de55ce0ff9bcb25b1c9f184c5cd273ade682244393c67a5",
+  "etf_artifact_sha256": "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f",
+  "etf_manifest_sha256": "7f19639e6540ebb71eac7e52dab270df4b20b59bcf764c2dc6843045de21e4ec",
+  "first_signal_date": "2026-08-04",
+  "horizons_common_eligible_opens": [
+    5,
+    10,
+    20
+  ],
+  "last_signal_date": "2026-08-04",
+  "ledger_sha256": "5408e29ec98b6484a5d2338c91c130e10f9d95a4000f8a3fc1edebf497282f15",
+  "observation_count": 1,
+  "observation_sha256": {
+    "2026-08-04": "ce1dacc2e7c97ee758cefd3dbc36b0d94fc6c55f1ffdbcab6a8c473c2462f7f7"
+  },
+  "outcome_count": 0,
+  "prospective_eligible_observation_count": 1,
+  "provider_history_may_not_overwrite_existing_observations": true,
+  "research_only": true,
+  "schema_version": "byd_515180_prospective_v1",
+  "scorecard_sha256": "b70945219525df891878e25222887b2b6730e0e17b9729ad222d9c9598c7b359",
+  "shadow_only": true,
+  "trade_ready": false
+}

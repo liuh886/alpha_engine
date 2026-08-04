@@ -1,0 +1,38 @@
+{
+  "completed_defense_episode_count": 0,
+  "cumulative_cost_scenarios_bps": {
+    "20": {
+      "candidate_incremental_return": 0.0,
+      "strategy_returns": {
+        "byd_v1_cash": 0.0,
+        "fixed_75_25": 0.0,
+        "v1_dividend_75_25": 0.0
+      }
+    },
+    "40": {
+      "candidate_incremental_return": 0.0,
+      "strategy_returns": {
+        "byd_v1_cash": 0.0,
+        "fixed_75_25": 0.0,
+        "v1_dividend_75_25": 0.0
+      }
+    }
+  },
+  "etf_dividend_observation_count": 0,
+  "market_states": [
+    "bear"
+  ],
+  "observation_count": 1,
+  "prospective_days": 0,
+  "prospective_eligible_observation_count": 1,
+  "re_evaluation_gate": {
+    "at_least_12_months": false,
+    "at_least_1_etf_dividend_cycle": false,
+    "at_least_2_market_states": false,
+    "at_least_6_completed_defense_episodes": false
+  },
+  "research_only": true,
+  "schema_version": "byd_515180_prospective_v1",
+  "shadow_only": true,
+  "trade_ready": false
+}
