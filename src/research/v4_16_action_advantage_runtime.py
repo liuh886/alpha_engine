@@ -19,6 +19,7 @@ _EVENT_COLUMNS = (
     "event_family",
     "action",
     "event_id",
+    "rule_id",
     "signal_close_date",
     "execution_date",
     "event_end_date",
@@ -91,13 +92,15 @@ def select_advantage_events(
     *,
     sample: str,
 ) -> pd.DataFrame:
-    """Run the frozen selector and preserve a stable schema for no-event samples."""
+    """Run the frozen selector and preserve stable schema and model provenance."""
 
     events = _ORIGINAL_SELECT_ADVANTAGE_EVENTS(
         predictions, contract, sample=sample
     )
     if events.empty:
         return pd.DataFrame(columns=list(_EVENT_COLUMNS))
+    events = events.copy()
+    events["rule_id"] = "ridge_action_advantage_v4_16"
     missing = [column for column in _EVENT_COLUMNS if column not in events.columns]
     if missing:
         raise AssertionError(f"action event ledger missing columns: {missing}")
