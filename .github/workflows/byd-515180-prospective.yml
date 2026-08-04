@@ -50,6 +50,40 @@ jobs:
           echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
           base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > 515180-canonical-v1-artifact.zip
           echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  515180-canonical-v1-artifact.zip" | sha256sum --check --strict
+      - name: Verify sealed BYD prospective source
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          paths = sorted(Path("data/research/byd_prospective_shadow/observations").glob("*.json"))
+          if not paths:
+              raise SystemExit("no sealed BYD prospective observations are available")
+          latest = json.loads(paths[-1].read_text(encoding="utf-8"))
+          required = {
+              "signal_date",
+              "data_version",
+              "base_target_position",
+              "open_research_eligible",
+              "chain_linked_adjusted_ohlcv",
+          }
+          missing = sorted(required - set(latest))
+          if missing:
+              raise SystemExit(f"latest BYD observation is missing fields: {missing}")
+          print(
+              json.dumps(
+                  {
+                      "path": str(paths[-1]),
+                      "signal_date": latest["signal_date"],
+                      "data_version": latest["data_version"],
+                      "base_target_position": latest["base_target_position"],
+                      "open_research_eligible": latest["open_research_eligible"],
+                  },
+                  ensure_ascii=False,
+                  sort_keys=True,
+              )
+          )
+          PY
       - name: Lint prospective sleeve
         run: >-
           uv run ruff check
@@ -87,6 +121,13 @@ jobs:
           echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  515180-canonical-v1-artifact.zip" | sha256sum --check --strict
           mkdir -p artifacts/data/515180_canonical_v1
           unzip -q 515180-canonical-v1-artifact.zip -d artifacts/data/515180_canonical_v1
+      - name: Verify sealed BYD source before pairing
+        run: |
+          set -euo pipefail
+          latest="$(find data/research/byd_prospective_shadow/observations -maxdepth 1 -name '*.json' -print | sort | tail -n 1)"
+          test -n "$latest"
+          echo "Pairing from sealed BYD observation: $latest"
+          sha256sum "$latest"
       - name: Append immutable paired evidence
         run: >-
           uv run python scripts/run_byd_515180_prospective.py
