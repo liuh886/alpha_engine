@@ -10,6 +10,7 @@ on:
       - "configs/research_paradigms/byd_v1_2_recovery_state.yaml"
       - "tests/test_byd_v1_2_recovery_state.py"
       - "docs/research/byd_v1_2_recovery_state.md"
+      - "docs/evidence/byd_v1_2_recovery_state/**"
       - ".github/workflows/byd-v1-2-recovery-state.yml"
   push:
     branches: [main]
@@ -20,11 +21,12 @@ on:
       - "configs/research_paradigms/byd_v1_2_recovery_state.yaml"
       - "tests/test_byd_v1_2_recovery_state.py"
       - "docs/research/byd_v1_2_recovery_state.md"
+      - "docs/evidence/byd_v1_2_recovery_state/**"
       - ".github/workflows/byd-v1-2-recovery-state.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   contract-tests:
@@ -40,6 +42,10 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
+      - name: Verify immutable snapshot archive
+        run: >-
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz"
+          | sha256sum --check --strict
       - name: Ruff V1.2 research
         run: >-
           uv run ruff check
@@ -53,46 +59,10 @@ jobs:
 
   evidence:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     needs: contract-tests
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-          fetch-depth: 0
-      - name: Materialize immutable canonical snapshot once
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          snapshot="data/research/byd_canonical_v1_snapshot.tar.xz"
-          expected_archive_sha="2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179"
-          if [[ ! -f "$snapshot" ]]; then
-            mkdir -p /tmp/byd-sealed data/research
-            curl --fail --location \
-              --header "Authorization: Bearer ${GH_TOKEN}" \
-              --header "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/8882573557/zip" \
-              --output /tmp/byd-sealed.zip
-            unzip -q /tmp/byd-sealed.zip -d /tmp/byd-sealed
-            root="/tmp/byd-sealed/data/byd_canonical_v1"
-            test "$(jq -r .schema_version "$root/manifest.json")" = "byd_canonical_adjusted_ohlcv_v1"
-            test "$(jq -r .adjusted_sha256 "$root/manifest.json")" = "0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960"
-            test "$(jq -r .manifest_sha256 "$root/manifest.json")" = "06202b594b036b0c815e4ffb46e9f3d14ba647d699aad0fd927f1665142a363e"
-            tar --sort=name --mtime='UTC 1970-01-01' \
-              --owner=0 --group=0 --numeric-owner \
-              -C "$root" -cJf "$snapshot" \
-              adjusted_ohlcv.csv session_audit.csv manifest.json \
-              quarantined_open_dates.csv
-            echo "${expected_archive_sha}  ${snapshot}" | sha256sum --check --strict
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add "$snapshot"
-            git commit -m "data: pin immutable BYD canonical v1 snapshot"
-            git push origin "HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}"
-          else
-            echo "${expected_archive_sha}  ${snapshot}" | sha256sum --check --strict
-          fi
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -104,6 +74,7 @@ jobs:
       - name: Extract immutable canonical snapshot
         run: |
           set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
           mkdir -p artifacts/data/byd_canonical_v1
           tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz \
             -C artifacts/data/byd_canonical_v1
