@@ -340,51 +340,74 @@ def compute_ic_vectorized(
     predictions: pd.DataFrame,
     returns: pd.DataFrame,
 ) -> tuple[float, float, float, list[float]]:
-    """Compute IC between predictions and returns using vectorized operations."""
-    common_dates = sorted(
-        set(predictions.index.get_level_values("datetime"))
-        & set(returns.index.get_level_values("datetime"))
-    )
-
-    ics = []
-    for date in common_dates:
-        try:
-            pred_day = predictions.loc[date]["score"]
-            ret_day = returns.loc[date]
-            if isinstance(ret_day, pd.DataFrame):
-                ret_day = ret_day.iloc[:, 0]
-        except KeyError:
-            continue
-
-        common_inst = pred_day.index.intersection(ret_day.index)
-        if len(common_inst) < 10:
-            continue
-
-        p = pred_day.loc[common_inst].values
-        r = ret_day.loc[common_inst].values
-        mask = ~(np.isnan(p) | np.isnan(r))
-        if mask.sum() < 10:
-            continue
-
-        p_clean = p[mask]
-        r_clean = r[mask]
-        p_std = p_clean.std()
-        r_std = r_clean.std()
-        if p_std < 1e-10 or r_std < 1e-10:
-            continue
-
-        ic = np.corrcoef(p_clean, r_clean)[0, 1]
-        if not np.isnan(ic):
-            ics.append(ic)
-
-    if not ics:
+    """Compute daily cross-sectional IC with aligned dense arrays."""
+    if predictions.empty or returns.empty:
         return 0.0, 0.0, 0.0, []
 
-    mean_ic = float(np.mean(ics))
-    ic_std = float(np.std(ics))
+    prediction_matrix = predictions["score"].unstack(level="instrument")
+    return_matrix = returns.iloc[:, 0].unstack(level="instrument")
+    prediction_matrix, return_matrix = prediction_matrix.align(return_matrix, join="inner", axis=0)
+    prediction_matrix, return_matrix = prediction_matrix.align(return_matrix, join="inner", axis=1)
+    if prediction_matrix.empty or prediction_matrix.shape[1] < 10:
+        return 0.0, 0.0, 0.0, []
+
+    prediction_values = prediction_matrix.to_numpy(dtype=float, na_value=np.nan)
+    return_values = return_matrix.to_numpy(dtype=float, na_value=np.nan)
+    valid = np.isfinite(prediction_values) & np.isfinite(return_values)
+    counts = valid.sum(axis=1)
+    prediction_sums = np.where(valid, prediction_values, 0.0).sum(axis=1)
+    return_sums = np.where(valid, return_values, 0.0).sum(axis=1)
+    prediction_means = np.divide(
+        prediction_sums,
+        counts,
+        out=np.zeros_like(prediction_sums),
+        where=counts > 0,
+    )
+    return_means = np.divide(
+        return_sums,
+        counts,
+        out=np.zeros_like(return_sums),
+        where=counts > 0,
+    )
+    centered_predictions = np.where(valid, prediction_values - prediction_means[:, None], 0.0)
+    centered_returns = np.where(valid, return_values - return_means[:, None], 0.0)
+    prediction_squares = np.square(centered_predictions).sum(axis=1)
+    return_squares = np.square(centered_returns).sum(axis=1)
+    prediction_std = np.sqrt(
+        np.divide(
+            prediction_squares,
+            counts,
+            out=np.zeros_like(prediction_squares),
+            where=counts > 0,
+        )
+    )
+    return_std = np.sqrt(
+        np.divide(
+            return_squares,
+            counts,
+            out=np.zeros_like(return_squares),
+            where=counts > 0,
+        )
+    )
+    denominator = np.sqrt(prediction_squares * return_squares)
+    eligible = (
+        (counts >= 10) & (prediction_std >= 1e-10) & (return_std >= 1e-10) & (denominator > 0.0)
+    )
+    correlations = np.divide(
+        (centered_predictions * centered_returns).sum(axis=1),
+        denominator,
+        out=np.full(len(counts), np.nan, dtype=float),
+        where=eligible,
+    )
+    ic_values = correlations[np.isfinite(correlations)]
+    if not len(ic_values):
+        return 0.0, 0.0, 0.0, []
+
+    mean_ic = float(ic_values.mean())
+    ic_std = float(ic_values.std())
     ic_ir = mean_ic / ic_std if ic_std > 1e-10 else 0.0
-    positive_ratio = sum(1 for ic in ics if ic > 0) / len(ics)
-    return mean_ic, ic_ir, positive_ratio, ics
+    positive_ratio = float((ic_values > 0.0).mean())
+    return mean_ic, ic_ir, positive_ratio, ic_values.tolist()
 
 
 def run_vectorized_backtest(
@@ -460,9 +483,7 @@ def run_vectorized_backtest(
             if isinstance(row, pd.DataFrame):
                 row = row.iloc[:, 0]
             ret_map[str(date)[:10]] = {
-                str(symbol): float(value)
-                for symbol, value in row.items()
-                if not np.isnan(value)
+                str(symbol): float(value) for symbol, value in row.items() if not np.isnan(value)
             }
         except (KeyError, TypeError):
             ret_map[str(date)[:10]] = {}
@@ -488,9 +509,7 @@ def run_vectorized_backtest(
         for index in range(len(active_layers)):
             layer_value, holdings, maturity_idx = active_layers[index]
             valid_weights = {
-                symbol: weight
-                for symbol, weight in holdings.items()
-                if symbol in ret_lookup
+                symbol: weight for symbol, weight in holdings.items() if symbol in ret_lookup
             }
             growth = 0.0
             if valid_weights:
@@ -526,8 +545,7 @@ def run_vectorized_backtest(
         if bench_series is not None and date in bench_series.index:
             benchmark_value = float(bench_series.loc[date])
             benchmark_values.append(
-                benchmark_values[-1]
-                * (1 + (0.0 if np.isnan(benchmark_value) else benchmark_value))
+                benchmark_values[-1] * (1 + (0.0 if np.isnan(benchmark_value) else benchmark_value))
             )
         else:
             benchmark_values.append(benchmark_values[-1])
@@ -536,9 +554,7 @@ def run_vectorized_backtest(
     benchmark_return = benchmark_values[-1] / benchmark_values[0] - 1
     excess_return = total_return - benchmark_return
     portfolio_array = np.array(portfolio_values)
-    max_drawdown = float(
-        (portfolio_array / np.maximum.accumulate(portfolio_array) - 1).min()
-    )
+    max_drawdown = float((portfolio_array / np.maximum.accumulate(portfolio_array) - 1).min())
     return_array = np.array(returns_list)
     return_std = float(return_array.std())
     periods_per_year = 252 / rebalance_days if rebalance_days > 0 else 252
@@ -549,12 +565,8 @@ def run_vectorized_backtest(
     )
     n_periods = len(returns_list)
     years = n_periods * rebalance_days / 252 if rebalance_days > 0 else n_periods / 252
-    annual_return = (
-        float((1 + total_return) ** (1 / years) - 1) if years > 0 else 0.0
-    )
-    volatility = (
-        float(return_array.std() * np.sqrt(periods_per_year)) if n_periods > 0 else 0.0
-    )
+    annual_return = float((1 + total_return) ** (1 / years) - 1) if years > 0 else 0.0
+    volatility = float(return_array.std() * np.sqrt(periods_per_year)) if n_periods > 0 else 0.0
 
     return BacktestResult(
         total_return=total_return,
