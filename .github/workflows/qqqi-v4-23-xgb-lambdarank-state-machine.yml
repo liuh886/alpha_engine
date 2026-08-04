@@ -11,6 +11,7 @@ on:
       - "src/research/v4_23_xgb_lambdarank_policy.py"
       - "src/research/v4_23_xgb_lambdarank_state_machine.py"
       - "scripts/run_qqqi_v4_23_xgb_lambdarank_state_machine.py"
+      - "scripts/run_qqqi_v4_23_xgb_lambdarank_open_close.py"
       - "tests/test_v4_23_xgb_lambdarank_state_machine.py"
   workflow_dispatch:
     inputs:
@@ -44,6 +45,7 @@ jobs:
             src/research/v4_23_xgb_lambdarank_policy.py \
             src/research/v4_23_xgb_lambdarank_state_machine.py \
             scripts/run_qqqi_v4_23_xgb_lambdarank_state_machine.py \
+            scripts/run_qqqi_v4_23_xgb_lambdarank_open_close.py \
             tests/test_v4_23_xgb_lambdarank_state_machine.py
       - name: Test v4.23 and inherited research contracts
         run: |
@@ -57,7 +59,7 @@ jobs:
       - name: Run governed v4.23 evidence
         run: |
           for attempt in 1 2 3; do
-            if uv run python scripts/run_qqqi_v4_23_xgb_lambdarank_state_machine.py \
+            if uv run python scripts/run_qqqi_v4_23_xgb_lambdarank_open_close.py \
               --end-date "${{ inputs.end_date }}" \
               --output-dir artifacts/evidence/qqqi_xgb_lambdarank_state_machine_v4_23_research; then
               exit 0
