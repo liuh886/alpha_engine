@@ -10,11 +10,12 @@ import pandas as pd
 
 from scripts.data.build_515180_canonical_bundle import (
     fetch_primary,
-    fetch_secondary,
     parse_args,
     write_frame,
 )
+from scripts.data.fetch_515180_secondary_v2 import fetch_secondary_v2
 from src.data.etf_515180_canonical import build_515180_bundle
+from src.data.etf_515180_quality_v2 import apply_material_factor_quality
 
 MAX_ENVELOPE_REPAIR_PCT = 0.002
 
@@ -78,7 +79,7 @@ def main() -> None:
         write_frame(output / "provider_reference_ohlcv.csv", raw_reference)
         raw, envelope_audit = audit_and_repair_envelope(raw_reference)
         write_frame(output / "provider_envelope_audit.csv", envelope_audit)
-        secondary, secondary_meta = fetch_secondary(
+        secondary, secondary_meta = fetch_secondary_v2(
             args.start, args.cutoff, args.secondary_retries
         )
         bundle, quality = build_515180_bundle(
@@ -102,6 +103,7 @@ def main() -> None:
             },
             cutoff=args.cutoff,
         )
+        bundle, quality = apply_material_factor_quality(bundle, quality)
         write_frame(output / "raw_ohlcv.csv", bundle.raw_bars)
         write_frame(output / "adjustment_factors.csv", bundle.adjustment_factors)
         write_frame(output / "adjusted_ohlcv.csv", bundle.adjusted_bars)
@@ -122,6 +124,9 @@ def main() -> None:
             f"- Adjusted SHA-256: `{bundle.manifest['adjusted_sha256']}`",
             f"- Manifest SHA-256: `{bundle.manifest['manifest_sha256']}`",
             f"- Provider envelope audit rows: `{len(envelope_audit)}`",
+            f"- Material factor jumps: `{bundle.manifest['material_factor_jumps']}`",
+            f"- Unexplained material jumps: `{bundle.manifest['unexplained_factor_jumps']}`",
+            f"- Factor jump tolerance: `{bundle.manifest['factor_jump_tolerance']}`",
             f"- Secondary coverage: `{bundle.manifest['secondary_coverage']:.6f}`",
             f"- Open-return correlation: `{bundle.manifest['common_return_correlation']}`",
             f"- P99 open-return difference: `{bundle.manifest['p99_open_return_difference']}`",
