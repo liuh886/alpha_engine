@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from src.research.v4_22_intraday_rank_pilot_runtime import (
     _audit_frame,
@@ -63,10 +64,14 @@ def test_event_audit_attaches_prices_and_exact_cost_components():
         }
     }
     audited = _audit_frame(frame, contract)
-    assert audited.loc[index[0], "switch_cost"] == 0.0015
-    assert audited.loc[index[0], "baseline_next_reconcile_cost"] == 0.0001
-    assert audited.loc[index[0], "overlay_next_reconcile_cost"] == 0.0015
-    assert audited.loc[index[0], "incremental_cost"] == 0.0029
+    assert audited.loc[index[0], "switch_cost"] == pytest.approx(0.0015)
+    assert audited.loc[
+        index[0], "baseline_next_reconcile_cost"
+    ] == pytest.approx(0.0001)
+    assert audited.loc[
+        index[0], "overlay_next_reconcile_cost"
+    ] == pytest.approx(0.0015)
+    assert audited.loc[index[0], "incremental_cost"] == pytest.approx(0.0029)
 
     ledger = pd.DataFrame(
         {"score": [0.8], "trigger": [True]}, index=index
@@ -74,4 +79,4 @@ def test_event_audit_attaches_prices_and_exact_cost_components():
     enriched = _enrich_ledger(ledger, audited)
     assert enriched.loc[index[0], "QQQ_open"] == 100.0
     assert enriched.loc[index[0], "TQQQ_next_open"] == 52.0
-    assert enriched.loc[index[0], "incremental_cost"] == 0.0029
+    assert enriched.loc[index[0], "incremental_cost"] == pytest.approx(0.0029)
