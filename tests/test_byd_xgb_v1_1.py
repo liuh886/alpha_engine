@@ -49,7 +49,9 @@ def test_future_mutation_cannot_change_prior_momentum_features() -> None:
     original = _synthetic_ohlcv(900)
     dataset_a, features_a = build_momentum_dataset(original)
     changed = original.copy()
-    changed.loc[changed.index >= 820, ["open", "high", "low", "close", "volume"]] *= 1.7
+    price_columns = ["open", "high", "low", "close"]
+    changed.loc[changed.index >= 820, price_columns] *= 1.7
+    changed.loc[changed.index >= 820, "volume"] *= 2
     dataset_b, features_b = build_momentum_dataset(changed)
     assert features_a == features_b
     cutoff = dataset_a.index[819]
