@@ -11,7 +11,10 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from src.research.byd_v1_2_recovery_state import load_canonical_snapshot
+from src.research.byd_v1_2_recovery_state import (
+    build_v1_0_decision_position,
+    load_canonical_snapshot,
+)
 from src.research.byd_v1_3_recovery_overlay import evaluate_v1_3
 
 
@@ -118,12 +121,10 @@ def main() -> None:
         index=False,
         float_format="%.12f",
     )
+    base_decision = build_v1_0_decision_position(result["dataset"])
     schedule_daily = pd.DataFrame(
         {
-            "base_decision_position": result["schedule"].final_decision_position.where(
-                ~result["schedule"].overlay_active,
-                0.75,
-            ),
+            "base_decision_position": base_decision,
             "overlay_active": result["schedule"].overlay_active,
             "overlay_branch": result["schedule"].overlay_branch,
             "final_decision_position": result["schedule"].final_decision_position,
