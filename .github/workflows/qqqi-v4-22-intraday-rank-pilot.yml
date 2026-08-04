@@ -9,6 +9,7 @@ on:
       - "src/research/v4_22_intraday_rank_pilot.py"
       - "scripts/run_qqqi_v4_22_intraday_rank_pilot.py"
       - "tests/test_v4_22_intraday_rank_pilot.py"
+      - "tests/test_v4_22_intraday_runtime.py"
       - "src/data/adapters/polygon_intraday_adapter.py"
       - "src/data/adapters/yfinance_open_close_research_adapter.py"
       - "src/research/v4_21_state2_intraday_preflight.py"
@@ -38,11 +39,13 @@ jobs:
           uv run ruff check \
             src/research/v4_22_intraday_rank_pilot.py \
             scripts/run_qqqi_v4_22_intraday_rank_pilot.py \
-            tests/test_v4_22_intraday_rank_pilot.py
+            tests/test_v4_22_intraday_rank_pilot.py \
+            tests/test_v4_22_intraday_runtime.py
       - name: Test v4.22 and inherited intraday contracts
         run: |
           uv run pytest \
             tests/test_v4_22_intraday_rank_pilot.py \
+            tests/test_v4_22_intraday_runtime.py \
             tests/test_polygon_intraday_adapter.py \
             tests/test_yfinance_open_close_research_adapter.py \
             tests/test_v4_21_state2_intraday_preflight.py \
