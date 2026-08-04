@@ -14,7 +14,7 @@ on:
       - "scripts/run_byd_515180_allocation.py"
       - "tests/test_etf_515180_canonical.py"
       - "tests/test_byd_515180_allocation.py"
-      - "data/research/515180_canonical_v1_snapshot.tar.xz.b64"
+      - "data/research/515180_canonical_v1_artifact.zip.b64"
       - "docs/evidence/byd_515180_allocation/**"
       - ".github/workflows/byd-515180-allocation.yml"
   workflow_dispatch:
@@ -41,25 +41,23 @@ jobs:
         run: >-
           echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz"
           | sha256sum --check --strict
-      - name: Ruff frozen research files
-        run: >-
-          uv run ruff check
-          src/data/etf_515180_canonical.py
-          src/data/etf_515180_quality_v2.py
-          src/research/byd_515180_allocation.py
-          src/research/byd_515180_execution.py
-          scripts/data/build_515180_canonical_bundle.py
-          scripts/data/build_515180_canonical_bundle_v2.py
-          scripts/data/fetch_515180_secondary_v2.py
-          scripts/run_byd_515180_allocation.py
-          tests/test_etf_515180_canonical.py
-          tests/test_byd_515180_allocation.py
-      - name: Run contract tests
-        run: >-
-          uv run pytest
-          tests/test_etf_515180_canonical.py
-          tests/test_byd_515180_allocation.py
-          -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Run frozen contract tests
+        run: |
+          uv run ruff check \
+            src/data/etf_515180_canonical.py \
+            src/data/etf_515180_quality_v2.py \
+            src/research/byd_515180_allocation.py \
+            src/research/byd_515180_execution.py \
+            scripts/data/build_515180_canonical_bundle.py \
+            scripts/data/build_515180_canonical_bundle_v2.py \
+            scripts/data/fetch_515180_secondary_v2.py \
+            scripts/run_byd_515180_allocation.py \
+            tests/test_etf_515180_canonical.py \
+            tests/test_byd_515180_allocation.py
+          uv run pytest \
+            tests/test_etf_515180_canonical.py \
+            tests/test_byd_515180_allocation.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   materialize-authoritative-run:
     if: github.event_name == 'pull_request'
@@ -70,14 +68,20 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Download passed 515180 canonical artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: 515180-canonical-v1
-          path: artifacts/data/515180_canonical_v1
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: liuh886/alpha_engine
-          run-id: 30933294861
+      - name: Download exact canonical artifact ZIP bytes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl --fail --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/liuh886/alpha_engine/actions/artifacts/8902066862/zip \
+            --output 515180-canonical-v1-artifact.zip
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  515180-canonical-v1-artifact.zip" | sha256sum --check --strict
+          mkdir -p artifacts/data/515180_canonical_v1
+          unzip -q 515180-canonical-v1-artifact.zip -d artifacts/data/515180_canonical_v1
       - name: Download passed allocation evidence
         uses: actions/download-artifact@v4
         with:
@@ -86,7 +90,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: liuh886/alpha_engine
           run-id: 30933294861
-      - name: Verify authoritative identities
+      - name: Verify authoritative data and decision
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -107,26 +111,16 @@ jobs:
           }
           for key, expected in exact.items():
               if manifest.get(key) != expected:
-                  raise SystemExit(f"authoritative 515180 identity mismatch for {key}: {manifest.get(key)!r} != {expected!r}")
+                  raise SystemExit(f"authoritative identity mismatch for {key}: {manifest.get(key)!r} != {expected!r}")
           summary = json.loads(Path("artifacts/research/byd_515180_allocation/summary.json").read_text())
-          decision = summary["governed_decisions"]["v1_dividend_75_25"]["decision"]
-          if decision != "supported":
-              raise SystemExit(f"authoritative decision drifted: {decision!r}")
+          if summary["governed_decisions"]["v1_dividend_75_25"]["decision"] != "supported":
+              raise SystemExit("authoritative primary-candidate decision drifted")
           PY
-      - name: Materialize deterministic snapshot and evidence
+      - name: Materialize exact bytes and static evidence
         run: |
           set -euo pipefail
           mkdir -p data/research docs/evidence/byd_515180_allocation
-          (
-            cd artifacts/data/515180_canonical_v1
-            find . -type f -print0 | sort -z | tar --null -T - \
-              --sort=name \
-              --mtime='UTC 2026-08-03 00:00:00' \
-              --owner=0 --group=0 --numeric-owner \
-              -cJf "$GITHUB_WORKSPACE/515180-canonical-v1-snapshot.tar.xz"
-          )
-          echo "86e2bde20fce70ff093d66acfbc89523b8039861ed67cc202eee67c9b6802eee  515180-canonical-v1-snapshot.tar.xz" | sha256sum --check --strict
-          base64 -w 76 515180-canonical-v1-snapshot.tar.xz > data/research/515180_canonical_v1_snapshot.tar.xz.b64
+          base64 -w 76 515180-canonical-v1-artifact.zip > data/research/515180_canonical_v1_artifact.zip.b64
           cp artifacts/research/byd_515180_allocation/summary.json docs/evidence/byd_515180_allocation/summary.json
           cp artifacts/research/byd_515180_allocation/evaluation.csv docs/evidence/byd_515180_allocation/evaluation.csv
           cp artifacts/research/byd_515180_allocation/correlation_diagnostics.csv docs/evidence/byd_515180_allocation/correlation_diagnostics.csv
@@ -136,14 +130,14 @@ jobs:
       - name: Commit immutable evidence when absent
         run: |
           set -euo pipefail
-          if git diff --quiet -- data/research/515180_canonical_v1_snapshot.tar.xz.b64 docs/evidence/byd_515180_allocation .github/workflows/materialize-515180-canonical-snapshot.yml && \
-             [[ -z "$(git ls-files --others --exclude-standard data/research/515180_canonical_v1_snapshot.tar.xz.b64 docs/evidence/byd_515180_allocation)" ]]; then
+          if git diff --quiet -- data/research/515180_canonical_v1_artifact.zip.b64 docs/evidence/byd_515180_allocation .github/workflows/materialize-515180-canonical-snapshot.yml && \
+             [[ -z "$(git ls-files --others --exclude-standard data/research/515180_canonical_v1_artifact.zip.b64 docs/evidence/byd_515180_allocation)" ]]; then
             echo "Authoritative evidence already materialized"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/research/515180_canonical_v1_snapshot.tar.xz.b64 docs/evidence/byd_515180_allocation
+          git add data/research/515180_canonical_v1_artifact.zip.b64 docs/evidence/byd_515180_allocation
           git add -u .github/workflows/materialize-515180-canonical-snapshot.yml || true
           git commit -m "research: freeze exact 515180 canonical allocation evidence"
           git push origin HEAD:${{ github.head_ref }}
