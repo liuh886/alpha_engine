@@ -48,8 +48,9 @@ jobs:
           assert payload["experiment_id"] == "cn130_cross_sectional_ranking_rotation_v1"
           assert payload["research_only"] is True
           assert payload["trade_ready"] is False
-          assert payload["universe"]["declared_size"] == 130
-          assert payload["universe"]["membership_changes_allowed"] is False
+          assert payload["universe"]["declared_candidate_count"] == 130
+          assert payload["universe"]["membership_may_change"] is False
+          assert payload["objective"]["pool_size_change_allowed"] is False
           PY
       - name: Export immutable source snapshot
         run: |
