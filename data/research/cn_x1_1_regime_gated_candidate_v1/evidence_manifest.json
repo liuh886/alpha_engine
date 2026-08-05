@@ -1,0 +1,94 @@
+{
+  "certification_id": "fallback_aware_v1",
+  "decision": {
+    "automatic_production_promotion": false,
+    "candidate_authorized": true,
+    "candidate_name": "CN x1.1 Candidate A — Regime-Gated Sector Breadth",
+    "decision": "cn_x1_1_regime_gated_candidate_authorized",
+    "economic_evidence_changed": false,
+    "evaluation_contract": "benchmark_fallback_aware_v1",
+    "gates": {
+      "at_least_two_neighbor_rules_positive": true,
+      "both_states_present_2023_to_2025": true,
+      "combined_2026_relative_excess_positive": true,
+      "frozen_economic_identity_verified": true,
+      "historical_40bps_relative_excess_positive": true,
+      "historical_max_drawdown_above_minus_25pct": true,
+      "historical_positive_half_years_at_least_5_of_7": true,
+      "historical_relative_excess_positive": true,
+      "historical_risk_on_active_hit_rate_at_least_50pct": true,
+      "historical_worst_half_year_above_minus_10pct": true,
+      "leave_one_top_name_positive": true,
+      "leave_one_top_sector_positive": true,
+      "risk_off_relative_no_worse_than_cost_drag": true,
+      "risk_on_relative_excess_positive": true,
+      "risk_on_share_between_25_and_80pct": true
+    },
+    "model_rules_changed": false,
+    "replaced_gate": "historical_all_period_hit_rate_at_least_50pct",
+    "replacement_gate": "historical_risk_on_active_hit_rate_at_least_50pct",
+    "research_only": true,
+    "risk_on_active_hit_rate": 0.5897435897,
+    "schema_version": "cn_x1_1_fallback_aware_certification_v1",
+    "trade_ready": false
+  },
+  "experiment_id": "cn_x1_1_regime_gated_sector_breadth_v1",
+  "files": [
+    {
+      "bytes": 1421,
+      "path": "decision.json",
+      "sha256": "e3d87f32cca731b2aac4952889fe081d3f522b5622b7f74b8e13d23e5f0fd66f"
+    },
+    {
+      "bytes": 1171,
+      "path": "evaluation_contract.json",
+      "sha256": "18066be6e3c26fba371a97edc8c3f41da881f714dc67f3711507bdd45042f116"
+    },
+    {
+      "bytes": 929,
+      "path": "evaluation_summary.csv",
+      "sha256": "fac8421e868d7f0e547abb9c799c2941cfeb51dc3d032edbef73fb87382b3c81"
+    },
+    {
+      "bytes": 1058,
+      "path": "half_year_results.csv",
+      "sha256": "e3752b82dc96d162bcb5bb0fcfbcea7909a49a9accc67f05ed58617b9d3b3025"
+    },
+    {
+      "bytes": 31590,
+      "path": "holdings.csv",
+      "sha256": "dc73b399b1dee8ce759f9e1c61535e650a83b31392ced3bda4560c233aa0b2d9"
+    },
+    {
+      "bytes": 3042,
+      "path": "manifest.json",
+      "sha256": "8d9ae695342d0c50aecc67b0988e5643ea515e9c6780f27172ad557b061eb842"
+    },
+    {
+      "bytes": 364,
+      "path": "model_spec.json",
+      "sha256": "27809294e0fc5d5d2e3bb2dcaef3ad3cb31f99583b0854bf2079340d33f54a3c"
+    },
+    {
+      "bytes": 263,
+      "path": "neighbor_rule_summary.csv",
+      "sha256": "f4737e1d7a1d90329e490893ed42e0f475f3de3fed0f395c5c36930209df3a14"
+    },
+    {
+      "bytes": 14904,
+      "path": "rebalance_periods.csv",
+      "sha256": "5fd1416596ab2a208ced0ecbea76ce6ad60e762c3342d4d082215adf4379adb7"
+    },
+    {
+      "bytes": 2933,
+      "path": "report.md",
+      "sha256": "9f91aa8ca106c1c39c9288d74443f30865f7dcd28ed127bd7c9b8a3178fef5f5"
+    },
+    {
+      "bytes": 157,
+      "path": "yearly_state_coverage.csv",
+      "sha256": "288e9f182c2937efeb81440a06d8f4930aefbac104492230adcb931da9192771"
+    }
+  ],
+  "schema_version": "1.0.0"
+}
