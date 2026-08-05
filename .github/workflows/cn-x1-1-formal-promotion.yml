@@ -1,0 +1,144 @@
+name: CN x1.1 Formal Promotion
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/cn-x1-1-formal-promotion.yml"
+      - "configs/models/cn_x1_1.yaml"
+      - "data/research/formal_backtests/cn_x1_1**"
+      - "data/research/formal_backtests/catalog.json"
+      - "data/research/formal_model_runs/catalog.json"
+      - "data/research/formal_model_runs/cn_ranker/cn_x1_1/**"
+      - "data/research/formal_promotions/releases/cn_x1_1.json"
+      - "notebooks/models/cn_x1_1_complete_backtest.ipynb"
+      - "src/research/cn_x1_1_formal_evidence.py"
+      - "src/research/cn_x1_1_formal_publication.py"
+      - "scripts/build_cn_x1_1_formal_promotion.py"
+      - "tests/test_cn_x1_1_formal_promotion.py"
+      - "qlib-dashboard/src/hooks/useModels.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: cn-x1-1-formal-promotion-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  SOURCE_ARTIFACT_ID: '8937409026'
+  SOURCE_ARTIFACT_SHA256: 'e540e400dbefd5178122444e709182323f1b363a3c41496fd8212e5095ee5a4b'
+  PYTHONPATH: .
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  verify-and-materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: release/cn-x1-1-formal-promotion
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Download certified candidate artifact
+        run: |
+          mkdir -p .research/source-artifact .research/source
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > .research/source.zip
+          test "$(sha256sum .research/source.zip | awk '{print $1}')" = "${SOURCE_ARTIFACT_SHA256}"
+          unzip -q .research/source.zip -d .research/source-artifact
+          cp -R .research/source-artifact/final/. .research/source/
+          test "$(sha256sum .research/source/rebalance_periods.csv | awk '{print $1}')" = "5fd1416596ab2a208ced0ecbea76ce6ad60e762c3342d4d082215adf4379adb7"
+          test "$(sha256sum .research/source/holdings.csv | awk '{print $1}')" = "dc73b399b1dee8ce759f9e1c61535e650a83b31392ced3bda4560c233aa0b2d9"
+      - name: Rebuild promotion twice
+        run: |
+          uv run python scripts/build_cn_x1_1_formal_promotion.py \
+            --source-dir .research/source \
+            --output-dir .research/run-a
+          uv run python scripts/build_cn_x1_1_formal_promotion.py \
+            --source-dir .research/source \
+            --output-dir .research/run-b
+          diff -ru .research/run-a .research/run-b
+      - name: Materialize deterministic promotion files
+        run: |
+          rsync -a --exclude promotion-receipt.json .research/run-a/ ./
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('qlib-dashboard/src/hooks/useModels.ts')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace("  'cn_x1_0',", "  'cn_x1_1',")
+          text = text.replace(
+              'Formal Bundle v2 catalog does not exactly contain QQQ Rotation v4.2, US x1.1 and CN x1.0.',
+              'Formal Bundle v2 catalog does not exactly contain QQQ Rotation v4.2, US x1.1 and CN x1.1.',
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate generated formal evidence
+        run: |
+          uv run ruff check \
+            src/research/cn_x1_1_formal_evidence.py \
+            src/research/cn_x1_1_formal_publication.py \
+            scripts/build_cn_x1_1_formal_promotion.py \
+            tests/test_cn_x1_1_formal_promotion.py
+          uv run pytest \
+            tests/test_cn_x1_1_formal_promotion.py \
+            tests/test_model_run_bundle_v2.py \
+            -q --strict-markers --tb=short
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+          root = Path('data/research/formal_model_runs')
+          catalog = json.loads((root / 'catalog.json').read_text())
+          validate_catalog(catalog)
+          for row in catalog['records']:
+              validate_manifest(json.loads((root / row['manifest_path']).read_text()))
+          PY
+          cd qlib-dashboard
+          npm ci
+          npm run lint
+          npx tsc --noEmit
+          npm run build
+      - name: Commit deterministic promotion outputs
+        run: |
+          git config user.name 'AlphaEngine Release Agent'
+          git config user.email 'release-agent@alphaengine.local'
+          git add \
+            configs/models/cn_x1_1.yaml \
+            notebooks/models/cn_x1_1_complete_backtest.ipynb \
+            data/research/formal_promotions/releases/cn_x1_1.json \
+            data/research/formal_backtests/catalog.json \
+            data/research/formal_backtests/cn_x1_1.json \
+            data/research/formal_backtests/cn_x1_1_ledgers \
+            data/research/formal_model_runs/catalog.json \
+            data/research/formal_model_runs/cn_ranker/cn_x1_1 \
+            qlib-dashboard/src/hooks/useModels.ts
+          if git diff --cached --quiet; then
+            echo 'Committed promotion outputs already match the certified rebuild.'
+          else
+            git commit -m 'release: promote regime-gated model to CN x1.1'
+            git push origin HEAD:release/cn-x1-1-formal-promotion
+          fi
+      - name: Package promotion evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/cn-x1-1-formal-promotion
+          test ! -d .research/run-a || cp -R .research/run-a artifacts/cn-x1-1-formal-promotion/generated
+          test ! -f data/research/formal_backtests/cn_x1_1.json || cp data/research/formal_backtests/cn_x1_1.json artifacts/cn-x1-1-formal-promotion/
+          test ! -f data/research/formal_model_runs/cn_ranker/cn_x1_1/cn_x1_1_through_2026_08_03/manifest.json || cp data/research/formal_model_runs/cn_ranker/cn_x1_1/cn_x1_1_through_2026_08_03/manifest.json artifacts/cn-x1-1-formal-promotion/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cn-x1-1-formal-promotion-${{ github.run_id }}
+          path: artifacts/cn-x1-1-formal-promotion/
+          if-no-files-found: error
+          retention-days: 30
