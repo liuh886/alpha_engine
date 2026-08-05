@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { groupRoutes } from '@/routes';
@@ -45,10 +45,10 @@ export function MobileNavigation() {
           />
           <div className="absolute inset-y-0 left-0 flex w-[min(86vw,340px)] flex-col border-r bg-card shadow-2xl">
             <div className="flex h-16 items-center justify-between border-b px-4">
-              <div>
+              <Link to="/" onClick={() => setOpen(false)} aria-label="Back to Alpha Engine homepage">
                 <p className="text-sm font-bold">Alpha Engine</p>
                 <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Research Studio</p>
-              </div>
+              </Link>
               <Button type="button" variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close research navigation">
                 <X className="h-4 w-4" />
               </Button>

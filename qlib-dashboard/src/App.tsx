@@ -13,6 +13,7 @@ import { Sidebar } from './components/Sidebar';
 import { Button } from './components/ui/button';
 import { Skeleton } from './components/ui/skeleton';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
+import { LandingPage } from './pages/LandingPage';
 import { routes } from './routes';
 import { useGlobalStore } from './store/globalStore';
 
@@ -74,6 +75,12 @@ function Layout(props: LayoutProps) {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  useEffect(() => {
+    document.title = `${viewTitle} — Alpha Engine`;
+    const description = document.querySelector('meta[name="description"]');
+    description?.setAttribute('content', 'Inspect governed model runs, formal backtests, evidence lineage, and research decisions in Alpha Engine.');
+  }, [viewTitle]);
 
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, left: 0 });
@@ -185,34 +192,43 @@ function Layout(props: LayoutProps) {
   );
 }
 
-function ArtifactStudioApp() {
+function ResearchStudioApp() {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const workspace = useAppBootstrap();
 
   return (
+    <Routes>
+      <Route element={
+        <Layout
+          models={workspace.models}
+          selectedModelId={workspace.selectedModelId}
+          setSelectedModelId={workspace.setSelectedModelId}
+          runs={workspace.runs}
+          activeRunKey={workspace.activeRunKey}
+          selectRun={workspace.selectRun}
+          runLoadErrors={workspace.runLoadErrors}
+          selectorOpen={selectorOpen}
+          setSelectorOpen={setSelectorOpen}
+          loading={workspace.loading}
+          loadError={workspace.loadError}
+        />
+      }>
+        {routes.map((route) => {
+          const Component = route.component;
+          return <Route key={route.path} path={route.path} element={<Component models={workspace.models} />} />;
+        })}
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
+  );
+}
+
+function ArtifactStudioApp() {
+  return (
     <HashRouter>
       <Routes>
-        <Route element={
-          <Layout
-            models={workspace.models}
-            selectedModelId={workspace.selectedModelId}
-            setSelectedModelId={workspace.setSelectedModelId}
-            runs={workspace.runs}
-            activeRunKey={workspace.activeRunKey}
-            selectRun={workspace.selectRun}
-            runLoadErrors={workspace.runLoadErrors}
-            selectorOpen={selectorOpen}
-            setSelectorOpen={setSelectorOpen}
-            loading={workspace.loading}
-            loadError={workspace.loadError}
-          />
-        }>
-          {routes.map((route) => {
-            const Component = route.component;
-            return <Route key={route.path} path={route.path} element={<Component models={workspace.models} />} />;
-          })}
-          <Route path="*" element={<NotFound />} />
-        </Route>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/*" element={<ResearchStudioApp />} />
       </Routes>
     </HashRouter>
   );

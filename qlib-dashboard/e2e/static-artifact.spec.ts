@@ -59,11 +59,29 @@ async function assertNoHorizontalOverflow(page: Page) {
 }
 
 async function openStudio(page: Page) {
-  await page.goto('/#/');
+  await page.goto('/#/app');
   await expect(page.locator('#root')).not.toBeEmpty();
   await expect(page.getByRole('heading', { name: 'Decide what the evidence supports.' })).toBeVisible();
   await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
 }
+
+test('product homepage explains the workflow and opens the research studio', async ({ page }, testInfo) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+
+  await page.goto('/#/');
+  await expect(page.getByRole('heading', { name: 'Turn systematic research into decisions you can inspect.' })).toBeVisible();
+  await expect(page.getByText('Choose the run before reading the result.')).toBeVisible();
+  await expect(page.getByText('Performance is only useful when its source is visible.')).toBeVisible();
+  await expect(page.getByText('Every conclusion keeps its evidence attached.')).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+  expect(pageErrors).toEqual([]);
+  await page.screenshot({ path: `test-results/static-artifact/landing-${testInfo.project.name}.png`, fullPage: true });
+
+  await page.getByRole('link', { name: 'Open Research Studio' }).click();
+  await expect(page).toHaveURL(/#\/app$/);
+  await expect(page.getByRole('heading', { name: 'Decide what the evidence supports.' })).toBeVisible();
+});
 
 test('static studio opens without authentication or backend APIs', async ({ page }, testInfo) => {
   const apiRequests: string[] = [];
