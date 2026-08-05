@@ -1,3 +1,4 @@
+# Trusted connector commit: rerun after deterministic Actions materialization.
 name: CN x1.1 Formal Promotion
 
 on:
