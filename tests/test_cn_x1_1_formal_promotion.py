@@ -55,6 +55,25 @@ def test_formal_catalog_supersedes_cn_x1_0() -> None:
     assert v2_ids == {"qqqi_qqq_tqqq_v4_2", "us_x1_1", "cn_x1_1"}
 
 
+def test_formal_freshness_supersedes_cn_x1_0() -> None:
+    root = Path(__file__).resolve().parents[1]
+    freshness = json.loads(
+        (root / "data/research/formal_backtests/freshness.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    for key in (
+        "required_models",
+        "date_range_end_required_models",
+        "freshness_receipt_required_models",
+    ):
+        assert "cn_x1_1" in freshness[key]
+        assert "cn_x1_0" not in freshness[key]
+    assert freshness["promoted_model"] == "cn_x1_1"
+    assert freshness["superseded_model"] == "cn_x1_0"
+    assert freshness["promotion_issue"] == 577
+
+
 def test_cash_aware_turnover_and_cost_identity() -> None:
     root = Path(__file__).resolve().parents[1]
     ledger = root / "data/research/formal_backtests/cn_x1_1_ledgers"
