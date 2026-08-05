@@ -7,6 +7,8 @@ on:
       - data/research/formal_backtests/catalog.json
       - data/research/formal_backtests/freshness.json
       - data/research/formal_backtests/cn_x1_0.json
+      - data/research/formal_backtests/cn_x1_1.json
+      - data/research/formal_backtests/cn_x1_1_ledgers/**
       - data/research/formal_backtests/us_x1_1.json
       - data/research/formal_backtests/qqqi_qqq_tqqq_v4_2.json
       - data/research/formal_backtests/byd_dividend_sleeve_v1_0.json
@@ -135,12 +137,55 @@ jobs:
           uv run python scripts/verify_formal_backtest_freshness.py \
             --root artifacts/reproduced-formal \
             --as-of 2026-08-03T09:15:00Z \
-            --receipt artifacts/current-formal-freshness-receipt.json
-      - name: Enforce byte-exact current release
+            --receipt artifacts/historical-formal-freshness-receipt.json
+      - name: Enforce historical archive and active release integrity
         run: |
-          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json cn_x1_0.json byd_dividend_sleeve_v1_0.json catalog.json freshness.json; do
+          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json cn_x1_0.json byd_dividend_sleeve_v1_0.json; do
             cmp "artifacts/reproduced-formal/$name" "data/research/formal_backtests/$name"
           done
+          uv run python scripts/verify_formal_backtest_freshness.py \
+            --root data/research/formal_backtests \
+            --as-of 2026-08-03T09:15:00Z \
+            --receipt artifacts/current-formal-freshness-receipt.json
+          uv run python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          historical_root = Path('artifacts/reproduced-formal')
+          current_root = Path('data/research/formal_backtests')
+          historical = json.loads((historical_root / 'catalog.json').read_text())
+          current = json.loads((current_root / 'catalog.json').read_text())
+          historical_ids = {row['model_id'] for row in historical['records']}
+          current_ids = {row['model_id'] for row in current['records']}
+          assert 'cn_x1_0' in historical_ids and 'cn_x1_1' not in historical_ids
+          assert 'cn_x1_1' in current_ids and 'cn_x1_0' not in current_ids
+          assert current_ids == {
+              'qqqi_qqq_tqqq_v4_2',
+              'us_x1_1',
+              'cn_x1_1',
+              'byd_dividend_sleeve_v1_0',
+          }
+          for row in current['records']:
+              path = current_root / row['path']
+              assert path.is_file(), path
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == row['sha256']
+          freshness = json.loads((current_root / 'freshness.json').read_text())
+          for key in (
+              'required_models',
+              'date_range_end_required_models',
+              'freshness_receipt_required_models',
+          ):
+              assert 'cn_x1_1' in freshness[key]
+              assert 'cn_x1_0' not in freshness[key]
+          package = json.loads((current_root / 'cn_x1_1.json').read_text())
+          assert package['model_id'] == 'cn_x1_1'
+          assert package['publication_status'] == 'accepted_formal_baseline'
+          assert package['evidence_completeness']['status'] == 'complete'
+          assert package['evidence_completeness']['missing'] == []
+          assert package['research_only'] is True
+          assert package['trade_ready'] is False
+          PY
       - name: Retain current release evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -149,6 +194,7 @@ jobs:
           path: |
             artifacts/current-cn-formal-reproduction-receipt.json
             artifacts/current-byd-formal-reproduction-receipt.json
+            artifacts/historical-formal-freshness-receipt.json
             artifacts/current-formal-freshness-receipt.json
             artifacts/reproduced-formal
           if-no-files-found: error
