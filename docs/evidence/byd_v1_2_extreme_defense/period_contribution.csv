@@ -1,0 +1,10 @@
+,model,period,relative_terminal_wealth,positive_contribution_share
+0,byd_v1_2_extreme_defense_50,development,-0.006825382387,0.000000000000
+1,byd_v1_2_extreme_defense_50,fixed_validation,0.000000000000,0.000000000000
+2,byd_v1_2_extreme_defense_50,retrospective_2025_plus,-0.027553479154,0.000000000000
+3,byd_v1_2_extreme_defense_625,development,-0.003351689163,0.000000000000
+4,byd_v1_2_extreme_defense_625,fixed_validation,0.000000000000,0.000000000000
+5,byd_v1_2_extreme_defense_625,retrospective_2025_plus,-0.013832609839,0.000000000000
+6,byd_v1_2_extreme_defense_cash,development,-0.024080236688,0.000000000000
+7,byd_v1_2_extreme_defense_cash,fixed_validation,0.000000000000,0.000000000000
+8,byd_v1_2_extreme_defense_cash,retrospective_2025_plus,-0.040129838248,0.000000000000

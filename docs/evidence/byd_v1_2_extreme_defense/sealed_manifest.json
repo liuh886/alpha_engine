@@ -1,0 +1,17 @@
+{
+  "byd_snapshot_sha256": "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179",
+  "etf_artifact_sha256": "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f",
+  "files_sha256": {
+    "README.md": "455ff02320278e98578cc2e29aac4fadaba4e690957a1b6b20c82cca28ce51a5",
+    "episode_attribution.csv": "2d6ef159d7a51b992c9a87eb2939bbcb02b4e815ee447409a5e631b4d16733d2",
+    "evaluation.csv": "809700ee185e1da6f20e8070fcbd8d6218d0d584f85e6185e8e460a4d8424f40",
+    "period_contribution.csv": "f38667c22b6494f5de4dd33b0e67e7fe4583d560215a33c53822f9280eb969e7",
+    "state_ledger.csv": "fb126a4b79a32db996faef459969f07c88d47f89e59eb8ac36daff7851cc72c7",
+    "summary.json": "8ec4a6fa8b100b2187a27b71594ac8929dc5cf793dc7b2a91c9c553b91934ec7"
+  },
+  "research_only": true,
+  "schema_version": "byd_v1_2_extreme_defense_seal_v1",
+  "trade_ready": false,
+  "workflow_head_sha": "7edc8f0a3247570285a0f45fa2496f8d7d7912de",
+  "workflow_run_id": 31013931021
+}

@@ -1,0 +1,83 @@
+{
+  "baseline": "byd_v1_1",
+  "cash_diagnostic": "byd_v1_2_extreme_defense_cash",
+  "common_eligible_opens": 1598,
+  "completed_extreme_episodes": 7,
+  "diagnostics": {
+    "baseline_20bps_total_return": 5.818140854238716,
+    "baseline_40bps_total_return": 5.63657541510138,
+    "cagr_delta": -0.0073395849482917885,
+    "calmar_delta": -0.015058901512580825,
+    "max_drawdown_improvement": 1.1102230246251565e-16,
+    "max_positive_contribution_share": 0.0,
+    "negative_periods": 2,
+    "primary_20bps_total_return": 5.5850231740809555,
+    "primary_40bps_total_return": 5.320370917281913
+  },
+  "extreme_active_sessions": 20,
+  "extreme_entry_signals": 20,
+  "fresh_historical_holdout": false,
+  "gates": {
+    "cagr_or_calmar_improvement": false,
+    "max_drawdown_improves_3pp": false,
+    "no_more_than_one_negative_period": false,
+    "positive_contribution_not_concentrated": false,
+    "robustness_same_direction": false,
+    "round_trips_per_year_le_2": true,
+    "stress_40bps_not_below_baseline": false
+  },
+  "governed_decision": "retain_byd_v1_1",
+  "headline_20bps": {
+    "byd_v1_1": {
+      "cagr": 0.3507281328887262,
+      "calmar": 0.719602054894396,
+      "max_drawdown": -0.4873917889800866,
+      "round_trips_per_year": 1.0571783716594156,
+      "total_return": 5.818140854238716
+    },
+    "byd_v1_2_extreme_defense_50": {
+      "cagr": 0.3433885479404344,
+      "calmar": 0.7045431533818152,
+      "max_drawdown": -0.4873917889800865,
+      "round_trips_per_year": 1.6053449347420756,
+      "total_return": 5.5850231740809555
+    },
+    "byd_v1_2_extreme_defense_625": {
+      "cagr": 0.3470761267002085,
+      "calmar": 0.7121090969269263,
+      "max_drawdown": -0.4873917889800866,
+      "round_trips_per_year": 1.3312616532007457,
+      "total_return": 5.7012919899534165
+    },
+    "byd_v1_2_extreme_defense_cash": {
+      "cagr": 0.3369776031245051,
+      "calmar": 0.6913895776325303,
+      "max_drawdown": -0.48739178898008617,
+      "round_trips_per_year": 1.6053449347420756,
+      "total_return": 5.386936134047126
+    }
+  },
+  "issue": 560,
+  "overlap_first_date": "2019-11-26",
+  "overlap_last_date": "2026-08-03",
+  "overlap_sessions": 1610,
+  "primary_candidate": "byd_v1_2_extreme_defense_50",
+  "research_only": true,
+  "robustness_candidate": "byd_v1_2_extreme_defense_625",
+  "rules": {
+    "cash_diagnostic_etf_weight": 0.25,
+    "entry_base_byd_weight": 0.75,
+    "entry_drawdown_252_ceiling": -0.2,
+    "entry_market_state": "bear",
+    "entry_mom_20_ceiling": 0.0,
+    "entry_mom_60_ceiling": 0.0,
+    "entry_vol_state": "high",
+    "exit_base_byd_weight": 1.0,
+    "exit_mom_20_floor": 0.0,
+    "exit_vol_state": "low",
+    "primary_byd_weight": 0.5,
+    "robustness_byd_weight": 0.625
+  },
+  "schema_version": "byd_v1_2_extreme_defense_evidence_v1",
+  "trade_ready": false
+}
