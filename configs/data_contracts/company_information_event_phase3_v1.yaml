@@ -1,0 +1,53 @@
+schema_version: "1.0"
+contract_id: company_information_event_phase3_v1
+base_contract: company_information_event_v1
+market: cn
+pool_id: cn_selected_equities_v3
+status: research_only
+trade_ready: false
+validation_returns_inspected: false
+
+source_policy:
+  source_of_truth: cninfo_primary_announcements
+  transport: akshare_stock_zh_a_disclosure_report_cninfo
+  keywords: [增持, 减持]
+  current_holder_snapshot_backfill: prohibited
+  date_only_announcement_policy: first_provider_session_strictly_after_announcement_date
+  exact_document_deduplication: true
+  html_markup_normalization: true
+
+family:
+  holding_change:
+    stages:
+      - increase_plan
+      - increase_execution
+      - decrease_plan
+      - decrease_execution
+    exclusions:
+      - company_buyback
+      - equity_incentive
+      - employee_stock_ownership
+      - passive_dilution
+      - judicial_transfer
+      - inheritance_or_property_division
+      - pledge
+      - securities_lending
+      - current_holder_snapshot
+      - legal_or_broker_opinion
+
+phase_0:
+  calibration_half_years: [2022H2, 2023H1, 2023H2]
+  recent_event_sessions: 20
+  fixed_rebalance:
+    recent_top3_coverage_min: 0.15
+    distinct_top3_events_min: 30
+    max_sector_share: 0.45
+    first_session_mapping_min: 0.95
+    primary_source_min: 0.95
+  event_driven:
+    top3_events_min: 60
+    symbols_min: 20
+    sectors_min: 6
+    timestamp_completeness_min: 0.95
+    first_session_mapping_min: 0.95
+    max_stage_share: 0.70
