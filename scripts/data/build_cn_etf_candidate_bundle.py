@@ -42,7 +42,9 @@ def flatten_yahoo(frame: pd.DataFrame) -> pd.DataFrame:
 
 def audit_and_repair_envelope(
     raw: pd.DataFrame,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
+    """Audit every provider envelope issue before any fail-closed decision."""
+
     repaired = raw.copy(deep=True)
     rows: list[dict[str, object]] = []
     blocked: list[str] = []
@@ -75,12 +77,7 @@ def audit_and_repair_envelope(
             continue
         repaired.loc[index, "high"] = max(float(row["high"]), required_high)
         repaired.loc[index, "low"] = min(float(row["low"]), required_low)
-    if blocked:
-        raise RuntimeError(
-            "provider OHLC envelope violations exceed tolerance: "
-            + ", ".join(blocked)
-        )
-    return repaired, pd.DataFrame(rows)
+    return repaired, pd.DataFrame(rows), blocked
 
 
 def fetch_primary(
@@ -122,7 +119,6 @@ def fetch_primary(
     for column in numeric:
         frame[column] = pd.to_numeric(frame[column], errors="raise")
     raw_reference = frame[["date", "open", "high", "low", "close", "volume"]].copy()
-    raw, envelope_audit = audit_and_repair_envelope(raw_reference)
     adjusted = frame[["date", "adj_close"]].rename(
         columns={"adj_close": "adjusted_close"}
     )
@@ -146,19 +142,8 @@ def fetch_primary(
         "repair": True,
         "actions": True,
         "raw_and_adjusted_close_same_response": True,
-        "envelope_policy": {
-            "max_repair_pct": MAX_ENVELOPE_REPAIR_PCT,
-            "open_close_volume_immutable": True,
-            "high_only_raised": True,
-            "low_only_lowered": True,
-            "repaired_rows": int(len(envelope_audit)),
-        },
     }
-    return raw, adjusted, actions, {
-        **metadata,
-        "raw_reference": raw_reference,
-        "envelope_audit": envelope_audit,
-    }
+    return raw_reference, adjusted, actions, metadata
 
 
 def normalise_secondary(frame: pd.DataFrame) -> pd.DataFrame:
@@ -170,7 +155,10 @@ def normalise_secondary(frame: pd.DataFrame) -> pd.DataFrame:
         "收盘": "close",
         "成交量": "volume",
     }
-    english = {column: column for column in ("date", "open", "high", "low", "close", "volume")}
+    english = {
+        column: column
+        for column in ("date", "open", "high", "low", "close", "volume")
+    }
     if set(chinese).issubset(frame.columns):
         out = frame[list(chinese)].rename(columns=chinese).copy()
     elif set(english).issubset(frame.columns):
@@ -281,15 +269,31 @@ def main() -> None:
     output.mkdir(parents=True, exist_ok=True)
     code = args.symbol.split(".")[0]
     try:
-        raw, adjusted, actions, primary = fetch_primary(
+        raw_reference, adjusted, actions, primary = fetch_primary(
             args.provider_symbol,
             args.start,
             args.cutoff,
         )
-        raw_reference = primary.pop("raw_reference")
-        envelope_audit = primary.pop("envelope_audit")
         write_frame(output / "provider_reference_ohlcv.csv", raw_reference)
+        raw, envelope_audit, blocked_dates = audit_and_repair_envelope(raw_reference)
         write_frame(output / "provider_envelope_audit.csv", envelope_audit)
+        primary["envelope_policy"] = {
+            "max_repair_pct": MAX_ENVELOPE_REPAIR_PCT,
+            "open_close_volume_immutable": True,
+            "high_only_raised": True,
+            "low_only_lowered": True,
+            "repaired_rows": int(
+                envelope_audit["within_repair_tolerance"].sum()
+            )
+            if not envelope_audit.empty
+            else 0,
+            "blocked_rows": len(blocked_dates),
+        }
+        if blocked_dates:
+            raise RuntimeError(
+                "provider OHLC envelope violations exceed tolerance: "
+                + ", ".join(blocked_dates)
+            )
         secondary, secondary_meta = fetch_secondary(
             code,
             args.sina_symbol,
@@ -355,6 +359,12 @@ def main() -> None:
             "cutoff": args.cutoff,
             "error_type": type(exc).__name__,
             "error": str(exc),
+            "provider_reference_preserved": (
+                output / "provider_reference_ohlcv.csv"
+            ).exists(),
+            "provider_envelope_audit_preserved": (
+                output / "provider_envelope_audit.csv"
+            ).exists(),
         }
         (output / "data_blocked.json").write_text(
             json.dumps(blocker, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
