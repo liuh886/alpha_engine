@@ -90,8 +90,20 @@ jobs:
               --output-dir ".research/run-${RUN}" \
               --execution-at "$EXECUTION_AT"
           done
-      - name: Verify deterministic evidence
-        run: diff -ru .research/run-a .research/run-b
+      - name: Verify deterministic and committed evidence
+        run: |
+          diff -ru .research/run-a .research/run-b
+          for FILE in \
+            decision.json \
+            event_family_summary.csv \
+            event_family_half_year.csv \
+            overlap_matrix.csv \
+            manifest.json \
+            report.md; do
+            diff -u \
+              "data/research/cn130_pit_event_families_phase2_v1/${FILE}" \
+              ".research/run-a/${FILE}"
+          done
       - name: Package complete evidence
         if: always()
         run: |
@@ -103,7 +115,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cn130-pit-event-families-phase2-frozen-${{ github.run_id }}
+          name: cn130-pit-event-families-phase2-certified-${{ github.run_id }}
           path: artifacts/cn130-pit-event-families-phase2/
           if-no-files-found: error
           retention-days: 30
