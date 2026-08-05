@@ -1,0 +1,142 @@
+name: CN130 Cross-Sectional Ranking Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - configs/research_experiments/cn130_cross_sectional_ranking_rotation_v1.yaml
+      - configs/research_classifications/cn130_sector_industry_v1.yaml
+      - docs/research/cn130_cross_sectional_ranking_rotation_*.md
+      - data/research/cn130_cross_sectional_ranking_rotation_v1/**
+      - src/research/cn130_cross_sectional_ranking.py
+      - src/research/cn130_ranking_pipeline.py
+      - scripts/run_cn130_ranking_batch.py
+      - scripts/aggregate_cn130_ranking_batches.py
+      - tests/test_cn130_cross_sectional_ranking.py
+      - .github/workflows/cn130-cross-sectional-ranking-evidence.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cn130-cross-sectional-ranking-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PROVIDER_ARTIFACT_ID: '8850463785'
+      PYTHONPATH: .
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Lint and focused tests
+        run: |
+          uv run ruff check \
+            src/research/cn130_cross_sectional_ranking.py \
+            src/research/cn130_ranking_pipeline.py \
+            scripts/run_cn130_ranking_batch.py \
+            scripts/aggregate_cn130_ranking_batches.py \
+            tests/test_cn130_cross_sectional_ranking.py
+          uv run pytest \
+            tests/test_cn130_cross_sectional_ranking.py \
+            tests/test_daily_ranker_missing_data.py \
+            tests/test_research_universe_contracts.py \
+            -q --strict-markers --tb=short
+
+      - name: Download immutable CN provider artifact
+        run: |
+          mkdir -p .research/provider-artifact .research/provider
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PROVIDER_ARTIFACT_ID}/zip" \
+            > .research/provider-artifact.zip
+          unzip -q .research/provider-artifact.zip -d .research/provider-artifact
+          tar -xf .research/provider-artifact/cn-provider-2026-08-03.tar -C .research/provider
+          test -f .research/provider/data/providers/cn/provider_manifest.json
+
+      - name: Run complete evidence twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          provider="$PWD/.research/provider/data/providers/cn"
+          for run in a b; do
+            cells="$PWD/.research/run-${run}/cells"
+            final="$PWD/.research/run-${run}/final"
+            mkdir -p "$cells" "$final"
+            for window in 2024H1 2024H2 2025H1 2025H2; do
+              for batch in r0r1 r2 r3 r4; do
+                uv run python scripts/run_cn130_ranking_batch.py \
+                  --provider-dir "$provider" \
+                  --output-dir "$cells" \
+                  --window "$window" \
+                  --batch "$batch"
+              done
+            done
+            for window in 2026H1 2026H2_PARTIAL; do
+              for batch in r0r1 r2 r4; do
+                uv run python scripts/run_cn130_ranking_batch.py \
+                  --provider-dir "$provider" \
+                  --output-dir "$cells" \
+                  --window "$window" \
+                  --batch "$batch"
+              done
+            done
+            uv run python scripts/aggregate_cn130_ranking_batches.py \
+              --provider-dir "$provider" \
+              --input-dir "$cells" \
+              --output-dir "$final"
+          done
+
+      - name: Verify deterministic rerun and committed result
+        run: |
+          diff -ru .research/run-a/final .research/run-b/final
+          diff -u \
+            docs/research/cn130_cross_sectional_ranking_rotation_result_2026-08-04.md \
+            .research/run-a/final/report.md
+          diff -u \
+            data/research/cn130_cross_sectional_ranking_rotation_v1/decision.json \
+            .research/run-a/final/decision.json
+          diff -u \
+            data/research/cn130_cross_sectional_ranking_rotation_v1/ranking_aggregate_summary.csv \
+            .research/run-a/final/ranking_aggregate_summary.csv
+          diff -u \
+            data/research/cn130_cross_sectional_ranking_rotation_v1/ranking_window_summary.csv \
+            .research/run-a/final/ranking_window_summary.csv
+          diff -u \
+            data/research/cn130_cross_sectional_ranking_rotation_v1/reporting_window_summary.csv \
+            .research/run-a/final/reporting_window_summary.csv
+
+      - name: Package evidence
+        run: |
+          mkdir -p artifacts/cn130-cross-sectional-ranking
+          cp -R .research/run-a/cells artifacts/cn130-cross-sectional-ranking/
+          cp -R .research/run-a/final artifacts/cn130-cross-sectional-ranking/
+          cp configs/research_experiments/cn130_cross_sectional_ranking_rotation_v1.yaml artifacts/cn130-cross-sectional-ranking/
+          cp configs/research_classifications/cn130_sector_industry_v1.yaml artifacts/cn130-cross-sectional-ranking/
+          cp docs/research/cn130_cross_sectional_ranking_rotation_experiment_log_2026-08-04.md artifacts/cn130-cross-sectional-ranking/
+
+      - name: Upload complete evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cn130-cross-sectional-ranking-evidence-${{ github.run_id }}
+          path: artifacts/cn130-cross-sectional-ranking/
+          if-no-files-found: error
+          retention-days: 30

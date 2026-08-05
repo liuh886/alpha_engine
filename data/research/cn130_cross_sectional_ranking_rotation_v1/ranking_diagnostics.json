@@ -1,0 +1,128 @@
+[
+  {
+    "bootstrap_p05": -0.033112385986297434,
+    "bootstrap_p95": 0.03599539584408721,
+    "feature_family": "current_cn_ohlcv",
+    "leave_one_sector_out": [
+      {
+        "excluded_sector": "Communication Services",
+        "mean_rank_ic": 0.006044279220742101,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Consumer Discretionary",
+        "mean_rank_ic": 0.0025570707189459013,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Consumer Staples",
+        "mean_rank_ic": -0.004675935890745138,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Energy",
+        "mean_rank_ic": -0.0033389553687768712,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Financials",
+        "mean_rank_ic": -0.0020923996222961447,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Health Care",
+        "mean_rank_ic": -0.0005921807728098086,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Industrials",
+        "mean_rank_ic": 0.004977379523263978,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Materials",
+        "mean_rank_ic": 0.008334450145359013,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Technology",
+        "mean_rank_ic": -0.0030639644071271273,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Utilities",
+        "mean_rank_ic": -0.0012064808886601674,
+        "n_dates": 485
+      }
+    ],
+    "maximum_sector_share_top15": 0.8,
+    "mean_leave_one_sector_rank_ic": 0.0006943262657895735,
+    "mean_maximum_sector_share_top15": 0.3932646048109966,
+    "mean_rank_ic_recomputed": 0.00045108935001777746,
+    "minimum_leave_one_sector_rank_ic": -0.004675935890745138,
+    "ranking_id": "r0_cn_x1_0_raw_return_rank"
+  },
+  {
+    "bootstrap_p05": -0.023008304118997316,
+    "bootstrap_p95": 0.041099424690622326,
+    "feature_family": "momentum_reversal",
+    "leave_one_sector_out": [
+      {
+        "excluded_sector": "Communication Services",
+        "mean_rank_ic": 0.011212292428697986,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Consumer Discretionary",
+        "mean_rank_ic": 0.012054004877514119,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Consumer Staples",
+        "mean_rank_ic": 0.005838005687384809,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Energy",
+        "mean_rank_ic": 0.008554061474637033,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Financials",
+        "mean_rank_ic": 0.01209931217591311,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Health Care",
+        "mean_rank_ic": 0.008136446322714179,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Industrials",
+        "mean_rank_ic": 0.016033405635333724,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Materials",
+        "mean_rank_ic": 0.009410425030286655,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Technology",
+        "mean_rank_ic": 0.0070772174542126165,
+        "n_dates": 485
+      },
+      {
+        "excluded_sector": "Utilities",
+        "mean_rank_ic": 0.007544207412146187,
+        "n_dates": 485
+      }
+    ],
+    "maximum_sector_share_top15": 0.8666666666666667,
+    "mean_leave_one_sector_rank_ic": 0.009795937849884043,
+    "mean_maximum_sector_share_top15": 0.4586941580756014,
+    "mean_rank_ic_recomputed": 0.009769812159697362,
+    "minimum_leave_one_sector_rank_ic": 0.005838005687384809,
+    "ranking_id": "r2_industry_relative_rank"
+  }
+]

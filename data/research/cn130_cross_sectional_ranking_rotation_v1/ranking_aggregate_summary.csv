@@ -1,0 +1,15 @@
+ranking_id,feature_family,target_status,mean_rank_ic,mean_rank_icir,mean_top_bottom_spread,positive_rank_ic_windows,positive_spread_windows,positive_spread_window_ratio,strongest_positive_window_share,mean_adjacent_rank_correlation,mean_rebalance_topk_overlap,basic_gate_target_eligible,basic_gate_mean_rank_ic_positive,basic_gate_positive_spread_windows_at_least_3,basic_gate_strongest_window_share_below_0_50,basic_gate_pass
+r2_industry_relative_rank,momentum_reversal,eligible,0.009562053925,0.03328093763,0.008633605764,2,2,0.5,0.6626770537,0.6807392435,0.2813131313,True,True,False,False,False
+r2_industry_relative_rank,current_cn_ohlcv,eligible,0.004797671647,0.006497184234,0.008409850532,2,2,0.5,0.7251000635,0.8045866206,0.3640151515,True,True,False,False,False
+r0_cn_x1_0_raw_return_rank,current_cn_ohlcv,eligible,0.001122434722,0.0008526377424,0.00533369255,2,3,0.75,0.5565758594,0.8293707469,0.3327020202,True,True,True,False,False
+r1_benchmark_relative_rank,current_cn_ohlcv,eligible,0.001122434722,0.0008526377424,0.00533369255,2,3,0.75,0.5565758594,0.8293707469,0.3327020202,True,True,True,False,False
+r4_two_stage_hierarchical_rank,momentum_reversal,eligible,0.0007894898968,0.01938169591,0.005955875662,2,2,0.5,0.6241156809,0.6171074716,0.2465909091,True,True,False,False,False
+r3_risk_residual_rank,momentum_reversal,ineligible_partial_r3,-0.0001695346161,-0.004983824553,0.007062610802,2,3,0.75,0.7952357583,0.6672879065,0.3132575758,False,False,True,False,False
+r4_two_stage_hierarchical_rank,current_cn_ohlcv,eligible,-0.00112530037,-0.01078708912,0.004740993402,2,3,0.75,0.8445769374,0.745229909,0.2972222222,True,False,True,False,False
+r2_industry_relative_rank,governed_technical_extension,eligible,-0.005313139364,-0.03293472482,0.007405230997,2,3,0.75,0.6612059746,0.8539630899,0.3953282828,True,False,True,False,False
+r4_two_stage_hierarchical_rank,governed_technical_extension,eligible,-0.006078657363,-0.05617198643,0.003802936003,2,2,0.5,0.7649114725,0.8114057825,0.3809343434,True,False,False,False,False
+r4_two_stage_hierarchical_rank,volume_volatility,eligible,-0.007720927857,-0.05791250473,0.003873688076,1,4,1,0.8783526505,0.6805072184,0.3121212121,True,False,True,False,False
+r3_risk_residual_rank,volume_volatility,ineligible_partial_r3,-0.008538850722,-0.04549537205,0.005710292585,2,2,0.5,0.7315277394,0.8494768942,0.3439393939,False,False,False,False,False
+r2_industry_relative_rank,volume_volatility,eligible,-0.009506114177,-0.0459006156,0.005788311704,2,3,0.75,0.7300608062,0.7358941982,0.3838383838,True,False,True,False,False
+r3_risk_residual_rank,governed_technical_extension,ineligible_partial_r3,-0.00983300666,-0.06700679672,0.004894115155,2,2,0.5,0.6959408717,0.8678707231,0.4419191919,False,False,False,False,False
+r3_risk_residual_rank,current_cn_ohlcv,ineligible_partial_r3,-0.0129055178,-0.07382728513,0.003612570777,2,2,0.5,0.5995703296,0.8183175718,0.3503787879,False,False,False,False,False
