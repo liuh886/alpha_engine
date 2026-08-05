@@ -1,0 +1,113 @@
+schema_version: "1.0"
+decision_date: "2026-08-05"
+strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
+research_only: true
+trade_ready: false
+supersedes_for_new_evidence: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-05_v4_25.yaml
+
+converged_candidate:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  role: explicit_converged_candidate
+  contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  implementation: src/research/vxn_bridge_allocation_experiment.py
+  alert_source: true
+  decision: retain_unchanged
+  model_changes_authorized: false
+  telegram_target_changes_authorized: false
+  issue_348_changes_authorized: false
+  reason: >-
+    v4.2 remains the only model that preserves slow trend persistence,
+    conservative recovery transitions, drawdown protection and convex upside
+    participation across the governed evidence. Linear, state-conditioned,
+    action-ranking, adjacent-edge and joint ordinal XGBoost challengers did not
+    produce a stable replacement.
+
+v4_26_ordinal_xgboost:
+  experiment_id: qqqi_xgb_ordinal_risk_budget_v4_26_research
+  issue: 547
+  pull_request: 549
+  role: final_daily_feature_xgboost_convergence_test
+  decision: xgb_ordinal_risk_budget_not_supported
+  evidence:
+    workflow_run: 31004363414
+    artifact_id: 8929674052
+    artifact_digest: sha256:c0b3c0a796ec1a660f684131509a9bf1bc31f58adea269b0745dc78b990bfceb
+    manifest_file_count: 17
+    manifest_hashes_verified: true
+    report: docs/research/qqqi_xgb_ordinal_risk_budget_v4_26_result_2026-08-05.md
+  architecture:
+    model: xgboost_multi_softprob
+    states: [defense, bridge, core, leveraged]
+    inputs: 35
+    posterior_policy: expected_state_index_round_half_up
+    parameter_search_performed: false
+    feature_selection_performed: false
+    action_descriptors_used: false
+  phase1:
+    passed: false
+    macro_ovr_auc: 0.4925205808
+    quadratic_weighted_kappa: -0.0117025293
+    macro_recall: 0.2076465201
+    utility_regret_reduction: -0.0735022827
+    median_utility_advantage_vs_v4_2: 0.0
+    total_utility_advantage_vs_v4_2: -0.5495233407
+    positive_outer_folds: 1
+    top_two_rate: 0.5223880597
+    minimum_state_selections: 4
+    maximum_state_selection_share: 0.5671641791
+    placebo_beat_rate: 0.50
+  oof_state_geometry:
+    oracle_counts: {defense: 78, bridge: 7, core: 12, leveraged: 104}
+    selected_counts: {defense: 4, bridge: 78, core: 114, leveraged: 5}
+    interpretation: >-
+      The posterior expected-risk policy compressed uncertain endpoint labels
+      into bridge and core. Realized optimum states were predominantly defense
+      or leveraged, and the model had almost no recall for either endpoint.
+  actual_2024_plus:
+    groups: 62
+    mean_utility_advantage: -0.0033008466
+    median_utility_advantage: -0.0021430839
+    total_utility_advantage: -0.2046524876
+    utility_regret_reduction: -0.0860220196
+    top_two_rate: 0.6129032258
+    selected_counts: {bridge: 33, core: 29}
+    oracle_counts: {defense: 24, bridge: 1, core: 5, leveraged: 32}
+  phase2:
+    skipped: true
+    reason: phase1_gate_failed
+  candidate_shadow_authorized: false
+  direct_promotion_authorized: false
+
+xgboost_convergence:
+  conclusion: current_daily_feature_xgboost_path_closed
+  retained_findings:
+    - v4_23_nonlinear_rank_information_was_dominated_by_convex_endpoint_action_priors
+    - v4_24_removed_action_priors_but_adjacent_path_timing_was_not_predictive
+    - v4_25_found_no_complete_new_public_information_family
+    - v4_26_joint_ordinal_model_smoothed_endpoint_uncertainty_into_wrong_middle_states
+    - model_capacity_and_topology_are_not_the_current_bottleneck
+    - stable_independent_information_about_future_path_risk_is_missing
+  prohibited_follow_up:
+    - xgboost_hyperparameter_or_booster_search_on_the_same_35_features
+    - class_weight_search
+    - argmax_or_probability_threshold_search
+    - endpoint_only_defense_leveraged_classifier
+    - post_result_state_deletion
+    - alternative_path_utility_penalty_or_horizon
+    - feature_selection_from_shap
+    - v4_27_without_new_admissible_information
+
+permitted_next_work:
+  - continue prospective v4.2 alert and execution evidence under Issue 348
+  - complete the versioned prospective event ledger and rolling outcome summaries
+  - evaluate frozen hypotheses only after their preregistered prospective event and time gates mature
+  - reopen learned-model research only after a new point-in-time-safe information family passes a separate Phase 0 contract
+  - treat governed intraday history as a separate data and execution strategy family
+
+operating_status:
+  v4_2_alert_source_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+  candidate_model: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  candidate_status: prospective_evidence_accumulation
+  xgboost_candidate: none
