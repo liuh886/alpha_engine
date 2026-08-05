@@ -1,0 +1,55 @@
+schema_version: '1.0'
+model_id: byd_dividend_sleeve_v1_0
+display_name: BYD Dividend Sleeve V1.0
+market: cn
+asset_class: single_equity_allocation
+status: accepted_formal_baseline
+source_strategy: v1_dividend_75_25
+source_issue: 525
+promotion_issue: 557
+monitoring_issue: 529
+research_only: true
+trade_ready: false
+fresh_historical_holdout: false
+portfolio:
+  risk_on:
+    BYD: 1.0
+    515180.SH: 0.0
+    cash: 0.0
+  defense:
+    BYD: 0.75
+    515180.SH: 0.25
+    cash: 0.0
+signal_contract:
+  base_model: canonical_byd_v1_0
+  signal_time: session_close_t
+  execution_time: next_common_independently_confirmed_eligible_open_t_plus_1
+  ineligible_open_policy: keep_pending_target
+  first_overlap_interval: cash
+cost_contract:
+  primary_bps_per_absolute_weight_change: 20
+  stress_bps_per_absolute_weight_change: 40
+  charged_legs:
+    - BYD
+    - 515180.SH
+    - cash
+data_contract:
+  byd_snapshot: data/research/byd_canonical_v1_snapshot.tar.xz
+  byd_snapshot_sha256: 2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179
+  etf_artifact: data/research/515180_canonical_v1_artifact.zip.b64
+  etf_artifact_sha256: 7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f
+  etf_adjusted_sha256: 2173afbe2fcbc8875de55ce0ff9bcb25b1c9f184c5cd273ade682244393c67a5
+  historical_cutoff: '2026-08-03'
+  prospective_store: data/research/byd_515180_prospective
+formal_publication:
+  package: data/research/formal_backtests/byd_dividend_sleeve_v1_0.json
+  publication_status: accepted_formal_baseline
+  performance_trace: exact_daily_open_to_open
+  prospective_monitoring: append_only
+interpretation:
+  mechanism: replace the defensive 25 percent cash sleeve with a low-correlation positive-return dividend ETF without changing BYD V1.0 risk budget
+  prohibited_extensions:
+    - additional ETF search
+    - trend timing of 515180
+    - recovery overlay
+    - binary full-allocation rotation
