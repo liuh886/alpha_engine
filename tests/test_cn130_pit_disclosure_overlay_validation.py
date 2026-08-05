@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from scripts.run_cn130_pit_disclosure_overlay_validation import (
     calibration_gate,
@@ -41,7 +42,9 @@ def test_window_increment_is_overlay_minus_baseline() -> None:
 
     result = window_increment(baseline, overlay)
 
-    assert result["incremental_relative_excess"].tolist() == [0.02, -0.01, 0.05]
+    assert result["incremental_relative_excess"].tolist() == pytest.approx(
+        [0.02, -0.01, 0.05]
+    )
 
 
 def test_calibration_gate_accepts_consistent_incremental_overlay() -> None:
@@ -71,8 +74,18 @@ def test_calibration_gate_accepts_consistent_incremental_overlay() -> None:
 
 
 def test_validation_gate_requires_preserved_four_positive_windows() -> None:
-    baseline20 = _summary(0.60, [0.10, 0.12, 0.08, 0.09])
-    overlay20 = _summary(0.70, [0.12, 0.15, 0.09, 0.11])
+    baseline20 = _summary(
+        0.60,
+        [0.10, 0.12, 0.08, 0.09],
+        leave_name=0.08,
+        leave_sector=0.07,
+    )
+    overlay20 = _summary(
+        0.70,
+        [0.12, 0.15, 0.09, 0.11],
+        leave_name=0.12,
+        leave_sector=0.10,
+    )
     baseline40 = _summary(0.55, [0.09, 0.11, 0.07, 0.08])
     overlay40 = _summary(0.64, [0.11, 0.14, 0.08, 0.10])
     increments = window_increment(baseline20, overlay20)
