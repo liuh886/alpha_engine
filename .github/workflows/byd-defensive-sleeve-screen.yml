@@ -79,7 +79,7 @@ jobs:
           --output-dir artifacts/data/511010_canonical_v1
       - name: Run frozen convergence screen
         id: screen
-        if: steps.build_512890.outcome == 'success' && steps.build_511010.outcome == 'success'
+        if: always() && steps.build_511010.outcome == 'success'
         run: >-
           uv run python scripts/run_byd_defensive_sleeve_screen.py
           --byd-dir artifacts/data/byd_canonical_v1
@@ -99,12 +99,14 @@ jobs:
             artifacts/data/512890_canonical_v1
             artifacts/data/511010_canonical_v1
             artifacts/research/byd_defensive_sleeve_screen
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
       - name: Enforce data and screen completion
         if: always()
         run: |
           set -euo pipefail
-          test "${{ steps.build_512890.outcome }}" = "success"
           test "${{ steps.build_511010.outcome }}" = "success"
           test "${{ steps.screen.outcome }}" = "success"
+          if [[ "${{ steps.build_512890.outcome }}" != "success" ]]; then
+            test -f artifacts/data/512890_canonical_v1/data_blocked.json
+          fi
