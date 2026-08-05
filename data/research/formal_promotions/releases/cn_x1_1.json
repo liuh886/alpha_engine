@@ -1,0 +1,30 @@
+{
+  "durability": {
+    "approved_durable_locations": [
+      "data/research/formal_backtests/cn_x1_1.json",
+      "data/research/formal_backtests/cn_x1_1_ledgers/rebalance_periods.csv",
+      "data/research/formal_backtests/cn_x1_1_ledgers/holdings.csv",
+      "data/research/formal_backtests/cn_x1_1_ledgers/trades.csv",
+      "data/research/formal_backtests/cn_x1_1_ledgers/attribution.csv"
+    ],
+    "non_regenerable_after_expiry": false,
+    "on_expiry": "use_hash_bound_formal_package_and_ledgers",
+    "status": "durable_repository_evidence"
+  },
+  "evidence_cutoff": "2026-08-03",
+  "model_id": "cn_x1_1",
+  "package_path": "data/research/formal_backtests/cn_x1_1.json",
+  "research_only": true,
+  "schema_version": "1.0.0",
+  "source": {
+    "artifact_digest": "sha256:e540e400dbefd5178122444e709182323f1b363a3c41496fd8212e5095ee5a4b",
+    "artifact_id": 8937409026,
+    "artifact_name": "cn-x1-1-fallback-aware-certified-31022910416",
+    "expires_at": "2026-09-04T15:59:13Z",
+    "kind": "github_actions_artifact",
+    "repository": "liuh886/alpha_engine",
+    "workflow_head_sha": "20bb4f52d16e11fe594480226d0a02989cf9b00b",
+    "workflow_run_id": 31022910416
+  },
+  "trade_ready": false
+}

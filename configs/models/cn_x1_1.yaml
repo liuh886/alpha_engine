@@ -1,0 +1,70 @@
+schema_version: '1.1'
+model_id: cn_x1_1
+display_name: CN x1.1
+release_date: '2026-08-06'
+status: accepted_formal_baseline
+research_only: true
+trade_ready: false
+market: cn
+benchmark: '000300'
+objective: Govern CN130 with a PIT regime gate over the frozen CN x1.0 R0 score.
+lineage:
+  parent: cn_x1_0
+  source_candidate_pr: 576
+  promotion_issue: 577
+  supersedes_named_model: cn_x1_0
+universe:
+  universe_id: cn_selected_equities_v3
+  source: configs/research_universes/cn_selected_equities_v3.yaml
+  declared_candidate_count: 130
+  membership_mode: static_curated
+  survivorship_bias: true
+provider_binding:
+  canonical_provider_artifact_id: 8850463785
+  canonical_provider_identity_sha256: abae71f037571a9a847d4582e0bea9fabdd71796cac54a70aa7c6d07b668eeb0
+  cutoff: '2026-08-03'
+score_source:
+  model_id: cn_x1_0
+  ranking_id: r0_cn_x1_0_raw_return_rank
+  feature_family: current_cn_ohlcv
+portfolio:
+  universe: cn_selected_equities_v3
+  benchmark: '000300'
+  score_source: r0_cn_x1_0_raw_return_rank/current_cn_ohlcv
+  horizon_sessions: 10
+  rebalance_sessions: 10
+  execution_delay_sessions: 1
+  cost_bps: 20
+  weighting: equal_weight
+  active_sectors: 4
+  names_per_sector: 1
+  sector_score: mean_top3_daily_score_percentile
+  risk_on_votes_required: 2
+  risk_on_votes:
+  - CSI300_close_above_MA200
+  - CSI300_60_session_return_positive
+  - CN130_share_above_own_MA60_at_least_50pct
+  risk_off_fallback: 100_percent_CSI300
+formal_backtest:
+  start: '2022-07-01'
+  end: '2026-08-03'
+  package: data/research/formal_backtests/cn_x1_1.json
+  run_bundle: data/research/formal_model_runs/cn_ranker/cn_x1_1/cn_x1_1_through_2026_08_03/manifest.json
+  rebalance_periods: 102
+  position_rows: 252
+  evidence_status: complete
+  total_return: 0.5489769541359022
+  benchmark_return: -0.027179813812313047
+  compounded_relative_excess_return: 0.5922541247895701
+  max_drawdown: -0.37059032672209047
+  historical_2022H2_2025H2_relative_excess: 0.5493370449
+  reporting_2026_relative_excess: 0.0277002864
+evidence_identity:
+  workflow_run_id: 31022910416
+  artifact_id: 8937409026
+  artifact_digest: sha256:e540e400dbefd5178122444e709182323f1b363a3c41496fd8212e5095ee5a4b
+known_limitations:
+- Static curated CN130 membership carries survivorship bias.
+- The authorized frozen score-ledger interval begins on 2022-07-01.
+- 2026 windows are reporting-only.
+- The formal research baseline does not authorize automated trading.

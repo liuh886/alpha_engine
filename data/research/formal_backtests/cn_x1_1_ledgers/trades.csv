@@ -1,0 +1,371 @@
+date,window,evaluation,period_index,instrument,entity,sector,action,previous_weight,target_weight,weight_delta,allocated_transaction_cost,score,risk_on,rule,votes
+2022-07-01,2022H2,historical,0,000661,长春高新,Health Care,BUY,0,0.25,0.25,0.0005,0.1298487335,True,two_of_three,2
+2022-07-01,2022H2,historical,0,002050,三花智控,Industrials,BUY,0,0.25,0.25,0.0005,0.4602355659,True,two_of_three,2
+2022-07-01,2022H2,historical,0,002709,天赐材料,Materials,BUY,0,0.25,0.25,0.0005,0.1266027093,True,two_of_three,2
+2022-07-01,2022H2,historical,0,300782,卓胜微,Technology,BUY,0,0.25,0.25,0.0005,0.2533461452,True,two_of_three,2
+2022-07-15,2022H2,historical,1,000661,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2022-07-15,2022H2,historical,1,000999,华润三九,Health Care,BUY,0,0.25,0.25,0.00025,-0.009509295225,True,two_of_three,2
+2022-07-15,2022H2,historical,1,002050,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2022-07-15,2022H2,historical,1,002709,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2022-07-15,2022H2,historical,1,002837,英维克,Industrials,BUY,0,0.25,0.25,0.00025,0.3617926836,True,two_of_three,2
+2022-07-15,2022H2,historical,1,603260,合盛硅业,Materials,BUY,0,0.25,0.25,0.00025,0.3136295974,True,two_of_three,2
+2022-07-29,2022H2,historical,2,000300,CSI300 fallback,CSI300,BUY,0,1,1,0.001,,False,two_of_three,1
+2022-07-29,2022H2,historical,2,000999,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2022-07-29,2022H2,historical,2,002837,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2022-07-29,2022H2,historical,2,300782,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2022-07-29,2022H2,historical,2,603260,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2022-12-26,2022H2,historical,12,000300,,,SELL,1,0,-1,0.001,,True,two_of_three,2
+2022-12-26,2022H2,historical,12,000999,华润三九,Health Care,BUY,0,0.25,0.25,0.00025,-0.0881908834,True,two_of_three,2
+2022-12-26,2022H2,historical,12,600026,中远海能,Industrials,BUY,0,0.25,0.25,0.00025,0.7531064749,True,two_of_three,2
+2022-12-26,2022H2,historical,12,601318,中国平安,Financials,BUY,0,0.25,0.25,0.00025,-0.1563539207,True,two_of_three,2
+2022-12-26,2022H2,historical,12,603806,福斯特,Materials,BUY,0,0.25,0.25,0.00025,0.2849572301,True,two_of_three,2
+2023-01-03,2023H1,historical,13,002463,沪电股份,Technology,BUY,0,0.25,0.25,0.00025,0.01930332184,True,two_of_three,2
+2023-01-03,2023H1,historical,13,600026,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2023-01-03,2023H1,historical,13,601318,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2023-01-03,2023H1,historical,13,688676,金盘科技,Industrials,BUY,0,0.25,0.25,0.00025,0.1491205245,True,two_of_three,2
+2023-01-17,2023H1,historical,14,000858,五粮液,Consumer Staples,BUY,0,0.25,0.25,0.00025,0.2075212002,True,two_of_three,3
+2023-01-17,2023H1,historical,14,000999,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-01-17,2023H1,historical,14,002463,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-01-17,2023H1,historical,14,300033,同花顺,Technology,BUY,0,0.25,0.25,0.00025,0.303992182,True,two_of_three,3
+2023-01-17,2023H1,historical,14,300750,宁德时代,Industrials,BUY,0,0.25,0.25,0.00025,0.4170481563,True,two_of_three,3
+2023-01-17,2023H1,historical,14,603799,华友钴业,Materials,BUY,0,0.25,0.25,0.00025,0.372481972,True,two_of_three,3
+2023-01-17,2023H1,historical,14,603806,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-01-17,2023H1,historical,14,688676,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-02-07,2023H1,historical,15,000858,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-02-07,2023H1,historical,15,000977,浪潮信息,Technology,BUY,0,0.25,0.25,0.00025,0.1970691383,True,two_of_three,3
+2023-02-07,2023H1,historical,15,002602,世纪华通,Communication Services,BUY,0,0.25,0.25,0.00025,0.1654589474,True,two_of_three,3
+2023-02-07,2023H1,historical,15,300033,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-02-07,2023H1,historical,15,300750,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-02-07,2023H1,historical,15,601872,招商轮船,Industrials,BUY,0,0.25,0.25,0.00025,0.2969546616,True,two_of_three,3
+2023-02-07,2023H1,historical,15,603799,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-02-07,2023H1,historical,15,603993,洛阳钼业,Materials,BUY,0,0.25,0.25,0.00025,-0.07101589441,True,two_of_three,3
+2023-02-21,2023H1,historical,16,002602,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-02-21,2023H1,historical,16,600031,三一重工,Industrials,BUY,0,0.25,0.25,0.00025,-0.07997890562,True,two_of_three,3
+2023-02-21,2023H1,historical,16,601728,中国电信,Communication Services,BUY,0,0.25,0.25,0.00025,0.1129233092,True,two_of_three,3
+2023-02-21,2023H1,historical,16,601872,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-03-07,2023H1,historical,17,000425,徐工机械,Industrials,BUY,0,0.25,0.25,0.00025,0.08154653013,True,two_of_three,3
+2023-03-07,2023H1,historical,17,000977,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-03-07,2023H1,historical,17,300548,长芯博创,Technology,BUY,0,0.25,0.25,0.00025,0.521091938,True,two_of_three,3
+2023-03-07,2023H1,historical,17,600031,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-03-07,2023H1,historical,17,600938,中国海油,Energy,BUY,0,0.25,0.25,0.00025,0.1970691383,True,two_of_three,3
+2023-03-07,2023H1,historical,17,601698,中国卫通,Communication Services,BUY,0,0.25,0.25,0.00025,0.6264232993,True,two_of_three,3
+2023-03-07,2023H1,historical,17,601728,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-03-07,2023H1,historical,17,603993,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2023-03-21,2023H1,historical,18,000300,CSI300 fallback,CSI300,BUY,0,1,1,0.001,,False,two_of_three,1
+2023-03-21,2023H1,historical,18,000425,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2023-03-21,2023H1,historical,18,300548,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2023-03-21,2023H1,historical,18,600938,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2023-03-21,2023H1,historical,18,601698,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2023-04-04,2023H1,historical,19,000300,,,SELL,1,0,-1,0.001,,True,two_of_three,3
+2023-04-04,2023H1,historical,19,002222,福晶科技,Technology,BUY,0,0.25,0.25,0.00025,0.6742237806,True,two_of_three,3
+2023-04-04,2023H1,historical,19,002493,荣盛石化,Materials,BUY,0,0.25,0.25,0.00025,0.5840027928,True,two_of_three,3
+2023-04-04,2023H1,historical,19,002602,世纪华通,Communication Services,BUY,0,0.25,0.25,0.00025,0.2225860357,True,two_of_three,3
+2023-04-04,2023H1,historical,19,600026,中远海能,Industrials,BUY,0,0.25,0.25,0.00025,0.2456819713,True,two_of_three,3
+2023-04-19,2023H1,historical,20,000300,CSI300 fallback,CSI300,BUY,0,1,1,0.001,,False,two_of_three,1
+2023-04-19,2023H1,historical,20,002222,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2023-04-19,2023H1,historical,20,002493,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2023-04-19,2023H1,historical,20,002602,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2023-04-19,2023H1,historical,20,600026,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2023-07-31,2023H2,historical,27,000001,平安银行,Financials,BUY,0,0.25,0.25,0.00025,0.2616395056,True,two_of_three,2
+2023-07-31,2023H2,historical,27,000300,,,SELL,1,0,-1,0.001,,True,two_of_three,2
+2023-07-31,2023H2,historical,27,002714,牧原股份,Consumer Staples,BUY,0,0.25,0.25,0.00025,0.4922366738,True,two_of_three,2
+2023-07-31,2023H2,historical,27,300033,同花顺,Technology,BUY,0,0.25,0.25,0.00025,0.8601369858,True,two_of_three,2
+2023-07-31,2023H2,historical,27,600309,万华化学,Materials,BUY,0,0.25,0.25,0.00025,0.273080349,True,two_of_three,2
+2023-08-14,2023H2,historical,28,000001,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2023-08-14,2023H2,historical,28,000300,CSI300 fallback,CSI300,BUY,0,1,1,0.001,,False,two_of_three,0
+2023-08-14,2023H2,historical,28,002714,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2023-08-14,2023H2,historical,28,300033,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2023-08-14,2023H2,historical,28,600309,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2024-03-06,2024H1,historical,42,000300,,,SELL,1,0,-1,0.001,,True,two_of_three,2
+2024-03-06,2024H1,historical,42,002466,天齐锂业,Materials,BUY,0,0.25,0.25,0.00025,0.1993560791,True,two_of_three,2
+2024-03-06,2024H1,historical,42,301291,明阳电气,Industrials,BUY,0,0.25,0.25,0.00025,0.3385711014,True,two_of_three,2
+2024-03-06,2024H1,historical,42,603629,利通电子,Technology,BUY,0,0.25,0.25,0.00025,0.363509953,True,two_of_three,2
+2024-03-06,2024H1,historical,42,603658,安图生物,Health Care,BUY,0,0.25,0.25,0.00025,0.06406702846,True,two_of_three,2
+2024-03-20,2024H1,historical,43,000538,云南白药,Health Care,BUY,0,0.25,0.25,0.00025,0.3005939722,True,two_of_three,2
+2024-03-20,2024H1,historical,43,002466,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-03-20,2024H1,historical,43,301291,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-03-20,2024H1,historical,43,603658,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-03-20,2024H1,historical,43,603993,洛阳钼业,Materials,BUY,0,0.25,0.25,0.00025,0.02663055435,True,two_of_three,2
+2024-03-20,2024H1,historical,43,688676,金盘科技,Industrials,BUY,0,0.25,0.25,0.00025,-0.005104710814,True,two_of_three,2
+2024-04-03,2024H1,historical,44,000538,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-04-03,2024H1,historical,44,300548,长芯博创,Technology,BUY,0,0.25,0.25,0.00025,0.3586148024,True,two_of_three,2
+2024-04-03,2024H1,historical,44,300750,宁德时代,Industrials,BUY,0,0.25,0.25,0.00025,0.16348809,True,two_of_three,2
+2024-04-03,2024H1,historical,44,601728,中国电信,Communication Services,BUY,0,0.25,0.25,0.00025,0.0664216727,True,two_of_three,2
+2024-04-03,2024H1,historical,44,603629,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-04-03,2024H1,historical,44,688676,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-04-19,2024H1,historical,45,002709,天赐材料,Materials,BUY,0,0.25,0.25,0.00025,0.1054667458,True,two_of_three,2
+2024-04-19,2024H1,historical,45,300133,华策影视,Communication Services,BUY,0,0.25,0.25,0.00025,0.6840584278,True,two_of_three,2
+2024-04-19,2024H1,historical,45,300750,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-04-19,2024H1,historical,45,601728,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-04-19,2024H1,historical,45,601919,中远海控,Industrials,BUY,0,0.25,0.25,0.00025,0.2255422771,True,two_of_three,2
+2024-04-19,2024H1,historical,45,603993,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-05-08,2024H1,historical,46,300548,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-05-08,2024H1,historical,46,600009,上海机场,Industrials,BUY,0,0.25,0.25,0.00025,0.5037767887,True,two_of_three,3
+2024-05-08,2024H1,historical,46,601919,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-05-08,2024H1,historical,46,688525,佰维存储,Technology,BUY,0,0.25,0.25,0.00025,0.580557704,True,two_of_three,3
+2024-05-22,2024H1,historical,47,002410,广联达,Technology,BUY,0,0.25,0.25,0.00025,0.33603549,True,two_of_three,3
+2024-05-22,2024H1,historical,47,002466,天齐锂业,Materials,BUY,0,0.25,0.25,0.00025,0.0746858269,True,two_of_three,3
+2024-05-22,2024H1,historical,47,002709,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-05-22,2024H1,historical,47,300133,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-05-22,2024H1,historical,47,600009,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-05-22,2024H1,historical,47,600519,贵州茅台,Consumer Staples,BUY,0,0.25,0.25,0.00025,0.3338261843,True,two_of_three,3
+2024-05-22,2024H1,historical,47,688525,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-05-22,2024H1,historical,47,688676,金盘科技,Industrials,BUY,0,0.25,0.25,0.00025,0.0687206015,True,two_of_three,3
+2024-06-05,2024H1,historical,48,002410,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-06-05,2024H1,historical,48,002466,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-06-05,2024H1,historical,48,301291,明阳电气,Industrials,BUY,0,0.25,0.25,0.00025,0.2892689407,True,two_of_three,2
+2024-06-05,2024H1,historical,48,600519,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-06-05,2024H1,historical,48,600900,长江电力,Utilities,BUY,0,0.25,0.25,0.00025,0.1238056943,True,two_of_three,2
+2024-06-05,2024H1,historical,48,601318,中国平安,Financials,BUY,0,0.25,0.25,0.00025,0.116058059,True,two_of_three,2
+2024-06-05,2024H1,historical,48,688525,佰维存储,Technology,BUY,0,0.25,0.25,0.00025,0.3850355446,True,two_of_three,2
+2024-06-05,2024H1,historical,48,688676,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-06-20,2024H1,historical,49,000300,CSI300 fallback,CSI300,BUY,0,1,1,0.001,,False,two_of_three,0
+2024-06-20,2024H1,historical,49,301291,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2024-06-20,2024H1,historical,49,600900,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2024-06-20,2024H1,historical,49,601318,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2024-06-20,2024H1,historical,49,688525,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2024-10-16,2024H2,historical,57,000300,,,SELL,1,0,-1,0.001,,True,two_of_three,3
+2024-10-16,2024H2,historical,57,002602,世纪华通,Communication Services,BUY,0,0.25,0.25,0.00025,0.1410344988,True,two_of_three,3
+2024-10-16,2024H2,historical,57,301309,德明利,Technology,BUY,0,0.25,0.25,0.00025,0.4046109617,True,two_of_three,3
+2024-10-16,2024H2,historical,57,600438,通威股份,Materials,BUY,0,0.25,0.25,0.00025,0.4361667335,True,two_of_three,3
+2024-10-16,2024H2,historical,57,600760,中航沈飞,Industrials,BUY,0,0.25,0.25,0.00025,0.4656366408,True,two_of_three,3
+2024-10-30,2024H2,historical,58,002007,华兰生物,Health Care,BUY,0,0.25,0.25,0.00025,0.2028064132,True,two_of_three,3
+2024-10-30,2024H2,historical,58,002456,欧菲光,Technology,BUY,0,0.25,0.25,0.00025,0.2129295766,True,two_of_three,3
+2024-10-30,2024H2,historical,58,002602,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-10-30,2024H2,historical,58,301309,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-10-30,2024H2,historical,58,600184,光电股份,Industrials,BUY,0,0.25,0.25,0.00025,0.318526566,True,two_of_three,3
+2024-10-30,2024H2,historical,58,600438,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-10-30,2024H2,historical,58,600760,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-10-30,2024H2,historical,58,603260,合盛硅业,Materials,BUY,0,0.25,0.25,0.00025,0.5397003889,True,two_of_three,3
+2024-11-13,2024H2,historical,59,002007,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-11-13,2024H2,historical,59,002456,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-11-13,2024H2,historical,59,002460,赣锋锂业,Materials,BUY,0,0.25,0.25,0.00025,1.028908014,True,two_of_three,3
+2024-11-13,2024H2,historical,59,600184,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-11-13,2024H2,historical,59,600760,中航沈飞,Industrials,BUY,0,0.25,0.25,0.00025,0.1802109927,True,two_of_three,3
+2024-11-13,2024H2,historical,59,600809,山西汾酒,Consumer Staples,BUY,0,0.25,0.25,0.00025,-0.02425192297,True,two_of_three,3
+2024-11-13,2024H2,historical,59,603260,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-11-13,2024H2,historical,59,688521,芯原股份,Technology,BUY,0,0.25,0.25,0.00025,0.5451287031,True,two_of_three,3
+2024-11-27,2024H2,historical,60,000938,紫光股份,Technology,BUY,0,0.25,0.25,0.00025,0.1362404674,True,two_of_three,3
+2024-11-27,2024H2,historical,60,002460,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-11-27,2024H2,historical,60,002709,天赐材料,Materials,BUY,0,0.25,0.25,0.00025,-0.05488446727,True,two_of_three,3
+2024-11-27,2024H2,historical,60,002837,英维克,Industrials,BUY,0,0.25,0.25,0.00025,0.05184553564,True,two_of_three,3
+2024-11-27,2024H2,historical,60,600030,中信证券,Financials,BUY,0,0.25,0.25,0.00025,-0.02523902245,True,two_of_three,3
+2024-11-27,2024H2,historical,60,600760,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-11-27,2024H2,historical,60,600809,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-11-27,2024H2,historical,60,688521,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-12-11,2024H2,historical,61,000938,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-12-11,2024H2,historical,61,002709,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-12-11,2024H2,historical,61,600019,宝钢股份,Materials,BUY,0,0.25,0.25,0.00025,0.1234638989,True,two_of_three,3
+2024-12-11,2024H2,historical,61,600030,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2024-12-11,2024H2,historical,61,601698,中国卫通,Communication Services,BUY,0,0.25,0.25,0.00025,0.1560744792,True,two_of_three,3
+2024-12-11,2024H2,historical,61,688521,芯原股份,Technology,BUY,0,0.25,0.25,0.00025,0.1931452751,True,two_of_three,3
+2024-12-25,2024H2,historical,62,002837,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-12-25,2024H2,historical,62,300133,华策影视,Communication Services,BUY,0,0.25,0.25,0.00025,0.02631544136,True,two_of_three,2
+2024-12-25,2024H2,historical,62,600019,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-12-25,2024H2,historical,62,600900,长江电力,Utilities,BUY,0,0.25,0.25,0.00025,0.5957375169,True,two_of_three,2
+2024-12-25,2024H2,historical,62,601698,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-12-25,2024H2,historical,62,603986,兆易创新,Technology,BUY,0,0.25,0.25,0.00025,0.2949168384,True,two_of_three,2
+2024-12-25,2024H2,historical,62,688521,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2024-12-25,2024H2,historical,62,688676,金盘科技,Industrials,BUY,0,0.25,0.25,0.00025,0.1407697201,True,two_of_three,2
+2025-01-02,2025H1,historical,63,000300,CSI300 fallback,CSI300,BUY,0,1,1,0.001,,False,two_of_three,1
+2025-01-02,2025H1,historical,63,300133,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2025-01-02,2025H1,historical,63,600900,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2025-01-02,2025H1,historical,63,603986,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2025-01-02,2025H1,historical,63,688676,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2025-02-21,2025H1,historical,66,000001,平安银行,Financials,BUY,0,0.25,0.25,0.00025,0.2367902249,True,two_of_three,2
+2025-02-21,2025H1,historical,66,000300,,,SELL,1,0,-1,0.001,,True,two_of_three,2
+2025-02-21,2025H1,historical,66,002352,顺丰控股,Industrials,BUY,0,0.25,0.25,0.00025,0.411341399,True,two_of_three,2
+2025-02-21,2025H1,historical,66,600519,贵州茅台,Consumer Staples,BUY,0,0.25,0.25,0.00025,0.2119971216,True,two_of_three,2
+2025-02-21,2025H1,historical,66,603501,韦尔股份,Technology,BUY,0,0.25,0.25,0.00025,0.7602983713,True,two_of_three,2
+2025-03-07,2025H1,historical,67,000895,双汇发展,Consumer Staples,BUY,0,0.25,0.25,0.00025,0.02882034145,True,two_of_three,3
+2025-03-07,2025H1,historical,67,002352,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-03-07,2025H1,historical,67,300548,长芯博创,Technology,BUY,0,0.25,0.25,0.00025,0.5383525491,True,two_of_three,3
+2025-03-07,2025H1,historical,67,600519,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-03-07,2025H1,historical,67,601766,中国中车,Industrials,BUY,0,0.25,0.25,0.00025,0.2362080961,True,two_of_three,3
+2025-03-07,2025H1,historical,67,603501,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-03-21,2025H1,historical,68,000001,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-03-21,2025H1,historical,68,000895,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-03-21,2025H1,historical,68,000999,华润三九,Health Care,BUY,0,0.25,0.25,0.00025,0.1493223011,True,two_of_three,2
+2025-03-21,2025H1,historical,68,002352,顺丰控股,Industrials,BUY,0,0.25,0.25,0.00025,0.2017298192,True,two_of_three,2
+2025-03-21,2025H1,historical,68,300548,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-03-21,2025H1,historical,68,601766,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-03-21,2025H1,historical,68,601857,中国石油,Energy,BUY,0,0.25,0.25,0.00025,0.1518440545,True,two_of_three,2
+2025-03-21,2025H1,historical,68,603629,利通电子,Technology,BUY,0,0.25,0.25,0.00025,0.5582361817,True,two_of_three,2
+2025-04-07,2025H1,historical,69,000300,CSI300 fallback,CSI300,BUY,0,1,1,0.001,,False,two_of_three,0
+2025-04-07,2025H1,historical,69,000999,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2025-04-07,2025H1,historical,69,002352,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2025-04-07,2025H1,historical,69,601857,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2025-04-07,2025H1,historical,69,603629,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,0
+2025-07-01,2025H2,historical,75,000300,,,SELL,1,0,-1,0.001,,True,two_of_three,3
+2025-07-01,2025H2,historical,75,000725,京东方A,Technology,BUY,0,0.25,0.25,0.00025,0.7438793778,True,two_of_three,3
+2025-07-01,2025H2,historical,75,002601,龙佰集团,Materials,BUY,0,0.25,0.25,0.00025,0.2554601431,True,two_of_three,3
+2025-07-01,2025H2,historical,75,600406,国电南瑞,Industrials,BUY,0,0.25,0.25,0.00025,0.2990632057,True,two_of_three,3
+2025-07-01,2025H2,historical,75,600690,海尔智家,Consumer Discretionary,BUY,0,0.25,0.25,0.00025,0.5636469722,True,two_of_three,3
+2025-07-15,2025H2,historical,76,000333,美的集团,Consumer Discretionary,BUY,0,0.25,0.25,0.00025,0.4663728774,True,two_of_three,3
+2025-07-15,2025H2,historical,76,000725,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-07-15,2025H2,historical,76,000858,五粮液,Consumer Staples,BUY,0,0.25,0.25,0.00025,0.6981636882,True,two_of_three,3
+2025-07-15,2025H2,historical,76,002049,紫光国微,Technology,BUY,0,0.25,0.25,0.00025,0.3104821146,True,two_of_three,3
+2025-07-15,2025H2,historical,76,002601,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-07-15,2025H2,historical,76,600406,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-07-15,2025H2,historical,76,600690,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-07-15,2025H2,historical,76,601877,正泰电器,Industrials,BUY,0,0.25,0.25,0.00025,0.2807406187,True,two_of_three,3
+2025-07-29,2025H2,historical,77,000333,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-07-29,2025H2,historical,77,000858,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-07-29,2025H2,historical,77,000895,双汇发展,Consumer Staples,BUY,0,0.25,0.25,0.00025,0.3901126087,True,two_of_three,3
+2025-07-29,2025H2,historical,77,002049,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-07-29,2025H2,historical,77,002415,海康威视,Technology,BUY,0,0.25,0.25,0.00025,0.3545886874,True,two_of_three,3
+2025-07-29,2025H2,historical,77,600026,中远海能,Industrials,BUY,0,0.25,0.25,0.00025,0.4130038917,True,two_of_three,3
+2025-07-29,2025H2,historical,77,601877,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-07-29,2025H2,historical,77,603658,安图生物,Health Care,BUY,0,0.25,0.25,0.00025,0.3518933356,True,two_of_three,3
+2025-08-12,2025H2,historical,78,000895,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-08-12,2025H2,historical,78,002415,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-08-12,2025H2,historical,78,600026,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-08-12,2025H2,historical,78,600036,招商银行,Financials,BUY,0,0.25,0.25,0.00025,0.1108702421,True,two_of_three,3
+2025-08-12,2025H2,historical,78,600436,片仔癀,Health Care,BUY,0,0.25,0.25,0.00025,0.2114435434,True,two_of_three,3
+2025-08-12,2025H2,historical,78,601872,招商轮船,Industrials,BUY,0,0.25,0.25,0.00025,0.4943479598,True,two_of_three,3
+2025-08-12,2025H2,historical,78,603288,海天味业,Consumer Staples,BUY,0,0.25,0.25,0.00025,0.3901620507,True,two_of_three,3
+2025-08-12,2025H2,historical,78,603658,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-08-26,2025H2,historical,79,300548,长芯博创,Technology,BUY,0,0.25,0.25,0.00025,0.3695402443,True,two_of_three,3
+2025-08-26,2025H2,historical,79,600036,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-08-26,2025H2,historical,79,600406,国电南瑞,Industrials,BUY,0,0.25,0.25,0.00025,0.2746952474,True,two_of_three,3
+2025-08-26,2025H2,historical,79,600436,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-08-26,2025H2,historical,79,600519,贵州茅台,Consumer Staples,BUY,0,0.25,0.25,0.00025,0.4824098051,True,two_of_three,3
+2025-08-26,2025H2,historical,79,601872,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-08-26,2025H2,historical,79,601985,中国核电,Utilities,BUY,0,0.25,0.25,0.00025,0.3166193366,True,two_of_three,3
+2025-08-26,2025H2,historical,79,603288,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-09-09,2025H2,historical,80,000538,云南白药,Health Care,BUY,0,0.25,0.25,0.00025,0.06063594297,True,two_of_three,3
+2025-09-09,2025H2,historical,80,002709,天赐材料,Materials,BUY,0,0.25,0.25,0.00025,0.5114407539,True,two_of_three,3
+2025-09-09,2025H2,historical,80,300548,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-09-09,2025H2,historical,80,600184,光电股份,Industrials,BUY,0,0.25,0.25,0.00025,0.474719137,True,two_of_three,3
+2025-09-09,2025H2,historical,80,600406,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-09-09,2025H2,historical,80,600519,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-09-09,2025H2,historical,80,601138,工业富联,Technology,BUY,0,0.25,0.25,0.00025,0.05065156892,True,two_of_three,3
+2025-09-09,2025H2,historical,80,601985,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-09-23,2025H2,historical,81,000538,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-09-23,2025H2,historical,81,002222,福晶科技,Technology,BUY,0,0.25,0.25,0.00025,0.4264551401,True,two_of_three,3
+2025-09-23,2025H2,historical,81,002460,赣锋锂业,Materials,BUY,0,0.25,0.25,0.00025,0.02571049146,True,two_of_three,3
+2025-09-23,2025H2,historical,81,002602,世纪华通,Communication Services,BUY,0,0.25,0.25,0.00025,0.1786619574,True,two_of_three,3
+2025-09-23,2025H2,historical,81,002709,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-09-23,2025H2,historical,81,600184,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-09-23,2025H2,historical,81,601138,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-09-23,2025H2,historical,81,688676,金盘科技,Industrials,BUY,0,0.25,0.25,0.00025,0.3863370121,True,two_of_three,3
+2025-10-15,2025H2,historical,82,002007,华兰生物,Health Care,BUY,0,0.25,0.25,0.00025,0.1767222285,True,two_of_three,3
+2025-10-15,2025H2,historical,82,002222,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-10-15,2025H2,historical,82,002460,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-10-15,2025H2,historical,82,002602,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-10-15,2025H2,historical,82,300548,长芯博创,Technology,BUY,0,0.25,0.25,0.00025,0.4137860537,True,two_of_three,3
+2025-10-15,2025H2,historical,82,600019,宝钢股份,Materials,BUY,0,0.25,0.25,0.00025,0.07959779352,True,two_of_three,3
+2025-10-15,2025H2,historical,82,600406,国电南瑞,Industrials,BUY,0,0.25,0.25,0.00025,0.2688731849,True,two_of_three,3
+2025-10-15,2025H2,historical,82,688676,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-10-29,2025H2,historical,83,000338,潍柴动力,Industrials,BUY,0,0.25,0.25,0.00025,0.3229647577,True,two_of_three,3
+2025-10-29,2025H2,historical,83,000651,格力电器,Consumer Discretionary,BUY,0,0.25,0.25,0.00025,0.3342666328,True,two_of_three,3
+2025-10-29,2025H2,historical,83,002007,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-10-29,2025H2,historical,83,002142,宁波银行,Financials,BUY,0,0.25,0.25,0.00025,0.2646006048,True,two_of_three,3
+2025-10-29,2025H2,historical,83,300548,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-10-29,2025H2,historical,83,600019,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-10-29,2025H2,historical,83,600406,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-10-29,2025H2,historical,83,601138,工业富联,Technology,BUY,0,0.25,0.25,0.00025,0.6122103333,True,two_of_three,3
+2025-11-12,2025H2,historical,84,000063,中兴通讯,Technology,BUY,0,0.25,0.25,0.00025,0.7939003706,True,two_of_three,3
+2025-11-12,2025H2,historical,84,000338,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-11-12,2025H2,historical,84,601138,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2025-11-12,2025H2,historical,84,601919,中远海控,Industrials,BUY,0,0.25,0.25,0.00025,0.7450442314,True,two_of_three,3
+2025-11-26,2025H2,historical,85,000063,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-11-26,2025H2,historical,85,000651,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-11-26,2025H2,historical,85,002142,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-11-26,2025H2,historical,85,002460,赣锋锂业,Materials,BUY,0,0.25,0.25,0.00025,0.2039560378,True,two_of_three,2
+2025-11-26,2025H2,historical,85,301291,明阳电气,Industrials,BUY,0,0.25,0.25,0.00025,0.7355573773,True,two_of_three,2
+2025-11-26,2025H2,historical,85,600519,贵州茅台,Consumer Staples,BUY,0,0.25,0.25,0.00025,0.4386772513,True,two_of_three,2
+2025-11-26,2025H2,historical,85,601919,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-11-26,2025H2,historical,85,688525,佰维存储,Technology,BUY,0,0.25,0.25,0.00025,0.8033189774,True,two_of_three,2
+2025-12-10,2025H2,historical,86,000333,美的集团,Consumer Discretionary,BUY,0,0.25,0.25,0.00025,0.2075392008,True,two_of_three,2
+2025-12-10,2025H2,historical,86,002460,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-12-10,2025H2,historical,86,002466,天齐锂业,Materials,BUY,0,0.25,0.25,0.00025,0.3963400126,True,two_of_three,2
+2025-12-10,2025H2,historical,86,301291,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-12-10,2025H2,historical,86,600519,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-12-10,2025H2,historical,86,601138,工业富联,Technology,BUY,0,0.25,0.25,0.00025,0.4533875883,True,two_of_three,2
+2025-12-10,2025H2,historical,86,601872,招商轮船,Industrials,BUY,0,0.25,0.25,0.00025,0.1064220816,True,two_of_three,2
+2025-12-10,2025H2,historical,86,688525,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-12-24,2025H2,historical,87,000333,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-12-24,2025H2,historical,87,000538,云南白药,Health Care,BUY,0,0.25,0.25,0.00025,0.3211047053,True,two_of_three,2
+2025-12-24,2025H2,historical,87,002466,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-12-24,2025H2,historical,87,002837,英维克,Industrials,BUY,0,0.25,0.25,0.00025,0.4878331423,True,two_of_three,2
+2025-12-24,2025H2,historical,87,600030,中信证券,Financials,BUY,0,0.25,0.25,0.00025,0.5699121356,True,two_of_three,2
+2025-12-24,2025H2,historical,87,601138,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-12-24,2025H2,historical,87,601872,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2025-12-24,2025H2,historical,87,601985,中国核电,Utilities,BUY,0,0.25,0.25,0.00025,0.4220104218,True,two_of_three,2
+2026-01-05,2026H1,reporting,88,002001,新和成,Materials,BUY,0,0.25,0.25,0.0005,0.1090657488,True,two_of_three,3
+2026-01-05,2026H1,reporting,88,002050,三花智控,Industrials,BUY,0,0.25,0.25,0.0005,0.1229178384,True,two_of_three,3
+2026-01-05,2026H1,reporting,88,600030,中信证券,Financials,BUY,0,0.25,0.25,0.0005,0.1421185136,True,two_of_three,3
+2026-01-05,2026H1,reporting,88,688521,芯原股份,Technology,BUY,0,0.25,0.25,0.0005,0.3080888689,True,two_of_three,3
+2026-01-19,2026H1,reporting,89,002001,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2026-01-19,2026H1,reporting,89,002050,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2026-01-19,2026H1,reporting,89,002202,金风科技,Industrials,BUY,0,0.25,0.25,0.00025,0.4658450782,True,two_of_three,3
+2026-01-19,2026H1,reporting,89,600030,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2026-01-19,2026H1,reporting,89,601698,中国卫通,Communication Services,BUY,0,0.25,0.25,0.00025,0.1032808945,True,two_of_three,3
+2026-01-19,2026H1,reporting,89,603993,洛阳钼业,Materials,BUY,0,0.25,0.25,0.00025,0.1436014473,True,two_of_three,3
+2026-02-02,2026H1,reporting,90,000300,CSI300 fallback,CSI300,BUY,0,1,1,0.001,,False,two_of_three,1
+2026-02-02,2026H1,reporting,90,002202,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2026-02-02,2026H1,reporting,90,601698,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2026-02-02,2026H1,reporting,90,603993,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2026-02-02,2026H1,reporting,90,688521,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2026-02-24,2026H1,reporting,91,000300,,,SELL,1,0,-1,0.001,,True,two_of_three,3
+2026-02-24,2026H1,reporting,91,002007,华兰生物,Health Care,BUY,0,0.25,0.25,0.00025,0.1370822042,True,two_of_three,3
+2026-02-24,2026H1,reporting,91,601600,中国铝业,Materials,BUY,0,0.25,0.25,0.00025,0.0790669471,True,two_of_three,3
+2026-02-24,2026H1,reporting,91,601872,招商轮船,Industrials,BUY,0,0.25,0.25,0.00025,0.3737108111,True,two_of_three,3
+2026-02-24,2026H1,reporting,91,603629,利通电子,Technology,BUY,0,0.25,0.25,0.00025,0.2483046949,True,two_of_three,3
+2026-03-10,2026H1,reporting,92,002007,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-03-10,2026H1,reporting,92,301308,江波龙,Technology,BUY,0,0.25,0.25,0.00025,0.4071347713,True,two_of_three,2
+2026-03-10,2026H1,reporting,92,600026,中远海能,Industrials,BUY,0,0.25,0.25,0.00025,0.378359437,True,two_of_three,2
+2026-03-10,2026H1,reporting,92,600900,长江电力,Utilities,BUY,0,0.25,0.25,0.00025,0.2344042808,True,two_of_three,2
+2026-03-10,2026H1,reporting,92,600938,中国海油,Energy,BUY,0,0.25,0.25,0.00025,0.1401763707,True,two_of_three,2
+2026-03-10,2026H1,reporting,92,601600,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-03-10,2026H1,reporting,92,601872,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-03-10,2026H1,reporting,92,603629,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-03-24,2026H1,reporting,93,000300,CSI300 fallback,CSI300,BUY,0,1,1,0.001,,False,two_of_three,1
+2026-03-24,2026H1,reporting,93,301308,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2026-03-24,2026H1,reporting,93,600026,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2026-03-24,2026H1,reporting,93,600900,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2026-03-24,2026H1,reporting,93,600938,,,SELL,0.25,0,-0.25,0.00025,,False,two_of_three,1
+2026-04-22,2026H1,reporting,95,000300,,,SELL,1,0,-1,0.001,,True,two_of_three,2
+2026-04-22,2026H1,reporting,95,002475,立讯精密,Technology,BUY,0,0.25,0.25,0.00025,0.2601981163,True,two_of_three,2
+2026-04-22,2026H1,reporting,95,600522,中天科技,Industrials,BUY,0,0.25,0.25,0.00025,0.4403361976,True,two_of_three,2
+2026-04-22,2026H1,reporting,95,601985,中国核电,Utilities,BUY,0,0.25,0.25,0.00025,0.06890843064,True,two_of_three,2
+2026-04-22,2026H1,reporting,95,603806,福斯特,Materials,BUY,0,0.25,0.25,0.00025,0.1269360334,True,two_of_three,2
+2026-05-11,2026H1,reporting,96,002475,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2026-05-11,2026H1,reporting,96,002709,天赐材料,Materials,BUY,0,0.25,0.25,0.00025,0.3215959966,True,two_of_three,3
+2026-05-11,2026H1,reporting,96,300133,华策影视,Communication Services,BUY,0,0.25,0.25,0.00025,0.06519553065,True,two_of_three,3
+2026-05-11,2026H1,reporting,96,601985,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2026-05-11,2026H1,reporting,96,603806,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,3
+2026-05-11,2026H1,reporting,96,688521,芯原股份,Technology,BUY,0,0.25,0.25,0.00025,0.3110358119,True,two_of_three,3
+2026-05-25,2026H1,reporting,97,002709,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-05-25,2026H1,reporting,97,300782,卓胜微,Technology,BUY,0,0.25,0.25,0.00025,0.3261427283,True,two_of_three,2
+2026-05-25,2026H1,reporting,97,600522,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-05-25,2026H1,reporting,97,603806,福斯特,Materials,BUY,0,0.25,0.25,0.00025,0.1305658072,True,two_of_three,2
+2026-05-25,2026H1,reporting,97,688521,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-05-25,2026H1,reporting,97,688676,金盘科技,Industrials,BUY,0,0.25,0.25,0.00025,0.540789783,True,two_of_three,2
+2026-06-08,2026H1,reporting,98,300133,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-06-08,2026H1,reporting,98,300548,长芯博创,Technology,BUY,0,0.25,0.25,0.00025,0.7614300251,True,two_of_three,2
+2026-06-08,2026H1,reporting,98,300782,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-06-08,2026H1,reporting,98,301291,明阳电气,Industrials,BUY,0,0.25,0.25,0.00025,1.058489799,True,two_of_three,2
+2026-06-08,2026H1,reporting,98,603392,万泰生物,Health Care,BUY,0,0.25,0.25,0.00025,0.2124550045,True,two_of_three,2
+2026-06-08,2026H1,reporting,98,688676,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-06-23,2026H1,reporting,99,300408,三环集团,Technology,BUY,0,0.25,0.25,0.00025,1.029317617,True,two_of_three,2
+2026-06-23,2026H1,reporting,99,300548,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-06-23,2026H1,reporting,99,301291,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-06-23,2026H1,reporting,99,600026,中远海能,Industrials,BUY,0,0.25,0.25,0.00025,0.5205975771,True,two_of_three,2
+2026-06-23,2026H1,reporting,99,603260,合盛硅业,Materials,BUY,0,0.25,0.25,0.00025,0.5342959762,True,two_of_three,2
+2026-06-23,2026H1,reporting,99,603806,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-07-01,2026H2_PARTIAL,reporting,100,300408,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-07-01,2026H2_PARTIAL,reporting,100,301291,明阳电气,Industrials,BUY,0,0.25,0.25,0.00025,0.6507356167,True,two_of_three,2
+2026-07-01,2026H2_PARTIAL,reporting,100,301666,大普微,Technology,BUY,0,0.25,0.25,0.00025,1.067633986,True,two_of_three,2
+2026-07-01,2026H2_PARTIAL,reporting,100,600026,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-07-01,2026H2_PARTIAL,reporting,100,601600,中国铝业,Materials,BUY,0,0.25,0.25,0.00025,0.7015627623,True,two_of_three,2
+2026-07-01,2026H2_PARTIAL,reporting,100,603260,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-07-15,2026H2_PARTIAL,reporting,101,300408,三环集团,Technology,BUY,0,0.25,0.25,0.00025,1.299153924,True,two_of_three,2
+2026-07-15,2026H2_PARTIAL,reporting,101,301291,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-07-15,2026H2_PARTIAL,reporting,101,301666,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-07-15,2026H2_PARTIAL,reporting,101,600184,光电股份,Industrials,BUY,0,0.25,0.25,0.00025,0.7320377231,True,two_of_three,2
+2026-07-15,2026H2_PARTIAL,reporting,101,601600,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2
+2026-07-15,2026H2_PARTIAL,reporting,101,603259,药明康德,Health Care,BUY,0,0.25,0.25,0.00025,0.1094728187,True,two_of_three,2
+2026-07-15,2026H2_PARTIAL,reporting,101,603260,合盛硅业,Materials,BUY,0,0.25,0.25,0.00025,0.7000020742,True,two_of_three,2
+2026-07-15,2026H2_PARTIAL,reporting,101,603392,,,SELL,0.25,0,-0.25,0.00025,,True,two_of_three,2

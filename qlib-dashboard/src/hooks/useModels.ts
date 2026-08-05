@@ -19,7 +19,7 @@ const CHANNEL_ORDER: Record<GovernedRunSummary['channel'], number> = {
 const REQUIRED_FORMAL_VERSIONS = new Set([
   'qqqi_qqq_tqqq_v4_2',
   'us_x1_1',
-  'cn_x1_0',
+  'cn_x1_1',
 ]);
 
 function sortRuns(runs: GovernedRunSummary[]): GovernedRunSummary[] {
@@ -61,7 +61,7 @@ export function useModels() {
         formal.runs.length !== REQUIRED_FORMAL_VERSIONS.size
         || [...REQUIRED_FORMAL_VERSIONS].some((version) => !formalVersions.has(version))
       ) {
-        throw new Error('Formal Bundle v2 catalog does not exactly contain QQQ Rotation v4.2, US x1.1 and CN x1.0.');
+        throw new Error('Formal Bundle v2 catalog does not exactly contain QQQ Rotation v4.2, US x1.1 and CN x1.1.');
       }
       const byId = new Map(repositoryModels.map((model) => [model.id, model]));
       const formalRuns = formal.runs.map((run) => ({
