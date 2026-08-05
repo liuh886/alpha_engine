@@ -1,0 +1,36 @@
+name: CN130 PIT Event Families Phase 1 Bootstrap
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/cn130_event_phase1_payload.chunk*
+      - scripts/data/apply_cn130_event_phase1_payload.py
+      - .github/workflows/cn130-pit-event-families-phase1-bootstrap.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: data/cn130-pit-event-families-phase1-v1
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify and apply builder payload
+        run: python scripts/data/apply_cn130_event_phase1_payload.py
+      - name: Commit builder implementation
+        run: |
+          git config user.name 'AlphaEngine Data Research Agent'
+          git config user.email 'data-research-agent@alphaengine.local'
+          git add -A
+          git commit -m 'data: implement CN130 PIT event family phase 1 builder'
+          git push origin HEAD:data/cn130-pit-event-families-phase1-v1
