@@ -12,6 +12,7 @@ on:
       - tests/test_cn130_pit_event_family_audit.py
       - configs/data_contracts/company_information_event_v1.yaml
       - docs/research/cn130_pit_event_families_phase1_*.md
+      - data/research/cn130_pit_event_families_phase1_v1/**
       - .github/workflows/cn130-pit-event-families-phase1.yml
   workflow_dispatch:
 
@@ -81,22 +82,29 @@ jobs:
       - name: Execute frozen source cache twice
         run: |
           EXECUTION_AT="2026-08-05T13:51:13+00:00"
-          uv run python scripts/data/build_cn130_pit_event_families.py \
-            --provider-dir .research/provider/data/providers/cn \
-            --ledger-dir .research/ledgers/calibration \
-            --ledger-dir .research/ledgers/frozen \
-            --source-cache-root .research/source-cache \
-            --output-dir .research/run-a \
-            --execution-at "$EXECUTION_AT"
-          uv run python scripts/data/build_cn130_pit_event_families.py \
-            --provider-dir .research/provider/data/providers/cn \
-            --ledger-dir .research/ledgers/calibration \
-            --ledger-dir .research/ledgers/frozen \
-            --source-cache-root .research/source-cache \
-            --output-dir .research/run-b \
-            --execution-at "$EXECUTION_AT"
-      - name: Verify deterministic evidence
-        run: diff -ru .research/run-a .research/run-b
+          for RUN in a b; do
+            uv run python scripts/data/build_cn130_pit_event_families.py \
+              --provider-dir .research/provider/data/providers/cn \
+              --ledger-dir .research/ledgers/calibration \
+              --ledger-dir .research/ledgers/frozen \
+              --source-cache-root .research/source-cache \
+              --output-dir ".research/run-${RUN}" \
+              --execution-at "$EXECUTION_AT"
+          done
+      - name: Verify deterministic and committed evidence
+        run: |
+          diff -ru .research/run-a .research/run-b
+          for FILE in \
+            decision.json \
+            event_family_summary.csv \
+            event_family_half_year.csv \
+            overlap_matrix.csv \
+            manifest.json \
+            report.md; do
+            diff -u \
+              "data/research/cn130_pit_event_families_phase1_v1/${FILE}" \
+              ".research/run-a/${FILE}"
+          done
       - name: Package complete evidence
         if: always()
         run: |
@@ -108,7 +116,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cn130-pit-event-families-phase1-${{ github.run_id }}
+          name: cn130-pit-event-families-phase1-certified-${{ github.run_id }}
           path: artifacts/cn130-pit-event-families-phase1/
           if-no-files-found: error
           retention-days: 30
