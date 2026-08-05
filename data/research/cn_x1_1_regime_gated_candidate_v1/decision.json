@@ -1,0 +1,32 @@
+{
+  "automatic_production_promotion": false,
+  "candidate_authorized": true,
+  "candidate_name": "CN x1.1 Candidate A — Regime-Gated Sector Breadth",
+  "decision": "cn_x1_1_regime_gated_candidate_authorized",
+  "economic_evidence_changed": false,
+  "evaluation_contract": "benchmark_fallback_aware_v1",
+  "gates": {
+    "at_least_two_neighbor_rules_positive": true,
+    "both_states_present_2023_to_2025": true,
+    "combined_2026_relative_excess_positive": true,
+    "frozen_economic_identity_verified": true,
+    "historical_40bps_relative_excess_positive": true,
+    "historical_max_drawdown_above_minus_25pct": true,
+    "historical_positive_half_years_at_least_5_of_7": true,
+    "historical_relative_excess_positive": true,
+    "historical_risk_on_active_hit_rate_at_least_50pct": true,
+    "historical_worst_half_year_above_minus_10pct": true,
+    "leave_one_top_name_positive": true,
+    "leave_one_top_sector_positive": true,
+    "risk_off_relative_no_worse_than_cost_drag": true,
+    "risk_on_relative_excess_positive": true,
+    "risk_on_share_between_25_and_80pct": true
+  },
+  "model_rules_changed": false,
+  "replaced_gate": "historical_all_period_hit_rate_at_least_50pct",
+  "replacement_gate": "historical_risk_on_active_hit_rate_at_least_50pct",
+  "research_only": true,
+  "risk_on_active_hit_rate": 0.5897435897,
+  "schema_version": "cn_x1_1_fallback_aware_certification_v1",
+  "trade_ready": false
+}

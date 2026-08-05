@@ -1,0 +1,5 @@
+year,risk_on_count,risk_off_count,risk_on_share,both_states_present
+2022,3,10,0.2307692308,True
+2023,7,18,0.28,True
+2024,13,12,0.52,True
+2025,16,9,0.64,True

@@ -1,0 +1,5 @@
+rule,rebalance_sessions,relative_excess,max_drawdown,positive
+trend_only,10,0.3815269356,-0.3918921399,True
+momentum_and_breadth,10,0.4416424326,-0.2499087217,True
+three_of_three,10,0.3271767217,-0.3435370235,True
+two_of_three,15,0.09293505424,-0.1825168077,True

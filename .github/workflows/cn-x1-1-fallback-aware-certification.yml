@@ -1,0 +1,119 @@
+name: CN x1.1 Fallback-Aware Certification
+
+on:
+  pull_request:
+    branches:
+      - research/cn-x1-1-regime-gated-sector-breadth-v1
+    paths:
+      - src/research/cn_x1_1_fallback_aware_certification.py
+      - scripts/certify_cn_x1_1_regime_gated.py
+      - tests/test_cn_x1_1_fallback_aware_certification.py
+      - configs/research_experiments/cn_x1_1_fallback_aware_certification_v1.yaml
+      - docs/research/cn_x1_1_fallback_aware_*.md
+      - data/research/cn_x1_1_regime_gated_candidate_v1/**
+      - .github/workflows/cn-x1-1-fallback-aware-certification.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PRICE_PROVIDER_ARTIFACT_ID: '8850463785'
+  CALIBRATION_LEDGER_ARTIFACT_ID: '8927662386'
+  FROZEN_LEDGER_ARTIFACT_ID: '8926572265'
+  PYTHONPATH: .
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  certify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint and focused tests
+        run: |
+          uv run ruff check \
+            src/research/cn_x1_1_fallback_aware_certification.py \
+            scripts/certify_cn_x1_1_regime_gated.py \
+            tests/test_cn_x1_1_fallback_aware_certification.py
+          uv run pytest \
+            tests/test_cn130_tail_factor_discovery.py \
+            tests/test_cn_x1_1_sector_breadth.py \
+            tests/test_cn_x1_1_regime_gated.py \
+            tests/test_cn_x1_1_fallback_aware_certification.py \
+            -q --strict-markers --tb=short
+      - name: Download immutable provider and score ledgers
+        run: |
+          mkdir -p .research/provider-artifact .research/provider
+          mkdir -p .research/calibration-artifact .research/frozen-artifact
+          mkdir -p .research/ledgers/calibration .research/ledgers/frozen
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PRICE_PROVIDER_ARTIFACT_ID}/zip" > .research/provider.zip
+          unzip -q .research/provider.zip -d .research/provider-artifact
+          tar -xf .research/provider-artifact/cn-provider-2026-08-03.tar -C .research/provider
+          test "$(python -c "import json; print(json.load(open('.research/provider/data/providers/cn/provider_manifest.json'))['provider_identity_sha256'])")" = "abae71f037571a9a847d4582e0bea9fabdd71796cac54a70aa7c6d07b668eeb0"
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CALIBRATION_LEDGER_ARTIFACT_ID}/zip" > .research/calibration.zip
+          unzip -q .research/calibration.zip -d .research/calibration-artifact
+          cp .research/calibration-artifact/calibration-score-ledgers/*.csv.gz .research/ledgers/calibration/
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${FROZEN_LEDGER_ARTIFACT_ID}/zip" > .research/frozen.zip
+          unzip -q .research/frozen.zip -d .research/frozen-artifact
+          cp .research/frozen-artifact/score_ledgers/*.csv.gz .research/ledgers/frozen/
+      - name: Rebuild and certify twice
+        run: |
+          for RUN in a b; do
+            uv run python scripts/certify_cn_x1_1_regime_gated.py \
+              --root . \
+              --provider-dir .research/provider/data/providers/cn \
+              --ledger-dir .research/ledgers/calibration \
+              --ledger-dir .research/ledgers/frozen \
+              --output-dir ".research/run-${RUN}"
+          done
+      - name: Verify deterministic and committed certified evidence
+        run: |
+          diff -ru .research/run-a .research/run-b
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          decision = json.loads(Path('.research/run-a/decision.json').read_text())
+          assert decision['decision'] == 'cn_x1_1_regime_gated_candidate_authorized'
+          assert decision['candidate_authorized'] is True
+          assert decision['model_rules_changed'] is False
+          assert decision['economic_evidence_changed'] is False
+          assert decision['trade_ready'] is False
+          PY
+          for FILE in \
+            decision.json \
+            evaluation_contract.json \
+            model_spec.json \
+            evaluation_summary.csv \
+            half_year_results.csv \
+            yearly_state_coverage.csv \
+            neighbor_rule_summary.csv \
+            manifest.json \
+            report.md; do
+            diff -u \
+              "data/research/cn_x1_1_regime_gated_candidate_v1/${FILE}" \
+              ".research/run-a/${FILE}"
+          done
+      - name: Package complete evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/cn-x1-1-fallback-aware
+          test ! -d .research/run-a || cp -R .research/run-a artifacts/cn-x1-1-fallback-aware/final
+          cp configs/research_experiments/cn_x1_1_fallback_aware_certification_v1.yaml artifacts/cn-x1-1-fallback-aware/
+          cp docs/research/cn_x1_1_fallback_aware_certification_2026-08-05.md artifacts/cn-x1-1-fallback-aware/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cn-x1-1-fallback-aware-certified-${{ github.run_id }}
+          path: artifacts/cn-x1-1-fallback-aware/
+          if-no-files-found: error
+          retention-days: 30

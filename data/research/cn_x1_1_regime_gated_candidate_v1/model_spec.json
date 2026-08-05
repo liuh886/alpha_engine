@@ -1,0 +1,15 @@
+{
+  "benchmark": "000300",
+  "breadth_ma_sessions": 60,
+  "breadth_threshold": 0.5,
+  "cost_bps": 20,
+  "execution_delay_sessions": 1,
+  "horizon_sessions": 10,
+  "long_ma_sessions": 200,
+  "model_id": "cn_x1_1_regime_gated_sector_breadth_v1",
+  "momentum_sessions": 60,
+  "names_per_sector": 1,
+  "rebalance_sessions": 10,
+  "sectors": 4,
+  "votes_required": 2
+}
