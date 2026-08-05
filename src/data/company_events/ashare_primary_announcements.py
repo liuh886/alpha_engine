@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from html import unescape
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -51,17 +52,22 @@ def _timestamp(date_text: str) -> str:
     return datetime.strptime(date_text, "%Y-%m-%d").replace(tzinfo=CST).isoformat()
 
 
+def _clean_title(title: str) -> str:
+    text = unescape(re.sub(r"<[^>]+>", "", str(title or "")))
+    return re.sub(r"\s+", "", text).strip()
+
+
 def _canonical_title(title: str) -> str:
-    text = re.sub(r"\s+", "", str(title or ""))
+    text = _clean_title(title)
     for token in _SUMMARY_TOKENS:
         text = text.replace(token, "")
     return re.sub(r"[：:，,。．（）()【】\[\]《》<>·—_-]", "", text)
 
 
 def classify_buyback_title(title: str) -> str | None:
-    """Classify a primary buyback announcement without using current-state snapshots."""
+    """Classify a primary buyback announcement without current-state backfill."""
 
-    text = str(title or "")
+    text = _clean_title(title)
     if "回购" not in text:
         return None
     unrelated = (
@@ -73,68 +79,42 @@ def classify_buyback_title(title: str) -> str | None:
         "逆回购",
         "债券回购",
         "回购交易",
-        "回购注销",
+        "法律意见",
+        "核查意见",
     )
     if any(token in text for token in unrelated):
         return None
-    if any(token in text for token in ("回购完成", "实施完成", "实施完毕", "完成回购")):
-        return "completion"
-    if "首次回购" in text or "首次实施回购" in text:
-        return "first_execution"
     if any(
         token in text
-        for token in (
-            "回购进展",
-            "累计回购",
-            "回购股份比例达到",
-            "回购公司股份的进展",
-            "回购公司股份进展",
-            "回购股份进展",
-        )
+        for token in ("回购完成", "实施完成", "实施完毕", "实施结果", "结果暨股份变动", "期限届满")
     ):
+        return "completion"
+    if "首次" in text and "回购" in text:
+        return "first_execution"
+    if "进展" in text or "累计回购" in text or "比例达到" in text:
         return "progress"
     if "股东大会" in text and any(token in text for token in ("通过", "决议", "审议")):
         return "approval"
-    if any(
-        token in text
-        for token in (
-            "回购方案",
-            "回购报告书",
-            "回购股份预案",
-            "董事会提议回购",
-            "提议回购",
-            "调整回购",
-            "变更回购",
-        )
-    ):
+    if any(token in text for token in ("方案", "报告书", "提议回购", "董事会提议")):
         return "plan"
     return None
 
 
 def classify_restricted_unlock_title(title: str) -> str | None:
-    """Retain only announcements explicitly opening restricted shares for trading."""
+    """Retain primary documents that explicitly open restricted shares for trading."""
 
-    text = str(title or "")
-    excluded = (
-        "授予",
-        "激励计划",
-        "回购注销",
-        "解除限售条件成就",
-        "限售期",
-        "锁定期",
-        "非公开发行",
-        "向特定对象发行",
-    )
-    if any(token in text for token in excluded):
+    text = _clean_title(title)
+    if any(token in text for token in ("核查意见", "法律意见书", "律师事务所")):
         return None
-    included = (
-        "限售股份上市流通",
-        "限售股上市流通",
-        "解除限售股份上市流通",
-        "解除限售股票上市流通",
-        "限售股份解除限售",
+    explicit_listing = "上市流通" in text and any(
+        token in text
+        for token in ("限售", "解除限售", "首次公开发行前已发行股份", "首次公开发行部分股份")
     )
-    return "scheduled" if any(token in text for token in included) else None
+    if explicit_listing:
+        return "scheduled"
+    if "限售股份解除限售" in text:
+        return "scheduled"
+    return None
 
 
 def _source_hash(row: Mapping[str, Any]) -> str:
@@ -171,7 +151,7 @@ def cninfo_primary_announcements_to_events(
     candidates: list[dict[str, Any]] = []
     for raw in frame.to_dict(orient="records"):
         symbol = str(_first(raw, ("代码", "股票代码", "symbol")) or "").zfill(6)
-        title = str(_first(raw, ("公告标题", "title")) or "").strip()
+        title = _clean_title(_first(raw, ("公告标题", "title")) or "")
         announced_date = _date_text(raw)
         document_id = _document_id(raw)
         stage = classifier(title)

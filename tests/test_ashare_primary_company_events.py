@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from scripts.data.build_cn130_pit_event_families_phase2 import phase2_overlap_matrix
 from src.data.company_events.ashare_primary_announcements import (
     classify_buyback_title,
     classify_restricted_unlock_title,
@@ -88,3 +89,54 @@ def test_expected_empty_cninfo_error_is_narrow() -> None:
 
     assert is_expected_empty_cninfo_error(expected)
     assert not is_expected_empty_cninfo_error(unexpected)
+
+
+def test_cninfo_markup_is_removed_before_title_classification() -> None:
+    assert (
+        classify_buyback_title("关于<em>回购</em>公司股份的进展公告")
+        == "progress"
+    )
+    assert (
+        classify_restricted_unlock_title(
+            "关于首次公开发行部分<em>限</em><em>售</em>股上市流通公告"
+        )
+        == "scheduled"
+    )
+
+
+def test_unlock_listing_language_can_include_incentive_plan_but_not_broker_opinion() -> None:
+    assert (
+        classify_restricted_unlock_title(
+            "关于2021年限制性股票激励计划解除限售股份上市流通的提示性公告"
+        )
+        == "scheduled"
+    )
+    assert (
+        classify_restricted_unlock_title(
+            "证券公司关于首次公开发行限售股上市流通的核查意见"
+        )
+        is None
+    )
+
+
+def test_phase2_overlap_matrix_uses_phase2_families() -> None:
+    events = pd.DataFrame(
+        [
+            {"event_family": "buyback", "symbol": "000001", "announced_date": "2024-01-01"},
+            {
+                "event_family": "restricted_unlock",
+                "symbol": "000001",
+                "announced_date": "2024-01-01",
+            },
+        ]
+    )
+
+    result = phase2_overlap_matrix(events)
+
+    assert set(result["left_family"]) == {"buyback", "restricted_unlock"}
+    cross = result.loc[
+        (result["left_family"] == "buyback")
+        & (result["right_family"] == "restricted_unlock")
+    ].iloc[0]
+    assert cross["overlap_count"] == 1
+    assert cross["jaccard"] == 1.0

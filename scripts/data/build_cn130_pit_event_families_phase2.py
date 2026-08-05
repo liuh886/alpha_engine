@@ -19,7 +19,6 @@ from scripts.data.build_cn130_pit_event_families import (
     load_pool,
     load_r0_ledgers,
     load_sessions,
-    overlap_matrix,
     sha256,
     write_csv,
     write_json,
@@ -31,6 +30,31 @@ from src.data.company_events.ashare_primary_announcements import (
 from src.data.company_events.event_store import CompanyInformationEvent
 
 FAMILIES = ("buyback", "restricted_unlock")
+
+
+def phase2_overlap_matrix(events: pd.DataFrame) -> pd.DataFrame:
+    """Measure same-symbol/date overlap only across the Phase 2 families."""
+
+    keys: dict[str, set[tuple[str, str]]] = {}
+    for family in FAMILIES:
+        family_rows = events.loc[events["event_family"] == family]
+        keys[family] = set(
+            zip(family_rows["symbol"], family_rows["announced_date"], strict=False)
+        )
+    rows: list[dict[str, Any]] = []
+    for left in FAMILIES:
+        for right in FAMILIES:
+            intersection = keys[left] & keys[right]
+            denominator = len(keys[left] | keys[right])
+            rows.append(
+                {
+                    "left_family": left,
+                    "right_family": right,
+                    "overlap_count": len(intersection),
+                    "jaccard": len(intersection) / denominator if denominator else 0.0,
+                }
+            )
+    return pd.DataFrame(rows)
 
 
 def _cache_path(root: Path, family: str, symbol: str) -> Path:
@@ -189,7 +213,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         )
     summary = pd.DataFrame(summary_rows)
     write_csv(output / "event_family_summary.csv", summary)
-    write_csv(output / "overlap_matrix.csv", overlap_matrix(event_frame))
+    write_csv(output / "overlap_matrix.csv", phase2_overlap_matrix(event_frame))
 
     provider_status = pd.DataFrame(receipts)
     if not provider_status.empty:
