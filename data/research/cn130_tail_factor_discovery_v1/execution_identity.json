@@ -1,0 +1,7 @@
+{
+  "classification_sha256": "d1ef3bd06c0953c7e78fa0ba99c372da714ddce67203909d195d73e9eec61d15",
+  "provider_cutoff": "2026-08-03",
+  "provider_identity_sha256": "abae71f037571a9a847d4582e0bea9fabdd71796cac54a70aa7c6d07b668eeb0",
+  "score_ledger_files": 60,
+  "universe_sha256": "4ce5b95e60d38a13e4852fb6f7a3a6437b55d6da0fb317ad553d114e85158529"
+}
