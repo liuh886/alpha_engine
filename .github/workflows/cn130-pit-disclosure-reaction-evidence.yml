@@ -1,0 +1,90 @@
+name: CN130 PIT Disclosure Reaction Evidence
+
+on:
+  pull_request:
+    branches:
+      - research/cn130-pit-fundamental-veto-v1
+    paths:
+      - configs/research_experiments/cn130_pit_disclosure_reaction_v1.yaml
+      - docs/research/cn130_pit_disclosure_reaction_*.md
+      - scripts/run_cn130_pit_disclosure_reaction.py
+      - tests/test_cn130_pit_disclosure_reaction.py
+      - .github/workflows/cn130-pit-disclosure-reaction-evidence.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PRICE_PROVIDER_ARTIFACT_ID: '8850463785'
+  PIT_SOURCE_ARTIFACT_ID: '8926572265'
+  CALIBRATION_LEDGER_ARTIFACT_ID: '8927662386'
+  PYTHONPATH: .
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint and focused tests
+        run: |
+          uv run ruff check \
+            scripts/run_cn130_pit_disclosure_reaction.py \
+            tests/test_cn130_pit_disclosure_reaction.py
+          uv run pytest tests/test_cn130_pit_disclosure_reaction.py -q --strict-markers --tb=short
+      - name: Download immutable price provider
+        run: |
+          mkdir -p .research/provider-artifact .research/provider
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PRICE_PROVIDER_ARTIFACT_ID}/zip" > .research/provider.zip
+          unzip -q .research/provider.zip -d .research/provider-artifact
+          tar -xf .research/provider-artifact/cn-provider-2026-08-03.tar -C .research/provider
+      - name: Download frozen PIT source and validation ledgers
+        run: |
+          mkdir -p .research/frozen
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PIT_SOURCE_ARTIFACT_ID}/zip" > .research/frozen.zip
+          unzip -q .research/frozen.zip -d .research/frozen
+          test "$(sha256sum .research/frozen/event-population/fundamentals/events.jsonl | awk '{print $1}')" = "9d0babbf78a9a95272c15a94b56306194ff0a320d4fb92de4f7f78951fc7b8c7"
+      - name: Download frozen calibration ledgers
+        run: |
+          mkdir -p .research/calibration/score_ledgers .research/calibration-artifact
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CALIBRATION_LEDGER_ARTIFACT_ID}/zip" > .research/calibration.zip
+          unzip -q .research/calibration.zip -d .research/calibration-artifact
+          cp .research/calibration-artifact/calibration-score-ledgers/*.csv.gz .research/calibration/score_ledgers/
+      - name: Run staged disclosure-reaction study twice
+        run: |
+          for run in a b; do
+            uv run python scripts/run_cn130_pit_disclosure_reaction.py \
+              --provider-dir .research/provider/data/providers/cn \
+              --calibration-ledger-dir .research/calibration \
+              --frozen-ledger-dir .research/frozen \
+              --events-path .research/frozen/event-population/fundamentals/events.jsonl \
+              --output-dir ".research/run-${run}"
+          done
+      - name: Verify deterministic evidence
+        run: diff -ru .research/run-a .research/run-b
+      - name: Package complete evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/cn130-pit-disclosure-reaction
+          test ! -d .research/run-a || cp -R .research/run-a artifacts/cn130-pit-disclosure-reaction/final
+          cp configs/research_experiments/cn130_pit_disclosure_reaction_v1.yaml artifacts/cn130-pit-disclosure-reaction/
+          cp docs/research/cn130_pit_disclosure_reaction_preregistration_2026-08-05.md artifacts/cn130-pit-disclosure-reaction/
+          cp .research/frozen/event-population/fundamentals/coverage.json artifacts/cn130-pit-disclosure-reaction/fundamental_source_coverage.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cn130-pit-disclosure-reaction-${{ github.run_id }}
+          path: artifacts/cn130-pit-disclosure-reaction/
+          if-no-files-found: error
+          retention-days: 30
