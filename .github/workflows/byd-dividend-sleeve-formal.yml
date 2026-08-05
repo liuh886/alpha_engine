@@ -1,0 +1,123 @@
+name: BYD Dividend Sleeve Formal Baseline
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "configs/models/byd_dividend_sleeve_v1_0.yaml"
+      - "configs/models/model_registry_v1.yaml"
+      - "scripts/promote_byd_dividend_sleeve_formal.py"
+      - "tests/test_promote_byd_dividend_sleeve_formal.py"
+      - "src/research/byd_515180_allocation.py"
+      - "src/research/byd_515180_execution.py"
+      - "data/research/byd_canonical_v1_snapshot.tar.xz"
+      - "data/research/515180_canonical_v1_artifact.zip.b64"
+      - "data/research/byd_515180_prospective/**"
+      - "data/research/formal_backtests/catalog.json"
+      - "data/research/formal_backtests/freshness.json"
+      - "data/research/formal_backtests/byd_dividend_sleeve_v1_0.json"
+      - ".github/workflows/byd-dividend-sleeve-formal.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: byd-dividend-sleeve-formal-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  promote-and-reproduce:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Verify immutable model inputs
+        run: |
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > "$RUNNER_TEMP/515180-canonical-v1.zip"
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  $RUNNER_TEMP/515180-canonical-v1.zip" | sha256sum --check --strict
+      - name: Lint and contract tests
+        run: |
+          uv run ruff check \
+            scripts/promote_byd_dividend_sleeve_formal.py \
+            tests/test_promote_byd_dividend_sleeve_formal.py
+          uv run mypy scripts/promote_byd_dividend_sleeve_formal.py
+          uv run pytest \
+            tests/test_promote_byd_dividend_sleeve_formal.py \
+            tests/test_byd_515180_allocation.py \
+            tests/test_byd_515180_prospective.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Extract immutable model inputs
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/data/byd_canonical_v1 artifacts/data/515180_canonical_v1
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
+          unzip -q "$RUNNER_TEMP/515180-canonical-v1.zip" -d artifacts/data/515180_canonical_v1
+      - name: Build accepted formal package
+        run: |
+          rm -rf artifacts/formal-backtests
+          cp -a data/research/formal_backtests artifacts/formal-backtests
+          uv run python scripts/promote_byd_dividend_sleeve_formal.py \
+            --root artifacts/formal-backtests \
+            --byd-dir artifacts/data/byd_canonical_v1 \
+            --etf-dir artifacts/data/515180_canonical_v1 \
+            --prospective-root data/research/byd_515180_prospective \
+            --generated-at 2026-08-05T13:30:00Z \
+            --receipt artifacts/byd-formal-promotion-receipt.json
+      - name: Validate formal publication contract
+        run: |
+          uv run python scripts/verify_formal_backtest_freshness.py \
+            --root artifacts/formal-backtests \
+            --as-of 2026-08-03T09:15:00Z \
+            --receipt artifacts/byd-formal-freshness-receipt.json
+          FORMAL_BACKTEST_VALIDATION_MODE=candidate \
+            node qlib-dashboard/scripts/sync-formal-backtests.mjs
+      - name: Commit generated formal package to PR branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          set -euo pipefail
+          cp artifacts/formal-backtests/byd_dividend_sleeve_v1_0.json data/research/formal_backtests/byd_dividend_sleeve_v1_0.json
+          cp artifacts/formal-backtests/catalog.json data/research/formal_backtests/catalog.json
+          cp artifacts/formal-backtests/freshness.json data/research/formal_backtests/freshness.json
+          paths=(
+            data/research/formal_backtests/byd_dividend_sleeve_v1_0.json
+            data/research/formal_backtests/catalog.json
+            data/research/formal_backtests/freshness.json
+          )
+          if git diff --quiet -- "${paths[@]}" && [[ -z "$(git ls-files --others --exclude-standard "${paths[@]}")" ]]; then
+            echo "Formal BYD package is already byte-stable"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${paths[@]}"
+          git commit -m "release: publish BYD Dividend Sleeve V1.0 formal package"
+          branch="${{ github.event.pull_request.head.ref }}"
+          git pull --rebase origin "$branch"
+          git push origin HEAD:"$branch"
+      - name: Upload formal promotion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-dividend-sleeve-formal-${{ github.run_id }}
+          path: |
+            artifacts/formal-backtests/byd_dividend_sleeve_v1_0.json
+            artifacts/formal-backtests/catalog.json
+            artifacts/formal-backtests/freshness.json
+            artifacts/byd-formal-promotion-receipt.json
+            artifacts/byd-formal-freshness-receipt.json
+          if-no-files-found: error
+          retention-days: 90
