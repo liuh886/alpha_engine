@@ -1,0 +1,8 @@
+{
+  "creates_cn_x1_1_candidate": false,
+  "decision": "fundamental_component_not_supported",
+  "research_only": true,
+  "selected_architecture": null,
+  "selected_components": [],
+  "trade_ready": false
+}
