@@ -1,0 +1,3 @@
+event_family,unique_events,unique_symbols,primary_source_ratio,first_session_mapping_ratio,fixed_rebalance_eligible,event_driven_eligible,failure_reasons
+buyback,2037,84,1,0.999018164,False,False,fixed_rebalance_gate_failed|event_driven_gate_failed
+restricted_unlock,233,71,1,1,False,False,fixed_rebalance_gate_failed|event_driven_gate_failed|single_stage_family_event_driven_not_authorized
