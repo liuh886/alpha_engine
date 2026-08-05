@@ -9,16 +9,17 @@
     40
   ],
   "first_signal_date": "2026-08-04",
-  "last_signal_date": "2026-08-04",
-  "last_updated_at_utc": "2026-08-04T10:47:45.057947+00:00",
-  "ledger_sha256": "64997a53911906878bb29ca589cb4d95394aa196a5a0047eb9f514a322637c32",
-  "observation_count": 1,
+  "last_signal_date": "2026-08-05",
+  "last_updated_at_utc": "2026-08-05T13:10:59.904653+00:00",
+  "ledger_sha256": "a314c4dc14bc1bfa8c8d77abe9f4583177511f8faa443f5773ab61fe4b0efae0",
+  "observation_count": 2,
   "observation_sha256": {
-    "2026-08-04": "18c9505ec03d71a934717c7d47112bec2d7a74c18946bb07e786bac930a61376"
+    "2026-08-04": "18c9505ec03d71a934717c7d47112bec2d7a74c18946bb07e786bac930a61376",
+    "2026-08-05": "cad816db7049353f0aad7bedf0aba0e2d273a0502f03231b9d8d3143524cea70"
   },
   "outcome_count": 0,
   "outcome_settlement": "immutable_daily_observations_only",
-  "prospective_eligible_observation_count": 1,
+  "prospective_eligible_observation_count": 2,
   "prospective_eligible_outcome_count": 0,
   "provider_history_may_not_overwrite_existing_observations": true,
   "research_only": true,
