@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from src.data.cn_etf_candidate_canonical import SCHEMA_VERSION as CANDIDATE_SCHEMA
@@ -74,20 +73,31 @@ def load_candidate_canonical(root: Path, symbol: str) -> ETFResearchData:
     )
 
 
-def load_inputs(inputs: ScreenInputs) -> tuple[pd.DataFrame, dict[str, ETFResearchData]]:
+def load_inputs(
+    inputs: ScreenInputs,
+) -> tuple[pd.DataFrame, dict[str, ETFResearchData], dict[str, dict[str, Any]]]:
     byd = load_canonical_snapshot(inputs.byd_dir)
     byd_dataset = build_research_dataset(byd.adjusted, byd.sessions)
     byd_dataset.index = pd.to_datetime(byd_dataset.index).normalize()
-    etfs = {
-        "515180.SH": load_515180_canonical(inputs.etf_dirs["515180.SH"]),
-        "512890.SH": load_candidate_canonical(
-            inputs.etf_dirs["512890.SH"], "512890.SH"
-        ),
-        "511010.SH": load_candidate_canonical(
-            inputs.etf_dirs["511010.SH"], "511010.SH"
-        ),
+
+    etfs: dict[str, ETFResearchData] = {
+        "515180.SH": load_515180_canonical(inputs.etf_dirs["515180.SH"])
     }
-    return byd_dataset, etfs
+    blocked: dict[str, dict[str, Any]] = {}
+    for symbol in CHALLENGERS:
+        root = inputs.etf_dirs[symbol]
+        manifest_path = root / "manifest.json"
+        blocker_path = root / "data_blocked.json"
+        if manifest_path.exists():
+            etfs[symbol] = load_candidate_canonical(root, symbol)
+        elif blocker_path.exists():
+            blocker = json.loads(blocker_path.read_text(encoding="utf-8"))
+            if blocker.get("symbol") != symbol or blocker.get("status") != "data_blocked":
+                raise RuntimeError(f"invalid immutable blocker for {symbol}")
+            blocked[symbol] = blocker
+        else:
+            raise RuntimeError(f"{symbol} has neither canonical manifest nor blocker")
+    return byd_dataset, etfs, blocked
 
 
 def prepare_master_dataset(
@@ -174,7 +184,8 @@ def _window_metrics(daily: pd.DataFrame, start: str, end: str) -> dict[str, floa
 def run_screen(
     inputs: ScreenInputs,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
-    byd_dataset, etfs = load_inputs(inputs)
+    byd_dataset, etfs, blocked = load_inputs(inputs)
+    available = tuple(symbol for symbol in CANDIDATES if symbol in etfs)
     master, base = prepare_master_dataset(byd_dataset, etfs)
     cash_decision = _decision(base, use_etf=False)
     candidate_decision = _decision(base, use_etf=True)
@@ -185,7 +196,7 @@ def run_screen(
         results[("cash", cost)] = run_allocation(
             "cash", cash_view, cash_decision, cost_bps=cost
         )
-        for symbol in CANDIDATES:
+        for symbol in available:
             results[(symbol, cost)] = run_allocation(
                 symbol,
                 _view(master, symbol),
@@ -207,7 +218,7 @@ def run_screen(
     evaluation = pd.DataFrame(rows)
 
     period_rows: list[dict[str, Any]] = []
-    for symbol in CANDIDATES:
+    for symbol in available:
         positive_total = 0.0
         symbol_rows: list[dict[str, Any]] = []
         for window in ("development", "fixed_validation", "retrospective_2025_plus"):
@@ -240,7 +251,7 @@ def run_screen(
 
     correlation_rows: list[dict[str, Any]] = []
     byd_return = master["byd_close"].pct_change()
-    for symbol in CANDIDATES:
+    for symbol in available:
         key = symbol.split(".")[0]
         etf_return = master[f"{key}_close"].pct_change()
         correlation_rows.append(
@@ -270,9 +281,19 @@ def run_screen(
     reference20 = full20.loc["515180.SH"]
     reference40 = full40.loc["515180.SH"]
 
-    gate_matrix: dict[str, dict[str, Any]] = {}
+    gate_matrix: dict[str, dict[str, Any]] = {
+        symbol: {
+            "data_status": "blocked",
+            "blocker": blocker,
+            "cash_gates": {},
+            "cash_qualified": False,
+            "challenge_gates": {},
+            "challenge_qualified": False,
+        }
+        for symbol, blocker in blocked.items()
+    }
     qualified_challengers: list[str] = []
-    for symbol in CANDIDATES:
+    for symbol in available:
         current20 = full20.loc[symbol]
         current40 = full40.loc[symbol]
         symbol_periods = periods.loc[periods["candidate"] == symbol]
@@ -280,7 +301,8 @@ def run_screen(
             "cagr_delta_at_least_50bp": (
                 float(current20["cagr"] - cash20["cagr"]) >= 0.005
             ),
-            "calmar_not_below_cash": float(current20["calmar"]) >= float(cash20["calmar"]),
+            "calmar_not_below_cash": float(current20["calmar"])
+            >= float(cash20["calmar"]),
             "drawdown_not_worse_by_more_than_1pp": (
                 float(current20["max_drawdown"] - cash20["max_drawdown"]) >= -0.01
             ),
@@ -309,7 +331,8 @@ def run_screen(
             )
             challenge_gates = {
                 "stress_total_not_below_515180": (
-                    float(current40["total_return"]) >= float(reference40["total_return"])
+                    float(current40["total_return"])
+                    >= float(reference40["total_return"])
                 ),
                 "calmar_or_drawdown_path": calmar_path or drawdown_path,
             }
@@ -317,6 +340,7 @@ def run_screen(
             if challenge_qualified:
                 qualified_challengers.append(symbol)
         gate_matrix[symbol] = {
+            "data_status": "canonical_pass",
             "cash_gates": cash_gates,
             "cash_qualified": cash_qualified,
             "challenge_gates": challenge_gates,
@@ -355,7 +379,9 @@ def run_screen(
         "cutoff": CUTOFF,
         "common_sessions": int(len(master)),
         "common_eligible_opens": int(master["common_open_eligible"].sum()),
-        "candidates": list(CANDIDATES),
+        "frozen_candidates": list(CANDIDATES),
+        "available_candidates": list(available),
+        "blocked_candidates": blocked,
         "challengers": list(CHALLENGERS),
         "gate_matrix": gate_matrix,
         "governed_decision": decision,
