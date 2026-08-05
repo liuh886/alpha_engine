@@ -85,6 +85,10 @@ The 2026 data is reporting evidence only. It was not used to alter the model or 
 
 The formal catalog removes CN x1.0 from the current publication set and publishes CN x1.1 in its place. The freshness contract requires CN x1.1 to remain current through the latest completed CN session before future releases.
 
+## Release validation
+
+The promotion PR must pass the model lifecycle contract, byte-exact formal-package reproduction, current formal-backtest integrity, repository CI, and frontend publication checks before merge. The release remains blocked if any of those checks fails or if the frozen evidence identity changes.
+
 ## Governance boundary
 
 - `publication_status=accepted_formal_baseline`;
