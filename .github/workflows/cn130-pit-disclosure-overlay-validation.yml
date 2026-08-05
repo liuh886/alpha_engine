@@ -6,6 +6,7 @@ on:
       - research/cn130-pit-disclosure-reaction-v1
     paths:
       - configs/research_experiments/cn130_pit_disclosure_overlay_validation_v1.yaml
+      - data/research/cn130_pit_disclosure_overlay_validation_v1/**
       - docs/research/cn130_pit_disclosure_overlay_validation_*.md
       - scripts/run_cn130_pit_disclosure_overlay_validation.py
       - tests/test_cn130_pit_disclosure_overlay_validation.py
@@ -71,8 +72,12 @@ jobs:
               --events-path .research/frozen/event-population/fundamentals/events.jsonl \
               --output-dir ".research/run-${run}"
           done
-      - name: Verify deterministic evidence
-        run: diff -ru .research/run-a .research/run-b
+      - name: Verify deterministic and committed evidence
+        run: |
+          diff -ru .research/run-a .research/run-b
+          for file in decision.json execution_identity.json calibration_summary.csv calibration_window_increment.csv validation_summary.csv validation_window_increment.csv reporting_summary.csv report.md; do
+            cmp ".research/run-a/${file}" "data/research/cn130_pit_disclosure_overlay_validation_v1/${file}"
+          done
       - name: Package complete evidence
         if: always()
         run: |
@@ -80,10 +85,11 @@ jobs:
           test ! -d .research/run-a || cp -R .research/run-a artifacts/cn130-pit-disclosure-overlay-validation/final
           cp configs/research_experiments/cn130_pit_disclosure_overlay_validation_v1.yaml artifacts/cn130-pit-disclosure-overlay-validation/
           cp docs/research/cn130_pit_disclosure_overlay_validation_preregistration_2026-08-05.md artifacts/cn130-pit-disclosure-overlay-validation/
+          cp docs/research/cn130_pit_disclosure_overlay_validation_result_2026-08-05.md artifacts/cn130-pit-disclosure-overlay-validation/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cn130-pit-disclosure-overlay-validation-${{ github.run_id }}
+          name: cn130-pit-disclosure-overlay-validation-certified-${{ github.run_id }}
           path: artifacts/cn130-pit-disclosure-overlay-validation/
           if-no-files-found: error
           retention-days: 30
