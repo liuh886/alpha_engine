@@ -1,15 +1,12 @@
-"""Apply the Phase 1 empty-window fix and freeze the first live source cache."""
+"""Apply the Phase 1 empty-window audit fix and regression test."""
 
 from __future__ import annotations
 
 import py_compile
 from pathlib import Path
 
-BRANCH_WORKFLOW = Path(".github/workflows/cn130-pit-event-families-phase1.yml")
 BUILDER = Path("scripts/data/build_cn130_pit_event_families.py")
 TEST = Path("tests/test_cn130_pit_event_family_audit.py")
-SELF = Path(__file__)
-PATCH_WORKFLOW = Path(".github/workflows/cn130-pit-event-families-phase1-patch.yml")
 
 
 def replace_once(text: str, old: str, new: str, *, label: str) -> str:
@@ -46,40 +43,6 @@ def main() -> int:
         raise RuntimeError("regression test already exists")
     TEST.write_text(test + regression, encoding="utf-8")
     py_compile.compile(str(TEST), doraise=True)
-
-    workflow = BRANCH_WORKFLOW.read_text(encoding="utf-8")
-    workflow = replace_once(
-        workflow,
-        "  CALIBRATION_LEDGER_ARTIFACT_ID: '8927662386'\n",
-        "  CALIBRATION_LEDGER_ARTIFACT_ID: '8927662386'\n"
-        "  SOURCE_CACHE_ARTIFACT_ID: '8933376684'\n"
-        "  SOURCE_CACHE_ARTIFACT_SHA256: '53b1b1c1bf4c0fcead2e6e60283400879c7332968ddf8c08d91c00a91bd4560a'\n",
-        label="source cache env",
-    )
-    workflow = replace_once(
-        workflow,
-        "      - name: Build source cache and execute twice\n",
-        "      - name: Download frozen source cache\n"
-        "        run: |\n"
-        "          mkdir -p .research/source-cache-artifact .research/source-cache\n"
-        "          gh api \"/repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_CACHE_ARTIFACT_ID}/zip\" > .research/source-cache.zip\n"
-        "          test \"$(sha256sum .research/source-cache.zip | awk '{print $1}')\" = \"${SOURCE_CACHE_ARTIFACT_SHA256}\"\n"
-        "          unzip -q .research/source-cache.zip -d .research/source-cache-artifact\n"
-        "          cp -R .research/source-cache-artifact/source-cache/. .research/source-cache/\n"
-        "          test \"$(find .research/source-cache -type f -name '*.json' | wc -l | tr -d ' ')\" = \"294\"\n"
-        "      - name: Execute frozen source cache twice\n",
-        label="frozen source cache step",
-    )
-    workflow = replace_once(
-        workflow,
-        "            --execution-at \"$EXECUTION_AT\" \\\n            --refresh-source-cache\n",
-        "            --execution-at \"$EXECUTION_AT\"\n",
-        label="remove live refresh",
-    )
-    BRANCH_WORKFLOW.write_text(workflow, encoding="utf-8")
-
-    SELF.unlink()
-    PATCH_WORKFLOW.unlink()
     return 0
 
 
