@@ -1,0 +1,60 @@
+schema_version: "1.0"
+contract_id: company_information_event_v1
+market: cn
+pool_id: cn_selected_equities_v3
+status: research_only
+trade_ready: false
+
+identity:
+  required:
+    - entity_id
+    - market
+    - exchange
+    - symbol
+    - event_family
+    - event_stage
+    - announced_at
+    - source_document_id
+    - revision_sequence
+  event_id: sha256_canonical_identity
+
+availability:
+  announced_at_timezone_required: true
+  first_eligible_session_policy: first_provider_session_strictly_after_announcement_date
+  effective_date_separate_from_announcement: true
+  source_only_events_model_usable: false
+  reconciled_events_model_usable: true
+
+source_policy:
+  primary_disclosure: cninfo
+  structured_payload: eastmoney_via_akshare
+  exact_announcement_date_reconciliation_required: true
+  unresolved_conflicts_preserved: true
+  provider_failures_preserved: true
+
+phase_1_families:
+  earnings_forecast:
+    structured_endpoint: stock_yjyg_em
+    primary_endpoint: stock_zh_a_disclosure_report_cninfo
+    primary_category: 业绩预告
+  preliminary_earnings:
+    structured_endpoint: stock_yjkb_em
+    primary_endpoint: stock_zh_a_disclosure_report_cninfo
+    primary_keyword: 业绩快报
+
+phase_0_model_eligibility:
+  calibration_half_years: [2022H2, 2023H1, 2023H2]
+  fixed_rebalance:
+    recent_top3_coverage_min: 0.15
+    distinct_top3_events_min: 30
+    max_sector_share: 0.45
+    primary_reconciliation_min: 0.95
+    first_session_mapping_min: 0.95
+  event_driven:
+    post_announcement_top3_events_min: 60
+    symbols_min: 20
+    sectors_min: 6
+    timestamp_completeness_min: 0.95
+    first_session_mapping_min: 0.95
+    primary_reconciliation_min: 0.95
+    max_stage_share: 0.70
