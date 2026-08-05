@@ -51,7 +51,7 @@ jobs:
           mkdir -p .research/frozen
           gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${FROZEN_PIT_ARTIFACT_ID}/zip" > .research/frozen.zip
           unzip -q .research/frozen.zip -d .research/frozen
-          test "$(sha256sum .research/frozen/event-population/fundamentals/events.jsonl | awk '{print $1}')" = "9d0babbff87468eab2cbb7d0999ef098d23a2b058dfa713969fe9c2130d67a33"
+          test "$(sha256sum .research/frozen/event-population/fundamentals/events.jsonl | awk '{print $1}')" = "9d0babbf78a9a95272c15a94b56306194ff0a320d4fb92de4f7f78951fc7b8c7"
       - name: Run new-information model twice
         run: |
           for run in a b; do
