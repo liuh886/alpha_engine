@@ -5,7 +5,7 @@ import hashlib
 import tarfile
 from pathlib import Path
 
-EXPECTED_SHA256 = "4187663de12248286cd01e17d7647df4b40ac34e35e5522262e079cd0ce73373"
+EXPECTED_SHA256 = "2a924938695c9e44b653d630fd5453ef66c77ba88f33ae613cb196c700c3eddf"
 
 root = Path.cwd()
 chunks = sorted((root / ".github").glob("cn130_pit_fundamental_veto_payload.chunk*"))
