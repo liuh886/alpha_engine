@@ -1,13 +1,13 @@
-schema_version: '1.2'
+schema_version: '1.3'
 registry_id: baseline_model_registry_v1
 status: active_formal_and_research_baselines
 created_at: '2026-08-02'
-updated_at: '2026-08-05'
+updated_at: '2026-08-06'
 issue: 350
 trade_ready: false
 active_baselines:
   us: us_x1_1
-  cn: cn_x1_0
+  cn: cn_x1_1
   byd: byd_dividend_sleeve_v1_0
 versioning_policy:
   immutable_released_versions: true
@@ -40,13 +40,29 @@ models:
   cn_x1_0:
     display_name: CN x1.0
     market: cn
-    status: baseline_research_data_review
+    status: historical_baseline_superseded
     config: configs/models/cn_x1_0.yaml
     notebook: notebooks/models/cn_x1_0_baseline.ipynb
     frozen_research_spec: configs/research_paradigms/cn_x1_0_frozen_v1.yaml
     source_pr: 344
     data_blocker_issue: 345
-    next_version: CN x1.1
+    superseded_by: cn_x1_1
+  cn_x1_1:
+    display_name: CN x1.1
+    market: cn
+    status: accepted_formal_baseline
+    config: configs/models/cn_x1_1.yaml
+    notebook: notebooks/models/cn_x1_1_complete_backtest.ipynb
+    frozen_research_spec: configs/research_experiments/cn_x1_1_fallback_aware_certification_v1.yaml
+    formal_package: data/research/formal_backtests/cn_x1_1.json
+    source_candidate: cn_x1_1_regime_gated_sector_breadth_v1
+    sector_breadth_pr: 572
+    validation_pr: 574
+    authorization_pr: 576
+    promotion_authority: explicit_user_direction
+    research_only: true
+    trade_ready: false
+    next_version: CN x1.2
   byd_dividend_sleeve_v1_0:
     display_name: BYD v1.1
     public_model_id: byd_v1_1
