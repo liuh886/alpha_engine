@@ -1,4 +1,4 @@
-"""Materialize the active formal freshness contract after CN x1.1 promotion."""
+"""Materialize CN x1.1 package and active-catalog freshness contracts."""
 from __future__ import annotations
 
 import json
@@ -6,6 +6,19 @@ from pathlib import Path
 from typing import Any
 
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes
+
+
+def cn_x1_1_package_freshness() -> dict[str, Any]:
+    return {
+        "status": "current",
+        "required_cutoff": "2026-08-03",
+        "latest_completed_session": "2026-08-03",
+        "latest_realized_holding_end": "2026-08-03",
+        "model_selection_reopened": False,
+        "source": "certified_non_overlapping_10_session_trace",
+        "research_only": True,
+        "trade_ready": False,
+    }
 
 
 def _replace_model(values: list[Any], old: str, new: str) -> list[Any]:
