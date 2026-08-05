@@ -1,5 +1,6 @@
 {
   "byd_snapshot_sha256": "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179",
+  "contract_sha256": "9695d426035efda3d98fc8f99eb8e256fcf53154b824f8a8f6df2da3514daade",
   "etf_artifact_sha256": "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f",
   "files_sha256": {
     "README.md": "455ff02320278e98578cc2e29aac4fadaba4e690957a1b6b20c82cca28ce51a5",
@@ -11,7 +12,5 @@
   },
   "research_only": true,
   "schema_version": "byd_v1_2_extreme_defense_seal_v1",
-  "trade_ready": false,
-  "workflow_head_sha": "4b8f2a0f9d11ac6f5f2bcd5682893b1148f9dfa2",
-  "workflow_run_id": 31014157334
+  "trade_ready": false
 }
