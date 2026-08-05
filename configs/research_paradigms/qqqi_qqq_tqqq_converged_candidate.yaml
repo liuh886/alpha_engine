@@ -1,0 +1,78 @@
+schema_version: "1.0"
+effective_date: "2026-08-05"
+strategy_family: qqqi_qqq_tqqq_recovery_risk_budget
+status: converged_research_candidate
+research_only: true
+trade_ready: false
+
+candidate:
+  experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+  display_name: QQQ Rotation v4.2
+  role: sole_converged_candidate
+  contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  implementation: src/research/vxn_bridge_allocation_experiment.py
+  current_baseline_registry: configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml
+  prospective_monitor: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor.yaml
+  alert_source: true
+
+model_definition:
+  signal_frequency: daily_close
+  execution: next_us_session_open
+  transaction_cost_bps_per_turnover_unit: 10.0
+  states:
+    state_0:
+      name: defense
+      purpose: capital_protection
+      target_weights: {QQQI: 1.00, QQQ: 0.00, TQQQ: 0.00}
+    state_1:
+      name: recovery_bridge
+      purpose: participate_in_unconfirmed_repair_with_lower_path_risk
+      target_weights: {QQQI: 0.50, QQQ: 0.50, TQQQ: 0.00}
+    state_2:
+      name: leveraged_recovery
+      purpose: participate_in_confirmed_convex_recovery
+      target_weights: {QQQI: 0.00, QQQ: 0.25, TQQQ: 0.75}
+  information_families:
+    - qqq_long_medium_short_price_repair
+    - shock_memory
+    - vix_normalization_and_stress
+    - vxn_stress
+  change_policy: frozen_pending_prospective_evidence
+
+selection_basis:
+  current_decision: docs/research/qqqi_qqq_tqqq_current_research_decision_2026-08-05_v4_26.yaml
+  xgboost_convergence_report: docs/research/qqqi_xgb_ordinal_risk_budget_v4_26_result_2026-08-05.md
+  rationale:
+    - preserves_slow_regime_persistence
+    - uses_conservative_recovery_bridge
+    - protects_major_historical_troughs
+    - retains_convex_upside_during_confirmed_recovery
+    - lower_turnover_than_more_reactive_learned_policies
+    - survived_linear_state_conditioned_ranking_adjacent_and_ordinal_challengers
+
+rejected_replacement_families:
+  - fixed_confirmation_and_persistence_overlays
+  - regularized_action_advantage_models
+  - state_conditioned_linear_models
+  - credit_duration_threshold_policies
+  - xgboost_terminal_return_action_ranking
+  - xgboost_adjacent_path_utility_edges
+  - xgboost_joint_ordinal_risk_budget
+
+prospective_program:
+  issue: 348
+  objective: collect_alert_execution_and_5_10_20_40_session_outcomes
+  minimum_1_to_2_events_before_reconsideration: 8
+  minimum_monitoring_months_before_reconsideration: 24
+  retrospective_search_cannot_substitute: true
+
+promotion_boundary:
+  direct_trading_promotion_authorized: false
+  model_or_weight_changes_authorized: false
+  telegram_target_changes_authorized: false
+  next_candidate_requires:
+    - genuinely_new_information_family
+    - point_in_time_safe_history
+    - separate_phase0_admission
+    - chronological_oof_validation
+    - prospective_shadow_evidence
