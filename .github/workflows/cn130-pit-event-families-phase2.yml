@@ -1,4 +1,4 @@
-# Triggered after the preregistered buyback progress title variant was fixed.
+# Replays the exact CNINFO source cache captured by run 31015808683.
 name: CN130 PIT Event Families Phase 2
 
 on:
@@ -11,6 +11,7 @@ on:
       - tests/test_ashare_primary_company_events.py
       - configs/data_contracts/company_information_event_phase2_v1.yaml
       - docs/research/cn130_pit_event_families_phase2_*.md
+      - data/research/cn130_pit_event_families_phase2_v1/**
       - .github/workflows/cn130-pit-event-families-phase2.yml
   workflow_dispatch:
 
@@ -22,6 +23,8 @@ env:
   PRICE_PROVIDER_ARTIFACT_ID: '8850463785'
   PIT_SOURCE_ARTIFACT_ID: '8926572265'
   CALIBRATION_LEDGER_ARTIFACT_ID: '8927662386'
+  SOURCE_CACHE_ARTIFACT_ID: '8934853788'
+  SOURCE_CACHE_ARTIFACT_SHA256: 'f5294e11a0ca7164a59f7420546e9d51870ccea7abafd6582722f758122987bf'
   PYTHONPATH: .
   GH_TOKEN: ${{ github.token }}
 
@@ -67,24 +70,26 @@ jobs:
           gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PIT_SOURCE_ARTIFACT_ID}/zip" > .research/frozen.zip
           unzip -q .research/frozen.zip -d .research/frozen-artifact
           cp .research/frozen-artifact/score_ledgers/*.csv.gz .research/ledgers/frozen/
-      - name: Build exact source cache and execute twice
+      - name: Download frozen CNINFO source cache
         run: |
-          EXECUTION_AT="$(date -u +%Y-%m-%dT%H:%M:%S+00:00)"
-          uv run python scripts/data/build_cn130_pit_event_families_phase2.py \
-            --provider-dir .research/provider/data/providers/cn \
-            --ledger-dir .research/ledgers/calibration \
-            --ledger-dir .research/ledgers/frozen \
-            --source-cache-root .research/source-cache \
-            --output-dir .research/run-a \
-            --execution-at "$EXECUTION_AT" \
-            --refresh-source-cache
-          uv run python scripts/data/build_cn130_pit_event_families_phase2.py \
-            --provider-dir .research/provider/data/providers/cn \
-            --ledger-dir .research/ledgers/calibration \
-            --ledger-dir .research/ledgers/frozen \
-            --source-cache-root .research/source-cache \
-            --output-dir .research/run-b \
-            --execution-at "$EXECUTION_AT"
+          mkdir -p .research/source-artifact .research/source-cache
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_CACHE_ARTIFACT_ID}/zip" > .research/source.zip
+          test "$(sha256sum .research/source.zip | awk '{print $1}')" = "${SOURCE_CACHE_ARTIFACT_SHA256}"
+          unzip -q .research/source.zip -d .research/source-artifact
+          cp -R .research/source-artifact/source-cache/. .research/source-cache/
+          test "$(find .research/source-cache -type f -name '*.json' | wc -l | tr -d ' ')" = "260"
+      - name: Execute frozen source cache twice
+        run: |
+          EXECUTION_AT="2026-08-05T14:34:03+00:00"
+          for RUN in a b; do
+            uv run python scripts/data/build_cn130_pit_event_families_phase2.py \
+              --provider-dir .research/provider/data/providers/cn \
+              --ledger-dir .research/ledgers/calibration \
+              --ledger-dir .research/ledgers/frozen \
+              --source-cache-root .research/source-cache \
+              --output-dir ".research/run-${RUN}" \
+              --execution-at "$EXECUTION_AT"
+          done
       - name: Verify deterministic evidence
         run: diff -ru .research/run-a .research/run-b
       - name: Package complete evidence
@@ -98,7 +103,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cn130-pit-event-families-phase2-${{ github.run_id }}
+          name: cn130-pit-event-families-phase2-frozen-${{ github.run_id }}
           path: artifacts/cn130-pit-event-families-phase2/
           if-no-files-found: error
           retention-days: 30
