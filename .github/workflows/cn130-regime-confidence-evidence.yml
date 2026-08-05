@@ -14,7 +14,7 @@ on:
 
 permissions:
   contents: read
-  actions: write
+  actions: read
 
 env:
   PROVIDER_ARTIFACT_ID: '8850463785'
@@ -45,26 +45,13 @@ jobs:
           gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PROVIDER_ARTIFACT_ID}/zip" > .research/provider.zip
           unzip -q .research/provider.zip -d .research/provider-artifact
           tar -xf .research/provider-artifact/cn-provider-2026-08-03.tar -C .research/provider
-      - name: Restore exact-cutoff fundamental source snapshots
-        id: event-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: .research/event-cache
-          key: ${{ runner.os }}-cn130-pit-fundamentals-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-2026-08-03
       - name: Populate source-bound CN130 PIT fundamentals
         run: |
           uv run python scripts/data/populate_selected_pool_events.py \
             --market cn \
             --start 2019-01-01 \
             --cutoff 2026-08-03 \
-            --source-cache-root .research/event-cache \
             --output-root .research/events
-      - name: Save exact-cutoff fundamental source snapshots
-        if: always() && steps.event-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: .research/event-cache
-          key: ${{ steps.event-cache.outputs.cache-primary-key }}
       - name: Rebuild frozen R0 ledgers
         run: |
           mkdir -p .research/cells
