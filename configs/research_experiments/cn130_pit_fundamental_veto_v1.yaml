@@ -1,7 +1,7 @@
 schema_version: "1.0"
 experiment_id: "cn130_pit_fundamental_veto_v1"
 issue: 544
-status: "frozen_pre_evaluation"
+status: "frozen_pre_evaluation_amended_for_provider_history"
 research_only: true
 trade_ready: false
 
@@ -15,9 +15,13 @@ inputs:
   pit_fundamental_events_sha256: "9d0babbf78a9a95272c15a94b56306194ff0a320d4fb92de4f7f78951fc7b8c7"
   benchmark: "000300"
   classification: "configs/research_classifications/cn130_sector_industry_v1.yaml"
+  minimum_purged_training_sessions: 250
 
 windows:
-  calibration: [2022H1, 2022H2, 2023H1, 2023H2]
+  calibration: [2022H2, 2023H1, 2023H2]
+  excluded_calibration_window:
+    window: 2022H1
+    reason: "immutable provider has fewer than 250 purged training sessions before the window"
   frozen_validation: [2024H1, 2024H2, 2025H1, 2025H2]
   reporting_only: [2026H1, 2026H2_PARTIAL]
 
@@ -35,6 +39,8 @@ component_families:
 component_support_gate:
   minimum_mean_rank_ic: 0.015
   minimum_positive_half_years: 3
+  calibration_half_years: 3
+  require_all_calibration_half_years_positive: true
   minimum_worst_half_year_rank_ic: -0.025
   minimum_incremental_rank_ic: 0.005
   require_positive_mean_spread: true
@@ -55,6 +61,8 @@ architectures:
 architecture_calibration_gate:
   must_beat_S0_at_20bps: true
   minimum_positive_half_years: 3
+  calibration_half_years: 3
+  require_all_calibration_half_years_positive: true
   maximum_worst_window_shortfall_vs_S0: 0.02
   require_positive_leave_one_name: true
   require_positive_leave_one_sector: true
