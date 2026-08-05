@@ -42,6 +42,7 @@ data_contract:
   historical_cutoff: '2026-08-03'
   prospective_store: data/research/byd_515180_prospective
 formal_publication:
+  release_channel: formal_catalog
   package: data/research/formal_backtests/byd_dividend_sleeve_v1_0.json
   publication_status: accepted_formal_baseline
   performance_trace: exact_daily_open_to_open
