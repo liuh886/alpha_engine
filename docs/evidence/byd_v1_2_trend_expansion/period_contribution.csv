@@ -1,0 +1,10 @@
+,model,period,relative_terminal_wealth,positive_contribution_share
+0,byd_v1_2_trend_expansion_1125,development,0.004030578371,0.143892520778
+1,byd_v1_2_trend_expansion_1125,fixed_validation,0.022339615423,0.797529108942
+2,byd_v1_2_trend_expansion_1125,retrospective_2025_plus,0.001640840754,0.058578370280
+3,byd_v1_2_trend_expansion_1100,development,0.003259224226,0.145146627337
+4,byd_v1_2_trend_expansion_1100,fixed_validation,0.017882641231,0.796387386224
+5,byd_v1_2_trend_expansion_1100,retrospective_2025_plus,0.001312836288,0.058465986439
+6,byd_v1_2_trend_expansion_1250,development,0.007625888427,0.137551882078
+7,byd_v1_2_trend_expansion_1250,fixed_validation,0.044534563983,0.803291728123
+8,byd_v1_2_trend_expansion_1250,retrospective_2025_plus,0.003279635448,0.059156389800

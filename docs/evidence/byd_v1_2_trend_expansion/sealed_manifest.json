@@ -1,0 +1,16 @@
+{
+  "byd_snapshot_sha256": "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179",
+  "contract_sha256": "6b65b52bddfb2b4cc6d1c7231e14413c98efaaadaf4a17cea0402560f2d50040",
+  "etf_artifact_sha256": "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f",
+  "files_sha256": {
+    "README.md": "0e10f34bea99d075daf4fbef108612d77d8559c77380e7215848bc76ed4c7a87",
+    "episode_attribution.csv": "ab4c232a1c68aeb6a978f0bf022e266a13fd8a5ddc07db33f5584b6255ef5c88",
+    "evaluation.csv": "9936aae46abfe3cfb7047367ee61a1669041d62c18074b5f05e737591e5775af",
+    "period_contribution.csv": "b4d6afa6b11e368506f5ea6ac38c14166abf1e63c57b8a62c8e89cf2b3d052ef",
+    "state_ledger.csv": "b7ecc1c1850cc7053a586b3780d50f89c20a97abd757af8ecc6b5d095d8953a7",
+    "summary.json": "79be4aaee66c25ddd48652422bc2f7af5073c15aced038f9f9e7a288cee0be67"
+  },
+  "research_only": true,
+  "schema_version": "byd_v1_2_trend_expansion_seal_v1",
+  "trade_ready": false
+}
