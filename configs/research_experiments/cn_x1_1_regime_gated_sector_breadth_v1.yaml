@@ -1,0 +1,49 @@
+schema_version: "1.0"
+experiment_id: cn_x1_1_regime_gated_sector_breadth_v1
+parent_candidate: cn_x1_1_sector_breadth_v1
+status: research_candidate_validation
+
+identity:
+  pool_id: cn_selected_equities_v3
+  pool_size: 130
+  provider_artifact_id: 8850463785
+  provider_cutoff: "2026-08-03"
+  calibration_ledger_artifact_id: 8927662386
+  frozen_ledger_artifact_id: 8926572265
+  benchmark: "000300"
+
+active_sleeve:
+  ranking_id: r0_cn_x1_0_raw_return_rank
+  feature_family: current_cn_ohlcv
+  sector_score: mean_top_3_daily_score_percentiles
+  selected_sectors: 4
+  names_per_sector: 1
+  weighting: equal
+
+regime_gate:
+  long_trend: benchmark_close_above_ma200
+  medium_momentum: benchmark_60_session_return_above_zero
+  cross_sectional_breadth: cn130_share_above_own_ma60_at_least_0_50
+  primary_rule: two_of_three
+  risk_on_allocation: sector_breadth_100pct
+  risk_off_allocation: csi300_100pct
+
+execution:
+  rebalance_sessions: 10
+  horizon_sessions: 10
+  execution_delay_sessions: 1
+  cost_bps_per_turnover: 20
+
+windows:
+  historical: [2022H2, 2023H1, 2023H2, 2024H1, 2024H2, 2025H1, 2025H2]
+  reporting_only: [2026H1, 2026H2_PARTIAL]
+
+boundaries:
+  no_threshold_optimization: true
+  no_universe_change: true
+  no_new_ranker: true
+  no_cash_assumption: true
+  reporting_2026_not_used_for_rule_selection: true
+  automatic_production_promotion: false
+  research_only: true
+  trade_ready: false
