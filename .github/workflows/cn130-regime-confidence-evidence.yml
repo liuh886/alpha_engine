@@ -1,36 +1,81 @@
-name: CN130 PIT Nullable Boolean Patch
+name: CN130 PIT Fundamental Frozen Evidence
 
 on:
   pull_request:
     branches:
       - research/cn130-regime-confidence-v1
     paths:
-      - scripts/patch_cn130_pit_nullable_bool.py
+      - configs/research_experiments/cn130_pit_fundamental_within_sector_v1.yaml
+      - docs/research/cn130_pit_fundamental_*.md
+      - scripts/run_cn130_pit_fundamental_model.py
+      - tests/test_cn130_pit_fundamental_model.py
       - .github/workflows/cn130-regime-confidence-evidence.yml
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  actions: read
+
+env:
+  PRICE_PROVIDER_ARTIFACT_ID: '8850463785'
+  FROZEN_PIT_ARTIFACT_ID: '8926572265'
+  PYTHONPATH: .
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
-  patch:
+  evidence:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: research/cn130-pit-fundamental-v1
-          fetch-depth: 1
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Apply regression patch
-        run: python scripts/patch_cn130_pit_nullable_bool.py
-      - name: Commit code and test fix
+      - name: Install locked environment
         run: |
-          git config user.name 'AlphaEngine Research Agent'
-          git config user.email 'research-agent@alphaengine.local'
-          git add scripts/run_cn130_pit_fundamental_model.py tests/test_cn130_pit_fundamental_model.py
-          git rm scripts/patch_cn130_pit_nullable_bool.py
-          git commit -m 'fix(research): normalize PIT fundamental eligibility mask'
-          git push origin HEAD:research/cn130-pit-fundamental-v1
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint and focused tests
+        run: |
+          uv run ruff check scripts/run_cn130_pit_fundamental_model.py tests/test_cn130_pit_fundamental_model.py
+          uv run pytest tests/test_cn130_pit_fundamental_model.py -q --strict-markers --tb=short
+      - name: Download immutable price provider
+        run: |
+          mkdir -p .research/provider-artifact .research/provider
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PRICE_PROVIDER_ARTIFACT_ID}/zip" > .research/provider.zip
+          unzip -q .research/provider.zip -d .research/provider-artifact
+          tar -xf .research/provider-artifact/cn-provider-2026-08-03.tar -C .research/provider
+      - name: Download frozen PIT event and R0 ledger artifact
+        run: |
+          mkdir -p .research/frozen
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${FROZEN_PIT_ARTIFACT_ID}/zip" > .research/frozen.zip
+          unzip -q .research/frozen.zip -d .research/frozen
+          test "$(sha256sum .research/frozen/event-population/fundamentals/events.jsonl | awk '{print $1}')" = "9d0babbff87468eab2cbb7d0999ef098d23a2b058dfa713969fe9c2130d67a33"
+      - name: Run new-information model twice
+        run: |
+          for run in a b; do
+            uv run python scripts/run_cn130_pit_fundamental_model.py \
+              --provider-dir .research/provider/data/providers/cn \
+              --ledger-dir .research/frozen \
+              --events-path .research/frozen/event-population/fundamentals/events.jsonl \
+              --output-dir ".research/run-${run}"
+          done
+      - name: Verify deterministic evidence
+        run: diff -ru .research/run-a .research/run-b
+      - name: Package complete evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/cn130-pit-fundamental
+          test ! -d .research/run-a || cp -R .research/run-a artifacts/cn130-pit-fundamental/final
+          cp .research/frozen/event-population/fundamentals/coverage.json artifacts/cn130-pit-fundamental/fundamental_source_coverage.json
+          cp .research/frozen/event-population/fundamentals/component_manifest.json artifacts/cn130-pit-fundamental/fundamental_source_manifest.json
+          cp configs/research_experiments/cn130_pit_fundamental_within_sector_v1.yaml artifacts/cn130-pit-fundamental/
+          cp docs/research/cn130_pit_fundamental_preregistration_2026-08-05.md artifacts/cn130-pit-fundamental/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cn130-pit-fundamental-frozen-${{ github.run_id }}
+          path: artifacts/cn130-pit-fundamental/
+          if-no-files-found: error
+          retention-days: 30
