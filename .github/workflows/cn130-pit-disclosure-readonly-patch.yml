@@ -1,0 +1,37 @@
+name: CN130 PIT Disclosure Readonly Patch
+
+on:
+  pull_request:
+    branches:
+      - research/cn130-pit-fundamental-veto-v1
+    paths:
+      - scripts/patch_cn130_disclosure_readonly.py
+      - .github/workflows/cn130-pit-disclosure-readonly-patch.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: research/cn130-pit-disclosure-reaction-v1
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Apply compatibility patch
+        run: python scripts/patch_cn130_disclosure_readonly.py
+      - name: Commit patch
+        run: |
+          git config user.name 'AlphaEngine Research Agent'
+          git config user.email 'research-agent@alphaengine.local'
+          git add scripts/run_cn130_pit_disclosure_reaction.py
+          git rm scripts/patch_cn130_disclosure_readonly.py
+          git rm .github/workflows/cn130-pit-disclosure-readonly-patch.yml
+          git commit -m 'fix(research): copy disclosure residual arrays before mutation'
+          git push origin HEAD:research/cn130-pit-disclosure-reaction-v1
