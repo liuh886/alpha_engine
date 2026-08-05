@@ -1,0 +1,60 @@
+{
+  "base_phase1_families": [
+    "earnings_forecast",
+    "preliminary_earnings"
+  ],
+  "cutoff": "2026-08-03",
+  "event_count": 2270,
+  "events_sha256": "f7e9b488d17e8fc5d18480c4f7a4913ae98df15f28ae94f19737b460dfc5bbd3",
+  "families": [
+    "buyback",
+    "restricted_unlock"
+  ],
+  "ledger_files": [
+    {
+      "path": ".research/ledgers/calibration/2022H2__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz",
+      "sha256": "ef8d766e6f81a3e2c0d5653a9fd3ca15a733aa9bac357ec5f8a19907283650fc"
+    },
+    {
+      "path": ".research/ledgers/calibration/2023H1__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz",
+      "sha256": "6c53dee26dc3350398647dd81ad585632bc86df26b7c43c4a749c86b1a266753"
+    },
+    {
+      "path": ".research/ledgers/calibration/2023H2__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz",
+      "sha256": "1982468be498ecd913b2e75ae53bd362de65858c4dc492ebf4982b685bc19a93"
+    },
+    {
+      "path": ".research/ledgers/frozen/2024H1__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz",
+      "sha256": "643a917585648c13368ea09d68b8bc6dd4048cde48f5377ca920f940fdcb4194"
+    },
+    {
+      "path": ".research/ledgers/frozen/2024H2__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz",
+      "sha256": "981f3850e520f9a5e6ed8c2fc30a1d400eec01829879c4dc644d4e11c6391144"
+    },
+    {
+      "path": ".research/ledgers/frozen/2025H1__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz",
+      "sha256": "4a0a3e3701e14f8d3e38baae677ccf742e6e13bc2ac377887affd09612820f30"
+    },
+    {
+      "path": ".research/ledgers/frozen/2025H2__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz",
+      "sha256": "18fdafa908533ce194849f188e790bffb1a18a321265927dd0228e86f5b2d0d0"
+    },
+    {
+      "path": ".research/ledgers/frozen/2026H1__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz",
+      "sha256": "bbf1acc796beba0b5c60465e8f9b94fb93e472a11e58dea7f3c4fe0bdfe2057f"
+    },
+    {
+      "path": ".research/ledgers/frozen/2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz",
+      "sha256": "8dbd8bc437f1092f5d3ae296892cd56c463d2c96b680fdf0601f6ef508eecdd5"
+    }
+  ],
+  "period_start": "2022-01-01",
+  "pool_id": "cn_selected_equities_v3",
+  "pool_sha256": "4ce5b95e60d38a13e4852fb6f7a3a6437b55d6da0fb317ad553d114e85158529",
+  "provider_identity_sha256": "abae71f037571a9a847d4582e0bea9fabdd71796cac54a70aa7c6d07b668eeb0",
+  "research_only": true,
+  "schema_version": "cn130_pit_event_families_phase2_v1",
+  "source_cache_manifest_sha256": "1093b0f832a0834b57fcc85a0b3e4f6e03a2ae051c0c50592ac327a086089d4a",
+  "trade_ready": false,
+  "validation_returns_inspected": false
+}
