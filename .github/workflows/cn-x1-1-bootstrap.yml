@@ -43,6 +43,7 @@ jobs:
           cat .cn-x1-1-payload/part-* > "$RUNNER_TEMP/cn-x1-1-sources.b64"
           base64 --decode "$RUNNER_TEMP/cn-x1-1-sources.b64" > "$RUNNER_TEMP/cn-x1-1-sources.tar.gz"
           tar -xzf "$RUNNER_TEMP/cn-x1-1-sources.tar.gz" -C .
+          sed -i 's/[[:space:]]\+$//' docs/research/cn_x1_1_formal_promotion_2026-08-06.md
           mkdir -p data/research/cn_x1_1_regime_gated_candidate_v1
           cp -a "$RUNNER_TEMP/certified-cn-x1-1/final/." data/research/cn_x1_1_regime_gated_candidate_v1/
           python scripts/promote_cn_x1_1_formal.py \
