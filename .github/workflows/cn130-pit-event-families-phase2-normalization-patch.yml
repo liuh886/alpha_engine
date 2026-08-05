@@ -1,3 +1,4 @@
+# Trigger the audited CNINFO title normalization patch.
 name: CN130 PIT Event Families Phase 2 Normalization Patch
 
 on:
