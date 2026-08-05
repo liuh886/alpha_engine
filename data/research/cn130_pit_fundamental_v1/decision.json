@@ -1,0 +1,9 @@
+{
+  "coverage_gate_date_ratio": 1.0,
+  "creates_cn_x1_1_candidate": false,
+  "decision": "pit_fundamental_model_not_supported",
+  "research_only": true,
+  "stage0_coverage_gate_pass": true,
+  "supported_candidates": [],
+  "trade_ready": false
+}
