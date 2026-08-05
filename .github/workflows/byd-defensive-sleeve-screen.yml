@@ -11,21 +11,21 @@ on:
       - "scripts/run_byd_defensive_sleeve_screen.py"
       - "tests/test_cn_etf_candidate_canonical.py"
       - "tests/test_byd_defensive_sleeve_governance.py"
+      - "data/research/byd_defensive_sleeve_screen_v1_artifact.zip.b64"
+      - "docs/evidence/byd_defensive_sleeve_screen/**"
+      - "docs/research/byd_defensive_sleeve_convergence.md"
       - ".github/workflows/byd-defensive-sleeve-screen.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  governed-screen:
+  offline-reproduction:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -34,13 +34,94 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Verify immutable BYD and 515180 bases
+      - name: Verify immutable artifacts
         run: |
           set -euo pipefail
           echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
           base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > "$RUNNER_TEMP/515180-canonical-v1-artifact.zip"
           echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  $RUNNER_TEMP/515180-canonical-v1-artifact.zip" | sha256sum --check --strict
-      - name: Lint and run contract tests
+          base64 --decode data/research/byd_defensive_sleeve_screen_v1_artifact.zip.b64 > "$RUNNER_TEMP/byd-defensive-sleeve-screen-v1.zip"
+          echo "0997467e867cbc3189292befcbfa758d442d05f389b0b39deb1caf3b2aeab7a6  $RUNNER_TEMP/byd-defensive-sleeve-screen-v1.zip" | sha256sum --check --strict
+      - name: Extract immutable evidence
+        run: |
+          set -euo pipefail
+          mkdir -p \
+            artifacts/data/byd_canonical_v1 \
+            artifacts/data/515180_canonical_v1 \
+            artifacts/sealed
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
+          unzip -q "$RUNNER_TEMP/515180-canonical-v1-artifact.zip" -d artifacts/data/515180_canonical_v1
+          unzip -q "$RUNNER_TEMP/byd-defensive-sleeve-screen-v1.zip" -d artifacts/sealed
+      - name: Verify exact candidate and blocker identities
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          sealed_manifest = json.loads(
+              Path(
+                  "docs/evidence/byd_defensive_sleeve_screen/sealed_manifest.json"
+              ).read_text(encoding="utf-8")
+          )
+          if sealed_manifest["artifact_sha256"] != (
+              "0997467e867cbc3189292befcbfa758d442d05f389b0b39deb1caf3b2aeab7a6"
+          ):
+              raise SystemExit("sealed artifact identity drifted")
+
+          manifest = json.loads(
+              Path(
+                  "artifacts/sealed/data/511010_canonical_v1/manifest.json"
+              ).read_text(encoding="utf-8")
+          )
+          exact_511010 = {
+              "symbol": "511010.SH",
+              "cutoff": "2026-08-03",
+              "data_quality_status": "canonical_v1_pass",
+              "raw_sha256": "c7a287b580fa02e84feb7563c692aeff38d04c66f9135650e35319a1549fc65a",
+              "adjusted_sha256": "bd095082899a40be28bcd5d5b3a0f263e03affca04d383012123411b25231d5d",
+              "session_audit_sha256": "a143c905bba7ba26e8fc6036da265d138981679716ae075b03398b0cbffcb8f4",
+              "manifest_sha256": "5a64da9036639fa34c185afb9ceabd0d55f0bb4ea873fd73791b1d83eebf3380",
+              "cross_provider_stitching": False,
+          }
+          for key, expected in exact_511010.items():
+              if manifest.get(key) != expected:
+                  raise SystemExit(
+                      f"511010 identity mismatch for {key}: "
+                      f"{manifest.get(key)!r} != {expected!r}"
+                  )
+
+          blocker = json.loads(
+              Path(
+                  "artifacts/sealed/data/512890_canonical_v1/data_blocked.json"
+              ).read_text(encoding="utf-8")
+          )
+          exact_blocker = {
+              "status": "data_blocked",
+              "symbol": "512890.SH",
+              "cutoff": "2026-08-03",
+              "error": (
+                  "provider OHLC envelope violations exceed tolerance: 2024-03-29"
+              ),
+              "provider_reference_preserved": True,
+              "provider_envelope_audit_preserved": True,
+          }
+          for key, expected in exact_blocker.items():
+              if blocker.get(key) != expected:
+                  raise SystemExit(
+                      f"512890 blocker mismatch for {key}: "
+                      f"{blocker.get(key)!r} != {expected!r}"
+                  )
+
+          evidence_dir = Path("docs/evidence/byd_defensive_sleeve_screen")
+          for name, expected in sealed_manifest["evidence_sha256"].items():
+              actual = hashlib.sha256((evidence_dir / name).read_bytes()).hexdigest()
+              if actual != expected:
+                  raise SystemExit(
+                      f"sealed evidence mismatch for {name}: {actual} != {expected}"
+                  )
+          PY
+      - name: Lint and run frozen contract tests
         run: |
           uv run ruff check \
             src/data/cn_etf_candidate_canonical.py \
@@ -55,215 +136,57 @@ jobs:
             tests/test_byd_defensive_sleeve_governance.py \
             tests/test_byd_515180_allocation.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Extract immutable bases
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/data/byd_canonical_v1 artifacts/data/515180_canonical_v1
-          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
-          unzip -q "$RUNNER_TEMP/515180-canonical-v1-artifact.zip" -d artifacts/data/515180_canonical_v1
-      - name: Build 512890 canonical candidate
-        id: build_512890
-        continue-on-error: true
-        run: >-
-          uv run python scripts/data/build_cn_etf_candidate_bundle.py
-          --symbol 512890.SH
-          --provider-symbol 512890.SS
-          --sina-symbol sh512890
-          --start 2012-01-01
-          --cutoff 2026-08-03
-          --secondary-retries 3
-          --output-dir artifacts/data/512890_canonical_v1
-      - name: Build 511010 canonical candidate
-        id: build_511010
-        continue-on-error: true
-        run: >-
-          uv run python scripts/data/build_cn_etf_candidate_bundle.py
-          --symbol 511010.SH
-          --provider-symbol 511010.SS
-          --sina-symbol sh511010
-          --start 2012-01-01
-          --cutoff 2026-08-03
-          --secondary-retries 3
-          --output-dir artifacts/data/511010_canonical_v1
-      - name: Run frozen convergence screen
-        id: screen
-        if: always() && steps.build_511010.outcome == 'success'
+      - name: Reproduce governed screen offline
         run: >-
           uv run python scripts/run_byd_defensive_sleeve_screen.py
           --byd-dir artifacts/data/byd_canonical_v1
           --etf-515180-dir artifacts/data/515180_canonical_v1
-          --etf-512890-dir artifacts/data/512890_canonical_v1
-          --etf-511010-dir artifacts/data/511010_canonical_v1
-          --output-dir artifacts/research/byd_defensive_sleeve_screen
-      - name: Enforce data and screen completion
-        if: always()
+          --etf-512890-dir artifacts/sealed/data/512890_canonical_v1
+          --etf-511010-dir artifacts/sealed/data/511010_canonical_v1
+          --output-dir artifacts/reproduced/byd_defensive_sleeve_screen
+      - name: Require byte-stable evidence
         run: |
           set -euo pipefail
-          test "${{ steps.build_511010.outcome }}" = "success"
-          test "${{ steps.screen.outcome }}" = "success"
-          if [[ "${{ steps.build_512890.outcome }}" != "success" ]]; then
-            test -f artifacts/data/512890_canonical_v1/data_blocked.json
-          fi
-      - name: Seal exact evidence
-        if: steps.screen.outcome == 'success'
-        env:
-          SOURCE_RUN_ID: ${{ github.run_id }}
-          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          for file in README.md summary.json evaluation.csv period_contribution.csv correlation_diagnostics.csv; do
+            diff -u \
+              "docs/evidence/byd_defensive_sleeve_screen/$file" \
+              "artifacts/reproduced/byd_defensive_sleeve_screen/$file"
+          done
+      - name: Enforce governed decision
         run: |
           python - <<'PY'
-          import base64
-          import hashlib
           import json
-          import os
-          import shutil
-          import zipfile
           from pathlib import Path
 
-          artifact_root = Path("artifacts")
-          selected_roots = [
-              artifact_root / "data/511010_canonical_v1",
-              artifact_root / "data/512890_canonical_v1",
-              artifact_root / "research/byd_defensive_sleeve_screen",
-          ]
-          files = sorted(
-              path
-              for root in selected_roots
-              for path in root.rglob("*")
-              if path.is_file()
-          )
-          if not files:
-              raise SystemExit("no evidence files available to seal")
-
-          zip_path = Path(os.environ["RUNNER_TEMP"]) / "byd-defensive-sleeve-screen-v1.zip"
-          with zipfile.ZipFile(
-              zip_path,
-              "w",
-              compression=zipfile.ZIP_DEFLATED,
-              compresslevel=9,
-          ) as archive:
-              for path in files:
-                  relative = path.relative_to(artifact_root).as_posix()
-                  info = zipfile.ZipInfo(relative, date_time=(1980, 1, 1, 0, 0, 0))
-                  info.compress_type = zipfile.ZIP_DEFLATED
-                  info.external_attr = 0o100644 << 16
-                  archive.writestr(info, path.read_bytes())
-          payload = zip_path.read_bytes()
-          artifact_sha = hashlib.sha256(payload).hexdigest()
-
-          target = Path(
-              "data/research/byd_defensive_sleeve_screen_v1_artifact.zip.b64"
-          )
-          target.parent.mkdir(parents=True, exist_ok=True)
-          encoded = base64.b64encode(payload).decode("ascii") + "\n"
-          if target.exists() and target.read_text(encoding="ascii") != encoded:
-              raise SystemExit(f"immutable artifact drift detected: {target}")
-          target.write_text(encoded, encoding="ascii")
-
-          evidence_source = artifact_root / "research/byd_defensive_sleeve_screen"
-          evidence_target = Path("docs/evidence/byd_defensive_sleeve_screen")
-          evidence_target.mkdir(parents=True, exist_ok=True)
-          for name in (
-              "README.md",
-              "summary.json",
-              "evaluation.csv",
-              "period_contribution.csv",
-              "correlation_diagnostics.csv",
-          ):
-              source = evidence_source / name
-              destination = evidence_target / name
-              data = source.read_bytes()
-              if destination.exists() and destination.read_bytes() != data:
-                  raise SystemExit(f"immutable evidence drift detected: {destination}")
-              destination.write_bytes(data)
-
-          manifest_511010 = json.loads(
-              (artifact_root / "data/511010_canonical_v1/manifest.json").read_text(
-                  encoding="utf-8"
-              )
-          )
-          blocker_512890 = json.loads(
-              (artifact_root / "data/512890_canonical_v1/data_blocked.json").read_text(
-                  encoding="utf-8"
-              )
-          )
           summary = json.loads(
-              (evidence_source / "summary.json").read_text(encoding="utf-8")
+              Path(
+                  "artifacts/reproduced/byd_defensive_sleeve_screen/summary.json"
+              ).read_text(encoding="utf-8")
           )
-          sealed = {
-              "schema_version": "byd_defensive_sleeve_sealed_evidence_v1",
-              "artifact_path": str(target),
-              "artifact_sha256": artifact_sha,
-              "artifact_size_bytes": len(payload),
-              "source_run_id": os.environ["SOURCE_RUN_ID"],
-              "source_head_sha": os.environ["SOURCE_HEAD_SHA"],
-              "governed_decision": summary["governed_decision"],
-              "selected_challenger": summary["selected_challenger"],
-              "511010": {
-                  "adjusted_sha256": manifest_511010["adjusted_sha256"],
-                  "manifest_sha256": manifest_511010["manifest_sha256"],
-                  "raw_sha256": manifest_511010["raw_sha256"],
-                  "session_audit_sha256": manifest_511010[
-                      "session_audit_sha256"
-                  ],
-                  "data_quality_status": manifest_511010[
-                      "data_quality_status"
-                  ],
-              },
-              "512890": blocker_512890,
-              "evidence_sha256": {
-                  path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-                  for path in sorted(evidence_target.iterdir())
-                  if path.is_file()
-              },
-              "research_only": True,
-              "trade_ready": False,
-          }
-          manifest_path = evidence_target / "sealed_manifest.json"
-          manifest_text = json.dumps(
-              sealed,
-              ensure_ascii=False,
-              indent=2,
-              sort_keys=True,
-          ) + "\n"
-          if (
-              manifest_path.exists()
-              and manifest_path.read_text(encoding="utf-8") != manifest_text
+          if summary["governed_decision"] != (
+              "retain_515180_as_only_prospective_etf"
           ):
-              raise SystemExit(f"immutable evidence drift detected: {manifest_path}")
-          manifest_path.write_text(manifest_text, encoding="utf-8")
-          print(json.dumps(sealed, ensure_ascii=False, sort_keys=True))
+              raise SystemExit("governed decision drifted")
+          if summary["selected_challenger"] is not None:
+              raise SystemExit("an unapproved challenger was selected")
+          if not summary["gate_matrix"]["515180.SH"]["cash_qualified"]:
+              raise SystemExit("515180 qualification drifted")
+          if summary["gate_matrix"]["511010.SH"]["cash_qualified"]:
+              raise SystemExit("511010 qualification drifted")
+          failed = summary["gate_matrix"]["511010.SH"]["cash_gates"]
+          if failed["cagr_delta_at_least_50bp"]:
+              raise SystemExit("511010 CAGR gate unexpectedly passed")
+          if summary["gate_matrix"]["512890.SH"]["data_status"] != "blocked":
+              raise SystemExit("512890 blocker status drifted")
+          if summary["research_only"] is not True or summary["trade_ready"] is not False:
+              raise SystemExit("research governance flags drifted")
           PY
-      - name: Commit sealed evidence to PR branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          set -euo pipefail
-          paths=(
-            data/research/byd_defensive_sleeve_screen_v1_artifact.zip.b64
-            docs/evidence/byd_defensive_sleeve_screen
-          )
-          if git diff --quiet -- "${paths[@]}" && \
-             [[ -z "$(git ls-files --others --exclude-standard "${paths[@]}")" ]]; then
-            echo "Sealed evidence already present"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${paths[@]}"
-          git commit -m "research: seal BYD defensive sleeve evidence"
-          branch="${{ github.event.pull_request.head.ref }}"
-          git pull --rebase origin "$branch"
-          git push origin HEAD:"$branch"
       - name: Publish evidence summary
-        if: steps.screen.outcome == 'success'
-        run: cat artifacts/research/byd_defensive_sleeve_screen/README.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload candidate data and evidence
-        if: always()
+        run: cat artifacts/reproduced/byd_defensive_sleeve_screen/README.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload offline reproduction
         uses: actions/upload-artifact@v4
         with:
-          name: byd-defensive-sleeve-screen-evidence
-          path: |
-            artifacts/data/512890_canonical_v1
-            artifacts/data/511010_canonical_v1
-            artifacts/research/byd_defensive_sleeve_screen
+          name: byd-defensive-sleeve-offline-reproduction
+          path: artifacts/reproduced/byd_defensive_sleeve_screen
           if-no-files-found: error
           retention-days: 30
