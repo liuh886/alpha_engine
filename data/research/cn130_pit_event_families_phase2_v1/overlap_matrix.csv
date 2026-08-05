@@ -1,0 +1,5 @@
+left_family,right_family,overlap_count,jaccard
+buyback,buyback,1969,1
+buyback,restricted_unlock,4,0.001822323462
+restricted_unlock,buyback,4,0.001822323462
+restricted_unlock,restricted_unlock,230,1
