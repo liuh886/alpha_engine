@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.research.byd_defensive_sleeve_governance import govern_evaluation
 from src.research.byd_defensive_sleeve_screen import ScreenInputs, run_screen
 
 
@@ -31,7 +32,7 @@ def main() -> None:
     args = parse_args()
     output = args.output_dir
     output.mkdir(parents=True, exist_ok=True)
-    evaluation, periods, correlations, summary = run_screen(
+    evaluation, _, correlations, provisional_summary = run_screen(
         ScreenInputs(
             byd_dir=args.byd_dir,
             etf_dirs={
@@ -41,6 +42,7 @@ def main() -> None:
             },
         )
     )
+    periods, summary = govern_evaluation(evaluation, provisional_summary)
     write_csv(output / "evaluation.csv", evaluation)
     write_csv(output / "period_contribution.csv", periods)
     write_csv(output / "correlation_diagnostics.csv", correlations)
@@ -61,8 +63,10 @@ def main() -> None:
         f"- Common overlap: `{summary['overlap_start']}` to `{summary['cutoff']}`",
         f"- Common sessions: `{summary['common_sessions']}`",
         f"- Common eligible opens: `{summary['common_eligible_opens']}`",
+        f"- Blocked candidates: `{json.dumps(summary['blocked_candidates'], ensure_ascii=False, sort_keys=True)}`",
         "- Execution: prior-close V1.0 target, next all-assets common eligible open",
         "- Costs: 20 bps primary, 40 bps stress",
+        "- Period contribution: relative terminal wealth versus cash",
         "- Historical freshness: `false`",
         "- Research only: `true`",
         "",
@@ -76,6 +80,17 @@ def main() -> None:
                 "max_drawdown",
                 "calmar",
                 "round_trips_per_year",
+            ]
+        ].to_markdown(index=False),
+        "",
+        "## Period-relative contribution",
+        "",
+        periods[
+            [
+                "candidate",
+                "window",
+                "incremental_total_return",
+                "positive_contribution_share",
             ]
         ].to_markdown(index=False),
         "",
