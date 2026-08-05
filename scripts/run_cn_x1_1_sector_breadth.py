@@ -245,7 +245,7 @@ def run(
         rebalance_sessions=spec.rebalance_sessions,
         cost_bps=spec.cost_bps,
     )
-    combined, combined_periods, combined_holdings, combined_windows = run_sector_breadth_portfolio(
+    combined, combined_periods, combined_holdings, _ = run_sector_breadth_portfolio(
         ledger,
         benchmark_execution,
         candidate,
@@ -399,18 +399,18 @@ def run(
         decision_name = "sector_breadth_architecture_supported_not_candidate_ready"
     else:
         decision_name = "sector_breadth_architecture_rejected"
+    candidate_authorized = decision_name == "cn_x1_1_sector_breadth_candidate_authorized"
     decision = {
         "schema_version": "cn_x1_1_sector_breadth_validation_v1",
         "decision": decision_name,
         "candidate_name": (
-            "CN x1.1 Candidate A — Sector Breadth"
-            if decision_name == "cn_x1_1_sector_breadth_candidate_authorized"
-            else ""
+            "CN x1.1 Candidate A — Sector Breadth" if candidate_authorized else ""
         ),
+        "candidate_authorized": candidate_authorized,
         "gates": gates,
         "automatic_production_promotion": False,
         "research_only": True,
-        "trade_ready": decision_name == "cn_x1_1_sector_breadth_candidate_authorized",
+        "trade_ready": False,
     }
 
     evaluation = pd.DataFrame(
@@ -474,7 +474,8 @@ def run(
         "selection_windows": list(SELECTION_WINDOWS),
         "reporting_windows": list(REPORTING_WINDOWS),
         "research_only": True,
-        "trade_ready": decision["trade_ready"],
+        "candidate_authorized": candidate_authorized,
+        "trade_ready": False,
     }
     write_json(output_dir / "manifest.json", manifest)
     (output_dir / "report.md").write_text(
@@ -482,7 +483,9 @@ def run(
         encoding="utf-8",
     )
     files = sorted(
-        path for path in output_dir.iterdir() if path.is_file() and path.name != "evidence_manifest.json"
+        path
+        for path in output_dir.iterdir()
+        if path.is_file() and path.name != "evidence_manifest.json"
     )
     write_json(
         output_dir / "evidence_manifest.json",
@@ -491,7 +494,11 @@ def run(
             "experiment_id": spec.model_id,
             "decision": decision,
             "files": [
-                {"path": path.name, "sha256": sha256(path), "bytes": path.stat().st_size}
+                {
+                    "path": path.name,
+                    "sha256": sha256(path),
+                    "bytes": path.stat().st_size,
+                }
                 for path in files
             ],
         },
