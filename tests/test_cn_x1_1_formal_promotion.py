@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# Final trusted zero-drift verification after catalog and freshness synchronization.
 import json
 from pathlib import Path
 
