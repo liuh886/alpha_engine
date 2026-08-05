@@ -1,0 +1,5 @@
+left_family,right_family,overlap_count,jaccard
+earnings_forecast,earnings_forecast,518,1
+earnings_forecast,preliminary_earnings,8,0.01290322581
+preliminary_earnings,earnings_forecast,8,0.01290322581
+preliminary_earnings,preliminary_earnings,110,1
