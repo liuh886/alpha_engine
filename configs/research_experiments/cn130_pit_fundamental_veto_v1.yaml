@@ -1,0 +1,84 @@
+schema_version: "1.0"
+experiment_id: "cn130_pit_fundamental_veto_v1"
+issue: 544
+status: "frozen_pre_evaluation"
+research_only: true
+trade_ready: false
+
+inputs:
+  universe: "configs/research_universes/cn_selected_equities_v3.yaml"
+  expected_members: 130
+  membership_changes_allowed: false
+  price_provider_cutoff: "2026-08-03"
+  price_provider_artifact_id: 8850463785
+  pit_event_artifact_id: 8926572265
+  pit_fundamental_events_sha256: "9d0babbf78a9a95272c15a94b56306194ff0a320d4fb92de4f7f78951fc7b8c7"
+  benchmark: "000300"
+  classification: "configs/research_classifications/cn130_sector_industry_v1.yaml"
+
+windows:
+  calibration: [2022H1, 2022H2, 2023H1, 2023H2]
+  frozen_validation: [2024H1, 2024H2, 2025H1, 2025H2]
+  reporting_only: [2026H1, 2026H2_PARTIAL]
+
+execution:
+  horizon_sessions: 10
+  execution_delay_sessions: 1
+  rebalance_interval_sessions: 10
+  transaction_cost_bps: [10, 20, 40]
+
+component_families:
+  growth: [revenue_yoy, net_income_yoy_robust]
+  profitability: [net_margin, roe_proxy]
+  efficiency_balance: [asset_turnover, inverse_leverage]
+
+component_support_gate:
+  minimum_mean_rank_ic: 0.015
+  minimum_positive_half_years: 3
+  minimum_worst_half_year_rank_ic: -0.025
+  minimum_incremental_rank_ic: 0.005
+  require_positive_mean_spread: true
+  maximum_sector_absolute_spread_share: 0.55
+  minimum_positive_fiscal_period_classes: 3
+  maximum_one_component_per_family: true
+
+architectures:
+  S0_r0_sector_4x1:
+    rule: "highest R0 name in each selected sector"
+  S1_r0_top3_fundamental_rerank:
+    rule: "fundamental composite selects Top1 only inside R0 Top3"
+  S2_fundamental_bottom_tercile_veto:
+    rule: "remove sector bottom fundamental tercile, then take highest remaining R0"
+  S3_fundamental_median_gate:
+    rule: "require above-sector-median fundamental composite, then take highest R0; fallback to R0 if none"
+
+architecture_calibration_gate:
+  must_beat_S0_at_20bps: true
+  minimum_positive_half_years: 3
+  maximum_worst_window_shortfall_vs_S0: 0.02
+  require_positive_leave_one_name: true
+  require_positive_leave_one_sector: true
+  maximum_fiscal_period_absolute_contribution_share: 0.70
+  select_at_most_one_architecture: true
+
+frozen_validation_gate:
+  must_beat_S0_at_20bps: true
+  must_beat_S0_at_40bps: true
+  minimum_positive_half_years: 3
+  worst_window_must_not_be_worse_than_S0: true
+  require_positive_leave_one_name: true
+  require_positive_leave_one_sector: true
+  maximum_sector_absolute_contribution_share: 0.55
+  maximum_fiscal_period_absolute_contribution_share: 0.70
+
+outcomes:
+  - data_blocked
+  - fundamental_component_not_supported
+  - fundamental_filter_architecture_not_supported
+  - fundamental_filter_validation_not_supported
+  - pit_fundamental_veto_research_candidate
+  - pit_fundamental_shortlist_research_candidate
+
+promotion:
+  creates_cn_x1_1_automatically: false
+  requires_separate_promotion_review: true
