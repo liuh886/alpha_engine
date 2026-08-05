@@ -31,7 +31,7 @@ from src.research.cn130_cross_sectional_ranking import (
     max_drawdown,
 )
 
-CALIBRATION_WINDOWS = ("2022H1", "2022H2", "2023H1", "2023H2")
+CALIBRATION_WINDOWS = ("2022H2", "2023H1", "2023H2")
 VALIDATION_WINDOWS = ("2024H1", "2024H2", "2025H1", "2025H2")
 REPORTING_WINDOWS = ("2026H1", "2026H2_PARTIAL")
 FAMILIES = {
@@ -654,7 +654,7 @@ def run(
     lines = [
         "# CN130 PIT基本面质量过滤与R0短名单实验",
         "",
-        "> 2022–2023只校准组件与架构；2024–2025只允许一次冻结验证。",
+        "> 2022H2–2023H2只校准组件与架构；2024–2025只允许一次冻结验证。",
         "",
         "## 最终裁决",
         "",
@@ -675,7 +675,7 @@ def run(
     ).itertuples(index=False):
         lines.append(
             f"| {row.component} | {row.mean_rank_ic:.4f} | {row.mean_incremental_rank_ic:.4f} | "
-            f"{row.positive_half_years}/4 | {row.worst_half_year_rank_ic:.4f} | {row.mean_spread:.2%} | "
+            f"{row.positive_half_years}/{len(CALIBRATION_WINDOWS)} | {row.worst_half_year_rank_ic:.4f} | {row.mean_spread:.2%} | "
             f"{row.maximum_sector_absolute_spread_share:.1%} | {row.positive_fiscal_period_classes} | "
             f"{'PASS' if row.support_gate_pass else 'FAIL'} | {'YES' if row.selected else 'NO'} |"
         )
@@ -690,7 +690,7 @@ def run(
         for row in architecture_calibration.itertuples(index=False):
             lines.append(
                 f"| {row.architecture} | {row.relative_excess:.2%} | {row.incremental_relative_excess_vs_s0:.2%} | "
-                f"{row.worst_window_relative_excess:.2%} | {row.positive_windows}/4 | "
+                f"{row.worst_window_relative_excess:.2%} | {row.positive_windows}/{len(CALIBRATION_WINDOWS)} | "
                 f"{row.leave_one_name_relative_excess:.2%} | {row.leave_one_sector_relative_excess:.2%} | "
                 f"{'PASS' if row.calibration_gate_pass else 'FAIL'} |"
             )
