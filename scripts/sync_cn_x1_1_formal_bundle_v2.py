@@ -1,6 +1,7 @@
 """Project the accepted CN x1.1 v1 package into the active formal Bundle v2 catalog."""
 from __future__ import annotations
 
+# Trusted connector rerun: generated Bundle v2 output must now be byte-stable.
 import argparse
 import hashlib
 import json
