@@ -1,0 +1,69 @@
+schema_version: "1.0"
+experiment_id: "cn130_pit_disclosure_overlay_validation_v1"
+issue: 552
+status: "frozen_before_validation"
+research_only: true
+trade_ready: false
+
+inputs:
+  universe: "configs/research_universes/cn_selected_equities_v3.yaml"
+  expected_members: 130
+  membership_changes_allowed: false
+  price_provider_cutoff: "2026-08-03"
+  price_provider_artifact_id: 8850463785
+  pit_event_artifact_id: 8926572265
+  calibration_ledger_artifact_id: 8927662386
+  benchmark: "000300"
+
+frozen_model:
+  component: abnormal_gap_1
+  architecture: E1_recent_event_rerank
+  selected_sectors: 4
+  shortlist_size: 3
+  maximum_event_age_sessions: 20
+  same_day_disclosure_trading_allowed: false
+  alternative_components_allowed: false
+  alternative_architectures_allowed: false
+
+windows:
+  calibration: [2022H2, 2023H1, 2023H2]
+  frozen_validation: [2024H1, 2024H2, 2025H1, 2025H2]
+  reporting_only: [2026H1, 2026H2_PARTIAL]
+
+execution:
+  horizon_sessions: 10
+  execution_delay_sessions: 1
+  rebalance_interval_sessions: 10
+  transaction_cost_bps: [10, 20, 40]
+
+inherited_calibration_gate:
+  positive_incremental_windows_required: 3
+  must_beat_E0_at_20bps: true
+  must_beat_E0_at_40bps: true
+  maximum_drawdown_must_not_worsen: true
+  leave_one_name_must_improve_E0: true
+  leave_one_sector_must_improve_E0: true
+  maximum_turnover_increase: 2.0
+  maximum_sector_absolute_contribution_share: 0.60
+
+frozen_validation_gate:
+  must_beat_E0_at_20bps: true
+  must_beat_E0_at_40bps: true
+  absolute_positive_half_years_required: 4
+  minimum_positive_incremental_half_years: 3
+  worst_window_must_not_worsen: true
+  maximum_drawdown_must_not_worsen: true
+  leave_one_name_must_be_positive_and_improve_E0: true
+  leave_one_sector_must_be_positive_and_improve_E0: true
+  maximum_sector_absolute_contribution_share: 0.55
+  maximum_turnover_increase: 3.0
+
+outcomes:
+  - data_blocked
+  - disclosure_gap_overlay_calibration_not_reproduced
+  - disclosure_gap_overlay_validation_not_supported
+  - pit_disclosure_gap_overlay_research_candidate
+
+promotion:
+  creates_cn_x1_1_automatically: false
+  requires_separate_promotion_review: true
