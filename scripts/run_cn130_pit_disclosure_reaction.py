@@ -213,8 +213,8 @@ def partial_corr(component: pd.Series, target: pd.Series, control: pd.Series) ->
     if len(frame) < 8:
         return float("nan")
     x = np.column_stack([np.ones(len(frame)), frame.iloc[:, 2].to_numpy(float)])
-    left = frame.iloc[:, 0].to_numpy(float)
-    right = frame.iloc[:, 1].to_numpy(float)
+    left = frame.iloc[:, 0].to_numpy(dtype=float, copy=True)
+    right = frame.iloc[:, 1].to_numpy(dtype=float, copy=True)
     left -= x @ np.linalg.lstsq(x, left, rcond=None)[0]
     right -= x @ np.linalg.lstsq(x, right, rcond=None)[0]
     return (
