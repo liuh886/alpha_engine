@@ -25,12 +25,29 @@ from src.research.byd_v1_2_trend_expansion import (
 SCHEMA_VERSION = "byd_v1_2_trend_expansion_prospective_v1"
 LAUNCH_AFTER = pd.Timestamp("2026-08-05")
 HORIZONS = (5, 10, 20)
-SCENARIOS = {
-    "primary": {"cost_bps": 20.0, "annual_financing_rate": PRIMARY_FINANCING_RATE},
-    "stress": {"cost_bps": 40.0, "annual_financing_rate": STRESS_FINANCING_RATE},
+SCENARIOS: dict[str, dict[str, float]] = {
+    "primary": {
+        "cost_bps": 20.0,
+        "annual_financing_rate": PRIMARY_FINANCING_RATE,
+    },
+    "stress": {
+        "cost_bps": 40.0,
+        "annual_financing_rate": STRESS_FINANCING_RATE,
+    },
 }
 STRATEGIES = ("byd_v1_1", "byd_v1_2_trend_expansion_1125")
 ASSETS = ("byd", "etf", "cash")
+DAILY_COLUMNS = (
+    "position_byd_weight",
+    "position_etf_weight",
+    "position_cash_weight",
+    "gross_return",
+    "turnover_units",
+    "transaction_cost",
+    "borrowed_weight",
+    "financing_cost",
+    "net_return",
+)
 
 
 def _json_bytes(value: Any) -> bytes:
@@ -59,10 +76,11 @@ def _atomic_json(path: Path, value: dict[str, Any]) -> str:
 def _read_records(directory: Path) -> list[dict[str, Any]]:
     if not directory.exists():
         return []
-    return [
+    records = [
         json.loads(path.read_text(encoding="utf-8"))
         for path in sorted(directory.glob("*.json"))
     ]
+    return sorted(records, key=lambda row: str(row.get("signal_date", "")))
 
 
 def _normalise(frame: pd.DataFrame) -> pd.DataFrame:
@@ -98,13 +116,14 @@ def rebuild_byd_dataset(
     )
     new_prices: list[dict[str, Any]] = []
     new_sessions: list[dict[str, Any]] = []
+    canonical_last_date = pd.Timestamp(adjusted["date"].max())
     for record in sorted(byd_records, key=lambda row: row["signal_date"]):
         date = pd.Timestamp(record["signal_date"])
-        if date <= adjusted["date"].max():
+        if date <= canonical_last_date:
             continue
         ohlcv = record.get("chain_linked_adjusted_ohlcv")
         if not isinstance(ohlcv, dict):
-            continue
+            raise RuntimeError(f"BYD source row lacks adjusted OHLCV: {date.date()}")
         new_prices.append(
             {
                 "date": date,
@@ -159,6 +178,89 @@ def _exit(row: pd.Series, base_target: float) -> bool:
     )
 
 
+def _observation_record(
+    *,
+    signal_date: str,
+    source: dict[str, Any],
+    pair: dict[str, Any],
+    row: pd.Series,
+    base_target: float,
+    entry: bool,
+    exit_: bool,
+    active: bool,
+) -> dict[str, Any]:
+    baseline_target = {
+        "byd_weight": base_target,
+        "etf_weight": 1.0 - base_target,
+        "cash_weight": 0.0,
+    }
+    candidate_target = (
+        {
+            "byd_weight": 1.125,
+            "etf_weight": 0.0,
+            "cash_weight": -0.125,
+        }
+        if active
+        else dict(baseline_target)
+    )
+    record: dict[str, Any] = {
+        "schema_version": SCHEMA_VERSION,
+        "kind": "trend_expansion_observation",
+        "signal_date": signal_date,
+        "observed_at_utc": pair["observed_at_utc"],
+        "source": {
+            "byd_observation_sha256": source["source_sha256"],
+            "paired_observation_sha256": pair["source_sha256"],
+            "byd_data_version": source["data_version"],
+            "paired_data_version": pair["data_version"],
+        },
+        "common_open_eligible": bool(pair["common_open_eligible"]),
+        "prospective_eligible": bool(pair["prospective_eligible"]),
+        "entry_condition": entry,
+        "exit_condition": exit_,
+        "trend_expansion_active": active,
+        "factors": {
+            "base_target_position": base_target,
+            "market_state": str(row["market_state"]),
+            "vol_state": str(row["vol_state"]),
+            "mom_20": float(row["mom_20"]),
+            "mom_60": float(row["mom_60"]),
+            "drawdown_252": float(row["drawdown_252"]),
+        },
+        "prices": {
+            "byd_open": float(
+                pair["byd"]["chain_linked_adjusted_ohlcv"]["open"]
+            ),
+            "etf_open": float(
+                pair["etf"]["chain_linked_adjusted_ohlcv"]["open"]
+            ),
+        },
+        "targets": {
+            "byd_v1_1": baseline_target,
+            "byd_v1_2_trend_expansion_1125": candidate_target,
+        },
+        "cost_contract": {
+            "primary": SCENARIOS["primary"],
+            "stress": SCENARIOS["stress"],
+        },
+        "status": (
+            "prospective_trend_expansion_active"
+            if active and bool(pair["prospective_eligible"])
+            else "prospective_observation"
+            if bool(pair["prospective_eligible"])
+            else "non_prospective_source_observation"
+        ),
+        "research_only": True,
+        "trade_ready": False,
+        "shadow_only": True,
+    }
+    record["data_version"] = (
+        f"byd-v1-2-trend-{signal_date}-"
+        f"{source['source_sha256'][:8]}-{pair['source_sha256'][:8]}"
+    )
+    return record
+
+
 def build_observations(
     *,
     baseline_dir: str | Path,
@@ -177,9 +279,11 @@ def build_observations(
         str(row["signal_date"]): row
         for row in sorted(existing_records, key=lambda value: value["signal_date"])
     }
-    active = bool(existing[sorted(existing)[-1]]["trend_expansion_active"]) if existing else False
+    active = False
     output: list[dict[str, Any]] = []
 
+    # Rebuild the complete post-launch state path from scratch on every run.
+    # Existing immutable rows are byte-compared; only unseen dates are returned.
     for signal_date in common_dates:
         date = pd.Timestamp(signal_date)
         if date <= LAUNCH_AFTER or date not in dataset.index:
@@ -196,80 +300,18 @@ def build_observations(
             active = False
         elif not active and entry:
             active = True
-
-        baseline_target = {
-            "byd_weight": base_target,
-            "etf_weight": 1.0 - base_target,
-            "cash_weight": 0.0,
-        }
-        candidate_target = (
-            {
-                "byd_weight": 1.125,
-                "etf_weight": 0.0,
-                "cash_weight": -0.125,
-            }
-            if active
-            else dict(baseline_target)
-        )
-        record = {
-            "schema_version": SCHEMA_VERSION,
-            "kind": "trend_expansion_observation",
-            "signal_date": signal_date,
-            "observed_at_utc": pair["observed_at_utc"],
-            "source": {
-                "byd_observation_sha256": source["source_sha256"],
-                "paired_observation_sha256": pair["source_sha256"],
-                "byd_data_version": source["data_version"],
-                "paired_data_version": pair["data_version"],
-            },
-            "common_open_eligible": bool(pair["common_open_eligible"]),
-            "prospective_eligible": bool(pair["prospective_eligible"]),
-            "entry_condition": entry,
-            "exit_condition": exit_,
-            "trend_expansion_active": active,
-            "factors": {
-                "base_target_position": base_target,
-                "market_state": str(row["market_state"]),
-                "vol_state": str(row["vol_state"]),
-                "mom_20": float(row["mom_20"]),
-                "mom_60": float(row["mom_60"]),
-                "drawdown_252": float(row["drawdown_252"]),
-            },
-            "prices": {
-                "byd_open": float(
-                    pair["byd"]["chain_linked_adjusted_ohlcv"]["open"]
-                ),
-                "etf_open": float(
-                    pair["etf"]["chain_linked_adjusted_ohlcv"]["open"]
-                ),
-            },
-            "targets": {
-                "byd_v1_1": baseline_target,
-                "byd_v1_2_trend_expansion_1125": candidate_target,
-            },
-            "cost_contract": {
-                "primary": SCENARIOS["primary"],
-                "stress": SCENARIOS["stress"],
-            },
-            "status": (
-                "prospective_trend_expansion_active"
-                if active and bool(pair["prospective_eligible"])
-                else "prospective_observation"
-                if bool(pair["prospective_eligible"])
-                else "non_prospective_source_observation"
-            ),
-            "research_only": True,
-            "trade_ready": False,
-            "shadow_only": True,
-        }
-        record["data_version"] = (
-            f"byd-v1-2-trend-{signal_date}-"
-            f"{source['source_sha256'][:8]}-{pair['source_sha256'][:8]}"
+        record = _observation_record(
+            signal_date=signal_date,
+            source=source,
+            pair=pair,
+            row=row,
+            base_target=base_target,
+            entry=entry,
+            exit_=exit_,
+            active=active,
         )
         if signal_date in existing:
-            expected = _json_bytes(record) + b"\n"
-            path = Path("unused")
-            if _json_bytes(existing[signal_date]) + b"\n" != expected:
+            if _json_bytes(existing[signal_date]) != _json_bytes(record):
                 raise RuntimeError(
                     f"existing trend observation no longer reproduces: {signal_date}"
                 )
@@ -301,6 +343,8 @@ def _frame(records: Iterable[dict[str, Any]]) -> pd.DataFrame:
 
 
 def _execute(frame: pd.DataFrame, strategy: str) -> pd.DataFrame:
+    if strategy not in STRATEGIES:
+        raise ValueError(f"unknown strategy: {strategy}")
     current = pd.Series({"byd": 0.0, "etf": 0.0, "cash": 1.0})
     rows: list[dict[str, float]] = []
     for index, (_, row) in enumerate(frame.iterrows()):
@@ -321,6 +365,10 @@ def _execute(frame: pd.DataFrame, strategy: str) -> pd.DataFrame:
     return pd.DataFrame(rows, index=frame.index)
 
 
+def _empty_daily() -> pd.DataFrame:
+    return pd.DataFrame(columns=list(DAILY_COLUMNS), dtype=float)
+
+
 def strategy_daily(
     frame: pd.DataFrame,
     strategy: str,
@@ -329,7 +377,7 @@ def strategy_daily(
     annual_financing_rate: float,
 ) -> pd.DataFrame:
     if len(frame) < 2:
-        return pd.DataFrame()
+        return _empty_daily()
     executed = _execute(frame, strategy)
     byd_return = frame["byd_open"].shift(-1) / frame["byd_open"] - 1.0
     etf_return = frame["etf_open"].shift(-1) / frame["etf_open"] - 1.0
@@ -364,7 +412,7 @@ def _period_return(
 def mature_outcomes(records: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     ordered = sorted(records, key=lambda row: row["signal_date"])
     frame = _frame(ordered)
-    if frame.empty:
+    if len(frame) < 2:
         return []
     daily = {
         scenario: {
@@ -432,7 +480,17 @@ def mature_outcomes(records: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     return outcomes
 
 
-def _episode_stats(frame: pd.DataFrame, primary_daily: pd.DataFrame, baseline_daily: pd.DataFrame) -> dict[str, Any]:
+def _episode_stats(
+    primary_daily: pd.DataFrame,
+    baseline_daily: pd.DataFrame,
+) -> dict[str, Any]:
+    if primary_daily.empty:
+        return {
+            "completed_expansion_episodes": 0,
+            "episode_relative_terminal_wealth": [],
+            "maximum_positive_episode_share": 0.0,
+            "financed_sessions": 0,
+        }
     active = primary_daily["borrowed_weight"].gt(0.0)
     starts = active & ~active.shift(1, fill_value=False)
     episode_id = starts.cumsum().where(active)
@@ -442,11 +500,8 @@ def _episode_stats(frame: pd.DataFrame, primary_daily: pd.DataFrame, baseline_da
         if pd.isna(raw_id):
             continue
         last_date = block.index.max()
-        is_completed = bool(
-            (primary_daily.index > last_date).any()
-            and not active.loc[primary_daily.index[primary_daily.index > last_date][0]]
-        )
-        if not is_completed:
+        later = primary_daily.index[primary_daily.index > last_date]
+        if len(later) == 0 or bool(active.loc[later[0]]):
             continue
         completed += 1
         base = baseline_daily.loc[block.index]
@@ -464,17 +519,59 @@ def _episode_stats(frame: pd.DataFrame, primary_daily: pd.DataFrame, baseline_da
     }
 
 
-def build_scorecard(records: Iterable[dict[str, Any]], outcomes: Iterable[dict[str, Any]]) -> dict[str, Any]:
+def _awaiting_scorecard(
+    ordered: list[dict[str, Any]],
+    outcome_count: int,
+) -> dict[str, Any]:
+    first = ordered[0]["signal_date"] if ordered else None
+    last = ordered[-1]["signal_date"] if ordered else None
+    gates = {
+        "forward_time_12_months": False,
+        "completed_10_expansion_episodes": False,
+        "financed_126_sessions": False,
+        "primary_relative_wealth_positive": False,
+        "stress_relative_wealth_positive": False,
+        "positive_episode_not_concentrated": False,
+    }
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "status": (
+            "awaiting_first_observation" if not ordered else "awaiting_return_interval"
+        ),
+        "first_signal_date": first,
+        "last_signal_date": last,
+        "observation_count": len(ordered),
+        "prospective_active_observation_count": sum(
+            bool(row["prospective_eligible"])
+            and bool(row["trend_expansion_active"])
+            for row in ordered
+        ),
+        "outcome_count": outcome_count,
+        "scenarios": {},
+        "episodes": {
+            "completed_expansion_episodes": 0,
+            "episode_relative_terminal_wealth": [],
+            "maximum_positive_episode_share": 0.0,
+            "financed_sessions": 0,
+        },
+        "gates": gates,
+        "all_gates_passed": False,
+        "automatic_promotion_allowed": False,
+        "research_only": True,
+        "trade_ready": False,
+    }
+
+
+def build_scorecard(
+    records: Iterable[dict[str, Any]],
+    outcomes: Iterable[dict[str, Any]],
+) -> dict[str, Any]:
     ordered = sorted(records, key=lambda row: row["signal_date"])
-    frame = _frame(ordered)
     outcome_rows = list(outcomes)
-    if frame.empty:
-        return {
-            "schema_version": SCHEMA_VERSION,
-            "status": "awaiting_first_observation",
-            "research_only": True,
-            "trade_ready": False,
-        }
+    frame = _frame(ordered)
+    if len(frame) < 2:
+        return _awaiting_scorecard(ordered, len(outcome_rows))
+
     scenario_summary: dict[str, Any] = {}
     primary_daily: pd.DataFrame | None = None
     baseline_daily: pd.DataFrame | None = None
@@ -503,7 +600,7 @@ def build_scorecard(records: Iterable[dict[str, Any]], outcomes: Iterable[dict[s
             primary_daily = candidate
             baseline_daily = baseline
     assert primary_daily is not None and baseline_daily is not None
-    episodes = _episode_stats(frame, primary_daily, baseline_daily)
+    episodes = _episode_stats(primary_daily, baseline_daily)
     first = pd.Timestamp(ordered[0]["signal_date"])
     last = pd.Timestamp(ordered[-1]["signal_date"])
     prospective_active = [
@@ -558,10 +655,7 @@ def persist_store(
     observation_dir = root / "observations"
     outcome_dir = root / "outcomes"
     for record in new_observations:
-        digest = _atomic_json(
-            observation_dir / f"{record['signal_date']}.json", record
-        )
-        record["observation_sha256"] = digest
+        _atomic_json(observation_dir / f"{record['signal_date']}.json", record)
     observations = _read_records(observation_dir)
     for record in observations:
         record["observation_sha256"] = file_sha256(
@@ -611,7 +705,25 @@ def persist_store(
                 else None
             )
         rows.append(row)
-    ledger = pd.DataFrame(rows)
+    ledger_columns = [
+        "signal_date",
+        "observation_sha256",
+        "prospective_eligible",
+        "common_open_eligible",
+        "trend_expansion_active",
+        "base_target_position",
+        "market_state",
+        "vol_state",
+        "mom_20",
+        "mom_60",
+        "drawdown_252",
+        *[
+            f"relative_wealth_{horizon}_{scenario}"
+            for horizon in HORIZONS
+            for scenario in ("primary", "stress")
+        ],
+    ]
+    ledger = pd.DataFrame(rows, columns=ledger_columns)
     root.mkdir(parents=True, exist_ok=True)
     ledger.to_csv(root / "ledger.csv", index=False, lineterminator="\n")
     (root / "scorecard.json").write_bytes(_json_bytes(scorecard) + b"\n")
@@ -646,6 +758,7 @@ def persist_store(
         "- Primary costs: 20 bps + 6% annual financing",
         "- Stress costs: 40 bps + 10% annual financing",
         "- Append only: `true`",
+        "- Automatic promotion: `false`",
         "- Research only: `true`",
         "- Trade ready: `false`",
     ]
