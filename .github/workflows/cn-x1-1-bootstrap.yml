@@ -51,7 +51,7 @@ jobs:
             --evidence-root data/research/cn_x1_1_regime_gated_candidate_v1 \
             --generated-at 2026-08-05T17:36:00Z \
             --receipt /tmp/cn-x1-1-promotion-receipt.json
-          rm -rf .cn-x1-1-payload .github/workflows/cn-x1-1-bootstrap.yml
+          rm -rf .cn-x1-1-payload
       - name: Install locked environment
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
