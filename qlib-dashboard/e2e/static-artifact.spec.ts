@@ -106,7 +106,7 @@ test('static studio opens without authentication or backend APIs', async ({ page
   const catalog = page.getByRole('region', { name: 'Governed model runs' });
   await expect(catalog.getByRole('button', { name: /QQQ Rotation v4\.2/ })).toBeVisible();
   await expect(catalog.getByRole('button', { name: /US x1\.1/ })).toBeVisible();
-  await expect(catalog.getByRole('button', { name: /CN x1\.0/ })).toBeVisible();
+  await expect(catalog.getByRole('button', { name: /CN x1\.1/ })).toBeVisible();
   await expect(catalog.getByText('formal', { exact: true })).toHaveCount(3);
   await catalog.getByRole('button', { name: /QQQ Rotation v4\.2/ }).click();
   await expect(page).toHaveURL(/#\/review\?channel=formal&family=qqq_rotation&version=qqqi_qqq_tqqq_v4_2/);
@@ -124,7 +124,7 @@ test('static studio opens without authentication or backend APIs', async ({ page
   const baselines = page.getByRole('region', { name: 'Accepted formal backtest baselines' });
   await expect(baselines.getByRole('button', { name: /QQQ Rotation v4\.2/ })).toBeVisible();
   await expect(baselines.getByRole('button', { name: /US x1\.1/ })).toBeVisible();
-  await expect(baselines.getByRole('button', { name: /CN x1\.0/ })).toBeVisible();
+  await expect(baselines.getByRole('button', { name: /CN x1\.1/ })).toBeVisible();
   await expect(page.getByTestId('formal-backtest-review')).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
