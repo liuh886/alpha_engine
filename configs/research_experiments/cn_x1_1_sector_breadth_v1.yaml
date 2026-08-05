@@ -1,0 +1,63 @@
+schema_version: "1.0"
+experiment_id: cn_x1_1_sector_breadth_v1
+candidate_name: "CN x1.1 Candidate A — Sector Breadth"
+parent_experiment: cn130_tail_factor_discovery_v1
+status: research_candidate_validation
+
+identity:
+  pool_id: cn_selected_equities_v3
+  pool_size: 130
+  provider_artifact_id: 8850463785
+  provider_cutoff: "2026-08-03"
+  calibration_ledger_artifact_id: 8927662386
+  frozen_ledger_artifact_id: 8926572265
+  benchmark: "000300"
+  ranking_id: r0_cn_x1_0_raw_return_rank
+  feature_family: current_cn_ohlcv
+
+model:
+  portfolio_conversion: sector_breadth
+  sector_score: mean_top_3_daily_score_percentiles
+  selected_sectors: 4
+  names_per_sector: 1
+  weighting: equal
+  rebalance_sessions: 10
+  execution_delay_sessions: 1
+  cost_bps_per_turnover: 20
+
+windows:
+  reverse_holdout: [2022H2, 2023H1, 2023H2]
+  selection_evidence: [2024H1, 2024H2, 2025H1, 2025H2]
+  reporting_only: [2026H1, 2026H2_PARTIAL]
+
+mandatory_gates:
+  reverse_holdout:
+    compounded_relative_excess_min: 0.0
+    positive_windows_min: 2
+    worst_window_relative_excess_min: -0.10
+    max_drawdown_min: -0.25
+    portfolio_benchmark_hit_rate_min: 0.50
+  selection:
+    positive_windows_min: 3
+    relative_excess_20bps_min: 0.0
+    relative_excess_40bps_min: 0.0
+    max_name_absolute_contribution_share: 0.35
+    max_sector_absolute_contribution_share: 0.55
+    leave_one_name_relative_excess_min: 0.0
+    leave_one_sector_relative_excess_min: 0.0
+  robustness:
+    required_positive_rebalance_intervals: [5, 10, 15]
+    positive_neighbor_architectures_min: 2
+    neighbor_architectures: [sector_3x1, sector_5x1, sector_3x2]
+    combined_relative_excess_40bps_min: 0.0
+    combined_leave_one_name_relative_excess_min: 0.0
+    combined_leave_one_sector_relative_excess_min: 0.0
+
+boundaries:
+  no_universe_change: true
+  no_new_factor_search: true
+  no_return_weighting: true
+  reporting_2026_not_used_for_selection: true
+  automatic_production_promotion: false
+  research_only: true
+  trade_ready: false
