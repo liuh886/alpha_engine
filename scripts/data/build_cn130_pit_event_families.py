@@ -323,7 +323,11 @@ def audit_family(
             (event_driven["first_eligible_session"].map(half_year) == window)
             & event_driven["top3_aligned"]
         ].copy()
-        matched = rebalance.loc[rebalance.get("matched_event_id", "") != ""].copy()
+        if "matched_event_id" not in rebalance.columns:
+            rebalance["matched_event_id"] = ""
+        matched = rebalance.loc[
+            rebalance["matched_event_id"].fillna("") != ""
+        ].copy()
         matched_event_rows = family_events.loc[
             family_events["event_id"].isin(set(matched.get("matched_event_id", [])))
         ].copy()

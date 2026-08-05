@@ -4,6 +4,7 @@ import pandas as pd
 
 from scripts.data.build_cn130_pit_event_families import (
     CALIBRATION_HALF_YEARS,
+    audit_family,
     build_r0_top3_rows,
     eligibility,
     half_year,
@@ -92,3 +93,46 @@ def test_primary_reconciliation_is_a_hard_model_gate() -> None:
     )
 
     assert eligibility(frame)[:2] == (False, False)
+
+
+def test_audit_family_handles_event_half_year_without_rebalance_rows() -> None:
+    events = pd.DataFrame(
+        [
+            {
+                "event_family": "earnings_forecast",
+                "event_id": "event-1",
+                "symbol": "000001",
+                "event_stage": "forecast_initial",
+                "announced_at": "2022-07-01T00:00:00+08:00",
+                "announced_date": "2022-07-01",
+                "half_year": "2022H2",
+                "revision_sequence": 0,
+                "first_eligible_session": "2022-07-04",
+                "availability_status": "usable",
+                "reconciliation_status": "reconciled",
+            }
+        ]
+    )
+    top3 = pd.DataFrame(
+        [
+            {
+                "window": "2023H1",
+                "date": "2023-01-03",
+                "instrument": "000001",
+                "sector": "Bank",
+                "sector_rank": 1.0,
+                "is_rebalance": True,
+            }
+        ]
+    )
+
+    rows = audit_family(
+        family="earnings_forecast",
+        events=events,
+        top3=top3,
+        sessions=["2022-07-01", "2022-07-04", "2023-01-03"],
+    )
+    result = {row["half_year"]: row for row in rows}
+
+    assert result["2022H2"]["fixed_top3_rows"] == 0
+    assert result["2022H2"]["fixed_recent_top3_coverage"] == 0.0
