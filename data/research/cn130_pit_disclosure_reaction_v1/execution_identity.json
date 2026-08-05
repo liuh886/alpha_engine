@@ -1,0 +1,22 @@
+{
+  "calibration_windows": [
+    "2022H2",
+    "2023H1",
+    "2023H2"
+  ],
+  "fundamental_events_sha256": "9d0babbf78a9a95272c15a94b56306194ff0a320d4fb92de4f7f78951fc7b8c7",
+  "provider_manifest_sha256": "5865fb018246aaa0d27dd12f2df8a98b2faa788162524d199613711be3ecdd7b",
+  "recent_event_sessions": 20,
+  "reporting_windows": [
+    "2026H1",
+    "2026H2_PARTIAL"
+  ],
+  "research_only": true,
+  "trade_ready": false,
+  "validation_windows": [
+    "2024H1",
+    "2024H2",
+    "2025H1",
+    "2025H2"
+  ]
+}
