@@ -1,0 +1,10 @@
+{
+  "architecture": "E1_recent_event_rerank",
+  "calibration_gate_pass": true,
+  "component": "abnormal_gap_1",
+  "creates_cn_x1_1_candidate": false,
+  "decision": "disclosure_gap_overlay_validation_not_supported",
+  "research_only": true,
+  "trade_ready": false,
+  "validation_gate_pass": false
+}
