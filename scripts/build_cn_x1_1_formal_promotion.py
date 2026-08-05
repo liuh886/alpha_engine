@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from src.research.cn_x1_1_formal_evidence import build_formal_evidence
+from src.research.cn_x1_1_formal_freshness import write_cn_x1_1_freshness
 from src.research.cn_x1_1_formal_publication import publish_formal_evidence
 
 
@@ -22,6 +23,10 @@ def main() -> None:
     receipt = publish_formal_evidence(
         evidence,
         source_dir=source_dir,
+        repository_root=repository_root,
+        output_root=output_dir,
+    )
+    receipt["freshness"] = write_cn_x1_1_freshness(
         repository_root=repository_root,
         output_root=output_dir,
     )
