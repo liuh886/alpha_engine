@@ -1,0 +1,143 @@
+name: CN x1.1 Formal Bundle v2 Sync
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/cn-x1-1-v2-sync.yml
+      - scripts/sync_cn_x1_1_formal_bundle_v2.py
+      - data/research/formal_backtests/cn_x1_1.json
+      - data/research/formal_backtests/catalog.json
+      - data/research/formal_model_runs/catalog.json
+      - data/research/formal_model_runs/cn_ranker/cn_x1_1/**
+      - qlib-dashboard/src/hooks/useModels.ts
+      - qlib-dashboard/e2e/static-artifact.spec.ts
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cn-x1-1-v2-sync-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  PYTHONPATH: .
+
+jobs:
+  sync-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: release/cn-x1-1-v2-sync
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - name: Install locked Python environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate focused projector
+        run: |
+          uv run ruff check scripts/sync_cn_x1_1_formal_bundle_v2.py
+          uv run mypy scripts/sync_cn_x1_1_formal_bundle_v2.py
+      - name: Project accepted v1 package twice
+        run: |
+          uv run python scripts/sync_cn_x1_1_formal_bundle_v2.py \
+            --output-root .research/run-a \
+            --receipt .research/receipt-a.json
+          uv run python scripts/sync_cn_x1_1_formal_bundle_v2.py \
+            --output-root .research/run-b \
+            --receipt .research/receipt-b.json
+          diff -ru .research/run-a .research/run-b
+          cmp .research/receipt-a.json .research/receipt-b.json
+      - name: Materialize v2 bundle and frontend contract
+        run: |
+          rsync -a --exclude cn-x1-1-v2-sync-receipt.json .research/run-a/ data/research/formal_model_runs/
+          python - <<'PY'
+          from pathlib import Path
+          replacements = {
+              Path('qlib-dashboard/src/hooks/useModels.ts'): [
+                  ("  'cn_x1_0',", "  'cn_x1_1',"),
+                  (
+                      'Formal Bundle v2 catalog does not exactly contain QQQ Rotation v4.2, US x1.1 and CN x1.0.',
+                      'Formal Bundle v2 catalog does not exactly contain QQQ Rotation v4.2, US x1.1 and CN x1.1.',
+                  ),
+              ],
+              Path('qlib-dashboard/e2e/static-artifact.spec.ts'): [
+                  (r'/CN x1\\.0/', r'/CN x1\\.1/'),
+              ],
+          }
+          for path, pairs in replacements.items():
+              text = path.read_text(encoding='utf-8')
+              for old, new in pairs:
+                  text = text.replace(old, new)
+              if 'CN x1.0' in text:
+                  raise SystemExit(f'stale CN x1.0 frontend contract remains: {path}')
+              path.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate generated catalog and frontend
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+          root = Path('data/research/formal_model_runs')
+          catalog = json.loads((root / 'catalog.json').read_text())
+          validate_catalog(catalog)
+          versions = {row['model_version_id'] for row in catalog['records']}
+          assert versions == {'qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_1'}
+          for row in catalog['records']:
+              manifest = json.loads((root / row['manifest_path']).read_text())
+              validate_manifest(manifest)
+              assert row['manifest_sha256'] == __import__('hashlib').sha256(
+                  (root / row['manifest_path']).read_bytes()
+              ).hexdigest()
+          cn = next(row for row in catalog['records'] if row['model_version_id'] == 'cn_x1_1')
+          manifest = json.loads((root / cn['manifest_path']).read_text())
+          available = {
+              row['section_id']
+              for row in manifest['sections']
+              if row['availability_status'] == 'available'
+          }
+          assert {'summary', 'performance', 'risk', 'robustness', 'portfolio', 'trades', 'attribution', 'diagnostics', 'lineage'} <= available
+          PY
+          cd qlib-dashboard
+          npm ci
+          npm run lint
+          npx tsc --noEmit
+          npm run build
+      - name: Commit deterministic projection
+        run: |
+          git config user.name 'AlphaEngine Release Agent'
+          git config user.email 'release-agent@alphaengine.local'
+          git add \
+            data/research/formal_model_runs/catalog.json \
+            data/research/formal_model_runs/cn_ranker/cn_x1_1 \
+            qlib-dashboard/src/hooks/useModels.ts \
+            qlib-dashboard/e2e/static-artifact.spec.ts
+          if git diff --cached --quiet; then
+            echo 'CN x1.1 Bundle v2 projection is already byte-stable.'
+          else
+            git commit -m 'release: sync CN x1.1 into Formal Bundle v2'
+            git push origin HEAD:release/cn-x1-1-v2-sync
+          fi
+      - name: Upload projection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cn-x1-1-v2-sync-${{ github.run_id }}
+          path: |
+            .research/receipt-a.json
+            .research/run-a
+          if-no-files-found: error
+          retention-days: 90
