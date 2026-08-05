@@ -67,4 +67,5 @@ def test_secondary_disagreement_quarantines_without_substitution() -> None:
     audit = bundle.session_audit.set_index("date")
     assert not bool(audit.loc[date, "open_research_eligible"])
     assert bundle.raw_bars.loc[100, "open"] == raw.loc[100, "open"]
-    assert not quality.gates["p99_open_return_difference"] or quality.passed
+    assert not quality.passed
+    assert not quality.gates["open_return_correlation"]
