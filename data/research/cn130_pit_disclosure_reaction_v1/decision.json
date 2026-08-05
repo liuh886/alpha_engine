@@ -1,0 +1,9 @@
+{
+  "creates_cn_x1_1_candidate": false,
+  "decision": "disclosure_reaction_architecture_not_supported",
+  "research_only": true,
+  "selected_architecture": null,
+  "selected_component": "abnormal_gap_1",
+  "trade_ready": false,
+  "validation_opened": false
+}
