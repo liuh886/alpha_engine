@@ -1,85 +1,36 @@
-name: CN130 Regime Confidence Evidence
+name: CN130 PIT Fundamental Payload Bootstrap
 
 on:
   pull_request:
     branches:
-      - research/cn130-tail-factor-discovery-v1
+      - research/cn130-regime-confidence-v1
     paths:
-      - configs/research_experiments/cn130_regime_confidence_v1.yaml
-      - scripts/run_cn130_regime_confidence.py
-      - tests/test_cn130_regime_confidence.py
-      - docs/research/cn130_regime_confidence_*.md
-      - data/research/cn130_regime_confidence_v1/**
+      - .github/cn130_pit_fundamental_payload.chunk*
+      - scripts/apply_cn130_pit_fundamental_payload.py
       - .github/workflows/cn130-regime-confidence-evidence.yml
   workflow_dispatch:
 
 permissions:
-  contents: read
-  actions: read
-
-env:
-  PROVIDER_ARTIFACT_ID: '8850463785'
-  PYTHONPATH: .
-  GH_TOKEN: ${{ github.token }}
+  contents: write
 
 jobs:
-  evidence:
+  apply:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: research/cn130-pit-fundamental-v1
+          fetch-depth: 1
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Install locked environment
+      - name: Verify and apply payload
+        run: python scripts/apply_cn130_pit_fundamental_payload.py
+      - name: Commit implementation
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
-      - name: Lint and focused tests
-        run: |
-          uv run ruff check scripts/run_cn130_regime_confidence.py tests/test_cn130_regime_confidence.py
-          uv run pytest tests/test_cn130_regime_confidence.py -q --strict-markers --tb=short
-      - name: Download immutable provider
-        run: |
-          mkdir -p .research/provider-artifact .research/provider
-          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PROVIDER_ARTIFACT_ID}/zip" > .research/provider.zip
-          unzip -q .research/provider.zip -d .research/provider-artifact
-          tar -xf .research/provider-artifact/cn-provider-2026-08-03.tar -C .research/provider
-      - name: Rebuild frozen R0 ledgers
-        run: |
-          mkdir -p .research/cells
-          for window in 2024H1 2024H2 2025H1 2025H2 2026H1 2026H2_PARTIAL; do
-            uv run python scripts/run_cn130_ranking_batch.py \
-              --provider-dir .research/provider/data/providers/cn \
-              --output-dir .research/cells \
-              --window "$window" \
-              --batch r0r1
-          done
-      - name: Run evidence twice
-        run: |
-          for run in a b; do
-            uv run python scripts/run_cn130_regime_confidence.py \
-              --provider-dir .research/provider/data/providers/cn \
-              --ledger-dir .research/cells \
-              --output-dir ".research/run-${run}"
-          done
-      - name: Verify deterministic and committed evidence
-        run: |
-          diff -ru .research/run-a .research/run-b
-          diff -u docs/research/cn130_regime_confidence_result_2026-08-05.md .research/run-a/report.md
-          diff -u data/research/cn130_regime_confidence_v1/decision.json .research/run-a/decision.json
-          diff -u data/research/cn130_regime_confidence_v1/confidence_portfolio_summary.csv .research/run-a/confidence_portfolio_summary.csv
-          diff -u data/research/cn130_regime_confidence_v1/regime_factor_window_summary.csv .research/run-a/regime_factor_window_summary.csv
-      - name: Package evidence
-        run: |
-          mkdir -p artifacts/cn130-regime-confidence
-          cp -R .research/run-a artifacts/cn130-regime-confidence/final
-          cp -R .research/cells/score_ledgers artifacts/cn130-regime-confidence/
-          cp configs/research_experiments/cn130_regime_confidence_v1.yaml artifacts/cn130-regime-confidence/
-          cp docs/research/cn130_regime_confidence_experiment_log_2026-08-05.md artifacts/cn130-regime-confidence/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cn130-regime-confidence-${{ github.run_id }}
-          path: artifacts/cn130-regime-confidence/
-          retention-days: 30
+          git config user.name 'AlphaEngine Research Agent'
+          git config user.email 'research-agent@alphaengine.local'
+          git add -A
+          git commit -m 'research: implement CN130 PIT fundamental candidate'
+          git push origin HEAD:research/cn130-pit-fundamental-v1
