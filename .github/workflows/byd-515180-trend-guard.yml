@@ -72,10 +72,19 @@ jobs:
           import json
           from pathlib import Path
           summary = json.loads(Path("artifacts/reproduced/summary.json").read_text())
+          expected = {
+              "cagr_not_below_baseline_by_more_than_50bp": False,
+              "drawdown_or_calmar_improvement": False,
+              "ma120_robustness_same_direction": False,
+              "max_period_share_at_most_60pct": False,
+              "round_trips_at_most_3": True,
+              "stress_total_not_below_baseline": False,
+              "validation_and_2025_not_both_negative": False,
+          }
+          assert summary["gates"] == expected
           assert summary["governed_decision"] == "retain_v1_dividend_75_25"
           assert summary["research_only"] is True
           assert summary["trade_ready"] is False
-          assert not any(summary["gates"].values()) is False or True
           PY
       - name: Publish evidence summary
         run: cat artifacts/reproduced/README.md >> "$GITHUB_STEP_SUMMARY"
