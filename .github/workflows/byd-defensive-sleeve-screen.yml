@@ -7,8 +7,10 @@ on:
       - "src/data/cn_etf_candidate_canonical.py"
       - "scripts/data/build_cn_etf_candidate_bundle.py"
       - "src/research/byd_defensive_sleeve_screen.py"
+      - "src/research/byd_defensive_sleeve_governance.py"
       - "scripts/run_byd_defensive_sleeve_screen.py"
       - "tests/test_cn_etf_candidate_canonical.py"
+      - "tests/test_byd_defensive_sleeve_governance.py"
       - ".github/workflows/byd-defensive-sleeve-screen.yml"
   workflow_dispatch:
 
@@ -41,10 +43,13 @@ jobs:
             src/data/cn_etf_candidate_canonical.py \
             scripts/data/build_cn_etf_candidate_bundle.py \
             src/research/byd_defensive_sleeve_screen.py \
+            src/research/byd_defensive_sleeve_governance.py \
             scripts/run_byd_defensive_sleeve_screen.py \
-            tests/test_cn_etf_candidate_canonical.py
+            tests/test_cn_etf_candidate_canonical.py \
+            tests/test_byd_defensive_sleeve_governance.py
           uv run pytest \
             tests/test_cn_etf_candidate_canonical.py \
+            tests/test_byd_defensive_sleeve_governance.py \
             tests/test_byd_515180_allocation.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: Extract immutable bases
