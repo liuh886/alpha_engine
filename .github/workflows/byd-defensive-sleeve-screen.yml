@@ -99,7 +99,7 @@ jobs:
             artifacts/data/512890_canonical_v1
             artifacts/data/511010_canonical_v1
             artifacts/research/byd_defensive_sleeve_screen
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
       - name: Enforce data and screen completion
         if: always()
