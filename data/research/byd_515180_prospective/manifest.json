@@ -16,18 +16,19 @@
     10,
     20
   ],
-  "last_signal_date": "2026-08-04",
-  "ledger_sha256": "5408e29ec98b6484a5d2338c91c130e10f9d95a4000f8a3fc1edebf497282f15",
-  "observation_count": 1,
+  "last_signal_date": "2026-08-05",
+  "ledger_sha256": "c662d180afeb40c986bffd26dfec48cc0adfbfa5a5b67b2388ce58d5122ae080",
+  "observation_count": 2,
   "observation_sha256": {
-    "2026-08-04": "ce1dacc2e7c97ee758cefd3dbc36b0d94fc6c55f1ffdbcab6a8c473c2462f7f7"
+    "2026-08-04": "ce1dacc2e7c97ee758cefd3dbc36b0d94fc6c55f1ffdbcab6a8c473c2462f7f7",
+    "2026-08-05": "8ea4608a9598f6fc613d479bbcb619234745a32846cf31b0e66d1e94e2799bee"
   },
   "outcome_count": 0,
   "prospective_eligible_observation_count": 1,
   "provider_history_may_not_overwrite_existing_observations": true,
   "research_only": true,
   "schema_version": "byd_515180_prospective_v1",
-  "scorecard_sha256": "b70945219525df891878e25222887b2b6730e0e17b9729ad222d9c9598c7b359",
+  "scorecard_sha256": "2ad8c84824580bb988cc552a8989eef10641a03c4a0e9618fa9655c30413c4e2",
   "shadow_only": true,
   "trade_ready": false
 }
