@@ -1,0 +1,106 @@
+{
+  "baseline": "byd_v1_1",
+  "common_eligible_opens": 1598,
+  "completed_expansion_episodes": 15,
+  "cost_contract": {
+    "primary_annual_financing_rate": 0.06,
+    "primary_transaction_cost_bps": 20.0,
+    "stress_annual_financing_rate": 0.1,
+    "stress_transaction_cost_bps": 40.0
+  },
+  "diagnostic_candidate": "byd_v1_2_trend_expansion_1250",
+  "diagnostics": {
+    "baseline_stress_total_return": 5.63657541510138,
+    "baseline_total_return": 5.818140854238716,
+    "cagr_delta": 0.005884494395869355,
+    "calmar_delta": -0.0046209783309549834,
+    "completed_expansion_episodes": 15,
+    "financed_sessions": 86,
+    "max_drawdown_delta": -0.01138033097399016,
+    "max_positive_contribution_share": 0.7975291089418095,
+    "negative_periods": 0,
+    "primary_financing_cost_paid": 0.0025595238095238097,
+    "primary_stress_total_return": 5.710191335675922,
+    "primary_total_return": 6.010033972810264
+  },
+  "expansion_active_sessions": 86,
+  "expansion_entry_signals": 80,
+  "fresh_historical_holdout": false,
+  "gates": {
+    "cagr_improves_1pp": false,
+    "calmar_decline_le_0_02": true,
+    "max_drawdown_worsening_le_3pp": true,
+    "minimum_10_episodes": true,
+    "minimum_126_financed_sessions": false,
+    "no_more_than_one_negative_period": true,
+    "positive_contribution_not_concentrated": false,
+    "robustness_improves_primary_and_stress_return": true,
+    "round_trips_per_year_le_3": true,
+    "stress_total_return_above_baseline": true
+  },
+  "governed_decision": "retain_byd_v1_1",
+  "headline_primary": {
+    "byd_v1_1": {
+      "cagr": 0.3507281328887262,
+      "calmar": 0.719602054894396,
+      "financing_cost_paid": 0.0,
+      "max_drawdown": -0.4873917889800866,
+      "round_trips_per_year": 1.0571783716594156,
+      "total_return": 5.818140854238716
+    },
+    "byd_v1_2_trend_expansion_1100": {
+      "cagr": 0.35545192848596896,
+      "calmar": 0.7159005110997587,
+      "financing_cost_paid": 0.0020476190476190494,
+      "max_drawdown": -0.4965102314844384,
+      "round_trips_per_year": 1.5270354257302676,
+      "total_return": 5.971827323651534
+    },
+    "byd_v1_2_trend_expansion_1125": {
+      "cagr": 0.35661262728459553,
+      "calmar": 0.714981076563441,
+      "financing_cost_paid": 0.0025595238095238097,
+      "max_drawdown": -0.4987721199540768,
+      "round_trips_per_year": 1.64449968924798,
+      "total_return": 6.010033972810264
+    },
+    "byd_v1_2_trend_expansion_1250": {
+      "cagr": 0.3622946961642881,
+      "calmar": 0.7104156480246803,
+      "financing_cost_paid": 0.005119047619047619,
+      "max_drawdown": -0.5099756701188285,
+      "round_trips_per_year": 2.2318210068365443,
+      "total_return": 6.19962868422063
+    }
+  },
+  "headline_stress_total_return": {
+    "byd_v1_1": 5.63657541510138,
+    "byd_v1_2_trend_expansion_1100": 5.695994445589114,
+    "byd_v1_2_trend_expansion_1125": 5.710191335675922,
+    "byd_v1_2_trend_expansion_1250": 5.777174751224634
+  },
+  "issue": 560,
+  "overlap_first_date": "2019-11-26",
+  "overlap_last_date": "2026-08-03",
+  "overlap_sessions": 1610,
+  "primary_candidate": "byd_v1_2_trend_expansion_1125",
+  "research_only": true,
+  "robustness_candidate": "byd_v1_2_trend_expansion_1100",
+  "rules": {
+    "diagnostic_byd_weight": 1.25,
+    "entry_base_byd_weight": 1.0,
+    "entry_drawdown_252_floor": -0.1,
+    "entry_market_state": "bull",
+    "entry_mom_20_floor": 0.0,
+    "entry_mom_60_floor": 0.0,
+    "entry_vol_state": "low",
+    "exit_base_byd_weight": 0.75,
+    "exit_market_state_not": "bull",
+    "exit_mom_20_ceiling": 0.0,
+    "exit_vol_state": "high",
+    "primary_byd_weight": 1.125,
+    "robustness_byd_weight": 1.1
+  },
+  "schema_version": "byd_v1_2_trend_expansion_evidence_v1",
+  "trade_ready": false
+}
