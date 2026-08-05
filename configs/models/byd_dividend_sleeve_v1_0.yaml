@@ -1,12 +1,15 @@
-schema_version: '1.0'
+schema_version: '1.1'
 model_id: byd_dividend_sleeve_v1_0
-display_name: BYD Dividend Sleeve V1.0
+public_model_id: byd_v1_1
+display_name: BYD v1.1
+technical_identity_note: immutable publication ID retained for backward-compatible evidence binding
 market: cn
 asset_class: single_equity_allocation
 status: accepted_formal_baseline
 source_strategy: v1_dividend_75_25
 source_issue: 525
 promotion_issue: 557
+evolution_issue: 560
 monitoring_issue: 529
 research_only: true
 trade_ready: false
@@ -47,8 +50,10 @@ formal_publication:
   publication_status: accepted_formal_baseline
   performance_trace: exact_daily_open_to_open
   prospective_monitoring: append_only
+  public_display_name: BYD v1.1
 interpretation:
   mechanism: replace the defensive 25 percent cash sleeve with a low-correlation positive-return dividend ETF without changing BYD V1.0 risk budget
+  version_semantics: BYD V1.0 core timing plus the accepted 515180 defensive sleeve
   prohibited_extensions:
     - additional ETF search
     - trend timing of 515180

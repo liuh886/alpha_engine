@@ -74,6 +74,14 @@ export interface FormalBacktestPackage {
   [key: string]: unknown;
 }
 
+const PUBLIC_DISPLAY_NAME_BY_MODEL_ID: Record<string, string> = {
+  byd_dividend_sleeve_v1_0: 'BYD v1.1',
+};
+
+function publicDisplayName(formal: FormalBacktestPackage): string {
+  return PUBLIC_DISPLAY_NAME_BY_MODEL_ID[formal.model_id] ?? formal.display_name;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -269,11 +277,13 @@ export function attachFormalBacktests(existingModels: ModelData[], packages: For
     const source = existing.get(formal.model_id);
     const sourceBacktest = source?.backtest ?? {};
     const providerIdentity = typeof formal.evidence.provider_identity === 'string' ? formal.evidence.provider_identity : '';
+    const displayName = publicDisplayName(formal);
+    const publicFormal = displayName === formal.display_name ? formal : { ...formal, display_name: displayName };
     return {
       ...source,
       id: formal.model_id,
-      tag: formal.display_name,
-      name: formal.display_name,
+      tag: displayName,
+      name: displayName,
       market: formal.market,
       model_type: source?.model_type || (formal.model_id.includes('v4_2') ? 'rules_based_rotation' : 'xgb'),
       path: source?.path || String(formal.evidence.contract_path ?? ''),
@@ -316,7 +326,7 @@ export function attachFormalBacktests(existingModels: ModelData[], packages: For
           evidence_cutoff: formal.evidence_cutoff,
           evidence_completeness: formal.evidence_completeness.status,
         },
-        formalBacktest: formal,
+        formalBacktest: publicFormal,
       },
     } as ModelData;
   });
