@@ -76,7 +76,7 @@ jobs:
               --ledger-dir .research/ledgers/frozen \
               --output-dir ".research/run-${RUN}"
           done
-      - name: Verify deterministic certified evidence
+      - name: Verify deterministic and committed certified evidence
         run: |
           diff -ru .research/run-a .research/run-b
           python - <<'PY'
@@ -89,6 +89,20 @@ jobs:
           assert decision['economic_evidence_changed'] is False
           assert decision['trade_ready'] is False
           PY
+          for FILE in \
+            decision.json \
+            evaluation_contract.json \
+            model_spec.json \
+            evaluation_summary.csv \
+            half_year_results.csv \
+            yearly_state_coverage.csv \
+            neighbor_rule_summary.csv \
+            manifest.json \
+            report.md; do
+            diff -u \
+              "data/research/cn_x1_1_regime_gated_candidate_v1/${FILE}" \
+              ".research/run-a/${FILE}"
+          done
       - name: Package complete evidence
         if: always()
         run: |
@@ -99,7 +113,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cn-x1-1-fallback-aware-${{ github.run_id }}
+          name: cn-x1-1-fallback-aware-certified-${{ github.run_id }}
           path: artifacts/cn-x1-1-fallback-aware/
           if-no-files-found: error
           retention-days: 30
