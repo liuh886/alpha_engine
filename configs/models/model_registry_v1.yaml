@@ -1,4 +1,4 @@
-schema_version: '1.1'
+schema_version: '1.2'
 registry_id: baseline_model_registry_v1
 status: active_formal_and_research_baselines
 created_at: '2026-08-02'
@@ -48,7 +48,10 @@ models:
     data_blocker_issue: 345
     next_version: CN x1.1
   byd_dividend_sleeve_v1_0:
-    display_name: BYD Dividend Sleeve V1.0
+    display_name: BYD v1.1
+    public_model_id: byd_v1_1
+    technical_model_id: byd_dividend_sleeve_v1_0
+    technical_identity_note: immutable publication ID retained for backward-compatible evidence binding
     market: cn
     status: accepted_formal_baseline
     config: configs/models/byd_dividend_sleeve_v1_0.yaml
@@ -56,8 +59,9 @@ models:
     source_strategy: v1_dividend_75_25
     source_research_issue: 525
     promotion_issue: 557
+    evolution_issue: 560
     prospective_monitoring_issue: 529
     promotion_authority: explicit_user_direction
     research_only: true
     trade_ready: false
-    next_version: BYD Dividend Sleeve V1.1
+    next_version: BYD v1.2
