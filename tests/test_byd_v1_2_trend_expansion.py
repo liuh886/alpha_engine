@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from src.research.byd_v1_2_trend_expansion import (
     BASELINE,
@@ -60,16 +61,12 @@ def test_expansion_state_and_declared_leverage_are_frozen() -> None:
         "etf_weight": 0.0,
         "cash_weight": 0.0,
     }
-    assert decisions[PRIMARY].loc[index[2]].to_dict() == {
-        "byd_weight": 1.125,
-        "etf_weight": 0.0,
-        "cash_weight": -0.125,
-    }
-    assert decisions[ROBUSTNESS].loc[index[2]].to_dict() == {
-        "byd_weight": 1.10,
-        "etf_weight": 0.0,
-        "cash_weight": -0.10,
-    }
+    assert decisions[PRIMARY].loc[index[2], "byd_weight"] == pytest.approx(1.125)
+    assert decisions[PRIMARY].loc[index[2], "etf_weight"] == pytest.approx(0.0)
+    assert decisions[PRIMARY].loc[index[2], "cash_weight"] == pytest.approx(-0.125)
+    assert decisions[ROBUSTNESS].loc[index[2], "byd_weight"] == pytest.approx(1.10)
+    assert decisions[ROBUSTNESS].loc[index[2], "etf_weight"] == pytest.approx(0.0)
+    assert decisions[ROBUSTNESS].loc[index[2], "cash_weight"] == pytest.approx(-0.10)
     for decision in decisions.values():
         assert (decision["byd_weight"] >= 0.0).all()
         assert (decision["etf_weight"] >= 0.0).all()
@@ -88,9 +85,11 @@ def test_financing_is_charged_only_after_leveraged_target_executes() -> None:
     )
     daily = result.daily
 
-    assert daily.iloc[0]["borrowed_weight"] == 0.0
-    assert daily.iloc[1]["borrowed_weight"] == 0.0
-    assert daily.iloc[2]["borrowed_weight"] == 0.125
-    assert daily.iloc[2]["financing_cost"] == 0.125 * 0.06 / 252.0
+    assert daily.iloc[0]["borrowed_weight"] == pytest.approx(0.0)
+    assert daily.iloc[1]["borrowed_weight"] == pytest.approx(0.0)
+    assert daily.iloc[2]["borrowed_weight"] == pytest.approx(0.125)
+    assert daily.iloc[2]["financing_cost"] == pytest.approx(
+        0.125 * 0.06 / 252.0
+    )
     assert daily.loc[daily["borrowed_weight"].eq(0.0), "financing_cost"].eq(0.0).all()
     assert daily["net_return"].le(daily["gross_return"]).all()
