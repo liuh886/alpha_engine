@@ -1,4 +1,4 @@
-# Triggered after the verified Phase 1 builder payload was applied.
+# Uses the exact source cache captured by the first live Phase 1 provider run.
 name: CN130 PIT Event Families Phase 1
 
 on:
@@ -23,6 +23,8 @@ env:
   PRICE_PROVIDER_ARTIFACT_ID: '8850463785'
   PIT_SOURCE_ARTIFACT_ID: '8926572265'
   CALIBRATION_LEDGER_ARTIFACT_ID: '8927662386'
+  SOURCE_CACHE_ARTIFACT_ID: '8933376684'
+  SOURCE_CACHE_ARTIFACT_SHA256: '53b1b1c1bf4c0fcead2e6e60283400879c7332968ddf8c08d91c00a91bd4560a'
   PYTHONPATH: .
   GH_TOKEN: ${{ github.token }}
 
@@ -68,17 +70,24 @@ jobs:
           gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PIT_SOURCE_ARTIFACT_ID}/zip" > .research/frozen.zip
           unzip -q .research/frozen.zip -d .research/frozen-artifact
           cp .research/frozen-artifact/score_ledgers/*.csv.gz .research/ledgers/frozen/
-      - name: Build source cache and execute twice
+      - name: Download frozen source cache
         run: |
-          EXECUTION_AT="$(date -u +%Y-%m-%dT%H:%M:%S+00:00)"
+          mkdir -p .research/source-cache-artifact .research/source-cache
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_CACHE_ARTIFACT_ID}/zip" > .research/source-cache.zip
+          test "$(sha256sum .research/source-cache.zip | awk '{print $1}')" = "${SOURCE_CACHE_ARTIFACT_SHA256}"
+          unzip -q .research/source-cache.zip -d .research/source-cache-artifact
+          cp -R .research/source-cache-artifact/source-cache/. .research/source-cache/
+          test "$(find .research/source-cache -type f -name '*.json' | wc -l | tr -d ' ')" = "294"
+      - name: Execute frozen source cache twice
+        run: |
+          EXECUTION_AT="2026-08-05T13:51:13+00:00"
           uv run python scripts/data/build_cn130_pit_event_families.py \
             --provider-dir .research/provider/data/providers/cn \
             --ledger-dir .research/ledgers/calibration \
             --ledger-dir .research/ledgers/frozen \
             --source-cache-root .research/source-cache \
             --output-dir .research/run-a \
-            --execution-at "$EXECUTION_AT" \
-            --refresh-source-cache
+            --execution-at "$EXECUTION_AT"
           uv run python scripts/data/build_cn130_pit_event_families.py \
             --provider-dir .research/provider/data/providers/cn \
             --ledger-dir .research/ledgers/calibration \
