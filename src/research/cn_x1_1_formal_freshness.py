@@ -48,7 +48,7 @@ def write_cn_x1_1_freshness(
         if not isinstance(rows, list):
             raise ValueError(f"formal freshness field must be a list: {key}")
         value[key] = _replace_model(rows, "cn_x1_0", "cn_x1_1")
-    value["declared_at"] = "2026-08-05T17:20:00Z"
+    # Preserve the active release timestamp owned by the shared formal catalog.
     value["promotion_issue"] = 577
     value["superseded_model"] = "cn_x1_0"
     value["promoted_model"] = "cn_x1_1"
