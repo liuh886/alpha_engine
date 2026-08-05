@@ -17,6 +17,7 @@ import pandas as pd
 
 from src.data.byd_canonical_bundle import (
     CanonicalBundle,
+    audit_adjustment_events,
     build_canonical_bundle,
     dataframe_sha256,
 )
@@ -28,6 +29,7 @@ MIN_SECONDARY_COVERAGE = 0.97
 MIN_OPEN_RETURN_CORRELATION = 0.995
 MAX_P99_OPEN_RETURN_DIFFERENCE = 0.01
 MIN_ELIGIBLE_OPEN_COVERAGE = 0.95
+MATERIAL_FACTOR_JUMP_TOLERANCE = 1e-6
 
 
 @dataclass(frozen=True)
@@ -99,6 +101,14 @@ def build_candidate_bundle(
             float(valid_diff.quantile(0.99)) if not valid_diff.empty else None
         )
 
+    material = audit_adjustment_events(
+        base.adjustment_factors,
+        base.corporate_actions,
+        jump_tolerance=MATERIAL_FACTOR_JUMP_TOLERANCE,
+    )
+    material_jumps = int(material["factor_jump"].sum())
+    unexplained = int(material["unexplained_jump"].sum())
+
     manifest = dict(base.manifest)
     manifest.update(
         {
@@ -118,6 +128,9 @@ def build_candidate_bundle(
                 "corporate_actions_are_sealed_separately_from_adjusted_total_return_prices"
             ),
             "cross_provider_stitching": False,
+            "factor_jump_tolerance": MATERIAL_FACTOR_JUMP_TOLERANCE,
+            "material_factor_jumps": material_jumps,
+            "unexplained_factor_jumps": unexplained,
             "data_quality_status": "pending",
         }
     )
@@ -128,7 +141,7 @@ def build_candidate_bundle(
     gates = {
         "exact_cutoff": manifest["last_date"] == spec.cutoff,
         "minimum_history": int(manifest["rows"]) >= MIN_ROWS,
-        "no_unexplained_factor_jumps": int(manifest["unexplained_factor_jumps"]) == 0,
+        "no_unexplained_factor_jumps": unexplained == 0,
         "secondary_coverage": secondary_coverage >= MIN_SECONDARY_COVERAGE,
         "open_return_correlation": (
             correlation is not None
