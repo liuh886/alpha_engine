@@ -265,7 +265,9 @@ def score_snapshot(snapshot: pd.DataFrame) -> pd.DataFrame:
         scored.loc[group.index, "freshness_pct"] = _winsorized_rank(group["freshness_score"])
     percentile_columns.append("freshness_pct")
     scored["fundamental_composite"] = scored[percentile_columns].mean(axis=1, skipna=True)
-    scored.loc[~scored["usable_fundamental"], "fundamental_composite"] = np.nan
+    usable = scored["usable_fundamental"].fillna(False).astype(bool)
+    scored["usable_fundamental"] = usable
+    scored.loc[~usable, "fundamental_composite"] = np.nan
     return scored
 
 

@@ -7,6 +7,7 @@ from scripts.run_cn130_pit_fundamental_model import (
     choose_holdings,
     latest_pit_snapshot,
     robust_growth,
+    score_snapshot,
 )
 
 
@@ -77,3 +78,25 @@ def test_fallback_candidate_uses_r0_when_sector_coverage_is_low() -> None:
     )
     assert fallback == 1
     assert chosen.iloc[0]["instrument"] == "000001"
+
+
+def test_score_snapshot_normalizes_nullable_object_boolean_mask() -> None:
+    frame = pd.DataFrame(
+        {
+            "sector": ["A", "A", "A"],
+            "fiscal_period": ["FY", "FY", "FY"],
+            "staleness_days": [30, 30, 30],
+            "usable_fundamental": pd.Series([True, False, None], dtype="object"),
+            "revenue_yoy": [0.1, 0.2, 0.3],
+            "net_income_yoy_robust": [0.1, 0.2, 0.3],
+            "net_margin": [0.1, 0.2, 0.3],
+            "roe_proxy": [0.1, 0.2, 0.3],
+            "asset_turnover": [0.1, 0.2, 0.3],
+            "inverse_leverage": [0.1, 0.2, 0.3],
+        }
+    )
+    scored = score_snapshot(frame)
+    assert scored["usable_fundamental"].dtype == bool
+    assert pd.notna(scored.loc[0, "fundamental_composite"])
+    assert pd.isna(scored.loc[1, "fundamental_composite"])
+    assert pd.isna(scored.loc[2, "fundamental_composite"])
