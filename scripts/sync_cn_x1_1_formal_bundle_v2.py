@@ -36,7 +36,6 @@ def sync(
     source_catalog_path = v1_root / "catalog.json"
     source_package_path = v1_root / "cn_x1_1.json"
     existing_catalog_path = existing_v2_root / "catalog.json"
-    source_catalog = object_json(source_catalog_path)
     source_package = object_json(source_package_path)
     if source_package.get("model_id") != "cn_x1_1":
         raise ValueError("accepted v1 source is not CN x1.1")
