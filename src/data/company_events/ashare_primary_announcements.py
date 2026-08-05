@@ -88,6 +88,7 @@ def classify_buyback_title(title: str) -> str | None:
             "累计回购",
             "回购股份比例达到",
             "回购公司股份的进展",
+            "回购公司股份进展",
             "回购股份进展",
         )
     ):
