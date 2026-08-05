@@ -230,32 +230,51 @@ def validate_registry(root: Path) -> dict[str, Any]:
     registry = _load_yaml(registry_path)
     if registry.get("trade_ready") is not False:
         raise ValueError("Registry must remain trade_ready=false")
-    if set(registry.get("models", {})) != set(EXPECTED_MODELS):
-        raise ValueError("Registry model set does not match governed versions")
-    if registry.get("active_baselines") != EXPECTED_ACTIVE_BASELINES:
-        raise ValueError("Registry active baseline mapping is invalid")
+
+    registered_models = registry.get("models", {})
+    if not isinstance(registered_models, dict):
+        raise ValueError("Registry models must be a mapping")
+    missing_x1_models = sorted(set(EXPECTED_MODELS) - set(registered_models))
+    if missing_x1_models:
+        raise ValueError(
+            f"Registry is missing governed x1 versions: {missing_x1_models}"
+        )
+
+    active_baselines = registry.get("active_baselines", {})
+    if not isinstance(active_baselines, dict):
+        raise ValueError("Registry active baselines must be a mapping")
+    for market, expected_model in EXPECTED_ACTIVE_BASELINES.items():
+        if active_baselines.get(market) != expected_model:
+            raise ValueError(
+                f"Registry active {market} baseline must be {expected_model}"
+            )
+
     policy = registry.get("versioning_policy", {})
     if policy.get("immutable_released_versions") is not True:
         raise ValueError("Released model versions must be immutable")
     if policy.get("final_holdout_reuse_for_selection_allowed") is not False:
         raise ValueError("Final holdout reuse must be forbidden")
-    if registry["models"]["us_x1_0"].get("superseded_by") != "us_x1_1":
+    if registered_models["us_x1_0"].get("superseded_by") != "us_x1_1":
         raise ValueError("US x1.0 must be superseded by US x1.1")
-    if registry["models"]["us_x1_1"].get("status") != (
+    if registered_models["us_x1_1"].get("status") != (
         "baseline_research_active"
     ):
         raise ValueError("US x1.1 must be the active US research baseline")
 
     models = [
-        validate_model_config(root, model_id, dict(registry["models"][model_id]))
+        validate_model_config(root, model_id, dict(registered_models[model_id]))
         for model_id in sorted(EXPECTED_MODELS)
     ]
     return {
-        "schema_version": "1.2",
+        "schema_version": "1.3",
         "status": "baseline_model_registry_valid",
         "registry": str(registry_path.relative_to(root)),
-        "active_baselines": dict(registry["active_baselines"]),
+        "active_baselines": dict(active_baselines),
+        "governed_x1_models": models,
         "models": models,
+        "additional_registered_models": sorted(
+            set(registered_models) - set(EXPECTED_MODELS)
+        ),
     }
 
 

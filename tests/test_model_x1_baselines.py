@@ -27,7 +27,9 @@ def _load_validator() -> ModuleType:
 def test_registry_contains_governed_x1_baselines() -> None:
     payload = yaml.safe_load(REGISTRY.read_text(encoding="utf-8"))
     assert payload["trade_ready"] is False
-    assert payload["active_baselines"] == {"us": "us_x1_1", "cn": "cn_x1_0"}
+    assert payload["active_baselines"]["us"] == "us_x1_1"
+    assert payload["active_baselines"]["cn"] == "cn_x1_0"
+    assert payload["active_baselines"]["byd"] == "byd_dividend_sleeve_v1_0"
     assert payload["models"]["us_x1_0"]["display_name"] == "US x1.0"
     assert payload["models"]["us_x1_0"]["superseded_by"] == "us_x1_1"
     assert payload["models"]["us_x1_1"]["display_name"] == "US x1.1"
@@ -35,6 +37,9 @@ def test_registry_contains_governed_x1_baselines() -> None:
         "baseline_research_active"
     )
     assert payload["models"]["cn_x1_0"]["display_name"] == "CN x1.0"
+    assert payload["models"]["byd_dividend_sleeve_v1_0"]["status"] == (
+        "accepted_formal_baseline"
+    )
     assert payload["versioning_policy"]["immutable_released_versions"] is True
     assert (
         payload["versioning_policy"]["final_holdout_reuse_for_selection_allowed"]
@@ -46,10 +51,17 @@ def test_model_configs_notebooks_and_frozen_specs_tie() -> None:
     module = _load_validator()
     result = module.validate_registry(ROOT)
     assert result["status"] == "baseline_model_registry_valid"
-    assert result["active_baselines"] == {"us": "us_x1_1", "cn": "cn_x1_0"}
+    assert result["active_baselines"] == {
+        "us": "us_x1_1",
+        "cn": "cn_x1_0",
+        "byd": "byd_dividend_sleeve_v1_0",
+    }
     assert [item["model_id"] for item in result["models"]] == [
         "cn_x1_0",
         "us_x1_0",
         "us_x1_1",
+    ]
+    assert result["additional_registered_models"] == [
+        "byd_dividend_sleeve_v1_0"
     ]
     assert all(item["trade_ready"] is False for item in result["models"])
