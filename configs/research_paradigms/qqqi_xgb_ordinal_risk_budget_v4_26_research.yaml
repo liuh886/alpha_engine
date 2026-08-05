@@ -1,0 +1,164 @@
+experiment_id: qqqi_xgb_ordinal_risk_budget_v4_26_research
+parent_experiment_id: qqqi_xgb_adjacent_path_utility_v4_24_research
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+purpose: >-
+  Test one final XGBoost candidate architecture that predicts a joint ordered
+  four-state risk budget from the exact v4.24 path-utility labels. This is a
+  convergence experiment, not a parameter or feature search.
+
+boundaries:
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  transaction_cost_bps_per_turnover_unit: 10.0
+  historical_success_authorizes_shadow_only: true
+  v4_2_unchanged: true
+  telegram_unchanged: true
+  issue_348_unchanged: true
+  no_v4_27_without_new_information: true
+
+data:
+  provider: yahoo_adjusted_open_close_research_adapter
+  start_date: "2010-01-01"
+  end_date: null
+  required_symbols: [QQQ, TQQQ, VOO, BIL, SGOV, QQQI, HYG, LQD, SHY, IEF, TLT, ^VIX, ^VXN]
+  actual_product_start: "2024-01-01"
+
+decision:
+  sample_every_sessions: 10
+  global_anchor_position: 0
+  holding_sessions: 10
+  embargo_sessions: 10
+  transaction_cost_bps_per_turnover_unit: 10.0
+  mae_penalty: 0.50
+  macro_cluster_calendar_days: 30
+  posterior_rule: expected_state_index_round_half_up
+
+states:
+  order: [defense, bridge, core, leveraged]
+  weights:
+    defense: {cash: 1.00, QQQ: 0.00, TQQQ: 0.00}
+    bridge: {cash: 0.50, QQQ: 0.50, TQQQ: 0.00}
+    core: {cash: 0.00, QQQ: 1.00, TQQQ: 0.00}
+    leveraged: {cash: 0.00, QQQ: 0.25, TQQQ: 0.75}
+  tie_break: lower_risk_state
+
+features:
+  market:
+    - vol_max_percentile_252
+    - vol_max_return_5d
+    - vol_min_retreat_20d
+    - vxn_vix_ratio_z63
+    - vxn_minus_vix_percentile
+    - vxn_minus_vix_return_5d
+    - qqq_rsi20
+    - qqq_bollinger_pct_b_20_2
+    - qqq_bollinger_bandwidth_z63
+    - qqq_distance_ma20
+    - qqq_distance_ma50
+    - qqq_distance_ma200
+    - qqq_ma20_slope_5d
+    - qqq_drawdown_63d
+    - qqq_realized_volatility_20d
+    - qqq_minus_voo_return_5d
+    - qqq_minus_voo_return_20d
+    - qqq_voo_rs_distance_ma20
+    - qqq_voo_trend_gap
+    - qqq_voo_bollinger_gap
+    - voo_distance_ma200
+  credit_duration:
+    - hyg_lqd_return_5d
+    - hyg_lqd_return_20d
+    - hyg_shy_return_20d
+    - lqd_ief_return_20d
+    - tlt_shy_return_20d
+    - credit_risk_ratio_distance_ma20
+    - duration_risk_ratio_distance_ma20
+    - credit_duration_trend_agreement
+  state_context:
+    - next_open_state_0
+    - next_open_state_1
+    - next_open_state_2
+    - next_open_weight_QQQI
+    - next_open_weight_QQQ
+    - next_open_weight_TQQQ
+  total_inputs: 35
+
+model:
+  objective: multi:softprob
+  num_class: 4
+  eval_metric: mlogloss
+  tree_method: hist
+  max_depth: 3
+  learning_rate: 0.03
+  boosting_rounds: 300
+  min_child_weight: 4.0
+  subsample: 0.80
+  colsample_bytree: 0.80
+  reg_lambda: 10.0
+  reg_alpha: 1.0
+  gamma: 0.10
+  max_bin: 64
+  seed: 20260806
+  nthread: 2
+  early_stopping_allowed: false
+  parameter_search_allowed: false
+  feature_selection_allowed: false
+  minimum_unique_expected_risk_values: 3
+
+training:
+  minimum_groups: 100
+  minimum_class_count: 5
+
+outer_folds:
+  - {fold: fold_2016_2017, train_start: "2011-01-03", train_end: "2015-12-31", test_start: "2016-01-01", test_end: "2017-12-29"}
+  - {fold: fold_2018_2019, train_start: "2011-01-03", train_end: "2017-12-29", test_start: "2018-01-01", test_end: "2019-12-31"}
+  - {fold: fold_2020_2021, train_start: "2011-01-03", train_end: "2019-12-31", test_start: "2020-01-01", test_end: "2021-12-31"}
+  - {fold: fold_2022_2023, train_start: "2011-01-03", train_end: "2021-12-31", test_start: "2022-01-01", test_end: "2023-12-29"}
+
+validation:
+  phase1:
+    macro_ovr_auc_min: 0.56
+    quadratic_weighted_kappa_min: 0.12
+    macro_recall_min: 0.30
+    utility_regret_reduction_min: 0.15
+    median_utility_advantage_min: 0.0
+    positive_outer_folds_min: 3
+    top_two_rate_min: 0.60
+    minimum_state_selections: 10
+    maximum_state_selection_share: 0.60
+    largest_positive_year_share_max: 0.35
+    largest_positive_cluster_share_max: 0.25
+    placebo_beat_rate_min: 0.90
+    largest_single_feature_shap_share_max: 0.20
+    largest_feature_family_shap_share_max: 0.50
+  placebo_trials: 20
+  phase2:
+    cagr_improvement_pp_min: 1.50
+    max_drawdown_worsening_pp_max: 1.00
+    calmar_improvement_min: 0.10
+    sortino_not_below_v4_2: true
+    positive_calendar_years_min: 6
+    turnover_increase_max: 0.75
+    largest_state_positive_share_max: 0.50
+  actual:
+    max_drawdown_worsening_pp_max: 1.00
+
+feature_families:
+  volatility: [vol_max_percentile_252, vol_max_return_5d, vol_min_retreat_20d, vxn_vix_ratio_z63, vxn_minus_vix_percentile, vxn_minus_vix_return_5d]
+  qqq_price_path: [qqq_rsi20, qqq_bollinger_pct_b_20_2, qqq_bollinger_bandwidth_z63, qqq_distance_ma20, qqq_distance_ma50, qqq_distance_ma200, qqq_ma20_slope_5d, qqq_drawdown_63d, qqq_realized_volatility_20d]
+  relative_strength: [qqq_minus_voo_return_5d, qqq_minus_voo_return_20d, qqq_voo_rs_distance_ma20, qqq_voo_trend_gap, qqq_voo_bollinger_gap, voo_distance_ma200]
+  credit_duration: [hyg_lqd_return_5d, hyg_lqd_return_20d, hyg_shy_return_20d, lqd_ief_return_20d, tlt_shy_return_20d, credit_risk_ratio_distance_ma20, duration_risk_ratio_distance_ma20, credit_duration_trend_agreement]
+  v4_2_context: [next_open_state_0, next_open_state_1, next_open_state_2, next_open_weight_QQQI, next_open_weight_QQQ, next_open_weight_TQQQ]
+
+hypothesis_discipline:
+  - The state lattice, labels, features, folds, XGBoost parameters and posterior mapping are frozen before outcomes.
+  - No candidate-action descriptors enter the model.
+  - No class threshold, calibration transform, state deletion or hyperparameter comparison is allowed.
+  - The oracle label uses maximum path utility with lower-risk tie breaking.
+  - Every label block is non-overlapping and uses the audited ten-session embargo translation.
+  - Phase 2 is fail-closed unless every Phase 1 gate passes.
+  - Historical success authorizes prospective shadow observation only.
+  - Failure closes the current daily-feature XGBoost candidate path and leaves v4.2 as the converged candidate.
