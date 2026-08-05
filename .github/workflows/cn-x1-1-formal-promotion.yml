@@ -1,4 +1,4 @@
-# Trusted connector commit: rerun after deterministic Actions materialization.
+# Final trusted connector rerun: generated formal outputs must now be zero-drift.
 name: CN x1.1 Formal Promotion
 
 on:
