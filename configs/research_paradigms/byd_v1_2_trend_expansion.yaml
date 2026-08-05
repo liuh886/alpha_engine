@@ -1,0 +1,99 @@
+schema_version: '1.0'
+experiment_id: byd_v1_2_trend_expansion
+issue: 560
+status: frozen_before_result
+research_only: true
+trade_ready: false
+fresh_historical_holdout: false
+objective: test whether a strictly capped financed BYD exposure in strong-trend low-volatility states improves compound return over BYD v1.1
+immutable_inputs:
+  byd_snapshot: data/research/byd_canonical_v1_snapshot.tar.xz
+  byd_snapshot_sha256: 2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179
+  etf_artifact: data/research/515180_canonical_v1_artifact.zip.b64
+  etf_artifact_sha256: 7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f
+  cutoff: '2026-08-03'
+execution:
+  signal_time: session_close_t
+  execution_time: next_common_independently_confirmed_eligible_open_t_plus_1
+  ineligible_open_policy: keep_pending_target
+  primary_transaction_cost_bps_per_absolute_weight_change: 20
+  stress_transaction_cost_bps_per_absolute_weight_change: 40
+  primary_annual_financing_rate: 0.06
+  stress_annual_financing_rate: 0.10
+  financing_day_count: 252
+  financing_charge: daily_on_negative_cash_only
+baseline:
+  model: BYD v1.1
+  technical_model_id: byd_dividend_sleeve_v1_0
+  risk_on:
+    BYD: 1.0
+    515180.SH: 0.0
+    cash: 0.0
+  defense:
+    BYD: 0.75
+    515180.SH: 0.25
+    cash: 0.0
+trend_expansion_state:
+  entry_all:
+    base_byd_weight: 1.0
+    market_state: bull
+    vol_state: low
+    mom_20_gt: 0.0
+    mom_60_gt: 0.0
+    drawdown_252_gt: -0.10
+  exit_any:
+    base_byd_weight: 0.75
+    market_state_not: bull
+    vol_state: high
+    mom_20_lte: 0.0
+  stateful: true
+candidates:
+  - id: byd_v1_1
+    role: baseline
+  - id: byd_v1_2_trend_expansion_1125
+    role: primary
+    expansion_weights:
+      BYD: 1.125
+      515180.SH: 0.0
+      cash: -0.125
+  - id: byd_v1_2_trend_expansion_1100
+    role: robustness
+    expansion_weights:
+      BYD: 1.10
+      515180.SH: 0.0
+      cash: -0.10
+  - id: byd_v1_2_trend_expansion_1250
+    role: leverage_diagnostic
+    expansion_weights:
+      BYD: 1.25
+      515180.SH: 0.0
+      cash: -0.25
+candidate_count_locked: 4
+additional_candidate_allowed: false
+windows:
+  development: ['2019-11-26', '2022-12-31']
+  fixed_validation: ['2023-01-01', '2024-12-31']
+  retrospective_2025_plus: ['2025-01-01', '2026-08-03']
+  full_overlap: ['2019-11-26', '2026-08-03']
+promotion_gates:
+  cagr_improvement_pp_gte: 1.0
+  maximum_drawdown_worsening_pp_lte: 3.0
+  calmar_decline_lte: 0.02
+  stress_total_return_above_baseline: true
+  maximum_negative_frozen_periods: 1
+  maximum_positive_period_contribution_share: 0.60
+  maximum_round_trips_per_year: 3.0
+  minimum_completed_expansion_episodes: 10
+  minimum_expansion_sessions: 126
+  robustness_cagr_and_stress_return_above_baseline: true
+prohibited:
+  - threshold grid search
+  - fifth leverage level
+  - financing-rate repair
+  - post-result state modification
+  - additional defense below 75 percent BYD
+  - recovery overlay reuse
+  - 515180 trend timing
+  - same-close execution
+  - ignoring financing cost
+  - treating observed history as fresh holdout
