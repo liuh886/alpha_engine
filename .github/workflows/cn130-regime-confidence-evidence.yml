@@ -1,36 +1,104 @@
-name: CN130 PIT Fundamental Payload Bootstrap
+name: CN130 PIT Fundamental Evidence
 
 on:
   pull_request:
     branches:
       - research/cn130-regime-confidence-v1
     paths:
-      - .github/cn130_pit_fundamental_payload.chunk*
-      - scripts/apply_cn130_pit_fundamental_payload.py
+      - configs/research_experiments/cn130_pit_fundamental_within_sector_v1.yaml
+      - docs/research/cn130_pit_fundamental_*.md
+      - scripts/run_cn130_pit_fundamental_model.py
+      - tests/test_cn130_pit_fundamental_model.py
       - .github/workflows/cn130-regime-confidence-evidence.yml
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  actions: write
+
+env:
+  PROVIDER_ARTIFACT_ID: '8850463785'
+  PYTHONPATH: .
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
-  apply:
+  evidence:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: research/cn130-pit-fundamental-v1
-          fetch-depth: 1
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Verify and apply payload
-        run: python scripts/apply_cn130_pit_fundamental_payload.py
-      - name: Commit implementation
+      - name: Install locked environment
         run: |
-          git config user.name 'AlphaEngine Research Agent'
-          git config user.email 'research-agent@alphaengine.local'
-          git add -A
-          git commit -m 'research: implement CN130 PIT fundamental candidate'
-          git push origin HEAD:research/cn130-pit-fundamental-v1
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint and focused tests
+        run: |
+          uv run ruff check scripts/run_cn130_pit_fundamental_model.py tests/test_cn130_pit_fundamental_model.py
+          uv run pytest tests/test_cn130_pit_fundamental_model.py -q --strict-markers --tb=short
+      - name: Download immutable price provider
+        run: |
+          mkdir -p .research/provider-artifact .research/provider
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PROVIDER_ARTIFACT_ID}/zip" > .research/provider.zip
+          unzip -q .research/provider.zip -d .research/provider-artifact
+          tar -xf .research/provider-artifact/cn-provider-2026-08-03.tar -C .research/provider
+      - name: Restore exact-cutoff fundamental source snapshots
+        id: event-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .research/event-cache
+          key: ${{ runner.os }}-cn130-pit-fundamentals-${{ hashFiles('configs/research_universes/cn_selected_equities_v3.yaml', 'configs/data/selected_pool_event_population_v1.yaml') }}-2026-08-03
+      - name: Populate source-bound CN130 PIT fundamentals
+        run: |
+          uv run python scripts/data/populate_selected_pool_events.py \
+            --market cn \
+            --start 2019-01-01 \
+            --cutoff 2026-08-03 \
+            --source-cache-root .research/event-cache \
+            --output-root .research/events
+      - name: Save exact-cutoff fundamental source snapshots
+        if: always() && steps.event-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .research/event-cache
+          key: ${{ steps.event-cache.outputs.cache-primary-key }}
+      - name: Rebuild frozen R0 ledgers
+        run: |
+          mkdir -p .research/cells
+          for window in 2024H1 2024H2 2025H1 2025H2 2026H1 2026H2_PARTIAL; do
+            uv run python scripts/run_cn130_ranking_batch.py \
+              --provider-dir .research/provider/data/providers/cn \
+              --output-dir .research/cells \
+              --window "$window" \
+              --batch r0r1
+          done
+      - name: Run new-information model twice
+        run: |
+          for run in a b; do
+            uv run python scripts/run_cn130_pit_fundamental_model.py \
+              --provider-dir .research/provider/data/providers/cn \
+              --ledger-dir .research/cells \
+              --events-path .research/events/fundamentals/events.jsonl \
+              --output-dir ".research/run-${run}"
+          done
+      - name: Verify deterministic evidence
+        run: diff -ru .research/run-a .research/run-b
+      - name: Package complete evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/cn130-pit-fundamental
+          test ! -d .research/events || cp -R .research/events artifacts/cn130-pit-fundamental/event-population
+          test ! -d .research/run-a || cp -R .research/run-a artifacts/cn130-pit-fundamental/final
+          test ! -d .research/cells/score_ledgers || cp -R .research/cells/score_ledgers artifacts/cn130-pit-fundamental/
+          cp configs/research_experiments/cn130_pit_fundamental_within_sector_v1.yaml artifacts/cn130-pit-fundamental/
+          cp docs/research/cn130_pit_fundamental_preregistration_2026-08-05.md artifacts/cn130-pit-fundamental/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cn130-pit-fundamental-${{ github.run_id }}
+          path: artifacts/cn130-pit-fundamental/
+          if-no-files-found: error
+          retention-days: 30
