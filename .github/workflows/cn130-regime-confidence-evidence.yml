@@ -6,6 +6,7 @@ on:
       - research/cn130-regime-confidence-v1
     paths:
       - configs/research_experiments/cn130_pit_fundamental_within_sector_v1.yaml
+      - data/research/cn130_pit_fundamental_v1/**
       - docs/research/cn130_pit_fundamental_*.md
       - scripts/run_cn130_pit_fundamental_model.py
       - tests/test_cn130_pit_fundamental_model.py
@@ -61,8 +62,12 @@ jobs:
               --events-path .research/frozen/event-population/fundamentals/events.jsonl \
               --output-dir ".research/run-${run}"
           done
-      - name: Verify deterministic evidence
-        run: diff -ru .research/run-a .research/run-b
+      - name: Verify deterministic and committed evidence
+        run: |
+          diff -ru .research/run-a .research/run-b
+          for file in decision.json execution_identity.json model_summary.csv reporting_summary.csv coverage_by_rebalance.csv period_fundamental_coverage.csv; do
+            cmp ".research/run-a/${file}" "data/research/cn130_pit_fundamental_v1/${file}"
+          done
       - name: Package complete evidence
         if: always()
         run: |
@@ -72,10 +77,11 @@ jobs:
           cp .research/frozen/event-population/fundamentals/component_manifest.json artifacts/cn130-pit-fundamental/fundamental_source_manifest.json
           cp configs/research_experiments/cn130_pit_fundamental_within_sector_v1.yaml artifacts/cn130-pit-fundamental/
           cp docs/research/cn130_pit_fundamental_preregistration_2026-08-05.md artifacts/cn130-pit-fundamental/
+          cp docs/research/cn130_pit_fundamental_result_2026-08-05.md artifacts/cn130-pit-fundamental/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cn130-pit-fundamental-frozen-${{ github.run_id }}
+          name: cn130-pit-fundamental-certified-${{ github.run_id }}
           path: artifacts/cn130-pit-fundamental/
           if-no-files-found: error
           retention-days: 30
