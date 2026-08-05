@@ -1,0 +1,86 @@
+{
+  "available_candidates": [
+    "515180.SH",
+    "511010.SH"
+  ],
+  "blocked_candidates": {
+    "512890.SH": {
+      "cutoff": "2026-08-03",
+      "error": "provider OHLC envelope violations exceed tolerance: 2024-03-29",
+      "error_type": "RuntimeError",
+      "provider_envelope_audit_preserved": true,
+      "provider_reference_preserved": true,
+      "status": "data_blocked",
+      "symbol": "512890.SH"
+    }
+  },
+  "challengers": [
+    "512890.SH",
+    "511010.SH"
+  ],
+  "common_eligible_opens": 1598,
+  "common_sessions": 1610,
+  "cutoff": "2026-08-03",
+  "fresh_holdout": false,
+  "frozen_candidates": [
+    "515180.SH",
+    "512890.SH",
+    "511010.SH"
+  ],
+  "gate_matrix": {
+    "511010.SH": {
+      "cash_gates": {
+        "all_three_periods_positive": true,
+        "cagr_delta_at_least_50bp": false,
+        "calmar_not_below_cash": true,
+        "drawdown_not_worse_by_more_than_1pp": true,
+        "max_period_share_at_most_60pct": true,
+        "round_trips_at_most_3": true,
+        "stress_total_increment_nonnegative": true
+      },
+      "cash_qualified": false,
+      "challenge_gates": {},
+      "challenge_qualified": false,
+      "data_status": "canonical_pass"
+    },
+    "512890.SH": {
+      "blocker": {
+        "cutoff": "2026-08-03",
+        "error": "provider OHLC envelope violations exceed tolerance: 2024-03-29",
+        "error_type": "RuntimeError",
+        "provider_envelope_audit_preserved": true,
+        "provider_reference_preserved": true,
+        "status": "data_blocked",
+        "symbol": "512890.SH"
+      },
+      "cash_gates": {},
+      "cash_qualified": false,
+      "challenge_gates": {},
+      "challenge_qualified": false,
+      "data_status": "blocked"
+    },
+    "515180.SH": {
+      "cash_gates": {
+        "all_three_periods_positive": true,
+        "cagr_delta_at_least_50bp": true,
+        "calmar_not_below_cash": true,
+        "drawdown_not_worse_by_more_than_1pp": true,
+        "max_period_share_at_most_60pct": true,
+        "round_trips_at_most_3": true,
+        "stress_total_increment_nonnegative": true
+      },
+      "cash_qualified": true,
+      "challenge_gates": {},
+      "challenge_qualified": false,
+      "data_status": "canonical_pass"
+    }
+  },
+  "governed_decision": "retain_515180_as_only_prospective_etf",
+  "issue": 546,
+  "overlap_start": "2019-11-26",
+  "period_contribution_method": "candidate_terminal_wealth_divided_by_cash_terminal_wealth_minus_1",
+  "research_only": true,
+  "schema_version": "byd_defensive_sleeve_screen_v2",
+  "selected_challenger": null,
+  "trade_ready": false
+}

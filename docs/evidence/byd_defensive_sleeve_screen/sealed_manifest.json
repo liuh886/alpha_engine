@@ -1,0 +1,35 @@
+{
+  "511010": {
+    "adjusted_sha256": "bd095082899a40be28bcd5d5b3a0f263e03affca04d383012123411b25231d5d",
+    "data_quality_status": "canonical_v1_pass",
+    "manifest_sha256": "5a64da9036639fa34c185afb9ceabd0d55f0bb4ea873fd73791b1d83eebf3380",
+    "raw_sha256": "c7a287b580fa02e84feb7563c692aeff38d04c66f9135650e35319a1549fc65a",
+    "session_audit_sha256": "a143c905bba7ba26e8fc6036da265d138981679716ae075b03398b0cbffcb8f4"
+  },
+  "512890": {
+    "cutoff": "2026-08-03",
+    "error": "provider OHLC envelope violations exceed tolerance: 2024-03-29",
+    "error_type": "RuntimeError",
+    "provider_envelope_audit_preserved": true,
+    "provider_reference_preserved": true,
+    "status": "data_blocked",
+    "symbol": "512890.SH"
+  },
+  "artifact_path": "data/research/byd_defensive_sleeve_screen_v1_artifact.zip.b64",
+  "artifact_sha256": "0997467e867cbc3189292befcbfa758d442d05f389b0b39deb1caf3b2aeab7a6",
+  "artifact_size_bytes": 468855,
+  "evidence_sha256": {
+    "README.md": "9f21f38a509dc15d1e1e53d4dee13ddbc20ece68869d6a1f8edb42b24cba1531",
+    "correlation_diagnostics.csv": "9f791a3e98c55c8b79676468115513a5be7ccd10832ce603d92fbfea996f3001",
+    "evaluation.csv": "e1670f6829bc7ae0eb980e84f6bd9460fcb566fac533fec9764c2c8c08c1138a",
+    "period_contribution.csv": "e348c12fdb865b8908cc6dabf5cafae59012e1b87d0d6c75ba85ed7f463b594d",
+    "summary.json": "f38620716e97d0942347ec57d6aa8bbbe6068cc7e1c090b1501bd211d906408d"
+  },
+  "governed_decision": "retain_515180_as_only_prospective_etf",
+  "research_only": true,
+  "schema_version": "byd_defensive_sleeve_sealed_evidence_v1",
+  "selected_challenger": null,
+  "source_head_sha": "41de5551dfdfc557c970ab13c8e1ce1ce084943d",
+  "source_run_id": "31005242952",
+  "trade_ready": false
+}
