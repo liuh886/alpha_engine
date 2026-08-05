@@ -1,0 +1,92 @@
+schema_version: "1.0"
+experiment_id: "cn130_pit_fundamental_within_sector_v1"
+status: "frozen_pre_evaluation"
+issue: 542
+research_only: true
+trade_ready: false
+
+universe:
+  pool_id: "cn_selected_equities_v3"
+  pool_spec: "configs/research_universes/cn_selected_equities_v3.yaml"
+  expected_members: 130
+  membership_changes_allowed: false
+
+inputs:
+  price_provider_cutoff: "2026-08-03"
+  price_provider_artifact_id: 8850463785
+  benchmark: "000300"
+  classification: "configs/research_classifications/cn130_sector_industry_v1.yaml"
+  fundamental_contract: "configs/data/selected_pool_event_population_v1.yaml"
+  fundamental_source: "akshare_sina_financial_report_cninfo_time"
+  point_in_time_field: "available_at"
+
+validation:
+  horizon_sessions: 10
+  execution_delay_sessions: 1
+  rebalance_interval_sessions: 10
+  selection_windows: [2024H1, 2024H2, 2025H1, 2025H2]
+  reporting_only_windows: [2026H1, 2026H2_PARTIAL]
+  transaction_cost_bps: [10, 20, 40]
+
+coverage_gate:
+  minimum_pool_coverage: 0.80
+  minimum_selected_sector_coverage: 0.70
+  minimum_qualified_rebalance_ratio: 0.75
+  minimum_valid_components: 4
+  maximum_staleness_days: 540
+
+fundamental_components:
+  - revenue_yoy
+  - net_income_yoy_robust
+  - net_margin
+  - roe_proxy
+  - asset_turnover
+  - inverse_leverage
+  - freshness
+
+ranking_rules:
+  growth_components_grouping: "sector_and_fiscal_period_then_sector_fallback"
+  ratio_components_grouping: "sector"
+  winsorization: [0.05, 0.95]
+  component_weighting: "equal_weight_available_components"
+  minimum_components: 4
+
+candidates:
+  F0_r0_sector_4x1:
+    sector_selector: R0
+    within_sector_selector: R0
+  F1_fundamental_top1:
+    sector_selector: R0
+    within_sector_selector: PIT_fundamental_composite
+  F2_half_blend:
+    sector_selector: R0
+    within_sector_selector:
+      R0_rank: 0.50
+      PIT_fundamental_rank: 0.50
+  F3_half_blend_fallback:
+    sector_selector: R0
+    within_sector_selector:
+      R0_rank: 0.50
+      PIT_fundamental_rank: 0.50
+    fallback: "R0 when selected-sector coverage is below 0.70"
+
+support_gate:
+  must_pass_coverage_gate: true
+  must_beat_F0_at_20bps: true
+  must_beat_F0_at_40bps: true
+  minimum_positive_windows: 3
+  worst_window_must_not_be_worse_than_F0: true
+  leave_one_name_relative_excess_positive: true
+  leave_one_sector_relative_excess_positive: true
+  maximum_sector_contribution_share: 0.55
+  maximum_fiscal_period_contribution_share: 0.70
+
+outcomes:
+  - data_blocked
+  - pit_fundamental_model_not_supported
+  - pit_fundamental_blend_supported_research_candidate
+  - pit_fundamental_model_supported_research_candidate
+
+promotion:
+  creates_cn_x1_1_automatically: false
+  requires_follow_up_validation: true
