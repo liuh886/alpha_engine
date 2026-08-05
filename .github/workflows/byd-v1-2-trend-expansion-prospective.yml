@@ -1,0 +1,173 @@
+name: BYD v1.2 Trend Expansion Prospective
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/research/byd_v1_2_trend_expansion_prospective.py"
+      - "scripts/run_byd_v1_2_trend_expansion_prospective.py"
+      - "tests/test_byd_v1_2_trend_expansion_prospective.py"
+      - "data/research/byd_v1_2_trend_expansion_prospective/**"
+      - "docs/research/byd_v1_2_trend_expansion_prospective.md"
+      - ".github/workflows/byd-v1-2-trend-expansion-prospective.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/research/byd_v1_2_trend_expansion_prospective.py"
+      - "scripts/run_byd_v1_2_trend_expansion_prospective.py"
+      - "tests/test_byd_v1_2_trend_expansion_prospective.py"
+      - "data/research/byd_prospective_shadow/observations/**"
+      - "data/research/byd_515180_prospective/observations/**"
+      - "data/research/byd_v1_2_trend_expansion_prospective/**"
+      - "docs/research/byd_v1_2_trend_expansion_prospective.md"
+      - ".github/workflows/byd-v1-2-trend-expansion-prospective.yml"
+  schedule:
+    - cron: "15 12 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: byd-v1-2-trend-expansion-prospective-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
+  cancel-in-progress: false
+
+jobs:
+  contract-and-reproduction:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Verify immutable bases and source stores
+        run: |
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > "$RUNNER_TEMP/515180-canonical-v1-artifact.zip"
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  $RUNNER_TEMP/515180-canonical-v1-artifact.zip" | sha256sum --check --strict
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          for path in (
+              Path("data/research/byd_prospective_shadow/manifest.json"),
+              Path("data/research/byd_515180_prospective/manifest.json"),
+          ):
+              payload = json.loads(path.read_text(encoding="utf-8"))
+              assert payload["append_only"] is True, path
+              assert payload["research_only"] is True, path
+              assert payload["trade_ready"] is False, path
+          PY
+      - name: Validate prospective contracts
+        run: |
+          uv run ruff check \
+            src/research/byd_v1_2_trend_expansion_prospective.py \
+            scripts/run_byd_v1_2_trend_expansion_prospective.py \
+            tests/test_byd_v1_2_trend_expansion_prospective.py
+          uv run mypy \
+            src/research/byd_v1_2_trend_expansion_prospective.py \
+            scripts/run_byd_v1_2_trend_expansion_prospective.py
+          uv run pytest \
+            tests/test_byd_v1_2_trend_expansion_prospective.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Reproduce ledger from immutable and append-only sources
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/data/byd_canonical_v1
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz \
+            -C artifacts/data/byd_canonical_v1
+          uv run python scripts/run_byd_v1_2_trend_expansion_prospective.py \
+            --baseline-dir artifacts/data/byd_canonical_v1 \
+            --byd-store data/research/byd_prospective_shadow \
+            --paired-store data/research/byd_515180_prospective \
+            --store-dir artifacts/research/byd_v1_2_trend_expansion_prospective
+      - name: Enforce byte-exact prospective store
+        run: |
+          diff -ru \
+            data/research/byd_v1_2_trend_expansion_prospective \
+            artifacts/research/byd_v1_2_trend_expansion_prospective
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("artifacts/research/byd_v1_2_trend_expansion_prospective")
+          manifest = json.loads((root / "manifest.json").read_text())
+          scorecard = json.loads((root / "scorecard.json").read_text())
+          assert manifest["append_only"] is True
+          assert manifest["research_only"] is True
+          assert manifest["trade_ready"] is False
+          assert scorecard["automatic_promotion_allowed"] is False
+          assert scorecard["research_only"] is True
+          assert scorecard["trade_ready"] is False
+          PY
+      - name: Upload reproduced prospective store
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-v1-2-trend-prospective-${{ github.run_id }}
+          path: artifacts/research/byd_v1_2_trend_expansion_prospective
+          if-no-files-found: error
+          retention-days: 90
+
+  live-update:
+    if: github.event_name != 'pull_request'
+    needs: contract-and-reproduction
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Extract immutable BYD base
+        run: |
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          mkdir -p artifacts/data/byd_canonical_v1
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz \
+            -C artifacts/data/byd_canonical_v1
+      - name: Append immutable trend-expansion evidence
+        run: |
+          uv run python scripts/run_byd_v1_2_trend_expansion_prospective.py \
+            --baseline-dir artifacts/data/byd_canonical_v1 \
+            --byd-store data/research/byd_prospective_shadow \
+            --paired-store data/research/byd_515180_prospective \
+            --store-dir data/research/byd_v1_2_trend_expansion_prospective
+      - name: Verify append-only scope
+        run: |
+          set -euo pipefail
+          unexpected="$(git status --porcelain | awk '{print $2}' | grep -v '^data/research/byd_v1_2_trend_expansion_prospective/' || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "Unexpected prospective updater changes:"
+            echo "$unexpected"
+            exit 1
+          fi
+      - name: Commit new prospective evidence
+        run: |
+          set -euo pipefail
+          root=data/research/byd_v1_2_trend_expansion_prospective
+          if git diff --quiet -- "$root" && \
+             [[ -z "$(git ls-files --others --exclude-standard "$root")" ]]; then
+            echo "No new trend-expansion prospective evidence"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$root"
+          git commit -m "research: append BYD v1.2 trend-expansion evidence"
+          git pull --rebase origin main
+          git push origin HEAD:main
