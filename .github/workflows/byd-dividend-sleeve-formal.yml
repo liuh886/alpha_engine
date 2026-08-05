@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: byd-dividend-sleeve-formal-${{ github.event.pull_request.number || github.ref }}
@@ -33,7 +33,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
@@ -83,31 +82,9 @@ jobs:
             --root artifacts/formal-backtests \
             --as-of 2026-08-03T09:15:00Z \
             --receipt artifacts/byd-formal-freshness-receipt.json
+          cmp artifacts/formal-backtests/byd_dividend_sleeve_v1_0.json data/research/formal_backtests/byd_dividend_sleeve_v1_0.json
           FORMAL_BACKTEST_VALIDATION_MODE=candidate \
             node qlib-dashboard/scripts/sync-formal-backtests.mjs
-      - name: Commit generated formal package to PR branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          set -euo pipefail
-          cp artifacts/formal-backtests/byd_dividend_sleeve_v1_0.json data/research/formal_backtests/byd_dividend_sleeve_v1_0.json
-          cp artifacts/formal-backtests/catalog.json data/research/formal_backtests/catalog.json
-          cp artifacts/formal-backtests/freshness.json data/research/formal_backtests/freshness.json
-          paths=(
-            data/research/formal_backtests/byd_dividend_sleeve_v1_0.json
-            data/research/formal_backtests/catalog.json
-            data/research/formal_backtests/freshness.json
-          )
-          if git diff --quiet -- "${paths[@]}" && [[ -z "$(git ls-files --others --exclude-standard "${paths[@]}")" ]]; then
-            echo "Formal BYD package is already byte-stable"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${paths[@]}"
-          git commit -m "release: publish BYD Dividend Sleeve V1.0 formal package"
-          branch="${{ github.event.pull_request.head.ref }}"
-          git pull --rebase origin "$branch"
-          git push origin HEAD:"$branch"
       - name: Upload formal promotion evidence
         if: always()
         uses: actions/upload-artifact@v4
