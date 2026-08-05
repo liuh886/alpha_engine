@@ -43,7 +43,7 @@ const LegacyDashboardRedirect = lazy(() => import('./pages/LegacyDashboardRedire
 
 /** Static, read-only research navigation after the formal Bundle v2 cutover. */
 export const routes: RouteDefinition[] = [
-  { path: '', title: 'Research Overview', label: 'Overview', releaseLevel: 'release', navGroup: 'Workspace', icon: LayoutDashboard, component: HomePage },
+  { path: 'app', title: 'Research Overview', label: 'Overview', releaseLevel: 'release', navGroup: 'Workspace', icon: LayoutDashboard, component: HomePage },
   { path: 'runs', title: 'Governed Model Runs', label: 'Runs', releaseLevel: 'release', navGroup: 'Workspace', icon: ListTree, component: RunsPage },
   { path: 'backtests', title: 'Formal Backtests', label: 'Backtests', releaseLevel: 'release', navGroup: 'Workspace', icon: BarChart3, component: FormalBacktestsPage },
   { path: 'review', title: 'Run Review', label: 'Review', releaseLevel: 'release', navGroup: 'Workspace', icon: FileCheck2, component: RunReviewPage },
@@ -68,7 +68,7 @@ export function isRuntimeVisible(route: RouteDefinition): boolean {
 export const VIEW_TITLES: Record<string, string> = Object.fromEntries(routes.map((route) => [route.path, route.title]));
 
 export function navigateTo(path: string): void {
-  window.location.hash = path ? `#/${path}` : '#/';
+  window.location.hash = path ? `#/${path}` : '#/app';
 }
 
 export function groupRoutes(filterFn?: (route: RouteDefinition) => boolean): Map<NavGroupTitle, RouteDefinition[]> {

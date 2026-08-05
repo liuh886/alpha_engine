@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, Orbit } from 'lucide-react';
 import { useActiveResearchBundle } from '@/hooks/useActiveResearchBundle';
 import { formatEvidenceLabel } from '@/lib/format-evidence-label';
@@ -20,7 +20,7 @@ export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary |
 
   return (
     <aside className={cn('research-sidebar', collapsed ? 'research-sidebar-collapsed' : 'research-sidebar-expanded')}>
-      <div className="research-brand">
+      <Link to="/" className="research-brand" aria-label="Back to Alpha Engine homepage">
         <div className="research-brand-mark"><Orbit className="h-4 w-4" /></div>
         {!collapsed && (
           <div className="min-w-0">
@@ -28,7 +28,7 @@ export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary |
             <div className="research-brand-subtitle">Research Studio</div>
           </div>
         )}
-      </div>
+      </Link>
 
       {!collapsed && (
         <div className="research-bundle-card">

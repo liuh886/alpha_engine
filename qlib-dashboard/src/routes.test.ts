@@ -31,13 +31,15 @@ describe('artifact-only route registry', () => {
     const visible = visibleRoutes(false);
     const groups = new Set(visible.map((route) => route.navGroup));
     ALL_NAV_GROUPS.forEach((group) => expect(groups).toContain(group));
-    expect(visible.find((route) => route.path === '')?.navGroup).toBe('Workspace');
+    expect(visible.find((route) => route.path === 'app')?.navGroup).toBe('Workspace');
+    expect(visible.find((route) => route.path === 'app')?.label).toBe('Overview');
     expect(visible.find((route) => route.path === 'runs')?.navGroup).toBe('Workspace');
     expect(visible.find((route) => route.path === 'backtests')?.navGroup).toBe('Workspace');
     expect(visible.find((route) => route.path === 'review')?.navGroup).toBe('Workspace');
     expect(visible.find((route) => route.path === 'decisions')?.navGroup).toBe('Workspace');
     expect(visible.find((route) => route.path === 'library')?.navGroup).toBe('Workspace');
     expect(routes.find((route) => route.path === 'dashboard')?.navVisible).toBe(false);
+    expect(routes.some((route) => route.path === '')).toBe(false);
     for (const removed of ['models', 'system', 'agent', 'backtest']) {
       expect(routes.some((route) => route.path === removed)).toBe(false);
     }

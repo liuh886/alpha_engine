@@ -4,7 +4,7 @@
   "description": "A local-first research artifact studio for inspecting governed data, models, experiments and backtests.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "./#/",
+  "start_url": "./#/app",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0b0f14",
