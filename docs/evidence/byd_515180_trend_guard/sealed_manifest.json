@@ -1,0 +1,20 @@
+{
+  "artifact_path": "data/research/byd_515180_trend_guard_v1_artifact.zip.b64",
+  "artifact_sha256": "77b2da146ba5745ec67a024aa2bb322a555da47b7c27e6855f1f159884b83245",
+  "artifact_size_bytes": 4319,
+  "evidence_sha256": {
+    "README.md": "84c6b1ba61516367c0957cf58d7fad2387d6270cf0474cdca5f5e99ed3270a12",
+    "evaluation.csv": "4a10a431e2b23230a8d3df1e7c1a00a73373adcc4fb57994366233e1a156d200",
+    "period_contribution.csv": "61cecf6c24f3fa16cd344f2db3ea7591bd5fbafefdb1b6f7ac7f7d657a5a7a4c",
+    "summary.json": "e1646451db2fc7822844672b4021321e9ac688244adf2fa835e144bf3d3ffef3",
+    "trend_diagnostics.csv": "7b18af38aa7eac836552b7fc9d1cdd92b86c22629216815be6f01943896b5d4d"
+  },
+  "governed_decision": "retain_v1_dividend_75_25",
+  "issue": 554,
+  "primary_candidate": "v1_dividend_ma200_soft",
+  "research_only": true,
+  "schema_version": "byd_515180_trend_guard_sealed_v1",
+  "source_head_sha": "403bdaa9a275bea39ddadb5369d8c0174c7a03f1",
+  "source_run_id": "31008632958",
+  "trade_ready": false
+}
