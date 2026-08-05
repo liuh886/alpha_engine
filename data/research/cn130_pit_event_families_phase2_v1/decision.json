@@ -1,0 +1,10 @@
+{
+  "automatic_model_promotion": false,
+  "decision": "event_population_built_no_family_eligible",
+  "event_driven_eligible_families": [],
+  "fixed_rebalance_eligible_families": [],
+  "research_only": true,
+  "schema_version": "cn130_pit_event_families_phase2_v1",
+  "trade_ready": false,
+  "validation_returns_inspected": false
+}
