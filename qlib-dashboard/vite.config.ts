@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 import path from 'path'
 import { execSync } from 'child_process'
@@ -19,12 +18,13 @@ try {
   process.env.VITE_APP_VERSION = 'unknown'
 }
 
-// The browser product is artifact-only. Relative URLs keep the single-file
-// build, manifest, service worker and research bundle valid under the GitHub
-// Pages project sub-path and when opened from a local bundle.
+// The browser product is artifact-only. Vite's built-in esbuild pipeline
+// compiles TSX; the React refresh plugin is not needed for CI or production.
+// Relative URLs keep the single-file build, manifest, service worker and
+// research bundle valid under the GitHub Pages project sub-path and locally.
 export default defineConfig({
   base: './',
-  plugins: [react(), viteSingleFile()],
+  plugins: [viteSingleFile()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
