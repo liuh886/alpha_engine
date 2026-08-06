@@ -1,0 +1,425 @@
+name: Reviewed Formal Backtest Refresh
+
+on:
+  schedule:
+    # After the normal US close/data window; CN has already closed.
+    - cron: "30 23 * * 1-5"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/formal-backtest-refresh.yml"
+      - ".github/workflows/formal-backtest-refresh-ci.yml"
+      - "src/artifacts/formal_refresh.py"
+      - "scripts/run_formal_refresh_transaction.py"
+      - "scripts/refresh_ranker_formal.py"
+      - "scripts/refresh_allocation_formal.py"
+      - "scripts/data/refresh_selected_pool_prices_v2.py"
+      - "scripts/sync_formal_bundle_v2.py"
+      - "tests/test_formal_refresh.py"
+      - "tests/test_sync_formal_bundle_v2.py"
+      - "data/research/formal_backtests/**"
+      - "data/research/formal_model_runs/**"
+      - "qlib-dashboard/public/data/formal-model-runs/**"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: reviewed-formal-backtest-refresh-live
+  cancel-in-progress: false
+
+env:
+  CURRENT_FORMAL_ROOT: data/research/formal_backtests
+  CANDIDATE_FORMAL_ROOT: artifacts/formal-refresh/formal-v1
+  CANDIDATE_V2_ROOT: artifacts/formal-refresh/formal-v2
+  REFRESH_RECEIPT: artifacts/formal-refresh/formal-refresh-receipt.json
+  REFRESH_BRANCH: automation/formal-backtest-refresh
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          lfs: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - name: Install locked environments
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+          cd qlib-dashboard
+          npm ci
+      - name: Validate refresh implementation before network work
+        run: |
+          uv run ruff check \
+            src/artifacts/formal_refresh.py \
+            scripts/run_formal_refresh_transaction.py \
+            scripts/refresh_ranker_formal.py \
+            scripts/refresh_allocation_formal.py \
+            scripts/data/refresh_selected_pool_prices_v2.py \
+            tests/test_formal_refresh.py
+          uv run pytest tests/test_formal_refresh.py -q --strict-markers --tb=short
+      - name: Resolve transaction timestamp
+        id: clock
+        run: |
+          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          requested_cutoff="$(date -u +%Y-%m-%d)"
+          echo "generated_at=$generated_at" >> "$GITHUB_OUTPUT"
+          echo "requested_cutoff=$requested_cutoff" >> "$GITHUB_OUTPUT"
+      - name: Rebuild isolated US and CN selected-pool providers
+        env:
+          REQUESTED_CUTOFF: ${{ steps.clock.outputs.requested_cutoff }}
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/formal-refresh/provider-us artifacts/formal-refresh/provider-cn
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
+            --root . \
+            --market us \
+            --source-csv-dir data/csv_clean \
+            --output-root artifacts/formal-refresh/provider-us \
+            --start 2021-01-01 \
+            --cutoff "$REQUESTED_CUTOFF" \
+            --max-rounds 3 \
+            --full-refresh
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
+            --root . \
+            --market cn \
+            --source-csv-dir data/csv_clean \
+            --output-root artifacts/formal-refresh/provider-cn \
+            --start 2021-01-01 \
+            --cutoff "$REQUESTED_CUTOFF" \
+            --max-rounds 3 \
+            --full-refresh
+      - name: Plan catalog-driven refresh
+        id: plan
+        env:
+          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+        run: |
+          uv run python scripts/run_formal_refresh_transaction.py plan \
+            --formal-root "$CURRENT_FORMAL_ROOT" \
+            --us-provider-manifest artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
+            --cn-provider-manifest artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
+            --generated-at "$GENERATED_AT" \
+            --output artifacts/formal-refresh/plan.json \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Initialize isolated candidate publication tree
+        if: steps.plan.outputs.refresh_required == 'true'
+        run: |
+          uv run python scripts/run_formal_refresh_transaction.py initialize \
+            --current-root "$CURRENT_FORMAL_ROOT" \
+            --candidate-root "$CANDIDATE_FORMAL_ROOT"
+      - name: Refresh QQQ Rotation v4.2
+        if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'qqqi_qqq_tqqq_v4_2')
+        env:
+          US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
+          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+        run: |
+          set -euo pipefail
+          uv run python scripts/data/build_etf_reference_bundle.py \
+            --end-date "$US_CUTOFF" \
+            --output-root artifacts/formal-refresh/qqq-bundle \
+            --require-professional
+          uv run python scripts/refresh_allocation_formal.py qqq \
+            --current-package "$CURRENT_FORMAL_ROOT/qqqi_qqq_tqqq_v4_2.json" \
+            --bundle-dir artifacts/formal-refresh/qqq-bundle \
+            --cutoff "$US_CUTOFF" \
+            --generated-at "$GENERATED_AT" \
+            --output "$CANDIDATE_FORMAL_ROOT/qqqi_qqq_tqqq_v4_2.json"
+      - name: Reproduce and refresh US x1.1 twice
+        if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'us_x1_1')
+        env:
+          US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
+          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import yaml
+
+          source = Path('configs/research_paradigms/us_x1_1_frozen_v1.yaml')
+          payload = yaml.safe_load(source.read_text(encoding='utf-8'))
+          payload['walk_forward']['test_end'] = os.environ['US_CUTOFF']
+          target = Path('artifacts/formal-refresh/us_x1_1_refresh.yaml')
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(yaml.safe_dump(payload, sort_keys=False), encoding='utf-8')
+          PY
+          for suffix in a b; do
+            uv run python scripts/run_us_feature_quality_validation.py \
+              --spec artifacts/formal-refresh/us_x1_1_refresh.yaml \
+              --provider-uri artifacts/formal-refresh/provider-us/data/providers/us \
+              --output-dir "artifacts/formal-refresh/us-run-${suffix}"
+          done
+          RUN_A="$(find artifacts/formal-refresh/us-run-a -name walk_forward_windows.json -printf '%h\n' | head -n 1)"
+          RUN_B="$(find artifacts/formal-refresh/us-run-b -name walk_forward_windows.json -printf '%h\n' | head -n 1)"
+          test -n "$RUN_A" && test -n "$RUN_B"
+          uv run python scripts/refresh_ranker_formal.py us \
+            --current-package "$CURRENT_FORMAL_ROOT/us_x1_1.json" \
+            --run-a "$RUN_A" \
+            --run-b "$RUN_B" \
+            --calendar artifacts/formal-refresh/provider-us/data/providers/us/calendars/day.txt \
+            --provider-manifest artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
+            --cutoff "$US_CUTOFF" \
+            --generated-at "$GENERATED_AT" \
+            --output "$CANDIDATE_FORMAL_ROOT/us_x1_1.json"
+      - name: Reproduce and refresh CN x1.1 twice
+        if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'cn_x1_1')
+        env:
+          CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
+          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+        run: |
+          set -euo pipefail
+          for suffix in a b; do
+            uv run python scripts/run_cn130_ranking_batch.py \
+              --root . \
+              --provider-dir artifacts/formal-refresh/provider-cn/data/providers/cn \
+              --output-dir "artifacts/formal-refresh/cn-ledger-${suffix}" \
+              --window 2026H2_PARTIAL \
+              --batch r0r1
+          done
+          LEDGER_A="artifacts/formal-refresh/cn-ledger-a/score_ledgers/2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
+          LEDGER_B="artifacts/formal-refresh/cn-ledger-b/score_ledgers/2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
+          test -f "$LEDGER_A" && test -f "$LEDGER_B"
+          uv run python scripts/refresh_ranker_formal.py cn \
+            --repository-root . \
+            --current-package "$CURRENT_FORMAL_ROOT/cn_x1_1.json" \
+            --provider-dir artifacts/formal-refresh/provider-cn/data/providers/cn \
+            --provider-manifest artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
+            --ledger-a "$LEDGER_A" \
+            --ledger-b "$LEDGER_B" \
+            --cutoff "$CN_CUTOFF" \
+            --generated-at "$GENERATED_AT" \
+            --output "$CANDIDATE_FORMAL_ROOT/cn_x1_1.json"
+      - name: Extend canonical inputs and refresh BYD v1.2
+        if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'byd_v1_2_convex_momentum_budget_v1')
+        env:
+          CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
+          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/formal-refresh/input/byd artifacts/formal-refresh/input/515180
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz \
+            -C artifacts/formal-refresh/input/byd
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 \
+            > artifacts/formal-refresh/515180.zip
+          unzip -q artifacts/formal-refresh/515180.zip \
+            -d artifacts/formal-refresh/input/515180
+          uv run python scripts/refresh_allocation_formal.py byd \
+            --current-package "$CURRENT_FORMAL_ROOT/byd_v1_2_convex_momentum_budget_v1.json" \
+            --base-byd-dir artifacts/formal-refresh/input/byd \
+            --base-etf-dir artifacts/formal-refresh/input/515180 \
+            --shadow-store data/research/byd_prospective_shadow \
+            --paired-store data/research/byd_515180_prospective \
+            --signal-ledger data/research/byd_v1_2_signal_ledger \
+            --cutoff "$CN_CUTOFF" \
+            --generated-at "$GENERATED_AT" \
+            --output "$CANDIDATE_FORMAL_ROOT/byd_v1_2_convex_momentum_budget_v1.json"
+      - name: Seal formal v1 candidate and rebuild Bundle v2
+        if: steps.plan.outputs.refresh_required == 'true'
+        env:
+          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+        run: |
+          set -euo pipefail
+          uv run python scripts/run_formal_refresh_transaction.py finalize \
+            --current-root "$CURRENT_FORMAL_ROOT" \
+            --candidate-root "$CANDIDATE_FORMAL_ROOT" \
+            --us-provider-manifest artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
+            --cn-provider-manifest artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
+            --generated-at "$GENERATED_AT" \
+            --receipt "$REFRESH_RECEIPT"
+          rm -rf "$CANDIDATE_V2_ROOT"
+          uv run python scripts/sync_formal_bundle_v2.py \
+            --source-root "$CANDIDATE_FORMAL_ROOT" \
+            --output-root "$CANDIDATE_V2_ROOT" \
+            --receipt artifacts/formal-refresh/formal-v2-sync-receipt.json
+          uv run python scripts/verify_formal_backtest_freshness.py \
+            --root "$CANDIDATE_FORMAL_ROOT" \
+            --as-of "$GENERATED_AT" \
+            --receipt artifacts/formal-refresh/freshness-verification.json
+      - name: Install candidate publication into review worktree
+        if: steps.plan.outputs.refresh_required == 'true'
+        run: |
+          set -euo pipefail
+          rm -rf data/research/formal_backtests data/research/formal_model_runs
+          cp -a "$CANDIDATE_FORMAL_ROOT" data/research/formal_backtests
+          cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs
+          rm -rf qlib-dashboard/public/data/formal-model-runs
+          cp -a "$CANDIDATE_V2_ROOT" qlib-dashboard/public/data/formal-model-runs
+          cp "$REFRESH_RECEIPT" data/research/formal_backtests/latest_refresh_receipt.json
+      - name: Validate complete candidate publication
+        if: steps.plan.outputs.refresh_required == 'true'
+        run: |
+          set -euo pipefail
+          uv run pytest \
+            tests/test_formal_refresh.py \
+            tests/test_formal_backtest_freshness.py \
+            tests/test_sync_formal_bundle_v2.py \
+            tests/test_model_x1_baselines.py \
+            -q --strict-markers --tb=short
+          uv run python scripts/check_repository_model_runs.py
+          cd qlib-dashboard
+          npm run lint
+          npx tsc --noEmit
+          npm test -- --run
+          npm run build
+          test -f dist/data/formal-model-runs/catalog.json
+          test ! -e dist/data/formal-backtests
+      - name: Open or update draft review PR
+        id: pull_request
+        if: steps.plan.outputs.refresh_required == 'true'
+        env:
+          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+          US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
+          CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
+        run: |
+          set -euo pipefail
+          git config user.name "AlphaEngine Formal Refresh Agent"
+          git config user.email "formal-refresh-agent@alphaengine.local"
+          git checkout -B "$REFRESH_BRANCH"
+          git add \
+            data/research/formal_backtests \
+            data/research/formal_model_runs \
+            qlib-dashboard/public/data/formal-model-runs
+          if git diff --cached --quiet; then
+            echo "No publication bytes changed after refresh validation."
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "data: refresh formal backtests through US ${US_CUTOFF} and CN ${CN_CUTOFF}"
+          git push --force origin "HEAD:${REFRESH_BRANCH}"
+          body_file="$(mktemp)"
+          cat > "$body_file" <<EOF
+          ## Reviewed formal backtest refresh
+
+          - US latest completed common session: \`${US_CUTOFF}\`
+          - CN latest completed common session: \`${CN_CUTOFF}\`
+          - Generated at: \`${GENERATED_AT}\`
+          - Accepted model membership: derived from the formal catalog
+          - Historical reports, positions and trades: immutable prefix verified
+          - Model selection: not reopened
+          - Automatic merge: disabled
+          - Research only: true
+          - Trade ready: false
+
+          Evidence:
+
+          - workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          - receipt: \`data/research/formal_backtests/latest_refresh_receipt.json\`
+          - formal v1 and Bundle v2 rebuilt deterministically before PR creation
+          - frontend publication assets synchronized in this PR
+
+          The PR must pass current formal integrity, Bundle v2 parity, frontend build and Pages release acceptance before merge.
+          EOF
+          existing="$(gh pr list --head "$REFRESH_BRANCH" --base main --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh pr edit "$existing" \
+              --title "data: refresh formal backtests through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
+              --body-file "$body_file"
+            gh pr ready --undo "$existing" || true
+            pr_number="$existing"
+          else
+            pr_url="$(gh pr create \
+              --base main \
+              --head "$REFRESH_BRANCH" \
+              --draft \
+              --title "data: refresh formal backtests through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
+              --body-file "$body_file")"
+            pr_number="${pr_url##*/}"
+          fi
+          echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
+      - name: Upsert refresh operating status
+        if: always()
+        uses: actions/github-script@v8
+        env:
+          REFRESH_REQUIRED: ${{ steps.plan.outputs.refresh_required }}
+          PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
+          US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
+          CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const marker = '<!-- reviewed-formal-backtest-refresh -->';
+            const failed = process.env.JOB_STATUS !== 'success';
+            const refreshRequired = process.env.REFRESH_REQUIRED === 'true';
+            const prNumber = process.env.PR_NUMBER || '';
+            const status = failed ? 'blocked' : refreshRequired ? 'waiting_review' : 'current';
+            const body = [
+              marker,
+              '',
+              `## 正式回测刷新：${status}`,
+              '',
+              `- US common cutoff: \`${process.env.US_CUTOFF || 'unresolved'}\``,
+              `- CN common cutoff: \`${process.env.CN_CUTOFF || 'unresolved'}\``,
+              `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `- Review PR: ${prNumber ? `#${prNumber}` : 'none'}`,
+              '- Model selection reopened: no',
+              '- Automatic merge: no',
+              '- Research only: yes',
+              '- Trade ready: no',
+              '',
+              failed
+                ? 'The refresh failed closed before accepted formal evidence was modified.'
+                : refreshRequired
+                  ? 'A complete candidate publication is waiting for human review and normal PR gates.'
+                  : 'Published formal evidence already matches the latest provider-resolved common sessions.',
+            ].join('\n');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) =>
+              !issue.pull_request && String(issue.body || '').includes(marker)
+            );
+            const desiredState = status === 'current' ? 'closed' : 'open';
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                title: `[运行健康] 正式回测刷新：${status}`,
+                body,
+                state: desiredState,
+              });
+            } else if (status !== 'current') {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `[运行健康] 正式回测刷新：${status}`,
+                body,
+                assignees: [context.repo.owner],
+              });
+            }
+      - name: Upload bounded refresh evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: formal-backtest-refresh-${{ github.run_id }}
+          path: |
+            artifacts/formal-refresh/plan.json
+            artifacts/formal-refresh/formal-refresh-receipt.json
+            artifacts/formal-refresh/formal-v2-sync-receipt.json
+            artifacts/formal-refresh/freshness-verification.json
+            artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json
+            artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json
+          if-no-files-found: warn
+          retention-days: 90

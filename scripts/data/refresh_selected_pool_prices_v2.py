@@ -19,6 +19,7 @@ from src.data.adapters.akshare_sina_adapter import AkShareSinaAdapter
 from src.data.adapters.baostock_adapter import BaoStockAdapter
 from src.data.adapters.base import MarketDataAdapter
 from src.data.adapters.efinance_adapter import EFinanceAdapter
+from src.data.adapters.tiingo_adapter import TiingoAdapter
 from src.data.adapters.tushare_adapter import TushareAdapter
 from src.data.adapters.yfinance_adapter import YFinanceAdapter
 from src.data.provider_catalog import (
@@ -68,6 +69,10 @@ def build_hardened_router(market: str) -> MarketDataRouter:
             ]
         )
     elif market_key == "us":
+        token = os.getenv("TIINGO_API_TOKEN", "").strip()
+        if token:
+            adapters.append(TiingoAdapter(token=token))
+            providers.append("tiingo")
         adapters.append(YFinanceAdapter())
         providers.append("yfinance")
     else:
@@ -124,7 +129,10 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
             attempts = failure.get("attempts", [])
             if isinstance(attempts, list):
                 for attempt in attempts:
-                    if isinstance(attempt, dict) and "provider_contract" not in attempt:
+                    if (
+                        isinstance(attempt, dict)
+                        and "provider_contract" not in attempt
+                    ):
                         _decorate_attempt(attempt)
 
     payload["provider_architecture"] = {
