@@ -1,0 +1,390 @@
+name: Materialize Frontend Signal Health Fix
+
+on:
+  push:
+    branches:
+      - fix/frontend-signal-data-health
+
+permissions:
+  contents: write
+
+concurrency:
+  group: materialize-frontend-signal-data-health
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/frontend-signal-data-health
+          fetch-depth: 0
+
+      - name: Apply focused source changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_exact(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"expected block not found in {path}: {old[:120]!r}")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          verifier = Path("src/artifacts/pages_release_verification.py")
+          replace_exact(
+              verifier,
+              '''EXPECTED_FORMAL_MODELS: dict[str, str] = {
+    "qqqi_qqq_tqqq_v4_2": "QQQ Rotation v4.2",
+    "us_x1_1": "US x1.1",
+    "cn_x1_0": "CN x1.0",
+}
+''',
+              '',
+          )
+          replace_exact(
+              verifier,
+              '''        if version not in EXPECTED_FORMAL_MODELS:
+            raise ReleaseVerificationError(f"unexpected formal model version: {version}")
+''',
+              '',
+          )
+          replace_exact(
+              verifier,
+              '''    if observed_versions != set(EXPECTED_FORMAL_MODELS):
+        raise ReleaseVerificationError(
+            f"unexpected formal model allow-list: {sorted(observed_versions)}"
+        )
+    return tuple(records)
+''',
+              '''    if not records:
+        raise ReleaseVerificationError("formal catalog contains no accepted model runs")
+    return tuple(records)
+''',
+          )
+          replace_exact(
+              verifier,
+              '''    if summary.get("display_name") != EXPECTED_FORMAL_MODELS[record.model_version_id]:
+        raise ReleaseVerificationError(f"summary display name mismatch for {record.model_version_id}")
+''',
+              '''    _string(
+        summary.get("display_name"),
+        label=f"{record.model_version_id}.display_name",
+    )
+''',
+          )
+
+          tests = Path("tests/test_pages_release_verification.py")
+          replace_exact(
+              tests,
+              '''    records = [
+        ("cn_ranker", "cn_x1_0", "cn_x1_0_run", "2026-08-03", "a"),
+        ("qqq_rotation", "qqqi_qqq_tqqq_v4_2", "qqq_v4_2_run", "2026-07-31", "b"),
+        ("us_ranker", "us_x1_1", "us_x1_1_run", "2026-07-31", "c"),
+    ]
+''',
+              '''    records = [
+        ("byd_allocation", "byd_v1_2_convex_momentum_budget_v1", "byd_v1_2_run", "2026-08-03", "a"),
+        ("cn_ranker", "cn_x1_1", "cn_x1_1_run", "2026-08-03", "b"),
+        ("qqq_rotation", "qqqi_qqq_tqqq_v4_2", "qqq_v4_2_run", "2026-07-31", "c"),
+        ("us_ranker", "us_x1_1", "us_x1_1_run", "2026-07-31", "d"),
+    ]
+''',
+          )
+          replace_exact(
+              tests,
+              '''    assert {record.model_version_id for record in records} == {
+        "qqqi_qqq_tqqq_v4_2",
+        "us_x1_1",
+        "cn_x1_0",
+    }
+''',
+              '''    assert {record.model_version_id for record in records} == {
+        "byd_v1_2_convex_momentum_budget_v1",
+        "cn_x1_1",
+        "qqqi_qqq_tqqq_v4_2",
+        "us_x1_1",
+    }
+''',
+          )
+          text = tests.read_text(encoding="utf-8")
+          pattern = re.compile(
+              r'def test_rejects_stale_deployment_or_extra_formal_model\(\) -> None:\n.*?\n\ndef test_verifies_manifest_identity_and_available_sections',
+              re.S,
+          )
+          replacement = '''def test_rejects_stale_deployment_or_duplicate_formal_model() -> None:
+    with pytest.raises(ReleaseVerificationError, match="stale deployment"):
+        validate_deployment({"commit_sha": "old"}, expected_commit="new")
+    catalog = _catalog()
+    records = catalog["records"]
+    assert isinstance(records, list)
+    duplicate = dict(records[0])
+    duplicate["run_id"] = "duplicate_run"
+    duplicate["manifest_path"] = "byd_allocation/byd_v1_2_convex_momentum_budget_v1/duplicate_run/manifest.json"
+    duplicate["manifest_sha256"] = "f" * 64
+    records.append(duplicate)
+    records.sort(key=lambda row: (row["model_family_id"], row["model_version_id"], row["run_id"]))
+    with pytest.raises(ReleaseVerificationError, match="duplicate formal model version"):
+        validate_formal_catalog(catalog)
+
+
+def test_verifier_accepts_new_catalog_governed_model_without_code_allow_list() -> None:
+    catalog = _catalog()
+    records = catalog["records"]
+    assert isinstance(records, list)
+    records.append(
+        {
+            "model_family_id": "future_family",
+            "model_version_id": "future_formal_v1",
+            "run_id": "future_formal_run",
+            "bundle_id": "e" * 64,
+            "manifest_path": "future_family/future_formal_v1/future_formal_run/manifest.json",
+            "manifest_sha256": "f" * 64,
+            "evidence_cutoff": "2026-08-06",
+            "publication_status": "accepted_formal_baseline",
+        }
+    )
+    records.sort(key=lambda row: (row["model_family_id"], row["model_version_id"], row["run_id"]))
+    observed = validate_formal_catalog(catalog)
+    assert "future_formal_v1" in {record.model_version_id for record in observed}
+
+
+def test_verifies_manifest_identity_and_available_sections'''
+          updated, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit("failed to replace pages release verifier test block")
+          tests.write_text(updated, encoding="utf-8")
+
+          Path("qlib-dashboard/e2e/live-pages.spec.ts").write_text(r'''import { expect, test, type Page } from '@playwright/test';
+
+const FORMAL_ROOT = 'data/formal-model-runs';
+
+type FormalCatalog = {
+  schema_version?: string;
+  channel?: string;
+  research_only?: boolean;
+  trade_ready?: boolean;
+  records?: FormalRecord[];
+};
+
+type FormalRecord = {
+  model_version_id?: string;
+  bundle_id?: string;
+  manifest_path?: string;
+  manifest_sha256?: string;
+  publication_status?: string;
+};
+
+type FormalManifest = {
+  sections?: Array<{
+    section_id?: string;
+    availability_status?: string;
+    path?: string;
+  }>;
+};
+
+type FormalSummary = {
+  display_name?: string;
+  model_version_id?: string;
+};
+
+type FormalModel = {
+  displayName: string;
+  version: string;
+};
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function assertNoHorizontalOverflow(page: Page): Promise<void> {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
+}
+
+async function fetchFormalJson<T>(page: Page, path: string): Promise<T> {
+  const url = new URL(path, page.url());
+  url.searchParams.set('live_acceptance', Date.now().toString());
+  const response = await page.request.get(url.toString(), {
+    headers: { 'cache-control': 'no-cache', pragma: 'no-cache' },
+  });
+  expect(response.ok(), `failed to load ${url.toString()}`).toBeTruthy();
+  return response.json() as Promise<T>;
+}
+
+async function fetchFormalCatalog(page: Page): Promise<FormalCatalog> {
+  return fetchFormalJson<FormalCatalog>(page, `${FORMAL_ROOT}/catalog.json`);
+}
+
+async function loadFormalModels(page: Page, catalog: FormalCatalog): Promise<FormalModel[]> {
+  const models: FormalModel[] = [];
+  for (const record of catalog.records ?? []) {
+    expect(record.model_version_id).toBeTruthy();
+    expect(record.manifest_path).toBeTruthy();
+    const manifestPath = String(record.manifest_path);
+    const manifest = await fetchFormalJson<FormalManifest>(page, `${FORMAL_ROOT}/${manifestPath}`);
+    const summarySection = manifest.sections?.find(
+      (section) => section.section_id === 'summary' && section.availability_status === 'available',
+    );
+    expect(summarySection?.path).toBeTruthy();
+    const manifestParent = manifestPath.split('/').slice(0, -1).join('/');
+    const summary = await fetchFormalJson<FormalSummary>(
+      page,
+      `${FORMAL_ROOT}/${manifestParent}/${String(summarySection?.path)}`,
+    );
+    expect(summary.model_version_id).toBe(record.model_version_id);
+    expect(summary.display_name).toBeTruthy();
+    models.push({
+      displayName: String(summary.display_name),
+      version: String(record.model_version_id),
+    });
+  }
+  return models;
+}
+
+async function openRun(page: Page, model: string): Promise<void> {
+  await page.goto(`?live_acceptance=${Date.now()}#/runs`, { waitUntil: 'networkidle' });
+  await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
+  const catalog = page.getByRole('region', { name: 'Governed model runs' });
+  const modelButton = catalog.getByRole('button', { name: new RegExp(escapeRegex(model)) });
+  await expect(modelButton).toBeVisible();
+  await modelButton.click();
+  await expect(page.getByRole('heading', { name: model })).toBeVisible();
+}
+
+async function exerciseAvailableEvidence(page: Page): Promise<void> {
+  const tabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
+  for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
+    await expect(tabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
+  }
+  await expect(page.getByRole('heading', { name: 'Strategy, benchmark and excess path' })).toBeVisible();
+  await tabs.getByRole('tab', { name: 'Risk & robustness', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Retained window robustness' })).toBeVisible();
+  await tabs.getByRole('tab', { name: 'Portfolio', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Frozen portfolio contract' })).toBeVisible();
+}
+
+async function expectCompleteLedgers(page: Page): Promise<void> {
+  await page.getByRole('tab', { name: 'Trades', exact: true }).click();
+  await expect(page.getByText('Trade ledger unavailable')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Attribution', exact: true }).click();
+  await expect(page.getByText('Attribution unavailable')).toHaveCount(0);
+}
+
+test('live Pages renders every catalog-governed formal Bundle v2 baseline end to end', async ({ page }, testInfo) => {
+  const pageErrors: string[] = [];
+  const failedRequiredResponses: string[] = [];
+  const legacyRequests: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  page.on('request', (request) => {
+    if (request.url().includes('/data/formal-backtests/')) legacyRequests.push(request.url());
+  });
+  page.on('response', (response) => {
+    const url = response.url();
+    if (
+      response.status() >= 400
+      && (url.includes('/bundle/')
+        || url.includes('/data/formal-model-runs/')
+        || url.includes('/data/model-runs/')
+        || url.includes('/data/model-decisions/')
+        || url.includes('/assets/'))
+    ) {
+      failedRequiredResponses.push(`${response.status()} ${url}`);
+    }
+  });
+
+  await page.goto(`?live_acceptance=${Date.now()}#/runs`, { waitUntil: 'networkidle' });
+  await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
+  await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Experiments', { exact: true })).toHaveCount(0);
+
+  const formalCatalog = await fetchFormalCatalog(page);
+  expect(formalCatalog.schema_version).toBe('2.0.0');
+  expect(formalCatalog.channel).toBe('formal');
+  expect(formalCatalog.research_only).toBe(true);
+  expect(formalCatalog.trade_ready).toBe(false);
+  expect((formalCatalog.records ?? []).length).toBeGreaterThan(0);
+
+  const formalModels = await loadFormalModels(page, formalCatalog);
+  expect(formalModels).toHaveLength(formalCatalog.records?.length ?? 0);
+  expect(new Set(formalModels.map((model) => model.version)).size).toBe(formalModels.length);
+  expect(new Set(formalModels.map((model) => model.displayName)).size).toBe(formalModels.length);
+
+  const catalogRegion = page.getByRole('region', { name: 'Governed model runs' });
+  for (const model of formalModels) {
+    await expect(
+      catalogRegion.getByRole('button', { name: new RegExp(escapeRegex(model.displayName)) }),
+    ).toBeVisible();
+  }
+  await expect(catalogRegion.getByText('formal', { exact: true })).toHaveCount(formalModels.length);
+
+  for (const record of formalCatalog.records ?? []) {
+    expect(record.publication_status).toBe('accepted_formal_baseline');
+    expect(record.bundle_id).toMatch(/^[a-f0-9]{64}$/);
+    expect(record.manifest_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(record.manifest_path).toMatch(/manifest\.json$/);
+  }
+
+  for (const model of formalModels) {
+    await openRun(page, model.displayName);
+    await exerciseAvailableEvidence(page);
+    await expectCompleteLedgers(page);
+    await assertNoHorizontalOverflow(page);
+  }
+
+  expect(pageErrors).toEqual([]);
+  expect(failedRequiredResponses).toEqual([]);
+  expect(legacyRequests).toEqual([]);
+  await page.screenshot({
+    path: `test-results/live-pages/formal-bundle-v2-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+});
+''', encoding="utf-8")
+
+          signal_workflow = Path(".github/workflows/byd-daily-signal-alert.yml")
+          replace_exact(
+              signal_workflow,
+              '''  pull_request:
+    branches: [main]
+    paths:
+''',
+              '''  pull_request:
+    branches: [main]
+    paths:
+''',
+          )
+          text = signal_workflow.read_text(encoding="utf-8")
+          schedule_marker = '''  schedule:
+    - cron: "0 13 * * 1-5"
+'''
+          push_block = '''  push:
+    branches: [main]
+    paths:
+      - "data/research/byd_v1_2_trend_expansion_prospective/observations/**"
+      - "data/research/byd_v1_2_trend_expansion_prospective/manifest.json"
+  schedule:
+    - cron: "0 13 * * 1-5"
+'''
+          if schedule_marker not in text:
+              raise SystemExit("BYD signal schedule marker not found")
+          signal_workflow.write_text(text.replace(schedule_marker, push_block, 1), encoding="utf-8")
+
+          Path(".github/workflows/materialize-frontend-signal-health.yml").unlink()
+          PY
+
+      - name: Commit materialized fix
+        run: |
+          git config user.name "AlphaEngine Maintenance Agent"
+          git config user.email "maintenance-agent@alphaengine.local"
+          git add \
+            src/artifacts/pages_release_verification.py \
+            tests/test_pages_release_verification.py \
+            qlib-dashboard/e2e/live-pages.spec.ts \
+            .github/workflows/byd-daily-signal-alert.yml \
+            .github/workflows/materialize-frontend-signal-health.yml
+          git commit -m "fix: make release and BYD signal health catalog-driven"
+          git push origin HEAD:fix/frontend-signal-data-health
