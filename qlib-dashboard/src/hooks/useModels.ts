@@ -16,12 +16,6 @@ const CHANNEL_ORDER: Record<GovernedRunSummary['channel'], number> = {
   local: 2,
 };
 
-const REQUIRED_FORMAL_VERSIONS = new Set([
-  'qqqi_qqq_tqqq_v4_2',
-  'us_x1_1',
-  'cn_x1_1',
-]);
-
 function sortRuns(runs: GovernedRunSummary[]): GovernedRunSummary[] {
   return [...runs].sort((left, right) => (
     CHANNEL_ORDER[left.channel] - CHANNEL_ORDER[right.channel]
@@ -56,12 +50,12 @@ export function useModels() {
       if (formal.errors.length > 0) {
         throw new Error(`Formal Bundle v2 validation failed: ${formal.errors.join(' | ')}`);
       }
+      if (formal.runs.length === 0) {
+        throw new Error('The verified Formal Bundle v2 catalog contains no accepted baselines.');
+      }
       const formalVersions = new Set(formal.runs.map((run) => run.modelVersionId));
-      if (
-        formal.runs.length !== REQUIRED_FORMAL_VERSIONS.size
-        || [...REQUIRED_FORMAL_VERSIONS].some((version) => !formalVersions.has(version))
-      ) {
-        throw new Error('Formal Bundle v2 catalog does not exactly contain QQQ Rotation v4.2, US x1.1 and CN x1.1.');
+      if (formalVersions.size !== formal.runs.length) {
+        throw new Error('The verified Formal Bundle v2 catalog contains duplicate model versions.');
       }
       const byId = new Map(repositoryModels.map((model) => [model.id, model]));
       const formalRuns = formal.runs.map((run) => ({
