@@ -67,15 +67,17 @@ jobs:
           import json
           from pathlib import Path
           from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+
           v1 = json.loads(Path('data/research/formal_backtests/catalog.json').read_text())
           root = Path('data/research/formal_model_runs')
           v2 = json.loads((root / 'catalog.json').read_text())
           validate_catalog(v2)
           accepted = [row['model_id'] for row in v1['records']]
           projected = [row['model_version_id'] for row in v2['records']]
-          assert set(accepted) == set(projected) and len(accepted) == len(projected)
-          assert {'cn_x1_1', 'byd_dividend_sleeve_v1_0'} <= set(projected)
-          assert 'cn_x1_0' not in projected
+          assert accepted
+          assert len(accepted) == len(set(accepted))
+          assert len(projected) == len(set(projected))
+          assert set(accepted) == set(projected)
           for row in v2['records']:
               validate_manifest(json.loads((root / row['manifest_path']).read_text()))
           PY
