@@ -3,7 +3,8 @@
 This is the single formal publication projector. It derives the accepted model
 set from the governed v1 catalog, requires exact parity with the supported
 adapter registry, and rebuilds Bundle v2 deterministically without rerunning a
-model or reopening model selection.
+model or reopening model selection. A baseline promotion therefore enters the
+frontend only after its accepted v1 package and adapter identity agree.
 """
 from __future__ import annotations
 
