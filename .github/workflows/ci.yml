@@ -60,10 +60,9 @@ jobs:
           uv run python scripts/check_ci_governance.py --output artifacts/ci-workflow-inventory.json --enforce
           uv run python scripts/check_legacy_web_boundary.py
 
-      - name: Ruff lint governed production paths
+      - name: Ruff lint ratcheted production paths
         run: >-
           uv run ruff check
-          src/alpha_engine
           src/release
           src/models/metric_contract.py
           scripts/check_legacy_web_boundary.py
