@@ -1,0 +1,70 @@
+name: US x1.1 Sector Cap Prospective Shadow
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/run_us_x1_1_sector_cap_shadow.py"
+      - ".github/workflows/us-x1-1-sector-cap-shadow.yml"
+  schedule:
+    # After US market close + data availability (~02:00 UTC next day)
+    - cron: "0 3 * * 2-6"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: us-x1-1-sector-cap-shadow
+  cancel-in-progress: false
+
+jobs:
+  shadow-record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+
+      - name: Record prospective shadow observation
+        run: >-
+          uv run python scripts/run_us_x1_1_sector_cap_shadow.py
+          --store-dir data/research/us_x1_1_sector_cap_shadow
+          --as-of "$(date -u +%F)"
+
+      - name: Verify append-only scope
+        run: |
+          set -euo pipefail
+          unexpected="$(git status --porcelain | awk '{print $2}' | grep -v '^data/research/us_x1_1_sector_cap_shadow/' || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "Unexpected shadow updater changes:"
+            echo "$unexpected"
+            exit 1
+          fi
+
+      - name: Commit new shadow evidence
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- data/research/us_x1_1_sector_cap_shadow && \
+             [[ -z "$(git ls-files --others --exclude-standard data/research/us_x1_1_sector_cap_shadow)" ]]; then
+            echo "No new shadow evidence"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/us_x1_1_sector_cap_shadow
+          git commit -m "research: append US x1.1 sector-cap shadow evidence"
+          git pull --rebase origin main
+          git push origin HEAD:main
