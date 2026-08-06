@@ -8,6 +8,7 @@ on:
       - scripts/promote_byd_v1_2_formal.py
       - scripts/migrate_formal_v1_to_bundle_v2.py
       - scripts/sync_formal_bundle_v2.py
+      - tests/test_sync_formal_bundle_v2.py
       - data/research/formal_backtests/**
       - data/research/formal_model_runs/**
       - qlib-dashboard/public/data/formal-model-runs/**
