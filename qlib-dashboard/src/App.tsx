@@ -140,8 +140,9 @@ function Layout(props: LayoutProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="research-topbar-actions">
             <MobileNavigation />
+            <div className="alpha-account-slot" data-account-slot aria-label="AlphaEngine account" />
             <Button
               variant="ghost"
               size="icon"
