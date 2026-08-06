@@ -228,7 +228,7 @@ test('v4.2 operations displays only durable read-only evidence', async ({ page }
   await expect(page.getByRole('heading', { name: 'Observing outcomes' })).toBeVisible();
   await expect(page.getByText('v4.2 active baseline', { exact: true })).toBeVisible();
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Not trade-ready', { exact: true })).toBeVisible();
+  await expect(page.getByText('Not trade-ready', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Read-only ledger', { exact: true })).toBeVisible();
   await expect(page.getByText('Last executed allocation at signal close', { exact: true })).toBeVisible();
   await expect(page.getByText('Close-time target allocation', { exact: true })).toBeVisible();
