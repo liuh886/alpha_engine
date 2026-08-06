@@ -18,7 +18,7 @@ describe('published formal catalog', () => {
         : input instanceof URL ? input.toString() : input.url;
       const relativePath = requested.replace(/^\.\//, '').replace(/^\//, '');
       try {
-        const body = await readFile(path.join(publicRoot, relativePath));
+        const body = await readFile(path.join(publicRoot, relativePath), 'utf8');
         return new Response(body, { status: 200 });
       } catch {
         return new Response('not found', { status: 404 });
