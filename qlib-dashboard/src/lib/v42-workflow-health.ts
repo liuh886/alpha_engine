@@ -35,12 +35,12 @@ const WORKFLOWS: Array<{
 }> = [
   {
     key: 'signal_alert',
-    label: 'Signal decision and Telegram delivery',
+    label: 'Signal evaluation and delivery-receipt workflow',
     workflowFile: 'qqqi-vxn-v4-2-signal-alert.yml',
   },
   {
     key: 'prospective_ledger',
-    label: 'Prospective evidence ledger',
+    label: 'Hash-bound prospective evidence ledger',
     workflowFile: 'qqqi-v4-2-prospective-evidence-ledger.yml',
   },
 ];
@@ -95,7 +95,7 @@ export function workflowHealthLabel(entry: V42WorkflowHealthEntry): {
   if (entry.error || !entry.run) return { label: 'Unavailable', tone: 'unknown' };
   if (entry.run.status === 'queued') return { label: 'Queued', tone: 'running' };
   if (entry.run.status === 'in_progress') return { label: 'Running', tone: 'running' };
-  if (entry.run.conclusion === 'success') return { label: 'Succeeded', tone: 'healthy' };
+  if (entry.run.conclusion === 'success') return { label: 'Workflow succeeded', tone: 'healthy' };
   if (entry.run.conclusion) return { label: entry.run.conclusion.replace(/_/g, ' '), tone: 'attention' };
   return { label: entry.run.status, tone: 'unknown' };
 }
