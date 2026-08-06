@@ -121,8 +121,16 @@ jobs:
           for row in v2['records']:
               validate_manifest(json.loads((root / row['manifest_path']).read_text()))
           PY
-          test -f qlib-dashboard/public/data/formal-model-runs/catalog.json
-          test -f qlib-dashboard/public/data/formal-model-runs/byd_v1_2_convex_momentum_budget_v1/manifest.json
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = 'qlib-dashboard/public/data/formal-model-runs';
+          const catalog = JSON.parse(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'));
+          const record = catalog.records.find((row) => row.model_version_id === 'byd_v1_2_convex_momentum_budget_v1');
+          if (!record) throw new Error('BYD v1.2 missing from frontend formal catalog');
+          const manifestPath = path.join(root, record.manifest_path);
+          if (!fs.existsSync(manifestPath)) throw new Error(`BYD v1.2 manifest missing: ${record.manifest_path}`);
+          NODE
 
       - name: Commit deterministic formal assets
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
