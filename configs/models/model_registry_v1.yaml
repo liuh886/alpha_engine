@@ -76,25 +76,8 @@ models:
     source_research_issue: 525
     promotion_issue: 557
     evolution_issue: 592
-    prospective_monitoring_issue: 529
+    prospective_monitoring_issue: 596
     promotion_authority: explicit_user_direction
     research_only: true
     trade_ready: false
     next_version: BYD v1.2
-  byd_dividend_sleeve_v1_2:
-    display_name: BYD v1.2 relaxed trend expansion 110% (historical exploration)
-    public_model_id: byd_v1_2_relaxed_110_exploratory
-    technical_model_id: byd_dividend_sleeve_v1_2
-    market: cn
-    status: historical_exploratory_candidate_not_promoted
-    config: configs/models/byd_dividend_sleeve_v1_2.yaml
-    source_strategy: v1_2_relaxed_trend_expansion
-    source_research_issue: 560
-    source_pr: 588
-    governance_correction_issue: 592
-    promotion_authority: none
-    historical_evidence_consumed: true
-    failed_gate: maximum_positive_period_contribution_share
-    research_only: true
-    trade_ready: false
-    supersedes: null
