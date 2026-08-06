@@ -12,7 +12,7 @@
     checkoutFunctionUrl: 'https://blgwlycfcwvsupmqyqwn.supabase.co/functions/v1/create-checkout-session',
     portalFunctionUrl: 'https://blgwlycfcwvsupmqyqwn.supabase.co/functions/v1/create-portal-session',
     redirectUrl: 'https://liuh886.github.io/alpha_engine/',
-    mountSelectors: ['[data-account-slot]', '.app-header-actions', '.topbar-actions', 'header nav', 'header'],
+    mountSelectors: ['[data-account-slot]'],
     compactTrigger: true,
     title: {
       zh: 'AlphaEngine 研究账户',

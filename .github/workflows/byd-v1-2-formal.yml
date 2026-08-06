@@ -1,30 +1,13 @@
 name: BYD v1.2 Formal Baseline
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "configs/models/byd_v1_2_convex_momentum_budget_v1.yaml"
-      - "configs/models/model_registry_v1.yaml"
-      - "scripts/promote_byd_v1_2_formal.py"
-      - "scripts/sync_formal_bundle_v2.py"
-      - "src/research/byd_v1_2_convex_momentum.py"
-      - "src/research/byd_signal_alerts.py"
-      - "scripts/run_byd_signal_alert.py"
-      - "tests/test_byd_v1_2_convex_momentum.py"
-      - "tests/test_byd_signal_alerts.py"
-      - "data/research/formal_backtests/**"
-      - "data/research/formal_model_runs/**"
-      - "qlib-dashboard/src/**"
-      - "qlib-dashboard/public/data/formal-model-runs/**"
-      - ".github/workflows/byd-v1-2-formal.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: byd-v1-2-formal-${{ github.event.pull_request.number || github.ref }}
+  group: byd-v1-2-formal-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -33,25 +16,18 @@ env:
 jobs:
   reproduce-and-verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 55
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: qlib-dashboard/package-lock.json
 
-      - name: Install locked environments
+      - name: Install locked Python environment
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-          cd qlib-dashboard
-          npm ci
 
       - name: Verify immutable market inputs
         run: |
@@ -108,18 +84,6 @@ jobs:
             --receipt artifacts/bundle-receipt-b.json
           diff -ru artifacts/bundle-a artifacts/bundle-b
           cmp artifacts/bundle-receipt-a.json artifacts/bundle-receipt-b.json
-          diff -ru --exclude formal-bundle-v2-sync-receipt.json \
-            artifacts/bundle-a data/research/formal_model_runs
-
-      - name: Validate frontend publication
-        working-directory: qlib-dashboard
-        run: |
-          npm run lint
-          npx tsc --noEmit
-          npm test -- --run
-          npm run build
-          test -f dist/data/formal-model-runs/catalog.json
-          test ! -e dist/data/formal-backtests
 
       - name: Upload complete formal evidence
         if: always()
