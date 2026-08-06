@@ -24,7 +24,7 @@ function run(overrides: Partial<V42WorkflowRun> = {}): V42WorkflowRun {
 function entry(overrides: Partial<V42WorkflowHealthEntry> = {}): V42WorkflowHealthEntry {
   return {
     key: 'signal_alert',
-    label: 'Signal decision and Telegram delivery',
+    label: 'Signal evaluation and delivery-receipt workflow',
     workflowFile: 'qqqi-vxn-v4-2-signal-alert.yml',
     error: null,
     run: run(),
@@ -44,8 +44,8 @@ describe('v4.2 workflow health', () => {
     expect(selectLatestOperationalRun([run({ event: 'pull_request' })])).toBeNull();
   });
 
-  it('reports successful completed runs as healthy', () => {
-    expect(workflowHealthLabel(entry())).toEqual({ label: 'Succeeded', tone: 'healthy' });
+  it('reports workflow execution success without claiming Telegram delivery', () => {
+    expect(workflowHealthLabel(entry())).toEqual({ label: 'Workflow succeeded', tone: 'healthy' });
   });
 
   it('keeps queued and in-progress runs distinct from failures', () => {
