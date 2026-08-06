@@ -110,6 +110,34 @@ def main() -> int:
     md_path.write_text(str(alert["markdown"]), encoding="utf-8")
     tg_path.write_text(str(alert["telegram_text"]), encoding="utf-8")
 
+    # Delivery receipt skeleton — Telegram outcome filled by CI after send attempt
+    receipt = {
+        "schema_version": "byd_delivery_receipt_v1",
+        "fingerprint": alert["fingerprint"],
+        "signal_date": alert["signal_date"],
+        "should_alert": bool(alert["should_alert"]),
+        "data_freshness_ok": bool(alert["data_freshness_ok"]),
+        "github_issue": {
+            "created": False,
+            "number": None,
+        },
+        "telegram": {
+            "status": "not_required",
+            "message_id": None,
+            "error": None,
+        },
+        "workflow": {
+            "run_id": None,
+            "commit_sha": None,
+        },
+        "generated_at": None,
+    }
+    receipt_path = output / "delivery_receipt.json"
+    receipt_path.write_text(
+        json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
     if args.github_output is not None:
         with args.github_output.open("a", encoding="utf-8") as handle:
             handle.write(f"should_alert={str(bool(alert['should_alert'])).lower()}\n")

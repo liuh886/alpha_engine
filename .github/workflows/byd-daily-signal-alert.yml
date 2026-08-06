@@ -139,6 +139,7 @@ jobs:
           retention-days: 90
 
       - name: Create deduplicated GitHub Issue for fresh signal
+        id: issue
         if: >-
           github.event_name != 'pull_request' &&
           steps.alert.outputs.should_alert == 'true' &&
@@ -162,21 +163,26 @@ jobs:
             );
             if (exists) {
               core.notice(`BYD signal ${process.env.ALERT_FINGERPRINT} already reported.`);
+              core.setOutput('issue_number', String(exists.find(i => !i.pull_request && String(i.body || '').includes(marker)).number));
+              core.setOutput('created', 'false');
               return;
             }
             const report = fs.readFileSync(
               'artifacts/signals/byd_v1_2/signal_alert.md',
               'utf8'
             );
-            await github.rest.issues.create({
+            const created = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: process.env.ALERT_TITLE,
               body: `@${context.repo.owner}\n\n${report}`,
               assignees: [context.repo.owner],
             });
+            core.setOutput('issue_number', String(created.data.number));
+            core.setOutput('created', 'true');
 
       - name: Send decision-grade Telegram alert
+        id: telegram
         if: >-
           github.event_name != 'pull_request' &&
           steps.alert.outputs.should_alert == 'true' &&
@@ -186,12 +192,75 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
-            echo "Telegram secrets not configured; GitHub Issue alert remains active."
+            echo "status=skipped_not_configured" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          curl --fail --silent --show-error \
+          set +e
+          response="$(curl --fail --silent --show-error --write-out '\n%{http_code}' \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode \
               "text@artifacts/signals/byd_v1_2/signal_alert_telegram.txt" \
-            --data-urlencode "disable_web_page_preview=true"
+            --data-urlencode "disable_web_page_preview=true" 2>&1)"
+          curl_status=$?
+          set -e
+          http_code="$(echo "$response" | tail -n 1)"
+          body="$(echo "$response" | head -n -1)"
+          if [ "$curl_status" -eq 0 ] && [ "$http_code" = "200" ]; then
+            message_id="$(echo "$body" | python -c "import sys,json; print(json.load(sys.stdin)['result']['message_id'])" 2>/dev/null || echo '')"
+            echo "status=sent" >> "$GITHUB_OUTPUT"
+            echo "message_id=$message_id" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+            echo "error=${body:0:500}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Finalize delivery receipt
+        if: always() && steps.alert.outcome == 'success'
+        env:
+          ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
+          ISSUE_CREATED: ${{ steps.issue.outputs.created }}
+          TG_STATUS: ${{ steps.telegram.outputs.status }}
+          TG_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
+          TG_ERROR: ${{ steps.telegram.outputs.error }}
+        run: |
+          receipt_path="artifacts/signals/byd_v1_2/delivery_receipt.json"
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          path = Path(os.environ.get("receipt_path", "artifacts/signals/byd_v1_2/delivery_receipt.json"))
+          if not path.exists():
+              receipt = {
+                  "schema_version": "byd_delivery_receipt_v1",
+                  "should_alert": False,
+                  "data_freshness_ok": False,
+              }
+          else:
+              receipt = json.loads(path.read_text(encoding="utf-8"))
+
+          receipt["github_issue"] = {
+              "created": os.environ.get("ISSUE_CREATED", "false") == "true",
+              "number": int(os.environ["ISSUE_NUMBER"]) if os.environ.get("ISSUE_NUMBER") else None,
+          }
+
+          tg_status = os.environ.get("TG_STATUS", "not_required")
+          receipt["telegram"] = {
+              "status": tg_status,
+              "message_id": int(os.environ["TG_MESSAGE_ID"]) if os.environ.get("TG_MESSAGE_ID") else None,
+              "error": os.environ.get("TG_ERROR") or None,
+          }
+
+          receipt["workflow"] = {
+              "run_id": os.environ.get("GITHUB_RUN_ID"),
+              "commit_sha": os.environ.get("GITHUB_SHA"),
+          }
+          receipt["generated_at"] = datetime.now(timezone.utc).isoformat()
+
+          path.write_text(
+              json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(f"Delivery receipt finalized: tg={tg_status} issue={receipt['github_issue']}")
+          PY
