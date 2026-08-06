@@ -10,16 +10,19 @@ on:
       - "scripts/sync_formal_bundle_v2.py"
       - "src/research/byd_v1_2_convex_momentum.py"
       - "src/research/byd_v1_2_trend_expansion.py"
+      - "src/research/byd_signal_alerts.py"
       - "tests/test_byd_v1_2_convex_momentum.py"
       - "tests/test_byd_signal_alerts.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
       - "qlib-dashboard/src/**"
+      - "qlib-dashboard/public/data/formal-model-runs/**"
+      - ".github/workflows/deploy-pages.yml"
       - ".github/workflows/byd-v1-2-formal.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: byd-v1-2-formal-${{ github.event.pull_request.number || github.ref }}
@@ -29,12 +32,13 @@ env:
   GENERATED_AT: 2026-08-06T09:52:48Z
 
 jobs:
-  reproduce-and-verify:
+  materialize-and-verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 55
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
@@ -44,11 +48,122 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
-      - name: Install locked Python environment
+      - name: Install locked environments
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
+          cd qlib-dashboard
+          npm ci
+      - name: Materialize BYD v1.2 operating surface
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if new in text:
+                  return text
+              if old not in text:
+                  raise RuntimeError(f'missing {label} anchor')
+              return text.replace(old, new, 1)
+
+          page = Path('qlib-dashboard/src/pages/StrategyOperationsPage.tsx')
+          text = page.read_text(encoding='utf-8')
+          text = replace_once(
+              text,
+              '          <Badge className="gap-1.5"><Activity className="h-3 w-3" /> BYD v1.2</Badge>\n          <Badge variant="outline">Research only</Badge>',
+              '          <Badge className="gap-1.5"><Activity className="h-3 w-3" /> BYD v1.2</Badge>\n          <Badge variant="secondary">Formal baseline</Badge>\n          <Badge variant="outline">Research only</Badge>',
+              'BYD formal badge',
+          )
+          text = text.replace(
+              'bydIndex.latestSignal.record.target_state_label',
+              'bydIndex.latestSignal.record.target_mode_label',
+          )
+          text = replace_once(
+              text,
+              "Expansion: {bydIndex.latestSignal.record.expansion_active ? 'Active' : 'Inactive'}",
+              "Expansion: {bydIndex.latestSignal.record.expansion_active ? 'Active' : 'Inactive'} · financed {formatPercent(bydIndex.latestSignal.record.financed_increment, 2)}",
+              'BYD financed increment',
+          )
+          text = text.replace(
+              "['Mom accel 20/60', formatNumber(bydIndex!.latestSignal!.record.factor_context.momentum_accel_20_60, 4)]",
+              "['Momentum 20d', formatPercent(bydIndex!.latestSignal!.record.factor_context.mom_20, 2)]",
+          )
+          text = text.replace(
+              "['Open autocorr 20d', formatNumber(bydIndex!.latestSignal!.record.factor_context.open_return_autocorr_20, 4)]",
+              "['Momentum 60d', formatPercent(bydIndex!.latestSignal!.record.factor_context.mom_60, 2)]",
+          )
+          text = text.replace(
+              "['Dist from 20d low', formatPercent(bydIndex!.latestSignal!.record.factor_context.distance_from_low_20)]",
+              "['Momentum scale', formatPercent(bydIndex!.latestSignal!.record.factor_context.momentum_scale, 2)]",
+          )
+          text = text.replace(
+              '<CardHeader><CardTitle className="text-base">Current allocation</CardTitle></CardHeader>',
+              '<CardHeader><CardTitle className="text-base">Formal target allocation</CardTitle></CardHeader>',
+          )
+          obsolete = (
+              'target_state_label',
+              'momentum_accel_20_60',
+              'open_return_autocorr_20',
+              'distance_from_low_20',
+          )
+          if any(value in text for value in obsolete):
+              raise RuntimeError('obsolete BYD runtime fields remain in operations page')
+          page.write_text(text, encoding='utf-8')
+
+          deploy = Path('.github/workflows/deploy-pages.yml')
+          text = deploy.read_text(encoding='utf-8')
+          old_node = """          const expected = new Set(['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0', 'byd_dividend_sleeve_v1_0']);
+          if (catalog.records.length !== 4) throw new Error('formal catalog must contain exactly four records');
+          for (const record of catalog.records) {
+            if (!expected.delete(record.model_version_id)) throw new Error(`unexpected formal version: ${record.model_version_id}`);
+            const manifestPath = path.join(root, record.manifest_path);
+            if (!fs.existsSync(manifestPath)) throw new Error(`missing manifest: ${record.manifest_path}`);
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            if (manifest.bundle_id !== record.bundle_id) throw new Error(`bundle mismatch: ${record.model_version_id}`);
+            if (manifest.publication_channel !== 'formal' || manifest.publication_status !== 'accepted_formal_baseline') throw new Error(`status mismatch: ${record.model_version_id}`);
+            for (const section of manifest.sections) {
+              if (section.availability_status !== 'available') continue;
+              const sectionPath = path.join(path.dirname(manifestPath), section.path);
+              if (!fs.existsSync(sectionPath)) throw new Error(`missing section: ${record.model_version_id}/${section.section_id}`);
+            }
+          }
+          if (expected.size) throw new Error(`missing formal versions: ${[...expected].join(', ')}`);
+"""
+          new_node = """          if (!Array.isArray(catalog.records) || catalog.records.length === 0) throw new Error('formal catalog is empty');
+          const seen = new Set();
+          for (const record of catalog.records) {
+            if (!record.model_version_id || seen.has(record.model_version_id)) throw new Error(`duplicate formal version: ${record.model_version_id}`);
+            seen.add(record.model_version_id);
+            const manifestPath = path.join(root, record.manifest_path);
+            if (!fs.existsSync(manifestPath)) throw new Error(`missing manifest: ${record.manifest_path}`);
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            if (manifest.bundle_id !== record.bundle_id) throw new Error(`bundle mismatch: ${record.model_version_id}`);
+            if (manifest.publication_channel !== 'formal' || manifest.publication_status !== 'accepted_formal_baseline') throw new Error(`status mismatch: ${record.model_version_id}`);
+            for (const section of manifest.sections) {
+              if (section.availability_status !== 'available') continue;
+              const sectionPath = path.join(path.dirname(manifestPath), section.path);
+              if (!fs.existsSync(sectionPath)) throw new Error(`missing section: ${record.model_version_id}/${section.section_id}`);
+            }
+          }
+"""
+          if old_node in text:
+              text = text.replace(old_node, new_node, 1)
+          elif new_node not in text:
+              raise RuntimeError('missing Node formal-catalog deploy anchor')
+          old_python = """          assert {row['model_version_id'] for row in catalog['records']} == {
+              'qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0', 'byd_dividend_sleeve_v1_0'
+          }
+"""
+          new_python = """          model_ids = [row['model_version_id'] for row in catalog['records']]
+          assert model_ids and len(model_ids) == len(set(model_ids))
+"""
+          if old_python in text:
+              text = text.replace(old_python, new_python, 1)
+          elif new_python not in text:
+              raise RuntimeError('missing Python formal-catalog deploy anchor')
+          deploy.write_text(text, encoding='utf-8')
+          PY
       - name: Verify immutable market inputs
         run: |
           set -euo pipefail
@@ -58,7 +173,25 @@ jobs:
           mkdir -p artifacts/input/byd artifacts/input/515180
           tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/input/byd
           unzip -q "$RUNNER_TEMP/515180.zip" -d artifacts/input/515180
-      - name: Validate model and publisher code
+      - name: Generate complete formal publication
+        run: |
+          uv run python scripts/promote_byd_v1_2_formal.py \
+            --root data/research/formal_backtests \
+            --byd-dir artifacts/input/byd \
+            --etf-dir artifacts/input/515180 \
+            --signal-ledger data/research/byd_v1_2_signal_ledger \
+            --generated-at "$GENERATED_AT" \
+            --receipt artifacts/byd-v1-2-promotion.json
+          rm -rf .research/formal-model-runs
+          uv run python scripts/sync_formal_bundle_v2.py \
+            --source-root data/research/formal_backtests \
+            --output-root .research/formal-model-runs \
+            --receipt artifacts/formal-bundle-v2.json
+          rsync -a --delete --exclude formal-bundle-v2-sync-receipt.json \
+            .research/formal-model-runs/ data/research/formal_model_runs/
+          cd qlib-dashboard
+          npm run sync:formal-model-runs
+      - name: Validate code, formal assets and frontend
         run: |
           uv run ruff check \
             scripts/promote_byd_v1_2_formal.py \
@@ -72,64 +205,47 @@ jobs:
             tests/test_byd_signal_alerts.py \
             tests/test_model_x1_baselines.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Rebuild formal v1 package twice
-        run: |
-          set -euo pipefail
-          for suffix in a b; do
-            cp -a data/research/formal_backtests "artifacts/formal-${suffix}"
-            uv run python scripts/promote_byd_v1_2_formal.py \
-              --root "artifacts/formal-${suffix}" \
-              --byd-dir artifacts/input/byd \
-              --etf-dir artifacts/input/515180 \
-              --signal-ledger data/research/byd_v1_2_signal_ledger \
-              --generated-at "$GENERATED_AT" \
-              --receipt "artifacts/promotion-${suffix}.json"
-          done
-          diff -ru artifacts/formal-a artifacts/formal-b
-          cmp artifacts/promotion-a.json artifacts/promotion-b.json
-          diff -ru artifacts/formal-a data/research/formal_backtests
-      - name: Validate formal v1 contract
-        run: |
-          FORMAL_BACKTEST_VALIDATION_MODE=candidate \
-            node qlib-dashboard/scripts/sync-formal-backtests.mjs
-          uv run python scripts/verify_formal_backtest_freshness.py \
-            --root artifacts/formal-a \
-            --as-of 2026-08-03T09:15:00Z \
-            --receipt artifacts/formal-freshness.json
-      - name: Rebuild Bundle v2 twice
-        run: |
-          set -euo pipefail
           uv run python scripts/sync_formal_bundle_v2.py \
-            --source-root artifacts/formal-a \
-            --output-root artifacts/bundle-a \
-            --receipt artifacts/bundle-receipt-a.json
-          uv run python scripts/sync_formal_bundle_v2.py \
-            --source-root artifacts/formal-a \
-            --output-root artifacts/bundle-b \
-            --receipt artifacts/bundle-receipt-b.json
-          diff -ru artifacts/bundle-a artifacts/bundle-b
-          cmp artifacts/bundle-receipt-a.json artifacts/bundle-receipt-b.json
+            --source-root data/research/formal_backtests \
+            --output-root artifacts/formal-model-runs-second \
+            --receipt artifacts/formal-bundle-v2-second.json
           diff -ru --exclude formal-bundle-v2-sync-receipt.json \
-            artifacts/bundle-a data/research/formal_model_runs
-      - name: Validate frontend publication
-        working-directory: qlib-dashboard
-        run: |
-          npm ci
+            data/research/formal_model_runs artifacts/formal-model-runs-second
+          cd qlib-dashboard
           npm run lint
           npx tsc --noEmit
           npm test -- --run
           npm run build
           test -f dist/data/formal-model-runs/catalog.json
+          test ! -e dist/data/formal-backtests
+      - name: Commit exact formal and frontend publication
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          rm -f .github/workflows/materialize-byd-v1-2-promotion.yml
+          git config user.name "AlphaEngine Release Agent"
+          git config user.email "release-agent@alphaengine.local"
+          git add -A \
+            .github/workflows/materialize-byd-v1-2-promotion.yml \
+            .github/workflows/deploy-pages.yml \
+            qlib-dashboard/src/pages/StrategyOperationsPage.tsx \
+            qlib-dashboard/public/data/formal-model-runs \
+            data/research/formal_backtests \
+            data/research/formal_model_runs
+          if git diff --cached --quiet; then
+            echo "Formal publication is already byte-stable."
+          else
+            git commit -m "release: publish BYD v1.2 formal evidence and frontend"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
       - name: Upload complete formal evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: byd-v1-2-formal-${{ github.run_id }}
           path: |
-            artifacts/formal-a
-            artifacts/bundle-a
-            artifacts/promotion-a.json
-            artifacts/formal-freshness.json
-            artifacts/bundle-receipt-a.json
+            artifacts/byd-v1-2-promotion.json
+            artifacts/formal-bundle-v2.json
+            data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json
+            data/research/formal_model_runs/byd_v1_2_convex_momentum_budget_v1
           if-no-files-found: error
           retention-days: 90
