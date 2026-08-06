@@ -1,4 +1,4 @@
-schema_version: '1.4'
+schema_version: '1.5'
 registry_id: baseline_model_registry_v1
 status: active_formal_and_research_baselines
 created_at: '2026-08-02'
@@ -8,7 +8,7 @@ trade_ready: false
 active_baselines:
   us: us_x1_1
   cn: cn_x1_1
-  byd: byd_dividend_sleeve_v1_0
+  byd: byd_v1_2_convex_momentum_budget_v1
 versioning_policy:
   immutable_released_versions: true
   compatible_evidence_supported_change: increment_minor
@@ -67,17 +67,32 @@ models:
     display_name: BYD v1.1
     public_model_id: byd_v1_1
     technical_model_id: byd_dividend_sleeve_v1_0
-    technical_identity_note: immutable publication ID retained for backward-compatible evidence binding
     market: cn
-    status: accepted_formal_baseline
+    status: historical_baseline_superseded
     config: configs/models/byd_dividend_sleeve_v1_0.yaml
-    formal_package: data/research/formal_backtests/byd_dividend_sleeve_v1_0.json
     source_strategy: v1_dividend_75_25
     source_research_issue: 525
     promotion_issue: 557
-    evolution_issue: 592
-    prospective_monitoring_issue: 596
-    promotion_authority: explicit_user_direction
+    superseded_by: byd_v1_2_convex_momentum_budget_v1
     research_only: true
     trade_ready: false
-    next_version: BYD v1.2
+  byd_v1_2_convex_momentum_budget_v1:
+    display_name: BYD v1.2
+    public_model_id: byd_v1_2
+    technical_model_id: byd_v1_2_convex_momentum_budget_v1
+    market: cn
+    status: accepted_formal_baseline
+    config: configs/models/byd_v1_2_convex_momentum_budget_v1.yaml
+    formal_package: data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json
+    source_candidate: byd_v1_2_convex_momentum_budget_v1
+    source_challenge_issue: 592
+    selection_issue: 596
+    promotion_authority: explicit_user_direction_2026_08_06
+    research_only: true
+    trade_ready: false
+    fresh_historical_holdout: false
+    historical_evidence_consumed: true
+    automatic_promotion_allowed: false
+    supersedes: byd_dividend_sleeve_v1_0
+    signal_ledger: data/research/byd_v1_2_signal_ledger
+    next_version: BYD v1.3
