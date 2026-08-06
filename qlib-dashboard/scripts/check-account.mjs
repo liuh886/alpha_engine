@@ -16,8 +16,8 @@ const [html, config, styles, app] = await Promise.all([
 ]);
 
 for (const reference of [
-  'https://liuh886.github.io/admin/shared/account-shell.css?v=1',
-  'https://liuh886.github.io/admin/shared/account-shell.js?v=1',
+  'https://liuh886.github.io/admin/shared/account-shell.css?v=2',
+  'https://liuh886.github.io/admin/shared/account-shell.js?v=2',
   './account-integration.css',
 ]) {
   if (!html.includes(reference)) throw new Error(`index.html missing canonical account asset: ${reference}`);
@@ -46,4 +46,4 @@ for (const forbidden of [/sk_(live|test)_/, /whsec_/, /sb_secret_/, /service_rol
   if (forbidden.test(combined)) throw new Error(`browser assets contain forbidden material: ${forbidden}`);
 }
 
-console.log('AlphaEngine account uses the canonical shared shell and is embedded in the research topbar.');
+console.log('AlphaEngine account uses canonical Account Shell v2 and is embedded in the research topbar.');
