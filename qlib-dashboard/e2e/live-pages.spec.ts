@@ -1,49 +1,113 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const FORMAL_MODELS = ['QQQ Rotation v4.2', 'US x1.1', 'CN x1.1', 'BYD Dividend Sleeve V1.0'] as const;
-const FORMAL_VERSIONS = ['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_1', 'byd_dividend_sleeve_v1_0'] as const;
+const FORMAL_ROOT = 'data/formal-model-runs';
 
 type FormalCatalog = {
   schema_version?: string;
   channel?: string;
   research_only?: boolean;
   trade_ready?: boolean;
-  records?: Array<{
-    model_version_id?: string;
-    bundle_id?: string;
-    manifest_path?: string;
-    manifest_sha256?: string;
-    publication_status?: string;
+  records?: FormalRecord[];
+};
+
+type FormalRecord = {
+  model_version_id?: string;
+  bundle_id?: string;
+  manifest_path?: string;
+  manifest_sha256?: string;
+  publication_status?: string;
+};
+
+type FormalManifest = {
+  sections?: Array<{
+    section_id?: string;
+    availability_status?: string;
+    path?: string;
   }>;
 };
+
+type FormalSummary = {
+  display_name?: string;
+  model_version_id?: string;
+};
+
+type FormalModel = {
+  displayName: string;
+  version: string;
+};
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 async function assertNoHorizontalOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
-async function fetchFormalCatalog(page: Page): Promise<FormalCatalog> {
-  const url = new URL('data/formal-model-runs/catalog.json', page.url());
+async function fetchFormalJson<T>(page: Page, path: string): Promise<T> {
+  const url = new URL(path, page.url());
   url.searchParams.set('live_acceptance', Date.now().toString());
   const response = await page.request.get(url.toString(), {
     headers: { 'cache-control': 'no-cache', pragma: 'no-cache' },
   });
   expect(response.ok(), `failed to load ${url.toString()}`).toBeTruthy();
-  return response.json() as Promise<FormalCatalog>;
+  return response.json() as Promise<T>;
 }
 
-async function openRun(page: Page, model: typeof FORMAL_MODELS[number]): Promise<void> {
+async function fetchFormalCatalog(page: Page): Promise<FormalCatalog> {
+  return fetchFormalJson<FormalCatalog>(page, `${FORMAL_ROOT}/catalog.json`);
+}
+
+async function loadFormalModels(page: Page, catalog: FormalCatalog): Promise<FormalModel[]> {
+  const models: FormalModel[] = [];
+  for (const record of catalog.records ?? []) {
+    expect(record.model_version_id).toBeTruthy();
+    expect(record.manifest_path).toBeTruthy();
+    const manifestPath = String(record.manifest_path);
+    const manifest = await fetchFormalJson<FormalManifest>(
+      page,
+      `${FORMAL_ROOT}/${manifestPath}`,
+    );
+    const summarySection = manifest.sections?.find(
+      (section) => section.section_id === 'summary' && section.availability_status === 'available',
+    );
+    expect(summarySection?.path).toBeTruthy();
+    const manifestParent = manifestPath.split('/').slice(0, -1).join('/');
+    const summary = await fetchFormalJson<FormalSummary>(
+      page,
+      `${FORMAL_ROOT}/${manifestParent}/${String(summarySection?.path)}`,
+    );
+    expect(summary.model_version_id).toBe(record.model_version_id);
+    expect(summary.display_name).toBeTruthy();
+    models.push({
+      displayName: String(summary.display_name),
+      version: String(record.model_version_id),
+    });
+  }
+  return models;
+}
+
+async function openRun(page: Page, model: string): Promise<void> {
   await page.goto(`?live_acceptance=${Date.now()}#/runs`, { waitUntil: 'networkidle' });
   await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
   const catalog = page.getByRole('region', { name: 'Governed model runs' });
-  await expect(catalog.getByRole('button', { name: new RegExp(model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
-  await catalog.getByRole('button', { name: new RegExp(model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
+  const modelButton = catalog.getByRole('button', { name: new RegExp(escapeRegex(model)) });
+  await expect(modelButton).toBeVisible();
+  await modelButton.click();
   await expect(page.getByRole('heading', { name: model })).toBeVisible();
 }
 
 async function exerciseAvailableEvidence(page: Page): Promise<void> {
   const tabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
-  for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
+  for (const label of [
+    'Performance',
+    'Risk & robustness',
+    'Portfolio',
+    'Trades',
+    'Attribution',
+    'Evidence boundary',
+  ]) {
     await expect(tabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
   }
   await expect(page.getByRole('heading', { name: 'Strategy, benchmark and excess path' })).toBeVisible();
@@ -60,7 +124,7 @@ async function expectCompleteLedgers(page: Page): Promise<void> {
   await expect(page.getByText('Attribution unavailable')).toHaveCount(0);
 }
 
-test('live Pages renders all governed formal Bundle v2 baselines end to end', async ({ page }, testInfo) => {
+test('live Pages renders every catalog-governed formal Bundle v2 baseline end to end', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   const failedRequiredResponses: string[] = [];
   const legacyRequests: string[] = [];
@@ -87,26 +151,26 @@ test('live Pages renders all governed formal Bundle v2 baselines end to end', as
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Experiments', { exact: true })).toHaveCount(0);
 
-  const catalogRegion = page.getByRole('region', { name: 'Governed model runs' });
-  for (const model of FORMAL_MODELS) {
-    await expect(catalogRegion.getByRole('button', { name: new RegExp(model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
-  }
-  await expect(catalogRegion.getByText('formal', { exact: true })).toHaveCount(FORMAL_MODELS.length);
-
-  const legacyLocalRun = catalogRegion.getByRole('button').filter({ hasText: 'US x1.0' });
-  await expect(legacyLocalRun).toHaveCount(1);
-  await expect(legacyLocalRun.getByText('local', { exact: true })).toBeVisible();
-  await expect(legacyLocalRun.getByText('formal', { exact: true })).toHaveCount(0);
-
   const formalCatalog = await fetchFormalCatalog(page);
   expect(formalCatalog.schema_version).toBe('2.0.0');
   expect(formalCatalog.channel).toBe('formal');
   expect(formalCatalog.research_only).toBe(true);
   expect(formalCatalog.trade_ready).toBe(false);
-  expect(formalCatalog.records).toHaveLength(FORMAL_MODELS.length);
-  expect(new Set(formalCatalog.records?.map((record) => record.model_version_id))).toEqual(new Set(FORMAL_VERSIONS));
-  expect(formalCatalog.records?.some((record) => record.model_version_id === 'us_x1_0')).toBe(false);
-  expect(formalCatalog.records?.some((record) => record.model_version_id === 'cn_x1_0')).toBe(false);
+  expect((formalCatalog.records ?? []).length).toBeGreaterThan(0);
+
+  const formalModels = await loadFormalModels(page, formalCatalog);
+  expect(formalModels).toHaveLength(formalCatalog.records?.length ?? 0);
+  expect(new Set(formalModels.map((model) => model.version)).size).toBe(formalModels.length);
+  expect(new Set(formalModels.map((model) => model.displayName)).size).toBe(formalModels.length);
+
+  const catalogRegion = page.getByRole('region', { name: 'Governed model runs' });
+  for (const model of formalModels) {
+    await expect(
+      catalogRegion.getByRole('button', { name: new RegExp(escapeRegex(model.displayName)) }),
+    ).toBeVisible();
+  }
+  await expect(catalogRegion.getByText('formal', { exact: true })).toHaveCount(formalModels.length);
+
   for (const record of formalCatalog.records ?? []) {
     expect(record.publication_status).toBe('accepted_formal_baseline');
     expect(record.bundle_id).toMatch(/^[a-f0-9]{64}$/);
@@ -114,8 +178,8 @@ test('live Pages renders all governed formal Bundle v2 baselines end to end', as
     expect(record.manifest_path).toMatch(/manifest\.json$/);
   }
 
-  for (const model of FORMAL_MODELS) {
-    await openRun(page, model);
+  for (const model of formalModels) {
+    await openRun(page, model.displayName);
     await exerciseAvailableEvidence(page);
     await expectCompleteLedgers(page);
     await assertNoHorizontalOverflow(page);

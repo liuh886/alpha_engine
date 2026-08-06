@@ -22,14 +22,29 @@ from src.artifacts.pages_release_verification import (
 
 def _catalog() -> dict[str, object]:
     records = [
-        ("cn_ranker", "cn_x1_0", "cn_x1_0_run", "2026-08-03", "a"),
-        ("qqq_rotation", "qqqi_qqq_tqqq_v4_2", "qqq_v4_2_run", "2026-07-31", "b"),
-        ("us_ranker", "us_x1_1", "us_x1_1_run", "2026-07-31", "c"),
+        (
+            "byd_allocation",
+            "byd_v1_2_convex_momentum_budget_v1",
+            "byd_v1_2_run",
+            "2026-08-03",
+            "1",
+            "a",
+        ),
+        ("cn_ranker", "cn_x1_1", "cn_x1_1_run", "2026-08-03", "2", "b"),
+        (
+            "qqq_rotation",
+            "qqqi_qqq_tqqq_v4_2",
+            "qqq_v4_2_run",
+            "2026-07-31",
+            "3",
+            "c",
+        ),
+        ("us_ranker", "us_x1_1", "us_x1_1_run", "2026-07-31", "4", "d"),
     ]
     return {
         "schema_version": "2.0.0",
         "channel": "formal",
-        "generated_at": "2026-08-03T09:15:00Z",
+        "generated_at": "2026-08-06T09:52:48Z",
         "research_only": True,
         "trade_ready": False,
         "records": [
@@ -37,13 +52,20 @@ def _catalog() -> dict[str, object]:
                 "model_family_id": family,
                 "model_version_id": version,
                 "run_id": run,
-                "bundle_id": character * 64,
+                "bundle_id": bundle_character * 64,
                 "manifest_path": f"{family}/{version}/{run}/manifest.json",
-                "manifest_sha256": chr(ord(character) + 3) * 64,
+                "manifest_sha256": manifest_character * 64,
                 "evidence_cutoff": cutoff,
                 "publication_status": "accepted_formal_baseline",
             }
-            for family, version, run, cutoff, character in records
+            for (
+                family,
+                version,
+                run,
+                cutoff,
+                bundle_character,
+                manifest_character,
+            ) in records
         ],
     }
 
@@ -154,37 +176,69 @@ def _bundle_fixture() -> tuple[dict[str, object], dict[str, bytes]]:
     )
 
 
-def test_accepts_expected_deployment_and_formal_v2_catalog() -> None:
+def test_accepts_expected_deployment_and_catalog_governed_formal_runs() -> None:
     validate_deployment({"commit_sha": "abc123"}, expected_commit="abc123")
     records = validate_formal_catalog(_catalog())
     assert {record.model_version_id for record in records} == {
+        "byd_v1_2_convex_momentum_budget_v1",
+        "cn_x1_1",
         "qqqi_qqq_tqqq_v4_2",
         "us_x1_1",
-        "cn_x1_0",
     }
 
 
-def test_rejects_stale_deployment_or_extra_formal_model() -> None:
+def test_rejects_stale_deployment_or_duplicate_formal_model() -> None:
     with pytest.raises(ReleaseVerificationError, match="stale deployment"):
         validate_deployment({"commit_sha": "old"}, expected_commit="new")
     catalog = _catalog()
     records = catalog["records"]
     assert isinstance(records, list)
+    duplicate = dict(records[0])
+    duplicate["run_id"] = "duplicate_run"
+    duplicate["bundle_id"] = "5" * 64
+    duplicate["manifest_path"] = (
+        "byd_allocation/byd_v1_2_convex_momentum_budget_v1/duplicate_run/manifest.json"
+    )
+    duplicate["manifest_sha256"] = "e" * 64
+    records.append(duplicate)
+    records.sort(
+        key=lambda row: (
+            row["model_family_id"],
+            row["model_version_id"],
+            row["run_id"],
+        )
+    )
+    with pytest.raises(ReleaseVerificationError, match="duplicate formal model version"):
+        validate_formal_catalog(catalog)
+
+
+def test_accepts_new_catalog_model_without_verifier_code_change() -> None:
+    catalog = _catalog()
+    records = catalog["records"]
+    assert isinstance(records, list)
     records.append(
         {
-            "model_family_id": "us_ranker",
-            "model_version_id": "us_x1_0",
-            "run_id": "us_x1_0_run",
-            "bundle_id": "e" * 64,
-            "manifest_path": "us_ranker/us_x1_0/us_x1_0_run/manifest.json",
+            "model_family_id": "future_family",
+            "model_version_id": "future_formal_v1",
+            "run_id": "future_formal_run",
+            "bundle_id": "6" * 64,
+            "manifest_path": (
+                "future_family/future_formal_v1/future_formal_run/manifest.json"
+            ),
             "manifest_sha256": "f" * 64,
-            "evidence_cutoff": "2026-07-31",
+            "evidence_cutoff": "2026-08-06",
             "publication_status": "accepted_formal_baseline",
         }
     )
-    records.sort(key=lambda row: (row["model_family_id"], row["model_version_id"], row["run_id"]))
-    with pytest.raises(ReleaseVerificationError, match="unexpected formal model version"):
-        validate_formal_catalog(catalog)
+    records.sort(
+        key=lambda row: (
+            row["model_family_id"],
+            row["model_version_id"],
+            row["run_id"],
+        )
+    )
+    observed = validate_formal_catalog(catalog)
+    assert "future_formal_v1" in {record.model_version_id for record in observed}
 
 
 def test_verifies_manifest_identity_and_available_sections() -> None:
@@ -235,7 +289,9 @@ def test_verifies_required_research_bundle_artifacts() -> None:
 def test_rejects_corrupted_bundle_artifact() -> None:
     bundle, payloads = _bundle_fixture()
     _, artifacts = validate_bundle_manifest(bundle)
-    model_index = next(artifact for artifact in artifacts if artifact.kind == "model_index")
+    model_index = next(
+        artifact for artifact in artifacts if artifact.kind == "model_index"
+    )
     with pytest.raises(ReleaseVerificationError, match="digest mismatch"):
         validate_bundle_artifact_bytes(
             PublishedBundleArtifact(

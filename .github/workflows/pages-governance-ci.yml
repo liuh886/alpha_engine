@@ -8,7 +8,10 @@ on:
       - ".github/workflows/pages-release-receipt.yml"
       - ".github/workflows/pages-governance-ci.yml"
       - "scripts/detect_pages_impact.py"
+      - "scripts/verify_pages_release.py"
+      - "src/artifacts/pages_release_verification.py"
       - "tests/test_pages_impact.py"
+      - "tests/test_pages_release_verification.py"
   push:
     branches: ["main"]
     paths:
@@ -16,18 +19,21 @@ on:
       - ".github/workflows/pages-release-receipt.yml"
       - ".github/workflows/pages-governance-ci.yml"
       - "scripts/detect_pages_impact.py"
+      - "scripts/verify_pages_release.py"
+      - "src/artifacts/pages_release_verification.py"
       - "tests/test_pages_impact.py"
+      - "tests/test_pages_release_verification.py"
 
 permissions:
   contents: read
 
 jobs:
-  publication-impact-contract:
-    runs-on: ubuntu-latest
+  publication-contracts:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -37,8 +43,19 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
 
-      - name: Validate impact detector
+      - name: Validate Pages publication contracts
         run: |
-          uv run ruff check scripts/detect_pages_impact.py tests/test_pages_impact.py
-          uv run mypy scripts/detect_pages_impact.py
-          uv run pytest tests/test_pages_impact.py -q --strict-markers --tb=short
+          uv run ruff check \
+            scripts/detect_pages_impact.py \
+            scripts/verify_pages_release.py \
+            src/artifacts/pages_release_verification.py \
+            tests/test_pages_impact.py \
+            tests/test_pages_release_verification.py
+          uv run mypy \
+            scripts/detect_pages_impact.py \
+            scripts/verify_pages_release.py \
+            src/artifacts/pages_release_verification.py
+          uv run pytest \
+            tests/test_pages_impact.py \
+            tests/test_pages_release_verification.py \
+            -q --strict-markers --tb=short

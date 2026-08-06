@@ -10,6 +10,11 @@ on:
       - "tests/test_byd_signal_alerts.py"
       - "qlib-dashboard/src/lib/byd-runtime.ts"
       - "qlib-dashboard/src/pages/StrategyOperationsPage.tsx"
+  push:
+    branches: [main]
+    paths:
+      - "data/research/byd_v1_2_trend_expansion_prospective/observations/**"
+      - "data/research/byd_v1_2_trend_expansion_prospective/manifest.json"
   schedule:
     - cron: "0 13 * * 1-5"
   workflow_dispatch:

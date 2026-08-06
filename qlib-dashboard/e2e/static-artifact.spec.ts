@@ -7,6 +7,10 @@ function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex');
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 const modelsText = JSON.stringify([
   {
     id: 'fixture-run-1',
@@ -39,6 +43,22 @@ const bundleManifest = {
   ],
 };
 
+type FormalCatalog = {
+  records?: Array<{ manifest_path?: string }>;
+};
+
+type FormalManifest = {
+  sections?: Array<{
+    section_id?: string;
+    availability_status?: string;
+    path?: string;
+  }>;
+};
+
+type FormalSummary = {
+  display_name?: string;
+};
+
 async function installBundleFixture(): Promise<void> {
   const root = resolve(process.cwd(), 'dist', 'bundle');
   await mkdir(resolve(root, 'data'), { recursive: true });
@@ -63,6 +83,34 @@ async function openStudio(page: Page) {
   await expect(page.locator('#root')).not.toBeEmpty();
   await expect(page.getByRole('heading', { name: 'Decide what the evidence supports.' })).toBeVisible();
   await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
+}
+
+async function loadFormalDisplayNames(page: Page): Promise<string[]> {
+  const catalogResponse = await page.request.get('/data/formal-model-runs/catalog.json');
+  expect(catalogResponse.ok()).toBeTruthy();
+  const catalog = await catalogResponse.json() as FormalCatalog;
+  const names: string[] = [];
+  for (const record of catalog.records ?? []) {
+    expect(record.manifest_path).toBeTruthy();
+    const manifestPath = String(record.manifest_path);
+    const manifestResponse = await page.request.get(`/data/formal-model-runs/${manifestPath}`);
+    expect(manifestResponse.ok()).toBeTruthy();
+    const manifest = await manifestResponse.json() as FormalManifest;
+    const summarySection = manifest.sections?.find(
+      (section) => section.section_id === 'summary' && section.availability_status === 'available',
+    );
+    expect(summarySection?.path).toBeTruthy();
+    const parent = manifestPath.split('/').slice(0, -1).join('/');
+    const summaryResponse = await page.request.get(
+      `/data/formal-model-runs/${parent}/${String(summarySection?.path)}`,
+    );
+    expect(summaryResponse.ok()).toBeTruthy();
+    const summary = await summaryResponse.json() as FormalSummary;
+    expect(summary.display_name).toBeTruthy();
+    names.push(String(summary.display_name));
+  }
+  expect(names.length).toBeGreaterThan(0);
+  return names;
 }
 
 test('product homepage explains the workflow and opens the research studio', async ({ page }, testInfo) => {
@@ -119,14 +167,14 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await assertNoHorizontalOverflow(page);
   await page.screenshot({ path: `test-results/static-artifact/overview-${testInfo.project.name}.png`, fullPage: true });
 
+  const formalNames = await loadFormalDisplayNames(page);
   await page.goto('/#/runs');
   await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
   const catalog = page.getByRole('region', { name: 'Governed model runs' });
-  await expect(catalog.getByRole('button', { name: /QQQ Rotation v4\.2/ })).toBeVisible();
-  await expect(catalog.getByRole('button', { name: /US x1\.1/ })).toBeVisible();
-  await expect(catalog.getByRole('button', { name: /CN x1\.1/ })).toBeVisible();
-  await expect(catalog.getByRole('button', { name: /BYD Dividend Sleeve V1\.0/ })).toBeVisible();
-  await expect(catalog.getByText('formal', { exact: true })).toHaveCount(4);
+  for (const name of formalNames) {
+    await expect(catalog.getByRole('button', { name: new RegExp(escapeRegex(name)) })).toBeVisible();
+  }
+  await expect(catalog.getByText('formal', { exact: true })).toHaveCount(formalNames.length);
   await catalog.getByRole('button', { name: /QQQ Rotation v4\.2/ }).click();
   await expect(page).toHaveURL(/#\/review\?channel=formal&family=qqq_rotation&version=qqqi_qqq_tqqq_v4_2/);
   await expect(page.getByRole('heading', { name: 'QQQ Rotation v4.2' })).toBeVisible();
@@ -141,10 +189,9 @@ test('static studio opens without authentication or backend APIs', async ({ page
   await page.goto('/#/backtests');
   await expect(page.getByRole('main').getByRole('heading', { name: 'Formal Backtests', exact: true, level: 2 })).toBeVisible();
   const baselines = page.getByRole('region', { name: 'Accepted formal backtest baselines' });
-  await expect(baselines.getByRole('button', { name: /QQQ Rotation v4\.2/ })).toBeVisible();
-  await expect(baselines.getByRole('button', { name: /US x1\.1/ })).toBeVisible();
-  await expect(baselines.getByRole('button', { name: /CN x1\.1/ })).toBeVisible();
-  await expect(baselines.getByRole('button', { name: /BYD Dividend Sleeve V1\.0/ })).toBeVisible();
+  for (const name of formalNames) {
+    await expect(baselines.getByRole('button', { name: new RegExp(escapeRegex(name)) })).toBeVisible();
+  }
   await expect(page.getByTestId('formal-backtest-review')).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
