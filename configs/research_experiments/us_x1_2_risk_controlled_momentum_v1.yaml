@@ -1,0 +1,161 @@
+schema_version: '1.0'
+experiment_id: us_x1_2_risk_controlled_momentum_v1
+issue: 374
+parent_model_id: us_x1_1
+research_only: true
+trade_ready: false
+
+purpose: >-
+  Test whether adding risk-controlled momentum factors (return/volatility
+  ratios) to the US x1.1 feature set improves signal quality and portfolio
+  performance. The baseline uses momentum_volatility_volume (7 raw momentum,
+  volatility, and volume factors). This experiment adds ret10_per_vol10 and
+  ret20_per_vol20 from the risk_controlled_momentum group (9 total factors).
+
+  Hypothesis: risk-adjusted momentum provides a more stable signal than raw
+  momentum alone, particularly during volatile market regimes. The
+  return/volatility ratio penalizes high-volatility momentum and rewards
+  consistent low-volatility trends.
+
+snapshot:
+  policy: immutable_artifact_bound_snapshot
+  provider_identity_sha256: 2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95
+  cutoff: '2026-07-31'
+
+fixed_model:
+  model_id: us_x1_1
+  config: configs/models/us_x1_1.yaml
+  frozen_spec: configs/research_paradigms/us_x1_1_frozen_v1.yaml
+
+factor_library:
+  source: configs/factor_libraries/us_ohlcv.yaml
+  groups:
+    - momentum_volatility_volume
+    - risk_controlled_momentum
+  note: >-
+    Expanded from baseline's momentum_volatility_volume (7 factors) to
+    include risk_controlled_momentum group (ret10_per_vol10 and
+    ret20_per_vol20). Total: 9 factors. No other factor groups changed.
+
+candidate_grid:
+  ranker:
+    model_families:
+      - xgb
+    calibrations:
+      - calibration_id: baseline_7factor
+        n_gain_bins: 7
+        num_boost_round: 200
+        max_leaves: 31
+        max_depth: 0
+        min_child_weight: 1.0
+        learning_rate: 0.03
+        subsample: 1.0
+        colsample_bytree: 1.0
+        seed: 42
+        description: US x1.1 effective baseline (7 factors)
+      - calibration_id: risk_controlled_9factor
+        n_gain_bins: 7
+        num_boost_round: 200
+        max_leaves: 31
+        max_depth: 0
+        min_child_weight: 1.0
+        learning_rate: 0.03
+        subsample: 1.0
+        colsample_bytree: 1.0
+        seed: 42
+        description: Risk-controlled momentum (9 factors)
+      - calibration_id: risk_controlled_lower_lr
+        n_gain_bins: 7
+        num_boost_round: 300
+        max_leaves: 31
+        max_depth: 0
+        min_child_weight: 2.0
+        learning_rate: 0.02
+        subsample: 1.0
+        colsample_bytree: 1.0
+        seed: 42
+        description: Risk-controlled + lower LR + more rounds
+      - calibration_id: risk_controlled_sampled
+        n_gain_bins: 7
+        num_boost_round: 200
+        max_leaves: 31
+        max_depth: 0
+        min_child_weight: 1.0
+        learning_rate: 0.03
+        subsample: 0.8
+        colsample_bytree: 0.8
+        seed: 42
+        description: Risk-controlled + row/column sampling
+    factor_baselines:
+      - calibration_id: factor_baseline_mom10d
+        factor_group: factor_baselines
+        factor: factor:us_momentum_10d
+      - calibration_id: factor_baseline_rc10d
+        factor_group: factor_baselines
+        factor: factor:us_risk_controlled_10d
+
+strategy:
+  horizon_days: 10
+  holding_days: 10
+  rebalance_days: 10
+  top_n: 15
+  bottom_n: 15
+  return_expression: "Ref($close, -10) / $close - 1"
+
+windows:
+  candidate_selection:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+  consumed_reporting_only:
+    - 2026H1
+  consumed_reporting_may_enter_selection: false
+  new_holdout_reserved: true
+
+portfolio:
+  baseline_variant: top15_equal_weight
+  top_n: 15
+  construction: equal_weight
+  gross_exposure: 1.0
+
+execution:
+  base_cost_bps: 20
+  cost_stress_bps:
+    - 20
+    - 40
+    - 60
+
+selection_priority:
+  - positive_excess_in_all_development_windows
+  - lower_worst_drawdown
+  - lower_security_and_window_concentration
+  - positive_60_bps_compounded_relative_excess
+  - stable_rank_ic_and_top15_overlap
+  - compounded_relative_excess
+  - positive_factor_baseline_dominance
+
+support_gate:
+  decision: risk_controlled_momentum_candidate_supported
+  require_all:
+    - all_development_windows_positive_excess
+    - worst_drawdown_not_below_minus_0_30
+    - sixty_bps_compounded_relative_excess_positive
+    - strongest_positive_window_share_below_0_50
+    - mean_rank_ic_improvement_by_at_least_0_005
+    - dominates_factor_baselines
+  prefer:
+    - lower_worst_drawdown
+    - lower_concentration
+
+stop_rules:
+  - no_feature_search_beyond_declared_groups
+  - no_pool_changes
+  - no_2026H1_candidate_selection
+  - no_additional_factor_groups
+  - no_automatic_baseline_update
+
+version_policy:
+  may_propose_us_x1_2_candidate: true
+  may_release_us_x1_2_automatically: false
+  new_untouched_challenge_required: true

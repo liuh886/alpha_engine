@@ -1,0 +1,155 @@
+schema_version: '1.0'
+experiment_id: us_x1_2_compound_v1
+issue: 374
+parent_model_id: us_x1_1
+research_only: true
+trade_ready: false
+
+purpose: >-
+  Compound experiment combining the two most promising US x1.2 optimization
+  directions: (1) risk-controlled momentum factors for signal improvement,
+  and (2) portfolio construction controls for risk reduction. Tests whether
+  the combination produces a candidate that improves both excess return and
+  drawdown relative to the US x1.1 baseline.
+
+snapshot:
+  policy: immutable_artifact_bound_snapshot
+  provider_identity_sha256: 2e903b716fd6933ecc2194f60b922322ebe57f1b2c8751a244c871ad27a92b95
+  cutoff: '2026-07-31'
+
+fixed_model:
+  model_id: us_x1_1
+  config: configs/models/us_x1_1.yaml
+  frozen_spec: configs/research_paradigms/us_x1_1_frozen_v1.yaml
+
+factor_library:
+  source: configs/factor_libraries/us_ohlcv.yaml
+  groups:
+    - momentum_volatility_volume
+    - risk_controlled_momentum
+
+candidate_grid:
+  ranker:
+    model_families:
+      - xgb
+    calibrations:
+      - calibration_id: us_x1_1_baseline
+        n_gain_bins: 7
+        num_boost_round: 200
+        max_leaves: 31
+        max_depth: 0
+        min_child_weight: 1.0
+        learning_rate: 0.03
+        subsample: 1.0
+        colsample_bytree: 1.0
+        seed: 42
+        factor_groups:
+          - momentum_volatility_volume
+        description: US x1.1 baseline reproduction
+      - calibration_id: rc_momentum_base
+        n_gain_bins: 7
+        num_boost_round: 200
+        max_leaves: 31
+        max_depth: 0
+        min_child_weight: 1.0
+        learning_rate: 0.03
+        subsample: 1.0
+        colsample_bytree: 1.0
+        seed: 42
+        factor_groups:
+          - momentum_volatility_volume
+          - risk_controlled_momentum
+        description: Risk-controlled momentum (9 factors)
+      - calibration_id: rc_momentum_regularized
+        n_gain_bins: 7
+        num_boost_round: 300
+        max_leaves: 31
+        max_depth: 0
+        min_child_weight: 3.0
+        learning_rate: 0.02
+        subsample: 0.9
+        colsample_bytree: 0.9
+        reg_alpha: 0.05
+        reg_lambda: 1.5
+        seed: 42
+        factor_groups:
+          - momentum_volatility_volume
+          - risk_controlled_momentum
+        description: Risk-controlled + regularization
+
+strategy:
+  horizon_days: 10
+  holding_days: 10
+  rebalance_days: 10
+  top_n: 15
+
+windows:
+  candidate_selection:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+  consumed_reporting_only:
+    - 2026H1
+  consumed_reporting_may_enter_selection: false
+  new_holdout_reserved: true
+
+portfolio_variants:
+  - variant_id: top15_equal_weight
+    construction: equal_weight
+    gross_exposure: 1.0
+    role: baseline
+  - variant_id: top15_name_cap_8pct
+    construction: equal_weight
+    maximum_name_weight: 0.08
+    residual_policy: iterative_redistribution
+    gross_exposure: 1.0
+    role: concentration_control
+  - variant_id: top15_inverse_vol20
+    construction: inverse_vol20_weight
+    maximum_name_weight: 0.10
+    residual_policy: iterative_redistribution
+    gross_exposure: 1.0
+    role: risk_weighted
+  - variant_id: top15_sector_cap_30pct
+    construction: equal_weight
+    maximum_sector_weight: 0.30
+    residual_policy: redistribute_to_uncapped_sectors_then_cash
+    gross_exposure: 1.0
+    role: sector_diversified
+
+execution:
+  base_cost_bps: 20
+  cost_stress_bps:
+    - 20
+    - 40
+    - 60
+
+selection_priority:
+  - positive_excess_in_all_development_windows
+  - lower_worst_drawdown
+  - lower_security_and_window_concentration
+  - positive_60_bps_compounded_relative_excess
+  - stable_rank_ic_and_top15_overlap
+  - compounded_relative_excess
+
+support_gate:
+  decision: compound_candidate_supported
+  require_all:
+    - all_development_windows_positive_excess
+    - worst_drawdown_improves_by_at_least_0_03_or_not_below_minus_0_28
+    - sixty_bps_compounded_relative_excess_positive
+    - strongest_positive_window_share_below_0_50
+    - mean_rank_ic_improvement_by_at_least_0_003
+
+stop_rules:
+  - no_feature_search_beyond_declared_groups
+  - no_pool_changes
+  - no_2026H1_candidate_selection
+  - no_automatic_baseline_update
+
+version_policy:
+  maximum_surviving_candidates: 1
+  may_propose_us_x1_2_candidate: true
+  may_release_us_x1_2_automatically: false
+  new_untouched_challenge_required: true
