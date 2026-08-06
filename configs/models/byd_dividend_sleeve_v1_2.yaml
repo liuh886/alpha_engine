@@ -1,0 +1,88 @@
+schema_version: '1.1'
+model_id: byd_dividend_sleeve_v1_2
+public_model_id: byd_v1_2
+display_name: BYD v1.2
+technical_identity_note: relaxed trend expansion at 110% replaces v1.1 as accepted formal baseline
+market: cn
+asset_class: single_equity_allocation
+status: accepted_formal_baseline
+source_strategy: v1_2_relaxed_trend_expansion
+source_issue: 560
+promotion_issue: 560
+evolution_issue: 560
+monitoring_issue: 529
+research_only: true
+trade_ready: false
+fresh_historical_holdout: false
+supersedes: byd_dividend_sleeve_v1_0
+expansion_module: src/research/byd_trend_fix_v1.py
+portfolio:
+  risk_on:
+    BYD: 1.10
+    515180.SH: 0.0
+    cash: -0.10
+  defense:
+    BYD: 0.75
+    515180.SH: 0.25
+    cash: 0.0
+signal_contract:
+  base_model: canonical_byd_v1_0
+  expansion_model: byd_trend_fix_v1
+  signal_time: session_close_t
+  execution_time: next_common_independently_confirmed_eligible_open_t_plus_1
+  ineligible_open_policy: keep_pending_target
+  first_overlap_interval: cash
+cost_contract:
+  primary_bps_per_absolute_weight_change: 20
+  stress_bps_per_absolute_weight_change: 40
+  annual_financing_rate_primary: 0.06
+  annual_financing_rate_stress: 0.10
+  financing_day_count: 252
+  charged_legs:
+    - BYD
+    - 515180.SH
+    - cash
+data_contract:
+  byd_snapshot: data/research/byd_canonical_v1_snapshot.tar.xz
+  byd_snapshot_sha256: 2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179
+  etf_artifact: data/research/515180_canonical_v1_artifact.zip.b64
+  etf_artifact_sha256: 7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f
+  etf_adjusted_sha256: 2173afbe2fcbc8875de55ce0ff9bcb25b1c9f184c5cd273ade682244393c67a5
+  historical_cutoff: '2026-08-03'
+  prospective_store: data/research/byd_515180_prospective
+expansion_rules:
+  entry_base_byd_weight: 1.0
+  entry_market_state: bull
+  entry_mom_20_floor: 0.01
+  entry_mom_60_floor: 0.0
+  entry_drawdown_252_floor: -0.15
+  exit_mom_20_ceiling: -0.01
+  exit_drawdown_emergency: -0.25
+  primary_byd_weight: 1.10
+  robustness_byd_weight: 1.05
+  diagnostic_byd_weight: 1.15
+formal_publication:
+  release_channel: formal_catalog
+  package: data/research/formal_backtests/byd_dividend_sleeve_v1_2.json
+  publication_status: accepted_formal_baseline
+  performance_trace: exact_daily_open_to_open
+  prospective_monitoring: append_only
+  public_display_name: BYD v1.2
+interpretation:
+  mechanism: BYD V1.0 core timing + 515180 defensive sleeve + relaxed trend expansion at 110% during strong bull markets with financing cost
+  version_semantics: replaces V1.1 by adding a small financed BYD expansion (110%) when V1.0 signals risk-on in a strong bull trend with moderate drawdown. Removes the vol_state filter that limited the original v1.2 to only 86 expansion sessions, achieving 396 sessions while maintaining signal quality.
+  key_improvements:
+    - CAGR +0.98pp vs v1.1 (36.06% vs 35.07%)
+    - Total return +32.33pp vs v1.1 (614.14% vs 581.81%)
+    - MDD -0.43pp vs v1.1 (within 2pp tolerance)
+    - 8/9 promotion gates passed
+  known_limitations:
+    - Concentration gate (92.2% vs 60%): structural due to development period (2019-2022) having 77.6% CAGR vs 7.3%/6.1% in later periods
+    - 2025+ quarantine period shows -1.07% relative terminal wealth vs v1.1
+  prohibited_extensions:
+    - additional ETF search
+    - trend timing of 515180
+    - recovery overlay
+    - binary full-allocation rotation
+    - vol_state filter reintroduction
+    - post-result rule modification
