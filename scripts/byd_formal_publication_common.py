@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,18 @@ def read_object(path: Path) -> dict[str, Any]:
     return value
 
 
+def _json_default(value: Any) -> Any:
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    isoformat = getattr(value, "isoformat", None)
+    if callable(isoformat):
+        return isoformat()
+    item = getattr(value, "item", None)
+    if callable(item):
+        return item()
+    raise TypeError(f"Object of type {value.__class__.__name__} is not JSON serializable")
+
+
 def write_json(path: Path, value: dict[str, Any]) -> str:
     payload = json.dumps(
         value,
@@ -25,6 +38,7 @@ def write_json(path: Path, value: dict[str, Any]) -> str:
         sort_keys=True,
         indent=2,
         allow_nan=False,
+        default=_json_default,
     ) + "\n"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(payload, encoding="utf-8")
