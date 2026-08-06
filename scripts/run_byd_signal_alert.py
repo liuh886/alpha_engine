@@ -9,6 +9,7 @@ suitable for GitHub Issue and Telegram delivery.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -97,6 +98,26 @@ def main() -> int:
         previous_state=previous_state,
     )
 
+    # Bind signal to exact store identities (hash-bound provenance)
+    store_manifests = {}
+    for label, store_dir in [
+        ("shadow", args.shadow_store),
+        ("paired", args.paired_store),
+        ("expansion", args.expansion_store),
+    ]:
+        manifest_path = store_dir / "manifest.json"
+        if manifest_path.exists():
+            store_manifests[f"{label}_manifest_sha256"] = hashlib.sha256(
+                manifest_path.read_bytes()
+            ).hexdigest()
+        else:
+            store_manifests[f"{label}_manifest_sha256"] = None
+
+    alert["data_provenance"] = {
+        "store_manifests": store_manifests,
+        "source_workflow": "byd-daily-signal-alert",
+    }
+
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
     json_path = output / "signal_alert.json"
@@ -117,6 +138,7 @@ def main() -> int:
         "signal_date": alert["signal_date"],
         "should_alert": bool(alert["should_alert"]),
         "data_freshness_ok": bool(alert["data_freshness_ok"]),
+        "data_provenance": alert.get("data_provenance", {}),
         "github_issue": {
             "created": False,
             "number": None,
@@ -147,6 +169,10 @@ def main() -> int:
             handle.write(f"json_path={json_path}\n")
             handle.write(f"markdown_path={md_path}\n")
             handle.write(f"telegram_path={tg_path}\n")
+            handle.write(f"receipt_path={receipt_path}\n")
+            for key, value in store_manifests.items():
+                if value:
+                    handle.write(f"{key}={value}\n")
 
     print(json.dumps(alert, ensure_ascii=False, indent=2, sort_keys=True))
     return 0
