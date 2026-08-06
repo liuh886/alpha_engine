@@ -1,0 +1,191 @@
+name: Materialize BYD v1.2 Promotion
+
+on:
+  push:
+    branches:
+      - promotion/byd-v1-2-convex-momentum
+    paths:
+      - .github/workflows/materialize-byd-v1-2-promotion.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: materialize-byd-v1-2-promotion
+  cancel-in-progress: false
+
+env:
+  GENERATED_AT: 2026-08-06T09:52:48Z
+
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: promotion/byd-v1-2-convex-momentum
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - name: Install locked environments
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+          cd qlib-dashboard
+          npm ci
+      - name: Update BYD operating UI and catalog-driven deploy checks
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          page = Path('qlib-dashboard/src/pages/StrategyOperationsPage.tsx')
+          text = page.read_text(encoding='utf-8')
+          replacements = {
+              '          <Badge className="gap-1.5"><Activity className="h-3 w-3" /> BYD v1.2</Badge>\n          <Badge variant="outline">Research only</Badge>':
+              '          <Badge className="gap-1.5"><Activity className="h-3 w-3" /> BYD v1.2</Badge>\n          <Badge variant="secondary">Formal baseline</Badge>\n          <Badge variant="outline">Research only</Badge>',
+              'bydIndex.latestSignal.record.target_state_label': 'bydIndex.latestSignal.record.target_mode_label',
+              "Expansion: {bydIndex.latestSignal.record.expansion_active ? 'Active' : 'Inactive'}":
+              "Expansion: {bydIndex.latestSignal.record.expansion_active ? 'Active' : 'Inactive'} · financed {formatPercent(bydIndex.latestSignal.record.financed_increment, 2)}",
+              "['Mom accel 20/60', formatNumber(bydIndex!.latestSignal!.record.factor_context.momentum_accel_20_60, 4)]":
+              "['Momentum 20d', formatPercent(bydIndex!.latestSignal!.record.factor_context.mom_20, 2)]",
+              "['Open autocorr 20d', formatNumber(bydIndex!.latestSignal!.record.factor_context.open_return_autocorr_20, 4)]":
+              "['Momentum 60d', formatPercent(bydIndex!.latestSignal!.record.factor_context.mom_60, 2)]",
+              "['Dist from 20d low', formatPercent(bydIndex!.latestSignal!.record.factor_context.distance_from_low_20)]":
+              "['Momentum scale', formatPercent(bydIndex!.latestSignal!.record.factor_context.momentum_scale, 2)]",
+              '<CardHeader><CardTitle className="text-base">Current allocation</CardTitle></CardHeader>':
+              '<CardHeader><CardTitle className="text-base">Formal target allocation</CardTitle></CardHeader>',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise RuntimeError(f'missing StrategyOperationsPage promotion anchor: {old}')
+              text = text.replace(old, new, 1)
+          page.write_text(text, encoding='utf-8')
+
+          deploy = Path('.github/workflows/deploy-pages.yml')
+          text = deploy.read_text(encoding='utf-8')
+          old_node = """          const expected = new Set(['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0', 'byd_dividend_sleeve_v1_0']);
+          if (catalog.records.length !== 4) throw new Error('formal catalog must contain exactly four records');
+          for (const record of catalog.records) {
+            if (!expected.delete(record.model_version_id)) throw new Error(`unexpected formal version: ${record.model_version_id}`);
+            const manifestPath = path.join(root, record.manifest_path);
+            if (!fs.existsSync(manifestPath)) throw new Error(`missing manifest: ${record.manifest_path}`);
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            if (manifest.bundle_id !== record.bundle_id) throw new Error(`bundle mismatch: ${record.model_version_id}`);
+            if (manifest.publication_channel !== 'formal' || manifest.publication_status !== 'accepted_formal_baseline') throw new Error(`status mismatch: ${record.model_version_id}`);
+            for (const section of manifest.sections) {
+              if (section.availability_status !== 'available') continue;
+              const sectionPath = path.join(path.dirname(manifestPath), section.path);
+              if (!fs.existsSync(sectionPath)) throw new Error(`missing section: ${record.model_version_id}/${section.section_id}`);
+            }
+          }
+          if (expected.size) throw new Error(`missing formal versions: ${[...expected].join(', ')}`);
+"""
+          new_node = """          if (!Array.isArray(catalog.records) || catalog.records.length === 0) throw new Error('formal catalog is empty');
+          const seen = new Set();
+          for (const record of catalog.records) {
+            if (!record.model_version_id || seen.has(record.model_version_id)) throw new Error(`duplicate formal version: ${record.model_version_id}`);
+            seen.add(record.model_version_id);
+            const manifestPath = path.join(root, record.manifest_path);
+            if (!fs.existsSync(manifestPath)) throw new Error(`missing manifest: ${record.manifest_path}`);
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            if (manifest.bundle_id !== record.bundle_id) throw new Error(`bundle mismatch: ${record.model_version_id}`);
+            if (manifest.publication_channel !== 'formal' || manifest.publication_status !== 'accepted_formal_baseline') throw new Error(`status mismatch: ${record.model_version_id}`);
+            for (const section of manifest.sections) {
+              if (section.availability_status !== 'available') continue;
+              const sectionPath = path.join(path.dirname(manifestPath), section.path);
+              if (!fs.existsSync(sectionPath)) throw new Error(`missing section: ${record.model_version_id}/${section.section_id}`);
+            }
+          }
+"""
+          if old_node not in text:
+              raise RuntimeError('missing Node formal-catalog deploy anchor')
+          text = text.replace(old_node, new_node, 1)
+          old_python = """          assert {row['model_version_id'] for row in catalog['records']} == {
+              'qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0', 'byd_dividend_sleeve_v1_0'
+          }
+"""
+          new_python = """          model_ids = [row['model_version_id'] for row in catalog['records']]
+          assert model_ids and len(model_ids) == len(set(model_ids))
+"""
+          if old_python not in text:
+              raise RuntimeError('missing Python formal-catalog deploy anchor')
+          text = text.replace(old_python, new_python, 1)
+          deploy.write_text(text, encoding='utf-8')
+          PY
+      - name: Rebuild complete formal publication
+        run: |
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > "$RUNNER_TEMP/515180.zip"
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  $RUNNER_TEMP/515180.zip" | sha256sum --check --strict
+          mkdir -p artifacts/input/byd artifacts/input/515180
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/input/byd
+          unzip -q "$RUNNER_TEMP/515180.zip" -d artifacts/input/515180
+          uv run python scripts/promote_byd_v1_2_formal.py \
+            --root data/research/formal_backtests \
+            --byd-dir artifacts/input/byd \
+            --etf-dir artifacts/input/515180 \
+            --signal-ledger data/research/byd_v1_2_signal_ledger \
+            --generated-at "$GENERATED_AT" \
+            --receipt artifacts/byd-v1-2-promotion.json
+          rm -rf .research/formal-model-runs
+          uv run python scripts/sync_formal_bundle_v2.py \
+            --source-root data/research/formal_backtests \
+            --output-root .research/formal-model-runs \
+            --receipt artifacts/formal-bundle-v2.json
+          rsync -a --delete --exclude formal-bundle-v2-sync-receipt.json \
+            .research/formal-model-runs/ data/research/formal_model_runs/
+          cd qlib-dashboard
+          npm run sync:formal-model-runs
+      - name: Validate generated publication and frontend
+        run: |
+          uv run ruff check \
+            scripts/promote_byd_v1_2_formal.py \
+            src/research/byd_v1_2_convex_momentum.py \
+            src/research/byd_signal_alerts.py \
+            scripts/run_byd_signal_alert.py \
+            tests/test_byd_v1_2_convex_momentum.py \
+            tests/test_byd_signal_alerts.py
+          uv run pytest \
+            tests/test_byd_v1_2_convex_momentum.py \
+            tests/test_byd_signal_alerts.py \
+            tests/test_model_x1_baselines.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+          cd qlib-dashboard
+          npm run lint
+          npx tsc --noEmit
+          npm test -- --run
+          npm run build
+          test -f dist/data/formal-model-runs/catalog.json
+          test ! -e dist/data/formal-backtests
+      - name: Remove one-time materializer and commit exact assets
+        run: |
+          git rm .github/workflows/materialize-byd-v1-2-promotion.yml
+          git config user.name "AlphaEngine Release Agent"
+          git config user.email "release-agent@alphaengine.local"
+          git add \
+            .github/workflows/deploy-pages.yml \
+            qlib-dashboard/src/pages/StrategyOperationsPage.tsx \
+            qlib-dashboard/public/data/formal-model-runs \
+            data/research/formal_backtests \
+            data/research/formal_model_runs
+          git commit -m "release: publish BYD v1.2 formal evidence and frontend"
+          git push origin HEAD:promotion/byd-v1-2-convex-momentum
+      - name: Upload materialization receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-v1-2-materialization-${{ github.run_id }}
+          path: |
+            artifacts/byd-v1-2-promotion.json
+            artifacts/formal-bundle-v2.json
+          if-no-files-found: warn
+          retention-days: 90
