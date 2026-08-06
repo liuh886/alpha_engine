@@ -1,6 +1,9 @@
 name: QQQI v4.2 Prospective Evidence Ledger
 
 on:
+  workflow_run:
+    workflows: ["QQQI VXN v4.2 Signal Alert"]
+    types: [completed]
   pull_request:
     branches: [main]
     paths:
@@ -10,15 +13,13 @@ on:
       - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor.yaml"
       - "src/research/v4_2_prospective_evidence_ledger.py"
       - "src/research/strategy_signal_alerts.py"
+      - "scripts/bind_v4_2_ledger_source.py"
       - "scripts/run_qqqi_v4_2_prospective_evidence_ledger.py"
       - "scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py"
       - "scripts/run_qqqi_vxn_v4_2_signal_alert.py"
       - "tests/test_v4_2_prospective_evidence_ledger.py"
       - "tests/test_strategy_signal_alerts.py"
       - "docs/research/qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger_spec.md"
-  schedule:
-    # After the decision-alert workflow and after the prior US close data should exist.
-    - cron: "20 1 * * 2-6"
   workflow_dispatch:
     inputs:
       end_date:
@@ -27,21 +28,33 @@ on:
         type: string
 
 concurrency:
-  group: qqqi-v4-2-prospective-ledger-${{ github.event.pull_request.number || github.ref }}
+  group: qqqi-v4-2-prospective-ledger-${{ github.event.workflow_run.id || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
+  actions: read
   contents: read
   issues: write
 
+env:
+  BUNDLE_ROOT: artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
+  MONITOR_ROOT: artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor
+  SIGNAL_ROOT: artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2
+  LEDGER_ROOT: artifacts/evidence/qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger
+
 jobs:
   prospective-ledger:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request')
     runs-on: ubuntu-latest
     timeout-minutes: 50
     env:
       TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -54,25 +67,82 @@ jobs:
         run: |
           uv run ruff check \
             src/research/v4_2_prospective_evidence_ledger.py \
+            scripts/bind_v4_2_ledger_source.py \
             scripts/run_qqqi_v4_2_prospective_evidence_ledger.py \
             tests/test_v4_2_prospective_evidence_ledger.py
+          uv run mypy scripts/bind_v4_2_ledger_source.py scripts/run_qqqi_v4_2_prospective_evidence_ledger.py
           uv run pytest tests/test_v4_2_prospective_evidence_ledger.py -q --tb=short
-      - name: Build governed QQQ QQQI TQQQ reference bundle
+      - name: Download the exact successful signal context
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: qqqi-vxn-v4-2-signal-${{ github.event.workflow_run.id }}
+          path: artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Build governed reference bundle for validation or manual replay
+        if: github.event_name != 'workflow_run'
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py
-          --output-root artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
-      - name: Run frozen v4.2 prospective monitor
+          --output-root "$BUNDLE_ROOT"
+      - name: Run frozen monitor for validation or manual replay
+        if: github.event_name != 'workflow_run'
         run: >-
           uv run python scripts/run_qqqi_vxn_bridge_v4_2_prospective_monitor.py
           --end-date "${{ inputs.end_date }}"
-          --etf-data-bundle artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1
-          --output-dir artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor
+          --etf-data-bundle "$BUNDLE_ROOT"
+          --output-dir "$MONITOR_ROOT"
           --strategy-run-dir artifacts/strategy_runs
-      - name: Build frozen next-open alert context
+      - name: Build alert context for validation or manual replay
+        if: github.event_name != 'workflow_run'
         run: >-
           uv run python scripts/run_qqqi_vxn_v4_2_signal_alert.py
-          --summary artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_summary.json
-          --output-dir artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2
+          --summary "$MONITOR_ROOT/prospective_summary.json"
+          --output-dir "$SIGNAL_ROOT"
+      - name: Create local source receipt for validation or manual replay
+        if: github.event_name != 'workflow_run'
+        run: |
+          uv run python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          def digest(path: Path) -> str:
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+          alert_path = Path(os.environ['SIGNAL_ROOT']) / 'signal_alert.json'
+          alert = json.loads(alert_path.read_text(encoding='utf-8'))
+          receipt = {
+              'schema_version': '1.0.0',
+              'fingerprint': alert['fingerprint'],
+              'should_alert': alert['should_alert'],
+              'data_freshness_ok': alert['data_freshness_ok'],
+              'github_issue_status': 'validation_only',
+              'github_issue_number': None,
+              'telegram_status': 'not_required',
+              'telegram_message_id': None,
+              'telegram_error_class': None,
+              'workflow_run_id': os.environ['GITHUB_RUN_ID'],
+              'commit_sha': os.environ['GITHUB_SHA'],
+              'timestamp': datetime.now(timezone.utc).isoformat(),
+              'data_bundle_id': alert.get('data_context', {}).get('bundle_id'),
+              'bundle_manifest_sha256': digest(Path(os.environ['BUNDLE_ROOT']) / 'bundle_manifest.json'),
+              'monitor_summary_sha256': digest(Path(os.environ['MONITOR_ROOT']) / 'prospective_summary.json'),
+              'signal_alert_sha256': digest(alert_path),
+              'research_only': True,
+              'trade_ready': False,
+          }
+          path = Path(os.environ['SIGNAL_ROOT']) / 'delivery_receipt.json'
+          path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+      - name: Verify downloaded producer artifact is complete
+        run: |
+          test -f "$BUNDLE_ROOT/bundle_manifest.json"
+          test -f "$MONITOR_ROOT/prospective_summary.json"
+          test -f "$MONITOR_ROOT/prospective_daily_rotation_vxn_bridge_v4_2_50_50.csv"
+          test -f "$SIGNAL_ROOT/signal_alert.json"
+          test -f "$SIGNAL_ROOT/delivery_receipt.json"
       - name: Export existing durable ledger records
         uses: actions/github-script@v7
         with:
@@ -109,9 +179,7 @@ jobs:
                   let updateMatch;
                   while ((updateMatch = updatePattern.exec(String(comment.body || ''))) !== null) {
                     const observation = decode(updateMatch[1]);
-                    for (const horizon of observation.completed_horizons || []) {
-                      posted.add(Number(horizon));
-                    }
+                    for (const horizon of observation.completed_horizons || []) posted.add(Number(horizon));
                     const asOf = String(observation.as_of_data_date || '');
                     if (asOf >= latestDate) {
                       latestDate = asOf;
@@ -137,11 +205,19 @@ jobs:
       - name: Build new records, outcome updates and monthly summary
         run: >-
           uv run python scripts/run_qqqi_v4_2_prospective_evidence_ledger.py
-          --summary artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_summary.json
-          --alert artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2/signal_alert.json
-          --daily artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_daily_rotation_vxn_bridge_v4_2_50_50.csv
+          --summary "$MONITOR_ROOT/prospective_summary.json"
+          --alert "$SIGNAL_ROOT/signal_alert.json"
+          --daily "$MONITOR_ROOT/prospective_daily_rotation_vxn_bridge_v4_2_50_50.csv"
           --existing-events artifacts/evidence/prospective_ledger_existing_events.json
-          --output-dir artifacts/evidence/qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger
+          --output-dir "$LEDGER_ROOT"
+      - name: Bind ledger outputs to the exact producer run
+        run: >-
+          uv run python scripts/bind_v4_2_ledger_source.py
+          --output-root "$LEDGER_ROOT"
+          --source-receipt "$SIGNAL_ROOT/delivery_receipt.json"
+          --bundle-manifest "$BUNDLE_ROOT/bundle_manifest.json"
+          --monitor-summary "$MONITOR_ROOT/prospective_summary.json"
+          --signal-alert "$SIGNAL_ROOT/signal_alert.json"
       - name: Upload ledger evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -151,6 +227,7 @@ jobs:
             artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json
             artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_summary.json
             artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2/signal_alert.json
+            artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2/delivery_receipt.json
             artifacts/evidence/qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger
           if-no-files-found: warn
           retention-days: 90
@@ -160,7 +237,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const root = 'artifacts/evidence/qqqi_qqq_tqqq_v4_2_prospective_evidence_ledger';
+            const root = process.env.LEDGER_ROOT;
             const newEvents = JSON.parse(fs.readFileSync(`${root}/new_events.json`, 'utf8'));
             const updates = JSON.parse(fs.readFileSync(`${root}/event_updates.json`, 'utf8'));
             const monthly = JSON.parse(fs.readFileSync(`${root}/monthly_summary.json`, 'utf8'));
@@ -184,8 +261,7 @@ jobs:
             const issueByEvent = new Map();
             for (const issue of issues) {
               if (issue.pull_request) continue;
-              const body = String(issue.body || '');
-              const marker = body.match(/<!-- prospective-evidence-record:([A-Za-z0-9_-]+) -->/);
+              const marker = String(issue.body || '').match(/<!-- prospective-evidence-record:([A-Za-z0-9_-]+) -->/);
               if (!marker) continue;
               const record = JSON.parse(Buffer.from(marker[1], 'base64url').toString('utf8'));
               issueByEvent.set(String(record.event_id), issue);
@@ -224,7 +300,7 @@ jobs:
               if (!comments.some((comment) => String(comment.body || '').includes(deliveryMarker))) {
                 await github.rest.issues.createComment({
                   owner, repo, issue_number: issue.number,
-                  body: `${deliveryMarker}\n\n- GitHub Issue：**已持久化**\n- Telegram：**${item.record.delivery.telegram}**\n- 研究用途：是\n- 自动交易授权：否`
+                  body: `${deliveryMarker}\n\n- GitHub Issue：**已持久化**\n- Telegram：**${item.record.delivery.telegram}**\n- 来源工作流：**${item.record.source_signal_context.workflow_run_id}**\n- 研究用途：是\n- 自动交易授权：否`
                 });
               }
             }
@@ -241,12 +317,8 @@ jobs:
               const comments = await github.paginate(github.rest.issues.listComments, {
                 owner, repo, issue_number: issue.number, per_page: 100,
               });
-              if (comments.some((comment) => String(comment.body || '').includes(marker[0]))) {
-                continue;
-              }
-              await github.rest.issues.createComment({
-                owner, repo, issue_number: issue.number, body: item.comment,
-              });
+              if (comments.some((comment) => String(comment.body || '').includes(marker[0]))) continue;
+              await github.rest.issues.createComment({owner, repo, issue_number: issue.number, body: item.comment});
             }
 
             const monthTitle = `[前瞻证据月报] ${monthly.month}`;
@@ -256,13 +328,7 @@ jobs:
             );
             const body = `${monthlyBody.trim()}\n\n${monthMarker}\n`;
             if (monthIssue) {
-              await github.rest.issues.update({
-                owner, repo, issue_number: monthIssue.number,
-                title: monthTitle, body, labels: ['prospective-evidence']
-              });
+              await github.rest.issues.update({owner, repo, issue_number: monthIssue.number, title: monthTitle, body, labels: ['prospective-evidence']});
             } else {
-              await github.rest.issues.create({
-                owner, repo, title: monthTitle, body,
-                assignees: [owner], labels: ['prospective-evidence']
-              });
+              await github.rest.issues.create({owner, repo, title: monthTitle, body, assignees: [owner], labels: ['prospective-evidence']});
             }
