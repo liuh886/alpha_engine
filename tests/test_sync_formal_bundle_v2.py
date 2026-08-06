@@ -1,0 +1,63 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from scripts.sync_formal_bundle_v2 import FORMAL_MODEL_ADAPTERS, accepted_v1_models, sync
+from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+
+SOURCE = Path("data/research/formal_backtests")
+
+
+def _read(path: Path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_current_formal_catalog_matches_supported_adapters() -> None:
+    assert accepted_v1_models(SOURCE) == list(FORMAL_MODEL_ADAPTERS)
+    assert list(FORMAL_MODEL_ADAPTERS) == [
+        "qqqi_qqq_tqqq_v4_2",
+        "us_x1_1",
+        "cn_x1_1",
+        "byd_dividend_sleeve_v1_0",
+    ]
+
+
+def test_sync_projects_every_accepted_model_deterministically(tmp_path: Path) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    receipt_a = sync(SOURCE, first)
+    receipt_b = sync(SOURCE, second)
+    assert receipt_a == receipt_b
+
+    files_a = sorted(path.relative_to(first) for path in first.rglob("*") if path.is_file())
+    files_b = sorted(path.relative_to(second) for path in second.rglob("*") if path.is_file())
+    assert files_a == files_b
+    assert all((first / path).read_bytes() == (second / path).read_bytes() for path in files_a)
+
+    catalog = _read(first / "catalog.json")
+    validate_catalog(catalog)
+    versions = {row["model_version_id"] for row in catalog["records"]}
+    assert versions == set(FORMAL_MODEL_ADAPTERS)
+    assert len(catalog["records"]) == len(FORMAL_MODEL_ADAPTERS)
+    for row in catalog["records"]:
+        manifest = _read(first / row["manifest_path"])
+        validate_manifest(manifest)
+        assert manifest["publication_status"] == "accepted_formal_baseline"
+        assert manifest["research_only"] is True
+        assert manifest["trade_ready"] is False
+
+
+def test_byd_retained_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
+    output = tmp_path / "formal"
+    sync(SOURCE, output)
+    catalog = _read(output / "catalog.json")
+    byd = next(
+        row for row in catalog["records"]
+        if row["model_version_id"] == "byd_dividend_sleeve_v1_0"
+    )
+    manifest_path = output / byd["manifest_path"]
+    manifest = _read(manifest_path)
+    sections = {row["section_id"]: row for row in manifest["sections"]}
+    for section_id in ("performance", "portfolio", "trades", "attribution", "lineage"):
+        assert sections[section_id]["availability_status"] == "available"
