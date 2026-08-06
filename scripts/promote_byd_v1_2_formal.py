@@ -7,7 +7,6 @@ explicitly user-authorized; no automatic or fresh-holdout claim is made.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 from pathlib import Path
@@ -15,13 +14,13 @@ from typing import Any
 
 import pandas as pd
 
-from scripts.promote_byd_dividend_sleeve_formal import (
+from scripts.byd_formal_publication_common import (
     BYD_SNAPSHOT_SHA256,
     ETF_ADJUSTED_SHA256,
     ETF_ARTIFACT_SHA256,
-    _action,
-    _object,
-    _write_json,
+    allocation_action,
+    read_object,
+    write_json,
 )
 from src.research.byd_515180_allocation import (
     PRIMARY_COST_BPS,
@@ -75,7 +74,7 @@ def _signal_monitoring(root: Path) -> dict[str, Any]:
             "latest_target_weights": None,
             "delivery_status": None,
         }
-    payload = _object(latest)
+    payload = read_object(latest)
     if payload.get("model_id") != MODEL_ID:
         raise BYDV12FormalPromotionError("signal ledger model identity mismatch")
     return {
@@ -205,7 +204,9 @@ def build_package(
                     {
                         "date": key,
                         "instrument": instrument,
-                        "action": _action(previous[instrument], current[instrument]),
+                        "action": allocation_action(
+                            previous[instrument], current[instrument]
+                        ),
                         "previous_weight": previous[instrument],
                         "target_weight": current[instrument],
                         "weight_delta": delta,
@@ -215,7 +216,9 @@ def build_package(
                     }
                 )
         contribution["BYD"]["gross"] += current["BYD"] * float(row["byd_return"])
-        contribution["515180.SH"]["gross"] += current["515180.SH"] * float(row["etf_return"])
+        contribution["515180.SH"]["gross"] += current["515180.SH"] * float(
+            row["etf_return"]
+        )
         contribution["CASH"]["financing_cost"] += float(row["financing_cost"])
         previous = current
 
@@ -280,10 +283,16 @@ def build_package(
             "Stress 40bps Total Return": stress_metrics["total_return"],
             "Stress 40bps Benchmark Return": stress_baseline_metrics["total_return"],
             "Stress Relative Terminal Wealth": relative_stress,
-            "Financed Sessions": int(candidate.daily["borrowed_weight"].gt(0.0).sum()),
+            "Financed Sessions": int(
+                candidate.daily["borrowed_weight"].gt(0.0).sum()
+            ),
             "Completed Expansion Episodes": int(len(episodes)),
-            "Maximum Positive Period Share": float(periods["positive_contribution_share"].max()),
-            "Maximum Positive Episode Share": float(episodes["positive_contribution_share"].max()),
+            "Maximum Positive Period Share": float(
+                periods["positive_contribution_share"].max()
+            ),
+            "Maximum Positive Episode Share": float(
+                episodes["positive_contribution_share"].max()
+            ),
         },
         "portfolio_contract": {
             "symbols": ["BYD", "515180.SH", "CASH"],
@@ -295,7 +304,11 @@ def build_package(
             "stress_annual_financing_rate": STRESS_FINANCING_RATE,
             "defense": {"BYD": 0.75, "515180.SH": 0.25, "CASH": 0.0},
             "offense": {"BYD": 1.0, "515180.SH": 0.0, "CASH": 0.0},
-            "maximum_expansion": {"BYD": 1.125, "515180.SH": 0.0, "CASH": -0.125},
+            "maximum_expansion": {
+                "BYD": 1.125,
+                "515180.SH": 0.0,
+                "CASH": -0.125,
+            },
             "convex_momentum_budget": {
                 "full_increment_momentum": FULL_INCREMENT_MOMENTUM,
                 "convex_power": CONVEX_POWER,
@@ -314,7 +327,9 @@ def build_package(
             "status": "current",
             "required_cutoff": cutoff,
             "latest_completed_session": cutoff,
-            "latest_realized_holding_end": pd.Timestamp(candidate.daily.index.max()).strftime("%Y-%m-%d"),
+            "latest_realized_holding_end": pd.Timestamp(
+                candidate.daily.index.max()
+            ).strftime("%Y-%m-%d"),
             "model_selection_reopened": False,
             "monitoring_source": signal_ledger.as_posix(),
         },
@@ -358,8 +373,8 @@ def promote(
     generated_at: str,
 ) -> dict[str, Any]:
     root = root.resolve()
-    catalog = _object(root / "catalog.json")
-    freshness = _object(root / "freshness.json")
+    catalog = read_object(root / "catalog.json")
+    freshness = read_object(root / "freshness.json")
     markets = freshness.get("markets")
     if not isinstance(markets, dict) or not markets.get("cn"):
         raise BYDV12FormalPromotionError("CN formal freshness cutoff is missing")
@@ -371,7 +386,7 @@ def promote(
         cutoff=cutoff,
         generated_at=generated_at,
     )
-    package_sha = _write_json(root / PACKAGE_NAME, package)
+    package_sha = write_json(root / PACKAGE_NAME, package)
 
     records = [
         dict(row)
@@ -396,7 +411,7 @@ def promote(
     catalog["published_at"] = generated_at
     catalog["research_only"] = True
     catalog["trade_ready"] = False
-    _write_json(root / "catalog.json", catalog)
+    write_json(root / "catalog.json", catalog)
 
     required = [
         str(value)
@@ -408,7 +423,7 @@ def promote(
     freshness["declared_at"] = generated_at
     freshness["research_only"] = True
     freshness["trade_ready"] = False
-    _write_json(root / "freshness.json", freshness)
+    write_json(root / "freshness.json", freshness)
 
     old_package = root / f"{SUPERSEDED_MODEL_ID}.json"
     if old_package.exists():
