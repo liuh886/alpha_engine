@@ -16,6 +16,7 @@ on:
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "tests/test_formal_refresh.py"
+      - "tests/test_sync_formal_bundle_v2.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
       - "qlib-dashboard/public/data/formal-model-runs/**"
@@ -65,7 +66,7 @@ jobs:
           uv run pytest \
             tests/test_formal_refresh.py \
             tests/test_formal_backtest_freshness.py \
-            tests/test_formal_bundle_v2_sync.py \
+            tests/test_sync_formal_bundle_v2.py \
             -q --strict-markers --tb=short
 
   refresh:
@@ -301,7 +302,7 @@ jobs:
           uv run pytest \
             tests/test_formal_refresh.py \
             tests/test_formal_backtest_freshness.py \
-            tests/test_formal_bundle_v2_sync.py \
+            tests/test_sync_formal_bundle_v2.py \
             tests/test_model_x1_baselines.py \
             -q --strict-markers --tb=short
           uv run python scripts/check_repository_model_runs.py
@@ -363,7 +364,7 @@ jobs:
             gh pr edit "$existing" \
               --title "data: refresh formal backtests through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
               --body-file "$body_file"
-            gh pr ready "$existing" --undo || true
+            gh pr ready --undo "$existing" || true
             pr_number="$existing"
           else
             pr_url="$(gh pr create \
