@@ -1,33 +1,25 @@
-"""Decision-grade, research-only alerts for the current BYD v1.2 baseline.
+"""Decision-grade signals for the formal BYD v1.2 convex-momentum model.
 
-The alert layer never generates a new trading signal. It converts the latest
-frozen v1.2 close decision (base V1.0 signal + v1.2 expansion overlay) into
-an explicit next-open decision card. Alerts are emitted only for fresh state
-changes with confirmed data eligibility.
+The alert layer consumes the frozen base, paired and trend-state observations.
+It does not refit or search. The exact continuous target weight is reproduced
+from the formal model contract and evaluated for next eligible open execution.
 """
-
 from __future__ import annotations
 
 import hashlib
 import json
 from typing import Any, Mapping
 
+from src.research.byd_v1_2_convex_momentum import (
+    CANDIDATE,
+    CONVEX_POWER,
+    FULL_INCREMENT_MOMENTUM,
+    MAX_FINANCED_INCREMENT,
+)
+
 ASSETS = ("BYD", "515180", "CASH")
 TELEGRAM_MESSAGE_LIMIT = 4096
-
-STATE_LABELS = {
-    0: "V1.0 防守 (75% BYD / 25% 515180)",
-    1: "V1.0 进攻 (100% BYD)",
-    2: "V1.2 趋势扩张 (110% BYD / -10% 融资)",
-}
-
-TRANSITION_LABELS = {
-    "enter_defense": "进入防守",
-    "enter_offense": "进入进攻",
-    "expansion_on": "触发趋势扩张",
-    "expansion_off": "退出趋势扩张",
-    "rebalance": "调整组合",
-}
+MODEL_ID = CANDIDATE
 
 
 def _normalise_weights(raw: Mapping[str, Any] | None) -> dict[str, float]:
@@ -36,250 +28,285 @@ def _normalise_weights(raw: Mapping[str, Any] | None) -> dict[str, float]:
     return {asset: float(raw.get(asset, 0.0)) for asset in ASSETS}
 
 
-def _decide_state(base_target: float, expansion_active: bool) -> int:
-    """Map base signal + expansion overlay to combined state."""
-    if expansion_active and base_target >= 0.99:
-        return 2  # expansion: 110% BYD
-    elif base_target >= 0.99:
-        return 1  # offense: 100% BYD
-    else:
-        return 0  # defense: 75% BYD / 25% 515180
+def _momentum_scale(momentum_20: float) -> float:
+    normalized = max(float(momentum_20), 0.0) / FULL_INCREMENT_MOMENTUM
+    return min(normalized, 1.0) ** CONVEX_POWER
 
 
-def _target_weights(state: int) -> dict[str, float]:
-    if state == 2:
-        return {"BYD": 1.10, "515180": 0.0, "CASH": -0.10}
-    elif state == 1:
-        return {"BYD": 1.00, "515180": 0.0, "CASH": 0.0}
-    else:
-        return {"BYD": 0.75, "515180": 0.25, "CASH": 0.0}
-
-
-def _transition_type(current_state: int, target_state: int) -> str:
-    mapping = {
-        (0, 1): "enter_offense",
-        (1, 0): "enter_defense",
-        (1, 2): "expansion_on",
-        (2, 1): "expansion_off",
-        (0, 2): "expansion_on",    # defense → expansion (rare)
-        (2, 0): "expansion_off",   # expansion → defense
+def _target_weights(
+    *,
+    base_target: float,
+    expansion_active: bool,
+    momentum_20: float,
+) -> tuple[dict[str, float], float, float]:
+    scale = _momentum_scale(momentum_20)
+    increment = MAX_FINANCED_INCREMENT * scale if expansion_active else 0.0
+    byd_weight = float(base_target) + increment
+    etf_weight = 0.0 if increment > 0.0 else 1.0 - float(base_target)
+    cash_weight = 1.0 - byd_weight - etf_weight
+    weights = {
+        "BYD": byd_weight,
+        "515180": etf_weight,
+        "CASH": cash_weight,
     }
-    return mapping.get((current_state, target_state), "rebalance")
+    if abs(sum(weights.values()) - 1.0) > 1e-12:
+        raise ValueError("BYD v1.2 target weights do not sum to one")
+    if byd_weight > 1.125 + 1e-12:
+        raise ValueError("BYD v1.2 target exceeds the formal leverage cap")
+    return weights, scale, increment
 
 
-def _orders(current: Mapping[str, float], target: Mapping[str, float]) -> list[dict[str, Any]]:
+def _orders(
+    current: Mapping[str, float],
+    target: Mapping[str, float],
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for asset in ASSETS:
         delta = float(target[asset]) - float(current[asset])
         if abs(delta) <= 1e-12:
             continue
-        rows.append({
-            "asset": asset,
-            "side": "buy" if delta > 0.0 else "sell",
-            "weight_change": abs(delta),
-            "from_weight": float(current[asset]),
-            "to_weight": float(target[asset]),
-        })
+        rows.append(
+            {
+                "asset": asset,
+                "side": "buy" if delta > 0.0 else "sell",
+                "weight_change": abs(delta),
+                "from_weight": float(current[asset]),
+                "to_weight": float(target[asset]),
+            }
+        )
     return rows
 
 
+def _weights_changed(
+    current: Mapping[str, float],
+    target: Mapping[str, float],
+) -> bool:
+    return any(abs(float(target[a]) - float(current[a])) > 1e-12 for a in ASSETS)
+
+
+def _mode(base_target: float, increment: float) -> str:
+    if increment > 0.0:
+        return "convex_expansion"
+    if base_target >= 0.99:
+        return "offense"
+    return "defense"
+
+
+def _mode_label(mode: str, target: Mapping[str, float]) -> str:
+    if mode == "convex_expansion":
+        return f"凸动量扩张（BYD {float(target['BYD']):.1%}）"
+    if mode == "offense":
+        return "进攻（100% BYD）"
+    return "防守（75% BYD / 25% 515180）"
+
+
 def _fmt_pct(value: Any, digits: int = 2) -> str:
-    if value is None: return "N/A"
+    if value is None:
+        return "N/A"
     return f"{float(value):.{digits}%}"
-
-
-def _fmt_num(value: Any, digits: int = 2) -> str:
-    if value is None: return "N/A"
-    return f"{float(value):.{digits}f}"
 
 
 def build_byd_signal_alert(
     shadow_obs: Mapping[str, Any],
-    paired_obs: Mapping[str, Any] | None,
-    expansion_obs: Mapping[str, Any] | None,
-    previous_state: int | None = None,
+    paired_obs: Mapping[str, Any],
+    expansion_obs: Mapping[str, Any],
+    previous_alert: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build one deduplicatable next-open decision card for BYD.
+    signal_dates = {
+        str(shadow_obs.get("signal_date", "")),
+        str(paired_obs.get("signal_date", "")),
+        str(expansion_obs.get("signal_date", "")),
+    }
+    if len(signal_dates) != 1 or "" in signal_dates:
+        raise ValueError("BYD signal source dates do not agree")
+    signal_date = next(iter(signal_dates))
 
-    Parameters
-    ----------
-    shadow_obs : Latest BYD prospective shadow observation (contains base_target_position, factors, OHLCV)
-    paired_obs : Latest BYD/515180 paired observation (contains ETF prices, eligibility)
-    expansion_obs : Latest v1.2 trend-expansion observation (contains trend_expansion_active)
-    previous_state : Previously reported combined state, or None for first run
-    """
-
+    factors = expansion_obs.get("factors", {})
+    if not isinstance(factors, Mapping):
+        raise ValueError("BYD expansion factors are missing")
     base_target = float(shadow_obs.get("base_target_position", 0.75))
-    expansion_active = bool((expansion_obs or {}).get("trend_expansion_active", False))
-    target_state = _decide_state(base_target, expansion_active)
-
-    signal_date = str(shadow_obs.get("signal_date", ""))
-    latest_data_date = signal_date
-    open_eligible = bool(shadow_obs.get("open_research_eligible", False))
-    data_freshness_ok = bool(shadow_obs.get("prospective_eligible", False))
-
-    target_weights = _target_weights(target_state)
-    current_weights = _target_weights(previous_state) if previous_state is not None else target_weights
-
-    should_alert = (
-        previous_state is not None
-        and target_state != previous_state
-        and data_freshness_ok
-        and open_eligible
+    expansion_active = bool(expansion_obs.get("trend_expansion_active", False))
+    momentum_20 = float(factors.get("mom_20", 0.0))
+    target_weights, scale, increment = _target_weights(
+        base_target=base_target,
+        expansion_active=expansion_active,
+        momentum_20=momentum_20,
     )
 
+    prior_weights = None
+    if previous_alert is not None:
+        raw_prior = previous_alert.get("target_weights")
+        if isinstance(raw_prior, Mapping):
+            prior_weights = raw_prior
+    current_weights = _normalise_weights(prior_weights or target_weights)
+    changed = previous_alert is None or _weights_changed(current_weights, target_weights)
+
+    data_freshness_ok = bool(
+        shadow_obs.get("prospective_eligible", False)
+        and paired_obs.get("prospective_eligible", False)
+        and expansion_obs.get("prospective_eligible", False)
+    )
+    open_eligible = bool(
+        shadow_obs.get("open_research_eligible", False)
+        and paired_obs.get("common_open_eligible", False)
+        and expansion_obs.get("common_open_eligible", False)
+    )
+    should_alert = bool(changed and data_freshness_ok and open_eligible)
+
+    mode = _mode(base_target, increment)
+    previous_mode = (
+        str(previous_alert.get("target_mode"))
+        if previous_alert is not None
+        else None
+    )
+    if previous_alert is None:
+        transition_type = "initialize"
+        transition_label = "启用正式 BYD v1.2 信号"
+    elif changed:
+        transition_type = "rebalance"
+        transition_label = "调整目标仓位"
+    else:
+        transition_type = "no_change"
+        transition_label = "目标仓位不变"
+
+    order_rows = _orders(current_weights, target_weights)
+    turnover_units = float(sum(row["weight_change"] for row in order_rows))
     fingerprint_payload = {
-        "experiment_id": "byd_v1_2_relaxed_trend_expansion",
+        "model_id": MODEL_ID,
         "signal_date": signal_date,
-        "base_target": base_target,
-        "expansion_active": expansion_active,
-        "target_state": target_state,
         "target_weights": target_weights,
+        "momentum_scale": scale,
+        "financed_increment": increment,
     }
     fingerprint = hashlib.sha256(
         json.dumps(fingerprint_payload, sort_keys=True).encode("utf-8")
     ).hexdigest()[:20]
 
-    transition = _transition_type(
-        previous_state if previous_state is not None else target_state,
-        target_state,
-    )
-
-    order_rows = _orders(current_weights, target_weights)
-    turnover_units = float(sum(r["weight_change"] for r in order_rows))
-
-    factors = shadow_obs.get("factors", {})
-    paired_factors = (paired_obs or {}).get("factors", {}) if isinstance(paired_obs, dict) else {}
     chain = shadow_obs.get("chain_linked_adjusted_ohlcv", {})
     primary = shadow_obs.get("primary_raw_ohlcv", {})
+    if not isinstance(chain, Mapping):
+        chain = {}
+    if not isinstance(primary, Mapping):
+        primary = {}
 
-    alert = {
-        "schema_version": "1.0",
-        "experiment_id": "byd_v1_2_relaxed_trend_expansion",
+    alert: dict[str, Any] = {
+        "schema_version": "byd_v1_2_signal_v2",
+        "model_id": MODEL_ID,
+        "experiment_id": MODEL_ID,
         "research_only": True,
         "trade_ready": False,
         "should_alert": should_alert,
         "fingerprint": fingerprint,
         "signal_date": signal_date,
-        "latest_data_date": latest_data_date,
+        "latest_data_date": signal_date,
         "data_freshness_ok": data_freshness_ok,
         "open_research_eligible": open_eligible,
-        "execution_time": "next_cn_session_open_t_plus_1",
-        "transition_type": transition,
-        "transition_label": TRANSITION_LABELS.get(transition, transition),
-        "previous_state": previous_state,
-        "target_state": target_state,
-        "target_state_label": STATE_LABELS[target_state],
+        "execution_time": "next_common_independently_confirmed_eligible_open_t_plus_1",
+        "transition_type": transition_type,
+        "transition_label": transition_label,
+        "previous_mode": previous_mode,
+        "target_mode": mode,
+        "target_mode_label": _mode_label(mode, target_weights),
         "base_target": base_target,
         "expansion_active": expansion_active,
+        "momentum_scale": scale,
+        "financed_increment": increment,
         "current_weights": current_weights,
         "target_weights": target_weights,
         "orders": order_rows,
         "turnover_units": turnover_units,
         "transaction_cost_bps": 20.0,
-        "estimated_transaction_cost": turnover_units * 20.0 / 10000.0,
+        "estimated_transaction_cost": turnover_units * 20.0 / 10_000.0,
         "price_context": {
-            "byd_close": float(chain.get("close", primary.get("close", 0))),
-            "byd_open": float(chain.get("open", primary.get("open", 0))),
+            "byd_close": float(chain.get("close", primary.get("close", 0.0))),
+            "byd_open": float(chain.get("open", primary.get("open", 0.0))),
         },
         "factor_context": {
             "market_state": str(factors.get("market_state", "")),
             "vol_state": str(factors.get("vol_state", "")),
-            "drawdown_252": float(factors.get("drawdown_252", 0)),
-            "momentum_accel_20_60": float(factors.get("momentum_accel_20_60", 0)),
-            "open_return_autocorr_20": float(factors.get("open_return_autocorr_20", 0)),
-            "distance_from_low_20": float(factors.get("distance_from_low_20", 0)),
+            "drawdown_252": float(factors.get("drawdown_252", 0.0)),
+            "mom_20": momentum_20,
+            "mom_60": float(factors.get("mom_60", 0.0)),
+            "momentum_scale": scale,
+            "financed_increment": increment,
         },
-        "data_identity": {
-            "data_version": str(shadow_obs.get("data_version", "")),
-            "shadow_sha256": str(shadow_obs.get("provider_payload_sha256", "")),
+        "source_identity": {
+            "shadow_data_version": str(shadow_obs.get("data_version", "")),
+            "paired_data_version": str(paired_obs.get("data_version", "")),
+            "expansion_data_version": str(expansion_obs.get("data_version", "")),
         },
     }
-
-    alert["title"] = (
-        f"[BYD信号] {signal_date} "
-        f"{STATE_LABELS[target_state]}"
-    ) if should_alert else (
-        f"[BYD信号] {signal_date} 无变化 ({STATE_LABELS[target_state]})"
-    )
-
+    if should_alert:
+        alert["title"] = f"[BYD v1.2 信号] {signal_date} {_mode_label(mode, target_weights)}"
+    else:
+        alert["title"] = f"[BYD v1.2 评估] {signal_date} {_mode_label(mode, target_weights)}"
     alert["markdown"] = _render_markdown(alert)
     alert["telegram_text"] = _render_telegram(alert)
     return alert
 
 
 def _order_lines(alert: Mapping[str, Any], *, markdown: bool) -> list[str]:
-    side_labels = {"buy": "买入", "sell": "卖出"}
-    rows = []
+    labels = {"buy": "买入", "sell": "卖出"}
+    rows: list[str] = []
     for item in alert.get("orders", []):
         asset = str(item["asset"])
-        if asset == "CASH":
-            side = "融资" if item["side"] == "sell" else "还款"
-            text = (
-                f"{side} {float(item['weight_change']):.0%} 现金 "
-                f"({float(item['from_weight']):.0%} → {float(item['to_weight']):.0%})"
-            )
-        else:
-            text = (
-                f"{side_labels[str(item['side'])]} "
-                f"{float(item['weight_change']):.0%} {asset} "
-                f"({float(item['from_weight']):.0%} → {float(item['to_weight']):.0%})"
-            )
+        action = (
+            "融资" if asset == "CASH" and item["side"] == "sell"
+            else "还款" if asset == "CASH"
+            else labels[str(item["side"])]
+        )
+        text = (
+            f"{action} {float(item['weight_change']):.2%} {asset} "
+            f"({float(item['from_weight']):.2%} → {float(item['to_weight']):.2%})"
+        )
         rows.append(f"- **{text}**" if markdown else f"• {text}")
-    return rows or (["- 当前仓位与信号一致"] if markdown else ["• 当前仓位与信号一致"])
+    if rows:
+        return rows
+    return ["- 当前仓位与目标一致"] if markdown else ["• 当前仓位与目标一致"]
 
 
 def _render_markdown(alert: Mapping[str, Any]) -> str:
-    price = alert.get("price_context", {})
-    factors = alert.get("factor_context", {})
+    factors = alert["factor_context"]
+    target = alert["target_weights"]
     freshness = "通过" if alert["data_freshness_ok"] else "失败：禁止执行"
-    eligibility = "通过" if alert["open_research_eligible"] else "隔离（开盘数据未确认）"
-
+    eligibility = "通过" if alert["open_research_eligible"] else "隔离"
     lines = [
         f"## {alert['title']}",
         "",
-        "> 研究信号，非自动订单。当前模型未标记为可交易。",
+        "> 研究信号，非自动订单。`research_only=true`，`trade_ready=false`。",
         "",
-        "### 决策摘要",
+        "### 决策",
         "",
         f"- 信号时间：**{alert['signal_date']} A股收盘后**",
-        f"- 计划执行：**下一A股交易日开盘**",
-        f"- 数据新鲜度：**{freshness}**（最新数据 {alert['latest_data_date']}）",
-        f"- 开盘确认：**{eligibility}**",
-        f"- 状态变化：**{alert['transition_label']}**",
-        f"- 目标状态：**{alert['target_state_label']}**",
-        f"- V1.0 基准信号：**{'进攻 (100%)' if alert['base_target'] > 0.9 else '防守 (75%)'}**",
-        f"- V1.2 趋势扩张：**{'激活' if alert['expansion_active'] else '未激活'}**",
+        "- 计划执行：**下一共同确认有效开盘**",
+        f"- 数据新鲜度：**{freshness}**",
+        f"- 开盘资格：**{eligibility}**",
+        f"- 状态：**{alert['target_mode_label']}**",
+        f"- BYD：**{float(target['BYD']):.2%}**",
+        f"- 515180：**{float(target['515180']):.2%}**",
+        f"- 现金/融资：**{float(target['CASH']):.2%}**",
         "",
-        "### 目标调仓与成本",
+        "### 调仓",
         "",
         *_order_lines(alert, markdown=True),
-        f"- 组合换手：**{float(alert['turnover_units']):.2f}**",
-        f"- 模型成本估计：**{_fmt_pct(alert['estimated_transaction_cost'])}**（20 bps/换手单位）",
+        f"- 组合换手：**{float(alert['turnover_units']):.4f}**",
+        f"- 估算交易成本：**{_fmt_pct(alert['estimated_transaction_cost'], 4)}**",
         "",
-        "### 价格与趋势位置",
+        "### 凸动量预算",
         "",
-        f"- BYD 收盘：**{_fmt_num(price.get('byd_close'))}**",
-        f"- BYD 开盘：**{_fmt_num(price.get('byd_open'))}**",
-        f"- 市场状态：**{factors.get('market_state', 'N/A')}**",
-        f"- 波动率状态：**{factors.get('vol_state', 'N/A')}**",
-        f"- 252日回撤：**{_fmt_pct(factors.get('drawdown_252'))}**",
-        f"- 20/60日动量加速：**{_fmt_num(factors.get('momentum_accel_20_60'), 4)}**",
-        f"- 20日开盘收益自相关：**{_fmt_num(factors.get('open_return_autocorr_20'), 4)}**",
-        f"- 距20日低点距离：**{_fmt_pct(factors.get('distance_from_low_20'))}**",
-        "",
-        "### V1.2 扩张触发条件",
-        "",
-        f"- 基准权重需为 100%（进攻状态）：**{'满足' if alert['base_target'] > 0.9 else '不满足'}**",
-        f"- 市场状态需为 bull：**{'满足' if factors.get('market_state') == 'bull' else '不满足'}**",
-        f"- 20日动量 > 1%：**{'满足' if float(factors.get('momentum_accel_20_60', 0)) > 0 else '不满足'}**",
-        f"- 252日回撤 > -15%：**{'满足' if float(factors.get('drawdown_252', -1)) > -0.15 else '不满足'}**",
+        f"- 冻结趋势状态：**{'激活' if alert['expansion_active'] else '未激活'}**",
+        f"- 20日动量：**{_fmt_pct(factors['mom_20'])}**",
+        f"- 60日动量：**{_fmt_pct(factors['mom_60'])}**",
+        f"- 动量缩放：**{_fmt_pct(alert['momentum_scale'])}**",
+        f"- 融资增量：**{_fmt_pct(alert['financed_increment'])}**",
+        f"- 252日回撤：**{_fmt_pct(factors['drawdown_252'])}**",
+        f"- 市场/波动状态：**{factors['market_state']} / {factors['vol_state']}**",
         "",
         "### 执行纪律",
         "",
-        "- 模型假设按下一交易日开盘成交；实际滑点和成交价可能不同。",
-        "- 若出现开盘隔离（open_quarantined），应延迟至下一确认开盘。",
-        "- 提醒仅代表目标仓位变化，不代表保证获利。",
+        "- 只按下一共同确认有效开盘执行；无效开盘保留待执行目标。",
+        "- 目标仓位是连续值，不得人工四舍五入为固定 110% 档位。",
+        "- 实际成交价格、滑点和融资成本可能与回测假设不同。",
         "",
         f"<!-- signal-fingerprint:{alert['fingerprint']} -->",
     ]
@@ -287,34 +314,20 @@ def _render_markdown(alert: Mapping[str, Any]) -> str:
 
 
 def _render_telegram(alert: Mapping[str, Any]) -> str:
-    price = alert.get("price_context", {})
-    factors = alert.get("factor_context", {})
-    freshness = "✅" if alert["data_freshness_ok"] else "❌"
-    eligibility = "✅" if alert["open_research_eligible"] else "⚠️ 隔离"
-
+    target = alert["target_weights"]
+    factors = alert["factor_context"]
     lines = [
         f"🔔 Alpha Engine BYD v1.2｜{alert['transition_label']}",
         "",
-        f"信号：{alert['signal_date']} A股收盘",
-        "执行：下一A股交易日开盘",
-        f"数据：{alert['latest_data_date']} {freshness} 开盘{eligibility}",
-        f"状态：{alert['target_state_label']}",
-        f"基准：{'进攻 100%' if alert['base_target'] > 0.9 else '防守 75%'}｜扩张：{'激活' if alert['expansion_active'] else '未激活'}",
+        f"信号：{alert['signal_date']} 收盘",
+        "执行：下一共同确认有效开盘",
+        f"状态：{alert['target_mode_label']}",
+        f"目标：BYD {float(target['BYD']):.2%}｜515180 {float(target['515180']):.2%}｜现金 {float(target['CASH']):.2%}",
+        f"动量：20日 {float(factors['mom_20']):.2%}｜缩放 {float(alert['momentum_scale']):.2%}",
+        f"融资增量：{float(alert['financed_increment']):.2%}",
         "",
-        "【目标调仓】",
         *_order_lines(alert, markdown=False),
-        f"• 换手 {float(alert['turnover_units']):.2f}｜成本约 {_fmt_pct(alert['estimated_transaction_cost'])}",
         "",
-        "【价格与趋势】",
-        f"• BYD 收盘 {_fmt_num(price.get('byd_close'))}｜开盘 {_fmt_num(price.get('byd_open'))}",
-        f"• 市场：{factors.get('market_state', 'N/A')}｜波动率：{factors.get('vol_state', 'N/A')}",
-        f"• 252日回撤 {_fmt_pct(factors.get('drawdown_252'))}",
-        f"• 20/60动量加速 {_fmt_num(factors.get('momentum_accel_20_60'), 4)}",
-        "",
-        "研究信号，不自动下单。若数据异常或开盘隔离，暂停并记录偏离。",
-        f"ID: {alert['fingerprint']}",
+        "研究信号，不是自动订单。",
     ]
-    text = "\n".join(lines) + "\n"
-    if len(text) > TELEGRAM_MESSAGE_LIMIT:
-        raise ValueError(f"Telegram alert exceeds {TELEGRAM_MESSAGE_LIMIT} chars")
-    return text
+    return "\n".join(lines)[:TELEGRAM_MESSAGE_LIMIT]
