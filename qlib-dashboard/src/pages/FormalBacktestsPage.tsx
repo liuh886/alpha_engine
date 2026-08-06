@@ -1,8 +1,13 @@
-import { useEffect, useMemo } from 'react';
-import { BarChart3, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, BarChart3, CheckCircle2, Clock3, ShieldCheck } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { FormalBacktestReview } from '@/components/FormalBacktestReview';
 import { Badge } from '@/components/ui/badge';
+import {
+  fetchFormalFreshness,
+  type FormalFreshnessSnapshot,
+  type FormalFreshnessStatus,
+} from '@/lib/formal-freshness';
 import { metricById } from '@/lib/formal-run-evidence';
 import { governedRunQuery, type GovernedRunSummary } from '@/lib/governed-run';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
@@ -52,11 +57,55 @@ function FormalRunCard({ run, selected, onSelect }: { run: GovernedRunSummary; s
   );
 }
 
+const FRESHNESS_STYLE: Record<FormalFreshnessStatus, string> = {
+  current: 'border-emerald-500/25 bg-emerald-500/5 text-emerald-800 dark:text-emerald-200',
+  stale: 'border-amber-500/30 bg-amber-500/8 text-amber-900 dark:text-amber-100',
+  blocked: 'border-destructive/30 bg-destructive/5 text-destructive',
+  unknown: 'border-muted-foreground/25 bg-muted/30 text-muted-foreground',
+};
+
+function FreshnessBanner({ snapshot }: { snapshot: FormalFreshnessSnapshot | null }) {
+  const status = snapshot?.status ?? 'unknown';
+  const Icon = status === 'current' ? CheckCircle2 : status === 'stale' ? Clock3 : AlertTriangle;
+  const label = status === 'current'
+    ? 'Formal evidence current'
+    : status === 'stale'
+      ? 'Formal evidence stale'
+      : status === 'blocked'
+        ? 'Freshness verification blocked'
+        : 'Freshness status unknown';
+  return (
+    <section className={cn('flex items-start gap-3 rounded-xl border px-4 py-3 text-sm', FRESHNESS_STYLE[status])} data-testid="formal-freshness-status">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <div>
+        <p className="font-semibold">{label}</p>
+        <p className="mt-1 text-xs leading-relaxed opacity-90">
+          {snapshot?.message ?? 'The browser has not loaded a valid formal freshness policy. Historical evidence remains readable but is not presented as current.'}
+        </p>
+        {snapshot?.policy ? (
+          <p className="mt-1 font-mono text-[10px] opacity-80">
+            {Object.entries(snapshot.policy.markets).map(([market, cutoff]) => `${market.toUpperCase()} ${cutoff}`).join(' · ')}
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export function FormalBacktestsPage() {
   const workspace = useOutletContext<RunWorkspaceContext>();
   const navigate = useNavigate();
+  const [freshness, setFreshness] = useState<FormalFreshnessSnapshot | null>(null);
   const formalRuns = useMemo(() => workspace.runs.filter((run) => run.channel === 'formal'), [workspace.runs]);
   const activeRun = formalRuns.find((run) => run.key === workspace.activeRunKey) ?? formalRuns[0] ?? null;
+
+  useEffect(() => {
+    let active = true;
+    void fetchFormalFreshness().then((snapshot) => {
+      if (active) setFreshness(snapshot);
+    });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (activeRun && activeRun.key !== workspace.activeRunKey) workspace.selectRun(activeRun);
@@ -89,7 +138,9 @@ export function FormalBacktestsPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-3" aria-label="Accepted formal backtest baselines">
+      <FreshnessBanner snapshot={freshness} />
+
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4" aria-label="Accepted formal backtest baselines">
         {formalRuns.map((run) => (
           <FormalRunCard key={run.key} run={run} selected={run.key === activeRun.key} onSelect={() => selectFormalRun(run)} />
         ))}

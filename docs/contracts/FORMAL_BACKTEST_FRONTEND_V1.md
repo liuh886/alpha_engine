@@ -1,36 +1,45 @@
-# Formal Backtest Frontend v1
+# Formal Backtest Frontend Contract
 
 ## Purpose
 
-This contract connects accepted Alpha Engine model backtests to the static Research Artifact Studio. It is intentionally narrower than the research workspace: the frontend publishes named formal baselines, not exploratory experiments.
+This contract connects accepted Alpha Engine model backtests to the static Research Artifact Studio. The frontend publishes named formal baselines only; exploratory experiments, rejected candidates and shadow strategies remain outside the formal selector.
 
-The publication set is:
+The current accepted publication set is:
 
-- QQQ Rotation v4.2;
-- US x1.1;
-- CN x1.0;
-- BYD Dividend Sleeve V1.0.
+1. QQQ Rotation v4.2;
+2. US x1.1;
+3. CN x1.1;
+4. BYD Dividend Sleeve V1.0.
 
-## Authority boundary
+All four remain `research_only=true` and `trade_ready=false`.
 
-The durable source is:
+## One publication authority, two representations
+
+The accepted-model allow-list is declared by:
 
 ```text
-data/research/formal_backtests/
-├── catalog.json
-├── qqqi_qqq_tqqq_v4_2.json
-├── us_x1_1.json
-├── cn_x1_0.json
-└── byd_dividend_sleeve_v1_0.json
+data/research/formal_backtests/catalog.json
 ```
 
-`catalog.json` is the publication allow-list. A notebook, workflow artifact, candidate result or research report is not visible in the model selector merely because it exists elsewhere in the repository.
+The browser reads the deterministic Model Run Bundle v2 projection:
 
-The static build runs `qlib-dashboard/scripts/sync-formal-backtests.mjs`. It validates the catalog, every package SHA-256, the record type, publication status and research boundary before copying the accepted packages into the Pages bundle.
+```text
+data/research/formal_model_runs/catalog.json
+```
+
+The Bundle v2 catalog is generated from the accepted v1 catalog by `scripts/sync_formal_bundle_v2.py`. It is not a separately curated allow-list. CI requires exact model-ID parity between both catalogs and rejects:
+
+- a missing accepted model;
+- an additional unaccepted model;
+- duplicate model versions;
+- package or manifest hash drift;
+- weakened research boundaries.
+
+Frontend code must not maintain another hard-coded list of accepted model IDs.
 
 ## Eligibility
 
-A frontend package must declare:
+A source formal package must declare:
 
 ```json
 {
@@ -43,106 +52,98 @@ A frontend package must declare:
 }
 ```
 
-The publication gate rejects:
+Its Bundle v2 manifest must preserve the same model identity, publication status, evidence cutoff and research boundary. Projection may organize retained evidence into sections, but may not rerun a model, reconstruct missing evidence or reopen model selection.
 
-- exploratory experiments;
-- parameter or candidate grids;
-- rejected candidates;
-- shadow strategies;
-- weakened research boundaries;
-- catalog/package identity mismatches;
-- missing or mismatched hashes;
-- packages without a retained performance path.
+## Bundle v2 evidence sections
 
-An explicit user-directed promotion may place a historically supported model in the formal catalog when the registry policy permits it. Such promotion changes publication identity, not evidence semantics: missing fresh holdout evidence must remain disclosed and cannot be converted into `trade_ready=true`.
+A formal run may expose:
 
-## Package fields
+- `summary`;
+- `performance`;
+- `risk`;
+- `robustness`;
+- `portfolio`;
+- `trades`;
+- `attribution`;
+- `diagnostics`;
+- `lineage`.
 
-A formal package contains:
-
-- `backtest_id`, `model_id`, display name, market and benchmark;
-- generation time, evidence cutoff and date range;
-- trace frequency;
-- headline metrics;
-- frozen portfolio and cost contract;
-- retained performance path;
-- retained positions, transactions and attribution when available;
-- window or chronological summaries;
-- workflow run, artifact ID and digest where applicable;
-- evidence-completeness status;
-- interpretation limits;
-- hard `research_only=true`, `trade_ready=false` boundaries.
+Unavailable evidence remains explicitly declared. The browser must never infer a daily curve, trade ledger, attribution result or annualized statistic that the accepted source did not retain.
 
 ## Trace semantics
 
-The frontend must show the trace frequency next to the backtest identity. Curves with different semantics are not silently described as daily equity curves.
-
 ### QQQ Rotation v4.2
 
-- trace: exact daily adjusted open-to-open path;
-- positions: exact daily QQQI, QQQ and TQQQ weights;
-- transactions: exact state-transition weight changes;
-- attribution: arithmetic daily instrument contribution less allocated transition cost;
-- source artifact: `8820398584`.
+- exact daily adjusted open-to-open path;
+- exact daily QQQI, QQQ and TQQQ weights;
+- exact state-transition changes;
+- arithmetic instrument contribution less allocated transition cost.
 
 ### US x1.1
 
-- trace: exact non-overlapping 10-session portfolio periods;
-- positions: exact Top-15 equal-weight holdings at every rebalance;
-- transactions: complete BUY, SELL, HOLD, INCREASE and DECREASE ledger;
-- attribution: retained security, window and regime decomposition;
-- source artifact: `8834620874`;
-- the accepted package excludes 2026H1.
+- exact non-overlapping 10-session portfolio periods;
+- exact Top-15 holdings at each rebalance;
+- complete retained transaction ledger;
+- retained security, window and regime attribution.
 
-### CN x1.0
+### CN x1.1
 
-- trace: exact retained half-year window metrics only;
-- positions: final Top-15 selection snapshot for each retained window;
-- transaction and contribution ledgers: unavailable in the accepted source artifact;
-- source artifact: `8828889722`.
-
-The frontend must not infer a daily or rebalance curve for CN x1.0.
+- promoted regime-gated sector-breadth baseline;
+- formal evidence cutoff and reporting range are taken from its accepted source package;
+- complete retained performance, risk, robustness, portfolio, trades, attribution, diagnostics and lineage sections;
+- CN x1.0 remains superseded evidence and must not re-enter the accepted catalog.
 
 ### BYD Dividend Sleeve V1.0
 
 - source strategy: `v1_dividend_75_25`;
-- trace: exact daily adjusted common-open-to-common-open path from the immutable BYD and 515180 artifacts;
-- portfolio: 100% BYD in the canonical V1.0 risk-on state; 75% BYD plus 25% 515180.SH in the V1.0 defensive state;
-- positions: exact daily BYD, 515180.SH and cash weights;
-- transactions: exact next-common-open weight changes with costs allocated across all changed legs;
-- attribution: arithmetic daily BYD and 515180 contribution less allocated transition cost;
-- benchmark: canonical BYD V1.0 with the defensive 25% left in cash;
-- primary cost: 20 bps per absolute weight-change unit; 40 bps remains retained stress evidence;
-- historical data cutoff: 2026-08-03;
-- operational freshness: append-only paired observations from Issue #529 may advance the formal evidence cutoff and latest target metadata without rewriting the historical performance path;
-- promotion authority: explicit user direction in Issue #557;
-- fresh historical holdout: unavailable and explicitly disclosed.
+- exact daily adjusted common-open-to-common-open path;
+- 100% BYD in the canonical risk-on state;
+- 75% BYD plus 25% 515180.SH in the defensive state;
+- exact daily positions, next-common-open changes and contribution attribution;
+- benchmark: canonical BYD V1.0 with the defensive 25% retained as cash;
+- historical evidence is projected without recomputation;
+- prospective observations may advance operational metadata but may not rewrite the accepted historical path.
+
+## Freshness semantics
+
+Hash validity and historical reproducibility do not mean a package is current.
+
+The formal freshness policy declares the latest completed market session and the next close after which that declaration becomes stale. The scheduled freshness watchdog runs `scripts/verify_formal_backtest_freshness.py --as-of now` and reports one of:
+
+- `current`;
+- `stale`;
+- `blocked`;
+- `unknown` in the browser when no valid operational receipt can be loaded.
+
+A stale package remains readable historical evidence, but must not be presented as current operational output.
 
 ## Frontend loading
 
-The browser loads the repository research bundle for shared model metadata, then loads the formal-backtest catalog. The final model array is rebuilt in catalog order, so records not in the formal catalog never enter the selector, Backtests view or comparison pages.
+The browser validates the Bundle v2 catalog, manifest hashes, bundle identities and required summary sections before exposing formal runs. The accepted formal set is derived from the verified catalog at runtime.
 
 The Backtests workspace exposes:
 
 1. Performance;
-2. Holdings;
-3. Trades;
-4. Attribution;
-5. Evidence.
+2. Risk and robustness;
+3. Portfolio;
+4. Trades;
+5. Attribution;
+6. Evidence boundary.
 
-When a component was not retained, the corresponding view shows an explicit unavailable state rather than an empty fabricated table.
+Missing sections show an explicit unavailable state.
 
 ## Offline behavior
 
-The service worker caches validated formal-backtest packages after they are requested online. This allows the installed read-only shell to reopen the previously viewed formal evidence offline.
+The service worker may cache previously validated formal evidence for offline review. Cached evidence must retain its original cutoff and freshness status; offline availability must not be interpreted as current data.
 
 ## Updating a formal baseline
 
-1. Produce and validate the complete governed backtest artifact.
-2. Update the deterministic formal-package builder only when the source evidence contract changes.
-3. Regenerate the formal package from immutable source artifacts.
-4. Review the generated package, SHA-256 and completeness declaration in a pull request.
-5. Merge the repository-backed package.
-6. The path-filtered Pages build copies and publishes the new accepted evidence.
+1. Resolve the latest completed trading session for the relevant market.
+2. Refresh governed providers and fail closed on incomplete pool or benchmark coverage.
+3. Extend only permitted reporting evidence while preserving immutable accepted-history prefixes.
+4. Regenerate the accepted v1 package and Bundle v2 projection in the same review branch.
+5. Verify catalog parity, hashes, evidence cutoffs and research boundaries.
+6. Review and merge the update through a pull request.
+7. Publish Pages and verify the live-origin release.
 
-Successful CI or a higher metric does not automatically promote a model into this catalog.
+Successful CI, a newer date or a higher metric does not automatically promote or replace a model.

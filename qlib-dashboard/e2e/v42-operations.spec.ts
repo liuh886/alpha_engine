@@ -233,7 +233,7 @@ test('v4.2 operations displays only durable read-only evidence', async ({ page }
   await expect(page.getByText('Last executed allocation at signal close', { exact: true })).toBeVisible();
   await expect(page.getByText('Close-time target allocation', { exact: true })).toBeVisible();
   await expect(page.getByText('2 sessions', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Succeeded', { exact: true })).toHaveCount(2);
+  await expect(page.getByText('Workflow succeeded', { exact: true })).toHaveCount(2);
   await expect(page.getByText('Sign in')).toHaveCount(0);
   expect(pageErrors).toEqual([]);
   await assertNoHorizontalOverflow(page);
