@@ -1,0 +1,92 @@
+name: BYD Canonical Rebase
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_rebase:
+        description: 'Type "REBASE" to confirm deliberate canonical identity change'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  rebase:
+    if: inputs.confirm_rebase == 'REBASE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+
+      - name: Verify v1 snapshot identities
+        run: |
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > /tmp/515180_v1.zip
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  /tmp/515180_v1.zip" | sha256sum --check --strict
+
+      - name: Rebuild BYD canonical v2
+        run: >-
+          uv run python scripts/data/rebuild_byd_canonical.py
+          --v1-snapshot data/research/byd_canonical_v1_snapshot.tar.xz
+          --shadow-store data/research/byd_prospective_shadow
+          --output /tmp/byd_canonical_v2_snapshot.tar.xz
+
+      - name: Rebuild 515180 canonical v2
+        run: >-
+          uv run python scripts/data/rebuild_515180_canonical.py
+          --v1-artifact data/research/515180_canonical_v1_artifact.zip.b64
+          --paired-store data/research/byd_515180_prospective
+          --output /tmp/515180_canonical_v2_artifact.zip.b64
+
+      - name: Publish v2 snapshots
+        run: |
+          set -euo pipefail
+          cp /tmp/byd_canonical_v2_snapshot.tar.xz data/research/byd_canonical_v2_snapshot.tar.xz
+          cp /tmp/515180_canonical_v2_artifact.zip.b64 data/research/515180_canonical_v2_artifact.zip.b64
+
+          echo "BYD v2 SHA256: $(sha256sum data/research/byd_canonical_v2_snapshot.tar.xz | cut -d' ' -f1)"
+          echo "ETF v2 SHA256: $(sha256sum data/research/515180_canonical_v2_artifact.zip.b64 | cut -d' ' -f1)"
+
+      - name: Create PR with v2 snapshots
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "data: rebase BYD and 515180 canonical snapshots to v2"
+          title: "data: rebase canonical snapshots to v2"
+          body: |
+            ## Canonical Snapshot Rebase
+
+            This PR updates the BYD and 515180 canonical snapshots to include
+            all accumulated prospective observations beyond the v1 cutoff
+            (2026-08-03).
+
+            ### New Snapshots
+            - `data/research/byd_canonical_v2_snapshot.tar.xz`
+            - `data/research/515180_canonical_v2_artifact.zip.b64`
+
+            ### Post-rebase steps
+            1. Merge this PR
+            2. Update `byd_dividend_sleeve_v1_2.yaml` data_contract to reference v2
+            3. Run `scripts/run_byd_v1_2_backtest_refresh.py` to regenerate formal backtest
+            4. Update CI workflows to use v2 snapshots
+
+            > Governance: canonical rebase is a deliberate identity change.
+            > Old v1 snapshots are preserved indefinitely.
+          branch: data/canonical-rebase-v2
+          base: main
+          delete-branch: true
