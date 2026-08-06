@@ -1,0 +1,116 @@
+name: Materialize Formal Refresh Core
+
+on:
+  push:
+    branches:
+      - feat/formal-refresh-closed-loop
+
+permissions:
+  contents: write
+
+concurrency:
+  group: materialize-formal-refresh-core
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/formal-refresh-closed-loop
+          fetch-depth: 0
+
+      - name: Apply focused corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'expected block missing in {path}')
+              target.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace(
+              'src/artifacts/formal_refresh.py',
+              '''    current_records = accepted_records(current_root)
+    candidate_records = accepted_records(candidate_root)
+    current_ids = [record.model_id for record in current_records]
+    candidate_ids = [record.model_id for record in candidate_records]
+    if candidate_ids != current_ids:
+        raise FormalRefreshError(
+            f"candidate catalog changed accepted model membership: {candidate_ids} != {current_ids}"
+        )
+
+    catalog = load_object(candidate_root / "catalog.json")
+''',
+              '''    current_records = accepted_records(current_root)
+    current_ids = [record.model_id for record in current_records]
+    catalog = load_object(candidate_root / "catalog.json")
+    raw_rows = catalog.get("records")
+    if not isinstance(raw_rows, list):
+        raise FormalRefreshError("candidate catalog records are missing")
+    candidate_ids = [
+        str(row.get("model_id"))
+        for row in raw_rows
+        if isinstance(row, dict)
+    ]
+    if candidate_ids != current_ids:
+        raise FormalRefreshError(
+            f"candidate catalog changed accepted model membership: {candidate_ids} != {current_ids}"
+        )
+''',
+          )
+          replace(
+              'scripts/refresh_ranker_formal.py',
+              '''            "run_a_identity_sha256": sha256(run_a / "effective_contract.json"),
+            "run_b_identity_sha256": sha256(run_b / "effective_contract.json"),
+''',
+              '''            "run_a_identity_sha256": sha256(run_a / "candidate_manifest.json"),
+            "run_b_identity_sha256": sha256(run_b / "candidate_manifest.json"),
+''',
+          )
+
+          router = Path('scripts/data/refresh_selected_pool_prices_v2.py')
+          text = router.read_text(encoding='utf-8')
+          text = text.replace(
+              'from src.data.adapters.tushare_adapter import TushareAdapter\n',
+              'from src.data.adapters.tiingo_adapter import TiingoAdapter\nfrom src.data.adapters.tushare_adapter import TushareAdapter\n',
+              1,
+          )
+          text = text.replace(
+              '''    elif market_key == "us":
+        adapters.append(YFinanceAdapter())
+        providers.append("yfinance")
+''',
+              '''    elif market_key == "us":
+        tiingo_token = os.getenv("TIINGO_API_TOKEN", "").strip()
+        if tiingo_token:
+            adapters.append(TiingoAdapter(token=tiingo_token))
+            providers.append("tiingo")
+        adapters.append(YFinanceAdapter())
+        providers.append("yfinance")
+''',
+              1,
+          )
+          router.write_text(text, encoding='utf-8')
+
+          Path('.github/workflows/materialize-formal-refresh-core.yml').unlink()
+          Path('.materialize-formal-refresh-core-trigger').unlink(missing_ok=True)
+          PY
+
+      - name: Commit corrected sources
+        run: |
+          git config user.name "AlphaEngine Maintenance Agent"
+          git config user.email "maintenance-agent@alphaengine.local"
+          git add \
+            src/artifacts/formal_refresh.py \
+            scripts/refresh_ranker_formal.py \
+            scripts/data/refresh_selected_pool_prices_v2.py \
+            .github/workflows/materialize-formal-refresh-core.yml \
+            .materialize-formal-refresh-core-trigger
+          git commit -m "fix: harden formal refresh transaction inputs"
+          git push origin HEAD:feat/formal-refresh-closed-loop
