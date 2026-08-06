@@ -1,0 +1,102 @@
+name: Materialize Formal Refresh Start Receipt
+
+on:
+  push:
+    branches:
+      - fix/formal-refresh-start-receipt
+
+permissions:
+  contents: write
+
+concurrency:
+  group: materialize-formal-refresh-start-receipt
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/formal-refresh-start-receipt
+          fetch-depth: 0
+
+      - name: Add start-of-run operating receipt
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/formal-backtest-refresh.yml')
+          text = path.read_text(encoding='utf-8')
+          old = '''    steps:
+      - uses: actions/checkout@v6
+'''
+          new = '''    steps:
+      - name: Mark formal refresh as running
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const marker = '<!-- reviewed-formal-backtest-refresh -->';
+            const body = [
+              marker,
+              '',
+              '## 正式回测刷新：running',
+              '',
+              `- Trigger: \`${context.eventName}\``,
+              `- Commit: \`${context.sha}\``,
+              `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '- Review PR: pending',
+              '- Model selection reopened: no',
+              '- Automatic merge: no',
+              '- Research only: yes',
+              '- Trade ready: no',
+              '',
+              'Provider rebuilding and frozen-model reproduction are in progress. Accepted formal evidence has not been modified.',
+            ].join('\\n');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) =>
+              !issue.pull_request && String(issue.body || '').includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                title: '[运行健康] 正式回测刷新：running',
+                body,
+                state: 'open',
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '[运行健康] 正式回测刷新：running',
+                body,
+                assignees: [context.repo.owner],
+              });
+            }
+      - uses: actions/checkout@v6
+'''
+          if old not in text:
+              raise SystemExit('refresh job steps marker not found')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          Path('.github/workflows/materialize-formal-refresh-start-receipt.yml').unlink()
+          Path('.materialize-formal-refresh-start-receipt-trigger').unlink(missing_ok=True)
+          PY
+
+      - name: Commit focused observability fix
+        run: |
+          git config user.name "AlphaEngine Maintenance Agent"
+          git config user.email "maintenance-agent@alphaengine.local"
+          git add \
+            .github/workflows/formal-backtest-refresh.yml \
+            .github/workflows/materialize-formal-refresh-start-receipt.yml \
+            .materialize-formal-refresh-start-receipt-trigger
+          git commit -m "fix: persist formal refresh start receipt"
+          git push origin HEAD:fix/formal-refresh-start-receipt
