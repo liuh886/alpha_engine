@@ -98,7 +98,7 @@ def test_catalog_replaces_cn_x1_0_with_cn_x1_1(tmp_path: Path) -> None:
         "qqqi_qqq_tqqq_v4_2",
         "us_x1_1",
         "cn_x1_1",
-        "byd_dividend_sleeve_v1_0",
+        "byd_v1_2_convex_momentum_budget_v1",
     ]
     freshness = json.loads((target / "freshness.json").read_text(encoding="utf-8"))
     assert "cn_x1_0" not in freshness["required_models"]

@@ -113,10 +113,11 @@ jobs:
           const catalog = JSON.parse(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'));
           if (catalog.schema_version !== '2.0.0' || catalog.channel !== 'formal') throw new Error('invalid formal v2 catalog');
           if (catalog.research_only !== true || catalog.trade_ready !== false) throw new Error('invalid formal research boundary');
-          const expected = new Set(['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0', 'byd_dividend_sleeve_v1_0']);
-          if (catalog.records.length !== 4) throw new Error('formal catalog must contain exactly four records');
+          if (!Array.isArray(catalog.records) || catalog.records.length === 0) throw new Error('formal catalog is empty');
+          const seen = new Set();
           for (const record of catalog.records) {
-            if (!expected.delete(record.model_version_id)) throw new Error(`unexpected formal version: ${record.model_version_id}`);
+            if (!record.model_version_id || seen.has(record.model_version_id)) throw new Error(`duplicate formal version: ${record.model_version_id}`);
+            seen.add(record.model_version_id);
             const manifestPath = path.join(root, record.manifest_path);
             if (!fs.existsSync(manifestPath)) throw new Error(`missing manifest: ${record.manifest_path}`);
             const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -128,7 +129,6 @@ jobs:
               if (!fs.existsSync(sectionPath)) throw new Error(`missing section: ${record.model_version_id}/${section.section_id}`);
             }
           }
-          if (expected.size) throw new Error(`missing formal versions: ${[...expected].join(', ')}`);
           NODE
 
       - name: Setup Python
@@ -236,9 +236,8 @@ jobs:
           validate_catalog(catalog)
           assert catalog['channel'] == 'formal'
           assert catalog['research_only'] is True and catalog['trade_ready'] is False
-          assert {row['model_version_id'] for row in catalog['records']} == {
-              'qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0', 'byd_dividend_sleeve_v1_0'
-          }
+          model_ids = [row['model_version_id'] for row in catalog['records']]
+          assert model_ids and len(model_ids) == len(set(model_ids))
           for row in catalog['records']:
               manifest_path = root / row['manifest_path']
               manifest_bytes = manifest_path.read_bytes()

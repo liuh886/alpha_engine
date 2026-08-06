@@ -27,7 +27,6 @@ import {
 import {
   fetchBydRuntimeSnapshot,
   type BydRuntimeIndex,
-  type BydSignalRecord,
   type BydWeights,
 } from '@/lib/byd-runtime';
 import {
@@ -391,10 +390,10 @@ export function StrategyOperationsPage() {
         </Card>
       )}
 
-      {/* === BYD v1.2 Track === */}
       <section className="border-t pt-8">
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <Badge className="gap-1.5"><Activity className="h-3 w-3" /> BYD v1.2</Badge>
+          <Badge variant="secondary">Formal baseline</Badge>
           <Badge variant="outline">Research only</Badge>
           <Badge variant="outline">Not trade-ready</Badge>
           <Badge variant="secondary">CN Equity</Badge>
@@ -411,13 +410,15 @@ export function StrategyOperationsPage() {
               </CardContent></Card>
               <Card><CardContent className="p-5">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">State</p>
-                <div className="mt-2 text-xl font-bold">{bydIndex.latestSignal.record.target_state_label}</div>
+                <div className="mt-2 text-xl font-bold">{bydIndex.latestSignal.record.target_mode_label}</div>
                 <p className="mt-1 font-mono text-xs text-muted-foreground">{bydIndex.latestSignal.record.transition_label}</p>
               </CardContent></Card>
               <Card><CardContent className="p-5">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">BYD price</p>
                 <div className="mt-2 font-mono text-xl font-bold">{formatNumber(bydIndex.latestSignal.record.price_context.byd_close)}</div>
-                <p className="mt-1 text-xs text-muted-foreground">Expansion: {bydIndex.latestSignal.record.expansion_active ? 'Active' : 'Inactive'}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Expansion: {bydIndex.latestSignal.record.expansion_active ? 'Active' : 'Inactive'} · financed {formatPercent(bydIndex.latestSignal.record.financed_increment, 2)}
+                </p>
               </CardContent></Card>
               <Card><CardContent className="p-5">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Market regime</p>
@@ -428,7 +429,7 @@ export function StrategyOperationsPage() {
 
             <section className="mb-6 grid gap-4 lg:grid-cols-2">
               <Card>
-                <CardHeader><CardTitle className="text-base">Current allocation</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base">Formal target allocation</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   {(['BYD', '515180', 'CASH'] as const).map((asset) => {
                     const w = bydIndex!.latestSignal!.record.target_weights[asset as keyof BydWeights] ?? 0;
@@ -456,9 +457,9 @@ export function StrategyOperationsPage() {
                       ['Market state', bydIndex!.latestSignal!.record.factor_context.market_state],
                       ['Vol state', bydIndex!.latestSignal!.record.factor_context.vol_state],
                       ['Drawdown 252d', formatPercent(bydIndex!.latestSignal!.record.factor_context.drawdown_252)],
-                      ['Mom accel 20/60', formatNumber(bydIndex!.latestSignal!.record.factor_context.momentum_accel_20_60, 4)],
-                      ['Open autocorr 20d', formatNumber(bydIndex!.latestSignal!.record.factor_context.open_return_autocorr_20, 4)],
-                      ['Dist from 20d low', formatPercent(bydIndex!.latestSignal!.record.factor_context.distance_from_low_20)],
+                      ['Momentum 20d', formatPercent(bydIndex!.latestSignal!.record.factor_context.mom_20, 2)],
+                      ['Momentum 60d', formatPercent(bydIndex!.latestSignal!.record.factor_context.mom_60, 2)],
+                      ['Momentum scale', formatPercent(bydIndex!.latestSignal!.record.factor_context.momentum_scale, 2)],
                     ].map(([label, value]) => (
                       <div key={label} className="rounded-lg border p-3">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>

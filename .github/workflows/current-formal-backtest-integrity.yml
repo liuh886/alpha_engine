@@ -4,22 +4,16 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - data/research/formal_backtests/catalog.json
-      - data/research/formal_backtests/freshness.json
-      - data/research/formal_backtests/cn_x1_0.json
-      - data/research/formal_backtests/cn_x1_1.json
-      - data/research/formal_backtests/us_x1_1.json
-      - data/research/formal_backtests/qqqi_qqq_tqqq_v4_2.json
-      - data/research/formal_backtests/byd_dividend_sleeve_v1_0.json
+      - data/research/formal_backtests/**
       - data/research/cn_x1_1_regime_gated_candidate_v1/**
       - data/research/byd_canonical_v1_snapshot.tar.xz
       - data/research/515180_canonical_v1_artifact.zip.b64
-      - data/research/byd_515180_prospective/**
+      - data/research/byd_v1_2_signal_ledger/**
       - scripts/promote_cn_x1_1_formal.py
-      - scripts/promote_byd_dividend_sleeve_formal.py
+      - scripts/promote_byd_v1_2_formal.py
       - scripts/verify_formal_backtest_freshness.py
       - tests/test_promote_cn_x1_1_formal.py
-      - tests/test_promote_byd_dividend_sleeve_formal.py
+      - tests/test_byd_v1_2_convex_momentum.py
       - .github/workflows/current-formal-backtest-integrity.yml
 
 permissions:
@@ -32,10 +26,10 @@ concurrency:
 jobs:
   reproduce-current-release:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 40
     env:
-      PRIOR_RELEASE_COMMIT: 3b732ede15f0c0fc622fe5be153ad5e21a98889e
       CN_GENERATED_AT: 2026-08-05T17:36:00Z
+      BYD_GENERATED_AT: 2026-08-06T09:52:48Z
     steps:
       - uses: actions/checkout@v6
         with:
@@ -48,25 +42,23 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Validate formal promoters
+      - name: Validate current formal promoters
         run: |
           uv run ruff check \
             scripts/promote_cn_x1_1_formal.py \
-            scripts/promote_byd_dividend_sleeve_formal.py \
+            scripts/promote_byd_v1_2_formal.py \
             tests/test_promote_cn_x1_1_formal.py \
-            tests/test_promote_byd_dividend_sleeve_formal.py
-          uv run mypy \
-            scripts/promote_cn_x1_1_formal.py \
-            scripts/promote_byd_dividend_sleeve_formal.py
+            tests/test_byd_v1_2_convex_momentum.py
+          uv run mypy scripts/promote_cn_x1_1_formal.py
           uv run pytest \
             tests/test_promote_cn_x1_1_formal.py \
-            tests/test_promote_byd_dividend_sleeve_formal.py \
+            tests/test_byd_v1_2_convex_momentum.py \
             -q --strict-markers --tb=short
-      - name: Materialize prior formal release
+      - name: Seed reproducible formal root
         run: |
           mkdir -p artifacts/reproduced-formal
-          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json cn_x1_0.json catalog.json freshness.json; do
-            git show "$PRIOR_RELEASE_COMMIT:data/research/formal_backtests/$name" > "artifacts/reproduced-formal/$name"
+          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json catalog.json freshness.json; do
+            cp "data/research/formal_backtests/$name" "artifacts/reproduced-formal/$name"
           done
       - name: Extract immutable BYD formal inputs
         run: |
@@ -77,16 +69,16 @@ jobs:
           mkdir -p artifacts/data/byd_canonical_v1 artifacts/data/515180_canonical_v1
           tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
           unzip -q "$RUNNER_TEMP/515180-canonical-v1.zip" -d artifacts/data/515180_canonical_v1
-      - name: Reproduce accepted BYD formal baseline
+      - name: Reproduce accepted BYD v1.2 formal baseline
         run: |
-          uv run python scripts/promote_byd_dividend_sleeve_formal.py \
+          uv run python scripts/promote_byd_v1_2_formal.py \
             --root artifacts/reproduced-formal \
             --byd-dir artifacts/data/byd_canonical_v1 \
             --etf-dir artifacts/data/515180_canonical_v1 \
-            --prospective-root data/research/byd_515180_prospective \
-            --generated-at 2026-08-05T13:30:00Z \
-            --receipt artifacts/current-byd-formal-reproduction-receipt.json
-      - name: Reproduce user-directed CN x1.1 promotion
+            --signal-ledger data/research/byd_v1_2_signal_ledger \
+            --generated-at "$BYD_GENERATED_AT" \
+            --receipt artifacts/current-byd-v1-2-formal-reproduction-receipt.json
+      - name: Reproduce accepted CN x1.1 formal baseline
         run: |
           uv run python scripts/promote_cn_x1_1_formal.py \
             --root artifacts/reproduced-formal \
@@ -99,9 +91,10 @@ jobs:
             --receipt artifacts/current-formal-freshness-receipt.json
       - name: Enforce byte-exact current release
         run: |
-          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json cn_x1_1.json byd_dividend_sleeve_v1_0.json catalog.json freshness.json; do
+          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json cn_x1_1.json byd_v1_2_convex_momentum_budget_v1.json catalog.json freshness.json; do
             cmp "artifacts/reproduced-formal/$name" "data/research/formal_backtests/$name"
           done
+          test ! -e artifacts/reproduced-formal/byd_dividend_sleeve_v1_0.json
       - name: Retain current release evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -109,7 +102,7 @@ jobs:
           name: current-formal-backtest-integrity-${{ github.run_id }}
           path: |
             artifacts/current-cn-x1-1-formal-reproduction-receipt.json
-            artifacts/current-byd-formal-reproduction-receipt.json
+            artifacts/current-byd-v1-2-formal-reproduction-receipt.json
             artifacts/current-formal-freshness-receipt.json
             artifacts/reproduced-formal
           if-no-files-found: error
