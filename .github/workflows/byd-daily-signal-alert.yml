@@ -1,0 +1,266 @@
+name: BYD Daily Signal Alert
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/byd-daily-signal-alert.yml"
+      - "src/research/byd_signal_alerts.py"
+      - "scripts/run_byd_signal_alert.py"
+      - "tests/test_byd_signal_alerts.py"
+  schedule:
+    # Runs after CN market close (~3pm CST = 7am UTC) and after the 3 BYD
+    # prospective workflows complete (shadow at 11:30, paired at 11:45,
+    # expansion at 12:15 UTC). Signal alert at 13:00 provides 45min margin.
+    - cron: "0 13 * * 1-5"
+  workflow_dispatch:
+
+concurrency:
+  group: byd-daily-signal-alert-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  signal-alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv and locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Validate BYD signal alert implementation
+        run: |
+          uv run ruff check \
+            src/research/byd_signal_alerts.py \
+            scripts/run_byd_signal_alert.py \
+            tests/test_byd_signal_alerts.py
+          uv run pytest \
+            tests/test_byd_signal_alerts.py \
+            -q --tb=short
+
+      - name: Extract immutable BYD canonical base
+        run: |
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          mkdir -p artifacts/data/byd_canonical_v1
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
+
+      - name: Extract immutable 515180 canonical base
+        run: |
+          set -euo pipefail
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > "$RUNNER_TEMP/515180-canonical-v1-artifact.zip"
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  $RUNNER_TEMP/515180-canonical-v1-artifact.zip" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/515180_canonical_v1"
+          unzip -q "$RUNNER_TEMP/515180-canonical-v1-artifact.zip" -d "$RUNNER_TEMP/515180_canonical_v1"
+
+      - name: Run BYD shadow update
+        run: >-
+          uv run python scripts/run_byd_prospective_shadow_v2.py
+          --baseline-dir artifacts/data/byd_canonical_v1
+          --store-dir data/research/byd_prospective_shadow
+          --as-of "$(date -u +%F)"
+          --secondary-retries 2
+
+      - name: Run BYD/515180 paired update
+        run: >-
+          uv run python scripts/run_byd_515180_prospective.py
+          --byd-store data/research/byd_prospective_shadow
+          --etf-baseline-dir "$RUNNER_TEMP/515180_canonical_v1"
+          --store-dir data/research/byd_515180_prospective
+          --as-of "$(date -u +%F)"
+          --secondary-retries 2
+
+      - name: Run BYD v1.2 trend expansion update
+        run: >-
+          uv run python scripts/run_byd_v1_2_trend_expansion_prospective.py
+          --baseline-dir artifacts/data/byd_canonical_v1
+          --byd-store data/research/byd_prospective_shadow
+          --paired-store data/research/byd_515180_prospective
+          --store-dir data/research/byd_v1_2_trend_expansion_prospective
+          --as-of "$(date -u +%F)"
+
+      - name: Commit new prospective evidence
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          changed=0
+          for store in data/research/byd_prospective_shadow data/research/byd_515180_prospective data/research/byd_v1_2_trend_expansion_prospective; do
+            if ! git diff --quiet -- "$store" || [[ -n "$(git ls-files --others --exclude-standard "$store")" ]]; then
+              git add "$store"
+              changed=1
+            fi
+          done
+
+          if [ "$changed" -eq 0 ]; then
+            echo "No new prospective evidence"
+            exit 0
+          fi
+
+          latest_date="$(date -u +%F)"
+          git commit -m "research: append BYD prospective evidence ${latest_date}"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: Build BYD signal alert
+        id: alert
+        run: >-
+          uv run python scripts/run_byd_signal_alert.py
+          --shadow-store data/research/byd_prospective_shadow
+          --paired-store data/research/byd_515180_prospective
+          --expansion-store data/research/byd_v1_2_trend_expansion_prospective
+          --output-dir artifacts/signals/byd_v1_2
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Upload signal and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-signal-${{ github.run_id }}
+          path: |
+            artifacts/signals/byd_v1_2
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Create deduplicated GitHub Issue for fresh signal
+        id: issue
+        if: >-
+          github.event_name != 'pull_request' &&
+          steps.alert.outputs.should_alert == 'true' &&
+          steps.alert.outputs.data_freshness_ok == 'true'
+        uses: actions/github-script@v7
+        env:
+          ALERT_FINGERPRINT: ${{ steps.alert.outputs.fingerprint }}
+          ALERT_TITLE: ${{ steps.alert.outputs.title }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = `<!-- signal-fingerprint:${process.env.ALERT_FINGERPRINT} -->`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100,
+            });
+            const exists = issues.some((item) =>
+              !item.pull_request && String(item.body || '').includes(marker)
+            );
+            if (exists) {
+              core.notice(`BYD signal ${process.env.ALERT_FINGERPRINT} already reported.`);
+              core.setOutput('issue_number', String(exists.find(i => !i.pull_request && String(i.body || '').includes(marker)).number));
+              core.setOutput('created', 'false');
+              return;
+            }
+            const report = fs.readFileSync(
+              'artifacts/signals/byd_v1_2/signal_alert.md',
+              'utf8'
+            );
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: process.env.ALERT_TITLE,
+              body: `@${context.repo.owner}\n\n${report}`,
+              assignees: [context.repo.owner],
+            });
+            core.setOutput('issue_number', String(created.data.number));
+            core.setOutput('created', 'true');
+
+      - name: Send decision-grade Telegram alert
+        id: telegram
+        if: >-
+          github.event_name != 'pull_request' &&
+          steps.alert.outputs.should_alert == 'true' &&
+          steps.alert.outputs.data_freshness_ok == 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            echo "status=skipped_not_configured" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          set +e
+          response="$(curl --fail --silent --show-error --write-out '\n%{http_code}' \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode \
+              "text@artifacts/signals/byd_v1_2/signal_alert_telegram.txt" \
+            --data-urlencode "disable_web_page_preview=true" 2>&1)"
+          curl_status=$?
+          set -e
+          http_code="$(echo "$response" | tail -n 1)"
+          body="$(echo "$response" | head -n -1)"
+          if [ "$curl_status" -eq 0 ] && [ "$http_code" = "200" ]; then
+            message_id="$(echo "$body" | python -c "import sys,json; print(json.load(sys.stdin)['result']['message_id'])" 2>/dev/null || echo '')"
+            echo "status=sent" >> "$GITHUB_OUTPUT"
+            echo "message_id=$message_id" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+            echo "error=${body:0:500}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Finalize delivery receipt
+        if: always() && steps.alert.outcome == 'success'
+        env:
+          ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
+          ISSUE_CREATED: ${{ steps.issue.outputs.created }}
+          TG_STATUS: ${{ steps.telegram.outputs.status }}
+          TG_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
+          TG_ERROR: ${{ steps.telegram.outputs.error }}
+        run: |
+          receipt_path="artifacts/signals/byd_v1_2/delivery_receipt.json"
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          path = Path(os.environ.get("receipt_path", "artifacts/signals/byd_v1_2/delivery_receipt.json"))
+          if not path.exists():
+              receipt = {
+                  "schema_version": "byd_delivery_receipt_v1",
+                  "should_alert": False,
+                  "data_freshness_ok": False,
+              }
+          else:
+              receipt = json.loads(path.read_text(encoding="utf-8"))
+
+          receipt["github_issue"] = {
+              "created": os.environ.get("ISSUE_CREATED", "false") == "true",
+              "number": int(os.environ["ISSUE_NUMBER"]) if os.environ.get("ISSUE_NUMBER") else None,
+          }
+
+          tg_status = os.environ.get("TG_STATUS", "not_required")
+          receipt["telegram"] = {
+              "status": tg_status,
+              "message_id": int(os.environ["TG_MESSAGE_ID"]) if os.environ.get("TG_MESSAGE_ID") else None,
+              "error": os.environ.get("TG_ERROR") or None,
+          }
+
+          receipt["workflow"] = {
+              "run_id": os.environ.get("GITHUB_RUN_ID"),
+              "commit_sha": os.environ.get("GITHUB_SHA"),
+          }
+          receipt["generated_at"] = datetime.now(timezone.utc).isoformat()
+
+          path.write_text(
+              json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(f"Delivery receipt finalized: tg={tg_status} issue={receipt['github_issue']}")
+          PY

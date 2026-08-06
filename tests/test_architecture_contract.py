@@ -10,6 +10,22 @@ def test_phase1_domain_language_and_adrs_exist():
     assert (ROOT / "docs" / "adr" / "0003-single-user-local-quant-research-platform.md").exists()
 
 
+def test_runtime_agent_implementation_is_unified_under_src():
+    assert (ROOT / "src" / "agents" / "research_assistant.py").exists()
+    assert (ROOT / "src" / "agents" / "agent_router.py").exists()
+    assert not list((ROOT / "agents" / "risk").rglob("*.py"))
+    assert not list((ROOT / "agents" / "governance").rglob("*.py"))
+
+
+def test_supported_environment_doctor_is_a_direct_entrypoint():
+    doctor = (ROOT / "scripts" / "doctor.py").read_text(encoding="utf-8")
+    assert "agents/governance" not in doctor
+    assert "runpy.run_path" not in doctor
+    assert "fastapi" not in doctor
+    assert "DELETE FROM" not in doctor
+    assert "--fix" not in doctor
+
+
 def test_core_research_modules_do_not_import_heavy_runtime_adapters():
     forbidden = (
         "fastapi",

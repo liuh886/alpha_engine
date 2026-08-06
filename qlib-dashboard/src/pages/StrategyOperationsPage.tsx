@@ -24,6 +24,17 @@ import {
   workflowHealthLabel,
   type V42WorkflowHealthEntry,
 } from '@/lib/v42-workflow-health';
+import {
+  fetchBydRuntimeSnapshot,
+  type BydRuntimeIndex,
+  type BydSignalRecord,
+  type BydWeights,
+} from '@/lib/byd-runtime';
+import {
+  fetchBydWorkflowHealth,
+  workflowHealthLabel as bydWorkflowHealthLabel,
+  type BydWorkflowHealthEntry,
+} from '@/lib/byd-workflow-health';
 
 const ASSETS: V42Asset[] = ['QQQI', 'QQQ', 'TQQQ'];
 const HORIZON_COUNT = 7;
@@ -141,6 +152,8 @@ function HorizonCell({ outcome }: { outcome?: V42HorizonOutcome }) {
 export function StrategyOperationsPage() {
   const [snapshot, setSnapshot] = useState<V42RuntimeSnapshot | null>(null);
   const [workflowHealth, setWorkflowHealth] = useState<V42WorkflowHealthEntry[]>([]);
+  const [bydIndex, setBydIndex] = useState<BydRuntimeIndex | null>(null);
+  const [bydWorkflowHealth, setBydWorkflowHealth] = useState<BydWorkflowHealthEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -148,15 +161,21 @@ export function StrategyOperationsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [nextSnapshot, nextWorkflowHealth] = await Promise.all([
+      const [nextSnapshot, nextWorkflowHealth, nextBydIndex, nextBydHealth] = await Promise.all([
         fetchV42RuntimeSnapshot(),
         fetchV42WorkflowHealth(),
+        fetchBydRuntimeSnapshot().catch(() => null),
+        fetchBydWorkflowHealth().catch(() => []),
       ]);
       setSnapshot(nextSnapshot);
       setWorkflowHealth(nextWorkflowHealth);
+      setBydIndex(nextBydIndex);
+      setBydWorkflowHealth(nextBydHealth);
     } catch (runtimeError) {
       setSnapshot(null);
       setWorkflowHealth([]);
+      setBydIndex(null);
+      setBydWorkflowHealth([]);
       setError(runtimeError instanceof Error ? runtimeError.message : 'The v4.2 ledger is unavailable.');
     } finally {
       setLoading(false);
@@ -371,6 +390,127 @@ export function StrategyOperationsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* === BYD v1.2 Track === */}
+      <section className="border-t pt-8">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <Badge className="gap-1.5"><Activity className="h-3 w-3" /> BYD v1.2</Badge>
+          <Badge variant="outline">Research only</Badge>
+          <Badge variant="outline">Not trade-ready</Badge>
+          <Badge variant="secondary">CN Equity</Badge>
+        </div>
+        <h2 className="mb-6 text-2xl font-black tracking-tight">BYD / 515180 Track</h2>
+
+        {bydIndex?.latestSignal ? (
+          <>
+            <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Card><CardContent className="p-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Signal date</p>
+                <div className="mt-2 font-mono text-xl font-bold">{bydIndex.latestSignal.record.signal_date}</div>
+                <p className="mt-1 text-xs text-muted-foreground">Data freshness: {bydIndex.latestSignal.record.data_freshness_ok ? 'passed' : 'stale'}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">State</p>
+                <div className="mt-2 text-xl font-bold">{bydIndex.latestSignal.record.target_state_label}</div>
+                <p className="mt-1 font-mono text-xs text-muted-foreground">{bydIndex.latestSignal.record.transition_label}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">BYD price</p>
+                <div className="mt-2 font-mono text-xl font-bold">{formatNumber(bydIndex.latestSignal.record.price_context.byd_close)}</div>
+                <p className="mt-1 text-xs text-muted-foreground">Expansion: {bydIndex.latestSignal.record.expansion_active ? 'Active' : 'Inactive'}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Market regime</p>
+                <div className="mt-2 text-xl font-bold capitalize">{bydIndex.latestSignal.record.factor_context.market_state}</div>
+                <p className="mt-1 text-xs text-muted-foreground">Vol: {bydIndex.latestSignal.record.factor_context.vol_state} · DD: {formatPercent(bydIndex.latestSignal.record.factor_context.drawdown_252)}</p>
+              </CardContent></Card>
+            </section>
+
+            <section className="mb-6 grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader><CardTitle className="text-base">Current allocation</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  {(['BYD', '515180', 'CASH'] as const).map((asset) => {
+                    const w = bydIndex!.latestSignal!.record.target_weights[asset as keyof BydWeights] ?? 0;
+                    const width = `${Math.max(0, Math.min(100, Math.abs(w) * 100))}%`;
+                    const color = w < 0 ? 'bg-amber-500' : 'bg-primary';
+                    return (
+                      <div key={asset}>
+                        <div className="mb-1.5 flex items-center justify-between text-sm">
+                          <span className="font-semibold">{asset}</span>
+                          <span className="font-mono text-xs">{formatPercent(w)}</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-muted">
+                          <div className={`h-full rounded-full ${color}`} style={{ width }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle className="text-base">Decision context</CardTitle></CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      ['Market state', bydIndex!.latestSignal!.record.factor_context.market_state],
+                      ['Vol state', bydIndex!.latestSignal!.record.factor_context.vol_state],
+                      ['Drawdown 252d', formatPercent(bydIndex!.latestSignal!.record.factor_context.drawdown_252)],
+                      ['Mom accel 20/60', formatNumber(bydIndex!.latestSignal!.record.factor_context.momentum_accel_20_60, 4)],
+                      ['Open autocorr 20d', formatNumber(bydIndex!.latestSignal!.record.factor_context.open_return_autocorr_20, 4)],
+                      ['Dist from 20d low', formatPercent(bydIndex!.latestSignal!.record.factor_context.distance_from_low_20)],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-lg border p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+                        <p className="mt-1 font-mono text-sm font-bold capitalize">{String(value)}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="font-mono text-[10px] text-muted-foreground">fingerprint {bydIndex!.latestSignal!.record.fingerprint}</p>
+                </CardContent>
+              </Card>
+            </section>
+          </>
+        ) : (
+          <Card><CardContent className="p-8 text-center">
+            <Clock3 className="mx-auto h-8 w-8 text-muted-foreground" />
+            <p className="mt-3 text-sm text-muted-foreground">No BYD signal records found in the public GitHub ledger.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Signals will appear after the daily BYD signal alert workflow runs (scheduled 13:00 UTC Mon-Fri).</p>
+          </CardContent></Card>
+        )}
+
+        <Card className="mt-6">
+          <CardHeader><CardTitle className="text-base">BYD workflow health</CardTitle></CardHeader>
+          <CardContent className="grid gap-4 lg:grid-cols-2">
+            {bydWorkflowHealth.length > 0
+              ? bydWorkflowHealth.map((entry) => {
+                  const health = bydWorkflowHealthLabel(entry);
+                  return (
+                    <div key={entry.key} className="rounded-xl border bg-muted/15 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold">{entry.label}</p>
+                          <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">{entry.workflowFile}</p>
+                        </div>
+                        <Badge variant="outline" className={WORKFLOW_TONE_CLASS[health.tone]}>{health.label}</Badge>
+                      </div>
+                      {entry.run ? (
+                        <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                          <p>Started {entry.run.run_started_at ? new Date(entry.run.run_started_at).toLocaleString() : 'time not declared'}</p>
+                          <a href={entry.run.html_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+                            Open workflow run <ArrowUpRight className="h-3 w-3" />
+                          </a>
+                        </div>
+                      ) : (
+                        <p className="mt-4 text-xs text-muted-foreground">{entry.error || 'No workflow run available.'}</p>
+                      )}
+                    </div>
+                  );
+                })
+              : <p className="text-sm text-muted-foreground">BYD workflow health could not be loaded.</p>}
+          </CardContent>
+        </Card>
+      </section>
 
       <p className="text-center font-mono text-[10px] text-muted-foreground">
         Ledger fetched {new Date(snapshot.fetchedAt).toLocaleString()} · source {snapshot.source}

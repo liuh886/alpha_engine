@@ -54,6 +54,24 @@ Older OHLCV rankers, state machines, factor scanners and dashboard workflows are
 retained as historical or diagnostic capabilities. They are not automatically
 reactivated by the data-plane program.
 
+### Parallel work policy
+
+The active program sets the authority for model-readiness claims; it is not an
+exclusive repository lock. Independently scoped strategy experiments,
+diagnostics and frontend improvements may continue in parallel when they:
+
+1. use their own frozen contract and artifact namespace;
+2. remain path-scoped and do not rewrite active-program evidence;
+3. preserve `research_only=true` and `trade_ready=false`;
+4. do not claim to satisfy a selected-pool readiness gate without the required
+   manifest-bound evidence; and
+5. coordinate changes to shared contracts or runtime modules through their
+   existing tests and governance checks.
+
+Parallel work does not need to pause merely because the active data-plane
+program has an open blocker. A blocker limits the claims and promotion path of
+the affected workstream, not unrelated research or product work.
+
 ## 1. Agent Runtime
 
 The agent system uses a single unified **ResearchAssistant**. An **AgentRouter**
@@ -100,11 +118,10 @@ send orders or describe diagnostic outputs as live trading recommendations.
   role governance.
 - frozen YAML contracts: authoritative factor, source, pool, portfolio and
   evidence definitions.
-- Issue #282: model-ready data-plane program.
-- Issue #283: point-in-time fundamentals.
-- Issue #284: corporate actions and adjustments.
-- Issue #285: factor-library consolidation.
-- Issue #286: selected-pool and reference governance.
+- Issue #282: completed model-ready data-plane foundation and scope record.
+- Issue #324: current selected-pool event population and coverage evidence.
+- Issue #325: current canonical VWAP and Alpha158 materialization evidence.
+- `docs/ci-governance.md`: path-scoped parallel-work and workflow-tier rules.
 
 Historical claims in older files do not override the current research-only
 boundary or the active-program rules above.

@@ -1,0 +1,13 @@
+{
+  "append_only": true,
+  "baseline_contract": "Top-15 equal weight",
+  "baseline_model": "us_x1_1",
+  "challenger_contract": "rank-aware sector-cap Top-15",
+  "eligible_horizon": 10,
+  "first_eligible_date": "2026-08-04",
+  "last_signal_date": null,
+  "observation_count": 0,
+  "research_only": true,
+  "schema_version": "us_x1_1_sector_cap_shadow_v1",
+  "trade_ready": false
+}

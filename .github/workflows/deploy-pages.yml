@@ -113,8 +113,8 @@ jobs:
           const catalog = JSON.parse(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'));
           if (catalog.schema_version !== '2.0.0' || catalog.channel !== 'formal') throw new Error('invalid formal v2 catalog');
           if (catalog.research_only !== true || catalog.trade_ready !== false) throw new Error('invalid formal research boundary');
-          const expected = new Set(['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0']);
-          if (catalog.records.length !== 3) throw new Error('formal catalog must contain exactly three records');
+          const expected = new Set(['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0', 'byd_dividend_sleeve_v1_0']);
+          if (catalog.records.length !== 4) throw new Error('formal catalog must contain exactly four records');
           for (const record of catalog.records) {
             if (!expected.delete(record.model_version_id)) throw new Error(`unexpected formal version: ${record.model_version_id}`);
             const manifestPath = path.join(root, record.manifest_path);
@@ -237,7 +237,7 @@ jobs:
           assert catalog['channel'] == 'formal'
           assert catalog['research_only'] is True and catalog['trade_ready'] is False
           assert {row['model_version_id'] for row in catalog['records']} == {
-              'qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0'
+              'qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0', 'byd_dividend_sleeve_v1_0'
           }
           for row in catalog['records']:
               manifest_path = root / row['manifest_path']

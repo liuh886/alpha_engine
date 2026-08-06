@@ -18,6 +18,7 @@ class DailyRankerResult:
     groups: list[int]
     n_gain_bins: int
     target_type: str = "percentile_gain"
+    calibration_identity: dict[str, object] | None = None
     target_top_k: int | None = None
     lambdarank_truncation_level: int | None = None
 
@@ -340,3 +341,38 @@ def predict_xgb_daily_ranker(
         result.lambdarank_truncation_level
     )
     return scores
+
+
+def fit_xgb_daily_ranker_with_calibration(
+    features: pd.DataFrame,
+    rank_target: pd.Series,
+    groups: list[int],
+    *,
+    calibration: "XGBNativeCalibration",  # type: ignore[name-defined]
+) -> DailyRankerResult:
+    """Fit an XGBoost ranker using the explicit native calibration contract.
+
+    This is the #357-compliant path. Every effective parameter is
+    declared, identity-bound, and traceable via identity_manifest.
+    """
+    from src.research.xgb_native_calibration import _validate_fit_inputs
+
+    _validate_fit_inputs(features, rank_target, groups)
+
+    import xgboost as xgb
+
+    gains = percentile_rank_to_gain(rank_target, n_bins=calibration.n_gain_bins)
+    dtrain = xgb.DMatrix(features, label=gains.loc[features.index])
+    dtrain.set_group(groups)
+    model = xgb.train(
+        calibration.effective_model_parameters(),
+        dtrain,
+        num_boost_round=calibration.num_boost_round,
+    )
+    return DailyRankerResult(
+        model=model,
+        feature_names=[str(item) for item in features.columns],
+        groups=list(groups),
+        n_gain_bins=calibration.n_gain_bins,
+        calibration_identity=calibration.identity_manifest(),
+    )
