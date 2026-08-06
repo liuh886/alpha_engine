@@ -3,6 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
+from scripts.byd_formal_publication_common import write_json
 from scripts.promote_byd_v1_2_formal import _signal_monitoring
 from scripts.sync_formal_bundle_v2 import FORMAL_MODEL_ADAPTERS, accepted_v1_models, sync
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
@@ -13,6 +17,25 @@ BYD_V12 = "byd_v1_2_convex_momentum_budget_v1"
 
 def _read(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_formal_json_serializes_timestamps_and_numpy_scalars(tmp_path: Path) -> None:
+    target = tmp_path / "evidence.json"
+    digest = write_json(
+        target,
+        {
+            "episode_start": pd.Timestamp("2026-08-03"),
+            "count": np.int64(15),
+            "relative_wealth": np.float64(0.0297),
+        },
+    )
+    assert len(digest) == 64
+    payload = _read(target)
+    assert payload == {
+        "episode_start": "2026-08-03T00:00:00",
+        "count": 15,
+        "relative_wealth": 0.0297,
+    }
 
 
 def test_live_signal_state_is_not_embedded_in_formal_package(tmp_path: Path) -> None:
