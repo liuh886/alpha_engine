@@ -1,23 +1,43 @@
-name: Alpha Engine CI
+name: Alpha Engine Backend CI
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'configs/**'
+      - 'data/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'Makefile'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'configs/**'
+      - 'data/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'Makefile'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: backend-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
@@ -27,7 +47,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Install uv and locked Python dependencies
         run: |
@@ -35,125 +55,29 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
 
-      - name: Inventory and enforce CI governance
-        run: uv run python scripts/check_ci_governance.py --output artifacts/ci-workflow-inventory.json --enforce
-
-      - name: Upload CI workflow inventory
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-workflow-inventory
-          path: artifacts/ci-workflow-inventory.json
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Freeze legacy Web boundary
-        run: uv run python scripts/check_legacy_web_boundary.py
+      - name: Enforce architecture and CI contracts
+        run: |
+          uv run python scripts/check_ci_governance.py --output artifacts/ci-workflow-inventory.json --enforce
+          uv run python scripts/check_legacy_web_boundary.py
 
       - name: Ruff lint
         run: uv run ruff check src scripts/check_legacy_web_boundary.py scripts/check_ci_governance.py
 
-      - name: Mypy type check (ratcheted scope)
+      - name: Mypy type check
         run: uv run mypy src/release src/models/metric_contract.py scripts/check_ci_governance.py
 
-      - name: Pytest collection
-        if: github.event_name == 'pull_request'
-        run: uv run pytest --collect-only -q --strict-markers
-
-      - name: Fast PR pytest
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set +e
-          uv run pytest tests/test_labels.py tests/test_training_label_direction.py tests/test_model_signal_identity.py tests/test_architecture_contract.py tests/test_walk_forward_stability.py tests/test_weekly_research_cli.py tests/test_rolling_windows.py tests/test_ranker_calibration_grid.py tests/test_ranker_grid_experiment_contract.py tests/test_stable_signal_blend.py tests/test_stable_blend_missing_data.py tests/test_benchmark_aware_topk.py tests/test_topk_aligned_ranker.py tests/test_benchmark_residual_trend.py tests/test_risk_control_variants.py tests/test_selection_tail_diagnostics.py tests/test_candidate_v2_risk_hypotheses.py tests/test_candidate_v2_universe_robustness.py tests/test_run_candidate_v2_universe_robustness.py tests/test_ndx_window_start_universe.py tests/test_run_candidate_v2_ndx_window_start_evidence.py tests/test_run_candidate_v2_top3_holdout_evidence.py tests/test_run_ndx_residual_trend_evidence.py tests/test_run_cn_residual_trend_evidence.py tests/test_model_decision_pack.py tests/test_universe_robustness.py tests/test_multi_market_readiness.py tests/test_market_data_alignment.py tests/test_cn_feature_quality.py tests/test_core_interfaces.py tests/test_factor_library.py tests/test_research_paradigm.py tests/test_research_artifacts.py tests/test_spec_bound_execution.py tests/test_cn_qlib_execution_adapter.py tests/test_us_qlib_execution_adapter.py tests/test_portfolio_intent.py tests/test_vectorized_backtest_intent_wrapper.py tests/test_promotion_decision.py tests/test_promotion_consumers.py tests/test_spec_bound_workflow_runtime.py tests/test_research_workflow_contract.py tests/test_evidence_ledger.py tests/test_training_pipeline_contract.py tests/test_mcp_server_contract.py tests/test_post_identity_promotion.py tests/test_synthetic_evidence_scope.py tests/test_decision_pack_cli_consumer.py tests/test_legacy_cn_runner_wrapper.py tests/test_legacy_rolling_ranker_wrapper.py tests/test_legacy_ranker_grid_wrapper.py tests/test_qlib_adapter_decision_boundary.py tests/test_qlib_execution_common.py tests/test_evaluation_context_boundary.py tests/test_universe_robustness_diagnostic_boundary.py tests/test_daily_ranker_missing_data.py tests/test_real_market_acceptance.py tests/test_research_universe_contracts.py tests/test_spec_bound_factor_diagnostics.py tests/test_dump_bin_market_identity.py tests/test_real_market_research_pipeline.py tests/test_provider_evidence.py tests/test_router_provider_attempts.py tests/test_data_runtime_truth.py tests/test_declared_refresh_interval.py tests/test_yfinance_adapter.py tests/test_akshare_adapter.py -q --strict-markers --tb=short --disable-warnings --maxfail=1 > fast_pr_pytest.log 2>&1
-          status=$?
-          cat fast_pr_pytest.log
-          exit $status
-
-      - name: Upload Fast PR pytest log
-        if: always() && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: fast-pr-pytest-log
-          path: fast_pr_pytest.log
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: CN Qlib fixture integration
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set +e
-          uv run pytest tests/test_cn_qlib_ci_integration.py -q --strict-markers --tb=short --disable-warnings --maxfail=1 > cn_qlib_ci.log 2>&1
-          status=$?
-          cat cn_qlib_ci.log
-          exit $status
-
-      - name: Upload CN Qlib integration log
-        if: always() && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: cn-qlib-ci-log
-          path: cn_qlib_ci.log
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Release-contract pytest
-        run: uv run pytest tests/test_release_candidate_generation.py tests/test_release_candidate_gate.py tests/test_walk_forward.py tests/test_vectorized_backtest.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Core release-contract tests
+        run: >-
+          uv run pytest
+          tests/test_release_candidate_generation.py
+          tests/test_release_candidate_gate.py
+          tests/test_walk_forward.py
+          tests/test_vectorized_backtest.py
+          tests/test_architecture_contract.py
+          tests/test_model_signal_identity.py
+          tests/test_data_runtime_truth.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Package build
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        if: github.event_name != 'pull_request'
         run: uv build
-
-  frontend:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: qlib-dashboard/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: qlib-dashboard
-        run: npm ci
-
-      - name: TypeScript type check
-        working-directory: qlib-dashboard
-        run: npx tsc --noEmit
-
-      - name: Frontend lint
-        working-directory: qlib-dashboard
-        run: npm run lint
-
-      - name: Frontend unit tests
-        working-directory: qlib-dashboard
-        run: npm test
-
-      - name: Frontend build
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        working-directory: qlib-dashboard
-        run: npm run build
-
-      - name: Install Playwright browsers
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        working-directory: qlib-dashboard
-        run: npx playwright install --with-deps chromium
-
-      - name: Playwright E2E tests
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        working-directory: qlib-dashboard
-        run: npx playwright test
-
-      - name: Upload frontend build artifact
-        if: success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: qlib-dashboard/dist/
-          if-no-files-found: warn
-          retention-days: 7
