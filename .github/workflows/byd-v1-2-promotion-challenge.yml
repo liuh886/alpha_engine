@@ -21,7 +21,7 @@ concurrency:
 jobs:
   frozen-challenge:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -66,6 +66,13 @@ jobs:
           done
           diff -ru artifacts/result-a artifacts/result-b
 
+      - name: Reproduce independent architectures from PR 588
+        run: |
+          uv run python scripts/run_byd_improvement_experiments.py \
+            --byd-dir artifacts/input/byd \
+            --etf-dir artifacts/input/515180 \
+            --output-dir artifacts/architecture-diagnostic
+
       - name: Enforce research-only decision boundary
         run: |
           uv run python - <<'PY'
@@ -87,6 +94,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: byd-v1-2-promotion-challenge-${{ github.run_id }}
-          path: artifacts/result-a
+          path: |
+            artifacts/result-a
+            artifacts/architecture-diagnostic
           if-no-files-found: error
           retention-days: 90
