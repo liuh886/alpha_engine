@@ -7,6 +7,7 @@ from scripts.sync_formal_bundle_v2 import FORMAL_MODEL_ADAPTERS, accepted_v1_mod
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
 
 SOURCE = Path("data/research/formal_backtests")
+BYD_V12 = "byd_v1_2_convex_momentum_budget_v1"
 
 
 def _read(path: Path):
@@ -19,7 +20,7 @@ def test_current_formal_catalog_matches_supported_adapters() -> None:
         "qqqi_qqq_tqqq_v4_2",
         "us_x1_1",
         "cn_x1_1",
-        "byd_dividend_sleeve_v1_0",
+        BYD_V12,
     ]
 
 
@@ -54,16 +55,17 @@ def test_sync_projects_every_accepted_model_deterministically(tmp_path: Path) ->
     assert receipt_a["source_freshness_sha256"] == receipt_a["formal_bundle_v2_freshness_sha256"]
 
 
-def test_byd_retained_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
+def test_byd_v1_2_complete_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
     output = tmp_path / "formal"
     sync(SOURCE, output)
     catalog = _read(output / "catalog.json")
     byd = next(
         row for row in catalog["records"]
-        if row["model_version_id"] == "byd_dividend_sleeve_v1_0"
+        if row["model_version_id"] == BYD_V12
     )
     manifest_path = output / byd["manifest_path"]
     manifest = _read(manifest_path)
+    assert manifest["display_name"] == "BYD v1.2"
     sections = {row["section_id"]: row for row in manifest["sections"]}
     for section_id in ("performance", "portfolio", "trades", "attribution", "lineage"):
         assert sections[section_id]["availability_status"] == "available"
