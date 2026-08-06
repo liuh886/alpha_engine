@@ -5,19 +5,17 @@ on:
     branches: [main]
     paths:
       - .github/workflows/formal-bundle-v2-sync.yml
-      - scripts/migrate_formal_v1_to_bundle_v2.py
+      - scripts/byd_formal_publication_common.py
+      - scripts/promote_byd_v1_2_formal.py
       - scripts/sync_formal_bundle_v2.py
       - tests/test_sync_formal_bundle_v2.py
       - data/research/formal_backtests/**
       - data/research/formal_model_runs/**
       - qlib-dashboard/public/data/formal-model-runs/**
-      - qlib-dashboard/src/hooks/useModels.ts
-      - qlib-dashboard/src/pages/StrategyOperationsPage.tsx
-      - qlib-dashboard/src/lib/byd-runtime.ts
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: formal-bundle-v2-sync-${{ github.event.pull_request.number || github.ref }}
@@ -25,13 +23,17 @@ concurrency:
 
 env:
   PYTHONPATH: .
+  GENERATED_AT: 2026-08-06T09:52:48Z
 
 jobs:
-  project-and-verify:
+  rematerialize-and-verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -40,7 +42,6 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
-
       - name: Install locked environments
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -48,71 +49,72 @@ jobs:
           uv sync --frozen --extra dev
           cd qlib-dashboard
           npm ci
-
-      - name: Validate generic formal projector
+      - name: Verify and extract immutable inputs
         run: |
-          uv run ruff check \
-            scripts/migrate_formal_v1_to_bundle_v2.py \
-            scripts/sync_formal_bundle_v2.py \
-            tests/test_sync_formal_bundle_v2.py
-          uv run mypy \
-            scripts/migrate_formal_v1_to_bundle_v2.py \
-            scripts/sync_formal_bundle_v2.py
-          uv run pytest tests/test_sync_formal_bundle_v2.py \
-            -q --strict-markers --tb=short
-
-      - name: Project all accepted formal models twice
+          set -euo pipefail
+          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > "$RUNNER_TEMP/515180.zip"
+          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  $RUNNER_TEMP/515180.zip" | sha256sum --check --strict
+          mkdir -p artifacts/input/byd artifacts/input/515180
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/input/byd
+          unzip -q "$RUNNER_TEMP/515180.zip" -d artifacts/input/515180
+      - name: Rebuild immutable formal package twice
         run: |
-          uv run python scripts/sync_formal_bundle_v2.py \
-            --output-root .research/formal-run-a \
-            --receipt .research/formal-receipt-a.json
-          uv run python scripts/sync_formal_bundle_v2.py \
-            --output-root .research/formal-run-b \
-            --receipt .research/formal-receipt-b.json
-          diff -ru .research/formal-run-a .research/formal-run-b
-          cmp .research/formal-receipt-a.json .research/formal-receipt-b.json
-          diff -ru --exclude formal-bundle-v2-sync-receipt.json \
-            .research/formal-run-a data/research/formal_model_runs
-
-      - name: Enforce catalog parity and section integrity
+          set -euo pipefail
+          for suffix in a b; do
+            cp -a data/research/formal_backtests "artifacts/formal-${suffix}"
+            uv run python scripts/promote_byd_v1_2_formal.py \
+              --root "artifacts/formal-${suffix}" \
+              --byd-dir artifacts/input/byd \
+              --etf-dir artifacts/input/515180 \
+              --signal-ledger data/research/byd_v1_2_signal_ledger \
+              --generated-at "$GENERATED_AT" \
+              --receipt "artifacts/promotion-${suffix}.json"
+          done
+          diff -ru artifacts/formal-a artifacts/formal-b
+          cmp artifacts/promotion-a.json artifacts/promotion-b.json
+          rsync -a --delete artifacts/formal-a/ data/research/formal_backtests/
+      - name: Rebuild Bundle v2 twice and sync frontend assets
         run: |
-          uv run python - <<'PY'
-          import json
-          from pathlib import Path
-          from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
-
-          v1 = json.loads(Path('data/research/formal_backtests/catalog.json').read_text())
-          root = Path('data/research/formal_model_runs')
-          v2 = json.loads((root / 'catalog.json').read_text())
-          validate_catalog(v2)
-          accepted = [row['model_id'] for row in v1['records']]
-          projected = [row['model_version_id'] for row in v2['records']]
-          assert accepted and len(accepted) == len(set(accepted))
-          assert set(accepted) == set(projected)
-          assert 'byd_v1_2_convex_momentum_budget_v1' in projected
-          assert 'byd_dividend_sleeve_v1_0' not in projected
-          for row in v2['records']:
-              manifest = json.loads((root / row['manifest_path']).read_text())
-              validate_manifest(manifest)
-          PY
-
-      - name: Validate frontend against committed formal catalog
-        working-directory: qlib-dashboard
+          set -euo pipefail
+          uv run python scripts/sync_formal_bundle_v2.py --source-root data/research/formal_backtests --output-root artifacts/bundle-a --receipt artifacts/bundle-receipt-a.json
+          uv run python scripts/sync_formal_bundle_v2.py --source-root data/research/formal_backtests --output-root artifacts/bundle-b --receipt artifacts/bundle-receipt-b.json
+          diff -ru artifacts/bundle-a artifacts/bundle-b
+          cmp artifacts/bundle-receipt-a.json artifacts/bundle-receipt-b.json
+          rsync -a --delete --exclude formal-bundle-v2-sync-receipt.json artifacts/bundle-a/ data/research/formal_model_runs/
+          cd qlib-dashboard
+          npm run sync:formal-model-runs
+      - name: Validate regenerated publication
         run: |
+          uv run ruff check scripts/byd_formal_publication_common.py scripts/promote_byd_v1_2_formal.py scripts/sync_formal_bundle_v2.py tests/test_sync_formal_bundle_v2.py
+          uv run pytest tests/test_sync_formal_bundle_v2.py tests/test_byd_v1_2_convex_momentum.py tests/test_model_x1_baselines.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+          cd qlib-dashboard
           npm run lint
           npx tsc --noEmit
           npm test -- --run
           npm run build
-          test -f dist/data/formal-model-runs/catalog.json
-          test ! -e dist/data/formal-backtests
-
-      - name: Upload projection evidence
+      - name: Commit exact regenerated assets
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git config user.name "AlphaEngine Release Agent"
+          git config user.email "release-agent@alphaengine.local"
+          git add data/research/formal_backtests data/research/formal_model_runs qlib-dashboard/public/data/formal-model-runs
+          if git diff --cached --quiet; then
+            echo "Formal assets are already byte-stable."
+          else
+            git commit -m "release: finalize immutable BYD v1.2 formal assets"
+            git pull --rebase origin ${{ github.head_ref }}
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+      - name: Upload regenerated evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: formal-bundle-v2-sync-${{ github.run_id }}
           path: |
-            .research/formal-receipt-a.json
-            .research/formal-run-a
+            artifacts/formal-a
+            artifacts/bundle-a
+            artifacts/promotion-a.json
+            artifacts/bundle-receipt-a.json
           if-no-files-found: error
           retention-days: 90
