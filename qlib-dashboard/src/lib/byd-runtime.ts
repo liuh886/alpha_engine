@@ -125,26 +125,44 @@ export function buildRuntimeIndex(issues: GitHubIssueRecord[]): BydRuntimeIndex 
   };
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  });
+async function fetchAllPages<T>(baseUrl: string): Promise<T[]> {
+  const results: T[] = [];
+  let url: string | null = `${baseUrl}&per_page=100`;
 
-  if (!response.ok) {
-    const rateRemaining = response.headers.get('x-ratelimit-remaining');
-    const suffix = rateRemaining === '0' ? ' Public API rate limit exhausted.' : '';
-    throw new Error(`GitHub BYD request failed (${response.status}).${suffix}`);
+  while (url) {
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+
+    if (!response.ok) {
+      const rateRemaining = response.headers.get('x-ratelimit-remaining');
+      if (rateRemaining === '0') {
+        console.warn(`GitHub API rate limit exhausted after ${results.length} BYD issues`);
+        break;
+      }
+      throw new Error(`GitHub BYD pagination failed (${response.status})`);
+    }
+
+    const page = await response.json() as T[];
+    results.push(...page);
+
+    const link = response.headers.get('link');
+    url = null;
+    if (link) {
+      const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
+      if (nextMatch) url = nextMatch[1];
+    }
   }
 
-  return response.json() as Promise<T>;
+  return results;
 }
 
 export async function fetchBydRuntimeSnapshot(): Promise<BydRuntimeIndex> {
-  const issues = await fetchJson<GitHubIssueRecord[]>(
-    `${API_ROOT}/issues?state=all&per_page=100&sort=updated&direction=desc`,
+  const issues = await fetchAllPages<GitHubIssueRecord>(
+    `${API_ROOT}/issues?state=all&sort=updated&direction=desc`,
   );
   return buildRuntimeIndex(issues);
 }

@@ -243,14 +243,50 @@ async function fetchJson<T>(url: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function fetchAllPages<T>(baseUrl: string): Promise<T[]> {
+  const results: T[] = [];
+  let url: string | null = `${baseUrl}&per_page=100`;
+
+  while (url) {
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+
+    if (!response.ok) {
+      const rateRemaining = response.headers.get('x-ratelimit-remaining');
+      if (rateRemaining === '0') {
+        console.warn(`GitHub API rate limit exhausted after ${results.length} issues`);
+        break;
+      }
+      throw new Error(`GitHub ledger pagination failed (${response.status})`);
+    }
+
+    const page = await response.json() as T[];
+    results.push(...page);
+
+    // Parse Link header for next page
+    const link = response.headers.get('link');
+    url = null;
+    if (link) {
+      const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
+      if (nextMatch) url = nextMatch[1];
+    }
+  }
+
+  return results;
+}
+
 async function fetchIssueLedger(): Promise<GitHubIssueRecord[]> {
-  const labelled = await fetchJson<GitHubIssueRecord[]>(
-    `${API_ROOT}/issues?state=all&labels=prospective-evidence&per_page=100&sort=updated&direction=desc`,
+  const labelled = await fetchAllPages<GitHubIssueRecord>(
+    `${API_ROOT}/issues?state=all&labels=prospective-evidence&sort=updated&direction=desc`,
   );
   if (buildRuntimeIndex(labelled).latestStateChange) return labelled;
 
-  return fetchJson<GitHubIssueRecord[]>(
-    `${API_ROOT}/issues?state=all&per_page=100&sort=updated&direction=desc`,
+  return fetchAllPages<GitHubIssueRecord>(
+    `${API_ROOT}/issues?state=all&sort=updated&direction=desc`,
   );
 }
 
