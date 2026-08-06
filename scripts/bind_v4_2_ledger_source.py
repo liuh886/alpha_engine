@@ -71,6 +71,14 @@ def bind(
     for item in new_events:
         record = item["record"]
         record["source_signal_context"] = source
+        if record.get("event_type") == "state_change":
+            record["delivery"] = {
+                "github_issue": receipt.get("github_issue_status"),
+                "github_issue_number": receipt.get("github_issue_number"),
+                "telegram": receipt.get("telegram_status"),
+                "telegram_message_id": receipt.get("telegram_message_id"),
+                "source_workflow_run_id": receipt.get("workflow_run_id"),
+            }
         validate_event_record(record)
         item["body"] = render_event_issue_body(record)
     _write(new_events_path, new_events)
@@ -86,6 +94,12 @@ def bind(
     run_summary_path = output_root / "ledger_run_summary.json"
     run_summary = _load(run_summary_path)
     run_summary["source_signal_context"] = source
+    run_summary["delivery_receipt"] = {
+        "github_issue_status": receipt.get("github_issue_status"),
+        "github_issue_number": receipt.get("github_issue_number"),
+        "telegram_status": receipt.get("telegram_status"),
+        "telegram_message_id": receipt.get("telegram_message_id"),
+    }
     _write(run_summary_path, run_summary)
 
     manifest_path = output_root / "evidence_manifest.json"
