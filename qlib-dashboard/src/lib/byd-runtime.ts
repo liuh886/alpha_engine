@@ -1,6 +1,5 @@
 const REPOSITORY = 'liuh886/alpha_engine';
 const API_ROOT = `https://api.github.com/repos/${REPOSITORY}`;
-const SIGNAL_MARKER = 'signal-fingerprint';
 
 export type BydAsset = 'BYD' | '515180' | 'CASH';
 export type BydWeights = Record<BydAsset, number>;
@@ -16,7 +15,8 @@ export interface GitHubIssueRecord {
 }
 
 export interface BydSignalRecord {
-  schema_version: string;
+  schema_version: 'byd_v1_2_signal_v2';
+  model_id: 'byd_v1_2_convex_momentum_budget_v1';
   experiment_id: string;
   research_only: true;
   trade_ready: false;
@@ -27,12 +27,15 @@ export interface BydSignalRecord {
   data_freshness_ok: boolean;
   open_research_eligible: boolean;
   execution_time: string;
-  transition_type: string;
+  transition_type: 'initialize' | 'rebalance' | 'no_change';
   transition_label: string;
-  target_state: number;
-  target_state_label: string;
+  previous_mode: string | null;
+  target_mode: 'defense' | 'offense' | 'convex_expansion';
+  target_mode_label: string;
   base_target: number;
   expansion_active: boolean;
+  momentum_scale: number;
+  financed_increment: number;
   current_weights: BydWeights;
   target_weights: BydWeights;
   orders: Array<{
@@ -52,13 +55,15 @@ export interface BydSignalRecord {
     market_state: string;
     vol_state: string;
     drawdown_252: number;
-    momentum_accel_20_60: number;
-    open_return_autocorr_20: number;
-    distance_from_low_20: number;
+    mom_20: number;
+    mom_60: number;
+    momentum_scale: number;
+    financed_increment: number;
   };
-  data_identity?: {
-    data_version?: string;
-    shadow_sha256?: string;
+  data_provenance?: {
+    shadow_manifest_sha256?: string;
+    paired_manifest_sha256?: string;
+    expansion_manifest_sha256?: string;
   };
 }
 
@@ -75,11 +80,11 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isSignalRecord(value: BydSignalRecord | null): value is BydSignalRecord {
+function isSignalRecord(value: unknown): value is BydSignalRecord {
+  if (!isObject(value)) return false;
   return Boolean(
-    value
-    && value.schema_version
-    && value.experiment_id
+    value.schema_version === 'byd_v1_2_signal_v2'
+    && value.model_id === 'byd_v1_2_convex_momentum_budget_v1'
     && value.research_only === true
     && value.trade_ready === false
     && typeof value.signal_date === 'string'
@@ -95,40 +100,30 @@ export function extractFingerprint(body: string | null): string | null {
 
 export function buildRuntimeIndex(issues: GitHubIssueRecord[]): BydRuntimeIndex {
   const events: BydRuntimeEvent[] = [];
-
   for (const issue of issues) {
     if (issue.pull_request) continue;
     const fingerprint = extractFingerprint(issue.body);
     if (!fingerprint) continue;
-
-    // Try to parse the full signal JSON embedded in the body
-    // The signal data is in a JSON code block or inline
     const jsonMatch = issue.body?.match(/```json\n([\s\S]*?)\n```/);
     if (!jsonMatch) continue;
-
     try {
       const record: unknown = JSON.parse(jsonMatch[1]);
-      if (isSignalRecord(record as BydSignalRecord)) {
-        events.push({ issue, record: record as BydSignalRecord });
+      if (isSignalRecord(record) && record.fingerprint === fingerprint) {
+        events.push({ issue, record });
       }
     } catch {
       continue;
     }
   }
-
   events.sort((left, right) =>
     right.record.signal_date.localeCompare(left.record.signal_date)
   );
-
-  return {
-    latestSignal: events[0] ?? null,
-  };
+  return { latestSignal: events[0] ?? null };
 }
 
 async function fetchAllPages<T>(baseUrl: string): Promise<T[]> {
   const results: T[] = [];
   let url: string | null = `${baseUrl}&per_page=100`;
-
   while (url) {
     const response = await fetch(url, {
       headers: {
@@ -136,27 +131,15 @@ async function fetchAllPages<T>(baseUrl: string): Promise<T[]> {
         'X-GitHub-Api-Version': '2022-11-28',
       },
     });
-
     if (!response.ok) {
-      const rateRemaining = response.headers.get('x-ratelimit-remaining');
-      if (rateRemaining === '0') {
-        console.warn(`GitHub API rate limit exhausted after ${results.length} BYD issues`);
-        break;
-      }
-      throw new Error(`GitHub BYD pagination failed (${response.status})`);
+      throw new Error(`GitHub BYD signal ledger failed (${response.status})`);
     }
-
     const page = await response.json() as T[];
     results.push(...page);
-
     const link = response.headers.get('link');
-    url = null;
-    if (link) {
-      const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
-      if (nextMatch) url = nextMatch[1];
-    }
+    const nextMatch = link?.match(/<([^>]+)>;\s*rel="next"/);
+    url = nextMatch?.[1] ?? null;
   }
-
   return results;
 }
 
