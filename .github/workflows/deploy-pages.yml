@@ -265,6 +265,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          timeout: 1800000
 
       - name: Verify deployed frontend contracts
         env:
