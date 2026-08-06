@@ -21,7 +21,10 @@ FORMAL_MODEL_ADAPTERS: dict[str, tuple[str, str]] = {
     "qqqi_qqq_tqqq_v4_2": ("qqq_rotation", "rules_based_allocation"),
     "us_x1_1": ("us_ranker", "cross_sectional_ranker"),
     "cn_x1_1": ("cn_ranker", "cross_sectional_ranker"),
-    "byd_dividend_sleeve_v1_0": ("byd_allocation", "rules_based_allocation"),
+    "byd_v1_2_convex_momentum_budget_v1": (
+        "byd_allocation",
+        "rules_based_allocation",
+    ),
 }
 
 
@@ -61,12 +64,18 @@ def accepted_v1_models(source_root: Path) -> list[str]:
             raise FormalBundleV2SyncError("formal v1 catalog record is invalid")
         model_id = str(row.get("model_id") or "")
         if not model_id or model_id in model_ids:
-            raise FormalBundleV2SyncError(f"duplicate or empty formal model id: {model_id!r}")
+            raise FormalBundleV2SyncError(
+                f"duplicate or empty formal model id: {model_id!r}"
+            )
         if row.get("publication_status") != "accepted_formal_baseline":
-            raise FormalBundleV2SyncError(f"non-accepted record entered formal catalog: {model_id}")
+            raise FormalBundleV2SyncError(
+                f"non-accepted record entered formal catalog: {model_id}"
+            )
         package_path = source_root / str(row.get("path") or "")
         if not package_path.is_file() or _sha256(package_path) != row.get("sha256"):
-            raise FormalBundleV2SyncError(f"formal v1 package digest mismatch: {model_id}")
+            raise FormalBundleV2SyncError(
+                f"formal v1 package digest mismatch: {model_id}"
+            )
         package = _object(package_path)
         if (
             package.get("model_id") != model_id
@@ -74,7 +83,9 @@ def accepted_v1_models(source_root: Path) -> list[str]:
             or package.get("research_only") is not True
             or package.get("trade_ready") is not False
         ):
-            raise FormalBundleV2SyncError(f"formal v1 package boundary mismatch: {model_id}")
+            raise FormalBundleV2SyncError(
+                f"formal v1 package boundary mismatch: {model_id}"
+            )
         model_ids.append(model_id)
     return model_ids
 
