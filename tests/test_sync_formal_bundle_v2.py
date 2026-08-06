@@ -47,6 +47,12 @@ def test_sync_projects_every_accepted_model_deterministically(tmp_path: Path) ->
         assert manifest["research_only"] is True
         assert manifest["trade_ready"] is False
 
+    source_freshness = _read(SOURCE / "freshness.json")
+    projected_freshness = _read(first / "freshness.json")
+    assert projected_freshness == source_freshness
+    assert projected_freshness["cutoff_policy"] == "latest_completed_trading_session"
+    assert receipt_a["source_freshness_sha256"] == receipt_a["formal_bundle_v2_freshness_sha256"]
+
 
 def test_byd_retained_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
     output = tmp_path / "formal"
