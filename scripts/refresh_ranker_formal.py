@@ -397,8 +397,8 @@ def refresh_us(
         evidence={
             "refresh_adapter": "refresh_ranker_formal.us_x1_1",
             "duplicate_trace_sha256": duplicate_hashes,
-            "run_a_identity_sha256": sha256(run_a / "effective_contract.json"),
-            "run_b_identity_sha256": sha256(run_b / "effective_contract.json"),
+            "run_a_identity_sha256": sha256(run_a / "candidate_manifest.json"),
+            "run_b_identity_sha256": sha256(run_b / "candidate_manifest.json"),
         },
     )
     write_object(output, package)
