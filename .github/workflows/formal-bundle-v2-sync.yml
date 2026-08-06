@@ -1,0 +1,132 @@
+name: Formal Bundle v2 Sync
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/formal-bundle-v2-sync.yml
+      - scripts/migrate_formal_v1_to_bundle_v2.py
+      - scripts/sync_formal_bundle_v2.py
+      - tests/test_migrate_formal_v1_to_bundle_v2.py
+      - tests/test_sync_formal_bundle_v2.py
+      - data/research/formal_backtests/**
+      - data/research/formal_model_runs/**
+      - qlib-dashboard/src/hooks/useModels.ts
+      - qlib-dashboard/e2e/static-artifact.spec.ts
+      - qlib-dashboard/e2e/live-pages.spec.ts
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: formal-bundle-v2-sync-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONPATH: .
+
+jobs:
+  project-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - name: Install locked Python environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate generic formal projector
+        run: |
+          uv run ruff check \
+            scripts/migrate_formal_v1_to_bundle_v2.py \
+            scripts/sync_formal_bundle_v2.py \
+            tests/test_migrate_formal_v1_to_bundle_v2.py \
+            tests/test_sync_formal_bundle_v2.py
+          uv run mypy \
+            scripts/migrate_formal_v1_to_bundle_v2.py \
+            scripts/sync_formal_bundle_v2.py
+          uv run pytest \
+            tests/test_migrate_formal_v1_to_bundle_v2.py \
+            tests/test_sync_formal_bundle_v2.py \
+            -q --strict-markers --tb=short
+      - name: Project all accepted formal models twice
+        run: |
+          uv run python scripts/sync_formal_bundle_v2.py \
+            --output-root .research/formal-run-a \
+            --receipt .research/formal-receipt-a.json
+          uv run python scripts/sync_formal_bundle_v2.py \
+            --output-root .research/formal-run-b \
+            --receipt .research/formal-receipt-b.json
+          diff -ru .research/formal-run-a .research/formal-run-b
+          cmp .research/formal-receipt-a.json .research/formal-receipt-b.json
+      - name: Materialize catalog-complete Bundle v2 projection
+        run: |
+          rsync -a --delete \
+            --exclude formal-bundle-v2-sync-receipt.json \
+            .research/formal-run-a/ data/research/formal_model_runs/
+      - name: Enforce v1 and v2 model-set parity
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+
+          v1 = json.loads(Path('data/research/formal_backtests/catalog.json').read_text())
+          v2_root = Path('data/research/formal_model_runs')
+          v2 = json.loads((v2_root / 'catalog.json').read_text())
+          validate_catalog(v2)
+          accepted = [row['model_id'] for row in v1['records']]
+          projected = [row['model_version_id'] for row in v2['records']]
+          assert set(accepted) == set(projected), (accepted, projected)
+          assert len(accepted) == len(projected)
+          assert 'byd_dividend_sleeve_v1_0' in projected
+          assert 'cn_x1_1' in projected
+          assert 'cn_x1_0' not in projected
+          for row in v2['records']:
+              validate_manifest(json.loads((v2_root / row['manifest_path']).read_text()))
+          PY
+      - name: Validate frontend against generated catalog
+        run: |
+          cd qlib-dashboard
+          npm ci
+          npm run lint
+          npx tsc --noEmit
+          npm test -- --run
+          npm run build
+      - name: Commit deterministic projection to the review branch
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git config user.name 'AlphaEngine Release Agent'
+          git config user.email 'release-agent@alphaengine.local'
+          git add data/research/formal_model_runs
+          if git diff --cached --quiet; then
+            echo 'Formal Bundle v2 projection is already byte-stable.'
+          else
+            git commit -m 'release: sync all accepted formal models into Bundle v2'
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+      - name: Upload projection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: formal-bundle-v2-sync-${{ github.run_id }}
+          path: |
+            .research/formal-receipt-a.json
+            .research/formal-run-a
+          if-no-files-found: error
+          retention-days: 90
