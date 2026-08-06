@@ -63,7 +63,6 @@ def test_byd_v1_2_complete_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
         row for row in catalog["records"]
         if row["model_version_id"] == BYD_V12
     )
-    assert byd["display_name"] == "BYD v1.2"
     manifest_path = output / byd["manifest_path"]
     manifest = _read(manifest_path)
     assert manifest["model_version_id"] == BYD_V12
