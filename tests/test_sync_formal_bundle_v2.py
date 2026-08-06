@@ -63,9 +63,10 @@ def test_byd_v1_2_complete_ledgers_enter_bundle_v2(tmp_path: Path) -> None:
         row for row in catalog["records"]
         if row["model_version_id"] == BYD_V12
     )
+    assert byd["display_name"] == "BYD v1.2"
     manifest_path = output / byd["manifest_path"]
     manifest = _read(manifest_path)
-    assert manifest["display_name"] == "BYD v1.2"
+    assert manifest["model_version_id"] == BYD_V12
     sections = {row["section_id"]: row for row in manifest["sections"]}
     for section_id in ("performance", "portfolio", "trades", "attribution", "lineage"):
         assert sections[section_id]["availability_status"] == "available"
