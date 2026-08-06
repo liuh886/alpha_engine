@@ -1,20 +1,19 @@
-schema_version: '1.1'
+schema_version: '1.2'
 model_id: byd_dividend_sleeve_v1_2
-public_model_id: byd_v1_2
-display_name: BYD v1.2
-technical_identity_note: relaxed trend expansion at 110% replaces v1.1 as accepted formal baseline
+public_model_id: byd_v1_2_relaxed_110_exploratory
+display_name: BYD v1.2 relaxed trend expansion 110% (historical exploration)
+technical_identity_note: post-result relaxed trend experiment retained for audit but not accepted as a formal baseline
 market: cn
 asset_class: single_equity_allocation
-status: accepted_formal_baseline
+status: historical_exploratory_candidate_not_promoted
 source_strategy: v1_2_relaxed_trend_expansion
 source_issue: 560
-promotion_issue: 560
-evolution_issue: 560
-monitoring_issue: 529
+source_pr: 588
+governance_correction_issue: 592
 research_only: true
 trade_ready: false
 fresh_historical_holdout: false
-supersedes: byd_dividend_sleeve_v1_0
+supersedes: null
 expansion_module: src/research/byd_trend_fix_v1.py
 portfolio:
   risk_on:
@@ -49,7 +48,6 @@ data_contract:
   etf_artifact_sha256: 7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f
   etf_adjusted_sha256: 2173afbe2fcbc8875de55ce0ff9bcb25b1c9f184c5cd273ade682244393c67a5
   historical_cutoff: '2026-08-03'
-  prospective_store: data/research/byd_515180_prospective
 expansion_rules:
   entry_base_byd_weight: 1.0
   entry_market_state: bull
@@ -61,28 +59,23 @@ expansion_rules:
   primary_byd_weight: 1.10
   robustness_byd_weight: 1.05
   diagnostic_byd_weight: 1.15
+historical_result:
+  cagr_delta_pp_vs_v1_1: 0.98
+  total_return_delta_pp_vs_v1_1: 32.33
+  maximum_drawdown_delta_pp_vs_v1_1: -0.43
+  promotion_gates_passed: 8
+  promotion_gates_total: 9
+  failed_gate: maximum_positive_period_contribution_share
+  failed_gate_value: 0.922
+  failed_gate_limit: 0.60
+  retrospective_2025_plus_relative_terminal_wealth: -0.0107
+  governed_decision: retain_byd_v1_1
 formal_publication:
-  release_channel: formal_catalog
-  package: data/research/formal_backtests/byd_dividend_sleeve_v1_2.json
-  publication_status: accepted_formal_baseline
-  performance_trace: exact_daily_open_to_open
-  prospective_monitoring: append_only
-  public_display_name: BYD v1.2
-interpretation:
-  mechanism: BYD V1.0 core timing + 515180 defensive sleeve + relaxed trend expansion at 110% during strong bull markets with financing cost
-  version_semantics: replaces V1.1 by adding a small financed BYD expansion (110%) when V1.0 signals risk-on in a strong bull trend with moderate drawdown. Removes the vol_state filter that limited the original v1.2 to only 86 expansion sessions, achieving 396 sessions while maintaining signal quality.
-  key_improvements:
-    - CAGR +0.98pp vs v1.1 (36.06% vs 35.07%)
-    - Total return +32.33pp vs v1.1 (614.14% vs 581.81%)
-    - MDD -0.43pp vs v1.1 (within 2pp tolerance)
-    - 8/9 promotion gates passed
-  known_limitations:
-    - Concentration gate (92.2% vs 60%): structural due to development period (2019-2022) having 77.6% CAGR vs 7.3%/6.1% in later periods
-    - 2025+ quarantine period shows -1.07% relative terminal wealth vs v1.1
-  prohibited_extensions:
-    - additional ETF search
-    - trend timing of 515180
-    - recovery overlay
-    - binary full-allocation rotation
-    - vol_state filter reintroduction
-    - post-result rule modification
+  allowed: false
+  package: null
+  publication_status: not_promoted
+  reason: candidate failed frozen concentration and later-period gates and was designed after observing prior failures
+prohibited_extensions:
+  - present this config as an accepted formal baseline
+  - use this rule as the prospective candidate for issue 592
+  - additional threshold repair on consumed history

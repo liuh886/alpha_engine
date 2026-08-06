@@ -1,0 +1,77 @@
+schema_version: '1.0'
+candidate_id: byd_v1_2_convex_momentum_budget_v1
+issue: 596
+source_challenge_issue: 592
+source_challenge_pr: 594
+status: historically_selected_for_prospective_validation
+research_only: true
+trade_ready: false
+promotion_authorized: false
+automatic_promotion_allowed: false
+fresh_historical_holdout: false
+historical_evidence_consumed: true
+immutable_inputs:
+  byd_snapshot: data/research/byd_canonical_v1_snapshot.tar.xz
+  byd_snapshot_sha256: 2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179
+  etf_artifact: data/research/515180_canonical_v1_artifact.zip.b64
+  etf_decoded_sha256: 7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f
+  historical_cutoff: '2026-08-03'
+baseline:
+  display_name: BYD v1.1
+  technical_model_id: byd_dividend_sleeve_v1_0
+frozen_state:
+  source_module: src/research/byd_v1_2_trend_expansion.py
+  rule_identity: original_1125_trend_state_v1
+  thresholds_mutable: false
+exposure_rule:
+  maximum_financed_increment: 0.125
+  momentum_field: mom_20
+  full_increment_momentum: 0.15
+  convex_power: 4
+  formula: 0.125 * min(1, max(mom_20, 0) / 0.15) ** 4
+  outside_frozen_state_increment: 0.0
+execution:
+  signal_time: session_close_t
+  execution_time: next_common_independently_confirmed_eligible_open_t_plus_1
+  ineligible_open_policy: keep_pending_target
+  primary_transaction_cost_bps_per_absolute_weight_change: 20
+  stress_transaction_cost_bps_per_absolute_weight_change: 40
+  primary_annual_financing_rate: 0.06
+  stress_annual_financing_rate: 0.10
+  financing_day_count: 252
+historical_diagnostic_gates:
+  cagr_improvement_pp_gte: 0.50
+  maximum_drawdown_worsening_pp_lte: 2.0
+  stress_relative_terminal_wealth_positive: true
+  fixed_validation_relative_terminal_wealth_positive: true
+  retrospective_2025_plus_relative_terminal_wealth_positive: true
+  maximum_positive_period_contribution_share: 0.60
+  maximum_positive_episode_contribution_share: 0.40
+  minimum_completed_expansion_episodes: 10
+  maximum_round_trips_per_year: 3.0
+  leave_any_single_episode_out_relative_wealth_positive: true
+  minimum_passing_neighbor_specs: 3
+neighbor_specs:
+  - {convex_power: 3.0, full_increment_momentum: 0.18}
+  - {convex_power: 3.25, full_increment_momentum: 0.17}
+  - {convex_power: 3.5, full_increment_momentum: 0.16}
+  - {convex_power: 4.0, full_increment_momentum: 0.16}
+  - {convex_power: 4.0, full_increment_momentum: 0.19}
+prospective_promotion_gates:
+  minimum_forward_months: 12
+  minimum_completed_expansion_episodes: 10
+  minimum_nonzero_financed_sessions: 126
+  primary_relative_terminal_wealth_positive: true
+  stress_relative_terminal_wealth_positive: true
+  candidate_calmar_not_below_baseline: true
+  maximum_drawdown_worsening_pp_lte: 2.0
+  maximum_positive_episode_contribution_share: 0.40
+  maximum_positive_quarter_contribution_share: 0.60
+  automatic_promotion_allowed: false
+prohibited:
+  - modify original frozen state thresholds
+  - alter 0.15 full-increment momentum after prospective launch
+  - alter convex power after prospective launch
+  - add factors or combine overlays
+  - reuse historical diagnostics as fresh validation
+  - automatic formal promotion
