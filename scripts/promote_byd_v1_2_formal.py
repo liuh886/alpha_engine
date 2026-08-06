@@ -19,7 +19,6 @@ from scripts.byd_formal_publication_common import (
     ETF_ADJUSTED_SHA256,
     ETF_ARTIFACT_SHA256,
     allocation_action,
-    read_object,
     write_json,
 )
 from src.research.byd_515180_allocation import (
@@ -64,26 +63,11 @@ def _weights(row: pd.Series) -> dict[str, float]:
 
 
 def _signal_monitoring(root: Path) -> dict[str, Any]:
-    latest = root / "latest.json"
-    if not latest.exists():
-        return {
-            "status": "formal_signal_ledger_pending_first_evaluation",
-            "ledger": root.as_posix(),
-            "latest_signal_date": None,
-            "latest_fingerprint": None,
-            "latest_target_weights": None,
-            "delivery_status": None,
-        }
-    payload = read_object(latest)
-    if payload.get("model_id") != MODEL_ID:
-        raise BYDV12FormalPromotionError("signal ledger model identity mismatch")
+    """Declare the independent live ledger without embedding mutable state."""
     return {
-        "status": "formal_signal_monitoring_active",
+        "status": "separate_runtime_signal_ledger",
         "ledger": root.as_posix(),
-        "latest_signal_date": payload.get("signal_date"),
-        "latest_fingerprint": payload.get("fingerprint"),
-        "latest_target_weights": payload.get("target_weights"),
-        "delivery_status": payload.get("delivery_status"),
+        "runtime_state_embedded": False,
     }
 
 
@@ -373,8 +357,10 @@ def promote(
     generated_at: str,
 ) -> dict[str, Any]:
     root = root.resolve()
-    catalog = read_object(root / "catalog.json")
-    freshness = read_object(root / "freshness.json")
+    catalog = json.loads((root / "catalog.json").read_text(encoding="utf-8"))
+    freshness = json.loads((root / "freshness.json").read_text(encoding="utf-8"))
+    if not isinstance(catalog, dict) or not isinstance(freshness, dict):
+        raise BYDV12FormalPromotionError("formal catalog or freshness root is invalid")
     markets = freshness.get("markets")
     if not isinstance(markets, dict) or not markets.get("cn"):
         raise BYDV12FormalPromotionError("CN formal freshness cutoff is missing")
