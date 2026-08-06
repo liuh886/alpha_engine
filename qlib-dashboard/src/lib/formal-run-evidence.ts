@@ -99,15 +99,32 @@ function parseReport(value: unknown): ReportRow[] {
 }
 
 function parsePositions(value: unknown): Position[] {
-  return records(value, 'portfolio.positions').map((row, index) => {
+  const positions = records(value, 'portfolio.positions').map((row, index) => {
     const date = String(row.date ?? '');
     const instrument = String(row.instrument ?? '');
     const weight = Number(row.weight);
-    if (!date || !instrument || !Number.isFinite(weight) || weight < 0 || weight > 1.0000001) {
+    if (!date || !instrument || !Number.isFinite(weight)) {
       throw new Error(`portfolio.positions row ${index} is invalid.`);
     }
     return { ...row, date, instrument, weight } as Position;
   });
+
+  const dailyWeights = new Map<string, { total: number; instruments: Set<string> }>();
+  for (const position of positions) {
+    const day = dailyWeights.get(position.date) ?? { total: 0, instruments: new Set<string>() };
+    if (day.instruments.has(position.instrument)) {
+      throw new Error(`portfolio.positions contains duplicate ${position.instrument} on ${position.date}.`);
+    }
+    day.instruments.add(position.instrument);
+    day.total += position.weight;
+    dailyWeights.set(position.date, day);
+  }
+  for (const [date, day] of dailyWeights) {
+    if (Math.abs(day.total - 1) > 1e-6) {
+      throw new Error(`portfolio.positions net weight is ${day.total} on ${date}; expected 1.`);
+    }
+  }
+  return positions;
 }
 
 export function metricById(metrics: CanonicalMetricV2[], metricId: string): CanonicalMetricV2 | null {
