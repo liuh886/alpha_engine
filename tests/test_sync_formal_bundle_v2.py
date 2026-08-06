@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from scripts.promote_byd_v1_2_formal import _signal_monitoring
 from scripts.sync_formal_bundle_v2 import FORMAL_MODEL_ADAPTERS, accepted_v1_models, sync
 from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
 
@@ -12,6 +13,27 @@ BYD_V12 = "byd_v1_2_convex_momentum_budget_v1"
 
 def _read(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_live_signal_state_is_not_embedded_in_formal_package(tmp_path: Path) -> None:
+    empty = tmp_path / "empty-ledger"
+    populated = tmp_path / "populated-ledger"
+    populated.mkdir()
+    (populated / "latest.json").write_text(
+        '{"model_id":"byd_v1_2_convex_momentum_budget_v1","fingerprint":"mutable"}\n',
+        encoding="utf-8",
+    )
+    expected_empty = {
+        "status": "separate_runtime_signal_ledger",
+        "ledger": empty.as_posix(),
+        "runtime_state_embedded": False,
+    }
+    expected_populated = {
+        **expected_empty,
+        "ledger": populated.as_posix(),
+    }
+    assert _signal_monitoring(empty) == expected_empty
+    assert _signal_monitoring(populated) == expected_populated
 
 
 def test_current_formal_catalog_matches_supported_adapters() -> None:
