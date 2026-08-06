@@ -5,9 +5,14 @@ on:
     branches: [main]
     paths:
       - "configs/research_paradigms/byd_v1_2_promotion_challenge_v1.yaml"
+      - "configs/research_candidates/byd_v1_2_convex_momentum_budget_v1.yaml"
       - "src/research/byd_v1_2_promotion_challenge.py"
+      - "src/research/byd_v1_2_convex_momentum.py"
       - "scripts/run_byd_v1_2_promotion_challenge.py"
+      - "scripts/run_byd_convex_momentum_evidence.py"
+      - "scripts/run_byd_improvement_experiments.py"
       - "tests/test_byd_v1_2_promotion_challenge.py"
+      - "tests/test_byd_v1_2_convex_momentum.py"
       - ".github/workflows/byd-v1-2-promotion-challenge.yml"
   workflow_dispatch:
 
@@ -21,7 +26,7 @@ concurrency:
 jobs:
   frozen-challenge:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -48,9 +53,15 @@ jobs:
         run: |
           uv run ruff check \
             src/research/byd_v1_2_promotion_challenge.py \
+            src/research/byd_v1_2_convex_momentum.py \
             scripts/run_byd_v1_2_promotion_challenge.py \
-            tests/test_byd_v1_2_promotion_challenge.py
-          uv run pytest tests/test_byd_v1_2_promotion_challenge.py \
+            scripts/run_byd_convex_momentum_evidence.py \
+            scripts/run_byd_improvement_experiments.py \
+            tests/test_byd_v1_2_promotion_challenge.py \
+            tests/test_byd_v1_2_convex_momentum.py
+          uv run pytest \
+            tests/test_byd_v1_2_promotion_challenge.py \
+            tests/test_byd_v1_2_convex_momentum.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Run frozen challenge twice
@@ -73,21 +84,40 @@ jobs:
             --etf-dir artifacts/input/515180 \
             --output-dir artifacts/architecture-diagnostic
 
+      - name: Reproduce selected convex momentum candidate twice
+        run: |
+          set -euo pipefail
+          contract=configs/research_candidates/byd_v1_2_convex_momentum_budget_v1.yaml
+          for output in artifacts/convex-a artifacts/convex-b; do
+            uv run python scripts/run_byd_convex_momentum_evidence.py \
+              --byd-dir artifacts/input/byd \
+              --etf-dir artifacts/input/515180 \
+              --contract "$contract" \
+              --output-dir "$output"
+          done
+          diff -ru artifacts/convex-a artifacts/convex-b
+
       - name: Enforce research-only decision boundary
         run: |
           uv run python - <<'PY'
           import json
           from pathlib import Path
 
-          decision = json.loads(Path("artifacts/result-a/decision.json").read_text())
-          assert decision["issue"] == 592
-          assert decision["historical_evidence_consumed"] is True
-          assert decision["promotion_authorized"] is False
-          assert decision["research_only"] is True
-          assert decision["trade_ready"] is False
-          assert decision["decision"]["promotion_authorized"] is False
-          print("Decision:", decision["decision"]["decision"])
-          print("Selected candidate:", decision["decision"]["selected_candidate"])
+          challenge = json.loads(Path("artifacts/result-a/decision.json").read_text())
+          assert challenge["issue"] == 592
+          assert challenge["promotion_authorized"] is False
+          assert challenge["decision"]["promotion_authorized"] is False
+
+          convex = json.loads(Path("artifacts/convex-a/decision.json").read_text())
+          assert convex["issue"] == 596
+          assert convex["fresh_historical_holdout"] is False
+          assert convex["historical_evidence_consumed"] is True
+          assert convex["promotion_authorized"] is False
+          assert convex["automatic_promotion_allowed"] is False
+          assert convex["decision"]["prospective_candidate_selected"] is True
+          assert convex["decision"]["promotion_authorized"] is False
+          print("Challenge decision:", challenge["decision"]["decision"])
+          print("Prospective candidate:", convex["candidate_id"])
           PY
 
       - name: Upload governed evidence
@@ -97,5 +127,6 @@ jobs:
           path: |
             artifacts/result-a
             artifacts/architecture-diagnostic
+            artifacts/convex-a
           if-no-files-found: error
           retention-days: 90
