@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const FORMAL_MODELS = ['QQQ Rotation v4.2', 'US x1.1', 'CN x1.0'] as const;
-const FORMAL_VERSIONS = ['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0'] as const;
+const FORMAL_MODELS = ['QQQ Rotation v4.2', 'US x1.1', 'CN x1.1', 'BYD Dividend Sleeve V1.0'] as const;
+const FORMAL_VERSIONS = ['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_1', 'byd_dividend_sleeve_v1_0'] as const;
 
 type FormalCatalog = {
   schema_version?: string;
@@ -53,6 +53,13 @@ async function exerciseAvailableEvidence(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Frozen portfolio contract' })).toBeVisible();
 }
 
+async function expectCompleteLedgers(page: Page): Promise<void> {
+  await page.getByRole('tab', { name: 'Trades', exact: true }).click();
+  await expect(page.getByText('Trade ledger unavailable')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Attribution', exact: true }).click();
+  await expect(page.getByText('Attribution unavailable')).toHaveCount(0);
+}
+
 test('live Pages renders all governed formal Bundle v2 baselines end to end', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   const failedRequiredResponses: string[] = [];
@@ -84,10 +91,8 @@ test('live Pages renders all governed formal Bundle v2 baselines end to end', as
   for (const model of FORMAL_MODELS) {
     await expect(catalogRegion.getByRole('button', { name: new RegExp(model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
   }
-  await expect(catalogRegion.getByText('formal', { exact: true })).toHaveCount(3);
+  await expect(catalogRegion.getByText('formal', { exact: true })).toHaveCount(FORMAL_MODELS.length);
 
-  // The unified workspace may expose non-formal repository or local runs, but they must
-  // remain visibly segregated and must never enter the formal Bundle v2 allow-list.
   const legacyLocalRun = catalogRegion.getByRole('button').filter({ hasText: 'US x1.0' });
   await expect(legacyLocalRun).toHaveCount(1);
   await expect(legacyLocalRun.getByText('local', { exact: true })).toBeVisible();
@@ -98,9 +103,10 @@ test('live Pages renders all governed formal Bundle v2 baselines end to end', as
   expect(formalCatalog.channel).toBe('formal');
   expect(formalCatalog.research_only).toBe(true);
   expect(formalCatalog.trade_ready).toBe(false);
-  expect(formalCatalog.records).toHaveLength(3);
+  expect(formalCatalog.records).toHaveLength(FORMAL_MODELS.length);
   expect(new Set(formalCatalog.records?.map((record) => record.model_version_id))).toEqual(new Set(FORMAL_VERSIONS));
   expect(formalCatalog.records?.some((record) => record.model_version_id === 'us_x1_0')).toBe(false);
+  expect(formalCatalog.records?.some((record) => record.model_version_id === 'cn_x1_0')).toBe(false);
   for (const record of formalCatalog.records ?? []) {
     expect(record.publication_status).toBe('accepted_formal_baseline');
     expect(record.bundle_id).toMatch(/^[a-f0-9]{64}$/);
@@ -108,29 +114,12 @@ test('live Pages renders all governed formal Bundle v2 baselines end to end', as
     expect(record.manifest_path).toMatch(/manifest\.json$/);
   }
 
-  await openRun(page, 'QQQ Rotation v4.2');
-  await exerciseAvailableEvidence(page);
-  await page.getByRole('tab', { name: 'Trades', exact: true }).click();
-  await expect(page.getByText('Trade ledger unavailable')).toHaveCount(0);
-  await page.getByRole('tab', { name: 'Attribution', exact: true }).click();
-  await expect(page.getByText('Attribution unavailable')).toHaveCount(0);
-  await assertNoHorizontalOverflow(page);
-
-  await openRun(page, 'US x1.1');
-  await exerciseAvailableEvidence(page);
-  await page.getByRole('tab', { name: 'Trades', exact: true }).click();
-  await expect(page.getByText('Trade ledger unavailable')).toHaveCount(0);
-  await page.getByRole('tab', { name: 'Attribution', exact: true }).click();
-  await expect(page.getByText('Attribution unavailable')).toHaveCount(0);
-  await assertNoHorizontalOverflow(page);
-
-  await openRun(page, 'CN x1.0');
-  await exerciseAvailableEvidence(page);
-  await page.getByRole('tab', { name: 'Trades', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Trade ledger unavailable' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Attribution', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Attribution unavailable' })).toBeVisible();
-  await assertNoHorizontalOverflow(page);
+  for (const model of FORMAL_MODELS) {
+    await openRun(page, model);
+    await exerciseAvailableEvidence(page);
+    await expectCompleteLedgers(page);
+    await assertNoHorizontalOverflow(page);
+  }
 
   expect(pageErrors).toEqual([]);
   expect(failedRequiredResponses).toEqual([]);
