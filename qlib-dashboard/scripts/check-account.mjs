@@ -37,8 +37,11 @@ for (const value of [
 for (const value of ['data-account-slot', 'alpha-account-slot', 'research-topbar-actions']) {
   if (!app.includes(value)) throw new Error(`research topbar missing account integration: ${value}`);
 }
-for (const value of ['.alpha-account-slot .hao-account-trigger', 'box-shadow: none', 'backdrop-filter: none', '.hao-account-mount.is-floating']) {
+for (const value of ['.alpha-account-slot .hao-account-trigger', 'box-shadow: none', 'backdrop-filter: none']) {
   if (!styles.includes(value)) throw new Error(`account integration styles missing: ${value}`);
+}
+if (styles.includes('is-floating')) {
+  throw new Error('AlphaEngine must not retain compatibility with the retired floating account state.');
 }
 
 const combined = `${html}\n${config}\n${styles}\n${app}`;
@@ -46,4 +49,4 @@ for (const forbidden of [/sk_(live|test)_/, /whsec_/, /sb_secret_/, /service_rol
   if (forbidden.test(combined)) throw new Error(`browser assets contain forbidden material: ${forbidden}`);
 }
 
-console.log('AlphaEngine account uses canonical Account Shell v2 and is embedded in the research topbar.');
+console.log('AlphaEngine account uses only the native research-topbar slot and Account Shell v2.');
