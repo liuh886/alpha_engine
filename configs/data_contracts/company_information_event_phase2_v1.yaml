@@ -1,0 +1,55 @@
+schema_version: "1.0"
+contract_id: company_information_event_phase2_v1
+base_contract: company_information_event_v1
+market: cn
+pool_id: cn_selected_equities_v3
+status: research_only
+trade_ready: false
+validation_returns_inspected: false
+
+source_policy:
+  source_of_truth: cninfo_primary_announcements
+  transport: akshare_stock_zh_a_disclosure_report_cninfo
+  current_state_snapshot_backfill: prohibited
+  date_only_announcement_policy: first_provider_session_strictly_after_announcement_date
+  no_result_keyerror_policy: narrow_expected_empty_only
+  other_schema_errors: provider_failed
+
+families:
+  buyback:
+    keyword: 回购
+    stages: [plan, approval, first_execution, progress, completion]
+    exclude_title_tokens:
+      - 限制性股票
+      - 股票期权
+      - 业绩补偿
+      - 质押式回购
+      - 逆回购
+      - 债券回购
+      - 回购注销
+  restricted_unlock:
+    keyword: 限售
+    stages: [scheduled]
+    required_title_concepts:
+      - 限售股份上市流通
+      - 限售股上市流通
+      - 解除限售股份上市流通
+      - 限售股份解除限售
+    event_driven_path_authorized: false
+
+phase_0:
+  calibration_half_years: [2022H2, 2023H1, 2023H2]
+  recent_event_sessions: 20
+  fixed_rebalance:
+    recent_top3_coverage_min: 0.15
+    distinct_top3_events_min: 30
+    max_sector_share: 0.45
+    first_session_mapping_min: 0.95
+    primary_source_min: 0.95
+  event_driven:
+    top3_events_min: 60
+    symbols_min: 20
+    sectors_min: 6
+    timestamp_completeness_min: 0.95
+    first_session_mapping_min: 0.95
+    max_stage_share: 0.70
