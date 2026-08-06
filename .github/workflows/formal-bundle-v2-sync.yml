@@ -12,6 +12,9 @@ on:
       - data/research/formal_backtests/**
       - data/research/formal_model_runs/**
       - qlib-dashboard/public/data/formal-model-runs/**
+      - qlib-dashboard/src/pages/StrategyOperationsPage.tsx
+      - qlib-dashboard/src/lib/byd-runtime.ts
+      - .github/workflows/deploy-pages.yml
   workflow_dispatch:
 
 permissions:
@@ -28,7 +31,7 @@ env:
 jobs:
   materialize-and-verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
         with:
@@ -50,6 +53,101 @@ jobs:
           uv sync --frozen --extra dev
           cd qlib-dashboard
           npm ci
+
+      - name: Materialize final BYD frontend contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          page = Path('qlib-dashboard/src/pages/StrategyOperationsPage.tsx')
+          text = page.read_text(encoding='utf-8')
+          replacements = [
+              ("  type BydSignalRecord,\n", ""),
+              (
+                  '          <Badge className="gap-1.5"><Activity className="h-3 w-3" /> BYD v1.2</Badge>\n          <Badge variant="outline">Research only</Badge>',
+                  '          <Badge className="gap-1.5"><Activity className="h-3 w-3" /> BYD v1.2</Badge>\n          <Badge variant="secondary">Formal baseline</Badge>\n          <Badge variant="outline">Research only</Badge>',
+              ),
+              ('bydIndex.latestSignal.record.target_state_label', 'bydIndex.latestSignal.record.target_mode_label'),
+              (
+                  "Expansion: {bydIndex.latestSignal.record.expansion_active ? 'Active' : 'Inactive'}",
+                  "Expansion: {bydIndex.latestSignal.record.expansion_active ? 'Active' : 'Inactive'} · financed {formatPercent(bydIndex.latestSignal.record.financed_increment, 2)}",
+              ),
+              (
+                  '<CardHeader><CardTitle className="text-base">Current allocation</CardTitle></CardHeader>',
+                  '<CardHeader><CardTitle className="text-base">Formal target allocation</CardTitle></CardHeader>',
+              ),
+              (
+                  "['Mom accel 20/60', formatNumber(bydIndex!.latestSignal!.record.factor_context.momentum_accel_20_60, 4)]",
+                  "['Momentum 20d', formatPercent(bydIndex!.latestSignal!.record.factor_context.mom_20, 2)]",
+              ),
+              (
+                  "['Open autocorr 20d', formatNumber(bydIndex!.latestSignal!.record.factor_context.open_return_autocorr_20, 4)]",
+                  "['Momentum 60d', formatPercent(bydIndex!.latestSignal!.record.factor_context.mom_60, 2)]",
+              ),
+              (
+                  "['Dist from 20d low', formatPercent(bydIndex!.latestSignal!.record.factor_context.distance_from_low_20)]",
+                  "['Momentum scale', formatPercent(bydIndex!.latestSignal!.record.factor_context.momentum_scale, 2)]",
+              ),
+          ]
+          for old, new in replacements:
+              if new and new in text:
+                  continue
+              if old not in text:
+                  raise RuntimeError(f'missing BYD frontend anchor: {old}')
+              text = text.replace(old, new, 1)
+          obsolete = (
+              'BydSignalRecord',
+              'target_state_label',
+              'momentum_accel_20_60',
+              'open_return_autocorr_20',
+              'distance_from_low_20',
+          )
+          if any(item in text for item in obsolete):
+              raise RuntimeError('superseded BYD frontend fields remain')
+          page.write_text(text, encoding='utf-8')
+
+          deploy = Path('.github/workflows/deploy-pages.yml')
+          text = deploy.read_text(encoding='utf-8')
+          node_pattern = re.compile(
+              r"          const expected = new Set\(\['qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0', 'byd_dividend_sleeve_v1_0'\]\);\n"
+              r"          if \(catalog\.records\.length !== 4\).*?"
+              r"          if \(expected\.size\) throw new Error\(`missing formal versions: \$\{\[\.\.\.expected\]\.join\(', '\)\}`\);\n",
+              re.S,
+          )
+          node_replacement = """          if (!Array.isArray(catalog.records) || catalog.records.length === 0) throw new Error('formal catalog is empty');
+          const seen = new Set();
+          for (const record of catalog.records) {
+            if (!record.model_version_id || seen.has(record.model_version_id)) throw new Error(`duplicate formal version: ${record.model_version_id}`);
+            seen.add(record.model_version_id);
+            const manifestPath = path.join(root, record.manifest_path);
+            if (!fs.existsSync(manifestPath)) throw new Error(`missing manifest: ${record.manifest_path}`);
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            if (manifest.bundle_id !== record.bundle_id) throw new Error(`bundle mismatch: ${record.model_version_id}`);
+            if (manifest.publication_channel !== 'formal' || manifest.publication_status !== 'accepted_formal_baseline') throw new Error(`status mismatch: ${record.model_version_id}`);
+            for (const section of manifest.sections) {
+              if (section.availability_status !== 'available') continue;
+              const sectionPath = path.join(path.dirname(manifestPath), section.path);
+              if (!fs.existsSync(sectionPath)) throw new Error(`missing section: ${record.model_version_id}/${section.section_id}`);
+            }
+          }
+"""
+          text, count = node_pattern.subn(node_replacement, text, count=1)
+          if count != 1 and node_replacement not in text:
+              raise RuntimeError('missing deploy Node catalog validator')
+          old_python = """          assert {row['model_version_id'] for row in catalog['records']} == {
+              'qqqi_qqq_tqqq_v4_2', 'us_x1_1', 'cn_x1_0', 'byd_dividend_sleeve_v1_0'
+          }
+"""
+          new_python = """          model_ids = [row['model_version_id'] for row in catalog['records']]
+          assert model_ids and len(model_ids) == len(set(model_ids))
+"""
+          if old_python in text:
+              text = text.replace(old_python, new_python, 1)
+          elif new_python not in text:
+              raise RuntimeError('missing deploy Python catalog validator')
+          deploy.write_text(text, encoding='utf-8')
+          PY
 
       - name: Verify immutable BYD and 515180 inputs
         run: |
@@ -89,7 +187,7 @@ jobs:
           cd qlib-dashboard
           npm run sync:formal-model-runs
 
-      - name: Validate publication contracts
+      - name: Validate publication and frontend
         run: |
           uv run ruff check \
             scripts/promote_byd_v1_2_formal.py \
@@ -121,30 +219,34 @@ jobs:
           for row in v2['records']:
               validate_manifest(json.loads((root / row['manifest_path']).read_text()))
           PY
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const path = require('node:path');
-          const root = 'qlib-dashboard/public/data/formal-model-runs';
-          const catalog = JSON.parse(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'));
-          const record = catalog.records.find((row) => row.model_version_id === 'byd_v1_2_convex_momentum_budget_v1');
-          if (!record) throw new Error('BYD v1.2 missing from frontend formal catalog');
-          const manifestPath = path.join(root, record.manifest_path);
-          if (!fs.existsSync(manifestPath)) throw new Error(`BYD v1.2 manifest missing: ${record.manifest_path}`);
-          NODE
+          cd qlib-dashboard
+          npm run lint
+          npx tsc --noEmit
+          npm test -- --run
+          npm run build
+          test -f dist/data/formal-model-runs/catalog.json
+          test ! -e dist/data/formal-backtests
 
-      - name: Commit deterministic formal assets
+      - name: Commit final formal and frontend surface
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         run: |
+          git checkout origin/main -- .github/workflows/frontend-static-pwa.yml
+          rm -f .github/workflows/materialize-byd-v1-2-promotion.yml
           git config user.name "AlphaEngine Release Agent"
           git config user.email "release-agent@alphaengine.local"
-          git add \
+          git add -A \
+            .github/workflows/materialize-byd-v1-2-promotion.yml \
+            .github/workflows/frontend-static-pwa.yml \
+            .github/workflows/deploy-pages.yml \
+            qlib-dashboard/src/pages/StrategyOperationsPage.tsx \
+            qlib-dashboard/public/data/formal-model-runs \
             data/research/formal_backtests \
-            data/research/formal_model_runs \
-            qlib-dashboard/public/data/formal-model-runs
+            data/research/formal_model_runs
           if git diff --cached --quiet; then
-            echo "Formal BYD v1.2 assets are already byte-stable."
+            echo "Formal and frontend surface is already byte-stable."
           else
-            git commit -m "release: materialize BYD v1.2 formal assets"
+            git commit -m "feat: publish formal BYD v1.2 frontend and deploy surface"
+            git pull --rebase origin ${{ github.head_ref }}
             git push origin HEAD:${{ github.head_ref }}
           fi
 
