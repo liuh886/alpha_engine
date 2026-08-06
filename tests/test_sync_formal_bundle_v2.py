@@ -33,7 +33,16 @@ def test_live_signal_state_is_not_embedded_in_formal_package(tmp_path: Path) -> 
         "ledger": populated.as_posix(),
     }
     assert _signal_monitoring(empty) == expected_empty
-    assert _signal_monitoring(populated) == expected_populated
+    populated_monitoring = _signal_monitoring(populated)
+    assert populated_monitoring == expected_populated
+    assert set(populated_monitoring) == {
+        "status",
+        "ledger",
+        "runtime_state_embedded",
+    }
+    assert "fingerprint" not in populated_monitoring
+    assert "latest_signal_date" not in populated_monitoring
+    assert "delivery_status" not in populated_monitoring
 
 
 def test_current_formal_catalog_matches_supported_adapters() -> None:
