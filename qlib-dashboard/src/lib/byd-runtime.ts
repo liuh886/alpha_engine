@@ -1,5 +1,6 @@
 const REPOSITORY = 'liuh886/alpha_engine';
 const API_ROOT = `https://api.github.com/repos/${REPOSITORY}`;
+const FORMAL_BYD_MODEL_ID = 'byd_v1_2_convex_momentum_budget_v1' as const;
 
 export type BydAsset = 'BYD' | '515180' | 'CASH';
 export type BydWeights = Record<BydAsset, number>;
@@ -16,7 +17,7 @@ export interface GitHubIssueRecord {
 
 export interface BydSignalRecord {
   schema_version: 'byd_v1_2_signal_v2';
-  model_id: 'byd_v1_2_convex_momentum_budget_v1';
+  model_id: typeof FORMAL_BYD_MODEL_ID;
   experiment_id: string;
   research_only: true;
   trade_ready: false;
@@ -84,7 +85,7 @@ function isSignalRecord(value: unknown): value is BydSignalRecord {
   if (!isObject(value)) return false;
   return Boolean(
     value.schema_version === 'byd_v1_2_signal_v2'
-    && value.model_id === 'byd_v1_2_convex_momentum_budget_v1'
+    && value.model_id === FORMAL_BYD_MODEL_ID
     && value.research_only === true
     && value.trade_ready === false
     && typeof value.signal_date === 'string'
