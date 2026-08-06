@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -78,6 +79,22 @@ def accepted_v1_models(source_root: Path) -> list[str]:
     return model_ids
 
 
+def _publish_freshness_policy(source_root: Path, output_root: Path) -> str:
+    source = source_root / "freshness.json"
+    policy = _object(source)
+    if (
+        policy.get("cutoff_policy") != "latest_completed_trading_session"
+        or policy.get("research_only") is not True
+        or policy.get("trade_ready") is not False
+        or not isinstance(policy.get("markets"), dict)
+        or not isinstance(policy.get("next_session_close_utc"), dict)
+    ):
+        raise FormalBundleV2SyncError("formal freshness policy is invalid")
+    destination = output_root / "freshness.json"
+    shutil.copyfile(source, destination)
+    return _sha256(destination)
+
+
 def sync(source_root: Path, output_root: Path) -> dict[str, Any]:
     source_root = source_root.resolve()
     output_root = output_root.resolve()
@@ -98,6 +115,7 @@ def sync(source_root: Path, output_root: Path) -> dict[str, Any]:
         migration.MODEL_MAP.clear()
         migration.MODEL_MAP.update(prior_map)
 
+    freshness_sha = _publish_freshness_policy(source_root, output_root)
     catalog_path = output_root / "catalog.json"
     catalog = _object(catalog_path)
     validate_catalog(catalog)
@@ -113,7 +131,9 @@ def sync(source_root: Path, output_root: Path) -> dict[str, Any]:
         "accepted_model_ids": accepted,
         "projected_model_ids": projected,
         "source_catalog_sha256": _sha256(source_root / "catalog.json"),
+        "source_freshness_sha256": _sha256(source_root / "freshness.json"),
         "formal_bundle_v2_catalog_sha256": _sha256(catalog_path),
+        "formal_bundle_v2_freshness_sha256": freshness_sha,
         "migration_receipt": migration_receipt,
         "model_selection_reopened": False,
         "historical_evidence_recomputed": False,
