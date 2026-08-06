@@ -1,0 +1,58 @@
+name: Formal Backtest Refresh CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/formal-backtest-refresh.yml"
+      - ".github/workflows/formal-backtest-refresh-ci.yml"
+      - "src/artifacts/formal_refresh.py"
+      - "scripts/run_formal_refresh_transaction.py"
+      - "scripts/refresh_ranker_formal.py"
+      - "scripts/refresh_allocation_formal.py"
+      - "scripts/data/refresh_selected_pool_prices_v2.py"
+      - "scripts/sync_formal_bundle_v2.py"
+      - "tests/test_formal_refresh.py"
+      - "tests/test_sync_formal_bundle_v2.py"
+      - "data/research/formal_backtests/**"
+      - "data/research/formal_model_runs/**"
+      - "qlib-dashboard/public/data/formal-model-runs/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: formal-refresh-contract-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate refresh contracts
+        run: |
+          uv run ruff check \
+            src/artifacts/formal_refresh.py \
+            scripts/run_formal_refresh_transaction.py \
+            scripts/refresh_ranker_formal.py \
+            scripts/refresh_allocation_formal.py \
+            scripts/data/refresh_selected_pool_prices_v2.py \
+            tests/test_formal_refresh.py
+          uv run mypy \
+            src/artifacts/formal_refresh.py \
+            scripts/run_formal_refresh_transaction.py
+          uv run pytest \
+            tests/test_formal_refresh.py \
+            tests/test_formal_backtest_freshness.py \
+            tests/test_sync_formal_bundle_v2.py \
+            -q --strict-markers --tb=short
