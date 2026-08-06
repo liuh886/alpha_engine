@@ -27,17 +27,19 @@ def _catalog() -> dict[str, object]:
             "byd_v1_2_convex_momentum_budget_v1",
             "byd_v1_2_run",
             "2026-08-03",
+            "1",
             "a",
         ),
-        ("cn_ranker", "cn_x1_1", "cn_x1_1_run", "2026-08-03", "b"),
+        ("cn_ranker", "cn_x1_1", "cn_x1_1_run", "2026-08-03", "2", "b"),
         (
             "qqq_rotation",
             "qqqi_qqq_tqqq_v4_2",
             "qqq_v4_2_run",
             "2026-07-31",
+            "3",
             "c",
         ),
-        ("us_ranker", "us_x1_1", "us_x1_1_run", "2026-07-31", "d"),
+        ("us_ranker", "us_x1_1", "us_x1_1_run", "2026-07-31", "4", "d"),
     ]
     return {
         "schema_version": "2.0.0",
@@ -50,13 +52,20 @@ def _catalog() -> dict[str, object]:
                 "model_family_id": family,
                 "model_version_id": version,
                 "run_id": run,
-                "bundle_id": character * 64,
+                "bundle_id": bundle_character * 64,
                 "manifest_path": f"{family}/{version}/{run}/manifest.json",
-                "manifest_sha256": chr(ord(character) + 4) * 64,
+                "manifest_sha256": manifest_character * 64,
                 "evidence_cutoff": cutoff,
                 "publication_status": "accepted_formal_baseline",
             }
-            for family, version, run, cutoff, character in records
+            for (
+                family,
+                version,
+                run,
+                cutoff,
+                bundle_character,
+                manifest_character,
+            ) in records
         ],
     }
 
@@ -186,10 +195,11 @@ def test_rejects_stale_deployment_or_duplicate_formal_model() -> None:
     assert isinstance(records, list)
     duplicate = dict(records[0])
     duplicate["run_id"] = "duplicate_run"
+    duplicate["bundle_id"] = "5" * 64
     duplicate["manifest_path"] = (
         "byd_allocation/byd_v1_2_convex_momentum_budget_v1/duplicate_run/manifest.json"
     )
-    duplicate["manifest_sha256"] = "f" * 64
+    duplicate["manifest_sha256"] = "e" * 64
     records.append(duplicate)
     records.sort(
         key=lambda row: (
@@ -211,7 +221,7 @@ def test_accepts_new_catalog_model_without_verifier_code_change() -> None:
             "model_family_id": "future_family",
             "model_version_id": "future_formal_v1",
             "run_id": "future_formal_run",
-            "bundle_id": "e" * 64,
+            "bundle_id": "6" * 64,
             "manifest_path": (
                 "future_family/future_formal_v1/future_formal_run/manifest.json"
             ),
