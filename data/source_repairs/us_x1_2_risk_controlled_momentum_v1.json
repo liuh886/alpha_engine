@@ -12,6 +12,11 @@
     "artifact_digest": "sha256:7dd76aa3eb6471e4bd4bdf500f3deb7c56cc7c459195c01bbda10ca98012cf51",
     "provider_identity_sha256": "c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d"
   },
+  "canonical_promotion": {
+    "status": "committed",
+    "commit_sha": "47ef3da2e62b1d0d287557fe069710d6f0191aad",
+    "symbols": ["ALAB", "HIMS", "SNDK", "TIGO"]
+  },
   "requested_start": "2021-01-01",
   "requested_end": "2026-06-24",
   "targets": {
