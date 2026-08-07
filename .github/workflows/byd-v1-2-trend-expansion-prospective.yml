@@ -5,8 +5,11 @@ on:
     branches: [main]
     paths:
       - "src/research/byd_v1_2_trend_expansion_prospective.py"
+      - "src/artifacts/append_only_store.py"
       - "scripts/run_byd_v1_2_trend_expansion_prospective.py"
+      - "scripts/check_append_only_store_prefix.py"
       - "tests/test_byd_v1_2_trend_expansion_prospective.py"
+      - "tests/test_append_only_store.py"
       - "data/research/byd_v1_2_trend_expansion_prospective/**"
       - "docs/research/byd_v1_2_trend_expansion_prospective.md"
       - ".github/workflows/byd-v1-2-trend-expansion-prospective.yml"
@@ -61,13 +64,19 @@ jobs:
         run: |
           uv run ruff check \
             src/research/byd_v1_2_trend_expansion_prospective.py \
+            src/artifacts/append_only_store.py \
             scripts/run_byd_v1_2_trend_expansion_prospective.py \
-            tests/test_byd_v1_2_trend_expansion_prospective.py
+            scripts/check_append_only_store_prefix.py \
+            tests/test_byd_v1_2_trend_expansion_prospective.py \
+            tests/test_append_only_store.py
           uv run mypy \
             src/research/byd_v1_2_trend_expansion_prospective.py \
-            scripts/run_byd_v1_2_trend_expansion_prospective.py
+            src/artifacts/append_only_store.py \
+            scripts/run_byd_v1_2_trend_expansion_prospective.py \
+            scripts/check_append_only_store_prefix.py
           uv run pytest \
             tests/test_byd_v1_2_trend_expansion_prospective.py \
+            tests/test_append_only_store.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: Reproduce ledger from immutable and append-only sources
         run: |
@@ -79,10 +88,12 @@ jobs:
             --byd-store data/research/byd_prospective_shadow \
             --paired-store data/research/byd_515180_prospective \
             --store-dir artifacts/research/byd_v1_2_trend_expansion_prospective
-      - name: Enforce byte-exact prospective store on review changes
+      - name: Enforce append-only prospective prefix on review changes
         if: github.event_name == 'pull_request'
         run: |
-          diff -ru data/research/byd_v1_2_trend_expansion_prospective artifacts/research/byd_v1_2_trend_expansion_prospective
+          uv run python scripts/check_append_only_store_prefix.py \
+            --current data/research/byd_v1_2_trend_expansion_prospective \
+            --candidate artifacts/research/byd_v1_2_trend_expansion_prospective
           python - <<'PY'
           import json
           from pathlib import Path
