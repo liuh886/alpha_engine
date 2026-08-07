@@ -45,11 +45,11 @@ def compute_rank_ic(scores: pd.DataFrame, returns: pd.Series) -> float:
 
 
 def compute_excess_vs_benchmark(
-    cumulative: pd.Series, benchmark_ret: pd.Series
+    cumulative: pd.Series, benchmark_rets: list
 ) -> float:
-    """Compounded relative excess vs benchmark."""
+    bench_cum = (1.0 + pd.Series(benchmark_rets)).cumprod()
     strategy_total = float(cumulative.iloc[-1] - 1.0)
-    bench_total = float((1.0 + benchmark_ret).prod() - 1.0)
+    bench_total = float(bench_cum.iloc[-1] - 1.0)
     return (1.0 + strategy_total) / (1.0 + bench_total) - 1.0
 
 
@@ -63,26 +63,29 @@ def walk_forward_window(
     """Train XGBoost ranker on train window, evaluate on test window."""
     import xgboost as xgb
 
-    train_mask = features.index.get_level_values(0).isin(train_dates)
-    test_mask = features.index.get_level_values(0).isin(test_dates)
+    train_mask = features.index.get_level_values("datetime").isin(train_dates)
+    test_mask = features.index.get_level_values("datetime").isin(test_dates)
 
     train_feat = features.loc[train_mask].copy()
     test_feat = features.loc[test_mask].copy()
     train_ret = returns.loc[train_mask]
     test_ret = returns.loc[test_mask]
 
-    # Drop NaN rows
-    train_feat = train_feat.dropna()
-    test_feat = test_feat.dropna()
-    train_ret = train_ret.reindex(train_feat.index)
-    test_ret = test_ret.reindex(test_feat.index)
+    # Drop NaN rows and align, replace inf with NaN
+    train_feat = train_feat.replace([np.inf, -np.inf], np.nan).dropna()
+    test_feat = test_feat.replace([np.inf, -np.inf], np.nan).dropna()
+    train_ret = train_ret.reindex(train_feat.index).dropna()
+    train_feat = train_feat.loc[train_ret.index]
+    test_ret = test_ret.reindex(test_feat.index).dropna()
+    test_feat = test_feat.loc[test_ret.index]
 
     # Percentile rank target with 7 gain bins
-    train_rank = train_ret.groupby(level=0).rank(pct=True)
+    train_rank = train_ret.groupby(level="datetime").rank(pct=True).fillna(0.5)
+    train_target = np.floor(train_rank.clip(0, 1) * 7).clip(0, 6).astype(int)
     train_target = np.floor(train_rank.clip(0, 1) * 7).clip(0, 6).astype(int)
 
     # Group sizes for rank:ndcg
-    train_groups = train_feat.groupby(level=0).size().tolist()
+    train_groups = train_feat.groupby(level="datetime").size().tolist()
 
     dtrain = xgb.DMatrix(train_feat.values, label=train_target.values)
     dtrain.set_group(train_groups)
@@ -107,12 +110,13 @@ def walk_forward_window(
     # Top-15 equally-weighted daily returns
     daily_returns = []
     for date in test_dates:
-        if date not in test_scores.index.get_level_values(0):
+        if date not in test_scores.index.get_level_values("datetime"):
             continue
-        day_scores = test_scores.loc[date]
-        top15 = day_scores.nlargest(15).index.get_level_values(1)
-        day_ret = test_ret.loc[date].loc[top15].mean()
-        daily_returns.append(day_ret)
+        day_scores = test_scores.loc[test_scores.index.get_level_values("datetime") == date]
+        top15 = day_scores.nlargest(15).index.get_level_values("instrument")
+        day_ret = test_ret.loc[test_ret.index.get_level_values("datetime") == date]
+        day_ret = day_ret.loc[day_ret.index.get_level_values("instrument").isin(top15)]
+        daily_returns.append(day_ret.mean())
 
     cumulative = (1.0 + pd.Series(daily_returns)).cumprod()
     return {"rank_ic": rank_ic, "cumulative": cumulative, "n_dates": len(daily_returns)}
@@ -153,8 +157,8 @@ def main():
     returns = returns.iloc[:, 0]
     print(f"Loaded {features.shape} in {time.time() - t0:.1f}s")
 
-    # Walk-forward windows
-    all_dates_raw = sorted(features.index.get_level_values(0).unique())
+    # Walk-forward windows — Qlib index is (instrument, datetime)
+    all_dates_raw = sorted(features.index.get_level_values("datetime").unique())
     all_dates = pd.DatetimeIndex(all_dates_raw)
     first_test = pd.Timestamp("2024-01-01")
     test_end = pd.Timestamp("2026-06-24")
@@ -175,9 +179,9 @@ def main():
             [d for d in all_dates if window_start <= d <= window_end]
         )
 
-        # Benchmark: QQQ proxy (equal weight all US pool)
-        test_mask = features.index.get_level_values(0).isin(test_dates)
-        bench_ret = returns.loc[test_mask].groupby(level=0).mean()
+        # Benchmark: equal weight all US pool
+        test_mask = features.index.get_level_values("datetime").isin(test_dates)
+        bench_ret = returns.loc[test_mask].groupby(level="datetime").mean()
         benchmark_rets.extend(bench_ret.values.tolist())
 
         print(f"\nWindow: {window_start.date()} -> {window_end.date()} "
@@ -202,7 +206,7 @@ def main():
         window_start = window_end
 
     # Final comparison
-    benchmark_cum = (1.0 + pd.Series(benchmark_rets)).cumprod()
+    benchmark_rets_series = pd.Series(benchmark_rets)
     print(f"\n{'='*60}")
     print(f"Final Comparison (2024-01 -> 2026-06-24)")
     print(f"{'='*60}")
@@ -211,11 +215,12 @@ def main():
         total = float(cum.iloc[-1] - 1.0)
         excess = compute_excess_vs_benchmark(cum, benchmark_rets)
         mean_ic = np.mean([r["rank_ic"] for r in results[name]])
+        mdd = float((cum / cum.cummax() - 1).min())
         print(f"  {name}:")
         print(f"    Mean Rank IC: {mean_ic:.4f}")
         print(f"    Total Return: {total:.4%}")
         print(f"    Excess vs EW: {excess:.4%}")
-        print(f"    Max DD: {float((cum/cum.cummax()-1).min()):.4%}")
+        print(f"    Max DD: {mdd:.4%}")
 
 
 if __name__ == "__main__":
