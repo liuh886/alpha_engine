@@ -45,7 +45,7 @@ export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary |
       <nav className="research-nav" aria-label="Strategy console navigation">
         {groups.map((group) => (
           <section key={group.title} className="research-nav-group">
-            {!collapsed && <h2>{group.title}</h2>}
+            {!collapsed && <p className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/75">{group.title}</p>}
             <div className="space-y-1">
               {group.items.map((item) => {
                 const Icon = item.icon;
