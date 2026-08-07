@@ -48,7 +48,8 @@ def main() -> int:
 
     specs = [args.spec.resolve()] if args.spec else active_specs()
     if not specs:
-        raise ValueError("no active research experiments found")
+        print("[]")
+        return 0
 
     receipts: list[dict[str, Any]] = []
     failed = False
