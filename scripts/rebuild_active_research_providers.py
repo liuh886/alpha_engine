@@ -1,22 +1,34 @@
 #!/usr/bin/env python3
-"""Rebuild Qlib providers required by committed research missions."""
+"""Rebuild exact Qlib providers required by committed research missions."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import shutil
+import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from scripts.build_market_providers import build_market_provider
+from scripts.data.refresh_selected_pool_prices import BENCHMARKS
 from src.common.runtime_settings import PROJECT_ROOT
 from src.data.market_provider import market_provider_path
+from src.research.multi_market_readiness import load_market_watchlist
 from src.research.paradigm import ResearchParadigmSpec
 
 EXPERIMENT_ROOT = PROJECT_ROOT / "configs" / "research_experiments"
 SOURCE_DIR = PROJECT_ROOT / "data" / "csv_source"
+
+
+@dataclass(frozen=True)
+class MissionDataPlane:
+    experiment_id: str
+    market: str
+    source_symbols: tuple[str, ...]
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -34,7 +46,7 @@ def _resolve_repo_file(raw: str) -> Path:
     return path
 
 
-def _market_for_spec(path: Path) -> str:
+def _data_plane_for_spec(path: Path) -> MissionDataPlane:
     payload = _load_yaml(path)
     fixed_model = payload.get("fixed_model") or {}
     frozen_spec = _resolve_repo_file(str(fixed_model.get("frozen_spec", "")))
@@ -43,15 +55,62 @@ def _market_for_spec(path: Path) -> str:
         raise ValueError(
             f"cross-sectional mission has unsupported market {parent.market!r}"
         )
-    return parent.market
+    universe_path = _resolve_repo_file(str(parent.universe["source"]))
+    candidates = load_market_watchlist(parent.market, watchlist_path=universe_path)
+    benchmark_source = BENCHMARKS[parent.market]
+    symbols = tuple(sorted({*candidates, benchmark_source}))
+    missing = [
+        symbol for symbol in symbols if not (SOURCE_DIR / f"{symbol}.csv").is_file()
+    ]
+    if missing:
+        raise ValueError(
+            f"mission {payload['experiment_id']} is missing canonical sources: {missing}"
+        )
+    return MissionDataPlane(
+        experiment_id=str(payload["experiment_id"]),
+        market=parent.market,
+        source_symbols=symbols,
+    )
 
 
 def active_specs() -> list[Path]:
-    result: list[Path] = []
-    for path in sorted(EXPERIMENT_ROOT.glob("*.yaml")):
-        if _load_yaml(path).get("active") is True:
-            result.append(path)
-    return result
+    return [
+        path
+        for path in sorted(EXPERIMENT_ROOT.glob("*.yaml"))
+        if _load_yaml(path).get("active") is True
+    ]
+
+
+def _group_data_planes(
+    specs: list[Path],
+) -> dict[str, MissionDataPlane]:
+    by_market: dict[str, MissionDataPlane] = {}
+    for path in specs:
+        plane = _data_plane_for_spec(path)
+        existing = by_market.get(plane.market)
+        if existing is not None and existing.source_symbols != plane.source_symbols:
+            raise ValueError(
+                "simultaneous active missions in one market must share one exact "
+                f"data plane: {existing.experiment_id} != {plane.experiment_id}"
+            )
+        by_market[plane.market] = plane
+    return by_market
+
+
+def _build_exact_provider(plane: MissionDataPlane) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(
+        prefix=f"alpha-research-{plane.market}-sources-"
+    ) as temporary:
+        source_stage = Path(temporary) / "csv_source"
+        source_stage.mkdir(parents=True)
+        for symbol in plane.source_symbols:
+            shutil.copy2(SOURCE_DIR / f"{symbol}.csv", source_stage / f"{symbol}.csv")
+        report = build_market_provider(
+            csv_dir=source_stage,
+            provider_dir=market_provider_path(PROJECT_ROOT, plane.market),
+            market=plane.market,
+        )
+    return report
 
 
 def main() -> int:
@@ -60,23 +119,21 @@ def main() -> int:
     args = parser.parse_args()
 
     specs = [args.spec.resolve()] if args.spec else active_specs()
-    markets = sorted({_market_for_spec(path) for path in specs})
-    if not markets:
+    planes = _group_data_planes(specs)
+    if not planes:
         print("{}")
         return 0
 
-    reports: dict[str, dict[str, Any]] = {}
-    for market in markets:
-        reports[market] = build_market_provider(
-            csv_dir=SOURCE_DIR,
-            provider_dir=market_provider_path(PROJECT_ROOT, market),
-            market=market,
-        )
+    reports = {
+        market: _build_exact_provider(plane) for market, plane in planes.items()
+    }
     summary = {
         market: {
+            "experiment_id": planes[market].experiment_id,
             "provider_identity_sha256": report["provider_identity_sha256"],
             "session_count": report["calendar"]["session_count"],
             "instrument_count": report["instruments"]["count"],
+            "source_symbol_count": len(planes[market].source_symbols),
         }
         for market, report in reports.items()
     }
