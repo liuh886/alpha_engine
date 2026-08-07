@@ -28,7 +28,6 @@ def _daily() -> pd.DataFrame:
             "weight_QQQI": [1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.0],
             "weight_QQQ": [0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.25],
             "weight_TQQQ": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.75],
-            "weight_SGOV": [0.0] * 7,
         },
         index=index,
     )
