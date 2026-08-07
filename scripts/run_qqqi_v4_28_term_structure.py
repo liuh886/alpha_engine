@@ -204,7 +204,7 @@ def _scope_run(
         result.daily.to_csv(output / f"daily_{key}.csv")
         result.trades.to_csv(output / f"trades_{key}.csv", index=False)
         chronological_rows.extend(_chronological(result, chronological_fraction))
-        tails[key] = tail_risk_metrics(result.daily)
+        tails[key] = tail_risk_metrics(result)
         if key != BASELINE:
             episode_table = _overlay_episodes(result, baseline)
             episode_table.to_csv(output / f"episodes_{key}.csv", index=False)
