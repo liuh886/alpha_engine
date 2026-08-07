@@ -191,13 +191,17 @@ def _ranking_value(metric: str, row: dict[str, Any]) -> float:
     raise ValueError(f"unsupported ranking metric: {metric}")
 
 
+def _ranking_key(contract: ExperimentContract, row: dict[str, Any]) -> tuple[float, ...]:
+    return tuple(_ranking_value(metric, row) for metric in contract.ranking)
+
+
 def evaluate_experiment(
     contract: ExperimentContract,
     observations: list[dict[str, Any]],
     *,
     candidate_metadata: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Evaluate candidates using selection windows only and emit a deterministic receipt."""
+    """Evaluate challengers using selection windows only and emit a deterministic receipt."""
 
     candidate_metadata = candidate_metadata or {}
     candidate_ids = sorted(
@@ -209,6 +213,13 @@ def evaluate_experiment(
     )
     if contract.baseline_candidate_id not in candidate_ids:
         raise ValueError("baseline candidate is missing from selection observations")
+    challenger_ids = [
+        candidate_id
+        for candidate_id in candidate_ids
+        if candidate_id != contract.baseline_candidate_id
+    ]
+    if not challenger_ids:
+        raise ValueError("experiment requires at least one challenger candidate")
 
     baseline_rows = _selection_rows(
         contract,
@@ -237,11 +248,13 @@ def evaluate_experiment(
             }
         )
 
-    evaluated.sort(
-        key=lambda row: tuple(_ranking_value(metric, row) for metric in contract.ranking),
-        reverse=True,
-    )
-    winner = evaluated[0]
+    evaluated.sort(key=lambda row: _ranking_key(contract, row), reverse=True)
+    challengers = [
+        row for row in evaluated if row["candidate_id"] != contract.baseline_candidate_id
+    ]
+    challengers.sort(key=lambda row: _ranking_key(contract, row), reverse=True)
+    leader = challengers[0]
+    winner = leader["candidate_id"] if leader["supported"] else None
     reporting_seen = sorted(
         {
             str(row.get("window"))
@@ -250,7 +263,7 @@ def evaluate_experiment(
         }
     )
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "experiment_id": contract.experiment_id,
         "provider_identity_sha256": contract.provider_identity_sha256,
         "cutoff": contract.cutoff,
@@ -259,7 +272,8 @@ def evaluate_experiment(
         "reporting_windows_seen_but_not_used": reporting_seen,
         "ranking": list(contract.ranking),
         "candidates": evaluated,
-        "winner": winner["candidate_id"],
-        "decision": contract.decision if winner["supported"] else "not_supported",
-        "supported": bool(winner["supported"]),
+        "leader": leader["candidate_id"],
+        "winner": winner,
+        "decision": contract.decision if winner is not None else "not_supported",
+        "supported": winner is not None,
     }
