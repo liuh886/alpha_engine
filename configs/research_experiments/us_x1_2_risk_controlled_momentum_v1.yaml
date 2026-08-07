@@ -1,7 +1,9 @@
 schema_version: '1.0'
 experiment_id: us_x1_2_risk_controlled_momentum_v1
 runner: cross_sectional_xgb_ranker_v1
-active: true
+active: false
+status: completed_not_supported
+result_receipt: data/research/experiment_receipts/us_x1_2_risk_controlled_momentum_v1.json
 issue: 616
 parent_model_id: us_x1_1
 research_only: true
