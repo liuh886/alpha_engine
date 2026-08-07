@@ -36,10 +36,6 @@ type FormalModel = {
   version: string;
 };
 
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 async function assertNoHorizontalOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(2);
@@ -88,14 +84,19 @@ async function loadFormalModels(page: Page, catalog: FormalCatalog): Promise<For
   return models;
 }
 
-async function openRun(page: Page, model: string): Promise<void> {
-  await page.goto(`?live_acceptance=${Date.now()}#/runs`, { waitUntil: 'networkidle' });
-  await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
-  const catalog = page.getByRole('region', { name: 'Governed model runs' });
-  const modelButton = catalog.getByRole('button', { name: new RegExp(escapeRegex(model)) });
-  await expect(modelButton).toBeVisible();
-  await modelButton.click();
-  await expect(page.getByRole('heading', { name: model })).toBeVisible();
+async function openStrategy(page: Page, model: FormalModel): Promise<void> {
+  await page.goto(
+    `?live_acceptance=${Date.now()}#/strategies/${encodeURIComponent(model.version)}`,
+    { waitUntil: 'networkidle' },
+  );
+  await expect(
+    page.getByRole('main').getByRole('heading', {
+      name: model.displayName,
+      exact: true,
+      level: 1,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current decision state', exact: true })).toBeVisible();
 }
 
 async function exerciseAvailableEvidence(page: Page): Promise<void> {
@@ -124,7 +125,21 @@ async function expectCompleteLedgers(page: Page): Promise<void> {
   await expect(page.getByText('Attribution unavailable')).toHaveCount(0);
 }
 
-test('live Pages renders every catalog-governed formal Bundle v2 baseline end to end', async ({ page }, testInfo) => {
+async function assertPrimaryNavigation(page: Page, projectName: string): Promise<void> {
+  const mobile = projectName === 'mobile';
+  if (mobile) await page.getByRole('button', { name: 'Open strategy navigation' }).click();
+  const navigation = page.getByRole('navigation', {
+    name: mobile ? 'Mobile strategy console navigation' : 'Strategy console navigation',
+  });
+  for (const label of ['Overview', 'Strategies', 'Research', 'System']) {
+    await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
+  }
+  await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toHaveCount(0);
+  await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
+  if (mobile) await page.getByRole('button', { name: 'Close strategy navigation' }).click();
+}
+
+test('live Pages renders every catalog-governed formal strategy end to end', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   const failedRequiredResponses: string[] = [];
   const legacyRequests: string[] = [];
@@ -140,16 +155,16 @@ test('live Pages renders every catalog-governed formal Bundle v2 baseline end to
         || url.includes('/data/formal-model-runs/')
         || url.includes('/data/model-runs/')
         || url.includes('/data/model-decisions/')
+        || url.includes('/data/strategy-operations/')
         || url.includes('/assets/'))
     ) {
       failedRequiredResponses.push(`${response.status()} ${url}`);
     }
   });
 
-  await page.goto(`?live_acceptance=${Date.now()}#/runs`, { waitUntil: 'networkidle' });
-  await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
-  await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Experiments', { exact: true })).toHaveCount(0);
+  await page.goto(`?live_acceptance=${Date.now()}#/app`, { waitUntil: 'networkidle' });
+  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?', exact: true })).toBeVisible();
+  await assertPrimaryNavigation(page, testInfo.project.name);
 
   const formalCatalog = await fetchFormalCatalog(page);
   expect(formalCatalog.schema_version).toBe('2.0.0');
@@ -163,13 +178,10 @@ test('live Pages renders every catalog-governed formal Bundle v2 baseline end to
   expect(new Set(formalModels.map((model) => model.version)).size).toBe(formalModels.length);
   expect(new Set(formalModels.map((model) => model.displayName)).size).toBe(formalModels.length);
 
-  const catalogRegion = page.getByRole('region', { name: 'Governed model runs' });
+  const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   for (const model of formalModels) {
-    await expect(
-      catalogRegion.getByRole('button', { name: new RegExp(escapeRegex(model.displayName)) }),
-    ).toBeVisible();
+    await expect(fleet.getByText(model.displayName, { exact: true })).toBeVisible();
   }
-  await expect(catalogRegion.getByText('formal', { exact: true })).toHaveCount(formalModels.length);
 
   for (const record of formalCatalog.records ?? []) {
     expect(record.publication_status).toBe('accepted_formal_baseline');
@@ -179,7 +191,7 @@ test('live Pages renders every catalog-governed formal Bundle v2 baseline end to
   }
 
   for (const model of formalModels) {
-    await openRun(page, model.displayName);
+    await openStrategy(page, model);
     await exerciseAvailableEvidence(page);
     await expectCompleteLedgers(page);
     await assertNoHorizontalOverflow(page);
@@ -189,7 +201,7 @@ test('live Pages renders every catalog-governed formal Bundle v2 baseline end to
   expect(failedRequiredResponses).toEqual([]);
   expect(legacyRequests).toEqual([]);
   await page.screenshot({
-    path: `test-results/live-pages/formal-bundle-v2-${testInfo.project.name}.png`,
+    path: `test-results/live-pages/strategy-console-live-${testInfo.project.name}.png`,
     fullPage: true,
   });
 });
