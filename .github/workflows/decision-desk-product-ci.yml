@@ -5,7 +5,11 @@ on:
     branches: [main]
     paths:
       - "src/decision_support/decision_ledger_reader.py"
-      - "src/research/**"
+      - "src/research/workflow.py"
+      - "src/research/workflow_store.py"
+      - "src/research/workflow_types.py"
+      - "src/research/promotion_consumers.py"
+      - "src/research/promotion_decision.py"
       - "tests/test_decision_ledger_reader.py"
       - "tests/test_research_workflow_contract.py"
       - ".github/workflows/decision-desk-product-ci.yml"
@@ -13,7 +17,11 @@ on:
     branches: [main]
     paths:
       - "src/decision_support/decision_ledger_reader.py"
-      - "src/research/**"
+      - "src/research/workflow.py"
+      - "src/research/workflow_store.py"
+      - "src/research/workflow_types.py"
+      - "src/research/promotion_consumers.py"
+      - "src/research/promotion_decision.py"
       - "tests/test_decision_ledger_reader.py"
       - "tests/test_research_workflow_contract.py"
       - ".github/workflows/decision-desk-product-ci.yml"
@@ -27,8 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install uv and locked dependencies
@@ -37,6 +45,19 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
       - name: Ruff evidence contracts
-        run: uv run ruff check src/decision_support/decision_ledger_reader.py src/research tests/test_decision_ledger_reader.py tests/test_research_workflow_contract.py
+        run: >-
+          uv run ruff check
+          src/decision_support/decision_ledger_reader.py
+          src/research/workflow.py
+          src/research/workflow_store.py
+          src/research/workflow_types.py
+          src/research/promotion_consumers.py
+          src/research/promotion_decision.py
+          tests/test_decision_ledger_reader.py
+          tests/test_research_workflow_contract.py
       - name: Run evidence contract tests
-        run: uv run pytest tests/test_decision_ledger_reader.py tests/test_research_workflow_contract.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+        run: >-
+          uv run pytest
+          tests/test_decision_ledger_reader.py
+          tests/test_research_workflow_contract.py
+          -q --strict-markers --tb=short --disable-warnings --maxfail=1
