@@ -15,8 +15,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from src.common.runtime_settings import PROJECT_ROOT
-
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_RELATIVE_PATH = Path("artifacts/selected_pool_price_refresh_manifest.json")
 CANONICAL_SOURCE_ROOT = PROJECT_ROOT / "data" / "csv_source"
 DEFAULT_ARTIFACT_ROOT = PROJECT_ROOT / "artifacts" / "research_source_repair"
