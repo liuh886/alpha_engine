@@ -19,7 +19,7 @@ from scripts import migrate_formal_v1_to_bundle_v2 as migration
 from src.artifacts.model_run_bundle_v2 import canonical_json_bytes, validate_catalog
 
 FORMAL_MODEL_ADAPTERS: dict[str, tuple[str, str]] = {
-    "qqqi_qqq_tqqq_v4_2": ("qqq_rotation", "rules_based_allocation"),
+    "qqqi_qqq_tqqq_v4_3": ("qqq_rotation", "rules_based_allocation"),
     "us_x1_1": ("us_ranker", "cross_sectional_ranker"),
     "cn_x1_1": ("cn_ranker", "cross_sectional_ranker"),
     "byd_v1_2_convex_momentum_budget_v1": (
