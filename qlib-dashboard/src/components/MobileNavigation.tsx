@@ -29,41 +29,39 @@ export function MobileNavigation() {
         size="icon"
         className="h-9 w-9"
         onClick={() => setOpen(true)}
-        aria-label="Open research navigation"
+        aria-label="Open strategy navigation"
         aria-expanded={open}
       >
         <Menu className="h-4 w-4" />
       </Button>
 
       {open && (
-        <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="Research navigation">
+        <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="Strategy navigation">
           <button
             type="button"
             className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px]"
             onClick={() => setOpen(false)}
-            aria-label="Dismiss research navigation"
+            aria-label="Dismiss strategy navigation"
           />
           <div className="absolute inset-y-0 left-0 flex w-[min(86vw,340px)] flex-col border-r bg-card shadow-2xl">
             <div className="flex h-16 items-center justify-between border-b px-4">
               <Link to="/" onClick={() => setOpen(false)} aria-label="Back to Alpha Engine homepage">
                 <p className="text-sm font-bold">Alpha Engine</p>
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Research Studio</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Strategy Console</p>
               </Link>
-              <Button type="button" variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close research navigation">
+              <Button type="button" variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close strategy navigation">
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <nav className="flex-1 space-y-5 overflow-y-auto p-3" aria-label="Mobile research studio navigation">
+            <nav className="flex-1 space-y-5 overflow-y-auto p-3" aria-label="Mobile strategy console navigation">
               {groups.map((group) => (
                 <section key={group.title}>
                   <h2 className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/75">{group.title}</h2>
                   <div className="space-y-1">
                     {group.items.map((item) => {
                       const Icon = item.icon;
-                      const target = item.path === '' ? '/' : `/${item.path}`;
-                      const active = item.path === ''
-                        ? location.pathname === '/'
-                        : location.pathname === target || location.pathname.startsWith(`${target}/`);
+                      const target = `/${item.path}`;
+                      const active = location.pathname === target || location.pathname.startsWith(`${target}/`);
                       return (
                         <NavLink
                           key={item.path}
