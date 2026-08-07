@@ -1,0 +1,85 @@
+name: QQQ v4.3 Refresh Wiring Once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqq-v4-3-refresh-wiring-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Replace the active QQQ formal refresh path
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/formal-backtest-refresh.yml')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              'Refresh QQQ Rotation v4.2': 'Refresh QQQ Rotation v4.3',
+              "contains(steps.plan.outputs.stale_model_ids, 'qqqi_qqq_tqqq_v4_2')": "contains(steps.plan.outputs.stale_model_ids, 'qqqi_qqq_tqqq_v4_3')",
+              'scripts/refresh_allocation_formal.py qqq': 'scripts/refresh_qqq_v4_3_formal.py',
+              '$CURRENT_FORMAL_ROOT/qqqi_qqq_tqqq_v4_2.json': '$CURRENT_FORMAL_ROOT/qqqi_qqq_tqqq_v4_3.json',
+              '$CANDIDATE_FORMAL_ROOT/qqqi_qqq_tqqq_v4_2.json': '$CANDIDATE_FORMAL_ROOT/qqqi_qqq_tqqq_v4_3.json',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'missing expected active v4.2 refresh fragment: {old}')
+              text = text.replace(old, new, 1)
+
+          path_marker = '      - "scripts/refresh_allocation_formal.py"\n'
+          if '      - "scripts/refresh_qqq_v4_3_formal.py"\n' not in text:
+              text = text.replace(
+                  path_marker,
+                  path_marker + '      - "scripts/refresh_qqq_v4_3_formal.py"\n',
+                  1,
+              )
+          artifact_marker = '      - "src/artifacts/formal_refresh.py"\n'
+          if '      - "src/artifacts/qqq_v4_3_formal.py"\n' not in text:
+              text = text.replace(
+                  artifact_marker,
+                  artifact_marker + '      - "src/artifacts/qqq_v4_3_formal.py"\n',
+                  1,
+              )
+          test_path_marker = '      - "tests/test_formal_refresh.py"\n'
+          if '      - "tests/test_refresh_qqq_v4_3_formal.py"\n' not in text:
+              text = text.replace(
+                  test_path_marker,
+                  test_path_marker + '      - "tests/test_refresh_qqq_v4_3_formal.py"\n',
+                  1,
+              )
+          lint_marker = '            scripts/refresh_allocation_formal.py \\\n'
+          if '            scripts/refresh_qqq_v4_3_formal.py \\\n' not in text:
+              text = text.replace(
+                  lint_marker,
+                  lint_marker + '            scripts/refresh_qqq_v4_3_formal.py \\\n',
+                  1,
+              )
+          pytest_marker = '          uv run pytest tests/test_formal_refresh.py -q --strict-markers --tb=short\n'
+          if 'tests/test_refresh_qqq_v4_3_formal.py' not in text.split('Validate refresh implementation before network work', 1)[1].split('Resolve transaction timestamp', 1)[0]:
+              text = text.replace(
+                  pytest_marker,
+                  '          uv run pytest tests/test_formal_refresh.py tests/test_refresh_qqq_v4_3_formal.py -q --strict-markers --tb=short\n',
+                  1,
+              )
+          if 'Refresh QQQ Rotation v4.2' in text or "stale_model_ids, 'qqqi_qqq_tqqq_v4_2'" in text:
+              raise SystemExit('active v4.2 refresh path survived replacement')
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit refresh wiring
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/formal-backtest-refresh.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "ops: refresh QQQ Rotation v4.3 in reviewed pipeline"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
