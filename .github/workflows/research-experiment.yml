@@ -5,9 +5,12 @@ on:
     branches: [main]
     paths:
       - 'configs/research_experiments/**'
+      - 'data/source_repairs/**'
+      - 'data/csv_source/**'
       - 'src/research/cross_sectional_experiment_runner.py'
       - 'src/research/experiment_harness.py'
       - 'scripts/prepare_research_source_repair.py'
+      - 'scripts/promote_approved_research_source_repair.py'
       - 'scripts/rebuild_active_research_providers.py'
       - 'scripts/run_research_experiment.py'
       - 'scripts/run_active_research_experiments.py'
@@ -29,7 +32,109 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  source-promotion:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 1
+          show-progress: false
+
+      - name: Detect approved missing-source repair
+        id: detect
+        shell: bash
+        run: |
+          approval=$(awk '/^[[:space:]]+approval_manifest:/ {print $2; exit}' configs/research_experiments/*.yaml || true)
+          if [[ -z "$approval" || ! -f "$approval" ]]; then
+            echo 'needed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          missing_count=$(python3 - "$approval" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          approval = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          missing = [
+              symbol
+              for symbol in approval.get('targets', {})
+              if not pathlib.Path(f'data/csv_source/{symbol}.csv').is_file()
+          ]
+          print(len(missing))
+          PY
+          )
+          if [[ "$missing_count" == '0' ]]; then
+            echo 'needed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo 'needed=true' >> "$GITHUB_OUTPUT"
+          echo "approval=$approval" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v6
+        if: steps.detect.outputs.needed == 'true'
+        with:
+          python-version: '3.12'
+
+      - name: Install locked dependencies
+        if: steps.detect.outputs.needed == 'true'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+          uv run ruff check \
+            scripts/prepare_research_source_repair.py \
+            scripts/promote_approved_research_source_repair.py
+
+      - name: Rebuild authoritative repair candidate
+        if: steps.detect.outputs.needed == 'true'
+        run: uv run python scripts/prepare_research_source_repair.py
+
+      - name: Promote exact approved hashes
+        if: steps.detect.outputs.needed == 'true'
+        run: >-
+          uv run python scripts/promote_approved_research_source_repair.py
+          --approval "${{ steps.detect.outputs.approval }}"
+
+      - name: Upload approved repair evidence
+        if: steps.detect.outputs.needed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: approved-research-source-repair
+          path: artifacts/research_source_repair/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Commit approved canonical sources
+        id: commit
+        if: steps.detect.outputs.needed == 'true'
+        shell: bash
+        run: |
+          git add data/csv_source
+          if git diff --cached --quiet; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'data: add approved research source repair'
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
+          git push origin "HEAD:${{ github.head_ref }}"
+
   experiment:
+    needs: source-promotion
+    if: >-
+      always() &&
+      (needs.source-promotion.result == 'success' || needs.source-promotion.result == 'skipped') &&
+      needs.source-promotion.outputs.changed != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -54,6 +159,7 @@ jobs:
             src/research/experiment_harness.py \
             src/research/cross_sectional_experiment_runner.py \
             scripts/prepare_research_source_repair.py \
+            scripts/promote_approved_research_source_repair.py \
             scripts/rebuild_active_research_providers.py \
             scripts/run_research_experiment.py \
             scripts/run_active_research_experiments.py \
@@ -91,7 +197,7 @@ jobs:
             exit 1
           fi
 
-      - name: Rebuild mission provider from repository sources
+      - name: Rebuild exact mission provider from repository sources
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
