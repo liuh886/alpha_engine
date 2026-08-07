@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-07T18:19:00Z",
+  "generated_at": "2026-08-07T19:04:22Z",
   "records": [
     {
       "allocations": [],
@@ -62,34 +62,74 @@
       "turnover": null
     },
     {
-      "allocations": [],
-      "as_of": null,
-      "data_freshness": "unknown",
+      "allocations": [
+        {
+          "asset": "QQQ",
+          "current": 0.5,
+          "delta": 0.0,
+          "target": 0.5
+        },
+        {
+          "asset": "QQQI",
+          "current": 0.5,
+          "delta": 0.0,
+          "target": 0.5
+        },
+        {
+          "asset": "TQQQ",
+          "current": 0.0,
+          "delta": 0.0,
+          "target": 0.0
+        }
+      ],
+      "as_of": "2026-08-06",
+      "data_freshness": "current",
       "decision_cadence": "Every completed US market session",
-      "decision_reason": "The signal publisher exists, but no durable evaluation has been committed yet.",
-      "delivery_status": "not available",
-      "drivers": [],
-      "estimated_cost": null,
-      "factor_freshness": "blocked",
-      "latest_completed_session": "2026-07-31",
+      "decision_reason": "继续保持当前状态",
+      "delivery_status": "not_required",
+      "drivers": [
+        {
+          "label": "VIX close",
+          "value": "15.15"
+        },
+        {
+          "label": "VIX retreat",
+          "value": "-26.67%"
+        },
+        {
+          "label": "VXN close",
+          "value": "23.95"
+        },
+        {
+          "label": "VXN retreat",
+          "value": "-22.34%"
+        },
+        {
+          "label": "QQQ vs MA20",
+          "value": "2.03%"
+        }
+      ],
+      "estimated_cost": 0.0,
+      "factor_freshness": "current",
+      "latest_completed_session": "2026-08-06",
       "model_version_id": "qqqi_qqq_tqqq_v4_2",
       "next_decision_policy": "Evaluate at close; target applies to the next eligible open.",
-      "note": "The signal publisher exists, but no durable evaluation has been committed yet.",
+      "note": "Latest governed evaluation retained the existing allocation.",
       "source_href": null,
       "source_identity": {
-        "commit_sha": null,
+        "commit_sha": "fbc46b2d070fa884979755c8fdb63150633ec075",
         "formal_bundle_id": "2b041025af0a901692a5b0b4d7aae0fd63435431036fd45f3c53e4a4dbbef0ed",
         "formal_evidence_cutoff": "2026-07-31",
         "formal_run_id": "qqqi_qqq_tqqq_v4_2-formal-8820398584",
         "github_issue_number": null,
-        "ledger_fingerprint": null,
-        "signal_sha256": null,
-        "workflow_run_id": null
+        "ledger_fingerprint": "158749e5ca8d5830e97b",
+        "signal_sha256": "6fc283ec19f59716fde721b0fa23b1562320de9531bf43ea9d69dfa907431e14",
+        "workflow_run_id": "31209790106"
       },
-      "source_label": "Governed signal ledger",
-      "state_label": "Awaiting first governed evaluation",
-      "status": "awaiting_observation",
-      "turnover": null
+      "source_label": "Governed QQQ signal ledger",
+      "state_label": "Transition",
+      "status": "current_no_change",
+      "turnover": 0.0
     },
     {
       "allocations": [],
