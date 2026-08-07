@@ -1,5 +1,6 @@
 name: QQQ v4.33 MA20 VIX Release Research
 
+# Fresh promotion rerun requested 2026-08-08; model rules unchanged.
 on:
   pull_request:
     branches: [main]
