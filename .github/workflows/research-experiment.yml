@@ -7,7 +7,7 @@ on:
       - 'configs/research_experiments/**'
       - 'src/research/cross_sectional_experiment_runner.py'
       - 'src/research/experiment_harness.py'
-      - 'scripts/fetch_research_source_gaps.py'
+      - 'scripts/prepare_research_source_repair.py'
       - 'scripts/rebuild_active_research_providers.py'
       - 'scripts/run_research_experiment.py'
       - 'scripts/run_active_research_experiments.py'
@@ -53,7 +53,7 @@ jobs:
           uv run ruff check \
             src/research/experiment_harness.py \
             src/research/cross_sectional_experiment_runner.py \
-            scripts/fetch_research_source_gaps.py \
+            scripts/prepare_research_source_repair.py \
             scripts/rebuild_active_research_providers.py \
             scripts/run_research_experiment.py \
             scripts/run_active_research_experiments.py \
@@ -64,16 +64,16 @@ jobs:
             tests/test_cross_sectional_experiment_runner.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-      - name: Prepare reviewable source repair candidates
+      - name: Prepare authoritative source repair candidate
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
-            uv run python scripts/fetch_research_source_gaps.py --spec "${{ inputs.spec }}"
+            uv run python scripts/prepare_research_source_repair.py --spec "${{ inputs.spec }}"
           else
-            uv run python scripts/fetch_research_source_gaps.py
+            uv run python scripts/prepare_research_source_repair.py
           fi
 
-      - name: Upload source repair candidates
+      - name: Upload source repair candidate
         if: always()
         uses: actions/upload-artifact@v4
         with:
