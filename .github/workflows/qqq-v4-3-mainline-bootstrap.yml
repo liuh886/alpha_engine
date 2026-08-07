@@ -32,7 +32,7 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Import only validated v4.3 model and formal-publication components
+      - name: Import validated v4.3 model and formal-v1 components only
         run: |
           set -euo pipefail
           git fetch origin "$OLD_BRANCH"
@@ -62,18 +62,71 @@ jobs:
             qlib-dashboard/e2e/static-artifact.spec.ts
           )
           git checkout "origin/$OLD_BRANCH" -- "${paths[@]}"
-          rm -rf data/research/formal_backtests data/research/formal_model_runs qlib-dashboard/public/data/formal-model-runs
-          git checkout "origin/$OLD_BRANCH" -- \
-            data/research/formal_backtests \
-            data/research/formal_model_runs \
-            qlib-dashboard/public/data/formal-model-runs
+          rm -rf data/research/formal_backtests
+          git checkout "origin/$OLD_BRANCH" -- data/research/formal_backtests
           rm -f data/research/formal_backtests/qqqi_qqq_tqqq_v4_2.json
-          rm -rf \
-            data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_2 \
-            qlib-dashboard/public/data/formal-model-runs/qqq_rotation/qqqi_qqq_tqqq_v4_2
           rm -f \
             configs/research_experiments/qqq_rotation_v4_2_research_loop_onboarding_v1.yaml \
             data/research/experiment_receipts/qqq_rotation_v4_2_research_loop_onboarding_v1.json
+      - name: Rebuild canonical Formal Bundle v2 on current mainline and repin onboarding
+        run: |
+          set -euo pipefail
+          rm -rf data/research/formal_model_runs qlib-dashboard/public/data/formal-model-runs
+          mkdir -p artifacts/bootstrap
+          uv run python scripts/sync_formal_bundle_v2.py \
+            --source-root data/research/formal_backtests \
+            --output-root data/research/formal_model_runs \
+            --receipt artifacts/bootstrap/formal-v2-sync-receipt.json
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+          import yaml
+
+          catalog = json.loads(Path('data/research/formal_model_runs/catalog.json').read_text())
+          records = {row['model_version_id']: row for row in catalog['records']}
+          specs = {
+              'configs/research_experiments/cn_x1_1_research_loop_onboarding_v1.yaml': 'cn_x1_1',
+              'configs/research_experiments/byd_v1_2_research_loop_onboarding_v1.yaml': 'byd_v1_2_convex_momentum_budget_v1',
+              'configs/research_experiments/qqq_rotation_v4_3_research_loop_onboarding_v1.yaml': 'qqqi_qqq_tqqq_v4_3',
+          }
+          for filename, model_id in specs.items():
+              path = Path(filename)
+              payload = yaml.safe_load(path.read_text(encoding='utf-8'))
+              record = records[model_id]
+              payload['baseline']['bundle_id'] = record['bundle_id']
+              payload['baseline']['manifest_sha256'] = record['manifest_sha256']
+              path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding='utf-8')
+
+          qqq = records['qqqi_qqq_tqqq_v4_3']
+          receipt_path = Path('data/research/experiment_receipts/qqq_rotation_v4_3_research_loop_onboarding_v1.json')
+          receipt = json.loads(receipt_path.read_text())
+          receipt['baseline']['bundle_id'] = qqq['bundle_id']
+          receipt['baseline']['manifest_sha256'] = qqq['manifest_sha256']
+          receipt['baseline']['manifest_path'] = f"data/research/formal_model_runs/{qqq['manifest_path']}"
+          receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+
+          test_path = Path('tests/test_formal_baseline_onboarding.py')
+          text = test_path.read_text(encoding='utf-8')
+          replacements = {
+              'CN_BUNDLE_ID': records['cn_x1_1']['bundle_id'],
+              'CN_MANIFEST_SHA': records['cn_x1_1']['manifest_sha256'],
+              'BYD_BUNDLE_ID': records['byd_v1_2_convex_momentum_budget_v1']['bundle_id'],
+              'BYD_MANIFEST_SHA': records['byd_v1_2_convex_momentum_budget_v1']['manifest_sha256'],
+              'QQQ_BUNDLE_ID': qqq['bundle_id'],
+              'QQQ_MANIFEST_SHA': qqq['manifest_sha256'],
+          }
+          for name, value in replacements.items():
+              text, count = re.subn(
+                  rf'{name} = "[0-9a-f]{{64}}"',
+                  f'{name} = "{value}"',
+                  text,
+                  count=1,
+              )
+              if count != 1:
+                  raise SystemExit(f'failed to repin {name}')
+          test_path.write_text(text, encoding='utf-8')
+          PY
       - name: Adapt v4.3 signal to the current append-only ledger contract
         run: |
           python - <<'PY'
@@ -84,7 +137,7 @@ jobs:
           needle = '    alert["title"] = f"[策略信号] QQQ v4.3 {signal_date} {_weight_text(target_weights)}"\n'
           if needle not in text:
               raise SystemExit('v4.3 alert insertion point not found')
-          insert = '''    alert["current_state"] = alert["current_formal_state"]\n    alert["target_state"] = alert["target_formal_state"]\n    alert["transition_type"] = "risk_budget_change" if orders else "hold"\n    alert["decision_reason_label"] = f"{alert['current_overlay']} → {alert['target_overlay']}"\n    context = alert["context"]\n    alert["price_context"] = {\n        "qqq_close": context.get("qqq_close"),\n        "ma_short": context.get("ma20"),\n        "ma_medium": context.get("ma50"),\n        "ma_long": context.get("ma200"),\n    }\n    alert["volatility_context"] = {\n        "vix_close": context.get("vix_close"),\n        "vxn_close": context.get("vxn_close"),\n        "vix_regime": context.get("vix_regime"),\n        "vxn_regime": context.get("vxn_regime"),\n    }\n    alert["data_context"] = {\n        **dict(alert["data_context"]),\n        "latest_common_date": latest_data_date,\n    }\n'''
+          insert = '''    alert["current_state"] = alert["current_formal_state"]\n    alert["target_state"] = alert["target_formal_state"]\n    alert["transition_type"] = "risk_budget_change" if orders else "hold"\n    alert["decision_reason_label"] = (\n        f"{alert['current_overlay']} → {alert['target_overlay']}"\n    )\n    context = alert["context"]\n    alert["price_context"] = {\n        "qqq_close": context.get("qqq_close"),\n        "ma_short": context.get("ma20"),\n        "ma_medium": context.get("ma50"),\n        "ma_long": context.get("ma200"),\n    }\n    alert["volatility_context"] = {\n        "vix_close": context.get("vix_close"),\n        "vxn_close": context.get("vxn_close"),\n        "vix_regime": context.get("vix_regime"),\n        "vxn_regime": context.get("vxn_regime"),\n    }\n    alert["data_context"] = {\n        **dict(alert["data_context"]),\n        "latest_common_date": latest_data_date,\n    }\n'''
           path.write_text(text.replace(needle, insert + needle, 1), encoding='utf-8')
           PY
       - name: Make v4.3 the only active QQQ operations identity
@@ -106,9 +159,6 @@ jobs:
                   ('QQQ Rotation v4.2', 'QQQ Rotation v4.3'),
               ],
               'tests/test_strategy_operations.py': [
-                  ('qqqi_qqq_tqqq_v4_2', 'qqqi_qqq_tqqq_v4_3'),
-              ],
-              'tests/test_strategy_signal_ledger.py': [
                   ('qqqi_qqq_tqqq_v4_2', 'qqqi_qqq_tqqq_v4_3'),
               ],
           }
@@ -146,10 +196,6 @@ jobs:
           ]
           for before, after in pairs:
               text = text.replace(before, after)
-          text = text.replace(
-              'uv run python scripts/run_qqq_v4_3_monitor.py \\\n            --contract configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml \\\n            --etf-data-bundle "$DATA_ROOT" \\\n            --output-dir "$MONITOR_ROOT" \\\n            "${args[@]}"',
-              'uv run python scripts/run_qqq_v4_3_monitor.py \\\n            --etf-data-bundle "$DATA_ROOT" \\\n            --output-dir "$MONITOR_ROOT" \\\n            "${args[@]}"',
-          )
           path.write_text(text, encoding='utf-8')
           PY
       - name: Validate imported v4.3 core before materializing operations
@@ -180,7 +226,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_2
-          rm -rf artifacts/bootstrap
+          rm -rf artifacts/bootstrap/etf artifacts/bootstrap/monitor artifacts/bootstrap/signal
           uv run python scripts/data/build_etf_reference_bundle.py \
             --end-date 2026-08-06 \
             --output-root artifacts/bootstrap/etf \
