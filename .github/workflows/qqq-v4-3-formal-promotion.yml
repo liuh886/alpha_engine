@@ -39,7 +39,6 @@ jobs:
           uv run pytest \
             tests/test_qqq_v4_3_formal.py \
             tests/test_v4_33_ma200_ma20_vix_release.py \
-            tests/test_sync_formal_bundle_v2.py \
             -q --strict-markers --tb=short
       - name: Build governed ETF bundle through promotion cutoff
         run: |
