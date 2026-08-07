@@ -12,7 +12,6 @@ purpose: >-
 
 boundaries:
   baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
-  sgov_contract: configs/research_paradigms/qqqi_qqq_tqqq_v4_2_sgov_defense_v4_3_research.yaml
   signal_trace_must_equal_v4_2: true
   formal_state_2_weights_must_equal_v4_2: true
   transaction_cost_bps_per_turnover_unit: 10.0
@@ -24,6 +23,12 @@ boundaries:
   delay_search: false
   duration_search: false
   actionable_alert_changes_authorized: false
+
+data:
+  start_date: "2020-02-01"
+  end_date: null
+  required_symbols: [QQQI, QQQ, TQQQ, ^VIX, ^VXN]
+  qqqi_pre_inception_backfill: false
 
 sentiment_data:
   provider: CNN Fear & Greed historical endpoint
