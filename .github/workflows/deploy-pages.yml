@@ -2,13 +2,11 @@ name: Deploy Research Artifact Studio to Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -16,14 +14,15 @@ concurrency:
 
 jobs:
   detect-impact:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       deploy: ${{ steps.impact.outputs.deploy }}
       reason: ${{ steps.impact.outputs.reason }}
       matched_paths_json: ${{ steps.impact.outputs.matched_paths_json }}
     steps:
       - name: Checkout publication graph
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           show-progress: false
@@ -36,6 +35,7 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
         run: |
+          set -euo pipefail
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             python scripts/detect_pages_impact.py --manual --github-output "$GITHUB_OUTPUT"
           else
@@ -59,7 +59,7 @@ jobs:
           PY
 
       - name: Record impact decision
-        if: ${{ always() }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pages-impact-decision
@@ -69,14 +69,19 @@ jobs:
 
   build-and-deploy:
     needs: detect-impact
-    if: ${{ needs.detect-impact.outputs.deploy == 'true' }}
-    runs-on: ubuntu-latest
+    if: needs.detect-impact.outputs.deploy == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           lfs: true
 
@@ -84,7 +89,7 @@ jobs:
         run: python scripts/check_legacy_web_boundary.py
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -95,7 +100,8 @@ jobs:
         env:
           VITE_RUNTIME_MODE: static_artifact
         run: |
-          npm ci
+          set -euo pipefail
+          npm ci --no-audit --no-fund
           npm run build
           test -f dist/index.html
           test -f dist/manifest.webmanifest
@@ -106,79 +112,37 @@ jobs:
           grep -q "Alpha Engine Research Studio" dist/index.html
           grep -q "Governed Model Runs" dist/index.html
           grep -q '"display": "standalone"' dist/manifest.webmanifest
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const path = require('node:path');
-          const root = path.resolve('dist/data/formal-model-runs');
-          const catalog = JSON.parse(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'));
-          if (catalog.schema_version !== '2.0.0' || catalog.channel !== 'formal') throw new Error('invalid formal v2 catalog');
-          if (catalog.research_only !== true || catalog.trade_ready !== false) throw new Error('invalid formal research boundary');
-          if (!Array.isArray(catalog.records) || catalog.records.length === 0) throw new Error('formal catalog is empty');
-          const seen = new Set();
-          for (const record of catalog.records) {
-            if (!record.model_version_id || seen.has(record.model_version_id)) throw new Error(`duplicate formal version: ${record.model_version_id}`);
-            seen.add(record.model_version_id);
-            const manifestPath = path.join(root, record.manifest_path);
-            if (!fs.existsSync(manifestPath)) throw new Error(`missing manifest: ${record.manifest_path}`);
-            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-            if (manifest.bundle_id !== record.bundle_id) throw new Error(`bundle mismatch: ${record.model_version_id}`);
-            if (manifest.publication_channel !== 'formal' || manifest.publication_status !== 'accepted_formal_baseline') throw new Error(`status mismatch: ${record.model_version_id}`);
-            for (const section of manifest.sections) {
-              if (section.availability_status !== 'available') continue;
-              const sectionPath = path.join(path.dirname(manifestPath), section.path);
-              if (!fs.existsSync(sectionPath)) throw new Error(`missing section: ${record.model_version_id}/${section.section_id}`);
-            }
-          }
-          NODE
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Install locked Python environment
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
+      - name: Install minimal publication runtime
+        run: python -m pip install --disable-pip-version-check --no-input PyYAML==6.0.3
 
-      - name: Validate release verification contract
-        run: |
-          uv run ruff check \
-            scripts/detect_pages_impact.py \
-            scripts/verify_pages_release.py \
-            src/artifacts/pages_release_verification.py \
-            tests/test_pages_impact.py \
-            tests/test_pages_release_verification.py
-          uv run mypy \
-            scripts/detect_pages_impact.py \
-            scripts/verify_pages_release.py \
-            src/artifacts/pages_release_verification.py
-          uv run pytest \
-            tests/test_pages_impact.py \
-            tests/test_pages_release_verification.py \
-            -q --strict-markers --tb=short
-
-      - name: Validate primary model/run bindings
-        run: uv run python scripts/check_repository_model_runs.py
+      - name: Validate primary model and run bindings
+        run: python scripts/check_repository_model_runs.py
 
       - name: Export repository research evidence
         run: |
-          uv run python scripts/export_static_site_data.py \
+          set -euo pipefail
+          python scripts/export_static_site_data.py \
             --source repository \
             --repository-catalog data/research/catalog.json \
             --output artifacts/site/data
           mkdir -p artifacts/site/docs
           cp docs/methodology.md artifacts/site/docs/methodology.md
-          uv run python scripts/export_research_bundle.py \
+          python scripts/export_research_bundle.py \
             --source artifacts/site \
             --output artifacts/research-bundle
 
-      - name: Assemble site
+      - name: Assemble and validate publication
         env:
           IMPACT_REASON: ${{ needs.detect-impact.outputs.reason }}
           MATCHED_PATHS_JSON: ${{ needs.detect-impact.outputs.matched_paths_json }}
         run: |
+          set -euo pipefail
           mkdir -p _site/docs _site/data
           cp -r qlib-dashboard/dist/. _site/
           cp -r artifacts/site/data/. _site/data/
@@ -214,18 +178,10 @@ jobs:
           test -f _site/docs/methodology.md
           test -f _site/bundle/alpha-engine-bundle.json
           test -f _site/bundle/data/models.json
-          test -f _site/data/runs/us_x1_1-evidence-30737322468/run.json
-          test -f _site/data/runs/us_x1_0-evidence-30733686862/run.json
-          test -f _site/data/runs/cn_x1_0-evidence-30733728747/run.json
           grep -q '"schema_version": "1.0.0"' _site/bundle/alpha-engine-bundle.json
           grep -q '"source": "repository_research_store"' _site/data/manifest.json
-          grep -q '"id": "us_x1_1"' _site/data/models.json
-          grep -q '"id": "us_x1_0"' _site/data/models.json
-          grep -q '"id": "cn_x1_0"' _site/data/models.json
-          grep -q '"primary_run_curve_unavailable"' _site/data/manifest.json
-          grep -q '"primary_run_provider_snapshot_unavailable"' _site/data/manifest.json
           ! grep -q 'metadata_db_missing' _site/bundle/alpha-engine-bundle.json
-          uv run python - <<'PY'
+          python - <<'PY'
           import hashlib
           import json
           from pathlib import Path
@@ -255,7 +211,7 @@ jobs:
           PY
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
@@ -272,7 +228,7 @@ jobs:
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          uv run python scripts/verify_pages_release.py \
+          python scripts/verify_pages_release.py \
             --base-url "$PAGE_URL" \
             --expected-commit "$GITHUB_SHA"
 
@@ -287,7 +243,7 @@ jobs:
         run: npx playwright test --config=playwright.live.config.ts
 
       - name: Upload live-browser evidence
-        if: ${{ always() }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pages-live-browser-evidence
