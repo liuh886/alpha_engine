@@ -14,12 +14,14 @@ purpose: >-
   changes are deliberately excluded from this mission.
 
 snapshot:
-  policy: repository_provider_bound
-  provider_identity_sha256: 66129d0727beb8d7b014966651f8b72c119f99195e33553d9781c9954ef267d8
+  policy: repository_source_rebuild
+  source_dir: data/csv_source
+  provider_identity_sha256: dc1e6136242bb87b25fa992b42a336d45883906d3d5244fc9397e9001adb8f8c
   cutoff: '2026-06-24'
   note: >-
-    The mission compares baseline and challenger on the same current repository
-    provider. It does not mutate or replace canonical US x1.1 evidence.
+    The mission rebuilds the provider from committed repository sources before
+    execution. Baseline and challenger consume the same rebuilt provider. This
+    does not mutate or replace canonical US x1.1 evidence.
 
 fixed_model:
   model_id: us_x1_1
