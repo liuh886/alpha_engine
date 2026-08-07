@@ -3,15 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.artifacts.strategy_operations import (
-    BYD_MODEL,
-    QQQ_MODEL,
-    build_operations_payload,
-    validate_operations_payload,
-)
+from src.artifacts.strategy_operations import build_operations_payload, validate_operations_payload
 from src.artifacts.strategy_signal_ledger import append_signal_evaluation
 
 FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
+QQQ_MODEL = "qqqi_qqq_tqqq_v4_2"
+QQQ_V43_MODEL = "qqqi_qqq_tqqq_v4_3"
+BYD_MODEL = "byd_v1_2_convex_momentum_budget_v1"
 
 
 def _by_model(payload: dict[str, object]) -> dict[str, dict[str, object]]:
@@ -52,6 +50,58 @@ def _qqq_signal(*, changed: bool = True) -> dict[str, object]:
             "vxn_retreat_from_peak": -0.08,
         },
     }
+
+
+def _v43_signal() -> dict[str, object]:
+    return {
+        "schema_version": "1.0.0",
+        "model_id": QQQ_V43_MODEL,
+        "research_only": True,
+        "trade_ready": False,
+        "should_alert": True,
+        "fingerprint": "qqq-v43-test-fingerprint",
+        "signal_date": "2026-08-07",
+        "latest_data_date": "2026-08-07",
+        "data_freshness_ok": True,
+        "execution_time": "next_session_open",
+        "current_formal_state": 0,
+        "target_formal_state": 0,
+        "current_overlay": "strong_defense",
+        "target_overlay": "base",
+        "current_weights": {"QQQI": 0.5, "QQQ": 0.0, "TQQQ": 0.0, "SGOV": 0.5},
+        "target_weights": {"QQQI": 0.5, "QQQ": 0.5, "TQQQ": 0.0, "SGOV": 0.0},
+        "turnover_units": 1.0,
+        "estimated_transaction_cost": 0.001,
+        "panic_repair_active": False,
+        "strong_defense": False,
+        "ma200_falling": True,
+        "fast_price_vol_repair": True,
+        "rsi_14": 44.2,
+        "fear_greed_score": 38.0,
+        "context": {
+            "qqq_close": 710.0,
+            "ma20": 705.0,
+            "ma200": 640.0,
+            "vix_close": 16.2,
+            "vxn_close": 24.1,
+        },
+    }
+
+
+def _catalog_with_v43(tmp_path: Path) -> Path:
+    payload = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
+    for record in payload["records"]:
+        if record["model_family_id"] != "qqq_rotation":
+            continue
+        record["model_version_id"] = QQQ_V43_MODEL
+        record["run_id"] = "qqqi_qqq_tqqq_v4_3-promotion-test"
+        record["manifest_path"] = (
+            "qqq_rotation/qqqi_qqq_tqqq_v4_3/"
+            "qqqi_qqq_tqqq_v4_3-promotion-test/manifest.json"
+        )
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
 
 
 def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> None:
@@ -98,6 +148,32 @@ def test_qqq_ledger_projects_to_current_target_snapshot(tmp_path: Path) -> None:
     allocations = qqq["allocations"]
     assert isinstance(allocations, list)
     assert {row["asset"] for row in allocations} == {"QQQI", "QQQ", "TQQQ"}
+
+
+def test_qqq_family_adapter_accepts_new_formal_version_without_version_branch(tmp_path: Path) -> None:
+    catalog = _catalog_with_v43(tmp_path)
+    ledger_root = tmp_path / "ledgers"
+    append_signal_evaluation(
+        ledger_root=ledger_root / QQQ_V43_MODEL,
+        model_version_id=QQQ_V43_MODEL,
+        signal=_v43_signal(),
+        delivery_status="sent",
+        workflow_run_id="54321",
+        commit_sha="e" * 40,
+        created_at_utc="2026-08-08T00:00:00Z",
+    )
+
+    payload = build_operations_payload(
+        formal_catalog=catalog,
+        ledger_root=ledger_root,
+        generated_at="2026-08-08T00:00:01Z",
+    )
+    qqq = _by_model(payload)[QQQ_V43_MODEL]
+    assert qqq["status"] == "target_pending_execution"
+    assert qqq["factor_freshness"] == "current"
+    assert "SGOV" in {row["asset"] for row in qqq["allocations"]}
+    assert "base" in str(qqq["state_label"])
+    assert {row["label"] for row in qqq["drivers"]} >= {"RSI(14)", "Strong defense"}
 
 
 def test_no_change_and_delivery_failure_are_distinct(tmp_path: Path) -> None:
