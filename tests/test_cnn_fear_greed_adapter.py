@@ -36,13 +36,15 @@ def test_parse_rejects_out_of_range_score() -> None:
         )
 
 
-def test_parse_rejects_duplicate_dates() -> None:
-    with pytest.raises(ValueError, match="duplicate dates"):
-        parse_cnn_fear_greed(
-            _payload(
-                [
-                    {"x": 1612137600000, "y": 20.0, "rating": "extreme fear"},
-                    {"x": 1612137600000, "y": 19.0, "rating": "extreme fear"},
-                ]
-            )
+def test_parse_keeps_latest_observation_for_same_utc_date() -> None:
+    frame = parse_cnn_fear_greed(
+        _payload(
+            [
+                {"x": 1612137600000, "y": 20.0, "rating": "extreme fear"},
+                {"x": 1612180800000, "y": 19.0, "rating": "extreme fear"},
+            ]
         )
+    )
+
+    assert list(frame.index) == [pd.Timestamp("2021-02-01")]
+    assert frame.iloc[0]["fear_greed_score"] == pytest.approx(19.0)
