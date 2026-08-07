@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Promote reviewed selected-pool repair files into canonical source storage.
 
-Promotion is permitted only when the freshly generated authoritative repair
-artifact matches a committed approval manifest byte-for-byte. Existing canonical
-files are never replaced by this path.
+Promotion is permitted only when an immutable downloaded repair artifact matches
+a committed approval manifest byte-for-byte. Existing canonical files are never
+replaced by this path.
 """
 
 from __future__ import annotations
@@ -15,9 +15,9 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from scripts.data.refresh_selected_pool_prices_v2 import MANIFEST_RELATIVE_PATH
 from src.common.runtime_settings import PROJECT_ROOT
 
+MANIFEST_RELATIVE_PATH = Path("artifacts/selected_pool_price_refresh_manifest.json")
 CANONICAL_SOURCE_ROOT = PROJECT_ROOT / "data" / "csv_source"
 DEFAULT_ARTIFACT_ROOT = PROJECT_ROOT / "artifacts" / "research_source_repair"
 
