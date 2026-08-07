@@ -1,35 +1,79 @@
 {
-  "generated_at": "2026-08-07T19:04:22Z",
+  "generated_at": "2026-08-07T19:07:43Z",
   "records": [
     {
-      "allocations": [],
-      "as_of": null,
-      "data_freshness": "unknown",
+      "allocations": [
+        {
+          "asset": "515180",
+          "current": 0.25,
+          "delta": 0.0,
+          "target": 0.25
+        },
+        {
+          "asset": "BYD",
+          "current": 0.75,
+          "delta": 0.0,
+          "target": 0.75
+        },
+        {
+          "asset": "CASH",
+          "current": 0.0,
+          "delta": 0.0,
+          "target": 0.0
+        }
+      ],
+      "as_of": "2026-08-07",
+      "data_freshness": "stale",
       "decision_cadence": "Every completed CN market session",
-      "decision_reason": "The signal publisher exists, but no durable evaluation has been committed yet.",
-      "delivery_status": "not available",
-      "drivers": [],
-      "estimated_cost": null,
+      "decision_reason": "启用正式 BYD v1.2 信号",
+      "delivery_status": "not_required",
+      "drivers": [
+        {
+          "label": "Market state",
+          "value": "bear"
+        },
+        {
+          "label": "Volatility state",
+          "value": "high"
+        },
+        {
+          "label": "20D momentum",
+          "value": "0.42%"
+        },
+        {
+          "label": "60D momentum",
+          "value": "-8.46%"
+        },
+        {
+          "label": "252D drawdown",
+          "value": "-20.76%"
+        },
+        {
+          "label": "Financed increment",
+          "value": "0.00%"
+        }
+      ],
+      "estimated_cost": 0.0,
       "factor_freshness": "blocked",
-      "latest_completed_session": "2026-08-03",
+      "latest_completed_session": "2026-08-07",
       "model_version_id": "byd_v1_2_convex_momentum_budget_v1",
       "next_decision_policy": "Evaluate after the common close; target applies to the next independently confirmed eligible open.",
-      "note": "The signal publisher exists, but no durable evaluation has been committed yet.",
+      "note": "Latest governed evaluation retained the existing allocation.",
       "source_href": null,
       "source_identity": {
-        "commit_sha": null,
+        "commit_sha": "6d75fa77b282271e5109644014a14c6113e4fda3",
         "formal_bundle_id": "833ce53e918da4d7c62dd288e4c33c062637ec75ca8e39600b4d2ac2bf676c7d",
         "formal_evidence_cutoff": "2026-08-03",
         "formal_run_id": "byd_v1_2_convex_momentum_budget_v1-formal-user-authorized-2026-08-06",
         "github_issue_number": null,
-        "ledger_fingerprint": null,
-        "signal_sha256": null,
-        "workflow_run_id": null
+        "ledger_fingerprint": "8d74ee540f3870c10d54",
+        "signal_sha256": "d669400c9a1d4b34c02d5ee4ff665d4ce05292d67b4a11b343472eb4f19aa2ea",
+        "workflow_run_id": "31210053448"
       },
-      "source_label": "Governed signal ledger",
-      "state_label": "Awaiting first governed evaluation",
-      "status": "awaiting_observation",
-      "turnover": null
+      "source_label": "Governed BYD signal ledger",
+      "state_label": "Defensive",
+      "status": "stale",
+      "turnover": 0.0
     },
     {
       "allocations": [],
