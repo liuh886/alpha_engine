@@ -25,7 +25,7 @@ export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary |
         {!collapsed && (
           <div className="min-w-0">
             <div className="research-brand-name">Alpha Engine</div>
-            <div className="research-brand-subtitle">Research Studio</div>
+            <div className="research-brand-subtitle">Strategy Console</div>
           </div>
         )}
       </Link>
@@ -42,17 +42,15 @@ export function Sidebar({ activeRun = null }: { activeRun?: GovernedRunSummary |
         </div>
       )}
 
-      <nav className="research-nav" aria-label="Research studio navigation">
+      <nav className="research-nav" aria-label="Strategy console navigation">
         {groups.map((group) => (
           <section key={group.title} className="research-nav-group">
             {!collapsed && <h2>{group.title}</h2>}
             <div className="space-y-1">
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const navPath = item.path === '' ? '/' : `/${item.path}`;
-                const active = item.path === ''
-                  ? location.pathname === '/'
-                  : location.pathname === navPath || location.pathname.startsWith(`${navPath}/`);
+                const navPath = `/${item.path}`;
+                const active = location.pathname === navPath || location.pathname.startsWith(`${navPath}/`);
                 return (
                   <NavLink
                     key={item.path}
