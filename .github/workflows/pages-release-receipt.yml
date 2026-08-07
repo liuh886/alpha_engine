@@ -2,7 +2,7 @@ name: Observe Pages release receipt
 
 on:
   workflow_run:
-    workflows: ["Deploy Research Artifact Studio to Pages"]
+    workflows: ["Deploy Strategy Console to Pages"]
     types: [completed]
 
 permissions:
@@ -151,7 +151,7 @@ jobs:
                   f"- Impact reason: `{impact_reason}`\n"
                   f"- Matched publication dependencies: {matched_text}\n"
                   "The deployment completed, but the public origin did not satisfy "
-                  f"the frontend release contracts.\n\n```text\n{error[-3000:]}\n```"
+                  f"the Strategy Console release contracts.\n\n```text\n{error[-3000:]}\n```"
               )
           else:
               receipt = json.loads(
@@ -171,11 +171,11 @@ jobs:
                   f"- Matched publication dependencies: {matched_text}\n"
                   f"- Research bundle: `{receipt['bundle_id']}`\n"
                   f"- Required bundle artifacts: {required}\n"
-                  f"- Formal selector: {models}\n"
+                  f"- Formal strategies: {models}\n"
                   "- Research boundary: `research_only=true`, `trade_ready=false`\n"
                   "- Verification: cache-busted live deployment identity, required "
                   "bundle size/SHA-256/source contract, formal catalog and package "
-                  "identity, complete-backtest shell marker, and live browser gate"
+                  "identity, Strategy Console shell, and live browser gate"
               )
 
           body = f"""## Latest Pages workflow decision
