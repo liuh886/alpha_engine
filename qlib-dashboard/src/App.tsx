@@ -1,13 +1,12 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { HashRouter, Link, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle, ChevronDown, Database, Layers3, Loader2, Moon, Sun } from 'lucide-react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { HashRouter, Link, matchPath, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { AlertTriangle, ChevronDown, Layers3, Loader2, Moon, Sun } from 'lucide-react';
 import type { ModelData } from './lib/data-parser';
 import type { GovernedRunSummary } from './lib/governed-run';
 import { selectRunFromQuery } from './lib/governed-run';
 import type { RunWorkspaceContext } from './lib/run-workspace';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileNavigation } from './components/MobileNavigation';
-import { ModelSelector } from './components/ModelSelector';
 import { ResearchContextBar } from './components/ResearchContextBar';
 import { Sidebar } from './components/Sidebar';
 import { Button } from './components/ui/button';
@@ -25,11 +24,9 @@ function NotFound() {
   return (
     <div className="research-empty-state">
       <p className="text-6xl font-black text-muted-foreground/20">404</p>
-      <h1 className="mt-3 text-xl font-semibold">Evidence view not found</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        This route is not part of the governed research workspace. Return to Runs and choose a declared artifact.
-      </p>
-      <Button asChild variant="outline" className="mt-6"><Link to="/runs">Open Runs</Link></Button>
+      <h1 className="mt-3 text-xl font-semibold">Strategy view not found</h1>
+      <p className="mt-2 text-sm text-muted-foreground">This route is not part of the current Alpha Engine strategy console.</p>
+      <Button asChild variant="outline" className="mt-6"><Link to="/app">Open overview</Link></Button>
     </div>
   );
 }
@@ -37,13 +34,10 @@ function NotFound() {
 interface LayoutProps {
   models: ModelData[];
   selectedModelId: string;
-  setSelectedModelId: (id: string) => void;
   runs: GovernedRunSummary[];
   activeRunKey: string;
   selectRun: (run: GovernedRunSummary) => void;
   runLoadErrors: string[];
-  selectorOpen: boolean;
-  setSelectorOpen: (open: boolean) => void;
   loading: boolean;
   loadError: string | null;
 }
@@ -53,22 +47,15 @@ function Layout(props: LayoutProps) {
   const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
   const { theme, setTheme } = useGlobalStore();
-  const currentPath = location.pathname.replace(/^\//, '');
-  const declaredRoute = routes.find((route) => route.path === currentPath);
+  const declaredRoute = routes.find((route) => matchPath({ path: `/${route.path}`, end: true }, location.pathname));
   const viewTitle = declaredRoute?.title ?? 'Unavailable route';
-  const selectedModel = props.models.find((model) => model.id === props.selectedModelId);
   const activeRun = useMemo(
     () => props.runs.find((run) => run.key === props.activeRunKey) ?? props.runs[0] ?? null,
     [props.activeRunKey, props.runs],
   );
-  const showLegacyModelPicker = Boolean(
-    declaredRoute
-    && ['dashboard', 'models'].includes(currentPath)
-    && selectedModel,
-  );
   const showRunPicker = Boolean(
     declaredRoute
-    && ['backtests', 'review', 'compare', 'decisions'].includes(currentPath)
+    && ['backtests', 'review', 'compare', 'decisions'].includes(declaredRoute.path)
     && activeRun,
   );
 
@@ -79,7 +66,7 @@ function Layout(props: LayoutProps) {
   useEffect(() => {
     document.title = `${viewTitle} — Alpha Engine`;
     const description = document.querySelector('meta[name="description"]');
-    description?.setAttribute('content', 'Inspect governed model runs, formal backtests, evidence lineage, and research decisions in Alpha Engine.');
+    description?.setAttribute('content', 'Monitor governed systematic strategies, inspect target allocations, and drill into formal performance, risk, holdings and evidence.');
   }, [viewTitle]);
 
   useEffect(() => {
@@ -108,7 +95,7 @@ function Layout(props: LayoutProps) {
       <div className="research-workspace">
         <header className="research-topbar">
           <div className="min-w-0">
-            <p className="research-topbar-eyebrow">Alpha Engine / Governed Research Studio</p>
+            <p className="research-topbar-eyebrow">Alpha Engine / Strategy Console</p>
             <div className="flex min-w-0 items-center gap-3">
               <h1 className="truncate">{viewTitle}</h1>
               {showRunPicker && activeRun && (
@@ -121,19 +108,6 @@ function Layout(props: LayoutProps) {
                   <Layers3 className="h-3.5 w-3.5 shrink-0 text-primary" />
                   <span className="truncate font-medium">{activeRun.title}</span>
                   <span className="rounded bg-muted px-1 py-0.5 text-[9px] font-bold uppercase">{activeRun.channel}</span>
-                  <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-                </Button>
-              )}
-              {showLegacyModelPicker && selectedModel && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => props.setSelectorOpen(true)}
-                  className="h-7 max-w-[320px] gap-1.5 border-primary/20 bg-background/70 text-xs"
-                >
-                  <Database className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <span className="truncate font-medium">{selectedModel.name}</span>
-                  <span className="rounded bg-muted px-1 py-0.5 text-[9px] font-bold uppercase">{selectedModel.market}</span>
                   <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
                 </Button>
               )}
@@ -168,7 +142,7 @@ function Layout(props: LayoutProps) {
           ) : props.loadError ? (
             <div className="research-empty-state">
               <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
-              <h2 className="mt-4 text-lg font-semibold">Research bundle unavailable</h2>
+              <h2 className="mt-4 text-lg font-semibold">Strategy evidence unavailable</h2>
               <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">{props.loadError}</p>
               <Button asChild variant="outline" className="mt-5"><Link to="/library">Open bundle library</Link></Button>
             </div>
@@ -180,21 +154,12 @@ function Layout(props: LayoutProps) {
             </ErrorBoundary>
           )}
         </main>
-
-        <ModelSelector
-          models={props.models}
-          selectedModelId={props.selectedModelId}
-          onSelect={props.setSelectedModelId}
-          open={props.selectorOpen}
-          onOpenChange={props.setSelectorOpen}
-        />
       </div>
     </div>
   );
 }
 
-function ResearchStudioApp() {
-  const [selectorOpen, setSelectorOpen] = useState(false);
+function StrategyConsoleApp() {
   const workspace = useAppBootstrap();
 
   return (
@@ -203,13 +168,10 @@ function ResearchStudioApp() {
         <Layout
           models={workspace.models}
           selectedModelId={workspace.selectedModelId}
-          setSelectedModelId={workspace.setSelectedModelId}
           runs={workspace.runs}
           activeRunKey={workspace.activeRunKey}
           selectRun={workspace.selectRun}
           runLoadErrors={workspace.runLoadErrors}
-          selectorOpen={selectorOpen}
-          setSelectorOpen={setSelectorOpen}
           loading={workspace.loading}
           loadError={workspace.loadError}
         />
@@ -224,15 +186,15 @@ function ResearchStudioApp() {
   );
 }
 
-function ArtifactStudioApp() {
+function AlphaEngineApp() {
   return (
     <HashRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/*" element={<ResearchStudioApp />} />
+        <Route path="/*" element={<StrategyConsoleApp />} />
       </Routes>
     </HashRouter>
   );
 }
 
-export default ArtifactStudioApp;
+export default AlphaEngineApp;

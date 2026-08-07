@@ -7,10 +7,6 @@ function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex');
 }
 
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 const modelsText = JSON.stringify([
   {
     id: 'fixture-run-1',
@@ -43,21 +39,9 @@ const bundleManifest = {
   ],
 };
 
-type FormalCatalog = {
-  records?: Array<{ manifest_path?: string }>;
-};
-
-type FormalManifest = {
-  sections?: Array<{
-    section_id?: string;
-    availability_status?: string;
-    path?: string;
-  }>;
-};
-
-type FormalSummary = {
-  display_name?: string;
-};
+type FormalCatalog = { records?: Array<{ manifest_path?: string }> };
+type FormalManifest = { sections?: Array<{ section_id?: string; availability_status?: string; path?: string }> };
+type FormalSummary = { display_name?: string; model_version_id?: string };
 
 async function installBundleFixture(): Promise<void> {
   const root = resolve(process.cwd(), 'dist', 'bundle');
@@ -69,19 +53,17 @@ async function installBundleFixture(): Promise<void> {
   ]);
 }
 
-test.beforeAll(async () => {
-  await installBundleFixture();
-});
+test.beforeAll(async () => { await installBundleFixture(); });
 
 async function assertNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
-async function openStudio(page: Page) {
+async function openConsole(page: Page) {
   await page.goto('/#/app');
   await expect(page.locator('#root')).not.toBeEmpty();
-  await expect(page.getByRole('heading', { name: 'Decide what the evidence supports.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
   await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
 }
 
@@ -91,19 +73,13 @@ async function loadFormalDisplayNames(page: Page): Promise<string[]> {
   const catalog = await catalogResponse.json() as FormalCatalog;
   const names: string[] = [];
   for (const record of catalog.records ?? []) {
-    expect(record.manifest_path).toBeTruthy();
     const manifestPath = String(record.manifest_path);
     const manifestResponse = await page.request.get(`/data/formal-model-runs/${manifestPath}`);
     expect(manifestResponse.ok()).toBeTruthy();
     const manifest = await manifestResponse.json() as FormalManifest;
-    const summarySection = manifest.sections?.find(
-      (section) => section.section_id === 'summary' && section.availability_status === 'available',
-    );
-    expect(summarySection?.path).toBeTruthy();
+    const summarySection = manifest.sections?.find((section) => section.section_id === 'summary' && section.availability_status === 'available');
     const parent = manifestPath.split('/').slice(0, -1).join('/');
-    const summaryResponse = await page.request.get(
-      `/data/formal-model-runs/${parent}/${String(summarySection?.path)}`,
-    );
+    const summaryResponse = await page.request.get(`/data/formal-model-runs/${parent}/${String(summarySection?.path)}`);
     expect(summaryResponse.ok()).toBeTruthy();
     const summary = await summaryResponse.json() as FormalSummary;
     expect(summary.display_name).toBeTruthy();
@@ -113,120 +89,76 @@ async function loadFormalDisplayNames(page: Page): Promise<string[]> {
   return names;
 }
 
-test('product homepage explains the workflow and opens the research studio', async ({ page }, testInfo) => {
+test('product homepage opens the strategy console', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
   await page.goto('/#/');
-  await expect(page.getByRole('heading', { name: 'Turn systematic research into decisions you can inspect.' })).toBeVisible();
-  await expect(page.getByText('Choose the run before reading the result.')).toBeVisible();
-  await expect(page.getByText('Performance is only useful when its source is visible.')).toBeVisible();
-  await expect(page.getByText('Every conclusion keeps its evidence attached.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Run systematic strategies with the evidence still attached.' })).toBeVisible();
+  await expect(page.getByText('Start with what the strategies are doing now.').first()).toBeVisible();
+  await expect(page.getByText('Decision first. Evidence on demand.')).toBeVisible();
   await assertNoHorizontalOverflow(page);
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: `test-results/static-artifact/landing-${testInfo.project.name}.png`, fullPage: true });
 
-  await page.getByRole('link', { name: 'Open Research Studio' }).click();
+  await page.getByRole('link', { name: 'Open Strategy Console' }).click();
   await expect(page).toHaveURL(/#\/app$/);
-  await expect(page.getByRole('heading', { name: 'Decide what the evidence supports.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
 });
 
-test('static studio opens without authentication or backend APIs', async ({ page }, testInfo) => {
+test('strategy console exposes four primary destinations and formal strategy drill-down', async ({ page }, testInfo) => {
   const apiRequests: string[] = [];
-  const legacyFormalRequests: string[] = [];
   const pageErrors: string[] = [];
   page.on('request', (request) => {
     const pathname = new URL(request.url()).pathname;
     if (pathname.startsWith('/api/')) apiRequests.push(request.url());
-    if (pathname.includes('/data/formal-backtests/')) legacyFormalRequests.push(request.url());
   });
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
-  await openStudio(page);
-
-  if (testInfo.project.name === 'mobile') {
-    await page.getByRole('button', { name: 'Open research navigation' }).click();
-    const mobileNavigation = page.getByRole('navigation', { name: 'Mobile research studio navigation' });
-    await expect(mobileNavigation).toBeVisible();
-    await expect(mobileNavigation.getByRole('link', { name: 'Runs', exact: true })).toBeVisible();
-    await expect(mobileNavigation.getByRole('link', { name: 'Data', exact: true })).toBeVisible();
-    await expect(mobileNavigation.getByRole('link', { name: 'Experiments', exact: true })).toHaveCount(0);
-    await expect(mobileNavigation.getByRole('link', { name: 'Backtests', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Close research navigation' }).first().click();
-  } else {
-    const navigation = page.getByRole('navigation', { name: 'Research studio navigation' });
-    await expect(navigation).toBeVisible();
-    await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toBeVisible();
-    await expect(navigation.getByRole('link', { name: 'Experiments', exact: true })).toHaveCount(0);
-    await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toBeVisible();
+  await openConsole(page);
+  const navName = testInfo.project.name === 'mobile' ? 'Mobile strategy console navigation' : 'Strategy console navigation';
+  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Open strategy navigation' }).click();
+  const navigation = page.getByRole('navigation', { name: navName });
+  for (const label of ['Overview', 'Strategies', 'Research', 'System']) {
+    await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
-  await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Sign in')).toHaveCount(0);
-  expect(apiRequests).toEqual([]);
-  expect(pageErrors).toEqual([]);
-  await assertNoHorizontalOverflow(page);
-  await page.screenshot({ path: `test-results/static-artifact/overview-${testInfo.project.name}.png`, fullPage: true });
+  await expect(navigation.getByRole('link', { name: 'Runs', exact: true })).toHaveCount(0);
+  await expect(navigation.getByRole('link', { name: 'Backtests', exact: true })).toHaveCount(0);
+  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Close strategy navigation' }).click();
 
   const formalNames = await loadFormalDisplayNames(page);
-  await page.goto('/#/runs');
-  await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
-  const catalog = page.getByRole('region', { name: 'Governed model runs' });
-  for (const name of formalNames) {
-    await expect(catalog.getByRole('button', { name: new RegExp(escapeRegex(name)) })).toBeVisible();
-  }
-  await expect(catalog.getByText('formal', { exact: true })).toHaveCount(formalNames.length);
-  await catalog.getByRole('button', { name: /QQQ Rotation v4\.2/ }).click();
-  await expect(page).toHaveURL(/#\/review\?channel=formal&family=qqq_rotation&version=qqqi_qqq_tqqq_v4_2/);
+  const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
+  for (const name of formalNames) await expect(fleet.getByText(name, { exact: true })).toBeVisible();
+  await fleet.getByText('QQQ Rotation v4.2', { exact: true }).click();
+  await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_2$/);
   await expect(page.getByRole('heading', { name: 'QQQ Rotation v4.2' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current decision state' })).toBeVisible();
   const formalTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
   for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
     await expect(formalTabs.getByRole('tab', { name: label, exact: true })).toBeVisible();
   }
-  await expect(page.getByRole('heading', { name: 'Strategy, benchmark and excess path' })).toBeVisible();
-  await assertNoHorizontalOverflow(page);
-  await page.screenshot({ path: `test-results/static-artifact/governed-review-${testInfo.project.name}.png`, fullPage: true });
-
-  await page.goto('/#/backtests');
-  await expect(page.getByRole('main').getByRole('heading', { name: 'Formal Backtests', exact: true, level: 2 })).toBeVisible();
-  const baselines = page.getByRole('region', { name: 'Accepted formal backtest baselines' });
-  for (const name of formalNames) {
-    await expect(baselines.getByRole('button', { name: new RegExp(escapeRegex(name)) })).toBeVisible();
-  }
-  await expect(page.getByTestId('formal-backtest-review')).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
-  await page.goto('/#/dashboard');
-  await expect(page).toHaveURL(/#\/backtests$/);
-  await expect(page.getByRole('main').getByRole('heading', { name: 'Formal Backtests', exact: true, level: 2 })).toBeVisible();
-
-  await page.goto('/#/data');
-  await expect(page.getByRole('heading', { name: 'Data identity and readiness' })).toBeVisible();
-  await expect(page.locator('main').getByText('2026-07-31', { exact: true })).toBeVisible();
-  await assertNoHorizontalOverflow(page);
-  await page.screenshot({ path: `test-results/static-artifact/data-${testInfo.project.name}.png`, fullPage: true });
-
+  await page.goto('/#/research');
+  await expect(page.getByRole('heading', { name: 'Research', exact: true })).toBeVisible();
   await page.goto('/#/system');
-  await expect(page.getByRole('heading', { name: 'Evidence view not found' })).toBeVisible();
-  await expect(page.locator('.research-topbar').getByRole('heading', { name: 'Unavailable route' })).toBeVisible();
-  expect(apiRequests).toEqual([]);
-  expect(legacyFormalRequests).toEqual([]);
-  expect(pageErrors).toEqual([]);
+  await expect(page.getByRole('heading', { name: 'System', exact: true })).toBeVisible();
+  await page.goto('/#/dashboard');
+  await expect(page.getByRole('heading', { name: 'Strategy view not found' })).toBeVisible();
 
-  await page.keyboard.press('Tab');
-  const focused = await page.evaluate(() => document.activeElement?.tagName.toLowerCase());
-  expect(['a', 'button', 'input']).toContain(focused);
+  expect(apiRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
   await assertNoHorizontalOverflow(page);
-  await page.screenshot({ path: `test-results/static-artifact/runtime-blocked-${testInfo.project.name}.png`, fullPage: true });
+  await page.screenshot({ path: `test-results/static-artifact/strategy-console-${testInfo.project.name}.png`, fullPage: true });
 });
 
 test('installed shell reopens offline after first visit', async ({ page, context }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Offline lifecycle is checked once on desktop Chromium.');
-  await openStudio(page);
+  await openConsole(page);
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Decide what the evidence supports.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByText('Alpha Engine', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
 });

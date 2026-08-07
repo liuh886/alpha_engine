@@ -4,22 +4,22 @@ import { describe, expect, it } from 'vitest';
 import { LandingPage } from './LandingPage';
 
 describe('Alpha Engine landing page', () => {
-  it('explains the governed research workflow and links into the studio', () => {
+  it('explains the strategy operating workflow and links into the console', () => {
     render(
       <MemoryRouter>
         <LandingPage />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: /turn systematic research into decisions you can inspect/i })).toBeInTheDocument();
-    expect(screen.getByText(/choose the run before reading the result/i)).toBeInTheDocument();
-    expect(screen.getByText(/performance is only useful when its source is visible/i)).toBeInTheDocument();
-    expect(screen.getByText(/every conclusion keeps its evidence attached/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /run systematic strategies with the evidence still attached/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/start with what the strategies are doing now/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/decision first\. evidence on demand/i)).toBeInTheDocument();
+    expect(screen.getByText(/every target keeps its research context/i)).toBeInTheDocument();
 
-    const studioLinks = screen.getAllByRole('link', { name: /open research studio|open studio|enter alpha engine/i });
-    expect(studioLinks.length).toBeGreaterThan(0);
-    studioLinks.forEach((link) => expect(link).toHaveAttribute('href', '/app'));
+    const consoleLinks = screen.getAllByRole('link', { name: /open strategy console|open console|enter alpha engine/i });
+    expect(consoleLinks.length).toBeGreaterThan(0);
+    consoleLinks.forEach((link) => expect(link).toHaveAttribute('href', '/app'));
 
-    expect(screen.getByRole('link', { name: /view formal backtests/i })).toHaveAttribute('href', '/backtests');
+    expect(screen.getByRole('link', { name: /view formal strategies/i })).toHaveAttribute('href', '/strategies');
   });
 });

@@ -25,13 +25,13 @@ export function ResearchContextBar() {
       <div className="research-context-item hidden lg:flex">
         <span>{manifest?.scope.markets?.map((market) => market.toUpperCase()).join(' · ') || 'No market scope'}</span>
       </div>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto hidden items-center gap-2 sm:flex">
         <Badge variant="outline" className="context-badge">{RUNTIME_LABELS[runtimeCapabilities.mode]}</Badge>
         <Badge variant="outline" className="context-badge text-amber-700 dark:text-amber-300">
           <ShieldAlert className="mr-1 h-3 w-3" /> Research only
         </Badge>
         {bundle && (
-          <Badge variant="outline" className="context-badge hidden sm:flex text-emerald-700 dark:text-emerald-300">
+          <Badge variant="outline" className="context-badge text-emerald-700 dark:text-emerald-300">
             <CheckCircle2 className="mr-1 h-3 w-3" /> {bundle.integrity === 'all_verified' ? 'Fully verified' : 'Core verified'}
           </Badge>
         )}

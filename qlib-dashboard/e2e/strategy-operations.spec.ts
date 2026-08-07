@@ -30,7 +30,7 @@ const bundleManifest = {
   schema_version: '1.0.0',
   frontend_reader_range: '>=1.0.0 <2.0.0',
   bundle_id: 'a'.repeat(64),
-  title: 'Operations Browser Fixture',
+  title: 'Strategy Operations Fixture',
   generated_at: '2026-08-02T00:00:00Z',
   evidence_cutoff: '2026-07-31',
   research_only: true,
@@ -115,20 +115,6 @@ const observation = {
   },
 };
 
-const monthlySummary = {
-  schema_version: '1.0',
-  month: '2026-08',
-  research_only: true,
-  trade_ready: false,
-  event_count: 1,
-  state_change_event_count: 1,
-  recovery_precursor_event_count: 0,
-  unresolved_40_session_count: 1,
-  completed_horizon_counts: { '1': 1, '2': 1 },
-  model_change_authorized: false,
-  interpretation: 'Prospective evidence remains research-only.',
-};
-
 async function mockBundle(page: Page) {
   await page.route('**/bundle/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
@@ -160,14 +146,6 @@ async function mockGitHubLedger(page: Page) {
             html_url: 'https://github.com/liuh886/alpha_engine/issues/9001',
             updated_at: '2026-08-02T00:00:00Z',
           },
-          {
-            number: 9002,
-            title: 'v4.2 monthly evidence',
-            body: marker('prospective-evidence-month', monthlySummary),
-            state: 'open',
-            html_url: 'https://github.com/liuh886/alpha_engine/issues/9002',
-            updated_at: '2026-08-02T00:01:00Z',
-          },
         ]),
       });
       return;
@@ -186,29 +164,6 @@ async function mockGitHubLedger(page: Page) {
       });
       return;
     }
-    if (url.pathname.includes('/actions/workflows/') && url.pathname.endsWith('/runs')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          total_count: 1,
-          workflow_runs: [
-            {
-              id: 7001,
-              name: 'v4.2 workflow',
-              status: 'completed',
-              conclusion: 'success',
-              event: 'schedule',
-              html_url: 'https://github.com/liuh886/alpha_engine/actions/runs/7001',
-              run_started_at: '2026-08-02T00:00:00Z',
-              updated_at: '2026-08-02T00:05:00Z',
-              head_sha: 'b'.repeat(40),
-            },
-          ],
-        }),
-      });
-      return;
-    }
     await route.fulfill({ status: 404, body: 'unmatched GitHub fixture' });
   });
 }
@@ -218,27 +173,34 @@ async function assertNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
-test('v4.2 operations displays only durable read-only evidence', async ({ page }, testInfo) => {
+test('QQQ operating evidence is rendered inside the strategy workspace', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await mockBundle(page);
   await mockGitHubLedger(page);
 
-  await page.goto('/#/operations');
-  await expect(page.getByRole('heading', { name: 'Observing outcomes' })).toBeVisible();
-  await expect(page.getByText('v4.2 active baseline', { exact: true })).toBeVisible();
-  await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Not trade-ready', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Read-only ledger', { exact: true })).toBeVisible();
-  await expect(page.getByText('Last executed allocation at signal close', { exact: true })).toBeVisible();
-  await expect(page.getByText('Close-time target allocation', { exact: true })).toBeVisible();
-  await expect(page.getByText('2 sessions', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Workflow succeeded', { exact: true })).toHaveCount(2);
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_2');
+  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQ Rotation v4.2', exact: true, level: 1 })).toBeVisible();
+
+  const now = page.getByRole('region', { name: 'Current decision state' });
+  await expect(now).toBeVisible();
+  await expect(now.getByText('Defensive → Transition', { exact: true })).toBeVisible();
+  await expect(now.getByText('enter_qqq_early_repair_vix_easing', { exact: true })).toBeVisible();
+  await expect(now.getByText('QQQI', { exact: true })).toBeVisible();
+  await expect(now.getByText('QQQ', { exact: true })).toBeVisible();
+  await expect(now.getByText('VIX close', { exact: true })).toBeVisible();
+  await expect(now.getByText('15.99', { exact: true })).toBeVisible();
+  await expect(page.getByText('Execution observed', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Source record' })).toHaveAttribute('href', 'https://github.com/liuh886/alpha_engine/issues/9001');
+
+  const evidenceTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
+  await expect(evidenceTabs.getByRole('tab', { name: 'Performance', exact: true })).toBeVisible();
+  await expect(evidenceTabs.getByRole('tab', { name: 'Risk & robustness', exact: true })).toBeVisible();
   await expect(page.getByText('Sign in')).toHaveCount(0);
   expect(pageErrors).toEqual([]);
   await assertNoHorizontalOverflow(page);
   await page.screenshot({
-    path: `test-results/static-artifact/v42-operations-${testInfo.project.name}.png`,
+    path: `test-results/static-artifact/strategy-operations-${testInfo.project.name}.png`,
     fullPage: true,
   });
 });
