@@ -61,58 +61,41 @@ const bundleManifest = {
   ],
 };
 
-const eventRecord = {
-  schema_version: '1.0',
-  event_id: 'v43-2026-08-06-state-change',
-  event_type: 'state_change',
+const signalRecord = {
+  schema_version: '1.0.0',
+  model_id: 'qqqi_qqq_tqqq_v4_3',
   research_only: true,
   trade_ready: false,
-  actionable: true,
-  status: 'awaiting_next_open',
   signal_date: '2026-08-06',
-  latest_data_date_at_creation: '2026-08-06',
+  latest_data_date: '2026-08-06',
   data_freshness_ok: true,
   execution_time: 'next_session_open',
   fingerprint: 'fixture-fingerprint-v43',
-  transition_type: 'open_risk_bridge',
-  decision_reason: 'enter_qqq_early_repair_vix_easing',
-  current_state: 0,
-  target_state: 1,
+  current_formal_state: 0,
+  target_formal_state: 1,
+  current_overlay: 'formal_state_allocation',
+  target_overlay: 'formal_state_allocation',
   current_weights: { QQQI: 1, QQQ: 0, TQQQ: 0, SGOV: 0 },
   target_weights: { QQQI: 0.5, QQQ: 0.5, TQQQ: 0, SGOV: 0 },
   turnover_units: 1,
   estimated_transaction_cost: 0.001,
-  signal_close_features: {
+  panic_repair_active: false,
+  strong_defense: false,
+  ma200_falling: false,
+  fast_price_vol_repair: true,
+  rsi_14: 46.2,
+  fear_greed_score: 42,
+  context: {
+    qqq_close: 571.4,
+    ma20: 565.8,
+    ma50: 559.0,
+    ma200: 520.0,
     vix_close: 15.99,
-    vix_return_5d: -0.05,
     vxn_close: 18.2,
-    vxn_return_1d: -0.02,
-    vxn_return_5d: -0.04,
-    qqq_distance_ma_short: 0.01,
+    vix_regime: 'normal',
+    vxn_regime: 'normal',
   },
-  recovery_precursor_boolean: false,
-  outcome_horizons_sessions: [1, 2, 3, 5, 10, 20, 40],
-};
-
-const observation = {
-  schema_version: '1.0',
-  event_id: eventRecord.event_id,
-  as_of_data_date: '2026-08-07',
-  status: 'observing_outcomes',
-  previous_status: 'awaiting_next_open',
-  status_changed: true,
-  available_sessions: 2,
-  completed_horizons: [1, 2],
-  new_horizons: [1, 2],
-  execution: {
-    execution_date: '2026-08-07',
-    theoretical_next_open_prices: { QQQI: 51.2, QQQ: 571.4, TQQQ: 82.1, SGOV: 100.4 },
-    qqq_opening_gap: 0.002,
-  },
-  outcomes: {
-    '1': { qqq_return: 0.006, tqqq_return: 0.018 },
-    '2': { qqq_return: 0.01, tqqq_return: 0.03 },
-  },
+  data_context: { mode: 'governed' },
 };
 
 async function mockBundle(page: Page) {
@@ -140,25 +123,11 @@ async function mockGitHubLedger(page: Page) {
         body: JSON.stringify([
           {
             number: 9001,
-            title: 'v4.3 prospective evidence',
-            body: marker('prospective-evidence-record', eventRecord),
+            title: '[策略信号] QQQ v4.3 2026-08-06 QQQI 50% / QQQ 50%',
+            body: marker('qqq-v4-3-signal', signalRecord),
             state: 'open',
             html_url: 'https://github.com/liuh886/alpha_engine/issues/9001',
             updated_at: '2026-08-08T00:00:00Z',
-          },
-        ]),
-      });
-      return;
-    }
-    if (url.pathname.endsWith('/issues/9001/comments')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            body: marker('prospective-evidence-update', observation),
-            html_url: 'https://github.com/liuh886/alpha_engine/issues/9001#issuecomment-1',
-            updated_at: '2026-08-08T00:02:00Z',
           },
         ]),
       });
@@ -185,12 +154,12 @@ test('QQQ operating evidence is rendered inside the strategy workspace', async (
   const now = page.getByRole('region', { name: 'Current decision state' });
   await expect(now).toBeVisible();
   await expect(now.getByText('Defensive → Transition', { exact: true })).toBeVisible();
-  await expect(now.getByText('enter_qqq_early_repair_vix_easing', { exact: true })).toBeVisible();
+  await expect(now.getByText('formal_state_allocation → formal_state_allocation', { exact: true })).toBeVisible();
   await expect(now.getByText('QQQI', { exact: true })).toBeVisible();
   await expect(now.getByText('QQQ', { exact: true })).toBeVisible();
   await expect(now.getByText('VIX close', { exact: true })).toBeVisible();
   await expect(now.getByText('15.99', { exact: true })).toBeVisible();
-  await expect(page.getByText('Execution observed', { exact: true })).toBeVisible();
+  await expect(page.getByText('New target', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Source record' })).toHaveAttribute('href', 'https://github.com/liuh886/alpha_engine/issues/9001');
 
   const evidenceTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
