@@ -1,0 +1,242 @@
+name: QQQ v4.3 Mainline Bootstrap
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqq-v4-3-mainline-bootstrap.yml"
+
+permissions:
+  contents: write
+
+env:
+  OLD_BRANCH: feat/qqq-v4-3-formal-promotion
+  MODEL_ID: qqqi_qqq_tqqq_v4_3
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Import only validated v4.3 model and formal-publication components
+        run: |
+          set -euo pipefail
+          git fetch origin "$OLD_BRANCH"
+          paths=(
+            src/artifacts/qqq_v4_3_formal.py
+            scripts/refresh_qqq_v4_3_formal.py
+            scripts/sync_formal_bundle_v2.py
+            src/research/qqq_v4_3_monitor.py
+            scripts/run_qqq_v4_3_monitor.py
+            src/research/qqq_v4_3_signal_alerts.py
+            scripts/run_qqq_v4_3_signal_alert.py
+            tests/test_qqq_v4_3_formal.py
+            tests/test_refresh_qqq_v4_3_formal.py
+            tests/test_qqq_v4_3_monitor_signal.py
+            configs/research_paradigms/qqqi_qqq_tqqq_current_baseline.yaml
+            configs/research_experiments/cn_x1_1_research_loop_onboarding_v1.yaml
+            configs/research_experiments/byd_v1_2_research_loop_onboarding_v1.yaml
+            configs/research_experiments/qqq_rotation_v4_3_research_loop_onboarding_v1.yaml
+            data/research/experiment_receipts/qqq_rotation_v4_3_research_loop_onboarding_v1.json
+            tests/test_formal_baseline_onboarding.py
+            tests/test_sync_formal_bundle_v2.py
+            tests/test_promote_cn_x1_1_formal.py
+            .github/workflows/cn-x1-1-formal-promotion.yml
+            .github/workflows/current-formal-backtest-integrity.yml
+            .github/workflows/formal-backtest-refresh.yml
+            qlib-dashboard/tests/formal-catalog.integration.test.ts
+            qlib-dashboard/e2e/static-artifact.spec.ts
+          )
+          git checkout "origin/$OLD_BRANCH" -- "${paths[@]}"
+          rm -rf data/research/formal_backtests data/research/formal_model_runs qlib-dashboard/public/data/formal-model-runs
+          git checkout "origin/$OLD_BRANCH" -- \
+            data/research/formal_backtests \
+            data/research/formal_model_runs \
+            qlib-dashboard/public/data/formal-model-runs
+          rm -f data/research/formal_backtests/qqqi_qqq_tqqq_v4_2.json
+          rm -rf \
+            data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_2 \
+            qlib-dashboard/public/data/formal-model-runs/qqq_rotation/qqqi_qqq_tqqq_v4_2
+          rm -f \
+            configs/research_experiments/qqq_rotation_v4_2_research_loop_onboarding_v1.yaml \
+            data/research/experiment_receipts/qqq_rotation_v4_2_research_loop_onboarding_v1.json
+      - name: Adapt v4.3 signal to the current append-only ledger contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/research/qqq_v4_3_signal_alerts.py')
+          text = path.read_text(encoding='utf-8')
+          needle = '    alert["title"] = f"[策略信号] QQQ v4.3 {signal_date} {_weight_text(target_weights)}"\n'
+          if needle not in text:
+              raise SystemExit('v4.3 alert insertion point not found')
+          insert = '''    alert["current_state"] = alert["current_formal_state"]\n    alert["target_state"] = alert["target_formal_state"]\n    alert["transition_type"] = "risk_budget_change" if orders else "hold"\n    alert["decision_reason_label"] = f"{alert['current_overlay']} → {alert['target_overlay']}"\n    context = alert["context"]\n    alert["price_context"] = {\n        "qqq_close": context.get("qqq_close"),\n        "ma_short": context.get("ma20"),\n        "ma_medium": context.get("ma50"),\n        "ma_long": context.get("ma200"),\n    }\n    alert["volatility_context"] = {\n        "vix_close": context.get("vix_close"),\n        "vxn_close": context.get("vxn_close"),\n        "vix_regime": context.get("vix_regime"),\n        "vxn_regime": context.get("vxn_regime"),\n    }\n    alert["data_context"] = {\n        **dict(alert["data_context"]),\n        "latest_common_date": latest_data_date,\n    }\n'''
+          path.write_text(text.replace(needle, insert + needle, 1), encoding='utf-8')
+          PY
+      - name: Make v4.3 the only active QQQ operations identity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/artifacts/strategy_operations.py')
+          text = path.read_text(encoding='utf-8')
+          old = 'QQQ_MODEL = "qqqi_qqq_tqqq_v4_2"'
+          new = 'QQQ_MODEL = "qqqi_qqq_tqqq_v4_3"'
+          if old not in text:
+              raise SystemExit('current QQQ operations model constant not found')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replacements = {
+              'qlib-dashboard/e2e/strategy-operations.spec.ts': [
+                  ('qqqi_qqq_tqqq_v4_2', 'qqqi_qqq_tqqq_v4_3'),
+                  ('QQQ Rotation v4.2', 'QQQ Rotation v4.3'),
+              ],
+              'tests/test_strategy_operations.py': [
+                  ('qqqi_qqq_tqqq_v4_2', 'qqqi_qqq_tqqq_v4_3'),
+              ],
+              'tests/test_strategy_signal_ledger.py': [
+                  ('qqqi_qqq_tqqq_v4_2', 'qqqi_qqq_tqqq_v4_3'),
+              ],
+          }
+          for filename, pairs in replacements.items():
+              file = Path(filename)
+              value = file.read_text(encoding='utf-8')
+              for before, after in pairs:
+                  value = value.replace(before, after)
+              file.write_text(value, encoding='utf-8')
+          PY
+      - name: Replace the v4.2 signal workflow with native v4.3 ledger persistence
+        run: |
+          set -euo pipefail
+          old=.github/workflows/qqqi-vxn-v4-2-signal-alert.yml
+          new=.github/workflows/qqq-v4-3-signal-alert.yml
+          mv "$old" "$new"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/qqq-v4-3-signal-alert.yml')
+          text = path.read_text(encoding='utf-8')
+          pairs = [
+              ('QQQI/VXN v4.2 Signal Alert', 'QQQ Rotation v4.3 Signal Alert'),
+              ('qqqi-vxn-v4-2-signal-alert', 'qqq-v4-3-signal-alert'),
+              ('src/research/strategy_signal_alerts.py', 'src/research/qqq_v4_3_signal_alerts.py'),
+              ('scripts/run_qqqi_vxn_prospective_monitor.py', 'scripts/run_qqq_v4_3_monitor.py'),
+              ('scripts/run_qqqi_vxn_v4_2_signal_alert.py', 'scripts/run_qqq_v4_3_signal_alert.py'),
+              ('tests/test_strategy_signal_alerts.py', 'tests/test_qqq_v4_3_monitor_signal.py'),
+              ('tests/test_vxn_prospective_monitor.py', 'tests/test_qqq_v4_3_monitor_signal.py'),
+              ('artifacts/evidence/qqqi_vxn_prospective_monitor_v4_1', 'artifacts/evidence/qqq_rotation_v4_3_current_monitor'),
+              ('artifacts/signals/qqqi_vxn_v4_2', 'artifacts/signals/qqq_rotation_v4_3'),
+              ('data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_2', 'data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_3'),
+              ('qqqi_qqq_tqqq_v4_2', 'qqqi_qqq_tqqq_v4_3'),
+              ('qqqi-vxn-v4-2-signal-', 'qqq-v4-3-signal-'),
+          ]
+          for before, after in pairs:
+              text = text.replace(before, after)
+          text = text.replace(
+              'uv run python scripts/run_qqq_v4_3_monitor.py \\\n            --contract configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml \\\n            --etf-data-bundle "$DATA_ROOT" \\\n            --output-dir "$MONITOR_ROOT" \\\n            "${args[@]}"',
+              'uv run python scripts/run_qqq_v4_3_monitor.py \\\n            --etf-data-bundle "$DATA_ROOT" \\\n            --output-dir "$MONITOR_ROOT" \\\n            "${args[@]}"',
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate imported v4.3 core before materializing operations
+        run: |
+          uv run ruff check \
+            src/artifacts/qqq_v4_3_formal.py \
+            scripts/refresh_qqq_v4_3_formal.py \
+            src/research/qqq_v4_3_monitor.py \
+            src/research/qqq_v4_3_signal_alerts.py \
+            scripts/run_qqq_v4_3_monitor.py \
+            scripts/run_qqq_v4_3_signal_alert.py \
+            src/artifacts/strategy_operations.py \
+            tests/test_qqq_v4_3_formal.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_qqq_v4_3_monitor_signal.py \
+            tests/test_strategy_operations.py \
+            tests/test_strategy_signal_ledger.py
+          uv run pytest \
+            tests/test_qqq_v4_3_formal.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_qqq_v4_3_monitor_signal.py \
+            tests/test_strategy_operations.py \
+            tests/test_strategy_signal_ledger.py \
+            tests/test_formal_baseline_onboarding.py \
+            tests/test_sync_formal_bundle_v2.py \
+            -q --strict-markers --tb=short
+      - name: Seed a governed v4.3 evaluation at the promotion cutoff
+        run: |
+          set -euo pipefail
+          rm -rf data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_2
+          rm -rf artifacts/bootstrap
+          uv run python scripts/data/build_etf_reference_bundle.py \
+            --end-date 2026-08-06 \
+            --output-root artifacts/bootstrap/etf \
+            --require-professional
+          uv run python scripts/run_qqq_v4_3_monitor.py \
+            --end-date 2026-08-06 \
+            --etf-data-bundle artifacts/bootstrap/etf \
+            --output-dir artifacts/bootstrap/monitor
+          uv run python scripts/run_qqq_v4_3_signal_alert.py \
+            --summary artifacts/bootstrap/monitor/current_summary.json \
+            --output-dir artifacts/bootstrap/signal
+          uv run python scripts/persist_strategy_signal_evaluation.py \
+            --model-id "$MODEL_ID" \
+            --signal artifacts/bootstrap/signal/signal_alert.json \
+            --ledger-root data/research/strategy_signal_ledgers \
+            --generated-at 2026-08-08T00:00:00Z \
+            --github-repository "$GITHUB_REPOSITORY" \
+            --commit-sha "$GITHUB_SHA" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-name "$GITHUB_WORKFLOW"
+      - name: Build the governed operations snapshot on the current mainline architecture
+        run: |
+          set -euo pipefail
+          uv run python scripts/build_strategy_operations.py \
+            --formal-root data/research/formal_model_runs \
+            --ledger-root data/research/strategy_signal_ledgers \
+            --generated-at 2026-08-08T00:00:00Z \
+            --output data/research/strategy_operations/snapshots.json
+          cd qlib-dashboard
+          node scripts/sync-formal-model-runs.mjs
+          node scripts/sync-strategy-operations.mjs
+      - name: Ensure no active v4.2 QQQ identity survived
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          v1 = json.loads(Path('data/research/formal_backtests/catalog.json').read_text())
+          v2 = json.loads(Path('data/research/formal_model_runs/catalog.json').read_text())
+          ops = json.loads(Path('data/research/strategy_operations/snapshots.json').read_text())
+          assert [row['model_id'] for row in v1['records']][0] == 'qqqi_qqq_tqqq_v4_3'
+          assert 'qqqi_qqq_tqqq_v4_2' not in [row['model_id'] for row in v1['records']]
+          assert 'qqqi_qqq_tqqq_v4_2' not in [row['model_version_id'] for row in v2['records']]
+          assert 'qqqi_qqq_tqqq_v4_2' not in [row['model_version_id'] for row in ops['records']]
+          assert any(row['model_version_id'] == 'qqqi_qqq_tqqq_v4_3' for row in ops['records'])
+          assert not Path('data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_2').exists()
+          print('v4.3 is the only active QQQ identity across formal, signal ledger, and operations layers.')
+          PY
+      - name: Commit the mainline-native v4.3 promotion
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git reset .github/workflows/qqq-v4-3-mainline-bootstrap.yml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "feat: promote QQQ Rotation v4.3 on current operations architecture"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
