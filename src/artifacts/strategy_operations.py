@@ -8,15 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from src.artifacts.model_run_bundle_v2 import validate_catalog
-from src.artifacts.strategy_signal_ledger import (
-    StrategySignalLedgerError,
-    read_latest_evaluation,
-)
+from src.artifacts.strategy_signal_ledger import StrategySignalLedgerError, read_latest_evaluation
 
 SCHEMA_VERSION = "1.0.0"
-QQQ_MODEL = "qqqi_qqq_tqqq_v4_2"
-BYD_MODEL = "byd_v1_2_convex_momentum_budget_v1"
-SUPPORTED_SIGNAL_MODELS = {QQQ_MODEL, BYD_MODEL}
+QQQ_FAMILY = "qqq_rotation"
+BYD_FAMILY = "byd_allocation"
+SUPPORTED_SIGNAL_FAMILIES = {QQQ_FAMILY, BYD_FAMILY}
 STATUS_VALUES = {
     "pipeline_unavailable",
     "awaiting_observation",
@@ -58,6 +55,10 @@ def _pct(value: object, digits: int = 2) -> str:
 def _num(value: object, digits: int = 2) -> str:
     number = _finite(value)
     return "—" if number is None else f"{number:.{digits}f}"
+
+
+def _bool_text(value: object) -> str:
+    return "Yes" if value is True else "No" if value is False else "—"
 
 
 def _weights(value: object) -> dict[str, float]:
@@ -106,12 +107,19 @@ def _formal_records(formal_catalog: Path) -> list[dict[str, Any]]:
     return [dict(record) for record in records if isinstance(record, Mapping)]
 
 
-def _cadence(model_version_id: str, model_kind: str) -> tuple[str, str]:
-    if model_version_id == QQQ_MODEL:
-        return "Every completed US market session", "Evaluate at close; target applies to the next eligible open."
-    if model_version_id == BYD_MODEL:
-        return "Every completed CN market session", "Evaluate after the common close; target applies to the next independently confirmed eligible open."
-    if model_kind == "cross_sectional_ranker":
+def _cadence(record: Mapping[str, Any]) -> tuple[str, str]:
+    family = str(record.get("model_family_id", ""))
+    if family == QQQ_FAMILY:
+        return (
+            "Every completed US market session",
+            "Evaluate at close; target applies to the next eligible open.",
+        )
+    if family == BYD_FAMILY:
+        return (
+            "Every completed CN market session",
+            "Evaluate after the common close; target applies to the next independently confirmed eligible open.",
+        )
+    if str(record.get("model_kind", "")) == "cross_sectional_ranker":
         return "10-session rebalance", "No governed current-target publisher is registered yet."
     return "Governed model cadence", "No governed current-target publisher is registered yet."
 
@@ -145,7 +153,7 @@ def _source(record: Mapping[str, Any], ledger: Mapping[str, Any] | None) -> dict
 
 def _unavailable(record: Mapping[str, Any], *, awaiting: bool) -> dict[str, object]:
     model_version_id = str(record["model_version_id"])
-    cadence, next_policy = _cadence(model_version_id, str(record.get("model_kind", "")))
+    cadence, next_policy = _cadence(record)
     if awaiting:
         status = "awaiting_observation"
         state_label = "Awaiting first governed evaluation"
@@ -167,9 +175,9 @@ def _unavailable(record: Mapping[str, Any], *, awaiting: bool) -> dict[str, obje
         "turnover": None,
         "estimated_cost": None,
         "data_freshness": "unknown",
-        "factor_freshness": "unknown" if not awaiting else "blocked",
+        "factor_freshness": "blocked" if awaiting else "unknown",
         "delivery_status": "not available",
-        "source_label": "Formal evidence only" if not awaiting else "Governed signal ledger",
+        "source_label": "Governed signal ledger" if awaiting else "Formal evidence only",
         "source_href": None,
         "note": note,
         "drivers": [],
@@ -186,10 +194,55 @@ def _delivery(record: Mapping[str, Any]) -> tuple[str, int | None]:
     return status, int(issue) if isinstance(issue, int) and not isinstance(issue, bool) else None
 
 
+def _qqq_state(signal: Mapping[str, Any]) -> tuple[int, int, str]:
+    current = signal.get("current_state", signal.get("current_formal_state", -1))
+    target = signal.get("target_state", signal.get("target_formal_state", -1))
+    current_state = int(current) if isinstance(current, (int, float)) and not isinstance(current, bool) else -1
+    target_state = int(target) if isinstance(target, (int, float)) and not isinstance(target, bool) else -1
+    from_label = QQQ_STATE_LABELS.get(current_state, f"State {current_state}")
+    to_label = QQQ_STATE_LABELS.get(target_state, f"State {target_state}")
+    current_overlay = signal.get("current_overlay")
+    target_overlay = signal.get("target_overlay")
+    if isinstance(target_overlay, str) and target_overlay:
+        overlay = target_overlay if current_overlay == target_overlay else f"{current_overlay or 'base'} → {target_overlay}"
+        label = f"{to_label} · {overlay}"
+    else:
+        label = to_label if current_state == target_state else f"{from_label} → {to_label}"
+    return current_state, target_state, label
+
+
+def _qqq_drivers(signal: Mapping[str, Any]) -> tuple[list[dict[str, str]], bool]:
+    context = signal.get("context") if isinstance(signal.get("context"), Mapping) else None
+    if context is not None:
+        drivers = [
+            {"label": "VIX close", "value": _num(context.get("vix_close"))},
+            {"label": "VXN close", "value": _num(context.get("vxn_close"))},
+            {"label": "RSI(14)", "value": _num(signal.get("rsi_14"))},
+            {"label": "Fear & Greed", "value": _num(signal.get("fear_greed_score"))},
+            {"label": "MA200 falling", "value": _bool_text(signal.get("ma200_falling"))},
+            {"label": "Strong defense", "value": _bool_text(signal.get("strong_defense"))},
+        ]
+        return drivers, bool(context)
+
+    price = signal.get("price_context") if isinstance(signal.get("price_context"), Mapping) else {}
+    vol = signal.get("volatility_context") if isinstance(signal.get("volatility_context"), Mapping) else {}
+    return (
+        [
+            {"label": "VIX close", "value": _num(vol.get("vix_close"))},
+            {"label": "VIX retreat", "value": _pct(vol.get("vix_retreat_from_peak"))},
+            {"label": "VXN close", "value": _num(vol.get("vxn_close"))},
+            {"label": "VXN retreat", "value": _pct(vol.get("vxn_retreat_from_peak"))},
+            {"label": "QQQ vs MA20", "value": _pct(price.get("qqq_vs_ma20"))},
+        ],
+        bool(price) and bool(vol),
+    )
+
+
 def _qqq(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, object]:
     signal = ledger.get("signal")
     if not isinstance(signal, Mapping):
         raise StrategyOperationsError("QQQ ledger signal is missing")
+    model_version_id = str(record["model_version_id"])
     allocations = _allocations(signal.get("current_weights"), signal.get("target_weights"))
     changed = _has_change(allocations)
     fresh = signal.get("data_freshness_ok") is True
@@ -203,38 +256,37 @@ def _qqq(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
         if changed
         else "current_no_change"
     )
-    current_state = int(signal.get("current_state", -1))
-    target_state = int(signal.get("target_state", -1))
-    from_label = QQQ_STATE_LABELS.get(current_state, f"State {current_state}")
-    to_label = QQQ_STATE_LABELS.get(target_state, f"State {target_state}")
-    price = signal.get("price_context") if isinstance(signal.get("price_context"), Mapping) else {}
-    vol = signal.get("volatility_context") if isinstance(signal.get("volatility_context"), Mapping) else {}
-    cadence, next_policy = _cadence(QQQ_MODEL, str(record.get("model_kind", "")))
+    _, _, state_label = _qqq_state(signal)
+    drivers, factor_context_available = _qqq_drivers(signal)
+    cadence, next_policy = _cadence(record)
+    decision_reason = signal.get("decision_reason_label") or signal.get("decision_reason")
+    if not decision_reason:
+        current_overlay = signal.get("current_overlay")
+        target_overlay = signal.get("target_overlay")
+        decision_reason = (
+            f"{current_overlay or 'base'} → {target_overlay}"
+            if isinstance(target_overlay, str) and current_overlay != target_overlay
+            else str(target_overlay or "Frozen QQQ rotation evaluation.")
+        )
     return {
-        "model_version_id": QQQ_MODEL,
+        "model_version_id": model_version_id,
         "status": status,
         "as_of": signal.get("signal_date"),
         "latest_completed_session": signal.get("latest_data_date") or ledger.get("latest_data_date"),
         "decision_cadence": cadence,
         "next_decision_policy": next_policy,
-        "state_label": to_label if current_state == target_state else f"{from_label} → {to_label}",
-        "decision_reason": signal.get("decision_reason_label") or signal.get("decision_reason") or "Frozen state-machine evaluation.",
+        "state_label": state_label,
+        "decision_reason": str(decision_reason),
         "allocations": allocations,
         "turnover": _finite(signal.get("turnover_units")),
         "estimated_cost": _finite(signal.get("estimated_transaction_cost")),
         "data_freshness": "current" if fresh else "stale",
-        "factor_freshness": "current" if fresh and price and vol else "blocked",
+        "factor_freshness": "current" if fresh and factor_context_available else "blocked",
         "delivery_status": delivery_status,
         "source_label": "Governed QQQ signal ledger",
         "source_href": f"https://github.com/liuh886/alpha_engine/issues/{issue_number}" if issue_number else None,
         "note": "Target is awaiting next-open execution evidence." if changed else "Latest governed evaluation retained the existing allocation.",
-        "drivers": [
-            {"label": "VIX close", "value": _num(vol.get("vix_close"))},
-            {"label": "VIX retreat", "value": _pct(vol.get("vix_retreat_from_peak"))},
-            {"label": "VXN close", "value": _num(vol.get("vxn_close"))},
-            {"label": "VXN retreat", "value": _pct(vol.get("vxn_retreat_from_peak"))},
-            {"label": "QQQ vs MA20", "value": _pct(price.get("qqq_vs_ma20"))},
-        ],
+        "drivers": drivers,
         "source_identity": _source(record, ledger),
     }
 
@@ -243,6 +295,7 @@ def _byd(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
     signal = ledger.get("signal")
     if not isinstance(signal, Mapping):
         raise StrategyOperationsError("BYD ledger signal is missing")
+    model_version_id = str(record["model_version_id"])
     allocations = _allocations(signal.get("current_weights"), signal.get("target_weights"))
     changed = _has_change(allocations)
     fresh = signal.get("data_freshness_ok") is True
@@ -258,15 +311,15 @@ def _byd(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
     )
     factors = signal.get("factor_context") if isinstance(signal.get("factor_context"), Mapping) else {}
     mode = str(signal.get("target_mode") or "")
-    cadence, next_policy = _cadence(BYD_MODEL, str(record.get("model_kind", "")))
+    cadence, next_policy = _cadence(record)
     return {
-        "model_version_id": BYD_MODEL,
+        "model_version_id": model_version_id,
         "status": status,
         "as_of": signal.get("signal_date"),
         "latest_completed_session": signal.get("latest_data_date") or ledger.get("latest_data_date"),
         "decision_cadence": cadence,
         "next_decision_policy": next_policy,
-        "state_label": BYD_MODE_LABELS.get(mode, mode or "BYD v1.2"),
+        "state_label": BYD_MODE_LABELS.get(mode, mode or "BYD allocation"),
         "decision_reason": signal.get("transition_label") or signal.get("transition_type") or "Frozen BYD allocation evaluation.",
         "allocations": allocations,
         "turnover": _finite(signal.get("turnover_units")),
@@ -289,25 +342,21 @@ def _byd(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
     }
 
 
-def build_operations_payload(
-    *,
-    formal_catalog: Path,
-    ledger_root: Path,
-    generated_at: str,
-) -> dict[str, object]:
+def build_operations_payload(*, formal_catalog: Path, ledger_root: Path, generated_at: str) -> dict[str, object]:
     records: list[dict[str, object]] = []
     for formal in _formal_records(formal_catalog):
         model_version_id = str(formal["model_version_id"])
+        family = str(formal.get("model_family_id", ""))
         try:
             ledger = read_latest_evaluation(
                 ledger_root / model_version_id,
                 model_version_id=model_version_id,
             )
         except (OSError, json.JSONDecodeError, StrategySignalLedgerError) as exc:
-            cadence, next_policy = _cadence(model_version_id, str(formal.get("model_kind", "")))
+            cadence, next_policy = _cadence(formal)
             records.append(
                 {
-                    **_unavailable(formal, awaiting=model_version_id in SUPPORTED_SIGNAL_MODELS),
+                    **_unavailable(formal, awaiting=family in SUPPORTED_SIGNAL_FAMILIES),
                     "status": "blocked",
                     "decision_cadence": cadence,
                     "next_decision_policy": next_policy,
@@ -317,10 +366,10 @@ def build_operations_payload(
             )
             continue
         if ledger is None:
-            records.append(_unavailable(formal, awaiting=model_version_id in SUPPORTED_SIGNAL_MODELS))
-        elif model_version_id == QQQ_MODEL:
+            records.append(_unavailable(formal, awaiting=family in SUPPORTED_SIGNAL_FAMILIES))
+        elif family == QQQ_FAMILY:
             records.append(_qqq(formal, ledger))
-        elif model_version_id == BYD_MODEL:
+        elif family == BYD_FAMILY:
             records.append(_byd(formal, ledger))
         else:
             blocked = _unavailable(formal, awaiting=False)
