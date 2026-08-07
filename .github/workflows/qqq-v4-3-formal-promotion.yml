@@ -1,0 +1,130 @@
+name: QQQ v4.3 Formal Promotion Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqq-v4-3-formal-promotion.yml"
+      - "src/artifacts/qqq_v4_3_formal.py"
+      - "scripts/promote_qqq_v4_3_formal.py"
+      - "scripts/sync_formal_bundle_v2.py"
+      - "tests/test_qqq_v4_3_formal.py"
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Validate v4.3 formal implementation
+        run: |
+          uv run ruff check \
+            src/artifacts/qqq_v4_3_formal.py \
+            scripts/promote_qqq_v4_3_formal.py \
+            scripts/sync_formal_bundle_v2.py \
+            tests/test_qqq_v4_3_formal.py
+          uv run pytest \
+            tests/test_qqq_v4_3_formal.py \
+            tests/test_v4_33_ma200_ma20_vix_release.py \
+            tests/test_sync_formal_bundle_v2.py \
+            -q --strict-markers --tb=short
+      - name: Build governed ETF bundle through promotion cutoff
+        run: |
+          uv run python scripts/data/build_etf_reference_bundle.py \
+            --end-date 2026-08-06 \
+            --output-root artifacts/v4-3-promotion/etf-bundle \
+            --require-professional
+      - name: Materialize active formal v4.3 package
+        run: |
+          uv run python scripts/promote_qqq_v4_3_formal.py \
+            --current-root data/research/formal_backtests \
+            --output-root artifacts/v4-3-promotion/formal-v1 \
+            --end-date 2026-08-06 \
+            --evidence-cutoff 2026-08-06 \
+            --generated-at 2026-08-08T00:00:00Z \
+            --etf-data-bundle artifacts/v4-3-promotion/etf-bundle
+      - name: Project complete Formal Model Run Bundle v2
+        run: |
+          uv run python scripts/sync_formal_bundle_v2.py \
+            --source-root artifacts/v4-3-promotion/formal-v1 \
+            --output-root artifacts/v4-3-promotion/formal-v2 \
+            --receipt artifacts/v4-3-promotion/formal-v2-sync-receipt.json
+      - name: Validate exact active identity
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('artifacts/v4-3-promotion')
+          v1 = json.loads((root / 'formal-v1/catalog.json').read_text())
+          v1_ids = [row['model_id'] for row in v1['records']]
+          assert v1_ids == [
+              'qqqi_qqq_tqqq_v4_3',
+              'us_x1_1',
+              'cn_x1_1',
+              'byd_v1_2_convex_momentum_budget_v1',
+          ], v1_ids
+          assert 'qqqi_qqq_tqqq_v4_2' not in v1_ids
+          package = json.loads((root / 'formal-v1/qqqi_qqq_tqqq_v4_3.json').read_text())
+          assert package['display_name'] == 'QQQ Rotation v4.3'
+          assert package['portfolio_contract']['symbols'] == ['QQQI', 'QQQ', 'TQQQ', 'SGOV']
+          assert any(row['instrument'] == 'SGOV' for row in package['positions'])
+          assert package['research_only'] is True and package['trade_ready'] is False
+          v2 = json.loads((root / 'formal-v2/catalog.json').read_text())
+          v2_ids = [row['model_version_id'] for row in v2['records']]
+          assert set(v2_ids) == set(v1_ids)
+          assert 'qqqi_qqq_tqqq_v4_2' not in v2_ids
+          print(json.dumps({'v1': v1_ids, 'v2': v2_ids}, indent=2))
+          PY
+      - name: Generate promoted Strategy Console capability
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          src = Path('data/research/strategy_operations/capabilities.json')
+          payload = json.loads(src.read_text())
+          records = []
+          for row in payload['records']:
+              row = dict(row)
+              if row['model_version_id'] == 'qqqi_qqq_tqqq_v4_2':
+                  row.update({
+                      'model_version_id': 'qqqi_qqq_tqqq_v4_3',
+                      'decision_cadence': 'Daily close evaluation',
+                      'next_decision_policy': 'Next completed US market close',
+                      'pipeline_status': 'available',
+                      'source_type': 'github_issue_v43',
+                      'factor_evidence_status': 'formal_v4_3_promoted',
+                      'note': 'QQQ Rotation v4.3 is the governed active risk-budget baseline; state, Panic Repair and slow-bear defense targets are evaluated at the close for next-open research execution.',
+                  })
+              records.append(row)
+          payload['records'] = records
+          payload['generated_at'] = '2026-08-08T00:00:00Z'
+          out = Path('artifacts/v4-3-promotion/strategy-operations/capabilities.json')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n')
+          PY
+      - name: Upload promotion publication tree
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqq-v4-3-formal-promotion-${{ github.run_id }}
+          path: |
+            artifacts/v4-3-promotion/formal-v1
+            artifacts/v4-3-promotion/formal-v2
+            artifacts/v4-3-promotion/formal-v2-sync-receipt.json
+            artifacts/v4-3-promotion/strategy-operations/capabilities.json
+          if-no-files-found: error
+          retention-days: 30
