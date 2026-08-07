@@ -12,6 +12,7 @@ on:
       - 'src/research/experiment_harness.py'
       - 'src/research/formal_baseline.py'
       - 'src/research/formal_baseline_onboarding.py'
+      - 'src/research/research_receipt.py'
       - 'scripts/prepare_research_source_repair.py'
       - 'scripts/promote_approved_research_source_repair.py'
       - 'scripts/rebuild_active_research_providers.py'
@@ -20,6 +21,7 @@ on:
       - 'tests/test_cross_sectional_experiment_runner.py'
       - 'tests/test_experiment_harness.py'
       - 'tests/test_formal_baseline_onboarding.py'
+      - 'tests/test_research_receipt.py'
       - '.github/workflows/research-experiment.yml'
   workflow_dispatch:
     inputs:
@@ -169,6 +171,7 @@ jobs:
             src/research/cross_sectional_experiment_runner.py \
             src/research/formal_baseline.py \
             src/research/formal_baseline_onboarding.py \
+            src/research/research_receipt.py \
             scripts/prepare_research_source_repair.py \
             scripts/promote_approved_research_source_repair.py \
             scripts/rebuild_active_research_providers.py \
@@ -176,11 +179,13 @@ jobs:
             scripts/run_active_research_experiments.py \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
-            tests/test_formal_baseline_onboarding.py
+            tests/test_formal_baseline_onboarding.py \
+            tests/test_research_receipt.py
           uv run pytest \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_formal_baseline_onboarding.py \
+            tests/test_research_receipt.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Prepare authoritative source repair candidate
