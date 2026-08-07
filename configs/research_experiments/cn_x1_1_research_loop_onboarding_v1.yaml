@@ -17,8 +17,8 @@ baseline:
   model_version_id: cn_x1_1
   model_family_id: cn_ranker
   model_kind: cross_sectional_ranker
-  bundle_id: bbf40fe790c5ec17cf9e408527b636e7368525667ebb7fffe0f2d05cb0c380a3
-  manifest_sha256: 76de89c60307767197d50e8c2cea1b1afa25eb5f77bd0b51af2465b922ac796a
+  bundle_id: 4ac43a397cba652ddee49c66acbda90fae0ff1c8cb7c3ac7947657e7d01fa1bb
+  manifest_sha256: f46922d12b2a8f5dbf8cb1251643417f7567a95d8e9fd8d867c65d2060e73a3d
 
 expected_identity:
   market: cn
