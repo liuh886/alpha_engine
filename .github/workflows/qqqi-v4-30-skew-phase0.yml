@@ -1,0 +1,44 @@
+name: QQQ v4.30 SKEW Phase0
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqqi-v4-30-skew-phase0.yml"
+      - "configs/research_paradigms/qqqi_qqq_tqqq_v4_30_skew_state0_information.yaml"
+      - "scripts/run_qqqi_v4_30_skew_state0_information.py"
+      - "src/data/adapters/cboe_volatility_indices.py"
+      - "src/research/v4_30_skew_state0_information.py"
+      - "tests/test_cboe_volatility_indices.py"
+      - "tests/test_v4_30_skew_state0_information.py"
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Lint and focused tests
+        run: |
+          uv run ruff check src/data/adapters/cboe_volatility_indices.py src/research/v4_30_skew_state0_information.py scripts/run_qqqi_v4_30_skew_state0_information.py tests/test_cboe_volatility_indices.py tests/test_v4_30_skew_state0_information.py
+          uv run pytest tests/test_cboe_volatility_indices.py tests/test_v4_30_skew_state0_information.py -q --strict-markers --tb=short --disable-warnings --maxfail=1
+      - name: Run frozen v4.30 source and information audit
+        run: uv run python scripts/run_qqqi_v4_30_skew_state0_information.py --end-date 2026-08-06
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqq-v4-30-skew-phase0-${{ github.run_id }}
+          path: artifacts/evidence/qqqi_qqq_tqqq_v4_30_skew_state0_information
+          if-no-files-found: error
+          retention-days: 30
