@@ -1,7 +1,7 @@
 import type { GovernedRunSummary } from './governed-run';
 import { fetchBydRuntimeSnapshot, type BydSignalRecord } from './byd-runtime';
+import { fetchQqqV43RuntimeSnapshot, type QqqV43SignalRecord } from './qqq-v4-3-runtime';
 import { fetchStrategyCapabilities, type StrategyCapability } from './strategy-capabilities';
-import { fetchV42RuntimeSnapshot, type V42EventRecord, type V42ObservationRecord } from './v42-runtime';
 
 export type StrategyOperationalStatus =
   | 'pipeline_unavailable'
@@ -123,59 +123,53 @@ function unavailable(
   };
 }
 
-function qqqSnapshot(
+function qqqV43Snapshot(
   run: GovernedRunSummary,
   capability: StrategyCapability,
-  record: V42EventRecord,
-  observation: V42ObservationRecord | null,
+  record: QqqV43SignalRecord,
   issueUrl: string,
 ): StrategyOperationsSnapshot {
   const allocations = allocationLegs(record.current_weights, record.target_weights);
   const changed = hasAllocationChange(allocations);
-  const executionObserved = Boolean(observation?.execution?.execution_date);
-  const deliveryStatus = String(record.delivery?.telegram_status ?? record.delivery?.telegram ?? 'not declared');
-  const deliveryFailed = deliveryStatus === 'failed';
-  const status: StrategyOperationalStatus = deliveryFailed
-    ? 'delivery_failed'
-    : !record.data_freshness_ok
-      ? 'stale'
-      : changed && !executionObserved
-        ? 'target_pending_execution'
-        : changed && executionObserved
-          ? 'execution_observed'
-          : 'current_no_change';
-  const features = record.signal_close_features;
-  const stateFrom = STATE_LABELS[record.current_state] ?? `State ${record.current_state}`;
-  const stateTo = STATE_LABELS[record.target_state] ?? `State ${record.target_state}`;
+  const status: StrategyOperationalStatus = !record.data_freshness_ok
+    ? 'stale'
+    : changed
+      ? 'target_pending_execution'
+      : 'current_no_change';
+  const stateFrom = STATE_LABELS[record.current_formal_state] ?? `State ${record.current_formal_state}`;
+  const stateTo = STATE_LABELS[record.target_formal_state] ?? `State ${record.target_formal_state}`;
+  const context = record.context;
 
   return {
     strategyId: run.modelVersionId,
     status,
     asOf: record.signal_date,
-    latestCompletedSession: observation?.as_of_data_date ?? record.latest_data_date_at_creation,
+    latestCompletedSession: record.latest_data_date,
     decisionCadence: capability.decisionCadence,
     nextDecision: capability.nextDecisionPolicy,
-    stateLabel: record.current_state === record.target_state ? stateTo : `${stateFrom} → ${stateTo}`,
-    decisionReason: record.decision_reason || 'No decision reason retained.',
+    stateLabel: record.current_formal_state === record.target_formal_state ? stateTo : `${stateFrom} → ${stateTo}`,
+    decisionReason: `${record.current_overlay} → ${record.target_overlay}`,
     allocations,
     turnover: finite(record.turnover_units) ? record.turnover_units : null,
     estimatedCost: finite(record.estimated_transaction_cost) ? record.estimated_transaction_cost : null,
     dataFreshness: record.data_freshness_ok ? 'current' : 'stale',
     factorFreshness: factorFreshness(capability),
-    deliveryStatus,
-    sourceLabel: 'Governed QQQ state-change ledger',
+    deliveryStatus: 'governed signal published',
+    sourceLabel: 'Governed QQQ v4.3 signal ledger',
     sourceHref: issueUrl,
-    note: executionObserved
-      ? `Next-open execution evidence observed ${observation?.execution?.execution_date}.`
-      : changed
-        ? 'Target is awaiting next-open execution evidence.'
-        : 'Latest governed evaluation retained the existing allocation.',
+    note: changed
+      ? 'A v4.3 target-weight change is published for the next market open; brokerage execution remains outside Alpha Engine.'
+      : 'Latest governed v4.3 evaluation retained the existing allocation.',
     drivers: [
-      { label: 'VIX close', value: decimal(features.vix_close) },
-      { label: 'VIX 5D', value: percent(features.vix_return_5d, 2) },
-      { label: 'VXN close', value: decimal(features.vxn_close) },
-      { label: 'VXN 5D', value: percent(features.vxn_return_5d, 2) },
-      { label: 'QQQ vs MA20', value: percent(features.qqq_distance_ma_short, 2) },
+      { label: 'Risk layer', value: record.target_overlay },
+      { label: 'RSI(14)', value: decimal(record.rsi_14) },
+      { label: 'Fear & Greed', value: decimal(record.fear_greed_score) },
+      { label: 'VIX close', value: decimal(context.vix_close) },
+      { label: 'VXN close', value: decimal(context.vxn_close) },
+      { label: 'QQQ / MA20', value: `${decimal(context.qqq_close)} / ${decimal(context.ma20)}` },
+      { label: 'MA200 falling', value: record.ma200_falling ? 'Yes' : 'No' },
+      { label: 'Strong defense', value: record.strong_defense ? 'Yes' : 'No' },
+      { label: 'Panic Repair', value: record.panic_repair_active ? 'Yes' : 'No' },
     ],
   };
 }
@@ -230,14 +224,12 @@ async function loadOne(run: GovernedRunSummary, capability: StrategyCapability):
     return unavailable(run, 'pipeline_unavailable', capability.note, capability);
   }
 
-  if (capability.sourceType === 'github_issue_v42') {
+  if (capability.sourceType === 'github_issue_v43') {
     try {
-      const snapshot = await fetchV42RuntimeSnapshot();
-      const event = snapshot.latestStateChange;
-      if (!event) return unavailable(run, 'awaiting_observation', 'No governed QQQ state-change record is available.', capability);
-      return qqqSnapshot(run, capability, event.record, snapshot.observation, event.issue.html_url);
+      const snapshot = await fetchQqqV43RuntimeSnapshot();
+      return qqqV43Snapshot(run, capability, snapshot.latestSignal.record, snapshot.latestSignal.issue.html_url);
     } catch (error) {
-      return unavailable(run, 'blocked', error instanceof Error ? error.message : 'QQQ operating evidence is unavailable.', capability);
+      return unavailable(run, 'blocked', error instanceof Error ? error.message : 'QQQ v4.3 operating evidence is unavailable.', capability);
     }
   }
 
