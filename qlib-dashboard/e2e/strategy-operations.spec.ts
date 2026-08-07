@@ -13,17 +13,17 @@ function marker(prefix: string, payload: object): string {
 
 const modelsText = JSON.stringify([
   {
-    id: 'qqqi_qqq_tqqq_v4_2',
-    name: 'QQQ Rotation v4.2',
+    id: 'qqqi_qqq_tqqq_v4_3',
+    name: 'QQQ Rotation v4.3',
     market: 'us',
     model_type: 'rule_based_rotation',
     stage: 'BASELINE',
-    created_at: '2026-08-02T00:00:00Z',
-    metrics: { 'Annualized Return': 0.2, 'Max Drawdown': -0.15 },
+    created_at: '2026-08-08T00:00:00Z',
+    metrics: { 'Annualized Return': 0.3679, 'Max Drawdown': -0.2165 },
   },
 ]);
 const exportManifestText = JSON.stringify({
-  generated_at: '2026-08-02T00:00:00Z',
+  generated_at: '2026-08-08T00:00:00Z',
   snapshot_id: 'operations-fixture',
 });
 const bundleManifest = {
@@ -31,8 +31,8 @@ const bundleManifest = {
   frontend_reader_range: '>=1.0.0 <2.0.0',
   bundle_id: 'a'.repeat(64),
   title: 'Strategy Operations Fixture',
-  generated_at: '2026-08-02T00:00:00Z',
-  evidence_cutoff: '2026-07-31',
+  generated_at: '2026-08-08T00:00:00Z',
+  evidence_cutoff: '2026-08-06',
   research_only: true,
   trade_ready: false,
   scope: { markets: ['us'], snapshot_id: 'operations-fixture', model_count: 1 },
@@ -63,23 +63,23 @@ const bundleManifest = {
 
 const eventRecord = {
   schema_version: '1.0',
-  event_id: 'v42-2026-07-31-state-change',
+  event_id: 'v43-2026-08-06-state-change',
   event_type: 'state_change',
   research_only: true,
   trade_ready: false,
   actionable: true,
   status: 'awaiting_next_open',
-  signal_date: '2026-07-31',
-  latest_data_date_at_creation: '2026-07-31',
+  signal_date: '2026-08-06',
+  latest_data_date_at_creation: '2026-08-06',
   data_freshness_ok: true,
   execution_time: 'next_session_open',
-  fingerprint: 'fixture-fingerprint',
+  fingerprint: 'fixture-fingerprint-v43',
   transition_type: 'open_risk_bridge',
   decision_reason: 'enter_qqq_early_repair_vix_easing',
   current_state: 0,
   target_state: 1,
-  current_weights: { QQQI: 1, QQQ: 0, TQQQ: 0 },
-  target_weights: { QQQI: 0.5, QQQ: 0.5, TQQQ: 0 },
+  current_weights: { QQQI: 1, QQQ: 0, TQQQ: 0, SGOV: 0 },
+  target_weights: { QQQI: 0.5, QQQ: 0.5, TQQQ: 0, SGOV: 0 },
   turnover_units: 1,
   estimated_transaction_cost: 0.001,
   signal_close_features: {
@@ -97,7 +97,7 @@ const eventRecord = {
 const observation = {
   schema_version: '1.0',
   event_id: eventRecord.event_id,
-  as_of_data_date: '2026-08-01',
+  as_of_data_date: '2026-08-07',
   status: 'observing_outcomes',
   previous_status: 'awaiting_next_open',
   status_changed: true,
@@ -105,8 +105,8 @@ const observation = {
   completed_horizons: [1, 2],
   new_horizons: [1, 2],
   execution: {
-    execution_date: '2026-08-01',
-    theoretical_next_open_prices: { QQQI: 51.2, QQQ: 571.4, TQQQ: 82.1 },
+    execution_date: '2026-08-07',
+    theoretical_next_open_prices: { QQQI: 51.2, QQQ: 571.4, TQQQ: 82.1, SGOV: 100.4 },
     qqq_opening_gap: 0.002,
   },
   outcomes: {
@@ -140,11 +140,11 @@ async function mockGitHubLedger(page: Page) {
         body: JSON.stringify([
           {
             number: 9001,
-            title: 'v4.2 prospective evidence',
+            title: 'v4.3 prospective evidence',
             body: marker('prospective-evidence-record', eventRecord),
             state: 'open',
             html_url: 'https://github.com/liuh886/alpha_engine/issues/9001',
-            updated_at: '2026-08-02T00:00:00Z',
+            updated_at: '2026-08-08T00:00:00Z',
           },
         ]),
       });
@@ -158,7 +158,7 @@ async function mockGitHubLedger(page: Page) {
           {
             body: marker('prospective-evidence-update', observation),
             html_url: 'https://github.com/liuh886/alpha_engine/issues/9001#issuecomment-1',
-            updated_at: '2026-08-02T00:02:00Z',
+            updated_at: '2026-08-08T00:02:00Z',
           },
         ]),
       });
@@ -179,8 +179,8 @@ test('QQQ operating evidence is rendered inside the strategy workspace', async (
   await mockBundle(page);
   await mockGitHubLedger(page);
 
-  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_2');
-  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQ Rotation v4.2', exact: true, level: 1 })).toBeVisible();
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQ Rotation v4.3', exact: true, level: 1 })).toBeVisible();
 
   const now = page.getByRole('region', { name: 'Current decision state' });
   await expect(now).toBeVisible();
