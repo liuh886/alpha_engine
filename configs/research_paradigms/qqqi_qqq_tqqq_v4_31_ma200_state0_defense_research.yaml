@@ -1,0 +1,95 @@
+experiment_id: qqqi_qqq_tqqq_v4_31_ma200_state0_defense_research
+parent_experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+issue: 635
+
+purpose: >-
+  Test whether the existing QQQ SMA(200) direction distinguishes acute
+  corrections from persistent bear regimes inside formal v4.2 state 0, and
+  therefore supports stronger Treasury-bill defense without new data or tuning.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  signal_trace_must_equal_v4_2: true
+  state_1_must_equal_source: true
+  state_2_must_equal_source: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  actionable_alert_changes_authorized: false
+  formal_model_promotion_authorized: false
+
+selector:
+  source_column: ma_long
+  inherited_window_sessions: 200
+  rule: ma_long_t < ma_long_t_minus_1
+  slope_lookback_search: false
+  slope_magnitude_search: false
+  confirmation_search: false
+  persistence: false
+  cooldown: false
+  hysteresis: false
+
+state_0_defense:
+  actual:
+    equity_asset: QQQI
+    equity_weight: 0.50
+    cash_asset: SGOV
+    cash_weight: 0.50
+  proxy:
+    equity_asset: QQQ
+    equity_weight: 0.50
+    cash_asset: BIL
+    cash_weight: 0.50
+  allocation_search: false
+  state_1_unchanged: true
+  state_2_unchanged: true
+
+interaction_with_v4_27:
+  defense_precedence_in_eligible_state_0: true
+  v4_27_trace_unchanged: true
+
+comparators:
+  - current_v4_2
+  - v4_27_panic_repair_boost
+  - v4_31_ma200_state0_defense
+  - v4_31_panic_repair_ma200_state0_defense
+
+evidence_scopes:
+  actual:
+    role: actual_qqqi_sgov_product_evidence
+    synthetic_pre_inception_backfill: false
+  proxy:
+    role: qqq_bil_mechanism_only
+    qqqi_defensive_component: QQQ
+    cash_proxy: BIL
+
+validation:
+  chronological_train_fraction: 0.60
+  minimum_cash_coverage: 0.98
+  v4_3_candidate_gate:
+    actual_cagr_delta_pp_min: 1.00
+    actual_max_drawdown_improvement_pp_min: 2.00
+    actual_calmar_delta_min: 0.15
+    proxy_cagr_delta_pp_min: 0.00
+    proxy_max_drawdown_improvement_pp_min: 3.00
+    proxy_calmar_delta_min: 0.05
+    both_chronological_segments_calmar_not_worse: true
+    largest_positive_episode_share_max: 0.50
+    proxy_guard_years_min: 8
+    largest_guard_year_share_max: 0.35
+    turnover_increase_max: 1.00
+  direct_promotion_authorized: false
+
+hypothesis_discipline:
+  - Run exactly the four frozen comparators.
+  - Do not search MA window, slope lookback, slope magnitude or confirmation count.
+  - Do not search defensive allocations, persistence, cooldown or delay.
+  - Do not modify formal state 1 or state 2.
+  - Do not combine with rejected VVIX, term structure, SKEW, breadth, downside-volatility or HYG/SHY factors.
+  - Passing authorizes only a named v4.3 candidate and prospective shadow monitoring.
+  - If the selector fails, record the failure rather than retuning it.
