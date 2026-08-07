@@ -7,8 +7,11 @@ on:
       - 'configs/research_experiments/**'
       - 'data/source_repairs/**'
       - 'data/csv_source/**'
+      - 'data/research/formal_model_runs/**'
       - 'src/research/cross_sectional_experiment_runner.py'
       - 'src/research/experiment_harness.py'
+      - 'src/research/formal_baseline.py'
+      - 'src/research/formal_baseline_onboarding.py'
       - 'scripts/prepare_research_source_repair.py'
       - 'scripts/promote_approved_research_source_repair.py'
       - 'scripts/rebuild_active_research_providers.py'
@@ -16,11 +19,12 @@ on:
       - 'scripts/run_active_research_experiments.py'
       - 'tests/test_cross_sectional_experiment_runner.py'
       - 'tests/test_experiment_harness.py'
+      - 'tests/test_formal_baseline_onboarding.py'
       - '.github/workflows/research-experiment.yml'
   workflow_dispatch:
     inputs:
       spec:
-        description: Optional committed experiment spec path; blank runs active missions
+        description: Optional committed experiment spec path; blank runs active mission
         required: false
         type: string
 
@@ -163,16 +167,20 @@ jobs:
           uv run ruff check \
             src/research/experiment_harness.py \
             src/research/cross_sectional_experiment_runner.py \
+            src/research/formal_baseline.py \
+            src/research/formal_baseline_onboarding.py \
             scripts/prepare_research_source_repair.py \
             scripts/promote_approved_research_source_repair.py \
             scripts/rebuild_active_research_providers.py \
             scripts/run_research_experiment.py \
             scripts/run_active_research_experiments.py \
             tests/test_experiment_harness.py \
-            tests/test_cross_sectional_experiment_runner.py
+            tests/test_cross_sectional_experiment_runner.py \
+            tests/test_formal_baseline_onboarding.py
           uv run pytest \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
+            tests/test_formal_baseline_onboarding.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Prepare authoritative source repair candidate
@@ -202,7 +210,7 @@ jobs:
             exit 1
           fi
 
-      - name: Rebuild exact mission provider from repository sources
+      - name: Rebuild exact mission provider when required
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
