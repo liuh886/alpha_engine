@@ -166,8 +166,6 @@ def panic_repair_weights(
         raise ValueError(f"daily trace missing weight columns: {missing}")
 
     assets = ["QQQI", "QQQ", "TQQQ"]
-    if "weight_SGOV" in daily.columns:
-        assets.append("SGOV")
     weights = daily[[f"weight_{asset}" for asset in assets]].rename(
         columns={f"weight_{asset}": asset for asset in assets}
     ).astype(float).copy()
@@ -270,30 +268,38 @@ def run_panic_repair_backtest(
 def run_panic_repair_comparison(
     bars: Mapping[str, pd.DataFrame],
     bridge_contract: Mapping[str, Any],
-    sgov_contract: Mapping[str, Any],
     fear_greed: pd.DataFrame,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Build the unchanged v4.2 baseline and one frozen panic-repair challenger."""
+    """Build the unchanged v4.2 bridge baseline and one frozen challenger."""
+    from src.research.etf_rotation_experiment import StrategyResult, _return_metrics
     from src.research.v4_2_rsi_vix_sgov_experiment import wilder_rsi
-    from src.research.v4_2_sgov_defense_experiment import (
-        V4_2_KEY,
-        _common_reference_daily,
-        run_state_weight_backtest,
-    )
     from src.research.vix_rotation_experiment import _normalise_close
     from src.research.vxn_bridge_allocation_experiment import (
         run_bridge_allocation_comparison,
     )
 
     _, bridge_results, _, _ = run_bridge_allocation_comparison(bars, bridge_contract)
-    reference = _common_reference_daily(bridge_results[V4_2_KEY], bars)
-    if "qqq_close" not in reference.columns:
-        qqq_close = _normalise_close(bars["QQQ"], "QQQ")
-        reference = reference.join(qqq_close.rename("qqq_close"), how="left")
-    reference["rsi_14"] = wilder_rsi(reference["qqq_close"], period=14)
-    reference = reference.dropna(subset=["rsi_14"]).copy()
+    baseline_source = bridge_results["rotation_vxn_bridge_v4_2_50_50"]
+    daily = baseline_source.daily.copy()
 
-    baseline = run_state_weight_backtest(reference, sgov_contract, "current_v4_2")
+    qqq_close = _normalise_close(bars["QQQ"], "QQQ")
+    daily["rsi_14"] = wilder_rsi(qqq_close, period=14).reindex(daily.index)
+    daily = daily.loc[daily["rsi_14"].notna()].copy()
+
+    baseline_metrics = _return_metrics(daily["net_return"], annual_risk_free_rate=0.0)
+    baseline_metrics.update(
+        {
+            "strategy": "current_v4_2",
+            "turnover_units": float(daily["turnover_units"].sum()),
+            "transaction_cost_paid": float(daily["transaction_cost"].sum()),
+        }
+    )
+    baseline = StrategyResult(
+        "current_v4_2",
+        daily,
+        baseline_source.trades,
+        baseline_metrics,
+    )
     candidate = run_panic_repair_backtest(baseline, fear_greed)
     results = {"current_v4_2": baseline, "v4_27_panic_repair_boost": candidate}
     headline = pd.DataFrame(
