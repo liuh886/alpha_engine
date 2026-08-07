@@ -115,6 +115,19 @@ def test_common_provider_cutoff_is_conservative() -> None:
     assert common_provider_cutoff(manifest, market="us") == "2026-08-04"
 
 
+def test_common_provider_cutoff_rejects_ineligible_provider() -> None:
+    manifest = {
+        "market": "us",
+        "status": "selected_pool_price_refresh_ready",
+        "promotion_eligible": False,
+        "records": [{"symbol": "AAA", "last_date": "2026-08-05"}],
+        "research_only": True,
+        "trade_ready": False,
+    }
+    with pytest.raises(FormalRefreshError, match="not promotion eligible"):
+        common_provider_cutoff(manifest, market="us")
+
+
 def test_plan_is_catalog_driven(tmp_path: Path) -> None:
     root = tmp_path / "formal"
     _write_tree(
