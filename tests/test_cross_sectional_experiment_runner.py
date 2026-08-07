@@ -16,8 +16,11 @@ def test_us_x1_2_mission_is_atomic_and_provider_bound() -> None:
 
     assert spec.market == "us"
     assert spec.benchmark == "QQQ"
-    assert spec.raw["snapshot"]["policy"] == "repository_source_rebuild"
+    assert spec.raw["snapshot"]["policy"] == "exact_selected_pool_source_rebuild"
     assert spec.raw["snapshot"]["source_dir"] == "data/csv_source"
+    assert spec.raw["source_repair"]["approval_manifest"] == (
+        "data/source_repairs/us_x1_2_risk_controlled_momentum_v1.json"
+    )
     assert spec.contract.selection_windows == (
         "2024H1",
         "2024H2",
@@ -26,7 +29,7 @@ def test_us_x1_2_mission_is_atomic_and_provider_bound() -> None:
     )
     assert spec.contract.reporting_windows == ("2026H1",)
     assert spec.contract.provider_identity_sha256 == (
-        "dc1e6136242bb87b25fa992b42a336d45883906d3d5244fc9397e9001adb8f8c"
+        "c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d"
     )
     assert [candidate.candidate_id for candidate in spec.candidates] == [
         "baseline_7factor",
