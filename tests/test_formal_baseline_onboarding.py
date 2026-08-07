@@ -8,6 +8,9 @@ from src.research.formal_baseline_onboarding import run_formal_baseline_onboardi
 
 CN_SPEC = Path("configs/research_experiments/cn_x1_1_research_loop_onboarding_v1.yaml")
 BYD_SPEC = Path("configs/research_experiments/byd_v1_2_research_loop_onboarding_v1.yaml")
+QQQ_SPEC = Path(
+    "configs/research_experiments/qqq_rotation_v4_2_research_loop_onboarding_v1.yaml"
+)
 
 
 def test_cn_x1_1_formal_bundle_is_hash_verified() -> None:
@@ -69,6 +72,40 @@ def test_byd_v1_2_onboarding_emits_research_only_receipt(tmp_path: Path) -> None
     assert receipt["baseline"]["model_kind"] == "rules_based_allocation"
     assert receipt["baseline"]["bundle_id"] == (
         "833ce53e918da4d7c62dd288e4c33c062637ec75ca8e39600b4d2ac2bf676c7d"
+    )
+    assert receipt["research_only"] is True
+    assert receipt["trade_ready"] is False
+    assert receipt["automatic_promotion"] is False
+
+
+def test_qqq_rotation_v4_2_rules_based_bundle_is_hash_verified() -> None:
+    baseline = load_formal_baseline(
+        "qqqi_qqq_tqqq_v4_2",
+        expected_model_kind="rules_based_allocation",
+        expected_model_family_id="qqq_rotation",
+        expected_bundle_id="2b041025af0a901692a5b0b4d7aae0fd63435431036fd45f3c53e4a4dbbef0ed",
+        expected_manifest_sha256="fa815a183e224952cc3971fc8ce464bfa167b709b01ab5e61e6abfa69ab66bb4",
+    )
+
+    assert baseline.market == "us"
+    assert baseline.benchmark == "QQQ"
+    assert baseline.evidence_cutoff == "2026-07-31"
+    assert baseline.metrics["total_return"] == 1.0352668079976044
+    assert baseline.metrics["annualized_return"] == 0.3305745207818598
+    assert baseline.metrics["max_drawdown"] == -0.2421341044679785
+
+
+def test_qqq_rotation_v4_2_onboarding_emits_research_only_receipt(
+    tmp_path: Path,
+) -> None:
+    receipt = run_formal_baseline_onboarding(QQQ_SPEC, output_dir=tmp_path)
+
+    assert receipt["status"] == "completed"
+    assert receipt["decision"] == "formal_baseline_bound"
+    assert receipt["baseline"]["model_version_id"] == "qqqi_qqq_tqqq_v4_2"
+    assert receipt["baseline"]["model_kind"] == "rules_based_allocation"
+    assert receipt["baseline"]["bundle_id"] == (
+        "2b041025af0a901692a5b0b4d7aae0fd63435431036fd45f3c53e4a4dbbef0ed"
     )
     assert receipt["research_only"] is True
     assert receipt["trade_ready"] is False
