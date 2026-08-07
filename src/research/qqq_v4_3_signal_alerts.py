@@ -1,12 +1,14 @@
 """Research-only signal cards for formal QQQ Rotation v4.3."""
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 from typing import Any, Mapping
 
 ASSETS = ("QQQI", "QQQ", "TQQQ", "SGOV")
 COST_BPS_PER_TURNOVER_UNIT = 10.0
+MACHINE_MARKER = "qqq-v4-3-signal"
 
 
 def _weights(value: Mapping[str, Any]) -> dict[str, float]:
@@ -39,6 +41,45 @@ def _orders(current: Mapping[str, float], target: Mapping[str, float]) -> list[d
 def _weight_text(weights: Mapping[str, float]) -> str:
     active = [f"{asset} {weight:.0%}" for asset, weight in weights.items() if weight > 1e-12]
     return " / ".join(active) if active else "空仓"
+
+
+def _machine_record(alert: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": "1.0.0",
+        "model_id": "qqqi_qqq_tqqq_v4_3",
+        "research_only": True,
+        "trade_ready": False,
+        "signal_date": alert["signal_date"],
+        "latest_data_date": alert["latest_data_date"],
+        "data_freshness_ok": alert["data_freshness_ok"],
+        "execution_time": alert["execution_time"],
+        "fingerprint": alert["fingerprint"],
+        "current_formal_state": alert["current_formal_state"],
+        "target_formal_state": alert["target_formal_state"],
+        "current_overlay": alert["current_overlay"],
+        "target_overlay": alert["target_overlay"],
+        "current_weights": alert["current_weights"],
+        "target_weights": alert["target_weights"],
+        "orders": alert["orders"],
+        "turnover_units": alert["turnover_units"],
+        "estimated_transaction_cost": alert["estimated_transaction_cost"],
+        "panic_repair_active": alert["panic_repair_active"],
+        "strong_defense": alert["strong_defense"],
+        "ma200_falling": alert["ma200_falling"],
+        "fast_price_vol_repair": alert["fast_price_vol_repair"],
+        "rsi_14": alert["rsi_14"],
+        "fear_greed_score": alert["fear_greed_score"],
+        "context": alert["context"],
+        "data_context": alert["data_context"],
+    }
+
+
+def _machine_marker(alert: Mapping[str, Any]) -> str:
+    payload = json.dumps(
+        _machine_record(alert), ensure_ascii=False, separators=(",", ":"), sort_keys=True
+    ).encode("utf-8")
+    encoded = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+    return f"<!-- {MACHINE_MARKER}:{encoded} -->"
 
 
 def build_v4_3_signal_alert(summary: Mapping[str, Any]) -> dict[str, Any]:
@@ -141,6 +182,7 @@ def render_markdown(alert: Mapping[str, Any]) -> str:
         f"- 换手单位：**{alert['turnover_units']:.2f}**",
         f"- 模型交易成本：**{alert['estimated_transaction_cost']:.2%}**",
         "",
+        _machine_marker(alert),
         f"<!-- signal-fingerprint:{alert['fingerprint']} -->",
         "",
     ]
