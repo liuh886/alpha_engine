@@ -1,42 +1,105 @@
-# AlphaEngine V2
+# Alpha Engine V2
 
-## 证据驱动的量化策略研究引擎
+## 受治理的中频系统化策略研究与运行观察平台
 
-AlphaEngine 用固定研究契约、时间有效的数据、walk-forward 验证和 fail-closed 决策，判断候选信号是否具有可信的基准相对收益。
+Alpha Engine 用固定研究契约、时间有效的数据、walk-forward / prospective 验证和 fail-closed 决策，把候选研究收敛成可审计的正式策略，并把正式回测、当前策略状态、研究证据和后续迭代连成一条链。
 
-> **Current status — 2026-08-02**
+> **Current status — 2026-08-08**
 >
-> - AlphaEngine 是研究专用系统，没有模型达到 `trade_ready`。
-> - GitHub Pages/PWA **Research Artifact Studio** 是唯一支持的 Web 产品。
-> - Python 数据、训练、回测与研究工作通过 CLI、脚本和工作流执行。
-> - 前端只读取版本化研究成果包，不负责训练、数据刷新、模型变更或交易执行。
-> - 旧本地服务器、登录界面、进程管理和 API 容器架构已经完成退役。
+> - Alpha Engine 仍是 `research_only=true` 的研究与策略观察系统，不提供 broker/order execution。
+> - GitHub Pages/PWA **Strategy Console** 是公开 Web 产品；Python CLI、脚本和 GitHub Actions 负责数据、训练、回测、研究和信号生产。
+> - 正式模型目录当前包含 QQQ Rotation v4.2、US x1.1、CN x1.1 和 BYD v1.2。
+> - QQQ/BYD 已有受治理的运行证据来源；US/CN 的 10-session live signal publication 由 Issue #600 继续闭环，在此之前前端明确显示 signal unavailable，而不是从历史回测推断实时持仓。
+> - Model Run Bundle v2 是正式历史证据边界；Alpha Research Loop receipts 是研究迭代边界；Strategy Operations contract 是当前状态的前端语义边界。
 
-核心研究结论：
+公开入口：<https://liuh886.github.io/alpha_engine/>
 
-- [`docs/research/static_to_pit_alpha_diagnosis_2026-07-29.md`](docs/research/static_to_pit_alpha_diagnosis_2026-07-29.md)
-- [`docs/research/lgbm_xgb_ranker_pit_robustness_2026-07-29.md`](docs/research/lgbm_xgb_ranker_pit_robustness_2026-07-29.md)
-- [`docs/10d_universe_robustness_report.md`](docs/10d_universe_robustness_report.md)
-- [`docs/methodology.md`](docs/methodology.md)
+产品架构说明：[`docs/product/strategy_console.md`](docs/product/strategy_console.md)
 
-## 1. Web product: Research Artifact Studio
+## 1. Strategy Console
 
-Research Artifact Studio 是通过 GitHub Pages 发布的静态、可安装 PWA：
+前端从“按仓库子系统浏览证据”收敛成“按正式策略阅读决策”。一级导航只有：
 
-- 不需要后端或登录；
-- 可读取公开发布的研究成果包；
-- 可从本地目录、文件集合或 ZIP 打开 Alpha Engine 成果包；
-- 校验 manifest 路径、文件大小和 SHA-256；
-- 本地文件只保留在浏览器内，不上传；
-- 首次成功访问后支持离线应用壳。
+- **Overview** — Strategy Fleet：当前状态、target、变动、next decision、风险与运行状态；
+- **Strategies** — 正式策略列表和单策略工作空间；
+- **Research** — Runs / Compare / Decisions / Factors / Reports，用于解释策略如何演化；
+- **System** — Data / Library / Methodology，用于检查数据、freshness 和证据边界。
 
-公开入口：
+单策略阅读顺序是：
 
-- <https://liuh886.github.io/alpha_engine/>
+```text
+Now
+  -> Performance / Risk / Holdings / Trades / Attribution
+  -> Current Drivers
+  -> Evidence / Lineage
+```
 
-在 **Library** 中选择公开成果，或打开包含 `alpha-engine-bundle.json` 的本地文件夹或 ZIP。
+浏览器不会从历史 backtest 重建“当前仓位”。缺少正式 signal pipeline 时必须显式失败或显示 unavailable。
 
-## 2. 安装研究环境
+## 2. 证据架构
+
+```text
+ResearchSpec / Factor definitions
+        ↓
+Python data / model / backtest / signal pipelines
+        ↓
+┌──────────────────────────────────────────────────┐
+│ Formal Model Run Bundle v2                      │
+│ performance / risk / portfolio / trades /       │
+│ attribution / robustness / lineage              │
+└──────────────────────────────────────────────────┘
+        ↓
+┌──────────────────────────────────────────────────┐
+│ Strategy operations evidence                    │
+│ state / current / target / delta / cadence /     │
+│ freshness / delivery / current drivers          │
+└──────────────────────────────────────────────────┘
+        ↓
+┌──────────────────────────────────────────────────┐
+│ Alpha Research Loop receipts                    │
+│ hypothesis / identities / windows / gates /      │
+│ verdict / learning                               │
+└──────────────────────────────────────────────────┘
+        ↓
+GitHub Pages / installable PWA / local bundle reader
+```
+
+原则：
+
+- Python 研究流水线是事实来源；
+- 浏览器永久只读，不训练、不刷新模型、不修改 registry、不下单；
+- 正式 Bundle v2 的 manifest / section / SHA-256 不匹配时 fail closed；
+- 当前 signal、execution evidence 和历史 backtest 语义分离；
+- stale / blocked / unavailable 必须显式显示；
+- 因子定义与因子观测分离，Issue #626 负责把 canonical factor identity / freshness / current drivers 贯通到正式模型和前端。
+
+## 3. 当前正式策略
+
+| Strategy | Kind | Decision cadence | Current frontend operations |
+| --- | --- | --- | --- |
+| QQQ Rotation v4.2 | rules-based allocation | daily close evaluation | governed operating ledger |
+| US x1.1 | cross-sectional ranker | 10 trading sessions | signal pipeline unavailable until #600 closes |
+| CN x1.1 | cross-sectional ranker | 10 trading sessions | signal pipeline unavailable until #600 closes |
+| BYD v1.2 | rules-based allocation | daily eligible close evaluation | governed BYD signal ledger / awaiting valid observation when empty |
+
+这四个策略是独立正式策略。仓库目前没有定义跨 QQQ / US / CN / BYD 的统一资本配置合同，因此前端不会虚构一个总组合权重。
+
+## 4. US / CN 10D 研究契约
+
+| Property | Contract |
+| --- | --- |
+| Forecast horizon | 10 trading sessions |
+| Holding period | 10 trading sessions |
+| Rebalance cadence | 10 trading sessions |
+| Economic return | `Ref($close, -10) / $close - 1` |
+| Training/evaluation boundary | processed rank labels for fitting; raw returns for economics |
+| Validation | expanding half-year OOS windows with a 10-session embargo |
+| Benchmark | CSI 300 for CN; QQQ for US |
+| Scope | `research_only=true` |
+
+研究执行绑定到 `configs/research_paradigms/` 中的版本化规范。基准日期、股票池、provider lineage、因子身份、覆盖证据或最小窗口缺失时均 fail closed。
+
+## 5. 安装研究环境
 
 Alpha Engine 使用 Astral `uv`，`uv.lock` 是 Python 依赖来源：
 
@@ -54,101 +117,7 @@ make test
 make ci
 ```
 
-## 3. 生成研究成果包
-
-先运行所需研究流程，例如：
-
-```bash
-make data
-make train-us
-make backtest
-```
-
-再导出前端唯一接受的成果边界：
-
-```bash
-make research-bundle
-```
-
-输出结构：
-
-```text
-artifacts/research-bundle/
-  alpha-engine-bundle.json
-  data/
-  reports/
-  notebooks/
-  docs/
-```
-
-前端只读取 manifest 声明的文件。缺失、摘要不匹配或版本不兼容都会明确失败，不会从其它来源补齐。
-
-## 4. 当前架构
-
-```text
-Python data/model/backtest pipelines
-        ↓
-versioned research bundle + reports/notebooks
-        ↓
-GitHub Pages / PWA / local bundle reader
-```
-
-架构规则：
-
-- Python 研究流水线是事实来源；
-- `alpha-engine-bundle.json` 是浏览器数据边界；
-- 执行属于 Python CLI、脚本和工作流；
-- 浏览器永久只读；
-- 缺失或不兼容证据必须显式失败；
-- 任何输出都不构成实盘或自动交易授权。
-
-退役记录和完成态门禁：
-
-- [`docs/architecture/legacy_web_retirement.md`](docs/architecture/legacy_web_retirement.md)
-- [`docs/architecture/legacy_web_inventory.json`](docs/architecture/legacy_web_inventory.json)
-
-## 5. 研究契约
-
-CN 和 US 的标准研究都使用固定的 10 个交易日范式：
-
-| Property | Contract |
-| --- | --- |
-| Forecast horizon | 10 trading sessions |
-| Holding period | 10 trading sessions |
-| Rebalance cadence | 10 trading sessions |
-| Economic return | `Ref($close, -10) / $close - 1` |
-| Training/evaluation boundary | processed rank labels for fitting; raw returns for economics |
-| Validation | expanding half-year OOS windows with a 10-session embargo |
-| Benchmark | CSI 300 for CN; QQQ for US |
-| Scope | `research_only=true` |
-
-研究执行绑定到 `configs/research_paradigms/` 中的版本化规范。基准日期、股票池哈希、provider lineage、覆盖证据或最小窗口缺失时均 fail closed。
-
-## 6. Universe validity
-
-静态精选股票池适合探索性诊断，但不是无偏的历史机会集。
-
-当前 US 稳健性路径使用：
-
-- 每个 OOS 半年窗口起点的 Nasdaq-100 官方成员；
-- 训练日期当时已知的最近一次半年度成员表；
-- manifest 绑定的 provider identity 和 membership hashes；
-- 显式报告缺失标的，而不是补零或替换为当前成分股。
-
-这属于窗口起点/半年度 point-in-time 研究，不是每日完整 PIT。中国研究仍使用静态精选成员，因此仍存在幸存者偏差。
-
-## 7. 当前模型有效性判断
-
-固定 LightGBM/XGBoost 对比使用相同特征、processed daily rank target、100-round budget、10-session embargo、raw OOS returns、Top-15 portfolio、20 bps 成本和 QQQ 基准。
-
-| Candidate | Static curated relative excess | PIT NDX relative excess | PIT positive windows | PIT worst drawdown |
-| --- | ---: | ---: | ---: | ---: |
-| LightGBM LambdaRank | +65.04% | -20.49% | 1/4 | -26.11% |
-| XGBoost `rank:ndcg` | +70.35% | -34.08% | 1/4 | -25.59% |
-
-算法家族差异小于股票池有效性问题。下一项获批实验是冻结的 static-to-PIT 归因，而不是继续进行超参数或因子窗口搜索。
-
-## 8. 常用命令
+## 6. 常用研究与发布命令
 
 ```text
 make doctor           检查 Python 研究环境
@@ -157,12 +126,14 @@ make train-us         运行 US 训练流程
 make train-cn         运行 CN 训练流程
 make backtest         运行标准回测流程
 make research-bundle  导出版本化研究成果包
-make static-pwa       构建零 API 的 Research Artifact Studio
+make static-pwa       构建静态 Strategy Console PWA
 make breakfast        生成每日研究简报
 make ci               运行仓库质量门禁
 ```
 
-## 9. 前端开发与验证
+正式回测刷新通过 catalog-driven reviewed refresh transaction 延伸已接受证据，不重开模型选择，也不自动合并数据更新。
+
+## 7. 前端开发与验证
 
 ```bash
 cd qlib-dashboard
@@ -181,15 +152,17 @@ VITE_RUNTIME_MODE=static_artifact npm run build
 npx playwright test --config=playwright.static.config.ts
 ```
 
-生产前端只允许 `static_artifact` 和 `local_artifact` 两种来源模式；不得增加网络取数、后台任务或写操作。
+前端继续使用现有 React + Vite + TypeScript + Radix/Tailwind + lightweight-charts/Recharts + Vitest/Playwright 技术栈，不为了“现代化”引入第二套框架或后台服务。
 
-## 10. Scope and safety
+## 8. Scope and safety
 
 - No browser-side model training.
 - No broker integration or order execution.
+- No automatic model promotion.
 - No hosted upload or cloud synchronization of local bundles.
 - No silent fallback from missing artifact evidence to another data source.
+- No inferred live position from historical backtests.
 - No feature-importance view is presented as proof of factor effectiveness.
 - `research_only=true`, `trade_ready=false`.
 
-更多说明见 `docs/methodology.md`、`docs/product/frontend_artifact_studio.md`、`AGENTS.md` 和 `scripts/README.md`。
+更多说明见 `docs/product/strategy_console.md`、`docs/methodology.md`、`docs/architecture/legacy_web_retirement.md` 和 `AGENTS.md`。
