@@ -1,0 +1,76 @@
+experiment_id: qqqi_qqq_tqqq_v4_27_panic_repair_boost_research
+parent_experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+post_result_hypothesis: true
+issue: 621
+
+purpose: >-
+  Test whether a sparse deep-panic event can improve v4.2 recovery capture
+  without changing the frozen formal v4.2 state trace.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  signal_trace_must_equal_v4_2: true
+  formal_state_2_weights_must_equal_v4_2: true
+  transaction_cost_bps_per_turnover_unit: 10.0
+  signal_time: session_close_t
+  execution_time: next_session_open_t_plus_1
+  return_measurement: adjusted_open_to_adjusted_open
+  threshold_search: false
+  allocation_search: false
+  delay_search: false
+  duration_search: false
+  actionable_alert_changes_authorized: false
+
+data:
+  start_date: "2020-02-01"
+  end_date: null
+  required_symbols: [QQQI, QQQ, TQQQ, ^VIX, ^VXN]
+  qqqi_pre_inception_backfill: false
+
+sentiment_data:
+  provider: CNN Fear & Greed historical endpoint
+  authoritative_start_date: "2021-02-01"
+  exact_date_join: true
+  forward_fill: false
+  alternate_provider_fallback: false
+  pre_2021_archive_allowed_for_primary_evidence: false
+
+panic_event:
+  qqq_rsi_method: Wilder
+  qqq_rsi_period: 14
+  qqq_rsi_below: 30.0
+  fear_greed_below: 10.0
+  arm_on_cluster_start_only: true
+  immediate_tqqq_entry: false
+
+repair_confirmation:
+  require_early_repair: true
+  require_no_stress_price_failure: true
+  require_vix_easing_or_normalized: true
+
+risk_budget_overlay:
+  eligible_executed_states: [0, 1]
+  tqqq_boost: 0.25
+  funding: pro_rata_existing_non_tqqq_sleeve
+  formal_state_2_unchanged: true
+  exit_on_formal_state_2: true
+  exit_on_stress_price_failure: true
+  new_panic_resets_active_boost: true
+
+evidence_policy:
+  primary_scope: actual_qqqi_product_window
+  reliable_proxy_scope_start: "2021-02-01"
+  pre_2021_archive_role: lower_confidence_mechanism_stress_only
+  direct_promotion_authorized: false
+  prospective_shadow_authorized: false
+
+hypothesis_discipline:
+  - Run exactly the frozen v4.2 baseline and one panic-repair challenger.
+  - Do not search RSI period or RSI threshold.
+  - Do not search Fear & Greed threshold.
+  - Do not search boost size, delay, persistence or exit rules.
+  - Do not use pre-2021 reconstructed sentiment as primary promotion evidence.
+  - Do not change v4.2 alerts, Telegram targets or formal model status in this phase.
