@@ -126,27 +126,23 @@ execution:
     - 40
     - 60
 
-selection_priority:
-  - positive_excess_in_all_development_windows
-  - lower_worst_drawdown
-  - lower_security_and_window_concentration
-  - positive_60_bps_compounded_relative_excess
-  - stable_rank_ic_and_top15_overlap
-  - compounded_relative_excess
-  - positive_factor_baseline_dominance
-
-support_gate:
+evaluation:
+  schema_version: '1.0'
+  baseline_candidate_id: baseline_7factor
+  stress_cost_bps: 60
   decision: risk_controlled_momentum_candidate_supported
-  require_all:
-    - all_development_windows_positive_excess
-    - worst_drawdown_not_below_minus_0_30
-    - sixty_bps_compounded_relative_excess_positive
-    - strongest_positive_window_share_below_0_50
-    - mean_rank_ic_improvement_by_at_least_0_005
-    - dominates_factor_baselines
-  prefer:
-    - lower_worst_drawdown
+  ranking:
+    - gate_pass_count
+    - worst_drawdown
     - lower_concentration
+    - compounded_relative_excess
+  thresholds:
+    min_window_relative_excess: 0.0
+    min_worst_drawdown: -0.30
+    min_stress_compounded_relative_excess: 0.0
+    max_strongest_positive_window_share: 0.50
+    min_mean_rank_ic_improvement: 0.005
+    require_factor_baseline_dominance: true
 
 stop_rules:
   - no_feature_search_beyond_declared_groups
