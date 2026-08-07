@@ -65,6 +65,7 @@ jobs:
           uv run ruff check
           src/release
           src/models/metric_contract.py
+          src/research/experiment_harness.py
           scripts/check_legacy_web_boundary.py
           scripts/check_ci_governance.py
 
@@ -81,6 +82,7 @@ jobs:
           tests/test_architecture_contract.py
           tests/test_model_signal_identity.py
           tests/test_data_runtime_truth.py
+          tests/test_experiment_harness.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Package build
