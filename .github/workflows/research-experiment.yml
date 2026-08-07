@@ -1,15 +1,6 @@
 name: Research Experiment
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'configs/research_experiments/**'
-      - 'src/research/cross_sectional_experiment_runner.py'
-      - 'src/research/experiment_harness.py'
-      - 'scripts/run_research_experiment.py'
-      - 'scripts/run_active_research_experiments.py'
-      - '.github/workflows/research-experiment.yml'
   pull_request:
     branches: [main]
     paths:
