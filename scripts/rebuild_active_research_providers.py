@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Rebuild Qlib providers required by active research missions from repository sources."""
+"""Rebuild Qlib providers required by committed research missions."""
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 from typing import Any
@@ -33,25 +34,33 @@ def _resolve_repo_file(raw: str) -> Path:
     return path
 
 
-def active_markets() -> list[str]:
-    markets: set[str] = set()
+def _market_for_spec(path: Path) -> str:
+    payload = _load_yaml(path)
+    fixed_model = payload.get("fixed_model") or {}
+    frozen_spec = _resolve_repo_file(str(fixed_model.get("frozen_spec", "")))
+    parent = ResearchParadigmSpec.from_yaml(frozen_spec)
+    if parent.market not in {"us", "cn"}:
+        raise ValueError(
+            f"cross-sectional mission has unsupported market {parent.market!r}"
+        )
+    return parent.market
+
+
+def active_specs() -> list[Path]:
+    result: list[Path] = []
     for path in sorted(EXPERIMENT_ROOT.glob("*.yaml")):
-        payload = _load_yaml(path)
-        if payload.get("active") is not True:
-            continue
-        fixed_model = payload.get("fixed_model") or {}
-        frozen_spec = _resolve_repo_file(str(fixed_model.get("frozen_spec", "")))
-        parent = ResearchParadigmSpec.from_yaml(frozen_spec)
-        if parent.market not in {"us", "cn"}:
-            raise ValueError(
-                f"active cross-sectional mission has unsupported market {parent.market!r}"
-            )
-        markets.add(parent.market)
-    return sorted(markets)
+        if _load_yaml(path).get("active") is True:
+            result.append(path)
+    return result
 
 
 def main() -> int:
-    markets = active_markets()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--spec", type=Path)
+    args = parser.parse_args()
+
+    specs = [args.spec.resolve()] if args.spec else active_specs()
+    markets = sorted({_market_for_spec(path) for path in specs})
     if not markets:
         print("{}")
         return 0
