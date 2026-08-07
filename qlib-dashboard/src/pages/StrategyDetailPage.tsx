@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowUpRight, CalendarClock, Database, ShieldCheck } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { FormalBacktestReview } from '@/components/FormalBacktestReview';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,10 @@ export function StrategyDetailPage() {
   const selectedRuns = useMemo(() => run ? [run] : [], [run]);
   const { snapshots, loading } = useStrategyOperations(selectedRuns);
   const snapshot = run ? snapshots.get(run.modelVersionId) : undefined;
+
+  useEffect(() => {
+    if (run && run.key !== workspace.activeRunKey) workspace.selectRun(run);
+  }, [run, workspace.activeRunKey, workspace.selectRun]);
 
   if (!run) {
     return (
@@ -65,15 +69,15 @@ export function StrategyDetailPage() {
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
           <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="grid grid-cols-[minmax(100px,1fr)_90px_90px_90px] border-b bg-muted/25 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            <div className="grid grid-cols-[minmax(58px,1fr)_58px_58px_64px] border-b bg-muted/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground sm:grid-cols-[minmax(100px,1fr)_90px_90px_90px] sm:px-4 sm:text-[10px] sm:tracking-[0.14em]">
               <span>Asset</span><span className="text-right">Current</span><span className="text-right">Target</span><span className="text-right">Change</span>
             </div>
             {snapshot?.allocations.length ? snapshot.allocations.map((leg) => (
-              <div key={leg.asset} className="grid grid-cols-[minmax(100px,1fr)_90px_90px_90px] border-b px-4 py-3 text-sm last:border-0">
+              <div key={leg.asset} className="grid grid-cols-[minmax(58px,1fr)_58px_58px_64px] border-b px-3 py-3 text-xs last:border-0 sm:grid-cols-[minmax(100px,1fr)_90px_90px_90px] sm:px-4 sm:text-sm">
                 <span className="font-semibold">{leg.asset}</span>
-                <span className="text-right font-mono">{pct(leg.current)}</span>
-                <span className="text-right font-mono">{pct(leg.target)}</span>
-                <span className="text-right font-mono font-semibold">{leg.delta > 0 ? '+' : ''}{pct(leg.delta)}</span>
+                <span className="text-right font-mono tabular-nums">{pct(leg.current)}</span>
+                <span className="text-right font-mono tabular-nums">{pct(leg.target)}</span>
+                <span className="text-right font-mono font-semibold tabular-nums">{leg.delta > 0 ? '+' : ''}{pct(leg.delta)}</span>
               </div>
             )) : (
               <div className="p-6 text-sm text-muted-foreground">No governed live target is published for this strategy. Alpha Engine will not infer current holdings from a historical backtest.</div>
