@@ -7,6 +7,7 @@ on:
       - 'configs/research_experiments/**'
       - 'src/research/cross_sectional_experiment_runner.py'
       - 'src/research/experiment_harness.py'
+      - 'scripts/fetch_research_source_gaps.py'
       - 'scripts/rebuild_active_research_providers.py'
       - 'scripts/run_research_experiment.py'
       - 'scripts/run_active_research_experiments.py'
@@ -52,6 +53,7 @@ jobs:
           uv run ruff check \
             src/research/experiment_harness.py \
             src/research/cross_sectional_experiment_runner.py \
+            scripts/fetch_research_source_gaps.py \
             scripts/rebuild_active_research_providers.py \
             scripts/run_research_experiment.py \
             scripts/run_active_research_experiments.py \
@@ -61,6 +63,33 @@ jobs:
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+      - name: Prepare reviewable source repair candidates
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
+            uv run python scripts/fetch_research_source_gaps.py --spec "${{ inputs.spec }}"
+          else
+            uv run python scripts/fetch_research_source_gaps.py
+          fi
+
+      - name: Upload source repair candidates
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-source-repair
+          path: artifacts/research_source_repair/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Require canonical research sources
+        shell: bash
+        run: |
+          if [[ -f artifacts/research_source_repair/repair_required ]]; then
+            cat artifacts/research_source_repair/summary.json
+            echo 'Research source repair is required before model execution.' >&2
+            exit 1
+          fi
 
       - name: Rebuild mission provider from repository sources
         shell: bash
