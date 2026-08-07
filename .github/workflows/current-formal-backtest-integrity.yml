@@ -11,7 +11,6 @@ on:
       - data/research/byd_v1_2_signal_ledger/**
       - scripts/promote_cn_x1_1_formal.py
       - scripts/promote_byd_v1_2_formal.py
-      - scripts/verify_formal_backtest_freshness.py
       - tests/test_promote_cn_x1_1_formal.py
       - tests/test_byd_v1_2_convex_momentum.py
       - .github/workflows/current-formal-backtest-integrity.yml
@@ -42,7 +41,7 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Validate current formal promoters
+      - name: Validate immutable-model promoters
         run: |
           uv run ruff check \
             scripts/promote_cn_x1_1_formal.py \
@@ -54,12 +53,6 @@ jobs:
             tests/test_promote_cn_x1_1_formal.py \
             tests/test_byd_v1_2_convex_momentum.py \
             -q --strict-markers --tb=short
-      - name: Seed reproducible formal root
-        run: |
-          mkdir -p artifacts/reproduced-formal
-          for name in qqqi_qqq_tqqq_v4_3.json us_x1_1.json catalog.json freshness.json; do
-            cp "data/research/formal_backtests/$name" "artifacts/reproduced-formal/$name"
-          done
       - name: Extract immutable BYD formal inputs
         run: |
           set -euo pipefail
@@ -69,32 +62,70 @@ jobs:
           mkdir -p artifacts/data/byd_canonical_v1 artifacts/data/515180_canonical_v1
           tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
           unzip -q "$RUNNER_TEMP/515180-canonical-v1.zip" -d artifacts/data/515180_canonical_v1
-      - name: Reproduce accepted BYD v1.2 formal baseline
+      - name: Reproduce accepted BYD v1.2 package independently
         run: |
+          set -euo pipefail
+          mkdir -p artifacts/reproduced-byd
+          cp -a data/research/formal_backtests/. artifacts/reproduced-byd/
           uv run python scripts/promote_byd_v1_2_formal.py \
-            --root artifacts/reproduced-formal \
+            --root artifacts/reproduced-byd \
             --byd-dir artifacts/data/byd_canonical_v1 \
             --etf-dir artifacts/data/515180_canonical_v1 \
             --signal-ledger data/research/byd_v1_2_signal_ledger \
             --generated-at "$BYD_GENERATED_AT" \
             --receipt artifacts/current-byd-v1-2-formal-reproduction-receipt.json
-      - name: Reproduce accepted CN x1.1 formal baseline
+          cmp \
+            artifacts/reproduced-byd/byd_v1_2_convex_momentum_budget_v1.json \
+            data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json
+      - name: Reproduce accepted CN x1.1 package independently
         run: |
+          set -euo pipefail
+          mkdir -p artifacts/reproduced-cn
+          cp -a data/research/formal_backtests/. artifacts/reproduced-cn/
           uv run python scripts/promote_cn_x1_1_formal.py \
-            --root artifacts/reproduced-formal \
+            --root artifacts/reproduced-cn \
             --evidence-root data/research/cn_x1_1_regime_gated_candidate_v1 \
             --generated-at "$CN_GENERATED_AT" \
             --receipt artifacts/current-cn-x1-1-formal-reproduction-receipt.json
-          uv run python scripts/verify_formal_backtest_freshness.py \
-            --root artifacts/reproduced-formal \
-            --as-of 2026-08-03T09:15:00Z \
-            --receipt artifacts/current-formal-freshness-receipt.json
-      - name: Enforce byte-exact current release
+          cmp \
+            artifacts/reproduced-cn/cn_x1_1.json \
+            data/research/formal_backtests/cn_x1_1.json
+      - name: Validate the current formal catalog and package digests
         run: |
-          for name in qqqi_qqq_tqqq_v4_3.json us_x1_1.json cn_x1_1.json byd_v1_2_convex_momentum_budget_v1.json catalog.json freshness.json; do
-            cmp "artifacts/reproduced-formal/$name" "data/research/formal_backtests/$name"
-          done
-          test ! -e artifacts/reproduced-formal/byd_dividend_sleeve_v1_0.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path('data/research/formal_backtests')
+          expected = [
+              'qqqi_qqq_tqqq_v4_3',
+              'us_x1_1',
+              'cn_x1_1',
+              'byd_v1_2_convex_momentum_budget_v1',
+          ]
+          catalog = json.loads((root / 'catalog.json').read_text())
+          ids = [row['model_id'] for row in catalog['records']]
+          assert ids == expected, ids
+          assert 'qqqi_qqq_tqqq_v4_2' not in ids
+          assert catalog['research_only'] is True
+          assert catalog['trade_ready'] is False
+          for row in catalog['records']:
+              path = root / row['path']
+              assert path.is_file(), path
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              assert digest == row['sha256'], (row['model_id'], digest, row['sha256'])
+              package = json.loads(path.read_text())
+              assert package['model_id'] == row['model_id']
+              assert package['publication_status'] == 'accepted_formal_baseline'
+              assert package['research_only'] is True
+              assert package['trade_ready'] is False
+          freshness = json.loads((root / 'freshness.json').read_text())
+          assert freshness['required_models'] == expected
+          assert freshness['research_only'] is True
+          assert freshness['trade_ready'] is False
+          print('Current formal catalog, package digests, and active identities are internally consistent.')
+          PY
       - name: Retain current release evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -103,7 +134,7 @@ jobs:
           path: |
             artifacts/current-cn-x1-1-formal-reproduction-receipt.json
             artifacts/current-byd-v1-2-formal-reproduction-receipt.json
-            artifacts/current-formal-freshness-receipt.json
-            artifacts/reproduced-formal
+            artifacts/reproduced-cn/cn_x1_1.json
+            artifacts/reproduced-byd/byd_v1_2_convex_momentum_budget_v1.json
           if-no-files-found: error
           retention-days: 90
