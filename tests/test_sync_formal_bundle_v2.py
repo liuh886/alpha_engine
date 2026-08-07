@@ -71,7 +71,7 @@ def test_live_signal_state_is_not_embedded_in_formal_package(tmp_path: Path) -> 
 def test_current_formal_catalog_matches_supported_adapters() -> None:
     assert accepted_v1_models(SOURCE) == list(FORMAL_MODEL_ADAPTERS)
     assert list(FORMAL_MODEL_ADAPTERS) == [
-        "qqqi_qqq_tqqq_v4_2",
+        "qqqi_qqq_tqqq_v4_3",
         "us_x1_1",
         "cn_x1_1",
         BYD_V12,
