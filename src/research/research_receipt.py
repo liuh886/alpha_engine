@@ -14,22 +14,15 @@ from typing import Any
 import yaml
 
 from src.common.runtime_settings import PROJECT_ROOT
+from src.research.factor_identity import (
+    factor_identity_metadata,
+    group_factor_specs_by_expression,
+)
 from src.research.factor_library import load_factor_library, select_factor_groups
 
 
 def _sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
-
-
-def _canonical_sha256(value: object) -> str:
-    encoded = json.dumps(
-        value,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-        allow_nan=False,
-    ).encode("utf-8")
-    return _sha256_bytes(encoded)
 
 
 def _resolve_repo_file(raw: str, *, spec_path: Path) -> Path:
@@ -48,32 +41,25 @@ def _resolve_repo_file(raw: str, *, spec_path: Path) -> Path:
 
 def _candidate_factor_lineage(library: dict[str, Any], groups: list[str]) -> dict[str, Any]:
     selected = select_factor_groups(library, groups)
-    declared_ids: list[str] = []
-    by_expression: dict[str, dict[str, Any]] = {}
-
-    for group in selected:
-        for factor in group.factors:
-            declared_ids.append(factor.id)
-            effective = by_expression.setdefault(
-                factor.expression,
-                {
-                    "expression": factor.expression,
-                    "expression_sha256": _sha256_bytes(factor.expression.encode("utf-8")),
-                    "family": factor.family,
-                    "description": factor.description,
-                    "declared_factor_ids": [],
-                },
-            )
-            if factor.id not in effective["declared_factor_ids"]:
-                effective["declared_factor_ids"].append(factor.id)
-
-    effective_factors = sorted(
-        by_expression.values(),
-        key=lambda item: (item["expression_sha256"], item["expression"]),
-    )
-    for item in effective_factors:
-        item["declared_factor_ids"].sort()
-
+    factor_specs = [
+        (group.name, factor)
+        for group in selected
+        for factor in group.factors
+    ]
+    canonical = group_factor_specs_by_expression(factor_specs)
+    effective_factors = [
+        {
+            "canonical_expression_id": item.canonical_expression_id,
+            "canonical_expression_sha256": item.canonical_expression_sha256,
+            "normalized_expression": item.normalized_expression,
+            "expression": item.evaluation_expression,
+            "declared_factor_ids": sorted(alias.factor.id for alias in item.aliases),
+            "groups": sorted({alias.group_name for alias in item.aliases}),
+            "families": sorted({alias.factor.family for alias in item.aliases}),
+        }
+        for item in sorted(canonical, key=lambda value: value.canonical_expression_id)
+    ]
+    declared_ids = [factor.id for _, factor in factor_specs]
     return {
         "factor_groups": list(groups),
         "declared_factor_ids": declared_ids,
@@ -86,9 +72,9 @@ def _candidate_factor_lineage(library: dict[str, Any], groups: list[str]) -> dic
 def build_factor_lineage(spec_path: str | Path) -> dict[str, Any] | None:
     """Return exact factor-library lineage declared by one research mission.
 
-    Effective factor identity follows the expressions actually consumed by the
-    ranker. This deliberately exposes duplicate group aliases in the current
-    library instead of pretending each alias is a distinct model input.
+    Effective factors use the repository's canonical expression-identity contract,
+    the same identity used by factor diagnostics. Duplicate configured aliases are
+    retained as provenance but cannot masquerade as distinct model inputs.
 
     Missions without a structured ``factor_library`` return ``None``. Allocation
     runners attach deterministic rule-input evidence separately; the absence of a
@@ -134,6 +120,7 @@ def build_factor_lineage(spec_path: str | Path) -> dict[str, Any] | None:
         "schema_version": "1.0",
         "source": source,
         "source_sha256": _sha256_bytes(library_path.read_bytes()),
+        "identity": factor_identity_metadata(),
         "candidates": candidates,
     }
 
