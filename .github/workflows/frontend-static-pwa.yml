@@ -58,7 +58,7 @@ jobs:
         working-directory: qlib-dashboard
         run: npm test -- --run
 
-      - name: Build static artifact studio
+      - name: Build static strategy console
         working-directory: qlib-dashboard
         run: npm run build
 
@@ -69,7 +69,7 @@ jobs:
           test -f dist/manifest.webmanifest
           test -f dist/sw.js
           test -f dist/icons/alpha-engine.svg
-          grep -q "Alpha Engine Research Studio" dist/index.html
+          grep -q "Alpha Engine Strategy Console" dist/index.html
           grep -q '"display": "standalone"' dist/manifest.webmanifest
 
       - name: Bundle budget
