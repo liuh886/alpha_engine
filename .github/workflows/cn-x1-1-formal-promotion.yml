@@ -9,8 +9,6 @@ on:
       - notebooks/models/cn_x1_1_complete_backtest.ipynb
       - data/research/cn_x1_1_regime_gated_candidate_v1/**
       - data/research/formal_backtests/cn_x1_1.json
-      - data/research/formal_backtests/catalog.json
-      - data/research/formal_backtests/freshness.json
       - scripts/promote_cn_x1_1_formal.py
       - tests/test_promote_cn_x1_1_formal.py
       - .github/workflows/cn-x1-1-formal-promotion.yml
@@ -44,8 +42,9 @@ jobs:
           uv run ruff check scripts/promote_cn_x1_1_formal.py tests/test_promote_cn_x1_1_formal.py
           uv run mypy scripts/promote_cn_x1_1_formal.py
           uv run pytest tests/test_promote_cn_x1_1_formal.py -q --strict-markers --tb=short
-      - name: Reproduce promotion from prior formal release
+      - name: Reproduce immutable CN package from its promotion release
         run: |
+          set -euo pipefail
           mkdir -p artifacts/reproduced-formal
           git show 3b732ede15f0c0fc622fe5be153ad5e21a98889e:data/research/formal_backtests/catalog.json > artifacts/reproduced-formal/catalog.json
           git show 3b732ede15f0c0fc622fe5be153ad5e21a98889e:data/research/formal_backtests/freshness.json > artifacts/reproduced-formal/freshness.json
@@ -55,8 +54,23 @@ jobs:
             --generated-at 2026-08-05T17:36:00Z \
             --receipt artifacts/cn-x1-1-promotion-receipt.json
           cmp artifacts/reproduced-formal/cn_x1_1.json data/research/formal_backtests/cn_x1_1.json
-          cmp artifacts/reproduced-formal/catalog.json data/research/formal_backtests/catalog.json
-          cmp artifacts/reproduced-formal/freshness.json data/research/formal_backtests/freshness.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path('data/research/formal_backtests')
+          package = root / 'cn_x1_1.json'
+          digest = hashlib.sha256(package.read_bytes()).hexdigest()
+          catalog = json.loads((root / 'catalog.json').read_text())
+          record = next(row for row in catalog['records'] if row['model_id'] == 'cn_x1_1')
+          assert record['path'] == 'cn_x1_1.json'
+          assert record['sha256'] == digest
+          assert record['publication_status'] == 'accepted_formal_baseline'
+          freshness = json.loads((root / 'freshness.json').read_text())
+          assert 'cn_x1_1' in freshness['required_models']
+          print('CN x1.1 immutable package is still referenced by the current formal catalog.')
+          PY
       - name: Upload promotion evidence
         if: always()
         uses: actions/upload-artifact@v4
