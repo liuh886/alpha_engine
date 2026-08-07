@@ -1,5 +1,6 @@
 import type { GovernedRunSummary } from './governed-run';
 import { fetchBydRuntimeSnapshot, type BydSignalRecord } from './byd-runtime';
+import { fetchStrategyCapabilities, type StrategyCapability } from './strategy-capabilities';
 import { fetchV42RuntimeSnapshot, type V42EventRecord, type V42ObservationRecord } from './v42-runtime';
 
 export type StrategyOperationalStatus =
@@ -47,8 +48,6 @@ export interface StrategyOperationsSnapshot {
   drivers: StrategyDriver[];
 }
 
-const QQQ_MODEL_ID = 'qqqi_qqq_tqqq_v4_2';
-const BYD_MODEL_ID = 'byd_v1_2_convex_momentum_budget_v1';
 const STATE_LABELS: Record<number, string> = {
   0: 'Defensive',
   1: 'Transition',
@@ -65,6 +64,16 @@ function percent(value: unknown, digits = 1): string {
 
 function decimal(value: unknown, digits = 2): string {
   return finite(value) ? value.toFixed(digits) : '—';
+}
+
+function factorFreshness(capability: StrategyCapability): StrategyFreshness {
+  return capability.factorEvidenceStatus === 'current'
+    ? 'current'
+    : capability.factorEvidenceStatus === 'stale'
+      ? 'stale'
+      : capability.factorEvidenceStatus === 'blocked' || capability.factorEvidenceStatus === 'pending_canonical_contract'
+        ? 'blocked'
+        : 'unknown';
 }
 
 function allocationLegs(current: Record<string, number>, target: Record<string, number>): StrategyAllocationLeg[] {
@@ -86,21 +95,26 @@ function hasAllocationChange(allocations: StrategyAllocationLeg[]): boolean {
   return allocations.some((leg) => Math.abs(leg.delta) > 1e-9);
 }
 
-function unavailable(run: GovernedRunSummary, status: StrategyOperationalStatus, note: string): StrategyOperationsSnapshot {
+function unavailable(
+  run: GovernedRunSummary,
+  status: StrategyOperationalStatus,
+  note: string,
+  capability?: StrategyCapability,
+): StrategyOperationsSnapshot {
   return {
     strategyId: run.modelVersionId,
     status,
     asOf: null,
     latestCompletedSession: run.evidenceCutoff || null,
-    decisionCadence: run.modelKind === 'cross_sectional_ranker' ? 'Every 10 trading sessions' : 'Model-defined cadence',
-    nextDecision: status === 'pipeline_unavailable' ? 'Signal publication not implemented' : 'Awaiting first valid observation',
-    stateLabel: status === 'pipeline_unavailable' ? 'No governed live signal' : 'Awaiting observation',
+    decisionCadence: capability?.decisionCadence ?? 'Capability not declared',
+    nextDecision: capability?.nextDecisionPolicy ?? 'Operating capability unavailable',
+    stateLabel: status === 'pipeline_unavailable' ? 'No governed live signal' : 'Operating evidence unavailable',
     decisionReason: note,
     allocations: [],
     turnover: null,
     estimatedCost: null,
     dataFreshness: 'unknown',
-    factorFreshness: 'unknown',
+    factorFreshness: capability ? factorFreshness(capability) : 'unknown',
     deliveryStatus: 'not available',
     sourceLabel: 'Formal model evidence only',
     sourceHref: null,
@@ -109,7 +123,13 @@ function unavailable(run: GovernedRunSummary, status: StrategyOperationalStatus,
   };
 }
 
-function qqqSnapshot(run: GovernedRunSummary, record: V42EventRecord, observation: V42ObservationRecord | null, issueUrl: string): StrategyOperationsSnapshot {
+function qqqSnapshot(
+  run: GovernedRunSummary,
+  capability: StrategyCapability,
+  record: V42EventRecord,
+  observation: V42ObservationRecord | null,
+  issueUrl: string,
+): StrategyOperationsSnapshot {
   const allocations = allocationLegs(record.current_weights, record.target_weights);
   const changed = hasAllocationChange(allocations);
   const executionObserved = Boolean(observation?.execution?.execution_date);
@@ -133,15 +153,15 @@ function qqqSnapshot(run: GovernedRunSummary, record: V42EventRecord, observatio
     status,
     asOf: record.signal_date,
     latestCompletedSession: observation?.as_of_data_date ?? record.latest_data_date_at_creation,
-    decisionCadence: 'Daily close evaluation',
-    nextDecision: 'Next completed US market close',
+    decisionCadence: capability.decisionCadence,
+    nextDecision: capability.nextDecisionPolicy,
     stateLabel: record.current_state === record.target_state ? stateTo : `${stateFrom} → ${stateTo}`,
     decisionReason: record.decision_reason || 'No decision reason retained.',
     allocations,
     turnover: finite(record.turnover_units) ? record.turnover_units : null,
     estimatedCost: finite(record.estimated_transaction_cost) ? record.estimated_transaction_cost : null,
     dataFreshness: record.data_freshness_ok ? 'current' : 'stale',
-    factorFreshness: 'unknown',
+    factorFreshness: factorFreshness(capability),
     deliveryStatus,
     sourceLabel: 'Governed QQQ state-change ledger',
     sourceHref: issueUrl,
@@ -160,7 +180,12 @@ function qqqSnapshot(run: GovernedRunSummary, record: V42EventRecord, observatio
   };
 }
 
-function bydSnapshot(run: GovernedRunSummary, record: BydSignalRecord, issueUrl: string): StrategyOperationsSnapshot {
+function bydSnapshot(
+  run: GovernedRunSummary,
+  capability: StrategyCapability,
+  record: BydSignalRecord,
+  issueUrl: string,
+): StrategyOperationsSnapshot {
   const allocations = allocationLegs(record.current_weights, record.target_weights);
   const changed = hasAllocationChange(allocations);
   const status: StrategyOperationalStatus = !record.data_freshness_ok
@@ -174,15 +199,15 @@ function bydSnapshot(run: GovernedRunSummary, record: BydSignalRecord, issueUrl:
     status,
     asOf: record.signal_date,
     latestCompletedSession: record.latest_data_date,
-    decisionCadence: 'Daily close evaluation',
-    nextDecision: 'Next eligible BYD market close',
+    decisionCadence: capability.decisionCadence,
+    nextDecision: capability.nextDecisionPolicy,
     stateLabel: record.target_mode_label || record.target_mode,
     decisionReason: record.transition_label || record.transition_type,
     allocations,
     turnover: finite(record.turnover_units) ? record.turnover_units : null,
     estimatedCost: finite(record.estimated_transaction_cost) ? record.estimated_transaction_cost : null,
     dataFreshness: record.data_freshness_ok ? 'current' : 'stale',
-    factorFreshness: 'unknown',
+    factorFreshness: factorFreshness(capability),
     deliveryStatus: record.should_alert ? 'alert required' : 'not required',
     sourceLabel: 'Governed BYD signal ledger',
     sourceHref: issueUrl,
@@ -200,39 +225,52 @@ function bydSnapshot(run: GovernedRunSummary, record: BydSignalRecord, issueUrl:
   };
 }
 
-async function loadOne(run: GovernedRunSummary): Promise<StrategyOperationsSnapshot> {
-  if (run.modelVersionId === QQQ_MODEL_ID) {
+async function loadOne(run: GovernedRunSummary, capability: StrategyCapability): Promise<StrategyOperationsSnapshot> {
+  if (capability.pipelineStatus === 'unavailable' || capability.sourceType === 'unavailable') {
+    return unavailable(run, 'pipeline_unavailable', capability.note, capability);
+  }
+
+  if (capability.sourceType === 'github_issue_v42') {
     try {
       const snapshot = await fetchV42RuntimeSnapshot();
       const event = snapshot.latestStateChange;
-      if (!event) return unavailable(run, 'awaiting_observation', 'No governed QQQ state-change record is available.');
-      return qqqSnapshot(run, event.record, snapshot.observation, event.issue.html_url);
+      if (!event) return unavailable(run, 'awaiting_observation', 'No governed QQQ state-change record is available.', capability);
+      return qqqSnapshot(run, capability, event.record, snapshot.observation, event.issue.html_url);
     } catch (error) {
-      return unavailable(run, 'blocked', error instanceof Error ? error.message : 'QQQ operating evidence is unavailable.');
+      return unavailable(run, 'blocked', error instanceof Error ? error.message : 'QQQ operating evidence is unavailable.', capability);
     }
   }
 
-  if (run.modelVersionId === BYD_MODEL_ID) {
+  if (capability.sourceType === 'github_issue_byd') {
     try {
       const snapshot = await fetchBydRuntimeSnapshot();
       const event = snapshot.latestSignal;
-      if (!event) return unavailable(run, 'awaiting_observation', 'BYD signal pipeline is waiting for its first valid production observation.');
-      return bydSnapshot(run, event.record, event.issue.html_url);
+      if (!event) return unavailable(run, 'awaiting_observation', 'BYD signal pipeline is waiting for its first valid production observation.', capability);
+      return bydSnapshot(run, capability, event.record, event.issue.html_url);
     } catch (error) {
-      return unavailable(run, 'blocked', error instanceof Error ? error.message : 'BYD operating evidence is unavailable.');
+      return unavailable(run, 'blocked', error instanceof Error ? error.message : 'BYD operating evidence is unavailable.', capability);
     }
   }
 
-  return unavailable(
-    run,
-    'pipeline_unavailable',
-    'This accepted formal model does not yet publish a governed live/rebalance signal. Historical formal evidence remains available.',
-  );
+  return unavailable(run, 'blocked', `Unsupported governed operations source: ${capability.sourceType}`, capability);
 }
 
 export async function loadStrategyOperations(runs: GovernedRunSummary[]): Promise<Map<string, StrategyOperationsSnapshot>> {
   const formalRuns = runs.filter((run) => run.channel === 'formal');
-  const snapshots = await Promise.all(formalRuns.map(loadOne));
+  let capabilities: Map<string, StrategyCapability>;
+  try {
+    capabilities = await fetchStrategyCapabilities();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Strategy capability document is unavailable.';
+    return new Map(formalRuns.map((run) => [run.modelVersionId, unavailable(run, 'blocked', message)]));
+  }
+
+  const snapshots = await Promise.all(formalRuns.map((run) => {
+    const capability = capabilities.get(run.modelVersionId);
+    return capability
+      ? loadOne(run, capability)
+      : Promise.resolve(unavailable(run, 'blocked', 'Accepted formal model is missing from the governed strategy capability document.'));
+  }));
   return new Map(snapshots.map((snapshot) => [snapshot.strategyId, snapshot]));
 }
 
