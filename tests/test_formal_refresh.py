@@ -200,3 +200,19 @@ def test_finalize_accepts_stale_candidate_catalog_hashes_and_reseals(tmp_path: P
     catalog = load_object(candidate_root / "catalog.json")
     for row in catalog["records"]:
         assert row["sha256"] == sha256(candidate_root / row["path"])
+
+
+def test_committed_operations_identity_matches_formal_bundle_catalog() -> None:
+    catalog = load_object(Path("data/research/formal_model_runs/catalog.json"))
+    operations = load_object(Path("data/research/strategy_operations/snapshots.json"))
+    formal_by_id = {row["model_version_id"]: row for row in catalog["records"]}
+    operation_by_id = {
+        row["model_version_id"]: row for row in operations["records"]
+    }
+    assert set(operation_by_id) == set(formal_by_id)
+    for model_id, record in operation_by_id.items():
+        formal = formal_by_id[model_id]
+        identity = record["source_identity"]
+        assert identity["formal_bundle_id"] == formal["bundle_id"]
+        assert identity["formal_run_id"] == formal["run_id"]
+        assert identity["formal_evidence_cutoff"] == formal["evidence_cutoff"]
