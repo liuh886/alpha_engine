@@ -18,6 +18,7 @@ from src.research.formal_baseline_onboarding import (
     RUNNER_ID as FORMAL_BASELINE_RUNNER,
     run_formal_baseline_onboarding,
 )
+from src.research.research_receipt import write_research_receipt
 
 
 def _runner(path: Path) -> str:
@@ -40,6 +41,11 @@ def main() -> int:
         receipt = run_formal_baseline_onboarding(args.spec, output_dir=args.output_dir)
     else:
         raise ValueError(f"unsupported runner: {runner!r}")
+    receipt = write_research_receipt(
+        args.spec,
+        receipt,
+        output_dir=args.output_dir,
+    )
     print(json.dumps(receipt, indent=2, sort_keys=True))
     return 0 if receipt.get("status") == "completed" else 2
 
