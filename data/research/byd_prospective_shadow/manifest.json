@@ -9,18 +9,19 @@
     40
   ],
   "first_signal_date": "2026-08-04",
-  "last_signal_date": "2026-08-06",
-  "last_updated_at_utc": "2026-08-06T13:10:21.068812+00:00",
-  "ledger_sha256": "85574b7b75c8a2c1d4111cca3e29cadabfb52ec387fa44db5711929aedf34cb6",
-  "observation_count": 3,
+  "last_signal_date": "2026-08-07",
+  "last_updated_at_utc": "2026-08-07T12:08:17.258229+00:00",
+  "ledger_sha256": "072a1866a96978c5ad02db26c1995ffb46cfe00f8d0efff0d8975313792751ce",
+  "observation_count": 4,
   "observation_sha256": {
     "2026-08-04": "18c9505ec03d71a934717c7d47112bec2d7a74c18946bb07e786bac930a61376",
     "2026-08-05": "cad816db7049353f0aad7bedf0aba0e2d273a0502f03231b9d8d3143524cea70",
-    "2026-08-06": "548cbbe9ad70e883d4ad59bb97713f3cff59829ca84a43f980dc5af4331f38d7"
+    "2026-08-06": "548cbbe9ad70e883d4ad59bb97713f3cff59829ca84a43f980dc5af4331f38d7",
+    "2026-08-07": "96362084b140fb02b1c7bc6d76360ddd114ed7d18d1d6653495c336691b631f1"
   },
   "outcome_count": 0,
   "outcome_settlement": "immutable_daily_observations_only",
-  "prospective_eligible_observation_count": 3,
+  "prospective_eligible_observation_count": 4,
   "prospective_eligible_outcome_count": 0,
   "provider_history_may_not_overwrite_existing_observations": true,
   "research_only": true,
