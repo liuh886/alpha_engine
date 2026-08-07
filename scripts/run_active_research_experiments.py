@@ -19,6 +19,7 @@ from src.research.formal_baseline_onboarding import (
     RUNNER_ID as FORMAL_BASELINE_RUNNER,
     run_formal_baseline_onboarding,
 )
+from src.research.research_receipt import write_research_receipt
 
 EXPERIMENT_ROOT = PROJECT_ROOT / "configs" / "research_experiments"
 
@@ -46,10 +47,12 @@ def run_spec(path: Path) -> dict[str, Any]:
     payload = _load(path)
     runner = str(payload.get("runner", ""))
     if runner == CROSS_SECTIONAL_RUNNER:
-        return run_cross_sectional_experiment(path)
-    if runner == FORMAL_BASELINE_RUNNER:
-        return run_formal_baseline_onboarding(path)
-    raise ValueError(f"active experiment {path} declares unsupported runner {runner!r}")
+        receipt = run_cross_sectional_experiment(path)
+    elif runner == FORMAL_BASELINE_RUNNER:
+        receipt = run_formal_baseline_onboarding(path)
+    else:
+        raise ValueError(f"active experiment {path} declares unsupported runner {runner!r}")
+    return write_research_receipt(path, receipt)
 
 
 def main() -> int:
