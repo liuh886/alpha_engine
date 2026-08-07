@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "repair_id": "us_x1_2_risk_controlled_momentum_v1_source_gap_v1",
+  "experiment_id": "us_x1_2_risk_controlled_momentum_v1",
+  "market": "us",
+  "approval_status": "approved_for_canonical_missing_source_addition",
+  "refresh_contract": "scripts/data/refresh_selected_pool_prices_v2.py",
+  "refresh_mode": "repair_only",
+  "source_artifact": {
+    "workflow_run_id": 31193164742,
+    "artifact_id": 8999684923,
+    "artifact_digest": "sha256:7dd76aa3eb6471e4bd4bdf500f3deb7c56cc7c459195c01bbda10ca98012cf51",
+    "provider_identity_sha256": "c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d"
+  },
+  "requested_start": "2021-01-01",
+  "requested_end": "2026-06-24",
+  "targets": {
+    "ALAB": {
+      "provider": "yfinance",
+      "provider_symbol": "ALAB",
+      "rows": 567,
+      "first_date": "2024-03-20",
+      "last_date": "2026-06-24",
+      "sha256": "544bf96df260f4e3057e82b25fa2a355ed8f2882457454addf88f41a873987ae"
+    },
+    "HIMS": {
+      "provider": "yfinance",
+      "provider_symbol": "HIMS",
+      "rows": 1374,
+      "first_date": "2021-01-04",
+      "last_date": "2026-06-24",
+      "sha256": "b913236cbbda9923df2f9f8ed2589026294f5b2f5e0fc2d69aea7ae2c3c5d05a"
+    },
+    "SNDK": {
+      "provider": "yfinance",
+      "provider_symbol": "SNDK",
+      "rows": 341,
+      "first_date": "2025-02-13",
+      "last_date": "2026-06-24",
+      "sha256": "ba65ec35e74f5156ad849e8a2d6edce9299f9ca6a8ef5047a400bc3711fa3a3e"
+    },
+    "TIGO": {
+      "provider": "yfinance",
+      "provider_symbol": "TIGO",
+      "expected_issuer": "Millicom International Cellular S.A.",
+      "forbidden_substitute": "TYGO",
+      "rows": 1374,
+      "first_date": "2021-01-04",
+      "last_date": "2026-06-24",
+      "sha256": "dc6c148a31d701e554e03aff2b340996bee79a345a8b1ec4e8067bde72fdcb16"
+    }
+  }
+}
