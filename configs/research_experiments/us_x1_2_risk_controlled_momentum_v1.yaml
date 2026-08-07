@@ -1,0 +1,112 @@
+schema_version: '1.0'
+experiment_id: us_x1_2_risk_controlled_momentum_v1
+runner: cross_sectional_xgb_ranker_v1
+active: false
+issue: 616
+parent_model_id: us_x1_1
+research_only: true
+trade_ready: false
+
+purpose: >-
+  Test one atomic hypothesis: adding the risk_controlled_momentum factor group
+  to the frozen US x1.1 feature set improves development-window signal quality
+  and portfolio economics. Hyperparameter search and portfolio construction
+  changes are deliberately excluded from this mission.
+
+snapshot:
+  policy: repository_provider_bound
+  provider_identity_sha256: 66129d0727beb8d7b014966651f8b72c119f99195e33553d9781c9954ef267d8
+  cutoff: '2026-06-24'
+  note: >-
+    The mission compares baseline and challenger on the same current repository
+    provider. It does not mutate or replace canonical US x1.1 evidence.
+
+fixed_model:
+  model_id: us_x1_1
+  frozen_spec: configs/research_paradigms/us_x1_1_frozen_v1.yaml
+
+factor_library:
+  source: configs/factor_libraries/us_ohlcv.yaml
+
+candidates:
+  - candidate_id: baseline_7factor
+    role: baseline
+    factor_groups:
+      - momentum_volatility_volume
+    xgb_native:
+      n_gain_bins: 7
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+  - candidate_id: risk_controlled_9factor
+    role: challenger
+    factor_groups:
+      - momentum_volatility_volume
+      - risk_controlled_momentum
+    xgb_native:
+      n_gain_bins: 7
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+windows:
+  candidate_selection:
+    - 2024H1
+    - 2024H2
+    - 2025H1
+    - 2025H2
+  consumed_reporting_only:
+    - 2026H1
+  consumed_reporting_may_enter_selection: false
+  new_holdout_reserved: true
+
+execution:
+  base_cost_bps: 20
+  cost_stress_bps:
+    - 20
+    - 60
+
+evaluation:
+  schema_version: '1.0'
+  baseline_candidate_id: baseline_7factor
+  stress_cost_bps: 60
+  decision: risk_controlled_momentum_candidate_supported
+  ranking:
+    - gate_pass_count
+    - worst_drawdown
+    - compounded_relative_excess
+  thresholds:
+    min_window_relative_excess: 0.0
+    min_worst_drawdown: -0.30
+    min_stress_compounded_relative_excess: 0.0
+    max_strongest_positive_window_share: 0.50
+    min_mean_rank_ic_improvement: 0.005
+    require_factor_baseline_dominance: false
+
+stop_rules:
+  - no_feature_search_beyond_declared_groups
+  - no_pool_changes
+  - no_hyperparameter_search
+  - no_portfolio_construction_changes
+  - no_2026H1_candidate_selection
+  - no_automatic_baseline_update
+
+version_policy:
+  maximum_surviving_candidates: 1
+  may_propose_us_x1_2_candidate: true
+  may_release_us_x1_2_automatically: false
+  new_untouched_challenge_required: true

@@ -1,0 +1,79 @@
+name: Research Experiment
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'configs/research_experiments/**'
+      - 'src/research/cross_sectional_experiment_runner.py'
+      - 'src/research/experiment_harness.py'
+      - 'scripts/run_research_experiment.py'
+      - 'scripts/run_active_research_experiments.py'
+      - 'tests/test_cross_sectional_experiment_runner.py'
+      - 'tests/test_experiment_harness.py'
+      - '.github/workflows/research-experiment.yml'
+  workflow_dispatch:
+    inputs:
+      spec:
+        description: Optional committed experiment spec path; blank runs active missions
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-experiment-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          show-progress: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Validate research harness
+        run: |
+          uv run ruff check \
+            src/research/experiment_harness.py \
+            src/research/cross_sectional_experiment_runner.py \
+            scripts/run_research_experiment.py \
+            scripts/run_active_research_experiments.py \
+            tests/test_experiment_harness.py \
+            tests/test_cross_sectional_experiment_runner.py
+          uv run pytest \
+            tests/test_experiment_harness.py \
+            tests/test_cross_sectional_experiment_runner.py \
+            -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+      - name: Run committed research mission
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
+            uv run python scripts/run_active_research_experiments.py --spec "${{ inputs.spec }}"
+          else
+            uv run python scripts/run_active_research_experiments.py
+          fi
+
+      - name: Upload research receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-experiment-receipts
+          path: artifacts/research_experiments/
+          if-no-files-found: warn
+          retention-days: 30
