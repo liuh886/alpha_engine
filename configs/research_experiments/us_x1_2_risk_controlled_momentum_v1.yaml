@@ -14,14 +14,18 @@ purpose: >-
   changes are deliberately excluded from this mission.
 
 snapshot:
-  policy: repository_source_rebuild
+  policy: exact_selected_pool_source_rebuild
   source_dir: data/csv_source
-  provider_identity_sha256: dc1e6136242bb87b25fa992b42a336d45883906d3d5244fc9397e9001adb8f8c
+  provider_identity_sha256: c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d
   cutoff: '2026-06-24'
   note: >-
-    The mission rebuilds the provider from committed repository sources before
-    execution. Baseline and challenger consume the same rebuilt provider. This
+    The mission rebuilds an exact provider from the committed selected pool plus
+    benchmark before execution. Unrelated repository CSV files are outside the
+    provider identity. Baseline and challenger consume the same provider. This
     does not mutate or replace canonical US x1.1 evidence.
+
+source_repair:
+  approval_manifest: data/source_repairs/us_x1_2_risk_controlled_momentum_v1.json
 
 fixed_model:
   model_id: us_x1_1
