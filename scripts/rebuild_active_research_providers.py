@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild exact Qlib providers required by committed research missions."""
+"""Rebuild exact Qlib providers required by data-backed research missions."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from scripts.build_market_providers import build_market_provider
 from scripts.data.refresh_selected_pool_prices import BENCHMARKS
 from src.common.runtime_settings import PROJECT_ROOT
 from src.data.market_provider import market_provider_path
+from src.research.cross_sectional_experiment_runner import RUNNER_ID as DATA_BACKED_RUNNER
 from src.research.multi_market_readiness import load_market_watchlist
 from src.research.paradigm import ResearchParadigmSpec
 
@@ -46,8 +47,10 @@ def _resolve_repo_file(raw: str) -> Path:
     return path
 
 
-def _data_plane_for_spec(path: Path) -> MissionDataPlane:
+def _data_plane_for_spec(path: Path) -> MissionDataPlane | None:
     payload = _load_yaml(path)
+    if payload.get("runner") != DATA_BACKED_RUNNER:
+        return None
     fixed_model = payload.get("fixed_model") or {}
     frozen_spec = _resolve_repo_file(str(fixed_model.get("frozen_spec", "")))
     parent = ResearchParadigmSpec.from_yaml(frozen_spec)
@@ -81,12 +84,12 @@ def active_specs() -> list[Path]:
     ]
 
 
-def _group_data_planes(
-    specs: list[Path],
-) -> dict[str, MissionDataPlane]:
+def _group_data_planes(specs: list[Path]) -> dict[str, MissionDataPlane]:
     by_market: dict[str, MissionDataPlane] = {}
     for path in specs:
         plane = _data_plane_for_spec(path)
+        if plane is None:
+            continue
         existing = by_market.get(plane.market)
         if existing is not None and existing.source_symbols != plane.source_symbols:
             raise ValueError(
@@ -105,12 +108,11 @@ def _build_exact_provider(plane: MissionDataPlane) -> dict[str, Any]:
         source_stage.mkdir(parents=True)
         for symbol in plane.source_symbols:
             shutil.copy2(SOURCE_DIR / f"{symbol}.csv", source_stage / f"{symbol}.csv")
-        report = build_market_provider(
+        return build_market_provider(
             csv_dir=source_stage,
             provider_dir=market_provider_path(PROJECT_ROOT, plane.market),
             market=plane.market,
         )
-    return report
 
 
 def main() -> int:
@@ -124,9 +126,7 @@ def main() -> int:
         print("{}")
         return 0
 
-    reports = {
-        market: _build_exact_provider(plane) for market, plane in planes.items()
-    }
+    reports = {market: _build_exact_provider(plane) for market, plane in planes.items()}
     summary = {
         market: {
             "experiment_id": planes[market].experiment_id,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run every active committed Alpha Research Loop mission."""
+"""Run the single active committed Alpha Research Loop mission."""
 
 from __future__ import annotations
 
@@ -15,6 +15,10 @@ from src.research.cross_sectional_experiment_runner import (
     RUNNER_ID as CROSS_SECTIONAL_RUNNER,
     run_cross_sectional_experiment,
 )
+from src.research.formal_baseline_onboarding import (
+    RUNNER_ID as FORMAL_BASELINE_RUNNER,
+    run_formal_baseline_onboarding,
+)
 
 EXPERIMENT_ROOT = PROJECT_ROOT / "configs" / "research_experiments"
 
@@ -25,12 +29,17 @@ def _load(path: Path) -> dict[str, Any]:
 
 
 def active_specs() -> list[Path]:
-    result: list[Path] = []
-    for path in sorted(EXPERIMENT_ROOT.glob("*.yaml")):
-        payload = _load(path)
-        if payload.get("active") is True:
-            result.append(path)
-    return result
+    specs = [
+        path
+        for path in sorted(EXPERIMENT_ROOT.glob("*.yaml"))
+        if _load(path).get("active") is True
+    ]
+    if len(specs) > 1:
+        raise ValueError(
+            "Alpha Research Loop permits exactly one active mission at a time: "
+            + ", ".join(path.name for path in specs)
+        )
+    return specs
 
 
 def run_spec(path: Path) -> dict[str, Any]:
@@ -38,11 +47,13 @@ def run_spec(path: Path) -> dict[str, Any]:
     runner = str(payload.get("runner", ""))
     if runner == CROSS_SECTIONAL_RUNNER:
         return run_cross_sectional_experiment(path)
+    if runner == FORMAL_BASELINE_RUNNER:
+        return run_formal_baseline_onboarding(path)
     raise ValueError(f"active experiment {path} declares unsupported runner {runner!r}")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run active research experiment specs")
+    parser = argparse.ArgumentParser(description="Run the active research experiment spec")
     parser.add_argument("--spec", type=Path)
     args = parser.parse_args()
 

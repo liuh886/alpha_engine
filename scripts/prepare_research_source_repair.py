@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare authoritative selected-pool repair artifacts for active missions.
-
-This wrapper owns no provider logic. It detects missing committed source files and
-routes repair through the repository's maintained
-``refresh_selected_pool_prices_v2`` contract. Canonical sources are never
-mutated; the isolated repair output must be reviewed and committed separately.
-"""
+"""Prepare authoritative selected-pool repair artifacts for data-backed missions."""
 
 from __future__ import annotations
 
@@ -21,6 +15,7 @@ from scripts.data.refresh_selected_pool_prices_v2 import (
     refresh_selected_pool_prices_v2,
 )
 from src.common.runtime_settings import PROJECT_ROOT
+from src.research.cross_sectional_experiment_runner import RUNNER_ID as DATA_BACKED_RUNNER
 from src.research.multi_market_readiness import load_market_watchlist
 from src.research.paradigm import ResearchParadigmSpec
 
@@ -52,8 +47,10 @@ def _active_specs() -> list[Path]:
     ]
 
 
-def _mission_context(path: Path) -> dict[str, Any]:
+def _mission_context(path: Path) -> dict[str, Any] | None:
     raw = _load_yaml(path)
+    if raw.get("runner") != DATA_BACKED_RUNNER:
+        return None
     fixed_model = raw.get("fixed_model") or {}
     parent_path = _resolve_repo_file(str(fixed_model.get("frozen_spec", "")))
     parent = ResearchParadigmSpec.from_yaml(parent_path)
@@ -101,6 +98,14 @@ def prepare_repairs(spec_paths: list[Path]) -> dict[str, Any]:
 
     for spec_path in spec_paths:
         context = _mission_context(spec_path)
+        if context is None:
+            missions.append(
+                {
+                    "experiment_id": str(_load_yaml(spec_path).get("experiment_id", "")),
+                    "status": "source_repair_not_required_for_runner",
+                }
+            )
+            continue
         missing = context["missing_symbols"]
         mission: dict[str, Any] = {
             "experiment_id": context["experiment_id"],
@@ -130,9 +135,7 @@ def prepare_repairs(spec_paths: list[Path]) -> dict[str, Any]:
                     "status": "repair_candidate_ready",
                     "refresh_status": manifest.get("status"),
                     "promotion_eligible": bool(manifest.get("promotion_eligible")),
-                    "provider_identity_sha256": manifest.get(
-                        "provider_identity_sha256"
-                    ),
+                    "provider_identity_sha256": manifest.get("provider_identity_sha256"),
                     "refresh_targets": manifest.get("targets", []),
                     "manifest_path": str(
                         (output_root / MANIFEST_RELATIVE_PATH).relative_to(PROJECT_ROOT)
