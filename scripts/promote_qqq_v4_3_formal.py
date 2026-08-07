@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import shutil
+from collections.abc import Mapping
 from datetime import datetime, timezone
+from numbers import Integral, Real
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -19,6 +23,26 @@ from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
 OLD_MODEL_ID = "qqqi_qqq_tqqq_v4_2"
 OLD_PACKAGE = "qqqi_qqq_tqqq_v4_2.json"
 NEW_PACKAGE = "qqqi_qqq_tqqq_v4_3.json"
+
+
+def _json_safe(value: Any) -> Any:
+    """Convert provider/research metadata to strict canonical-JSON values."""
+    if isinstance(value, Mapping):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if value is None or isinstance(value, (str, bool)):
+        return value
+    if isinstance(value, Integral):
+        return int(value)
+    if isinstance(value, Real):
+        numeric = float(value)
+        return numeric if math.isfinite(numeric) else None
+    if hasattr(value, "item"):
+        return _json_safe(value.item())
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return value
 
 
 def _replace_catalog(output_root: Path, package_sha: str, generated_at: str) -> None:
@@ -85,22 +109,24 @@ def promote(
         cash_symbol="SGOV",
     )
     result = results[JOINT_STRATEGY]
-    evidence = {
-        "promotion_issue": 643,
-        "research_source_experiment": "qqqi_qqq_tqqq_v4_33_ma200_ma20_vix_release",
-        "research_result_report": "docs/research/qqqi_qqq_tqqq_v4_33_ma200_ma20_vix_release_result_2026-08-08.md",
-        "fresh_evidence_workflow_run": 31204072434,
-        "fresh_evidence_artifact_id": 9004000740,
-        "fresh_evidence_artifact_digest": "sha256:7a94663c302268ab3c6fa970b41b2f306103de3dc46b714ab98c1017965601e0",
-        "baseline_contract_path": bridge_contract_path.as_posix(),
-        "baseline_contract_sha256": sha256(bridge_contract_path),
-        "data_identity": data_identity,
-        "coverage": coverage.to_dict("records"),
-        "retrospective_diagnostics": diagnostics,
-        "original_retrospective_gate": "v4_33_final_release_promising_gate_failed",
-        "promotion_basis": "owner_selected_drawdown_calmar_risk_budget_tradeoff",
-        "model_selection_reopened": False,
-    }
+    evidence = _json_safe(
+        {
+            "promotion_issue": 643,
+            "research_source_experiment": "qqqi_qqq_tqqq_v4_33_ma200_ma20_vix_release",
+            "research_result_report": "docs/research/qqqi_qqq_tqqq_v4_33_ma200_ma20_vix_release_result_2026-08-08.md",
+            "fresh_evidence_workflow_run": 31204072434,
+            "fresh_evidence_artifact_id": 9004000740,
+            "fresh_evidence_artifact_digest": "sha256:7a94663c302268ab3c6fa970b41b2f306103de3dc46b714ab98c1017965601e0",
+            "baseline_contract_path": bridge_contract_path.as_posix(),
+            "baseline_contract_sha256": sha256(bridge_contract_path),
+            "data_identity": data_identity,
+            "coverage": coverage.to_dict("records"),
+            "retrospective_diagnostics": diagnostics,
+            "original_retrospective_gate": "v4_33_final_release_promising_gate_failed",
+            "promotion_basis": "owner_selected_drawdown_calmar_risk_budget_tradeoff",
+            "model_selection_reopened": False,
+        }
+    )
     freshness = {
         "status": "current",
         "required_cutoff": evidence_cutoff,
@@ -111,14 +137,16 @@ def promote(
         "research_only": True,
         "trade_ready": False,
     }
-    package = build_formal_package(
-        result,
-        bars,
-        generated_at=generated_at,
-        evidence_cutoff=evidence_cutoff,
-        backtest_id=f"{MODEL_ID}-promotion-through-{evidence_cutoff.replace('-', '_')}",
-        evidence=evidence,
-        freshness=freshness,
+    package = _json_safe(
+        build_formal_package(
+            result,
+            bars,
+            generated_at=generated_at,
+            evidence_cutoff=evidence_cutoff,
+            backtest_id=f"{MODEL_ID}-promotion-through-{evidence_cutoff.replace('-', '_')}",
+            evidence=evidence,
+            freshness=freshness,
+        )
     )
     package_path = output_root / NEW_PACKAGE
     write_object(package_path, package)
@@ -128,23 +156,25 @@ def promote(
     package_sha = sha256(package_path)
     _replace_catalog(output_root, package_sha, generated_at)
 
-    receipt = {
-        "schema_version": "1.0.0",
-        "status": "qqq_v4_3_formal_promotion_materialized",
-        "superseded_active_model_id": OLD_MODEL_ID,
-        "promoted_model_id": MODEL_ID,
-        "package_path": package_path.as_posix(),
-        "package_sha256": package_sha,
-        "catalog_sha256": sha256(output_root / "catalog.json"),
-        "evidence_cutoff": evidence_cutoff,
-        "economic_end": result.daily.index.max().date().isoformat(),
-        "metrics": dict(result.metrics),
-        "original_retrospective_gate_passed": False,
-        "promotion_basis": "explicit_owner_risk_budget_decision",
-        "model_selection_reopened": False,
-        "research_only": True,
-        "trade_ready": False,
-    }
+    receipt = _json_safe(
+        {
+            "schema_version": "1.0.0",
+            "status": "qqq_v4_3_formal_promotion_materialized",
+            "superseded_active_model_id": OLD_MODEL_ID,
+            "promoted_model_id": MODEL_ID,
+            "package_path": package_path.as_posix(),
+            "package_sha256": package_sha,
+            "catalog_sha256": sha256(output_root / "catalog.json"),
+            "evidence_cutoff": evidence_cutoff,
+            "economic_end": result.daily.index.max().date().isoformat(),
+            "metrics": dict(result.metrics),
+            "original_retrospective_gate_passed": False,
+            "promotion_basis": "explicit_owner_risk_budget_decision",
+            "model_selection_reopened": False,
+            "research_only": True,
+            "trade_ready": False,
+        }
+    )
     write_object(output_root / "v4_3_promotion_receipt.json", receipt)
     return receipt
 
