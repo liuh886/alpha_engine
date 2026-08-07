@@ -1,6 +1,6 @@
 import { assetUrl } from './runtime-capabilities';
 
-export type StrategyOperationsSource = 'github_issue_v42' | 'github_issue_byd' | 'unavailable';
+export type StrategyOperationsSource = 'github_issue_v43' | 'github_issue_byd' | 'unavailable';
 export type StrategyPipelineStatus = 'available' | 'unavailable';
 
 export interface StrategyCapability {
@@ -29,7 +29,7 @@ interface StrategyCapabilityDocument {
   }>;
 }
 
-const SOURCES = new Set<StrategyOperationsSource>(['github_issue_v42', 'github_issue_byd', 'unavailable']);
+const SOURCES = new Set<StrategyOperationsSource>(['github_issue_v43', 'github_issue_byd', 'unavailable']);
 const PIPELINE_STATUS = new Set<StrategyPipelineStatus>(['available', 'unavailable']);
 
 function assert(condition: unknown, message: string): asserts condition {
