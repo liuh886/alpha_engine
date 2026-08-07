@@ -57,7 +57,7 @@ jobs:
       - name: Seed reproducible formal root
         run: |
           mkdir -p artifacts/reproduced-formal
-          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json catalog.json freshness.json; do
+          for name in qqqi_qqq_tqqq_v4_3.json us_x1_1.json catalog.json freshness.json; do
             cp "data/research/formal_backtests/$name" "artifacts/reproduced-formal/$name"
           done
       - name: Extract immutable BYD formal inputs
@@ -91,7 +91,7 @@ jobs:
             --receipt artifacts/current-formal-freshness-receipt.json
       - name: Enforce byte-exact current release
         run: |
-          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json cn_x1_1.json byd_v1_2_convex_momentum_budget_v1.json catalog.json freshness.json; do
+          for name in qqqi_qqq_tqqq_v4_3.json us_x1_1.json cn_x1_1.json byd_v1_2_convex_momentum_budget_v1.json catalog.json freshness.json; do
             cmp "artifacts/reproduced-formal/$name" "data/research/formal_backtests/$name"
           done
           test ! -e artifacts/reproduced-formal/byd_dividend_sleeve_v1_0.json
