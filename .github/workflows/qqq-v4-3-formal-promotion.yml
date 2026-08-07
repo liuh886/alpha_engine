@@ -11,7 +11,7 @@ on:
       - "tests/test_qqq_v4_3_formal.py"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   promote:
@@ -21,6 +21,8 @@ jobs:
       TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -116,6 +118,20 @@ jobs:
           out.parent.mkdir(parents=True, exist_ok=True)
           out.write_text(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n')
           PY
+      - name: Commit verified publication tree
+        run: |
+          rsync -a --delete artifacts/v4-3-promotion/formal-v1/ data/research/formal_backtests/
+          rsync -a --delete artifacts/v4-3-promotion/formal-v2/ data/research/formal_model_runs/
+          cp artifacts/v4-3-promotion/strategy-operations/capabilities.json \
+            data/research/strategy_operations/capabilities.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/formal_backtests data/research/formal_model_runs \
+            data/research/strategy_operations/capabilities.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data: publish QQQ Rotation v4.3 formal baseline"
+            git push origin "HEAD:${GITHUB_HEAD_REF}"
+          fi
       - name: Upload promotion publication tree
         uses: actions/upload-artifact@v4
         with:
