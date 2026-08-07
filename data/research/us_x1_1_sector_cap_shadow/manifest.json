@@ -5,8 +5,8 @@
   "challenger_contract": "rank-aware sector-cap Top-15",
   "eligible_horizon": 10,
   "first_eligible_date": "2026-08-04",
-  "last_signal_date": null,
-  "observation_count": 0,
+  "last_signal_date": "2026-08-07",
+  "observation_count": 1,
   "research_only": true,
   "schema_version": "us_x1_1_sector_cap_shadow_v1",
   "trade_ready": false
