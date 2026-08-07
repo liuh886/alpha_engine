@@ -26,7 +26,7 @@ _USER_AGENT = (
 
 
 def parse_cnn_fear_greed(payload: dict[str, Any]) -> pd.DataFrame:
-    """Parse CNN's historical payload into one validated daily score series."""
+    """Parse CNN history into one deterministic latest-observation-per-day series."""
     historical = payload.get("fear_and_greed_historical")
     if not isinstance(historical, dict):
         raise ValueError("CNN payload missing fear_and_greed_historical")
@@ -46,15 +46,17 @@ def parse_cnn_fear_greed(payload: dict[str, Any]) -> pd.DataFrame:
         rows.append(
             {
                 "date": date,
+                "timestamp_utc": timestamp,
                 "fear_greed_score": score,
                 "fear_greed_rating": str(entry.get("rating") or ""),
             }
         )
 
-    frame = pd.DataFrame(rows).sort_values("date").reset_index(drop=True)
-    if frame["date"].duplicated().any():
-        raise ValueError("CNN Fear & Greed history contains duplicate dates")
-    return frame.set_index("date")
+    frame = pd.DataFrame(rows).sort_values(
+        ["date", "timestamp_utc"], kind="stable"
+    )
+    frame = frame.drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
+    return frame.drop(columns=["timestamp_utc"]).set_index("date")
 
 
 def fetch_cnn_fear_greed(
