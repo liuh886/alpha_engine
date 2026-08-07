@@ -10,9 +10,9 @@ import {
 } from './routes';
 
 const ALL_RELEASE_LEVELS: ReleaseLevel[] = ['release', 'experimental', 'internal'];
-const ALL_NAV_GROUPS: NavGroupTitle[] = ['Workspace', 'Evidence', 'Reference'];
+const ALL_NAV_GROUPS: NavGroupTitle[] = ['Monitor', 'Research', 'System'];
 
-describe('artifact-only route registry', () => {
+describe('strategy-console route registry', () => {
   it('has unique paths and complete labels', () => {
     expect(routes.length).toBeGreaterThan(0);
     expect(new Set(routes.map((route) => route.path)).size).toBe(routes.length);
@@ -27,25 +27,24 @@ describe('artifact-only route registry', () => {
     }
   });
 
-  it('covers the governed Bundle v2 information architecture', () => {
+  it('exposes only the four product-level navigation destinations', () => {
     const visible = visibleRoutes(false);
+    expect(visible.map((route) => route.path)).toEqual(['app', 'strategies', 'research', 'system']);
+    expect(visible.map((route) => route.label)).toEqual(['Overview', 'Strategies', 'Research', 'System']);
     const groups = new Set(visible.map((route) => route.navGroup));
     ALL_NAV_GROUPS.forEach((group) => expect(groups).toContain(group));
-    expect(visible.find((route) => route.path === 'app')?.navGroup).toBe('Workspace');
-    expect(visible.find((route) => route.path === 'app')?.label).toBe('Overview');
-    expect(visible.find((route) => route.path === 'runs')?.navGroup).toBe('Workspace');
-    expect(visible.find((route) => route.path === 'backtests')?.navGroup).toBe('Workspace');
-    expect(visible.find((route) => route.path === 'review')?.navGroup).toBe('Workspace');
-    expect(visible.find((route) => route.path === 'decisions')?.navGroup).toBe('Workspace');
-    expect(visible.find((route) => route.path === 'library')?.navGroup).toBe('Workspace');
-    expect(routes.find((route) => route.path === 'dashboard')?.navVisible).toBe(false);
-    expect(routes.some((route) => route.path === '')).toBe(false);
-    for (const removed of ['models', 'system', 'agent', 'backtest']) {
+  });
+
+  it('keeps evidence tools as drill-down routes rather than primary navigation', () => {
+    for (const path of ['runs', 'backtests', 'review', 'compare', 'decisions', 'factors', 'reports', 'data', 'library', 'methodology', 'strategies/:strategyId']) {
+      expect(routes.find((route) => route.path === path)?.navVisible).toBe(false);
+    }
+    for (const removed of ['operations', 'dashboard', 'models', 'agent', 'backtest']) {
       expect(routes.some((route) => route.path === removed)).toBe(false);
     }
   });
 
-  it('groups every navigation-visible route and excludes compatibility redirects', () => {
+  it('groups every navigation-visible route and excludes drill-down views', () => {
     const groups = groupRoutes();
     for (const [group, rows] of groups) {
       expect(ALL_NAV_GROUPS).toContain(group);
@@ -67,12 +66,10 @@ describe('artifact-only route registry', () => {
 
   it('supports filtered grouping', () => {
     const releaseOnly = groupRoutes((route) => route.releaseLevel === 'release');
-    for (const [, rows] of releaseOnly) {
-      rows.forEach((route) => expect(route.releaseLevel).toBe('release'));
-    }
+    for (const [, rows] of releaseOnly) rows.forEach((route) => expect(route.releaseLevel).toBe('release'));
   });
 
-  it('returns the same routes regardless of operator mode', () => {
+  it('returns the same product navigation regardless of operator mode', () => {
     expect(visibleRoutes(false)).toEqual(routes.filter(isRuntimeVisible));
     expect(visibleRoutes(true)).toEqual(routes.filter(isRuntimeVisible));
   });
