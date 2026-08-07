@@ -180,7 +180,7 @@ test('QQQ operating evidence is rendered inside the strategy workspace', async (
   await mockGitHubLedger(page);
 
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_2');
-  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQ Rotation v4.2', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQ Rotation v4.2', exact: true, level: 1 })).toBeVisible();
 
   const now = page.getByRole('region', { name: 'Current decision state' });
   await expect(now).toBeVisible();
