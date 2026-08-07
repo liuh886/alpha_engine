@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "qqq_rotation_v4_3_research_loop_onboarding_v1",
+  "status": "completed",
+  "decision": "formal_baseline_bound",
+  "runner": "formal_baseline_onboarding_v1",
+  "baseline": {
+    "model_version_id": "qqqi_qqq_tqqq_v4_3",
+    "model_family_id": "qqq_rotation",
+    "model_kind": "rules_based_allocation",
+    "run_id": "qqqi_qqq_tqqq_v4_3-promotion-through-2026_08_06",
+    "bundle_id": "701fbe8bc6534ff035f6ad2b4c92e32582430c5bd17e5b873817b3fb0eab510d",
+    "evidence_cutoff": "2026-08-06",
+    "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-promotion-through-2026_08_06/manifest.json",
+    "manifest_sha256": "3516e73c9a8123ea48be5ed1bd7d1051a207d02bd94824ecef6bf41e925e8ad3",
+    "market": "us",
+    "benchmark": "QQQ",
+    "metrics": {
+      "total_return": 1.19125278989529,
+      "annualized_return": 0.3679210193759259,
+      "benchmark_return": 0.6865096057499784,
+      "annualized_volatility": 0.2467237951542451,
+      "sharpe_ratio": 1.3943062300289855,
+      "max_drawdown": -0.21658197720414185,
+      "turnover": 57.0,
+      "transaction_cost": 0.05700000000000001
+    }
+  },
+  "source_evidence": {
+    "research_workflow_run_id": 31204072434,
+    "research_artifact_id": 9004000740,
+    "research_artifact_digest": "sha256:7a94663c302268ab3c6fa970b41b2f306103de3dc46b714ab98c1017965601e0",
+    "promotion_issue": 643,
+    "promotion_pr": 645
+  },
+  "research_only": true,
+  "trade_ready": false,
+  "automatic_promotion": false,
+  "next_action": "Use this exact formal v4.3 bundle as the immutable QQQ Rotation baseline for future challenger missions; do not replay v4.2 as an active baseline."
+}
