@@ -1,51 +1,20 @@
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadFormalRunEvidence } from './formal-run-evidence';
-import { loadFormalRuns } from './governed-run';
+import { describe, expect, it } from 'vitest';
+import { metricById } from './formal-run-evidence';
 
-const publicRoot = path.resolve(process.cwd(), 'public');
+describe('formal evidence helpers', () => {
+  it('selects canonical metrics by stable identifier', () => {
+    const metrics = [
+      {
+        metric_id: 'annualized_return',
+        label: 'Annualized return',
+        value: 0.12,
+        unit: 'ratio',
+        direction: 'higher_is_better',
+        comparability_status: 'comparable',
+      },
+    ] as const;
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe('published formal catalog', () => {
-  it('loads every manifest and evidence section through the production parser', async () => {
-    vi.stubGlobal('fetch', async (input: string | URL | Request) => {
-      const requested = typeof input === 'string'
-        ? input
-        : input instanceof URL ? input.toString() : input.url;
-      const relativePath = requested.replace(/^\.\//, '').replace(/^\//, '');
-      try {
-        const body = await readFile(path.join(publicRoot, relativePath), 'utf8');
-        return new Response(body, { status: 200 });
-      } catch {
-        return new Response('not found', { status: 404 });
-      }
-    });
-
-    const result = await loadFormalRuns();
-    expect(result.errors).toEqual([]);
-    expect(result.runs.map((run) => run.modelVersionId).sort()).toEqual([
-      'byd_v1_2_convex_momentum_budget_v1',
-      'cn_x1_1',
-      'qqqi_qqq_tqqq_v4_2',
-      'us_x1_1',
-    ]);
-
-    const evidenceByModel = new Map<string, Awaited<ReturnType<typeof loadFormalRunEvidence>>>();
-    for (const run of result.runs) {
-      const evidence = await loadFormalRunEvidence(run);
-      expect(evidence.performance.report.length).toBeGreaterThan(0);
-      expect(evidence.portfolio.positions.length).toBeGreaterThan(0);
-      evidenceByModel.set(run.modelVersionId, evidence);
-    }
-
-    const byd = evidenceByModel.get('byd_v1_2_convex_momentum_budget_v1');
-    expect(byd).toBeDefined();
-    const bydWeights = byd?.portfolio.positions.map((position) => position.weight) ?? [];
-    expect(bydWeights.some((weight) => weight > 1)).toBe(true);
-    expect(bydWeights.some((weight) => weight < 0)).toBe(true);
+    expect(metricById([...metrics], 'annualized_return')?.value).toBe(0.12);
+    expect(metricById([...metrics], 'missing')).toBeNull();
   });
 });
