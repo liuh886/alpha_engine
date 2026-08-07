@@ -1,7 +1,5 @@
 import type { GovernedRunSummary } from './governed-run';
-import { fetchBydRuntimeSnapshot, type BydSignalRecord } from './byd-runtime';
-import { fetchStrategyCapabilities, type StrategyCapability } from './strategy-capabilities';
-import { fetchV42RuntimeSnapshot, type V42EventRecord, type V42ObservationRecord } from './v42-runtime';
+import { assetUrl } from './runtime-capabilities';
 
 export type StrategyOperationalStatus =
   | 'pipeline_unavailable'
@@ -27,6 +25,17 @@ export interface StrategyDriver {
   value: string;
 }
 
+export interface StrategySourceIdentity {
+  formalBundleId: string | null;
+  formalRunId: string | null;
+  formalEvidenceCutoff: string | null;
+  ledgerFingerprint: string | null;
+  signalSha256: string | null;
+  workflowRunId: string | null;
+  commitSha: string | null;
+  githubIssueNumber: number | null;
+}
+
 export interface StrategyOperationsSnapshot {
   strategyId: string;
   status: StrategyOperationalStatus;
@@ -46,232 +55,169 @@ export interface StrategyOperationsSnapshot {
   sourceHref: string | null;
   note: string;
   drivers: StrategyDriver[];
+  sourceIdentity: StrategySourceIdentity;
 }
 
-const STATE_LABELS: Record<number, string> = {
-  0: 'Defensive',
-  1: 'Transition',
-  2: 'Risk-on',
-};
-
-function finite(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
+interface OperationsDocument {
+  schema_version?: unknown;
+  research_only?: unknown;
+  trade_ready?: unknown;
+  records?: unknown;
 }
 
-function percent(value: unknown, digits = 1): string {
-  return finite(value) ? `${(value * 100).toFixed(digits)}%` : '—';
+const STATUS = new Set<StrategyOperationalStatus>([
+  'pipeline_unavailable',
+  'awaiting_observation',
+  'current_no_change',
+  'target_pending_execution',
+  'execution_observed',
+  'stale',
+  'blocked',
+  'delivery_failed',
+]);
+const FRESHNESS = new Set<StrategyFreshness>(['current', 'stale', 'blocked', 'unknown']);
+
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
 }
 
-function decimal(value: unknown, digits = 2): string {
-  return finite(value) ? value.toFixed(digits) : '—';
+function nullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
-function factorFreshness(capability: StrategyCapability): StrategyFreshness {
-  return capability.factorEvidenceStatus === 'current'
-    ? 'current'
-    : capability.factorEvidenceStatus === 'stale'
-      ? 'stale'
-      : capability.factorEvidenceStatus === 'blocked' || capability.factorEvidenceStatus === 'pending_canonical_contract'
-        ? 'blocked'
-        : 'unknown';
+function nullableNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function allocationLegs(current: Record<string, number>, target: Record<string, number>): StrategyAllocationLeg[] {
-  return Array.from(new Set([...Object.keys(current), ...Object.keys(target)]))
-    .sort()
-    .map((asset) => {
-      const currentWeight = finite(current[asset]) ? current[asset] : 0;
-      const targetWeight = finite(target[asset]) ? target[asset] : 0;
-      return {
-        asset,
-        current: currentWeight,
-        target: targetWeight,
-        delta: targetWeight - currentWeight,
-      };
-    });
+function parseSnapshot(value: unknown): StrategyOperationsSnapshot {
+  assert(Boolean(value) && typeof value === 'object' && !Array.isArray(value), 'Invalid strategy operations record');
+  const record = value as Record<string, unknown>;
+  const id = record.model_version_id;
+  assert(typeof id === 'string' && id.length > 0, 'Strategy operations model identity is missing');
+  assert(STATUS.has(record.status as StrategyOperationalStatus), `Unsupported operations status for ${id}`);
+  assert(FRESHNESS.has(record.data_freshness as StrategyFreshness), `Unsupported data freshness for ${id}`);
+  assert(FRESHNESS.has(record.factor_freshness as StrategyFreshness), `Unsupported factor freshness for ${id}`);
+  assert(typeof record.decision_cadence === 'string' && record.decision_cadence.length > 0, `Missing decision cadence for ${id}`);
+  assert(typeof record.next_decision_policy === 'string' && record.next_decision_policy.length > 0, `Missing next decision policy for ${id}`);
+  assert(typeof record.state_label === 'string' && record.state_label.length > 0, `Missing state label for ${id}`);
+  assert(typeof record.decision_reason === 'string' && record.decision_reason.length > 0, `Missing decision reason for ${id}`);
+  assert(typeof record.delivery_status === 'string' && record.delivery_status.length > 0, `Missing delivery status for ${id}`);
+  assert(typeof record.source_label === 'string' && record.source_label.length > 0, `Missing source label for ${id}`);
+  assert(typeof record.note === 'string' && record.note.length > 0, `Missing operations note for ${id}`);
+  assert(Array.isArray(record.allocations), `Missing allocations for ${id}`);
+  assert(Array.isArray(record.drivers), `Missing drivers for ${id}`);
+  assert(Boolean(record.source_identity) && typeof record.source_identity === 'object' && !Array.isArray(record.source_identity), `Missing source identity for ${id}`);
+
+  const allocations = record.allocations.map((value, index) => {
+    assert(Boolean(value) && typeof value === 'object' && !Array.isArray(value), `Invalid allocation ${index} for ${id}`);
+    const row = value as Record<string, unknown>;
+    assert(typeof row.asset === 'string' && row.asset.length > 0, `Missing allocation asset for ${id}`);
+    assert(typeof row.current === 'number' && Number.isFinite(row.current), `Invalid current weight for ${id}/${row.asset}`);
+    assert(typeof row.target === 'number' && Number.isFinite(row.target), `Invalid target weight for ${id}/${row.asset}`);
+    assert(typeof row.delta === 'number' && Number.isFinite(row.delta), `Invalid allocation delta for ${id}/${row.asset}`);
+    return { asset: row.asset, current: row.current, target: row.target, delta: row.delta };
+  });
+
+  const drivers = record.drivers.map((value, index) => {
+    assert(Boolean(value) && typeof value === 'object' && !Array.isArray(value), `Invalid driver ${index} for ${id}`);
+    const row = value as Record<string, unknown>;
+    assert(typeof row.label === 'string' && row.label.length > 0, `Missing driver label for ${id}`);
+    assert(typeof row.value === 'string' && row.value.length > 0, `Missing driver value for ${id}`);
+    return { label: row.label, value: row.value };
+  });
+
+  const source = record.source_identity as Record<string, unknown>;
+  return {
+    strategyId: id,
+    status: record.status as StrategyOperationalStatus,
+    asOf: nullableString(record.as_of),
+    latestCompletedSession: nullableString(record.latest_completed_session),
+    decisionCadence: record.decision_cadence,
+    nextDecision: record.next_decision_policy,
+    stateLabel: record.state_label,
+    decisionReason: record.decision_reason,
+    allocations,
+    turnover: nullableNumber(record.turnover),
+    estimatedCost: nullableNumber(record.estimated_cost),
+    dataFreshness: record.data_freshness as StrategyFreshness,
+    factorFreshness: record.factor_freshness as StrategyFreshness,
+    deliveryStatus: record.delivery_status,
+    sourceLabel: record.source_label,
+    sourceHref: nullableString(record.source_href),
+    note: record.note,
+    drivers,
+    sourceIdentity: {
+      formalBundleId: nullableString(source.formal_bundle_id),
+      formalRunId: nullableString(source.formal_run_id),
+      formalEvidenceCutoff: nullableString(source.formal_evidence_cutoff),
+      ledgerFingerprint: nullableString(source.ledger_fingerprint),
+      signalSha256: nullableString(source.signal_sha256),
+      workflowRunId: nullableString(source.workflow_run_id),
+      commitSha: nullableString(source.commit_sha),
+      githubIssueNumber: typeof source.github_issue_number === 'number' && Number.isInteger(source.github_issue_number)
+        ? source.github_issue_number
+        : null,
+    },
+  };
 }
 
-function hasAllocationChange(allocations: StrategyAllocationLeg[]): boolean {
-  return allocations.some((leg) => Math.abs(leg.delta) > 1e-9);
-}
-
-function unavailable(
-  run: GovernedRunSummary,
-  status: StrategyOperationalStatus,
-  note: string,
-  capability?: StrategyCapability,
-): StrategyOperationsSnapshot {
+function blocked(run: GovernedRunSummary, message: string): StrategyOperationsSnapshot {
   return {
     strategyId: run.modelVersionId,
-    status,
+    status: 'blocked',
     asOf: null,
     latestCompletedSession: run.evidenceCutoff || null,
-    decisionCadence: capability?.decisionCadence ?? 'Capability not declared',
-    nextDecision: capability?.nextDecisionPolicy ?? 'Operating capability unavailable',
-    stateLabel: status === 'pipeline_unavailable' ? 'No governed live signal' : 'Operating evidence unavailable',
-    decisionReason: note,
+    decisionCadence: 'Operations read model unavailable',
+    nextDecision: 'Restore the governed operations publication before using current-state claims.',
+    stateLabel: 'Operating data blocked',
+    decisionReason: message,
     allocations: [],
     turnover: null,
     estimatedCost: null,
-    dataFreshness: 'unknown',
-    factorFreshness: capability ? factorFreshness(capability) : 'unknown',
+    dataFreshness: 'blocked',
+    factorFreshness: 'blocked',
     deliveryStatus: 'not available',
-    sourceLabel: 'Formal model evidence only',
+    sourceLabel: 'Governed operations snapshot',
     sourceHref: null,
-    note,
+    note: message,
     drivers: [],
+    sourceIdentity: {
+      formalBundleId: null,
+      formalRunId: run.runId,
+      formalEvidenceCutoff: run.evidenceCutoff || null,
+      ledgerFingerprint: null,
+      signalSha256: null,
+      workflowRunId: null,
+      commitSha: null,
+      githubIssueNumber: null,
+    },
   };
 }
 
-function qqqSnapshot(
-  run: GovernedRunSummary,
-  capability: StrategyCapability,
-  record: V42EventRecord,
-  observation: V42ObservationRecord | null,
-  issueUrl: string,
-): StrategyOperationsSnapshot {
-  const allocations = allocationLegs(record.current_weights, record.target_weights);
-  const changed = hasAllocationChange(allocations);
-  const executionObserved = Boolean(observation?.execution?.execution_date);
-  const deliveryStatus = String(record.delivery?.telegram_status ?? record.delivery?.telegram ?? 'not declared');
-  const deliveryFailed = deliveryStatus === 'failed';
-  const status: StrategyOperationalStatus = deliveryFailed
-    ? 'delivery_failed'
-    : !record.data_freshness_ok
-      ? 'stale'
-      : changed && !executionObserved
-        ? 'target_pending_execution'
-        : changed && executionObserved
-          ? 'execution_observed'
-          : 'current_no_change';
-  const features = record.signal_close_features;
-  const stateFrom = STATE_LABELS[record.current_state] ?? `State ${record.current_state}`;
-  const stateTo = STATE_LABELS[record.target_state] ?? `State ${record.target_state}`;
-
-  return {
-    strategyId: run.modelVersionId,
-    status,
-    asOf: record.signal_date,
-    latestCompletedSession: observation?.as_of_data_date ?? record.latest_data_date_at_creation,
-    decisionCadence: capability.decisionCadence,
-    nextDecision: capability.nextDecisionPolicy,
-    stateLabel: record.current_state === record.target_state ? stateTo : `${stateFrom} → ${stateTo}`,
-    decisionReason: record.decision_reason || 'No decision reason retained.',
-    allocations,
-    turnover: finite(record.turnover_units) ? record.turnover_units : null,
-    estimatedCost: finite(record.estimated_transaction_cost) ? record.estimated_transaction_cost : null,
-    dataFreshness: record.data_freshness_ok ? 'current' : 'stale',
-    factorFreshness: factorFreshness(capability),
-    deliveryStatus,
-    sourceLabel: 'Governed QQQ state-change ledger',
-    sourceHref: issueUrl,
-    note: executionObserved
-      ? `Next-open execution evidence observed ${observation?.execution?.execution_date}.`
-      : changed
-        ? 'Target is awaiting next-open execution evidence.'
-        : 'Latest governed evaluation retained the existing allocation.',
-    drivers: [
-      { label: 'VIX close', value: decimal(features.vix_close) },
-      { label: 'VIX 5D', value: percent(features.vix_return_5d, 2) },
-      { label: 'VXN close', value: decimal(features.vxn_close) },
-      { label: 'VXN 5D', value: percent(features.vxn_return_5d, 2) },
-      { label: 'QQQ vs MA20', value: percent(features.qqq_distance_ma_short, 2) },
-    ],
-  };
-}
-
-function bydSnapshot(
-  run: GovernedRunSummary,
-  capability: StrategyCapability,
-  record: BydSignalRecord,
-  issueUrl: string,
-): StrategyOperationsSnapshot {
-  const allocations = allocationLegs(record.current_weights, record.target_weights);
-  const changed = hasAllocationChange(allocations);
-  const status: StrategyOperationalStatus = !record.data_freshness_ok
-    ? 'stale'
-    : changed
-      ? 'target_pending_execution'
-      : 'current_no_change';
-
-  return {
-    strategyId: run.modelVersionId,
-    status,
-    asOf: record.signal_date,
-    latestCompletedSession: record.latest_data_date,
-    decisionCadence: capability.decisionCadence,
-    nextDecision: capability.nextDecisionPolicy,
-    stateLabel: record.target_mode_label || record.target_mode,
-    decisionReason: record.transition_label || record.transition_type,
-    allocations,
-    turnover: finite(record.turnover_units) ? record.turnover_units : null,
-    estimatedCost: finite(record.estimated_transaction_cost) ? record.estimated_transaction_cost : null,
-    dataFreshness: record.data_freshness_ok ? 'current' : 'stale',
-    factorFreshness: factorFreshness(capability),
-    deliveryStatus: record.should_alert ? 'alert required' : 'not required',
-    sourceLabel: 'Governed BYD signal ledger',
-    sourceHref: issueUrl,
-    note: changed
-      ? 'Target allocation is published; brokerage execution is outside Alpha Engine.'
-      : 'Latest governed evaluation retained the existing allocation.',
-    drivers: [
-      { label: 'Market state', value: record.factor_context.market_state || '—' },
-      { label: 'Volatility state', value: record.factor_context.vol_state || '—' },
-      { label: '20D momentum', value: percent(record.factor_context.mom_20, 2) },
-      { label: '60D momentum', value: percent(record.factor_context.mom_60, 2) },
-      { label: '252D drawdown', value: percent(record.factor_context.drawdown_252, 2) },
-      { label: 'Financed increment', value: percent(record.factor_context.financed_increment, 2) },
-    ],
-  };
-}
-
-async function loadOne(run: GovernedRunSummary, capability: StrategyCapability): Promise<StrategyOperationsSnapshot> {
-  if (capability.pipelineStatus === 'unavailable' || capability.sourceType === 'unavailable') {
-    return unavailable(run, 'pipeline_unavailable', capability.note, capability);
-  }
-
-  if (capability.sourceType === 'github_issue_v42') {
-    try {
-      const snapshot = await fetchV42RuntimeSnapshot();
-      const event = snapshot.latestStateChange;
-      if (!event) return unavailable(run, 'awaiting_observation', 'No governed QQQ state-change record is available.', capability);
-      return qqqSnapshot(run, capability, event.record, snapshot.observation, event.issue.html_url);
-    } catch (error) {
-      return unavailable(run, 'blocked', error instanceof Error ? error.message : 'QQQ operating evidence is unavailable.', capability);
-    }
-  }
-
-  if (capability.sourceType === 'github_issue_byd') {
-    try {
-      const snapshot = await fetchBydRuntimeSnapshot();
-      const event = snapshot.latestSignal;
-      if (!event) return unavailable(run, 'awaiting_observation', 'BYD signal pipeline is waiting for its first valid production observation.', capability);
-      return bydSnapshot(run, capability, event.record, event.issue.html_url);
-    } catch (error) {
-      return unavailable(run, 'blocked', error instanceof Error ? error.message : 'BYD operating evidence is unavailable.', capability);
-    }
-  }
-
-  return unavailable(run, 'blocked', `Unsupported governed operations source: ${capability.sourceType}`, capability);
+async function fetchOperations(): Promise<Map<string, StrategyOperationsSnapshot>> {
+  const response = await fetch(assetUrl('data/strategy-operations/snapshots.json'), { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Strategy operations snapshot unavailable (${response.status})`);
+  const value = await response.json() as OperationsDocument;
+  assert(value.schema_version === '1.0.0', 'Unsupported strategy operations schema');
+  assert(value.research_only === true && value.trade_ready === false, 'Invalid strategy operations boundary');
+  assert(Array.isArray(value.records), 'Strategy operations records are missing');
+  const snapshots = value.records.map(parseSnapshot);
+  assert(new Set(snapshots.map((snapshot) => snapshot.strategyId)).size === snapshots.length, 'Duplicate strategy operations model identity');
+  return new Map(snapshots.map((snapshot) => [snapshot.strategyId, snapshot]));
 }
 
 export async function loadStrategyOperations(runs: GovernedRunSummary[]): Promise<Map<string, StrategyOperationsSnapshot>> {
   const formalRuns = runs.filter((run) => run.channel === 'formal');
-  let capabilities: Map<string, StrategyCapability>;
   try {
-    capabilities = await fetchStrategyCapabilities();
+    const snapshots = await fetchOperations();
+    const formalIds = formalRuns.map((run) => run.modelVersionId).sort();
+    const operationIds = Array.from(snapshots.keys()).sort();
+    assert(JSON.stringify(formalIds) === JSON.stringify(operationIds), 'Strategy operations model set does not match the accepted formal catalog');
+    return snapshots;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Strategy capability document is unavailable.';
-    return new Map(formalRuns.map((run) => [run.modelVersionId, unavailable(run, 'blocked', message)]));
+    const message = error instanceof Error ? error.message : 'Strategy operations snapshot is unavailable.';
+    return new Map(formalRuns.map((run) => [run.modelVersionId, blocked(run, message)]));
   }
-
-  const snapshots = await Promise.all(formalRuns.map((run) => {
-    const capability = capabilities.get(run.modelVersionId);
-    return capability
-      ? loadOne(run, capability)
-      : Promise.resolve(unavailable(run, 'blocked', 'Accepted formal model is missing from the governed strategy capability document.'));
-  }));
-  return new Map(snapshots.map((snapshot) => [snapshot.strategyId, snapshot]));
 }
 
 export const STRATEGY_STATUS_LABEL: Record<StrategyOperationalStatus, string> = {

@@ -11,16 +11,9 @@ on:
       - "data/research/byd_515180_prospective/**"
       - "docs/research/byd_515180_prospective.md"
       - ".github/workflows/byd-515180-prospective.yml"
-  push:
-    branches: [main]
-    paths:
-      - "src/research/byd_515180_prospective.py"
-      - "scripts/run_byd_515180_prospective.py"
-      - "tests/test_byd_515180_prospective.py"
-      - "tests/test_byd_515180_prospective_envelope.py"
-      - "data/research/byd_prospective_shadow/observations/**"
-      - "docs/research/byd_515180_prospective.md"
-      - ".github/workflows/byd-515180-prospective.yml"
+  workflow_run:
+    workflows: ["BYD Prospective Shadow Ledger"]
+    types: [completed]
   schedule:
     - cron: "45 11 * * 1-5"
   workflow_dispatch:
@@ -30,7 +23,7 @@ permissions:
 
 concurrency:
   group: byd-515180-prospective-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   contract-tests:
@@ -62,29 +55,11 @@ jobs:
           if not paths:
               raise SystemExit("no sealed BYD prospective observations are available")
           latest = json.loads(paths[-1].read_text(encoding="utf-8"))
-          required = {
-              "signal_date",
-              "data_version",
-              "base_target_position",
-              "open_research_eligible",
-              "chain_linked_adjusted_ohlcv",
-          }
+          required = {"signal_date", "data_version", "base_target_position", "open_research_eligible", "chain_linked_adjusted_ohlcv"}
           missing = sorted(required - set(latest))
           if missing:
               raise SystemExit(f"latest BYD observation is missing fields: {missing}")
-          print(
-              json.dumps(
-                  {
-                      "path": str(paths[-1]),
-                      "signal_date": latest["signal_date"],
-                      "data_version": latest["data_version"],
-                      "base_target_position": latest["base_target_position"],
-                      "open_research_eligible": latest["open_research_eligible"],
-                  },
-                  ensure_ascii=False,
-                  sort_keys=True,
-              )
-          )
+          print(json.dumps({"path": str(paths[-1]), "signal_date": latest["signal_date"], "data_version": latest["data_version"]}, ensure_ascii=False, sort_keys=True))
           PY
       - name: Lint prospective sleeve
         run: >-
@@ -101,7 +76,10 @@ jobs:
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   live-update:
-    if: github.event_name != 'pull_request'
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     timeout-minutes: 40
     needs: contract-tests
@@ -178,15 +156,8 @@ jobs:
               "research_only": True,
               "trade_ready": False,
           }
-          path = Path("data/research/byd_515180_prospective/blockers") / (
-              f"{receipt['github_run_id']}-{receipt['github_run_attempt']}.json"
-          )
-          encoded = json.dumps(
-              receipt,
-              ensure_ascii=False,
-              indent=2,
-              sort_keys=True,
-          ) + "\n"
+          path = Path("data/research/byd_515180_prospective/blockers") / f"{receipt['github_run_id']}-{receipt['github_run_attempt']}.json"
+          encoded = json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
           if path.exists() and path.read_text(encoding="utf-8") != encoded:
               raise SystemExit(f"blocker receipt drift detected: {path}")
           path.write_text(encoded, encoding="utf-8")
@@ -204,8 +175,7 @@ jobs:
       - name: Commit immutable evidence or blocker receipt
         run: |
           set -euo pipefail
-          if git diff --quiet -- data/research/byd_515180_prospective && \
-             [[ -z "$(git ls-files --others --exclude-standard data/research/byd_515180_prospective)" ]]; then
+          if git diff --quiet -- data/research/byd_515180_prospective && [[ -z "$(git ls-files --others --exclude-standard data/research/byd_515180_prospective)" ]]; then
             echo "No new paired prospective evidence"
             exit 0
           fi

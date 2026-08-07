@@ -9,11 +9,22 @@ on:
       - "configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml"
       - "src/research/strategy_signal_alerts.py"
       - "src/research/vxn_prospective_monitor.py"
+      - "src/artifacts/strategy_signal_ledger.py"
+      - "src/artifacts/strategy_operations.py"
       - "scripts/run_qqqi_vxn_v4_2_signal_alert.py"
+      - "scripts/persist_strategy_signal_evaluation.py"
+      - "scripts/build_strategy_operations.py"
       - "tests/test_strategy_signal_alerts.py"
       - "tests/test_vxn_prospective_monitor.py"
-      - "docs/research/qqqi_qqq_tqqq_v4_2_decision_alert_spec.md"
-      - "docs/research/qqqi_qqq_tqqq_next_optimization_plan_2026-08-02.md"
+      - "tests/test_strategy_operations.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqqi-vxn-v4-2-signal-alert.yml"
+      - "src/artifacts/strategy_signal_ledger.py"
+      - "src/artifacts/strategy_operations.py"
+      - "scripts/persist_strategy_signal_evaluation.py"
+      - "scripts/build_strategy_operations.py"
   schedule:
     - cron: "30 0 * * 2-6"
   workflow_dispatch:
@@ -25,44 +36,71 @@ on:
 
 concurrency:
   group: qqqi-vxn-v4-2-signal-alert-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
   issues: write
 
 env:
   SIGNAL_ROOT: artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2
   MONITOR_ROOT: artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor
+  MODEL_VERSION_ID: qqqi_qqq_tqqq_v4_2
+  LEDGER_DIR: data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_2
 
 jobs:
-  signal-alert:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    env:
-      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Install uv and locked dependencies
+      - name: Install locked dependencies
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Validate signal-alert implementation
+      - name: Validate signal and operations contracts
         run: |
           uv run ruff check \
             src/research/strategy_signal_alerts.py \
             src/research/vxn_prospective_monitor.py \
+            src/artifacts/strategy_signal_ledger.py \
+            src/artifacts/strategy_operations.py \
             scripts/run_qqqi_vxn_v4_2_signal_alert.py \
+            scripts/persist_strategy_signal_evaluation.py \
+            scripts/build_strategy_operations.py \
             tests/test_strategy_signal_alerts.py \
-            tests/test_vxn_prospective_monitor.py
+            tests/test_vxn_prospective_monitor.py \
+            tests/test_strategy_operations.py
           uv run pytest \
             tests/test_strategy_signal_alerts.py \
             tests/test_vxn_prospective_monitor.py \
-            -q --tb=short
+            tests/test_strategy_operations.py \
+            -q --strict-markers --tb=short
+
+  evaluate-and-deliver:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
       - name: Build governed QQQ QQQI TQQQ reference bundle
         run: >-
           uv run python scripts/data/build_etf_reference_bundle.py
@@ -81,19 +119,16 @@ jobs:
           --summary "$MONITOR_ROOT/prospective_summary.json"
           --output-dir "$SIGNAL_ROOT"
           --github-output "$GITHUB_OUTPUT"
-      - name: Create or resolve the deduplicated GitHub signal Issue
+      - name: Create deduplicated GitHub signal issue
         id: issue
-        if: >-
-          github.event_name != 'pull_request' &&
-          steps.alert.outputs.should_alert == 'true' &&
-          steps.alert.outputs.data_freshness_ok == 'true'
-        uses: actions/github-script@v7
+        if: steps.alert.outputs.should_alert == 'true' && steps.alert.outputs.data_freshness_ok == 'true'
+        uses: actions/github-script@v8
         env:
           ALERT_FINGERPRINT: ${{ steps.alert.outputs.fingerprint }}
           ALERT_TITLE: ${{ steps.alert.outputs.title }}
         with:
           script: |
-            const fs = require('fs');
+            const fs = require('node:fs');
             const marker = `<!-- signal-fingerprint:${process.env.ALERT_FINGERPRINT} -->`;
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
@@ -101,13 +136,10 @@ jobs:
               state: 'all',
               per_page: 100,
             });
-            const existing = issues.find((item) =>
-              !item.pull_request && String(item.body || '').includes(marker)
-            );
+            const existing = issues.find((item) => !item.pull_request && String(item.body || '').includes(marker));
             if (existing) {
-              core.setOutput('status', 'existing');
               core.setOutput('issue_number', String(existing.number));
-              core.notice(`Signal ${process.env.ALERT_FINGERPRINT} already has Issue #${existing.number}.`);
+              core.setOutput('created', 'false');
               return;
             }
             const report = fs.readFileSync(`${process.env.SIGNAL_ROOT}/signal_alert.md`, 'utf8');
@@ -118,47 +150,37 @@ jobs:
               body: `@${context.repo.owner}\n\n${report}`,
               assignees: [context.repo.owner],
             });
-            core.setOutput('status', 'created');
             core.setOutput('issue_number', String(created.data.number));
-      - name: Inspect prior Telegram delivery receipts
-        id: prior_delivery
-        if: >-
-          github.event_name != 'pull_request' &&
-          steps.alert.outputs.should_alert == 'true' &&
-          steps.issue.outputs.issue_number != ''
-        uses: actions/github-script@v7
+            core.setOutput('created', 'true');
+      - name: Read prior durable delivery state
+        id: prior
         env:
-          ALERT_FINGERPRINT: ${{ steps.alert.outputs.fingerprint }}
-          ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
-        with:
-          script: |
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(process.env.ISSUE_NUMBER),
-              per_page: 100,
-            });
-            const pattern = /<!-- signal-delivery-receipt:([A-Za-z0-9_-]+) -->/g;
-            for (const comment of comments) {
-              pattern.lastIndex = 0;
-              let match;
-              while ((match = pattern.exec(String(comment.body || ''))) !== null) {
-                const receipt = JSON.parse(Buffer.from(match[1], 'base64url').toString('utf8'));
-                if (receipt.fingerprint === process.env.ALERT_FINGERPRINT && receipt.telegram_status === 'sent') {
-                  core.setOutput('already_sent', 'true');
-                  core.setOutput('message_id', String(receipt.telegram_message_id || ''));
-                  return;
-                }
-              }
-            }
-            core.setOutput('already_sent', 'false');
+          FINGERPRINT: ${{ steps.alert.outputs.fingerprint }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ['LEDGER_DIR']) / 'latest.json'
+          already_sent = False
+          message_id = ''
+          if path.is_file():
+              payload = json.loads(path.read_text(encoding='utf-8'))
+              delivery = payload.get('delivery', {})
+              if payload.get('fingerprint') == os.environ['FINGERPRINT'] and delivery.get('status') == 'sent':
+                  already_sent = True
+                  message_id = str(delivery.get('telegram_message_id') or '')
+          with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as handle:
+              handle.write(f"already_sent={'true' if already_sent else 'false'}\n")
+              handle.write(f"message_id={message_id}\n")
+          PY
       - name: Send decision-grade Telegram alert once
         id: telegram
         if: >-
-          github.event_name != 'pull_request' &&
           steps.alert.outputs.should_alert == 'true' &&
           steps.alert.outputs.data_freshness_ok == 'true' &&
-          steps.prior_delivery.outputs.already_sent != 'true'
+          steps.prior.outputs.already_sent != 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -182,113 +204,65 @@ jobs:
             echo "error_class=transport_error" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          ok=$(jq -r '.ok // false' <<< "$response")
-          if [[ "$ok" == "true" ]]; then
+          if [[ "$(jq -r '.ok // false' <<< "$response")" == "true" ]]; then
             echo "status=sent" >> "$GITHUB_OUTPUT"
             echo "message_id=$(jq -r '.result.message_id // empty' <<< "$response")" >> "$GITHUB_OUTPUT"
           else
             echo "status=failed" >> "$GITHUB_OUTPUT"
             echo "error_class=telegram_api_rejected" >> "$GITHUB_OUTPUT"
           fi
-      - name: Finalize machine-readable delivery receipt
-        id: receipt
-        if: always()
+      - name: Persist governed evaluation and rebuild operations read model
         env:
           SHOULD_ALERT: ${{ steps.alert.outputs.should_alert }}
-          FRESHNESS_OK: ${{ steps.alert.outputs.data_freshness_ok }}
-          FINGERPRINT: ${{ steps.alert.outputs.fingerprint }}
-          ISSUE_STATUS: ${{ steps.issue.outputs.status }}
           ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
-          PRIOR_SENT: ${{ steps.prior_delivery.outputs.already_sent }}
-          PRIOR_MESSAGE_ID: ${{ steps.prior_delivery.outputs.message_id }}
+          PRIOR_SENT: ${{ steps.prior.outputs.already_sent }}
+          PRIOR_MESSAGE_ID: ${{ steps.prior.outputs.message_id }}
           TELEGRAM_STATUS: ${{ steps.telegram.outputs.status }}
           TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
           TELEGRAM_ERROR_CLASS: ${{ steps.telegram.outputs.error_class }}
         run: |
-          uv run python - <<'PY'
-          import hashlib
-          import json
-          import os
-          from datetime import datetime, timezone
-          from pathlib import Path
-
-          signal_root = Path(os.environ['SIGNAL_ROOT'])
-          monitor_root = Path(os.environ['MONITOR_ROOT'])
-          alert_path = signal_root / 'signal_alert.json'
-          alert = json.loads(alert_path.read_text(encoding='utf-8')) if alert_path.exists() else {}
-          should_alert = os.environ.get('SHOULD_ALERT') == 'true'
-          if not should_alert:
-              telegram_status = 'not_required'
-              message_id = None
-          elif os.environ.get('PRIOR_SENT') == 'true':
-              telegram_status = 'sent'
-              message_id = os.environ.get('PRIOR_MESSAGE_ID') or None
-          else:
-              telegram_status = os.environ.get('TELEGRAM_STATUS') or 'failed'
-              message_id = os.environ.get('TELEGRAM_MESSAGE_ID') or None
-          def digest(path: Path):
-              return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
-          receipt = {
-              'schema_version': '1.0.0',
-              'fingerprint': os.environ.get('FINGERPRINT') or alert.get('fingerprint'),
-              'should_alert': should_alert,
-              'data_freshness_ok': os.environ.get('FRESHNESS_OK') == 'true',
-              'github_issue_status': os.environ.get('ISSUE_STATUS') or ('not_required' if not should_alert else 'failed'),
-              'github_issue_number': int(os.environ['ISSUE_NUMBER']) if os.environ.get('ISSUE_NUMBER') else None,
-              'telegram_status': telegram_status,
-              'telegram_message_id': message_id,
-              'telegram_error_class': os.environ.get('TELEGRAM_ERROR_CLASS') or None,
-              'workflow_run_id': os.environ['GITHUB_RUN_ID'],
-              'commit_sha': os.environ['GITHUB_SHA'],
-              'timestamp': datetime.now(timezone.utc).isoformat(),
-              'data_bundle_id': alert.get('data_context', {}).get('bundle_id'),
-              'bundle_manifest_sha256': digest(Path('artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json')),
-              'monitor_summary_sha256': digest(monitor_root / 'prospective_summary.json'),
-              'signal_alert_sha256': digest(alert_path),
-              'research_only': True,
-              'trade_ready': False,
-          }
-          path = signal_root / 'delivery_receipt.json'
-          path.parent.mkdir(parents=True, exist_ok=True)
-          path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
-          with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as handle:
-              handle.write(f"telegram_status={telegram_status}\n")
-              handle.write(f"issue_number={receipt['github_issue_number'] or ''}\n")
-          PY
-      - name: Persist delivery receipt on the signal Issue
-        if: >-
-          always() &&
-          github.event_name != 'pull_request' &&
-          steps.receipt.outputs.issue_number != ''
-        uses: actions/github-script@v7
-        env:
-          ISSUE_NUMBER: ${{ steps.receipt.outputs.issue_number }}
-        with:
-          script: |
-            const fs = require('fs');
-            const receipt = JSON.parse(fs.readFileSync(`${process.env.SIGNAL_ROOT}/delivery_receipt.json`, 'utf8'));
-            const encoded = Buffer.from(JSON.stringify(receipt)).toString('base64url');
-            const marker = `<!-- signal-delivery-receipt:${encoded} -->`;
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(process.env.ISSUE_NUMBER),
-              per_page: 100,
-            });
-            const duplicate = comments.some((comment) => {
-              const body = String(comment.body || '');
-              return body.includes('signal-delivery-receipt:')
-                && body.includes(receipt.workflow_run_id);
-            });
-            if (!duplicate) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: Number(process.env.ISSUE_NUMBER),
-                body: `${marker}\n\n- GitHub Issue：**${receipt.github_issue_status}**\n- Telegram：**${receipt.telegram_status}**\n- Workflow run：**${receipt.workflow_run_id}**\n- 研究用途：是\n- 自动交易授权：否`,
-              });
-            }
-      - name: Upload hash-bound signal context and delivery receipt
+          set -euo pipefail
+          created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          if [[ "$SHOULD_ALERT" != "true" ]]; then
+            delivery_status="not_required"
+            message_id=""
+            delivery_error=""
+          elif [[ "$PRIOR_SENT" == "true" ]]; then
+            delivery_status="sent"
+            message_id="${PRIOR_MESSAGE_ID:-}"
+            delivery_error=""
+          else
+            delivery_status="${TELEGRAM_STATUS:-failed}"
+            message_id="${TELEGRAM_MESSAGE_ID:-}"
+            delivery_error="${TELEGRAM_ERROR_CLASS:-}"
+          fi
+          uv run python scripts/persist_strategy_signal_evaluation.py \
+            --model-version-id "$MODEL_VERSION_ID" \
+            --signal-json "$SIGNAL_ROOT/signal_alert.json" \
+            --ledger-dir "$LEDGER_DIR" \
+            --delivery-status "$delivery_status" \
+            --github-issue-number "${ISSUE_NUMBER:-}" \
+            --telegram-message-id "$message_id" \
+            --delivery-error "$delivery_error" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --commit-sha "$GITHUB_SHA" \
+            --created-at-utc "$created_at"
+          uv run python scripts/build_strategy_operations.py --generated-at "$created_at"
+          echo "delivery_status=$delivery_status" >> "$GITHUB_ENV"
+      - name: Commit durable signal and operations state
+        run: |
+          set -euo pipefail
+          git config user.name "AlphaEngine Signal Agent"
+          git config user.email "signal-agent@alphaengine.local"
+          git add data/research/strategy_signal_ledgers data/research/strategy_operations/snapshots.json
+          if git diff --cached --quiet; then
+            echo "Signal evaluation is already persisted."
+          else
+            git commit -m "signal: publish QQQ v4.2 evaluation ${{ steps.alert.outputs.fingerprint }}"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Upload hash-bound signal and operations evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -296,13 +270,11 @@ jobs:
           path: |
             artifacts/data/qqqi_qqq_tqqq_reference_bundle_v1/bundle_manifest.json
             artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_summary.json
-            artifacts/evidence/qqqi_qqq_tqqq_vxn_bridge_v4_2_prospective_monitor/prospective_daily_rotation_vxn_bridge_v4_2_50_50.csv
             artifacts/signals/qqqi_qqq_tqqq_vxn_bridge_v4_2
+            data/research/strategy_signal_ledgers/qqqi_qqq_tqqq_v4_2
+            data/research/strategy_operations/snapshots.json
           if-no-files-found: warn
           retention-days: 90
-      - name: Fail visibly when required Telegram delivery failed
-        if: >-
-          always() &&
-          steps.alert.outputs.should_alert == 'true' &&
-          steps.receipt.outputs.telegram_status == 'failed'
+      - name: Fail visibly after persisting required Telegram delivery failure
+        if: env.delivery_status == 'failed'
         run: exit 1

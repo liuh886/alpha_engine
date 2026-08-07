@@ -1,0 +1,69 @@
+name: Bind Operations to Reviewed Formal Refresh
+
+on:
+  workflow_run:
+    workflows: ["Reviewed Formal Backtest Refresh"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: formal-refresh-operations-bind
+  cancel-in-progress: false
+
+jobs:
+  bind-review-branch:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Find open reviewed refresh PR
+        id: review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          number="$(gh pr list --repo "$GITHUB_REPOSITORY" --head automation/formal-backtest-refresh --base main --state open --json number --jq '.[0].number // empty')"
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+      - name: Checkout reviewed refresh branch
+        if: steps.review.outputs.number != ''
+        uses: actions/checkout@v6
+        with:
+          ref: automation/formal-backtest-refresh
+          fetch-depth: 0
+      - name: Setup Python
+        if: steps.review.outputs.number != ''
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Setup Node
+        if: steps.review.outputs.number != ''
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - name: Rebind operations read model to candidate formal catalog
+        if: steps.review.outputs.number != ''
+        run: |
+          set -euo pipefail
+          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          PYTHONPATH=. python scripts/build_strategy_operations.py --generated-at "$generated_at"
+          cd qlib-dashboard
+          npm ci --no-audit --no-fund
+          npm run sync:strategy-operations
+      - name: Commit operations binding to the same review transaction
+        if: steps.review.outputs.number != ''
+        run: |
+          set -euo pipefail
+          git config user.name "AlphaEngine Formal Refresh Agent"
+          git config user.email "formal-refresh-agent@alphaengine.local"
+          git add data/research/strategy_operations/snapshots.json
+          if git diff --cached --quiet; then
+            echo "Operations snapshot already matches the candidate formal catalog."
+            exit 0
+          fi
+          git commit -m "data: bind strategy operations to refreshed formal evidence"
+          git pull --rebase origin automation/formal-backtest-refresh
+          git push origin HEAD:automation/formal-backtest-refresh

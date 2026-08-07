@@ -6,15 +6,16 @@ on:
     paths:
       - ".github/workflows/byd-daily-signal-alert.yml"
       - "src/research/byd_signal_alerts.py"
+      - "src/artifacts/strategy_signal_ledger.py"
+      - "src/artifacts/strategy_operations.py"
       - "scripts/run_byd_signal_alert.py"
+      - "scripts/persist_strategy_signal_evaluation.py"
+      - "scripts/build_strategy_operations.py"
       - "tests/test_byd_signal_alerts.py"
-      - "qlib-dashboard/src/lib/byd-runtime.ts"
-      - "qlib-dashboard/src/pages/StrategyOperationsPage.tsx"
-  push:
-    branches: [main]
-    paths:
-      - "data/research/byd_v1_2_trend_expansion_prospective/observations/**"
-      - "data/research/byd_v1_2_trend_expansion_prospective/manifest.json"
+      - "tests/test_strategy_operations.py"
+  workflow_run:
+    workflows: ["BYD v1.2 Trend Expansion Prospective"]
+    types: [completed]
   schedule:
     - cron: "0 13 * * 1-5"
   workflow_dispatch:
@@ -29,7 +30,9 @@ permissions:
 
 env:
   SIGNAL_DIR: artifacts/signals/byd_v1_2
-  LEDGER_DIR: data/research/byd_v1_2_signal_ledger
+  MODEL_VERSION_ID: byd_v1_2_convex_momentum_budget_v1
+  LEDGER_DIR: data/research/strategy_signal_ledgers/byd_v1_2_convex_momentum_budget_v1
+  OPERATIONS_PATH: data/research/strategy_operations/snapshots.json
 
 jobs:
   contract:
@@ -46,17 +49,27 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Validate formal signal contract
+      - name: Validate formal signal and operations contracts
         run: |
           uv run ruff check \
             src/research/byd_signal_alerts.py \
+            src/artifacts/strategy_signal_ledger.py \
+            src/artifacts/strategy_operations.py \
             scripts/run_byd_signal_alert.py \
-            tests/test_byd_signal_alerts.py
-          uv run pytest tests/test_byd_signal_alerts.py \
+            scripts/persist_strategy_signal_evaluation.py \
+            scripts/build_strategy_operations.py \
+            tests/test_byd_signal_alerts.py \
+            tests/test_strategy_operations.py
+          uv run pytest \
+            tests/test_byd_signal_alerts.py \
+            tests/test_strategy_operations.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   evaluate-and-deliver:
-    if: github.event_name != 'pull_request'
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -76,9 +89,14 @@ jobs:
         run: |
           uv run ruff check \
             src/research/byd_signal_alerts.py \
+            src/artifacts/strategy_signal_ledger.py \
+            src/artifacts/strategy_operations.py \
             scripts/run_byd_signal_alert.py \
-            tests/test_byd_signal_alerts.py
-          uv run pytest tests/test_byd_signal_alerts.py \
+            scripts/persist_strategy_signal_evaluation.py \
+            scripts/build_strategy_operations.py
+          uv run pytest \
+            tests/test_byd_signal_alerts.py \
+            tests/test_strategy_operations.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: Build exact formal signal
         id: signal
@@ -156,122 +174,40 @@ jobs:
             echo "status=failed" >> "$GITHUB_OUTPUT"
             printf 'error=%s\n' "${body:0:500}" >> "$GITHUB_OUTPUT"
           fi
-      - name: Persist evaluation and delivery receipt
+      - name: Persist governed evaluation and rebuild operations read model
         env:
           ISSUE_NUMBER: ${{ steps.issue.outputs.issue_number }}
-          ISSUE_CREATED: ${{ steps.issue.outputs.created }}
           TELEGRAM_STATUS: ${{ steps.telegram.outputs.status }}
           TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
           TELEGRAM_ERROR: ${{ steps.telegram.outputs.error }}
+          SHOULD_ALERT: ${{ steps.signal.outputs.should_alert }}
         run: |
-          python - <<'PY'
-          import hashlib
-          import json
-          import os
-          from datetime import datetime, timezone
-          from pathlib import Path
-
-          signal_dir = Path(os.environ['SIGNAL_DIR'])
-          ledger = Path(os.environ['LEDGER_DIR'])
-          signal = json.loads((signal_dir / 'signal_alert.json').read_text(encoding='utf-8'))
-          fingerprint = signal['fingerprint']
-          signal_date = signal['signal_date']
-          records = ledger / 'records'
-          deliveries = ledger / 'deliveries'
-          records.mkdir(parents=True, exist_ok=True)
-          deliveries.mkdir(parents=True, exist_ok=True)
-
-          canonical = json.dumps(
-              signal,
-              ensure_ascii=False,
-              sort_keys=True,
-              separators=(',', ':'),
-              allow_nan=False,
-          ) + '\n'
-          record_path = records / f'{signal_date}-{fingerprint}.json'
-          if record_path.exists() and record_path.read_text(encoding='utf-8') != canonical:
-              raise RuntimeError(f'append-only signal drift: {record_path}')
-          record_path.write_text(canonical, encoding='utf-8')
-
-          old_latest = None
-          latest_path = ledger / 'latest.json'
-          if latest_path.exists():
-              old_latest = json.loads(latest_path.read_text(encoding='utf-8'))
-          delivery_status = os.environ.get('TELEGRAM_STATUS') or 'not_required'
-          if (
-              old_latest
-              and old_latest.get('fingerprint') == fingerprint
-              and old_latest.get('delivery_status') == 'sent'
-              and delivery_status == 'not_required'
-          ):
-              delivery_status = 'sent'
-          latest = dict(signal)
-          latest['delivery_status'] = delivery_status
-          latest['github_issue_number'] = (
-              int(os.environ['ISSUE_NUMBER']) if os.environ.get('ISSUE_NUMBER') else None
-          )
-          latest_path.parent.mkdir(parents=True, exist_ok=True)
-          latest_path.write_text(
-              json.dumps(latest, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
-              encoding='utf-8',
-          )
-
-          delivery_path = deliveries / f'{fingerprint}.json'
-          if not delivery_path.exists():
-              receipt = {
-                  'schema_version': 'byd_v1_2_delivery_v1',
-                  'model_id': signal['model_id'],
-                  'fingerprint': fingerprint,
-                  'signal_date': signal_date,
-                  'should_alert': signal['should_alert'],
-                  'github_issue': {
-                      'number': int(os.environ['ISSUE_NUMBER']) if os.environ.get('ISSUE_NUMBER') else None,
-                      'created': os.environ.get('ISSUE_CREATED') == 'true',
-                  },
-                  'telegram': {
-                      'status': os.environ.get('TELEGRAM_STATUS') or 'not_required',
-                      'message_id': int(os.environ['TELEGRAM_MESSAGE_ID']) if os.environ.get('TELEGRAM_MESSAGE_ID') else None,
-                      'error': os.environ.get('TELEGRAM_ERROR') or None,
-                  },
-                  'workflow': {
-                      'run_id': os.environ['GITHUB_RUN_ID'],
-                      'commit_sha': os.environ['GITHUB_SHA'],
-                  },
-                  'record_sha256': hashlib.sha256(canonical.encode()).hexdigest(),
-                  'created_at_utc': datetime.now(timezone.utc).isoformat(),
-                  'research_only': True,
-                  'trade_ready': False,
-              }
-              delivery_path.write_text(
-                  json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
-                  encoding='utf-8',
-              )
-
-          manifest = {
-              'schema_version': 'byd_v1_2_signal_ledger_v1',
-              'model_id': signal['model_id'],
-              'latest_signal_date': signal_date,
-              'latest_fingerprint': fingerprint,
-              'record_count': len(list(records.glob('*.json'))),
-              'delivery_count': len(list(deliveries.glob('*.json'))),
-              'append_only_records': True,
-              'research_only': True,
-              'trade_ready': False,
-          }
-          (ledger / 'manifest.json').write_text(
-              json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
-              encoding='utf-8',
-          )
-          PY
-      - name: Commit durable signal ledger
+          set -euo pipefail
+          created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          delivery_status="${TELEGRAM_STATUS:-not_required}"
+          if [[ "$SHOULD_ALERT" != "true" ]]; then delivery_status="not_required"; fi
+          uv run python scripts/persist_strategy_signal_evaluation.py \
+            --model-version-id "$MODEL_VERSION_ID" \
+            --signal-json "$SIGNAL_DIR/signal_alert.json" \
+            --ledger-dir "$LEDGER_DIR" \
+            --delivery-status "$delivery_status" \
+            --github-issue-number "${ISSUE_NUMBER:-}" \
+            --telegram-message-id "${TELEGRAM_MESSAGE_ID:-}" \
+            --delivery-error "${TELEGRAM_ERROR:-}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --commit-sha "$GITHUB_SHA" \
+            --created-at-utc "$created_at"
+          uv run python scripts/build_strategy_operations.py --generated-at "$created_at"
+      - name: Commit durable signal and operations state
         run: |
+          set -euo pipefail
           git config user.name "AlphaEngine Signal Agent"
           git config user.email "signal-agent@alphaengine.local"
-          git add "$LEDGER_DIR"
+          git add data/research/strategy_signal_ledgers data/research/strategy_operations/snapshots.json
           if git diff --cached --quiet; then
             echo "Signal evaluation is already persisted."
           else
-            git commit -m "signal: append BYD v1.2 evaluation ${{ steps.signal.outputs.signal_date }}"
+            git commit -m "signal: publish BYD v1.2 evaluation ${{ steps.signal.outputs.signal_date }}"
             git pull --rebase origin main
             git push origin HEAD:main
           fi
@@ -282,7 +218,8 @@ jobs:
           name: byd-v1-2-signal-${{ github.run_id }}
           path: |
             artifacts/signals/byd_v1_2
-            data/research/byd_v1_2_signal_ledger
+            data/research/strategy_signal_ledgers/byd_v1_2_convex_momentum_budget_v1
+            data/research/strategy_operations/snapshots.json
           if-no-files-found: error
           retention-days: 90
       - name: Fail after persisting a configured Telegram delivery error

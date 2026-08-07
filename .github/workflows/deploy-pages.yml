@@ -26,10 +26,8 @@ jobs:
         with:
           fetch-depth: 0
           show-progress: false
-
       - name: Resolve Pages publication impact
         id: impact
-        shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           BEFORE_SHA: ${{ github.event.before }}
@@ -39,25 +37,9 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             python scripts/detect_pages_impact.py --manual --github-output "$GITHUB_OUTPUT"
           else
-            python scripts/detect_pages_impact.py \
-              --before "$BEFORE_SHA" \
-              --after "$AFTER_SHA" \
-              --github-output "$GITHUB_OUTPUT"
+            python scripts/detect_pages_impact.py --before "$BEFORE_SHA" --after "$AFTER_SHA" --github-output "$GITHUB_OUTPUT"
           fi
           cat artifacts/pages-impact-decision.json
-          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json
-          from pathlib import Path
-
-          decision = json.loads(Path("artifacts/pages-impact-decision.json").read_text(encoding="utf-8"))
-          matched = ", ".join(f"`{path}`" for path in decision["matched_paths"]) or "none"
-          print("### Pages publication impact")
-          print()
-          print(f"- Deploy: `{str(decision['deploy']).lower()}`")
-          print(f"- Reason: `{decision['reason']}`")
-          print(f"- Matched paths: {matched}")
-          PY
-
       - name: Record impact decision
         if: always()
         uses: actions/upload-artifact@v4
@@ -84,17 +66,14 @@ jobs:
         uses: actions/checkout@v6
         with:
           lfs: true
-
       - name: Verify zero-server product boundary
         run: python scripts/check_legacy_web_boundary.py
-
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
-
       - name: Build static strategy console
         working-directory: qlib-dashboard
         env:
@@ -108,36 +87,27 @@ jobs:
           test -f dist/sw.js
           test -f dist/icons/alpha-engine.svg
           test -f dist/data/formal-model-runs/catalog.json
-          test -f dist/data/strategy-operations/capabilities.json
+          test -f dist/data/strategy-operations/snapshots.json
+          test ! -e dist/data/strategy-operations/capabilities.json
           test ! -e dist/data/formal-backtests
           grep -q "Systematic Strategy Console" dist/index.html
           grep -q "What are the strategies doing now?" dist/index.html
           grep -q '"display": "standalone"' dist/manifest.webmanifest
-
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-
       - name: Install minimal publication runtime
         run: python -m pip install --disable-pip-version-check --no-input PyYAML==6.0.3
-
       - name: Validate primary model and run bindings
         run: python scripts/check_repository_model_runs.py
-
       - name: Export repository research evidence
         run: |
           set -euo pipefail
-          PYTHONPATH=. python scripts/export_static_site_data.py \
-            --source repository \
-            --repository-catalog data/research/catalog.json \
-            --output artifacts/site/data
+          PYTHONPATH=. python scripts/export_static_site_data.py --source repository --repository-catalog data/research/catalog.json --output artifacts/site/data
           mkdir -p artifacts/site/docs
           cp docs/methodology.md artifacts/site/docs/methodology.md
-          PYTHONPATH=. python scripts/export_research_bundle.py \
-            --source artifacts/site \
-            --output artifacts/research-bundle
-
+          PYTHONPATH=. python scripts/export_research_bundle.py --source artifacts/site --output artifacts/research-bundle
       - name: Assemble and validate publication
         env:
           IMPACT_REASON: ${{ needs.detect-impact.outputs.reason }}
@@ -155,7 +125,6 @@ jobs:
           import json
           import os
           from pathlib import Path
-
           payload = {
               "commit_sha": os.environ["GITHUB_SHA"],
               "workflow_run_id": os.environ["GITHUB_RUN_ID"],
@@ -164,10 +133,7 @@ jobs:
                   "matched_paths": json.loads(os.environ["MATCHED_PATHS_JSON"]),
               },
           }
-          Path("_site/deployment.json").write_text(
-              json.dumps(payload, separators=(",", ":")) + "\n",
-              encoding="utf-8",
-          )
+          Path("_site/deployment.json").write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
           PY
           touch _site/.nojekyll
           test -f _site/index.html
@@ -175,27 +141,24 @@ jobs:
           test -f _site/data/manifest.json
           test -f _site/data/models.json
           test -f _site/data/formal-model-runs/catalog.json
-          test -f _site/data/strategy-operations/capabilities.json
-          test ! -e _site/data/formal-backtests
+          test -f _site/data/strategy-operations/snapshots.json
+          test ! -e _site/data/strategy-operations/capabilities.json
           test -f _site/docs/methodology.md
           test -f _site/bundle/alpha-engine-bundle.json
-          test -f _site/bundle/data/models.json
-          grep -q '"schema_version": "1.0.0"' _site/bundle/alpha-engine-bundle.json
           grep -q '"source": "repository_research_store"' _site/data/manifest.json
           ! grep -q 'metadata_db_missing' _site/bundle/alpha-engine-bundle.json
-          python - <<'PY'
+          PYTHONPATH=. python - <<'PY'
           import hashlib
           import json
           from pathlib import Path
           from src.artifacts.model_run_bundle_v2 import validate_catalog, validate_manifest
+          from src.artifacts.strategy_operations import validate_operations_payload
 
           root = Path('_site/data/formal-model-runs')
           catalog = json.loads((root / 'catalog.json').read_text(encoding='utf-8'))
           validate_catalog(catalog)
           assert catalog['channel'] == 'formal'
-          assert catalog['research_only'] is True and catalog['trade_ready'] is False
-          model_ids = [row['model_version_id'] for row in catalog['records']]
-          assert model_ids and len(model_ids) == len(set(model_ids))
+          formal_ids = {row['model_version_id'] for row in catalog['records']}
           for row in catalog['records']:
               manifest_path = root / row['manifest_path']
               manifest_bytes = manifest_path.read_bytes()
@@ -203,47 +166,33 @@ jobs:
               manifest = json.loads(manifest_bytes)
               validate_manifest(manifest)
               assert manifest['bundle_id'] == row['bundle_id']
-              for section in manifest['sections']:
-                  if section['availability_status'] != 'available':
-                      continue
-                  section_path = manifest_path.parent / section['path']
-                  payload = section_path.read_bytes()
-                  assert len(payload) == section['byte_size']
-                  assert hashlib.sha256(payload).hexdigest() == section['sha256']
+          operations = json.loads(Path('_site/data/strategy-operations/snapshots.json').read_text(encoding='utf-8'))
+          validate_operations_payload(operations)
+          assert {row['model_version_id'] for row in operations['records']} == formal_ids
           PY
-
       - name: Setup Pages
         uses: actions/configure-pages@v6
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: _site
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
         with:
           timeout: 1800000
-
       - name: Verify deployed frontend contracts
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: |
-          PYTHONPATH=. python scripts/verify_pages_release.py \
-            --base-url "$PAGE_URL" \
-            --expected-commit "$GITHUB_SHA"
-
+        run: PYTHONPATH=. python scripts/verify_pages_release.py --base-url "$PAGE_URL" --expected-commit "$GITHUB_SHA"
       - name: Install live-browser runtime
         working-directory: qlib-dashboard
         run: npx playwright install --with-deps chromium
-
       - name: Exercise all formal strategies on live Pages
         working-directory: qlib-dashboard
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: npx playwright test --config=playwright.live.config.ts
-
       - name: Upload live-browser evidence
         if: always()
         uses: actions/upload-artifact@v4

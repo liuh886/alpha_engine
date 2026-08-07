@@ -35,6 +35,8 @@ DIRECT_PREFIXES = (
     "data/research/formal_model_runs/",
     "data/research/model_runs/",
     "data/research/model_decisions/",
+    "data/research/strategy_operations/",
+    "data/research/strategy_signal_ledgers/",
     "qlib-dashboard/",
 )
 RESULT_REPORT_PATTERN = re.compile(r"^\s*result_report\s*:\s*(?P<value>.+?)\s*$")

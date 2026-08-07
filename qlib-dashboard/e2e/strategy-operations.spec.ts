@@ -7,10 +7,6 @@ function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex');
 }
 
-function marker(prefix: string, payload: object): string {
-  return `<!-- ${prefix}:${Buffer.from(JSON.stringify(payload)).toString('base64url')} -->`;
-}
-
 const modelsText = JSON.stringify([
   {
     id: 'qqqi_qqq_tqqq_v4_2',
@@ -61,58 +57,50 @@ const bundleManifest = {
   ],
 };
 
-const eventRecord = {
-  schema_version: '1.0',
-  event_id: 'v42-2026-07-31-state-change',
-  event_type: 'state_change',
+const operations = {
+  schema_version: '1.0.0',
+  generated_at: '2026-08-02T00:03:00Z',
   research_only: true,
   trade_ready: false,
-  actionable: true,
-  status: 'awaiting_next_open',
-  signal_date: '2026-07-31',
-  latest_data_date_at_creation: '2026-07-31',
-  data_freshness_ok: true,
-  execution_time: 'next_session_open',
-  fingerprint: 'fixture-fingerprint',
-  transition_type: 'open_risk_bridge',
-  decision_reason: 'enter_qqq_early_repair_vix_easing',
-  current_state: 0,
-  target_state: 1,
-  current_weights: { QQQI: 1, QQQ: 0, TQQQ: 0 },
-  target_weights: { QQQI: 0.5, QQQ: 0.5, TQQQ: 0 },
-  turnover_units: 1,
-  estimated_transaction_cost: 0.001,
-  signal_close_features: {
-    vix_close: 15.99,
-    vix_return_5d: -0.05,
-    vxn_close: 18.2,
-    vxn_return_1d: -0.02,
-    vxn_return_5d: -0.04,
-    qqq_distance_ma_short: 0.01,
-  },
-  recovery_precursor_boolean: false,
-  outcome_horizons_sessions: [1, 2, 3, 5, 10, 20, 40],
-};
-
-const observation = {
-  schema_version: '1.0',
-  event_id: eventRecord.event_id,
-  as_of_data_date: '2026-08-01',
-  status: 'observing_outcomes',
-  previous_status: 'awaiting_next_open',
-  status_changed: true,
-  available_sessions: 2,
-  completed_horizons: [1, 2],
-  new_horizons: [1, 2],
-  execution: {
-    execution_date: '2026-08-01',
-    theoretical_next_open_prices: { QQQI: 51.2, QQQ: 571.4, TQQQ: 82.1 },
-    qqq_opening_gap: 0.002,
-  },
-  outcomes: {
-    '1': { qqq_return: 0.006, tqqq_return: 0.018 },
-    '2': { qqq_return: 0.01, tqqq_return: 0.03 },
-  },
+  records: [
+    {
+      model_version_id: 'qqqi_qqq_tqqq_v4_2',
+      status: 'target_pending_execution',
+      as_of: '2026-07-31',
+      latest_completed_session: '2026-07-31',
+      decision_cadence: 'Every completed US market session',
+      next_decision_policy: 'Evaluate at close; target applies to the next eligible open.',
+      state_label: 'Defensive → Transition',
+      decision_reason: 'QQQ repair with easing volatility',
+      allocations: [
+        { asset: 'QQQ', current: 0, target: 0.5, delta: 0.5 },
+        { asset: 'QQQI', current: 1, target: 0.5, delta: -0.5 },
+        { asset: 'TQQQ', current: 0, target: 0, delta: 0 },
+      ],
+      turnover: 1,
+      estimated_cost: 0.001,
+      data_freshness: 'current',
+      factor_freshness: 'current',
+      delivery_status: 'sent',
+      source_label: 'Governed QQQ signal ledger',
+      source_href: 'https://github.com/liuh886/alpha_engine/issues/9001',
+      note: 'Target is awaiting next-open execution evidence.',
+      drivers: [
+        { label: 'VIX close', value: '15.99' },
+        { label: 'QQQ vs MA20', value: '1.00%' },
+      ],
+      source_identity: {
+        formal_bundle_id: 'a'.repeat(64),
+        formal_run_id: 'qqq-formal-run',
+        formal_evidence_cutoff: '2026-07-31',
+        ledger_fingerprint: 'fixture-fingerprint',
+        signal_sha256: 'b'.repeat(64),
+        workflow_run_id: '12345',
+        commit_sha: 'c'.repeat(40),
+        github_issue_number: 9001,
+      },
+    },
+  ],
 };
 
 async function mockBundle(page: Page) {
@@ -128,43 +116,8 @@ async function mockBundle(page: Page) {
       await route.fulfill({ status: 404, body: 'not declared' });
     }
   });
-}
-
-async function mockGitHubLedger(page: Page) {
-  await page.route('https://api.github.com/**', async (route) => {
-    const url = new URL(route.request().url());
-    if (url.pathname.endsWith('/issues') || url.pathname.endsWith('/issues/')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            number: 9001,
-            title: 'v4.2 prospective evidence',
-            body: marker('prospective-evidence-record', eventRecord),
-            state: 'open',
-            html_url: 'https://github.com/liuh886/alpha_engine/issues/9001',
-            updated_at: '2026-08-02T00:00:00Z',
-          },
-        ]),
-      });
-      return;
-    }
-    if (url.pathname.endsWith('/issues/9001/comments')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            body: marker('prospective-evidence-update', observation),
-            html_url: 'https://github.com/liuh886/alpha_engine/issues/9001#issuecomment-1',
-            updated_at: '2026-08-02T00:02:00Z',
-          },
-        ]),
-      });
-      return;
-    }
-    await route.fulfill({ status: 404, body: 'unmatched GitHub fixture' });
+  await page.route('**/data/strategy-operations/snapshots.json', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(operations) });
   });
 }
 
@@ -173,11 +126,14 @@ async function assertNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
-test('QQQ operating evidence is rendered inside the strategy workspace', async ({ page }, testInfo) => {
+test('QQQ operating evidence is rendered from the governed static read model', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
+  const githubApiRequests: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://api.github.com/')) githubApiRequests.push(request.url());
+  });
   await mockBundle(page);
-  await mockGitHubLedger(page);
 
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_2');
   await expect(page.getByRole('main').getByRole('heading', { name: 'QQQ Rotation v4.2', exact: true, level: 1 })).toBeVisible();
@@ -185,18 +141,19 @@ test('QQQ operating evidence is rendered inside the strategy workspace', async (
   const now = page.getByRole('region', { name: 'Current decision state' });
   await expect(now).toBeVisible();
   await expect(now.getByText('Defensive → Transition', { exact: true })).toBeVisible();
-  await expect(now.getByText('enter_qqq_early_repair_vix_easing', { exact: true })).toBeVisible();
+  await expect(now.getByText('QQQ repair with easing volatility', { exact: true })).toBeVisible();
   await expect(now.getByText('QQQI', { exact: true })).toBeVisible();
   await expect(now.getByText('QQQ', { exact: true })).toBeVisible();
   await expect(now.getByText('VIX close', { exact: true })).toBeVisible();
   await expect(now.getByText('15.99', { exact: true })).toBeVisible();
-  await expect(page.getByText('Execution observed', { exact: true })).toBeVisible();
+  await expect(page.getByText('New target', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Source record' })).toHaveAttribute('href', 'https://github.com/liuh886/alpha_engine/issues/9001');
 
   const evidenceTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
   await expect(evidenceTabs.getByRole('tab', { name: 'Performance', exact: true })).toBeVisible();
   await expect(evidenceTabs.getByRole('tab', { name: 'Risk & robustness', exact: true })).toBeVisible();
   await expect(page.getByText('Sign in')).toHaveCount(0);
+  expect(githubApiRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
   await assertNoHorizontalOverflow(page);
   await page.screenshot({

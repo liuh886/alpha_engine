@@ -5,6 +5,13 @@ on:
     paths:
       - 'qlib-dashboard/**'
       - 'data/research/formal_backtests/**'
+      - 'data/research/formal_model_runs/**'
+      - 'data/research/strategy_operations/**'
+      - 'data/research/strategy_signal_ledgers/**'
+      - 'src/artifacts/strategy_operations.py'
+      - 'src/artifacts/strategy_signal_ledger.py'
+      - 'scripts/build_strategy_operations.py'
+      - 'scripts/persist_strategy_signal_evaluation.py'
       - 'Makefile'
       - 'pyproject.toml'
       - '.env.example'
@@ -13,6 +20,7 @@ on:
       - 'docs/architecture/legacy_web_inventory.json'
       - '.github/workflows/frontend-static-pwa.yml'
       - '.github/workflows/pages.yml'
+      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -24,44 +32,36 @@ concurrency:
 
 jobs:
   build-static-pwa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       VITE_RUNTIME_MODE: static_artifact
       FORMAL_BACKTEST_VALIDATION_MODE: candidate
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
       - name: Verify zero-server architecture boundary
         run: python scripts/check_legacy_web_boundary.py
-
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
-
       - name: Install dependencies
         working-directory: qlib-dashboard
-        run: npm ci
-
+        run: npm ci --no-audit --no-fund
       - name: TypeScript
         working-directory: qlib-dashboard
         run: npx tsc --noEmit
-
       - name: Lint
         working-directory: qlib-dashboard
         run: npm run lint
-
       - name: Unit tests
         working-directory: qlib-dashboard
         run: npm test -- --run
-
       - name: Build static strategy console
         working-directory: qlib-dashboard
         run: npm run build
-
       - name: Validate PWA output
         working-directory: qlib-dashboard
         run: |
@@ -69,21 +69,20 @@ jobs:
           test -f dist/manifest.webmanifest
           test -f dist/sw.js
           test -f dist/icons/alpha-engine.svg
+          test -f dist/data/formal-model-runs/catalog.json
+          test -f dist/data/strategy-operations/snapshots.json
+          test ! -e dist/data/strategy-operations/capabilities.json
           grep -q "Systematic Strategy Console" dist/index.html
           grep -q '"display": "standalone"' dist/manifest.webmanifest
-
       - name: Bundle budget
         working-directory: qlib-dashboard
         run: npm run check:bundle-budget
-
       - name: Install Playwright Chromium
         working-directory: qlib-dashboard
         run: npx playwright install --with-deps chromium
-
       - name: Static browser acceptance
         working-directory: qlib-dashboard
         run: npx playwright test --config=playwright.static.config.ts
-
       - name: Upload static screenshots and traces
         if: always()
         uses: actions/upload-artifact@v4
@@ -94,7 +93,6 @@ jobs:
             qlib-dashboard/playwright-report
           if-no-files-found: ignore
           retention-days: 14
-
       - name: Upload static build
         uses: actions/upload-artifact@v4
         with:
