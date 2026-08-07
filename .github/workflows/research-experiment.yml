@@ -5,8 +5,13 @@ on:
     branches: [main]
     paths:
       - 'configs/research_experiments/**'
+      - 'data/source_repairs/**'
+      - 'data/csv_source/**'
       - 'src/research/cross_sectional_experiment_runner.py'
       - 'src/research/experiment_harness.py'
+      - 'scripts/prepare_research_source_repair.py'
+      - 'scripts/promote_approved_research_source_repair.py'
+      - 'scripts/rebuild_active_research_providers.py'
       - 'scripts/run_research_experiment.py'
       - 'scripts/run_active_research_experiments.py'
       - 'tests/test_cross_sectional_experiment_runner.py'
@@ -27,7 +32,114 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  source-promotion:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 1
+          show-progress: false
+
+      - name: Detect approved missing-source repair
+        id: detect
+        shell: bash
+        run: |
+          approval=$(awk '/^[[:space:]]+approval_manifest:/ {print $2; exit}' configs/research_experiments/*.yaml || true)
+          if [[ -z "$approval" || ! -f "$approval" ]]; then
+            echo 'needed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          readarray -t state < <(python3 - "$approval" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          approval = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          missing = [
+              symbol
+              for symbol in approval.get('targets', {})
+              if not pathlib.Path(f'data/csv_source/{symbol}.csv').is_file()
+          ]
+          artifact_id = approval.get('source_artifact', {}).get('artifact_id', '')
+          print(len(missing))
+          print(artifact_id)
+          PY
+          )
+          if [[ "${state[0]}" == '0' ]]; then
+            echo 'needed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ -z "${state[1]}" ]]; then
+            echo 'approval manifest has no artifact_id' >&2
+            exit 1
+          fi
+          echo 'needed=true' >> "$GITHUB_OUTPUT"
+          echo "approval=$approval" >> "$GITHUB_OUTPUT"
+          echo "artifact_id=${state[1]}" >> "$GITHUB_OUTPUT"
+
+      - name: Download immutable approved repair artifact
+        if: steps.detect.outputs.needed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf artifacts/research_source_repair
+          mkdir -p artifacts/research_source_repair
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/${{ steps.detect.outputs.artifact_id }}/zip" \
+            -o /tmp/research-source-repair.zip
+          unzip -q /tmp/research-source-repair.zip -d artifacts/research_source_repair
+
+      - name: Promote exact approved hashes
+        if: steps.detect.outputs.needed == 'true'
+        run: >-
+          python3 scripts/promote_approved_research_source_repair.py
+          --approval "${{ steps.detect.outputs.approval }}"
+
+      - name: Upload source promotion receipt
+        if: steps.detect.outputs.needed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: approved-research-source-promotion
+          path: artifacts/research_source_repair/*/artifacts/source_repair_promotion_receipt.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Commit approved canonical sources
+        id: commit
+        if: steps.detect.outputs.needed == 'true'
+        shell: bash
+        run: |
+          git add data/csv_source
+          if git diff --cached --quiet; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'data: add approved research source repair'
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
+          git push origin "HEAD:${{ github.head_ref }}"
+
   experiment:
+    needs: source-promotion
+    if: >-
+      always() &&
+      (needs.source-promotion.result == 'success' || needs.source-promotion.result == 'skipped') &&
+      needs.source-promotion.outputs.changed != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -51,6 +163,9 @@ jobs:
           uv run ruff check \
             src/research/experiment_harness.py \
             src/research/cross_sectional_experiment_runner.py \
+            scripts/prepare_research_source_repair.py \
+            scripts/promote_approved_research_source_repair.py \
+            scripts/rebuild_active_research_providers.py \
             scripts/run_research_experiment.py \
             scripts/run_active_research_experiments.py \
             tests/test_experiment_harness.py \
@@ -59,6 +174,42 @@ jobs:
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+      - name: Prepare authoritative source repair candidate
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
+            uv run python scripts/prepare_research_source_repair.py --spec "${{ inputs.spec }}"
+          else
+            uv run python scripts/prepare_research_source_repair.py
+          fi
+
+      - name: Upload source repair candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-source-repair
+          path: artifacts/research_source_repair/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Require canonical research sources
+        shell: bash
+        run: |
+          if [[ -f artifacts/research_source_repair/repair_required ]]; then
+            cat artifacts/research_source_repair/summary.json
+            echo 'Research source repair is required before model execution.' >&2
+            exit 1
+          fi
+
+      - name: Rebuild exact mission provider from repository sources
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
+            uv run python scripts/rebuild_active_research_providers.py --spec "${{ inputs.spec }}"
+          else
+            uv run python scripts/rebuild_active_research_providers.py
+          fi
 
       - name: Run committed research mission
         shell: bash

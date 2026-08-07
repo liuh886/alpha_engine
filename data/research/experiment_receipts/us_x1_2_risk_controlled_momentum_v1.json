@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.1",
+  "experiment_id": "us_x1_2_risk_controlled_momentum_v1",
+  "status": "completed",
+  "decision": "not_supported",
+  "supported": false,
+  "leader": "risk_controlled_9factor",
+  "winner": null,
+  "runner": "cross_sectional_xgb_ranker_v1",
+  "market": "us",
+  "benchmark": "QQQ",
+  "provider_identity_sha256": "c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d",
+  "cutoff": "2026-06-24",
+  "selection_windows": ["2024H1", "2024H2", "2025H1", "2025H2"],
+  "reporting_windows_seen_but_not_used": ["2026H1"],
+  "source_evidence": {
+    "workflow_run_id": 31194720127,
+    "workflow_head_sha": "8719fed6fd85e116d858df0b95f331dfd4306c44",
+    "artifact_id": 9000358985,
+    "artifact_digest": "sha256:b427b91d9e0ba61f4a6888bc070a579498b7f24d344a29262af566a664820390",
+    "research_receipt_sha256": "b2a72bc4367bb2ef3428f3a91f166ae2515a0abdcc26f6a533d3e51785746370",
+    "observations_sha256": "1fdaf5928863bafefded2d07abd8c2325e3e37fb29e953912b721cd9059bad1b"
+  },
+  "baseline": {
+    "candidate_id": "baseline_7factor",
+    "compounded_relative_excess_20bps": 1.213626312382035,
+    "compounded_relative_excess_60bps": 1.1550675176718603,
+    "worst_drawdown": -0.299716,
+    "mean_rank_ic": 0.049217250000000004,
+    "strongest_positive_window_share": 0.5080998459552855
+  },
+  "challenger": {
+    "candidate_id": "risk_controlled_9factor",
+    "compounded_relative_excess_20bps": 1.2011997030426156,
+    "compounded_relative_excess_60bps": 1.141336399075834,
+    "worst_drawdown": -0.298916,
+    "mean_rank_ic": 0.0481075,
+    "mean_rank_ic_improvement": -0.0011097500000000066,
+    "strongest_positive_window_share": 0.4506345708659131,
+    "gate_checks": {
+      "all_development_windows_positive_excess": true,
+      "worst_drawdown": true,
+      "stress_compounded_relative_excess": true,
+      "strongest_positive_window_share": true,
+      "mean_rank_ic_improvement": false,
+      "factor_baseline_dominance": true
+    }
+  },
+  "reporting_only_2026H1": {
+    "baseline_relative_excess_20bps": 0.8734857622543089,
+    "challenger_relative_excess_20bps": 0.9337808692500424,
+    "baseline_rank_ic": 0.148681,
+    "challenger_rank_ic": 0.146664,
+    "used_for_selection": false
+  },
+  "learning": {
+    "accepted": [
+      "Risk-controlled momentum improved 2024H1 and 2024H2 economics and slightly improved worst development drawdown.",
+      "Risk-controlled momentum reduced concentration of positive excess across development windows."
+    ],
+    "rejected": [
+      "The two risk-controlled momentum factors did not improve mean development Rank IC and did not support a US x1.2 candidate under the frozen gate."
+    ],
+    "next_action": "Keep US x1.1 unchanged and close this atomic factor mission."
+  },
+  "automatic_promotion": false,
+  "trade_ready": false
+}

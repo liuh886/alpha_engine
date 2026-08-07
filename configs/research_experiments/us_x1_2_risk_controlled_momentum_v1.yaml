@@ -2,6 +2,8 @@ schema_version: '1.0'
 experiment_id: us_x1_2_risk_controlled_momentum_v1
 runner: cross_sectional_xgb_ranker_v1
 active: false
+status: completed_not_supported
+result_receipt: data/research/experiment_receipts/us_x1_2_risk_controlled_momentum_v1.json
 issue: 616
 parent_model_id: us_x1_1
 research_only: true
@@ -14,12 +16,18 @@ purpose: >-
   changes are deliberately excluded from this mission.
 
 snapshot:
-  policy: repository_provider_bound
-  provider_identity_sha256: 66129d0727beb8d7b014966651f8b72c119f99195e33553d9781c9954ef267d8
+  policy: exact_selected_pool_source_rebuild
+  source_dir: data/csv_source
+  provider_identity_sha256: c2b8cc29ad70afde1b4590a03da6f82d4a9fd1e242426bc936333b7f7c3bd39d
   cutoff: '2026-06-24'
   note: >-
-    The mission compares baseline and challenger on the same current repository
-    provider. It does not mutate or replace canonical US x1.1 evidence.
+    The mission rebuilds an exact provider from the committed selected pool plus
+    benchmark before execution. Unrelated repository CSV files are outside the
+    provider identity. Baseline and challenger consume the same provider. This
+    does not mutate or replace canonical US x1.1 evidence.
+
+source_repair:
+  approval_manifest: data/source_repairs/us_x1_2_risk_controlled_momentum_v1.json
 
 fixed_model:
   model_id: us_x1_1
