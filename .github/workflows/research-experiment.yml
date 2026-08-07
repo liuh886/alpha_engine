@@ -7,6 +7,7 @@ on:
       - 'configs/research_experiments/**'
       - 'src/research/cross_sectional_experiment_runner.py'
       - 'src/research/experiment_harness.py'
+      - 'scripts/rebuild_active_research_providers.py'
       - 'scripts/run_research_experiment.py'
       - 'scripts/run_active_research_experiments.py'
       - 'tests/test_cross_sectional_experiment_runner.py'
@@ -51,6 +52,7 @@ jobs:
           uv run ruff check \
             src/research/experiment_harness.py \
             src/research/cross_sectional_experiment_runner.py \
+            scripts/rebuild_active_research_providers.py \
             scripts/run_research_experiment.py \
             scripts/run_active_research_experiments.py \
             tests/test_experiment_harness.py \
@@ -59,6 +61,15 @@ jobs:
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
+
+      - name: Rebuild mission provider from repository sources
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
+            uv run python scripts/rebuild_active_research_providers.py --spec "${{ inputs.spec }}"
+          else
+            uv run python scripts/rebuild_active_research_providers.py
+          fi
 
       - name: Run committed research mission
         shell: bash
