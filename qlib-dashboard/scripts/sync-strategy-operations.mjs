@@ -5,7 +5,7 @@ const repoRoot = resolve(process.cwd(), '..');
 const catalogPath = resolve(repoRoot, 'data/research/formal_model_runs/catalog.json');
 const capabilityPath = resolve(repoRoot, 'data/research/strategy_operations/capabilities.json');
 const outputPath = resolve(process.cwd(), 'public/data/strategy-operations/capabilities.json');
-const allowedSources = new Set(['github_issue_v42', 'github_issue_byd', 'unavailable']);
+const allowedSources = new Set(['github_issue_v43', 'github_issue_byd', 'unavailable']);
 const allowedPipelineStatus = new Set(['available', 'unavailable']);
 
 function assert(condition, message) {
