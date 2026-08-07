@@ -116,3 +116,18 @@ def test_formal_state2_cancels_unconsumed_arm() -> None:
     assert trace.iloc[0]["panic_repair_armed_at_close"]
     assert not trace.iloc[5]["panic_repair_armed_at_close"]
     assert trace.iloc[5]["panic_repair_reason_at_close"] == "formal_state2_cancels_arm"
+
+
+def test_new_panic_resets_active_boost_without_same_close_reentry() -> None:
+    daily = _daily()
+    daily.loc[daily.index[4], "rsi_14"] = 25.0
+    trace = build_panic_repair_trace(
+        daily,
+        _sentiment([5.0, 8.0, 15.0, 20.0, 5.0, 40.0, 50.0]),
+    )
+
+    assert trace.iloc[4]["panic_start_at_close"]
+    assert trace.iloc[4]["panic_repair_reason_at_close"] == "panic_arms"
+    assert trace.iloc[4]["panic_repair_armed_at_close"]
+    assert not trace.iloc[4]["panic_repair_active_at_close"]
+    assert not trace.iloc[5]["panic_repair_active_at_open"]
