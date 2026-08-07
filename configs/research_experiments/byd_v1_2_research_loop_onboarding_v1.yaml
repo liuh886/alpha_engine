@@ -1,7 +1,9 @@
 schema_version: '1.0'
 experiment_id: byd_v1_2_research_loop_onboarding_v1
 runner: formal_baseline_onboarding_v1
-active: true
+active: false
+status: completed
+result_receipt: data/research/experiment_receipts/byd_v1_2_research_loop_onboarding_v1.json
 research_only: true
 trade_ready: false
 issue: 616
