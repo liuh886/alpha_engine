@@ -214,6 +214,10 @@ def run_vvix_state0_comparison(
     _, base_results = run_panic_repair_comparison(bars, bridge_contract, fear_greed)
     baseline = base_results[BASELINE]
     panic = base_results[PANIC]
+    for result in (baseline, panic):
+        result.metrics.setdefault("vvix_guard_sessions", 0)
+        result.metrics.setdefault("vvix_guard_years", 0)
+        result.metrics.setdefault("largest_guard_year_share", 0.0)
     guard = run_vvix_defensive_backtest(
         baseline,
         bars,
