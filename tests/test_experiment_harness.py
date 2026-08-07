@@ -53,11 +53,15 @@ def _write_spec(tmp_path: Path, *, reporting: list[str] | None = None) -> Path:
     return path
 
 
-def _rows() -> list[dict[str, object]]:
+def _rows(
+    *,
+    baseline_rank_ic: float = 0.030,
+    challenger_rank_ic: float = 0.040,
+) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for candidate_id, excess, drawdown, rank_ic in (
-        ("baseline_7factor", 0.04, -0.27, 0.030),
-        ("risk_controlled_9factor", 0.10, -0.20, 0.040),
+        ("baseline_7factor", 0.04, -0.27, baseline_rank_ic),
+        ("risk_controlled_9factor", 0.10, -0.20, challenger_rank_ic),
     ):
         for window in SELECTION_WINDOWS:
             for cost_bps, multiplier in ((20, 1.0), (60, 0.5)):
@@ -118,12 +122,28 @@ def test_reporting_only_window_cannot_change_winner_or_gates(tmp_path: Path) -> 
         candidate_metadata=_metadata(),
     )
 
+    assert base_receipt["leader"] == "risk_controlled_9factor"
     assert base_receipt["winner"] == "risk_controlled_9factor"
     assert base_receipt["supported"] is True
+    assert poisoned_receipt["leader"] == base_receipt["leader"]
     assert poisoned_receipt["winner"] == base_receipt["winner"]
     assert poisoned_receipt["decision"] == base_receipt["decision"]
     assert poisoned_receipt["candidates"] == base_receipt["candidates"]
     assert poisoned_receipt["reporting_windows_seen_but_not_used"] == ["2026H1"]
+
+
+def test_unsupported_challenger_is_leader_but_not_winner(tmp_path: Path) -> None:
+    contract = load_experiment_contract(_write_spec(tmp_path))
+    receipt = evaluate_experiment(
+        contract,
+        _rows(baseline_rank_ic=0.030, challenger_rank_ic=0.031),
+        candidate_metadata=_metadata(),
+    )
+
+    assert receipt["leader"] == "risk_controlled_9factor"
+    assert receipt["winner"] is None
+    assert receipt["decision"] == "not_supported"
+    assert receipt["supported"] is False
 
 
 def test_missing_selection_window_fails_closed(tmp_path: Path) -> None:
