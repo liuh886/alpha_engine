@@ -1,4 +1,4 @@
-name: Deploy Research Artifact Studio to Pages
+name: Deploy Strategy Console to Pages
 
 on:
   push:
@@ -95,7 +95,7 @@ jobs:
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
 
-      - name: Build static artifact studio
+      - name: Build static strategy console
         working-directory: qlib-dashboard
         env:
           VITE_RUNTIME_MODE: static_artifact
@@ -108,9 +108,10 @@ jobs:
           test -f dist/sw.js
           test -f dist/icons/alpha-engine.svg
           test -f dist/data/formal-model-runs/catalog.json
+          test -f dist/data/strategy-operations/capabilities.json
           test ! -e dist/data/formal-backtests
-          grep -q "Alpha Engine Research Studio" dist/index.html
-          grep -q "Governed Model Runs" dist/index.html
+          grep -q "Systematic Strategy Console" dist/index.html
+          grep -q "What are the strategies doing now?" dist/index.html
           grep -q '"display": "standalone"' dist/manifest.webmanifest
 
       - name: Setup Python
@@ -127,13 +128,13 @@ jobs:
       - name: Export repository research evidence
         run: |
           set -euo pipefail
-          python scripts/export_static_site_data.py \
+          PYTHONPATH=. python scripts/export_static_site_data.py \
             --source repository \
             --repository-catalog data/research/catalog.json \
             --output artifacts/site/data
           mkdir -p artifacts/site/docs
           cp docs/methodology.md artifacts/site/docs/methodology.md
-          python scripts/export_research_bundle.py \
+          PYTHONPATH=. python scripts/export_research_bundle.py \
             --source artifacts/site \
             --output artifacts/research-bundle
 
@@ -174,6 +175,7 @@ jobs:
           test -f _site/data/manifest.json
           test -f _site/data/models.json
           test -f _site/data/formal-model-runs/catalog.json
+          test -f _site/data/strategy-operations/capabilities.json
           test ! -e _site/data/formal-backtests
           test -f _site/docs/methodology.md
           test -f _site/bundle/alpha-engine-bundle.json
@@ -228,7 +230,7 @@ jobs:
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          python scripts/verify_pages_release.py \
+          PYTHONPATH=. python scripts/verify_pages_release.py \
             --base-url "$PAGE_URL" \
             --expected-commit "$GITHUB_SHA"
 
@@ -236,7 +238,7 @@ jobs:
         working-directory: qlib-dashboard
         run: npx playwright install --with-deps chromium
 
-      - name: Exercise all formal baselines on live Pages
+      - name: Exercise all formal strategies on live Pages
         working-directory: qlib-dashboard
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
