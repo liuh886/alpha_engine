@@ -38,7 +38,7 @@
       "model_id": "byd_v1_2_convex_momentum_budget_v1",
       "path": "byd_v1_2_convex_momentum_budget_v1.json",
       "publication_status": "accepted_formal_baseline",
-      "sha256": "e8a7cfa6b5d776bc7455348c7937fc31f8a7229d8f59442cf9cd8df4df531c92"
+      "sha256": "ce98f9c8940cb61a75f4036e34c75fb1b60c243ab73d31af257301fe373d580d"
     }
   ],
   "research_only": true,
