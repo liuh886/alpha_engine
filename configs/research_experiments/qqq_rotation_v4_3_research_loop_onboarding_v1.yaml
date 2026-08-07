@@ -1,0 +1,31 @@
+schema_version: '1.0'
+experiment_id: qqq_rotation_v4_3_research_loop_onboarding_v1
+runner: formal_baseline_onboarding_v1
+active: false
+status: completed
+result_receipt: data/research/experiment_receipts/qqq_rotation_v4_3_research_loop_onboarding_v1.json
+research_only: true
+trade_ready: false
+issue: 643
+
+purpose: >-
+  Bind the accepted QQQ Rotation v4.3 formal Model Run Bundle v2 into Alpha
+  Research Loop as the immutable rules-based allocation baseline. This
+  onboarding does not reopen v4.x parameter search or alter the formal model.
+
+baseline:
+  model_version_id: qqqi_qqq_tqqq_v4_3
+  model_family_id: qqq_rotation
+  model_kind: rules_based_allocation
+  bundle_id: 701fbe8bc6534ff035f6ad2b4c92e32582430c5bd17e5b873817b3fb0eab510d
+  manifest_sha256: 3516e73c9a8123ea48be5ed1bd7d1051a207d02bd94824ecef6bf41e925e8ad3
+
+expected_identity:
+  market: us
+  benchmark: QQQ
+  evidence_cutoff: '2026-08-06'
+
+lifecycle:
+  onboarding_only: true
+  automatic_promotion: false
+  next_challenger_requires_separate_mission: true
