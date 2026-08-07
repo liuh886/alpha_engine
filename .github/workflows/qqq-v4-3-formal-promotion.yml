@@ -7,8 +7,10 @@ on:
       - ".github/workflows/qqq-v4-3-formal-promotion.yml"
       - "src/artifacts/qqq_v4_3_formal.py"
       - "scripts/promote_qqq_v4_3_formal.py"
+      - "scripts/refresh_qqq_v4_3_formal.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "tests/test_qqq_v4_3_formal.py"
+      - "tests/test_refresh_qqq_v4_3_formal.py"
 
 permissions:
   contents: write
@@ -36,10 +38,13 @@ jobs:
           uv run ruff check \
             src/artifacts/qqq_v4_3_formal.py \
             scripts/promote_qqq_v4_3_formal.py \
+            scripts/refresh_qqq_v4_3_formal.py \
             scripts/sync_formal_bundle_v2.py \
-            tests/test_qqq_v4_3_formal.py
+            tests/test_qqq_v4_3_formal.py \
+            tests/test_refresh_qqq_v4_3_formal.py
           uv run pytest \
             tests/test_qqq_v4_3_formal.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_v4_33_ma200_ma20_vix_release.py \
             -q --strict-markers --tb=short
       - name: Build governed ETF bundle through promotion cutoff
@@ -48,15 +53,21 @@ jobs:
             --end-date 2026-08-06 \
             --output-root artifacts/v4-3-promotion/etf-bundle \
             --require-professional
-      - name: Materialize active formal v4.3 package
+      - name: Materialize or reuse active formal v4.3 package
         run: |
-          uv run python scripts/promote_qqq_v4_3_formal.py \
-            --current-root data/research/formal_backtests \
-            --output-root artifacts/v4-3-promotion/formal-v1 \
-            --end-date 2026-08-06 \
-            --evidence-cutoff 2026-08-06 \
-            --generated-at 2026-08-08T00:00:00Z \
-            --etf-data-bundle artifacts/v4-3-promotion/etf-bundle
+          set -euo pipefail
+          if grep -q '"model_id":"qqqi_qqq_tqqq_v4_3"' data/research/formal_backtests/catalog.json; then
+            rm -rf artifacts/v4-3-promotion/formal-v1
+            cp -a data/research/formal_backtests artifacts/v4-3-promotion/formal-v1
+          else
+            uv run python scripts/promote_qqq_v4_3_formal.py \
+              --current-root data/research/formal_backtests \
+              --output-root artifacts/v4-3-promotion/formal-v1 \
+              --end-date 2026-08-06 \
+              --evidence-cutoff 2026-08-06 \
+              --generated-at 2026-08-08T00:00:00Z \
+              --etf-data-bundle artifacts/v4-3-promotion/etf-bundle
+          fi
       - name: Project complete Formal Model Run Bundle v2
         run: |
           uv run python scripts/sync_formal_bundle_v2.py \
@@ -118,7 +129,32 @@ jobs:
           out.parent.mkdir(parents=True, exist_ok=True)
           out.write_text(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n')
           PY
-      - name: Commit verified publication tree
+      - name: Switch reviewed formal refresh from v4.2 to v4.3
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/formal-backtest-refresh.yml')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('Refresh QQQ Rotation v4.2', 'Refresh QQQ Rotation v4.3')
+          text = text.replace('qqqi_qqq_tqqq_v4_2', 'qqqi_qqq_tqqq_v4_3')
+          old = 'uv run python scripts/refresh_allocation_formal.py qqq \\\n'
+          new = 'uv run python scripts/refresh_qqq_v4_3_formal.py \\\n'
+          if old not in text:
+              raise SystemExit('old QQQ refresh invocation not found')
+          text = text.replace(old, new, 1)
+          marker = '      - "scripts/refresh_allocation_formal.py"\n'
+          if '      - "scripts/refresh_qqq_v4_3_formal.py"\n' not in text:
+              text = text.replace(marker, marker + '      - "scripts/refresh_qqq_v4_3_formal.py"\n', 1)
+          lint_marker = '            scripts/refresh_allocation_formal.py \\\n'
+          if '            scripts/refresh_qqq_v4_3_formal.py \\\n' not in text:
+              text = text.replace(lint_marker, lint_marker + '            scripts/refresh_qqq_v4_3_formal.py \\\n', 1)
+          test_marker = '            tests/test_formal_refresh.py\n'
+          if '            tests/test_refresh_qqq_v4_3_formal.py\n' not in text:
+              text = text.replace(test_marker, test_marker + '            tests/test_refresh_qqq_v4_3_formal.py\n', 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit verified publication and refresh wiring
         run: |
           rsync -a --delete artifacts/v4-3-promotion/formal-v1/ data/research/formal_backtests/
           rsync -a --delete artifacts/v4-3-promotion/formal-v2/ data/research/formal_model_runs/
@@ -127,9 +163,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/research/formal_backtests data/research/formal_model_runs \
-            data/research/strategy_operations/capabilities.json
+            data/research/strategy_operations/capabilities.json \
+            .github/workflows/formal-backtest-refresh.yml
           if ! git diff --cached --quiet; then
-            git commit -m "data: publish QQQ Rotation v4.3 formal baseline"
+            git commit -m "ops: wire QQQ v4.3 reviewed formal refresh"
             git push origin "HEAD:${GITHUB_HEAD_REF}"
           fi
       - name: Upload promotion publication tree
