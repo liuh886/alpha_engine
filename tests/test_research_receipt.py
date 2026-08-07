@@ -21,6 +21,7 @@ def test_us_mission_records_declared_aliases_and_effective_factors() -> None:
     assert lineage is not None
     assert lineage["source"] == "configs/factor_libraries/us_ohlcv.yaml"
     assert len(lineage["source_sha256"]) == 64
+    assert lineage["identity"]["scheme"] == "qlib_expression_text_v1"
 
     baseline = lineage["candidates"]["baseline_7factor"]
     challenger = lineage["candidates"]["risk_controlled_9factor"]
@@ -39,7 +40,8 @@ def test_us_mission_records_declared_aliases_and_effective_factors() -> None:
         "us:momentum:ret_10d@momentum_volatility_volume",
         "us:momentum:ret_10d@risk_controlled_momentum",
     ]
-    assert len(ret10["expression_sha256"]) == 64
+    assert ret10["canonical_expression_id"].startswith("qlib-expression:")
+    assert len(ret10["canonical_expression_sha256"]) == 64
 
 
 def test_mission_without_factor_library_does_not_invent_factor_lineage(
