@@ -9,10 +9,10 @@
     "model_family_id": "qqq_rotation",
     "model_kind": "rules_based_allocation",
     "run_id": "qqqi_qqq_tqqq_v4_3-promotion-through-2026_08_06",
-    "bundle_id": "701fbe8bc6534ff035f6ad2b4c92e32582430c5bd17e5b873817b3fb0eab510d",
+    "bundle_id": "df2f6675d68169fcb1e8c7cf58febc7722638b881584451f48127a0196453e0e",
     "evidence_cutoff": "2026-08-06",
     "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-promotion-through-2026_08_06/manifest.json",
-    "manifest_sha256": "3516e73c9a8123ea48be5ed1bd7d1051a207d02bd94824ecef6bf41e925e8ad3",
+    "manifest_sha256": "41999fd55f6386a291883b29f65f831bda077f708e6ef4deed1302632c81fa3e",
     "market": "us",
     "benchmark": "QQQ",
     "metrics": {
