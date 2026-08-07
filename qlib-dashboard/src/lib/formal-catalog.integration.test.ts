@@ -34,10 +34,18 @@ describe('published formal catalog', () => {
       'us_x1_1',
     ]);
 
+    const evidenceByModel = new Map<string, Awaited<ReturnType<typeof loadFormalRunEvidence>>>();
     for (const run of result.runs) {
       const evidence = await loadFormalRunEvidence(run);
       expect(evidence.performance.report.length).toBeGreaterThan(0);
       expect(evidence.portfolio.positions.length).toBeGreaterThan(0);
+      evidenceByModel.set(run.modelVersionId, evidence);
     }
+
+    const byd = evidenceByModel.get('byd_v1_2_convex_momentum_budget_v1');
+    expect(byd).toBeDefined();
+    const bydWeights = byd?.portfolio.positions.map((position) => position.weight) ?? [];
+    expect(bydWeights.some((weight) => weight > 1)).toBe(true);
+    expect(bydWeights.some((weight) => weight < 0)).toBe(true);
   });
 });
