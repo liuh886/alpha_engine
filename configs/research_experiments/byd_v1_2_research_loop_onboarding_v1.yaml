@@ -17,8 +17,8 @@ baseline:
   model_version_id: byd_v1_2_convex_momentum_budget_v1
   model_family_id: byd_allocation
   model_kind: rules_based_allocation
-  bundle_id: 833ce53e918da4d7c62dd288e4c33c062637ec75ca8e39600b4d2ac2bf676c7d
-  manifest_sha256: 04c41f58f3db245ad6c084f9294b53ce056f37ab976437b43b949cc57dc1876e
+  bundle_id: 65c9d6fc353fcca0f1c9c4a9ce7203058e3a4cb7eeac0a7b97bae19cbbfe8faf
+  manifest_sha256: a813f5cb166f6803d86608084f134e2e22ece431328c4091c5b9261fb7401177
 
 expected_identity:
   market: cn
