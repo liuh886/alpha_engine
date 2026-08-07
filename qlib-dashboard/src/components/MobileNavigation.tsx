@@ -56,7 +56,7 @@ export function MobileNavigation() {
             <nav className="flex-1 space-y-5 overflow-y-auto p-3" aria-label="Mobile strategy console navigation">
               {groups.map((group) => (
                 <section key={group.title}>
-                  <h2 className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/75">{group.title}</h2>
+                  <p className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/75">{group.title}</p>
                   <div className="space-y-1">
                     {group.items.map((item) => {
                       const Icon = item.icon;
