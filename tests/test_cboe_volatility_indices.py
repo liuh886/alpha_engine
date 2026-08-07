@@ -19,6 +19,12 @@ def test_parse_single_value_history() -> None:
     assert frame.loc[pd.Timestamp("2026-01-05"), "close"] == pytest.approx(95.0)
 
 
+def test_parse_skew_single_value_history() -> None:
+    text = "DATE,SKEW\n01/02/2026,142.5\n01/05/2026,145.0\n"
+    frame = parse_cboe_volatility_history("SKEW", text)
+    assert frame.loc[pd.Timestamp("2026-01-05"), "close"] == pytest.approx(145.0)
+
+
 def test_parser_rejects_unsupported_index() -> None:
     with pytest.raises(ValueError, match="unsupported"):
         parse_cboe_volatility_history("VIX6M", "DATE,CLOSE\n01/02/2026,20\n")

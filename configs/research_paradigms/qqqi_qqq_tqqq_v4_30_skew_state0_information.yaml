@@ -1,0 +1,61 @@
+experiment_id: qqqi_qqq_tqqq_v4_30_skew_state0_information
+parent_experiment_id: qqqi_qqq_tqqq_vxn_bridge_v4_2
+schema_version: "1.0"
+research_only: true
+trade_ready: false
+portfolio_construction_authorized: false
+issue: 632
+
+purpose: >-
+  Re-audit official Cboe SKEW numeric history and, only if the source passes,
+  test whether high option-tail pricing separates persistently worse forward
+  QQQ paths inside executed formal v4.2 state 0. No portfolio is built here.
+
+boundaries:
+  baseline_contract: configs/research_paradigms/qqqi_qqq_tqqq_vxn_bridge_v4_2.yaml
+  formal_state_trace_must_equal_v4_2: true
+  proxy_start_date: "2010-10-18"
+  required_source_first_date_on_or_before: "2011-01-03"
+  source_coverage_min: 0.98
+  portfolio_outcomes_forbidden: true
+  alert_changes_authorized: false
+
+source:
+  provider: Cboe Global Markets
+  symbol: SKEW
+  endpoint: https://cdn.cboe.com/api/global/us_indices/daily_prices/SKEW_History.csv
+  alternate_provider_fallback: false
+  source_splicing: false
+  forward_fill: false
+
+skew_high:
+  rolling_sessions: 252
+  quantile: 0.80
+  inheritance: v4_2_stress_geometry
+  threshold_search: false
+
+forward_information:
+  horizons: [20, 60]
+  first_return: next_session_open_to_following_open
+  metrics:
+    - median_forward_return
+    - forward_return_q10
+    - median_forward_max_drawdown
+    - forward_max_drawdown_q25
+  horizon_search: false
+
+information_gate:
+  high_skew_calendar_years_min: 8
+  largest_high_skew_year_share_max: 0.35
+  require_worse_median_max_drawdown_20d_both_halves: true
+  require_worse_median_max_drawdown_60d_both_halves: true
+  require_worse_q10_return_one_horizon_both_halves: true
+  require_full_sample_drawdown_sign_agreement: true
+
+hypothesis_discipline:
+  - Phase 0 source gate runs before any forward outcome calculation.
+  - If the official numeric source is absent or incomplete, stop and record the negative result.
+  - Do not use third-party SKEW history or splice old/new sources.
+  - Do not search SKEW absolute thresholds, rolling windows, quantiles or forward horizons.
+  - Do not combine SKEW with VVIX, term structure, breadth, realized volatility or credit in this issue.
+  - Passing only authorizes a separately frozen portfolio experiment; it cannot promote v4.3.

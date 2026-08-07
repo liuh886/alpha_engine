@@ -1,4 +1,4 @@
-"""Cboe daily volatility-index history adapter for QQQ research.
+"""Cboe daily index-history adapter for QQQ volatility/tail-risk research.
 
 Only official Cboe index-history CSV endpoints are supported. The adapter has
 no alternate provider, no source splicing and no forward fill.
@@ -12,7 +12,7 @@ from urllib.request import Request, urlopen
 
 import pandas as pd
 
-SUPPORTED_INDICES = ("VIX9D", "VIX3M", "VVIX")
+SUPPORTED_INDICES = ("VIX9D", "VIX3M", "VVIX", "SKEW")
 CBOE_HISTORY_URL = (
     "https://cdn.cboe.com/api/global/us_indices/daily_prices/{symbol}_History.csv"
 )
@@ -23,7 +23,7 @@ def parse_cboe_volatility_history(symbol: str, text: str) -> pd.DataFrame:
     """Parse one official Cboe daily-history CSV into a close-only frame."""
     normalized_symbol = str(symbol).strip().upper()
     if normalized_symbol not in SUPPORTED_INDICES:
-        raise ValueError(f"unsupported Cboe volatility index: {symbol}")
+        raise ValueError(f"unsupported Cboe index: {symbol}")
 
     reader = csv.DictReader(io.StringIO(text))
     if reader.fieldnames is None:
@@ -61,10 +61,10 @@ def fetch_cboe_volatility_history(
     end_date: str | None = None,
     timeout_seconds: float = 30.0,
 ) -> pd.DataFrame:
-    """Fetch one official Cboe daily volatility-index history."""
+    """Fetch one official Cboe daily index history."""
     normalized_symbol = str(symbol).strip().upper()
     if normalized_symbol not in SUPPORTED_INDICES:
-        raise ValueError(f"unsupported Cboe volatility index: {symbol}")
+        raise ValueError(f"unsupported Cboe index: {symbol}")
     url = CBOE_HISTORY_URL.format(symbol=normalized_symbol)
     request = Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "text/csv,*/*"})
     with urlopen(request, timeout=timeout_seconds) as response:
