@@ -10,14 +10,17 @@ on:
       - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "src/artifacts/formal_refresh.py"
+      - "src/artifacts/qqq_v4_3_formal.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/refresh_ranker_formal.py"
       - "scripts/refresh_allocation_formal.py"
+      - "scripts/refresh_qqq_v4_3_formal.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "scripts/data/build_etf_reference_bundle.py"
       - "src/data/etf_reference_bundle.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "tests/test_formal_refresh.py"
+      - "tests/test_refresh_qqq_v4_3_formal.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
@@ -79,12 +82,15 @@ jobs:
         run: |
           uv run ruff check \
             src/artifacts/formal_refresh.py \
+            src/artifacts/qqq_v4_3_formal.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/refresh_ranker_formal.py \
             scripts/refresh_allocation_formal.py \
+            scripts/refresh_qqq_v4_3_formal.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
-            tests/test_formal_refresh.py
-          uv run pytest tests/test_formal_refresh.py -q --strict-markers --tb=short
+            tests/test_formal_refresh.py \
+            tests/test_refresh_qqq_v4_3_formal.py
+          uv run pytest tests/test_formal_refresh.py tests/test_refresh_qqq_v4_3_formal.py -q --strict-markers --tb=short
       - name: Resolve transaction timestamp
         id: clock
         run: |
@@ -134,8 +140,8 @@ jobs:
           uv run python scripts/run_formal_refresh_transaction.py initialize \
             --current-root "$CURRENT_FORMAL_ROOT" \
             --candidate-root "$CANDIDATE_FORMAL_ROOT"
-      - name: Refresh QQQ Rotation v4.2
-        if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'qqqi_qqq_tqqq_v4_2')
+      - name: Refresh QQQ Rotation v4.3
+        if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'qqqi_qqq_tqqq_v4_3')
         env:
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
           GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
@@ -145,12 +151,12 @@ jobs:
             --end-date "$US_CUTOFF" \
             --output-root artifacts/formal-refresh/qqq-bundle \
             --require-professional
-          uv run python scripts/refresh_allocation_formal.py qqq \
-            --current-package "$CURRENT_FORMAL_ROOT/qqqi_qqq_tqqq_v4_2.json" \
+          uv run python scripts/refresh_qqq_v4_3_formal.py \
+            --current-package "$CURRENT_FORMAL_ROOT/qqqi_qqq_tqqq_v4_3.json" \
             --bundle-dir artifacts/formal-refresh/qqq-bundle \
             --cutoff "$US_CUTOFF" \
             --generated-at "$GENERATED_AT" \
-            --output "$CANDIDATE_FORMAL_ROOT/qqqi_qqq_tqqq_v4_2.json"
+            --output "$CANDIDATE_FORMAL_ROOT/qqqi_qqq_tqqq_v4_3.json"
       - name: Reproduce and refresh US x1.1 twice
         if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'us_x1_1')
         env:
@@ -278,6 +284,7 @@ jobs:
           set -euo pipefail
           uv run pytest \
             tests/test_formal_refresh.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_formal_backtest_freshness.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_model_x1_baselines.py \
