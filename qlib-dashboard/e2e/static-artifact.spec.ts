@@ -95,7 +95,7 @@ test('product homepage opens the strategy console', async ({ page }, testInfo) =
 
   await page.goto('/#/');
   await expect(page.getByRole('heading', { name: 'Run systematic strategies with the evidence still attached.' })).toBeVisible();
-  await expect(page.getAllByText('Start with what the strategies are doing now.').first()).toBeVisible();
+  await expect(page.getByText('Start with what the strategies are doing now.').first()).toBeVisible();
   await expect(page.getByText('Decision first. Evidence on demand.')).toBeVisible();
   await assertNoHorizontalOverflow(page);
   expect(pageErrors).toEqual([]);
