@@ -6,16 +6,7 @@ const catalogPath = resolve(repoRoot, 'data/research/formal_model_runs/catalog.j
 const snapshotsPath = resolve(repoRoot, 'data/research/strategy_operations/snapshots.json');
 const outputDir = resolve(process.cwd(), 'public/data/strategy-operations');
 const outputPath = resolve(outputDir, 'snapshots.json');
-const allowedStatuses = new Set([
-  'pipeline_unavailable',
-  'awaiting_observation',
-  'current_no_change',
-  'target_pending_execution',
-  'execution_observed',
-  'stale',
-  'blocked',
-  'delivery_failed',
-]);
+const allowedStatuses = new Set(['pipeline_unavailable', 'awaiting_observation', 'current_no_change', 'target_pending_execution', 'execution_observed', 'stale', 'blocked', 'delivery_failed']);
 const allowedFreshness = new Set(['current', 'stale', 'blocked', 'unknown']);
 
 function assert(condition, message) {
@@ -24,7 +15,6 @@ function assert(condition, message) {
 
 const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 const snapshots = JSON.parse(await readFile(snapshotsPath, 'utf8'));
-
 assert(snapshots.schema_version === '1.0.0', 'Unsupported strategy operations schema');
 assert(snapshots.research_only === true && snapshots.trade_ready === false, 'Invalid strategy operations boundary');
 assert(Array.isArray(snapshots.records), 'Strategy operations records are missing');
@@ -34,9 +24,12 @@ const formalIds = catalog.records.map((record) => String(record.model_version_id
 const operationIds = snapshots.records.map((record) => String(record.model_version_id)).sort();
 assert(new Set(operationIds).size === operationIds.length, 'Duplicate strategy operations model identity');
 assert(JSON.stringify(formalIds) === JSON.stringify(operationIds), 'Strategy operations set must exactly match the accepted formal catalog');
+const formalById = new Map(catalog.records.map((record) => [String(record.model_version_id), record]));
 
 for (const record of snapshots.records) {
   const id = record.model_version_id;
+  const formal = formalById.get(String(id));
+  assert(formal, `Missing formal record for ${id}`);
   assert(allowedStatuses.has(record.status), `Unsupported operations status for ${id}`);
   assert(allowedFreshness.has(record.data_freshness), `Unsupported data freshness for ${id}`);
   assert(allowedFreshness.has(record.factor_freshness), `Unsupported factor freshness for ${id}`);
@@ -47,6 +40,9 @@ for (const record of snapshots.records) {
   assert(Array.isArray(record.allocations), `Missing allocation list for ${id}`);
   assert(Array.isArray(record.drivers), `Missing driver list for ${id}`);
   assert(record.source_identity && typeof record.source_identity === 'object', `Missing source identity for ${id}`);
+  assert(record.source_identity.formal_bundle_id === formal.bundle_id, `Formal bundle identity drift for ${id}`);
+  assert(record.source_identity.formal_run_id === formal.run_id, `Formal run identity drift for ${id}`);
+  assert(record.source_identity.formal_evidence_cutoff === formal.evidence_cutoff, `Formal evidence cutoff drift for ${id}`);
 }
 
 await rm(outputDir, { recursive: true, force: true });
