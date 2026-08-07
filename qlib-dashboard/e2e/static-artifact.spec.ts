@@ -129,9 +129,9 @@ test('strategy console exposes four primary destinations and formal strategy dri
   const formalNames = await loadFormalDisplayNames(page);
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   for (const name of formalNames) await expect(fleet.getByText(name, { exact: true })).toBeVisible();
-  await fleet.getByText('QQQ Rotation v4.2', { exact: true }).click();
-  await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_2$/);
-  await expect(page.getByRole('heading', { name: 'QQQ Rotation v4.2' })).toBeVisible();
+  await fleet.getByText('QQQ Rotation v4.3', { exact: true }).click();
+  await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_3$/);
+  await expect(page.getByRole('heading', { name: 'QQQ Rotation v4.3' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current decision state' })).toBeVisible();
   const formalTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
   for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
