@@ -12,16 +12,22 @@ QQQ_SPEC = Path(
     "configs/research_experiments/qqq_rotation_v4_3_research_loop_onboarding_v1.yaml"
 )
 
+CN_BUNDLE_ID = "12ccb53404a198e184f89bf2bdcd724a17238be931a51df4fb781b8bdef3ba9e"
+CN_MANIFEST_SHA = "08ed64d75e101b4079212f3130798c54647b4f2071c6f7ea5f70abe047e8fc15"
+BYD_BUNDLE_ID = "e6b64d2d75e21e3701ec610c397ea16efcc5e9483cb30ad6475d1bd1d1fd990c"
+BYD_MANIFEST_SHA = "2fb50136a4a7f37d39a403392a6dde1217a7c3f58e920ac5f6ffa7101274f9d6"
+QQQ_BUNDLE_ID = "df2f6675d68169fcb1e8c7cf58febc7722638b881584451f48127a0196453e0e"
+QQQ_MANIFEST_SHA = "41999fd55f6386a291883b29f65f831bda077f708e6ef4deed1302632c81fa3e"
+
 
 def test_cn_x1_1_formal_bundle_is_hash_verified() -> None:
     baseline = load_formal_baseline(
         "cn_x1_1",
         expected_model_kind="cross_sectional_ranker",
         expected_model_family_id="cn_ranker",
-        expected_bundle_id="4ac43a397cba652ddee49c66acbda90fae0ff1c8cb7c3ac7947657e7d01fa1bb",
-        expected_manifest_sha256="f46922d12b2a8f5dbf8cb1251643417f7567a95d8e9fd8d867c65d2060e73a3d",
+        expected_bundle_id=CN_BUNDLE_ID,
+        expected_manifest_sha256=CN_MANIFEST_SHA,
     )
-
     assert baseline.market == "cn"
     assert baseline.benchmark == "000300"
     assert baseline.evidence_cutoff == "2026-08-03"
@@ -31,13 +37,10 @@ def test_cn_x1_1_formal_bundle_is_hash_verified() -> None:
 
 def test_cn_x1_1_onboarding_emits_research_only_receipt(tmp_path: Path) -> None:
     receipt = run_formal_baseline_onboarding(CN_SPEC, output_dir=tmp_path)
-
     assert receipt["status"] == "completed"
     assert receipt["decision"] == "formal_baseline_bound"
     assert receipt["baseline"]["model_version_id"] == "cn_x1_1"
-    assert receipt["baseline"]["bundle_id"] == (
-        "4ac43a397cba652ddee49c66acbda90fae0ff1c8cb7c3ac7947657e7d01fa1bb"
-    )
+    assert receipt["baseline"]["bundle_id"] == CN_BUNDLE_ID
     assert receipt["research_only"] is True
     assert receipt["trade_ready"] is False
     assert receipt["automatic_promotion"] is False
@@ -49,10 +52,9 @@ def test_byd_v1_2_rules_based_bundle_is_hash_verified() -> None:
         "byd_v1_2_convex_momentum_budget_v1",
         expected_model_kind="rules_based_allocation",
         expected_model_family_id="byd_allocation",
-        expected_bundle_id="65c9d6fc353fcca0f1c9c4a9ce7203058e3a4cb7eeac0a7b97bae19cbbfe8faf",
-        expected_manifest_sha256="a813f5cb166f6803d86608084f134e2e22ece431328c4091c5b9261fb7401177",
+        expected_bundle_id=BYD_BUNDLE_ID,
+        expected_manifest_sha256=BYD_MANIFEST_SHA,
     )
-
     assert baseline.market == "cn"
     assert baseline.benchmark == "BYD v1.1"
     assert baseline.evidence_cutoff == "2026-08-03"
@@ -63,16 +65,13 @@ def test_byd_v1_2_rules_based_bundle_is_hash_verified() -> None:
 
 def test_byd_v1_2_onboarding_emits_research_only_receipt(tmp_path: Path) -> None:
     receipt = run_formal_baseline_onboarding(BYD_SPEC, output_dir=tmp_path)
-
     assert receipt["status"] == "completed"
     assert receipt["decision"] == "formal_baseline_bound"
     assert receipt["baseline"]["model_version_id"] == (
         "byd_v1_2_convex_momentum_budget_v1"
     )
     assert receipt["baseline"]["model_kind"] == "rules_based_allocation"
-    assert receipt["baseline"]["bundle_id"] == (
-        "65c9d6fc353fcca0f1c9c4a9ce7203058e3a4cb7eeac0a7b97bae19cbbfe8faf"
-    )
+    assert receipt["baseline"]["bundle_id"] == BYD_BUNDLE_ID
     assert receipt["research_only"] is True
     assert receipt["trade_ready"] is False
     assert receipt["automatic_promotion"] is False
@@ -83,10 +82,9 @@ def test_qqq_rotation_v4_3_rules_based_bundle_is_hash_verified() -> None:
         "qqqi_qqq_tqqq_v4_3",
         expected_model_kind="rules_based_allocation",
         expected_model_family_id="qqq_rotation",
-        expected_bundle_id="701fbe8bc6534ff035f6ad2b4c92e32582430c5bd17e5b873817b3fb0eab510d",
-        expected_manifest_sha256="3516e73c9a8123ea48be5ed1bd7d1051a207d02bd94824ecef6bf41e925e8ad3",
+        expected_bundle_id=QQQ_BUNDLE_ID,
+        expected_manifest_sha256=QQQ_MANIFEST_SHA,
     )
-
     assert baseline.market == "us"
     assert baseline.benchmark == "QQQ"
     assert baseline.evidence_cutoff == "2026-08-06"
@@ -99,14 +97,11 @@ def test_qqq_rotation_v4_3_onboarding_emits_research_only_receipt(
     tmp_path: Path,
 ) -> None:
     receipt = run_formal_baseline_onboarding(QQQ_SPEC, output_dir=tmp_path)
-
     assert receipt["status"] == "completed"
     assert receipt["decision"] == "formal_baseline_bound"
     assert receipt["baseline"]["model_version_id"] == "qqqi_qqq_tqqq_v4_3"
     assert receipt["baseline"]["model_kind"] == "rules_based_allocation"
-    assert receipt["baseline"]["bundle_id"] == (
-        "701fbe8bc6534ff035f6ad2b4c92e32582430c5bd17e5b873817b3fb0eab510d"
-    )
+    assert receipt["baseline"]["bundle_id"] == QQQ_BUNDLE_ID
     assert receipt["research_only"] is True
     assert receipt["trade_ready"] is False
     assert receipt["automatic_promotion"] is False
