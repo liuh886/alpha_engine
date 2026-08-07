@@ -28,9 +28,12 @@ def _previous_alert(state_store: Path) -> dict[str, Any] | None:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ValueError("BYD signal latest record must be an object")
-    if value.get("model_id") != MODEL_ID:
+    if value.get("model_version_id") != MODEL_ID:
         raise ValueError("BYD signal latest record has the wrong model identity")
-    return value
+    signal = value.get("signal")
+    if not isinstance(signal, dict):
+        raise ValueError("BYD signal latest record has no governed signal payload")
+    return signal
 
 
 def _manifest_sha256(store_dir: Path) -> str:
@@ -78,7 +81,10 @@ def main() -> int:
     parser.add_argument(
         "--state-store",
         type=Path,
-        default=Path("data/research/byd_v1_2_signal_ledger"),
+        default=Path(
+            "data/research/strategy_signal_ledgers/"
+            "byd_v1_2_convex_momentum_budget_v1"
+        ),
     )
     parser.add_argument(
         "--output-dir",
