@@ -162,6 +162,27 @@ def test_tiny_ohlc_rounding_violation_is_reconciled_with_evidence():
     assert reconciled.attrs["ohlc_rounding_reconciliation"] == evidence
 
 
+def test_provider_scale_adjusted_ohlc_drift_is_reconciled():
+    close = 100.0
+    relative_gap = 2.2e-4
+    frame = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2026-08-07"]),
+            "open": [99.0],
+            "high": [close * (1.0 - relative_gap)],
+            "low": [98.0],
+            "close": [close],
+            "volume": [100.0],
+            "amount": [10000.0],
+            "factor": [1.0],
+        }
+    )
+    reconciled, evidence = _reconcile_ohlc_rounding(frame)
+    assert evidence["max_relative_violation"] == pytest.approx(relative_gap)
+    assert evidence["max_relative_violation"] < OHLC_ROUNDING_REL_TOL
+    assert reconciled.loc[0, "high"] == pytest.approx(close)
+
+
 def test_material_ohlc_inconsistency_remains_rejected(monkeypatch):
     frame = _frame(["2026-06-17"])
     frame.loc[:, "High"] = 10.0

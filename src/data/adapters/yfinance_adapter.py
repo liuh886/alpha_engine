@@ -8,7 +8,12 @@ import pandas as pd
 
 from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
 
-OHLC_ROUNDING_REL_TOL = 1e-8
+# Yahoo/yfinance adjusts and repairs OHLC fields independently. Small envelope
+# drift of a few basis points can therefore be introduced by provider rounding
+# even when the bar is economically consistent. Keep the reconciliation bound
+# narrow enough to reject genuinely malformed bars while tolerating that
+# provider-scale adjustment noise.
+OHLC_ROUNDING_REL_TOL = 5e-4
 
 
 def _get_yahoo_ticker(ticker: str, region: str) -> str:
@@ -37,7 +42,7 @@ def _reconcile_ohlc_rounding(
     *,
     relative_tolerance: float = OHLC_ROUNDING_REL_TOL,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Correct only machine-scale OHLC envelope drift and record evidence."""
+    """Correct bounded provider-adjustment OHLC envelope drift with evidence."""
 
     result = frame.copy()
     required_high = result[["open", "close", "low"]].max(axis=1)
