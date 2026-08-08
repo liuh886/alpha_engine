@@ -47,6 +47,8 @@ US_FAMILY = "us_ranker"
 CN_FAMILY = "cn_ranker"
 REBALANCE_SESSIONS = 10
 COST_BPS = 20
+US_SPEC_LABEL = "configs/research_paradigms/us_x1_1_frozen_v1.yaml"
+CN_CONFIG_LABEL = "configs/models/cn_x1_1.yaml"
 CN_FACTOR_COLUMNS = {
     "ohlcv.momentum.ret_3d": "momentum_3",
     "ohlcv.momentum.ret_5d": "momentum_5",
@@ -231,6 +233,7 @@ def _model_identity(
     *,
     formal_package: Path,
     model_config: Path,
+    model_config_label: str,
     provider_dir: Path,
     market: str,
 ) -> dict[str, Any]:
@@ -248,7 +251,7 @@ def _model_identity(
         "formal_model_id": formal.get("model_id"),
         "formal_evidence_cutoff": formal.get("evidence_cutoff"),
         "formal_package_sha256": _sha256_file(formal_package),
-        "model_config_path": str(model_config),
+        "model_config_path": model_config_label,
         "model_config_sha256": _sha256_file(model_config),
         "provider_identity_sha256": provider["provider_identity_sha256"],
     }
@@ -276,6 +279,7 @@ def _signal_payload(
         "signal_date": signal_date,
         "latest_data_date": signal_date,
         "market_cutoff": market_cutoff,
+        "execution_time": "next_eligible_open",
         "current_weights": dict(sorted(previous_weights.items())),
         "target_weights": dict(sorted(target_weights.items())),
         "turnover_units": turnover,
@@ -307,9 +311,7 @@ def score_us_current_target(
 ) -> dict[str, Any]:
     """Refit the frozen H1/H2 US x1.1 ranker and score one rebalance date."""
 
-    spec_path = (
-        repository_root / "configs/research_paradigms/us_x1_1_frozen_v1.yaml"
-    )
+    spec_path = repository_root / US_SPEC_LABEL
     spec = ResearchParadigmSpec.from_yaml(spec_path)
     plan = build_spec_bound_execution_plan(spec)
     candidates = materialize_ranker_candidates(plan)
@@ -409,18 +411,21 @@ def score_us_current_target(
     library = load_factor_library(
         repository_root / "configs/factor_libraries/ohlcv.yaml"
     )
-    factor_by_expression = {
-        normalize_expression(definition.expression): definition.factor_id
-        for definition in library.factors_for_groups(
-            ["momentum_volatility_volume"]
-        )
-    }
-    factor_columns = {
-        factor_by_expression[normalize_expression(expression)]: expression_columns[
-            expression
-        ]
+    expression_to_column = {
+        normalize_expression(expression): expression_columns[expression]
         for expression in expressions
     }
+    factor_columns: dict[str, str] = {}
+    for definition in library.factors_for_groups(
+        ["momentum_volatility_volume"]
+    ):
+        normalized = normalize_expression(definition.expression)
+        column = expression_to_column.get(normalized)
+        if column is None:
+            raise RankerCurrentTargetError(
+                f"frozen US ranker is missing canonical factor {definition.factor_id}"
+            )
+        factor_columns[definition.factor_id] = column
     factor_evidence = _factor_summary(
         model_family_id=US_FAMILY,
         signal_date=signal_date,
@@ -439,6 +444,7 @@ def score_us_current_target(
         model_identity=_model_identity(
             formal_package=formal_package,
             model_config=spec_path,
+            model_config_label=US_SPEC_LABEL,
             provider_dir=provider_dir,
             market="us",
         ),
@@ -500,7 +506,7 @@ def score_cn_current_target(
         repository_root
         / "configs/research_classifications/cn130_sector_industry_v1.yaml"
     )
-    model_config_path = repository_root / "configs/models/cn_x1_1.yaml"
+    model_config_path = repository_root / CN_CONFIG_LABEL
     universe = yaml.safe_load(universe_path.read_text(encoding="utf-8"))
     classification = yaml.safe_load(
         classification_path.read_text(encoding="utf-8")
@@ -620,6 +626,7 @@ def score_cn_current_target(
         model_identity=_model_identity(
             formal_package=formal_package,
             model_config=model_config_path,
+            model_config_label=CN_CONFIG_LABEL,
             provider_dir=provider_dir,
             market="cn",
         ),
