@@ -18,7 +18,7 @@ universe:
   listing_policy: "no_prelisting_fill_coverage_qualified_static_members"
 
 factor_library:
-  source: "configs/factor_libraries/cn_ohlcv.yaml"
+  source: "configs/factor_libraries/ohlcv.yaml"
   groups:
     - "cn_balanced_ohlcv"
     - "cn_volatility_reversal"
@@ -41,10 +41,10 @@ candidate_grid:
         min_data_in_leaf: 20
         learning_rate: 0.03
   factor_baselines:
-    - "factor:cn_momentum_10d"
-    - "factor:cn_reversal_5d"
-    - "factor:cn_volatility_10d"
-    - "factor:cn_volume_shock_10d"
+    - "ohlcv.momentum.ret_10d"
+    - "ohlcv.reversal.inv_ret_5d"
+    - "ohlcv.volatility.std_ret_10d"
+    - "ohlcv.liquidity.volume_vs_ma_10d"
 
 strategy:
   horizon_days: 10
