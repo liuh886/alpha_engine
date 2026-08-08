@@ -372,7 +372,7 @@ jobs:
           - Historical reports, positions and trades: immutable prefix verified
           - Formal v1, Bundle v2, Market Evidence and Strategy Operations: one reviewed publication
           - Model selection: not reopened
-          - Protected auto-merge: armed after candidate validation
+          - Protected merge: all candidate PR checks must pass before explicit squash merge
           - Pages publication: dispatched only after the reviewed PR merges
           - Research only: true
           - Trade ready: false
@@ -392,38 +392,30 @@ jobs:
           fi
           test -n "$number"
           echo "pr_number=$number" >> "$GITHUB_OUTPUT"
-      - name: Arm protected auto-merge
-        if: steps.pull_request.outputs.pr_number != ''
-        env:
-          PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
-        run: |
-          set -euo pipefail
-          gh pr ready "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"
-          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash --auto
-      - name: Wait for protected merge and dispatch Pages
+      - name: Wait for candidate checks, merge reviewed refresh, and dispatch Pages
         if: steps.pull_request.outputs.pr_number != ''
         timeout-minutes: 60
         env:
           PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 240); do
-            state="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json state --jq '.state')"
-            if [[ "$state" == "MERGED" ]]; then
-              merge_sha="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq '.mergeCommit.oid')"
-              test -n "$merge_sha"
-              echo "Reviewed refresh merged at ${merge_sha}; dispatching Pages from main."
-              gh workflow run deploy-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
-              exit 0
-            fi
-            if [[ "$state" == "CLOSED" ]]; then
-              echo "Reviewed refresh PR closed without merge." >&2
-              exit 1
-            fi
-            sleep 15
-          done
-          echo "Timed out waiting for protected auto-merge." >&2
-          exit 1
+          gh pr ready "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"
+          echo "Waiting for all candidate PR checks before merge."
+          gh pr checks "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --watch --fail-fast --interval 10
+          state="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json state --jq '.state')"
+          if [[ "$state" == "CLOSED" ]]; then
+            echo "Reviewed refresh PR closed without merge." >&2
+            exit 1
+          fi
+          if [[ "$state" != "MERGED" ]]; then
+            gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash
+          fi
+          state="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json state --jq '.state')"
+          test "$state" = "MERGED"
+          merge_sha="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq '.mergeCommit.oid')"
+          test -n "$merge_sha"
+          echo "Reviewed refresh merged at ${merge_sha}; dispatching Pages from main."
+          gh workflow run deploy-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
       - name: Upload bounded refresh evidence
         if: always()
         uses: actions/upload-artifact@v4
