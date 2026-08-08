@@ -20,7 +20,7 @@ universe:
   listing_policy: "no_prelisting_fill_coverage_qualified_static_members"
 
 factor_library:
-  source: "configs/factor_libraries/us_ohlcv.yaml"
+  source: "configs/factor_libraries/ohlcv.yaml"
   groups:
     - "momentum_volatility_volume"
 
