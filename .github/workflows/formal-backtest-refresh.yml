@@ -51,7 +51,7 @@ permissions:
 
 concurrency:
   group: reviewed-formal-backtest-refresh-live
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   CURRENT_FORMAL_ROOT: data/research/formal_backtests
