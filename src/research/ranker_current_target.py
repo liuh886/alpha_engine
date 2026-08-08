@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from src.data.market_provider import load_provider_manifest
 from src.factors.library import load_factor_library, normalize_expression
 from src.factors.ranker_snapshot import build_ranker_factor_snapshot
 from src.research.cn130_cross_sectional_ranking import (
@@ -75,16 +76,33 @@ def _json(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def _canonical_sha(payload: Mapping[str, Any]) -> str:
-    text = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    text = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _latest_formal_weights(package: Mapping[str, Any]) -> tuple[str, dict[str, float]]:
+def _latest_formal_weights(
+    package: Mapping[str, Any],
+) -> tuple[str, dict[str, float]]:
     positions = package.get("positions")
     if not isinstance(positions, list) or not positions:
         raise RankerCurrentTargetError("formal package has no positions")
-    dates = sorted({str(row.get("date", "")) for row in positions if isinstance(row, dict)})
+    dates = sorted(
+        {
+            str(row.get("date", ""))
+            for row in positions
+            if isinstance(row, dict)
+        }
+    )
     if not dates or not dates[-1]:
         raise RankerCurrentTargetError("formal positions have no signal date")
     anchor = dates[-1]
@@ -114,18 +132,29 @@ def load_previous_state(
         raise RankerCurrentTargetError("latest live ranker record is invalid")
     live_weights = {str(key): float(value) for key, value in target.items()}
     if abs(sum(live_weights.values()) - 1.0) > 1e-6:
-        raise RankerCurrentTargetError("latest live target weights do not sum to one")
+        raise RankerCurrentTargetError(
+            "latest live target weights do not sum to one"
+        )
     if pd.Timestamp(signal_date) >= pd.Timestamp(formal_anchor):
         return signal_date, dict(sorted(live_weights.items()))
     return formal_anchor, formal_weights
 
 
 def next_due_session(
-    *, anchor: str, sessions: Sequence[pd.Timestamp], cadence: int = REBALANCE_SESSIONS
+    *,
+    anchor: str,
+    sessions: Sequence[pd.Timestamp],
+    cadence: int = REBALANCE_SESSIONS,
 ) -> str | None:
     """Return exactly the cadence-th provider session after the last target."""
 
-    dates = pd.DatetimeIndex(pd.to_datetime(list(sessions))).tz_localize(None).normalize().unique().sort_values()
+    dates = (
+        pd.DatetimeIndex(pd.to_datetime(list(sessions)))
+        .tz_localize(None)
+        .normalize()
+        .unique()
+        .sort_values()
+    )
     anchor_ts = pd.Timestamp(anchor).normalize()
     matches = np.flatnonzero(dates == anchor_ts)
     if len(matches) != 1:
@@ -138,9 +167,14 @@ def next_due_session(
     return pd.Timestamp(dates[due_index]).strftime("%Y-%m-%d")
 
 
-def _turnover(previous: Mapping[str, float], target: Mapping[str, float]) -> float:
+def _turnover(
+    previous: Mapping[str, float], target: Mapping[str, float]
+) -> float:
     names = set(previous) | set(target)
-    return 0.5 * sum(abs(target.get(name, 0.0) - previous.get(name, 0.0)) for name in names)
+    return 0.5 * sum(
+        abs(target.get(name, 0.0) - previous.get(name, 0.0))
+        for name in names
+    )
 
 
 def _factor_summary(
@@ -155,12 +189,14 @@ def _factor_summary(
     instruments = features.index.get_level_values("instrument")
     selected = features.loc[instruments.isin(target_names)].copy()
     if selected.empty:
-        raise RankerCurrentTargetError("target holdings have no factor rows")
+        raise RankerCurrentTargetError("factor reference basket has no rows")
     factor_values: dict[str, float] = {}
     references: dict[str, dict[str, Any]] = {}
     for factor_id, column in factor_columns.items():
         if column not in features.columns:
-            raise RankerCurrentTargetError(f"missing current factor column: {column}")
+            raise RankerCurrentTargetError(
+                f"missing current factor column: {column}"
+            )
         series = selected[column]
         weighted = 0.0
         used = 0.0
@@ -171,12 +207,15 @@ def _factor_summary(
                 weighted += weight * float(value)
                 used += weight
         if used <= 0.0:
-            raise RankerCurrentTargetError(f"factor {factor_id} has no target observations")
-        factor_values[factor_id] = weighted / used
+            raise RankerCurrentTargetError(
+                f"factor {factor_id} has no reference observations"
+            )
+        value = weighted / used
+        factor_values[factor_id] = value
         references[factor_id] = {
-            "target_weighted_mean": weighted / used,
+            "reference_weighted_mean": value,
             "universe_mean": float(features[column].mean()),
-            "target_weight_covered": used,
+            "reference_weight_covered": used,
         }
     return build_ranker_factor_snapshot(
         model_family_id=model_family_id,
@@ -188,6 +227,33 @@ def _factor_summary(
     )
 
 
+def _model_identity(
+    *,
+    formal_package: Path,
+    model_config: Path,
+    provider_dir: Path,
+    market: str,
+) -> dict[str, Any]:
+    formal = _json(formal_package)
+    provider = load_provider_manifest(
+        provider_dir,
+        expected_market=market,
+        required=True,
+        verify_files=True,
+    )
+    if provider is None:
+        raise RankerCurrentTargetError("provider manifest is unavailable")
+    return {
+        "formal_backtest_id": formal.get("backtest_id"),
+        "formal_model_id": formal.get("model_id"),
+        "formal_evidence_cutoff": formal.get("evidence_cutoff"),
+        "formal_package_sha256": _sha256_file(formal_package),
+        "model_config_path": str(model_config),
+        "model_config_sha256": _sha256_file(model_config),
+        "provider_identity_sha256": provider["provider_identity_sha256"],
+    }
+
+
 def _signal_payload(
     *,
     model_version_id: str,
@@ -197,14 +263,16 @@ def _signal_payload(
     previous_weights: Mapping[str, float],
     target_weights: Mapping[str, float],
     factor_evidence: Mapping[str, Any],
+    model_identity: Mapping[str, Any],
     reason_code: str,
     diagnostics: Mapping[str, Any],
 ) -> dict[str, Any]:
     turnover = _turnover(previous_weights, target_weights)
     changed = turnover > 1e-12
-    core = {
+    core: dict[str, Any] = {
         "model_version_id": model_version_id,
         "model_family_id": model_family_id,
+        "model_identity": dict(model_identity),
         "signal_date": signal_date,
         "latest_data_date": signal_date,
         "market_cutoff": market_cutoff,
@@ -237,73 +305,121 @@ def score_us_current_target(
     market_cutoff: str,
     repository_root: Path,
 ) -> dict[str, Any]:
-    """Refit the frozen H1/H2 US x1.1 ranker and score one current rebalance date."""
+    """Refit the frozen H1/H2 US x1.1 ranker and score one rebalance date."""
 
-    spec = ResearchParadigmSpec.from_yaml(
+    spec_path = (
         repository_root / "configs/research_paradigms/us_x1_1_frozen_v1.yaml"
     )
+    spec = ResearchParadigmSpec.from_yaml(spec_path)
     plan = build_spec_bound_execution_plan(spec)
     candidates = materialize_ranker_candidates(plan)
     if len(candidates) != 1:
-        raise RankerCurrentTargetError("US x1.1 must materialize exactly one ranker")
+        raise RankerCurrentTargetError(
+            "US x1.1 must materialize exactly one ranker"
+        )
     candidate = candidates[0]
-    symbols = [str(value) for value in plan.declared_contract["universe"]["requested_symbols"]]
+    symbols = [
+        str(value)
+        for value in plan.declared_contract["universe"]["requested_symbols"]
+    ]
     runtime = QlibUSExecutionRuntime(provider_uri=provider_dir)
     runtime.initialize(repository_root)
     available = runtime.available_symbols()
     missing = sorted(set(symbols) - available)
     if missing:
-        raise RankerCurrentTargetError(f"US provider missing frozen universe symbols: {missing}")
+        raise RankerCurrentTargetError(
+            f"US provider missing frozen universe symbols: {missing}"
+        )
 
     signal_ts = pd.Timestamp(signal_date)
-    half_start = pd.Timestamp(f"{signal_ts.year}-{'01-01' if signal_ts.month <= 6 else '07-01'}")
+    half_start = pd.Timestamp(
+        f"{signal_ts.year}-{'01-01' if signal_ts.month <= 6 else '07-01'}"
+    )
     train_start = str(spec.walk_forward["requested_train_start"])
     train_end = (half_start - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
     expressions = sorted(set(candidate.feature_group.expressions))
-    expression_columns = {expr: sanitize_factor_name(expr) for expr in expressions}
+    expression_columns = {
+        expression: sanitize_factor_name(expression)
+        for expression in expressions
+    }
     features_all = normalize_qlib_frame_index(
         runtime.features(symbols, expressions, train_start, signal_date)
     ).replace([np.inf, -np.inf], np.nan)
-    features_all.columns = [expression_columns[expr] for expr in expressions]
+    features_all.columns = [
+        expression_columns[expression] for expression in expressions
+    ]
+    return_expression = str(spec.strategy["return_expression"])
     returns_all = normalize_qlib_frame_index(
-        runtime.features(symbols, [str(spec.strategy["return_expression"])], train_start, train_end)
+        runtime.features(
+            symbols,
+            [return_expression],
+            train_start,
+            train_end,
+        )
     )
     returns_all.columns = ["return"]
     dates = features_all.index.get_level_values("datetime")
-    train_mask = (dates >= pd.Timestamp(train_start)) & (dates <= pd.Timestamp(train_end))
+    train_mask = (dates >= pd.Timestamp(train_start)) & (
+        dates <= pd.Timestamp(train_end)
+    )
     test_mask = dates == signal_ts
     features_train_raw = features_all.loc[train_mask].copy()
     return_dates = returns_all.index.get_level_values("datetime")
     returns_train_raw = returns_all.loc[
-        (return_dates >= pd.Timestamp(train_start)) & (return_dates <= pd.Timestamp(train_end))
+        (return_dates >= pd.Timestamp(train_start))
+        & (return_dates <= pd.Timestamp(train_end))
     ].copy()
     features_train, returns_train = purge_training_tail(
         features_train_raw,
         returns_train_raw,
         holding_days=int(spec.strategy["holding_days"]),
     )
-    valid, reason = validate_no_nan_inputs(features_train, context="US x1.1 current target")
+    valid, reason = validate_no_nan_inputs(
+        features_train,
+        context="US x1.1 current target",
+    )
     if not valid:
         raise RankerCurrentTargetError(reason)
     features_test = features_all.loc[test_mask].copy()
     if len(features_test) < int(spec.universe["min_symbols"]):
-        raise RankerCurrentTargetError("US current target has insufficient feature rows")
-    scores = fit_ranker_scores(candidate, features_train, returns_train, features_test, expression_columns)
-    day = scores.reset_index().sort_values(["score", "instrument"], ascending=[False, True], kind="mergesort")
+        raise RankerCurrentTargetError(
+            "US current target has insufficient feature rows"
+        )
+    scores = fit_ranker_scores(
+        candidate,
+        features_train,
+        returns_train,
+        features_test,
+        expression_columns,
+    )
+    day = scores.reset_index().sort_values(
+        ["score", "instrument"],
+        ascending=[False, True],
+        kind="mergesort",
+    )
     top_n = int(spec.strategy["top_n"])
     chosen = day.head(top_n)
     weight = 1.0 / top_n
     target = {str(symbol): weight for symbol in chosen["instrument"]}
-    previous_date, previous = load_previous_state(formal_package=formal_package, ledger_dir=ledger_dir)
+    previous_date, previous = load_previous_state(
+        formal_package=formal_package,
+        ledger_dir=ledger_dir,
+    )
 
-    library = load_factor_library(repository_root / "configs/factor_libraries/ohlcv.yaml")
+    library = load_factor_library(
+        repository_root / "configs/factor_libraries/ohlcv.yaml"
+    )
     factor_by_expression = {
         normalize_expression(definition.expression): definition.factor_id
-        for definition in library.factors_for_groups(["momentum_volatility_volume"])
+        for definition in library.factors_for_groups(
+            ["momentum_volatility_volume"]
+        )
     }
     factor_columns = {
-        factor_by_expression[normalize_expression(expr)]: expression_columns[expr]
-        for expr in expressions
+        factor_by_expression[normalize_expression(expression)]: expression_columns[
+            expression
+        ]
+        for expression in expressions
     }
     factor_evidence = _factor_summary(
         model_family_id=US_FAMILY,
@@ -320,6 +436,12 @@ def score_us_current_target(
         previous_weights=previous,
         target_weights=target,
         factor_evidence=factor_evidence,
+        model_identity=_model_identity(
+            formal_package=formal_package,
+            model_config=spec_path,
+            provider_dir=provider_dir,
+            market="us",
+        ),
         reason_code="frozen_us_x1_1_10_session_rebalance",
         diagnostics={
             "previous_signal_date": previous_date,
@@ -331,17 +453,31 @@ def score_us_current_target(
     )
 
 
-def _select_cn_sector_breadth(day: pd.DataFrame, *, sectors: int, names_per_sector: int) -> pd.DataFrame:
+def _select_cn_sector_breadth(
+    day: pd.DataFrame,
+    *,
+    sectors: int,
+    names_per_sector: int,
+) -> pd.DataFrame:
     ranked = day.dropna(subset=["score", "sector"]).copy()
-    ranked = ranked.sort_values(["score", "instrument"], ascending=[False, True], kind="mergesort")
+    ranked = ranked.sort_values(
+        ["score", "instrument"],
+        ascending=[False, True],
+        kind="mergesort",
+    )
     ranked["score_pct"] = ranked["score"].rank(method="average", pct=True)
     sector_scores = ranked.groupby("sector", sort=True)["score_pct"].apply(
         lambda series: float(series.nlargest(min(3, len(series))).mean())
     )
     selected = list(
-        sector_scores.sort_values(ascending=False, kind="mergesort").head(sectors).index
+        sector_scores.sort_values(ascending=False, kind="mergesort")
+        .head(sectors)
+        .index
     )
-    pieces = [ranked.loc[ranked["sector"] == sector].head(names_per_sector) for sector in selected]
+    pieces = [
+        ranked.loc[ranked["sector"] == sector].head(names_per_sector)
+        for sector in selected
+    ]
     return pd.concat(pieces, ignore_index=False) if pieces else ranked.head(0)
 
 
@@ -354,36 +490,64 @@ def score_cn_current_target(
     market_cutoff: str,
     repository_root: Path,
 ) -> dict[str, Any]:
-    """Refit the frozen CN x1.1 ranker and apply its certified regime/sector sleeve."""
+    """Refit CN x1.1 and apply its certified regime/sector sleeve."""
 
-    universe = yaml.safe_load(
-        (repository_root / "configs/research_universes/cn_selected_equities_v3.yaml").read_text(encoding="utf-8")
+    universe_path = (
+        repository_root
+        / "configs/research_universes/cn_selected_equities_v3.yaml"
     )
+    classification_path = (
+        repository_root
+        / "configs/research_classifications/cn130_sector_industry_v1.yaml"
+    )
+    model_config_path = repository_root / "configs/models/cn_x1_1.yaml"
+    universe = yaml.safe_load(universe_path.read_text(encoding="utf-8"))
     classification = yaml.safe_load(
-        (repository_root / "configs/research_classifications/cn130_sector_industry_v1.yaml").read_text(encoding="utf-8")
+        classification_path.read_text(encoding="utf-8")
     )["symbols"]
     symbols = [str(value) for value in universe["symbols"]]
-    panel = load_provider_panel(provider_dir, [*symbols, cn_core.BENCHMARK])
-    families, _ = build_feature_matrices(panel, symbols=symbols, benchmark=cn_core.BENCHMARK)
+    panel = load_provider_panel(
+        provider_dir,
+        [*symbols, cn_core.BENCHMARK],
+    )
+    families, _ = build_feature_matrices(
+        panel,
+        symbols=symbols,
+        benchmark=cn_core.BENCHMARK,
+    )
     features = families["current_cn_ohlcv"]
     raw_returns = stack_return_frame(
-        forward_returns(panel.fields["close"][symbols], horizon=REBALANCE_SESSIONS),
+        forward_returns(
+            panel.fields["close"][symbols],
+            horizon=REBALANCE_SESSIONS,
+        ),
         "raw_forward_return",
     )
     signal_ts = pd.Timestamp(signal_date)
-    half_start = pd.Timestamp(f"{signal_ts.year}-{'01-01' if signal_ts.month <= 6 else '07-01'}")
+    half_start = pd.Timestamp(
+        f"{signal_ts.year}-{'01-01' if signal_ts.month <= 6 else '07-01'}"
+    )
     train_dates = cn_core.purged_training_dates(panel.calendar, half_start)
     train_x = cn_core.slice_dates(features, train_dates)
     train_raw = cn_core.slice_dates(raw_returns, train_dates)
+    benchmark_returns = forward_returns(
+        panel.fields["close"][[cn_core.BENCHMARK]],
+        horizon=REBALANCE_SESSIONS,
+    )[cn_core.BENCHMARK]
     target_label = make_label(
         train_raw,
         mode="raw",
-        benchmark_returns=forward_returns(panel.fields["close"][[cn_core.BENCHMARK]], horizon=REBALANCE_SESSIONS)[cn_core.BENCHMARK],
+        benchmark_returns=benchmark_returns,
         classification=classification,
     )
-    test_x = cn_core.slice_dates(features, pd.DatetimeIndex([signal_ts]))
+    test_x = cn_core.slice_dates(
+        features,
+        pd.DatetimeIndex([signal_ts]),
+    )
     if test_x.empty:
-        raise RankerCurrentTargetError(f"CN provider has no factor rows on {signal_date}")
+        raise RankerCurrentTargetError(
+            f"CN provider has no factor rows on {signal_date}"
+        )
     scores = cn_core.fit_predict_cell(
         ranking_id="r0_cn_x1_0_raw_return_rank",
         train_features=train_x,
@@ -392,7 +556,9 @@ def score_cn_current_target(
         classification=classification,
         seed=42,
     )
-    day = scores.join(attach_classification(scores.index, classification)).reset_index()
+    day = scores.join(
+        attach_classification(scores.index, classification)
+    ).reset_index()
     gate = RegimeGateSpec()
     state = build_regime_state(
         panel.fields["close"],
@@ -406,23 +572,40 @@ def score_cn_current_target(
     risk_on = regime_signal(state, signal_ts, "two_of_three")
     if risk_on:
         chosen = _select_cn_sector_breadth(
-            day, sectors=gate.sectors, names_per_sector=gate.names_per_sector
+            day,
+            sectors=gate.sectors,
+            names_per_sector=gate.names_per_sector,
         )
-        if len(chosen) != gate.sectors * gate.names_per_sector:
-            raise RankerCurrentTargetError("CN sector-breadth target is incomplete")
+        expected = gate.sectors * gate.names_per_sector
+        if len(chosen) != expected:
+            raise RankerCurrentTargetError(
+                "CN sector-breadth target is incomplete"
+            )
         weight = 1.0 / len(chosen)
-        target = {str(symbol): weight for symbol in chosen["instrument"]}
+        target = {
+            str(symbol): weight for symbol in chosen["instrument"]
+        }
+        factor_reference = target
     else:
         target = {cn_core.BENCHMARK: 1.0}
-    previous_date, previous = load_previous_state(formal_package=formal_package, ledger_dir=ledger_dir)
-
-    factor_features = test_x
-    factor_target = target if risk_on else {str(day.iloc[0]["instrument"]): 1.0}
+        ranked_names = [str(value) for value in day["instrument"]]
+        if not ranked_names:
+            raise RankerCurrentTargetError(
+                "CN risk-off decision has no cross-sectional factor rows"
+            )
+        reference_weight = 1.0 / len(ranked_names)
+        factor_reference = {
+            symbol: reference_weight for symbol in ranked_names
+        }
+    previous_date, previous = load_previous_state(
+        formal_package=formal_package,
+        ledger_dir=ledger_dir,
+    )
     factor_evidence = _factor_summary(
         model_family_id=CN_FAMILY,
         signal_date=signal_date,
-        target_weights=factor_target,
-        features=factor_features,
+        target_weights=factor_reference,
+        features=test_x,
         factor_columns=CN_FACTOR_COLUMNS,
     )
     state_row = state.loc[signal_ts]
@@ -434,6 +617,12 @@ def score_cn_current_target(
         previous_weights=previous,
         target_weights=target,
         factor_evidence=factor_evidence,
+        model_identity=_model_identity(
+            formal_package=formal_package,
+            model_config=model_config_path,
+            provider_dir=provider_dir,
+            market="cn",
+        ),
         reason_code=(
             "cn_x1_1_sector_breadth_risk_on"
             if risk_on
@@ -447,7 +636,9 @@ def score_cn_current_target(
             "votes": int(state_row["votes"]),
             "long_trend": bool(state_row["long_trend"]),
             "medium_momentum": bool(state_row["medium_momentum"]),
-            "cross_sectional_breadth": bool(state_row["cross_sectional_breadth"]),
+            "cross_sectional_breadth": bool(
+                state_row["cross_sectional_breadth"]
+            ),
             "breadth_value": float(state_row["breadth_value"]),
         },
     )
