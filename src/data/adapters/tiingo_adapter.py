@@ -147,7 +147,7 @@ class TiingoHttpClient:
                     and retry_after <= self.max_retry_after_seconds
                 )
                 if retryable and attempt < self.max_attempts:
-                    if exc.code == 429 and not can_wait:
+                    if exc.code == 429 and retry_after is not None and not can_wait:
                         raise TiingoRateLimitError(
                             status_code=exc.code,
                             path=path,
