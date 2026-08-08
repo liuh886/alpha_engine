@@ -1,0 +1,67 @@
+name: QQQ v4.3 Main State Sync
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/qqq-v4-3-main-state-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+      - name: Import only newer mainline signal-ledger state
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout origin/main -- data/research/strategy_signal_ledgers/byd_v1_2_convex_momentum_budget_v1
+      - name: Rebuild unified Strategy Operations snapshot
+        run: |
+          set -euo pipefail
+          generated_at="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('data/research/formal_backtests/catalog.json').read_text(encoding='utf-8'))
+          print(payload['published_at'])
+          PY
+          )"
+          uv run python scripts/build_strategy_operations.py \
+            --formal-catalog data/research/formal_model_runs/catalog.json \
+            --ledger-root data/research/strategy_signal_ledgers \
+            --generated-at "$generated_at" \
+            --output data/research/strategy_operations/snapshots.json
+          node qlib-dashboard/scripts/sync-strategy-operations.mjs
+          uv run pytest tests/test_strategy_operations.py -q --strict-markers --tb=short
+      - name: Commit reconciled signal state
+        run: |
+          set -euo pipefail
+          git config user.name "AlphaEngine Operations Agent"
+          git config user.email "operations-agent@alphaengine.local"
+          git add \
+            data/research/strategy_signal_ledgers/byd_v1_2_convex_momentum_budget_v1 \
+            data/research/strategy_operations/snapshots.json \
+            qlib-dashboard/public/data/strategy-operations
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "ops: reconcile v4.3 with latest main signal state"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
