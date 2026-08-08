@@ -28,6 +28,21 @@ def _price_frame(rows: int = 80) -> pd.DataFrame:
     )
 
 
+def _monotonic_frame(direction: int, rows: int = 40) -> pd.DataFrame:
+    dates = pd.date_range("2026-01-01", periods=rows, freq="D")
+    close = pd.Series([100.0 + direction * index for index in range(rows)])
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "open": close,
+            "high": close + 1.0,
+            "low": close - 1.0,
+            "close": close,
+            "volume": [1_000_000] * rows,
+        }
+    )
+
+
 def test_chart_studies_share_the_same_ohlcv_clock() -> None:
     frame = _price_frame()
     studies = _chart_studies(frame)
@@ -36,6 +51,15 @@ def test_chart_studies_share_the_same_ohlcv_clock() -> None:
     assert studies["rsi14"]
     assert studies["boll20"][-1]["time"] == frame.iloc[-1]["date"].date().isoformat()
     assert 0.0 <= studies["rsi14"][-1]["value"] <= 100.0
+
+
+def test_rsi_handles_zero_loss_zero_gain_and_flat_boundaries() -> None:
+    rising = _chart_studies(_monotonic_frame(1))["rsi14"]
+    falling = _chart_studies(_monotonic_frame(-1))["rsi14"]
+    flat = _chart_studies(_monotonic_frame(0))["rsi14"]
+    assert rising[-1]["value"] == 100.0
+    assert falling[-1]["value"] == 0.0
+    assert flat[-1]["value"] == 50.0
 
 
 def test_bars_retain_real_ohlcv_and_reject_invalid_rows() -> None:
