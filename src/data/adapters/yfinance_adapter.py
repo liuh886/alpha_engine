@@ -16,6 +16,7 @@ from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
 OHLC_ROUNDING_REL_TOL = 5e-4
 CN_ETF_PRICE_TICK = 1e-3
 CN_ETF_PREFIXES = ("15", "16", "51", "56", "58")
+FLOAT_COMPARISON_EPSILON = 1e-12
 
 
 def _get_yahoo_ticker(ticker: str, region: str) -> str:
@@ -75,10 +76,10 @@ def _reconcile_ohlc_rounding(
     low_mask = low_gap > 0.0
     corrected_mask = high_mask | low_mask
     material_high = high_mask & (high_relative > relative_tolerance) & (
-        high_gap > absolute_tolerance
+        high_gap - absolute_tolerance > FLOAT_COMPARISON_EPSILON
     )
     material_low = low_mask & (low_relative > relative_tolerance) & (
-        low_gap > absolute_tolerance
+        low_gap - absolute_tolerance > FLOAT_COMPARISON_EPSILON
     )
     evidence = {
         "relative_tolerance": relative_tolerance,
