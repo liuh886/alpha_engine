@@ -22,6 +22,24 @@ function factorValue(factor: StrategyFactorEvidence): string {
   return factor.value.toFixed(2);
 }
 
+interface ModelContribution {
+  instrument: string;
+  decisionRole: string;
+  contribution: number;
+}
+
+function modelContributions(factor: StrategyFactorEvidence): ModelContribution[] {
+  if (!factor.reference || typeof factor.reference !== 'object' || Array.isArray(factor.reference)) return [];
+  const raw = (factor.reference as Record<string, unknown>).model_contributions;
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+    const row = value as Record<string, unknown>;
+    if (typeof row.instrument !== 'string' || typeof row.decision_role !== 'string' || typeof row.contribution !== 'number' || !Number.isFinite(row.contribution)) return [];
+    return [{ instrument: row.instrument, decisionRole: row.decision_role, contribution: row.contribution }];
+  });
+}
+
 function factorReference(factor: StrategyFactorEvidence): string | null {
   const value = factor.reference;
   if (value === null || value === undefined) return null;
@@ -30,11 +48,23 @@ function factorReference(factor: StrategyFactorEvidence): string | null {
   if (typeof value === 'string') return value;
   if (typeof value === 'object') {
     return Object.entries(value as Record<string, unknown>)
-      .filter(([, item]) => item !== null && item !== undefined)
+      .filter(([key, item]) => key !== 'model_contributions' && item !== null && item !== undefined && ['string', 'number', 'boolean'].includes(typeof item))
       .map(([key, item]) => `${key} ${String(item)}`)
       .join(' · ') || null;
   }
   return String(value);
+}
+
+function contributionSummary(factor: StrategyFactorEvidence): string | null {
+  const rows = modelContributions(factor);
+  if (!rows.length) return null;
+  const strongest = [...rows]
+    .sort((left, right) => Math.abs(right.contribution) - Math.abs(left.contribution) || left.instrument.localeCompare(right.instrument))
+    .slice(0, 3)
+    .map((row) => `${row.instrument} ${row.contribution >= 0 ? '+' : ''}${row.contribution.toFixed(4)}`)
+    .join(' · ');
+  const role = rows.some((row) => row.decisionRole === 'ranker_reference_vetoed_by_regime') ? 'ranker reference · regime vetoed' : 'selected holdings';
+  return `XGBoost pred_contribs · ${role} · ${strongest}`;
 }
 
 export function StrategyDetailPage() {
@@ -130,24 +160,28 @@ export function StrategyDetailPage() {
             </div>
             <div className="mt-4 overflow-x-auto">
               <div className="min-w-[720px]">
-                <div className="grid grid-cols-[minmax(180px,1.2fr)_100px_120px_90px_minmax(180px,1fr)] gap-3 border-b pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  <span>Factor</span><span>Value</span><span>State</span><span>Effect</span><span>Reference / rule</span>
+                <div className="grid grid-cols-[minmax(180px,1.2fr)_100px_120px_90px_minmax(220px,1.25fr)] gap-3 border-b pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  <span>Factor</span><span>Value</span><span>State</span><span>Effect</span><span>Reference / model evidence</span>
                 </div>
                 {snapshot.factorEvidence.map((factor) => {
                   const reference = factorReference(factor);
+                  const modelEvidence = contributionSummary(factor);
                   return (
-                    <div key={factor.factorId} className="grid grid-cols-[minmax(180px,1.2fr)_100px_120px_90px_minmax(180px,1fr)] gap-3 border-b py-3 text-xs last:border-0">
+                    <div key={factor.factorId} className="grid grid-cols-[minmax(180px,1.2fr)_100px_120px_90px_minmax(220px,1.25fr)] gap-3 border-b py-3 text-xs last:border-0">
                       <div><p className="font-semibold">{factor.displayName}</p><p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{factor.factorId}</p></div>
                       <span className="font-mono font-semibold tabular-nums">{factorValue(factor)}</span>
                       <span>{factor.state}</span>
                       <span className="font-semibold">{factor.effect}</span>
-                      <span className="text-muted-foreground">{reference ? `${reference} · ` : ''}{factor.reasonCode}</span>
+                      <div className="text-muted-foreground">
+                        <span>{reference ? `${reference} · ` : ''}{factor.reasonCode}</span>
+                        {modelEvidence && <p className="mt-1 font-mono text-[10px] leading-relaxed text-primary">{modelEvidence}</p>}
+                      </div>
                     </div>
                   );
                 })}
               </div>
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">These are cutoff-bound model inputs and deterministic rule states. They explain the published signal; they are not causal claims.</p>
+            <p className="mt-4 text-xs text-muted-foreground">Rules-based strategies show cutoff-bound inputs and direct support/veto states. XGBoost rankers additionally show native pred_contribs for the current ranking decision. Model contributions explain the fitted score, not causality.</p>
           </div>
         ) : snapshot ? (
           <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground shadow-sm">
