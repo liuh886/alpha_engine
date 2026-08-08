@@ -92,8 +92,12 @@ def _chart_studies(frame: pd.DataFrame) -> dict[str, list[dict[str, Any]]]:
     losses = -delta.clip(upper=0.0)
     average_gain = gains.ewm(alpha=1 / 14, adjust=False, min_periods=14).mean()
     average_loss = losses.ewm(alpha=1 / 14, adjust=False, min_periods=14).mean()
-    relative_strength = average_gain / average_loss.replace(0.0, np.nan)
+    ready = average_gain.notna() & average_loss.notna()
+    relative_strength = average_gain / average_loss.where(average_loss != 0.0)
     rsi = 100.0 - 100.0 / (1.0 + relative_strength)
+    rsi = rsi.where(~(ready & (average_loss == 0.0) & (average_gain > 0.0)), 100.0)
+    rsi = rsi.where(~(ready & (average_gain == 0.0) & (average_loss > 0.0)), 0.0)
+    rsi = rsi.where(~(ready & (average_gain == 0.0) & (average_loss == 0.0)), 50.0)
 
     dates = pd.to_datetime(frame["date"], errors="coerce")
 
