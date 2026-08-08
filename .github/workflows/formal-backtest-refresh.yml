@@ -10,6 +10,8 @@ on:
       - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "src/artifacts/formal_refresh.py"
+      - "src/dashboard/market_evidence.py"
+      - "scripts/build_market_evidence.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/refresh_ranker_formal.py"
       - "scripts/refresh_allocation_formal.py"
@@ -17,11 +19,15 @@ on:
       - "scripts/data/build_etf_reference_bundle.py"
       - "src/data/etf_reference_bundle.py"
       - "scripts/sync_formal_bundle_v2.py"
+      - "configs/factor_libraries/ohlcv.yaml"
       - "tests/test_formal_refresh.py"
+      - "tests/test_market_evidence.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
+      - "data/research/market_evidence/**"
       - "qlib-dashboard/public/data/formal-model-runs/**"
+      - "qlib-dashboard/public/data/market-evidence/**"
 
 permissions:
   contents: write
@@ -36,6 +42,7 @@ env:
   CURRENT_FORMAL_ROOT: data/research/formal_backtests
   CANDIDATE_FORMAL_ROOT: artifacts/formal-refresh/formal-v1
   CANDIDATE_V2_ROOT: artifacts/formal-refresh/formal-v2
+  CANDIDATE_MARKET_EVIDENCE_ROOT: artifacts/formal-refresh/market-evidence
   REFRESH_RECEIPT: artifacts/formal-refresh/formal-refresh-receipt.json
   REFRESH_BRANCH: automation/formal-backtest-refresh
 
@@ -79,12 +86,15 @@ jobs:
         run: |
           uv run ruff check \
             src/artifacts/formal_refresh.py \
+            src/dashboard/market_evidence.py \
+            scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/refresh_ranker_formal.py \
             scripts/refresh_allocation_formal.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
-            tests/test_formal_refresh.py
-          uv run pytest tests/test_formal_refresh.py -q --strict-markers --tb=short
+            tests/test_formal_refresh.py \
+            tests/test_market_evidence.py
+          uv run pytest tests/test_formal_refresh.py tests/test_market_evidence.py -q --strict-markers --tb=short
       - name: Resolve transaction timestamp
         id: clock
         run: |
@@ -262,15 +272,34 @@ jobs:
             --root "$CANDIDATE_FORMAL_ROOT" \
             --as-of "$GENERATED_AT" \
             --receipt artifacts/formal-refresh/freshness-verification.json
+      - name: Build shared governed Market Evidence
+        if: steps.plan.outputs.refresh_required == 'true'
+        run: |
+          set -euo pipefail
+          rm -rf "$CANDIDATE_MARKET_EVIDENCE_ROOT"
+          uv run python scripts/build_market_evidence.py \
+            --market us \
+            --provider-root artifacts/formal-refresh/provider-us \
+            --formal-root "$CANDIDATE_FORMAL_ROOT" \
+            --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT"
+          uv run python scripts/build_market_evidence.py \
+            --market cn \
+            --provider-root artifacts/formal-refresh/provider-cn \
+            --formal-root "$CANDIDATE_FORMAL_ROOT" \
+            --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT"
+          test -f "$CANDIDATE_MARKET_EVIDENCE_ROOT/us/catalog.json"
+          test -f "$CANDIDATE_MARKET_EVIDENCE_ROOT/cn/catalog.json"
       - name: Install candidate publication into review worktree
         if: steps.plan.outputs.refresh_required == 'true'
         run: |
           set -euo pipefail
-          rm -rf data/research/formal_backtests data/research/formal_model_runs
+          rm -rf data/research/formal_backtests data/research/formal_model_runs data/research/market_evidence
           cp -a "$CANDIDATE_FORMAL_ROOT" data/research/formal_backtests
           cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs
-          rm -rf qlib-dashboard/public/data/formal-model-runs
+          cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" data/research/market_evidence
+          rm -rf qlib-dashboard/public/data/formal-model-runs qlib-dashboard/public/data/market-evidence
           cp -a "$CANDIDATE_V2_ROOT" qlib-dashboard/public/data/formal-model-runs
+          cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" qlib-dashboard/public/data/market-evidence
           cp "$REFRESH_RECEIPT" data/research/formal_backtests/latest_refresh_receipt.json
       - name: Validate complete candidate publication
         if: steps.plan.outputs.refresh_required == 'true'
@@ -278,6 +307,7 @@ jobs:
           set -euo pipefail
           uv run pytest \
             tests/test_formal_refresh.py \
+            tests/test_market_evidence.py \
             tests/test_formal_backtest_freshness.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_model_x1_baselines.py \
@@ -289,6 +319,8 @@ jobs:
           npm test -- --run
           npm run build
           test -f dist/data/formal-model-runs/catalog.json
+          test -f dist/data/market-evidence/us/catalog.json
+          test -f dist/data/market-evidence/cn/catalog.json
           test ! -e dist/data/formal-backtests
       - name: Open or update draft review PR
         id: pull_request
@@ -305,23 +337,26 @@ jobs:
           git add \
             data/research/formal_backtests \
             data/research/formal_model_runs \
-            qlib-dashboard/public/data/formal-model-runs
+            data/research/market_evidence \
+            qlib-dashboard/public/data/formal-model-runs \
+            qlib-dashboard/public/data/market-evidence
           if git diff --cached --quiet; then
             echo "No publication bytes changed after refresh validation."
             echo "pr_number=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git commit -m "data: refresh formal backtests through US ${US_CUTOFF} and CN ${CN_CUTOFF}"
+          git commit -m "data: refresh governed evidence through US ${US_CUTOFF} and CN ${CN_CUTOFF}"
           git push --force origin "HEAD:${REFRESH_BRANCH}"
           body_file="$(mktemp)"
           cat > "$body_file" <<EOF
-          ## Reviewed formal backtest refresh
+          ## Reviewed formal + market evidence refresh
 
           - US latest completed common session: \`${US_CUTOFF}\`
           - CN latest completed common session: \`${CN_CUTOFF}\`
           - Generated at: \`${GENERATED_AT}\`
           - Accepted model membership: derived from the formal catalog
           - Historical reports, positions and trades: immutable prefix verified
+          - Shared Market Evidence: rebuilt from the same selected-pool providers and candidate formal trades
           - Model selection: not reopened
           - Automatic merge: disabled
           - Research only: true
@@ -331,15 +366,15 @@ jobs:
 
           - workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           - receipt: \`data/research/formal_backtests/latest_refresh_receipt.json\`
-          - formal v1 and Bundle v2 rebuilt deterministically before PR creation
+          - formal v1, Bundle v2 and Market Evidence rebuilt before PR creation
           - frontend publication assets synchronized in this PR
 
-          The PR must pass current formal integrity, Bundle v2 parity, frontend build and Pages release acceptance before merge.
+          The PR must pass formal integrity, Bundle v2 parity, Market Evidence integrity, frontend build and Pages release acceptance before merge.
           EOF
           existing="$(gh pr list --head "$REFRESH_BRANCH" --base main --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
             gh pr edit "$existing" \
-              --title "data: refresh formal backtests through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
+              --title "data: refresh governed evidence through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
               --body-file "$body_file"
             gh pr ready --undo "$existing" || true
             pr_number="$existing"
@@ -348,7 +383,7 @@ jobs:
               --base main \
               --head "$REFRESH_BRANCH" \
               --draft \
-              --title "data: refresh formal backtests through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
+              --title "data: refresh governed evidence through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
               --body-file "$body_file")"
             pr_number="${pr_url##*/}"
           fi
@@ -372,21 +407,22 @@ jobs:
             const body = [
               marker,
               '',
-              `## 正式回测刷新：${status}`,
+              `## 正式回测与市场证据刷新：${status}`,
               '',
               `- US common cutoff: \`${process.env.US_CUTOFF || 'unresolved'}\``,
               `- CN common cutoff: \`${process.env.CN_CUTOFF || 'unresolved'}\``,
               `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               `- Review PR: ${prNumber ? `#${prNumber}` : 'none'}`,
+              '- Formal + Market Evidence transaction: one reviewed publication',
               '- Model selection reopened: no',
               '- Automatic merge: no',
               '- Research only: yes',
               '- Trade ready: no',
               '',
               failed
-                ? 'The refresh failed closed before accepted formal evidence was modified.'
+                ? 'The refresh failed closed before accepted formal or market evidence was modified.'
                 : refreshRequired
-                  ? 'A complete candidate publication is waiting for human review and normal PR gates.'
+                  ? 'A complete candidate formal + market publication is waiting for human review and normal PR gates.'
                   : 'Published formal evidence already matches the latest provider-resolved common sessions.',
             ].join('\n');
             const issues = await github.paginate(github.rest.issues.listForRepo, {
@@ -404,7 +440,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existing.number,
-                title: `[运行健康] 正式回测刷新：${status}`,
+                title: `[运行健康] 正式回测与市场证据刷新：${status}`,
                 body,
                 state: desiredState,
               });
@@ -412,7 +448,7 @@ jobs:
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                title: `[运行健康] 正式回测刷新：${status}`,
+                title: `[运行健康] 正式回测与市场证据刷新：${status}`,
                 body,
                 assignees: [context.repo.owner],
               });
@@ -429,6 +465,10 @@ jobs:
             artifacts/formal-refresh/freshness-verification.json
             artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json
             artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json
+            artifacts/formal-refresh/market-evidence/us/catalog.json
+            artifacts/formal-refresh/market-evidence/cn/catalog.json
+            artifacts/formal-refresh/market-evidence/us/factor-diagnostics.json
+            artifacts/formal-refresh/market-evidence/cn/factor-diagnostics.json
             artifacts/formal-refresh/qqq-bundle/manifest.json
             artifacts/formal-refresh/qqq-bundle/coverage.csv
             artifacts/formal-refresh/qqq-bundle/reconciliation.csv
