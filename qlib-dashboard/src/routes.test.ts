@@ -27,10 +27,10 @@ describe('strategy-console route registry', () => {
     }
   });
 
-  it('exposes only the four product-level navigation destinations', () => {
+  it('exposes the five product-level navigation destinations', () => {
     const visible = visibleRoutes(false);
-    expect(visible.map((route) => route.path)).toEqual(['app', 'strategies', 'research', 'system']);
-    expect(visible.map((route) => route.label)).toEqual(['Overview', 'Strategies', 'Research', 'System']);
+    expect(visible.map((route) => route.path)).toEqual(['app', 'strategies', 'securities', 'research', 'system']);
+    expect(visible.map((route) => route.label)).toEqual(['Overview', 'Strategies', 'Securities', 'Research', 'System']);
     const groups = new Set(visible.map((route) => route.navGroup));
     ALL_NAV_GROUPS.forEach((group) => expect(groups).toContain(group));
   });
