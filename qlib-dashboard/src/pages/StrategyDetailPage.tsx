@@ -6,10 +6,35 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useStrategyOperations } from '@/hooks/useStrategyOperations';
 import { STRATEGY_STATUS_LABEL } from '@/lib/strategy-operations';
+import type { StrategyFactorEvidence } from '@/lib/strategy-operations';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 
 function pct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
+}
+
+function factorValue(factor: StrategyFactorEvidence): string {
+  if (typeof factor.value === 'boolean') return factor.value ? 'Yes' : 'No';
+  if (typeof factor.value === 'string') return factor.value;
+  if (factor.factorId.includes('momentum') || factor.factorId.includes('drawdown') || factor.factorId.includes('qqq_vs_')) {
+    return `${(factor.value * 100).toFixed(2)}%`;
+  }
+  return factor.value.toFixed(2);
+}
+
+function factorReference(factor: StrategyFactorEvidence): string | null {
+  const value = factor.reference;
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== null && item !== undefined)
+      .map(([key, item]) => `${key} ${String(item)}`)
+      .join(' · ') || null;
+  }
+  return String(value);
 }
 
 export function StrategyDetailPage() {
@@ -92,22 +117,41 @@ export function StrategyDetailPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border bg-card p-4"><CalendarClock className="h-4 w-4 text-primary" /><p className="mt-3 text-xs text-muted-foreground">Next decision</p><p className="mt-1 text-sm font-semibold">{snapshot?.nextDecision || 'Not declared'}</p></div>
-              <div className="rounded-xl border bg-card p-4"><Database className="h-4 w-4 text-primary" /><p className="mt-3 text-xs text-muted-foreground">Data</p><p className="mt-1 text-sm font-semibold">{snapshot?.dataFreshness || 'unknown'}</p></div>
+              <div className="rounded-xl border bg-card p-4"><Database className="h-4 w-4 text-primary" /><p className="mt-3 text-xs text-muted-foreground">Data / factors</p><p className="mt-1 text-sm font-semibold">{snapshot ? `${snapshot.dataFreshness} / ${snapshot.factorFreshness}` : 'unknown'}</p></div>
             </div>
           </div>
         </div>
 
-        {snapshot?.drivers.length ? (
+        {snapshot?.factorEvidence.length ? (
           <div className="rounded-xl border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">Current signal drivers</h3></div>
-            <div className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-              {snapshot.drivers.map((driver) => (
-                <div key={driver.label} className="flex items-baseline justify-between gap-3 border-b pb-2 text-sm">
-                  <span className="text-muted-foreground">{driver.label}</span><span className="font-mono font-semibold">{driver.value}</span>
-                </div>
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">Current signal drivers</h3></div>
+              <span className="text-xs text-muted-foreground">Cutoff {snapshot.latestCompletedSession} · {snapshot.factorEvidence.length} canonical factors</span>
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">Factor freshness is {snapshot.factorFreshness}. #626 will replace this interim model-specific driver materialization with the canonical factor evidence contract.</p>
+            <div className="mt-4 overflow-x-auto">
+              <div className="min-w-[720px]">
+                <div className="grid grid-cols-[minmax(180px,1.2fr)_100px_120px_90px_minmax(180px,1fr)] gap-3 border-b pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  <span>Factor</span><span>Value</span><span>State</span><span>Effect</span><span>Reference / rule</span>
+                </div>
+                {snapshot.factorEvidence.map((factor) => {
+                  const reference = factorReference(factor);
+                  return (
+                    <div key={factor.factorId} className="grid grid-cols-[minmax(180px,1.2fr)_100px_120px_90px_minmax(180px,1fr)] gap-3 border-b py-3 text-xs last:border-0">
+                      <div><p className="font-semibold">{factor.displayName}</p><p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{factor.factorId}</p></div>
+                      <span className="font-mono font-semibold tabular-nums">{factorValue(factor)}</span>
+                      <span>{factor.state}</span>
+                      <span className="font-semibold">{factor.effect}</span>
+                      <span className="text-muted-foreground">{reference ? `${reference} · ` : ''}{factor.reasonCode}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <p className="mt-4 text-xs text-muted-foreground">These are cutoff-bound model inputs and deterministic rule states. They explain the published signal; they are not causal claims.</p>
+          </div>
+        ) : snapshot ? (
+          <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground shadow-sm">
+            Canonical factor evidence is {snapshot.factorFreshness}. A fresh operating signal is not presented as factor-explained until the signal ledger publishes a cutoff-bound factor snapshot.
           </div>
         ) : null}
       </section>
