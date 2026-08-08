@@ -13,6 +13,7 @@ on:
       - 'uv.lock'
       - 'Makefile'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/ranker-10d-current-target.yml'
   pull_request:
     branches: [main]
     paths:
@@ -25,6 +26,7 @@ on:
       - 'uv.lock'
       - 'Makefile'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/ranker-10d-current-target.yml'
   workflow_dispatch:
 
 permissions:
@@ -67,10 +69,16 @@ jobs:
           src/models/metric_contract.py
           src/research/experiment_harness.py
           src/research/cross_sectional_experiment_runner.py
+          src/research/ranker_current_target.py
+          src/factors/ranker_snapshot.py
+          src/artifacts/strategy_operations.py
           scripts/run_research_experiment.py
           scripts/run_active_research_experiments.py
+          scripts/run_ranker_current_target.py
           scripts/check_legacy_web_boundary.py
           scripts/check_ci_governance.py
+          tests/test_ranker_current_target.py
+          tests/test_strategy_operations.py
 
       - name: Mypy type check
         run: uv run mypy src/release src/models/metric_contract.py
@@ -87,6 +95,8 @@ jobs:
           tests/test_data_runtime_truth.py
           tests/test_experiment_harness.py
           tests/test_cross_sectional_experiment_runner.py
+          tests/test_ranker_current_target.py
+          tests/test_strategy_operations.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Package build
