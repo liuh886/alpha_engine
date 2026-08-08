@@ -73,16 +73,23 @@ def test_qqq_snapshot_binds_canonical_factor_ids_and_cutoff() -> None:
     assert all(len(row["implementation_hash"]) == 64 for row in snapshot["factors"])
 
 
-def test_stale_data_produces_stale_factor_snapshot() -> None:
+def test_stale_data_keeps_its_real_observation_cutoff() -> None:
+    signal = _qqq_signal(fresh=False)
+    signal["signal_date"] = "2026-08-08"
     snapshot = build_strategy_factor_snapshot(
-        model_family_id="qqq_rotation", signal=_qqq_signal(fresh=False)
+        model_family_id="qqq_rotation", signal=signal
     )
     assert snapshot["freshness"] == "stale"
+    assert snapshot["signal_date"] == "2026-08-08"
+    assert snapshot["observation_cutoff"] == "2026-08-07"
+    assert all(row["observed_at"] == "2026-08-07" for row in snapshot["factors"])
 
 
 def test_missing_required_qqq_factor_fails_closed() -> None:
     signal = _qqq_signal()
-    del signal["price_context"]["qqq_vs_ma200"]  # type: ignore[index]
+    price_context = signal["price_context"]
+    assert isinstance(price_context, dict)
+    del price_context["qqq_vs_ma200"]
     with pytest.raises(StrategyFactorSnapshotError, match="has no observation"):
         build_strategy_factor_snapshot(model_family_id="qqq_rotation", signal=signal)
 
@@ -98,10 +105,10 @@ def test_byd_snapshot_exposes_rule_state_without_pseudo_shap() -> None:
     assert by_id["strategy.byd.financed_increment"]["effect"] == "neutral"
 
 
-def test_snapshot_rejects_mismatched_signal_and_observation_cutoff() -> None:
+def test_snapshot_rejects_factor_not_bound_to_observation_cutoff() -> None:
     snapshot = build_strategy_factor_snapshot(
         model_family_id="qqq_rotation", signal=_qqq_signal()
     )
-    snapshot["observation_cutoff"] = "2026-08-06"
-    with pytest.raises(StrategyFactorSnapshotError, match="must match"):
+    snapshot["factors"][0]["observed_at"] = "2026-08-06"
+    with pytest.raises(StrategyFactorSnapshotError, match="not cutoff-bound"):
         validate_strategy_factor_snapshot(snapshot)
