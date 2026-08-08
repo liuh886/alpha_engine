@@ -6,14 +6,16 @@ import { PerformanceCharts } from "./PerformanceCharts";
 
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <>{children}</>,
-  ComposedChart: ({ data }: { data: unknown[]; children: ReactNode }) => (
-    <div data-testid="chart-data" data-chart={JSON.stringify(data)} />
+  ComposedChart: ({ data, children }: { data: unknown[]; children: ReactNode }) => (
+    <div data-testid="chart-data" data-chart={JSON.stringify(data)}>{children}</div>
   ),
   Area: () => null,
   Brush: () => null,
   CartesianGrid: () => null,
   Legend: () => null,
-  Line: () => null,
+  Line: ({ dataKey, name }: { dataKey: string; name: string }) => (
+    <span data-testid="benchmark-line" data-key={dataKey}>{name}</span>
+  ),
   ReferenceLine: () => null,
   Tooltip: () => null,
   XAxis: () => null,
@@ -22,11 +24,11 @@ vi.mock("recharts", () => ({
 
 function equityChartData() {
   const raw = screen.getAllByTestId("chart-data")[0].getAttribute("data-chart");
-  return JSON.parse(raw || "[]") as Array<Record<string, number>>;
+  return JSON.parse(raw || "[]") as Array<Record<string, number | null>>;
 }
 
-describe("PerformanceCharts benchmark normalization", () => {
-  it("normalizes a benchmark equity curve (via bench_qqq)", () => {
+describe("PerformanceCharts benchmark infrastructure", () => {
+  it("shows QQQ as the named default baseline for US evidence", () => {
     render(
       <PerformanceCharts report={[
         { date: "2026-01-01", account: 10_000, bench_qqq: 10_000 },
@@ -36,14 +38,46 @@ describe("PerformanceCharts benchmark normalization", () => {
     );
 
     const data = equityChartData();
-    const values = data.map((row) => row.benchmark);
-    expect(values[0]).toBe(0);
-    expect(values[1]).toBeCloseTo(0.005, 10);
-    expect(values[2]).toBeCloseTo(0.01, 10);
+    expect(data[0].benchmark_qqq).toBe(0);
+    expect(data[1].benchmark_qqq).toBeCloseTo(0.005, 10);
+    expect(data[2].benchmark_qqq).toBeCloseTo(0.01, 10);
+    expect(data[2].excess).toBeCloseTo(0.01, 10);
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "QQQ");
+    expect(screen.getAllByTestId("benchmark-line").some((line) => line.textContent === "QQQ")).toBe(true);
+  });
+
+  it("shows CSI 300 as the named default baseline for CN evidence", () => {
+    render(
+      <PerformanceCharts report={[
+        { date: "2026-01-01", account: 1, bench_hs300: 1 },
+        { date: "2026-01-02", account: 1.04, bench_hs300: 1.01 },
+        { date: "2026-01-03", account: 1.02, bench_hs300: 0.99 },
+      ]} />,
+    );
+
+    const data = equityChartData();
+    expect(data[1].benchmark_csi300).toBeCloseTo(0.01, 10);
+    expect(data[1].excess).toBeCloseTo(0.03, 10);
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "CSI 300");
+    expect(screen.getAllByTestId("benchmark-line").some((line) => line.textContent === "CSI 300")).toBe(true);
+  });
+
+  it("prefers named benchmark evidence over the generic source column", () => {
+    render(
+      <PerformanceCharts report={[
+        { date: "2026-01-01", account: 10_000, bench: 0, bench_qqq: 10_000 },
+        { date: "2026-01-02", account: 10_100, bench: 0.02, bench_qqq: 10_050 },
+        { date: "2026-01-03", account: 10_200, bench: 0.02, bench_qqq: 10_100 },
+      ]} />,
+    );
+
+    const data = equityChartData();
+    expect(data[2].benchmark_qqq).toBeCloseTo(0.01, 10);
+    expect(data[2].benchmark).toBeNull();
     expect(data[2].excess).toBeCloseTo(0.01, 10);
   });
 
-  it("compounds a benchmark daily-return series (via bench column)", () => {
+  it("uses the generic source benchmark only when no named identity is retained", () => {
     render(
       <PerformanceCharts report={[
         { date: "2026-01-01", account: 10_000, bench: 0 },
@@ -52,31 +86,14 @@ describe("PerformanceCharts benchmark normalization", () => {
       ]} />,
     );
 
-    const values = equityChartData().map((row) => row.benchmark);
-    expect(values[0]).toBe(0);
-    expect(values[1]).toBeCloseTo(0.01, 10);
-    expect(values[2]).toBeCloseTo(0.0201, 10);
+    const data = equityChartData();
+    expect(data[0].benchmark).toBe(0);
+    expect(data[1].benchmark).toBeCloseTo(0.01, 10);
+    expect(data[2].benchmark).toBeCloseTo(0.0201, 10);
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "Benchmark");
   });
 
-  it("prefers bench column over bench_qqq when both are present", () => {
-    // bench has daily returns; bench_qqq is corrupt (matches account)
-    render(
-      <PerformanceCharts report={[
-        { date: "2026-01-01", account: 10_000, bench: 0.0, bench_qqq: 10_000 },
-        { date: "2026-01-02", account: 10_100, bench: 0.01, bench_qqq: 10_100 },
-        { date: "2026-01-03", account: 10_200, bench: 0.01, bench_qqq: 10_200 },
-      ]} />,
-    );
-
-    const values = equityChartData().map((row) => row.benchmark);
-    // Uses bench (daily returns, compounded), not bench_qqq
-    expect(values[0]).toBe(0);
-    expect(values[1]).toBeCloseTo(0.01, 10);
-    expect(values[2]).toBeCloseTo(0.0201, 10);
-  });
-
-  it("rejects corrupt benchmark that matches account exactly", () => {
-    // bench_qqq is identical to account — corrupt data
+  it("fails visibly instead of fabricating a baseline when named benchmark evidence is corrupt", () => {
     render(
       <PerformanceCharts report={[
         { date: "2026-01-01", account: 10_000, bench_qqq: 10_000 },
@@ -86,17 +103,16 @@ describe("PerformanceCharts benchmark normalization", () => {
     );
 
     const data = equityChartData();
-    // Strategy curve still renders (always present)
     expect(data[0].strategy).toBe(0);
-    // But benchmark is zeroed out because it was corrupt
-    const benchVals = data.map((row) => row.benchmark);
-    expect(benchVals.every(v => v === null)).toBe(true);
+    expect(data.every((row) => row.benchmark_qqq === null)).toBe(true);
+    expect(data.every((row) => row.excess === null)).toBe(true);
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "unavailable");
+    expect(screen.getByText("Baseline evidence unavailable")).toBeInTheDocument();
   });
 
   it("handles empty report gracefully", () => {
     render(<PerformanceCharts report={[]} />);
-    const data = equityChartData();
-    expect(data).toEqual([]);
+    expect(equityChartData()).toEqual([]);
   });
 
   it("handles invalid initial account", () => {
@@ -106,23 +122,18 @@ describe("PerformanceCharts benchmark normalization", () => {
         { date: "2026-01-02", account: 0 },
       ]} />,
     );
-    const data = equityChartData();
-    expect(data).toEqual([]);
+    expect(equityChartData()).toEqual([]);
   });
 
   it("handles missing date rows in monthly returns", () => {
     render(
       <PerformanceCharts report={[
         { date: "2026-01-01", account: 10_000 },
-        { date: "", account: 10_100 },             // empty date — must not crash
+        { date: "", account: 10_100 },
         { date: "2026-01-03", account: 10_200 },
       ]} />,
     );
-    const data = equityChartData();
-    // Should render the valid rows only
-    expect(data.length).toBeGreaterThan(0);
-    // Monthly returns section should not throw
-    const allCharts = screen.getAllByTestId("chart-data");
-    expect(allCharts.length).toBeGreaterThanOrEqual(1);
+    expect(equityChartData().length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId("chart-data").length).toBeGreaterThanOrEqual(1);
   });
 });

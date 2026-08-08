@@ -37,15 +37,18 @@ def test_frontend_change_deploys(tmp_path: Path) -> None:
     assert decision.reason == "publication_dependency_changed"
 
 
-def test_model_run_bundle_changes_deploy(tmp_path: Path) -> None:
+def test_model_run_bundle_and_market_evidence_changes_deploy(tmp_path: Path) -> None:
     root = _repository(tmp_path)
     for path in (
         "data/research/formal_model_runs/us_ranker/us_x1_1/run/manifest.json",
+        "data/research/market_evidence/us/catalog.json",
+        "data/research/market_evidence/us/symbols/AAPL.json",
         "data/research/model_runs/us_ranker/us_candidate/run/summary.json",
         "data/research/model_decisions/catalog.json",
     ):
         decision = decide_impact([path], repository_root=root)
         assert decision.deploy is True, path
+        assert path in decision.matched_paths
 
 
 def test_referenced_model_run_and_report_deploy(tmp_path: Path) -> None:
