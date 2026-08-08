@@ -2,6 +2,8 @@
 
 This wrapper preserves the atomic refresh implementation from v1 while adding
 credential-aware providers, upstream-family lineage and promotion gates.
+HTTP-level retries stay inside each provider adapter; ``max_rounds`` bounds
+symbol-level fallback without leaking failure state across the selected pool.
 """
 
 from __future__ import annotations
