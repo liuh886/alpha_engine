@@ -1,37 +1,37 @@
 {
-  "schema_version": "1.0",
-  "experiment_id": "cn_x1_1_research_loop_onboarding_v1",
-  "status": "completed",
-  "decision": "formal_baseline_bound",
-  "runner": "formal_baseline_onboarding_v1",
+  "automatic_promotion": false,
   "baseline": {
-    "model_version_id": "cn_x1_1",
-    "model_family_id": "cn_ranker",
-    "model_kind": "cross_sectional_ranker",
-    "run_id": "cn_x1_1-formal-31022910416",
-    "bundle_id": "bbf40fe790c5ec17cf9e408527b636e7368525667ebb7fffe0f2d05cb0c380a3",
+    "benchmark": "000300",
+    "bundle_id": "1130220a1367246495c676a2396b341443ea1dc80779a307ec1f7ac206fdc212",
     "evidence_cutoff": "2026-08-03",
     "manifest_path": "data/research/formal_model_runs/cn_ranker/cn_x1_1/cn_x1_1-formal-31022910416/manifest.json",
-    "manifest_sha256": "76de89c60307767197d50e8c2cea1b1afa25eb5f77bd0b51af2465b922ac796a",
+    "manifest_sha256": "e8f8c899957ce45ddc7c9ada38b80f46283301990ad99af60413a538a7d5ff45",
     "market": "cn",
-    "benchmark": "000300",
     "metrics": {
-      "total_return": 0.5489769541359022,
       "benchmark_return": -0.027179813812313047,
       "excess_return": 0.5922541247895701,
       "max_drawdown": -0.37059032672209047,
-      "turnover": 54.0,
-      "transaction_cost": 0.10800000000000008
-    }
+      "total_return": 0.5489769541359022,
+      "transaction_cost": 0.10800000000000008,
+      "turnover": 54.0
+    },
+    "model_family_id": "cn_ranker",
+    "model_kind": "cross_sectional_ranker",
+    "model_version_id": "cn_x1_1",
+    "run_id": "cn_x1_1-formal-31022910416"
   },
-  "source_evidence": {
-    "workflow_run_id": 31196048099,
-    "workflow_head_sha": "b32d1dc2ec8b5e251074e7d65db62c9211c4f21e",
-    "artifact_id": 9000841959,
-    "artifact_digest": "sha256:106f01958c8f3aa98fae9a293b3718aed2decbe5fa768ec8fd0aab57bdfe7372"
-  },
+  "decision": "formal_baseline_bound",
+  "experiment_id": "cn_x1_1_research_loop_onboarding_v1",
+  "next_action": "Use this exact formal bundle as the immutable CN baseline for future challenger missions; do not replay baseline history.",
   "research_only": true,
-  "trade_ready": false,
-  "automatic_promotion": false,
-  "next_action": "Use this exact formal bundle as the immutable CN baseline for future challenger missions; do not replay baseline history."
+  "runner": "formal_baseline_onboarding_v1",
+  "schema_version": "1.0",
+  "source_evidence": {
+    "artifact_digest": "sha256:106f01958c8f3aa98fae9a293b3718aed2decbe5fa768ec8fd0aab57bdfe7372",
+    "artifact_id": 9000841959,
+    "workflow_head_sha": "b32d1dc2ec8b5e251074e7d65db62c9211c4f21e",
+    "workflow_run_id": 31196048099
+  },
+  "status": "completed",
+  "trade_ready": false
 }

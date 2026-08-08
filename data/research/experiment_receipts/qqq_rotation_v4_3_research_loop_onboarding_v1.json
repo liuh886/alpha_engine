@@ -1,0 +1,40 @@
+{
+  "automatic_promotion": false,
+  "baseline": {
+    "benchmark": "QQQ",
+    "bundle_id": "0dffb990d9da38cf43c2d04dbae687c873404dd1344ef774da99c0f7444ddb87",
+    "evidence_cutoff": "2026-08-07",
+    "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_08_07/manifest.json",
+    "manifest_sha256": "091705679e2814e6d5660320c03bd595b863723179277ced33b9572f764b19a7",
+    "market": "us",
+    "metrics": {
+      "annualized_return": 0.3679210193759259,
+      "annualized_volatility": 0.2467237951542451,
+      "benchmark_return": 0.6865096057499784,
+      "max_drawdown": -0.21658197720414185,
+      "sharpe_ratio": 1.3943062300289855,
+      "total_return": 1.19125278989529,
+      "transaction_cost": 0.05700000000000001,
+      "turnover": 57.0
+    },
+    "model_family_id": "qqq_rotation",
+    "model_kind": "rules_based_allocation",
+    "model_version_id": "qqqi_qqq_tqqq_v4_3",
+    "run_id": "qqqi_qqq_tqqq_v4_3-promotion-through-2026_08_06"
+  },
+  "decision": "formal_baseline_bound",
+  "experiment_id": "qqq_rotation_v4_3_research_loop_onboarding_v1",
+  "next_action": "Use this exact formal v4.3 bundle as the immutable QQQ Rotation baseline for future challenger missions; do not replay v4.2 as an active baseline.",
+  "research_only": true,
+  "runner": "formal_baseline_onboarding_v1",
+  "schema_version": "1.0",
+  "source_evidence": {
+    "promotion_issue": 643,
+    "promotion_pr": 645,
+    "research_artifact_digest": "sha256:7a94663c302268ab3c6fa970b41b2f306103de3dc46b714ab98c1017965601e0",
+    "research_artifact_id": 9004000740,
+    "research_workflow_run_id": 31204072434
+  },
+  "status": "completed",
+  "trade_ready": false
+}

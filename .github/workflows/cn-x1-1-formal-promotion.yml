@@ -44,8 +44,9 @@ jobs:
           uv run ruff check scripts/promote_cn_x1_1_formal.py tests/test_promote_cn_x1_1_formal.py
           uv run mypy scripts/promote_cn_x1_1_formal.py
           uv run pytest tests/test_promote_cn_x1_1_formal.py -q --strict-markers --tb=short
-      - name: Reproduce promotion from prior formal release
+      - name: Reproduce immutable CN package from prior formal release
         run: |
+          set -euo pipefail
           mkdir -p artifacts/reproduced-formal
           git show 3b732ede15f0c0fc622fe5be153ad5e21a98889e:data/research/formal_backtests/catalog.json > artifacts/reproduced-formal/catalog.json
           git show 3b732ede15f0c0fc622fe5be153ad5e21a98889e:data/research/formal_backtests/freshness.json > artifacts/reproduced-formal/freshness.json
@@ -55,8 +56,26 @@ jobs:
             --generated-at 2026-08-05T17:36:00Z \
             --receipt artifacts/cn-x1-1-promotion-receipt.json
           cmp artifacts/reproduced-formal/cn_x1_1.json data/research/formal_backtests/cn_x1_1.json
-          cmp artifacts/reproduced-formal/catalog.json data/research/formal_backtests/catalog.json
-          cmp artifacts/reproduced-formal/freshness.json data/research/formal_backtests/freshness.json
+      - name: Verify current catalog still references the reproduced CN package
+        run: |
+          uv run python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          root = Path('data/research/formal_backtests')
+          package = root / 'cn_x1_1.json'
+          digest = hashlib.sha256(package.read_bytes()).hexdigest()
+          catalog = json.loads((root / 'catalog.json').read_text(encoding='utf-8'))
+          freshness = json.loads((root / 'freshness.json').read_text(encoding='utf-8'))
+          rows = [row for row in catalog['records'] if row['model_id'] == 'cn_x1_1']
+          assert len(rows) == 1
+          assert rows[0]['path'] == 'cn_x1_1.json'
+          assert rows[0]['sha256'] == digest
+          assert 'cn_x1_0' not in {row['model_id'] for row in catalog['records']}
+          assert 'cn_x1_1' in freshness['required_models']
+          assert 'cn_x1_0' not in freshness['required_models']
+          print('CN x1.1 package is byte-reproducible and correctly referenced by the current publication.')
+          PY
       - name: Upload promotion evidence
         if: always()
         uses: actions/upload-artifact@v4

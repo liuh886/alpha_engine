@@ -7,24 +7,19 @@ result_receipt: data/research/experiment_receipts/byd_v1_2_research_loop_onboard
 research_only: true
 trade_ready: false
 issue: 616
-
-purpose: >-
-  Bind the accepted BYD v1.2 formal Model Run Bundle v2 into Alpha Research
-  Loop as the immutable rules-based allocation baseline. This onboarding does
-  not rerun historical exploration or alter the formal model.
-
+purpose: Bind the accepted BYD v1.2 formal Model Run Bundle v2 into Alpha Research
+  Loop as the immutable rules-based allocation baseline. This onboarding does not
+  rerun historical exploration or alter the formal model.
 baseline:
   model_version_id: byd_v1_2_convex_momentum_budget_v1
   model_family_id: byd_allocation
   model_kind: rules_based_allocation
-  bundle_id: 833ce53e918da4d7c62dd288e4c33c062637ec75ca8e39600b4d2ac2bf676c7d
-  manifest_sha256: 04c41f58f3db245ad6c084f9294b53ce056f37ab976437b43b949cc57dc1876e
-
+  bundle_id: a36cee1bab0069369b4a994158a96998829846eb7cf7997cef86b3e447cf41a1
+  manifest_sha256: e727056e6016e217747703b4f01c7e944edb4300b624ee0bec6f474beb787dd1
 expected_identity:
   market: cn
-  benchmark: 'BYD v1.1'
+  benchmark: BYD v1.1
   evidence_cutoff: '2026-08-03'
-
 lifecycle:
   onboarding_only: true
   automatic_promotion: false

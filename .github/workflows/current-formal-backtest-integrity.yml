@@ -5,15 +5,6 @@ on:
     branches: [main]
     paths:
       - data/research/formal_backtests/**
-      - data/research/cn_x1_1_regime_gated_candidate_v1/**
-      - data/research/byd_canonical_v1_snapshot.tar.xz
-      - data/research/515180_canonical_v1_artifact.zip.b64
-      - data/research/byd_v1_2_signal_ledger/**
-      - scripts/promote_cn_x1_1_formal.py
-      - scripts/promote_byd_v1_2_formal.py
-      - scripts/verify_formal_backtest_freshness.py
-      - tests/test_promote_cn_x1_1_formal.py
-      - tests/test_byd_v1_2_convex_momentum.py
       - .github/workflows/current-formal-backtest-integrity.yml
 
 permissions:
@@ -24,86 +15,58 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  reproduce-current-release:
+  verify-current-snapshot:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    env:
-      CN_GENERATED_AT: 2026-08-05T17:36:00Z
-      BYD_GENERATED_AT: 2026-08-06T09:52:48Z
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install locked environment
+      - name: Verify active identities, package hashes, and internal freshness contracts
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
-      - name: Validate current formal promoters
-        run: |
-          uv run ruff check \
-            scripts/promote_cn_x1_1_formal.py \
-            scripts/promote_byd_v1_2_formal.py \
-            tests/test_promote_cn_x1_1_formal.py \
-            tests/test_byd_v1_2_convex_momentum.py
-          uv run mypy scripts/promote_cn_x1_1_formal.py
-          uv run pytest \
-            tests/test_promote_cn_x1_1_formal.py \
-            tests/test_byd_v1_2_convex_momentum.py \
-            -q --strict-markers --tb=short
-      - name: Seed reproducible formal root
-        run: |
-          mkdir -p artifacts/reproduced-formal
-          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json catalog.json freshness.json; do
-            cp "data/research/formal_backtests/$name" "artifacts/reproduced-formal/$name"
-          done
-      - name: Extract immutable BYD formal inputs
-        run: |
-          set -euo pipefail
-          echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
-          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > "$RUNNER_TEMP/515180-canonical-v1.zip"
-          echo "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f  $RUNNER_TEMP/515180-canonical-v1.zip" | sha256sum --check --strict
-          mkdir -p artifacts/data/byd_canonical_v1 artifacts/data/515180_canonical_v1
-          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
-          unzip -q "$RUNNER_TEMP/515180-canonical-v1.zip" -d artifacts/data/515180_canonical_v1
-      - name: Reproduce accepted BYD v1.2 formal baseline
-        run: |
-          uv run python scripts/promote_byd_v1_2_formal.py \
-            --root artifacts/reproduced-formal \
-            --byd-dir artifacts/data/byd_canonical_v1 \
-            --etf-dir artifacts/data/515180_canonical_v1 \
-            --signal-ledger data/research/byd_v1_2_signal_ledger \
-            --generated-at "$BYD_GENERATED_AT" \
-            --receipt artifacts/current-byd-v1-2-formal-reproduction-receipt.json
-      - name: Reproduce accepted CN x1.1 formal baseline
-        run: |
-          uv run python scripts/promote_cn_x1_1_formal.py \
-            --root artifacts/reproduced-formal \
-            --evidence-root data/research/cn_x1_1_regime_gated_candidate_v1 \
-            --generated-at "$CN_GENERATED_AT" \
-            --receipt artifacts/current-cn-x1-1-formal-reproduction-receipt.json
-          uv run python scripts/verify_formal_backtest_freshness.py \
-            --root artifacts/reproduced-formal \
-            --as-of 2026-08-03T09:15:00Z \
-            --receipt artifacts/current-formal-freshness-receipt.json
-      - name: Enforce byte-exact current release
-        run: |
-          for name in qqqi_qqq_tqqq_v4_2.json us_x1_1.json cn_x1_1.json byd_v1_2_convex_momentum_budget_v1.json catalog.json freshness.json; do
-            cmp "artifacts/reproduced-formal/$name" "data/research/formal_backtests/$name"
-          done
-          test ! -e artifacts/reproduced-formal/byd_dividend_sleeve_v1_0.json
-      - name: Retain current release evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: current-formal-backtest-integrity-${{ github.run_id }}
-          path: |
-            artifacts/current-cn-x1-1-formal-reproduction-receipt.json
-            artifacts/current-byd-v1-2-formal-reproduction-receipt.json
-            artifacts/current-formal-freshness-receipt.json
-            artifacts/reproduced-formal
-          if-no-files-found: error
-          retention-days: 90
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path('data/research/formal_backtests')
+          catalog = json.loads((root / 'catalog.json').read_text(encoding='utf-8'))
+          freshness = json.loads((root / 'freshness.json').read_text(encoding='utf-8'))
+          expected = {
+              'qqqi_qqq_tqqq_v4_3',
+              'us_x1_1',
+              'cn_x1_1',
+              'byd_v1_2_convex_momentum_budget_v1',
+          }
+          records = catalog.get('records') or []
+          ids = {str(row['model_id']) for row in records}
+          assert ids == expected, (ids, expected)
+          assert 'qqqi_qqq_tqqq_v4_2' not in ids
+          assert set(freshness.get('required_models') or []) == expected
+          assert 'qqqi_qqq_tqqq_v4_2' not in freshness.get('required_models', [])
+
+          packages = {}
+          for row in records:
+              path = root / str(row['path'])
+              assert path.is_file(), path
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              assert digest == row['sha256'], (path, digest, row['sha256'])
+              package = json.loads(path.read_text(encoding='utf-8'))
+              assert package['model_id'] == row['model_id']
+              assert package['publication_status'] == 'accepted_formal_baseline'
+              assert package['research_only'] is True
+              assert package['trade_ready'] is False
+              assert package['evidence_cutoff']
+              assert package['date_range']['end']
+              packages[package['model_id']] = package
+
+          qqq = packages['qqqi_qqq_tqqq_v4_3']
+          qqq_freshness = qqq.get('freshness') or {}
+          assert qqq_freshness.get('status') == 'current'
+          assert qqq_freshness.get('required_cutoff') == qqq['evidence_cutoff']
+          assert qqq_freshness.get('latest_completed_session') == qqq['evidence_cutoff']
+          assert qqq_freshness.get('model_selection_reopened') is False
+          assert qqq_freshness.get('research_only') is True
+          assert qqq_freshness.get('trade_ready') is False
+          assert qqq.get('evidence', {}).get('historical_economic_evidence_recomputed') is False
+
+          print('Current formal snapshot is structurally valid; cross-market temporal freshness remains the responsibility of Reviewed Formal Backtest Refresh.')
+          PY

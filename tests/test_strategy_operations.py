@@ -19,7 +19,7 @@ from src.factors.strategy_snapshot import build_strategy_factor_snapshot
 
 FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
 FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
-QQQ_MODEL = "qqqi_qqq_tqqq_v4_2"
+QQQ_MODEL = "qqqi_qqq_tqqq_v4_3"
 QQQ_V43_MODEL = "qqqi_qqq_tqqq_v4_3"
 BYD_MODEL = "byd_v1_2_convex_momentum_budget_v1"
 US_MODEL = "us_x1_1"
@@ -47,7 +47,7 @@ def _factorized(signal: dict[str, object], family: str) -> dict[str, object]:
 def _qqq_signal(*, changed: bool = True) -> dict[str, object]:
     signal: dict[str, object] = {
         "schema_version": "2.0",
-        "experiment_id": "qqqi_qqq_tqqq_vxn_bridge_v4_2",
+        "model_id": QQQ_MODEL,
         "research_only": True,
         "trade_ready": False,
         "should_alert": changed,
