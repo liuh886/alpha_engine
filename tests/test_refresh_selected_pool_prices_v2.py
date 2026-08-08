@@ -45,6 +45,12 @@ def test_hardened_cn_router_enables_tushare_only_with_token(monkeypatch):
     ]
 
 
+def test_hardened_us_router_reserves_tiingo_for_professional_etf_bundle(monkeypatch):
+    monkeypatch.setenv("TIINGO_API_TOKEN", "test-token")
+    router = build_hardened_router("us")
+    assert router.providers_for_market("us") == ["yfinance"]
+
+
 def test_formal_auxiliary_universe_preserves_legacy_tygo_without_substitution():
     assert "TYGO" in FORMAL_MARKET_AUXILIARIES["us"]
     assert "TIGO" not in FORMAL_MARKET_AUXILIARIES["us"]
