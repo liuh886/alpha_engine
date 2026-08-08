@@ -13,12 +13,17 @@ from src.artifacts.strategy_signal_ledger import (
     StrategySignalLedgerError,
     append_signal_evaluation,
 )
+from src.factors.library import load_factor_library
+from src.factors.ranker_snapshot import build_ranker_factor_snapshot
 from src.factors.strategy_snapshot import build_strategy_factor_snapshot
 
 FORMAL_CATALOG = Path("data/research/formal_model_runs/catalog.json")
+FACTOR_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
 QQQ_MODEL = "qqqi_qqq_tqqq_v4_2"
 QQQ_V43_MODEL = "qqqi_qqq_tqqq_v4_3"
 BYD_MODEL = "byd_v1_2_convex_momentum_budget_v1"
+US_MODEL = "us_x1_1"
+CN_MODEL = "cn_x1_1"
 
 
 def _by_model(payload: dict[str, object]) -> dict[str, dict[str, object]]:
@@ -146,6 +151,48 @@ def _v43_signal() -> dict[str, object]:
     return _factorized(signal, "qqq_rotation")
 
 
+def _ranker_signal(
+    *,
+    family: str,
+    group: str,
+    current: dict[str, float],
+    target: dict[str, float],
+    risk_on: bool | None = None,
+) -> dict[str, object]:
+    library = load_factor_library(FACTOR_LIBRARY)
+    factors = library.factors_for_groups([group])
+    factor_evidence = build_ranker_factor_snapshot(
+        model_family_id=family,
+        signal_date="2026-08-07",
+        latest_data_date="2026-08-07",
+        factor_values={
+            definition.factor_id: float(index + 1) / 100.0
+            for index, definition in enumerate(factors)
+        },
+        factor_references={},
+        data_freshness_ok=True,
+    )
+    changed = current != target
+    return {
+        "model_family_id": family,
+        "research_only": True,
+        "trade_ready": False,
+        "should_alert": changed,
+        "fingerprint": f"{family}-test-fingerprint",
+        "signal_date": "2026-08-07",
+        "latest_data_date": "2026-08-07",
+        "data_freshness_ok": True,
+        "current_weights": current,
+        "target_weights": target,
+        "turnover_units": 0.5 if changed else 0.0,
+        "estimated_transaction_cost": 0.001 if changed else 0.0,
+        "reason_code": f"{family}_10_session_rebalance",
+        "diagnostics": ({"risk_on": risk_on} if risk_on is not None else {}),
+        "factor_evidence": factor_evidence,
+        "factor_freshness_ok": True,
+    }
+
+
 def _catalog_with_v43(tmp_path: Path) -> Path:
     payload = json.loads(FORMAL_CATALOG.read_text(encoding="utf-8"))
     for record in payload["records"]:
@@ -199,8 +246,49 @@ def test_formal_catalog_drives_exact_operations_membership(tmp_path: Path) -> No
     assert set(observed) == expected
     assert observed[QQQ_MODEL]["status"] == "awaiting_observation"
     assert observed[BYD_MODEL]["status"] == "awaiting_observation"
-    assert observed["us_x1_1"]["status"] == "pipeline_unavailable"
-    assert observed["cn_x1_1"]["status"] == "pipeline_unavailable"
+    assert observed[US_MODEL]["status"] == "awaiting_observation"
+    assert observed[CN_MODEL]["status"] == "awaiting_observation"
+    assert observed[US_MODEL]["decision_cadence"] == "Every 10 provider sessions"
+    assert observed[CN_MODEL]["decision_cadence"] == "Every 10 provider sessions"
+
+
+def test_ranker_ledgers_project_current_targets(tmp_path: Path) -> None:
+    _append(
+        tmp_path / US_MODEL,
+        US_MODEL,
+        _ranker_signal(
+            family="us_ranker",
+            group="momentum_volatility_volume",
+            current={"A": 1.0},
+            target={"A": 0.5, "B": 0.5},
+        ),
+    )
+    _append(
+        tmp_path / CN_MODEL,
+        CN_MODEL,
+        _ranker_signal(
+            family="cn_ranker",
+            group="cn_balanced_ohlcv",
+            current={"000300": 1.0},
+            target={"000001": 0.25, "000002": 0.25, "000003": 0.25, "000004": 0.25},
+            risk_on=True,
+        ),
+    )
+    payload = build_operations_payload(
+        formal_catalog=FORMAL_CATALOG,
+        ledger_root=tmp_path,
+        generated_at="2026-08-08T00:00:01Z",
+    )
+    records = _by_model(payload)
+    us = records[US_MODEL]
+    cn = records[CN_MODEL]
+    assert us["status"] == "target_pending_execution"
+    assert us["state_label"] == "US Top-15 rebalance"
+    assert us["factor_freshness"] == "current"
+    assert us["source_label"] == "Governed 10-session ranker signal ledger"
+    assert cn["status"] == "target_pending_execution"
+    assert cn["state_label"] == "CN risk-on · sector 4×1"
+    assert cn["factor_freshness"] == "current"
 
 
 def test_qqq_ledger_projects_canonical_factor_snapshot(tmp_path: Path) -> None:
