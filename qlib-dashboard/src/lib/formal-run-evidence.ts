@@ -87,14 +87,14 @@ async function optionalSection(
   return loadRunSection(run, sectionId);
 }
 
-function parseReport(value: unknown): ReportRow[] {
+function parseReport(value: unknown, benchmarkId: string): ReportRow[] {
   return records(value, 'performance.report').map((row, index) => {
     const account = Number(row.account);
     const date = String(row.date ?? '');
     if (!date || !Number.isFinite(account) || account <= 0) {
       throw new Error(`performance.report row ${index} has an invalid date or account value.`);
     }
-    return { ...row, date, account } as ReportRow;
+    return { ...row, date, account, benchmark_id: benchmarkId } as ReportRow;
   });
 }
 
@@ -162,14 +162,15 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
   const dateRange = isRecord(performance.date_range) ? performance.date_range : {};
   const start = String(dateRange.start ?? run.manifest.comparability_key.start);
   const end = String(dateRange.end ?? run.manifest.comparability_key.end);
+  const benchmark = String(performance.benchmark ?? run.benchmark);
 
   return {
     run,
     metrics: canonicalMetrics(summary.metrics, 'summary.metrics'),
     performance: {
-      benchmark: String(performance.benchmark ?? run.benchmark),
+      benchmark,
       dateRange: { start, end },
-      report: parseReport(performance.report),
+      report: parseReport(performance.report, benchmark),
       traceFrequency: String(performance.trace_frequency ?? run.manifest.comparability_key.trace_frequency),
     },
     risk: {
