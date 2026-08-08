@@ -2,8 +2,9 @@
 
 The command never overwrites the authoritative source directory. It can either
 refresh only missing/invalid symbols or rebuild the complete selected pool plus
-benchmark. Every provider attempt is recorded, the exact pool is validated, and
-only a complete provider or diagnostics-only blocked result is published.
+benchmark and explicitly declared auxiliary securities. Every provider attempt
+is recorded, the exact pool is validated, and only a complete provider or
+diagnostics-only blocked result is published.
 """
 
 from __future__ import annotations
@@ -78,6 +79,19 @@ def _load_pool(path: Path, market: str) -> list[str]:
     if expected <= 0 or len(symbols) != expected or len(set(symbols)) != expected:
         raise ValueError("selected-pool identity is not exact")
     return symbols
+
+
+def _normalize_auxiliary_symbols(
+    values: list[str] | tuple[str, ...] | None,
+    *,
+    candidates: list[str],
+    benchmark: str,
+) -> list[str]:
+    auxiliary = [str(value).strip().upper() for value in (values or []) if str(value).strip()]
+    if len(auxiliary) != len(set(auxiliary)):
+        raise ValueError("auxiliary symbols must be unique")
+    reserved = set(candidates) | {benchmark}
+    return [symbol for symbol in auxiliary if symbol not in reserved]
 
 
 def _normalize_frame(frame: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
@@ -212,6 +226,7 @@ def _base_manifest(
     pool_id: str,
     candidates: list[str],
     benchmark: str,
+    auxiliary_symbols: list[str],
     start: str,
     cutoff: str,
     targets: list[str],
@@ -225,7 +240,9 @@ def _base_manifest(
         "market": market,
         "pool_id": pool_id,
         "candidate_count": len(candidates),
+        "candidate_symbols": candidates,
         "benchmark": benchmark,
+        "auxiliary_symbols": auxiliary_symbols,
         "start": start,
         "cutoff": cutoff,
         "refresh_mode": "full" if full_refresh else "repair_only",
@@ -235,7 +252,7 @@ def _base_manifest(
         "records": records,
         "identity_contracts": {
             symbol: contract
-            for symbol in candidates
+            for symbol in [*candidates, benchmark, *auxiliary_symbols]
             if (contract := _identity_contract(market, symbol)) is not None
         },
         "research_only": True,
@@ -254,8 +271,9 @@ def refresh_selected_pool_prices(
     router: MarketDataRouter | None = None,
     max_rounds: int = 2,
     full_refresh: bool = False,
+    auxiliary_symbols: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
-    """Build one isolated, exact selected-pool price source and provider."""
+    """Build one isolated selected-pool provider plus declared formal auxiliaries."""
 
     project_root = Path(root).resolve()
     market_key = str(market).lower()
@@ -267,7 +285,12 @@ def refresh_selected_pool_prices(
     )
     candidates = _load_pool(binding.pool_spec, market_key)
     benchmark = BENCHMARKS[market_key]
-    required = [*candidates, benchmark]
+    auxiliaries = _normalize_auxiliary_symbols(
+        auxiliary_symbols,
+        candidates=candidates,
+        benchmark=benchmark,
+    )
+    required = [*candidates, benchmark, *auxiliaries]
 
     source_dir = Path(source_csv_dir).resolve()
     destination = Path(output_root).resolve()
@@ -386,6 +409,7 @@ def refresh_selected_pool_prices(
             pool_id=binding.pool_id,
             candidates=candidates,
             benchmark=benchmark,
+            auxiliary_symbols=auxiliaries,
             start=start,
             cutoff=cutoff,
             targets=targets,
@@ -465,9 +489,15 @@ def main() -> None:
     parser.add_argument("--cutoff", default="2026-06-18")
     parser.add_argument("--max-rounds", type=int, default=2)
     parser.add_argument(
+        "--auxiliary-symbol",
+        action="append",
+        default=[],
+        help="Additional formal/reference security to include in the same provider.",
+    )
+    parser.add_argument(
         "--full-refresh",
         action="store_true",
-        help="Fetch every candidate and benchmark instead of only blocked files.",
+        help="Fetch every candidate, benchmark, and auxiliary security.",
     )
     args = parser.parse_args()
 
@@ -480,6 +510,7 @@ def main() -> None:
         cutoff=args.cutoff,
         max_rounds=args.max_rounds,
         full_refresh=args.full_refresh,
+        auxiliary_symbols=args.auxiliary_symbol,
     )
     print(json.dumps(payload, indent=2, sort_keys=True))
 
