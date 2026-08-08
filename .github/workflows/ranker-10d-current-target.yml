@@ -13,6 +13,7 @@ on:
       - "scripts/persist_strategy_signal_evaluation.py"
       - "scripts/build_strategy_operations.py"
       - "src/research/ranker_current_target.py"
+      - "src/research/xgb_ranker_explainability.py"
       - "src/factors/ranker_snapshot.py"
       - "src/artifacts/strategy_signal_ledger.py"
       - "src/artifacts/strategy_operations.py"
@@ -32,19 +33,20 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     env:
-      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
       TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - name: Capture executed source revision
         id: source
         shell: bash
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -103,7 +105,7 @@ jobs:
             --full-refresh
           uv run python scripts/run_ranker_current_target.py build \
             --market us \
-            --provider-dir artifacts/ranker-current-target/us_provider/provider \
+            --provider-dir artifacts/ranker-current-target/us_provider/data/providers/us \
             --formal-package data/research/formal_backtests/us_x1_1.json \
             --ledger-dir data/research/strategy_signal_ledgers/us_x1_1 \
             --signal-date "$date" \
@@ -126,7 +128,7 @@ jobs:
             --full-refresh
           uv run python scripts/run_ranker_current_target.py build \
             --market cn \
-            --provider-dir artifacts/ranker-current-target/cn_provider/provider \
+            --provider-dir artifacts/ranker-current-target/cn_provider/data/providers/cn \
             --formal-package data/research/formal_backtests/cn_x1_1.json \
             --ledger-dir data/research/strategy_signal_ledgers/cn_x1_1 \
             --signal-date "$date" \
