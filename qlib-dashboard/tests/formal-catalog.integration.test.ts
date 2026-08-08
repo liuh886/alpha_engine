@@ -30,7 +30,7 @@ describe('published formal catalog', () => {
     expect(result.runs.map((run) => run.modelVersionId).sort()).toEqual([
       'byd_v1_2_convex_momentum_budget_v1',
       'cn_x1_1',
-      'qqqi_qqq_tqqq_v4_2',
+      'qqqi_qqq_tqqq_v4_3',
       'us_x1_1',
     ]);
 
