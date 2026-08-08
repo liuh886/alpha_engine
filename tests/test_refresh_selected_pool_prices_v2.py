@@ -124,4 +124,86 @@ def test_cn_yahoo_only_source_is_quarantined(tmp_path: Path, monkeypatch):
     payload = _decorate_manifest(path, build_hardened_router("cn"))
     assert payload["promotion_eligible"] is False
     assert payload["quarantined_symbols"] == ["000063"]
+    assert payload["formal_auxiliary_fallback_symbols"] == []
     assert payload["promotion_blocker"] == "CN symbols rely on Yahoo-only adjusted data"
+
+
+def test_cn_formal_auxiliary_allows_proven_last_resort_yahoo_fallback(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    path = tmp_path / "manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "market": "cn",
+                "status": "selected_pool_price_refresh_ready",
+                "records": [
+                    {
+                        "symbol": "515180",
+                        "action": "fetched_full_refresh",
+                        "provider": "yfinance",
+                        "attempts": [
+                            {"provider": "akshare_sina", "ok": False},
+                            {"provider": "akshare", "ok": False},
+                            {"provider": "baostock", "ok": False},
+                            {"provider": "efinance", "ok": False},
+                            {
+                                "provider": "yfinance",
+                                "ok": True,
+                                "provider_symbol": "515180.SS",
+                            },
+                        ],
+                    }
+                ],
+                "failures": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    payload = _decorate_manifest(path, build_hardened_router("cn"))
+    record = payload["records"][0]
+    assert payload["promotion_eligible"] is True
+    assert payload["quarantined_symbols"] == []
+    assert payload["formal_auxiliary_fallback_symbols"] == ["515180"]
+    assert payload["promotion_blocker"] is None
+    assert record["promotion_status"] == "formal_auxiliary_governed_yahoo_fallback"
+
+
+def test_cn_formal_auxiliary_does_not_bypass_missing_preferred_attempts(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    path = tmp_path / "manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "market": "cn",
+                "status": "selected_pool_price_refresh_ready",
+                "records": [
+                    {
+                        "symbol": "515180",
+                        "action": "fetched_full_refresh",
+                        "provider": "yfinance",
+                        "attempts": [
+                            {"provider": "akshare_sina", "ok": False},
+                            {"provider": "akshare", "ok": False},
+                            {
+                                "provider": "yfinance",
+                                "ok": True,
+                                "provider_symbol": "515180.SS",
+                            },
+                        ],
+                    }
+                ],
+                "failures": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    payload = _decorate_manifest(path, build_hardened_router("cn"))
+    assert payload["promotion_eligible"] is False
+    assert payload["quarantined_symbols"] == ["515180"]
+    assert payload["formal_auxiliary_fallback_symbols"] == []
