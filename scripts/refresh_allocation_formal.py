@@ -17,7 +17,9 @@ import yaml
 
 from scripts.promote_byd_v1_2_formal import build_package as build_byd_package
 from src.artifacts.formal_refresh import FormalRefreshError, load_object, sha256, write_object
+from src.research.etf_rotation_experiment import _return_metrics
 from src.research.etf_strategy_data import fetch_governed_etf_strategy_bars
+from src.research.vix_rotation_experiment import config_from_contract
 from src.research.vxn_bridge_allocation_experiment import run_bridge_allocation_comparison
 
 
@@ -28,6 +30,7 @@ class AllocationRefreshError(FormalRefreshError):
 QQQ_MODEL = "qqqi_qqq_tqqq_v4_2"
 QQQ_STRATEGY = "rotation_vxn_bridge_v4_2_50_50"
 BYD_MODEL = "byd_v1_2_convex_momentum_budget_v1"
+QQQ_ASSETS = ("QQQI", "QQQ", "TQQQ")
 
 
 def _manifest_digest(payload: Mapping[str, Any]) -> str:
@@ -65,6 +68,151 @@ def _action(previous: float, target: float) -> str:
     return "INCREASE" if target > previous else "DECREASE"
 
 
+def _verify_qqq_decision_overlap(
+    existing_by_date: Mapping[str, Mapping[str, Any]], daily: pd.DataFrame
+) -> None:
+    """Fail closed on model-path drift while leaving frozen economic evidence untouched."""
+
+    observed: set[str] = set()
+    for timestamp, row in daily.iterrows():
+        key = pd.Timestamp(timestamp).date().isoformat()
+        existing = existing_by_date.get(key)
+        if existing is None:
+            continue
+        observed.add(key)
+        integer_fields = {
+            "position_state": int(row["position_state"]),
+            "decision_state": int(row["decision_state"]),
+        }
+        for field, expected in integer_fields.items():
+            if field in existing and int(existing[field]) != expected:
+                raise AllocationRefreshError(
+                    f"QQQ historical decision path changed on {key}: {field}"
+                )
+        text_fields = {
+            "position_label": str(row["position_label"]),
+            "decision_reason": str(row["decision_reason"]),
+            "executed_reason": str(row["executed_reason"]),
+        }
+        for field, expected in text_fields.items():
+            if field in existing and str(existing[field]) != expected:
+                raise AllocationRefreshError(
+                    f"QQQ historical decision path changed on {key}: {field}"
+                )
+        for asset in QQQ_ASSETS:
+            field = f"weight_{asset}"
+            if field in existing and not math.isclose(
+                float(existing[field]),
+                float(row[field]),
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            ):
+                raise AllocationRefreshError(
+                    f"QQQ historical decision path changed on {key}: {field}"
+                )
+
+    expected_overlap = {
+        key
+        for key, row in existing_by_date.items()
+        if "position_state" in row and "decision_state" in row
+    }
+    missing = sorted(expected_overlap - observed)
+    if missing:
+        raise AllocationRefreshError(
+            f"QQQ current replay is missing {len(missing)} frozen decision dates; first={missing[0]}"
+        )
+
+
+def _qqq_metrics_from_report(
+    report: list[dict[str, Any]], *, annual_risk_free_rate: float
+) -> dict[str, float]:
+    frame = pd.DataFrame(report)
+    if frame.empty or "period_return" not in frame:
+        raise AllocationRefreshError("QQQ formal report has no realized returns")
+    index = pd.to_datetime(frame["date"], errors="coerce")
+    returns = pd.Series(
+        pd.to_numeric(frame["period_return"], errors="coerce").to_numpy(),
+        index=index,
+        dtype=float,
+    )
+    metrics = _return_metrics(
+        returns,
+        annual_risk_free_rate=annual_risk_free_rate,
+    )
+    required = (
+        "total_return",
+        "cagr",
+        "annual_volatility",
+        "sharpe",
+        "sortino",
+        "max_drawdown",
+        "calmar",
+    )
+    if any(not math.isfinite(float(metrics[key])) for key in required):
+        raise AllocationRefreshError("QQQ refreshed summary metrics are not finite")
+    return {
+        "Total Return": float(metrics["total_return"]),
+        "CAGR": float(metrics["cagr"]),
+        "Annualized Volatility": float(metrics["annual_volatility"]),
+        "Sharpe Ratio": float(metrics["sharpe"]),
+        "Sortino Ratio": float(metrics["sortino"]),
+        "Max Drawdown": float(metrics["max_drawdown"]),
+        "Calmar Ratio": float(metrics["calmar"]),
+        "Turnover": float(pd.to_numeric(frame.get("turnover"), errors="coerce").fillna(0.0).sum()),
+        "Transaction Cost": float(
+            pd.to_numeric(frame.get("transaction_cost"), errors="coerce").fillna(0.0).sum()
+        ),
+    }
+
+
+def _increment_qqq_attribution(
+    *,
+    existing: object,
+    daily: pd.DataFrame,
+    appended_dates: set[str],
+    previous_weights: Mapping[str, float],
+) -> list[dict[str, Any]]:
+    contribution = {asset: 0.0 for asset in QQQ_ASSETS}
+    if isinstance(existing, list):
+        for item in existing:
+            if not isinstance(item, Mapping):
+                continue
+            instrument = str(item.get("instrument") or "")
+            if instrument in contribution:
+                contribution[instrument] = float(item.get("value") or 0.0)
+
+    prior = {asset: float(previous_weights.get(asset, 0.0)) for asset in QQQ_ASSETS}
+    for timestamp, row in daily.iterrows():
+        key = pd.Timestamp(timestamp).date().isoformat()
+        if key not in appended_dates:
+            continue
+        weights = {asset: float(row[f"weight_{asset}"]) for asset in QQQ_ASSETS}
+        returns = {
+            asset: float(row[f"{asset}_next_open_return"]) for asset in QQQ_ASSETS
+        }
+        if not all(math.isfinite(value) for value in returns.values()):
+            continue
+        for asset in QQQ_ASSETS:
+            contribution[asset] += weights[asset] * returns[asset]
+        changes = {asset: abs(weights[asset] - prior[asset]) for asset in QQQ_ASSETS}
+        denominator = sum(changes.values())
+        if denominator:
+            cost = float(row["transaction_cost"])
+            for asset in QQQ_ASSETS:
+                contribution[asset] -= cost * changes[asset] / denominator
+        prior = weights
+
+    return [
+        {
+            "instrument": asset,
+            "name": asset,
+            "value": contribution[asset],
+            "semantics": "arithmetic daily contribution less allocated transition cost",
+        }
+        for asset in QQQ_ASSETS
+    ]
+
+
 def refresh_qqq(
     *,
     current_package: Path,
@@ -90,7 +238,7 @@ def refresh_qqq(
         end=cutoff,
         bundle_dir=bundle_dir,
     )
-    metrics, results, _, diagnostics = run_bridge_allocation_comparison(bars, contract)
+    _, results, _, diagnostics = run_bridge_allocation_comparison(bars, contract)
     if QQQ_STRATEGY not in results:
         raise AllocationRefreshError("frozen v4.2 result is missing")
     daily = results[QQQ_STRATEGY].daily.copy()
@@ -103,33 +251,15 @@ def refresh_qqq(
         for row in package.get("report", [])
         if isinstance(row, dict) and row.get("date")
     }
-
-    for timestamp, row in daily.iterrows():
-        key = timestamp.date().isoformat()
-        existing = existing_by_date.get(key)
-        if existing is None or "period_return" not in existing:
-            continue
-        comparisons = {
-            "period_return": float(row["net_return"]),
-            "gross_return": float(row["gross_return"]),
-            "transaction_cost": float(row["transaction_cost"]),
-            "weight_QQQI": float(row["weight_QQQI"]),
-            "weight_QQQ": float(row["weight_QQQ"]),
-            "weight_TQQQ": float(row["weight_TQQQ"]),
-        }
-        for field, expected in comparisons.items():
-            if field in existing and not math.isclose(
-                float(existing[field]), expected, rel_tol=0.0, abs_tol=1e-10
-            ):
-                raise AllocationRefreshError(
-                    f"QQQ historical overlap changed on {key}: {field}"
-                )
+    _verify_qqq_decision_overlap(existing_by_date, daily)
 
     account = float(package["report"][-1]["account"])
     benchmark = float(package["report"][-1]["bench_qqq"])
     peak = max(float(row["account"]) for row in package["report"])
     previous = _next_weights(package)
-    appended = 0
+    attribution_previous = dict(previous)
+    existing_attribution = copy.deepcopy(package.get("attribution"))
+    appended_dates: set[str] = set()
     for timestamp, row in daily.iterrows():
         key = timestamp.date().isoformat()
         if key in existing_dates or key > cutoff:
@@ -138,6 +268,8 @@ def refresh_qqq(
         if not math.isfinite(net):
             continue
         qqq_return = float(row["QQQ_next_open_return"])
+        if not math.isfinite(qqq_return):
+            continue
         account *= 1.0 + net
         benchmark *= 1.0 + qqq_return
         peak = max(peak, account)
@@ -222,49 +354,24 @@ def refresh_qqq(
             )
         previous = weights
         existing_dates.add(key)
-        appended += 1
+        appended_dates.add(key)
 
-    contribution = {symbol: 0.0 for symbol in ("QQQI", "QQQ", "TQQQ")}
-    prior = {symbol: 0.0 for symbol in contribution}
-    for _, row in daily.iterrows():
-        weights = {symbol: float(row[f"weight_{symbol}"]) for symbol in contribution}
-        returns = {
-            symbol: float(row[f"{symbol}_next_open_return"])
-            for symbol in contribution
-        }
-        if not all(math.isfinite(value) for value in returns.values()):
-            continue
-        for symbol in contribution:
-            contribution[symbol] += weights[symbol] * returns[symbol]
-        changes = {symbol: abs(weights[symbol] - prior[symbol]) for symbol in contribution}
-        denominator = sum(changes.values())
-        if denominator:
-            for symbol in contribution:
-                contribution[symbol] -= (
-                    float(row["transaction_cost"]) * changes[symbol] / denominator
-                )
-        prior = weights
-    package["attribution"] = [
-        {
-            "instrument": symbol,
-            "name": symbol,
-            "value": value,
-            "semantics": "arithmetic daily contribution less allocated transition cost",
-        }
-        for symbol, value in contribution.items()
-    ]
-    metric_row = metrics.loc[QQQ_STRATEGY]
+    if not appended_dates:
+        raise AllocationRefreshError("QQQ refresh produced no new realized sessions")
+
+    package["attribution"] = _increment_qqq_attribution(
+        existing=existing_attribution,
+        daily=daily,
+        appended_dates=appended_dates,
+        previous_weights=attribution_previous,
+    )
+    config = config_from_contract(contract)
     package["metrics"] = {
         **dict(package["metrics"]),
-        "Total Return": float(metric_row["total_return"]),
-        "CAGR": float(metric_row["cagr"]),
-        "Annualized Volatility": float(metric_row["annual_volatility"]),
-        "Sharpe Ratio": float(metric_row["sharpe"]),
-        "Sortino Ratio": float(metric_row["sortino"]),
-        "Max Drawdown": float(metric_row["max_drawdown"]),
-        "Calmar Ratio": float(metric_row["calmar"]),
-        "Turnover": float(metric_row["turnover_units"]),
-        "Transaction Cost": float(metric_row["transaction_cost_paid"]),
+        **_qqq_metrics_from_report(
+            package["report"],
+            annual_risk_free_rate=config.annual_risk_free_rate,
+        ),
     }
     latest_economic = max(
         [str(row.get("date")) for row in package["report"] if isinstance(row, dict)]
@@ -292,12 +399,18 @@ def refresh_qqq(
         "data_identity": data_identity,
         "coverage": coverage.to_dict("records"),
         "retrospective_diagnostics": diagnostics,
+        "append_only_boundary": max(existing_by_date),
+        "historical_economic_evidence_recomputed": False,
         "model_selection_reopened": False,
     }
     package["research_only"] = True
     package["trade_ready"] = False
     write_object(output, package)
-    return {"model_id": QQQ_MODEL, "appended_sessions": appended, "output_sha256": sha256(output)}
+    return {
+        "model_id": QQQ_MODEL,
+        "appended_sessions": len(appended_dates),
+        "output_sha256": sha256(output),
+    }
 
 
 def _extend_byd_input(
