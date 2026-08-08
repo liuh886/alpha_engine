@@ -1,10 +1,13 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const repoRoot = resolve(process.cwd(), '..');
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const dashboardRoot = resolve(scriptDir, '..');
+const repoRoot = resolve(dashboardRoot, '..');
 const catalogPath = resolve(repoRoot, 'data/research/formal_model_runs/catalog.json');
 const snapshotsPath = resolve(repoRoot, 'data/research/strategy_operations/snapshots.json');
-const outputDir = resolve(process.cwd(), 'public/data/strategy-operations');
+const outputDir = resolve(dashboardRoot, 'public/data/strategy-operations');
 const outputPath = resolve(outputDir, 'snapshots.json');
 const allowedStatuses = new Set(['pipeline_unavailable', 'awaiting_observation', 'current_no_change', 'target_pending_execution', 'execution_observed', 'stale', 'blocked', 'delivery_failed']);
 const allowedFreshness = new Set(['current', 'stale', 'blocked', 'unknown']);
