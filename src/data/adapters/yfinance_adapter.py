@@ -14,6 +14,8 @@ from src.data.adapters.base import DataFetchError, FetchRequest, FetchResult
 # narrow enough to reject genuinely malformed bars while tolerating that
 # provider-scale adjustment noise.
 OHLC_ROUNDING_REL_TOL = 5e-4
+CN_ETF_PRICE_TICK = 1e-3
+CN_ETF_PREFIXES = ("15", "16", "51", "56", "58")
 
 
 def _get_yahoo_ticker(ticker: str, region: str) -> str:
@@ -37,10 +39,20 @@ def _get_yahoo_ticker(ticker: str, region: str) -> str:
     return ticker
 
 
+def _ohlc_absolute_tolerance(symbol: str, market: str) -> float:
+    """Return the exchange price-tick bound used for Yahoo envelope repair."""
+
+    clean = str(symbol).upper().split(".", maxsplit=1)[0]
+    if str(market).lower().strip() == "cn" and clean.startswith(CN_ETF_PREFIXES):
+        return CN_ETF_PRICE_TICK
+    return 0.0
+
+
 def _reconcile_ohlc_rounding(
     frame: pd.DataFrame,
     *,
     relative_tolerance: float = OHLC_ROUNDING_REL_TOL,
+    absolute_tolerance: float = 0.0,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Correct bounded provider-adjustment OHLC envelope drift with evidence."""
 
@@ -58,21 +70,32 @@ def _reconcile_ohlc_rounding(
     high_relative = high_gap / high_scale
     low_relative = low_gap / low_scale
     max_relative = float(max(high_relative.max(), low_relative.max()))
+    max_absolute = float(max(high_gap.max(), low_gap.max()))
     high_mask = high_gap > 0.0
     low_mask = low_gap > 0.0
     corrected_mask = high_mask | low_mask
+    material_high = high_mask & (high_relative > relative_tolerance) & (
+        high_gap > absolute_tolerance
+    )
+    material_low = low_mask & (low_relative > relative_tolerance) & (
+        low_gap > absolute_tolerance
+    )
     evidence = {
         "relative_tolerance": relative_tolerance,
+        "absolute_tolerance": absolute_tolerance,
         "corrected_rows": int(corrected_mask.sum()),
         "corrected_high_rows": int(high_mask.sum()),
         "corrected_low_rows": int(low_mask.sum()),
         "max_relative_violation": max_relative,
+        "max_absolute_violation": max_absolute,
     }
-    if max_relative > relative_tolerance:
+    if material_high.any() or material_low.any():
         raise DataFetchError(
             "material Yahoo OHLC envelope violation: "
             f"max_relative={max_relative:.12g} "
-            f"> tolerance={relative_tolerance:.12g}"
+            f"> tolerance={relative_tolerance:.12g}; "
+            f"max_absolute={max_absolute:.12g} "
+            f"> tolerance={absolute_tolerance:.12g}"
         )
     result.loc[high_mask, "high"] = required_high.loc[high_mask]
     result.loc[low_mask, "low"] = required_low.loc[low_mask]
@@ -80,7 +103,11 @@ def _reconcile_ohlc_rounding(
     return result, evidence
 
 
-def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
+def _process_yfinance_df(
+    df: pd.DataFrame,
+    *,
+    absolute_tolerance: float = 0.0,
+) -> pd.DataFrame:
     """Normalize bars already adjusted consistently by Yahoo/yfinance.
 
     The adapter requests ``auto_adjust=True``. Reconstructing OHLC from an
@@ -115,7 +142,10 @@ def _process_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
     out = result[
         ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
     ].sort_values("date").reset_index(drop=True)
-    reconciled, _ = _reconcile_ohlc_rounding(out)
+    reconciled, _ = _reconcile_ohlc_rounding(
+        out,
+        absolute_tolerance=absolute_tolerance,
+    )
     return reconciled
 
 
@@ -208,7 +238,12 @@ class YFinanceAdapter:
                 f"yfinance download failed for {yf_ticker}: {exc}"
             ) from exc
         out = _clip_to_request(
-            _process_yfinance_df(df), start=start, end=req.end
+            _process_yfinance_df(
+                df,
+                absolute_tolerance=_ohlc_absolute_tolerance(symbol, market),
+            ),
+            start=start,
+            end=req.end,
         )
         if out.empty:
             raise DataFetchError(f"empty data for {yf_ticker}")
