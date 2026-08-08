@@ -1,8 +1,9 @@
 name: QQQ v4.3 Main State Sync
 
 on:
-  pull_request:
-    branches: [main]
+  push:
+    branches:
+      - feat/qqq-v4-3-operational-closeout
     paths:
       - ".github/workflows/qqq-v4-3-main-state-sync.yml"
 
@@ -16,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.head_ref }}
+          ref: feat/qqq-v4-3-operational-closeout
           fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
@@ -64,4 +65,4 @@ jobs:
             exit 0
           fi
           git commit -m "ops: reconcile v4.3 with latest main signal state"
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
+          git push origin HEAD:feat/qqq-v4-3-operational-closeout
