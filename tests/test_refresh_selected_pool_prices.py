@@ -137,6 +137,8 @@ def test_refresh_fetches_only_missing_or_invalid_sources(
     assert payload["refresh_mode"] == "repair_only"
     assert payload["target_count"] == 1
     assert payload["targets"] == ["000002"]
+    assert payload["candidate_symbols"] == ["000001", "000002"]
+    assert payload["auxiliary_symbols"] == []
     assert router.calls == ["000002"]
     assert payload["status"] == "selected_pool_price_refresh_ready"
     assert payload["all_sources_ready"] is True
@@ -173,6 +175,38 @@ def test_full_refresh_fetches_every_candidate_and_benchmark(
     assert {row["action"] for row in payload["records"]} == {
         "fetched_full_refresh"
     }
+
+
+def test_auxiliary_symbols_share_provider_without_entering_candidate_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_contract(tmp_path, monkeypatch)
+    source = tmp_path / "source"
+    for symbol in ("000001", "000002", "000300"):
+        _write_csv(source / f"{symbol}.csv", _frame())
+    router = FakeRouter({"515180": _frame(3.0)})
+    output = tmp_path / "output"
+
+    payload = module.refresh_selected_pool_prices(
+        root=tmp_path,
+        market="cn",
+        source_csv_dir=source,
+        output_root=output,
+        start="2021-01-01",
+        cutoff="2026-06-18",
+        router=router,  # type: ignore[arg-type]
+        max_rounds=1,
+        auxiliary_symbols=["515180"],
+    )
+
+    assert payload["candidate_count"] == 2
+    assert payload["candidate_symbols"] == ["000001", "000002"]
+    assert payload["benchmark"] == "000300"
+    assert payload["auxiliary_symbols"] == ["515180"]
+    assert payload["targets"] == ["515180"]
+    assert router.calls == ["515180"]
+    assert (output / "data" / "csv_source" / "515180.csv").is_file()
 
 
 def test_refresh_publishes_diagnostics_without_partial_data(
