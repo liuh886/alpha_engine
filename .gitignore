@@ -50,8 +50,8 @@ coverage.xml
 
 # Project specific
 # /data/
-artifacts/
-!artifacts/release_candidate/
+/artifacts/
+!/artifacts/release_candidate/
 mlruns/
 output/
 site/
@@ -109,7 +109,7 @@ alpha_hub_service.js
 *.tmp
 *.temp
 sweep_results/
-experiment_*/
+/experiment_*/
 
 # Temporary verification / scratch files
 scratch.txt
