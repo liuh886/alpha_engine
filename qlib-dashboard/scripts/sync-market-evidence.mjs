@@ -1,4 +1,4 @@
-import { copyFile, lstat, mkdir, readdir, rm } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,14 +29,21 @@ async function copyJsonTree(source, target) {
   }
 }
 
-await rm(targetRoot, { recursive: true, force: true });
-try {
-  await copyJsonTree(sourceRoot, targetRoot);
-  console.log(`Published market evidence assets from ${sourceRoot}.`);
-} catch (error) {
-  if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-    console.log('Market evidence is not published yet; Security Explorer will fail closed.');
-  } else {
-    throw error;
+async function validateCatalog(market) {
+  const path = join(targetRoot, market, 'catalog.json');
+  const payload = JSON.parse(await readFile(path, 'utf8'));
+  if (payload.schema_version !== '1.1' || payload.evidence_type !== 'market_evidence_catalog' || payload.market !== market) {
+    throw new Error(`Invalid ${market.toUpperCase()} Market Evidence 1.1 catalog.`);
+  }
+  if (payload.research_only !== true || payload.trade_ready !== false) {
+    throw new Error(`Invalid ${market.toUpperCase()} Market Evidence research boundary.`);
+  }
+  if (!Array.isArray(payload.symbols) || payload.symbols.length === 0) {
+    throw new Error(`Empty ${market.toUpperCase()} Market Evidence catalog.`);
   }
 }
+
+await rm(targetRoot, { recursive: true, force: true });
+await copyJsonTree(sourceRoot, targetRoot);
+await Promise.all(['us', 'cn'].map(validateCatalog));
+console.log(`Published required Market Evidence 1.1 assets from ${sourceRoot}.`);
