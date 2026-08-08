@@ -77,17 +77,15 @@ def test_us_plan_uses_declared_grid_and_top_n() -> None:
     assert len(plan.candidates) == 16
     assert plan.declared_contract["strategy"]["top_n"] == 15
     assert plan.declared_contract["strategy"]["bottom_n"] == 15
-    assert {
-        item["feature_group"]["name"] for item in plan.candidates
-    } == {
+    assert {item["feature_group"]["name"] for item in plan.candidates} == {
         "momentum",
         "momentum_volatility",
         "momentum_volatility_volume",
         "risk_controlled_momentum",
     }
     assert set(plan.baseline_factors) == {
-        "factor:us_momentum_10d",
-        "factor:us_risk_controlled_10d",
+        "ohlcv.momentum.ret_10d",
+        "ohlcv.risk_adjusted.ret10_per_vol10",
     }
 
 
