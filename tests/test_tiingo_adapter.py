@@ -157,6 +157,42 @@ def test_tiingo_frame_dates_are_timezone_naive() -> None:
     assert result.df.loc[0, "date"].tzinfo is None
 
 
+def test_tiingo_429_without_retry_after_uses_bounded_backoff(monkeypatch) -> None:
+    calls = 0
+    sleeps: list[float] = []
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return b'{"ok": true}'
+
+    def rate_limit_then_succeed(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            raise urllib.error.HTTPError(
+                url="https://api.tiingo.com/tiingo/daily/QQQ",
+                code=429,
+                msg="Too Many Requests",
+                hdrs={},
+                fp=None,
+            )
+        return Response()
+
+    monkeypatch.setattr("urllib.request.urlopen", rate_limit_then_succeed)
+    monkeypatch.setattr("time.sleep", sleeps.append)
+    client = TiingoHttpClient(token="fixture-token", max_attempts=3)
+
+    assert client.get_json("tiingo/daily/QQQ") == {"ok": True}
+    assert calls == 3
+    assert sleeps == [1, 2]
+
+
 def test_tiingo_429_exposes_rate_limit_reset_without_long_sleep(
     monkeypatch,
 ) -> None:
