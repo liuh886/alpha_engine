@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - data/research/formal_backtests/**
-      - scripts/verify_formal_backtest_freshness.py
       - .github/workflows/current-formal-backtest-integrity.yml
 
 permissions:
@@ -18,20 +17,12 @@ concurrency:
 jobs:
   verify-current-snapshot:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install locked environment
+      - name: Verify active identities, package hashes, and internal freshness contracts
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
-      - name: Verify catalog identities and package hashes
-        run: |
-          uv run python - <<'PY'
+          python - <<'PY'
           import hashlib
           import json
           from pathlib import Path
@@ -52,6 +43,7 @@ jobs:
           assert set(freshness.get('required_models') or []) == expected
           assert 'qqqi_qqq_tqqq_v4_2' not in freshness.get('required_models', [])
 
+          packages = {}
           for row in records:
               path = root / str(row['path'])
               assert path.is_file(), path
@@ -64,25 +56,17 @@ jobs:
               assert package['trade_ready'] is False
               assert package['evidence_cutoff']
               assert package['date_range']['end']
-          print('Current formal snapshot identities and package hashes are valid.')
+              packages[package['model_id']] = package
+
+          qqq = packages['qqqi_qqq_tqqq_v4_3']
+          qqq_freshness = qqq.get('freshness') or {}
+          assert qqq_freshness.get('status') == 'current'
+          assert qqq_freshness.get('required_cutoff') == qqq['evidence_cutoff']
+          assert qqq_freshness.get('latest_completed_session') == qqq['evidence_cutoff']
+          assert qqq_freshness.get('model_selection_reopened') is False
+          assert qqq_freshness.get('research_only') is True
+          assert qqq_freshness.get('trade_ready') is False
+          assert qqq.get('evidence', {}).get('historical_economic_evidence_recomputed') is False
+
+          print('Current formal snapshot is structurally valid; cross-market temporal freshness remains the responsibility of Reviewed Formal Backtest Refresh.')
           PY
-      - name: Verify current freshness contract
-        run: |
-          uv run python scripts/verify_formal_backtest_freshness.py \
-            --root data/research/formal_backtests \
-            --as-of "$(python - <<'PY'
-          import json
-          from pathlib import Path
-          payload = json.loads(Path('data/research/formal_backtests/catalog.json').read_text(encoding='utf-8'))
-          print(payload['published_at'])
-          PY
-          )" \
-            --receipt artifacts/current-formal-freshness-receipt.json
-      - name: Retain integrity evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: current-formal-backtest-integrity-${{ github.run_id }}
-          path: artifacts/current-formal-freshness-receipt.json
-          if-no-files-found: error
-          retention-days: 90
