@@ -7,14 +7,27 @@ import type { ReportRow } from '@/lib/types';
 
 type BenchmarkKey = 'benchmark_qqq' | 'benchmark_csi300' | 'benchmark';
 
+interface BenchmarkContract {
+  key: Exclude<BenchmarkKey, 'benchmark'> | 'benchmark';
+  label: string;
+}
+
+function declaredBenchmarkContract(benchmarkId?: string): BenchmarkContract | null {
+  const value = String(benchmarkId ?? '').trim();
+  if (!value) return null;
+  const normalized = value.toUpperCase();
+  if (normalized === 'QQQ') return { key: 'benchmark_qqq', label: 'QQQ' };
+  if (['CSI300', 'CSI 300', '000300', '000300.SH'].includes(normalized)) {
+    return { key: 'benchmark_csi300', label: 'CSI 300' };
+  }
+  return { key: 'benchmark', label: value };
+}
+
 function normalizeBenchmarkSeries(values: Array<number | undefined>): number[] | null {
   const numeric = values.map(value => Number.isFinite(Number(value)) ? Number(value) : null);
   const first = numeric.find((value): value is number => value !== null);
   if (first === undefined) return null;
 
-  // Formal evidence can retain either an equity level or a periodic return.
-  // A normalized equity trace begins around 1 (or a larger capital base),
-  // while a return trace begins near zero. Normalize both to cumulative return.
   if (Math.abs(first) > 0.5) {
     let previous = first;
     return numeric.map(value => {
@@ -35,9 +48,6 @@ function benchmarkLooksCorrupt(report: ReportRow[], values: Array<number | undef
   const first = normalized.find((value): value is number => value !== null);
   if (first === undefined || Math.abs(first) <= 0.5) return false;
 
-  // Reject the historical merge failure where benchmark equity was copied
-  // from strategy equity verbatim. Periodic-return series are not compared
-  // against account levels.
   let compared = 0;
   let differs = false;
   for (let index = 0; index < Math.min(values.length, report.length); index += 1) {
@@ -53,7 +63,7 @@ function benchmarkLooksCorrupt(report: ReportRow[], values: Array<number | undef
   return compared > 0 && !differs;
 }
 
-export function PerformanceCharts({ report }: { report: ReportRow[] }) {
+export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]; benchmarkId?: string }) {
   const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
 
   const toggleVisibility = (entry: any) => {
@@ -62,6 +72,8 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
       setHiddenSeries(prev => ({ ...prev, [key]: !prev[key] }));
     }
   };
+
+  const declaredBenchmark = useMemo(() => declaredBenchmarkContract(benchmarkId), [benchmarkId]);
 
   const chartData = useMemo(() => {
     if (!report.length) return [];
@@ -74,20 +86,23 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
 
     const qqq = !benchmarkLooksCorrupt(report, rawQqq) ? normalizeBenchmarkSeries(rawQqq) : null;
     const csi300 = !benchmarkLooksCorrupt(report, rawCsi300) ? normalizeBenchmarkSeries(rawCsi300) : null;
+    const generic = !benchmarkLooksCorrupt(report, rawGeneric) ? normalizeBenchmarkSeries(rawGeneric) : null;
 
-    // `bench` is retained only as an identity-unknown legacy/source fallback.
-    // Named benchmark evidence always wins and the browser never invents a
-    // zero-return baseline when no benchmark evidence exists.
-    const generic = !qqq && !csi300 && !benchmarkLooksCorrupt(report, rawGeneric)
-      ? normalizeBenchmarkSeries(rawGeneric)
-      : null;
-    const primaryBenchmark: BenchmarkKey | null = qqq
-      ? 'benchmark_qqq'
-      : csi300
-        ? 'benchmark_csi300'
+    const available = {
+      benchmark_qqq: qqq,
+      benchmark_csi300: csi300,
+      benchmark: generic,
+    };
+    let primaryBenchmark: BenchmarkKey | null = null;
+    if (declaredBenchmark) {
+      primaryBenchmark = available[declaredBenchmark.key]
+        ? declaredBenchmark.key
         : generic
           ? 'benchmark'
           : null;
+    } else {
+      primaryBenchmark = qqq ? 'benchmark_qqq' : csi300 ? 'benchmark_csi300' : generic ? 'benchmark' : null;
+    }
 
     return report.map((row, index) => {
       const account = Number(row.account);
@@ -115,13 +130,14 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
         benchmark_qqq: benchmarkQqq,
         benchmark_csi300: benchmarkCsi300,
         benchmark,
+        primary_benchmark_key: primaryBenchmark,
         excess: Number.isFinite(strategy) && Number.isFinite(primaryValue)
           ? strategy - primaryValue
           : null as unknown as number,
         pos_ratio: posRatio,
       };
     });
-  }, [report]);
+  }, [declaredBenchmark, report]);
 
   const drawdownData = useMemo(() => {
     if (!chartData.length) return [];
@@ -183,7 +199,13 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
   const hasQqq = useMemo(() => chartData.some(row => Number.isFinite(row.benchmark_qqq)), [chartData]);
   const hasCsi300 = useMemo(() => chartData.some(row => Number.isFinite(row.benchmark_csi300)), [chartData]);
   const hasGenericBenchmark = useMemo(() => chartData.some(row => Number.isFinite(row.benchmark)), [chartData]);
-  const excessBaseline = hasQqq ? 'QQQ' : hasCsi300 ? 'CSI 300' : hasGenericBenchmark ? 'Benchmark' : null;
+  const primaryBenchmarkKey = chartData[0]?.primary_benchmark_key ?? null;
+  const excessBaseline = primaryBenchmarkKey
+    ? declaredBenchmark?.label
+      ?? (primaryBenchmarkKey === 'benchmark_qqq' ? 'QQQ' : primaryBenchmarkKey === 'benchmark_csi300' ? 'CSI 300' : 'Benchmark')
+    : null;
+  const genericBenchmarkLabel = primaryBenchmarkKey === 'benchmark' && declaredBenchmark ? declaredBenchmark.label : 'Benchmark';
+  const showGenericBenchmark = hasGenericBenchmark && primaryBenchmarkKey === 'benchmark';
 
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number | string; color: string }>; label?: string }) => {
     if (!active || !payload?.length) return null;
@@ -229,7 +251,7 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-sm font-semibold">Equity Curve</CardTitle>
             <span className="text-[10px] text-muted-foreground">
-              {excessBaseline ? `Default baseline · ${excessBaseline}` : 'Baseline evidence unavailable'}
+              {excessBaseline ? `Declared baseline · ${excessBaseline}` : declaredBenchmark ? `Declared baseline unavailable · ${declaredBenchmark.label}` : 'Baseline evidence unavailable'}
             </span>
           </div>
         </CardHeader>
@@ -251,7 +273,7 @@ export function PerformanceCharts({ report }: { report: ReportRow[] }) {
               <Area hide={hiddenSeries.strategy} type="monotone" dataKey="strategy" stroke="hsl(var(--primary))" strokeWidth={2} fillOpacity={1} fill="url(#gradStrategy)" name="Alpha Engine" />
               {hasQqq && <Line hide={hiddenSeries.benchmark_qqq} type="monotone" dataKey="benchmark_qqq" stroke="#f59e0b" dot={false} strokeWidth={1.5} strokeDasharray="5 5" name="QQQ" />}
               {hasCsi300 && <Line hide={hiddenSeries.benchmark_csi300} type="monotone" dataKey="benchmark_csi300" stroke="#0ea5e9" dot={false} strokeWidth={1.5} strokeDasharray="5 5" name="CSI 300" />}
-              {hasGenericBenchmark && <Line hide={hiddenSeries.benchmark} type="monotone" dataKey="benchmark" stroke="#f59e0b" dot={false} strokeWidth={1.5} strokeDasharray="5 5" name="Benchmark" />}
+              {showGenericBenchmark && <Line hide={hiddenSeries.benchmark} type="monotone" dataKey="benchmark" stroke="#f59e0b" dot={false} strokeWidth={1.5} strokeDasharray="5 5" name={genericBenchmarkLabel} />}
               <Brush dataKey="date" height={28} stroke="hsl(var(--primary))" fill="hsl(var(--background))" tickFormatter={date => format(parseISO(date), 'MMM yy')} />
             </ComposedChart>
           </ResponsiveContainer>
