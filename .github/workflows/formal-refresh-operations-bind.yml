@@ -1,4 +1,4 @@
-name: Bind Operations to Reviewed Formal Refresh
+name: Finalize Reviewed Formal Refresh
 
 on:
   workflow_run:
@@ -7,14 +7,14 @@ on:
 
 permissions:
   contents: write
-  pull-requests: read
+  pull-requests: write
 
 concurrency:
-  group: formal-refresh-operations-bind
+  group: formal-refresh-finalize
   cancel-in-progress: false
 
 jobs:
-  bind-review-branch:
+  finalize-review-branch:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -53,17 +53,26 @@ jobs:
           cd qlib-dashboard
           npm ci --no-audit --no-fund
           npm run sync:strategy-operations
-      - name: Commit operations binding to the same review transaction
+      - name: Commit operations binding to the same refresh transaction
         if: steps.review.outputs.number != ''
         run: |
           set -euo pipefail
           git config user.name "AlphaEngine Formal Refresh Agent"
           git config user.email "formal-refresh-agent@alphaengine.local"
-          git add data/research/strategy_operations/snapshots.json
+          git add data/research/strategy_operations/snapshots.json qlib-dashboard/public/data/strategy-operations
           if git diff --cached --quiet; then
             echo "Operations snapshot already matches the candidate formal catalog."
-            exit 0
+          else
+            git commit -m "data: bind strategy operations to refreshed formal evidence"
+            git pull --rebase origin automation/formal-backtest-refresh
+            git push origin HEAD:automation/formal-backtest-refresh
           fi
-          git commit -m "data: bind strategy operations to refreshed formal evidence"
-          git pull --rebase origin automation/formal-backtest-refresh
-          git push origin HEAD:automation/formal-backtest-refresh
+      - name: Arm protected auto-merge after all PR gates pass
+        if: steps.review.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.review.outputs.number }}
+        run: |
+          set -euo pipefail
+          gh pr ready "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash --auto
