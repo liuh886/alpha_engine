@@ -180,6 +180,21 @@ def _required_tuple(value: object, field: str) -> tuple[str, ...]:
     return values
 
 
+def _integer(value: object, field: str, *, default: int = 0) -> int:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        raise ValueError(f"{field} must be an integer")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(f"{field} must be an integer") from exc
+    raise ValueError(f"{field} must be an integer")
+
+
 def load_factor_library(path: str | Path) -> FactorLibrary:
     """Load the only supported factor-library schema (2.0), failing closed."""
 
@@ -254,12 +269,13 @@ def load_factor_library(path: str | Path) -> FactorLibrary:
             ).strip(),
             required_fields=_required_tuple(raw.get("required_fields"), "required_fields"),
             markets=_required_tuple(raw.get("markets"), "markets"),
-            minimum_lookback=int(raw.get("minimum_lookback", 0)),
-            availability_lag_sessions=int(
+            minimum_lookback=_integer(raw.get("minimum_lookback"), "minimum_lookback"),
+            availability_lag_sessions=_integer(
                 raw.get(
                     "availability_lag_sessions",
-                    defaults.get("availability_lag_sessions", 0),
-                )
+                    defaults.get("availability_lag_sessions"),
+                ),
+                "availability_lag_sessions",
             ),
             adjustment_requirement=str(
                 raw.get(
