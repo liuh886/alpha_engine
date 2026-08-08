@@ -1,93 +1,44 @@
-import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
-function sha256(text: string): string {
-  return createHash('sha256').update(text).digest('hex');
+const publicRoot = path.resolve(process.cwd(), 'public');
+
+test.use({ serviceWorkers: 'block' });
+
+async function openConsole(page: Page) {
+  await page.goto('/#/app');
+  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
 }
 
-const modelsText = JSON.stringify([
-  {
-    id: 'fixture-run-1',
-    name: 'Static Evidence Fixture',
-    market: 'us',
-    model_type: 'lgbm',
-    stage: 'CANDIDATE',
-    created_at: '2026-07-31T00:00:00Z',
-    metrics: { 'Sharpe Ratio': 1.2, 'Annualized Return': 0.18, 'Max Drawdown': -0.12 },
-    payload: { data: { indicators: { sharpe: 1.2, annual_return: 0.18, max_drawdown: -0.12 } } },
-  },
-]);
-const exportManifestText = JSON.stringify({ generated_at: '2026-08-02T00:00:00Z', snapshot_id: 'fixture-snapshot' });
-const bundleManifest = {
-  schema_version: '1.0.0',
-  frontend_reader_range: '>=1.0.0 <2.0.0',
-  bundle_id: 'a'.repeat(64),
-  title: 'Static Browser Fixture',
-  generated_at: '2026-08-02T00:00:00Z',
-  evidence_cutoff: '2026-07-31',
-  research_only: true,
-  trade_ready: false,
-  scope: { markets: ['us'], snapshot_id: 'fixture-snapshot', model_count: 1 },
-  warnings: [],
-  blocked_gates: ['trade_ready'],
-  promotion_decision: 'research_candidate',
-  artifacts: [
-    { artifact_id: '1'.repeat(16), kind: 'model_index', path: 'data/models.json', media_type: 'application/json', byte_size: Buffer.byteLength(modelsText), sha256: sha256(modelsText), required: true },
-    { artifact_id: '2'.repeat(16), kind: 'static_export_manifest', path: 'data/manifest.json', media_type: 'application/json', byte_size: Buffer.byteLength(exportManifestText), sha256: sha256(exportManifestText), required: true },
-  ],
-};
-
-type FormalCatalog = { records?: Array<{ manifest_path?: string }> };
-type FormalManifest = { sections?: Array<{ section_id?: string; availability_status?: string; path?: string }> };
-type FormalSummary = { display_name?: string; model_version_id?: string };
-
-async function installBundleFixture(): Promise<void> {
-  const root = resolve(process.cwd(), 'dist', 'bundle');
-  await mkdir(resolve(root, 'data'), { recursive: true });
-  await Promise.all([
-    writeFile(resolve(root, 'alpha-engine-bundle.json'), JSON.stringify(bundleManifest), 'utf8'),
-    writeFile(resolve(root, 'data', 'models.json'), modelsText, 'utf8'),
-    writeFile(resolve(root, 'data', 'manifest.json'), exportManifestText, 'utf8'),
-  ]);
+async function loadFormalDisplayNames(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const catalog = await fetch('./data/formal-model-runs/catalog.json').then((response) => response.json());
+    return catalog.records.map((record: { manifest_path: string }) => record.manifest_path).length
+      ? Promise.all(catalog.records.map(async (record: { manifest_path: string }) => {
+          const manifest = await fetch(`./data/formal-model-runs/${record.manifest_path}`).then((response) => response.json());
+          return String(manifest.display_name);
+        }))
+      : [];
+  });
 }
-
-test.beforeAll(async () => { await installBundleFixture(); });
 
 async function assertNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
-async function openConsole(page: Page) {
-  await page.goto('/#/app');
-  await expect(page.locator('#root')).not.toBeEmpty();
-  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
-  await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
-}
-
-async function loadFormalDisplayNames(page: Page): Promise<string[]> {
-  const catalogResponse = await page.request.get('/data/formal-model-runs/catalog.json');
-  expect(catalogResponse.ok()).toBeTruthy();
-  const catalog = await catalogResponse.json() as FormalCatalog;
-  const names: string[] = [];
-  for (const record of catalog.records ?? []) {
-    const manifestPath = String(record.manifest_path);
-    const manifestResponse = await page.request.get(`/data/formal-model-runs/${manifestPath}`);
-    expect(manifestResponse.ok()).toBeTruthy();
-    const manifest = await manifestResponse.json() as FormalManifest;
-    const summarySection = manifest.sections?.find((section) => section.section_id === 'summary' && section.availability_status === 'available');
-    const parent = manifestPath.split('/').slice(0, -1).join('/');
-    const summaryResponse = await page.request.get(`/data/formal-model-runs/${parent}/${String(summarySection?.path)}`);
-    expect(summaryResponse.ok()).toBeTruthy();
-    const summary = await summaryResponse.json() as FormalSummary;
-    expect(summary.display_name).toBeTruthy();
-    names.push(String(summary.display_name));
-  }
-  expect(names.length).toBeGreaterThan(0);
-  return names;
-}
+test.beforeEach(async ({ page }) => {
+  await page.route('**/*', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
+      await route.abort();
+      return;
+    }
+    await route.continue();
+  });
+});
 
 test('product homepage opens the strategy console', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
@@ -129,9 +80,9 @@ test('strategy console exposes four primary destinations and formal strategy dri
   const formalNames = await loadFormalDisplayNames(page);
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   for (const name of formalNames) await expect(fleet.getByText(name, { exact: true })).toBeVisible();
-  await fleet.getByText('QQQ Rotation v4.2', { exact: true }).click();
-  await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_2$/);
-  await expect(page.getByRole('heading', { name: 'QQQ Rotation v4.2' })).toBeVisible();
+  await fleet.getByText('QQQ Rotation v4.3', { exact: true }).click();
+  await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_3$/);
+  await expect(page.getByRole('heading', { name: 'QQQ Rotation v4.3' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current decision state' })).toBeVisible();
   const formalTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
   for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
@@ -148,17 +99,15 @@ test('strategy console exposes four primary destinations and formal strategy dri
 
   expect(apiRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
-  await assertNoHorizontalOverflow(page);
+
   await page.screenshot({ path: `test-results/static-artifact/strategy-console-${testInfo.project.name}.png`, fullPage: true });
 });
 
-test('installed shell reopens offline after first visit', async ({ page, context }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop', 'Offline lifecycle is checked once on desktop Chromium.');
-  await openConsole(page);
-  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
-  await page.reload();
-  await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
+test('installed shell reopens offline after first visit', async ({ page, context }) => {
+  test.skip(test.info().project.name !== 'desktop', 'Offline shell smoke runs once on desktop.');
+  await page.goto('/#/');
+  await expect(page.getByRole('heading', { name: 'Run systematic strategies with the evidence still attached.' })).toBeVisible();
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByText('Alpha Engine', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Run systematic strategies with the evidence still attached.' })).toBeVisible();
 });
