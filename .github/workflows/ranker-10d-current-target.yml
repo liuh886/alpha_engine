@@ -1,0 +1,236 @@
+name: 10D Ranker Current Target
+
+on:
+  schedule:
+    # After the US close; the due probe uses each market's provider sessions.
+    - cron: "30 22 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: ranker-10d-current-target
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - name: Install locked environment
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Resolve due 10-session decisions
+        id: due
+        shell: bash
+        run: |
+          set -euo pipefail
+          as_of="$(date -u +%F)"
+          mkdir -p artifacts/ranker-current-target
+          uv run python scripts/run_ranker_current_target.py due \
+            --market us \
+            --formal-package data/research/formal_backtests/us_x1_1.json \
+            --ledger-dir data/research/strategy_signal_ledgers/us_x1_1 \
+            --as-of "$as_of" \
+            --output artifacts/ranker-current-target/us_due.json
+          uv run python scripts/run_ranker_current_target.py due \
+            --market cn \
+            --formal-package data/research/formal_backtests/cn_x1_1.json \
+            --ledger-dir data/research/strategy_signal_ledgers/cn_x1_1 \
+            --as-of "$as_of" \
+            --output artifacts/ranker-current-target/cn_due.json
+          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          for market in ("us", "cn"):
+              payload = json.loads(Path(f"artifacts/ranker-current-target/{market}_due.json").read_text())
+              print(f"{market}_due={'true' if payload['due'] else 'false'}")
+              print(f"{market}_date={payload.get('signal_date') or ''}")
+          PY
+
+      - name: Build due US provider and current target
+        if: steps.due.outputs.us_due == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          date="${{ steps.due.outputs.us_date }}"
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
+            --market us \
+            --source-csv-dir data/csv_clean \
+            --output-root artifacts/ranker-current-target/us_provider \
+            --start 2021-01-01 \
+            --cutoff "$date" \
+            --max-rounds 3 \
+            --full-refresh
+          uv run python scripts/run_ranker_current_target.py build \
+            --market us \
+            --provider-dir artifacts/ranker-current-target/us_provider/provider \
+            --formal-package data/research/formal_backtests/us_x1_1.json \
+            --ledger-dir data/research/strategy_signal_ledgers/us_x1_1 \
+            --signal-date "$date" \
+            --market-cutoff "US close $date" \
+            --output artifacts/ranker-current-target/us_signal.json
+
+      - name: Build due CN provider and current target
+        if: steps.due.outputs.cn_due == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          date="${{ steps.due.outputs.cn_date }}"
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
+            --market cn \
+            --source-csv-dir data/csv_clean \
+            --output-root artifacts/ranker-current-target/cn_provider \
+            --start 2021-01-01 \
+            --cutoff "$date" \
+            --max-rounds 3 \
+            --full-refresh
+          uv run python scripts/run_ranker_current_target.py build \
+            --market cn \
+            --provider-dir artifacts/ranker-current-target/cn_provider/provider \
+            --formal-package data/research/formal_backtests/cn_x1_1.json \
+            --ledger-dir data/research/strategy_signal_ledgers/cn_x1_1 \
+            --signal-date "$date" \
+            --market-cutoff "CN close $date" \
+            --output artifacts/ranker-current-target/cn_signal.json
+
+      - name: Deliver and persist due decisions
+        if: steps.due.outputs.us_due == 'true' || steps.due.outputs.cn_due == 'true'
+        id: delivery
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          delivery_failed=0
+          created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for market in us cn; do
+            due_var="${market}_due"
+            if [ "${{ steps.due.outputs.us_due }}" != "true" ] && [ "$market" = "us" ]; then continue; fi
+            if [ "${{ steps.due.outputs.cn_due }}" != "true" ] && [ "$market" = "cn" ]; then continue; fi
+
+            signal="artifacts/ranker-current-target/${market}_signal.json"
+            model="$(uv run python - "$signal" <<'PY'
+          import json, sys
+          print(json.load(open(sys.argv[1]))['model_version_id'])
+          PY
+          )"
+            changed="$(uv run python - "$signal" <<'PY'
+          import json, sys
+          print('true' if json.load(open(sys.argv[1]))['should_alert'] else 'false')
+          PY
+          )"
+            delivery_status="not_required"
+            issue_number=""
+            telegram_message_id=""
+            delivery_error=""
+
+            if [ "$changed" = "true" ]; then
+              body="$(uv run python - "$signal" <<'PY'
+          import json, sys
+          payload=json.load(open(sys.argv[1]))
+          target=', '.join(f"{k} {v:.1%}" for k,v in payload['target_weights'].items())
+          current=', '.join(f"{k} {v:.1%}" for k,v in payload['current_weights'].items())
+          print(f"Model: {payload['model_version_id']}\nSignal date: {payload['signal_date']}\nExecution: {payload['execution_time']}\nCurrent: {current}\nTarget: {target}\nTurnover: {payload['turnover_units']:.2%}\nEstimated cost: {payload['estimated_transaction_cost']:.4%}\nReason: {payload['reason_code']}\n\nResearch only; not trade ready.")
+          PY
+          )"
+              issue_url="$(gh issue create --repo "$GITHUB_REPOSITORY" --title "[Signal] ${model} $(uv run python -c "import json; print(json.load(open('$signal'))['signal_date'])")" --body "$body")" || {
+                delivery_status="failed"
+                delivery_error="github_issue_delivery_failed"
+                delivery_failed=1
+              }
+              if [ -n "${issue_url:-}" ]; then
+                issue_number="${issue_url##*/}"
+                if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
+                  response="$(curl --fail --silent --show-error \
+                    --request POST \
+                    --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+                    --data-urlencode "text=$body" \
+                    "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage")" || {
+                      delivery_status="failed"
+                      delivery_error="telegram_delivery_failed"
+                      delivery_failed=1
+                    }
+                  if [ -n "${response:-}" ]; then
+                    telegram_message_id="$(printf '%s' "$response" | uv run python -c "import json,sys; print(json.load(sys.stdin)['result']['message_id'])")"
+                    delivery_status="sent"
+                  fi
+                else
+                  delivery_status="skipped_not_configured"
+                fi
+              fi
+            fi
+
+            uv run python scripts/persist_strategy_signal_evaluation.py \
+              --model-version-id "$model" \
+              --signal-json "$signal" \
+              --ledger-dir "data/research/strategy_signal_ledgers/$model" \
+              --delivery-status "$delivery_status" \
+              --github-issue-number "$issue_number" \
+              --telegram-message-id "$telegram_message_id" \
+              --delivery-error "$delivery_error" \
+              --workflow-run-id "$GITHUB_RUN_ID" \
+              --commit-sha "$GITHUB_SHA" \
+              --created-at-utc "$created_at"
+          done
+          echo "delivery_failed=$delivery_failed" >> "$GITHUB_OUTPUT"
+
+      - name: Rebuild Strategy Operations and frontend read model
+        if: steps.due.outputs.us_due == 'true' || steps.due.outputs.cn_due == 'true'
+        run: |
+          set -euo pipefail
+          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          PYTHONPATH=. uv run python scripts/build_strategy_operations.py --generated-at "$generated_at"
+          cd qlib-dashboard
+          npm ci --no-audit --no-fund
+          npm run sync:strategy-operations
+
+      - name: Commit append-only decisions and operations snapshot
+        if: steps.due.outputs.us_due == 'true' || steps.due.outputs.cn_due == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "AlphaEngine Ranker Operations"
+          git config user.email "ranker-operations@alphaengine.local"
+          git add data/research/strategy_signal_ledgers data/research/strategy_operations/snapshots.json qlib-dashboard/public/data/strategy-operations
+          if git diff --cached --quiet; then
+            echo "No governed ranker publication changes."
+          else
+            git commit -m "ops: publish governed 10-session ranker targets"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Retain decision evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ranker-current-target-${{ github.run_id }}
+          path: artifacts/ranker-current-target
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Fail after persisting delivery failure evidence
+        if: steps.delivery.outputs.delivery_failed == '1'
+        run: exit 1
