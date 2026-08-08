@@ -7,16 +7,35 @@ on:
       - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "src/artifacts/formal_refresh.py"
+      - "src/artifacts/qqq_v4_3_formal.py"
+      - "src/artifacts/strategy_operations.py"
+      - "src/dashboard/market_evidence.py"
+      - "src/data/router.py"
+      - "src/data/provider_catalog.py"
+      - "src/data/adapters/**"
+      - "src/research/byd_515180_allocation.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/refresh_ranker_formal.py"
       - "scripts/refresh_allocation_formal.py"
+      - "scripts/refresh_qqq_v4_3_formal.py"
+      - "scripts/promote_byd_v1_2_formal.py"
+      - "scripts/build_market_evidence.py"
+      - "scripts/build_strategy_operations.py"
+      - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "tests/test_formal_refresh.py"
+      - "tests/test_refresh_qqq_v4_3_formal.py"
+      - "tests/test_market_evidence.py"
+      - "tests/test_strategy_operations.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
+      - "data/research/market_evidence/**"
+      - "data/research/strategy_operations/**"
       - "qlib-dashboard/public/data/formal-model-runs/**"
+      - "qlib-dashboard/public/data/market-evidence/**"
+      - "qlib-dashboard/public/data/strategy-operations/**"
 
 permissions:
   contents: read
@@ -43,16 +62,30 @@ jobs:
         run: |
           uv run ruff check \
             src/artifacts/formal_refresh.py \
+            src/artifacts/qqq_v4_3_formal.py \
+            src/artifacts/strategy_operations.py \
+            src/dashboard/market_evidence.py \
+            src/data/router.py \
+            src/data/provider_catalog.py \
+            src/data/adapters \
             scripts/run_formal_refresh_transaction.py \
             scripts/refresh_ranker_formal.py \
             scripts/refresh_allocation_formal.py \
+            scripts/refresh_qqq_v4_3_formal.py \
+            scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
-            tests/test_formal_refresh.py
+            tests/test_formal_refresh.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_market_evidence.py \
+            tests/test_strategy_operations.py
           uv run mypy \
             src/artifacts/formal_refresh.py \
             scripts/run_formal_refresh_transaction.py
           uv run pytest \
             tests/test_formal_refresh.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_market_evidence.py \
             tests/test_formal_backtest_freshness.py \
             tests/test_sync_formal_bundle_v2.py \
+            tests/test_strategy_operations.py \
             -q --strict-markers --tb=short
