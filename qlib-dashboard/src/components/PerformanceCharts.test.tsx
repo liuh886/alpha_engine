@@ -24,7 +24,7 @@ vi.mock("recharts", () => ({
 
 function equityChartData() {
   const raw = screen.getAllByTestId("chart-data")[0].getAttribute("data-chart");
-  return JSON.parse(raw || "[]") as Array<Record<string, number | null>>;
+  return JSON.parse(raw || "[]") as Array<Record<string, number | string | null>>;
 }
 
 describe("PerformanceCharts benchmark infrastructure", () => {
@@ -62,7 +62,22 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(screen.getAllByTestId("benchmark-line").some((line) => line.textContent === "CSI 300")).toBe(true);
   });
 
-  it("prefers named benchmark evidence over the generic source column", () => {
+  it("uses the formal benchmark identity instead of choosing the first named series", () => {
+    render(
+      <PerformanceCharts report={[
+        { date: "2026-01-01", account: 10_000, benchmark_id: "CSI300", bench_qqq: 10_000, bench_hs300: 10_000 },
+        { date: "2026-01-02", account: 10_400, benchmark_id: "CSI300", bench_qqq: 10_300, bench_hs300: 10_100 },
+        { date: "2026-01-03", account: 10_600, benchmark_id: "CSI300", bench_qqq: 10_500, bench_hs300: 10_200 },
+      ]} />,
+    );
+
+    const data = equityChartData();
+    expect(data[1].excess).toBeCloseTo(0.03, 10);
+    expect(data[1].primary_benchmark_key).toBe("benchmark_csi300");
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "CSI 300");
+  });
+
+  it("keeps generic source evidence secondary when a named benchmark is retained", () => {
     render(
       <PerformanceCharts report={[
         { date: "2026-01-01", account: 10_000, bench: 0, bench_qqq: 10_000 },
@@ -73,16 +88,16 @@ describe("PerformanceCharts benchmark infrastructure", () => {
 
     const data = equityChartData();
     expect(data[2].benchmark_qqq).toBeCloseTo(0.01, 10);
-    expect(data[2].benchmark).toBeNull();
     expect(data[2].excess).toBeCloseTo(0.01, 10);
+    expect(screen.getAllByTestId("benchmark-line").some((line) => line.textContent === "Benchmark")).toBe(false);
   });
 
-  it("uses the generic source benchmark only when no named identity is retained", () => {
+  it("uses a generic retained series as the declared baseline without inventing identity", () => {
     render(
       <PerformanceCharts report={[
-        { date: "2026-01-01", account: 10_000, bench: 0 },
-        { date: "2026-01-02", account: 10_100, bench: 0.01 },
-        { date: "2026-01-03", account: 10_201, bench: 0.01 },
+        { date: "2026-01-01", account: 10_000, benchmark_id: "SPY", bench: 0 },
+        { date: "2026-01-02", account: 10_100, benchmark_id: "SPY", bench: 0.01 },
+        { date: "2026-01-03", account: 10_201, benchmark_id: "SPY", bench: 0.01 },
       ]} />,
     );
 
@@ -90,24 +105,24 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(data[0].benchmark).toBe(0);
     expect(data[1].benchmark).toBeCloseTo(0.01, 10);
     expect(data[2].benchmark).toBeCloseTo(0.0201, 10);
-    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "Benchmark");
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "SPY");
+    expect(screen.getAllByTestId("benchmark-line").some((line) => line.textContent === "SPY")).toBe(true);
   });
 
-  it("fails visibly instead of fabricating a baseline when named benchmark evidence is corrupt", () => {
+  it("does not substitute another named benchmark when the declared baseline is corrupt", () => {
     render(
       <PerformanceCharts report={[
-        { date: "2026-01-01", account: 10_000, bench_qqq: 10_000 },
-        { date: "2026-01-02", account: 10_100, bench_qqq: 10_100 },
-        { date: "2026-01-03", account: 10_200, bench_qqq: 10_200 },
+        { date: "2026-01-01", account: 10_000, benchmark_id: "QQQ", bench_qqq: 10_000, bench_hs300: 10_000 },
+        { date: "2026-01-02", account: 10_100, benchmark_id: "QQQ", bench_qqq: 10_100, bench_hs300: 10_050 },
+        { date: "2026-01-03", account: 10_200, benchmark_id: "QQQ", bench_qqq: 10_200, bench_hs300: 10_100 },
       ]} />,
     );
 
     const data = equityChartData();
-    expect(data[0].strategy).toBe(0);
     expect(data.every((row) => row.benchmark_qqq === null)).toBe(true);
     expect(data.every((row) => row.excess === null)).toBe(true);
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "unavailable");
-    expect(screen.getByText("Baseline evidence unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Declared baseline unavailable · QQQ")).toBeInTheDocument();
   });
 
   it("handles empty report gracefully", () => {
