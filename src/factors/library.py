@@ -8,9 +8,10 @@ formal-model configuration, runtime factor snapshots, and frontend evidence.
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 import yaml
 from yaml import MappingNode, SafeLoader
@@ -56,11 +57,12 @@ def expression_identity(expression: str) -> str:
 
 @dataclass(frozen=True)
 class FactorGroup:
-    """Named ordered set of canonical factor IDs."""
+    """Named ordered references to canonical factor definitions."""
 
     name: str
     description: str
     factor_ids: tuple[str, ...]
+    factors: tuple[FactorDefinition, ...]
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -69,10 +71,19 @@ class FactorGroup:
             raise ValueError(f"factor group {self.name!r} must reference factors")
         if len(self.factor_ids) != len(set(self.factor_ids)):
             raise ValueError(f"factor group {self.name!r} contains duplicate factor IDs")
+        if tuple(row.factor_id for row in self.factors) != self.factor_ids:
+            raise ValueError(f"factor group {self.name!r} definition order is inconsistent")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "factor_ids": list(self.factor_ids),
+        }
 
 
 @dataclass(frozen=True)
-class FactorLibrary:
+class FactorLibrary(Mapping[str, FactorGroup]):
     """One immutable factor catalog plus reusable group references."""
 
     schema_version: str
@@ -80,6 +91,15 @@ class FactorLibrary:
     source_sha256: str
     catalog: FactorCatalog
     groups: Mapping[str, FactorGroup]
+
+    def __getitem__(self, key: str) -> FactorGroup:
+        return self.groups[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.groups)
+
+    def __len__(self) -> int:
+        return len(self.groups)
 
     def factor(self, factor_id: str) -> FactorDefinition:
         for definition in self.catalog.definitions:
@@ -98,18 +118,15 @@ class FactorLibrary:
             selected.append(self.groups[name])
         return selected
 
-    def group_definitions(self, group: FactorGroup) -> tuple[FactorDefinition, ...]:
-        return tuple(self.factor(factor_id) for factor_id in group.factor_ids)
-
     def factors_for_groups(self, group_names: Iterable[str]) -> list[FactorDefinition]:
         definitions: list[FactorDefinition] = []
         seen: set[str] = set()
         for group in self.select_groups(group_names):
-            for factor_id in group.factor_ids:
-                if factor_id in seen:
+            for definition in group.factors:
+                if definition.factor_id in seen:
                     continue
-                seen.add(factor_id)
-                definitions.append(self.factor(factor_id))
+                seen.add(definition.factor_id)
+                definitions.append(definition)
         return definitions
 
     def resolve_expressions(self, factor_ids: Iterable[str]) -> list[str]:
@@ -132,14 +149,7 @@ class FactorLibrary:
             "catalog_implementation_hash": self.catalog.implementation_hash(),
             "factor_count": len(definitions),
             "group_count": len(groups),
-            "groups": [
-                {
-                    "name": group.name,
-                    "description": group.description,
-                    "factor_ids": list(group.factor_ids),
-                }
-                for group in groups
-            ],
+            "groups": [group.to_dict() for group in groups],
             "definitions": [definition.to_dict() for definition in definitions],
             "research_only": True,
             "trade_ready": False,
@@ -291,6 +301,7 @@ def load_factor_library(path: str | Path) -> FactorLibrary:
             name=group_name,
             description=str(raw.get("description", "")),
             factor_ids=factor_ids,
+            factors=tuple(definitions_by_id[factor_id] for factor_id in factor_ids),
         )
 
     return FactorLibrary(
@@ -302,10 +313,7 @@ def load_factor_library(path: str | Path) -> FactorLibrary:
     )
 
 
-def factor_groups_to_ranker_feature_groups(
-    library: FactorLibrary,
-    groups: Iterable[FactorGroup],
-):
+def factor_groups_to_ranker_feature_groups(groups: Iterable[FactorGroup]):
     """Project canonical groups into the existing ranker feature-group type."""
 
     from src.research.ranker_calibration_grid import RankerFeatureGroup
@@ -315,9 +323,7 @@ def factor_groups_to_ranker_feature_groups(
             name=group.name,
             expressions=tuple(
                 definition.expression
-                for definition in sorted(
-                    library.group_definitions(group), key=lambda item: item.factor_id
-                )
+                for definition in sorted(group.factors, key=lambda item: item.factor_id)
             ),
         )
         for group in groups
