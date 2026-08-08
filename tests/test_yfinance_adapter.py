@@ -8,6 +8,7 @@ import pytest
 
 from src.data.adapters.base import DataFetchError, FetchRequest
 from src.data.adapters.yfinance_adapter import (
+    CN_ETF_PRICE_TICK,
     OHLC_ROUNDING_REL_TOL,
     YFinanceAdapter,
     _get_yahoo_ticker,
@@ -91,6 +92,7 @@ def test_cn_yahoo_exchange_mapping_covers_main_boards_and_growth_boards():
     assert _get_yahoo_ticker("600009", "cn") == "600009.SS"
     assert _get_yahoo_ticker("688521", "cn") == "688521.SS"
     assert _get_yahoo_ticker("000300", "cn") == "000300.SS"
+    assert _get_yahoo_ticker("515180", "cn") == "515180.SS"
 
 
 def test_yfinance_current_snapshot_keeps_open_ended_provider_request(monkeypatch):
@@ -181,6 +183,68 @@ def test_provider_scale_adjusted_ohlc_drift_is_reconciled():
     assert evidence["max_relative_violation"] == pytest.approx(relative_gap)
     assert evidence["max_relative_violation"] < OHLC_ROUNDING_REL_TOL
     assert reconciled.loc[0, "high"] == pytest.approx(close)
+
+
+def test_cn_etf_one_tick_ohlc_rounding_is_reconciled(monkeypatch):
+    index = pd.DatetimeIndex(pd.to_datetime(["2026-08-07"]), name="Date")
+    frame = pd.DataFrame(
+        {
+            "Open": [1.323],
+            "High": [1.323],
+            "Low": [1.320],
+            "Close": [1.324],
+            "Volume": [1000.0],
+        },
+        index=index,
+    )
+    relative_gap = CN_ETF_PRICE_TICK / 1.324
+    assert relative_gap > OHLC_ROUNDING_REL_TOL
+    monkeypatch.setitem(
+        sys.modules,
+        "yfinance",
+        SimpleNamespace(download=lambda *args, **kwargs: frame),
+    )
+    result = YFinanceAdapter().fetch_daily_bars(
+        FetchRequest(
+            symbol="515180",
+            market="cn",
+            start="2026-08-07",
+            end="2026-08-07",
+        )
+    )
+    evidence = result.df.attrs["ohlc_rounding_reconciliation"]
+    assert result.df.loc[0, "high"] == pytest.approx(1.324)
+    assert evidence["absolute_tolerance"] == CN_ETF_PRICE_TICK
+    assert evidence["max_relative_violation"] > OHLC_ROUNDING_REL_TOL
+    assert evidence["max_absolute_violation"] == pytest.approx(CN_ETF_PRICE_TICK)
+
+
+def test_same_one_tick_relative_gap_remains_material_for_cn_stock(monkeypatch):
+    index = pd.DatetimeIndex(pd.to_datetime(["2026-08-07"]), name="Date")
+    frame = pd.DataFrame(
+        {
+            "Open": [1.323],
+            "High": [1.323],
+            "Low": [1.320],
+            "Close": [1.324],
+            "Volume": [1000.0],
+        },
+        index=index,
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "yfinance",
+        SimpleNamespace(download=lambda *args, **kwargs: frame),
+    )
+    with pytest.raises(DataFetchError, match="material Yahoo OHLC"):
+        YFinanceAdapter().fetch_daily_bars(
+            FetchRequest(
+                symbol="600009",
+                market="cn",
+                start="2026-08-07",
+                end="2026-08-07",
+            )
+        )
 
 
 def test_material_ohlc_inconsistency_remains_rejected(monkeypatch):
