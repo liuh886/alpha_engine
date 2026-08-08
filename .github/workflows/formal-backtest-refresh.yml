@@ -47,6 +47,7 @@ on:
 permissions:
   actions: write
   contents: write
+  issues: write
   pull-requests: write
 
 concurrency:
@@ -416,6 +417,68 @@ jobs:
           test -n "$merge_sha"
           echo "Reviewed refresh merged at ${merge_sha}; dispatching Pages from main."
           gh workflow run deploy-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+      - name: Upsert refresh operating status
+        if: always()
+        uses: actions/github-script@v8
+        env:
+          REFRESH_REQUIRED: ${{ steps.plan.outputs.refresh_required }}
+          PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
+          US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
+          CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const marker = '<!-- reviewed-formal-backtest-refresh -->';
+            const failed = process.env.JOB_STATUS !== 'success';
+            const prNumber = process.env.PR_NUMBER || '';
+            const status = failed ? 'blocked' : 'current';
+            const body = [
+              marker,
+              '',
+              `## 正式回测与市场证据刷新：${status}`,
+              '',
+              `- US common cutoff: \`${process.env.US_CUTOFF || 'unresolved'}\``,
+              `- CN common cutoff: \`${process.env.CN_CUTOFF || 'unresolved'}\``,
+              `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `- Review PR: ${prNumber ? `#${prNumber}` : 'none'}`,
+              '- Formal + Market Evidence transaction: one reviewed publication',
+              '- Model selection reopened: no',
+              '- Automatic merge: only after required PR checks pass',
+              '- Research only: yes',
+              '- Trade ready: no',
+              '',
+              failed
+                ? 'The refresh failed closed before accepted formal or market evidence was modified.'
+                : 'Accepted formal evidence and Market Evidence match the latest provider-resolved common sessions.',
+            ].join('\n');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) =>
+              !issue.pull_request && String(issue.body || '').includes(marker)
+            );
+            const desiredState = status === 'current' ? 'closed' : 'open';
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                title: `[运行健康] 正式回测与市场证据刷新：${status}`,
+                body,
+                state: desiredState,
+              });
+            } else if (status !== 'current') {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `[运行健康] 正式回测与市场证据刷新：${status}`,
+                body,
+                assignees: [context.repo.owner],
+              });
+            }
       - name: Upload bounded refresh evidence
         if: always()
         uses: actions/upload-artifact@v4
