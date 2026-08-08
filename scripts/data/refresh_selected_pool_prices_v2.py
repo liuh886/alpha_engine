@@ -35,7 +35,10 @@ MANIFEST_RELATIVE_PATH = Path(
     "artifacts/selected_pool_price_refresh_manifest.json"
 )
 FORMAL_MARKET_AUXILIARIES: dict[str, tuple[str, ...]] = {
-    "us": ("QQQI", "TQQQ", "SGOV"),
+    # TIGO is the current governed US87 identity. TYGO is a distinct security
+    # retained only because accepted US x1.1 history actually traded it; it is
+    # published separately rather than being rewritten or substituted as TIGO.
+    "us": ("QQQI", "TQQQ", "SGOV", "TYGO"),
     "cn": ("515180",),
 }
 
