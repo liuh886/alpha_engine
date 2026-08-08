@@ -1,9 +1,8 @@
-"""Spec-bound single-factor diagnostics for accepted real-market data.
+"""Spec-bound single-factor diagnostics over canonical FactorDefinitions.
 
-The diagnostic path is deliberately separate from the legacy market-wide factor
-scanner.  It consumes one canonical ResearchParadigmSpec and one accepted
-real-market evidence report, uses the exact declared universe and factor library,
-and never registers, promotes, or marks a factor trade-ready.
+The diagnostic path consumes one validated research spec and one accepted
+real-market provider. Every output row is keyed by the same canonical factor ID
+used by research receipts, model configs, and future runtime factor snapshots.
 """
 
 from __future__ import annotations
@@ -21,15 +20,8 @@ import numpy as np
 import pandas as pd
 
 from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
-from src.research.factor_library import FactorSpec, load_factor_library
-from src.research.factor_identity import (
-    build_canonical_factor_row,
-    expand_alias_rows,
-    factor_identity_metadata,
-    group_factor_specs_by_expression,
-    validate_alias_metric_consistency,
-)
-from src.research.window_policy import build_window_sampling_plan
+from src.factors.definition import FactorDefinition
+from src.factors.library import load_factor_library
 from src.research.multi_market_readiness import normalize_market_symbols
 from src.research.paradigm import ResearchParadigmSpec, load_research_paradigm_spec
 from src.research.qlib_execution_common import normalize_qlib_frame_index
@@ -37,8 +29,9 @@ from src.research.spec_bound_execution import (
     build_declared_execution_contract,
     contract_sha256,
 )
+from src.research.window_policy import build_window_sampling_plan
 
-FACTOR_DIAGNOSTICS_SCHEMA_VERSION = "1.3"
+FACTOR_DIAGNOSTICS_SCHEMA_VERSION = "2.0"
 _REQUIRED_ACCEPTANCE_CHECKS = {
     "real_provider_scope",
     "calendar_coverage",
@@ -49,10 +42,7 @@ _REQUIRED_ACCEPTANCE_CHECKS = {
 
 
 class FactorDiagnosticsRuntime(Protocol):
-    """Minimal provider surface for factor diagnostics."""
-
-    def initialize(self, repository_root: Path) -> None:
-        """Initialize the underlying provider."""
+    def initialize(self, repository_root: Path) -> None: ...
 
     def features(
         self,
@@ -60,17 +50,13 @@ class FactorDiagnosticsRuntime(Protocol):
         expressions: Sequence[str],
         start: str,
         end: str,
-    ) -> pd.DataFrame:
-        """Load expression values indexed by datetime and instrument."""
+    ) -> pd.DataFrame: ...
 
-    def metadata(self) -> dict[str, Any]:
-        """Return non-semantic provider metadata for audit output."""
+    def metadata(self) -> dict[str, Any]: ...
 
 
 @dataclass
 class QlibFactorDiagnosticsRuntime:
-    """Lazy real-Qlib implementation of FactorDiagnosticsRuntime."""
-
     market: str
     provider_uri: str | Path
     _resolved_provider_uri: str = ""
@@ -147,8 +133,7 @@ def _validate_acceptance(
     inputs = report.get("inputs")
     if not isinstance(inputs, dict):
         raise ValueError("acceptance report is missing inputs")
-    expected_hash = contract_sha256(declared_contract)
-    if inputs.get("declared_contract_sha256") != expected_hash:
+    if inputs.get("declared_contract_sha256") != contract_sha256(declared_contract):
         raise ValueError("acceptance contract hash does not match current research spec")
 
     checks = report.get("checks")
@@ -176,28 +161,36 @@ def _validate_acceptance(
         raise ValueError("synthetic/test provider cannot support factor diagnostics")
 
 
-def _selected_factor_specs(spec: ResearchParadigmSpec) -> list[tuple[str, FactorSpec]]:
+def _selected_factor_specs(
+    spec: ResearchParadigmSpec,
+) -> list[tuple[tuple[str, ...], FactorDefinition]]:
+    """Resolve each canonical factor once and retain all declared group memberships."""
+
     factor_path = _resolve_source(spec, str(spec.factor_library["source"]))
-    groups = load_factor_library(factor_path)
-    selected: dict[str, tuple[str, FactorSpec]] = {}
+    library = load_factor_library(factor_path)
+    memberships: dict[str, list[str]] = {}
+    ordered_ids: list[str] = []
 
     for group_name in spec.factor_library["groups"]:
-        group = groups[str(group_name)]
-        for factor in group.factors:
-            selected[factor.id] = (group.name, factor)
+        group = library[str(group_name)]
+        for definition in group.factors:
+            if definition.factor_id not in memberships:
+                memberships[definition.factor_id] = []
+                ordered_ids.append(definition.factor_id)
+            memberships[definition.factor_id].append(group.name)
 
-    by_id = {
-        factor.id: (group.name, factor)
-        for group in groups.values()
-        for factor in group.factors
-    }
-    for factor_id in spec.candidate_grid["factor_baselines"]:
-        factor_key = str(factor_id)
-        if factor_key not in by_id:
-            raise ValueError(f"baseline factor is missing from factor library: {factor_key}")
-        selected.setdefault(factor_key, by_id[factor_key])
+    for raw_factor_id in spec.candidate_grid["factor_baselines"]:
+        factor_id = str(raw_factor_id)
+        definition = library.factor(factor_id)
+        if factor_id not in memberships:
+            memberships[factor_id] = []
+            ordered_ids.append(factor_id)
+        memberships[factor_id].append("factor_baseline")
 
-    return list(selected.values())
+    return [
+        (tuple(dict.fromkeys(memberships[factor_id])), library.factor(factor_id))
+        for factor_id in ordered_ids
+    ]
 
 
 def _finite_number(value: Any) -> float | None:
@@ -233,13 +226,7 @@ def _icir(values: Sequence[float]) -> float | None:
 def _window_date_map(
     available_dates: pd.DatetimeIndex,
     spec: ResearchParadigmSpec,
-) -> tuple[
-    dict[pd.Timestamp, str],
-    list[dict[str, Any]],
-    dict[str, Any],
-]:
-    """Build the explicit, horizon-contained OOS sampling plan."""
-
+) -> tuple[dict[pd.Timestamp, str], list[dict[str, Any]], dict[str, Any]]:
     walk = spec.walk_forward
     raw_partial_minimum = walk.get("min_partial_window_eligible_sessions")
     plan = build_window_sampling_plan(
@@ -251,25 +238,21 @@ def _window_date_map(
         min_complete_windows=int(walk["min_windows"]),
         partial_window_policy=str(walk["partial_window_policy"]),
         min_partial_window_eligible_sessions=(
-            None
-            if raw_partial_minimum is None
-            else int(raw_partial_minimum)
+            None if raw_partial_minimum is None else int(raw_partial_minimum)
         ),
         horizon_sessions=int(spec.strategy["horizon_days"]),
         cadence_sessions=int(spec.strategy["rebalance_days"]),
     )
     if not plan.complete_minimum_satisfied:
         raise ValueError(
-            "declared walk-forward contract has too few complete, "
-            "session-eligible diagnostic windows"
+            "declared walk-forward contract has too few complete, session-eligible windows"
         )
     if not plan.date_map:
-        raise ValueError(
-            "no horizon-contained rebalance dates are available for factor diagnostics"
-        )
+        raise ValueError("no horizon-contained rebalance dates are available")
     metadata = plan.to_dict()
     metadata.pop("windows", None)
     return plan.date_map, list(plan.window_rows), metadata
+
 
 def _daily_factor_rows(
     factor: pd.Series,
@@ -341,8 +324,8 @@ def _summarize_metric_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _factor_diagnostic(
-    group_name: str,
-    factor_spec: FactorSpec,
+    groups: tuple[str, ...],
+    definition: FactorDefinition,
     factor_values: pd.Series,
     returns: pd.Series,
     *,
@@ -368,7 +351,9 @@ def _factor_diagnostic(
         window_metrics.append({"window": window, **_summarize_metric_rows(window_rows)})
 
     mean_rank_ic = summary["mean_rank_ic"]
-    orientation = "invert_score" if mean_rank_ic is not None and mean_rank_ic < 0.0 else "keep_score"
+    orientation = (
+        "invert_score" if mean_rank_ic is not None and mean_rank_ic < 0.0 else "keep_score"
+    )
     multiplier = -1.0 if orientation == "invert_score" else 1.0
     raw_spread = summary["mean_top_bottom_spread"]
     raw_icir = summary["rank_icir"]
@@ -382,8 +367,14 @@ def _factor_diagnostic(
         direction_agreement = bool(float(mean_rank_ic) * float(raw_spread) > 0.0)
 
     return {
-        **factor_spec.to_dict(),
-        "group": group_name,
+        "factor_id": definition.factor_id,
+        "factor_version": definition.factor_version,
+        "display_name": definition.display_name,
+        "namespace": definition.namespace,
+        "information_family": definition.information_family,
+        "expression": definition.expression,
+        "implementation_hash": definition.implementation_hash,
+        "groups": list(groups),
         "coverage_ratio": _finite_number(coverage_ratio),
         **summary,
         "recommended_orientation": orientation,
@@ -410,8 +401,6 @@ def run_factor_diagnostics(
     runtime: FactorDiagnosticsRuntime,
     acceptance_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Run diagnostic-only single-factor research against accepted market data."""
-
     root = Path(repository_root).resolve()
     declared_contract = build_declared_execution_contract(spec)
     _validate_acceptance(acceptance_report, spec, declared_contract)
@@ -424,9 +413,11 @@ def run_factor_diagnostics(
             list(declared_contract["universe"]["requested_symbols"]),
         )
     ]
-    factor_specs = _selected_factor_specs(spec)
-    canonical_specs = group_factor_specs_by_expression(factor_specs)
-    expressions = [item.evaluation_expression for item in canonical_specs]
+    selected = _selected_factor_specs(spec)
+    expressions = [definition.expression for _, definition in selected]
+    if len(expressions) != len(set(expressions)):
+        raise ValueError("canonical factor selection produced duplicate expressions")
+
     return_expression = str(spec.strategy["return_expression"])
     start = str(spec.walk_forward["requested_train_start"])
     end = str(spec.walk_forward["test_end"])
@@ -455,31 +446,25 @@ def run_factor_diagnostics(
     available_dates = pd.DatetimeIndex(
         sorted(set(raw_returns.index.get_level_values("datetime")))
     )
-    date_map, windows, window_policy = _window_date_map(
-        available_dates, spec
-    )
+    date_map, windows, window_policy = _window_date_map(available_dates, spec)
     returns_series = raw_returns["return"]
     top_n = int(spec.strategy["top_n"])
     bottom_n = int(spec.strategy["bottom_n"])
 
-    canonical_diagnostics: list[dict[str, Any]] = []
-    for canonical_spec in canonical_specs:
-        representative = canonical_spec.aliases[0]
-        diagnostic = _factor_diagnostic(
-            representative.group_name,
-            representative.factor,
-            features[canonical_spec.evaluation_expression],
+    diagnostics = [
+        _factor_diagnostic(
+            groups,
+            definition,
+            features[definition.expression],
             returns_series,
             date_map=date_map,
             requested_symbol_count=len(requested_symbols),
             top_n=top_n,
             bottom_n=bottom_n,
         )
-        canonical_diagnostics.append(
-            build_canonical_factor_row(canonical_spec, diagnostic)
-        )
-
-    canonical_diagnostics.sort(
+        for groups, definition in selected
+    ]
+    diagnostics.sort(
         key=lambda row: (
             abs(float(row["oriented_rank_icir"] or 0.0)),
             abs(float(row["oriented_mean_rank_ic"] or 0.0)),
@@ -487,25 +472,15 @@ def run_factor_diagnostics(
         ),
         reverse=True,
     )
-    for canonical_rank, row in enumerate(canonical_diagnostics, start=1):
-        row["canonical_rank"] = canonical_rank
-
-    factor_alias_rows = [
-        alias_row
-        for canonical_row in canonical_diagnostics
-        for alias_row in expand_alias_rows(canonical_row)
-    ]
-    validate_alias_metric_consistency(factor_alias_rows)
-    factor_alias_map = {
-        str(row["id"]): str(row["canonical_expression_id"])
-        for row in factor_alias_rows
-    }
-
+    for rank, row in enumerate(diagnostics, start=1):
+        row["rank"] = rank
 
     acceptance_sha256 = ""
     if acceptance_path is not None:
         acceptance_sha256 = _sha256_file(Path(acceptance_path).resolve())
 
+    factor_path = _resolve_source(spec, str(spec.factor_library["source"]))
+    library = load_factor_library(factor_path)
     return {
         "schema_version": FACTOR_DIAGNOSTICS_SCHEMA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -519,6 +494,13 @@ def run_factor_diagnostics(
         "promotion_evaluated": False,
         "declared_contract_sha256": contract_sha256(declared_contract),
         "acceptance_report_sha256": acceptance_sha256,
+        "factor_library": {
+            "source": str(spec.factor_library["source"]),
+            "source_sha256": library.source_sha256,
+            "catalog_id": library.catalog.catalog_id,
+            "catalog_version": library.catalog.catalog_version,
+            "catalog_implementation_hash": library.catalog.implementation_hash(),
+        },
         "return_contract": {
             "expression": return_expression,
             "provenance": raw_returns.attrs["provenance"],
@@ -537,19 +519,14 @@ def run_factor_diagnostics(
         "window_policy": window_policy,
         "windows": windows,
         "sampled_rebalance_dates": len(date_map),
-        "factor_count": len(canonical_diagnostics),
-        "factor_id_count": len(factor_alias_rows),
-        "unique_expression_count": len(canonical_diagnostics),
-        "factor_identity": factor_identity_metadata(),
-        "ranking_subject": "canonical_expression",
+        "factor_count": len(diagnostics),
+        "ranking_subject": "factor_id",
         "ranking_basis": [
             "absolute_oriented_rank_icir",
             "absolute_oriented_mean_rank_ic",
             "coverage_ratio",
         ],
-        "factors": canonical_diagnostics,
-        "factor_alias_rows": factor_alias_rows,
-        "factor_alias_map": factor_alias_map,
+        "factors": diagnostics,
     }
 
 
@@ -564,7 +541,9 @@ def run_factor_diagnostics_from_files(
 ) -> dict[str, Any]:
     spec = load_research_paradigm_spec(spec_path)
     acceptance, report_path = load_acceptance_report(acceptance_path)
-    accepted_provider = Path(str(acceptance.get("inputs", {}).get("provider_dir", ""))).resolve()
+    accepted_provider = Path(
+        str(acceptance.get("inputs", {}).get("provider_dir", ""))
+    ).resolve()
     selected_provider = Path(provider_dir).resolve() if provider_dir else accepted_provider
     if selected_provider != accepted_provider:
         raise ValueError("factor diagnostics must use the provider accepted by the report")
