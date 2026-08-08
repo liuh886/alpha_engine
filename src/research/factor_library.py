@@ -1,9 +1,9 @@
 """Research projections over the governed factor foundation.
 
-Canonical structured definitions are owned by :mod:`src.factors.library`.
-Exploratory scanning is owned by :mod:`src.factors.exploratory_pool`. This module
-contains only research projections needed by existing ranker/diagnostic code; it
-contains no factor definitions, compatibility parser, or generated fallback.
+Canonical definitions and schema validation belong to :mod:`src.factors.library`.
+This module projects those definitions into the group mapping expected by the
+existing ranker research path. Exploratory scanning remains a separate committed
+pool and has no generated fallback.
 """
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from src.factors.definition import FactorDefinition
 from src.factors.exploratory_pool import (
     EXPLORATORY_FACTOR_POOL,
     factor_pool_json,
@@ -22,32 +21,54 @@ from src.factors.exploratory_pool import (
 from src.factors.library import (
     FACTOR_LIBRARY_SCHEMA_VERSION,
     FactorGroup,
-    FactorLibrary,
     factor_groups_to_ranker_feature_groups,
-    load_factor_library,
+    load_factor_library as load_canonical_factor_library,
 )
 
-FactorSpec = FactorDefinition
 STRUCTURED_FACTOR_LIBRARY_SCHEMA = FACTOR_LIBRARY_SCHEMA_VERSION
 
 
+def load_factor_library(path: str | Path) -> dict[str, FactorGroup]:
+    """Project the canonical factor library into the research group mapping."""
+
+    return dict(load_canonical_factor_library(path).groups)
+
+
 def select_factor_groups(
-    library: FactorLibrary, group_names: list[str]
+    library: dict[str, FactorGroup], group_names: list[str]
 ) -> list[FactorGroup]:
-    return library.select_groups(group_names)
+    selected: list[FactorGroup] = []
+    for name in group_names:
+        if name not in library:
+            raise ValueError(
+                f"FactorGroup {name!r} not found. Available: {sorted(library)}"
+            )
+        selected.append(library[name])
+    return selected
 
 
 def resolve_factor_expressions(
-    factor_ids: list[str], library: FactorLibrary
+    factor_ids: list[str], library: dict[str, FactorGroup]
 ) -> list[str]:
-    return library.resolve_expressions(factor_ids)
+    definitions = {
+        definition.factor_id: definition
+        for group in library.values()
+        for definition in group.factors
+    }
+    result: list[str] = []
+    for factor_id in factor_ids:
+        if factor_id not in definitions:
+            raise ValueError(f"Unknown factor id {factor_id!r}")
+        result.append(definitions[factor_id].expression)
+    return result
 
 
 def factor_library_manifest(groups: list[FactorGroup]) -> dict[str, object]:
-    definitions: dict[str, FactorDefinition] = {}
-    for group in groups:
-        for definition in group.factors:
-            definitions[definition.factor_id] = definition
+    definitions = {
+        definition.factor_id: definition
+        for group in groups
+        for definition in group.factors
+    }
     return {
         "schema_version": FACTOR_LIBRARY_SCHEMA_VERSION,
         "n_groups": len(groups),
@@ -58,7 +79,7 @@ def factor_library_manifest(groups: list[FactorGroup]) -> dict[str, object]:
     }
 
 
-# Exploratory pool is intentionally separate from the canonical model library.
+# Exploratory pool API. This is intentionally not the canonical model library.
 FACTOR_LIBRARY: list[dict[str, Any]] = EXPLORATORY_FACTOR_POOL
 MOMENTUM_LIBRARY = factors_by_category("momentum")
 VOLATILITY_LIBRARY = factors_by_category("volatility")
