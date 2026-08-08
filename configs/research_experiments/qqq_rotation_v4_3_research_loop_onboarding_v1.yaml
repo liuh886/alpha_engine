@@ -14,8 +14,8 @@ baseline:
   model_version_id: qqqi_qqq_tqqq_v4_3
   model_family_id: qqq_rotation
   model_kind: rules_based_allocation
-  bundle_id: 09c848cb02d2a2ac1af3782fde8c1a57383a366e6a4649093b5f22fa6833066a
-  manifest_sha256: ec96dfa3154cdd1a383b55f1d671f3b88e7d3720d8b3b7f90f464afe0874f14e
+  bundle_id: 0dffb990d9da38cf43c2d04dbae687c873404dd1344ef774da99c0f7444ddb87
+  manifest_sha256: 091705679e2814e6d5660320c03bd595b863723179277ced33b9572f764b19a7
 expected_identity:
   market: us
   benchmark: QQQ

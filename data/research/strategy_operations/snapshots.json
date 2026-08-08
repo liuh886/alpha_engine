@@ -143,7 +143,7 @@
       "source_identity": {
         "commit_sha": "19fb948969abb0f3b7ce8e5fb6709eaf9f128a9c",
         "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
-        "formal_bundle_id": "77bea88583f0a4f2ce8e3d76aa4364493db1bfec69a69e1ecda8a7abf9667aba",
+        "formal_bundle_id": "a36cee1bab0069369b4a994158a96998829846eb7cf7997cef86b3e447cf41a1",
         "formal_evidence_cutoff": "2026-08-03",
         "formal_run_id": "byd_v1_2_convex_momentum_budget_v1-formal-user-authorized-2026-08-06",
         "github_issue_number": null,
@@ -174,7 +174,7 @@
       "source_identity": {
         "commit_sha": null,
         "factor_catalog_implementation_hash": null,
-        "formal_bundle_id": "206741d47fc14da0a0079935231d3e028d2f1d9cc7073d48819263d86ed11fb1",
+        "formal_bundle_id": "1130220a1367246495c676a2396b341443ea1dc80779a307ec1f7ac206fdc212",
         "formal_evidence_cutoff": "2026-08-03",
         "formal_run_id": "cn_x1_1-formal-31022910416",
         "github_issue_number": null,
@@ -341,7 +341,7 @@
       "source_identity": {
         "commit_sha": "f664d0c307edbcfb8d32e3a519fd0d7d6979a2e7",
         "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
-        "formal_bundle_id": "09c848cb02d2a2ac1af3782fde8c1a57383a366e6a4649093b5f22fa6833066a",
+        "formal_bundle_id": "0dffb990d9da38cf43c2d04dbae687c873404dd1344ef774da99c0f7444ddb87",
         "formal_evidence_cutoff": "2026-08-07",
         "formal_run_id": "qqqi_qqq_tqqq_v4_3-through-2026_08_07",
         "github_issue_number": null,
@@ -372,7 +372,7 @@
       "source_identity": {
         "commit_sha": null,
         "factor_catalog_implementation_hash": null,
-        "formal_bundle_id": "fd1a34d57dbbf90a17cbf5ccce8e37ae8a6d7796fc15650755323ea7d0ff6cf5",
+        "formal_bundle_id": "687eeff77d38a7dcec67f12c6d3a78513af937bdbb7522f882fffde1719f9078",
         "formal_evidence_cutoff": "2026-07-31",
         "formal_run_id": "us_x1_1_through_2026_07_31",
         "github_issue_number": null,

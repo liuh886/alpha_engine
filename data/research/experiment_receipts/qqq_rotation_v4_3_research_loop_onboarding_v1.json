@@ -2,10 +2,10 @@
   "automatic_promotion": false,
   "baseline": {
     "benchmark": "QQQ",
-    "bundle_id": "09c848cb02d2a2ac1af3782fde8c1a57383a366e6a4649093b5f22fa6833066a",
+    "bundle_id": "0dffb990d9da38cf43c2d04dbae687c873404dd1344ef774da99c0f7444ddb87",
     "evidence_cutoff": "2026-08-07",
     "manifest_path": "data/research/formal_model_runs/qqq_rotation/qqqi_qqq_tqqq_v4_3/qqqi_qqq_tqqq_v4_3-through-2026_08_07/manifest.json",
-    "manifest_sha256": "ec96dfa3154cdd1a383b55f1d671f3b88e7d3720d8b3b7f90f464afe0874f14e",
+    "manifest_sha256": "091705679e2814e6d5660320c03bd595b863723179277ced33b9572f764b19a7",
     "market": "us",
     "metrics": {
       "annualized_return": 0.3679210193759259,

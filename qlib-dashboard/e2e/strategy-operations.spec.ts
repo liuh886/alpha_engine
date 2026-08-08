@@ -9,8 +9,8 @@ function sha256(text: string): string {
 
 const modelsText = JSON.stringify([
   {
-    id: 'qqqi_qqq_tqqq_v4_2',
-    name: 'QQQ Rotation v4.2',
+    id: 'qqqi_qqq_tqqq_v4_3',
+    name: 'QQQ Rotation v4.3',
     market: 'us',
     model_type: 'rule_based_rotation',
     stage: 'BASELINE',
@@ -64,7 +64,7 @@ const operations = {
   trade_ready: false,
   records: [
     {
-      model_version_id: 'qqqi_qqq_tqqq_v4_2',
+      model_version_id: 'qqqi_qqq_tqqq_v4_3',
       status: 'target_pending_execution',
       as_of: '2026-07-31',
       latest_completed_session: '2026-07-31',
@@ -160,8 +160,8 @@ test('QQQ operating evidence is rendered from the governed static read model', a
   });
   await mockBundle(page);
 
-  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_2');
-  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQ Rotation v4.2', exact: true, level: 1 })).toBeVisible();
+  await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
+  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQ Rotation v4.3', exact: true, level: 1 })).toBeVisible();
 
   const now = page.getByRole('region', { name: 'Current decision state' });
   await expect(now).toBeVisible();

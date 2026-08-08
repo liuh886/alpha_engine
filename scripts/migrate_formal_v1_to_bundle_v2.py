@@ -212,7 +212,7 @@ def _section(
     )
 
 
-def build_plan(source_path: Path, *, catalog_sha256: str) -> RunExportPlan:
+def build_plan(source_path: Path) -> RunExportPlan:
     package = _object(source_path)
     model_id = str(package.get("model_id") or "")
     if model_id not in MODEL_MAP:
@@ -322,7 +322,6 @@ def build_plan(source_path: Path, *, catalog_sha256: str) -> RunExportPlan:
         "migration_adapter": "formal_v1_to_bundle_v2_v1",
         "source_path": source_path.as_posix(),
         "source_sha256": source_sha,
-        "source_catalog_sha256": catalog_sha256,
         "source_backtest_id": package.get("backtest_id"),
         "source_evidence": evidence,
         "source_freshness": package.get("freshness"),
@@ -433,7 +432,7 @@ def migrate(source_root: Path, output_root: Path) -> dict[str, Any]:
     for model_id in MODEL_MAP:
         manifests.append(
             export_model_run(
-                build_plan(source_paths[model_id], catalog_sha256=catalog_sha),
+                build_plan(source_paths[model_id]),
                 output_root=output_root,
             )
         )
