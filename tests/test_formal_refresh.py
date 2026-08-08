@@ -5,6 +5,10 @@ from pathlib import Path
 
 import pytest
 
+from scripts.data.refresh_selected_pool_prices_v2 import (
+    _decorate_manifest,
+    build_hardened_router,
+)
 from src.artifacts.formal_refresh import (
     FormalRefreshError,
     build_plan,
@@ -126,6 +130,48 @@ def test_common_provider_cutoff_rejects_ineligible_provider() -> None:
     }
     with pytest.raises(FormalRefreshError, match="not promotion eligible"):
         common_provider_cutoff(manifest, market="us")
+
+
+def test_formal_planner_accepts_governed_cn_auxiliary_yahoo_fallback(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    manifest_path = tmp_path / "cn-manifest.json"
+    write_object(
+        manifest_path,
+        {
+            "market": "cn",
+            "status": "selected_pool_price_refresh_ready",
+            "records": [
+                {
+                    "symbol": "515180",
+                    "action": "fetched_full_refresh",
+                    "provider": "yfinance",
+                    "first_date": "2021-01-04",
+                    "last_date": "2026-08-07",
+                    "attempts": [
+                        {"provider": "akshare_sina", "ok": False},
+                        {"provider": "akshare", "ok": False},
+                        {"provider": "baostock", "ok": False},
+                        {"provider": "efinance", "ok": False},
+                        {
+                            "provider": "yfinance",
+                            "provider_symbol": "515180.SS",
+                            "ok": True,
+                        },
+                    ],
+                }
+            ],
+            "failures": [],
+            "research_only": True,
+            "trade_ready": False,
+        },
+    )
+    manifest = _decorate_manifest(manifest_path, build_hardened_router("cn"))
+    assert manifest["promotion_eligible"] is True
+    assert manifest["formal_auxiliary_fallback_symbols"] == ["515180"]
+    assert common_provider_cutoff(manifest, market="cn") == "2026-08-07"
 
 
 def test_plan_is_catalog_driven(tmp_path: Path) -> None:
