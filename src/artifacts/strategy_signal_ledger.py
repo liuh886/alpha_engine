@@ -8,6 +8,11 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from src.factors.strategy_snapshot import (
+    StrategyFactorSnapshotError,
+    validate_strategy_factor_snapshot,
+)
+
 SCHEMA_VERSION = "strategy_signal_evaluation_v1"
 MANIFEST_SCHEMA_VERSION = "strategy_signal_ledger_v1"
 
@@ -55,6 +60,29 @@ def _signal_copy(signal: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _validate_factor_evidence(signal: Mapping[str, Any], latest_data_date: str) -> None:
+    factor_evidence = signal.get("factor_evidence")
+    try:
+        validate_strategy_factor_snapshot(factor_evidence)
+    except StrategyFactorSnapshotError as exc:
+        raise StrategySignalLedgerError(f"invalid signal factor evidence: {exc}") from exc
+    if not isinstance(factor_evidence, Mapping):
+        raise StrategySignalLedgerError("signal factor evidence must be an object")
+    if factor_evidence.get("observation_cutoff") != latest_data_date:
+        raise StrategySignalLedgerError(
+            "factor observation cutoff must match signal latest_data_date"
+        )
+    factor_current = factor_evidence.get("freshness") == "current"
+    if signal.get("factor_freshness_ok") is not factor_current:
+        raise StrategySignalLedgerError(
+            "signal.factor_freshness_ok must match factor evidence freshness"
+        )
+    if signal.get("data_freshness_ok") is True and not factor_current:
+        raise StrategySignalLedgerError(
+            "fresh data cannot publish a stale or blocked factor snapshot"
+        )
+
+
 def append_signal_evaluation(
     *,
     ledger_root: Path,
@@ -74,7 +102,9 @@ def append_signal_evaluation(
     signal_date = _required_string(signal.get("signal_date"), label="signal.signal_date")
     fingerprint = _required_string(signal.get("fingerprint"), label="signal.fingerprint")
     latest_data_date = _required_string(
-        signal.get("latest_data_date") or signal.get("latest_data_date_at_creation") or signal_date,
+        signal.get("latest_data_date")
+        or signal.get("latest_data_date_at_creation")
+        or signal_date,
         label="signal.latest_data_date",
     )
     delivery_status = _required_string(delivery_status, label="delivery_status")
@@ -83,7 +113,10 @@ def append_signal_evaluation(
     created_at_utc = _required_string(created_at_utc, label="created_at_utc")
 
     if signal.get("research_only") is not True or signal.get("trade_ready") is not False:
-        raise StrategySignalLedgerError("signal must remain research_only=true and trade_ready=false")
+        raise StrategySignalLedgerError(
+            "signal must remain research_only=true and trade_ready=false"
+        )
+    _validate_factor_evidence(signal, latest_data_date)
 
     normalized_signal = _signal_copy(signal)
     signal_sha256 = hashlib.sha256(canonical_json_bytes(normalized_signal)).hexdigest()
@@ -137,7 +170,9 @@ def append_signal_evaluation(
     return record_path
 
 
-def read_latest_evaluation(ledger_root: Path, *, model_version_id: str) -> dict[str, Any] | None:
+def read_latest_evaluation(
+    ledger_root: Path, *, model_version_id: str
+) -> dict[str, Any] | None:
     path = ledger_root / "latest.json"
     if not path.is_file():
         return None
@@ -157,6 +192,14 @@ def read_latest_evaluation(ledger_root: Path, *, model_version_id: str) -> dict[
     actual_signal_sha = hashlib.sha256(canonical_json_bytes(signal)).hexdigest()
     if expected_signal_sha != actual_signal_sha:
         raise StrategySignalLedgerError(f"ledger signal digest mismatch: {path}")
+    factor_evidence = signal.get("factor_evidence")
+    if factor_evidence is not None:
+        try:
+            validate_strategy_factor_snapshot(factor_evidence)
+        except StrategyFactorSnapshotError as exc:
+            raise StrategySignalLedgerError(
+                f"ledger factor evidence is invalid: {path}: {exc}"
+            ) from exc
     return payload
 
 

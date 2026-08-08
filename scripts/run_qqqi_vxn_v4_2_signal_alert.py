@@ -9,7 +9,10 @@ from pathlib import Path
 
 import yaml
 
+from src.factors.strategy_snapshot import build_strategy_factor_snapshot
 from src.research.strategy_signal_alerts import build_signal_alert
+
+MODEL_FAMILY_ID = "qqq_rotation"
 
 
 def main() -> int:
@@ -56,6 +59,14 @@ def main() -> int:
         args.baseline_policy.read_text(encoding="utf-8")
     )
     alert = build_signal_alert(summary, contract, baseline_policy)
+    factor_evidence = build_strategy_factor_snapshot(
+        model_family_id=MODEL_FAMILY_ID,
+        signal=alert,
+    )
+    alert["factor_evidence"] = factor_evidence
+    alert["factor_freshness_ok"] = factor_evidence["freshness"] == "current"
+    if not alert["factor_freshness_ok"]:
+        alert["should_alert"] = False
 
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -77,6 +88,10 @@ def main() -> int:
             handle.write(
                 "data_freshness_ok="
                 f"{str(bool(alert['data_freshness_ok'])).lower()}\n"
+            )
+            handle.write(
+                "factor_freshness_ok="
+                f"{str(bool(alert['factor_freshness_ok'])).lower()}\n"
             )
             handle.write(f"fingerprint={alert['fingerprint']}\n")
             handle.write(f"title={alert['title']}\n")

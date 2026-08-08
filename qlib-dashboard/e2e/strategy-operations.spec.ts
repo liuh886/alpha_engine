@@ -58,7 +58,7 @@ const bundleManifest = {
 };
 
 const operations = {
-  schema_version: '1.0.0',
+  schema_version: '2.0.0',
   generated_at: '2026-08-02T00:03:00Z',
   research_only: true,
   trade_ready: false,
@@ -85,9 +85,33 @@ const operations = {
       source_label: 'Governed QQQ signal ledger',
       source_href: 'https://github.com/liuh886/alpha_engine/issues/9001',
       note: 'Target is awaiting next-open execution evidence.',
-      drivers: [
-        { label: 'VIX close', value: '15.99' },
-        { label: 'QQQ vs MA20', value: '1.00%' },
+      factor_evidence: [
+        {
+          factor_id: 'strategy.qqq.vix_close',
+          factor_version: '1.0',
+          implementation_hash: 'd'.repeat(64),
+          display_name: 'VIX close',
+          information_family: 'volatility',
+          value: 15.99,
+          reference: { normal: 18, stress: 22 },
+          state: 'calm',
+          effect: 'veto',
+          reason_code: 'vix_easing_supports_release',
+          observed_at: '2026-07-31',
+        },
+        {
+          factor_id: 'strategy.qqq.qqq_vs_ma20',
+          factor_version: '1.0',
+          implementation_hash: 'e'.repeat(64),
+          display_name: 'QQQ distance to SMA20',
+          information_family: 'trend',
+          value: 0.01,
+          reference: 0,
+          state: 'at_or_above',
+          effect: 'veto',
+          reason_code: 'price_repair_supports_release',
+          observed_at: '2026-07-31',
+        },
       ],
       source_identity: {
         formal_bundle_id: 'a'.repeat(64),
@@ -95,6 +119,7 @@ const operations = {
         formal_evidence_cutoff: '2026-07-31',
         ledger_fingerprint: 'fixture-fingerprint',
         signal_sha256: 'b'.repeat(64),
+        factor_catalog_implementation_hash: 'f'.repeat(64),
         workflow_run_id: '12345',
         commit_sha: 'c'.repeat(40),
         github_issue_number: 9001,
@@ -146,6 +171,8 @@ test('QQQ operating evidence is rendered from the governed static read model', a
   await expect(now.getByText('QQQ', { exact: true })).toBeVisible();
   await expect(now.getByText('VIX close', { exact: true })).toBeVisible();
   await expect(now.getByText('15.99', { exact: true })).toBeVisible();
+  await expect(now.getByText('calm', { exact: true })).toBeVisible();
+  await expect(now.getByText('vix_easing_supports_release', { exact: false })).toBeVisible();
   await expect(page.getByText('New target', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Source record' })).toHaveAttribute('href', 'https://github.com/liuh886/alpha_engine/issues/9001');
 

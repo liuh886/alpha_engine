@@ -8,6 +8,7 @@ const outputDir = resolve(process.cwd(), 'public/data/strategy-operations');
 const outputPath = resolve(outputDir, 'snapshots.json');
 const allowedStatuses = new Set(['pipeline_unavailable', 'awaiting_observation', 'current_no_change', 'target_pending_execution', 'execution_observed', 'stale', 'blocked', 'delivery_failed']);
 const allowedFreshness = new Set(['current', 'stale', 'blocked', 'unknown']);
+const allowedEffects = new Set(['support', 'veto', 'neutral']);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -15,7 +16,7 @@ function assert(condition, message) {
 
 const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 const snapshots = JSON.parse(await readFile(snapshotsPath, 'utf8'));
-assert(snapshots.schema_version === '1.0.0', 'Unsupported strategy operations schema');
+assert(snapshots.schema_version === '2.0.0', 'Unsupported strategy operations schema');
 assert(snapshots.research_only === true && snapshots.trade_ready === false, 'Invalid strategy operations boundary');
 assert(Array.isArray(snapshots.records), 'Strategy operations records are missing');
 assert(Array.isArray(catalog.records), 'Formal Model Run Bundle v2 catalog records are missing');
@@ -38,7 +39,16 @@ for (const record of snapshots.records) {
   assert(typeof record.state_label === 'string' && record.state_label.length > 0, `Missing state label for ${id}`);
   assert(typeof record.decision_reason === 'string' && record.decision_reason.length > 0, `Missing decision reason for ${id}`);
   assert(Array.isArray(record.allocations), `Missing allocation list for ${id}`);
-  assert(Array.isArray(record.drivers), `Missing driver list for ${id}`);
+  assert(Array.isArray(record.factor_evidence), `Missing factor evidence for ${id}`);
+  if (record.factor_freshness === 'current') {
+    assert(record.factor_evidence.length > 0, `Current factor freshness requires evidence for ${id}`);
+  }
+  for (const factor of record.factor_evidence) {
+    assert(typeof factor.factor_id === 'string' && factor.factor_id.length > 0, `Missing factor id for ${id}`);
+    assert(typeof factor.implementation_hash === 'string' && /^[a-f0-9]{64}$/.test(factor.implementation_hash), `Invalid factor implementation hash for ${id}/${factor.factor_id}`);
+    assert(typeof factor.observed_at === 'string' && factor.observed_at === record.latest_completed_session, `Factor cutoff drift for ${id}/${factor.factor_id}`);
+    assert(allowedEffects.has(factor.effect), `Invalid factor effect for ${id}/${factor.factor_id}`);
+  }
   assert(record.source_identity && typeof record.source_identity === 'object', `Missing source identity for ${id}`);
   assert(record.source_identity.formal_bundle_id === formal.bundle_id, `Formal bundle identity drift for ${id}`);
   assert(record.source_identity.formal_run_id === formal.run_id, `Formal run identity drift for ${id}`);
