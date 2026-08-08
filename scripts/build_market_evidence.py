@@ -33,6 +33,11 @@ def main() -> int:
         output_root=args.output_root,
         factor_library_path=args.factor_library,
     )
+    catalog_path = args.output_root / args.market / "catalog.json"
+    if not catalog_path.is_file():
+        raise RuntimeError(
+            f"Market Evidence build completed without catalog: {catalog_path}"
+        )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 
