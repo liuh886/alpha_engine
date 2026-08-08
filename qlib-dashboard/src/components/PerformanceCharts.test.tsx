@@ -38,7 +38,9 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     );
 
     const data = equityChartData();
-    expect(data.map((row) => row.benchmark_qqq)).toEqual([0, 0.005, 0.01]);
+    expect(data[0].benchmark_qqq).toBe(0);
+    expect(data[1].benchmark_qqq).toBeCloseTo(0.005, 10);
+    expect(data[2].benchmark_qqq).toBeCloseTo(0.01, 10);
     expect(data[2].excess).toBeCloseTo(0.01, 10);
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "QQQ");
     expect(screen.getAllByTestId("benchmark-line").some((line) => line.textContent === "QQQ")).toBe(true);
