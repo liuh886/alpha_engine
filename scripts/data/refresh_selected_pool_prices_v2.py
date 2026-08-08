@@ -34,6 +34,10 @@ from src.data.router import MarketDataRouter
 MANIFEST_RELATIVE_PATH = Path(
     "artifacts/selected_pool_price_refresh_manifest.json"
 )
+FORMAL_MARKET_AUXILIARIES: dict[str, tuple[str, ...]] = {
+    "us": ("QQQI", "TQQQ", "SGOV"),
+    "cn": ("515180",),
+}
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -191,6 +195,11 @@ def refresh_selected_pool_prices_v2(
 ) -> dict[str, Any]:
     destination = Path(output_root).resolve()
     data_router = router or build_hardened_router(market)
+    requested_auxiliaries = auxiliary_symbols
+    if requested_auxiliaries is None and full_refresh:
+        requested_auxiliaries = FORMAL_MARKET_AUXILIARIES.get(
+            str(market).lower(), ()
+        )
     try:
         refresh_selected_pool_prices(
             root=root,
@@ -202,7 +211,7 @@ def refresh_selected_pool_prices_v2(
             router=data_router,
             max_rounds=max_rounds,
             full_refresh=full_refresh,
-            auxiliary_symbols=auxiliary_symbols,
+            auxiliary_symbols=requested_auxiliaries,
         )
     except Exception:
         manifest_path = destination / MANIFEST_RELATIVE_PATH
@@ -226,8 +235,11 @@ def main() -> None:
     parser.add_argument(
         "--auxiliary-symbol",
         action="append",
-        default=[],
-        help="Additional formal/reference security to include in the same provider.",
+        default=None,
+        help=(
+            "Additional formal/reference security. On --full-refresh, the current "
+            "formal auxiliary set is used when this option is omitted."
+        ),
     )
     parser.add_argument("--full-refresh", action="store_true")
     args = parser.parse_args()
