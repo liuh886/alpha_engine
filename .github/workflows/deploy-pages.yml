@@ -78,6 +78,7 @@ jobs:
         working-directory: qlib-dashboard
         env:
           VITE_RUNTIME_MODE: static_artifact
+          VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN || '' }}
         run: |
           set -euo pipefail
           npm ci --no-audit --no-fund
