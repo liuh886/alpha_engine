@@ -30,6 +30,7 @@ function FormalRunCard({ run, selected, onSelect }: { run: GovernedRunSummary; s
   const completeness = typeof run.summary.evidence_completeness === 'object' && run.summary.evidence_completeness
     ? String((run.summary.evidence_completeness as Record<string, unknown>).status ?? run.evidenceStatus)
     : run.evidenceStatus;
+  const realizedThrough = run.manifest?.comparability_key.end ?? run.evidenceCutoff;
   return (
     <button
       type="button"
@@ -43,7 +44,8 @@ function FormalRunCard({ run, selected, onSelect }: { run: GovernedRunSummary; s
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-semibold">{run.title}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{run.market.toUpperCase()} · {run.benchmark} · cutoff {run.evidenceCutoff}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{run.market.toUpperCase()} · {run.benchmark}</p>
+          <p className="mt-1 font-mono text-[10px] text-muted-foreground">Evidence through {run.evidenceCutoff} · Realized returns through {realizedThrough}</p>
         </div>
         {selected ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : <BarChart3 className="h-5 w-5 shrink-0 text-muted-foreground/50" />}
       </div>
