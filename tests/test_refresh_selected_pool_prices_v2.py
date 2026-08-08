@@ -21,6 +21,16 @@ def test_hardened_cn_router_uses_independent_sources_before_yahoo(monkeypatch):
     ]
 
 
+def test_selected_pool_router_does_not_circuit_break_across_symbols(monkeypatch):
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    router = build_hardened_router("cn")
+    assert router.provider_health_snapshot() == {
+        "failure_threshold": None,
+        "source_family_failures": {},
+        "open_source_families": [],
+    }
+
+
 def test_hardened_cn_router_enables_tushare_only_with_token(monkeypatch):
     monkeypatch.setenv("TUSHARE_TOKEN", "test-token")
     router = build_hardened_router("cn")
