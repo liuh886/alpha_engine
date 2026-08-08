@@ -18,7 +18,7 @@ universe:
   listing_policy: "no_prelisting_fill_coverage_qualified_static_members"
 
 factor_library:
-  source: "configs/factor_libraries/us_ohlcv.yaml"
+  source: "configs/factor_libraries/ohlcv.yaml"
   groups:
     - "momentum_volatility_volume"
     - "risk_controlled_momentum"
@@ -44,8 +44,8 @@ candidate_grid:
         min_data_in_leaf: 20
         learning_rate: 0.03
   factor_baselines:
-    - "factor:us_momentum_10d"
-    - "factor:us_risk_controlled_10d"
+    - "ohlcv.momentum.ret_10d"
+    - "ohlcv.risk_adjusted.ret10_per_vol10"
 
 strategy:
   horizon_days: 10

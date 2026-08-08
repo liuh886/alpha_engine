@@ -1,0 +1,325 @@
+# Canonical AlphaEngine OHLCV factor library.
+# Schema 2.0: each factor is defined exactly once; groups reference factor IDs.
+schema_version: "2.0"
+
+catalog:
+  id: alpha_engine_ohlcv
+  version: "1.0"
+
+defaults:
+  namespace: ohlcv
+  factor_version: "1.0"
+  source_name: AlphaEngine curated Qlib OHLCV
+  source_version: "1.0"
+  source_reference: configs/factor_libraries/ohlcv.yaml
+  availability_lag_sessions: 0
+  adjustment_requirement: adjusted
+  output_frequency: day
+  output_dtype: float64
+  missing_value_policy: preserve_nan_after_warmup
+  status: unvalidated_formula
+
+factors:
+  ohlcv.momentum.ret_3d:
+    display_name: 3-day price momentum
+    information_family: momentum
+    expression: "$close/Ref($close,3)-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 3
+
+  ohlcv.momentum.ret_5d:
+    display_name: 5-day price momentum
+    information_family: momentum
+    expression: "$close/Ref($close,5)-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 5
+
+  ohlcv.momentum.ret_10d:
+    display_name: 10-day price momentum
+    information_family: momentum
+    expression: "$close/Ref($close,10)-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 10
+
+  ohlcv.momentum.ret_20d:
+    display_name: 20-day price momentum
+    information_family: momentum
+    expression: "$close/Ref($close,20)-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 20
+
+  ohlcv.reversal.inv_ret_1d:
+    display_name: 1-day inverse close return
+    information_family: reversal
+    expression: "Ref($close,1)/$close-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 1
+
+  ohlcv.reversal.inv_ret_3d:
+    display_name: 3-day inverse close return
+    information_family: reversal
+    expression: "Ref($close,3)/$close-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 3
+
+  ohlcv.reversal.inv_ret_5d:
+    display_name: 5-day inverse close return
+    information_family: reversal
+    expression: "Ref($close,5)/$close-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 5
+
+  ohlcv.mean_reversion.close_vs_ma_5d:
+    display_name: Close deviation from 5-day moving average
+    information_family: mean_reversion
+    expression: "$close/Mean($close,5)-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 5
+
+  ohlcv.mean_reversion.close_vs_ma_10d:
+    display_name: Close deviation from 10-day moving average
+    information_family: mean_reversion
+    expression: "$close/Mean($close,10)-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 10
+
+  ohlcv.mean_reversion.close_vs_ma_20d:
+    display_name: Close deviation from 20-day moving average
+    information_family: mean_reversion
+    expression: "$close/Mean($close,20)-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 20
+
+  ohlcv.volatility.std_ret_5d:
+    display_name: 5-day rolling standard deviation of daily returns
+    information_family: volatility
+    expression: "Std($close/Ref($close,1)-1,5)"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 6
+
+  ohlcv.volatility.std_ret_10d:
+    display_name: 10-day rolling standard deviation of daily returns
+    information_family: volatility
+    expression: "Std($close/Ref($close,1)-1,10)"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 11
+
+  ohlcv.volatility.std_ret_20d:
+    display_name: 20-day rolling standard deviation of daily returns
+    information_family: volatility
+    expression: "Std($close/Ref($close,1)-1,20)"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 21
+
+  ohlcv.volatility.high_low_range_pct:
+    display_name: High-low range as fraction of close
+    information_family: volatility
+    expression: "($high-$low)/($close+1e-12)"
+    required_fields: [high, low, close]
+    markets: [us, cn]
+    minimum_lookback: 0
+
+  ohlcv.liquidity.volume_vs_ma_5d:
+    display_name: Volume relative to 5-day moving average
+    information_family: liquidity
+    expression: "$volume/Mean($volume,5)-1"
+    required_fields: [volume]
+    markets: [us, cn]
+    minimum_lookback: 5
+
+  ohlcv.liquidity.volume_vs_ma_10d:
+    display_name: Volume relative to 10-day moving average
+    information_family: liquidity
+    expression: "$volume/Mean($volume,10)-1"
+    required_fields: [volume]
+    markets: [us, cn]
+    minimum_lookback: 10
+
+  ohlcv.liquidity.volume_vs_ma_20d:
+    display_name: Volume relative to 20-day moving average
+    information_family: liquidity
+    expression: "$volume/Mean($volume,20)-1"
+    required_fields: [volume]
+    markets: [us, cn]
+    minimum_lookback: 20
+
+  ohlcv.volume.momentum_10d:
+    display_name: 10-day volume momentum
+    information_family: volume
+    expression: "$volume/Ref($volume,10)-1"
+    required_fields: [volume]
+    markets: [us, cn]
+    minimum_lookback: 10
+
+  ohlcv.risk_adjusted.ret5_per_vol5:
+    display_name: 5-day return divided by 5-day volatility
+    information_family: risk_adjusted
+    expression: "($close/Ref($close,5)-1)/(Std($close/Ref($close,1)-1,5)+1e-12)"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 6
+
+  ohlcv.risk_adjusted.ret10_per_vol10:
+    display_name: 10-day return divided by 10-day volatility
+    information_family: risk_adjusted
+    expression: "($close/Ref($close,10)-1)/(Std($close/Ref($close,1)-1,10)+1e-12)"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 11
+
+  ohlcv.risk_adjusted.ret20_per_vol20:
+    display_name: 20-day return divided by 20-day volatility
+    information_family: risk_adjusted
+    expression: "($close/Ref($close,20)-1)/(Std($close/Ref($close,1)-1,20)+1e-12)"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 21
+
+  ohlcv.pressure.ret1_x_volume_shock_5d:
+    display_name: 1-day return multiplied by 5-day volume shock
+    information_family: price_volume_pressure
+    expression: "($close/Ref($close,1)-1)*($volume/Mean($volume,5)-1)"
+    required_fields: [close, volume]
+    markets: [us, cn]
+    minimum_lookback: 5
+
+  ohlcv.pressure.ret5_x_volume_shock_10d:
+    display_name: 5-day return multiplied by 10-day volume shock
+    information_family: price_volume_pressure
+    expression: "($close/Ref($close,5)-1)*($volume/Mean($volume,10)-1)"
+    required_fields: [close, volume]
+    markets: [us, cn]
+    minimum_lookback: 10
+
+  ohlcv.pressure.high_low_ratio:
+    display_name: High-to-low price ratio
+    information_family: price_pressure
+    expression: "$high/$low-1"
+    required_fields: [high, low]
+    markets: [us, cn]
+    minimum_lookback: 0
+
+groups:
+  momentum:
+    description: US price momentum at multiple horizons
+    factor_ids:
+      - ohlcv.momentum.ret_5d
+      - ohlcv.momentum.ret_10d
+      - ohlcv.momentum.ret_20d
+
+  momentum_volatility:
+    description: US momentum plus volatility features
+    factor_ids:
+      - ohlcv.momentum.ret_5d
+      - ohlcv.momentum.ret_10d
+      - ohlcv.momentum.ret_20d
+      - ohlcv.volatility.std_ret_10d
+      - ohlcv.volatility.std_ret_20d
+
+  momentum_volatility_volume:
+    description: Frozen US x1.1 momentum, volatility, and volume features
+    factor_ids:
+      - ohlcv.momentum.ret_5d
+      - ohlcv.momentum.ret_10d
+      - ohlcv.momentum.ret_20d
+      - ohlcv.volatility.std_ret_10d
+      - ohlcv.volatility.std_ret_20d
+      - ohlcv.volume.momentum_10d
+      - ohlcv.liquidity.volume_vs_ma_20d
+
+  risk_controlled_momentum:
+    description: US momentum, volatility, and risk-adjusted momentum
+    factor_ids:
+      - ohlcv.momentum.ret_5d
+      - ohlcv.momentum.ret_10d
+      - ohlcv.momentum.ret_20d
+      - ohlcv.volatility.std_ret_10d
+      - ohlcv.volatility.std_ret_20d
+      - ohlcv.risk_adjusted.ret10_per_vol10
+      - ohlcv.risk_adjusted.ret20_per_vol20
+
+  us_factor_baselines:
+    description: US single-factor direction diagnostics
+    factor_ids:
+      - ohlcv.momentum.ret_10d
+      - ohlcv.risk_adjusted.ret10_per_vol10
+
+  cn_short_reversal_liquidity:
+    description: CN short-horizon reversal, mean reversion, and liquidity shocks
+    factor_ids:
+      - ohlcv.reversal.inv_ret_1d
+      - ohlcv.reversal.inv_ret_3d
+      - ohlcv.reversal.inv_ret_5d
+      - ohlcv.mean_reversion.close_vs_ma_5d
+      - ohlcv.mean_reversion.close_vs_ma_10d
+      - ohlcv.mean_reversion.close_vs_ma_20d
+      - ohlcv.liquidity.volume_vs_ma_5d
+      - ohlcv.liquidity.volume_vs_ma_10d
+      - ohlcv.liquidity.volume_vs_ma_20d
+
+  cn_volatility_reversal:
+    description: CN reversal, volatility, and risk-adjusted returns
+    factor_ids:
+      - ohlcv.reversal.inv_ret_1d
+      - ohlcv.reversal.inv_ret_3d
+      - ohlcv.reversal.inv_ret_5d
+      - ohlcv.volatility.std_ret_5d
+      - ohlcv.volatility.std_ret_10d
+      - ohlcv.volatility.std_ret_20d
+      - ohlcv.volatility.high_low_range_pct
+      - ohlcv.risk_adjusted.ret5_per_vol5
+      - ohlcv.risk_adjusted.ret10_per_vol10
+      - ohlcv.risk_adjusted.ret20_per_vol20
+
+  cn_price_volume_pressure:
+    description: CN momentum, liquidity, and price-volume interaction signals
+    factor_ids:
+      - ohlcv.momentum.ret_3d
+      - ohlcv.momentum.ret_5d
+      - ohlcv.momentum.ret_10d
+      - ohlcv.momentum.ret_20d
+      - ohlcv.liquidity.volume_vs_ma_5d
+      - ohlcv.liquidity.volume_vs_ma_10d
+      - ohlcv.liquidity.volume_vs_ma_20d
+      - ohlcv.pressure.ret1_x_volume_shock_5d
+      - ohlcv.pressure.ret5_x_volume_shock_10d
+      - ohlcv.pressure.high_low_ratio
+
+  cn_balanced_ohlcv:
+    description: CN balanced momentum, reversal, volatility, and liquidity set
+    factor_ids:
+      - ohlcv.momentum.ret_3d
+      - ohlcv.momentum.ret_5d
+      - ohlcv.momentum.ret_10d
+      - ohlcv.momentum.ret_20d
+      - ohlcv.reversal.inv_ret_1d
+      - ohlcv.reversal.inv_ret_3d
+      - ohlcv.reversal.inv_ret_5d
+      - ohlcv.volatility.std_ret_5d
+      - ohlcv.volatility.std_ret_10d
+      - ohlcv.volatility.std_ret_20d
+      - ohlcv.volatility.high_low_range_pct
+      - ohlcv.liquidity.volume_vs_ma_5d
+      - ohlcv.liquidity.volume_vs_ma_10d
+      - ohlcv.liquidity.volume_vs_ma_20d
+
+  cn_factor_baselines:
+    description: CN single-factor direction diagnostics
+    factor_ids:
+      - ohlcv.momentum.ret_10d
+      - ohlcv.reversal.inv_ret_5d
+      - ohlcv.volatility.std_ret_10d
+      - ohlcv.liquidity.volume_vs_ma_10d

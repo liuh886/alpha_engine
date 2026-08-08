@@ -31,7 +31,7 @@ provider_binding:
   instrument_count: 88
   snapshot_independent_performance_claim: false
 features:
-  library: configs/factor_libraries/us_ohlcv.yaml
+  library: configs/factor_libraries/ohlcv.yaml
   group: momentum_volatility_volume
   expressions:
   - $close/Ref($close,10)-1

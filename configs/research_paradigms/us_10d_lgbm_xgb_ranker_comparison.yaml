@@ -16,7 +16,7 @@ universe:
   alignment_mode: "auto"
 
 factor_library:
-  source: "configs/factor_libraries/us_ohlcv.yaml"
+  source: "configs/factor_libraries/ohlcv.yaml"
   groups:
     - "momentum_volatility_volume"
 
@@ -32,7 +32,7 @@ candidate_grid:
         min_data_in_leaf: 10
         learning_rate: 0.05
   factor_baselines:
-    - "factor:us_momentum_10d"
+    - "ohlcv.momentum.ret_10d"
 
 strategy:
   horizon_days: 10

@@ -29,7 +29,7 @@ provider_binding:
   drift_review_issue: 345
   prior_provider_identity_sha256: 83f5251f77851e8c4766f086db71a7ee456a24ee7c1938f971228f04cf7779f2
 features:
-  library: configs/factor_libraries/cn_ohlcv.yaml
+  library: configs/factor_libraries/ohlcv.yaml
   group: cn_balanced_ohlcv
   expressions:
   - $volume/Mean($volume,10)-1

@@ -1,12 +1,7 @@
-"""Finalize Alpha Research Loop receipts with immutable research lineage.
-
-Candidate runners own execution. This module owns cross-runner receipt lineage so
-provider/model adapters do not each reinvent factor identity bookkeeping.
-"""
+"""Finalize Alpha Research Loop receipts with immutable factor lineage."""
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -14,15 +9,7 @@ from typing import Any
 import yaml
 
 from src.common.runtime_settings import PROJECT_ROOT
-from src.research.factor_identity import (
-    factor_identity_metadata,
-    group_factor_specs_by_expression,
-)
-from src.research.factor_library import load_factor_library, select_factor_groups
-
-
-def _sha256_bytes(value: bytes) -> str:
-    return hashlib.sha256(value).hexdigest()
+from src.factors.library import FactorLibrary, load_factor_library
 
 
 def _resolve_repo_file(raw: str, *, spec_path: Path) -> Path:
@@ -39,47 +26,31 @@ def _resolve_repo_file(raw: str, *, spec_path: Path) -> Path:
     raise FileNotFoundError(raw)
 
 
-def _candidate_factor_lineage(library: dict[str, Any], groups: list[str]) -> dict[str, Any]:
-    selected = select_factor_groups(library, groups)
-    factor_specs = [
-        (group.name, factor)
-        for group in selected
-        for factor in group.factors
-    ]
-    canonical = group_factor_specs_by_expression(factor_specs)
-    effective_factors = [
-        {
-            "canonical_expression_id": item.canonical_expression_id,
-            "canonical_expression_sha256": item.canonical_expression_sha256,
-            "normalized_expression": item.normalized_expression,
-            "expression": item.evaluation_expression,
-            "declared_factor_ids": sorted(alias.factor.id for alias in item.aliases),
-            "groups": sorted({alias.group_name for alias in item.aliases}),
-            "families": sorted({alias.factor.family for alias in item.aliases}),
-        }
-        for item in sorted(canonical, key=lambda value: value.canonical_expression_id)
-    ]
-    declared_ids = [factor.id for _, factor in factor_specs]
+def _candidate_factor_lineage(
+    library: FactorLibrary, groups: list[str]
+) -> dict[str, Any]:
+    selected = library.select_groups(groups)
+    definitions = library.factors_for_groups(groups)
     return {
-        "factor_groups": list(groups),
-        "declared_factor_ids": declared_ids,
-        "declared_factor_count": len(declared_ids),
-        "effective_factor_count": len(effective_factors),
-        "effective_factors": effective_factors,
+        "factor_groups": [group.name for group in selected],
+        "factor_ids": [definition.factor_id for definition in definitions],
+        "factor_count": len(definitions),
+        "factors": [
+            {
+                "factor_id": definition.factor_id,
+                "factor_version": definition.factor_version,
+                "display_name": definition.display_name,
+                "information_family": definition.information_family,
+                "expression": definition.expression,
+                "implementation_hash": definition.implementation_hash,
+            }
+            for definition in definitions
+        ],
     }
 
 
 def build_factor_lineage(spec_path: str | Path) -> dict[str, Any] | None:
-    """Return exact factor-library lineage declared by one research mission.
-
-    Effective factors use the repository's canonical expression-identity contract,
-    the same identity used by factor diagnostics. Duplicate configured aliases are
-    retained as provenance but cannot masquerade as distinct model inputs.
-
-    Missions without a structured ``factor_library`` return ``None``. Allocation
-    runners attach deterministic rule-input evidence separately; the absence of a
-    Qlib factor library is not represented as an invented factor set.
-    """
+    """Return exact canonical factor identities declared by one research mission."""
 
     path = Path(spec_path).resolve()
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -117,10 +88,12 @@ def build_factor_lineage(spec_path: str | Path) -> dict[str, Any] | None:
         candidates[candidate_id] = _candidate_factor_lineage(library, groups)
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "source": source,
-        "source_sha256": _sha256_bytes(library_path.read_bytes()),
-        "identity": factor_identity_metadata(),
+        "source_sha256": library.source_sha256,
+        "catalog_id": library.catalog.catalog_id,
+        "catalog_version": library.catalog.catalog_version,
+        "catalog_implementation_hash": library.catalog.implementation_hash(),
         "candidates": candidates,
     }
 

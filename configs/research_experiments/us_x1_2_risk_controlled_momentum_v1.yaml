@@ -34,7 +34,7 @@ fixed_model:
   frozen_spec: configs/research_paradigms/us_x1_1_frozen_v1.yaml
 
 factor_library:
-  source: configs/factor_libraries/us_ohlcv.yaml
+  source: configs/factor_libraries/ohlcv.yaml
 
 candidates:
   - candidate_id: baseline_7factor
