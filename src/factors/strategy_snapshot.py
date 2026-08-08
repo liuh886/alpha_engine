@@ -1,8 +1,8 @@
-"""Materialize canonical factor evidence from governed strategy signal context.
+"""Cutoff-bound canonical factor evidence for governed strategy signals.
 
-This module does not execute strategy logic. It binds already-computed rule inputs
-to canonical FactorDefinitions, validates the evidence cutoff, and emits the
-single factor snapshot consumed by the signal ledger and Strategy Operations.
+Strategy logic remains in the model-specific signal producer. This module only
+projects already-computed inputs and rule states onto canonical FactorDefinitions,
+then validates identity and freshness before the signal enters the common ledger.
 """
 
 from __future__ import annotations
@@ -12,7 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from src.common.runtime_settings import PROJECT_ROOT
-from src.factors.library import FactorDefinition, FactorLibrary, load_factor_library
+from src.factors.definition import FactorDefinition
+from src.factors.library import FactorLibrary, load_factor_library
 
 SCHEMA_VERSION = "strategy_factor_snapshot_v1"
 LIBRARY_PATH = PROJECT_ROOT / "configs" / "factor_libraries" / "strategy_inputs.yaml"
@@ -23,28 +24,28 @@ FRESHNESS_VALUES = {"current", "stale", "blocked"}
 
 
 class StrategyFactorSnapshotError(ValueError):
-    """Raised when a fresh strategy signal cannot be explained by fresh factors."""
+    """Raised when governed factor evidence is missing, stale, or inconsistent."""
 
 
-def _finite(value: object, *, label: str) -> float:
+def _mapping(value: object, label: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise StrategyFactorSnapshotError(f"{label} must be an object")
+    return value
+
+
+def _text(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise StrategyFactorSnapshotError(f"{label} must be a non-empty string")
+    return value.strip()
+
+
+def _number(value: object, label: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise StrategyFactorSnapshotError(f"{label} must be numeric")
     result = float(value)
     if result != result or abs(result) == float("inf"):
         raise StrategyFactorSnapshotError(f"{label} must be finite")
     return result
-
-
-def _required_string(value: object, *, label: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise StrategyFactorSnapshotError(f"{label} must be a non-empty string")
-    return value.strip()
-
-
-def _mapping(value: object, *, label: str) -> Mapping[str, Any]:
-    if not isinstance(value, Mapping):
-        raise StrategyFactorSnapshotError(f"{label} must be an object")
-    return value
 
 
 def _definition(library: FactorLibrary, factor_id: str) -> FactorDefinition:
@@ -61,34 +62,36 @@ def _observation(
     value: object,
     observed_at: str,
     state: str,
+    reason_code: str,
     effect: str = "neutral",
     reference: object = None,
-    reason_code: str,
 ) -> dict[str, Any]:
     definition = _definition(library, factor_id)
-    if effect not in EFFECT_VALUES:
-        raise StrategyFactorSnapshotError(f"unsupported factor effect: {effect}")
     if value is None:
         raise StrategyFactorSnapshotError(f"factor {factor_id} has no observation")
+    if effect not in EFFECT_VALUES:
+        raise StrategyFactorSnapshotError(f"unsupported factor effect: {effect}")
+
     if definition.output_dtype == "float64":
-        normalized_value: object = _finite(value, label=factor_id)
+        normalized: object = _number(value, factor_id)
     elif definition.output_dtype == "bool":
         if not isinstance(value, bool):
             raise StrategyFactorSnapshotError(f"factor {factor_id} must be boolean")
-        normalized_value = value
+        normalized = value
     elif definition.output_dtype == "string":
-        normalized_value = _required_string(value, label=factor_id)
+        normalized = _text(value, factor_id)
     else:
         raise StrategyFactorSnapshotError(
             f"factor {factor_id} has unsupported output dtype {definition.output_dtype!r}"
         )
+
     return {
         "factor_id": definition.factor_id,
         "factor_version": definition.factor_version,
         "implementation_hash": definition.implementation_hash,
         "display_name": definition.display_name,
         "information_family": definition.information_family,
-        "value": normalized_value,
+        "value": normalized,
         "reference": reference,
         "state": state,
         "effect": effect,
@@ -102,12 +105,13 @@ def _qqq_snapshot(
     signal: Mapping[str, Any],
     observed_at: str,
 ) -> tuple[list[str], list[dict[str, Any]]]:
-    price = _mapping(signal.get("price_context"), label="signal.price_context")
-    volatility = signal.get("context")
-    if not isinstance(volatility, Mapping):
-        volatility = _mapping(
-            signal.get("volatility_context"), label="signal.volatility_context"
-        )
+    price = _mapping(signal.get("price_context"), "signal.price_context")
+    raw_volatility = signal.get("context")
+    volatility = (
+        raw_volatility
+        if isinstance(raw_volatility, Mapping)
+        else _mapping(signal.get("volatility_context"), "signal.volatility_context")
+    )
 
     vix_stress = volatility.get("vix_stress") is True
     vix_release = volatility.get("vix_easing") is True or volatility.get("vix_normalized") is True
@@ -122,10 +126,7 @@ def _qqq_snapshot(
             "strategy.qqq.vix_close",
             value=volatility.get("vix_close"),
             observed_at=observed_at,
-            reference={
-                "normal": volatility.get("vix_q_normal"),
-                "stress": volatility.get("vix_q_stress"),
-            },
+            reference={"normal": volatility.get("vix_q_normal"), "stress": volatility.get("vix_q_stress")},
             state=str(volatility.get("vix_regime") or "unknown"),
             effect="support" if vix_stress else "veto" if vix_release else "neutral",
             reason_code=(
@@ -141,10 +142,7 @@ def _qqq_snapshot(
             "strategy.qqq.vxn_close",
             value=volatility.get("vxn_close"),
             observed_at=observed_at,
-            reference={
-                "normal": volatility.get("vxn_q_normal"),
-                "stress": volatility.get("vxn_q_stress"),
-            },
+            reference={"normal": volatility.get("vxn_q_normal"), "stress": volatility.get("vxn_q_stress")},
             state=str(volatility.get("vxn_regime") or "unknown"),
             effect="support" if vxn_stress else "neutral",
             reason_code="vxn_stress_supports_defense" if vxn_stress else "vxn_neutral",
@@ -177,20 +175,16 @@ def _qqq_snapshot(
 
     overlay_keys = ("rsi_14", "fear_greed_score", "ma200_falling", "strong_defense")
     if any(key in signal for key in overlay_keys):
-        if not all(key in signal for key in overlay_keys):
-            missing = [key for key in overlay_keys if key not in signal]
-            raise StrategyFactorSnapshotError(
-                f"QQQ overlay factor context is incomplete: {missing}"
-            )
-        groups.append("qqq_overlay")
-        rsi = _finite(signal.get("rsi_14"), label="signal.rsi_14")
-        fear_greed = _finite(
-            signal.get("fear_greed_score"), label="signal.fear_greed_score"
-        )
+        missing = [key for key in overlay_keys if key not in signal]
+        if missing:
+            raise StrategyFactorSnapshotError(f"QQQ overlay factor context is incomplete: {missing}")
+        rsi = _number(signal.get("rsi_14"), "signal.rsi_14")
+        fear_greed = _number(signal.get("fear_greed_score"), "signal.fear_greed_score")
         ma200_falling = signal.get("ma200_falling")
         strong_defense = signal.get("strong_defense")
         if not isinstance(ma200_falling, bool) or not isinstance(strong_defense, bool):
             raise StrategyFactorSnapshotError("QQQ overlay rule state must be boolean")
+        groups.append("qqq_overlay")
         rows.extend(
             [
                 _observation(
@@ -211,11 +205,7 @@ def _qqq_snapshot(
                     reference=10.0,
                     state="extreme_fear" if fear_greed < 10.0 else "normal",
                     effect="support" if fear_greed < 10.0 else "neutral",
-                    reason_code=(
-                        "fear_greed_extreme_fear"
-                        if fear_greed < 10.0
-                        else "fear_greed_not_extreme"
-                    ),
+                    reason_code=("fear_greed_extreme_fear" if fear_greed < 10.0 else "fear_greed_not_extreme"),
                 ),
                 _observation(
                     library,
@@ -239,11 +229,7 @@ def _qqq_snapshot(
                     reference=False,
                     state="active" if strong_defense else "inactive",
                     effect="support" if strong_defense else "neutral",
-                    reason_code=(
-                        "strong_defense_active"
-                        if strong_defense
-                        else "strong_defense_inactive"
-                    ),
+                    reason_code="strong_defense_active" if strong_defense else "strong_defense_inactive",
                 ),
             ]
         )
@@ -255,106 +241,26 @@ def _byd_snapshot(
     signal: Mapping[str, Any],
     observed_at: str,
 ) -> tuple[list[str], list[dict[str, Any]]]:
-    context = _mapping(signal.get("factor_context"), label="signal.factor_context")
+    context = _mapping(signal.get("factor_context"), "signal.factor_context")
     target_mode = str(signal.get("target_mode") or "")
     expansion_active = signal.get("expansion_active")
     if not isinstance(expansion_active, bool):
         raise StrategyFactorSnapshotError("signal.expansion_active must be boolean")
-    financed_increment = _finite(
-        context.get("financed_increment"), label="signal.factor_context.financed_increment"
-    )
-    return ["byd_v1_2"], [
-        _observation(
-            library,
-            "strategy.byd.market_state",
-            value=context.get("market_state"),
-            observed_at=observed_at,
-            state=str(context.get("market_state") or "unknown"),
-            effect="neutral",
-            reason_code="market_regime_context",
-        ),
-        _observation(
-            library,
-            "strategy.byd.vol_state",
-            value=context.get("vol_state"),
-            observed_at=observed_at,
-            state=str(context.get("vol_state") or "unknown"),
-            effect="neutral",
-            reason_code="volatility_regime_context",
-        ),
-        _observation(
-            library,
-            "strategy.byd.momentum_20d",
-            value=context.get("mom_20"),
-            observed_at=observed_at,
-            reference=0.0,
-            state="positive" if _finite(context.get("mom_20"), label="mom_20") > 0 else "negative",
-            effect="neutral",
-            reason_code="momentum_20d_context",
-        ),
-        _observation(
-            library,
-            "strategy.byd.momentum_60d",
-            value=context.get("mom_60"),
-            observed_at=observed_at,
-            reference=0.0,
-            state="positive" if _finite(context.get("mom_60"), label="mom_60") > 0 else "negative",
-            effect="neutral",
-            reason_code="momentum_60d_context",
-        ),
-        _observation(
-            library,
-            "strategy.byd.drawdown_252d",
-            value=context.get("drawdown_252"),
-            observed_at=observed_at,
-            reference=0.0,
-            state="drawdown",
-            effect="neutral",
-            reason_code="drawdown_252d_context",
-        ),
-        _observation(
-            library,
-            "strategy.byd.momentum_scale",
-            value=context.get("momentum_scale"),
-            observed_at=observed_at,
-            reference=1.0,
-            state="scaled",
-            effect="neutral",
-            reason_code="momentum_scale_context",
-        ),
-        _observation(
-            library,
-            "strategy.byd.financed_increment",
-            value=financed_increment,
-            observed_at=observed_at,
-            reference=0.0,
-            state="active" if financed_increment > 0 else "inactive",
-            effect="support" if financed_increment > 0 else "neutral",
-            reason_code=(
-                "financed_increment_supports_expansion"
-                if financed_increment > 0
-                else "no_financed_increment"
-            ),
-        ),
-        _observation(
-            library,
-            "strategy.byd.expansion_active",
-            value=expansion_active,
-            observed_at=observed_at,
-            reference=False,
-            state="active" if expansion_active else "inactive",
-            effect=(
-                "support"
-                if expansion_active and target_mode == "convex_expansion"
-                else "neutral"
-            ),
-            reason_code=(
-                "expansion_rule_active"
-                if expansion_active
-                else "expansion_rule_inactive"
-            ),
-        ),
+
+    mom20 = _number(context.get("mom_20"), "signal.factor_context.mom_20")
+    mom60 = _number(context.get("mom_60"), "signal.factor_context.mom_60")
+    financed = _number(context.get("financed_increment"), "signal.factor_context.financed_increment")
+    rows = [
+        _observation(library, "strategy.byd.market_state", value=context.get("market_state"), observed_at=observed_at, state=str(context.get("market_state") or "unknown"), reason_code="market_regime_context"),
+        _observation(library, "strategy.byd.vol_state", value=context.get("vol_state"), observed_at=observed_at, state=str(context.get("vol_state") or "unknown"), reason_code="volatility_regime_context"),
+        _observation(library, "strategy.byd.momentum_20d", value=mom20, observed_at=observed_at, reference=0.0, state="positive" if mom20 > 0 else "negative", reason_code="momentum_20d_context"),
+        _observation(library, "strategy.byd.momentum_60d", value=mom60, observed_at=observed_at, reference=0.0, state="positive" if mom60 > 0 else "negative", reason_code="momentum_60d_context"),
+        _observation(library, "strategy.byd.drawdown_252d", value=context.get("drawdown_252"), observed_at=observed_at, reference=0.0, state="drawdown", reason_code="drawdown_252d_context"),
+        _observation(library, "strategy.byd.momentum_scale", value=context.get("momentum_scale"), observed_at=observed_at, reference=1.0, state="scaled", reason_code="momentum_scale_context"),
+        _observation(library, "strategy.byd.financed_increment", value=financed, observed_at=observed_at, reference=0.0, state="active" if financed > 0 else "inactive", effect="support" if financed > 0 else "neutral", reason_code="financed_increment_supports_expansion" if financed > 0 else "no_financed_increment"),
+        _observation(library, "strategy.byd.expansion_active", value=expansion_active, observed_at=observed_at, reference=False, state="active" if expansion_active else "inactive", effect="support" if expansion_active and target_mode == "convex_expansion" else "neutral", reason_code="expansion_rule_active" if expansion_active else "expansion_rule_inactive"),
     ]
+    return ["byd_v1_2"], rows
 
 
 def build_strategy_factor_snapshot(
@@ -365,44 +271,35 @@ def build_strategy_factor_snapshot(
 ) -> dict[str, Any]:
     """Bind one signal's current factor inputs to canonical definitions."""
 
-    observed_at = _required_string(
-        signal.get("latest_data_date") or signal.get("signal_date"),
-        label="signal.latest_data_date",
+    signal_date = _text(signal.get("signal_date"), "signal.signal_date")
+    observed_at = _text(
+        signal.get("latest_data_date") or signal_date,
+        "signal.latest_data_date",
     )
-    signal_date = _required_string(signal.get("signal_date"), label="signal.signal_date")
     library = load_factor_library(library_path)
 
-    try:
-        if model_family_id == QQQ_FAMILY:
-            groups, rows = _qqq_snapshot(library, signal, observed_at)
-        elif model_family_id == BYD_FAMILY:
-            groups, rows = _byd_snapshot(library, signal, observed_at)
-        else:
-            raise StrategyFactorSnapshotError(
-                f"no strategy factor materializer for family {model_family_id!r}"
-            )
-    except StrategyFactorSnapshotError:
-        raise
-    except (KeyError, TypeError, ValueError) as exc:
-        raise StrategyFactorSnapshotError(str(exc)) from exc
+    if model_family_id == QQQ_FAMILY:
+        groups, rows = _qqq_snapshot(library, signal, observed_at)
+    elif model_family_id == BYD_FAMILY:
+        groups, rows = _byd_snapshot(library, signal, observed_at)
+    else:
+        raise StrategyFactorSnapshotError(
+            f"no strategy factor materializer for family {model_family_id!r}"
+        )
 
-    expected_ids = [
-        definition.factor_id for definition in library.factors_for_groups(groups)
-    ]
+    expected_ids = [row.factor_id for row in library.factors_for_groups(groups)]
     actual_ids = [str(row["factor_id"]) for row in rows]
     if actual_ids != expected_ids:
         raise StrategyFactorSnapshotError(
             f"factor snapshot identity mismatch: expected={expected_ids}, actual={actual_ids}"
         )
 
-    data_fresh = signal.get("data_freshness_ok") is True
-    freshness = "current" if data_fresh else "stale"
     snapshot = {
         "schema_version": SCHEMA_VERSION,
         "model_family_id": model_family_id,
         "signal_date": signal_date,
         "observation_cutoff": observed_at,
-        "freshness": freshness,
+        "freshness": "current" if signal.get("data_freshness_ok") is True else "stale",
         "catalog_id": library.catalog.catalog_id,
         "catalog_version": library.catalog.catalog_version,
         "catalog_implementation_hash": library.catalog.implementation_hash(),
@@ -426,24 +323,25 @@ def validate_strategy_factor_snapshot(snapshot: object) -> None:
         raise StrategyFactorSnapshotError("unsupported factor snapshot freshness")
     if snapshot.get("research_only") is not True or snapshot.get("trade_ready") is not False:
         raise StrategyFactorSnapshotError("factor snapshot research boundary is invalid")
-    cutoff = _required_string(snapshot.get("observation_cutoff"), label="observation_cutoff")
-    if cutoff != _required_string(snapshot.get("signal_date"), label="signal_date"):
-        raise StrategyFactorSnapshotError(
-            "factor observation cutoff must match the governed signal date"
-        )
+
+    _text(snapshot.get("signal_date"), "signal_date")
+    cutoff = _text(snapshot.get("observation_cutoff"), "observation_cutoff")
     factors = snapshot.get("factors")
     if not isinstance(factors, list) or not factors:
         raise StrategyFactorSnapshotError("factor snapshot factors must be non-empty")
+    if snapshot.get("factor_count") != len(factors):
+        raise StrategyFactorSnapshotError("factor snapshot factor_count does not match factors")
+
     ids: set[str] = set()
     for row in factors:
         if not isinstance(row, Mapping):
             raise StrategyFactorSnapshotError("factor observation must be an object")
-        factor_id = _required_string(row.get("factor_id"), label="factor_id")
+        factor_id = _text(row.get("factor_id"), "factor_id")
         if factor_id in ids:
             raise StrategyFactorSnapshotError(f"duplicate factor observation: {factor_id}")
         ids.add(factor_id)
-        implementation_hash = _required_string(
-            row.get("implementation_hash"), label=f"{factor_id}.implementation_hash"
+        implementation_hash = _text(
+            row.get("implementation_hash"), f"{factor_id}.implementation_hash"
         )
         if len(implementation_hash) != 64:
             raise StrategyFactorSnapshotError(
