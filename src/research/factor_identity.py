@@ -1,9 +1,9 @@
-"""Canonical factor-expression identity and alias accounting.
+"""Expression-level diagnostic identity for canonical factor definitions.
 
-The identity scheme is intentionally conservative. Version 1 removes Unicode
-whitespace outside quoted literals and hashes the normalized Qlib expression
-text. It does not claim algebraic equivalence between differently written
-expressions.
+Factor identity itself is ``FactorDefinition.factor_id`` plus implementation hash.
+This module only groups formulas for diagnostic computation when several declared
+groups reference the same canonical factor. Expression normalization is delegated
+to the governed factor foundation and is not a second identity system.
 """
 
 from __future__ import annotations
@@ -13,7 +13,8 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from src.research.factor_library import FactorSpec
+from src.factors.definition import FactorDefinition
+from src.factors.library import normalize_expression
 
 FACTOR_EXPRESSION_IDENTITY_SCHEME = "qlib_expression_text_v1"
 _ALIAS_METRIC_KEYS = (
@@ -35,29 +36,39 @@ _ALIAS_METRIC_KEYS = (
     "positive_oriented_window_ratio",
     "window_metrics",
 )
-_ALIAS_SPECIFIC_FIELDS = {"id", "expression", "family", "description", "group"}
+_ALIAS_SPECIFIC_FIELDS = {
+    "factor_id",
+    "factor_version",
+    "display_name",
+    "namespace",
+    "information_family",
+    "expression",
+    "group",
+    "implementation_hash",
+}
 
 
 @dataclass(frozen=True)
 class FactorAlias:
-    """One configured factor id attached to a canonical expression."""
+    """One group membership attached to one canonical factor definition."""
 
     group_name: str
-    factor: FactorSpec
+    factor: FactorDefinition
 
     def to_dict(self) -> dict[str, str]:
         return {
-            "id": self.factor.id,
+            "factor_id": self.factor.factor_id,
             "group": self.group_name,
-            "family": self.factor.family,
-            "description": self.factor.description,
+            "information_family": self.factor.information_family,
+            "display_name": self.factor.display_name,
             "expression": self.factor.expression,
+            "implementation_hash": self.factor.implementation_hash,
         }
 
 
 @dataclass(frozen=True)
 class CanonicalFactorSpec:
-    """One independently evaluated expression with its configured aliases."""
+    """One independently evaluated expression and its group memberships."""
 
     canonical_expression_id: str
     canonical_expression_sha256: str
@@ -67,46 +78,15 @@ class CanonicalFactorSpec:
 
 
 def normalize_factor_expression(expression: str) -> str:
-    """Normalize Qlib expression text for identity scheme version 1.
+    """Use the canonical factor-foundation normalization contract."""
 
-    Unicode whitespace outside quoted literals is removed. Whitespace inside
-    single- or double-quoted literals is preserved. Parentheses, operator
-    ordering, constants, function names, and literal contents remain
-    significant, so this scheme never claims algebraic equivalence.
-    """
-
-    normalized: list[str] = []
-    active_quote: str | None = None
-    escaped = False
-    for character in str(expression):
-        if active_quote is not None:
-            normalized.append(character)
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == active_quote:
-                active_quote = None
-            continue
-
-        if character in {"'", '"'}:
-            active_quote = character
-            normalized.append(character)
-        elif not character.isspace():
-            normalized.append(character)
-
-    if active_quote is not None:
-        raise ValueError("factor expression contains an unterminated quoted literal")
-    result = "".join(normalized)
-    if not result:
-        raise ValueError("factor expression must remain non-empty after normalization")
-    return result
+    return normalize_expression(expression)
 
 
 def canonical_expression_identity(expression: str) -> dict[str, str]:
-    """Return the deterministic, versioned identity for one expression."""
+    """Return deterministic expression identity for diagnostic deduplication."""
 
-    normalized = normalize_factor_expression(expression)
+    normalized = normalize_expression(expression)
     digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
     return {
         "scheme": FACTOR_EXPRESSION_IDENTITY_SCHEME,
@@ -117,20 +97,19 @@ def canonical_expression_identity(expression: str) -> dict[str, str]:
 
 
 def factor_identity_metadata() -> dict[str, str]:
-    """Describe the identity contract without requiring consumers to infer it."""
-
     return {
         "scheme": FACTOR_EXPRESSION_IDENTITY_SCHEME,
         "digest": "sha256",
-        "normalization": "remove_unicode_whitespace_outside_quoted_literals",
+        "normalization": "src.factors.library.normalize_expression",
         "equivalence_scope": "textual_not_algebraic",
+        "factor_identity_authority": "FactorDefinition.factor_id+implementation_hash",
     }
 
 
 def group_factor_specs_by_expression(
-    factor_specs: list[tuple[str, FactorSpec]],
+    factor_specs: list[tuple[str, FactorDefinition]],
 ) -> list[CanonicalFactorSpec]:
-    """Group configured factor ids by deterministic expression identity."""
+    """Group group-memberships by expression for one diagnostic evaluation."""
 
     grouped: dict[str, dict[str, Any]] = {}
     for group_name, factor in factor_specs:
@@ -146,14 +125,18 @@ def group_factor_specs_by_expression(
             continue
         if record["normalized_expression"] != identity["normalized_expression"]:
             raise ValueError("factor expression hash collision detected")
+        existing_ids = {alias.factor.factor_id for alias in record["aliases"]}
+        if factor.factor_id not in existing_ids:
+            raise ValueError(
+                "canonical factor library exposed duplicate expression IDs: "
+                f"{sorted(existing_ids)} and {factor.factor_id}"
+            )
         record["aliases"].append(FactorAlias(group_name=group_name, factor=factor))
 
     return [
         CanonicalFactorSpec(
             canonical_expression_id=str(record["canonical_expression_id"]),
-            canonical_expression_sha256=str(
-                record["canonical_expression_sha256"]
-            ),
+            canonical_expression_sha256=str(record["canonical_expression_sha256"]),
             normalized_expression=str(record["normalized_expression"]),
             evaluation_expression=str(record["evaluation_expression"]),
             aliases=tuple(record["aliases"]),
@@ -170,47 +153,46 @@ def build_canonical_factor_row(
     canonical_spec: CanonicalFactorSpec,
     diagnostic_row: dict[str, Any],
 ) -> dict[str, Any]:
-    """Attach identity and alias provenance to one independently computed row."""
+    """Attach canonical factor/group provenance to one diagnostic row."""
 
-    aliases = [alias.to_dict() for alias in canonical_spec.aliases]
+    memberships = [alias.to_dict() for alias in canonical_spec.aliases]
+    factor_ids = sorted({row["factor_id"] for row in memberships})
+    if len(factor_ids) != 1:
+        raise ValueError("one diagnostic expression must map to exactly one factor_id")
     metric_payload = {
         key: value
         for key, value in diagnostic_row.items()
         if key not in _ALIAS_SPECIFIC_FIELDS
     }
     return {
+        "factor_id": factor_ids[0],
         "canonical_expression_id": canonical_spec.canonical_expression_id,
         "identity_scheme": FACTOR_EXPRESSION_IDENTITY_SCHEME,
-        "canonical_expression_sha256": (
-            canonical_spec.canonical_expression_sha256
-        ),
+        "canonical_expression_sha256": canonical_spec.canonical_expression_sha256,
         "expression": canonical_spec.evaluation_expression,
         "normalized_expression": canonical_spec.normalized_expression,
-        "alias_count": len(aliases),
-        "alias_ids": [alias["id"] for alias in aliases],
-        "groups": sorted({alias["group"] for alias in aliases}),
-        "families": sorted({alias["family"] for alias in aliases}),
-        "aliases": aliases,
+        "group_count": len({row["group"] for row in memberships}),
+        "groups": sorted({row["group"] for row in memberships}),
+        "information_families": sorted(
+            {row["information_family"] for row in memberships}
+        ),
+        "group_memberships": memberships,
         **metric_payload,
     }
 
 
 def expand_alias_rows(canonical_row: dict[str, Any]) -> list[dict[str, Any]]:
-    """Expand a canonical metric row into auditable per-id alias rows."""
+    """Expand one diagnostic row into auditable group-membership rows."""
 
     metrics = _metric_payload(canonical_row)
     canonical_rank = canonical_row.get("canonical_rank")
     rows: list[dict[str, Any]] = []
-    for alias in canonical_row.get("aliases", []):
-        if not isinstance(alias, dict):
-            raise ValueError("canonical factor aliases must be objects")
+    for membership in canonical_row.get("group_memberships", []):
+        if not isinstance(membership, dict):
+            raise ValueError("factor group memberships must be objects")
         rows.append(
             {
-                "id": str(alias["id"]),
-                "expression": str(alias["expression"]),
-                "family": str(alias["family"]),
-                "description": str(alias.get("description", "")),
-                "group": str(alias["group"]),
+                **membership,
                 "canonical_expression_id": str(
                     canonical_row["canonical_expression_id"]
                 ),
@@ -226,16 +208,16 @@ def expand_alias_rows(canonical_row: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def validate_alias_metric_consistency(alias_rows: list[dict[str, Any]]) -> None:
-    """Fail closed when aliases of one identity carry divergent evidence."""
+    """Fail closed when group memberships carry divergent diagnostic evidence."""
 
     grouped: dict[str, list[dict[str, Any]]] = {}
     for row in alias_rows:
-        canonical_id = str(row.get("canonical_expression_id", ""))
-        if not canonical_id:
-            raise ValueError("factor alias is missing canonical_expression_id")
-        grouped.setdefault(canonical_id, []).append(row)
+        factor_id = str(row.get("factor_id", ""))
+        if not factor_id:
+            raise ValueError("factor diagnostic membership is missing factor_id")
+        grouped.setdefault(factor_id, []).append(row)
 
-    for canonical_id, rows in grouped.items():
+    for factor_id, rows in grouped.items():
         expected = json.dumps(
             _metric_payload(rows[0]), sort_keys=True, separators=(",", ":")
         )
@@ -245,6 +227,6 @@ def validate_alias_metric_consistency(alias_rows: list[dict[str, Any]]) -> None:
             )
             if observed != expected:
                 raise ValueError(
-                    "factor alias metrics diverged for canonical expression "
-                    f"{canonical_id}: {rows[0].get('id')} vs {row.get('id')}"
+                    "factor group-membership metrics diverged for canonical factor "
+                    f"{factor_id}"
                 )
