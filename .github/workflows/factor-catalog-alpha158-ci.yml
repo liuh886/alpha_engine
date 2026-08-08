@@ -5,7 +5,10 @@ on:
     branches: [main]
     paths:
       - "src/factors/**"
+      - "configs/factor_libraries/**"
       - "scripts/factors/**"
+      - "tests/test_factor_library.py"
+      - "tests/test_strategy_factor_snapshot.py"
       - "tests/test_factor_catalog_alpha158.py"
       - "tests/test_factor_asset_inventory.py"
       - "docs/research/factor_catalog_alpha158_v1_2026-08-01.md"
@@ -14,7 +17,10 @@ on:
     branches: [main]
     paths:
       - "src/factors/**"
+      - "configs/factor_libraries/**"
       - "scripts/factors/**"
+      - "tests/test_factor_library.py"
+      - "tests/test_strategy_factor_snapshot.py"
       - "tests/test_factor_catalog_alpha158.py"
       - "tests/test_factor_asset_inventory.py"
       - "docs/research/factor_catalog_alpha158_v1_2026-08-01.md"
@@ -43,6 +49,8 @@ jobs:
           uv run ruff check
           src/factors
           scripts/factors
+          tests/test_factor_library.py
+          tests/test_strategy_factor_snapshot.py
           tests/test_factor_catalog_alpha158.py
           tests/test_factor_asset_inventory.py
       - name: Mypy factor catalog
@@ -50,9 +58,11 @@ jobs:
           uv run mypy
           src/factors
           scripts/factors
-      - name: Run Alpha158 catalog tests
+      - name: Run factor foundation tests
         run: >-
           uv run pytest
+          tests/test_factor_library.py
+          tests/test_strategy_factor_snapshot.py
           tests/test_factor_catalog_alpha158.py
           tests/test_factor_asset_inventory.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
