@@ -50,6 +50,19 @@ def test_latest_target_enters_sgov_defense_inside_same_formal_state() -> None:
 
 
 def test_signal_alert_fires_on_same_state_weight_change() -> None:
+    context = {
+        "qqq_close": 710.0,
+        "ma20": 705.0,
+        "ma50": 700.0,
+        "ma200": 640.0,
+        "stress_price_failure": False,
+        "vix_close": 16.2,
+        "vxn_close": 24.1,
+        "vix_easing": True,
+        "vix_normalized": True,
+        "vix_regime": "calm",
+        "vxn_regime": "calm",
+    }
     current = {
         "signal_date": "2026-08-06",
         "formal_state": 0,
@@ -61,7 +74,7 @@ def test_signal_alert_fires_on_same_state_weight_change() -> None:
         "fast_price_vol_repair": False,
         "rsi_14": 45.0,
         "fear_greed_score": 40.0,
-        "context": {},
+        "context": context,
     }
     target = {
         **current,
