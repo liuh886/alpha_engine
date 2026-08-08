@@ -6,15 +6,15 @@
     "shadow_strategy"
   ],
   "publication_policy": "formal_named_baselines_only",
-  "published_at": "2026-08-06T09:52:48Z",
+  "published_at": "2026-08-08T05:30:00Z",
   "records": [
     {
-      "display_name": "QQQ Rotation v4.2",
+      "display_name": "QQQ Rotation v4.3",
       "display_order": 1,
-      "model_id": "qqqi_qqq_tqqq_v4_2",
-      "path": "qqqi_qqq_tqqq_v4_2.json",
+      "model_id": "qqqi_qqq_tqqq_v4_3",
+      "path": "qqqi_qqq_tqqq_v4_3.json",
       "publication_status": "accepted_formal_baseline",
-      "sha256": "fc5b325254895d8292f86c317fa2c343ca2ebab834c606ac94c318c7664b2a6f"
+      "sha256": "d470954b350ab79df8af582502edcb683c01768ad103006f064003630457e6be"
     },
     {
       "display_name": "US x1.1",

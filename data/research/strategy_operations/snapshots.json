@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-08T01:44:16Z",
+  "generated_at": "2026-08-08T05:30:00Z",
   "records": [
     {
       "allocations": [
@@ -38,7 +38,7 @@
       "source_identity": {
         "commit_sha": "6d75fa77b282271e5109644014a14c6113e4fda3",
         "factor_catalog_implementation_hash": null,
-        "formal_bundle_id": "833ce53e918da4d7c62dd288e4c33c062637ec75ca8e39600b4d2ac2bf676c7d",
+        "formal_bundle_id": "77bea88583f0a4f2ce8e3d76aa4364493db1bfec69a69e1ecda8a7abf9667aba",
         "formal_evidence_cutoff": "2026-08-03",
         "formal_run_id": "byd_v1_2_convex_momentum_budget_v1-formal-user-authorized-2026-08-06",
         "github_issue_number": null,
@@ -55,21 +55,21 @@
       "allocations": [],
       "as_of": null,
       "data_freshness": "unknown",
-      "decision_cadence": "10-session rebalance",
-      "decision_reason": "Formal historical evidence is available; live target state is intentionally unavailable.",
+      "decision_cadence": "Every 10 provider sessions",
+      "decision_reason": "The signal publisher exists, but no cutoff-bound evaluation has been committed yet.",
       "delivery_status": "not available",
       "estimated_cost": null,
       "factor_evidence": [],
-      "factor_freshness": "unknown",
+      "factor_freshness": "blocked",
       "latest_completed_session": "2026-08-03",
       "model_version_id": "cn_x1_1",
-      "next_decision_policy": "No governed current-target publisher is registered yet.",
-      "note": "Formal historical evidence is available; live target state is intentionally unavailable.",
+      "next_decision_policy": "Publish only on the governed rebalance session; target applies to the next eligible open.",
+      "note": "The signal publisher exists, but no cutoff-bound evaluation has been committed yet.",
       "source_href": null,
       "source_identity": {
         "commit_sha": null,
         "factor_catalog_implementation_hash": null,
-        "formal_bundle_id": "bbf40fe790c5ec17cf9e408527b636e7368525667ebb7fffe0f2d05cb0c380a3",
+        "formal_bundle_id": "206741d47fc14da0a0079935231d3e028d2f1d9cc7073d48819263d86ed11fb1",
         "formal_evidence_cutoff": "2026-08-03",
         "formal_run_id": "cn_x1_1-formal-31022910416",
         "github_issue_number": null,
@@ -77,9 +77,9 @@
         "signal_sha256": null,
         "workflow_run_id": null
       },
-      "source_label": "Formal evidence only",
-      "state_label": "No governed current-target publisher",
-      "status": "pipeline_unavailable",
+      "source_label": "Governed signal ledger",
+      "state_label": "Awaiting first governed evaluation",
+      "status": "awaiting_observation",
       "turnover": null
     },
     {
@@ -97,6 +97,12 @@
           "target": 0.5
         },
         {
+          "asset": "SGOV",
+          "current": 0.0,
+          "delta": 0.0,
+          "target": 0.0
+        },
+        {
           "asset": "TQQQ",
           "current": 0.0,
           "delta": 0.0,
@@ -106,7 +112,7 @@
       "as_of": "2026-08-07",
       "data_freshness": "current",
       "decision_cadence": "Every completed US market session",
-      "decision_reason": "继续保持当前状态",
+      "decision_reason": "formal_state_allocation → formal_state_allocation",
       "delivery_status": "not_required",
       "estimated_cost": 0.0,
       "factor_evidence": [
@@ -120,8 +126,8 @@
           "observed_at": "2026-08-07",
           "reason_code": "vix_easing_supports_release",
           "reference": {
-            "normal": 17.906000518798827,
-            "stress": 19.974000167846683
+            "normal": null,
+            "stress": null
           },
           "state": "calm",
           "value": 14.899999618530273
@@ -136,8 +142,8 @@
           "observed_at": "2026-08-07",
           "reason_code": "vxn_neutral",
           "reference": {
-            "normal": 24.141999435424804,
-            "stress": 27.240000534057618
+            "normal": null,
+            "stress": null
           },
           "state": "calm",
           "value": 22.81999969482422
@@ -167,27 +173,79 @@
           "reference": 0.0,
           "state": "above_long_trend",
           "value": 0.11802005039353447
+        },
+        {
+          "display_name": "RSI(14)",
+          "effect": "neutral",
+          "factor_id": "strategy.qqq.rsi14",
+          "factor_version": "1.0",
+          "implementation_hash": "25b9d2baa3862b01d34e78576394e139989cf889643fce7b8329b31e9a9eee60",
+          "information_family": "momentum",
+          "observed_at": "2026-08-07",
+          "reason_code": "rsi_not_panic",
+          "reference": 30.0,
+          "state": "normal",
+          "value": 57.177327102742204
+        },
+        {
+          "display_name": "Fear & Greed",
+          "effect": "neutral",
+          "factor_id": "strategy.qqq.fear_greed",
+          "factor_version": "1.0",
+          "implementation_hash": "52cb49acbbe7b750bdb84504fd6be4d821469c1d3f53bbc166008030ff9242ae",
+          "information_family": "sentiment",
+          "observed_at": "2026-08-07",
+          "reason_code": "fear_greed_not_extreme",
+          "reference": 10.0,
+          "state": "normal",
+          "value": 63.6857142857143
+        },
+        {
+          "display_name": "SMA200 falling",
+          "effect": "neutral",
+          "factor_id": "strategy.qqq.ma200_falling",
+          "factor_version": "1.0",
+          "implementation_hash": "7a2c3d06b1f5683199c19161f596e0f2ae9201f0a0977fee609aa0839ea73f5b",
+          "information_family": "trend_state",
+          "observed_at": "2026-08-07",
+          "reason_code": "ma200_not_falling",
+          "reference": false,
+          "state": "not_falling",
+          "value": false
+        },
+        {
+          "display_name": "Strong defense active",
+          "effect": "neutral",
+          "factor_id": "strategy.qqq.strong_defense",
+          "factor_version": "1.0",
+          "implementation_hash": "7cbbd3045eae0a1b20a40c7227850803ac86eeae76ebce01f19a8c6487b90302",
+          "information_family": "rule_state",
+          "observed_at": "2026-08-07",
+          "reason_code": "strong_defense_inactive",
+          "reference": false,
+          "state": "inactive",
+          "value": false
         }
       ],
       "factor_freshness": "current",
       "latest_completed_session": "2026-08-07",
-      "model_version_id": "qqqi_qqq_tqqq_v4_2",
+      "model_version_id": "qqqi_qqq_tqqq_v4_3",
       "next_decision_policy": "Evaluate at close; target applies to the next eligible open.",
       "note": "Latest governed evaluation retained the existing allocation.",
       "source_href": null,
       "source_identity": {
-        "commit_sha": "c9d3aa906103a13db534023cad2f0a140bc84f1c",
+        "commit_sha": "f664d0c307edbcfb8d32e3a519fd0d7d6979a2e7",
         "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
-        "formal_bundle_id": "2b041025af0a901692a5b0b4d7aae0fd63435431036fd45f3c53e4a4dbbef0ed",
-        "formal_evidence_cutoff": "2026-07-31",
-        "formal_run_id": "qqqi_qqq_tqqq_v4_2-formal-8820398584",
+        "formal_bundle_id": "09c848cb02d2a2ac1af3782fde8c1a57383a366e6a4649093b5f22fa6833066a",
+        "formal_evidence_cutoff": "2026-08-07",
+        "formal_run_id": "qqqi_qqq_tqqq_v4_3-through-2026_08_07",
         "github_issue_number": null,
-        "ledger_fingerprint": "fd95e3de5d5b473ea604",
-        "signal_sha256": "ec09b94ddc203dbb3c187e019954cddc8c7232a38544cbaaec23b30da61b3864",
-        "workflow_run_id": "31233327636"
+        "ledger_fingerprint": "d801a7315db76d5ab307",
+        "signal_sha256": "24841551127f1517421769dca7646e827e56b1e21df3c8753868048ab628f5b5",
+        "workflow_run_id": "31242990312"
       },
       "source_label": "Governed QQQ signal ledger",
-      "state_label": "Transition",
+      "state_label": "Transition · formal_state_allocation",
       "status": "current_no_change",
       "turnover": 0.0
     },
@@ -195,21 +253,21 @@
       "allocations": [],
       "as_of": null,
       "data_freshness": "unknown",
-      "decision_cadence": "10-session rebalance",
-      "decision_reason": "Formal historical evidence is available; live target state is intentionally unavailable.",
+      "decision_cadence": "Every 10 provider sessions",
+      "decision_reason": "The signal publisher exists, but no cutoff-bound evaluation has been committed yet.",
       "delivery_status": "not available",
       "estimated_cost": null,
       "factor_evidence": [],
-      "factor_freshness": "unknown",
+      "factor_freshness": "blocked",
       "latest_completed_session": "2026-07-31",
       "model_version_id": "us_x1_1",
-      "next_decision_policy": "No governed current-target publisher is registered yet.",
-      "note": "Formal historical evidence is available; live target state is intentionally unavailable.",
+      "next_decision_policy": "Publish only on the governed rebalance session; target applies to the next eligible open.",
+      "note": "The signal publisher exists, but no cutoff-bound evaluation has been committed yet.",
       "source_href": null,
       "source_identity": {
         "commit_sha": null,
         "factor_catalog_implementation_hash": null,
-        "formal_bundle_id": "306937b3e5b033af56f70db617ac43d044c1e79d87594f421d03b2569a0f1a4f",
+        "formal_bundle_id": "fd1a34d57dbbf90a17cbf5ccce8e37ae8a6d7796fc15650755323ea7d0ff6cf5",
         "formal_evidence_cutoff": "2026-07-31",
         "formal_run_id": "us_x1_1_through_2026_07_31",
         "github_issue_number": null,
@@ -217,9 +275,9 @@
         "signal_sha256": null,
         "workflow_run_id": null
       },
-      "source_label": "Formal evidence only",
-      "state_label": "No governed current-target publisher",
-      "status": "pipeline_unavailable",
+      "source_label": "Governed signal ledger",
+      "state_label": "Awaiting first governed evaluation",
+      "status": "awaiting_observation",
       "turnover": null
     }
   ],
