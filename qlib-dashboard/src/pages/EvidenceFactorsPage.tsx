@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Braces, Database, ShieldQuestion } from 'lucide-react';
+import { Activity, BarChart3, Braces, Database, ShieldQuestion } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,11 @@ import {
   type FactorDistributionRow,
   type MarketEvidenceMarket,
 } from '@/lib/market-evidence';
+import type { RunWorkspaceContext } from '@/lib/run-workspace';
+import {
+  loadStrategyOperations,
+  type StrategyOperationsSnapshot,
+} from '@/lib/strategy-operations';
 import { cn } from '@/lib/utils';
 
 interface ImportanceRow {
@@ -22,8 +28,25 @@ interface ImportanceRow {
   maxImportance: number;
 }
 
+interface CurrentDriverRow {
+  strategyId: string;
+  strategyName: string;
+  factorId: string;
+  displayName: string;
+  value: number | string | boolean;
+  state: string;
+  effect: string;
+  reasonCode: string;
+  observedAt: string;
+}
+
 function formatNumber(value: number | undefined, digits = 4): string {
   return value === undefined || !Number.isFinite(value) ? '—' : value.toFixed(digits);
+}
+
+function formatDriverValue(value: number | string | boolean): string {
+  if (typeof value === 'number') return Number.isFinite(value) ? value.toLocaleString(undefined, { maximumFractionDigits: 5 }) : '—';
+  return String(value);
 }
 
 function missingRate(row: FactorDistributionRow): number | null {
@@ -32,10 +55,16 @@ function missingRate(row: FactorDistributionRow): number | null {
 }
 
 export function EvidenceFactorsPage({ models }: { models: ModelData[] }) {
+  const { runs } = useOutletContext<RunWorkspaceContext>();
   const [market, setMarket] = useState<MarketEvidenceMarket>('us');
   const [diagnostics, setDiagnostics] = useState<Partial<Record<MarketEvidenceMarket, FactorDiagnosticsEvidence>>>({});
   const [diagnosticsError, setDiagnosticsError] = useState<string | null>(null);
+  const [operations, setOperations] = useState<Map<string, StrategyOperationsSnapshot>>(new Map());
+  const [operationsError, setOperationsError] = useState<string | null>(null);
   const [selectedFactorId, setSelectedFactorId] = useState('');
+
+  const formalRuns = useMemo(() => runs.filter((run) => run.channel === 'formal'), [runs]);
+  const formalRunByVersion = useMemo(() => new Map(formalRuns.map((run) => [run.modelVersionId, run])), [formalRuns]);
 
   const importanceRows = useMemo<ImportanceRow[]>(() => {
     const values = new Map<string, number[]>();
@@ -76,6 +105,19 @@ export function EvidenceFactorsPage({ models }: { models: ModelData[] }) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    setOperationsError(null);
+    loadStrategyOperations(formalRuns)
+      .then((value) => { if (active) setOperations(value); })
+      .catch((error) => {
+        if (!active) return;
+        setOperations(new Map());
+        setOperationsError(error instanceof Error ? error.message : String(error));
+      });
+    return () => { active = false; };
+  }, [formalRuns]);
+
   const marketDiagnostics = diagnostics[market];
   const availableFactors = useMemo(() => {
     return [...(marketDiagnostics?.factors ?? [])].sort((left, right) => left.information_family.localeCompare(right.information_family) || left.display_name.localeCompare(right.display_name));
@@ -97,13 +139,34 @@ export function EvidenceFactorsPage({ models }: { models: ModelData[] }) {
   })) ?? [];
   const selectedMissingRate = selected ? missingRate(selected) : null;
 
+  const currentSnapshots = useMemo(() => {
+    return [...operations.values()].filter((snapshot) => formalRunByVersion.get(snapshot.strategyId)?.market === market);
+  }, [formalRunByVersion, market, operations]);
+
+  const currentDrivers = useMemo<CurrentDriverRow[]>(() => {
+    return currentSnapshots.flatMap((snapshot) => {
+      const run = formalRunByVersion.get(snapshot.strategyId);
+      return snapshot.factorEvidence.map((factor) => ({
+        strategyId: snapshot.strategyId,
+        strategyName: run?.title ?? snapshot.strategyId,
+        factorId: factor.factorId,
+        displayName: factor.displayName,
+        value: factor.value,
+        state: factor.state,
+        effect: factor.effect,
+        reasonCode: factor.reasonCode,
+        observedAt: factor.observedAt,
+      }));
+    }).sort((left, right) => left.strategyName.localeCompare(right.strategyName) || left.displayName.localeCompare(right.displayName));
+  }, [currentSnapshots, formalRunByVersion]);
+
   return (
     <div className="research-page space-y-6">
       <header className="research-page-header">
         <div>
           <p className="research-kicker">Evidence / Factors</p>
           <h1>Factor diagnostics and model explainability</h1>
-          <p>Separate the statistical behavior of a canonical factor from model-specific importance and current-signal contribution. None of these is presented as causal evidence.</p>
+          <p>Separate historical canonical-factor behavior, cutoff-bound strategy drivers, and model-specific importance. None of these is presented as causal evidence.</p>
         </div>
         <Badge variant="outline" className="h-7 gap-1.5"><ShieldQuestion className="h-3.5 w-3.5" /> Research evidence only</Badge>
       </header>
@@ -112,7 +175,7 @@ export function EvidenceFactorsPage({ models }: { models: ModelData[] }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Historical factor distribution</h2>
-            <p className="text-sm text-muted-foreground">Computed by the backend from the governed selected-pool provider and canonical factor implementation.</p>
+            <p className="text-sm text-muted-foreground">Computed by the backend from selected-pool candidates only. Benchmarks and formal auxiliary securities do not enter the distribution.</p>
           </div>
           <div className="flex rounded-lg border p-1">
             {(['us', 'cn'] as MarketEvidenceMarket[]).map((marketId) => (
@@ -127,7 +190,7 @@ export function EvidenceFactorsPage({ models }: { models: ModelData[] }) {
         </div>
 
         {diagnosticsError && !marketDiagnostics ? (
-          <Card className="research-surface"><CardContent className="flex min-h-44 flex-col items-center justify-center text-center"><Database className="h-8 w-8 text-muted-foreground" /><h3 className="mt-3 font-semibold">Historical distribution evidence is not published yet</h3><p className="mt-2 max-w-2xl text-sm text-muted-foreground">The frontend does not estimate factor distributions from model importance or fetch raw market data directly. The next governed Market Evidence publication will populate this section.</p><p className="mt-2 font-mono text-[10px] text-muted-foreground">{diagnosticsError}</p></CardContent></Card>
+          <Card className="research-surface"><CardContent className="flex min-h-44 flex-col items-center justify-center text-center"><Database className="h-8 w-8 text-muted-foreground" /><h3 className="mt-3 font-semibold">Historical distribution evidence is not published yet</h3><p className="mt-2 max-w-2xl text-sm text-muted-foreground">The frontend does not estimate factor distributions from model importance or fetch raw market data directly.</p><p className="mt-2 font-mono text-[10px] text-muted-foreground">{diagnosticsError}</p></CardContent></Card>
         ) : marketDiagnostics && selected ? (
           <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
             <Card className="research-surface">
@@ -155,7 +218,7 @@ export function EvidenceFactorsPage({ models }: { models: ModelData[] }) {
                 <CardHeader className="border-b pb-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div><CardTitle className="text-base">{selected.display_name}</CardTitle><p className="mt-1 font-mono text-[10px] text-muted-foreground">{selected.factor_id}</p></div>
-                    <div className="text-right text-[10px] text-muted-foreground"><div>{marketDiagnostics.pool_id}</div><div>{marketDiagnostics.start} → {marketDiagnostics.cutoff}</div></div>
+                    <div className="text-right text-[10px] text-muted-foreground"><div>{marketDiagnostics.pool_id} · {marketDiagnostics.candidate_count} candidates</div><div>{marketDiagnostics.start} → {marketDiagnostics.cutoff}</div></div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-5 pt-4">
@@ -198,8 +261,24 @@ export function EvidenceFactorsPage({ models }: { models: ModelData[] }) {
         ) : null}
       </section>
 
+      <section className="space-y-4 border-t pt-6" data-testid="current-factor-drivers">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><h2 className="text-lg font-semibold">Current signal drivers</h2><p className="text-sm text-muted-foreground">Cutoff-bound factor state published by Strategy Operations. These are current strategy inputs and rule states, not historical distribution statistics or causal contributions.</p></div>
+          <Badge variant="outline" className="gap-1.5"><Activity className="h-3.5 w-3.5" /> {market.toUpperCase()} · {currentDrivers.length} retained drivers</Badge>
+        </div>
+        {operationsError ? (
+          <Card className="research-surface"><CardContent className="p-5 text-sm text-muted-foreground">Current Strategy Operations evidence is unavailable: <span className="font-mono text-xs">{operationsError}</span></CardContent></Card>
+        ) : currentDrivers.length ? (
+          <Card className="research-surface overflow-hidden">
+            <CardContent className="p-0"><div className="max-h-[520px] overflow-auto"><Table><TableHeader className="sticky top-0 bg-card"><TableRow><TableHead>Strategy</TableHead><TableHead>Factor</TableHead><TableHead>Value</TableHead><TableHead>State</TableHead><TableHead>Effect</TableHead><TableHead>Observed</TableHead><TableHead>Reason</TableHead></TableRow></TableHeader><TableBody>{currentDrivers.map((driver) => <TableRow key={`${driver.strategyId}:${driver.factorId}`}><TableCell className="font-medium">{driver.strategyName}</TableCell><TableCell><div className="text-xs font-medium">{driver.displayName}</div><div className="font-mono text-[10px] text-muted-foreground">{driver.factorId}</div></TableCell><TableCell className="font-mono text-xs">{formatDriverValue(driver.value)}</TableCell><TableCell><Badge variant="outline" className="text-[9px]">{driver.state}</Badge></TableCell><TableCell className="text-xs">{driver.effect}</TableCell><TableCell className="font-mono text-xs">{driver.observedAt}</TableCell><TableCell className="max-w-[280px] text-xs text-muted-foreground">{driver.reasonCode}</TableCell></TableRow>)}</TableBody></Table></div></CardContent>
+          </Card>
+        ) : (
+          <Card className="research-surface"><CardContent className="p-5"><h3 className="text-sm font-semibold">No current factor evidence is available for {market.toUpperCase()}</h3><p className="mt-2 text-sm text-muted-foreground">{currentSnapshots.length ? currentSnapshots.map((snapshot) => `${formalRunByVersion.get(snapshot.strategyId)?.title ?? snapshot.strategyId}: ${snapshot.stateLabel}`).join(' · ') : 'No accepted formal strategy is published for this market.'}</p><p className="mt-2 text-xs text-muted-foreground">The frontend does not manufacture a current driver from historical importance or factor distributions.</p></CardContent></Card>
+        )}
+      </section>
+
       <section className="space-y-4 border-t pt-6">
-        <div><h2 className="text-lg font-semibold">Model-specific feature importance</h2><p className="text-sm text-muted-foreground">A separate diagnostic layer. Importance magnitude cannot be compared directly with factor distribution, IC or causal effect.</p></div>
+        <div><h2 className="text-lg font-semibold">Model-specific feature importance</h2><p className="text-sm text-muted-foreground">A separate diagnostic layer. Importance magnitude cannot be compared directly with factor distribution, current rule state, IC or causal effect.</p></div>
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="research-surface"><CardContent className="pt-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Models inspected</p><p className="mt-2 font-mono text-2xl font-semibold">{models.length}</p></CardContent></Card>
           <Card className="research-surface"><CardContent className="pt-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Exported features</p><p className="mt-2 font-mono text-2xl font-semibold">{importanceRows.length}</p></CardContent></Card>

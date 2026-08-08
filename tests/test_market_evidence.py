@@ -8,6 +8,7 @@ from src.dashboard.market_evidence import (
     _bars,
     _chart_studies,
     _factor_stats,
+    _provider_symbol_for_formal_instrument,
     _trade_events,
 )
 from src.factors.library import load_factor_library
@@ -71,34 +72,58 @@ def test_bars_retain_real_ohlcv_and_reject_invalid_rows() -> None:
     assert rows[0]["volume"] > 0
 
 
-def test_trade_events_keep_model_identity_for_cross_model_overlay() -> None:
+def test_formal_instrument_identity_maps_to_provider_without_browser_aliases() -> None:
+    assert _provider_symbol_for_formal_instrument("cn", "BYD") == "002594"
+    assert _provider_symbol_for_formal_instrument("cn", "515180.SH") == "515180"
+    assert _provider_symbol_for_formal_instrument("cn", "600519.SH") == "600519"
+    assert _provider_symbol_for_formal_instrument("us", "QQQI") == "QQQI"
+    assert _provider_symbol_for_formal_instrument("us", "CASH") is None
+
+
+def test_trade_events_keep_model_and_canonical_instrument_identity() -> None:
     packages = [
         {
-            "model_id": "us_x1_1",
-            "display_name": "US x1.1",
+            "model_id": "byd_v1_2",
+            "display_name": "BYD v1.2",
             "backtest_id": "run-a",
-            "positions": [{"instrument": "AAPL", "name": "Apple", "date": "2026-01-02", "weight": 0.1}],
+            "positions": [{"instrument": "BYD", "name": "比亚迪", "date": "2026-01-02", "weight": 0.75}],
             "trades": [
                 {
                     "date": "2026-01-02",
-                    "instrument": "AAPL",
+                    "instrument": "BYD",
                     "action": "BUY",
                     "previous_weight": 0.0,
-                    "target_weight": 0.1,
-                    "weight_delta": 0.1,
-                    "reason": "rank_rebalance",
-                }
+                    "target_weight": 0.75,
+                    "weight_delta": 0.75,
+                    "reason": "allocation_change",
+                },
+                {
+                    "date": "2026-01-02",
+                    "instrument": "515180.SH",
+                    "action": "BUY",
+                    "previous_weight": 0.0,
+                    "target_weight": 0.25,
+                    "weight_delta": 0.25,
+                },
+                {
+                    "date": "2026-01-02",
+                    "instrument": "CASH",
+                    "action": "SELL",
+                    "previous_weight": 1.0,
+                    "target_weight": 0.0,
+                    "weight_delta": -1.0,
+                },
             ],
         },
         {
-            "model_id": "us_x1_2",
-            "display_name": "US x1.2",
+            "model_id": "cn_x1_1",
+            "display_name": "CN x1.1",
             "backtest_id": "run-b",
             "positions": [],
             "trades": [
                 {
                     "date": "2026-01-02",
-                    "instrument": "AAPL",
+                    "instrument": "002594",
                     "action": "DECREASE",
                     "previous_weight": 0.1,
                     "target_weight": 0.05,
@@ -107,11 +132,15 @@ def test_trade_events_keep_model_identity_for_cross_model_overlay() -> None:
             ],
         },
     ]
-    events, labels = _trade_events(packages)
-    assert labels["AAPL"] == "Apple"
-    assert [row["model_id"] for row in events["AAPL"]] == ["us_x1_1", "us_x1_2"]
-    assert all(row["research_only"] is True for row in events["AAPL"])
-    assert all(row["trade_ready"] is False for row in events["AAPL"])
+    events, labels = _trade_events(packages, "cn")
+    assert labels["002594"] == "比亚迪"
+    assert [row["model_id"] for row in events["002594"]] == ["byd_v1_2", "cn_x1_1"]
+    assert events["002594"][0]["source_instrument"] == "BYD"
+    assert events["002594"][0]["instrument_id"] == "cn:002594"
+    assert events["515180"][0]["source_instrument"] == "515180.SH"
+    assert "CASH" not in events
+    assert all(row["research_only"] is True for row in events["002594"])
+    assert all(row["trade_ready"] is False for row in events["002594"])
 
 
 def test_factor_statistics_are_distribution_evidence_not_importance() -> None:

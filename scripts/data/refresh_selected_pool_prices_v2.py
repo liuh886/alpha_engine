@@ -34,6 +34,10 @@ from src.data.router import MarketDataRouter
 MANIFEST_RELATIVE_PATH = Path(
     "artifacts/selected_pool_price_refresh_manifest.json"
 )
+FORMAL_MARKET_AUXILIARIES: dict[str, tuple[str, ...]] = {
+    "us": ("QQQI", "TQQQ", "SGOV"),
+    "cn": ("515180",),
+}
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -79,10 +83,6 @@ def build_hardened_router(market: str) -> MarketDataRouter:
         providers.append("yfinance")
     else:
         raise ValueError(f"unsupported market: {market}")
-    # Per-symbol retries in refresh_selected_pool_prices are already bounded by
-    # max_rounds. A batch-wide circuit breaker lets failures from one symbol
-    # suppress independent provider attempts for every later symbol, so the
-    # selected-pool refresh deliberately keeps router health request-local.
     return MarketDataRouter(
         adapters=adapters,
         policy={market_key: providers},
@@ -190,10 +190,16 @@ def refresh_selected_pool_prices_v2(
     cutoff: str,
     max_rounds: int = 2,
     full_refresh: bool = False,
+    auxiliary_symbols: list[str] | tuple[str, ...] | None = None,
     router: MarketDataRouter | None = None,
 ) -> dict[str, Any]:
     destination = Path(output_root).resolve()
     data_router = router or build_hardened_router(market)
+    requested_auxiliaries = auxiliary_symbols
+    if requested_auxiliaries is None and full_refresh:
+        requested_auxiliaries = FORMAL_MARKET_AUXILIARIES.get(
+            str(market).lower(), ()
+        )
     try:
         refresh_selected_pool_prices(
             root=root,
@@ -205,6 +211,7 @@ def refresh_selected_pool_prices_v2(
             router=data_router,
             max_rounds=max_rounds,
             full_refresh=full_refresh,
+            auxiliary_symbols=requested_auxiliaries,
         )
     except Exception:
         manifest_path = destination / MANIFEST_RELATIVE_PATH
@@ -225,6 +232,15 @@ def main() -> None:
     parser.add_argument("--start", default="2021-01-01")
     parser.add_argument("--cutoff", default="2026-06-18")
     parser.add_argument("--max-rounds", type=int, default=2)
+    parser.add_argument(
+        "--auxiliary-symbol",
+        action="append",
+        default=None,
+        help=(
+            "Additional formal/reference security. On --full-refresh, the current "
+            "formal auxiliary set is used when this option is omitted."
+        ),
+    )
     parser.add_argument("--full-refresh", action="store_true")
     args = parser.parse_args()
 
@@ -237,6 +253,7 @@ def main() -> None:
         cutoff=args.cutoff,
         max_rounds=args.max_rounds,
         full_refresh=args.full_refresh,
+        auxiliary_symbols=args.auxiliary_symbol,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 
