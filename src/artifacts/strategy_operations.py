@@ -20,7 +20,10 @@ from src.factors.strategy_snapshot import (
 SCHEMA_VERSION = "2.0.0"
 QQQ_FAMILY = "qqq_rotation"
 BYD_FAMILY = "byd_allocation"
-SUPPORTED_SIGNAL_FAMILIES = {QQQ_FAMILY, BYD_FAMILY}
+US_RANKER_FAMILY = "us_ranker"
+CN_RANKER_FAMILY = "cn_ranker"
+RANKER_FAMILIES = {US_RANKER_FAMILY, CN_RANKER_FAMILY}
+SUPPORTED_SIGNAL_FAMILIES = {QQQ_FAMILY, BYD_FAMILY, *RANKER_FAMILIES}
 STATUS_VALUES = {
     "pipeline_unavailable",
     "awaiting_observation",
@@ -114,10 +117,10 @@ def _cadence(record: Mapping[str, Any]) -> tuple[str, str]:
             "Every completed CN market session",
             "Evaluate after the common close; target applies to the next independently confirmed eligible open.",
         )
-    if str(record.get("model_kind", "")) == "cross_sectional_ranker":
+    if family in RANKER_FAMILIES:
         return (
-            "10-session rebalance",
-            "No governed current-target publisher is registered yet.",
+            "Every 10 provider sessions",
+            "Publish only on the governed rebalance session; target applies to the next eligible open.",
         )
     return (
         "Governed model cadence",
@@ -406,6 +409,64 @@ def _byd(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
     }
 
 
+def _ranker(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, object]:
+    signal = ledger.get("signal")
+    if not isinstance(signal, Mapping):
+        raise StrategyOperationsError("ranker ledger signal is missing")
+    allocations = _allocations(signal.get("current_weights"), signal.get("target_weights"))
+    changed = _has_change(allocations)
+    data_fresh = signal.get("data_freshness_ok") is True
+    delivery_status, issue_number = _delivery(ledger)
+    latest = signal.get("latest_data_date") or ledger.get("latest_data_date")
+    factor_freshness, factors, factor_error = _factor_snapshot(
+        signal, latest_data_date=latest
+    )
+    family = str(record.get("model_family_id", ""))
+    diagnostics = signal.get("diagnostics") if isinstance(signal.get("diagnostics"), Mapping) else {}
+    if family == US_RANKER_FAMILY:
+        state_label = "US Top-15 rebalance"
+    elif diagnostics.get("risk_on") is False:
+        state_label = "CN risk-off · CSI300 fallback"
+    else:
+        state_label = "CN risk-on · sector 4×1"
+    cadence, next_policy = _cadence(record)
+    return {
+        "model_version_id": str(record["model_version_id"]),
+        "status": _status(
+            delivery_status=delivery_status,
+            data_fresh=data_fresh,
+            factor_freshness=factor_freshness,
+            changed=changed,
+        ),
+        "as_of": signal.get("signal_date"),
+        "latest_completed_session": latest,
+        "decision_cadence": cadence,
+        "next_decision_policy": next_policy,
+        "state_label": state_label,
+        "decision_reason": str(signal.get("reason_code") or "Frozen 10-session ranker evaluation."),
+        "allocations": allocations,
+        "turnover": _finite(signal.get("turnover_units")),
+        "estimated_cost": _finite(signal.get("estimated_transaction_cost")),
+        "data_freshness": "current" if data_fresh else "stale",
+        "factor_freshness": factor_freshness,
+        "delivery_status": delivery_status,
+        "source_label": "Governed 10-session ranker signal ledger",
+        "source_href": (
+            f"https://github.com/liuh886/alpha_engine/issues/{issue_number}"
+            if issue_number
+            else None
+        ),
+        "note": factor_error
+        or (
+            "Target is published for the next eligible open."
+            if changed
+            else "The governed rebalance retained the existing target."
+        ),
+        "factor_evidence": factors,
+        "source_identity": _source(record, ledger),
+    }
+
+
 def build_operations_payload(
     *, formal_catalog: Path, ledger_root: Path, generated_at: str
 ) -> dict[str, object]:
@@ -437,6 +498,8 @@ def build_operations_payload(
             records.append(_qqq(formal, ledger))
         elif family == BYD_FAMILY:
             records.append(_byd(formal, ledger))
+        elif family in RANKER_FAMILIES:
+            records.append(_ranker(formal, ledger))
         else:
             blocked = _unavailable(formal, awaiting=False)
             blocked["status"] = "blocked"
