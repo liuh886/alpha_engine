@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BookOpen,
+  CandlestickChart,
   Database,
   FileCheck2,
   FolderArchive,
@@ -31,6 +32,7 @@ export interface RouteDefinition {
 const OverviewPage = lazy(() => import('./pages/StrategyOverviewPage').then((m) => ({ default: m.StrategyOverviewPage })));
 const StrategiesPage = lazy(() => import('./pages/StrategiesPage').then((m) => ({ default: m.StrategiesPage })));
 const StrategyDetailPage = lazy(() => import('./pages/StrategyDetailPage').then((m) => ({ default: m.StrategyDetailPage })));
+const SecurityExplorerPage = lazy(() => import('./pages/SecurityExplorerPage').then((m) => ({ default: m.SecurityExplorerPage })));
 const ResearchHubPage = lazy(() => import('./pages/ResearchHubPage').then((m) => ({ default: m.ResearchHubPage })));
 const SystemHubPage = lazy(() => import('./pages/SystemHubPage').then((m) => ({ default: m.SystemHubPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
@@ -48,6 +50,7 @@ const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then((m) =>
 export const routes: RouteDefinition[] = [
   { path: 'app', title: 'Strategy Overview', label: 'Overview', releaseLevel: 'release', navGroup: 'Monitor', icon: LayoutDashboard, component: OverviewPage },
   { path: 'strategies', title: 'Formal Strategies', label: 'Strategies', releaseLevel: 'release', navGroup: 'Monitor', icon: Sparkles, component: StrategiesPage },
+  { path: 'securities', title: 'Security Explorer', label: 'Securities', releaseLevel: 'release', navGroup: 'Monitor', icon: CandlestickChart, component: SecurityExplorerPage },
   { path: 'strategies/:strategyId', title: 'Strategy', label: 'Strategy', releaseLevel: 'release', navGroup: 'Monitor', icon: Sparkles, component: StrategyDetailPage, navVisible: false },
   { path: 'research', title: 'Strategy Research', label: 'Research', releaseLevel: 'release', navGroup: 'Research', icon: ListTree, component: ResearchHubPage },
   { path: 'system', title: 'System Trust', label: 'System', releaseLevel: 'release', navGroup: 'System', icon: Settings2, component: SystemHubPage },
