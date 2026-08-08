@@ -1,11 +1,26 @@
 {
-  "generated_at": "2026-08-08T00:00:00Z",
+  "generated_at": "2026-08-08T01:44:16Z",
   "records": [
     {
       "allocations": [
-        {"asset": "515180", "current": 0.25, "delta": 0.0, "target": 0.25},
-        {"asset": "BYD", "current": 0.75, "delta": 0.0, "target": 0.75},
-        {"asset": "CASH", "current": 0.0, "delta": 0.0, "target": 0.0}
+        {
+          "asset": "515180",
+          "current": 0.25,
+          "delta": 0.0,
+          "target": 0.25
+        },
+        {
+          "asset": "BYD",
+          "current": 0.75,
+          "delta": 0.0,
+          "target": 0.75
+        },
+        {
+          "asset": "CASH",
+          "current": 0.0,
+          "delta": 0.0,
+          "target": 0.0
+        }
       ],
       "as_of": "2026-08-07",
       "data_freshness": "stale",
@@ -69,37 +84,111 @@
     },
     {
       "allocations": [
-        {"asset": "QQQ", "current": 0.5, "delta": 0.0, "target": 0.5},
-        {"asset": "QQQI", "current": 0.5, "delta": 0.0, "target": 0.5},
-        {"asset": "TQQQ", "current": 0.0, "delta": 0.0, "target": 0.0}
+        {
+          "asset": "QQQ",
+          "current": 0.5,
+          "delta": 0.0,
+          "target": 0.5
+        },
+        {
+          "asset": "QQQI",
+          "current": 0.5,
+          "delta": 0.0,
+          "target": 0.5
+        },
+        {
+          "asset": "TQQQ",
+          "current": 0.0,
+          "delta": 0.0,
+          "target": 0.0
+        }
       ],
-      "as_of": "2026-08-06",
+      "as_of": "2026-08-07",
       "data_freshness": "current",
       "decision_cadence": "Every completed US market session",
       "decision_reason": "继续保持当前状态",
       "delivery_status": "not_required",
       "estimated_cost": 0.0,
-      "factor_evidence": [],
-      "factor_freshness": "blocked",
-      "latest_completed_session": "2026-08-06",
+      "factor_evidence": [
+        {
+          "display_name": "VIX close",
+          "effect": "veto",
+          "factor_id": "strategy.qqq.vix_close",
+          "factor_version": "1.0",
+          "implementation_hash": "d71008f4870da95f426257b0c17b78e0943fe9122783260101f51347fb7b817d",
+          "information_family": "volatility",
+          "observed_at": "2026-08-07",
+          "reason_code": "vix_easing_supports_release",
+          "reference": {
+            "normal": 17.906000518798827,
+            "stress": 19.974000167846683
+          },
+          "state": "calm",
+          "value": 14.899999618530273
+        },
+        {
+          "display_name": "VXN close",
+          "effect": "neutral",
+          "factor_id": "strategy.qqq.vxn_close",
+          "factor_version": "1.0",
+          "implementation_hash": "c945dabaef82f50af15bb214da45e7bc706632b14289cfa4525d2d85b52c193c",
+          "information_family": "volatility",
+          "observed_at": "2026-08-07",
+          "reason_code": "vxn_neutral",
+          "reference": {
+            "normal": 24.141999435424804,
+            "stress": 27.240000534057618
+          },
+          "state": "calm",
+          "value": 22.81999969482422
+        },
+        {
+          "display_name": "QQQ distance to SMA20",
+          "effect": "veto",
+          "factor_id": "strategy.qqq.qqq_vs_ma20",
+          "factor_version": "1.0",
+          "implementation_hash": "acdb7eea6c3f40c76e53a937f12136069a7389e3ace298b860a03901949ef3a1",
+          "information_family": "trend",
+          "observed_at": "2026-08-07",
+          "reason_code": "price_repair_supports_release",
+          "reference": 0.0,
+          "state": "at_or_above",
+          "value": 0.03239928634612199
+        },
+        {
+          "display_name": "QQQ distance to SMA200",
+          "effect": "neutral",
+          "factor_id": "strategy.qqq.qqq_vs_ma200",
+          "factor_version": "1.0",
+          "implementation_hash": "8ec5a93cdb620aab795f0092b0041692142e16810621509a4a21c88203612da5",
+          "information_family": "trend",
+          "observed_at": "2026-08-07",
+          "reason_code": "long_trend_intact",
+          "reference": 0.0,
+          "state": "above_long_trend",
+          "value": 0.11802005039353447
+        }
+      ],
+      "factor_freshness": "current",
+      "latest_completed_session": "2026-08-07",
       "model_version_id": "qqqi_qqq_tqqq_v4_2",
       "next_decision_policy": "Evaluate at close; target applies to the next eligible open.",
-      "note": "Latest signal predates the canonical factor snapshot contract.",
+      "note": "Latest governed evaluation retained the existing allocation.",
       "source_href": null,
       "source_identity": {
-        "commit_sha": "fbc46b2d070fa884979755c8fdb63150633ec075",
-        "factor_catalog_implementation_hash": null,
+        "commit_sha": "c9d3aa906103a13db534023cad2f0a140bc84f1c",
+        "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
         "formal_bundle_id": "2b041025af0a901692a5b0b4d7aae0fd63435431036fd45f3c53e4a4dbbef0ed",
         "formal_evidence_cutoff": "2026-07-31",
         "formal_run_id": "qqqi_qqq_tqqq_v4_2-formal-8820398584",
         "github_issue_number": null,
-        "ledger_fingerprint": "158749e5ca8d5830e97b",
-        "signal_sha256": "6fc283ec19f59716fde721b0fa23b1562320de9531bf43ea9d69dfa907431e14",
-        "workflow_run_id": "31209790106"
+        "ledger_fingerprint": "fd95e3de5d5b473ea604",
+        "signal_sha256": "ec09b94ddc203dbb3c187e019954cddc8c7232a38544cbaaec23b30da61b3864",
+        "workflow_run_id": "31233327636"
       },
       "source_label": "Governed QQQ signal ledger",
       "state_label": "Transition",
-      "status": "blocked",
+      "status": "current_no_change",
       "turnover": 0.0
     },
     {
