@@ -10,29 +10,37 @@ on:
       - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "src/artifacts/formal_refresh.py"
+      - "src/artifacts/qqq_v4_3_formal.py"
+      - "src/artifacts/strategy_operations.py"
       - "src/dashboard/market_evidence.py"
       - "scripts/build_market_evidence.py"
+      - "scripts/build_strategy_operations.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/refresh_ranker_formal.py"
       - "scripts/refresh_allocation_formal.py"
+      - "scripts/refresh_qqq_v4_3_formal.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "scripts/data/build_etf_reference_bundle.py"
       - "src/data/etf_reference_bundle.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "configs/factor_libraries/ohlcv.yaml"
       - "tests/test_formal_refresh.py"
+      - "tests/test_refresh_qqq_v4_3_formal.py"
       - "tests/test_market_evidence.py"
+      - "tests/test_strategy_operations.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
       - "data/research/market_evidence/**"
+      - "data/research/strategy_signal_ledgers/**"
+      - "data/research/strategy_operations/**"
       - "qlib-dashboard/public/data/formal-model-runs/**"
       - "qlib-dashboard/public/data/market-evidence/**"
+      - "qlib-dashboard/public/data/strategy-operations/**"
 
 permissions:
   contents: write
   pull-requests: write
-  issues: write
 
 concurrency:
   group: reviewed-formal-backtest-refresh-live
@@ -62,11 +70,9 @@ jobs:
           fetch-depth: 0
           lfs: true
       - name: Verify execution identity
-        shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          printf 'Executing immutable revision `%s`.\n' "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -86,15 +92,26 @@ jobs:
         run: |
           uv run ruff check \
             src/artifacts/formal_refresh.py \
+            src/artifacts/qqq_v4_3_formal.py \
+            src/artifacts/strategy_operations.py \
             src/dashboard/market_evidence.py \
             scripts/build_market_evidence.py \
+            scripts/build_strategy_operations.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/refresh_ranker_formal.py \
             scripts/refresh_allocation_formal.py \
+            scripts/refresh_qqq_v4_3_formal.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             tests/test_formal_refresh.py \
-            tests/test_market_evidence.py
-          uv run pytest tests/test_formal_refresh.py tests/test_market_evidence.py -q --strict-markers --tb=short
+            tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_market_evidence.py \
+            tests/test_strategy_operations.py
+          uv run pytest \
+            tests/test_formal_refresh.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_market_evidence.py \
+            tests/test_strategy_operations.py \
+            -q --strict-markers --tb=short
       - name: Resolve transaction timestamp
         id: clock
         run: |
@@ -109,23 +126,13 @@ jobs:
           set -euo pipefail
           rm -rf artifacts/formal-refresh/provider-us artifacts/formal-refresh/provider-cn
           uv run python scripts/data/refresh_selected_pool_prices_v2.py \
-            --root . \
-            --market us \
-            --source-csv-dir data/csv_clean \
+            --root . --market us --source-csv-dir data/csv_clean \
             --output-root artifacts/formal-refresh/provider-us \
-            --start 2021-01-01 \
-            --cutoff "$REQUESTED_CUTOFF" \
-            --max-rounds 3 \
-            --full-refresh
+            --start 2021-01-01 --cutoff "$REQUESTED_CUTOFF" --max-rounds 3 --full-refresh
           uv run python scripts/data/refresh_selected_pool_prices_v2.py \
-            --root . \
-            --market cn \
-            --source-csv-dir data/csv_clean \
+            --root . --market cn --source-csv-dir data/csv_clean \
             --output-root artifacts/formal-refresh/provider-cn \
-            --start 2021-01-01 \
-            --cutoff "$REQUESTED_CUTOFF" \
-            --max-rounds 3 \
-            --full-refresh
+            --start 2021-01-01 --cutoff "$REQUESTED_CUTOFF" --max-rounds 3 --full-refresh
       - name: Plan catalog-driven refresh
         id: plan
         env:
@@ -144,8 +151,8 @@ jobs:
           uv run python scripts/run_formal_refresh_transaction.py initialize \
             --current-root "$CURRENT_FORMAL_ROOT" \
             --candidate-root "$CANDIDATE_FORMAL_ROOT"
-      - name: Refresh QQQ Rotation v4.2
-        if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'qqqi_qqq_tqqq_v4_2')
+      - name: Refresh QQQ Rotation v4.3 append-only
+        if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'qqqi_qqq_tqqq_v4_3')
         env:
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
           GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
@@ -155,12 +162,12 @@ jobs:
             --end-date "$US_CUTOFF" \
             --output-root artifacts/formal-refresh/qqq-bundle \
             --require-professional
-          uv run python scripts/refresh_allocation_formal.py qqq \
-            --current-package "$CURRENT_FORMAL_ROOT/qqqi_qqq_tqqq_v4_2.json" \
+          uv run python scripts/refresh_qqq_v4_3_formal.py \
+            --current-package "$CURRENT_FORMAL_ROOT/qqqi_qqq_tqqq_v4_3.json" \
             --bundle-dir artifacts/formal-refresh/qqq-bundle \
             --cutoff "$US_CUTOFF" \
             --generated-at "$GENERATED_AT" \
-            --output "$CANDIDATE_FORMAL_ROOT/qqqi_qqq_tqqq_v4_2.json"
+            --output "$CANDIDATE_FORMAL_ROOT/qqqi_qqq_tqqq_v4_3.json"
       - name: Reproduce and refresh US x1.1 twice
         if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'us_x1_1')
         env:
@@ -172,7 +179,6 @@ jobs:
           import os
           from pathlib import Path
           import yaml
-
           source = Path('configs/research_paradigms/us_x1_1_frozen_v1.yaml')
           payload = yaml.safe_load(source.read_text(encoding='utf-8'))
           payload['walk_forward']['test_end'] = os.environ['US_CUTOFF']
@@ -191,12 +197,10 @@ jobs:
           test -n "$RUN_A" && test -n "$RUN_B"
           uv run python scripts/refresh_ranker_formal.py us \
             --current-package "$CURRENT_FORMAL_ROOT/us_x1_1.json" \
-            --run-a "$RUN_A" \
-            --run-b "$RUN_B" \
+            --run-a "$RUN_A" --run-b "$RUN_B" \
             --calendar artifacts/formal-refresh/provider-us/data/providers/us/calendars/day.txt \
             --provider-manifest artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
-            --cutoff "$US_CUTOFF" \
-            --generated-at "$GENERATED_AT" \
+            --cutoff "$US_CUTOFF" --generated-at "$GENERATED_AT" \
             --output "$CANDIDATE_FORMAL_ROOT/us_x1_1.json"
       - name: Reproduce and refresh CN x1.1 twice
         if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'cn_x1_1')
@@ -210,8 +214,7 @@ jobs:
               --root . \
               --provider-dir artifacts/formal-refresh/provider-cn/data/providers/cn \
               --output-dir "artifacts/formal-refresh/cn-ledger-${suffix}" \
-              --window 2026H2_PARTIAL \
-              --batch r0r1
+              --window 2026H2_PARTIAL --batch r0r1
           done
           LEDGER_A="artifacts/formal-refresh/cn-ledger-a/score_ledgers/2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
           LEDGER_B="artifacts/formal-refresh/cn-ledger-b/score_ledgers/2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
@@ -221,10 +224,8 @@ jobs:
             --current-package "$CURRENT_FORMAL_ROOT/cn_x1_1.json" \
             --provider-dir artifacts/formal-refresh/provider-cn/data/providers/cn \
             --provider-manifest artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
-            --ledger-a "$LEDGER_A" \
-            --ledger-b "$LEDGER_B" \
-            --cutoff "$CN_CUTOFF" \
-            --generated-at "$GENERATED_AT" \
+            --ledger-a "$LEDGER_A" --ledger-b "$LEDGER_B" \
+            --cutoff "$CN_CUTOFF" --generated-at "$GENERATED_AT" \
             --output "$CANDIDATE_FORMAL_ROOT/cn_x1_1.json"
       - name: Extend canonical inputs and refresh BYD v1.2
         if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'byd_v1_2_convex_momentum_budget_v1')
@@ -234,12 +235,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/formal-refresh/input/byd artifacts/formal-refresh/input/515180
-          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz \
-            -C artifacts/formal-refresh/input/byd
-          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 \
-            > artifacts/formal-refresh/515180.zip
-          unzip -q artifacts/formal-refresh/515180.zip \
-            -d artifacts/formal-refresh/input/515180
+          tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/formal-refresh/input/byd
+          base64 --decode data/research/515180_canonical_v1_artifact.zip.b64 > artifacts/formal-refresh/515180.zip
+          unzip -q artifacts/formal-refresh/515180.zip -d artifacts/formal-refresh/input/515180
           uv run python scripts/refresh_allocation_formal.py byd \
             --current-package "$CURRENT_FORMAL_ROOT/byd_v1_2_convex_momentum_budget_v1.json" \
             --base-byd-dir artifacts/formal-refresh/input/byd \
@@ -247,10 +245,9 @@ jobs:
             --shadow-store data/research/byd_prospective_shadow \
             --paired-store data/research/byd_515180_prospective \
             --signal-ledger data/research/byd_v1_2_signal_ledger \
-            --cutoff "$CN_CUTOFF" \
-            --generated-at "$GENERATED_AT" \
+            --cutoff "$CN_CUTOFF" --generated-at "$GENERATED_AT" \
             --output "$CANDIDATE_FORMAL_ROOT/byd_v1_2_convex_momentum_budget_v1.json"
-      - name: Seal formal v1 candidate and rebuild Bundle v2
+      - name: Seal formal v1 and build Bundle v2
         if: steps.plan.outputs.refresh_required == 'true'
         env:
           GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
@@ -261,16 +258,14 @@ jobs:
             --candidate-root "$CANDIDATE_FORMAL_ROOT" \
             --us-provider-manifest artifacts/formal-refresh/provider-us/artifacts/selected_pool_price_refresh_manifest.json \
             --cn-provider-manifest artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json \
-            --generated-at "$GENERATED_AT" \
-            --receipt "$REFRESH_RECEIPT"
+            --generated-at "$GENERATED_AT" --receipt "$REFRESH_RECEIPT"
           rm -rf "$CANDIDATE_V2_ROOT"
           uv run python scripts/sync_formal_bundle_v2.py \
             --source-root "$CANDIDATE_FORMAL_ROOT" \
             --output-root "$CANDIDATE_V2_ROOT" \
             --receipt artifacts/formal-refresh/formal-v2-sync-receipt.json
           uv run python scripts/verify_formal_backtest_freshness.py \
-            --root "$CANDIDATE_FORMAL_ROOT" \
-            --as-of "$GENERATED_AT" \
+            --root "$CANDIDATE_FORMAL_ROOT" --as-of "$GENERATED_AT" \
             --receipt artifacts/formal-refresh/freshness-verification.json
       - name: Build shared governed Market Evidence
         if: steps.plan.outputs.refresh_required == 'true'
@@ -278,38 +273,42 @@ jobs:
           set -euo pipefail
           rm -rf "$CANDIDATE_MARKET_EVIDENCE_ROOT"
           uv run python scripts/build_market_evidence.py \
-            --market us \
-            --provider-root artifacts/formal-refresh/provider-us \
-            --formal-root "$CANDIDATE_FORMAL_ROOT" \
-            --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT"
+            --market us --provider-root artifacts/formal-refresh/provider-us \
+            --formal-root "$CANDIDATE_FORMAL_ROOT" --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT"
           uv run python scripts/build_market_evidence.py \
-            --market cn \
-            --provider-root artifacts/formal-refresh/provider-cn \
-            --formal-root "$CANDIDATE_FORMAL_ROOT" \
-            --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT"
-          test -f "$CANDIDATE_MARKET_EVIDENCE_ROOT/us/catalog.json"
-          test -f "$CANDIDATE_MARKET_EVIDENCE_ROOT/cn/catalog.json"
-      - name: Install candidate publication into review worktree
+            --market cn --provider-root artifacts/formal-refresh/provider-cn \
+            --formal-root "$CANDIDATE_FORMAL_ROOT" --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT"
+      - name: Install candidate and rebuild Strategy Operations
         if: steps.plan.outputs.refresh_required == 'true'
+        env:
+          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
         run: |
           set -euo pipefail
           rm -rf data/research/formal_backtests data/research/formal_model_runs data/research/market_evidence
           cp -a "$CANDIDATE_FORMAL_ROOT" data/research/formal_backtests
           cp -a "$CANDIDATE_V2_ROOT" data/research/formal_model_runs
           cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" data/research/market_evidence
-          rm -rf qlib-dashboard/public/data/formal-model-runs qlib-dashboard/public/data/market-evidence
-          cp -a "$CANDIDATE_V2_ROOT" qlib-dashboard/public/data/formal-model-runs
-          cp -a "$CANDIDATE_MARKET_EVIDENCE_ROOT" qlib-dashboard/public/data/market-evidence
           cp "$REFRESH_RECEIPT" data/research/formal_backtests/latest_refresh_receipt.json
+          uv run python scripts/build_strategy_operations.py \
+            --formal-catalog data/research/formal_model_runs/catalog.json \
+            --ledger-root data/research/strategy_signal_ledgers \
+            --generated-at "$GENERATED_AT" \
+            --output data/research/strategy_operations/snapshots.json
+          cd qlib-dashboard
+          npm run sync:formal-model-runs
+          npm run sync:market-evidence
+          npm run sync:strategy-operations
       - name: Validate complete candidate publication
         if: steps.plan.outputs.refresh_required == 'true'
         run: |
           set -euo pipefail
           uv run pytest \
             tests/test_formal_refresh.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_formal_backtest_freshness.py \
             tests/test_sync_formal_bundle_v2.py \
+            tests/test_strategy_operations.py \
             tests/test_model_x1_baselines.py \
             -q --strict-markers --tb=short
           uv run python scripts/check_repository_model_runs.py
@@ -321,6 +320,7 @@ jobs:
           test -f dist/data/formal-model-runs/catalog.json
           test -f dist/data/market-evidence/us/catalog.json
           test -f dist/data/market-evidence/cn/catalog.json
+          test -f dist/data/strategy-operations/snapshots.json
           test ! -e dist/data/formal-backtests
       - name: Open or update draft review PR
         id: pull_request
@@ -338,8 +338,10 @@ jobs:
             data/research/formal_backtests \
             data/research/formal_model_runs \
             data/research/market_evidence \
+            data/research/strategy_operations/snapshots.json \
             qlib-dashboard/public/data/formal-model-runs \
-            qlib-dashboard/public/data/market-evidence
+            qlib-dashboard/public/data/market-evidence \
+            qlib-dashboard/public/data/strategy-operations
           if git diff --cached --quiet; then
             echo "No publication bytes changed after refresh validation."
             echo "pr_number=" >> "$GITHUB_OUTPUT"
@@ -355,21 +357,13 @@ jobs:
           - CN latest completed common session: \`${CN_CUTOFF}\`
           - Generated at: \`${GENERATED_AT}\`
           - Accepted model membership: derived from the formal catalog
+          - QQQ formal model: QQQ Rotation v4.3 append-only
           - Historical reports, positions and trades: immutable prefix verified
-          - Shared Market Evidence: rebuilt from the same selected-pool providers and candidate formal trades
+          - Formal v1, Bundle v2, Market Evidence and Strategy Operations: one reviewed publication
           - Model selection: not reopened
           - Automatic merge: disabled
           - Research only: true
           - Trade ready: false
-
-          Evidence:
-
-          - workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-          - receipt: \`data/research/formal_backtests/latest_refresh_receipt.json\`
-          - formal v1, Bundle v2 and Market Evidence rebuilt before PR creation
-          - frontend publication assets synchronized in this PR
-
-          The PR must pass formal integrity, Bundle v2 parity, Market Evidence integrity, frontend build and Pages release acceptance before merge.
           EOF
           existing="$(gh pr list --head "$REFRESH_BRANCH" --base main --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
@@ -377,82 +371,11 @@ jobs:
               --title "data: refresh governed evidence through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
               --body-file "$body_file"
             gh pr ready --undo "$existing" || true
-            pr_number="$existing"
           else
-            pr_url="$(gh pr create \
-              --base main \
-              --head "$REFRESH_BRANCH" \
-              --draft \
+            gh pr create --base main --head "$REFRESH_BRANCH" --draft \
               --title "data: refresh governed evidence through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
-              --body-file "$body_file")"
-            pr_number="${pr_url##*/}"
+              --body-file "$body_file"
           fi
-          echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
-      - name: Upsert refresh operating status
-        if: always()
-        uses: actions/github-script@v8
-        env:
-          REFRESH_REQUIRED: ${{ steps.plan.outputs.refresh_required }}
-          PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
-          US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
-          CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
-          JOB_STATUS: ${{ job.status }}
-        with:
-          script: |
-            const marker = '<!-- reviewed-formal-backtest-refresh -->';
-            const failed = process.env.JOB_STATUS !== 'success';
-            const refreshRequired = process.env.REFRESH_REQUIRED === 'true';
-            const prNumber = process.env.PR_NUMBER || '';
-            const status = failed ? 'blocked' : refreshRequired ? 'waiting_review' : 'current';
-            const body = [
-              marker,
-              '',
-              `## 正式回测与市场证据刷新：${status}`,
-              '',
-              `- US common cutoff: \`${process.env.US_CUTOFF || 'unresolved'}\``,
-              `- CN common cutoff: \`${process.env.CN_CUTOFF || 'unresolved'}\``,
-              `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              `- Review PR: ${prNumber ? `#${prNumber}` : 'none'}`,
-              '- Formal + Market Evidence transaction: one reviewed publication',
-              '- Model selection reopened: no',
-              '- Automatic merge: no',
-              '- Research only: yes',
-              '- Trade ready: no',
-              '',
-              failed
-                ? 'The refresh failed closed before accepted formal or market evidence was modified.'
-                : refreshRequired
-                  ? 'A complete candidate formal + market publication is waiting for human review and normal PR gates.'
-                  : 'Published formal evidence already matches the latest provider-resolved common sessions.',
-            ].join('\n');
-            const issues = await github.paginate(github.rest.issues.listForRepo, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'all',
-              per_page: 100,
-            });
-            const existing = issues.find((issue) =>
-              !issue.pull_request && String(issue.body || '').includes(marker)
-            );
-            const desiredState = status === 'current' ? 'closed' : 'open';
-            if (existing) {
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existing.number,
-                title: `[运行健康] 正式回测与市场证据刷新：${status}`,
-                body,
-                state: desiredState,
-              });
-            } else if (status !== 'current') {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: `[运行健康] 正式回测与市场证据刷新：${status}`,
-                body,
-                assignees: [context.repo.owner],
-              });
-            }
       - name: Upload bounded refresh evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -467,8 +390,6 @@ jobs:
             artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json
             artifacts/formal-refresh/market-evidence/us/catalog.json
             artifacts/formal-refresh/market-evidence/cn/catalog.json
-            artifacts/formal-refresh/market-evidence/us/factor-diagnostics.json
-            artifacts/formal-refresh/market-evidence/cn/factor-diagnostics.json
             artifacts/formal-refresh/qqq-bundle/manifest.json
             artifacts/formal-refresh/qqq-bundle/coverage.csv
             artifacts/formal-refresh/qqq-bundle/reconciliation.csv
