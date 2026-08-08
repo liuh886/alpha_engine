@@ -6,13 +6,30 @@ on:
     paths:
       - ".github/workflows/byd-daily-signal-alert.yml"
       - "src/research/byd_signal_alerts.py"
+      - "src/research/byd_signal_evidence.py"
+      - "src/factors/strategy_snapshot.py"
+      - "configs/factor_libraries/strategy_inputs.yaml"
       - "src/artifacts/strategy_signal_ledger.py"
       - "src/artifacts/strategy_operations.py"
       - "scripts/run_byd_signal_alert.py"
       - "scripts/persist_strategy_signal_evaluation.py"
       - "scripts/build_strategy_operations.py"
       - "tests/test_byd_signal_alerts.py"
+      - "tests/test_byd_signal_evidence.py"
       - "tests/test_strategy_operations.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/byd-daily-signal-alert.yml"
+      - "src/research/byd_signal_alerts.py"
+      - "src/research/byd_signal_evidence.py"
+      - "src/factors/strategy_snapshot.py"
+      - "configs/factor_libraries/strategy_inputs.yaml"
+      - "src/artifacts/strategy_signal_ledger.py"
+      - "src/artifacts/strategy_operations.py"
+      - "scripts/run_byd_signal_alert.py"
+      - "scripts/persist_strategy_signal_evaluation.py"
+      - "scripts/build_strategy_operations.py"
   workflow_run:
     workflows: ["BYD v1.2 Trend Expansion Prospective"]
     types: [completed]
@@ -25,6 +42,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
+  actions: write
   contents: write
   issues: write
 
@@ -53,15 +71,18 @@ jobs:
         run: |
           uv run ruff check \
             src/research/byd_signal_alerts.py \
+            src/research/byd_signal_evidence.py \
             src/artifacts/strategy_signal_ledger.py \
             src/artifacts/strategy_operations.py \
             scripts/run_byd_signal_alert.py \
             scripts/persist_strategy_signal_evaluation.py \
             scripts/build_strategy_operations.py \
             tests/test_byd_signal_alerts.py \
+            tests/test_byd_signal_evidence.py \
             tests/test_strategy_operations.py
           uv run pytest \
             tests/test_byd_signal_alerts.py \
+            tests/test_byd_signal_evidence.py \
             tests/test_strategy_operations.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
@@ -77,6 +98,10 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+      - name: Capture executed source revision
+        id: source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -89,6 +114,7 @@ jobs:
         run: |
           uv run ruff check \
             src/research/byd_signal_alerts.py \
+            src/research/byd_signal_evidence.py \
             src/artifacts/strategy_signal_ledger.py \
             src/artifacts/strategy_operations.py \
             scripts/run_byd_signal_alert.py \
@@ -96,6 +122,7 @@ jobs:
             scripts/build_strategy_operations.py
           uv run pytest \
             tests/test_byd_signal_alerts.py \
+            tests/test_byd_signal_evidence.py \
             tests/test_strategy_operations.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: Build exact formal signal
@@ -181,6 +208,7 @@ jobs:
           TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
           TELEGRAM_ERROR: ${{ steps.telegram.outputs.error }}
           SHOULD_ALERT: ${{ steps.signal.outputs.should_alert }}
+          EXECUTION_SHA: ${{ steps.source.outputs.sha }}
         run: |
           set -euo pipefail
           created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -195,12 +223,14 @@ jobs:
             --telegram-message-id "${TELEGRAM_MESSAGE_ID:-}" \
             --delivery-error "${TELEGRAM_ERROR:-}" \
             --workflow-run-id "$GITHUB_RUN_ID" \
-            --commit-sha "$GITHUB_SHA" \
+            --commit-sha "$EXECUTION_SHA" \
             --created-at-utc "$created_at"
           uv run python scripts/build_strategy_operations.py --generated-at "$created_at"
       - name: Commit durable signal and operations state
+        id: publish
         run: |
           set -euo pipefail
+          echo "published=false" >> "$GITHUB_OUTPUT"
           git config user.name "AlphaEngine Signal Agent"
           git config user.email "signal-agent@alphaengine.local"
           git add data/research/strategy_signal_ledgers data/research/strategy_operations/snapshots.json
@@ -210,7 +240,13 @@ jobs:
             git commit -m "signal: publish BYD v1.2 evaluation ${{ steps.signal.outputs.signal_date }}"
             git pull --rebase origin main
             git push origin HEAD:main
+            echo "published=true" >> "$GITHUB_OUTPUT"
           fi
+      - name: Dispatch Pages for committed operating state
+        if: steps.publish.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
       - name: Upload finalized signal evidence
         if: always()
         uses: actions/upload-artifact@v4
