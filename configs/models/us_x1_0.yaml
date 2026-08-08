@@ -27,7 +27,7 @@ provider_binding:
   cutoff: '2026-07-31'
   snapshot_independent_performance_claim: false
 features:
-  library: configs/factor_libraries/us_ohlcv.yaml
+  library: configs/factor_libraries/ohlcv.yaml
   group: risk_controlled_momentum
   expressions:
   - $close/Ref($close,10)-1
