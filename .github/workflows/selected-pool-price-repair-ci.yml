@@ -130,46 +130,6 @@ jobs:
           tests/test_refresh_selected_pool_prices_v2.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-  live-repair-on-pr:
-    if: github.event_name == 'pull_request'
-    needs: contract
-    strategy:
-      fail-fast: false
-      matrix:
-        market: [cn, us]
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    env:
-      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install uv and locked dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          uv sync --frozen --extra dev
-      - name: Rebuild complete selected-pool history and provider
-        run: >-
-          uv run python scripts/data/refresh_selected_pool_prices_v2.py
-          --market "${{ matrix.market }}"
-          --source-csv-dir data/csv_clean
-          --output-root "artifacts/selected_pool_price_refresh/${{ matrix.market }}"
-          --start 2021-01-01
-          --cutoff 2026-06-18
-          --max-rounds 1
-          --full-refresh
-      - name: Upload complete source, provider and manifest
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selected-pool-price-repair-${{ matrix.market }}-${{ github.run_id }}
-          path: artifacts/selected_pool_price_refresh/${{ matrix.market }}
-          if-no-files-found: error
-          retention-days: 90
-
   manual-live-repair:
     if: github.event_name == 'workflow_dispatch'
     needs: contract
