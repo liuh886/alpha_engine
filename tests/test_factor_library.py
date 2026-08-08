@@ -1,4 +1,4 @@
-"""Tests for the structured Qlib-free factor library."""
+"""Tests for canonical factor definitions and the separate exploratory pool."""
 
 from __future__ import annotations
 
@@ -7,33 +7,53 @@ from pathlib import Path
 
 import pytest
 
-from src.research.factor_library import (
-    FactorGroup,
-    FactorSpec,
+from src.factors.exploratory_pool import load_exploratory_factor_pool
+from src.factors.library import (
+    FACTOR_LIBRARY_SCHEMA_VERSION,
     factor_groups_to_ranker_feature_groups,
-    factor_library_manifest,
     load_factor_library,
-    load_factor_pool_from_yaml,
-    resolve_factor_expressions,
-    select_factor_groups,
 )
 
 
 MINIMAL_LIBRARY = """\
-schema_version: "1.0"
+schema_version: "2.0"
+catalog:
+  id: test_catalog
+  version: "1.0"
+defaults:
+  namespace: test
+  factor_version: "1.0"
+  source_name: unit-test
+  source_version: "1.0"
+  source_reference: tests/test_factor_library.py
+  availability_lag_sessions: 0
+  adjustment_requirement: adjusted
+  output_frequency: day
+  output_dtype: float64
+  missing_value_policy: preserve_nan_after_warmup
+  status: unvalidated_formula
+factors:
+  test.ret5:
+    display_name: ret5
+    information_family: momentum
+    expression: "$close/Ref($close,5)-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 5
+  test.ret10:
+    display_name: ret10
+    information_family: momentum
+    expression: "$close/Ref($close,10)-1"
+    required_fields: [close]
+    markets: [us, cn]
+    minimum_lookback: 10
 groups:
   momentum:
-    description: "Momentum"
-    factors:
-      - id: "test:ret5"
-        expression: "$close/Ref($close,5)-1"
-        family: "momentum"
-  baselines:
-    description: "Baselines"
-    factors:
-      - id: "factor:test"
-        expression: "$close/Ref($close,10)-1"
-        family: "baseline"
+    description: Momentum
+    factor_ids: [test.ret5, test.ret10]
+  baseline:
+    description: Baseline
+    factor_ids: [test.ret10]
 """
 
 
@@ -46,32 +66,56 @@ def _temporary_yaml(content: str) -> Path:
     return Path(handle.name)
 
 
-def test_factor_spec_and_group_validate_required_fields() -> None:
-    with pytest.raises(ValueError, match="id must be non-empty"):
-        FactorSpec(id="", expression="x", family="f")
-    with pytest.raises(ValueError, match="expression must be non-empty"):
-        FactorSpec(id="x", expression="", family="f")
-    factor = FactorSpec(id="x", expression="expr", family="f")
-    with pytest.raises(ValueError, match="must contain at least one factor"):
-        FactorGroup(name="g", description="", factors=())
-    group = FactorGroup(name="g", description="", factors=(factor,))
-    assert group.factor_ids == ("x",)
-
-
-def test_load_select_convert_and_manifest() -> None:
+def test_load_select_resolve_and_manifest() -> None:
     path = _temporary_yaml(MINIMAL_LIBRARY)
     try:
         library = load_factor_library(path)
-        selected = select_factor_groups(library, ["momentum"])
+        selected = library.select_groups(["momentum"])
         ranker_groups = factor_groups_to_ranker_feature_groups(selected)
-        manifest = factor_library_manifest(selected)
-        assert ranker_groups[0].name == "momentum"
-        assert ranker_groups[0].expressions == ("$close/Ref($close,5)-1",)
-        assert manifest["n_groups"] == 1
-        assert manifest["n_factors"] == 1
-        assert resolve_factor_expressions(["factor:test"], library) == [
+        manifest = library.manifest(["momentum"])
+
+        assert library.schema_version == FACTOR_LIBRARY_SCHEMA_VERSION
+        assert ranker_groups[0].expressions == (
+            "$close/Ref($close,10)-1",
+            "$close/Ref($close,5)-1",
+        )
+        assert manifest["factor_count"] == 2
+        assert manifest["group_count"] == 1
+        assert library.resolve_expressions(["test.ret10"]) == [
             "$close/Ref($close,10)-1"
         ]
+    finally:
+        path.unlink()
+
+
+def test_group_reuses_definition_instead_of_redefining_it() -> None:
+    path = _temporary_yaml(MINIMAL_LIBRARY)
+    try:
+        library = load_factor_library(path)
+        momentum = library["momentum"].factors[1]
+        baseline = library["baseline"].factors[0]
+        assert momentum is baseline
+        assert momentum.factor_id == "test.ret10"
+    finally:
+        path.unlink()
+
+
+def test_duplicate_expression_under_two_ids_fails_closed() -> None:
+    duplicate = MINIMAL_LIBRARY.replace(
+        "groups:\n",
+        "  test.ret5_copy:\n"
+        "    display_name: duplicate\n"
+        "    information_family: momentum\n"
+        "    expression: \"$close/Ref($close,5)-1\"\n"
+        "    required_fields: [close]\n"
+        "    markets: [us, cn]\n"
+        "    minimum_lookback: 5\n"
+        "groups:\n",
+    )
+    path = _temporary_yaml(duplicate)
+    try:
+        with pytest.raises(ValueError, match="same expression more than once"):
+            load_factor_library(path)
     finally:
         path.unlink()
 
@@ -81,78 +125,38 @@ def test_unknown_group_and_factor_fail_closed() -> None:
     try:
         library = load_factor_library(path)
         with pytest.raises(ValueError, match="not found"):
-            select_factor_groups(library, ["missing"])
-        with pytest.raises(ValueError, match="Unknown factor id"):
-            resolve_factor_expressions(["missing"], library)
+            library.select_groups(["missing"])
+        with pytest.raises(ValueError, match="unknown factor id"):
+            library.resolve_expressions(["missing"])
     finally:
         path.unlink()
 
 
-def test_duplicate_factor_ids_fail_closed() -> None:
-    path = _temporary_yaml(
-        """\
-schema_version: "1.0"
-groups:
-  a:
-    description: "a"
-    factors:
-      - id: "duplicate"
-        expression: "$close"
-        family: "x"
-  b:
-    description: "b"
-    factors:
-      - id: "duplicate"
-        expression: "$volume"
-        family: "x"
-"""
+def test_only_one_canonical_ohlcv_library_is_required() -> None:
+    library = load_factor_library("configs/factor_libraries/ohlcv.yaml")
+    assert library.catalog.catalog_id == "alpha_engine_ohlcv"
+    assert len(library.catalog.definitions) == 24
+    assert "momentum_volatility_volume" in library
+    assert "cn_balanced_ohlcv" in library
+
+    expressions = [row.expression for row in library.catalog.definitions]
+    assert len(expressions) == len(set(expressions))
+    assert library["momentum_volatility_volume"].factor_ids == (
+        "ohlcv.momentum.ret_5d",
+        "ohlcv.momentum.ret_10d",
+        "ohlcv.momentum.ret_20d",
+        "ohlcv.volatility.std_ret_10d",
+        "ohlcv.volatility.std_ret_20d",
+        "ohlcv.volume.momentum_10d",
+        "ohlcv.liquidity.volume_vs_ma_20d",
     )
-    try:
-        with pytest.raises(ValueError, match="Duplicate factor id"):
-            load_factor_library(path)
-    finally:
-        path.unlink()
 
 
-def test_real_factor_libraries_load_with_unique_ids() -> None:
-    for filename in ("cn_ohlcv.yaml", "us_ohlcv.yaml"):
-        library = load_factor_library(Path("configs/factor_libraries") / filename)
-        all_ids = [factor.id for group in library.values() for factor in group.factors]
-        assert len(all_ids) == len(set(all_ids))
-        assert "factor_baselines" in library
+def test_exploratory_pool_has_no_generated_fallback() -> None:
+    pool = load_exploratory_factor_pool("configs/factor_pool.yaml")
+    assert len(pool) >= 200
+    names = {row["name"] for row in pool}
+    assert "technical_rsi_proxy_10" in names
 
-
-def test_cn_corrected_formulas_are_versioned() -> None:
-    library = load_factor_library("configs/factor_libraries/cn_ohlcv.yaml")
-    expressions = {
-        factor.id: factor.expression
-        for group in library.values()
-        for factor in group.factors
-    }
-    assert expressions["cn:risk_adjusted:ret10_per_vol10:v2"] == (
-        "($close/Ref($close,10)-1)/"
-        "(Std($close/Ref($close,1)-1,10)+1e-12)"
-    )
-    assert expressions["cn:pressure:ret1_x_vol_shock_5:v2"] == (
-        "($close/Ref($close,1)-1)*($volume/Mean($volume,5)-1)"
-    )
-    assert "cn:risk_adjusted:ret10_per_vol10" not in expressions
-    assert "cn:pressure:ret1_x_vol_shock_5" not in expressions
-
-
-@pytest.mark.parametrize("window", (5, 10, 20, 60))
-def test_rsi_proxy_uses_positive_return_magnitude(window: int) -> None:
-    factors = {
-        factor["name"]: factor
-        for factor in load_factor_pool_from_yaml("configs/factor_pool.yaml")
-    }
-    daily_return = "($close/Ref($close,1)-1)"
-
-    assert factors[f"technical_rsi_proxy_{window}"] == {
-        "name": f"technical_rsi_proxy_{window}",
-        "expression": (
-            f"Mean(Greater($close/Ref($close,1)-1,0)*{daily_return},{window})/"
-            f"(Mean(Abs($close/Ref($close,1)-1),{window})+1e-10)"
-        ),
-        "category": "technical",
-    }
+    with pytest.raises(FileNotFoundError):
+        load_exploratory_factor_pool("configs/does-not-exist.yaml")
