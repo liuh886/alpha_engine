@@ -9,7 +9,16 @@ from pathlib import Path
 from typing import Any
 
 from src.factors.strategy_snapshot import build_strategy_factor_snapshot
-from src.research.byd_signal_alerts import MODEL_ID, build_byd_signal_alert
+from src.research.byd_signal_alerts import (
+    MODEL_ID,
+    _render_markdown,
+    _render_telegram,
+    build_byd_signal_alert,
+)
+from src.research.byd_signal_evidence import (
+    bind_final_signal_identity,
+    close_evidence_is_current,
+)
 
 MODEL_FAMILY_ID = "byd_allocation"
 
@@ -129,6 +138,26 @@ def main() -> int:
         expansion,
         previous_alert=_previous_alert(args.state_store),
     )
+
+    # The latest observed open is historical by the time this close-time target is
+    # published. A quarantined past open blocks retrospective execution evidence,
+    # not the freshness of the current close/factor inputs. The target always waits
+    # for the next independently confirmed eligible open.
+    alert["data_freshness_ok"] = close_evidence_is_current(
+        shadow,
+        paired,
+        expansion,
+    )
+    alert["execution_gate_status"] = (
+        "latest_open_confirmed"
+        if alert["open_research_eligible"]
+        else "awaiting_next_independently_confirmed_open"
+    )
+    alert["should_alert"] = bool(
+        alert["transition_type"] in {"initialize", "rebalance"}
+        and alert["data_freshness_ok"]
+    )
+
     alert["data_provenance"] = {
         "shadow_manifest_sha256": _manifest_sha256(args.shadow_store),
         "paired_manifest_sha256": _manifest_sha256(args.paired_store),
@@ -143,6 +172,12 @@ def main() -> int:
     alert["factor_freshness_ok"] = factor_evidence["freshness"] == "current"
     if not alert["factor_freshness_ok"]:
         alert["should_alert"] = False
+
+    bind_final_signal_identity(alert)
+    # Rendering happens only after the final evidence identity and freshness state
+    # are known, so human delivery and machine evidence cannot disagree.
+    alert["markdown"] = _render_markdown(alert)
+    alert["telegram_text"] = _render_telegram(alert)
 
     _write_outputs(args.output_dir, alert)
     if args.github_output is not None:

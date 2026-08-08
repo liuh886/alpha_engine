@@ -5,8 +5,21 @@ on:
     # After the US close; the due probe uses each market's provider sessions.
     - cron: "30 22 * * 1-5"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ranker-10d-current-target.yml"
+      - "scripts/run_ranker_current_target.py"
+      - "scripts/persist_strategy_signal_evaluation.py"
+      - "scripts/build_strategy_operations.py"
+      - "src/research/ranker_current_target.py"
+      - "src/factors/ranker_snapshot.py"
+      - "src/artifacts/strategy_signal_ledger.py"
+      - "src/artifacts/strategy_operations.py"
+      - "configs/factor_libraries/ohlcv.yaml"
 
 permissions:
+  actions: write
   contents: write
   issues: write
 
@@ -28,6 +41,10 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+      - name: Capture executed source revision
+        id: source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -122,12 +139,12 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          EXECUTION_SHA: ${{ steps.source.outputs.sha }}
         run: |
           set -euo pipefail
           delivery_failed=0
           created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           for market in us cn; do
-            due_var="${market}_due"
             if [ "${{ steps.due.outputs.us_due }}" != "true" ] && [ "$market" = "us" ]; then continue; fi
             if [ "${{ steps.due.outputs.cn_due }}" != "true" ] && [ "$market" = "cn" ]; then continue; fi
 
@@ -192,13 +209,12 @@ jobs:
               --telegram-message-id "$telegram_message_id" \
               --delivery-error "$delivery_error" \
               --workflow-run-id "$GITHUB_RUN_ID" \
-              --commit-sha "$GITHUB_SHA" \
+              --commit-sha "$EXECUTION_SHA" \
               --created-at-utc "$created_at"
           done
           echo "delivery_failed=$delivery_failed" >> "$GITHUB_OUTPUT"
 
       - name: Rebuild Strategy Operations and frontend read model
-        if: steps.due.outputs.us_due == 'true' || steps.due.outputs.cn_due == 'true'
         run: |
           set -euo pipefail
           generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -208,19 +224,27 @@ jobs:
           npm run sync:strategy-operations
 
       - name: Commit append-only decisions and operations snapshot
-        if: steps.due.outputs.us_due == 'true' || steps.due.outputs.cn_due == 'true'
+        id: publish_state
         run: |
           set -euo pipefail
+          echo "published=false" >> "$GITHUB_OUTPUT"
           git config user.name "AlphaEngine Ranker Operations"
           git config user.email "ranker-operations@alphaengine.local"
           git add data/research/strategy_signal_ledgers data/research/strategy_operations/snapshots.json qlib-dashboard/public/data/strategy-operations
           if git diff --cached --quiet; then
             echo "No governed ranker publication changes."
           else
-            git commit -m "ops: publish governed 10-session ranker targets"
+            git commit -m "ops: publish governed 10-session ranker state"
             git pull --rebase origin main
             git push origin HEAD:main
+            echo "published=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Dispatch Pages for committed operating state
+        if: steps.publish_state.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
 
       - name: Retain decision evidence
         if: always()
