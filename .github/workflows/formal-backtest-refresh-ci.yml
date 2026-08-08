@@ -13,6 +13,7 @@ on:
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "tests/test_formal_refresh.py"
+      - "tests/test_refresh_allocation_formal.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "data/research/formal_backtests/**"
       - "data/research/formal_model_runs/**"
@@ -47,12 +48,14 @@ jobs:
             scripts/refresh_ranker_formal.py \
             scripts/refresh_allocation_formal.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
-            tests/test_formal_refresh.py
+            tests/test_formal_refresh.py \
+            tests/test_refresh_allocation_formal.py
           uv run mypy \
             src/artifacts/formal_refresh.py \
             scripts/run_formal_refresh_transaction.py
           uv run pytest \
             tests/test_formal_refresh.py \
+            tests/test_refresh_allocation_formal.py \
             tests/test_formal_backtest_freshness.py \
             tests/test_sync_formal_bundle_v2.py \
             -q --strict-markers --tb=short
