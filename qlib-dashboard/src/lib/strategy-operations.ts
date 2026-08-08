@@ -12,6 +12,7 @@ export type StrategyOperationalStatus =
   | 'delivery_failed';
 
 export type StrategyFreshness = 'current' | 'stale' | 'blocked' | 'unknown';
+export type FactorEffect = 'support' | 'veto' | 'neutral';
 
 export interface StrategyAllocationLeg {
   asset: string;
@@ -20,9 +21,18 @@ export interface StrategyAllocationLeg {
   delta: number;
 }
 
-export interface StrategyDriver {
-  label: string;
-  value: string;
+export interface StrategyFactorEvidence {
+  factorId: string;
+  factorVersion: string;
+  implementationHash: string;
+  displayName: string;
+  informationFamily: string;
+  value: number | string | boolean;
+  reference: unknown;
+  state: string;
+  effect: FactorEffect;
+  reasonCode: string;
+  observedAt: string;
 }
 
 export interface StrategySourceIdentity {
@@ -31,6 +41,7 @@ export interface StrategySourceIdentity {
   formalEvidenceCutoff: string | null;
   ledgerFingerprint: string | null;
   signalSha256: string | null;
+  factorCatalogImplementationHash: string | null;
   workflowRunId: string | null;
   commitSha: string | null;
   githubIssueNumber: number | null;
@@ -54,7 +65,7 @@ export interface StrategyOperationsSnapshot {
   sourceLabel: string;
   sourceHref: string | null;
   note: string;
-  drivers: StrategyDriver[];
+  factorEvidence: StrategyFactorEvidence[];
   sourceIdentity: StrategySourceIdentity;
 }
 
@@ -76,6 +87,7 @@ const STATUS = new Set<StrategyOperationalStatus>([
   'delivery_failed',
 ]);
 const FRESHNESS = new Set<StrategyFreshness>(['current', 'stale', 'blocked', 'unknown']);
+const EFFECT = new Set<FactorEffect>(['support', 'veto', 'neutral']);
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -87,6 +99,38 @@ function nullableString(value: unknown): string | null {
 
 function nullableNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function parseFactorEvidence(value: unknown, id: string, index: number): StrategyFactorEvidence {
+  assert(Boolean(value) && typeof value === 'object' && !Array.isArray(value), `Invalid factor evidence ${index} for ${id}`);
+  const row = value as Record<string, unknown>;
+  assert(typeof row.factor_id === 'string' && row.factor_id.length > 0, `Missing factor id for ${id}`);
+  assert(typeof row.factor_version === 'string' && row.factor_version.length > 0, `Missing factor version for ${id}/${row.factor_id}`);
+  assert(typeof row.implementation_hash === 'string' && /^[a-f0-9]{64}$/.test(row.implementation_hash), `Invalid factor implementation hash for ${id}/${row.factor_id}`);
+  assert(typeof row.display_name === 'string' && row.display_name.length > 0, `Missing factor display name for ${id}/${row.factor_id}`);
+  assert(typeof row.information_family === 'string' && row.information_family.length > 0, `Missing factor family for ${id}/${row.factor_id}`);
+  assert(typeof row.state === 'string' && row.state.length > 0, `Missing factor state for ${id}/${row.factor_id}`);
+  assert(EFFECT.has(row.effect as FactorEffect), `Invalid factor effect for ${id}/${row.factor_id}`);
+  assert(typeof row.reason_code === 'string' && row.reason_code.length > 0, `Missing factor reason code for ${id}/${row.factor_id}`);
+  assert(typeof row.observed_at === 'string' && row.observed_at.length > 0, `Missing factor observation date for ${id}/${row.factor_id}`);
+  const observedValue = row.value;
+  assert(
+    (typeof observedValue === 'number' && Number.isFinite(observedValue)) || typeof observedValue === 'string' || typeof observedValue === 'boolean',
+    `Invalid factor value for ${id}/${row.factor_id}`,
+  );
+  return {
+    factorId: row.factor_id,
+    factorVersion: row.factor_version,
+    implementationHash: row.implementation_hash,
+    displayName: row.display_name,
+    informationFamily: row.information_family,
+    value: observedValue,
+    reference: row.reference,
+    state: row.state,
+    effect: row.effect as FactorEffect,
+    reasonCode: row.reason_code,
+    observedAt: row.observed_at,
+  };
 }
 
 function parseSnapshot(value: unknown): StrategyOperationsSnapshot {
@@ -105,7 +149,7 @@ function parseSnapshot(value: unknown): StrategyOperationsSnapshot {
   assert(typeof record.source_label === 'string' && record.source_label.length > 0, `Missing source label for ${id}`);
   assert(typeof record.note === 'string' && record.note.length > 0, `Missing operations note for ${id}`);
   assert(Array.isArray(record.allocations), `Missing allocations for ${id}`);
-  assert(Array.isArray(record.drivers), `Missing drivers for ${id}`);
+  assert(Array.isArray(record.factor_evidence), `Missing factor evidence for ${id}`);
   assert(Boolean(record.source_identity) && typeof record.source_identity === 'object' && !Array.isArray(record.source_identity), `Missing source identity for ${id}`);
 
   const allocations = record.allocations.map((value, index) => {
@@ -118,13 +162,10 @@ function parseSnapshot(value: unknown): StrategyOperationsSnapshot {
     return { asset: row.asset, current: row.current, target: row.target, delta: row.delta };
   });
 
-  const drivers = record.drivers.map((value, index) => {
-    assert(Boolean(value) && typeof value === 'object' && !Array.isArray(value), `Invalid driver ${index} for ${id}`);
-    const row = value as Record<string, unknown>;
-    assert(typeof row.label === 'string' && row.label.length > 0, `Missing driver label for ${id}`);
-    assert(typeof row.value === 'string' && row.value.length > 0, `Missing driver value for ${id}`);
-    return { label: row.label, value: row.value };
-  });
+  const factorEvidence = record.factor_evidence.map((row, index) => parseFactorEvidence(row, id, index));
+  if (record.factor_freshness === 'current') {
+    assert(factorEvidence.length > 0, `Current factor freshness requires evidence for ${id}`);
+  }
 
   const source = record.source_identity as Record<string, unknown>;
   return {
@@ -145,13 +186,14 @@ function parseSnapshot(value: unknown): StrategyOperationsSnapshot {
     sourceLabel: record.source_label,
     sourceHref: nullableString(record.source_href),
     note: record.note,
-    drivers,
+    factorEvidence,
     sourceIdentity: {
       formalBundleId: nullableString(source.formal_bundle_id),
       formalRunId: nullableString(source.formal_run_id),
       formalEvidenceCutoff: nullableString(source.formal_evidence_cutoff),
       ledgerFingerprint: nullableString(source.ledger_fingerprint),
       signalSha256: nullableString(source.signal_sha256),
+      factorCatalogImplementationHash: nullableString(source.factor_catalog_implementation_hash),
       workflowRunId: nullableString(source.workflow_run_id),
       commitSha: nullableString(source.commit_sha),
       githubIssueNumber: typeof source.github_issue_number === 'number' && Number.isInteger(source.github_issue_number)
@@ -180,13 +222,14 @@ function blocked(run: GovernedRunSummary, message: string): StrategyOperationsSn
     sourceLabel: 'Governed operations snapshot',
     sourceHref: null,
     note: message,
-    drivers: [],
+    factorEvidence: [],
     sourceIdentity: {
       formalBundleId: null,
       formalRunId: run.runId,
       formalEvidenceCutoff: run.evidenceCutoff || null,
       ledgerFingerprint: null,
       signalSha256: null,
+      factorCatalogImplementationHash: null,
       workflowRunId: null,
       commitSha: null,
       githubIssueNumber: null,
@@ -198,7 +241,7 @@ async function fetchOperations(): Promise<Map<string, StrategyOperationsSnapshot
   const response = await fetch(assetUrl('data/strategy-operations/snapshots.json'), { cache: 'no-store' });
   if (!response.ok) throw new Error(`Strategy operations snapshot unavailable (${response.status})`);
   const value = await response.json() as OperationsDocument;
-  assert(value.schema_version === '1.0.0', 'Unsupported strategy operations schema');
+  assert(value.schema_version === '2.0.0', 'Unsupported strategy operations schema');
   assert(value.research_only === true && value.trade_ready === false, 'Invalid strategy operations boundary');
   assert(Array.isArray(value.records), 'Strategy operations records are missing');
   const snapshots = value.records.map(parseSnapshot);
