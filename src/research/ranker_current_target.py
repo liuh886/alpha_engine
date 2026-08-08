@@ -18,9 +18,11 @@ from src.factors.ranker_snapshot import build_ranker_factor_snapshot
 from src.research.cn130_cross_sectional_ranking import (
     attach_classification,
     build_feature_matrices,
+    fit_ranker,
     forward_returns,
     load_provider_panel,
     make_label,
+    predict_ranker,
     stack_return_frame,
 )
 import src.research.cn130_ranking_pipeline as cn_core
@@ -29,9 +31,13 @@ from src.research.cn_x1_1_regime_gated import (
     build_regime_state,
     regime_signal,
 )
+from src.research.daily_ranker import prepare_ranker_frame
+from src.research.daily_ranker_model import (
+    fit_xgb_daily_ranker,
+    predict_xgb_daily_ranker,
+)
 from src.research.paradigm import ResearchParadigmSpec
 from src.research.qlib_execution_common import (
-    fit_ranker_scores,
     materialize_ranker_candidates,
     normalize_qlib_frame_index,
     sanitize_factor_name,
@@ -40,6 +46,10 @@ from src.research.qlib_execution_common import (
 from src.research.rolling_windows import purge_training_tail
 from src.research.spec_bound_execution import build_spec_bound_execution_plan
 from src.research.us_qlib_execution_adapter import QlibUSExecutionRuntime
+from src.research.xgb_ranker_explainability import (
+    attach_factor_contributions,
+    build_xgb_pred_contribs,
+)
 
 US_MODEL_ID = "us_x1_1"
 CN_MODEL_ID = "cn_x1_1"
@@ -229,6 +239,29 @@ def _factor_summary(
     )
 
 
+def _explanation_summary(explanations: Mapping[str, Any]) -> dict[str, Any]:
+    rows = explanations.get("rows")
+    if not isinstance(rows, list):
+        raise RankerCurrentTargetError("ranker explanations have no rows")
+    return {
+        "method": explanations.get("method"),
+        "score_reconciliation": explanations.get("score_reconciliation"),
+        "decision_role": explanations.get("decision_role"),
+        "rows": [
+            {
+                "instrument": row.get("instrument"),
+                "decision_role": row.get("decision_role"),
+                "score": row.get("score"),
+                "bias": row.get("bias"),
+                "top_positive": row.get("top_positive", []),
+                "top_negative": row.get("top_negative", []),
+            }
+            for row in rows
+            if isinstance(row, Mapping)
+        ],
+    }
+
+
 def _model_identity(
     *,
     formal_package: Path,
@@ -320,6 +353,8 @@ def score_us_current_target(
             "US x1.1 must materialize exactly one ranker"
         )
     candidate = candidates[0]
+    if candidate.model_family != "xgb":
+        raise RankerCurrentTargetError("US x1.1 current publisher requires frozen XGBoost ranker")
     symbols = [
         str(value)
         for value in plan.declared_contract["universe"]["requested_symbols"]
@@ -387,12 +422,20 @@ def score_us_current_target(
         raise RankerCurrentTargetError(
             "US current target has insufficient feature rows"
         )
-    scores = fit_ranker_scores(
-        candidate,
-        features_train,
-        returns_train,
-        features_test,
-        expression_columns,
+    columns = [expression_columns[item] for item in candidate.feature_group.expressions]
+    x_rank, y_rank, groups = prepare_ranker_frame(
+        features_train.loc[:, columns], returns_train
+    )
+    ranker_fit = fit_xgb_daily_ranker(
+        x_rank,
+        y_rank,
+        groups,
+        n_gain_bins=candidate.calibration.n_gain_bins,
+        params=None,
+        num_boost_round=candidate.calibration.num_boost_round,
+    )
+    scores = predict_xgb_daily_ranker(
+        ranker_fit, features_test.loc[:, columns]
     )
     day = scores.reset_index().sort_values(
         ["score", "instrument"],
@@ -433,6 +476,15 @@ def score_us_current_target(
         features=features_test,
         factor_columns=factor_columns,
     )
+    explanations = build_xgb_pred_contribs(
+        model=ranker_fit.model,
+        features=features_test.loc[:, columns],
+        scores=scores,
+        column_to_factor_id={column: factor_id for factor_id, column in factor_columns.items()},
+        instruments=list(target),
+        decision_role="selected_holding",
+    )
+    factor_evidence = attach_factor_contributions(factor_evidence, explanations)
     return _signal_payload(
         model_version_id=US_MODEL_ID,
         model_family_id=US_FAMILY,
@@ -455,6 +507,7 @@ def score_us_current_target(
             "train_end": train_end,
             "ranker": candidate.name,
             "top_n": top_n,
+            "model_explanations": _explanation_summary(explanations),
         },
     )
 
@@ -554,14 +607,13 @@ def score_cn_current_target(
         raise RankerCurrentTargetError(
             f"CN provider has no factor rows on {signal_date}"
         )
-    scores = cn_core.fit_predict_cell(
-        ranking_id="r0_cn_x1_0_raw_return_rank",
-        train_features=train_x,
-        test_features=test_x,
-        train_target=target_label,
-        classification=classification,
+    cn_fit = fit_ranker(
+        train_x,
+        target_label,
+        group_keys=cn_core.date_key(train_x.index),
         seed=42,
     )
+    scores = predict_ranker(cn_fit, test_x)
     day = scores.join(
         attach_classification(scores.index, classification)
     ).reset_index()
@@ -592,6 +644,8 @@ def score_cn_current_target(
             str(symbol): weight for symbol in chosen["instrument"]
         }
         factor_reference = target
+        explanation_instruments = list(target)
+        explanation_role = "selected_holding"
     else:
         target = {cn_core.BENCHMARK: 1.0}
         ranked_names = [str(value) for value in day["instrument"]]
@@ -603,6 +657,8 @@ def score_cn_current_target(
         factor_reference = {
             symbol: reference_weight for symbol in ranked_names
         }
+        explanation_instruments = ranked_names[: gate.sectors * gate.names_per_sector]
+        explanation_role = "ranker_reference_vetoed_by_regime"
     previous_date, previous = load_previous_state(
         formal_package=formal_package,
         ledger_dir=ledger_dir,
@@ -614,6 +670,15 @@ def score_cn_current_target(
         features=test_x,
         factor_columns=CN_FACTOR_COLUMNS,
     )
+    explanations = build_xgb_pred_contribs(
+        model=cn_fit.model,
+        features=test_x.loc[:, list(cn_fit.feature_names)],
+        scores=scores,
+        column_to_factor_id={column: factor_id for factor_id, column in CN_FACTOR_COLUMNS.items()},
+        instruments=explanation_instruments,
+        decision_role=explanation_role,
+    )
+    factor_evidence = attach_factor_contributions(factor_evidence, explanations)
     state_row = state.loc[signal_ts]
     return _signal_payload(
         model_version_id=CN_MODEL_ID,
@@ -647,5 +712,6 @@ def score_cn_current_target(
                 state_row["cross_sectional_breadth"]
             ),
             "breadth_value": float(state_row["breadth_value"]),
+            "model_explanations": _explanation_summary(explanations),
         },
     )
