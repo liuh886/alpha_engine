@@ -13,15 +13,21 @@ on:
       - "src/artifacts/qqq_v4_3_formal.py"
       - "src/artifacts/strategy_operations.py"
       - "src/dashboard/market_evidence.py"
+      - "src/data/router.py"
+      - "src/data/provider_catalog.py"
+      - "src/data/adapters/**"
       - "scripts/build_market_evidence.py"
       - "scripts/build_strategy_operations.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/refresh_ranker_formal.py"
       - "scripts/refresh_allocation_formal.py"
       - "scripts/refresh_qqq_v4_3_formal.py"
+      - "scripts/promote_byd_v1_2_formal.py"
+      - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
       - "scripts/data/build_etf_reference_bundle.py"
       - "src/data/etf_reference_bundle.py"
+      - "src/research/byd_515180_allocation.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "configs/factor_libraries/ohlcv.yaml"
       - "tests/test_formal_refresh.py"
@@ -39,6 +45,7 @@ on:
       - "qlib-dashboard/public/data/strategy-operations/**"
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -95,12 +102,16 @@ jobs:
             src/artifacts/qqq_v4_3_formal.py \
             src/artifacts/strategy_operations.py \
             src/dashboard/market_evidence.py \
+            src/data/router.py \
+            src/data/provider_catalog.py \
+            src/data/adapters \
             scripts/build_market_evidence.py \
             scripts/build_strategy_operations.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/refresh_ranker_formal.py \
             scripts/refresh_allocation_formal.py \
             scripts/refresh_qqq_v4_3_formal.py \
+            scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             tests/test_formal_refresh.py \
             tests/test_refresh_qqq_v4_3_formal.py \
@@ -322,7 +333,7 @@ jobs:
           test -f dist/data/market-evidence/cn/catalog.json
           test -f dist/data/strategy-operations/snapshots.json
           test ! -e dist/data/formal-backtests
-      - name: Open or update draft review PR
+      - name: Open or update reviewed refresh PR
         id: pull_request
         if: steps.plan.outputs.refresh_required == 'true'
         env:
@@ -361,7 +372,8 @@ jobs:
           - Historical reports, positions and trades: immutable prefix verified
           - Formal v1, Bundle v2, Market Evidence and Strategy Operations: one reviewed publication
           - Model selection: not reopened
-          - Automatic merge: disabled
+          - Protected auto-merge: armed after candidate validation
+          - Pages publication: dispatched only after the reviewed PR merges
           - Research only: true
           - Trade ready: false
           EOF
@@ -371,11 +383,47 @@ jobs:
               --title "data: refresh governed evidence through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
               --body-file "$body_file"
             gh pr ready --undo "$existing" || true
+            number="$existing"
           else
             gh pr create --base main --head "$REFRESH_BRANCH" --draft \
               --title "data: refresh governed evidence through US ${US_CUTOFF} / CN ${CN_CUTOFF}" \
               --body-file "$body_file"
+            number="$(gh pr list --head "$REFRESH_BRANCH" --base main --state open --json number --jq '.[0].number // empty')"
           fi
+          test -n "$number"
+          echo "pr_number=$number" >> "$GITHUB_OUTPUT"
+      - name: Arm protected auto-merge
+        if: steps.pull_request.outputs.pr_number != ''
+        env:
+          PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          gh pr ready "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash --auto
+      - name: Wait for protected merge and dispatch Pages
+        if: steps.pull_request.outputs.pr_number != ''
+        timeout-minutes: 60
+        env:
+          PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 240); do
+            state="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json state --jq '.state')"
+            if [[ "$state" == "MERGED" ]]; then
+              merge_sha="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq '.mergeCommit.oid')"
+              test -n "$merge_sha"
+              echo "Reviewed refresh merged at ${merge_sha}; dispatching Pages from main."
+              gh workflow run deploy-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+              exit 0
+            fi
+            if [[ "$state" == "CLOSED" ]]; then
+              echo "Reviewed refresh PR closed without merge." >&2
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for protected auto-merge." >&2
+          exit 1
       - name: Upload bounded refresh evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -390,7 +438,7 @@ jobs:
             artifacts/formal-refresh/provider-cn/artifacts/selected_pool_price_refresh_manifest.json
             artifacts/formal-refresh/market-evidence/us/catalog.json
             artifacts/formal-refresh/market-evidence/cn/catalog.json
-            artifacts/formal-refresh/qqq-bundle/manifest.json
+            artifacts/formal-refresh/qqq-bundle/bundle_manifest.json
             artifacts/formal-refresh/qqq-bundle/coverage.csv
             artifacts/formal-refresh/qqq-bundle/reconciliation.csv
           if-no-files-found: warn
