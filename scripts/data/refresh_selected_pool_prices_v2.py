@@ -96,12 +96,69 @@ def _decorate_attempt(attempt: dict[str, Any]) -> None:
     attempt["provider_contract"] = provider_manifest_entry(provider)
 
 
+def _governed_formal_auxiliary_yahoo_fallback(
+    record: dict[str, Any],
+    *,
+    market: str,
+    provider_order: list[str],
+) -> bool:
+    """Allow Yahoo only as a proven last-resort source for formal auxiliaries.
+
+    CN selected-pool members remain fail-closed on Yahoo-only evidence. A formal
+    auxiliary is different: it exists to publish evidence for an already accepted
+    traded instrument, not to train or promote the CN ranker. The fallback is
+    acceptable only when every configured provider ahead of Yahoo was attempted
+    and failed in the same full refresh and Yahoo itself succeeded. Adapter-level
+    schema and OHLC reconciliation still run before this manifest is produced.
+    """
+
+    symbol = str(record.get("symbol", "")).strip().upper()
+    if (
+        market != "cn"
+        or symbol not in FORMAL_MARKET_AUXILIARIES.get(market, ())
+        or str(record.get("provider", "")).strip().lower() != "yfinance"
+        or record.get("action") != "fetched_full_refresh"
+    ):
+        return False
+
+    try:
+        yahoo_index = provider_order.index("yfinance")
+    except ValueError:
+        return False
+    preferred = provider_order[:yahoo_index]
+    attempts = record.get("attempts", [])
+    if not isinstance(attempts, list):
+        return False
+
+    normalized = [attempt for attempt in attempts if isinstance(attempt, dict)]
+    yahoo_succeeded = any(
+        str(attempt.get("provider", "")).strip().lower() == "yfinance"
+        and attempt.get("ok") is True
+        for attempt in normalized
+    )
+    if not yahoo_succeeded:
+        return False
+
+    for provider in preferred:
+        provider_attempts = [
+            attempt
+            for attempt in normalized
+            if str(attempt.get("provider", "")).strip().lower() == provider
+        ]
+        if not provider_attempts or any(
+            attempt.get("ok") is not False for attempt in provider_attempts
+        ):
+            return False
+    return True
+
+
 def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     market = str(payload.get("market", "")).strip().lower()
     provider_order = router.providers_for_market(market)
     selected_providers: dict[str, str] = {}
     quarantined: list[str] = []
+    governed_auxiliary_fallbacks: list[str] = []
     copied_legacy: list[str] = []
 
     records = payload.get("records", [])
@@ -120,8 +177,18 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
                 record["provider_contract"] = provider_manifest_entry(provider)
                 selected_providers[symbol] = provider
             if market == "cn" and provider == "yfinance":
-                record["promotion_status"] = "quarantined_yahoo_only_cn"
-                quarantined.append(symbol)
+                if _governed_formal_auxiliary_yahoo_fallback(
+                    record,
+                    market=market,
+                    provider_order=provider_order,
+                ):
+                    record["promotion_status"] = (
+                        "formal_auxiliary_governed_yahoo_fallback"
+                    )
+                    governed_auxiliary_fallbacks.append(symbol)
+                else:
+                    record["promotion_status"] = "quarantined_yahoo_only_cn"
+                    quarantined.append(symbol)
             elif provider:
                 record["promotion_status"] = "source_semantics_recorded"
             if record.get("action") == "copied_verified_source":
@@ -164,10 +231,19 @@ def _decorate_manifest(path: Path, router: MarketDataRouter) -> dict[str, Any]:
                 "QQQ/QQQI/TQQQ professional reference bundle."
             )
         ),
+        "formal_auxiliary_boundary": (
+            "CN selected-pool members remain quarantined on Yahoo-only evidence. "
+            "An explicitly declared formal auxiliary may use Yahoo only after "
+            "every configured preferred provider was attempted and failed in the "
+            "same full refresh; adapter validation and normalization remain required."
+        ),
         "health": router.provider_health_snapshot(),
     }
     payload["selected_providers"] = selected_providers
     payload["quarantined_symbols"] = sorted(set(quarantined))
+    payload["formal_auxiliary_fallback_symbols"] = sorted(
+        set(governed_auxiliary_fallbacks)
+    )
     payload["legacy_copied_symbols"] = sorted(set(copied_legacy))
     payload["promotion_eligible"] = bool(
         payload.get("status") == "selected_pool_price_refresh_ready"
