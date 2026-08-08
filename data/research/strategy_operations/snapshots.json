@@ -1,67 +1,28 @@
 {
-  "generated_at": "2026-08-07T19:07:43Z",
+  "generated_at": "2026-08-08T00:00:00Z",
   "records": [
     {
       "allocations": [
-        {
-          "asset": "515180",
-          "current": 0.25,
-          "delta": 0.0,
-          "target": 0.25
-        },
-        {
-          "asset": "BYD",
-          "current": 0.75,
-          "delta": 0.0,
-          "target": 0.75
-        },
-        {
-          "asset": "CASH",
-          "current": 0.0,
-          "delta": 0.0,
-          "target": 0.0
-        }
+        {"asset": "515180", "current": 0.25, "delta": 0.0, "target": 0.25},
+        {"asset": "BYD", "current": 0.75, "delta": 0.0, "target": 0.75},
+        {"asset": "CASH", "current": 0.0, "delta": 0.0, "target": 0.0}
       ],
       "as_of": "2026-08-07",
       "data_freshness": "stale",
       "decision_cadence": "Every completed CN market session",
       "decision_reason": "启用正式 BYD v1.2 信号",
       "delivery_status": "not_required",
-      "drivers": [
-        {
-          "label": "Market state",
-          "value": "bear"
-        },
-        {
-          "label": "Volatility state",
-          "value": "high"
-        },
-        {
-          "label": "20D momentum",
-          "value": "0.42%"
-        },
-        {
-          "label": "60D momentum",
-          "value": "-8.46%"
-        },
-        {
-          "label": "252D drawdown",
-          "value": "-20.76%"
-        },
-        {
-          "label": "Financed increment",
-          "value": "0.00%"
-        }
-      ],
       "estimated_cost": 0.0,
+      "factor_evidence": [],
       "factor_freshness": "blocked",
       "latest_completed_session": "2026-08-07",
       "model_version_id": "byd_v1_2_convex_momentum_budget_v1",
       "next_decision_policy": "Evaluate after the common close; target applies to the next independently confirmed eligible open.",
-      "note": "Latest governed evaluation retained the existing allocation.",
+      "note": "Latest signal predates the canonical factor snapshot contract.",
       "source_href": null,
       "source_identity": {
         "commit_sha": "6d75fa77b282271e5109644014a14c6113e4fda3",
+        "factor_catalog_implementation_hash": null,
         "formal_bundle_id": "833ce53e918da4d7c62dd288e4c33c062637ec75ca8e39600b4d2ac2bf676c7d",
         "formal_evidence_cutoff": "2026-08-03",
         "formal_run_id": "byd_v1_2_convex_momentum_budget_v1-formal-user-authorized-2026-08-06",
@@ -82,8 +43,8 @@
       "decision_cadence": "10-session rebalance",
       "decision_reason": "Formal historical evidence is available; live target state is intentionally unavailable.",
       "delivery_status": "not available",
-      "drivers": [],
       "estimated_cost": null,
+      "factor_evidence": [],
       "factor_freshness": "unknown",
       "latest_completed_session": "2026-08-03",
       "model_version_id": "cn_x1_1",
@@ -92,6 +53,7 @@
       "source_href": null,
       "source_identity": {
         "commit_sha": null,
+        "factor_catalog_implementation_hash": null,
         "formal_bundle_id": "bbf40fe790c5ec17cf9e408527b636e7368525667ebb7fffe0f2d05cb0c380a3",
         "formal_evidence_cutoff": "2026-08-03",
         "formal_run_id": "cn_x1_1-formal-31022910416",
@@ -107,61 +69,26 @@
     },
     {
       "allocations": [
-        {
-          "asset": "QQQ",
-          "current": 0.5,
-          "delta": 0.0,
-          "target": 0.5
-        },
-        {
-          "asset": "QQQI",
-          "current": 0.5,
-          "delta": 0.0,
-          "target": 0.5
-        },
-        {
-          "asset": "TQQQ",
-          "current": 0.0,
-          "delta": 0.0,
-          "target": 0.0
-        }
+        {"asset": "QQQ", "current": 0.5, "delta": 0.0, "target": 0.5},
+        {"asset": "QQQI", "current": 0.5, "delta": 0.0, "target": 0.5},
+        {"asset": "TQQQ", "current": 0.0, "delta": 0.0, "target": 0.0}
       ],
       "as_of": "2026-08-06",
       "data_freshness": "current",
       "decision_cadence": "Every completed US market session",
       "decision_reason": "继续保持当前状态",
       "delivery_status": "not_required",
-      "drivers": [
-        {
-          "label": "VIX close",
-          "value": "15.15"
-        },
-        {
-          "label": "VIX retreat",
-          "value": "-26.67%"
-        },
-        {
-          "label": "VXN close",
-          "value": "23.95"
-        },
-        {
-          "label": "VXN retreat",
-          "value": "-22.34%"
-        },
-        {
-          "label": "QQQ vs MA20",
-          "value": "2.03%"
-        }
-      ],
       "estimated_cost": 0.0,
-      "factor_freshness": "current",
+      "factor_evidence": [],
+      "factor_freshness": "blocked",
       "latest_completed_session": "2026-08-06",
       "model_version_id": "qqqi_qqq_tqqq_v4_2",
       "next_decision_policy": "Evaluate at close; target applies to the next eligible open.",
-      "note": "Latest governed evaluation retained the existing allocation.",
+      "note": "Latest signal predates the canonical factor snapshot contract.",
       "source_href": null,
       "source_identity": {
         "commit_sha": "fbc46b2d070fa884979755c8fdb63150633ec075",
+        "factor_catalog_implementation_hash": null,
         "formal_bundle_id": "2b041025af0a901692a5b0b4d7aae0fd63435431036fd45f3c53e4a4dbbef0ed",
         "formal_evidence_cutoff": "2026-07-31",
         "formal_run_id": "qqqi_qqq_tqqq_v4_2-formal-8820398584",
@@ -172,7 +99,7 @@
       },
       "source_label": "Governed QQQ signal ledger",
       "state_label": "Transition",
-      "status": "current_no_change",
+      "status": "blocked",
       "turnover": 0.0
     },
     {
@@ -182,8 +109,8 @@
       "decision_cadence": "10-session rebalance",
       "decision_reason": "Formal historical evidence is available; live target state is intentionally unavailable.",
       "delivery_status": "not available",
-      "drivers": [],
       "estimated_cost": null,
+      "factor_evidence": [],
       "factor_freshness": "unknown",
       "latest_completed_session": "2026-07-31",
       "model_version_id": "us_x1_1",
@@ -192,6 +119,7 @@
       "source_href": null,
       "source_identity": {
         "commit_sha": null,
+        "factor_catalog_implementation_hash": null,
         "formal_bundle_id": "306937b3e5b033af56f70db617ac43d044c1e79d87594f421d03b2569a0f1a4f",
         "formal_evidence_cutoff": "2026-07-31",
         "formal_run_id": "us_x1_1_through_2026_07_31",
@@ -207,6 +135,6 @@
     }
   ],
   "research_only": true,
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "trade_ready": false
 }
