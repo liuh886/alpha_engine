@@ -1,0 +1,12 @@
+{
+  "baseline_top15": null,
+  "challenger_sector_cap_top15": null,
+  "eligible_names": 87,
+  "note": "Scaffolding \u2014 scoring pipeline integration pending.",
+  "recorded_at_utc": "2026-08-08T04:06:52.372365+00:00",
+  "research_only": true,
+  "schema_version": "us_x1_1_sector_cap_shadow_v1",
+  "signal_date": "2026-08-08",
+  "status": "awaiting_scoring_pipeline",
+  "trade_ready": false
+}
