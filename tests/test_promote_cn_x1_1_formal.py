@@ -95,7 +95,7 @@ def test_catalog_replaces_cn_x1_0_with_cn_x1_1(tmp_path: Path) -> None:
     ids = [row["model_id"] for row in catalog["records"]]
     assert "cn_x1_0" not in ids
     assert ids == [
-        "qqqi_qqq_tqqq_v4_2",
+        "qqqi_qqq_tqqq_v4_3",
         "us_x1_1",
         "cn_x1_1",
         "byd_v1_2_convex_momentum_budget_v1",
