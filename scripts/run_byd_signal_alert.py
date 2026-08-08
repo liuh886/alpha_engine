@@ -8,7 +8,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from src.factors.strategy_snapshot import build_strategy_factor_snapshot
 from src.research.byd_signal_alerts import MODEL_ID, build_byd_signal_alert
+
+MODEL_FAMILY_ID = "byd_allocation"
 
 
 def _latest_observation(store_dir: Path) -> dict[str, Any] | None:
@@ -64,6 +67,9 @@ def _github_outputs(path: Path, alert: dict[str, Any]) -> None:
         handle.write(f"should_alert={str(bool(alert['should_alert'])).lower()}\n")
         handle.write(
             f"data_freshness_ok={str(bool(alert['data_freshness_ok'])).lower()}\n"
+        )
+        handle.write(
+            f"factor_freshness_ok={str(bool(alert['factor_freshness_ok'])).lower()}\n"
         )
         handle.write(
             f"open_research_eligible={str(bool(alert['open_research_eligible'])).lower()}\n"
@@ -129,6 +135,15 @@ def main() -> int:
         "expansion_manifest_sha256": _manifest_sha256(args.expansion_store),
         "source_workflow": "byd-daily-signal-alert",
     }
+    factor_evidence = build_strategy_factor_snapshot(
+        model_family_id=MODEL_FAMILY_ID,
+        signal=alert,
+    )
+    alert["factor_evidence"] = factor_evidence
+    alert["factor_freshness_ok"] = factor_evidence["freshness"] == "current"
+    if not alert["factor_freshness_ok"]:
+        alert["should_alert"] = False
+
     _write_outputs(args.output_dir, alert)
     if args.github_output is not None:
         _github_outputs(args.github_output, alert)
