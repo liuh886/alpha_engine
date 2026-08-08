@@ -36,7 +36,7 @@ universe:
   alignment_mode: "auto"
 
 factor_library:
-  source: "configs/factor_libraries/cn_ohlcv.yaml"
+  source: "configs/factor_libraries/ohlcv.yaml"
   groups:
     - "cn_balanced_ohlcv"
 
@@ -49,7 +49,7 @@ candidate_grid:
         min_data_in_leaf: 10
         learning_rate: 0.05
   factor_baselines:
-    - "factor:cn_momentum_10d"
+    - "ohlcv.momentum.ret_10d"
 
 strategy:
   horizon_days: 10
@@ -103,7 +103,7 @@ def test_valid_spec_loads_and_builds_declared_candidates(tmp_path: Path) -> None
     assert spec.experiment_id == "test_contract"
     assert len(build_ranker_candidates_from_spec(spec)) == 1
     assert set(build_factor_baselines_from_spec(spec)) == {
-        "factor:cn_momentum_10d"
+        "ohlcv.momentum.ret_10d"
     }
 
 
@@ -171,7 +171,6 @@ def test_invalid_contracts_fail_closed(
         validate_research_paradigm_spec(spec)
 
 
-
 def test_partial_final_window_contract_requires_session_minimum() -> None:
     data = _spec_dict()
     data["walk_forward"]["partial_window_policy"] = (
@@ -183,6 +182,7 @@ def test_partial_final_window_contract_requires_session_minimum() -> None:
 
     data["walk_forward"]["min_partial_window_eligible_sessions"] = 20
     validate_research_paradigm_spec(ResearchParadigmSpec.from_dict(data))
+
 
 def test_contract_uses_profiles_not_duplicate_thresholds() -> None:
     data = _spec_dict()
@@ -250,9 +250,7 @@ def test_run_api_rejects_real_execution(tmp_path: Path) -> None:
 )
 def test_real_specs_validate_and_prepare(path: str, tmp_path: Path) -> None:
     spec = load_research_paradigm_spec(path)
-    result = run_research_paradigm(
-        spec, dry_run=True, output_dir=tmp_path
-    )
+    result = run_research_paradigm(spec, dry_run=True, output_dir=tmp_path)
     assert result["status"] == "prepared"
     assert result["n_candidates"] > 0
     assert result["contract_only"] is True
