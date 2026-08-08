@@ -73,7 +73,10 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
     }
   };
 
-  const declaredBenchmark = useMemo(() => declaredBenchmarkContract(benchmarkId), [benchmarkId]);
+  const declaredBenchmark = useMemo(
+    () => declaredBenchmarkContract(benchmarkId ?? String(report[0]?.benchmark_id ?? '')),
+    [benchmarkId, report],
+  );
 
   const chartData = useMemo(() => {
     if (!report.length) return [];
