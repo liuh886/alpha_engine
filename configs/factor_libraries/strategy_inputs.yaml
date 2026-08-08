@@ -1,0 +1,184 @@
+# Canonical current-signal factor inputs for deterministic allocation strategies.
+# These definitions bind governed signal fields to stable factor IDs; they do not
+# duplicate the model's rule engine.
+schema_version: "2.0"
+
+catalog:
+  id: alpha_engine_strategy_inputs
+  version: "1.0"
+
+defaults:
+  namespace: strategy
+  factor_version: "1.0"
+  source_name: governed strategy signal
+  source_version: "1.0"
+  source_reference: data/research/strategy_signal_ledgers
+  availability_lag_sessions: 0
+  adjustment_requirement: not_applicable
+  output_frequency: day
+  output_dtype: float64
+  missing_value_policy: block_signal_publication
+  status: independent_validation_required
+
+factors:
+  strategy.qqq.vix_close:
+    display_name: VIX close
+    information_family: volatility
+    expression: "signal.volatility.vix_close"
+    required_fields: [vix_close]
+    markets: [us]
+    minimum_lookback: 0
+
+  strategy.qqq.vxn_close:
+    display_name: VXN close
+    information_family: volatility
+    expression: "signal.volatility.vxn_close"
+    required_fields: [vxn_close]
+    markets: [us]
+    minimum_lookback: 0
+
+  strategy.qqq.qqq_vs_ma20:
+    display_name: QQQ distance to SMA20
+    information_family: trend
+    expression: "signal.price.qqq_vs_ma20"
+    required_fields: [qqq_close]
+    markets: [us]
+    minimum_lookback: 20
+
+  strategy.qqq.qqq_vs_ma200:
+    display_name: QQQ distance to SMA200
+    information_family: trend
+    expression: "signal.price.qqq_vs_ma200"
+    required_fields: [qqq_close]
+    markets: [us]
+    minimum_lookback: 200
+
+  strategy.qqq.rsi14:
+    display_name: RSI(14)
+    information_family: momentum
+    expression: "signal.overlay.rsi_14"
+    required_fields: [qqq_close]
+    markets: [us]
+    minimum_lookback: 14
+
+  strategy.qqq.fear_greed:
+    display_name: Fear & Greed
+    information_family: sentiment
+    expression: "signal.overlay.fear_greed_score"
+    required_fields: [fear_greed_score]
+    markets: [us]
+    minimum_lookback: 0
+
+  strategy.qqq.ma200_falling:
+    display_name: SMA200 falling
+    information_family: trend_state
+    expression: "signal.overlay.ma200_falling"
+    required_fields: [qqq_close]
+    markets: [us]
+    minimum_lookback: 201
+    output_dtype: bool
+
+  strategy.qqq.strong_defense:
+    display_name: Strong defense active
+    information_family: rule_state
+    expression: "signal.overlay.strong_defense"
+    required_fields: [strong_defense]
+    markets: [us]
+    minimum_lookback: 0
+    output_dtype: bool
+
+  strategy.byd.market_state:
+    display_name: BYD market state
+    information_family: regime
+    expression: "signal.factor_context.market_state"
+    required_fields: [market_state]
+    markets: [cn]
+    minimum_lookback: 0
+    output_dtype: string
+
+  strategy.byd.vol_state:
+    display_name: BYD volatility state
+    information_family: volatility_regime
+    expression: "signal.factor_context.vol_state"
+    required_fields: [vol_state]
+    markets: [cn]
+    minimum_lookback: 0
+    output_dtype: string
+
+  strategy.byd.momentum_20d:
+    display_name: BYD 20D momentum
+    information_family: momentum
+    expression: "signal.factor_context.mom_20"
+    required_fields: [byd_close]
+    markets: [cn]
+    minimum_lookback: 20
+
+  strategy.byd.momentum_60d:
+    display_name: BYD 60D momentum
+    information_family: momentum
+    expression: "signal.factor_context.mom_60"
+    required_fields: [byd_close]
+    markets: [cn]
+    minimum_lookback: 60
+
+  strategy.byd.drawdown_252d:
+    display_name: BYD 252D drawdown
+    information_family: drawdown
+    expression: "signal.factor_context.drawdown_252"
+    required_fields: [byd_close]
+    markets: [cn]
+    minimum_lookback: 252
+
+  strategy.byd.momentum_scale:
+    display_name: BYD momentum scale
+    information_family: allocation_scale
+    expression: "signal.factor_context.momentum_scale"
+    required_fields: [momentum_scale]
+    markets: [cn]
+    minimum_lookback: 0
+
+  strategy.byd.financed_increment:
+    display_name: BYD financed increment
+    information_family: leverage_budget
+    expression: "signal.factor_context.financed_increment"
+    required_fields: [financed_increment]
+    markets: [cn]
+    minimum_lookback: 0
+
+  strategy.byd.expansion_active:
+    display_name: BYD convex expansion active
+    information_family: rule_state
+    expression: "signal.expansion_active"
+    required_fields: [expansion_active]
+    markets: [cn]
+    minimum_lookback: 0
+    output_dtype: bool
+
+groups:
+  qqq_core:
+    description: Core v4.x price and volatility inputs present in every governed QQQ evaluation.
+    factor_ids:
+      - strategy.qqq.vix_close
+      - strategy.qqq.vxn_close
+      - strategy.qqq.qqq_vs_ma20
+      - strategy.qqq.qqq_vs_ma200
+
+  qqq_overlay:
+    description: v4.3 overlay inputs when the promoted QQQ signal publishes them.
+    factor_ids:
+      - strategy.qqq.rsi14
+      - strategy.qqq.fear_greed
+      - strategy.qqq.ma200_falling
+      - strategy.qqq.strong_defense
+
+  byd_v1_2:
+    description: Governed BYD v1.2 allocation inputs and rule state.
+    factor_ids:
+      - strategy.byd.market_state
+      - strategy.byd.vol_state
+      - strategy.byd.momentum_20d
+      - strategy.byd.momentum_60d
+      - strategy.byd.drawdown_252d
+      - strategy.byd.momentum_scale
+      - strategy.byd.financed_increment
+      - strategy.byd.expansion_active
