@@ -79,10 +79,6 @@ def build_hardened_router(market: str) -> MarketDataRouter:
         providers.append("yfinance")
     else:
         raise ValueError(f"unsupported market: {market}")
-    # Per-symbol retries in refresh_selected_pool_prices are already bounded by
-    # max_rounds. A batch-wide circuit breaker lets failures from one symbol
-    # suppress independent provider attempts for every later symbol, so the
-    # selected-pool refresh deliberately keeps router health request-local.
     return MarketDataRouter(
         adapters=adapters,
         policy={market_key: providers},
@@ -190,6 +186,7 @@ def refresh_selected_pool_prices_v2(
     cutoff: str,
     max_rounds: int = 2,
     full_refresh: bool = False,
+    auxiliary_symbols: list[str] | tuple[str, ...] | None = None,
     router: MarketDataRouter | None = None,
 ) -> dict[str, Any]:
     destination = Path(output_root).resolve()
@@ -205,6 +202,7 @@ def refresh_selected_pool_prices_v2(
             router=data_router,
             max_rounds=max_rounds,
             full_refresh=full_refresh,
+            auxiliary_symbols=auxiliary_symbols,
         )
     except Exception:
         manifest_path = destination / MANIFEST_RELATIVE_PATH
@@ -225,6 +223,12 @@ def main() -> None:
     parser.add_argument("--start", default="2021-01-01")
     parser.add_argument("--cutoff", default="2026-06-18")
     parser.add_argument("--max-rounds", type=int, default=2)
+    parser.add_argument(
+        "--auxiliary-symbol",
+        action="append",
+        default=[],
+        help="Additional formal/reference security to include in the same provider.",
+    )
     parser.add_argument("--full-refresh", action="store_true")
     args = parser.parse_args()
 
@@ -237,6 +241,7 @@ def main() -> None:
         cutoff=args.cutoff,
         max_rounds=args.max_rounds,
         full_refresh=args.full_refresh,
+        auxiliary_symbols=args.auxiliary_symbol,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 
