@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from scripts.data.refresh_selected_pool_prices_v2 import (
+    FORMAL_MARKET_AUXILIARIES,
     _decorate_manifest,
     build_hardened_router,
 )
@@ -42,6 +43,13 @@ def test_hardened_cn_router_enables_tushare_only_with_token(monkeypatch):
         "efinance",
         "yfinance",
     ]
+
+
+def test_formal_auxiliary_universe_preserves_legacy_tygo_without_substitution():
+    assert "TYGO" in FORMAL_MARKET_AUXILIARIES["us"]
+    assert "TIGO" not in FORMAL_MARKET_AUXILIARIES["us"]
+    assert set(FORMAL_MARKET_AUXILIARIES["us"]) == {"QQQI", "TQQQ", "SGOV", "TYGO"}
+    assert FORMAL_MARKET_AUXILIARIES["cn"] == ("515180",)
 
 
 def test_manifest_does_not_count_two_eastmoney_transports_as_independent(
