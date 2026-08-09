@@ -6,13 +6,21 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const configPath = resolve(root, 'public/membership-config.js');
 const stylesPath = resolve(root, 'public/account-integration.css');
 const appPath = resolve(root, 'src/App.tsx');
-await Promise.all([access(configPath), access(stylesPath), access(appPath)]);
+const accessPath = resolve(root, 'src/lib/model-access.ts');
+const membershipHookPath = resolve(root, 'src/hooks/useAlphaMembership.ts');
+const fleetPath = resolve(root, 'src/components/StrategyFleet.tsx');
+const gatePath = resolve(root, 'src/components/ProModelGate.tsx');
+await Promise.all([access(configPath), access(stylesPath), access(appPath), access(accessPath), access(membershipHookPath), access(fleetPath), access(gatePath)]);
 
-const [html, config, styles, app] = await Promise.all([
+const [html, config, styles, app, accessRules, membershipHook, fleet, gate] = await Promise.all([
   readFile(resolve(root, 'index.html'), 'utf8'),
   readFile(configPath, 'utf8'),
   readFile(stylesPath, 'utf8'),
   readFile(appPath, 'utf8'),
+  readFile(accessPath, 'utf8'),
+  readFile(membershipHookPath, 'utf8'),
+  readFile(fleetPath, 'utf8'),
+  readFile(gatePath, 'utf8'),
 ]);
 
 for (const reference of [
@@ -34,8 +42,20 @@ for (const value of [
 ]) {
   if (!config.includes(value)) throw new Error(`account config missing: ${value}`);
 }
-for (const value of ['data-account-slot', 'alpha-account-slot', 'research-topbar-actions']) {
-  if (!app.includes(value)) throw new Error(`research topbar missing account integration: ${value}`);
+for (const value of ['data-account-slot', 'alpha-account-slot', 'research-topbar-actions', 'ProModelGate', 'isProModelRun']) {
+  if (!app.includes(value)) throw new Error(`research shell missing account/Pro integration: ${value}`);
+}
+for (const value of ["PRO_MODEL_FAMILIES = new Set(['qqq_rotation'])", "ALPHA_PRO_ENTITLEMENT = 'alpha_engine.pro'"]) {
+  if (!accessRules.includes(value)) throw new Error(`QQQ Pro access rule missing: ${value}`);
+}
+for (const value of ["window.addEventListener('hao:account-changed'", 'snapshot.isPro === true', 'openAccount']) {
+  if (!membershipHook.includes(value)) throw new Error(`Alpha membership hook missing: ${value}`);
+}
+for (const value of ['isProModelRun(run)', 'AlphaEngine Pro access', 'membership.openAccount()']) {
+  if (!fleet.includes(value)) throw new Error(`Strategy fleet missing Pro model treatment: ${value}`);
+}
+for (const value of ['QQQ strategy details', 'Open Pro access']) {
+  if (!gate.includes(value)) throw new Error(`Pro model gate missing: ${value}`);
 }
 for (const value of ['.alpha-account-slot .hao-account-trigger', 'box-shadow: none', 'backdrop-filter: none']) {
   if (!styles.includes(value)) throw new Error(`account integration styles missing: ${value}`);
@@ -44,9 +64,9 @@ if (styles.includes('is-floating')) {
   throw new Error('AlphaEngine must not retain compatibility with the retired floating account state.');
 }
 
-const combined = `${html}\n${config}\n${styles}\n${app}`;
+const combined = `${html}\n${config}\n${styles}\n${app}\n${accessRules}\n${membershipHook}\n${fleet}\n${gate}`;
 for (const forbidden of [/sk_(live|test)_/, /whsec_/, /sb_secret_/, /service_role/]) {
   if (forbidden.test(combined)) throw new Error(`browser assets contain forbidden material: ${forbidden}`);
 }
 
-console.log('AlphaEngine account uses only the native research-topbar slot and shared Google/GitHub/X Account Shell v4.');
+console.log('AlphaEngine account and QQQ Pro model access use the shared entitlement boundary and native strategy console.');
