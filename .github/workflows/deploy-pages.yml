@@ -1,9 +1,18 @@
 name: Deploy Strategy Console to Pages
+run-name: Pages ${{ inputs.target_sha || github.sha }}
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact main commit to publish and verify
+        required: false
+        type: string
+
+env:
+  RELEASE_SHA: ${{ inputs.target_sha || github.sha }}
 
 permissions:
   contents: read
@@ -24,6 +33,7 @@ jobs:
       - name: Checkout publication graph
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.target_sha || github.sha }}
           fetch-depth: 0
           show-progress: false
       - name: Resolve Pages publication impact
@@ -34,6 +44,7 @@ jobs:
           AFTER_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             python scripts/detect_pages_impact.py --manual --github-output "$GITHUB_OUTPUT"
           else
@@ -65,7 +76,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.target_sha || github.sha }}
           lfs: true
+      - name: Verify release identity
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
       - name: Verify zero-server product boundary
         run: python scripts/check_legacy_web_boundary.py
       - name: Setup Node
@@ -127,7 +141,7 @@ jobs:
           import os
           from pathlib import Path
           payload = {
-              "commit_sha": os.environ["GITHUB_SHA"],
+              "commit_sha": os.environ["RELEASE_SHA"],
               "workflow_run_id": os.environ["GITHUB_RUN_ID"],
               "publication_impact": {
                   "reason": os.environ["IMPACT_REASON"],
@@ -185,7 +199,7 @@ jobs:
       - name: Verify deployed frontend contracts
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: PYTHONPATH=. python scripts/verify_pages_release.py --base-url "$PAGE_URL" --expected-commit "$GITHUB_SHA"
+        run: PYTHONPATH=. python scripts/verify_pages_release.py --base-url "$PAGE_URL" --expected-commit "$RELEASE_SHA"
       - name: Install live-browser runtime
         working-directory: qlib-dashboard
         run: npx playwright install --with-deps chromium
