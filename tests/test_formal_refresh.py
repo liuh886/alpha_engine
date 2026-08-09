@@ -297,7 +297,7 @@ def test_production_refresh_runs_allocation_regressions_before_network_work() ->
     assert "tests/test_refresh_allocation_formal.py" in preflight
 
 
-def test_reviewed_refresh_waits_for_matching_pages_release_before_current_status() -> None:
+def test_reviewed_refresh_dispatches_exact_merge_to_pages_before_current_status() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
@@ -307,10 +307,12 @@ def test_reviewed_refresh_waits_for_matching_pages_release_before_current_status
     status_start = workflow.index("      - name: Upsert refresh operating status")
     release = workflow[release_start:status_start]
 
-    assert "gh workflow run deploy-pages.yml" not in release
-    assert "--workflow deploy-pages.yml" in release
-    assert "--event push" in release
-    assert 'select(.headSha == \\"${merge_sha}\\")' in release
+    assert 'current_main="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main"' in release
+    assert 'if [[ "$current_main" != "$merge_sha" ]]' in release
+    assert "actions/workflows/deploy-pages.yml/dispatches" in release
+    assert "X-GitHub-Api-Version: 2026-03-10" in release
+    assert "inputs:{target_sha:$target_sha}" in release
+    assert ".workflow_run_id // empty" in release
     assert 'gh run watch "$pages_run"' in release
     assert 'test "$pages_conclusion" = "success"' in release
     assert "pages_run_id=$pages_run" in release
@@ -319,3 +321,13 @@ def test_reviewed_refresh_waits_for_matching_pages_release_before_current_status
     status = workflow[status_start:]
     assert "PAGES_RUN_ID: ${{ steps.release.outputs.pages_run_id }}" in status
     assert "Pages live acceptance: required before current/closed status" in status
+
+
+def test_manual_pages_release_checks_out_and_verifies_target_sha() -> None:
+    workflow = Path(".github/workflows/deploy-pages.yml").read_text(encoding="utf-8")
+    assert "target_sha:" in workflow
+    assert "RELEASE_SHA: ${{ inputs.target_sha || github.sha }}" in workflow
+    assert workflow.count("ref: ${{ inputs.target_sha || github.sha }}") == 2
+    assert 'test "$(git rev-parse HEAD)" = "$RELEASE_SHA"' in workflow
+    assert '"commit_sha": os.environ["RELEASE_SHA"]' in workflow
+    assert '--expected-commit "$RELEASE_SHA"' in workflow
