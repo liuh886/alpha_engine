@@ -1,8 +1,8 @@
 """Governed BYD V1.2 recovery/reversal state-model research.
 
 The model is intentionally a single pre-registered, interpretable state machine.
-It consumes only the sealed BYD canonical v1 data identity and never treats the
-already-observed history through 2026-08-03 as a fresh holdout.
+It consumes the sealed BYD canonical v1 identity or its verified append-only v2
+extension and never treats history through 2026-08-03 as a fresh holdout.
 """
 
 from __future__ import annotations
@@ -17,11 +17,15 @@ import numpy as np
 import pandas as pd
 
 CANONICAL_SCHEMA = "byd_canonical_adjusted_ohlcv_v1"
+CANONICAL_EXTENDED_SCHEMA = "byd_canonical_adjusted_ohlcv_v2"
 CANONICAL_ADJUSTED_SHA256 = (
     "0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960"
 )
 CANONICAL_MANIFEST_SHA256 = (
     "06202b594b036b0c815e4ffb46e9f3d14ba647d699aad0fd927f1665142a363e"
+)
+CANONICAL_SESSION_AUDIT_SHA256 = (
+    "9b20d587abe8621fcfaf1abd0ebbec68eed993092d6b97d520e573605a410247"
 )
 CANONICAL_CUTOFF = "2026-08-03"
 OPEN_LABEL_POLICY = (
@@ -116,6 +120,108 @@ def dataframe_sha256(frame: pd.DataFrame) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def manifest_payload_sha256(payload: Mapping[str, Any]) -> str:
+    """Hash a mutable extension manifest without its self-referential digest."""
+    body = dict(payload)
+    body.pop("manifest_sha256", None)
+    encoded = json.dumps(
+        body,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _is_sha256(value: Any) -> bool:
+    candidate = str(value)
+    return len(candidate) == 64 and all(
+        character in "0123456789abcdef" for character in candidate
+    )
+
+
+def _validate_extended_manifest(
+    manifest: Mapping[str, Any],
+    *,
+    adjusted_path: Path,
+    session_path: Path,
+    adjusted: pd.DataFrame,
+    sessions: pd.DataFrame,
+) -> None:
+    """Validate the append-only v2 envelope without weakening sealed v1."""
+    exact = {
+        "schema_version": CANONICAL_EXTENDED_SCHEMA,
+        "base_schema_version": CANONICAL_SCHEMA,
+        "base_adjusted_sha256": CANONICAL_ADJUSTED_SHA256,
+        "base_session_audit_sha256": CANONICAL_SESSION_AUDIT_SHA256,
+        "base_manifest_sha256": CANONICAL_MANIFEST_SHA256,
+        "base_cutoff": CANONICAL_CUTOFF,
+        "open_label_policy": OPEN_LABEL_POLICY,
+        "data_quality_status": "canonical_v1_pass",
+        "cross_provider_stitching": False,
+    }
+    for key, expected in exact.items():
+        if manifest.get(key) != expected:
+            raise RuntimeError(
+                f"extended canonical contract mismatch for {key}: "
+                f"{manifest.get(key)!r} != {expected!r}"
+            )
+    claimed_manifest = str(manifest.get("manifest_sha256") or "")
+    if claimed_manifest != manifest_payload_sha256(manifest):
+        raise RuntimeError("extended canonical manifest digest does not match payload")
+    file_contract = {
+        "adjusted_sha256": file_sha256(adjusted_path),
+        "session_audit_sha256": file_sha256(session_path),
+    }
+    for key, actual in file_contract.items():
+        if manifest.get(key) != actual:
+            raise RuntimeError(f"extended canonical {key} does not match its file")
+
+    cutoff = pd.Timestamp(str(manifest.get("cutoff")))
+    if cutoff <= pd.Timestamp(CANONICAL_CUTOFF):
+        raise RuntimeError("extended canonical cutoff must follow the sealed v1 cutoff")
+    if str(manifest.get("last_date")) != cutoff.strftime("%Y-%m-%d"):
+        raise RuntimeError("extended canonical last_date does not match cutoff")
+    if len(adjusted) != int(manifest.get("rows", -1)):
+        raise RuntimeError("extended canonical row count drifted")
+    if adjusted["date"].duplicated().any() or sessions["date"].duplicated().any():
+        raise RuntimeError("extended canonical input contains duplicate dates")
+    if adjusted["date"].max() != cutoff or sessions["date"].max() != cutoff:
+        raise RuntimeError("extended canonical files do not reach the declared cutoff")
+
+    prefix = adjusted.loc[adjusted["date"] <= pd.Timestamp(CANONICAL_CUTOFF)]
+    if dataframe_sha256(prefix) != CANONICAL_ADJUSTED_SHA256:
+        raise RuntimeError("extended canonical history changed before the v1 cutoff")
+    session_prefix = sessions.loc[
+        sessions["date"] <= pd.Timestamp(CANONICAL_CUTOFF)
+    ]
+    if dataframe_sha256(session_prefix) != CANONICAL_SESSION_AUDIT_SHA256:
+        raise RuntimeError("extended canonical session history changed before the v1 cutoff")
+    observations = manifest.get("observation_sha256")
+    if not isinstance(observations, Mapping) or not observations:
+        raise RuntimeError("extended canonical observation evidence is missing")
+    observation_dates = pd.DatetimeIndex(pd.to_datetime(list(observations)))
+    if (
+        observation_dates.min() <= pd.Timestamp(CANONICAL_CUTOFF)
+        or observation_dates.max() != cutoff
+        or any(not _is_sha256(value) for value in observations.values())
+        or not _is_sha256(manifest.get("source_shadow_manifest_sha256"))
+    ):
+        raise RuntimeError("extended canonical observation evidence is inconsistent")
+    appended_dates = set(
+        adjusted.loc[adjusted["date"] > pd.Timestamp(CANONICAL_CUTOFF), "date"]
+    )
+    if appended_dates != set(observation_dates):
+        raise RuntimeError("extended canonical rows do not match observation evidence")
+    appended_session_dates = set(
+        sessions.loc[sessions["date"] > pd.Timestamp(CANONICAL_CUTOFF), "date"]
+    )
+    if appended_session_dates != set(observation_dates):
+        raise RuntimeError(
+            "extended canonical session rows do not match observation evidence"
+        )
+
+
 def load_canonical_snapshot(root: str | Path) -> CanonicalResearchData:
     root = Path(root)
     manifest_path = root / "manifest.json"
@@ -126,30 +232,42 @@ def load_canonical_snapshot(root: str | Path) -> CanonicalResearchData:
             raise FileNotFoundError(f"canonical snapshot missing {path.name}")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    exact = {
-        "schema_version": CANONICAL_SCHEMA,
-        "adjusted_sha256": CANONICAL_ADJUSTED_SHA256,
-        "manifest_sha256": CANONICAL_MANIFEST_SHA256,
-        "cutoff": CANONICAL_CUTOFF,
-        "open_label_policy": OPEN_LABEL_POLICY,
-        "data_quality_status": "canonical_v1_pass",
-        "cross_provider_stitching": False,
-    }
-    for key, expected in exact.items():
-        if manifest.get(key) != expected:
-            raise RuntimeError(
-                f"canonical contract mismatch for {key}: "
-                f"{manifest.get(key)!r} != {expected!r}"
-            )
-
     adjusted = pd.read_csv(adjusted_path, parse_dates=["date"])
     sessions = pd.read_csv(session_path, parse_dates=["date"])
-    if dataframe_sha256(adjusted) != CANONICAL_ADJUSTED_SHA256:
-        raise RuntimeError("adjusted_ohlcv.csv does not match the sealed canonical SHA")
-    if len(adjusted) != int(manifest["rows"]):
-        raise RuntimeError("canonical row count drifted")
-    if adjusted["date"].max().strftime("%Y-%m-%d") != CANONICAL_CUTOFF:
-        raise RuntimeError("canonical adjusted history does not end at the frozen cutoff")
+    schema = manifest.get("schema_version")
+    if schema == CANONICAL_SCHEMA:
+        exact = {
+            "adjusted_sha256": CANONICAL_ADJUSTED_SHA256,
+            "manifest_sha256": CANONICAL_MANIFEST_SHA256,
+            "cutoff": CANONICAL_CUTOFF,
+            "open_label_policy": OPEN_LABEL_POLICY,
+            "data_quality_status": "canonical_v1_pass",
+            "cross_provider_stitching": False,
+        }
+        for key, expected in exact.items():
+            if manifest.get(key) != expected:
+                raise RuntimeError(
+                    f"canonical contract mismatch for {key}: "
+                    f"{manifest.get(key)!r} != {expected!r}"
+                )
+        if dataframe_sha256(adjusted) != CANONICAL_ADJUSTED_SHA256:
+            raise RuntimeError("adjusted_ohlcv.csv does not match the sealed canonical SHA")
+        if dataframe_sha256(sessions) != CANONICAL_SESSION_AUDIT_SHA256:
+            raise RuntimeError("session_audit.csv does not match the sealed canonical SHA")
+        if len(adjusted) != int(manifest["rows"]):
+            raise RuntimeError("canonical row count drifted")
+        if adjusted["date"].max().strftime("%Y-%m-%d") != CANONICAL_CUTOFF:
+            raise RuntimeError("canonical adjusted history does not end at the frozen cutoff")
+    elif schema == CANONICAL_EXTENDED_SCHEMA:
+        _validate_extended_manifest(
+            manifest,
+            adjusted_path=adjusted_path,
+            session_path=session_path,
+            adjusted=adjusted,
+            sessions=sessions,
+        )
+    else:
+        raise RuntimeError(f"unsupported canonical schema_version: {schema!r}")
     if sessions["date"].duplicated().any():
         raise RuntimeError("session audit contains duplicate dates")
     required_session = {"date", "open_research_eligible"}

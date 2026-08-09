@@ -14,6 +14,7 @@ on:
       - "src/data/provider_catalog.py"
       - "src/data/adapters/**"
       - "src/research/byd_515180_allocation.py"
+      - "src/research/byd_v1_2_recovery_state.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/refresh_ranker_formal.py"
       - "scripts/refresh_allocation_formal.py"
@@ -69,6 +70,7 @@ jobs:
             src/data/router.py \
             src/data/provider_catalog.py \
             src/data/adapters \
+            src/research/byd_v1_2_recovery_state.py \
             scripts/run_formal_refresh_transaction.py \
             scripts/refresh_ranker_formal.py \
             scripts/refresh_allocation_formal.py \
