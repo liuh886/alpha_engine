@@ -35,7 +35,9 @@ def _package(model_id: str, market: str, cutoff: str) -> dict[str, object]:
         "generated_at": "2026-08-01T00:00:00Z",
         "evidence_cutoff": cutoff,
         "date_range": {"start": "2026-01-01", "end": cutoff},
-        "trace_frequency": "daily" if model_id.startswith("qqq") else "non_overlapping_10_session",
+        "trace_frequency": (
+            "daily" if model_id.startswith("qqq") else "non_overlapping_10_session"
+        ),
         "portfolio_contract": {"rebalance_sessions": 10},
         "report": [
             {
@@ -212,7 +214,9 @@ def test_append_only_verifier_rejects_historical_rewrite() -> None:
         verify_append_only_package(current, candidate, target_cutoff="2026-08-05")
 
 
-def test_finalize_accepts_stale_candidate_catalog_hashes_and_reseals(tmp_path: Path) -> None:
+def test_finalize_accepts_stale_candidate_catalog_hashes_and_reseals(
+    tmp_path: Path,
+) -> None:
     current_root = tmp_path / "current"
     candidate_root = tmp_path / "candidate"
     current_packages = [
@@ -222,7 +226,10 @@ def test_finalize_accepts_stale_candidate_catalog_hashes_and_reseals(tmp_path: P
     _write_tree(current_root, current_packages)
     _write_tree(candidate_root, current_packages)
 
-    for model_id, cutoff in (("us_x1_1", "2026-08-05"), ("cn_x1_1", "2026-08-04")):
+    for model_id, cutoff in (
+        ("us_x1_1", "2026-08-05"),
+        ("cn_x1_1", "2026-08-04"),
+    ):
         path = candidate_root / f"{model_id}.json"
         package = load_object(path)
         package["evidence_cutoff"] = cutoff
@@ -278,3 +285,37 @@ def test_us_x1_1_refresh_uses_locked_project_python() -> None:
     assert "scripts/run_us_feature_quality_validation.py" in us_refresh
     assert "--provider-uri artifacts/formal-refresh/provider-us/data/providers/us" in us_refresh
     assert "scripts/refresh_ranker_formal.py us" in us_refresh
+
+
+def test_production_refresh_runs_allocation_regressions_before_network_work() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    start = workflow.index("      - name: Validate refresh implementation before network work")
+    end = workflow.index("      - name: Resolve transaction timestamp")
+    preflight = workflow[start:end]
+    assert "tests/test_refresh_allocation_formal.py" in preflight
+
+
+def test_reviewed_refresh_waits_for_matching_pages_release_before_current_status() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    release_start = workflow.index(
+        "      - name: Wait for candidate checks, merge reviewed refresh, and verify Pages"
+    )
+    status_start = workflow.index("      - name: Upsert refresh operating status")
+    release = workflow[release_start:status_start]
+
+    assert "gh workflow run deploy-pages.yml" not in release
+    assert "--workflow deploy-pages.yml" in release
+    assert "--event push" in release
+    assert 'select(.headSha == \\"${merge_sha}\\")' in release
+    assert 'gh run watch "$pages_run"' in release
+    assert 'test "$pages_conclusion" = "success"' in release
+    assert "pages_run_id=$pages_run" in release
+    assert release_start < status_start
+
+    status = workflow[status_start:]
+    assert "PAGES_RUN_ID: ${{ steps.release.outputs.pages_run_id }}" in status
+    assert "Pages live acceptance: required before current/closed status" in status
