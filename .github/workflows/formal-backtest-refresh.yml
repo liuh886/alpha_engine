@@ -187,7 +187,7 @@ jobs:
           GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
         run: |
           set -euo pipefail
-          python - <<'PY'
+          uv run python - <<'PY'
           import os
           from pathlib import Path
           import yaml
