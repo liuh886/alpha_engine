@@ -1,11 +1,13 @@
-import { AlertTriangle, ArrowRight, BookOpen, CheckCircle2, Database, FolderArchive } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BookOpen, CheckCircle2, Database, FolderArchive, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { fetchFormalFreshness, type FormalFreshnessSnapshot } from '@/lib/formal-freshness';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
+import { useAccessControl } from '@/hooks/useAccessControl';
 
 export function SystemHubPage() {
   const workspace = useOutletContext<RunWorkspaceContext>();
+  const access = useAccessControl();
   const [freshness, setFreshness] = useState<FormalFreshnessSnapshot | null>(null);
 
   useEffect(() => {
@@ -44,6 +46,7 @@ export function SystemHubPage() {
         <Link to="/methodology" className="group flex items-center gap-4 p-5 hover:bg-muted/20">
           <BookOpen className="h-5 w-5 text-primary" /><div className="flex-1"><h2 className="text-sm font-semibold">Methodology & boundaries</h2><p className="mt-1 text-xs text-muted-foreground">Research contracts, execution assumptions and interpretation limits.</p></div><ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
         </Link>
+        {access.isOwner && <Link to="/settings/access" className="group flex items-center gap-4 border-t p-5 hover:bg-muted/20"><SlidersHorizontal className="h-5 w-5 text-primary" /><div className="flex-1"><h2 className="text-sm font-semibold">Access settings</h2><p className="mt-1 text-xs text-muted-foreground">Set Guest, Member, Pro or Owner access for models and modules.</p></div><ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" /></Link>}
       </section>
     </div>
   );

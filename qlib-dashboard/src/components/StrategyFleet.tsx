@@ -1,8 +1,7 @@
 import { ArrowRight, CircleSlash2, Clock3, Crown, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAlphaMembership } from '@/hooks/useAlphaMembership';
+import { useAccessControl } from '@/hooks/useAccessControl';
 import type { GovernedRunSummary } from '@/lib/governed-run';
-import { isProModelRun } from '@/lib/model-access';
 import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
 import { STRATEGY_STATUS_LABEL, type StrategyOperationsSnapshot } from '@/lib/strategy-operations';
 import { cn } from '@/lib/utils';
@@ -59,7 +58,7 @@ export function StrategyFleet({
   loading?: boolean;
 }) {
   const navigate = useNavigate();
-  const membership = useAlphaMembership();
+  const access = useAccessControl();
 
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Formal strategy fleet">
@@ -69,22 +68,23 @@ export function StrategyFleet({
       <div className="divide-y">
         {runs.map((run) => {
           const snapshot = snapshots.get(run.modelVersionId);
-          const locked = isProModelRun(run) && !membership.isPro;
+          const requiredTier = access.requiredTierForModel(run);
+          const locked = !access.canAccess(requiredTier);
           const label = snapshot ? STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading operations' : 'Operating status unavailable';
           return (
             <button
               key={run.key}
               type="button"
-              onClick={() => locked ? membership.openAccount() : navigate(`/strategies/${encodeURIComponent(run.modelVersionId)}`)}
+              onClick={() => navigate(`/strategies/${encodeURIComponent(run.modelVersionId)}`)}
               className="group grid w-full gap-4 px-5 py-5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary lg:grid-cols-[minmax(220px,1.35fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(160px,0.8fr)_120px_36px] lg:items-center"
-              aria-label={locked ? `${run.title}, AlphaEngine Pro model` : run.title}
+              aria-label={locked ? `${run.title}, ${requiredTier} product` : run.title}
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="truncate text-base font-semibold">{run.title}</h3>
-                  {isProModelRun(run) && (
+                  {requiredTier !== 'public' && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-primary">
-                      <Crown className="h-3 w-3" /> Pro
+                      <Crown className="h-3 w-3" /> {requiredTier === 'authenticated' ? 'Member' : requiredTier}
                     </span>
                   )}
                   {!locked && (
@@ -99,8 +99,8 @@ export function StrategyFleet({
               {locked ? (
                 <>
                   <div className="lg:col-span-4">
-                    <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><LockKeyhole className="h-4 w-4" />AlphaEngine Pro access</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Unlock current allocation, target changes, formal backtests, attribution and retained evidence.</p>
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><LockKeyhole className="h-4 w-4" />{requiredTier === 'pro' ? 'AlphaEngine Pro product' : `${requiredTier} access required`}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Open the product to see its access requirements and account options.</p>
                   </div>
                   <Crown className="hidden h-4 w-4 text-primary lg:block" />
                 </>

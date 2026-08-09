@@ -1,5 +1,6 @@
 import type { ModelData } from './data-parser';
 import type { FormalBacktestPackage } from './formal-backtest';
+import { publicModelDisplayName } from './model-presentation';
 import {
   parseModelRunBundleV2Manifest,
   sha256Text,
@@ -151,7 +152,7 @@ export function adaptLocalRuns(models: ModelData[]): GovernedRunSummary[] {
       modelVersionId: version,
       runId: run,
       bundleId: null,
-      title: model.name || model.tag || model.id,
+      title: publicModelDisplayName(model.name || model.tag || model.id, { modelId: model.id }),
       modelKind: model.model_type === 'rules_based_rotation' ? 'rules_based_allocation' : 'cross_sectional_ranker',
       channel: 'local',
       publicationStatus: 'local_only',
@@ -174,7 +175,11 @@ export function adaptLocalRuns(models: ModelData[]): GovernedRunSummary[] {
 
 function summaryTitle(summary: Record<string, unknown>, record: ModelRunCatalogRecord): string {
   const value = summary.title ?? summary.display_name ?? summary.name;
-  return typeof value === 'string' && value.trim() ? value : record.model_version_id;
+  const fallback = typeof value === 'string' && value.trim() ? value : record.model_version_id;
+  return publicModelDisplayName(fallback, {
+    modelFamilyId: record.model_family_id,
+    modelVersionId: record.model_version_id,
+  });
 }
 
 function summaryText(summary: Record<string, unknown>, key: string, fallback: string): string {

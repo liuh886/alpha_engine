@@ -43,6 +43,32 @@ type FormalCatalog = { records?: Array<{ manifest_path?: string }> };
 type FormalManifest = { sections?: Array<{ section_id?: string; availability_status?: string; path?: string }> };
 type FormalSummary = { display_name?: string; model_version_id?: string };
 
+interface MembershipFixture {
+  loading: boolean;
+  isPro: boolean;
+  user: { id: string; app_metadata?: { alpha_engine_role?: string } } | null;
+}
+
+async function installMembershipFixture(page: Page, initial: MembershipFixture): Promise<void> {
+  await page.route('**/admin/shared/account-shell.js*', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+  await page.addInitScript((snapshot) => {
+    let current = snapshot;
+    const listeners = new Set<(value: MembershipFixture) => void>();
+    (window as any).HaoAccount = {
+      getState: () => current,
+      open: () => undefined,
+      subscribe: (listener: (value: MembershipFixture) => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    (window as any).__setAlphaMembership = (next: MembershipFixture) => {
+      current = next;
+      listeners.forEach((listener) => listener(current));
+    };
+  }, initial);
+}
+
 async function installBundleFixture(): Promise<void> {
   const root = resolve(process.cwd(), 'dist', 'bundle');
   await mkdir(resolve(root, 'data'), { recursive: true });
@@ -61,11 +87,46 @@ async function assertNoHorizontalOverflow(page: Page) {
 }
 
 async function openConsole(page: Page) {
+  await installMembershipFixture(page, { loading: false, isPro: true, user: { id: 'pro-fixture' } });
   await page.goto('/#/app');
   await expect(page.locator('#root')).not.toBeEmpty();
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
   await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
 }
+
+test('Security Explorer requires sign-in and remains available to Free accounts', async ({ page }) => {
+  const marketEvidenceRequests: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.includes('/data/market-evidence/')) marketEvidenceRequests.push(request.url());
+  });
+  await installMembershipFixture(page, { loading: false, isPro: false, user: null });
+
+  await page.goto('/#/securities');
+  await expect(page.getByRole('heading', { name: 'Sign in to open Security Explorer' })).toBeVisible();
+  await expect(page.getByText('AlphaEngine Pro is not required.')).toBeVisible();
+  expect(marketEvidenceRequests).toEqual([]);
+
+  await page.evaluate(() => {
+    (window as any).__setAlphaMembership({ loading: false, isPro: false, user: { id: 'free-fixture' } });
+  });
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Security Explorer', exact: true })).toBeVisible();
+  await expect.poll(() => marketEvidenceRequests.length).toBeGreaterThan(0);
+});
+
+test('Free users see an explicit Pro product gate for an advanced model', async ({ page }) => {
+  await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'free-fixture' } });
+  await page.goto('/#/strategies');
+  await page.getByRole('region', { name: 'Formal strategy fleet' }).getByText('QQQR', { exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'QQQR is a Pro product' })).toBeVisible();
+  await expect(page.getByText('This product requires an active AlphaEngine Pro subscription.')).toBeVisible();
+});
+
+test('only a verified Owner can open access settings', async ({ page }) => {
+  await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'owner-fixture', app_metadata: { alpha_engine_role: 'owner' } } });
+  await page.goto('/#/settings/access');
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Access Settings' })).toBeVisible();
+  await expect(page.getByText('Guest < Member < Pro < Owner.')).toBeVisible();
+});
 
 async function loadFormalDisplayNames(page: Page): Promise<string[]> {
   const catalogResponse = await page.request.get('/data/formal-model-runs/catalog.json');
@@ -83,7 +144,7 @@ async function loadFormalDisplayNames(page: Page): Promise<string[]> {
     expect(summaryResponse.ok()).toBeTruthy();
     const summary = await summaryResponse.json() as FormalSummary;
     expect(summary.display_name).toBeTruthy();
-    names.push(String(summary.display_name));
+    names.push(String(summary.model_version_id).startsWith('qqqi_qqq_tqqq_') ? 'QQQR' : String(summary.display_name));
   }
   expect(names.length).toBeGreaterThan(0);
   return names;
@@ -129,9 +190,9 @@ test('strategy console exposes four primary destinations and formal strategy dri
   const formalNames = await loadFormalDisplayNames(page);
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   for (const name of formalNames) await expect(fleet.getByText(name, { exact: true })).toBeVisible();
-  await fleet.getByText('QQQ Rotation v4.3', { exact: true }).click();
+  await fleet.getByText('QQQR', { exact: true }).click();
   await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_3$/);
-  await expect(page.getByRole('heading', { name: 'QQQ Rotation v4.3' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'QQQR', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current decision state' })).toBeVisible();
   const formalTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
   for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {

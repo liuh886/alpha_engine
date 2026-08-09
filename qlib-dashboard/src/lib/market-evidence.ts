@@ -1,3 +1,5 @@
+import { publicModelDisplayName } from './model-presentation';
+
 export type MarketEvidenceMarket = 'us' | 'cn';
 
 export interface MarketEvidenceCatalogSymbol {
@@ -308,12 +310,16 @@ export function parseSecurityMarketEvidence(value: unknown, expectedMarket?: Mar
     const eventInstrumentId = requiredString(raw.instrument_id, `Formal model event ${index} instrument_id`);
     if (eventInstrumentId !== instrumentId) throw new Error(`Formal model event ${index} instrument identity mismatch.`);
     const optional = (entry: unknown) => entry === null || entry === undefined ? null : requiredFinite(entry, `Formal model event ${index} weight`);
+    const modelId = requiredString(raw.model_id, `Formal model event ${index} model_id`);
     return {
       time: requiredString(raw.time, `Formal model event ${index} time`),
       instrument_id: eventInstrumentId,
       source_instrument: requiredString(raw.source_instrument, `Formal model event ${index} source_instrument`),
-      model_id: requiredString(raw.model_id, `Formal model event ${index} model_id`),
-      model_name: requiredString(raw.model_name, `Formal model event ${index} model_name`),
+      model_id: modelId,
+      model_name: publicModelDisplayName(
+        requiredString(raw.model_name, `Formal model event ${index} model_name`),
+        { modelId },
+      ),
       run_id: String(raw.run_id ?? ''),
       action,
       previous_weight: optional(raw.previous_weight),

@@ -11,6 +11,7 @@ import {
   ScrollText,
   Settings2,
   ShieldQuestion,
+  SlidersHorizontal,
   Sparkles,
 } from 'lucide-react';
 import { lazy, type ComponentType } from 'react';
@@ -27,6 +28,8 @@ export interface RouteDefinition {
   label: string;
   component: ComponentType<any>;
   navVisible?: boolean;
+  accessResourceId?: string;
+  ownerOnly?: boolean;
 }
 
 const OverviewPage = lazy(() => import('./pages/StrategyOverviewPage').then((m) => ({ default: m.StrategyOverviewPage })));
@@ -45,12 +48,13 @@ const EvidenceReportsPage = lazy(() => import('./pages/EvidenceReportsPage').the
 const ComparePage = lazy(() => import('./pages/ComparePage').then((m) => ({ default: m.ComparePage })));
 const DecisionsPage = lazy(() => import('./pages/DecisionsPage').then((m) => ({ default: m.DecisionsPage })));
 const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then((m) => ({ default: m.MethodologyPage })));
+const AccessSettingsPage = lazy(() => import('./pages/AccessSettingsPage').then((m) => ({ default: m.AccessSettingsPage })));
 
 /** Product navigation is strategy-centric; evidence views remain drill-down routes. */
 export const routes: RouteDefinition[] = [
   { path: 'app', title: 'Strategy Overview', label: 'Overview', releaseLevel: 'release', navGroup: 'Monitor', icon: LayoutDashboard, component: OverviewPage },
   { path: 'strategies', title: 'Formal Strategies', label: 'Strategies', releaseLevel: 'release', navGroup: 'Monitor', icon: Sparkles, component: StrategiesPage },
-  { path: 'securities', title: 'Security Explorer', label: 'Securities', releaseLevel: 'release', navGroup: 'Monitor', icon: CandlestickChart, component: SecurityExplorerPage },
+  { path: 'securities', title: 'Security Explorer', label: 'Securities', releaseLevel: 'release', navGroup: 'Monitor', icon: CandlestickChart, component: SecurityExplorerPage, accessResourceId: 'securities' },
   { path: 'strategies/:strategyId', title: 'Strategy', label: 'Strategy', releaseLevel: 'release', navGroup: 'Monitor', icon: Sparkles, component: StrategyDetailPage, navVisible: false },
   { path: 'research', title: 'Strategy Research', label: 'Research', releaseLevel: 'release', navGroup: 'Research', icon: ListTree, component: ResearchHubPage },
   { path: 'system', title: 'System Trust', label: 'System', releaseLevel: 'release', navGroup: 'System', icon: Settings2, component: SystemHubPage },
@@ -66,6 +70,7 @@ export const routes: RouteDefinition[] = [
   { path: 'data', title: 'Data Lineage', label: 'Data', releaseLevel: 'release', navGroup: 'System', icon: Database, component: EvidenceDataPage, navVisible: false },
   { path: 'library', title: 'Local Bundle Library', label: 'Library', releaseLevel: 'release', navGroup: 'System', icon: FolderArchive, component: LibraryPage, navVisible: false },
   { path: 'methodology', title: 'Methodology & Boundaries', label: 'Methodology', releaseLevel: 'release', navGroup: 'System', icon: BookOpen, component: MethodologyPage, navVisible: false },
+  { path: 'settings/access', title: 'Access Settings', label: 'Access', releaseLevel: 'internal', navGroup: 'System', icon: SlidersHorizontal, component: AccessSettingsPage, navVisible: false, ownerOnly: true },
 ];
 
 export function isRuntimeVisible(route: RouteDefinition): boolean {

@@ -151,6 +151,21 @@ async function assertNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(2);
 }
 
+async function installProMembership(page: Page): Promise<void> {
+  await page.route('**/admin/shared/account-shell.js*', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+  await page.addInitScript(() => {
+    const snapshot = { loading: false, isPro: true, user: { id: 'pro-fixture' } };
+    (window as any).HaoAccount = {
+      getState: () => snapshot,
+      open: () => undefined,
+      subscribe: (listener: (value: typeof snapshot) => void) => {
+        listener(snapshot);
+        return () => undefined;
+      },
+    };
+  });
+}
+
 test('QQQ operating evidence is rendered from the governed static read model', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   const githubApiRequests: string[] = [];
@@ -159,9 +174,10 @@ test('QQQ operating evidence is rendered from the governed static read model', a
     if (request.url().startsWith('https://api.github.com/')) githubApiRequests.push(request.url());
   });
   await mockBundle(page);
+  await installProMembership(page);
 
   await page.goto('/#/strategies/qqqi_qqq_tqqq_v4_3');
-  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQ Rotation v4.3', exact: true, level: 1 })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('heading', { name: 'QQQR', exact: true, level: 1 })).toBeVisible();
 
   const now = page.getByRole('region', { name: 'Current decision state' });
   await expect(now).toBeVisible();
