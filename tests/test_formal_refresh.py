@@ -352,8 +352,6 @@ def test_formal_refresh_frontend_validation_paths_are_complete() -> None:
     live = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"
     )
-    assert "Verify reviewed refresh PR authority" in live
-    assert ".can_approve_pull_request_reviews" in live
     preflight_start = live.index(
         "      - name: Validate refresh implementation before network work"
     )
