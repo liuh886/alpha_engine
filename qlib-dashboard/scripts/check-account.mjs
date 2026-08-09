@@ -27,15 +27,28 @@ for (const reference of [
   'https://liuh886.github.io/admin/shared/account-shell.css?v=5',
   'https://liuh886.github.io/admin/shared/account-upgrade.css?v=1',
   'https://liuh886.github.io/admin/shared/account-shell.js?v=5',
-  'https://liuh886.github.io/admin/shared/account-upgrade.js?v=2',
+  'https://liuh886.github.io/admin/shared/account-upgrade.js?v=3',
   './account-integration.css',
 ]) {
   if (!html.includes(reference)) throw new Error(`index.html missing canonical account asset: ${reference}`);
 }
 if (html.includes('./account-shell/')) throw new Error('AlphaEngine must not ship a duplicated account-shell copy.');
 
-for (const value of ['window.HaoAccountConfig', "productCode: 'alpha_engine'", "entitlementCode: 'alpha_engine.pro'", "mountSelectors: ['[data-account-slot]']", 'billingEnabled: true', 'Owner decides which models and modules require Member or Pro access', 'Owner-designated Pro products', 'models and modules designated as Pro by Owner', 'feedbackEnabled: false']) {
+for (const value of [
+  'window.HaoAccountConfig',
+  "productCode: 'alpha_engine'",
+  "entitlementCode: 'alpha_engine.pro'",
+  "mountSelectors: ['[data-account-slot]']",
+  'billingEnabled: true',
+  'AlphaEngine Pro 解锁高级模型、完整回测、归因与研究证据',
+  '访问 Pro 高级模型与模块',
+  '查看完整回测、归因与研究证据',
+  'feedbackEnabled: false',
+]) {
   if (!content.config.includes(value)) throw new Error(`account config missing: ${value}`);
+}
+if (/Owner|Guest：|Member：|access levels|configure access/i.test(content.config)) {
+  throw new Error('Public account copy must not expose internal access-control roles or configuration rules.');
 }
 if (/QQQ (family|series|Pro)|QQQ 系列/.test(content.config)) {
   throw new Error('Account and upgrade copy must not bind Pro access to the QQQ model family.');
@@ -73,4 +86,4 @@ for (const forbidden of [/sk_(live|test)_/, /whsec_/, /sb_secret_/, /service_rol
   if (forbidden.test(combined)) throw new Error(`browser assets contain forbidden material: ${forbidden}`);
 }
 
-console.log('AlphaEngine access contract passed: Guest, Member, Pro and Owner are policy-driven; no model family is hard-coded as a role.');
+console.log('AlphaEngine access contract passed: public account copy is user-facing while internal access policy remains enforced separately.');
