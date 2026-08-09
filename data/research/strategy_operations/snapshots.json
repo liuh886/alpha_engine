@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-08T05:30:00Z",
+  "generated_at": "2026-08-09T05:11:02Z",
   "records": [
     {
       "allocations": [
@@ -143,9 +143,9 @@
       "source_identity": {
         "commit_sha": "19fb948969abb0f3b7ce8e5fb6709eaf9f128a9c",
         "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
-        "formal_bundle_id": "a36cee1bab0069369b4a994158a96998829846eb7cf7997cef86b3e447cf41a1",
-        "formal_evidence_cutoff": "2026-08-03",
-        "formal_run_id": "byd_v1_2_convex_momentum_budget_v1-formal-user-authorized-2026-08-06",
+        "formal_bundle_id": "a28519df32797e0a135736e8626b6cf1fb9a1ba950d01248bc48a45b7fc540f9",
+        "formal_evidence_cutoff": "2026-08-07",
+        "formal_run_id": "byd_v1_2_convex_momentum_budget_v1-through-2026_08_07",
         "github_issue_number": null,
         "ledger_fingerprint": "4c736e991b851defd748",
         "signal_sha256": "e40e0b82b45fbcbc36696e755a3db2f18b87d1edf92bfdc1a7a9ce7729a79345",
@@ -166,7 +166,7 @@
       "estimated_cost": null,
       "factor_evidence": [],
       "factor_freshness": "blocked",
-      "latest_completed_session": "2026-08-03",
+      "latest_completed_session": "2026-08-07",
       "model_version_id": "cn_x1_1",
       "next_decision_policy": "Publish only on the governed rebalance session; target applies to the next eligible open.",
       "note": "The signal publisher exists, but no cutoff-bound evaluation has been committed yet.",
@@ -174,9 +174,9 @@
       "source_identity": {
         "commit_sha": null,
         "factor_catalog_implementation_hash": null,
-        "formal_bundle_id": "1130220a1367246495c676a2396b341443ea1dc80779a307ec1f7ac206fdc212",
-        "formal_evidence_cutoff": "2026-08-03",
-        "formal_run_id": "cn_x1_1-formal-31022910416",
+        "formal_bundle_id": "c389ff34faee12d1f0e42378a31991b5e797c861ce5719f1ad7c3f98c0616a87",
+        "formal_evidence_cutoff": "2026-08-07",
+        "formal_run_id": "cn_x1_1-through-2026_08_07",
         "github_issue_number": null,
         "ledger_fingerprint": null,
         "signal_sha256": null,
@@ -341,7 +341,7 @@
       "source_identity": {
         "commit_sha": "f664d0c307edbcfb8d32e3a519fd0d7d6979a2e7",
         "factor_catalog_implementation_hash": "6c63fb7954b316632f30dc46bbafba7740c32fdc42abe3202774a6f56274b2f4",
-        "formal_bundle_id": "0dffb990d9da38cf43c2d04dbae687c873404dd1344ef774da99c0f7444ddb87",
+        "formal_bundle_id": "9f744ca76ff9f53b96835e9c99d624648c803fdc70aa3733b31b1b3ed9aad668",
         "formal_evidence_cutoff": "2026-08-07",
         "formal_run_id": "qqqi_qqq_tqqq_v4_3-through-2026_08_07",
         "github_issue_number": null,
@@ -364,7 +364,7 @@
       "estimated_cost": null,
       "factor_evidence": [],
       "factor_freshness": "blocked",
-      "latest_completed_session": "2026-07-31",
+      "latest_completed_session": "2026-08-07",
       "model_version_id": "us_x1_1",
       "next_decision_policy": "Publish only on the governed rebalance session; target applies to the next eligible open.",
       "note": "The signal publisher exists, but no cutoff-bound evaluation has been committed yet.",
@@ -372,9 +372,9 @@
       "source_identity": {
         "commit_sha": null,
         "factor_catalog_implementation_hash": null,
-        "formal_bundle_id": "687eeff77d38a7dcec67f12c6d3a78513af937bdbb7522f882fffde1719f9078",
-        "formal_evidence_cutoff": "2026-07-31",
-        "formal_run_id": "us_x1_1_through_2026_07_31",
+        "formal_bundle_id": "ff03b4867702e8563b57556549b7b2b76ad83b0d5aead63395ae6ddde3ef2f40",
+        "formal_evidence_cutoff": "2026-08-07",
+        "formal_run_id": "us_x1_1-through-2026_08_07",
         "github_issue_number": null,
         "ledger_fingerprint": null,
         "signal_sha256": null,
