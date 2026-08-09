@@ -194,7 +194,7 @@ jobs:
           REQUESTED_CUTOFF: ${{ needs.prepare.outputs.requested_cutoff }}
         run: |
           set -euo pipefail
-          python scripts/govern_formal_provider_cache.py contract \
+          python -m scripts.govern_formal_provider_cache contract \
             --root . --market "$MARKET" --start 2021-01-01 \
             --cutoff "$REQUESTED_CUTOFF" \
             --output "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
@@ -228,7 +228,7 @@ jobs:
         env:
           MARKET: ${{ matrix.market }}
         run: |
-          python scripts/govern_formal_provider_cache.py seal \
+          python -m scripts.govern_formal_provider_cache seal \
             --provider-root "artifacts/formal-refresh/provider-${MARKET}" \
             --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
             --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
@@ -237,7 +237,7 @@ jobs:
         env:
           MARKET: ${{ matrix.market }}
         run: |
-          python scripts/govern_formal_provider_cache.py verify \
+          python -m scripts.govern_formal_provider_cache verify \
             --provider-root "artifacts/formal-refresh/provider-${MARKET}" \
             --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
             --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
@@ -302,11 +302,11 @@ jobs:
         run: |
           set -euo pipefail
           for market in us cn; do
-            python scripts/govern_formal_provider_cache.py contract \
+            python -m scripts.govern_formal_provider_cache contract \
               --root . --market "$market" --start 2021-01-01 \
               --cutoff "$REQUESTED_CUTOFF" \
               --output "artifacts/formal-refresh/provider-${market}-contract.json"
-            python scripts/govern_formal_provider_cache.py verify \
+            python -m scripts.govern_formal_provider_cache verify \
               --provider-root "artifacts/formal-refresh/provider-${market}" \
               --contract "artifacts/formal-refresh/provider-${market}-contract.json" \
               --receipt "artifacts/formal-refresh/provider-${market}/artifacts/formal-provider-cache-receipt.json"
