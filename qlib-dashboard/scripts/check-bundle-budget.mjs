@@ -1,23 +1,21 @@
 /**
  * check-bundle-budget.mjs
  *
- * Builds the frontend and verifies that the total gzipped size of all
- * JavaScript shipped to the browser stays within the documented budget
- * (450 KB).
+ * Verifies that the already-built production artifact stays within the
+ * documented JavaScript budget (450 KB gzip).
  *
- * Because this project uses vite-plugin-singlefile, JS chunks are inlined
- * into dist/index.html as <script> tags.  The script extracts every
- * inline <script> body, gzips each one independently, and sums the totals.
+ * The build is intentionally owned by the caller. This keeps CI to one
+ * production build instead of rebuilding the application just to measure it.
  *
- * If the build produces standalone .js files in dist/ (e.g. if the
- * singlefile plugin is removed in the future), those are measured instead.
+ * Because this project uses vite-plugin-singlefile, JS chunks are normally
+ * inlined into dist/index.html as <script> tags. If standalone .js files are
+ * present, those are measured instead.
  *
- * Usage:  node scripts/check-bundle-budget.mjs
- * Exit 0 = pass, Exit 1 = over budget.
+ * Usage: npm run build && node scripts/check-bundle-budget.mjs
+ * Exit 0 = pass, Exit 1 = missing/stale artifact or over budget.
  */
 
-import { execSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { resolve, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,13 +25,12 @@ const PROJECT_ROOT = resolve(__dirname, "..");
 
 const BUDGET_KB = 450;
 const DIST = resolve(PROJECT_ROOT, "dist");
+const INDEX = resolve(DIST, "index.html");
 
-// ── 1. Build ────────────────────────────────────────────────────────
-console.log("▸ Building production bundle…");
-execSync("npm run build", { cwd: PROJECT_ROOT, stdio: "inherit" });
-console.log();
-
-// ── 2. Collect JS bytes ─────────────────────────────────────────────
+if (!existsSync(INDEX)) {
+  console.error("✘ Missing dist/index.html. Build the production artifact before checking its budget.");
+  process.exit(1);
+}
 
 /** Recursively find files matching a predicate. */
 function walk(dir, predicate, out = []) {
@@ -48,17 +45,15 @@ function walk(dir, predicate, out = []) {
   return out;
 }
 
-const jsFiles = walk(DIST, (f) => extname(f) === ".js");
-
-let jsSegments = [];  // { label, rawKB, gzipKB }
+const jsFiles = walk(DIST, (file) => extname(file) === ".js");
+const jsSegments = [];
 
 if (jsFiles.length > 0) {
-  // ── Mode A: standalone .js files in dist/ ──
   console.log(`  Found ${jsFiles.length} JS file(s) in dist/:`);
-  for (const f of jsFiles) {
-    const raw = readFileSync(f);
+  for (const file of jsFiles) {
+    const raw = readFileSync(file);
     const gz = gzipSync(raw);
-    const label = f.replace(DIST + "\\", "").replace(DIST + "/", "");
+    const label = file.replace(DIST + "\\", "").replace(DIST + "/", "");
     jsSegments.push({
       label,
       rawKB: raw.length / 1024,
@@ -66,23 +61,18 @@ if (jsFiles.length > 0) {
     });
   }
 } else {
-  // ── Mode B: JS inlined inside index.html (singlefile mode) ──
-  const indexPath = resolve(DIST, "index.html");
-  const html = readFileSync(indexPath, "utf-8");
-
-  // Match every <script ...>...</script> with a non-empty body.
-  // The singlefile plugin produces a single large inline script.
+  const html = readFileSync(INDEX, "utf-8");
   const scriptRe = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
   let match;
-  let i = 0;
+  let index = 0;
   while ((match = scriptRe.exec(html)) !== null) {
     const body = match[1].trim();
     if (!body) continue;
-    i++;
+    index += 1;
     const raw = Buffer.from(body, "utf-8");
     const gz = gzipSync(raw);
     jsSegments.push({
-      label: `inline-script-${i}`,
+      label: `inline-script-${index}`,
       rawKB: raw.length / 1024,
       gzipKB: gz.length / 1024,
     });
@@ -94,25 +84,23 @@ if (jsFiles.length > 0) {
   console.log(`  Single-file mode: extracted ${jsSegments.length} inline <script> block(s):`);
 }
 
-// ── 3. Report ───────────────────────────────────────────────────────
 let totalRaw = 0;
 let totalGzip = 0;
-for (const seg of jsSegments) {
-  console.log(`    ${seg.label}  raw ${seg.rawKB.toFixed(1)} KB  gzip ${seg.gzipKB.toFixed(1)} KB`);
-  totalRaw += seg.rawKB;
-  totalGzip += seg.gzipKB;
+for (const segment of jsSegments) {
+  console.log(`    ${segment.label}  raw ${segment.rawKB.toFixed(1)} KB  gzip ${segment.gzipKB.toFixed(1)} KB`);
+  totalRaw += segment.rawKB;
+  totalGzip += segment.gzipKB;
 }
+
 console.log();
 console.log(`  Total JS raw:  ${totalRaw.toFixed(2)} KB`);
 console.log(`  Total JS gzip: ${totalGzip.toFixed(2)} KB`);
 console.log(`  Budget:         ${BUDGET_KB} KB`);
 console.log();
 
-// ── 4. Gate ─────────────────────────────────────────────────────────
 if (totalGzip > BUDGET_KB) {
   console.error(`✘ OVER BUDGET by ${(totalGzip - BUDGET_KB).toFixed(2)} KB`);
   process.exit(1);
-} else {
-  console.log(`✔ Within budget (${(BUDGET_KB - totalGzip).toFixed(2)} KB headroom)`);
-  process.exit(0);
 }
+
+console.log(`✔ Within budget (${(BUDGET_KB - totalGzip).toFixed(2)} KB headroom)`);

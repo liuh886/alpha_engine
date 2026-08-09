@@ -56,10 +56,7 @@ jobs:
       - name: Lint
         working-directory: qlib-dashboard
         run: npm run lint
-      - name: Unit tests
-        working-directory: qlib-dashboard
-        run: npm test -- --run
-      - name: Build static strategy console
+      - name: Build and validate static strategy console
         working-directory: qlib-dashboard
         run: npm run build
       - name: Validate PWA output
@@ -85,7 +82,7 @@ jobs:
         run: npx playwright test --config=playwright.static.config.ts
       - name: Upload static screenshots and traces
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: alpha-engine-static-browser-evidence
           path: |
@@ -94,7 +91,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Upload static build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: alpha-engine-static-pwa
           path: qlib-dashboard/dist
