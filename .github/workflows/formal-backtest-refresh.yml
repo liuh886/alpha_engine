@@ -31,6 +31,7 @@ on:
       - "scripts/sync_formal_bundle_v2.py"
       - "configs/factor_libraries/ohlcv.yaml"
       - "tests/test_formal_refresh.py"
+      - "tests/test_refresh_allocation_formal.py"
       - "tests/test_refresh_qqq_v4_3_formal.py"
       - "tests/test_market_evidence.py"
       - "tests/test_strategy_operations.py"
@@ -115,11 +116,13 @@ jobs:
             scripts/data/refresh_selected_pool_prices.py \
             scripts/data/refresh_selected_pool_prices_v2.py \
             tests/test_formal_refresh.py \
+            tests/test_refresh_allocation_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_strategy_operations.py
           uv run pytest \
             tests/test_formal_refresh.py \
+            tests/test_refresh_allocation_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_strategy_operations.py \
@@ -316,6 +319,7 @@ jobs:
           set -euo pipefail
           uv run pytest \
             tests/test_formal_refresh.py \
+            tests/test_refresh_allocation_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
             tests/test_formal_backtest_freshness.py \
@@ -374,7 +378,7 @@ jobs:
           - Formal v1, Bundle v2, Market Evidence and Strategy Operations: one reviewed publication
           - Model selection: not reopened
           - Protected merge: all candidate PR checks must pass before explicit squash merge
-          - Pages publication: dispatched only after the reviewed PR merges
+          - Pages publication: the push-triggered release for the reviewed merge SHA must pass live acceptance before operating status becomes current
           - Research only: true
           - Trade ready: false
           EOF
@@ -393,9 +397,10 @@ jobs:
           fi
           test -n "$number"
           echo "pr_number=$number" >> "$GITHUB_OUTPUT"
-      - name: Wait for candidate checks, merge reviewed refresh, and dispatch Pages
+      - name: Wait for candidate checks, merge reviewed refresh, and verify Pages
+        id: release
         if: steps.pull_request.outputs.pr_number != ''
-        timeout-minutes: 60
+        timeout-minutes: 120
         env:
           PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
         run: |
@@ -415,8 +420,33 @@ jobs:
           test "$state" = "MERGED"
           merge_sha="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq '.mergeCommit.oid')"
           test -n "$merge_sha"
-          echo "Reviewed refresh merged at ${merge_sha}; dispatching Pages from main."
-          gh workflow run deploy-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+          echo "merge_sha=$merge_sha" >> "$GITHUB_OUTPUT"
+          echo "Reviewed refresh merged at ${merge_sha}; waiting for its push-triggered Pages release."
+          pages_run=""
+          for attempt in $(seq 1 60); do
+            pages_run="$(gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow deploy-pages.yml \
+              --branch main \
+              --event push \
+              --limit 20 \
+              --json databaseId,headSha \
+              --jq ".[] | select(.headSha == \"${merge_sha}\") | .databaseId" \
+              | head -n 1)"
+            if [[ -n "$pages_run" ]]; then
+              break
+            fi
+            sleep 5
+          done
+          if [[ -z "$pages_run" ]]; then
+            echo "No push-triggered Pages run found for reviewed merge ${merge_sha}." >&2
+            exit 1
+          fi
+          echo "pages_run_id=$pages_run" >> "$GITHUB_OUTPUT"
+          echo "Watching Pages run ${pages_run} for reviewed merge ${merge_sha}."
+          gh run watch "$pages_run" --repo "$GITHUB_REPOSITORY" --exit-status --interval 10
+          pages_conclusion="$(gh run view "$pages_run" --repo "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')"
+          test "$pages_conclusion" = "success"
       - name: Upsert refresh operating status
         if: always()
         uses: actions/github-script@v8
@@ -425,12 +455,16 @@ jobs:
           PR_NUMBER: ${{ steps.pull_request.outputs.pr_number }}
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
+          REVIEWED_MERGE_SHA: ${{ steps.release.outputs.merge_sha }}
+          PAGES_RUN_ID: ${{ steps.release.outputs.pages_run_id }}
           JOB_STATUS: ${{ job.status }}
         with:
           script: |
             const marker = '<!-- reviewed-formal-backtest-refresh -->';
             const failed = process.env.JOB_STATUS !== 'success';
             const prNumber = process.env.PR_NUMBER || '';
+            const mergeSha = process.env.REVIEWED_MERGE_SHA || '';
+            const pagesRunId = process.env.PAGES_RUN_ID || '';
             const status = failed ? 'blocked' : 'current';
             const body = [
               marker,
@@ -441,15 +475,18 @@ jobs:
               `- CN common cutoff: \`${process.env.CN_CUTOFF || 'unresolved'}\``,
               `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               `- Review PR: ${prNumber ? `#${prNumber}` : 'none'}`,
+              `- Reviewed merge SHA: ${mergeSha ? `\`${mergeSha}\`` : 'none'}`,
+              `- Pages acceptance run: ${pagesRunId ? `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${pagesRunId}` : 'none'}`,
               '- Formal + Market Evidence transaction: one reviewed publication',
               '- Model selection reopened: no',
               '- Automatic merge: only after required PR checks pass',
+              '- Pages live acceptance: required before current/closed status',
               '- Research only: yes',
               '- Trade ready: no',
               '',
               failed
-                ? 'The refresh failed closed before accepted formal or market evidence was modified.'
-                : 'Accepted formal evidence and Market Evidence match the latest provider-resolved common sessions.',
+                ? 'The refresh failed closed before the complete reviewed publication and live Pages acceptance transaction finished.'
+                : 'Accepted formal evidence, Market Evidence, Strategy Operations and live Pages match the latest provider-resolved common sessions.',
             ].join('\n');
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
