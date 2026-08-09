@@ -70,7 +70,8 @@ function Layout(props: LayoutProps) {
     }
     return null;
   }, [activeRun, declaredRoute, location.pathname, location.search, props.runs]);
-  const proLocked = isProModelRun(protectedRun) && !membership.isPro;
+  const proRoute = isProModelRun(protectedRun);
+  const proLocked = proRoute && !membership.isPro;
   const showRunPicker = Boolean(
     declaredRoute
     && ['backtests', 'review', 'compare', 'decisions'].includes(declaredRoute.path)
@@ -150,7 +151,7 @@ function Layout(props: LayoutProps) {
         <ResearchContextBar />
 
         <main ref={mainRef} className="research-main">
-          {props.loading ? (
+          {props.loading || (proRoute && membership.loading) ? (
             <div className="space-y-6">
               <div className="grid gap-4 md:grid-cols-3">
                 {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-xl" />)}
