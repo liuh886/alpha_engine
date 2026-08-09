@@ -127,6 +127,20 @@ function parsePositions(value: unknown): Position[] {
   return positions;
 }
 
+function attachBydPriceBaseline(report: ReportRow[], positions: Position[]): ReportRow[] {
+  const prices = new Map<string, number>();
+  for (const position of positions) {
+    if (position.instrument.toUpperCase() !== 'BYD') continue;
+    const price = Number(position.price);
+    if (Number.isFinite(price) && price > 0) prices.set(position.date, price);
+  }
+  if (!prices.size) return report;
+  return report.map((row) => {
+    const price = prices.get(row.date);
+    return price === undefined ? row : { ...row, bench_byd: price };
+  });
+}
+
 export function metricById(metrics: CanonicalMetricV2[], metricId: string): CanonicalMetricV2 | null {
   return metrics.find((metric) => metric.metric_id === metricId) ?? null;
 }
@@ -163,6 +177,12 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
   const start = String(dateRange.start ?? run.manifest.comparability_key.start);
   const end = String(dateRange.end ?? run.manifest.comparability_key.end);
   const benchmark = String(performance.benchmark ?? run.benchmark);
+  const parsedPositions = parsePositions(portfolio.positions);
+  const chartBenchmark = run.modelFamilyId === 'byd_allocation' ? 'BYD' : benchmark;
+  const parsedReport = attachBydPriceBaseline(
+    parseReport(performance.report, chartBenchmark),
+    parsedPositions,
+  );
 
   return {
     run,
@@ -170,7 +190,7 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
     performance: {
       benchmark,
       dateRange: { start, end },
-      report: parseReport(performance.report, benchmark),
+      report: parsedReport,
       traceFrequency: String(performance.trace_frequency ?? run.manifest.comparability_key.trace_frequency),
     },
     risk: {
@@ -183,7 +203,7 @@ export async function loadFormalRunEvidence(run: GovernedRunSummary): Promise<Fo
     },
     portfolio: {
       contract: isRecord(portfolio.portfolio_contract) ? portfolio.portfolio_contract : {},
-      positions: parsePositions(portfolio.positions),
+      positions: parsedPositions,
     },
     trades: tradesRaw ? records(tradesRaw, 'trades') : [],
     attribution: attributionRaw ? records(attributionRaw, 'attribution') : [],
