@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 from types import ModuleType
 
 import yaml
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/validate_model_x1_baselines.py"
@@ -75,3 +77,30 @@ def test_model_configs_notebooks_and_frozen_specs_tie() -> None:
         "byd_v1_2_convex_momentum_budget_v1",
     ]
     assert all(item["trade_ready"] is False for item in result["models"])
+
+
+def test_cn_registry_accepts_append_only_publication_cutoff_extension() -> None:
+    module = _load_validator()
+    config = yaml.safe_load((ROOT / "configs/models/cn_x1_1.yaml").read_text())
+    package = json.loads(
+        (ROOT / "data/research/formal_backtests/cn_x1_1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    package["evidence_cutoff"] = "2026-08-07"
+
+    module._validate_cn_formal_extension(package, config)
+
+
+def test_cn_registry_rejects_frozen_evidence_truncation() -> None:
+    module = _load_validator()
+    config = yaml.safe_load((ROOT / "configs/models/cn_x1_1.yaml").read_text())
+    package = json.loads(
+        (ROOT / "data/research/formal_backtests/cn_x1_1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    package["report"] = package["report"][:-1]
+
+    with pytest.raises(ValueError, match="frozen report prefix"):
+        module._validate_cn_formal_extension(package, config)

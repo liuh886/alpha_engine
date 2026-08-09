@@ -207,12 +207,16 @@ def test_byd_formal_refresh_replays_production_archives(tmp_path: Path) -> None:
     with zipfile.ZipFile(archive_path) as archive:
         archive.extractall(etf_base)
 
+    current_package = Path(
+        "data/research/formal_backtests/"
+        "byd_v1_2_convex_momentum_budget_v1.json"
+    )
+    current_cutoff = str(
+        json.loads(current_package.read_text(encoding="utf-8"))["evidence_cutoff"]
+    )
     output = tmp_path / "byd-formal.json"
     result = refresh_byd(
-        current_package=Path(
-            "data/research/formal_backtests/"
-            "byd_v1_2_convex_momentum_budget_v1.json"
-        ),
+        current_package=current_package,
         base_byd_dir=byd_base,
         base_etf_dir=etf_base,
         shadow_store=Path("data/research/byd_prospective_shadow"),
@@ -224,10 +228,25 @@ def test_byd_formal_refresh_replays_production_archives(tmp_path: Path) -> None:
     )
 
     package = json.loads(output.read_text(encoding="utf-8"))
-    assert result["appended_sessions"] > 0
+    expected_appended = current_cutoff < "2026-08-07"
+    assert (result["appended_sessions"] > 0) is expected_appended
     assert package["evidence_cutoff"] == "2026-08-07"
     assert package["research_only"] is True
     assert package["trade_ready"] is False
+
+    replay_output = tmp_path / "byd-formal-replay.json"
+    replay = refresh_byd(
+        current_package=output,
+        base_byd_dir=byd_base,
+        base_etf_dir=etf_base,
+        shadow_store=Path("data/research/byd_prospective_shadow"),
+        paired_store=Path("data/research/byd_515180_prospective"),
+        signal_ledger=Path("data/research/byd_v1_2_signal_ledger"),
+        cutoff="2026-08-07",
+        generated_at="2026-08-09T00:00:00Z",
+        output=replay_output,
+    )
+    assert replay["appended_sessions"] == 0
 
 
 def test_byd_prefix_preserves_accepted_float_representation() -> None:

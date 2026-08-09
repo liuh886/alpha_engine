@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +37,41 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"YAML must contain a mapping: {path}")
     return payload
+
+
+def _validate_cn_formal_extension(
+    package: dict[str, Any],
+    config: dict[str, Any],
+) -> None:
+    if package.get("evidence_completeness", {}).get("status") != "complete":
+        raise ValueError("cn_x1_1: complete evidence is required")
+    if package.get("evidence_completeness", {}).get("missing") != []:
+        raise ValueError("cn_x1_1: package declares missing evidence")
+    promotion = dict(
+        dict(config.get("backtest_evidence", {})).get("complete_formal_path") or {}
+    )
+    minimum_rows = {
+        "report": int(promotion.get("rebalance_count", 0)),
+        "positions": int(promotion.get("position_rows", 0)),
+        "trades": int(promotion.get("transaction_rows", 0)),
+    }
+    if any(value <= 0 for value in minimum_rows.values()):
+        raise ValueError("cn_x1_1: frozen promotion row counts are invalid")
+    for field, minimum in minimum_rows.items():
+        rows = package.get(field)
+        if not isinstance(rows, list) or len(rows) < minimum:
+            raise ValueError(
+                f"cn_x1_1: frozen {field} prefix is shorter than {minimum} rows"
+            )
+    try:
+        frozen_cutoff = date.fromisoformat(
+            str(config.get("provider_binding", {}).get("cutoff") or "")
+        )
+        published_cutoff = date.fromisoformat(str(package.get("evidence_cutoff") or ""))
+    except ValueError as exc:
+        raise ValueError("cn_x1_1: invalid evidence cutoff") from exc
+    if published_cutoff < frozen_cutoff:
+        raise ValueError("cn_x1_1: evidence cutoff predates frozen promotion evidence")
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -224,18 +260,7 @@ def _validate_cn_x1_1(
         raise ValueError("cn_x1_1: formal package identity mismatch")
     if package.get("publication_status") != "accepted_formal_baseline":
         raise ValueError("cn_x1_1: package is not formal")
-    if package.get("evidence_completeness", {}).get("status") != "complete":
-        raise ValueError("cn_x1_1: complete evidence is required")
-    if package.get("evidence_completeness", {}).get("missing") != []:
-        raise ValueError("cn_x1_1: package declares missing evidence")
-    if len(package.get("report", [])) != 102:
-        raise ValueError("cn_x1_1: expected 102 report periods")
-    if len(package.get("positions", [])) != 252:
-        raise ValueError("cn_x1_1: expected 252 retained positions")
-    if len(package.get("trades", [])) != 372:
-        raise ValueError("cn_x1_1: expected 372 reconstructed transactions")
-    if package.get("evidence_cutoff") != "2026-08-03":
-        raise ValueError("cn_x1_1: evidence cutoff mismatch")
+    _validate_cn_formal_extension(package, config)
 
     evidence = dict(config["evidence_identity"])
     _validate_notebook(
