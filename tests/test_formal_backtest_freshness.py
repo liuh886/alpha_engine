@@ -15,7 +15,7 @@ from scripts.verify_formal_backtest_freshness import (
 def _write(path: Path, payload: dict[str, object]) -> str:
     encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True) + "\n"
     path.write_text(encoded, encoding="utf-8")
-    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _fixture(

@@ -12,6 +12,7 @@ import hashlib
 import json
 import math
 import re
+import shutil
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -27,6 +28,7 @@ class MarketEvidenceError(ValueError):
 
 
 DEFAULT_LIBRARY = Path("configs/factor_libraries/ohlcv.yaml")
+MARKET_EVIDENCE_IDENTITY_VERSION = "1.0.0"
 SERIES_FACTOR_GROUP = {
     "us": "momentum_volatility_volume",
     "cn": "cn_balanced_ohlcv",
@@ -84,6 +86,104 @@ def _load_json(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise MarketEvidenceError(f"JSON object required: {path}")
     return payload
+
+
+def _market_evidence_input_identity(
+    *,
+    market: str,
+    manifest_path: Path,
+    packages: Sequence[Mapping[str, Any]],
+    factor_library: FactorLibrary,
+) -> str:
+    repository_root = Path(__file__).resolve().parents[2]
+    implementation_paths = (
+        Path(__file__).resolve(),
+        repository_root / "src/factors/library.py",
+        repository_root / "src/factors/panel.py",
+    )
+    payload = {
+        "identity_version": MARKET_EVIDENCE_IDENTITY_VERSION,
+        "market": market,
+        "provider_manifest_sha256": _sha256_file(manifest_path),
+        "formal_packages": [
+            {
+                "model_id": str(package.get("model_id", "")),
+                "sha256": _sha256_bytes(_canonical_json(package)),
+            }
+            for package in sorted(
+                packages,
+                key=lambda value: str(value.get("model_id", "")),
+            )
+        ],
+        "factor_library_sha256": factor_library.source_sha256,
+        "implementation_files": {
+            path.relative_to(repository_root).as_posix(): _sha256_file(path)
+            for path in implementation_paths
+        },
+        "research_only": True,
+        "trade_ready": False,
+    }
+    return _sha256_bytes(_canonical_json(payload))
+
+
+def _bounded_evidence_path(root: Path, relative: str) -> Path:
+    candidate = (root / relative).resolve()
+    if not candidate.is_relative_to(root.resolve()):
+        raise MarketEvidenceError(f"market evidence path escaped its root: {relative}")
+    return candidate
+
+
+def _reuse_market_evidence_tree(
+    *,
+    source_root: Path,
+    destination_root: Path,
+    expected_input_identity: str,
+) -> dict[str, Any] | None:
+    """Copy only a fully verified content-addressed market evidence tree."""
+
+    catalog_path = source_root / "catalog.json"
+    if not catalog_path.is_file():
+        return None
+    catalog = _load_json(catalog_path)
+    if catalog.get("input_identity_sha256") != expected_input_identity:
+        return None
+    if catalog.get("research_only") is not True or catalog.get("trade_ready") is not False:
+        raise MarketEvidenceError("reusable market evidence crossed research boundary")
+
+    declared: list[tuple[str, str]] = [
+        (
+            str(catalog.get("factor_diagnostics_path", "")),
+            str(catalog.get("factor_diagnostics_sha256", "")),
+        )
+    ]
+    for row in catalog.get("symbols", []):
+        if not isinstance(row, dict):
+            raise MarketEvidenceError("reusable market evidence catalog is malformed")
+        declared.append((str(row.get("path", "")), str(row.get("sha256", ""))))
+    if len(declared) != int(catalog.get("symbol_count", 0)) + 1:
+        raise MarketEvidenceError("reusable market evidence symbol count mismatch")
+
+    verified: list[tuple[Path, Path]] = []
+    for relative, expected_sha in declared:
+        if not relative or len(expected_sha) != 64:
+            raise MarketEvidenceError("reusable market evidence identity is incomplete")
+        source = _bounded_evidence_path(source_root, relative)
+        if not source.is_file() or _sha256_file(source) != expected_sha:
+            raise MarketEvidenceError(
+                f"reusable market evidence hash mismatch: {relative}"
+            )
+        verified.append((source, destination_root / relative))
+
+    if destination_root.exists() and any(destination_root.iterdir()):
+        raise MarketEvidenceError(
+            f"market evidence destination is not empty: {destination_root}"
+        )
+    destination_root.mkdir(parents=True, exist_ok=True)
+    for source, destination in verified:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    shutil.copy2(catalog_path, destination_root / "catalog.json")
+    return catalog
 
 
 def _instrument_id(market: str, provider_symbol: str) -> str:
@@ -438,6 +538,7 @@ def build_market_evidence(
     formal_root: Path,
     output_root: Path,
     factor_library_path: Path = DEFAULT_LIBRARY,
+    reuse_root: Path | None = None,
 ) -> dict[str, Any]:
     market = market.lower()
     if market not in SERIES_FACTOR_GROUP:
@@ -507,6 +608,36 @@ def build_market_evidence(
     traded_symbols = sorted(events)
 
     library = load_factor_library(factor_library_path)
+    input_identity = _market_evidence_input_identity(
+        market=market,
+        manifest_path=manifest_path,
+        packages=packages,
+        factor_library=library,
+    )
+    if reuse_root is not None:
+        reusable_catalog = _reuse_market_evidence_tree(
+            source_root=reuse_root.resolve() / market,
+            destination_root=output_root,
+            expected_input_identity=input_identity,
+        )
+        if reusable_catalog is not None:
+            return {
+                "market": market,
+                "symbol_count": int(reusable_catalog["symbol_count"]),
+                "traded_symbol_count": sum(
+                    int(row.get("formal_event_count", 0)) > 0
+                    for row in reusable_catalog.get("symbols", [])
+                    if isinstance(row, dict)
+                ),
+                "factor_count": len(
+                    _load_json(output_root / "factor-diagnostics.json").get(
+                        "factors", []
+                    )
+                ),
+                "catalog_sha256": _sha256_file(output_root / "catalog.json"),
+                "input_identity_sha256": input_identity,
+                "reused": True,
+            }
     market_factor_ids = [
         definition.factor_id
         for definition in library.catalog.definitions
@@ -654,6 +785,7 @@ def build_market_evidence(
         "factor_diagnostics_sha256": factor_stats_sha,
         "factor_library_sha256": library.source_sha256,
         "series_factor_group": SERIES_FACTOR_GROUP[market],
+        "input_identity_sha256": input_identity,
         "symbol_count": len(catalog_rows),
         "symbols": catalog_rows,
         "research_only": True,
@@ -666,4 +798,6 @@ def build_market_evidence(
         "traded_symbol_count": len(traded_symbols),
         "factor_count": len(market_factor_ids),
         "catalog_sha256": catalog_sha,
+        "input_identity_sha256": input_identity,
+        "reused": False,
     }

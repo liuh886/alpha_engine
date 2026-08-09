@@ -10,13 +10,22 @@ on:
       - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "src/artifacts/formal_refresh.py"
+      - "src/artifacts/formal_provider_cache.py"
       - "src/artifacts/qqq_v4_3_formal.py"
       - "src/artifacts/strategy_operations.py"
       - "src/dashboard/market_evidence.py"
+      - "src/factors/library.py"
+      - "src/factors/panel.py"
       - "src/data/router.py"
       - "src/data/provider_catalog.py"
+      - "src/data/*.py"
       - "src/data/adapters/**"
+      - "src/data/validation/**"
+      - "src/research/selected_pool_guard.py"
+      - "scripts/build_market_providers.py"
+      - "scripts/dump_bin.py"
       - "scripts/build_market_evidence.py"
+      - "scripts/govern_formal_provider_cache.py"
       - "scripts/build_strategy_operations.py"
       - "scripts/run_formal_refresh_transaction.py"
       - "scripts/refresh_ranker_formal.py"
@@ -30,10 +39,18 @@ on:
       - "src/research/byd_515180_allocation.py"
       - "scripts/sync_formal_bundle_v2.py"
       - "configs/factor_libraries/ohlcv.yaml"
+      - "configs/pools/selected_pool_registry_v1.yaml"
+      - "configs/pools/reference_instrument_registry_v1.yaml"
+      - "configs/research_universes/us_selected_equities_v2.yaml"
+      - "configs/research_universes/cn_selected_equities_v3.yaml"
+      - "pyproject.toml"
+      - "uv.lock"
       - "tests/test_formal_refresh.py"
       - "tests/test_refresh_allocation_formal.py"
       - "tests/test_refresh_qqq_v4_3_formal.py"
       - "tests/test_market_evidence.py"
+      - "tests/test_formal_provider_cache.py"
+      - "tests/test_formal_backtest_freshness.py"
       - "tests/test_strategy_operations.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "data/research/formal_backtests/**"
@@ -44,6 +61,12 @@ on:
       - "qlib-dashboard/public/data/formal-model-runs/**"
       - "qlib-dashboard/public/data/market-evidence/**"
       - "qlib-dashboard/public/data/strategy-operations/**"
+      - "qlib-dashboard/scripts/**"
+      - "qlib-dashboard/src/**"
+      - "qlib-dashboard/package.json"
+      - "qlib-dashboard/package-lock.json"
+      - "qlib-dashboard/vite.config.*"
+      - "qlib-dashboard/tsconfig*.json"
 
 permissions:
   actions: write
@@ -64,7 +87,185 @@ env:
   REFRESH_BRANCH: automation/formal-backtest-refresh
 
 jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      generated_at: ${{ steps.clock.outputs.generated_at }}
+      requested_cutoff: ${{ steps.clock.outputs.requested_cutoff }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out triggering revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          lfs: true
+      - name: Verify execution identity
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Verify reviewed refresh PR authority
+        run: |
+          set -euo pipefail
+          allowed="$(gh api "repos/${GITHUB_REPOSITORY}/actions/permissions/workflow" --jq '.can_approve_pull_request_reviews')"
+          if [[ "$allowed" != "true" ]]; then
+            echo "Repository Actions must be allowed to create reviewed refresh pull requests." >&2
+            exit 1
+          fi
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
+      - name: Install locked preflight environments
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+          cd qlib-dashboard
+          npm ci
+      - name: Validate refresh implementation before network work
+        run: |
+          uv run ruff check \
+            src/artifacts/formal_refresh.py \
+            src/artifacts/formal_provider_cache.py \
+            src/artifacts/qqq_v4_3_formal.py \
+            src/artifacts/strategy_operations.py \
+            src/dashboard/market_evidence.py \
+            src/factors/library.py \
+            src/factors/panel.py \
+            src/data/router.py \
+            src/data/provider_catalog.py \
+            src/data/adapters \
+            scripts/build_market_evidence.py \
+            scripts/govern_formal_provider_cache.py \
+            scripts/build_strategy_operations.py \
+            scripts/run_formal_refresh_transaction.py \
+            scripts/refresh_ranker_formal.py \
+            scripts/refresh_allocation_formal.py \
+            scripts/refresh_qqq_v4_3_formal.py \
+            scripts/data/refresh_selected_pool_prices.py \
+            scripts/data/refresh_selected_pool_prices_v2.py \
+            tests/test_formal_refresh.py \
+            tests/test_refresh_allocation_formal.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_market_evidence.py \
+            tests/test_formal_provider_cache.py \
+            tests/test_strategy_operations.py
+          uv run pytest \
+            tests/test_formal_refresh.py \
+            tests/test_refresh_allocation_formal.py \
+            tests/test_refresh_qqq_v4_3_formal.py \
+            tests/test_market_evidence.py \
+            tests/test_formal_provider_cache.py \
+            tests/test_strategy_operations.py \
+            -q --strict-markers --tb=short
+          cd qlib-dashboard
+          npm run check:account
+      - name: Resolve transaction timestamp
+        id: clock
+        run: |
+          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          requested_cutoff="$(date -u +%Y-%m-%d)"
+          echo "generated_at=$generated_at" >> "$GITHUB_OUTPUT"
+          echo "requested_cutoff=$requested_cutoff" >> "$GITHUB_OUTPUT"
+
+  providers:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        market: [us, cn]
+    env:
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+    steps:
+      - name: Check out triggering revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          lfs: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Resolve manifest-bound provider cache identity
+        id: contract
+        env:
+          MARKET: ${{ matrix.market }}
+          REQUESTED_CUTOFF: ${{ needs.prepare.outputs.requested_cutoff }}
+        run: |
+          set -euo pipefail
+          python scripts/govern_formal_provider_cache.py contract \
+            --root . --market "$MARKET" --start 2021-01-01 \
+            --cutoff "$REQUESTED_CUTOFF" \
+            --output "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Restore exact provider cache
+        id: provider_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: artifacts/formal-refresh/provider-${{ matrix.market }}
+          key: ${{ steps.contract.outputs.cache_key }}
+      - name: Install locked provider environment
+        if: steps.provider_cache.outputs.cache-hit != 'true'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen
+      - name: Rebuild isolated selected-pool provider
+        if: steps.provider_cache.outputs.cache-hit != 'true'
+        env:
+          MARKET: ${{ matrix.market }}
+          REQUESTED_CUTOFF: ${{ needs.prepare.outputs.requested_cutoff }}
+        run: |
+          set -euo pipefail
+          rm -rf "artifacts/formal-refresh/provider-${MARKET}"
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
+            --root . --market "$MARKET" --source-csv-dir data/csv_clean \
+            --output-root "artifacts/formal-refresh/provider-${MARKET}" \
+            --start 2021-01-01 --cutoff "$REQUESTED_CUTOFF" --max-rounds 3 --full-refresh
+      - name: Seal fresh provider cache
+        if: steps.provider_cache.outputs.cache-hit != 'true'
+        env:
+          MARKET: ${{ matrix.market }}
+        run: |
+          python scripts/govern_formal_provider_cache.py seal \
+            --provider-root "artifacts/formal-refresh/provider-${MARKET}" \
+            --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
+            --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
+      - name: Verify restored provider cache
+        if: steps.provider_cache.outputs.cache-hit == 'true'
+        env:
+          MARKET: ${{ matrix.market }}
+        run: |
+          python scripts/govern_formal_provider_cache.py verify \
+            --provider-root "artifacts/formal-refresh/provider-${MARKET}" \
+            --contract "artifacts/formal-refresh/provider-${MARKET}-contract.json" \
+            --receipt "artifacts/formal-refresh/provider-${MARKET}/artifacts/formal-provider-cache-receipt.json"
+      - name: Save exact provider cache
+        if: steps.provider_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: artifacts/formal-refresh/provider-${{ matrix.market }}
+          key: ${{ steps.contract.outputs.cache_key }}
+      - name: Transfer verified provider to refresh job
+        uses: actions/upload-artifact@v4
+        with:
+          name: formal-provider-${{ matrix.market }}-${{ github.run_id }}
+          path: artifacts/formal-refresh/provider-${{ matrix.market }}
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 1
+
   refresh:
+    needs: [prepare, providers]
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     env:
@@ -78,10 +279,6 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           lfs: true
-      - name: Verify execution identity
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -90,68 +287,42 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
-      - name: Install locked environments
+      - name: Install locked publication environments
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
           cd qlib-dashboard
           npm ci
-      - name: Validate refresh implementation before network work
-        run: |
-          uv run ruff check \
-            src/artifacts/formal_refresh.py \
-            src/artifacts/qqq_v4_3_formal.py \
-            src/artifacts/strategy_operations.py \
-            src/dashboard/market_evidence.py \
-            src/data/router.py \
-            src/data/provider_catalog.py \
-            src/data/adapters \
-            scripts/build_market_evidence.py \
-            scripts/build_strategy_operations.py \
-            scripts/run_formal_refresh_transaction.py \
-            scripts/refresh_ranker_formal.py \
-            scripts/refresh_allocation_formal.py \
-            scripts/refresh_qqq_v4_3_formal.py \
-            scripts/data/refresh_selected_pool_prices.py \
-            scripts/data/refresh_selected_pool_prices_v2.py \
-            tests/test_formal_refresh.py \
-            tests/test_refresh_allocation_formal.py \
-            tests/test_refresh_qqq_v4_3_formal.py \
-            tests/test_market_evidence.py \
-            tests/test_strategy_operations.py
-          uv run pytest \
-            tests/test_formal_refresh.py \
-            tests/test_refresh_allocation_formal.py \
-            tests/test_refresh_qqq_v4_3_formal.py \
-            tests/test_market_evidence.py \
-            tests/test_strategy_operations.py \
-            -q --strict-markers --tb=short
-      - name: Resolve transaction timestamp
-        id: clock
-        run: |
-          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          requested_cutoff="$(date -u +%Y-%m-%d)"
-          echo "generated_at=$generated_at" >> "$GITHUB_OUTPUT"
-          echo "requested_cutoff=$requested_cutoff" >> "$GITHUB_OUTPUT"
-      - name: Rebuild isolated US and CN selected-pool providers
+      - name: Download verified US provider
+        uses: actions/download-artifact@v5
+        with:
+          name: formal-provider-us-${{ github.run_id }}
+          path: artifacts/formal-refresh/provider-us
+      - name: Download verified CN provider
+        uses: actions/download-artifact@v5
+        with:
+          name: formal-provider-cn-${{ github.run_id }}
+          path: artifacts/formal-refresh/provider-cn
+      - name: Reverify transferred provider caches
         env:
-          REQUESTED_CUTOFF: ${{ steps.clock.outputs.requested_cutoff }}
+          REQUESTED_CUTOFF: ${{ needs.prepare.outputs.requested_cutoff }}
         run: |
           set -euo pipefail
-          rm -rf artifacts/formal-refresh/provider-us artifacts/formal-refresh/provider-cn
-          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
-            --root . --market us --source-csv-dir data/csv_clean \
-            --output-root artifacts/formal-refresh/provider-us \
-            --start 2021-01-01 --cutoff "$REQUESTED_CUTOFF" --max-rounds 3 --full-refresh
-          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
-            --root . --market cn --source-csv-dir data/csv_clean \
-            --output-root artifacts/formal-refresh/provider-cn \
-            --start 2021-01-01 --cutoff "$REQUESTED_CUTOFF" --max-rounds 3 --full-refresh
+          for market in us cn; do
+            python scripts/govern_formal_provider_cache.py contract \
+              --root . --market "$market" --start 2021-01-01 \
+              --cutoff "$REQUESTED_CUTOFF" \
+              --output "artifacts/formal-refresh/provider-${market}-contract.json"
+            python scripts/govern_formal_provider_cache.py verify \
+              --provider-root "artifacts/formal-refresh/provider-${market}" \
+              --contract "artifacts/formal-refresh/provider-${market}-contract.json" \
+              --receipt "artifacts/formal-refresh/provider-${market}/artifacts/formal-provider-cache-receipt.json"
+          done
       - name: Plan catalog-driven refresh
         id: plan
         env:
-          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+          GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
           uv run python scripts/run_formal_refresh_transaction.py plan \
             --formal-root "$CURRENT_FORMAL_ROOT" \
@@ -170,7 +341,7 @@ jobs:
         if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'qqqi_qqq_tqqq_v4_3')
         env:
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
-          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+          GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
           set -euo pipefail
           uv run python scripts/data/build_etf_reference_bundle.py \
@@ -187,7 +358,7 @@ jobs:
         if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'us_x1_1')
         env:
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
-          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+          GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
           set -euo pipefail
           uv run python - <<'PY'
@@ -201,12 +372,21 @@ jobs:
           target.parent.mkdir(parents=True, exist_ok=True)
           target.write_text(yaml.safe_dump(payload, sort_keys=False), encoding='utf-8')
           PY
+          pids=()
           for suffix in a b; do
             uv run python scripts/run_us_feature_quality_validation.py \
               --spec artifacts/formal-refresh/us_x1_1_refresh.yaml \
               --provider-uri artifacts/formal-refresh/provider-us/data/providers/us \
-              --output-dir "artifacts/formal-refresh/us-run-${suffix}"
+              --output-dir "artifacts/formal-refresh/us-run-${suffix}" \
+              > "artifacts/formal-refresh/us-run-${suffix}.log" 2>&1 &
+            pids+=("$!")
           done
+          status=0
+          for pid in "${pids[@]}"; do
+            wait "$pid" || status=1
+          done
+          cat artifacts/formal-refresh/us-run-a.log artifacts/formal-refresh/us-run-b.log
+          test "$status" -eq 0
           RUN_A="$(find artifacts/formal-refresh/us-run-a -name walk_forward_windows.json -printf '%h\n' | head -n 1)"
           RUN_B="$(find artifacts/formal-refresh/us-run-b -name walk_forward_windows.json -printf '%h\n' | head -n 1)"
           test -n "$RUN_A" && test -n "$RUN_B"
@@ -221,16 +401,25 @@ jobs:
         if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'cn_x1_1')
         env:
           CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
-          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+          GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
           set -euo pipefail
+          pids=()
           for suffix in a b; do
             uv run python scripts/run_cn130_ranking_batch.py \
               --root . \
               --provider-dir artifacts/formal-refresh/provider-cn/data/providers/cn \
               --output-dir "artifacts/formal-refresh/cn-ledger-${suffix}" \
-              --window 2026H2_PARTIAL --batch r0r1
+              --window 2026H2_PARTIAL --batch r0r1 \
+              > "artifacts/formal-refresh/cn-ledger-${suffix}.log" 2>&1 &
+            pids+=("$!")
           done
+          status=0
+          for pid in "${pids[@]}"; do
+            wait "$pid" || status=1
+          done
+          cat artifacts/formal-refresh/cn-ledger-a.log artifacts/formal-refresh/cn-ledger-b.log
+          test "$status" -eq 0
           LEDGER_A="artifacts/formal-refresh/cn-ledger-a/score_ledgers/2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
           LEDGER_B="artifacts/formal-refresh/cn-ledger-b/score_ledgers/2026H2_PARTIAL__r0_cn_x1_0_raw_return_rank__current_cn_ohlcv.csv.gz"
           test -f "$LEDGER_A" && test -f "$LEDGER_B"
@@ -246,7 +435,7 @@ jobs:
         if: steps.plan.outputs.refresh_required == 'true' && contains(steps.plan.outputs.stale_model_ids, 'byd_v1_2_convex_momentum_budget_v1')
         env:
           CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
-          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+          GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
           set -euo pipefail
           mkdir -p artifacts/formal-refresh/input/byd artifacts/formal-refresh/input/515180
@@ -265,7 +454,7 @@ jobs:
       - name: Seal formal v1 and build Bundle v2
         if: steps.plan.outputs.refresh_required == 'true'
         env:
-          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+          GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
           set -euo pipefail
           uv run python scripts/run_formal_refresh_transaction.py finalize \
@@ -289,14 +478,27 @@ jobs:
           rm -rf "$CANDIDATE_MARKET_EVIDENCE_ROOT"
           uv run python scripts/build_market_evidence.py \
             --market us --provider-root artifacts/formal-refresh/provider-us \
-            --formal-root "$CANDIDATE_FORMAL_ROOT" --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT"
+            --formal-root "$CANDIDATE_FORMAL_ROOT" \
+            --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT" \
+            --reuse-root data/research/market_evidence \
+            > artifacts/formal-refresh/market-evidence-us.log 2>&1 &
+          us_pid="$!"
           uv run python scripts/build_market_evidence.py \
             --market cn --provider-root artifacts/formal-refresh/provider-cn \
-            --formal-root "$CANDIDATE_FORMAL_ROOT" --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT"
+            --formal-root "$CANDIDATE_FORMAL_ROOT" \
+            --output-root "$CANDIDATE_MARKET_EVIDENCE_ROOT" \
+            --reuse-root data/research/market_evidence \
+            > artifacts/formal-refresh/market-evidence-cn.log 2>&1 &
+          cn_pid="$!"
+          status=0
+          wait "$us_pid" || status=1
+          wait "$cn_pid" || status=1
+          cat artifacts/formal-refresh/market-evidence-us.log artifacts/formal-refresh/market-evidence-cn.log
+          test "$status" -eq 0
       - name: Install candidate and rebuild Strategy Operations
         if: steps.plan.outputs.refresh_required == 'true'
         env:
-          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+          GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
         run: |
           set -euo pipefail
           rm -rf data/research/formal_backtests data/research/formal_model_runs data/research/market_evidence
@@ -342,7 +544,7 @@ jobs:
         id: pull_request
         if: steps.plan.outputs.refresh_required == 'true'
         env:
-          GENERATED_AT: ${{ steps.clock.outputs.generated_at }}
+          GENERATED_AT: ${{ needs.prepare.outputs.generated_at }}
           US_CUTOFF: ${{ steps.plan.outputs.us_cutoff }}
           CN_CUTOFF: ${{ steps.plan.outputs.cn_cutoff }}
         run: |

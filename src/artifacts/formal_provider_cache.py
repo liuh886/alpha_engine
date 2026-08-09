@@ -1,0 +1,274 @@
+"""Content-addressed cache governance for formal-refresh market providers."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+from typing import Any, Mapping, Sequence
+
+
+class FormalProviderCacheError(ValueError):
+    """Raised when cached provider evidence is incomplete or has drifted."""
+
+
+CACHE_SCHEMA_VERSION = "1.0.0"
+CONTRACT_PATHS = (
+    "configs/pools/selected_pool_registry_v1.yaml",
+    "configs/pools/reference_instrument_registry_v1.yaml",
+    "pyproject.toml",
+    "uv.lock",
+    "scripts/build_market_providers.py",
+    "scripts/dump_bin.py",
+    "scripts/govern_formal_provider_cache.py",
+    "scripts/data/refresh_selected_pool_prices.py",
+    "scripts/data/refresh_selected_pool_prices_v2.py",
+    "src/artifacts/formal_provider_cache.py",
+    "src/data/provider_catalog.py",
+    "src/data/router.py",
+    "src/data/validation/schema.py",
+    "src/research/selected_pool_guard.py",
+)
+MARKET_UNIVERSE_PATHS = {
+    "us": "configs/research_universes/us_selected_equities_v2.yaml",
+    "cn": "configs/research_universes/cn_selected_equities_v3.yaml",
+}
+DEFAULT_AUXILIARIES = {
+    "us": ("QQQI", "TQQQ", "SGOV", "TYGO"),
+    "cn": ("515180",),
+}
+
+
+def _sha256_bytes(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _sha256_file(path: Path) -> str:
+    return _sha256_bytes(path.read_bytes())
+
+
+def _canonical_json(payload: Mapping[str, Any]) -> bytes:
+    return (
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        + "\n"
+    ).encode("utf-8")
+
+
+def _write_json(path: Path, payload: Mapping[str, Any]) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = _canonical_json(payload)
+    path.write_bytes(encoded)
+    return _sha256_bytes(encoded)
+
+
+def _load_json(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise FormalProviderCacheError(f"invalid JSON evidence: {path}") from exc
+    if not isinstance(payload, dict):
+        raise FormalProviderCacheError(f"JSON object required: {path}")
+    return payload
+
+
+def _relative_file_hashes(root: Path, paths: Sequence[Path]) -> dict[str, str]:
+    hashes: dict[str, str] = {}
+    for path in sorted(paths):
+        if not path.is_file():
+            raise FormalProviderCacheError(f"cache contract input is missing: {path}")
+        hashes[path.relative_to(root).as_posix()] = _sha256_file(path)
+    return hashes
+
+
+def build_provider_cache_contract(
+    *,
+    repository_root: Path,
+    market: str,
+    start: str,
+    requested_cutoff: str,
+) -> dict[str, Any]:
+    """Bind a reusable provider build to all code and governance inputs."""
+
+    root = repository_root.resolve()
+    market = market.strip().lower()
+    if market not in MARKET_UNIVERSE_PATHS:
+        raise FormalProviderCacheError(f"unsupported market: {market}")
+    configured = [root / value for value in CONTRACT_PATHS]
+    configured.append(root / MARKET_UNIVERSE_PATHS[market])
+    configured.extend(sorted((root / "src/data/adapters").glob("*.py")))
+    configured.extend(sorted((root / "src/data").glob("*.py")))
+    payload: dict[str, Any] = {
+        "schema_version": CACHE_SCHEMA_VERSION,
+        "evidence_type": "formal_provider_cache_contract",
+        "market": market,
+        "start": start,
+        "requested_cutoff": requested_cutoff,
+        "refresh_mode": "full_refresh",
+        "max_rounds": 3,
+        "auxiliary_symbols": list(DEFAULT_AUXILIARIES[market]),
+        "inputs": _relative_file_hashes(root, configured),
+        "research_only": True,
+        "trade_ready": False,
+    }
+    payload["contract_sha256"] = _sha256_bytes(_canonical_json(payload))
+    return payload
+
+
+def cache_key(contract: Mapping[str, Any]) -> str:
+    market = str(contract.get("market", ""))
+    cutoff = str(contract.get("requested_cutoff", ""))
+    digest = str(contract.get("contract_sha256", ""))
+    if not market or not cutoff or len(digest) != 64:
+        raise FormalProviderCacheError("provider cache contract identity is incomplete")
+    return f"formal-provider-{CACHE_SCHEMA_VERSION}-{market}-{cutoff}-{digest}"
+
+
+def _tree_identity(root: Path) -> tuple[str, int]:
+    if not root.is_dir():
+        raise FormalProviderCacheError(f"provider cache tree is missing: {root}")
+    records = [
+        {
+            "path": path.relative_to(root).as_posix(),
+            "sha256": _sha256_file(path),
+        }
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    ]
+    if not records:
+        raise FormalProviderCacheError(f"provider cache tree is empty: {root}")
+    return _sha256_bytes(_canonical_json({"records": records})), len(records)
+
+
+def _validate_manifest(
+    provider_root: Path,
+    contract: Mapping[str, Any],
+) -> tuple[Path, dict[str, Any]]:
+    manifest_path = (
+        provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
+    )
+    manifest = _load_json(manifest_path)
+    market = str(contract.get("market", ""))
+    if str(manifest.get("market", "")) != market:
+        raise FormalProviderCacheError("cached provider market does not match contract")
+    if manifest.get("status") != "selected_pool_price_refresh_ready":
+        raise FormalProviderCacheError("cached provider is not refresh ready")
+    if manifest.get("promotion_eligible") is not True:
+        raise FormalProviderCacheError("cached provider is not promotion eligible")
+    if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
+        raise FormalProviderCacheError("cached provider crossed the research boundary")
+    records = [row for row in manifest.get("records", []) if isinstance(row, dict)]
+    symbols = [str(row.get("symbol", "")).strip().upper() for row in records]
+    if not symbols or len(symbols) != len(set(symbols)):
+        raise FormalProviderCacheError("cached provider symbols are incomplete or duplicated")
+    candidate_symbols = {
+        str(value).strip().upper()
+        for value in manifest.get("candidate_symbols", [])
+        if str(value).strip()
+    }
+    if len(candidate_symbols) != int(manifest.get("candidate_count", 0)):
+        raise FormalProviderCacheError("cached candidate identity is incomplete")
+    if not candidate_symbols.issubset(set(symbols)):
+        raise FormalProviderCacheError("cached candidates are outside the provider symbols")
+    csv_root = provider_root / "data" / "csv_source"
+    for record in records:
+        symbol = str(record.get("symbol", "")).strip().upper()
+        expected = str(record.get("output_sha256", ""))
+        source = csv_root / f"{symbol}.csv"
+        if len(expected) != 64 or not source.is_file():
+            raise FormalProviderCacheError(f"cached source identity is missing: {symbol}")
+        if _sha256_file(source) != expected:
+            raise FormalProviderCacheError(f"cached source hash mismatch: {symbol}")
+    return manifest_path, manifest
+
+
+def seal_provider_cache(
+    *,
+    provider_root: Path,
+    contract: Mapping[str, Any],
+    receipt_path: Path,
+) -> dict[str, Any]:
+    """Validate a fresh provider build and seal exact reusable bytes."""
+
+    provider_root = provider_root.resolve()
+    manifest_path, manifest = _validate_manifest(provider_root, contract)
+    market = str(contract["market"])
+    csv_digest, csv_count = _tree_identity(provider_root / "data" / "csv_source")
+    qlib_digest, qlib_count = _tree_identity(
+        provider_root / "data" / "providers" / market
+    )
+    receipt: dict[str, Any] = {
+        "schema_version": CACHE_SCHEMA_VERSION,
+        "evidence_type": "formal_provider_cache_receipt",
+        "contract_sha256": str(contract["contract_sha256"]),
+        "provider_manifest_sha256": _sha256_file(manifest_path),
+        "provider_identity_sha256": str(
+            manifest.get("provider_identity_sha256", "")
+        ),
+        "market": market,
+        "requested_cutoff": str(contract["requested_cutoff"]),
+        "provider_cutoff": str(manifest.get("cutoff", "")),
+        "candidate_count": int(manifest.get("candidate_count", 0)),
+        "symbol_count": len(manifest.get("records", [])),
+        "csv_tree_sha256": csv_digest,
+        "csv_file_count": csv_count,
+        "qlib_tree_sha256": qlib_digest,
+        "qlib_file_count": qlib_count,
+        "research_only": True,
+        "trade_ready": False,
+    }
+    _write_json(receipt_path, receipt)
+    return receipt
+
+
+def verify_provider_cache(
+    *,
+    provider_root: Path,
+    contract: Mapping[str, Any],
+    receipt_path: Path,
+) -> dict[str, Any]:
+    """Fail closed unless a restored cache matches its contract and receipt."""
+
+    provider_root = provider_root.resolve()
+    receipt = _load_json(receipt_path)
+    if receipt.get("schema_version") != CACHE_SCHEMA_VERSION:
+        raise FormalProviderCacheError("provider cache receipt schema mismatch")
+    if receipt.get("research_only") is not True or receipt.get("trade_ready") is not False:
+        raise FormalProviderCacheError("provider cache receipt crossed research boundary")
+    if receipt.get("contract_sha256") != contract.get("contract_sha256"):
+        raise FormalProviderCacheError("provider cache contract hash mismatch")
+    manifest_path, manifest = _validate_manifest(provider_root, contract)
+    if _sha256_file(manifest_path) != receipt.get("provider_manifest_sha256"):
+        raise FormalProviderCacheError("provider cache manifest hash mismatch")
+    if str(manifest.get("provider_identity_sha256", "")) != str(
+        receipt.get("provider_identity_sha256", "")
+    ):
+        raise FormalProviderCacheError("provider identity hash mismatch")
+    market = str(contract["market"])
+    csv_digest, csv_count = _tree_identity(provider_root / "data" / "csv_source")
+    qlib_digest, qlib_count = _tree_identity(
+        provider_root / "data" / "providers" / market
+    )
+    expected = {
+        "csv_tree_sha256": csv_digest,
+        "csv_file_count": csv_count,
+        "qlib_tree_sha256": qlib_digest,
+        "qlib_file_count": qlib_count,
+    }
+    for key, value in expected.items():
+        if receipt.get(key) != value:
+            raise FormalProviderCacheError(f"provider cache {key} mismatch")
+    return receipt
+
+
+def load_contract(path: Path) -> dict[str, Any]:
+    contract = _load_json(path)
+    expected = str(contract.pop("contract_sha256", ""))
+    actual = _sha256_bytes(_canonical_json(contract))
+    contract["contract_sha256"] = expected
+    if expected != actual:
+        raise FormalProviderCacheError("provider cache contract self-hash mismatch")
+    return contract
+
+
+def write_contract(path: Path, contract: Mapping[str, Any]) -> None:
+    _write_json(path, contract)
