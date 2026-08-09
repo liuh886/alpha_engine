@@ -50,6 +50,7 @@ on:
       - "qlib-dashboard/public/data/market-evidence/**"
       - "qlib-dashboard/public/data/strategy-operations/**"
       - "qlib-dashboard/scripts/**"
+      - "qlib-dashboard/src/**"
       - "qlib-dashboard/package.json"
       - "qlib-dashboard/package-lock.json"
       - "qlib-dashboard/vite.config.*"
@@ -75,15 +76,33 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+      - name: Classify formal backend impact
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only HEAD^1 HEAD^2 > changed-files.txt
+          cat changed-files.txt
+          if grep -Ev '^qlib-dashboard/src/' changed-files.txt | grep -q .; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+            echo "Frontend-only source change: full frontend CI owns account, type, lint, unit, build and browser validation."
+          fi
       - uses: actions/setup-python@v6
+        if: steps.scope.outputs.backend == 'true'
         with:
           python-version: "3.12"
       - uses: actions/setup-node@v6
+        if: steps.scope.outputs.backend == 'true'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: qlib-dashboard/package-lock.json
       - name: Install locked environment
+        if: steps.scope.outputs.backend == 'true'
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
@@ -91,6 +110,7 @@ jobs:
           cd qlib-dashboard
           npm ci --no-audit --no-fund
       - name: Validate refresh contracts
+        if: steps.scope.outputs.backend == 'true'
         run: |
           uv run ruff check \
             src/artifacts/formal_refresh.py \
