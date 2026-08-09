@@ -295,8 +295,8 @@ def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
     assert "market: [us, cn]" in workflow
     assert "uses: actions/cache/restore@v4" in workflow
     assert "uses: actions/cache/save@v4" in workflow
-    assert "scripts/govern_formal_provider_cache.py seal" in workflow
-    assert workflow.count("scripts/govern_formal_provider_cache.py verify") >= 2
+    assert "-m scripts.govern_formal_provider_cache seal" in workflow
+    assert workflow.count("-m scripts.govern_formal_provider_cache verify") >= 2
     assert "needs: [prepare, providers]" in workflow
     assert "formal-provider-${{ matrix.market }}-${{ github.run_id }}" in workflow
 
