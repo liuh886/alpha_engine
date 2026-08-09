@@ -6,7 +6,7 @@
   "dir": "ltr",
   "start_url": "./#/app",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#0b0f14",
   "theme_color": "#0b0f14",
   "orientation": "any",
