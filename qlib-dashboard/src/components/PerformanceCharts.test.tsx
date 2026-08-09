@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { PerformanceCharts } from "./PerformanceCharts";
@@ -77,6 +77,40 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "CSI 300");
   });
 
+  it("lets the user switch between retained baselines while defaulting BYD to the stock itself", () => {
+    render(
+      <PerformanceCharts report={[
+        { date: "2026-01-01", account: 1, benchmark_id: "BYD", bench_byd: 100, bench_byd_v1_1: 1 },
+        { date: "2026-01-02", account: 1.05, benchmark_id: "BYD", bench_byd: 102, bench_byd_v1_1: 1.01 },
+        { date: "2026-01-03", account: 1.08, benchmark_id: "BYD", bench_byd: 104, bench_byd_v1_1: 1.02 },
+      ]} />,
+    );
+
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "BYD");
+    expect(screen.getByTestId("benchmark-line")).toHaveTextContent("BYD");
+
+    fireEvent.change(screen.getByLabelText("Chart baseline"), { target: { value: "benchmark_byd_v1_1" } });
+
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "BYD v1.1");
+    expect(screen.getByTestId("benchmark-line")).toHaveTextContent("BYD v1.1");
+    expect(equityChartData()[1].excess).toBeCloseTo(0.04, 10);
+  });
+
+  it("plots 10-session returns on their realized holding-end date", () => {
+    render(
+      <PerformanceCharts report={[
+        { date: "2026-07-01", holding_end_date: "2026-07-16", account: 1, bench_qqq: 1 },
+        { date: "2026-07-16", holding_end_date: "2026-07-30", account: 1.1, bench_qqq: 1.05 },
+      ]} />,
+    );
+
+    const data = equityChartData();
+    expect(data[0].date).toBe("2026-07-16");
+    expect(data[1].date).toBe("2026-07-30");
+    expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-realized-through", "2026-07-30");
+    expect(screen.getByText("Settled returns through 2026-07-30")).toBeInTheDocument();
+  });
+
   it("keeps generic source evidence secondary when a named benchmark is retained", () => {
     render(
       <PerformanceCharts report={[
@@ -122,7 +156,7 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(data.every((row) => row.benchmark_qqq === null)).toBe(true);
     expect(data.every((row) => row.excess === null)).toBe(true);
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "unavailable");
-    expect(screen.getByText("Declared baseline unavailable · QQQ")).toBeInTheDocument();
+    expect(screen.getByText("QQQ unavailable")).toBeInTheDocument();
   });
 
   it("handles empty report gracefully", () => {
