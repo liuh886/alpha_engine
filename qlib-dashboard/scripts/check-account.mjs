@@ -10,9 +10,11 @@ const accessPath = resolve(root, 'src/lib/model-access.ts');
 const membershipHookPath = resolve(root, 'src/hooks/useAlphaMembership.ts');
 const fleetPath = resolve(root, 'src/components/StrategyFleet.tsx');
 const gatePath = resolve(root, 'src/components/ProModelGate.tsx');
-await Promise.all([access(configPath), access(stylesPath), access(appPath), access(accessPath), access(membershipHookPath), access(fleetPath), access(gatePath)]);
+const runsPath = resolve(root, 'src/pages/RunsPage.tsx');
+const comparePath = resolve(root, 'src/pages/ComparePage.tsx');
+await Promise.all([access(configPath), access(stylesPath), access(appPath), access(accessPath), access(membershipHookPath), access(fleetPath), access(gatePath), access(runsPath), access(comparePath)]);
 
-const [html, config, styles, app, accessRules, membershipHook, fleet, gate] = await Promise.all([
+const [html, config, styles, app, accessRules, membershipHook, fleet, gate, runs, compare] = await Promise.all([
   readFile(resolve(root, 'index.html'), 'utf8'),
   readFile(configPath, 'utf8'),
   readFile(stylesPath, 'utf8'),
@@ -21,6 +23,8 @@ const [html, config, styles, app, accessRules, membershipHook, fleet, gate] = aw
   readFile(membershipHookPath, 'utf8'),
   readFile(fleetPath, 'utf8'),
   readFile(gatePath, 'utf8'),
+  readFile(runsPath, 'utf8'),
+  readFile(comparePath, 'utf8'),
 ]);
 
 for (const reference of [
@@ -38,6 +42,7 @@ for (const value of [
   "entitlementCode: 'alpha_engine.pro'",
   "mountSelectors: ['[data-account-slot]']",
   'billingEnabled: true',
+  'QQQ 系列为 Pro 模型',
   'feedbackEnabled: false',
 ]) {
   if (!config.includes(value)) throw new Error(`account config missing: ${value}`);
@@ -57,6 +62,12 @@ for (const value of ['isProModelRun(run)', 'AlphaEngine Pro access', 'membership
 for (const value of ['QQQ strategy details', 'Open Pro access']) {
   if (!gate.includes(value)) throw new Error(`Pro model gate missing: ${value}`);
 }
+for (const value of ['isProModelRun(run)', 'AlphaEngine Pro model', 'membership.openAccount()']) {
+  if (!runs.includes(value)) throw new Error(`Runs catalog missing QQQ Pro treatment: ${value}`);
+}
+for (const value of ['workspace.runs', '.filter(isProModelRun)', 'accessibleModels', 'QQQ Pro evidence cannot enter Free-tier comparisons']) {
+  if (!compare.includes(value)) throw new Error(`Compare view missing QQQ Pro filtering: ${value}`);
+}
 for (const value of ['.alpha-account-slot .hao-account-trigger', 'box-shadow: none', 'backdrop-filter: none']) {
   if (!styles.includes(value)) throw new Error(`account integration styles missing: ${value}`);
 }
@@ -64,9 +75,9 @@ if (styles.includes('is-floating')) {
   throw new Error('AlphaEngine must not retain compatibility with the retired floating account state.');
 }
 
-const combined = `${html}\n${config}\n${styles}\n${app}\n${accessRules}\n${membershipHook}\n${fleet}\n${gate}`;
+const combined = `${html}\n${config}\n${styles}\n${app}\n${accessRules}\n${membershipHook}\n${fleet}\n${gate}\n${runs}\n${compare}`;
 for (const forbidden of [/sk_(live|test)_/, /whsec_/, /sb_secret_/, /service_role/]) {
   if (forbidden.test(combined)) throw new Error(`browser assets contain forbidden material: ${forbidden}`);
 }
 
-console.log('AlphaEngine account and QQQ Pro model access use the shared entitlement boundary and native strategy console.');
+console.log('AlphaEngine account and QQQ Pro model access cover strategy, run, detail, and comparison browsing through the shared entitlement boundary.');
