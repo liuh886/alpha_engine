@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, CheckCircle2, CircleSlash2, Filter, Search } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, CircleSlash2, Crown, Filter, LockKeyhole, Search } from 'lucide-react';
+import { useAlphaMembership } from '@/hooks/useAlphaMembership';
 import { formatEvidenceLabel } from '@/lib/format-evidence-label';
 import { governedRunQuery, type GovernedRunSummary } from '@/lib/governed-run';
+import { isProModelRun } from '@/lib/model-access';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +44,7 @@ function EvidenceIcon({ status }: { status: GovernedRunSummary['evidenceStatus']
 
 export function RunsPage() {
   const workspace = useOutletContext<RunWorkspaceContext>();
+  const membership = useAlphaMembership();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [family, setFamily] = useState(ANY);
@@ -73,6 +76,10 @@ export function RunsPage() {
   }, [workspace.runs, query, family, version, market, channel, publicationStatus, evidenceStatus, decisionStatus, fromDate, toDate]);
 
   const openRun = (run: GovernedRunSummary) => {
+    if (isProModelRun(run) && !membership.isPro) {
+      membership.openAccount();
+      return;
+    }
     workspace.selectRun(run);
     navigate(`/review?${governedRunQuery(run)}`);
   };
@@ -85,7 +92,7 @@ export function RunsPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Governed iteration catalog</p>
             <h2 className="mt-1 text-2xl font-semibold">Runs</h2>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              Formal baselines, CI-validated previews and local research bundles share one evidence contract. Channel and publication status remain explicit and never imply trade readiness.
+              Formal baselines, CI-validated previews and local research bundles share one evidence contract. Pro-tier model families remain discoverable here but require AlphaEngine Pro to open.
             </p>
           </div>
           <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
@@ -127,34 +134,48 @@ export function RunsPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Governed model runs">
-        {filtered.map((run) => (
-          <button
-            key={run.key}
-            type="button"
-            onClick={() => openRun(run)}
-            className={cn(
-              'group flex min-h-56 flex-col rounded-xl border bg-card p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-              run.key === workspace.activeRunKey && 'border-primary ring-1 ring-primary/30',
-            )}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <span className={cn('rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide', channelClasses(run))}>{run.channel}</span>
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><EvidenceIcon status={run.evidenceStatus} />{run.evidenceStatus}</span>
-            </div>
-            <h3 className="mt-4 text-lg font-semibold leading-tight">{run.title}</h3>
-            <p className="mt-1 break-all text-xs text-muted-foreground">{run.modelFamilyId} / {run.modelVersionId}</p>
-            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-              <div><dt className="text-muted-foreground">Market</dt><dd className="mt-0.5 font-medium">{run.market}</dd></div>
-              <div><dt className="text-muted-foreground">Cutoff</dt><dd className="mt-0.5 font-medium">{run.evidenceCutoff || 'not declared'}</dd></div>
-              <div><dt className="text-muted-foreground">Kind</dt><dd className="mt-0.5 font-medium">{formatEvidenceLabel(run.modelKind)}</dd></div>
-              <div><dt className="text-muted-foreground">Verdict</dt><dd className="mt-0.5 font-medium">{formatEvidenceLabel(run.decisionStatus)}</dd></div>
-            </dl>
-            <div className="mt-auto flex items-center justify-between border-t pt-4 text-xs">
-              <span className="truncate text-muted-foreground">{formatEvidenceLabel(run.publicationStatus)}</span>
-              <span className="flex items-center gap-1 font-semibold text-primary">Review <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
-            </div>
-          </button>
-        ))}
+        {filtered.map((run) => {
+          const proTier = isProModelRun(run);
+          const locked = proTier && !membership.isPro;
+          return (
+            <button
+              key={run.key}
+              type="button"
+              onClick={() => openRun(run)}
+              className={cn(
+                'group flex min-h-56 flex-col rounded-xl border bg-card p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                run.key === workspace.activeRunKey && !locked && 'border-primary ring-1 ring-primary/30',
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={cn('rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide', channelClasses(run))}>{run.channel}</span>
+                  {proTier && <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-primary"><Crown className="h-3 w-3" />Pro</span>}
+                </div>
+                {!locked && <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><EvidenceIcon status={run.evidenceStatus} />{run.evidenceStatus}</span>}
+              </div>
+              <h3 className="mt-4 text-lg font-semibold leading-tight">{run.title}</h3>
+              <p className="mt-1 break-all text-xs text-muted-foreground">{run.modelFamilyId} / {run.modelVersionId}</p>
+              {locked ? (
+                <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-primary"><LockKeyhole className="h-4 w-4" />AlphaEngine Pro model</p>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Upgrade to inspect the QQQ run evidence, backtest, attribution and decision record.</p>
+                </div>
+              ) : (
+                <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <div><dt className="text-muted-foreground">Market</dt><dd className="mt-0.5 font-medium">{run.market}</dd></div>
+                  <div><dt className="text-muted-foreground">Cutoff</dt><dd className="mt-0.5 font-medium">{run.evidenceCutoff || 'not declared'}</dd></div>
+                  <div><dt className="text-muted-foreground">Kind</dt><dd className="mt-0.5 font-medium">{formatEvidenceLabel(run.modelKind)}</dd></div>
+                  <div><dt className="text-muted-foreground">Verdict</dt><dd className="mt-0.5 font-medium">{formatEvidenceLabel(run.decisionStatus)}</dd></div>
+                </dl>
+              )}
+              <div className="mt-auto flex items-center justify-between border-t pt-4 text-xs">
+                <span className="truncate text-muted-foreground">{locked ? 'QQQ family · Pro tier' : formatEvidenceLabel(run.publicationStatus)}</span>
+                <span className="flex items-center gap-1 font-semibold text-primary">{locked ? 'Unlock' : 'Review'} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
+              </div>
+            </button>
+          );
+        })}
       </section>
 
       {filtered.length === 0 && (
