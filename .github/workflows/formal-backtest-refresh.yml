@@ -378,7 +378,7 @@ jobs:
           - Formal v1, Bundle v2, Market Evidence and Strategy Operations: one reviewed publication
           - Model selection: not reopened
           - Protected merge: all candidate PR checks must pass before explicit squash merge
-          - Pages publication: the push-triggered release for the reviewed merge SHA must pass live acceptance before operating status becomes current
+          - Pages publication: explicit workflow dispatch is pinned to the reviewed merge SHA and must pass live acceptance before operating status becomes current
           - Research only: true
           - Trade ready: false
           EOF
@@ -421,25 +421,24 @@ jobs:
           merge_sha="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq '.mergeCommit.oid')"
           test -n "$merge_sha"
           echo "merge_sha=$merge_sha" >> "$GITHUB_OUTPUT"
-          echo "Reviewed refresh merged at ${merge_sha}; waiting for its push-triggered Pages release."
-          pages_run=""
-          for attempt in $(seq 1 60); do
-            pages_run="$(gh run list \
-              --repo "$GITHUB_REPOSITORY" \
-              --workflow deploy-pages.yml \
-              --branch main \
-              --event push \
-              --limit 20 \
-              --json databaseId,headSha \
-              --jq ".[] | select(.headSha == \"${merge_sha}\") | .databaseId" \
-              | head -n 1)"
-            if [[ -n "$pages_run" ]]; then
-              break
-            fi
-            sleep 5
-          done
+          current_main="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [[ "$current_main" != "$merge_sha" ]]; then
+            echo "main moved after reviewed refresh merge: expected ${merge_sha}, got ${current_main}." >&2
+            exit 1
+          fi
+          echo "Reviewed refresh merged at ${merge_sha}; dispatching exact SHA to Pages."
+          dispatch_payload="$(mktemp)"
+          jq -nc --arg target_sha "$merge_sha" \
+            '{ref:"main",inputs:{target_sha:$target_sha}}' > "$dispatch_payload"
+          pages_run="$(gh api \
+            --method POST \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy-pages.yml/dispatches" \
+            --input "$dispatch_payload" \
+            --jq '.workflow_run_id // empty')"
           if [[ -z "$pages_run" ]]; then
-            echo "No push-triggered Pages run found for reviewed merge ${merge_sha}." >&2
+            echo "Pages dispatch did not return a workflow run id for ${merge_sha}." >&2
             exit 1
           fi
           echo "pages_run_id=$pages_run" >> "$GITHUB_OUTPUT"
