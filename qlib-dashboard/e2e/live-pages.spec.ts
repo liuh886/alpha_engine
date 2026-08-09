@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { publicModelDisplayName } from '../src/lib/model-presentation';
+
 const FORMAL_ROOT = 'data/formal-model-runs';
 
 type FormalCatalog = {
@@ -77,26 +79,37 @@ async function loadFormalModels(page: Page, catalog: FormalCatalog): Promise<For
     expect(summary.model_version_id).toBe(record.model_version_id);
     expect(summary.display_name).toBeTruthy();
     models.push({
-      displayName: String(summary.display_name),
+      displayName: publicModelDisplayName(String(summary.display_name), {
+        modelVersionId: String(record.model_version_id),
+      }),
       version: String(record.model_version_id),
     });
   }
   return models;
 }
 
-async function openStrategy(page: Page, model: FormalModel): Promise<void> {
+async function openStrategy(page: Page, model: FormalModel): Promise<'accessible' | 'gated'> {
   await page.goto(
     `?live_acceptance=${Date.now()}#/strategies/${encodeURIComponent(model.version)}`,
     { waitUntil: 'networkidle' },
   );
-  await expect(
-    page.getByRole('main').getByRole('heading', {
-      name: model.displayName,
-      exact: true,
-      level: 1,
-    }),
-  ).toBeVisible();
+  const main = page.getByRole('main');
+  const strategyHeading = main.getByRole('heading', {
+    name: model.displayName,
+    exact: true,
+    level: 1,
+  });
+  const memberGate = main.getByRole('heading', { name: `Sign in to open ${model.displayName}`, exact: true });
+  const proGate = main.getByRole('heading', { name: `${model.displayName} is a Pro product`, exact: true });
+  const ownerGate = main.getByRole('heading', { name: `${model.displayName} requires Owner access`, exact: true });
+  await expect(strategyHeading.or(memberGate).or(proGate).or(ownerGate)).toBeVisible();
+
+  if (!(await strategyHeading.isVisible())) {
+    await expect(main.getByRole('button', { name: /Sign in to continue|View Pro access|Open account/ })).toBeVisible();
+    return 'gated';
+  }
   await expect(page.getByRole('heading', { name: 'Current decision state', exact: true })).toBeVisible();
+  return 'accessible';
 }
 
 async function exerciseAvailableEvidence(page: Page): Promise<void> {
@@ -139,7 +152,7 @@ async function assertPrimaryNavigation(page: Page, projectName: string): Promise
   if (mobile) await page.getByRole('button', { name: 'Close strategy navigation' }).click();
 }
 
-test('live Pages renders every catalog-governed formal strategy end to end', async ({ page }, testInfo) => {
+test('live Pages renders or explicitly policy-gates every catalog-governed formal strategy', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   const failedRequiredResponses: string[] = [];
   const legacyRequests: string[] = [];
@@ -191,9 +204,11 @@ test('live Pages renders every catalog-governed formal strategy end to end', asy
   }
 
   for (const model of formalModels) {
-    await openStrategy(page, model);
-    await exerciseAvailableEvidence(page);
-    await expectCompleteLedgers(page);
+    const access = await openStrategy(page, model);
+    if (access === 'accessible') {
+      await exerciseAvailableEvidence(page);
+      await expectCompleteLedgers(page);
+    }
     await assertNoHorizontalOverflow(page);
   }
 
