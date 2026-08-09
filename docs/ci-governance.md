@@ -55,8 +55,10 @@ removing avoidable work from its critical path:
    manifest, formal packages, factor library and implementation identity match.
    Otherwise it rebuilds; US and CN builds remain isolated and can run together.
 5. The repository must explicitly allow the trusted main/schedule workflow to
-   create its reviewed refresh PR. The workflow checks this authority before
-   provider network work and still waits for required PR checks before merging.
+   create its reviewed refresh PR. The workflow still waits for required PR
+   checks before merging. GitHub does not expose this administrator setting to
+   the workflow token, so repository administration owns the setting and the
+   actual draft-PR creation remains the fail-closed enforcement point.
 6. Changes to frontend validation scripts, application source, dependency locks
    and build/type configuration trigger both the PR contract gate and the
    reviewed main refresh.
