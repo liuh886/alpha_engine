@@ -41,26 +41,39 @@ def _manifest_digest(payload: Mapping[str, Any]) -> str:
     ).hexdigest()
 
 
-def _write_csv(path: Path, frame: pd.DataFrame) -> None:
-    output = frame.copy()
-    if "date" in output.columns:
-        output["date"] = pd.to_datetime(output["date"]).dt.strftime("%Y-%m-%d")
-    output.to_csv(path, index=False, lineterminator="\n", float_format="%.12g")
-
-
-def _append_dated_rows(
-    frame: pd.DataFrame, rows: list[dict[str, Any]]
+def _append_rows_preserving_csv_prefix(
+    path: Path,
+    frame: pd.DataFrame,
+    rows: list[dict[str, Any]],
 ) -> pd.DataFrame:
-    """Append dated rows without mixing string dates with parsed canonical dates."""
+    """Append strictly newer rows without rewriting the sealed CSV prefix."""
     if not rows:
         return frame
     extension = pd.DataFrame(rows)
     extension["date"] = pd.to_datetime(extension["date"], errors="raise")
-    return (
-        pd.concat([frame, extension], ignore_index=True)
-        .sort_values("date")
-        .drop_duplicates("date", keep="last")
+    if extension["date"].duplicated().any():
+        raise AllocationRefreshError(f"duplicate extension dates for {path.name}")
+    if extension["date"].min() <= pd.to_datetime(frame["date"]).max():
+        raise AllocationRefreshError(
+            f"{path.name} extension must be strictly append-only"
+        )
+    unknown = sorted(set(extension.columns) - set(frame.columns))
+    if unknown:
+        raise AllocationRefreshError(
+            f"{path.name} extension has unknown columns: {unknown}"
+        )
+    extension = extension.reindex(columns=frame.columns).sort_values("date")
+    persisted = extension.copy()
+    persisted["date"] = persisted["date"].dt.strftime("%Y-%m-%d")
+    persisted.to_csv(
+        path,
+        mode="a",
+        header=False,
+        index=False,
+        lineterminator="\n",
+        float_format="%.12g",
     )
+    return pd.concat([frame, extension], ignore_index=True)
 
 
 def _next_weights(package: Mapping[str, Any]) -> dict[str, float]:
@@ -136,6 +149,53 @@ def _verify_qqq_decision_overlap(
         raise AllocationRefreshError(
             f"QQQ current replay is missing {len(missing)} frozen decision dates; first={missing[0]}"
         )
+
+
+def _preserve_verified_byd_prefix(
+    field: str,
+    current_rows: object,
+    candidate_rows: object,
+) -> list[dict[str, Any]]:
+    """Verify a BYD replay numerically, then retain accepted JSON bytes logically."""
+    if not isinstance(current_rows, list) or not isinstance(candidate_rows, list):
+        raise AllocationRefreshError(f"BYD historical {field} is not a row list")
+    if len(candidate_rows) < len(current_rows):
+        raise AllocationRefreshError(f"BYD historical {field} was truncated")
+    for index, (current, candidate) in enumerate(
+        zip(current_rows, candidate_rows, strict=False)
+    ):
+        if not isinstance(current, Mapping) or not isinstance(candidate, Mapping):
+            raise AllocationRefreshError(f"BYD historical {field}[{index}] is invalid")
+        if set(current) != set(candidate):
+            raise AllocationRefreshError(
+                f"BYD historical {field}[{index}] fields changed"
+            )
+        for key, expected in current.items():
+            actual = candidate[key]
+            numeric = (
+                isinstance(expected, (int, float))
+                and not isinstance(expected, bool)
+                and isinstance(actual, (int, float))
+                and not isinstance(actual, bool)
+            )
+            matches = (
+                math.isclose(
+                    float(expected),
+                    float(actual),
+                    rel_tol=1e-12,
+                    abs_tol=1e-12,
+                )
+                if numeric
+                else expected == actual
+            )
+            if not matches:
+                identity = current.get("date", index)
+                raise AllocationRefreshError(
+                    f"BYD historical {field} changed at {identity}: {key}"
+                )
+    return [dict(row) for row in current_rows] + [
+        dict(row) for row in candidate_rows[len(current_rows) :]
+    ]
 
 
 def _qqq_metrics_from_report(
@@ -440,7 +500,12 @@ def _extend_byd_input(
     shadow_store: Path,
     cutoff: str,
     output_dir: Path,
+    _validate_base: bool = True,
 ) -> dict[str, Any]:
+    if _validate_base:
+        from src.research.byd_v1_2_recovery_state import load_canonical_snapshot
+
+        load_canonical_snapshot(base_dir)
     shutil.copytree(base_dir, output_dir)
     adjusted_path = output_dir / "adjusted_ohlcv.csv"
     session_path = output_dir / "session_audit.csv"
@@ -448,6 +513,7 @@ def _extend_byd_input(
     adjusted = pd.read_csv(adjusted_path, parse_dates=["date"])
     sessions = pd.read_csv(session_path, parse_dates=["date"])
     manifest = load_object(manifest_path)
+    base_session_audit_sha256 = sha256(session_path)
     frozen_cutoff = pd.Timestamp(manifest["cutoff"])
     rows: list[dict[str, Any]] = []
     session_rows: list[dict[str, Any]] = []
@@ -480,13 +546,18 @@ def _extend_byd_input(
         observation_hashes[signal_date] = sha256(path)
     if not rows or max(row["date"] for row in rows) != cutoff:
         raise AllocationRefreshError("BYD prospective observations do not reach target cutoff")
-    adjusted = _append_dated_rows(adjusted, rows)
-    sessions = _append_dated_rows(sessions, session_rows)
-    _write_csv(adjusted_path, adjusted)
-    _write_csv(session_path, sessions)
+    adjusted = _append_rows_preserving_csv_prefix(adjusted_path, adjusted, rows)
+    sessions = _append_rows_preserving_csv_prefix(
+        session_path, sessions, session_rows
+    )
     manifest.update(
         {
             "schema_version": "byd_canonical_adjusted_ohlcv_v2",
+            "base_schema_version": str(manifest["schema_version"]),
+            "base_adjusted_sha256": str(manifest["adjusted_sha256"]),
+            "base_session_audit_sha256": base_session_audit_sha256,
+            "base_manifest_sha256": str(manifest["manifest_sha256"]),
+            "base_cutoff": str(manifest["cutoff"]),
             "cutoff": cutoff,
             "last_date": cutoff,
             "rows": int(len(adjusted)),
@@ -586,14 +657,14 @@ def _extend_etf_input(
         observation_hashes[signal_date] = sha256(path)
     if not raw_rows or max(row["date"] for row in raw_rows) != cutoff:
         raise AllocationRefreshError("ETF paired observations do not reach target cutoff")
-    raw = _append_dated_rows(raw, raw_rows)
-    adjusted = _append_dated_rows(adjusted, adjusted_rows)
-    sessions = _append_dated_rows(sessions, session_rows)
-    actions = _append_dated_rows(actions, action_rows)
-    _write_csv(raw_path, raw)
-    _write_csv(adjusted_path, adjusted)
-    _write_csv(session_path, sessions)
-    _write_csv(actions_path, actions)
+    raw = _append_rows_preserving_csv_prefix(raw_path, raw, raw_rows)
+    adjusted = _append_rows_preserving_csv_prefix(
+        adjusted_path, adjusted, adjusted_rows
+    )
+    sessions = _append_rows_preserving_csv_prefix(
+        session_path, sessions, session_rows
+    )
+    actions = _append_rows_preserving_csv_prefix(actions_path, actions, action_rows)
     manifest.update(
         {
             "schema_version": "cn_etf_canonical_total_return_v2",
@@ -659,14 +730,11 @@ def refresh_byd(
             generated_at=generated_at,
         )
     for field in ("report", "positions", "trades"):
-        old = current.get(field)
-        new = candidate.get(field)
-        if (
-            not isinstance(old, list)
-            or not isinstance(new, list)
-            or new[: len(old)] != old
-        ):
-            raise AllocationRefreshError(f"BYD historical {field} changed")
+        candidate[field] = _preserve_verified_byd_prefix(
+            field,
+            current.get(field),
+            candidate.get(field),
+        )
     if candidate.get("portfolio_contract") != current.get("portfolio_contract"):
         raise AllocationRefreshError("BYD portfolio contract changed")
     candidate["backtest_id"] = f"{BYD_MODEL}-through-{cutoff.replace('-', '_')}"
