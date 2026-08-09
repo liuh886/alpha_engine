@@ -93,7 +93,7 @@ jobs:
           test ! -e dist/data/formal-backtests
           grep -q "Systematic Strategy Console" dist/index.html
           grep -q "What are the strategies doing now?" dist/index.html
-          grep -q '"display": "standalone"' dist/manifest.webmanifest
+          grep -q '"display": "fullscreen"' dist/manifest.webmanifest
       - name: Setup Python
         uses: actions/setup-python@v6
         with:

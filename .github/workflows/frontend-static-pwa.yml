@@ -73,7 +73,7 @@ jobs:
           test -f dist/data/strategy-operations/snapshots.json
           test ! -e dist/data/strategy-operations/capabilities.json
           grep -q "Systematic Strategy Console" dist/index.html
-          grep -q '"display": "standalone"' dist/manifest.webmanifest
+          grep -q '"display": "fullscreen"' dist/manifest.webmanifest
       - name: Bundle budget
         working-directory: qlib-dashboard
         run: npm run check:bundle-budget

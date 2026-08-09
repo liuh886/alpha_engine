@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0b0f14" />
   <meta name="color-scheme" content="dark light" />
   <meta name="robots" content="index,follow" />
@@ -17,12 +17,26 @@
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="Alpha Engine — Systematic Strategy Console" />
   <meta name="twitter:description" content="Monitor strategy state and targets, then inspect formal backtests, holdings, risk and evidence." />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Alpha Engine" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icons/alpha-engine.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="https://liuh886.github.io/admin/shared/account-shell.css?v=4" />
   <link rel="stylesheet" href="./account-integration.css" />
+  <style>
+    @supports (padding: env(safe-area-inset-top)) {
+      .research-app-shell,
+      .alpha-landing {
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+      }
+    }
+  </style>
   <title>Alpha Engine — Systematic Strategy Console</title>
 </head>
 
