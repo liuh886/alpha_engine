@@ -29,7 +29,7 @@ for (const value of [
   "productCode: 'alpha_engine'",
   "entitlementCode: 'alpha_engine.pro'",
   "mountSelectors: ['[data-account-slot]']",
-  'billingEnabled: false',
+  'billingEnabled: true',
   'feedbackEnabled: false',
 ]) {
   if (!config.includes(value)) throw new Error(`account config missing: ${value}`);
