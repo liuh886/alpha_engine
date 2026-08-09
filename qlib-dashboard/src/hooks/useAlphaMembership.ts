@@ -1,13 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface AccountSnapshot {
   loading?: boolean;
   isPro?: boolean;
-  user?: { id?: string } | null;
+  entitlements?: string[];
+  user?: { id?: string; app_metadata?: Record<string, unknown> } | null;
+}
+
+interface SupabaseAccessClient {
+  from: (table: string) => any;
 }
 
 interface HaoAccountApi {
   getState?: () => AccountSnapshot;
+  getClient?: () => Promise<SupabaseAccessClient>;
   open?: () => void;
   subscribe?: (listener: (snapshot: AccountSnapshot) => void) => () => void;
 }
@@ -42,10 +48,17 @@ export function useAlphaMembership() {
     };
   }, []);
 
+  const openAccount = useCallback(() => window.HaoAccount?.open?.(), []);
+  const getClient = useCallback(() => window.HaoAccount?.getClient?.(), []);
+
   return {
     loading: snapshot.loading === true,
     isPro: snapshot.isPro === true,
+    isOwner: snapshot.user?.app_metadata?.alpha_engine_role === 'owner',
+    entitlements: Array.isArray(snapshot.entitlements) ? snapshot.entitlements : [],
+    userId: snapshot.user?.id ?? null,
     signedIn: Boolean(snapshot.user?.id),
-    openAccount: () => window.HaoAccount?.open?.(),
+    openAccount,
+    getClient,
   };
 }

@@ -1,4 +1,5 @@
 import type { ModelData } from './data-parser';
+import { publicModelDisplayName } from './model-presentation';
 import type { Position, ReportRow } from './types';
 
 export type FormalBacktestCompletenessStatus = 'complete' | 'partial';
@@ -74,12 +75,8 @@ export interface FormalBacktestPackage {
   [key: string]: unknown;
 }
 
-const PUBLIC_DISPLAY_NAME_BY_MODEL_ID: Record<string, string> = {
-  byd_dividend_sleeve_v1_0: 'BYD v1.1',
-};
-
 function publicDisplayName(formal: FormalBacktestPackage): string {
-  return PUBLIC_DISPLAY_NAME_BY_MODEL_ID[formal.model_id] ?? formal.display_name;
+  return publicModelDisplayName(formal.display_name, { modelId: formal.model_id });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

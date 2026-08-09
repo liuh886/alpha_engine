@@ -5,15 +5,15 @@ import type { ModelData } from './lib/data-parser';
 import type { GovernedRunSummary } from './lib/governed-run';
 import { selectRunFromQuery } from './lib/governed-run';
 import type { RunWorkspaceContext } from './lib/run-workspace';
-import { isProModelRun } from './lib/model-access';
+import { highestTier, type AccessTier } from './lib/model-access';
+import { AccessGate } from './components/AccessGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileNavigation } from './components/MobileNavigation';
-import { ProModelGate } from './components/ProModelGate';
 import { ResearchContextBar } from './components/ResearchContextBar';
 import { Sidebar } from './components/Sidebar';
 import { Button } from './components/ui/button';
 import { Skeleton } from './components/ui/skeleton';
-import { useAlphaMembership } from './hooks/useAlphaMembership';
+import { AccessControlProvider, useAccessControl } from './hooks/useAccessControl';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { LandingPage } from './pages/LandingPage';
 import { routes } from './routes';
@@ -51,7 +51,7 @@ function Layout(props: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
-  const membership = useAlphaMembership();
+  const access = useAccessControl();
   const { theme, setTheme } = useGlobalStore();
   const declaredRoute = routes.find((route) => matchPath({ path: `/${route.path}`, end: true }, location.pathname));
   const viewTitle = declaredRoute?.title ?? 'Unavailable route';
@@ -70,8 +70,15 @@ function Layout(props: LayoutProps) {
     }
     return null;
   }, [activeRun, declaredRoute, location.pathname, location.search, props.runs]);
-  const proRoute = isProModelRun(protectedRun);
-  const proLocked = proRoute && !membership.isPro;
+  const modelTier = protectedRun ? access.requiredTierForModel(protectedRun) : 'public';
+  const moduleTier: AccessTier = declaredRoute?.ownerOnly
+    ? 'owner'
+    : declaredRoute?.accessResourceId
+      ? access.requiredTier('module', declaredRoute.accessResourceId)
+      : 'public';
+  const requiredTier = highestTier(modelTier, moduleTier);
+  const accessLocked = !access.canAccess(requiredTier);
+  const accessResource = protectedRun?.title ?? declaredRoute?.title ?? 'this product';
   const showRunPicker = Boolean(
     declaredRoute
     && ['backtests', 'review', 'compare', 'decisions'].includes(declaredRoute.path)
@@ -151,13 +158,15 @@ function Layout(props: LayoutProps) {
         <ResearchContextBar />
 
         <main ref={mainRef} className="research-main">
-          {props.loading || (proRoute && membership.loading) ? (
+          {props.loading || (requiredTier !== 'public' && access.loading) ? (
             <div className="space-y-6">
               <div className="grid gap-4 md:grid-cols-3">
                 {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-xl" />)}
               </div>
               <Skeleton className="h-[360px] rounded-xl" />
             </div>
+          ) : accessLocked && requiredTier !== 'public' ? (
+            <AccessGate requiredTier={requiredTier} resource={accessResource} openAccount={access.openAccount} />
           ) : props.loadError ? (
             <div className="research-empty-state">
               <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
@@ -165,8 +174,6 @@ function Layout(props: LayoutProps) {
               <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">{props.loadError}</p>
               <Button asChild variant="outline" className="mt-5"><Link to="/library">Open bundle library</Link></Button>
             </div>
-          ) : proLocked && protectedRun ? (
-            <ProModelGate run={protectedRun} openAccount={membership.openAccount} />
           ) : (
             <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
@@ -209,12 +216,14 @@ function StrategyConsoleApp() {
 
 function AlphaEngineApp() {
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/*" element={<StrategyConsoleApp />} />
-      </Routes>
-    </HashRouter>
+    <AccessControlProvider>
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/*" element={<StrategyConsoleApp />} />
+        </Routes>
+      </HashRouter>
+    </AccessControlProvider>
   );
 }
 

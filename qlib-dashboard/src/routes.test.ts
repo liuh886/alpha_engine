@@ -35,8 +35,14 @@ describe('strategy-console route registry', () => {
     ALL_NAV_GROUPS.forEach((group) => expect(groups).toContain(group));
   });
 
+  it('delegates Security Explorer access to the configurable policy layer', () => {
+    const securityExplorer = routes.find((route) => route.path === 'securities');
+    expect(securityExplorer?.accessResourceId).toBe('securities');
+    expect(securityExplorer?.ownerOnly).not.toBe(true);
+  });
+
   it('keeps evidence tools as drill-down routes rather than primary navigation', () => {
-    for (const path of ['runs', 'backtests', 'review', 'compare', 'decisions', 'factors', 'reports', 'data', 'library', 'methodology', 'strategies/:strategyId']) {
+    for (const path of ['runs', 'backtests', 'review', 'compare', 'decisions', 'factors', 'reports', 'data', 'library', 'methodology', 'settings/access', 'strategies/:strategyId']) {
       expect(routes.find((route) => route.path === path)?.navVisible).toBe(false);
     }
     for (const removed of ['operations', 'dashboard', 'models', 'agent', 'backtest']) {

@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { AlertTriangle, Check, Crown, GitCompareArrows, LineChart as LineChartIcon, Scale } from 'lucide-react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useAlphaMembership } from '@/hooks/useAlphaMembership';
+import { useAccessControl } from '@/hooks/useAccessControl';
 import type { ModelData } from '@/lib/data-parser';
 import { projectFormalEvidence, projectFormalMetric } from '@/lib/formal-evidence';
-import { isProModelRun } from '@/lib/model-access';
 import type { RunWorkspaceContext } from '@/lib/run-workspace';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -76,19 +75,20 @@ function compareIdentity(models: ModelData[]) {
 
 export function ComparePage({ models }: { models: ModelData[] }) {
   const workspace = useOutletContext<RunWorkspaceContext>();
-  const membership = useAlphaMembership();
+  const access = useAccessControl();
   const location = useLocation();
   const navigate = useNavigate();
-  const proModelIds = useMemo(() => new Set(
-    workspace.runs
-      .filter(isProModelRun)
-      .flatMap((run) => [run.modelVersionId, run.modelData?.id].filter((value): value is string => Boolean(value))),
-  ), [workspace.runs]);
+  const requiredTierByModelId = useMemo(() => new Map(
+    workspace.runs.flatMap((run) => [run.modelVersionId, run.modelData?.id]
+      .filter((value): value is string => Boolean(value))
+      .map((id) => [id, access.requiredTierForModel(run)] as const)),
+  ), [access, workspace.runs]);
   const accessibleModels = useMemo(
-    () => membership.isPro ? models : models.filter((model) => !proModelIds.has(model.id)),
-    [membership.isPro, models, proModelIds],
+    () => models.filter((model) => access.canAccess(requiredTierByModelId.get(model.id) ?? 'public')),
+    [access, models, requiredTierByModelId],
   );
   const lockedModelCount = models.length - accessibleModels.length;
+  const lockedProCount = models.filter((model) => requiredTierByModelId.get(model.id) === 'pro' && !access.canAccess('pro')).length;
 
   const initialIds = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -132,10 +132,10 @@ export function ComparePage({ models }: { models: ModelData[] }) {
     <div className="mx-auto max-w-[1500px] space-y-6 pb-12">
       <section><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Like-for-like review</p><h2 className="mt-2 text-2xl font-black tracking-tight">Compare formal evidence</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">Select up to {MAX_COMPARE} accessible records. Metrics are descriptive unless market, benchmark, window, snapshot and formal cost contract are aligned.</p></section>
 
-      {!membership.isPro && lockedModelCount > 0 && (
+      {lockedModelCount > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
-          <div><p className="flex items-center gap-2 font-semibold text-primary"><Crown className="h-4 w-4" />{lockedModelCount} Pro model {lockedModelCount === 1 ? 'is' : 'are'} excluded</p><p className="mt-1 text-xs text-muted-foreground">QQQ Pro evidence cannot enter Free-tier comparisons.</p></div>
-          <Button type="button" size="sm" variant="outline" onClick={membership.openAccount}>Open Pro access</Button>
+          <div><p className="flex items-center gap-2 font-semibold text-primary"><Crown className="h-4 w-4" />{lockedModelCount} restricted model {lockedModelCount === 1 ? 'is' : 'are'} excluded</p><p className="mt-1 text-xs text-muted-foreground">{lockedProCount > 0 ? `${lockedProCount} require AlphaEngine Pro.` : 'Sign in with the required account level to include them.'}</p></div>
+          <Button type="button" size="sm" variant="outline" onClick={access.openAccount}>{lockedProCount > 0 ? 'View Pro access' : 'Open account'}</Button>
         </div>
       )}
 
