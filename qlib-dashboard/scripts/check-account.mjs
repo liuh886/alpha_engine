@@ -28,8 +28,8 @@ const [html, config, styles, app, accessRules, membershipHook, fleet, gate, runs
 ]);
 
 for (const reference of [
-  'https://liuh886.github.io/admin/shared/account-shell.css?v=4',
-  'https://liuh886.github.io/admin/shared/account-shell.js?v=4',
+  'https://liuh886.github.io/admin/shared/account-shell.css?v=5',
+  'https://liuh886.github.io/admin/shared/account-shell.js?v=5',
   './account-integration.css',
 ]) {
   if (!html.includes(reference)) throw new Error(`index.html missing canonical account asset: ${reference}`);
@@ -80,4 +80,4 @@ for (const forbidden of [/sk_(live|test)_/, /whsec_/, /sb_secret_/, /service_rol
   if (forbidden.test(combined)) throw new Error(`browser assets contain forbidden material: ${forbidden}`);
 }
 
-console.log('AlphaEngine account and QQQ Pro model access cover strategy, run, detail, and comparison browsing through the shared entitlement boundary.');
+console.log('AlphaEngine account and QQQ Pro model access cover strategy, run, detail, and comparison browsing through Account Shell v5.');
