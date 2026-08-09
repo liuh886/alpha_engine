@@ -50,7 +50,6 @@ on:
       - "qlib-dashboard/public/data/market-evidence/**"
       - "qlib-dashboard/public/data/strategy-operations/**"
       - "qlib-dashboard/scripts/**"
-      - "qlib-dashboard/src/**"
       - "qlib-dashboard/package.json"
       - "qlib-dashboard/package-lock.json"
       - "qlib-dashboard/vite.config.*"
@@ -79,7 +78,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -90,7 +89,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
           cd qlib-dashboard
-          npm ci
+          npm ci --no-audit --no-fund
       - name: Validate refresh contracts
         run: |
           uv run ruff check \
