@@ -262,3 +262,19 @@ def test_committed_operations_identity_matches_formal_bundle_catalog() -> None:
         assert identity["formal_bundle_id"] == formal["bundle_id"]
         assert identity["formal_run_id"] == formal["run_id"]
         assert identity["formal_evidence_cutoff"] == formal["evidence_cutoff"]
+
+
+def test_us_x1_1_refresh_uses_locked_project_python() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    start = workflow.index("      - name: Reproduce and refresh US x1.1 twice")
+    end = workflow.index("      - name: Reproduce and refresh CN x1.1 twice")
+    us_refresh = workflow[start:end]
+
+    assert "uv run python - <<'PY'" in us_refresh
+    assert "\n          python - <<'PY'\n" not in us_refresh
+    assert "for suffix in a b; do" in us_refresh
+    assert "scripts/run_us_feature_quality_validation.py" in us_refresh
+    assert "--provider-uri artifacts/formal-refresh/provider-us/data/providers/us" in us_refresh
+    assert "scripts/refresh_ranker_formal.py us" in us_refresh
