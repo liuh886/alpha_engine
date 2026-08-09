@@ -25,6 +25,14 @@ def main() -> int:
         type=Path,
         default=Path("configs/factor_libraries/ohlcv.yaml"),
     )
+    parser.add_argument(
+        "--reuse-root",
+        type=Path,
+        help=(
+            "Reuse a prior market tree only when its content-addressed provider, "
+            "formal-package, factor-library and implementation identity matches."
+        ),
+    )
     args = parser.parse_args()
     result = build_market_evidence(
         market=args.market,
@@ -32,6 +40,7 @@ def main() -> int:
         formal_root=args.formal_root,
         output_root=args.output_root,
         factor_library_path=args.factor_library,
+        reuse_root=args.reuse_root,
     )
     catalog_path = args.output_root / args.market / "catalog.json"
     if not catalog_path.is_file():

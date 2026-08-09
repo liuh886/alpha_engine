@@ -7,12 +7,20 @@ on:
       - ".github/workflows/formal-backtest-refresh.yml"
       - ".github/workflows/formal-backtest-refresh-ci.yml"
       - "src/artifacts/formal_refresh.py"
+      - "src/artifacts/formal_provider_cache.py"
       - "src/artifacts/qqq_v4_3_formal.py"
       - "src/artifacts/strategy_operations.py"
       - "src/dashboard/market_evidence.py"
+      - "src/factors/library.py"
+      - "src/factors/panel.py"
       - "src/data/router.py"
       - "src/data/provider_catalog.py"
+      - "src/data/*.py"
       - "src/data/adapters/**"
+      - "src/data/validation/**"
+      - "src/research/selected_pool_guard.py"
+      - "scripts/build_market_providers.py"
+      - "scripts/dump_bin.py"
       - "src/research/byd_515180_allocation.py"
       - "src/research/byd_v1_2_recovery_state.py"
       - "scripts/run_formal_refresh_transaction.py"
@@ -21,6 +29,7 @@ on:
       - "scripts/refresh_qqq_v4_3_formal.py"
       - "scripts/promote_byd_v1_2_formal.py"
       - "scripts/build_market_evidence.py"
+      - "scripts/govern_formal_provider_cache.py"
       - "scripts/build_strategy_operations.py"
       - "scripts/data/refresh_selected_pool_prices.py"
       - "scripts/data/refresh_selected_pool_prices_v2.py"
@@ -29,6 +38,8 @@ on:
       - "tests/test_refresh_allocation_formal.py"
       - "tests/test_refresh_qqq_v4_3_formal.py"
       - "tests/test_market_evidence.py"
+      - "tests/test_formal_provider_cache.py"
+      - "tests/test_formal_backtest_freshness.py"
       - "tests/test_strategy_operations.py"
       - "tests/test_sync_formal_bundle_v2.py"
       - "data/research/formal_backtests/**"
@@ -38,6 +49,19 @@ on:
       - "qlib-dashboard/public/data/formal-model-runs/**"
       - "qlib-dashboard/public/data/market-evidence/**"
       - "qlib-dashboard/public/data/strategy-operations/**"
+      - "qlib-dashboard/scripts/**"
+      - "qlib-dashboard/src/**"
+      - "qlib-dashboard/package.json"
+      - "qlib-dashboard/package-lock.json"
+      - "qlib-dashboard/vite.config.*"
+      - "qlib-dashboard/tsconfig*.json"
+      - "configs/pools/selected_pool_registry_v1.yaml"
+      - "configs/pools/reference_instrument_registry_v1.yaml"
+      - "configs/research_universes/us_selected_equities_v2.yaml"
+      - "configs/research_universes/cn_selected_equities_v3.yaml"
+      - "configs/factor_libraries/ohlcv.yaml"
+      - "pyproject.toml"
+      - "uv.lock"
 
 permissions:
   contents: read
@@ -55,23 +79,35 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: qlib-dashboard/package-lock.json
       - name: Install locked environment
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
+          cd qlib-dashboard
+          npm ci
       - name: Validate refresh contracts
         run: |
           uv run ruff check \
             src/artifacts/formal_refresh.py \
+            src/artifacts/formal_provider_cache.py \
             src/artifacts/qqq_v4_3_formal.py \
             src/artifacts/strategy_operations.py \
             src/dashboard/market_evidence.py \
+            src/factors/library.py \
+            src/factors/panel.py \
             src/data/router.py \
             src/data/provider_catalog.py \
             src/data/adapters \
             src/research/byd_v1_2_recovery_state.py \
+            scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py \
+            scripts/govern_formal_provider_cache.py \
             scripts/refresh_ranker_formal.py \
             scripts/refresh_allocation_formal.py \
             scripts/refresh_qqq_v4_3_formal.py \
@@ -81,16 +117,24 @@ jobs:
             tests/test_refresh_allocation_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
+            tests/test_formal_provider_cache.py \
             tests/test_strategy_operations.py
           uv run mypy \
             src/artifacts/formal_refresh.py \
+            src/artifacts/formal_provider_cache.py \
+            src/dashboard/market_evidence.py \
+            scripts/govern_formal_provider_cache.py \
+            scripts/build_market_evidence.py \
             scripts/run_formal_refresh_transaction.py
           uv run pytest \
             tests/test_formal_refresh.py \
             tests/test_refresh_allocation_formal.py \
             tests/test_refresh_qqq_v4_3_formal.py \
             tests/test_market_evidence.py \
+            tests/test_formal_provider_cache.py \
             tests/test_formal_backtest_freshness.py \
             tests/test_sync_formal_bundle_v2.py \
             tests/test_strategy_operations.py \
             -q --strict-markers --tb=short
+          cd qlib-dashboard
+          npm run check:account

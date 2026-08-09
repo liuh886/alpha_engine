@@ -287,6 +287,80 @@ def test_us_x1_1_refresh_uses_locked_project_python() -> None:
     assert "scripts/refresh_ranker_formal.py us" in us_refresh
 
 
+def test_formal_refresh_parallelizes_and_seals_provider_builds() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "providers:\n    needs: prepare" in workflow
+    assert "market: [us, cn]" in workflow
+    assert "uses: actions/cache/restore@v4" in workflow
+    assert "uses: actions/cache/save@v4" in workflow
+    assert "scripts/govern_formal_provider_cache.py seal" in workflow
+    assert workflow.count("scripts/govern_formal_provider_cache.py verify") >= 2
+    assert "needs: [prepare, providers]" in workflow
+    assert "formal-provider-${{ matrix.market }}-${{ github.run_id }}" in workflow
+
+
+def test_formal_refresh_runs_duplicate_evidence_concurrently() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    us_start = workflow.index("      - name: Reproduce and refresh US x1.1 twice")
+    cn_start = workflow.index("      - name: Reproduce and refresh CN x1.1 twice")
+    byd_start = workflow.index("      - name: Extend canonical inputs")
+    us = workflow[us_start:cn_start]
+    cn = workflow[cn_start:byd_start]
+    for block, prefix in ((us, "us-run"), (cn, "cn-ledger")):
+        assert 'pids+=("$!")' in block
+        assert 'for pid in "${pids[@]}"' in block
+        assert 'wait "$pid" || status=1' in block
+        assert f"{prefix}-${{suffix}}.log" in block
+    assert "--run-a \"$RUN_A\" --run-b \"$RUN_B\"" in us
+    assert "--ledger-a \"$LEDGER_A\" --ledger-b \"$LEDGER_B\"" in cn
+
+
+def test_market_evidence_is_content_addressed_and_parallel() -> None:
+    workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    start = workflow.index("      - name: Build shared governed Market Evidence")
+    end = workflow.index("      - name: Install candidate and rebuild Strategy Operations")
+    block = workflow[start:end]
+    assert block.count("--reuse-root data/research/market_evidence") == 2
+    assert 'us_pid="$!"' in block
+    assert 'cn_pid="$!"' in block
+    assert 'wait "$us_pid" || status=1' in block
+    assert 'wait "$cn_pid" || status=1' in block
+
+
+def test_formal_refresh_frontend_validation_paths_are_complete() -> None:
+    required = (
+        '"qlib-dashboard/scripts/**"',
+        '"qlib-dashboard/src/**"',
+        '"qlib-dashboard/package.json"',
+        '"qlib-dashboard/package-lock.json"',
+        '"qlib-dashboard/vite.config.*"',
+        '"qlib-dashboard/tsconfig*.json"',
+    )
+    for path in (
+        Path(".github/workflows/formal-backtest-refresh.yml"),
+        Path(".github/workflows/formal-backtest-refresh-ci.yml"),
+    ):
+        workflow = path.read_text(encoding="utf-8")
+        for trigger in required:
+            assert trigger in workflow
+    live = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "Verify reviewed refresh PR authority" in live
+    assert ".can_approve_pull_request_reviews" in live
+    preflight_start = live.index(
+        "      - name: Validate refresh implementation before network work"
+    )
+    clock_start = live.index("      - name: Resolve transaction timestamp")
+    assert "npm run check:account" in live[preflight_start:clock_start]
+
+
 def test_production_refresh_runs_allocation_regressions_before_network_work() -> None:
     workflow = Path(".github/workflows/formal-backtest-refresh.yml").read_text(
         encoding="utf-8"

@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import math
+import hashlib
+import json
+from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from src.dashboard.market_evidence import (
+    MarketEvidenceError,
     _bars,
     _chart_studies,
     _factor_stats,
     _provider_symbol_for_formal_instrument,
+    _reuse_market_evidence_tree,
     _trade_events,
 )
 from src.factors.library import load_factor_library
@@ -163,3 +169,63 @@ def test_factor_statistics_are_distribution_evidence_not_importance() -> None:
     assert row["median"] == 0.0
     assert len(row["histogram"]) == 24
     assert "importance" not in row
+
+
+def _write_json(path: Path, payload: dict[str, object]) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (
+        json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode()
+    path.write_bytes(encoded)
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def test_content_addressed_market_evidence_reuse_verifies_every_file(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "accepted" / "us"
+    factor_sha = _write_json(
+        source / "factor-diagnostics.json",
+        {"factors": [], "research_only": True, "trade_ready": False},
+    )
+    symbol_sha = _write_json(
+        source / "symbols/AAA.json",
+        {"symbol": "AAA", "research_only": True, "trade_ready": False},
+    )
+    identity = "a" * 64
+    _write_json(
+        source / "catalog.json",
+        {
+            "input_identity_sha256": identity,
+            "factor_diagnostics_path": "factor-diagnostics.json",
+            "factor_diagnostics_sha256": factor_sha,
+            "symbol_count": 1,
+            "symbols": [
+                {
+                    "path": "symbols/AAA.json",
+                    "sha256": symbol_sha,
+                    "formal_event_count": 0,
+                }
+            ],
+            "research_only": True,
+            "trade_ready": False,
+        },
+    )
+    destination = tmp_path / "candidate" / "us"
+    catalog = _reuse_market_evidence_tree(
+        source_root=source,
+        destination_root=destination,
+        expected_input_identity=identity,
+    )
+    assert catalog is not None
+    assert (destination / "symbols/AAA.json").read_bytes() == (
+        source / "symbols/AAA.json"
+    ).read_bytes()
+
+    (source / "symbols/AAA.json").write_text("tampered", encoding="utf-8")
+    with pytest.raises(MarketEvidenceError, match="hash mismatch"):
+        _reuse_market_evidence_tree(
+            source_root=source,
+            destination_root=tmp_path / "rejected" / "us",
+            expected_input_identity=identity,
+        )

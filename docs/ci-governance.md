@@ -38,3 +38,29 @@ The core CI enforces the following drift rules:
 4. research/evidence workflows that listen to pull requests must use path filters.
 
 Action-major and Node.js modernization are recorded as warnings so old specialized workflows can be upgraded when edited without converting repository-wide runtime migration into unrelated PR noise.
+
+## Reviewed formal-refresh performance contract
+
+The reviewed formal-refresh workflow keeps one promotion transaction while
+removing avoidable work from its critical path:
+
+1. US and CN selected-pool providers build in separate matrix jobs.
+2. A provider cache is reusable only for an exact market, requested cutoff,
+   pool/reference contract, universe, dependency lock and provider
+   implementation identity. Its manifest, normalized CSV tree and Qlib tree are
+   sealed and reverified after artifact transfer.
+3. The independent A/B ranker reproductions run concurrently into separate
+   namespaces; both outputs remain mandatory inputs to the append-only verifier.
+4. Market Evidence may reuse a prior market tree only when the exact provider
+   manifest, formal packages, factor library and implementation identity match.
+   Otherwise it rebuilds; US and CN builds remain isolated and can run together.
+5. The repository must explicitly allow the trusted main/schedule workflow to
+   create its reviewed refresh PR. The workflow checks this authority before
+   provider network work and still waits for required PR checks before merging.
+6. Changes to frontend validation scripts, application source, dependency locks
+   and build/type configuration trigger both the PR contract gate and the
+   reviewed main refresh.
+
+Every cache or incremental path remains `research_only=true` and
+`trade_ready=false`. A missing, incomplete or tampered identity fails closed; it
+never falls back to an ungoverned cache hit.
