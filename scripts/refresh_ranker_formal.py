@@ -32,6 +32,16 @@ class RankerRefreshError(FormalRefreshError):
     """Raised when a frozen ranker extension cannot be reproduced."""
 
 
+def _date_identity(value: Any) -> str:
+    try:
+        timestamp = pd.Timestamp(value)
+    except (TypeError, ValueError) as exc:
+        raise RankerRefreshError(f"invalid date identity: {value!r}") from exc
+    if pd.isna(timestamp):
+        raise RankerRefreshError(f"invalid date identity: {value!r}")
+    return timestamp.strftime("%Y-%m-%d")
+
+
 def _calendar(path: Path) -> list[str]:
     rows = [row.strip() for row in path.read_text(encoding="utf-8").splitlines() if row.strip()]
     if not rows or rows != sorted(set(rows)):
@@ -134,6 +144,27 @@ def _attribution_index(package: dict[str, Any]) -> dict[str, dict[str, Any]]:
     }
 
 
+def _latest_realized_holding_end(package: Mapping[str, Any]) -> str:
+    candidates: list[str] = []
+    freshness = package.get("freshness")
+    if isinstance(freshness, Mapping):
+        accepted = freshness.get("latest_realized_holding_end")
+        if accepted:
+            candidates.append(_date_identity(accepted))
+    for field in ("report", "positions", "trades"):
+        rows = package.get(field)
+        if not isinstance(rows, list):
+            continue
+        candidates.extend(
+            _date_identity(row["holding_end_date"])
+            for row in rows
+            if isinstance(row, Mapping) and row.get("holding_end_date")
+        )
+    if not candidates:
+        raise RankerRefreshError("formal package has no realized holding end evidence")
+    return max(candidates)
+
+
 def _update_common_metadata(
     package: dict[str, Any],
     *,
@@ -152,14 +183,7 @@ def _update_common_metadata(
         "status": "current",
         "required_cutoff": cutoff,
         "latest_completed_session": cutoff,
-        "latest_realized_holding_end": max(
-            [
-                str(row.get("holding_end_date") or "")
-                for row in package.get("report", [])
-                if isinstance(row, dict)
-            ]
-            or [str(package["date_range"]["start"])],
-        ),
+        "latest_realized_holding_end": _latest_realized_holding_end(package),
         "model_selection_reopened": False,
         "provider_manifest_sha256": sha256(provider_manifest),
         "research_only": True,
@@ -452,6 +476,9 @@ def refresh_cn(
     ledger, _ = load_ledgers([ledger_root], ("2026H2_PARTIAL",))
     panel = load_provider_panel(provider_dir, [*symbols, spec.benchmark], fields=("close",))
     close = panel.fields["close"]
+    calendar = [_date_identity(value) for value in close.index]
+    if calendar != sorted(set(calendar)):
+        raise RankerRefreshError("CN provider calendar is invalid")
     state = build_regime_state(
         close,
         symbols=symbols,
@@ -478,7 +505,9 @@ def refresh_cn(
     )
 
     existing_dates = {
-        str(row.get("date")) for row in package.get("report", []) if isinstance(row, dict)
+        _date_identity(row.get("date"))
+        for row in package.get("report", [])
+        if isinstance(row, dict) and row.get("date")
     }
     previous = _latest_weights(package)
     account = float(package["report"][-1]["account"])
@@ -494,11 +523,14 @@ def refresh_cn(
 
     holdings_by_date: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in holdings.to_dict("records"):
-        holdings_by_date[str(row["datetime"])].append(row)
+        holdings_by_date[_date_identity(row["datetime"])].append(row)
 
     for period in periods.to_dict("records"):
-        signal_date = str(period["datetime"])
+        signal_date = _date_identity(period["datetime"])
         if signal_date in existing_dates:
+            continue
+        holding_end = _holding_end(calendar, signal_date)
+        if holding_end > cutoff:
             continue
         rows = holdings_by_date.get(signal_date, [])
         if not rows:
@@ -518,6 +550,7 @@ def refresh_cn(
         package["report"].append(
             {
                 "date": signal_date,
+                "holding_end_date": holding_end,
                 "account": account,
                 "bench_hs300": benchmark,
                 "period_return": net,
@@ -549,6 +582,7 @@ def refresh_cn(
             package["positions"].append(
                 {
                     "date": signal_date,
+                    "holding_end_date": holding_end,
                     "instrument": instrument,
                     "name": entity,
                     "sector": sector,
@@ -604,6 +638,7 @@ def refresh_cn(
             package["trades"].append(
                 {
                     "date": signal_date,
+                    "holding_end_date": holding_end,
                     "instrument": instrument,
                     "action": action,
                     "previous_weight": old,
