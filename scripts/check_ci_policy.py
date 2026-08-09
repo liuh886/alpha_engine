@@ -157,11 +157,21 @@ def main() -> int:
         records.append(record)
         violations.extend(f'{rel}: {message}' for message in found)
 
+    workflow_count_budget = int(policy.get('workflow_count_budget', len(records)))
+    if workflow_count_budget < 1:
+        violations.append('workflow_count_budget must be positive')
+    elif len(records) > workflow_count_budget:
+        violations.append(
+            f'workflow count {len(records)} exceeds budget {workflow_count_budget}; '
+            'retire or consolidate an existing workflow before adding another permanent entrypoint'
+        )
+
     report = {
         'schema_version': '1.0.0',
         'repository': policy.get('repository'),
         'default_branch': policy.get('default_branch'),
         'workflow_count': len(records),
+        'workflow_count_budget': workflow_count_budget,
         'governed_workflow_count': len(governed),
         'violations': violations,
         'workflows': records,
@@ -169,7 +179,10 @@ def main() -> int:
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8')
-    print(f"CI policy: workflows={len(records)} governed={len(governed)} violations={len(violations)}")
+    print(
+        f'CI policy: workflows={len(records)} budget={workflow_count_budget} '
+        f'governed={len(governed)} violations={len(violations)}'
+    )
     for violation in violations:
         print(f'CI POLICY VIOLATION: {violation}')
     return 1 if args.enforce and violations else 0
