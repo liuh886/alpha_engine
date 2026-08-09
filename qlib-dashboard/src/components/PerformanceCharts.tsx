@@ -269,7 +269,7 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
   };
 
   const strategyPointCount = chartData.filter(row => Number.isFinite(row.strategy)).length;
-  const realizedThrough = chartData.at(-1)?.date ?? null;
+  const realizedThrough = chartData.length ? chartData[chartData.length - 1].date : null;
 
   return (
     <div className="space-y-5">
