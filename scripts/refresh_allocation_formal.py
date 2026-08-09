@@ -48,6 +48,21 @@ def _write_csv(path: Path, frame: pd.DataFrame) -> None:
     output.to_csv(path, index=False, lineterminator="\n", float_format="%.12g")
 
 
+def _append_dated_rows(
+    frame: pd.DataFrame, rows: list[dict[str, Any]]
+) -> pd.DataFrame:
+    """Append dated rows without mixing string dates with parsed canonical dates."""
+    if not rows:
+        return frame
+    extension = pd.DataFrame(rows)
+    extension["date"] = pd.to_datetime(extension["date"], errors="raise")
+    return (
+        pd.concat([frame, extension], ignore_index=True)
+        .sort_values("date")
+        .drop_duplicates("date", keep="last")
+    )
+
+
 def _next_weights(package: Mapping[str, Any]) -> dict[str, float]:
     positions = package.get("positions")
     if not isinstance(positions, list) or not positions:
@@ -158,9 +173,13 @@ def _qqq_metrics_from_report(
         "Sortino Ratio": float(metrics["sortino"]),
         "Max Drawdown": float(metrics["max_drawdown"]),
         "Calmar Ratio": float(metrics["calmar"]),
-        "Turnover": float(pd.to_numeric(frame.get("turnover"), errors="coerce").fillna(0.0).sum()),
+        "Turnover": float(
+            pd.to_numeric(frame.get("turnover"), errors="coerce").fillna(0.0).sum()
+        ),
         "Transaction Cost": float(
-            pd.to_numeric(frame.get("transaction_cost"), errors="coerce").fillna(0.0).sum()
+            pd.to_numeric(frame.get("transaction_cost"), errors="coerce")
+            .fillna(0.0)
+            .sum()
         ),
     }
 
@@ -244,7 +263,9 @@ def refresh_qqq(
     daily = results[QQQ_STRATEGY].daily.copy()
     daily.index = pd.to_datetime(daily.index).tz_localize(None).normalize()
     existing_dates = {
-        str(row.get("date")) for row in package.get("report", []) if isinstance(row, dict)
+        str(row.get("date"))
+        for row in package.get("report", [])
+        if isinstance(row, dict)
     }
     existing_by_date = {
         str(row.get("date")): row
@@ -439,24 +460,28 @@ def _extend_byd_input(
             continue
         chain = observation.get("chain_linked_adjusted_ohlcv")
         if not isinstance(chain, Mapping):
-            raise AllocationRefreshError(f"BYD adjusted observation is missing: {signal_date}")
+            raise AllocationRefreshError(
+                f"BYD adjusted observation is missing: {signal_date}"
+            )
         required = ("open", "high", "low", "close", "volume")
         if any(value not in chain for value in required):
             raise AllocationRefreshError(f"BYD observation is incomplete: {signal_date}")
-        rows.append({"date": signal_date, **{key: float(chain[key]) for key in required}})
+        rows.append(
+            {"date": signal_date, **{key: float(chain[key]) for key in required}}
+        )
         session_rows.append(
             {
                 "date": signal_date,
-                "open_research_eligible": bool(observation.get("open_research_eligible", False)),
+                "open_research_eligible": bool(
+                    observation.get("open_research_eligible", False)
+                ),
             }
         )
         observation_hashes[signal_date] = sha256(path)
     if not rows or max(row["date"] for row in rows) != cutoff:
         raise AllocationRefreshError("BYD prospective observations do not reach target cutoff")
-    adjusted = pd.concat([adjusted, pd.DataFrame(rows)], ignore_index=True)
-    adjusted = adjusted.sort_values("date").drop_duplicates("date", keep="last")
-    sessions = pd.concat([sessions, pd.DataFrame(session_rows)], ignore_index=True)
-    sessions = sessions.sort_values("date").drop_duplicates("date", keep="last")
+    adjusted = _append_dated_rows(adjusted, rows)
+    sessions = _append_dated_rows(sessions, session_rows)
     _write_csv(adjusted_path, adjusted)
     _write_csv(session_path, sessions)
     manifest.update(
@@ -526,8 +551,12 @@ def _extend_etf_input(
                 "date": signal_date,
                 **adjusted_values,
                 "factor": factor,
-                "adjustment_anchor_date": adjusted.iloc[-1].get("adjustment_anchor_date"),
-                "adjustment_anchor_factor": adjusted.iloc[-1].get("adjustment_anchor_factor"),
+                "adjustment_anchor_date": adjusted.iloc[-1].get(
+                    "adjustment_anchor_date"
+                ),
+                "adjustment_anchor_factor": adjusted.iloc[-1].get(
+                    "adjustment_anchor_factor"
+                ),
                 "price_role": "adjusted_feature_and_label",
             }
         )
@@ -535,7 +564,9 @@ def _extend_etf_input(
         session_rows.append(
             {
                 "date": signal_date,
-                "open_research_eligible": bool(etf.get("open_research_eligible", False)),
+                "open_research_eligible": bool(
+                    etf.get("open_research_eligible", False)
+                ),
             }
         )
         company_actions = etf.get("company_actions")
@@ -555,15 +586,10 @@ def _extend_etf_input(
         observation_hashes[signal_date] = sha256(path)
     if not raw_rows or max(row["date"] for row in raw_rows) != cutoff:
         raise AllocationRefreshError("ETF paired observations do not reach target cutoff")
-    raw = pd.concat([raw, pd.DataFrame(raw_rows)], ignore_index=True)
-    raw = raw.sort_values("date").drop_duplicates("date", keep="last")
-    adjusted = pd.concat([adjusted, pd.DataFrame(adjusted_rows)], ignore_index=True)
-    adjusted = adjusted.sort_values("date").drop_duplicates("date", keep="last")
-    sessions = pd.concat([sessions, pd.DataFrame(session_rows)], ignore_index=True)
-    sessions = sessions.sort_values("date").drop_duplicates("date", keep="last")
-    if action_rows:
-        actions = pd.concat([actions, pd.DataFrame(action_rows)], ignore_index=True)
-        actions = actions.sort_values("date").drop_duplicates("date", keep="last")
+    raw = _append_dated_rows(raw, raw_rows)
+    adjusted = _append_dated_rows(adjusted, adjusted_rows)
+    sessions = _append_dated_rows(sessions, session_rows)
+    actions = _append_dated_rows(actions, action_rows)
     _write_csv(raw_path, raw)
     _write_csv(adjusted_path, adjusted)
     _write_csv(session_path, sessions)
@@ -635,7 +661,11 @@ def refresh_byd(
     for field in ("report", "positions", "trades"):
         old = current.get(field)
         new = candidate.get(field)
-        if not isinstance(old, list) or not isinstance(new, list) or new[: len(old)] != old:
+        if (
+            not isinstance(old, list)
+            or not isinstance(new, list)
+            or new[: len(old)] != old
+        ):
             raise AllocationRefreshError(f"BYD historical {field} changed")
     if candidate.get("portfolio_contract") != current.get("portfolio_contract"):
         raise AllocationRefreshError("BYD portfolio contract changed")
