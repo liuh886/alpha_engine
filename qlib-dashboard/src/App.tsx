@@ -5,16 +5,21 @@ import type { ModelData } from './lib/data-parser';
 import type { GovernedRunSummary } from './lib/governed-run';
 import { selectRunFromQuery } from './lib/governed-run';
 import type { RunWorkspaceContext } from './lib/run-workspace';
+import { isProModelRun } from './lib/model-access';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileNavigation } from './components/MobileNavigation';
+import { ProModelGate } from './components/ProModelGate';
 import { ResearchContextBar } from './components/ResearchContextBar';
 import { Sidebar } from './components/Sidebar';
 import { Button } from './components/ui/button';
 import { Skeleton } from './components/ui/skeleton';
+import { useAlphaMembership } from './hooks/useAlphaMembership';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { LandingPage } from './pages/LandingPage';
 import { routes } from './routes';
 import { useGlobalStore } from './store/globalStore';
+
+const RUN_DETAIL_PATHS = new Set(['backtests', 'review', 'compare', 'decisions', 'factors', 'reports']);
 
 function PageLoader() {
   return <div className="flex min-h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary/60" /></div>;
@@ -46,6 +51,7 @@ function Layout(props: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
+  const membership = useAlphaMembership();
   const { theme, setTheme } = useGlobalStore();
   const declaredRoute = routes.find((route) => matchPath({ path: `/${route.path}`, end: true }, location.pathname));
   const viewTitle = declaredRoute?.title ?? 'Unavailable route';
@@ -53,6 +59,18 @@ function Layout(props: LayoutProps) {
     () => props.runs.find((run) => run.key === props.activeRunKey) ?? props.runs[0] ?? null,
     [props.activeRunKey, props.runs],
   );
+  const protectedRun = useMemo(() => {
+    if (declaredRoute?.path === 'strategies/:strategyId') {
+      const match = matchPath({ path: '/strategies/:strategyId', end: true }, location.pathname);
+      const strategyId = match?.params.strategyId;
+      return props.runs.find((run) => run.channel === 'formal' && run.modelVersionId === strategyId) ?? null;
+    }
+    if (declaredRoute && RUN_DETAIL_PATHS.has(declaredRoute.path)) {
+      return selectRunFromQuery(props.runs, location.search) ?? activeRun;
+    }
+    return null;
+  }, [activeRun, declaredRoute, location.pathname, location.search, props.runs]);
+  const proLocked = isProModelRun(protectedRun) && !membership.isPro;
   const showRunPicker = Boolean(
     declaredRoute
     && ['backtests', 'review', 'compare', 'decisions'].includes(declaredRoute.path)
@@ -146,6 +164,8 @@ function Layout(props: LayoutProps) {
               <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">{props.loadError}</p>
               <Button asChild variant="outline" className="mt-5"><Link to="/library">Open bundle library</Link></Button>
             </div>
+          ) : proLocked && protectedRun ? (
+            <ProModelGate run={protectedRun} openAccount={membership.openAccount} />
           ) : (
             <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
