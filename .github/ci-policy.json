@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "repository": "liuh886/alpha_engine",
   "default_branch": "main",
-  "workflow_count_budget": 66,
+  "workflow_count_budget": 63,
   "package_manager": "none",
   "package_scope_note": "Frontend npm ownership remains under qlib-dashboard and is governed by its existing locked CI.",
   "governed_workflows": [
