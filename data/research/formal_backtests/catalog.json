@@ -38,7 +38,7 @@
       "model_id": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
       "path": "byd_v1_3_recovery_event_low_vol_confirmation_v1.json",
       "publication_status": "accepted_formal_baseline",
-      "sha256": "a0b08f50ae8e0853484c8dcd6fc11027345ebbb735e6452851f10ef45997ee09"
+      "sha256": "d115f37b820979ac56962e9717ed926eac8f9b55327dc74675fd2faa9571f209"
     }
   ],
   "research_only": true,
