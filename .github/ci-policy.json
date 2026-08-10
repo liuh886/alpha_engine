@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "repository": "liuh886/alpha_engine",
   "default_branch": "main",
-  "workflow_count_budget": 62,
+  "workflow_count_budget": 59,
   "package_manager": "none",
   "package_scope_note": "Frontend npm ownership remains under qlib-dashboard and is governed by its existing locked CI.",
   "governed_workflows": [
@@ -17,7 +17,10 @@
   ],
   "release_workflows": [
     ".github/workflows/deploy-pages.yml",
-    ".github/workflows/formal-promotion.yml"
+    ".github/workflows/formal-backtest-refresh.yml",
+    ".github/workflows/formal-bundle-v2-sync.yml",
+    ".github/workflows/current-formal-backtest-integrity.yml",
+    ".github/workflows/byd-v1-3-formal.yml"
   ],
   "advisory_workflows": [],
   "artifact_retention_days": {

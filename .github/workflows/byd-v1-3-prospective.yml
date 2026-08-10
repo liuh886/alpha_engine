@@ -1,26 +1,21 @@
-name: BYD v1.2 Trend Expansion Prospective
+name: BYD v1.3 Prospective Evidence
 
 on:
   pull_request:
     branches: [main]
     paths:
-      - "src/research/byd_v1_2_trend_expansion_prospective.py"
       - "src/research/byd_recovery_event_prospective.py"
       - "src/research/byd_v1_3_low_vol_prospective.py"
       - "src/artifacts/append_only_store.py"
-      - "scripts/run_byd_v1_2_trend_expansion_prospective.py"
       - "scripts/run_byd_recovery_event_prospective.py"
       - "scripts/run_byd_v1_3_low_vol_prospective.py"
       - "scripts/check_append_only_store_prefix.py"
-      - "tests/test_byd_v1_2_trend_expansion_prospective.py"
       - "tests/test_byd_recovery_event_prospective.py"
       - "tests/test_byd_v1_3_low_vol_prospective.py"
       - "tests/test_append_only_store.py"
-      - "data/research/byd_v1_2_trend_expansion_prospective/**"
       - "data/research/byd_recovery_event_prospective/**"
       - "data/research/byd_v1_3_low_vol_prospective/**"
-      - "docs/research/byd_v1_2_trend_expansion_prospective.md"
-      - ".github/workflows/byd-v1-2-trend-expansion-prospective.yml"
+      - ".github/workflows/byd-v1-3-prospective.yml"
   workflow_run:
     workflows: ["BYD 515180 Prospective Sleeve"]
     types: [completed]
@@ -32,7 +27,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: byd-v1-2-trend-expansion-prospective-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
+  group: byd-v1-3-prospective-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
   cancel-in-progress: false
 
 jobs:
@@ -74,43 +69,32 @@ jobs:
       - name: Validate prospective contracts
         run: |
           uv run ruff check \
-            src/research/byd_v1_2_trend_expansion_prospective.py \
             src/research/byd_recovery_event_prospective.py \
             src/research/byd_v1_3_low_vol_prospective.py \
             src/artifacts/append_only_store.py \
-            scripts/run_byd_v1_2_trend_expansion_prospective.py \
             scripts/run_byd_recovery_event_prospective.py \
             scripts/run_byd_v1_3_low_vol_prospective.py \
             scripts/check_append_only_store_prefix.py \
-            tests/test_byd_v1_2_trend_expansion_prospective.py \
             tests/test_byd_recovery_event_prospective.py \
             tests/test_byd_v1_3_low_vol_prospective.py \
             tests/test_append_only_store.py
           uv run mypy \
-            src/research/byd_v1_2_trend_expansion_prospective.py \
             src/research/byd_recovery_event_prospective.py \
             src/research/byd_v1_3_low_vol_prospective.py \
             src/artifacts/append_only_store.py \
-            scripts/run_byd_v1_2_trend_expansion_prospective.py \
             scripts/run_byd_recovery_event_prospective.py \
             scripts/run_byd_v1_3_low_vol_prospective.py \
             scripts/check_append_only_store_prefix.py
           uv run pytest \
-            tests/test_byd_v1_2_trend_expansion_prospective.py \
             tests/test_byd_recovery_event_prospective.py \
             tests/test_byd_v1_3_low_vol_prospective.py \
             tests/test_append_only_store.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
-      - name: Reproduce strategy ledgers from immutable sources
+      - name: Reproduce current V1.3 prospective stores from immutable sources
         run: |
           set -euo pipefail
           mkdir -p artifacts/data/byd_canonical_v1
           tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
-          uv run python scripts/run_byd_v1_2_trend_expansion_prospective.py \
-            --baseline-dir artifacts/data/byd_canonical_v1 \
-            --byd-store data/research/byd_prospective_shadow \
-            --paired-store data/research/byd_515180_prospective \
-            --store-dir artifacts/research/byd_v1_2_trend_expansion_prospective
           uv run python scripts/run_byd_recovery_event_prospective.py \
             --baseline-dir artifacts/data/byd_canonical_v1 \
             --byd-store data/research/byd_prospective_shadow \
@@ -123,9 +107,6 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           uv run python scripts/check_append_only_store_prefix.py \
-            --current data/research/byd_v1_2_trend_expansion_prospective \
-            --candidate artifacts/research/byd_v1_2_trend_expansion_prospective
-          uv run python scripts/check_append_only_store_prefix.py \
             --current data/research/byd_recovery_event_prospective \
             --candidate artifacts/research/byd_recovery_event_prospective
           if [[ -d data/research/byd_v1_3_low_vol_prospective ]]; then
@@ -136,14 +117,6 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-
-          trend = Path("artifacts/research/byd_v1_2_trend_expansion_prospective")
-          trend_manifest = json.loads((trend / "manifest.json").read_text())
-          trend_scorecard = json.loads((trend / "scorecard.json").read_text())
-          assert trend_manifest["append_only"] is True
-          assert trend_manifest["research_only"] is True
-          assert trend_manifest["trade_ready"] is False
-          assert trend_scorecard["automatic_promotion_allowed"] is False
 
           event = Path("artifacts/research/byd_recovery_event_prospective")
           event_manifest = json.loads((event / "manifest.json").read_text())
@@ -166,15 +139,14 @@ jobs:
           assert low_vol_scorecard["trade_ready"] is False
           PY
       - name: Upload reproduced prospective stores
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: byd-strategy-prospective-${{ github.run_id }}
+          name: byd-v1-3-prospective-${{ github.run_id }}
           path: |
-            artifacts/research/byd_v1_2_trend_expansion_prospective
             artifacts/research/byd_recovery_event_prospective
             artifacts/research/byd_v1_3_low_vol_prospective
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 30
 
   live-update:
     if: >-
@@ -203,13 +175,8 @@ jobs:
           echo "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179  data/research/byd_canonical_v1_snapshot.tar.xz" | sha256sum --check --strict
           mkdir -p artifacts/data/byd_canonical_v1
           tar -xJf data/research/byd_canonical_v1_snapshot.tar.xz -C artifacts/data/byd_canonical_v1
-      - name: Append immutable strategy evidence
+      - name: Append current V1.3 prospective evidence
         run: |
-          uv run python scripts/run_byd_v1_2_trend_expansion_prospective.py \
-            --baseline-dir artifacts/data/byd_canonical_v1 \
-            --byd-store data/research/byd_prospective_shadow \
-            --paired-store data/research/byd_515180_prospective \
-            --store-dir data/research/byd_v1_2_trend_expansion_prospective
           uv run python scripts/run_byd_recovery_event_prospective.py \
             --baseline-dir artifacts/data/byd_canonical_v1 \
             --byd-store data/research/byd_prospective_shadow \
@@ -221,7 +188,7 @@ jobs:
       - name: Verify append-only scope
         run: |
           set -euo pipefail
-          unexpected="$(git status --porcelain | awk '{print $2}' | grep -Ev '^data/research/(byd_v1_2_trend_expansion_prospective|byd_recovery_event_prospective|byd_v1_3_low_vol_prospective)/' || true)"
+          unexpected="$(git status --porcelain | awk '{print $2}' | grep -Ev '^data/research/(byd_recovery_event_prospective|byd_v1_3_low_vol_prospective)/' || true)"
           if [[ -n "$unexpected" ]]; then
             echo "Unexpected prospective updater changes:"
             echo "$unexpected"
@@ -230,16 +197,15 @@ jobs:
       - name: Commit new prospective evidence
         run: |
           set -euo pipefail
-          trend=data/research/byd_v1_2_trend_expansion_prospective
           event=data/research/byd_recovery_event_prospective
           lowvol=data/research/byd_v1_3_low_vol_prospective
-          if git diff --quiet -- "$trend" "$event" "$lowvol" && [[ -z "$(git ls-files --others --exclude-standard "$trend" "$event" "$lowvol")" ]]; then
-            echo "No new BYD strategy prospective evidence"
+          if git diff --quiet -- "$event" "$lowvol" && [[ -z "$(git ls-files --others --exclude-standard "$event" "$lowvol")" ]]; then
+            echo "No new BYD v1.3 prospective evidence"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$trend" "$event" "$lowvol"
-          git commit -m "research: append BYD strategy prospective evidence"
+          git add "$event" "$lowvol"
+          git commit -m "research: append BYD v1.3 prospective evidence"
           git pull --rebase origin main
           git push origin HEAD:main

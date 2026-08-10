@@ -28,7 +28,7 @@ on:
       - "scripts/persist_strategy_signal_evaluation.py"
       - "data/research/byd_v1_3_low_vol_prospective/**"
   workflow_run:
-    workflows: ["BYD v1.2 Trend Expansion Prospective"]
+    workflows: ["BYD v1.3 Prospective Evidence"]
     types: [completed]
   schedule:
     - cron: "0 13 * * 1-5"
@@ -238,7 +238,7 @@ jobs:
         run: gh workflow run deploy-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
       - name: Upload finalized signal evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: byd-v1-3-signal-${{ github.run_id }}
           path: |
