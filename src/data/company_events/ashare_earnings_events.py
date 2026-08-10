@@ -196,9 +196,7 @@ def _base_records(
                 ),
                 "fiscal_period_end": fiscal_period_end,
                 "announced_at": _timestamp(announced_date),
-                "first_eligible_session": first_session_strictly_after(
-                    announced_date, sessions
-                ),
+                "first_eligible_session": first_session_strictly_after(announced_date, sessions),
                 "effective_date": "",
                 "payload_schema": f"cn_{family}_eastmoney_cninfo_v1",
                 "payload": payload,

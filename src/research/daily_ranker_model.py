@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.research.xgb_native_calibration import XGBNativeCalibration
 
 import numpy as np
 import pandas as pd
@@ -141,13 +144,9 @@ def fit_lgbm_daily_topk_ranker(
     if top_k < 1:
         raise ValueError("top_k must be positive")
     _validate_ranker_fit_inputs(features, relevance_target, groups)
-    if (
-        relevance_target.attrs.get("provenance")
-        != "processed_daily_topk_relevance_target"
-    ):
+    if relevance_target.attrs.get("provenance") != "processed_daily_topk_relevance_target":
         raise ValueError(
-            "relevance_target provenance must be "
-            "processed_daily_topk_relevance_target"
+            "relevance_target provenance must be processed_daily_topk_relevance_target"
         )
     if relevance_target.attrs.get("top_k") != top_k:
         raise ValueError("relevance_target top_k does not match requested top_k")
@@ -159,9 +158,7 @@ def fit_lgbm_daily_topk_ranker(
     for group_size in groups:
         group_values = values[offset : offset + group_size]
         if int(group_values.sum()) != top_k:
-            raise ValueError(
-                "each daily relevance group must contain exactly top_k positives"
-            )
+            raise ValueError("each daily relevance group must contain exactly top_k positives")
         offset += group_size
 
     protected = {
@@ -173,10 +170,7 @@ def fit_lgbm_daily_topk_ranker(
     }
     conflicts = sorted(protected.intersection(params or {}))
     if conflicts:
-        raise ValueError(
-            "Top-K structural ranker parameters cannot be overridden: "
-            f"{conflicts}"
-        )
+        raise ValueError(f"Top-K structural ranker parameters cannot be overridden: {conflicts}")
 
     import lightgbm as lgb
 
@@ -234,9 +228,7 @@ def predict_lgbm_daily_ranker(
     scores.attrs["n_gain_bins"] = result.n_gain_bins
     scores.attrs["target_type"] = result.target_type
     scores.attrs["target_top_k"] = result.target_top_k
-    scores.attrs["lambdarank_truncation_level"] = (
-        result.lambdarank_truncation_level
-    )
+    scores.attrs["lambdarank_truncation_level"] = result.lambdarank_truncation_level
     return scores
 
 
@@ -280,10 +272,7 @@ def fit_xgb_daily_ranker(
     }
     conflicts = sorted(protected_fields.intersection(params or {}))
     if conflicts:
-        raise ValueError(
-            "XGBoost ranker structural parameters cannot be overridden: "
-            f"{conflicts}"
-        )
+        raise ValueError(f"XGBoost ranker structural parameters cannot be overridden: {conflicts}")
 
     _validate_ranker_fit_inputs(features, rank_target, groups)
 
@@ -337,9 +326,7 @@ def predict_xgb_daily_ranker(
     scores.attrs["n_gain_bins"] = result.n_gain_bins
     scores.attrs["target_type"] = result.target_type
     scores.attrs["target_top_k"] = result.target_top_k
-    scores.attrs["lambdarank_truncation_level"] = (
-        result.lambdarank_truncation_level
-    )
+    scores.attrs["lambdarank_truncation_level"] = result.lambdarank_truncation_level
     return scores
 
 

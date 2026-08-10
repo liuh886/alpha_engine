@@ -5,6 +5,7 @@ identity fixed.  Portfolio diagnostics use frozen score ledgers; factor discover
 uses predeclared directions and cross-sectional evidence rather than final
 portfolio return.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -90,7 +91,9 @@ def safe_divide(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
     return (a / b.replace(0.0, np.nan)).replace([np.inf, -np.inf], np.nan)
 
 
-def rolling_beta(stock_returns: pd.DataFrame, benchmark_returns: pd.Series, window: int = 60) -> pd.DataFrame:
+def rolling_beta(
+    stock_returns: pd.DataFrame, benchmark_returns: pd.Series, window: int = 60
+) -> pd.DataFrame:
     variance = benchmark_returns.rolling(window, min_periods=40).var()
     output: dict[str, pd.Series] = {}
     for symbol in stock_returns.columns:
@@ -99,7 +102,9 @@ def rolling_beta(stock_returns: pd.DataFrame, benchmark_returns: pd.Series, wind
     return pd.DataFrame(output, index=stock_returns.index)
 
 
-def build_discovery_factors(fields: Mapping[str, pd.DataFrame], symbols: Sequence[str], benchmark: str) -> dict[str, pd.DataFrame]:
+def build_discovery_factors(
+    fields: Mapping[str, pd.DataFrame], symbols: Sequence[str], benchmark: str
+) -> dict[str, pd.DataFrame]:
     close = fields["close"].loc[:, list(symbols)]
     high = fields["high"].loc[:, list(symbols)]
     low = fields["low"].loc[:, list(symbols)]
@@ -141,7 +146,8 @@ def build_discovery_factors(fields: Mapping[str, pd.DataFrame], symbols: Sequenc
         "volume_ratio_5": safe_divide(volume, volume.rolling(5).mean()) - 1.0,
         "volume_ratio_20": safe_divide(volume, volume.rolling(20).mean()) - 1.0,
         "amount_ratio_20": safe_divide(amount, amount.rolling(20).mean()) - 1.0,
-        "volume_price_confirmation_20": momentum20 * (safe_divide(volume, volume.rolling(20).mean()) - 1.0),
+        "volume_price_confirmation_20": momentum20
+        * (safe_divide(volume, volume.rolling(20).mean()) - 1.0),
         "up_down_volume_ratio_20": safe_divide(up_volume, down_volume) - 1.0,
         "volatility_10": returns.rolling(10).std(),
         "volatility_20": returns.rolling(20).std(),
@@ -170,9 +176,9 @@ def stack_wide(frame: pd.DataFrame, name: str) -> pd.Series:
 
 def sector_relative_factor(values: pd.Series, sectors: pd.Series) -> pd.Series:
     joined = pd.DataFrame({"value": values, "sector": sectors}).dropna()
-    result = joined.groupby(
-        [joined.index.get_level_values("datetime"), "sector"], sort=False
-    )["value"].rank(method="average", pct=True)
+    result = joined.groupby([joined.index.get_level_values("datetime"), "sector"], sort=False)[
+        "value"
+    ].rank(method="average", pct=True)
     result.index = joined.index
     return result.reindex(values.index)
 
@@ -212,15 +218,18 @@ def factor_window_metrics(
         baseline_rank = group["baseline"].rank(method="average", pct=True)
         ic = factor_rank.corr(return_rank, method="pearson")
         design = np.column_stack([np.ones(len(group)), baseline_rank.to_numpy(dtype=float)])
-        residual = factor_rank.to_numpy(dtype=float) - design @ np.linalg.lstsq(
-            design, factor_rank.to_numpy(dtype=float), rcond=None
-        )[0]
+        residual = (
+            factor_rank.to_numpy(dtype=float)
+            - design @ np.linalg.lstsq(design, factor_rank.to_numpy(dtype=float), rcond=None)[0]
+        )
         inc = np.corrcoef(residual, return_rank.to_numpy(dtype=float))[0, 1]
         ordered = group.assign(factor_rank=factor_rank).sort_values(
             ["factor_rank"], ascending=False, kind="mergesort"
         )
         bucket = max(1, len(ordered) // 5)
-        spread = float(ordered.head(bucket)["return"].mean() - ordered.tail(bucket)["return"].mean())
+        spread = float(
+            ordered.head(bucket)["return"].mean() - ordered.tail(bucket)["return"].mean()
+        )
         if pd.notna(ic):
             daily_ic.append(float(ic))
         if np.isfinite(inc):
@@ -230,20 +239,30 @@ def factor_window_metrics(
     return {
         "n_dates": len(values),
         "mean_rank_ic": float(np.mean(values)) if len(values) else 0.0,
-        "rank_icir": float(np.mean(values) / np.std(values, ddof=1)) if len(values) > 1 and np.std(values, ddof=1) > 0 else 0.0,
+        "rank_icir": float(np.mean(values) / np.std(values, ddof=1))
+        if len(values) > 1 and np.std(values, ddof=1) > 0
+        else 0.0,
         "positive_daily_rank_ic_ratio": float(np.mean(values > 0.0)) if len(values) else 0.0,
         "mean_incremental_rank_ic": float(np.mean(daily_incremental)) if daily_incremental else 0.0,
         "mean_top_bottom_spread": float(np.mean(spreads)) if spreads else 0.0,
     }
 
 
-def choose_holdings(day: pd.DataFrame, variant: PortfolioVariant, *, excluded_name: str | None = None, excluded_sector: str | None = None) -> pd.DataFrame:
+def choose_holdings(
+    day: pd.DataFrame,
+    variant: PortfolioVariant,
+    *,
+    excluded_name: str | None = None,
+    excluded_sector: str | None = None,
+) -> pd.DataFrame:
     eligible = day.dropna(subset=["score", "execution_forward_return"]).copy()
     if excluded_name is not None:
         eligible = eligible.loc[eligible["instrument"] != excluded_name]
     if excluded_sector is not None:
         eligible = eligible.loc[eligible["sector"] != excluded_sector]
-    eligible = eligible.sort_values(["score", "instrument"], ascending=[False, True], kind="mergesort")
+    eligible = eligible.sort_values(
+        ["score", "instrument"], ascending=[False, True], kind="mergesort"
+    )
     if variant.selector == "global":
         return eligible.head(int(variant.top_k)).copy()
     if variant.selector == "global_sector_cap":
@@ -295,7 +314,9 @@ def run_portfolio(
         dates = sorted(pd.to_datetime(part["datetime"].unique()))[::10]
         for date in dates:
             day = part.loc[pd.to_datetime(part["datetime"]) == date]
-            chosen = choose_holdings(day, variant, excluded_name=excluded_name, excluded_sector=excluded_sector)
+            chosen = choose_holdings(
+                day, variant, excluded_name=excluded_name, excluded_sector=excluded_sector
+            )
             if chosen.empty or date not in benchmark_returns.index:
                 continue
             weight = 1.0 / len(chosen)
@@ -330,7 +351,8 @@ def run_portfolio(
                         "raw_return": row.execution_forward_return,
                         "benchmark_return": benchmark,
                         "weight": weight,
-                        "net_contribution": weight * row.execution_forward_return - cost / len(chosen),
+                        "net_contribution": weight * row.execution_forward_return
+                        - cost / len(chosen),
                         "precision_hit": row.execution_forward_return > benchmark,
                     }
                 )
@@ -369,8 +391,14 @@ def run_portfolio(
         "positive_excess_windows": int(sum(row["relative_excess"] > 0.0 for row in window_results)),
         "precision_at_k": float(holdings["precision_hit"].mean()),
         "portfolio_benchmark_hit_rate": float(periods["benchmark_hit"].mean()),
-        "maximum_name_absolute_contribution_share": float(name_contribution.abs().max() / name_abs) if name_abs else 1.0,
-        "maximum_sector_absolute_contribution_share": float(sector_contribution.abs().max() / sector_abs) if sector_abs else 1.0,
+        "maximum_name_absolute_contribution_share": float(name_contribution.abs().max() / name_abs)
+        if name_abs
+        else 1.0,
+        "maximum_sector_absolute_contribution_share": float(
+            sector_contribution.abs().max() / sector_abs
+        )
+        if sector_abs
+        else 1.0,
         "top_contributor_name": str(name_contribution.abs().idxmax()),
         "top_contributor_sector": str(sector_contribution.abs().idxmax()),
         "window_results": window_results,

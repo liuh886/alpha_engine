@@ -248,9 +248,11 @@ def _verify_provider_readiness(
     extra_symbols = sorted(provider_symbols - required_provider)
 
     # Verify reference symbols explicitly
-    ref_required = list(spec.get("validation", {}).get("provider_requirements", {}).get(
-        "reference_symbols_required", []
-    ))
+    ref_required = list(
+        spec.get("validation", {})
+        .get("provider_requirements", {})
+        .get("reference_symbols_required", [])
+    )
     missing_refs = [s for s in ref_required if s not in provider_symbols]
 
     # Coverage check: full-history references must cover declared development start
@@ -349,8 +351,12 @@ def _verify_provider_readiness(
             low_coverage.append(provider)
 
     ready = not (
-        missing_provider or stale or low_coverage or missing_refs
-        or internal_gap_failures or missing_full_history_refs
+        missing_provider
+        or stale
+        or low_coverage
+        or missing_refs
+        or internal_gap_failures
+        or missing_full_history_refs
     )
 
     return {
@@ -533,13 +539,15 @@ def _ew_buy_hold_returns(
         # No eligible candidates → cash throughout
         rows = []
         for idx in range(len(perf_frame)):
-            rows.append({
-                "portfolio_return": 0.0,
-                "turnover": 0.0,
-                "cost": 0.0,
-                "gross_exposure": 0.0,
-                **{c: 0.0 for c in candidates},
-            })
+            rows.append(
+                {
+                    "portfolio_return": 0.0,
+                    "turnover": 0.0,
+                    "cost": 0.0,
+                    "gross_exposure": 0.0,
+                    **{c: 0.0 for c in candidates},
+                }
+            )
         result = pd.DataFrame(rows, index=perf_frame.index)
         result.index.name = "date"
         return result, {
@@ -559,9 +567,7 @@ def _ew_buy_hold_returns(
     for idx in range(len(perf_frame)):
         ret_row = perf_frame.iloc[idx]
 
-        port_ret = _weighted_portfolio_return(
-            current_weights, ret_row, candidates
-        )
+        port_ret = _weighted_portfolio_return(current_weights, ret_row, candidates)
 
         # Build rets for eligible-only drift
         rets_list: list[float] = []
@@ -641,9 +647,7 @@ def _state_only_returns(
     for date in all_dates:
         target: dict[str, float] = {}
         for sym in candidates:
-            state_row = states_df[
-                (states_df["date"] == date) & (states_df["symbol"] == sym)
-            ]
+            state_row = states_df[(states_df["date"] == date) & (states_df["symbol"] == sym)]
             if state_row.empty:
                 target[sym] = 0.0
             else:
@@ -715,19 +719,21 @@ def _build_state_free_basket_selection(
     snapshots: list[dict[str, Any]] = []
     for basket_name, basket_def in pool["baskets"].items():
         members = [str(s) for s in basket_def["symbols"]]
-        day = indicators[
-            (indicators["date"] == date) & indicators["symbol"].isin(members)
-        ].copy()
-        ready = day.dropna(subset=[
-            "relative_momentum_63_vs_benchmark",
-            "momentum_20",
-            "sma_50",
-            "drawdown_from_63d_high",
-        ])
+        day = indicators[(indicators["date"] == date) & indicators["symbol"].isin(members)].copy()
+        ready = day.dropna(
+            subset=[
+                "relative_momentum_63_vs_benchmark",
+                "momentum_20",
+                "sma_50",
+                "drawdown_from_63d_high",
+            ]
+        )
         count = int(ready.shape[0])
         coverage = count / max(len(members), 1)
         breadth = None if ready.empty else float((ready["close"] > ready["sma_50"]).mean())
-        relative = None if ready.empty else float(ready["relative_momentum_63_vs_benchmark"].median())
+        relative = (
+            None if ready.empty else float(ready["relative_momentum_63_vs_benchmark"].median())
+        )
         mom20 = None if ready.empty else float(ready["momentum_20"].median())
         dd = None if ready.empty else float(ready["drawdown_from_63d_high"].median())
 
@@ -743,23 +749,26 @@ def _build_state_free_basket_selection(
         ):
             pre = False
 
-        snapshots.append({
-            "basket": str(basket_name),
-            "median_relative_momentum_63_vs_benchmark": relative,
-            "median_momentum_20": mom20,
-            "breadth_above_sma50": breadth,
-            "median_drawdown_from_63d_high": dd,
-            "pre_score_eligible": pre,
-            "composite_percentile": 0.0,
-            "score_gate_passed": False,
-        })
+        snapshots.append(
+            {
+                "basket": str(basket_name),
+                "median_relative_momentum_63_vs_benchmark": relative,
+                "median_momentum_20": mom20,
+                "breadth_above_sma50": breadth,
+                "median_drawdown_from_63d_high": dd,
+                "pre_score_eligible": pre,
+                "composite_percentile": 0.0,
+                "score_gate_passed": False,
+            }
+        )
 
     eligible_idx = [i for i, s in enumerate(snapshots) if s["pre_score_eligible"]]
     if eligible_idx:
         for field in BASKET_SCORE_FIELDS:
             values = pd.Series(
                 [float(snapshots[i][field]) for i in eligible_idx],
-                index=eligible_idx, dtype="float64",
+                index=eligible_idx,
+                dtype="float64",
             )
             ranks = _rank_percentile(values, direction=str(basket_components[field]["direction"]))
             for idx, val in ranks.items():
@@ -795,9 +804,7 @@ def _build_state_free_security_selection(
     limit = int(spec["rotation"]["maximum_selected_symbols_per_basket"])
 
     score_fields = list(SECURITY_SCORE_FIELDS)
-    day = indicators[
-        (indicators["date"] == date) & indicators["symbol"].isin(members)
-    ].copy()
+    day = indicators[(indicators["date"] == date) & indicators["symbol"].isin(members)].copy()
     ready = day.dropna(subset=score_fields)
     if ready.empty:
         return []
@@ -807,15 +814,12 @@ def _build_state_free_security_selection(
         ready[f"{field}_percentile"] = _rank_percentile(ready[field], direction=direction)
 
     ready["composite"] = sum(
-        ready[f"{field}_percentile"] * float(components[field]["weight"])
-        for field in score_fields
+        ready[f"{field}_percentile"] * float(components[field]["weight"]) for field in score_fields
     )
     passed = ready[ready["composite"] >= min_pct]
     if passed.empty:
         return []
-    passed = passed.sort_values(
-        ["composite", "symbol"], ascending=[False, True]
-    )
+    passed = passed.sort_values(["composite", "symbol"], ascending=[False, True])
     return [str(s) for s in passed.head(limit)["symbol"]]
 
 
@@ -866,9 +870,7 @@ def _cross_section_only_returns(
     for date in all_dates:
         if date in rot_dates_set:
             frozen_target = {c: 0.0 for c in candidates}
-            selected_baskets = _build_state_free_basket_selection(
-                date, indicators, spec, pool
-            )
+            selected_baskets = _build_state_free_basket_selection(date, indicators, spec, pool)
 
             if selected_baskets:
                 basket_weight = 1.0 / len(selected_baskets)
@@ -877,7 +879,11 @@ def _cross_section_only_returns(
                     if not members:
                         continue
                     selected_symbols = _build_state_free_security_selection(
-                        date, basket_name, members, indicators, spec,
+                        date,
+                        basket_name,
+                        members,
+                        indicators,
+                        spec,
                     )
                     if not selected_symbols:
                         continue
@@ -890,9 +896,7 @@ def _cross_section_only_returns(
         drift_row = drift_frame.loc[date] if date in drift_frame.index else None
         drifted = _drift_weights(prev_weights, drift_row, candidates)
 
-        turnover = sum(
-            abs(target.get(s, 0.0) - drifted.get(s, 0.0)) for s in candidates
-        )
+        turnover = sum(abs(target.get(s, 0.0) - drifted.get(s, 0.0)) for s in candidates)
         cost = turnover * cost_bps / 10_000.0
 
         if date in perf_frame.index:
@@ -955,9 +959,7 @@ def _hierarchical_plus_state_returns(
         drift_row = drift_frame.loc[date] if date in drift_frame.index else None
         drifted = _drift_weights(prev_weights, drift_row, candidates)
 
-        turnover = sum(
-            abs(target.get(s, 0.0) - drifted.get(s, 0.0)) for s in candidates
-        )
+        turnover = sum(abs(target.get(s, 0.0) - drifted.get(s, 0.0)) for s in candidates)
         cost = turnover * cost_bps / 10_000.0
 
         ret_row = perf_frame.loc[date]
@@ -1004,12 +1006,14 @@ def _signal_to_frame(signal_history: list[dict[str, Any]]) -> pd.DataFrame:
     columns = ["date", "symbol", "state", "reason_codes"]
     rows: list[dict[str, Any]] = []
     for row in signal_history:
-        rows.append({
-            "date": pd.Timestamp(row["date"]),
-            "symbol": str(row["symbol"]),
-            "state": str(row["state"]),
-            "reason_codes": list(row.get("reason_codes", [])),
-        })
+        rows.append(
+            {
+                "date": pd.Timestamp(row["date"]),
+                "symbol": str(row["symbol"]),
+                "state": str(row["state"]),
+                "reason_codes": list(row.get("reason_codes", [])),
+            }
+        )
     df = pd.DataFrame(rows, columns=columns)
     if df.empty:
         return df
@@ -1030,10 +1034,12 @@ def _baseline_metrics(
     candidates: list[str],
 ) -> dict[str, Any]:
     """Compute standardised metrics for one baseline portfolio."""
-    merged = pd.DataFrame({
-        "portfolio_return": port_returns["portfolio_return"],
-        "qqq_return": qqq_returns.reindex(port_returns.index),
-    }).dropna()
+    merged = pd.DataFrame(
+        {
+            "portfolio_return": port_returns["portfolio_return"],
+            "qqq_return": qqq_returns.reindex(port_returns.index),
+        }
+    ).dropna()
 
     if merged.empty:
         return {
@@ -1069,13 +1075,9 @@ def _baseline_metrics(
     )
 
     avg_exposure = (
-        float(port_returns["gross_exposure"].mean())
-        if "gross_exposure" in port_returns
-        else None
+        float(port_returns["gross_exposure"].mean()) if "gross_exposure" in port_returns else None
     )
-    total_turnover = (
-        float(port_returns["turnover"].sum()) if "turnover" in port_returns else None
-    )
+    total_turnover = float(port_returns["turnover"].sum()) if "turnover" in port_returns else None
     annual_turnover = (
         float(total_turnover / (sessions / 252.0))
         if total_turnover is not None and sessions > 0
@@ -1112,9 +1114,7 @@ def _baseline_metrics(
         "upside_capture_vs_qqq": upside,
         "downside_capture_vs_qqq": downside,
         "average_gross_exposure": avg_exposure,
-        "average_cash_weight": (
-            None if avg_exposure is None else float(1.0 - avg_exposure)
-        ),
+        "average_cash_weight": (None if avg_exposure is None else float(1.0 - avg_exposure)),
         "total_turnover": total_turnover,
         "annual_turnover": annual_turnover,
         "average_holding_sessions": holding_sessions,
@@ -1192,9 +1192,7 @@ def _counterfactual_no_market_regime(
     forced["market_regime"] = "counterfactual_risk_on"
 
     forced_signals, _forced_reference = generate_signal_history(forced, timing_spec)
-    _, _, forced_rotations = build_hierarchical_rotation_history(
-        forced, forced_signals, spec, pool
-    )
+    _, _, forced_rotations = build_hierarchical_rotation_history(forced, forced_signals, spec, pool)
     forced_portfolio = build_hierarchical_portfolio_history(
         forced, forced_signals, forced_rotations, spec
     )
@@ -1250,14 +1248,10 @@ def _cs_equal_weight_baskets_returns(
         if date in rot_dates_set:
             frozen_target = {c: 0.0 for c in candidates}
             # All gate-passing baskets, not just top-N
-            selected_baskets = _build_state_free_basket_selection(
-                date, indicators, spec, pool
-            )
+            selected_baskets = _build_state_free_basket_selection(date, indicators, spec, pool)
             # Override: include ALL gate-passing baskets, not just top-N
             # Recompute to get ALL passing baskets
-            all_passing = _all_state_free_gate_passing_baskets(
-                date, indicators, spec, pool
-            )
+            all_passing = _all_state_free_gate_passing_baskets(date, indicators, spec, pool)
             selected_baskets = all_passing
 
             if selected_baskets:
@@ -1267,7 +1261,11 @@ def _cs_equal_weight_baskets_returns(
                     if not members:
                         continue
                     selected_symbols = _build_state_free_security_selection(
-                        date, basket_name, members, indicators, spec,
+                        date,
+                        basket_name,
+                        members,
+                        indicators,
+                        spec,
                     )
                     if not selected_symbols:
                         continue
@@ -1288,7 +1286,9 @@ def _cs_equal_weight_baskets_returns(
         gross = sum(target.values())
         row_data: dict[str, Any] = {
             "portfolio_return": port_ret - cost,
-            "turnover": turnover, "cost": cost, "gross_exposure": gross,
+            "turnover": turnover,
+            "cost": cost,
+            "gross_exposure": gross,
         }
         for c in candidates:
             row_data[c] = target.get(c, 0.0)
@@ -1315,17 +1315,21 @@ def _all_state_free_gate_passing_baskets(
     snapshots: list[dict[str, Any]] = []
     for basket_name, basket_def in pool["baskets"].items():
         members = [str(s) for s in basket_def["symbols"]]
-        day = indicators[
-            (indicators["date"] == date) & indicators["symbol"].isin(members)
-        ].copy()
-        ready = day.dropna(subset=[
-            "relative_momentum_63_vs_benchmark", "momentum_20",
-            "sma_50", "drawdown_from_63d_high",
-        ])
+        day = indicators[(indicators["date"] == date) & indicators["symbol"].isin(members)].copy()
+        ready = day.dropna(
+            subset=[
+                "relative_momentum_63_vs_benchmark",
+                "momentum_20",
+                "sma_50",
+                "drawdown_from_63d_high",
+            ]
+        )
         count = int(ready.shape[0])
         coverage = count / max(len(members), 1)
         breadth = None if ready.empty else float((ready["close"] > ready["sma_50"]).mean())
-        relative = None if ready.empty else float(ready["relative_momentum_63_vs_benchmark"].median())
+        relative = (
+            None if ready.empty else float(ready["relative_momentum_63_vs_benchmark"].median())
+        )
         mom20 = None if ready.empty else float(ready["momentum_20"].median())
         dd = None if ready.empty else float(ready["drawdown_from_63d_high"].median())
 
@@ -1341,23 +1345,26 @@ def _all_state_free_gate_passing_baskets(
         ):
             pre = False
 
-        snapshots.append({
-            "basket": str(basket_name),
-            "median_relative_momentum_63_vs_benchmark": relative,
-            "median_momentum_20": mom20,
-            "breadth_above_sma50": breadth,
-            "median_drawdown_from_63d_high": dd,
-            "pre_score_eligible": pre,
-            "composite_percentile": 0.0,
-            "score_gate_passed": False,
-        })
+        snapshots.append(
+            {
+                "basket": str(basket_name),
+                "median_relative_momentum_63_vs_benchmark": relative,
+                "median_momentum_20": mom20,
+                "breadth_above_sma50": breadth,
+                "median_drawdown_from_63d_high": dd,
+                "pre_score_eligible": pre,
+                "composite_percentile": 0.0,
+                "score_gate_passed": False,
+            }
+        )
 
     eligible_idx = [i for i, s in enumerate(snapshots) if s["pre_score_eligible"]]
     if eligible_idx:
         for field in BASKET_SCORE_FIELDS:
             values = pd.Series(
                 [float(snapshots[i][field]) for i in eligible_idx],
-                index=eligible_idx, dtype="float64",
+                index=eligible_idx,
+                dtype="float64",
             )
             ranks = _rank_percentile(values, direction=str(basket_components[field]["direction"]))
             for idx, val in ranks.items():
@@ -1411,9 +1418,7 @@ def _cs_equal_weight_securities_returns(
     for date in all_dates:
         if date in rot_dates_set:
             frozen_target = {c: 0.0 for c in candidates}
-            selected_baskets = _build_state_free_basket_selection(
-                date, indicators, spec, pool
-            )
+            selected_baskets = _build_state_free_basket_selection(date, indicators, spec, pool)
 
             if selected_baskets:
                 basket_weight = 1.0 / len(selected_baskets)
@@ -1423,7 +1428,11 @@ def _cs_equal_weight_securities_returns(
                         continue
                     # ALL gate-passing securities, not just top-M
                     all_selected = _all_state_free_gate_passing_securities(
-                        date, basket_name, members, indicators, spec,
+                        date,
+                        basket_name,
+                        members,
+                        indicators,
+                        spec,
                     )
                     if not all_selected:
                         continue
@@ -1444,7 +1453,9 @@ def _cs_equal_weight_securities_returns(
         gross = sum(target.values())
         row_data: dict[str, Any] = {
             "portfolio_return": port_ret - cost,
-            "turnover": turnover, "cost": cost, "gross_exposure": gross,
+            "turnover": turnover,
+            "cost": cost,
+            "gross_exposure": gross,
         }
         for c in candidates:
             row_data[c] = target.get(c, 0.0)
@@ -1469,9 +1480,7 @@ def _all_state_free_gate_passing_securities(
     min_pct = float(spec["security_selection"]["cross_section"]["minimum_composite_percentile"])
     score_fields = list(SECURITY_SCORE_FIELDS)
 
-    day = indicators[
-        (indicators["date"] == date) & indicators["symbol"].isin(members)
-    ].copy()
+    day = indicators[(indicators["date"] == date) & indicators["symbol"].isin(members)].copy()
     ready = day.dropna(subset=score_fields)
     if ready.empty:
         return []
@@ -1481,15 +1490,15 @@ def _all_state_free_gate_passing_securities(
         ready[f"{field}_percentile"] = _rank_percentile(ready[field], direction=direction)
 
     ready["composite"] = sum(
-        ready[f"{field}_percentile"] * float(components[field]["weight"])
-        for field in score_fields
+        ready[f"{field}_percentile"] * float(components[field]["weight"]) for field in score_fields
     )
     passed = ready[ready["composite"] >= min_pct]
     if passed.empty:
         return []
-    return [str(s) for s in passed.sort_values(
-        ["composite", "symbol"], ascending=[False, True]
-    )["symbol"]]
+    return [
+        str(s)
+        for s in passed.sort_values(["composite", "symbol"], ascending=[False, True])["symbol"]
+    ]
 
 
 def _incremental_attribution(
@@ -1676,15 +1685,12 @@ def _concentration_analysis(
     max_symbol = max(symbol_avg, key=symbol_avg.get) if symbol_avg else None
     max_concentration = symbol_avg.get(max_symbol, 0.0) if max_symbol else 0.0
 
-    basket_freq = {
-        b: float(c / max(total_dates, 1)) for b, c in basket_selection_count.items()
-    }
+    basket_freq = {b: float(c / max(total_dates, 1)) for b, c in basket_selection_count.items()}
 
     pos_counts = []
     for entry in portfolio_history:
         pos_count = sum(
-            1 for p in entry.get("positions", [])
-            if float(p.get("target_weight", 0.0)) > 0
+            1 for p in entry.get("positions", []) if float(p.get("target_weight", 0.0)) > 0
         )
         pos_counts.append(pos_count)
     avg_breadth = float(np.mean(pos_counts)) if pos_counts else 0.0
@@ -1704,9 +1710,7 @@ def _concentration_analysis(
         )
         basket_contribution = contribs.get("basket_contributions", {})
         symbol_contribution = contribs.get("symbol_contributions", {})
-        positive_basket_contribution_ratio = contribs.get(
-            "positive_basket_contribution_ratio"
-        )
+        positive_basket_contribution_ratio = contribs.get("positive_basket_contribution_ratio")
 
     return {
         "schema_version": "1.0",
@@ -1918,17 +1922,17 @@ def _check_gates(
     if "minimum_baseline_improvement_ratio" in rob_gates:
         threshold = float(rob_gates["minimum_baseline_improvement_ratio"])
         ew_ret = float(
-            (all_baseline_metrics.get("equal_weight_pool_buy_and_hold", {})
-             .get("development_observed", {})
-             .get("total_return_after_costs", 0.0) or 0.0)
+            (
+                all_baseline_metrics.get("equal_weight_pool_buy_and_hold", {})
+                .get("development_observed", {})
+                .get("total_return_after_costs", 0.0)
+                or 0.0
+            )
         )
         full_ret = float(
-            full_metrics.get("development_observed", {})
-            .get("total_return_after_costs", 0.0) or 0.0
+            full_metrics.get("development_observed", {}).get("total_return_after_costs", 0.0) or 0.0
         )
-        ratio = (
-            (full_ret - ew_ret) / max(abs(ew_ret), 1e-12) if ew_ret != 0 else 0.0
-        )
+        ratio = (full_ret - ew_ret) / max(abs(ew_ret), 1e-12) if ew_ret != 0 else 0.0
         passed = ratio >= threshold
         comparisons["robustness.minimum_baseline_improvement_ratio"] = passed
         details["robustness.minimum_baseline_improvement_ratio"] = {
@@ -1963,9 +1967,7 @@ def _gate_to_metric(gate_key: str) -> str:
     return _GATE_METRIC_MAP.get(gate_key, gate_key)
 
 
-def _evaluate_gate(
-    gate_key: str, observed: float | None, threshold: float
-) -> bool:
+def _evaluate_gate(gate_key: str, observed: float | None, threshold: float) -> bool:
     """Evaluate a single gate: _min -> observed >= threshold, _max -> observed <= threshold.
 
     For negative-valued metrics (e.g. drawdown), a _min gate means the observed
@@ -2038,9 +2040,7 @@ def _validate_provider_manifest(
     # ---- market ------------------------------------------------------------
     market = str(manifest.get("market", "")).lower()
     if market != "us":
-        raise ValueError(
-            f"provider manifest market mismatch: expected=us, actual={market}"
-        )
+        raise ValueError(f"provider manifest market mismatch: expected=us, actual={market}")
 
     manifest_type = str(manifest.get("manifest_type", "upstream_provider"))
 
@@ -2065,35 +2065,24 @@ def _validate_provider_manifest(
         source_hashes_verified = bool(
             manifest.get("upstream", {}).get("source_hashes_verified", False)
         )
-        source_attestation = str(
-            manifest.get("upstream", {}).get("source_attestation", "")
-        )
+        source_attestation = str(manifest.get("upstream", {}).get("source_attestation", ""))
         snapshot_spec = manifest.get("spec", {})
         declared_spec_sha256 = str(snapshot_spec.get("sha256", ""))
         declared_pool_sha256 = str(snapshot_spec.get("pool_sha256", ""))
         declared_experiment_id = str(snapshot_spec.get("experiment_id", ""))
-        if (
-            expected_spec_sha256 is not None
-            and declared_spec_sha256 != expected_spec_sha256
-        ):
+        if expected_spec_sha256 is not None and declared_spec_sha256 != expected_spec_sha256:
             raise ValueError(
                 "snapshot manifest spec hash mismatch: "
                 f"expected={expected_spec_sha256}, "
                 f"actual={declared_spec_sha256 or 'missing'}"
             )
-        if (
-            expected_pool_sha256 is not None
-            and declared_pool_sha256 != expected_pool_sha256
-        ):
+        if expected_pool_sha256 is not None and declared_pool_sha256 != expected_pool_sha256:
             raise ValueError(
                 "snapshot manifest pool hash mismatch: "
                 f"expected={expected_pool_sha256}, "
                 f"actual={declared_pool_sha256 or 'missing'}"
             )
-        if (
-            expected_experiment_id is not None
-            and declared_experiment_id != expected_experiment_id
-        ):
+        if expected_experiment_id is not None and declared_experiment_id != expected_experiment_id:
             raise ValueError(
                 "snapshot manifest experiment mismatch: "
                 f"expected={expected_experiment_id}, "
@@ -2114,20 +2103,20 @@ def _validate_provider_manifest(
             # Resolve source file relative to manifest directory
             src_path = manifest_dir / src_name
             if not src_path.is_file():
-                raise FileNotFoundError(
-                    f"provider manifest source file missing: {src_path}"
-                )
+                raise FileNotFoundError(f"provider manifest source file missing: {src_path}")
             actual_hash = sha256_file(src_path)
             if actual_hash != declared_hash:
                 raise ValueError(
                     f"provider source hash mismatch for {src_name}: "
                     f"declared={declared_hash}, actual={actual_hash}"
                 )
-            verified_sources.append({
-                "name": src_name,
-                "declared_sha256": declared_hash,
-                "verified": True,
-            })
+            verified_sources.append(
+                {
+                    "name": src_name,
+                    "declared_sha256": declared_hash,
+                    "verified": True,
+                }
+            )
             if actual_hash == prices_sha256:
                 prices_matched = True
 
@@ -2139,8 +2128,7 @@ def _validate_provider_manifest(
 
         source_hashes_verified = True
         source_attestation = (
-            "source_hashes_verified_by_validator; "
-            "no_independent_third_party_attestation"
+            "source_hashes_verified_by_validator; no_independent_third_party_attestation"
         )
 
         # Collect symbols from instruments if available
@@ -2162,18 +2150,15 @@ def _validate_provider_manifest(
         if actual_symbols_set != required_symbols:
             missing = sorted(required_symbols - actual_symbols_set)
             extra = sorted(actual_symbols_set - required_symbols)
-            raise ValueError(
-                f"manifest symbol set mismatch: "
-                f"missing={missing}, extra={extra}"
-            )
+            raise ValueError(f"manifest symbol set mismatch: missing={missing}, extra={extra}")
 
-    symbol_count = len(manifest_symbols) if manifest_symbols else (
-        manifest.get("snapshot", {}).get("symbol_count", 0)
+    symbol_count = (
+        len(manifest_symbols)
+        if manifest_symbols
+        else (manifest.get("snapshot", {}).get("symbol_count", 0))
     )
     if required_count is not None and symbol_count < required_count:
-        raise ValueError(
-            f"manifest symbol count {symbol_count} below required {required_count}"
-        )
+        raise ValueError(f"manifest symbol count {symbol_count} below required {required_count}")
 
     # ---- verify calendar / observed coverage -------------------------------
     calendar = manifest.get("calendar", {})
@@ -2182,9 +2167,7 @@ def _validate_provider_manifest(
     if first_day and last_day:
         last_dt = pd.Timestamp(last_day)
         if last_dt < pd.Timestamp("2026-06-30"):
-            raise ValueError(
-                f"manifest calendar ends at {last_day}, before required 2026-06-30"
-            )
+            raise ValueError(f"manifest calendar ends at {last_day}, before required 2026-06-30")
 
     # Verify no reserved rows in the prices CSV
     reserved_start = pd.Timestamp("2026-07-01")
@@ -2241,9 +2224,7 @@ def _recompute_manifest_identity(manifest: dict[str, Any]) -> str:
     identity key itself (mirrors ``src.data.market_provider._identity_sha256``)."""
     import hashlib as _hashlib
 
-    identity = {
-        k: v for k, v in manifest.items() if k != "provider_identity_sha256"
-    }
+    identity = {k: v for k, v in manifest.items() if k != "provider_identity_sha256"}
     encoded = json.dumps(
         identity, sort_keys=True, separators=(",", ":"), ensure_ascii=False
     ).encode("utf-8")
@@ -2325,9 +2306,7 @@ def run_us_hierarchical_rotation_validation(
             )
         except (ValueError, FileNotFoundError, KeyError) as exc:
             # Fail closed: write explicit artifacts, then re-raise
-            _write_manifest_fail_artifacts(
-                output_dir, spec, str(exc), manifest_path
-            )
+            _write_manifest_fail_artifacts(output_dir, spec, str(exc), manifest_path)
             raise
     else:
         # Non-authoritative: no manifest provided
@@ -2354,9 +2333,8 @@ def run_us_hierarchical_rotation_validation(
     # Write observed-only temp CSV so downstream loaders never see reserved rows
     import os as _os
     import tempfile as _tempfile
-    _tmp_fd, _observed_csv_path = _tempfile.mkstemp(
-        suffix=".csv", prefix="observed_slice_"
-    )
+
+    _tmp_fd, _observed_csv_path = _tempfile.mkstemp(suffix=".csv", prefix="observed_slice_")
     try:
         observed_slab.to_csv(_observed_csv_path, index=False)
         _os.close(_tmp_fd)
@@ -2379,24 +2357,24 @@ def run_us_hierarchical_rotation_validation(
             write_json(output_dir / "decision.json", decision)
             _write_fail_closed_artifacts(output_dir, spec, provider)
             _write_evidence_manifest(
-                spec, spec_path, prices_csv, pool_path, output_dir,
+                spec,
+                spec_path,
+                prices_csv,
+                pool_path,
+                output_dir,
                 provider_manifest_validation=manifest_validation,
             )
             return decision
 
         # 4.  Load prices through the generic loader (observed-only temp CSV)
         root = _repository_root(resolved_spec)
-        timing_spec, formula_path = build_runtime_timing_spec(
-            spec, pool, repository_root=root
-        )
+        timing_spec, formula_path = build_runtime_timing_spec(spec, pool, repository_root=root)
         observed_prices = load_long_ohlcv_csv(_observed_csv_path, timing_spec)
     finally:
         Path(_observed_csv_path).unlink(missing_ok=True)
 
     # Double-gate: filter again for safety (already pre-filtered)
-    observed_prices = observed_prices[
-        observed_prices["date"] < reserved_start
-    ].copy()
+    observed_prices = observed_prices[observed_prices["date"] < reserved_start].copy()
     observed_row_count = int(observed_prices.shape[0])
 
     # Record boundary: raw source SHA + row counts
@@ -2410,9 +2388,7 @@ def run_us_hierarchical_rotation_validation(
 
     # 5.  Compute indicators, signals, rotations, portfolio
     indicators = compute_hierarchical_indicators(observed_prices, timing_spec)
-    signal_history, reference_history = generate_signal_history(
-        indicators, timing_spec
-    )
+    signal_history, reference_history = generate_signal_history(indicators, timing_spec)
     candidates = _candidate_symbols(pool)
     benchmark = str(spec["market_regime"]["reference"])
 
@@ -2424,19 +2400,14 @@ def run_us_hierarchical_rotation_validation(
     )
 
     # Internal counterfactual for attribution: no market regime
-    counterfactual_no_mr = _counterfactual_no_market_regime(
-        indicators, timing_spec, spec, pool
-    )
+    counterfactual_no_mr = _counterfactual_no_market_regime(indicators, timing_spec, spec, pool)
 
     # 5.  Build return frames per window
     cost_bps = float(
-        spec.get("validation", {})
-        .get("execution", {})
-        .get("cost_bps_per_unit_exposure_change", 10)
+        spec.get("validation", {}).get("execution", {}).get("cost_bps_per_unit_exposure_change", 10)
     )
     state_multipliers = {
-        str(k): float(v)
-        for k, v in spec["security_selection"]["absolute_state_filter"].items()
+        str(k): float(v) for k, v in spec["security_selection"]["absolute_state_filter"].items()
     }
 
     evidence = spec["evidence"]
@@ -2484,8 +2455,12 @@ def run_us_hierarchical_rotation_validation(
 
         # (b) State only — correct drift
         state_rets = _state_only_returns(
-            perf_frame, drift_frame, signal_history,
-            candidates, state_multipliers, cost_bps,
+            perf_frame,
+            drift_frame,
+            signal_history,
+            candidates,
+            state_multipliers,
+            cost_bps,
         )
         state_metrics = _baseline_metrics(
             state_rets, qqq_rets, baseline_labels[1], window_name, candidates
@@ -2493,8 +2468,14 @@ def run_us_hierarchical_rotation_validation(
 
         # (c) Cross-section only — independent of state filter
         cs_rets = _cross_section_only_returns(
-            perf_frame, drift_frame, rotations, indicators,
-            spec, pool, candidates, cost_bps,
+            perf_frame,
+            drift_frame,
+            rotations,
+            indicators,
+            spec,
+            pool,
+            candidates,
+            cost_bps,
         )
         cs_metrics = _baseline_metrics(
             cs_rets, qqq_rets, baseline_labels[2], window_name, candidates
@@ -2502,8 +2483,11 @@ def run_us_hierarchical_rotation_validation(
 
         # (d) Full — correct drift
         full_rets = _hierarchical_plus_state_returns(
-            perf_frame, drift_frame, portfolio_history,
-            candidates, cost_bps,
+            perf_frame,
+            drift_frame,
+            portfolio_history,
+            candidates,
+            cost_bps,
         )
         full_metrics = _baseline_metrics(
             full_rets, qqq_rets, baseline_labels[3], window_name, candidates
@@ -2535,16 +2519,10 @@ def run_us_hierarchical_rotation_validation(
     write_json(output_dir / "baseline_metrics.json", baseline_payload)
 
     # 6.  Attribution with internal counterfactuals
-    dev_ew = all_baseline_metrics["equal_weight_pool_buy_and_hold"][
-        "development_observed"
-    ]
+    dev_ew = all_baseline_metrics["equal_weight_pool_buy_and_hold"]["development_observed"]
     dev_state = all_baseline_metrics["time_series_state_only"]["development_observed"]
-    dev_cs = all_baseline_metrics["hierarchical_cross_section_only"][
-        "development_observed"
-    ]
-    dev_full = all_baseline_metrics["hierarchical_cross_section_plus_state"][
-        "development_observed"
-    ]
+    dev_cs = all_baseline_metrics["hierarchical_cross_section_only"]["development_observed"]
+    dev_full = all_baseline_metrics["hierarchical_cross_section_plus_state"]["development_observed"]
 
     # Compute no-market-regime counterfactual returns
     dev_w_start = evidence["development_observed"]["start"]
@@ -2556,39 +2534,63 @@ def run_us_hierarchical_rotation_validation(
         dev_perf_frame, dev_drift_frame, benchmark
     )
     no_mr_rets = _hierarchical_plus_state_returns(
-        dev_perf_frame, dev_drift_frame, counterfactual_no_mr,
-        candidates, cost_bps,
+        dev_perf_frame,
+        dev_drift_frame,
+        counterfactual_no_mr,
+        candidates,
+        cost_bps,
     )
     no_mr_metrics = _baseline_metrics(
-        no_mr_rets, dev_perf_frame[benchmark],
+        no_mr_rets,
+        dev_perf_frame[benchmark],
         "internal_counterfactual_no_market_regime",
-        "development_observed", candidates,
+        "development_observed",
+        candidates,
     )
 
     # Compute basket-rank counterfactual (cs with equal-weight baskets)
     cs_ew_baskets_rets = _cs_equal_weight_baskets_returns(
-        dev_perf_frame, dev_drift_frame, rotations, indicators,
-        spec, pool, candidates, cost_bps,
+        dev_perf_frame,
+        dev_drift_frame,
+        rotations,
+        indicators,
+        spec,
+        pool,
+        candidates,
+        cost_bps,
     )
     cs_ew_baskets_metrics = _baseline_metrics(
-        cs_ew_baskets_rets, dev_perf_frame[benchmark],
+        cs_ew_baskets_rets,
+        dev_perf_frame[benchmark],
         "internal_counterfactual_cs_equal_weight_baskets",
-        "development_observed", candidates,
+        "development_observed",
+        candidates,
     )
 
     # Compute security-rank counterfactual (cs with equal-weight securities)
     cs_ew_securities_rets = _cs_equal_weight_securities_returns(
-        dev_perf_frame, dev_drift_frame, rotations, indicators,
-        spec, pool, candidates, cost_bps,
+        dev_perf_frame,
+        dev_drift_frame,
+        rotations,
+        indicators,
+        spec,
+        pool,
+        candidates,
+        cost_bps,
     )
     cs_ew_securities_metrics = _baseline_metrics(
-        cs_ew_securities_rets, dev_perf_frame[benchmark],
+        cs_ew_securities_rets,
+        dev_perf_frame[benchmark],
         "internal_counterfactual_cs_equal_weight_securities",
-        "development_observed", candidates,
+        "development_observed",
+        candidates,
     )
 
     attribution = _incremental_attribution(
-        dev_ew, dev_state, dev_cs, dev_full,
+        dev_ew,
+        dev_state,
+        dev_cs,
+        dev_full,
         no_market_regime_metrics=no_mr_metrics,
         cs_ew_baskets_metrics=cs_ew_baskets_metrics,
         cs_ew_securities_metrics=cs_ew_securities_metrics,
@@ -2597,7 +2599,9 @@ def run_us_hierarchical_rotation_validation(
 
     # 7.  Concentration (with contribution analysis for the development window)
     dev_perf_for_contrib, dev_drift_for_contrib = _build_return_frames(
-        observed_prices, candidates, benchmark,
+        observed_prices,
+        candidates,
+        benchmark,
         evidence["development_observed"]["start"],
         evidence["development_observed"]["end"],
     )
@@ -2605,7 +2609,8 @@ def run_us_hierarchical_rotation_validation(
         dev_perf_for_contrib, dev_drift_for_contrib, benchmark
     )
     concentration = _concentration_analysis(
-        portfolio_history, basket_scores,
+        portfolio_history,
+        basket_scores,
         perf_frame=dev_perf_for_contrib,
         drift_frame=dev_drift_for_contrib,
         candidates=candidates,
@@ -2646,7 +2651,10 @@ def run_us_hierarchical_rotation_validation(
         ][window_name]
 
     gate_result = _check_gates(
-        full_metrics_by_window, gates_spec, concentration, stability,
+        full_metrics_by_window,
+        gates_spec,
+        concentration,
+        stability,
         all_baseline_metrics,
     )
 
@@ -2664,13 +2672,12 @@ def run_us_hierarchical_rotation_validation(
     )
     reason = ""
     if not all_passed:
-        failed = [
-            k for k, v in gate_result.get("comparisons", {}).items() if not v
-        ]
+        failed = [k for k, v in gate_result.get("comparisons", {}).items() if not v]
         if not provider_manifest_validated:
-            reason = (
-                "provider manifest not validated: "
-                + (manifest_failed_gate["reason"] if manifest_failed_gate else "manifest not provided or validation failed")
+            reason = "provider manifest not validated: " + (
+                manifest_failed_gate["reason"]
+                if manifest_failed_gate
+                else "manifest not provided or validation failed"
             )
         elif not provider["provider_ready"]:
             reason = (
@@ -2719,7 +2726,11 @@ def run_us_hierarchical_rotation_validation(
 
     # 12. Evidence manifest
     _write_evidence_manifest(
-        spec, spec_path, prices_csv, pool_path, output_dir,
+        spec,
+        spec_path,
+        prices_csv,
+        pool_path,
+        output_dir,
         observed_slice=observed_slice_identity,
         provider_manifest_validation=manifest_validation,
     )
@@ -2850,9 +2861,7 @@ def _write_manifest_fail_artifacts(
         "schema_version": "1.0",
         "experiment_id": spec["experiment_id"],
         "market": str(spec["market"]),
-        "decision": (
-            "us_hierarchical_rotation_not_supported_on_observed_evidence"
-        ),
+        "decision": ("us_hierarchical_rotation_not_supported_on_observed_evidence"),
         "research_only": True,
         "trade_ready": False,
         "reserved_performance_opened": False,
@@ -2938,9 +2947,7 @@ def _write_evidence_manifest(
         "outputs": output_hashes,
     }
     formula_ref = (
-        spec.get("architecture", {})
-        .get("security_timing_component", {})
-        .get("formula_source")
+        spec.get("architecture", {}).get("security_timing_component", {}).get("formula_source")
     )
     if formula_ref:
         formula_path = spec_path.parents[2] / str(formula_ref)
@@ -2958,18 +2965,10 @@ def _write_evidence_manifest(
         base["provider_manifest_content_sha256"] = provider_manifest_validation.get(
             "manifest_content_sha256"
         )
-        base["provider_manifest_validated"] = provider_manifest_validation.get(
-            "validated", False
-        )
-        base["provider_manifest_type"] = provider_manifest_validation.get(
-            "manifest_type"
-        )
-        base["source_hashes_verified"] = provider_manifest_validation.get(
-            "source_hashes_verified"
-        )
-        base["source_attestation"] = provider_manifest_validation.get(
-            "source_attestation"
-        )
+        base["provider_manifest_validated"] = provider_manifest_validation.get("validated", False)
+        base["provider_manifest_type"] = provider_manifest_validation.get("manifest_type")
+        base["source_hashes_verified"] = provider_manifest_validation.get("source_hashes_verified")
+        base["source_attestation"] = provider_manifest_validation.get("source_attestation")
     else:
         base["provider_manifest_validated"] = False
         base["provider_manifest_sha256"] = None
@@ -3020,9 +3019,7 @@ def _write_report(
     lines.append(f"- **Decision**: `{decision['decision']}`")
     lines.append(f"- **Research only**: {decision['research_only']}")
     lines.append(f"- **Trade ready**: {decision['trade_ready']}")
-    lines.append(
-        f"- **Reserved performance opened**: {decision['reserved_performance_opened']}"
-    )
+    lines.append(f"- **Reserved performance opened**: {decision['reserved_performance_opened']}")
     lines.append(f"- **Observed evidence end**: {decision['observed_evidence_end']}")
     lines.append(f"- **Provider ready**: {provider['provider_ready']}")
     if decision.get("observed_slice"):
@@ -3051,8 +3048,7 @@ def _write_report(
     lines.append("### Baselines (all after costs)")
     lines.append("1. Equal-weight pool buy-and-hold (genuine: buy once, let drift)")
     lines.append(
-        "2. Time-series state machine only (daily rebalance, equal weight "
-        "positive-state symbols)"
+        "2. Time-series state machine only (daily rebalance, equal weight positive-state symbols)"
     )
     lines.append(
         "3. Hierarchical cross-sectional rotation only (state-free: basket + "
@@ -3096,9 +3092,7 @@ def _write_report(
         "EW Rel. | Upside Cap. | Downside Cap. | Avg Cash | "
         "Turnover/yr | Avg Hold |"
     )
-    lines.append(
-        "|---|---|---|---|---|---|---|---|---|---|---|"
-    )
+    lines.append("|---|---|---|---|---|---|---|---|---|---|---|")
     for label in [
         "equal_weight_pool_buy_and_hold",
         "time_series_state_only",
@@ -3142,38 +3136,25 @@ def _write_report(
     lines.append("")
 
     mr_eff = attribution.get("market_regime_effect")
-    lines.append(
-        f"- Market regime effect (full minus no-market-regime): "
-        f"{_fmt(mr_eff)}"
-    )
+    lines.append(f"- Market regime effect (full minus no-market-regime): {_fmt(mr_eff)}")
     lines.append(f"  - Definition: {attribution.get('market_regime_effect_definition', 'n/a')}")
 
     br_eff = attribution.get("basket_rank_effect")
-    lines.append(
-        f"- Basket rank effect (cs_only minus cs_ew_baskets): "
-        f"{_fmt(br_eff)}"
-    )
+    lines.append(f"- Basket rank effect (cs_only minus cs_ew_baskets): {_fmt(br_eff)}")
     lines.append(f"  - Definition: {attribution.get('basket_rank_effect_definition', 'n/a')}")
 
     sr_eff = attribution.get("security_rank_effect")
-    lines.append(
-        f"- Security rank effect (cs_only minus cs_ew_securities): "
-        f"{_fmt(sr_eff)}"
-    )
+    lines.append(f"- Security rank effect (cs_only minus cs_ew_securities): {_fmt(sr_eff)}")
     lines.append(f"  - Definition: {attribution.get('security_rank_effect_definition', 'n/a')}")
 
     so_eff = attribution.get("state_overlay_effect")
-    lines.append(
-        f"- State overlay effect (no-market-regime minus cs_only): "
-        f"{_fmt(so_eff)}"
-    )
+    lines.append(f"- State overlay effect (no-market-regime minus cs_only): {_fmt(so_eff)}")
     lines.append(f"  - Definition: {attribution.get('state_overlay_effect_definition', 'n/a')}")
 
     lines.append("")
     lines.append("#### Counterfactual totals")
     lines.append(
-        f"- No-market-regime full: "
-        f"{_fmt(attribution.get('counterfactual_no_market_regime_total'))}"
+        f"- No-market-regime full: {_fmt(attribution.get('counterfactual_no_market_regime_total'))}"
     )
     lines.append(
         f"- Equal-weight gate-passing baskets: "
@@ -3184,18 +3165,10 @@ def _write_report(
         f"{_fmt(attribution.get('counterfactual_equal_weight_securities_total'))}"
     )
     lines.append("")
-    lines.append(
-        f"- Sum of named effects: {_fmt(attribution.get('sum_of_named_effects'))}"
-    )
-    lines.append(
-        f"- Total excess vs EW: {_fmt(attribution.get('total_excess_vs_ew'))}"
-    )
-    lines.append(
-        f"- Residual (non-additive): {_fmt(attribution.get('residual'))}"
-    )
-    lines.append(
-        f"- Effects are non-additive: {attribution.get('effects_are_non_additive', True)}"
-    )
+    lines.append(f"- Sum of named effects: {_fmt(attribution.get('sum_of_named_effects'))}")
+    lines.append(f"- Total excess vs EW: {_fmt(attribution.get('total_excess_vs_ew'))}")
+    lines.append(f"- Residual (non-additive): {_fmt(attribution.get('residual'))}")
+    lines.append(f"- Effects are non-additive: {attribution.get('effects_are_non_additive', True)}")
     lines.append("")
     lines.append("### Concentration")
     lines.append(
@@ -3203,8 +3176,7 @@ def _write_report(
         f"{_fmt(concentration.get('max_single_symbol_concentration'))}"
     )
     lines.append(
-        f"- Average portfolio breadth: "
-        f"{_fmt(concentration.get('average_portfolio_breadth'))}"
+        f"- Average portfolio breadth: {_fmt(concentration.get('average_portfolio_breadth'))}"
     )
     lines.append(
         f"- Positive basket contribution ratio: "
@@ -3224,16 +3196,9 @@ def _write_report(
         )
     lines.append("")
     lines.append("### Selection Stability")
-    lines.append(
-        f"- Basket stability: {_fmt(stability.get('basket_stability'))}"
-    )
-    lines.append(
-        f"- Symbol stability: {_fmt(stability.get('symbol_stability'))}"
-    )
-    lines.append(
-        f"- Rapid replacement rate: "
-        f"{_fmt(stability.get('rapid_replacement_rate'))}"
-    )
+    lines.append(f"- Basket stability: {_fmt(stability.get('basket_stability'))}")
+    lines.append(f"- Symbol stability: {_fmt(stability.get('symbol_stability'))}")
+    lines.append(f"- Rapid replacement rate: {_fmt(stability.get('rapid_replacement_rate'))}")
     lines.append("")
 
     report_path = output_dir / "report.md"

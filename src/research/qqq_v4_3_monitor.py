@@ -4,6 +4,7 @@ The monitor evaluates the frozen v4.3 rules at the latest completed close. It
 compares actual target weights, not only the inherited formal-state number, so
 Panic Repair and SGOV slow-bear-defense changes cannot be missed.
 """
+
 from __future__ import annotations
 
 from typing import Any, Mapping

@@ -34,12 +34,8 @@ FACTOR_KEYS = (
 )
 FUNDAMENTAL_FACTOR_KEYS = FACTOR_KEYS[:2]
 BASKET_FACTOR_FIELDS = {
-    "basket_relative_momentum_63": (
-        "median_relative_momentum_63_vs_benchmark_percentile"
-    ),
-    "basket_drawdown_from_63d_high": (
-        "median_drawdown_from_63d_high_percentile"
-    ),
+    "basket_relative_momentum_63": ("median_relative_momentum_63_vs_benchmark_percentile"),
+    "basket_drawdown_from_63d_high": ("median_drawdown_from_63d_high_percentile"),
 }
 
 
@@ -48,9 +44,9 @@ def _sha256_file(path: Path) -> str:
 
 
 def _canonical_hash(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -200,17 +196,15 @@ def _build_aligned_factor_artifacts(
     ).sort_values(["date", "stable_factor_key", "symbol"])
 
     selection_rows: list[dict[str, Any]] = []
-    for (signal_date, factor), group in scores.groupby(
-        ["date", "stable_factor_key"], sort=True
-    ):
+    for (signal_date, factor), group in scores.groupby(["date", "stable_factor_key"], sort=True):
         selected_symbols: set[str] = set()
         if factor in FUNDAMENTAL_FACTOR_KEYS:
             for _, basket_group in group.groupby("basket", sort=True):
                 count = max(1, math.ceil(len(basket_group) * 0.30))
                 selected_symbols.update(
-                    basket_group.sort_values(
-                        ["score", "symbol"], ascending=[False, True]
-                    ).head(count)["symbol"]
+                    basket_group.sort_values(["score", "symbol"], ascending=[False, True]).head(
+                        count
+                    )["symbol"]
                 )
         else:
             basket_rank = (
@@ -219,9 +213,7 @@ def _build_aligned_factor_artifacts(
                 .sort_values(["score", "basket"], ascending=[False, True])
             )
             selected_baskets = set(basket_rank.head(2)["basket"])
-            selected_symbols.update(
-                group[group["basket"].isin(selected_baskets)]["symbol"]
-            )
+            selected_symbols.update(group[group["basket"].isin(selected_baskets)]["symbol"])
         for symbol in sorted(group["symbol"].unique()):
             selection_rows.append(
                 {
@@ -279,9 +271,7 @@ def _build_aligned_factor_artifacts(
     scores_path = output_dir / "scores.csv"
     selections_path = output_dir / "selections.csv"
     returns_path = output_dir / "returns.csv"
-    scores[["date", "symbol", "stable_factor_key", "score"]].to_csv(
-        scores_path, index=False
-    )
+    scores[["date", "symbol", "stable_factor_key", "score"]].to_csv(scores_path, index=False)
     selections.to_csv(selections_path, index=False)
     returns.to_csv(returns_path, index=False)
     start_date = min(scores["date"].min(), pd.to_datetime(returns["date"]).min())
@@ -342,15 +332,9 @@ def run_us_low_turnover_decision_pipeline(
     rotation_spec: str | Path = (
         "configs/research_paradigms/us_structured_pool_hierarchical_rotation_v2.yaml"
     ),
-    relationship_contract: str | Path = (
-        "configs/factor_knowledge/relationship_map_v1.yaml"
-    ),
-    multifactor_contract: str | Path = (
-        "configs/factors/us_low_turnover_multifactor_v1.yaml"
-    ),
-    cutover_contract: str | Path = (
-        "configs/operations/prospective_shadow_cutover_v1.yaml"
-    ),
+    relationship_contract: str | Path = ("configs/factor_knowledge/relationship_map_v1.yaml"),
+    multifactor_contract: str | Path = ("configs/factors/us_low_turnover_multifactor_v1.yaml"),
+    cutover_contract: str | Path = ("configs/operations/prospective_shadow_cutover_v1.yaml"),
     fundamentals_csv: str | Path | None = None,
     sec_client: SecClientProtocol | None = None,
 ) -> dict[str, Any]:
@@ -364,9 +348,7 @@ def run_us_low_turnover_decision_pipeline(
     basket_by_symbol, references = _pool_membership(pool_path)
     resolved_prices = Path(prices_csv).resolve()
     required_symbols = set(basket_by_symbol) | set(references)
-    prices = _verify_prices(
-        resolved_prices, required_symbols=required_symbols, as_of=as_of
-    )
+    prices = _verify_prices(resolved_prices, required_symbols=required_symbols, as_of=as_of)
     prices.attrs["source_path"] = str(resolved_prices)
 
     run_root = Path(workspace_dir).resolve() / "us_low_turnover_pipeline" / as_of.isoformat()
@@ -449,9 +431,7 @@ def run_us_low_turnover_decision_pipeline(
     )
     _assert_truth_boundary(multifactor_decision, label="low-turnover multifactor")
     if not bool(
-        multifactor_decision.get("turnover_diagnostics", {}).get(
-            "turnover_gate_passed", False
-        )
+        multifactor_decision.get("turnover_diagnostics", {}).get("turnover_gate_passed", False)
     ):
         raise ValueError("low-turnover multifactor candidate failed turnover contract")
 
@@ -481,12 +461,8 @@ def run_us_low_turnover_decision_pipeline(
         "sec_contract_sha256": _sha256_file(Path(sec_contract).resolve()),
         "fundamental_contract_sha256": _sha256_file(Path(fundamental_contract).resolve()),
         "rotation_spec_sha256": _sha256_file(resolved_rotation),
-        "relationship_contract_sha256": _sha256_file(
-            Path(relationship_contract).resolve()
-        ),
-        "multifactor_contract_sha256": _sha256_file(
-            Path(multifactor_contract).resolve()
-        ),
+        "relationship_contract_sha256": _sha256_file(Path(relationship_contract).resolve()),
+        "multifactor_contract_sha256": _sha256_file(Path(multifactor_contract).resolve()),
         "cutover_contract_sha256": _sha256_file(Path(cutover_contract).resolve()),
     }
     top_manifest: dict[str, Any] = {
@@ -513,18 +489,12 @@ def run_us_low_turnover_decision_pipeline(
             ),
         },
         "outputs": {
-            "fundamental_manifest_sha256": _sha256_file(
-                fundamental_dir / "evidence_manifest.json"
-            ),
-            "rotation_manifest_sha256": _sha256_file(
-                rotation_dir / "evidence_manifest.json"
-            ),
+            "fundamental_manifest_sha256": _sha256_file(fundamental_dir / "evidence_manifest.json"),
+            "rotation_manifest_sha256": _sha256_file(rotation_dir / "evidence_manifest.json"),
             "relationship_manifest_sha256": _sha256_file(
                 relationship_dir / "evidence_manifest.json"
             ),
-            "multifactor_manifest_sha256": _sha256_file(
-                multifactor_dir / "evidence_manifest.json"
-            ),
+            "multifactor_manifest_sha256": _sha256_file(multifactor_dir / "evidence_manifest.json"),
             "ticket_identity_sha256": ticket["ticket_identity_sha256"],
             "ticket_file_sha256": _sha256_file(ticket_path),
         },
@@ -533,9 +503,10 @@ def run_us_low_turnover_decision_pipeline(
     manifest_path = run_root / "pipeline_run_manifest.json"
     if manifest_path.exists():
         existing = _load_json(manifest_path)
-        if existing.get("pipeline_run_identity_sha256") != top_manifest[
-            "pipeline_run_identity_sha256"
-        ]:
+        if (
+            existing.get("pipeline_run_identity_sha256")
+            != top_manifest["pipeline_run_identity_sha256"]
+        ):
             raise ValueError("same-date pipeline run identity conflict")
         return existing
     _write_json(manifest_path, top_manifest)

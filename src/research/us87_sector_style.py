@@ -153,7 +153,9 @@ def compute_style_snapshot(
     qqq_var = float(qqq_returns.var(ddof=1)) if len(qqq_returns) >= 40 else float("nan")
     rows: list[dict[str, Any]] = []
     for symbol in symbols:
-        close = history_close[symbol].dropna() if symbol in history_close else pd.Series(dtype=float)
+        close = (
+            history_close[symbol].dropna() if symbol in history_close else pd.Series(dtype=float)
+        )
         returns = close.pct_change(fill_method=None).dropna().tail(60)
         aligned = pd.concat([returns, qqq_returns], axis=1, join="inner").dropna()
         beta60 = (
@@ -161,11 +163,7 @@ def compute_style_snapshot(
             if len(aligned) >= 40 and np.isfinite(qqq_var) and qqq_var > 1e-15
             else float("nan")
         )
-        vol60 = (
-            float(returns.std(ddof=1) * math.sqrt(252))
-            if len(returns) >= 40
-            else float("nan")
-        )
+        vol60 = float(returns.std(ddof=1) * math.sqrt(252)) if len(returns) >= 40 else float("nan")
         momentum20 = (
             float(close.iloc[-1] / close.iloc[-21] - 1)
             if len(close) >= 21 and close.iloc[-21] > 0
@@ -179,9 +177,11 @@ def compute_style_snapshot(
         liquidity20 = float("nan")
         if symbol in history_volume and symbol in history_close:
             dollar_volume = (
-                history_close[symbol].reindex(history_volume.index)
-                * history_volume[symbol]
-            ).replace([np.inf, -np.inf], np.nan).dropna().tail(20)
+                (history_close[symbol].reindex(history_volume.index) * history_volume[symbol])
+                .replace([np.inf, -np.inf], np.nan)
+                .dropna()
+                .tail(20)
+            )
             positive = dollar_volume.loc[dollar_volume > 0]
             if len(positive) >= 10:
                 liquidity20 = float(positive.median())
@@ -197,12 +197,8 @@ def compute_style_snapshot(
             }
         )
     frame = pd.DataFrame(rows)
-    frame["beta60_bucket"] = _bucket(
-        frame["beta60_qqq"], ("low_beta", "mid_beta", "high_beta")
-    )
-    frame["vol60_bucket"] = _bucket(
-        frame["vol60_annualized"], ("low_vol", "mid_vol", "high_vol")
-    )
+    frame["beta60_bucket"] = _bucket(frame["beta60_qqq"], ("low_beta", "mid_beta", "high_beta"))
+    frame["vol60_bucket"] = _bucket(frame["vol60_annualized"], ("low_vol", "mid_vol", "high_vol"))
     frame["momentum20_bucket"] = _bucket(
         frame["momentum20"], ("laggard_20d", "neutral_20d", "leader_20d")
     )

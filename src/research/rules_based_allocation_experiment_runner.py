@@ -107,8 +107,7 @@ def _validate_candidate(raw: dict[str, Any]) -> dict[str, Any]:
     for key, value in expected.items():
         if params.get(key) != value:
             raise ValueError(
-                f"frozen BYD v1.3 parameter drift for {key}: "
-                f"{params.get(key)!r} != {value!r}"
+                f"frozen BYD v1.3 parameter drift for {key}: {params.get(key)!r} != {value!r}"
             )
     return expected
 
@@ -136,9 +135,7 @@ def _formal_section(
     if not isinstance(sections, list):
         raise EvidenceInvalid("formal baseline manifest sections are invalid")
     matches = [
-        row
-        for row in sections
-        if isinstance(row, dict) and row.get("section_id") == section_id
+        row for row in sections if isinstance(row, dict) and row.get("section_id") == section_id
     ]
     if len(matches) != 1 or matches[0].get("availability_status") != "available":
         raise EvidenceInvalid(f"formal baseline section {section_id!r} unavailable")
@@ -205,10 +202,14 @@ def _extract_inputs(raw: dict[str, Any], root: Path) -> tuple[Path, Path, dict[s
         archive.extractall(byd_dir, filter="data")
     with zipfile.ZipFile(io.BytesIO(decoded_etf)) as archive:
         archive.extractall(etf_dir)
-    return byd_dir, etf_dir, {
-        "byd_snapshot_sha256": byd_sha,
-        "etf_decoded_sha256": etf_sha,
-    }
+    return (
+        byd_dir,
+        etf_dir,
+        {
+            "byd_snapshot_sha256": byd_sha,
+            "etf_decoded_sha256": etf_sha,
+        },
+    )
 
 
 def _trace_reproduction(formal: pd.DataFrame, reproduced: pd.DataFrame) -> dict[str, Any]:
@@ -235,9 +236,7 @@ def _trace_reproduction(formal: pd.DataFrame, reproduced: pd.DataFrame) -> dict[
             right = reproduced[column].astype(float).to_numpy()
             difference = np.abs(left - right)
             max_abs[column] = float(np.nanmax(difference)) if len(difference) else 0.0
-            exact = exact and bool(
-                np.allclose(left, right, atol=1e-12, rtol=0.0, equal_nan=True)
-            )
+            exact = exact and bool(np.allclose(left, right, atol=1e-12, rtol=0.0, equal_nan=True))
     else:
         max_abs = {column: None for column in columns}
     return {
@@ -289,9 +288,7 @@ def _evaluate(
         ):
             row = _window_metrics(daily, start, end)
             keyed[(scenario, model, window)] = row
-            comparisons.append(
-                {"scenario": scenario, "model": model, "window": window, **row}
-            )
+            comparisons.append({"scenario": scenario, "model": model, "window": window, **row})
 
     relative: dict[str, float] = {}
     for window, bounds in windows.items():
@@ -319,20 +316,17 @@ def _evaluate(
     if not isinstance(thresholds, dict):
         raise ValueError("rules-based mission requires evaluation.thresholds")
 
-    primary_drawdown_gain = (
-        float(primary_candidate["max_drawdown"])
-        - float(primary_base["max_drawdown"])
+    primary_drawdown_gain = float(primary_candidate["max_drawdown"]) - float(
+        primary_base["max_drawdown"]
     )
-    stress_drawdown_gain = (
-        float(stress_candidate["max_drawdown"])
-        - float(stress_base["max_drawdown"])
+    stress_drawdown_gain = float(stress_candidate["max_drawdown"]) - float(
+        stress_base["max_drawdown"]
     )
     gates = {
         "baseline_identity_and_trace": bool(trace["exact"]),
         "primary_full_cagr_floor": (
             float(primary_candidate["cagr"])
-            >= float(primary_base["cagr"])
-            - float(thresholds["max_primary_cagr_shortfall"])
+            >= float(primary_base["cagr"]) - float(thresholds["max_primary_cagr_shortfall"])
         ),
         "primary_full_sharpe_not_below": (
             float(primary_candidate["sharpe"]) >= float(primary_base["sharpe"])
@@ -341,8 +335,7 @@ def _evaluate(
             float(primary_candidate["calmar"]) >= float(primary_base["calmar"])
         ),
         "primary_full_drawdown_improvement": (
-            primary_drawdown_gain
-            >= float(thresholds["min_primary_drawdown_improvement"])
+            primary_drawdown_gain >= float(thresholds["min_primary_drawdown_improvement"])
         ),
         "fixed_validation_cagr_not_below": (
             float(validation_candidate["cagr"]) >= float(validation_base["cagr"])
@@ -356,26 +349,21 @@ def _evaluate(
         ),
         "stress_full_cagr_floor": (
             float(stress_candidate["cagr"])
-            >= float(stress_base["cagr"])
-            - float(thresholds["max_stress_cagr_shortfall"])
+            >= float(stress_base["cagr"]) - float(thresholds["max_stress_cagr_shortfall"])
         ),
         "stress_full_calmar_not_below": (
             float(stress_candidate["calmar"]) >= float(stress_base["calmar"])
         ),
         "stress_full_drawdown_improvement": (
-            stress_drawdown_gain
-            >= float(thresholds["min_stress_drawdown_improvement"])
+            stress_drawdown_gain >= float(thresholds["min_stress_drawdown_improvement"])
         ),
         "positive_period_concentration": (
-            strongest_share
-            <= float(thresholds["max_positive_period_contribution_share"])
+            strongest_share <= float(thresholds["max_positive_period_contribution_share"])
         ),
     }
     supported = all(gates.values())
     return {
-        "decision": (
-            "historically_supported_challenger" if supported else "not_supported"
-        ),
+        "decision": ("historically_supported_challenger" if supported else "not_supported"),
         "historically_supported": supported,
         "gates": gates,
         "comparison": comparisons,
@@ -525,9 +513,7 @@ def run_rules_based_allocation_experiment(spec_path: str | Path) -> dict[str, An
                     "financed_sessions_primary": int(
                         v13_primary.daily["borrowed_weight"].gt(0.0).sum()
                     ),
-                    "mean_financed_increment": float(
-                        diagnostics["financed_increment"].mean()
-                    ),
+                    "mean_financed_increment": float(diagnostics["financed_increment"].mean()),
                 },
                 "baseline_trace_reproduction": trace,
                 "governance": {

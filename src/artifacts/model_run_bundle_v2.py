@@ -117,14 +117,26 @@ def validate_metric(metric: Mapping[str, Any]) -> None:
     value = metric.get("value")
     reason = metric.get("unavailable_reason")
     if availability == "available":
-        _require(isinstance(value, (int, float)) and not isinstance(value, bool), f"{metric_id} value missing")
+        _require(
+            isinstance(value, (int, float)) and not isinstance(value, bool),
+            f"{metric_id} value missing",
+        )
         _require(reason is None, f"{metric_id} available metric cannot have unavailable_reason")
     else:
         _require(value is None, f"{metric_id} unavailable metric must have null value")
-        _require(isinstance(reason, str) and bool(reason.strip()), f"{metric_id} unavailable reason missing")
+        _require(
+            isinstance(reason, str) and bool(reason.strip()),
+            f"{metric_id} unavailable reason missing",
+        )
     sample_count = metric.get("sample_count")
-    _require(sample_count is None or (isinstance(sample_count, int) and sample_count >= 0), f"invalid sample_count for {metric_id}")
-    _require(isinstance(metric.get("scope"), str) and bool(metric["scope"].strip()), f"scope missing for {metric_id}")
+    _require(
+        sample_count is None or (isinstance(sample_count, int) and sample_count >= 0),
+        f"invalid sample_count for {metric_id}",
+    )
+    _require(
+        isinstance(metric.get("scope"), str) and bool(metric["scope"].strip()),
+        f"scope missing for {metric_id}",
+    )
 
 
 def validate_section(section: Mapping[str, Any]) -> None:
@@ -132,23 +144,38 @@ def validate_section(section: Mapping[str, Any]) -> None:
     _require(section_id in SECTION_IDS, f"unsupported section_id: {section_id}")
     availability = section.get("availability_status")
     _require(availability in AVAILABILITY_STATUSES, f"invalid availability for {section_id}")
-    _require(isinstance(section.get("required_for_model_kind"), bool), f"required flag missing for {section_id}")
+    _require(
+        isinstance(section.get("required_for_model_kind"), bool),
+        f"required flag missing for {section_id}",
+    )
     if availability == "available":
         path = str(section.get("path") or "")
-        _require(path.endswith(".json") and not path.startswith("/"), f"invalid path for {section_id}")
+        _require(
+            path.endswith(".json") and not path.startswith("/"), f"invalid path for {section_id}"
+        )
         _require(".." not in Path(path).parts, f"unsafe path for {section_id}")
         _require_sha(section.get("sha256"), f"{section_id} sha256")
-        _require(isinstance(section.get("byte_size"), int) and section["byte_size"] >= 0, f"invalid byte_size for {section_id}")
-        _require(section.get("media_type") == "application/json", f"invalid media_type for {section_id}")
+        _require(
+            isinstance(section.get("byte_size"), int) and section["byte_size"] >= 0,
+            f"invalid byte_size for {section_id}",
+        )
+        _require(
+            section.get("media_type") == "application/json", f"invalid media_type for {section_id}"
+        )
         _require(section.get("reason") is None, f"available {section_id} cannot have reason")
     else:
-        _require(isinstance(section.get("reason"), str) and bool(section["reason"].strip()), f"reason missing for {section_id}")
+        _require(
+            isinstance(section.get("reason"), str) and bool(section["reason"].strip()),
+            f"reason missing for {section_id}",
+        )
         for key in ("path", "sha256", "byte_size", "media_type"):
             _require(section.get(key) is None, f"unavailable {section_id} cannot declare {key}")
 
 
 def validate_manifest(manifest: Mapping[str, Any], *, verify_bundle_id: bool = True) -> None:
-    _require(manifest.get("schema_version") == SCHEMA_VERSION, "unsupported manifest schema_version")
+    _require(
+        manifest.get("schema_version") == SCHEMA_VERSION, "unsupported manifest schema_version"
+    )
     for key in ("model_family_id", "model_version_id", "run_id"):
         _require_slug(manifest.get(key), key)
     _require(manifest.get("model_kind") in MODEL_KINDS, "invalid model_kind")
@@ -159,20 +186,31 @@ def validate_manifest(manifest: Mapping[str, Any], *, verify_bundle_id: bool = T
     _require(manifest.get("research_only") is True, "research_only must be true")
     _require(manifest.get("trade_ready") is False, "trade_ready must be false")
     if channel == "formal" or status == "accepted_formal_baseline":
-        _require(channel == "formal" and status == "accepted_formal_baseline", "formal channel/status mismatch")
+        _require(
+            channel == "formal" and status == "accepted_formal_baseline",
+            "formal channel/status mismatch",
+        )
     else:
-        _require(status != "accepted_formal_baseline", "non-formal bundle cannot be accepted formal")
+        _require(
+            status != "accepted_formal_baseline", "non-formal bundle cannot be accepted formal"
+        )
     _require_date(manifest.get("evidence_cutoff"), "evidence_cutoff")
 
     comparability = manifest.get("comparability_key")
     _require(isinstance(comparability, Mapping), "comparability_key missing")
     for key in ("market", "trace_frequency", "horizon"):
-        _require(isinstance(comparability.get(key), str) and bool(str(comparability[key]).strip()), f"comparability {key} missing")
+        _require(
+            isinstance(comparability.get(key), str) and bool(str(comparability[key]).strip()),
+            f"comparability {key} missing",
+        )
     for key in ("universe_id", "benchmark_id", "rebalance_contract_id", "cost_contract_id"):
         _require_slug(comparability.get(key), f"comparability.{key}")
     _require_date(comparability.get("start"), "comparability.start")
     _require_date(comparability.get("end"), "comparability.end")
-    _require(str(comparability["start"]) <= str(comparability["end"]), "comparability interval is reversed")
+    _require(
+        str(comparability["start"]) <= str(comparability["end"]),
+        "comparability interval is reversed",
+    )
 
     sections = manifest.get("sections")
     _require(isinstance(sections, list) and len(sections) >= 2, "sections are missing")
@@ -189,7 +227,9 @@ def validate_manifest(manifest: Mapping[str, Any], *, verify_bundle_id: bool = T
 
     if verify_bundle_id:
         supplied = _require_sha(manifest.get("bundle_id"), "bundle_id")
-        _require(supplied == compute_bundle_id(manifest), "bundle_id does not match canonical manifest")
+        _require(
+            supplied == compute_bundle_id(manifest), "bundle_id does not match canonical manifest"
+        )
 
 
 def validate_catalog(catalog: Mapping[str, Any]) -> None:
@@ -204,7 +244,10 @@ def validate_catalog(catalog: Mapping[str, Any]) -> None:
     bundle_ids: set[str] = set()
     for record in records:
         _require(isinstance(record, Mapping), "invalid catalog record")
-        identity = tuple(_require_slug(record.get(key), key) for key in ("model_family_id", "model_version_id", "run_id"))
+        identity = tuple(
+            _require_slug(record.get(key), key)
+            for key in ("model_family_id", "model_version_id", "run_id")
+        )
         _require(identity not in identities, f"duplicate run identity: {identity}")
         identities.add(identity)
         bundle_id = _require_sha(record.get("bundle_id"), "catalog bundle_id")
@@ -213,20 +256,32 @@ def validate_catalog(catalog: Mapping[str, Any]) -> None:
         status = record.get("publication_status")
         _require(status in PUBLICATION_STATUSES, "invalid catalog publication_status")
         if channel == "formal":
-            _require(status == "accepted_formal_baseline", "formal catalog contains non-formal record")
+            _require(
+                status == "accepted_formal_baseline", "formal catalog contains non-formal record"
+            )
         else:
-            _require(status != "accepted_formal_baseline", "preview/local catalog contains formal record")
+            _require(
+                status != "accepted_formal_baseline", "preview/local catalog contains formal record"
+            )
         _require_sha(record.get("manifest_sha256"), "manifest_sha256")
         _require_date(record.get("evidence_cutoff"), "catalog evidence_cutoff")
-    sorted_records = sorted(records, key=lambda row: (row["model_family_id"], row["model_version_id"], row["run_id"]))
+    sorted_records = sorted(
+        records, key=lambda row: (row["model_family_id"], row["model_version_id"], row["run_id"])
+    )
     _require(records == sorted_records, "catalog records must be deterministically ordered")
 
 
-def validate_decision(decision: Mapping[str, Any], *, manifest: Mapping[str, Any] | None = None) -> None:
-    _require(decision.get("schema_version") == SCHEMA_VERSION, "unsupported decision schema_version")
+def validate_decision(
+    decision: Mapping[str, Any], *, manifest: Mapping[str, Any] | None = None
+) -> None:
+    _require(
+        decision.get("schema_version") == SCHEMA_VERSION, "unsupported decision schema_version"
+    )
     _require_slug(decision.get("run_id"), "decision run_id")
     _require_sha(decision.get("bundle_id"), "decision bundle_id")
-    _require(decision.get("verdict") in {"supported", "not_supported", "blocked"}, "invalid verdict")
+    _require(
+        decision.get("verdict") in {"supported", "not_supported", "blocked"}, "invalid verdict"
+    )
     _require(decision.get("status") in {"pending_review", "completed"}, "invalid decision status")
     _require(decision.get("research_only") is True, "decision research_only must be true")
     _require(decision.get("trade_ready") is False, "decision trade_ready must be false")
@@ -236,12 +291,24 @@ def validate_decision(decision: Mapping[str, Any], *, manifest: Mapping[str, Any
         for claim in claims:
             _require(isinstance(claim, Mapping), f"invalid decision claim in {group}")
             _require_slug(claim.get("claim_id"), "claim_id")
-            _require(claim.get("outcome") in {"passed", "failed", "blocked", "informational"}, "invalid claim outcome")
-            _require(isinstance(claim.get("statement"), str) and bool(claim["statement"].strip()), "claim statement missing")
+            _require(
+                claim.get("outcome") in {"passed", "failed", "blocked", "informational"},
+                "invalid claim outcome",
+            )
+            _require(
+                isinstance(claim.get("statement"), str) and bool(claim["statement"].strip()),
+                "claim statement missing",
+            )
             path = str(claim.get("source_path") or "")
-            _require(path.endswith(".json") and ".." not in Path(path).parts, "invalid claim source_path")
+            _require(
+                path.endswith(".json") and ".." not in Path(path).parts, "invalid claim source_path"
+            )
             _require_sha(claim.get("source_sha256"), "claim source_sha256")
-    _require(isinstance(decision.get("next_permitted_validation_step"), str) and bool(decision["next_permitted_validation_step"].strip()), "next permitted validation step missing")
+    _require(
+        isinstance(decision.get("next_permitted_validation_step"), str)
+        and bool(decision["next_permitted_validation_step"].strip()),
+        "next permitted validation step missing",
+    )
     if manifest is not None:
         _require(decision["run_id"] == manifest.get("run_id"), "decision run_id mismatch")
         _require(decision["bundle_id"] == manifest.get("bundle_id"), "decision bundle_id mismatch")

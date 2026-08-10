@@ -49,19 +49,13 @@ def resolve_training_resource_budget(
     except (ImportError, OSError):
         pass
 
-    requested_workers = _positive_override(
-        split_workers, "ALPHA_ENGINE_WF_WORKERS"
-    )
-    requested_threads = _positive_override(
-        model_threads, "ALPHA_ENGINE_MODEL_THREADS"
-    )
+    requested_workers = _positive_override(split_workers, "ALPHA_ENGINE_WF_WORKERS")
+    requested_threads = _positive_override(model_threads, "ALPHA_ENGINE_MODEL_THREADS")
 
     if requested_workers is None:
         cpu_worker_limit = max(1, logical // 4)
         memory_worker_limit = (
-            max(1, int(max(0.0, memory_gb - 4.0) // 4.0))
-            if memory_gb is not None
-            else 1
+            max(1, int(max(0.0, memory_gb - 4.0) // 4.0)) if memory_gb is not None else 1
         )
         workers = min(2, cpu_worker_limit, memory_worker_limit)
     else:

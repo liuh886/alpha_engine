@@ -91,9 +91,7 @@ def build_factor_governance_manifest(
     gate_open = panel_status == "ready" and profile_status == "ready"
     supported_statuses = {"supported", "validated", "promoted"}
     supported_historical = sum(
-        count
-        for status, count in historical_statuses.items()
-        if status in supported_statuses
+        count for status, count in historical_statuses.items() if status in supported_statuses
     )
     manifest = {
         "schema_version": "1.0",
@@ -107,16 +105,13 @@ def build_factor_governance_manifest(
             "factor_count": len(definitions),
             "status_counts": dict(sorted(formula_statuses.items())),
             "implementation_hashes": {
-                definition.factor_id: definition.implementation_hash
-                for definition in definitions
+                definition.factor_id: definition.implementation_hash for definition in definitions
             },
         },
         "materialized_panel": {
             "component_id": factor_panel_manifest.get("component_id"),
             "status": panel_status,
-            "expected_symbol_count": factor_panel_manifest.get(
-                "expected_symbol_count", 0
-            ),
+            "expected_symbol_count": factor_panel_manifest.get("expected_symbol_count", 0),
             "ready_symbol_count": factor_panel_manifest.get("ready_symbol_count", 0),
             "coverage_ratio": factor_panel_manifest.get("coverage_ratio", 0.0),
             "catalog_sha256": factor_panel_manifest.get("catalog_sha256"),

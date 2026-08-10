@@ -303,9 +303,7 @@ def build_research_signals_payload(
                 "score": row.get("score", 0.0),
                 "candidate_name": row.get("candidate_name", candidate_name),
                 "orientation": row.get("orientation", orientation),
-                "holding_horizon_days": row.get(
-                    "holding_horizon_days", holding_horizon_days
-                ),
+                "holding_horizon_days": row.get("holding_horizon_days", holding_horizon_days),
                 "research_only": True,
                 "trade_ready": trade_ready,
             }
@@ -343,9 +341,7 @@ def write_top_bottom_signals_csv(
 write_top_bottom_csv = write_top_bottom_signals_csv
 
 
-def validate_artifact_completeness(
-    paths: ResearchRunPaths, *, profile: str
-) -> dict[str, Any]:
+def validate_artifact_completeness(paths: ResearchRunPaths, *, profile: str) -> dict[str, Any]:
     """Fail closed when a declared artifact profile is incomplete."""
     if profile not in ARTIFACT_PROFILES:
         raise ValueError(f"Unknown artifact profile '{profile}'")

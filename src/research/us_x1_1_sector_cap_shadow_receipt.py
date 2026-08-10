@@ -126,9 +126,7 @@ def load_contract(path: Path) -> dict[str, Any]:
 def load_score_snapshot(path: Path, pool_symbols: list[str]) -> tuple[pd.DataFrame, date]:
     frame = pd.read_csv(path)
     if list(frame.columns) != list(REQUIRED_SCORE_COLUMNS):
-        raise ValueError(
-            f"score snapshot columns must be exactly {list(REQUIRED_SCORE_COLUMNS)}"
-        )
+        raise ValueError(f"score snapshot columns must be exactly {list(REQUIRED_SCORE_COLUMNS)}")
     for column in frame.columns:
         lowered = column.lower()
         if any(token in lowered for token in FORBIDDEN_COLUMN_TOKENS):
@@ -147,8 +145,8 @@ def load_score_snapshot(path: Path, pool_symbols: list[str]) -> tuple[pd.DataFra
     expected = set(pool_symbols)
     if actual != expected:
         raise ValueError(
-            f"score snapshot must cover exact US87: missing={sorted(expected-actual)}, "
-            f"unknown={sorted(actual-expected)}"
+            f"score snapshot must cover exact US87: missing={sorted(expected - actual)}, "
+            f"unknown={sorted(actual - expected)}"
         )
     if len(frame) != 87:
         raise ValueError("score snapshot must contain exactly 87 rows")
@@ -158,10 +156,7 @@ def load_score_snapshot(path: Path, pool_symbols: list[str]) -> tuple[pd.DataFra
     for column in ("listed", "tradable", "suspended", "price_available"):
         frame[column] = _parse_bool(frame[column], column)
     frame["eligible"] = (
-        frame["listed"]
-        & frame["tradable"]
-        & ~frame["suspended"]
-        & frame["price_available"]
+        frame["listed"] & frame["tradable"] & ~frame["suspended"] & frame["price_available"]
     )
     frame = frame.sort_values(
         ["score", "instrument"],
@@ -209,12 +204,12 @@ def select_portfolios(
     audit["challenger_selected"] = audit["instrument"].isin(challenger)
     audit["challenger_selection_reason"] = audit["instrument"].map(reasons)
 
-    outgoing = audit.loc[
-        audit["baseline_selected"] & ~audit["challenger_selected"]
-    ].sort_values("rank")
-    incoming = audit.loc[
-        audit["challenger_selected"] & ~audit["baseline_selected"]
-    ].sort_values("rank")
+    outgoing = audit.loc[audit["baseline_selected"] & ~audit["challenger_selected"]].sort_values(
+        "rank"
+    )
+    incoming = audit.loc[audit["challenger_selected"] & ~audit["baseline_selected"]].sort_values(
+        "rank"
+    )
     if len(outgoing) != len(incoming):
         raise ValueError("replacement pairs do not balance")
     replacement_rows = []
@@ -305,10 +300,7 @@ def append_receipt_index(index_path: Path, entry: dict[str, Any]) -> None:
                 existing.append(value)
     if any(row.get("receipt_id") == entry["receipt_id"] for row in existing):
         raise ValueError("receipt identity already exists in append-only index")
-    if any(
-        row.get("signal_session_date") == entry["signal_session_date"]
-        for row in existing
-    ):
+    if any(row.get("signal_session_date") == entry["signal_session_date"] for row in existing):
         raise ValueError("signal session already has a frozen receipt")
     with index_path.open("a", encoding="utf-8", newline="") as handle:
         handle.write(_canonical_json(entry).decode("utf-8") + "\n")
@@ -330,23 +322,15 @@ def create_receipt(
 ) -> dict[str, Any]:
     contract = load_contract(contract_path)
     pool_path = Path(str(contract["candidate_domain"]["pool_path"]))
-    classification_path = Path(
-        str(contract["candidate_domain"]["classification_path"])
-    )
+    classification_path = Path(str(contract["candidate_domain"]["classification_path"]))
     pool = load_pool_symbols(pool_path)
-    classification, classification_manifest = load_sector_classification(
-        classification_path, pool
-    )
+    classification, classification_manifest = load_sector_classification(classification_path, pool)
     classification_sha = sha256_file(classification_path)
-    expected_classification_sha = str(
-        contract["candidate_domain"]["classification_file_sha256"]
-    )
+    expected_classification_sha = str(contract["candidate_domain"]["classification_file_sha256"])
     if classification_sha != expected_classification_sha:
         raise ValueError("governed classification file identity changed")
     records_sha = str(classification_manifest["records_sha256_verified"])
-    if records_sha != str(
-        contract["candidate_domain"]["classification_records_sha256"]
-    ):
+    if records_sha != str(contract["candidate_domain"]["classification_records_sha256"]):
         raise ValueError("governed classification record identity changed")
 
     ranked, signal_date = load_score_snapshot(score_snapshot_path, pool)
@@ -358,9 +342,7 @@ def create_receipt(
         raise ValueError("receipt must be created on the signal date or next UTC date")
 
     sectors = classification.set_index("symbol")["sector"].to_dict()
-    audit, baseline_names, challenger_names, replacements = select_portfolios(
-        ranked, sectors
-    )
+    audit, baseline_names, challenger_names, replacements = select_portfolios(ranked, sectors)
     baseline = _holdings(baseline_names, sectors)
     challenger = _holdings(challenger_names, sectors)
     sector_exposure, max_sector, sector_hhi = _sector_diagnostics(challenger)

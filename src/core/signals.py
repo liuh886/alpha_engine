@@ -3,6 +3,7 @@
 All functions are stateless and side-effect-free so they can be called
 directly from notebooks for interactive validation.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -41,6 +42,7 @@ def generate_scores(
     df = feature_df.copy()
 
     if sanitize_columns:
+
         def _sanitize(c: str) -> str:
             return (
                 str(c)
@@ -53,6 +55,7 @@ def generate_scores(
                 .replace("-", "neg")
                 .replace("+", "plus")
             )
+
         df.columns = [_sanitize(c) for c in df.columns]
 
     X = df.fillna(0.0).replace([np.inf, -np.inf], 0.0)

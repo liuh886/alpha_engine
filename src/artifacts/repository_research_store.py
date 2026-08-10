@@ -125,9 +125,7 @@ def _verify_inventory(source: Path, run_id: str) -> None:
             raise RepositoryResearchStoreError(f"invalid inventory record for run: {run_id}")
         relative = Path(str(record.get("path") or ""))
         if relative.is_absolute() or len(relative.parts) != 1 or ".." in relative.parts:
-            raise RepositoryResearchStoreError(
-                f"unsafe run inventory path: {relative.as_posix()}"
-            )
+            raise RepositoryResearchStoreError(f"unsafe run inventory path: {relative.as_posix()}")
         path = source / relative
         if not path.is_file():
             raise RepositoryResearchStoreError(
@@ -144,9 +142,7 @@ def _verify_inventory(source: Path, run_id: str) -> None:
         declared.add(relative.name)
     actual = {path.name for path in source.iterdir() if path.is_file()} - {"inventory.json"}
     if actual != declared:
-        raise RepositoryResearchStoreError(
-            f"published run inventory coverage mismatch: {run_id}"
-        )
+        raise RepositoryResearchStoreError(f"published run inventory coverage mismatch: {run_id}")
 
 
 def _verify_and_export_runs(
@@ -170,9 +166,7 @@ def _verify_and_export_runs(
         source_text = str(entry.get("source") or "")
         source = _safe_repo_path(source_text)
         if not expected_id or not source.is_dir():
-            raise RepositoryResearchStoreError(
-                f"published run directory is missing: {source_text}"
-            )
+            raise RepositoryResearchStoreError(f"published run directory is missing: {source_text}")
         run = _read_json(source / "run.json")
         metrics = _read_json(source / "metrics.json")
         if str(run.get("run_id") or "") != expected_id:
@@ -361,9 +355,7 @@ def export_repository_research_data(
         if report_source:
             report_path = _safe_repo_path(str(report_source))
             if not report_path.is_file():
-                raise RepositoryResearchStoreError(
-                    f"declared report is missing: {report_source}"
-                )
+                raise RepositoryResearchStoreError(f"declared report is missing: {report_source}")
             destination = report_root / report_path.name
             shutil.copy2(report_path, destination)
             static_path = f"reports/{destination.name}"
@@ -387,9 +379,7 @@ def export_repository_research_data(
     _write_json(output_dir / "arena.json", {"arena_name": "N/A", "leaderboard": []})
 
     blocked_gates: list[str] = []
-    warnings = [
-        "Only evidence explicitly allow-listed by data/research/catalog.json is published."
-    ]
+    warnings = ["Only evidence explicitly allow-listed by data/research/catalog.json is published."]
     if not published_runs:
         blocked_gates.append("run_level_series_not_yet_promoted")
         warnings.append("No immutable repository runs are published.")

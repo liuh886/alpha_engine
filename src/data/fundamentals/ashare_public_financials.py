@@ -178,8 +178,7 @@ def sina_statement_to_events(
                         "source_provider": "akshare_sina_financial_report_cninfo_time",
                         "source_document_id": source_document,
                         "source_endpoint": (
-                            "stock_financial_report_sina+"
-                            "stock_zh_a_disclosure_report_cninfo"
+                            "stock_financial_report_sina+stock_zh_a_disclosure_report_cninfo"
                         ),
                         "field": str(definition["field"]),
                         "value": float(value),

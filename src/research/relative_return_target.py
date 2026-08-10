@@ -50,9 +50,7 @@ def benchmark_series_by_date(
             name=name,
             require_instrument=False,
         )
-        dates = pd.DatetimeIndex(
-            values.index.get_level_values("datetime")
-        ).normalize()
+        dates = pd.DatetimeIndex(values.index.get_level_values("datetime")).normalize()
     else:
         values = benchmark_returns.iloc[:, 0].astype(float).sort_index()
         dates = pd.DatetimeIndex(values.index).normalize()
@@ -61,14 +59,10 @@ def benchmark_series_by_date(
         duplicate_dates = dated.index[dated.index.duplicated()].unique()
         grouped = dated.groupby(level=0, sort=True)
         inconsistent = [
-            date
-            for date in duplicate_dates
-            if grouped.get_group(date).nunique(dropna=False) != 1
+            date for date in duplicate_dates if grouped.get_group(date).nunique(dropna=False) != 1
         ]
         if inconsistent:
-            raise ValueError(
-                f"{name} has inconsistent duplicate dates: {inconsistent[:5]}"
-            )
+            raise ValueError(f"{name} has inconsistent duplicate dates: {inconsistent[:5]}")
         dated = grouped.first()
     return dated.sort_index()
 
@@ -90,9 +84,7 @@ def broadcast_benchmark_to_stock_index(
         benchmark_returns,
         name=benchmark_name,
     )
-    dates = pd.DatetimeIndex(
-        stock_values.index.get_level_values("datetime")
-    ).normalize()
+    dates = pd.DatetimeIndex(stock_values.index.get_level_values("datetime")).normalize()
     aligned = benchmark.reindex(dates)
     return pd.Series(
         aligned.to_numpy(dtype=float),
@@ -139,9 +131,7 @@ def estimate_trailing_market_beta(
     if lookback_sessions < 2:
         raise ValueError("lookback_sessions must be at least two")
     if minimum_observations < 2 or minimum_observations > lookback_sessions:
-        raise ValueError(
-            "minimum_observations must be between two and lookback_sessions"
-        )
+        raise ValueError("minimum_observations must be between two and lookback_sessions")
     stock = _validate_single_column_frame(
         stock_daily_returns,
         name="stock_daily_returns",
@@ -173,10 +163,14 @@ def estimate_trailing_market_beta(
             window=lookback_sessions,
             min_periods=minimum_observations,
         ).var()
-        observations = valid.astype(int).rolling(
-            window=lookback_sessions,
-            min_periods=1,
-        ).sum()
+        observations = (
+            valid.astype(int)
+            .rolling(
+                window=lookback_sessions,
+                min_periods=1,
+            )
+            .sum()
+        )
         beta = covariance / variance
         beta = beta.where(np.isfinite(beta) & variance.gt(0.0))
         output = pd.DataFrame(
@@ -233,9 +227,7 @@ def make_beta_residual_forward_returns(
             "provenance": "beta_residual_forward_return",
             "beta_provenance": beta_ledger.attrs.get("provenance", "unknown"),
             "beta_lookback_sessions": beta_ledger.attrs.get("lookback_sessions"),
-            "beta_minimum_observations": beta_ledger.attrs.get(
-                "minimum_observations"
-            ),
+            "beta_minimum_observations": beta_ledger.attrs.get("minimum_observations"),
         }
     )
     return result

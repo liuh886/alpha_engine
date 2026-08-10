@@ -218,12 +218,9 @@ def build_pool_identity(
         str(name): [str(symbol) for symbol in basket["symbols"]]
         for name, basket in pool["baskets"].items()
     }
-    references = {
-        str(symbol): dict(metadata) for symbol, metadata in pool["references"].items()
-    }
+    references = {str(symbol): dict(metadata) for symbol, metadata in pool["references"].items()}
     symbol_metadata = {
-        str(symbol): dict(metadata)
-        for symbol, metadata in pool.get("symbol_metadata", {}).items()
+        str(symbol): dict(metadata) for symbol, metadata in pool.get("symbol_metadata", {}).items()
     }
     membership = {
         "pool_id": str(pool["pool_id"]),
@@ -240,9 +237,7 @@ def build_pool_identity(
         "pool_id": str(pool["pool_id"]),
         "market": str(pool["market"]),
         "status": str(pool.get("status", "frozen")),
-        "authoritative_for_performance": bool(
-            pool.get("authoritative_for_performance", True)
-        ),
+        "authoritative_for_performance": bool(pool.get("authoritative_for_performance", True)),
         "pool_file_sha256": sha256_file(pool_path),
         "membership_identity_sha256": canonical_sha256(membership),
         "candidate_count": len(candidates),
@@ -266,13 +261,13 @@ def compute_hierarchical_indicators(
         group["high_63"] = group["close"].rolling(63, min_periods=63).max()
         group["drawdown_from_63d_high"] = group["close"] / group["high_63"] - 1.0
         group["realized_volatility_20"] = returns.rolling(20, min_periods=20).std()
-        group["relative_momentum_63_vs_benchmark"] = group[
-            "rel_mom_63_vs_qqq"
-        ]
+        group["relative_momentum_63_vs_benchmark"] = group["rel_mom_63_vs_qqq"]
         enriched.append(group)
-    return pd.concat(enriched, ignore_index=True).sort_values(
-        ["symbol", "date"]
-    ).reset_index(drop=True)
+    return (
+        pd.concat(enriched, ignore_index=True)
+        .sort_values(["symbol", "date"])
+        .reset_index(drop=True)
+    )
 
 
 def _state_frame(signal_history: list[dict[str, Any]]) -> pd.DataFrame:
@@ -339,9 +334,7 @@ def _basket_snapshots(
 
     for basket_name, basket in pool["baskets"].items():
         members = [str(symbol) for symbol in basket["symbols"]]
-        day = indicators[
-            (indicators["date"] == date) & indicators["symbol"].isin(members)
-        ].copy()
+        day = indicators[(indicators["date"] == date) & indicators["symbol"].isin(members)].copy()
         ready = day.dropna(
             subset=[
                 "relative_momentum_63_vs_benchmark",
@@ -354,16 +347,10 @@ def _basket_snapshots(
         coverage = count / len(members)
         breadth = None if ready.empty else float((ready["close"] > ready["sma_50"]).mean())
         relative = (
-            None
-            if ready.empty
-            else float(ready["relative_momentum_63_vs_benchmark"].median())
+            None if ready.empty else float(ready["relative_momentum_63_vs_benchmark"].median())
         )
         momentum = None if ready.empty else float(ready["momentum_20"].median())
-        drawdown = (
-            None
-            if ready.empty
-            else float(ready["drawdown_from_63d_high"].median())
-        )
+        drawdown = None if ready.empty else float(ready["drawdown_from_63d_high"].median())
         reasons: list[str] = []
         if count < int(eligibility["minimum_eligible_constituents"]):
             reasons.append("BASKET_INSUFFICIENT_ELIGIBLE_CONSTITUENTS")
@@ -371,14 +358,11 @@ def _basket_snapshots(
             reasons.append("BASKET_INSUFFICIENT_COVERAGE")
         if breadth is None or breadth < float(eligibility["minimum_breadth_above_sma50"]):
             reasons.append("BASKET_BREADTH_BELOW_GATE")
-        if (
-            bool(eligibility["require_positive_median_relative_momentum_63"])
-            and (relative is None or relative <= 0)
+        if bool(eligibility["require_positive_median_relative_momentum_63"]) and (
+            relative is None or relative <= 0
         ):
             reasons.append("BASKET_RELATIVE_MOMENTUM_NONPOSITIVE")
-        state_day = states[
-            (states["date"] == date) & states["symbol"].isin(members)
-        ]
+        state_day = states[(states["date"] == date) & states["symbol"].isin(members)]
         snapshots.append(
             {
                 "date": date.date().isoformat(),
@@ -401,9 +385,7 @@ def _basket_snapshots(
             }
         )
 
-    eligible_indexes = [
-        index for index, row in enumerate(snapshots) if row["pre_score_eligible"]
-    ]
+    eligible_indexes = [index for index, row in enumerate(snapshots) if row["pre_score_eligible"]]
     components = spec["rotation"]["score"]["components"]
     for field in BASKET_SCORE_FIELDS:
         values = pd.Series(
@@ -417,8 +399,7 @@ def _basket_snapshots(
     minimum = float(spec["rotation"]["score"]["minimum_composite_percentile"])
     for index in eligible_indexes:
         composite = sum(
-            float(snapshots[index][f"{field}_percentile"])
-            * float(components[field]["weight"])
+            float(snapshots[index][f"{field}_percentile"]) * float(components[field]["weight"])
             for field in BASKET_SCORE_FIELDS
         )
         snapshots[index]["composite_percentile"] = float(composite)
@@ -436,18 +417,19 @@ def _security_scores(
     states: pd.DataFrame,
     spec: Mapping[str, Any],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    day = indicators[
-        (indicators["date"] == date) & indicators["symbol"].isin(members)
-    ][["symbol", *SECURITY_SCORE_FIELDS]]
-    state_day = states[
-        (states["date"] == date) & states["symbol"].isin(members)
-    ].merge(day, on="symbol", how="left", validate="one_to_one")
+    day = indicators[(indicators["date"] == date) & indicators["symbol"].isin(members)][
+        ["symbol", *SECURITY_SCORE_FIELDS]
+    ]
+    state_day = states[(states["date"] == date) & states["symbol"].isin(members)].merge(
+        day, on="symbol", how="left", validate="one_to_one"
+    )
 
     selection = spec["security_selection"]
-    state_filter = {str(key): float(value) for key, value in selection["absolute_state_filter"].items()}
+    state_filter = {
+        str(key): float(value) for key, value in selection["absolute_state_filter"].items()
+    }
     priorities = {
-        str(key): int(value)
-        for key, value in selection["cross_section"]["state_priority"].items()
+        str(key): int(value) for key, value in selection["cross_section"]["state_priority"].items()
     }
     state_day["exposure_multiplier"] = state_day["state"].map(state_filter).fillna(0.0)
     state_day["state_priority"] = state_day["state"].map(priorities).fillna(0).astype(int)
@@ -528,9 +510,7 @@ def _security_scores(
                 "symbol": str(row["symbol"]),
                 "state": str(row["state"]),
                 "state_priority": int(row["state_priority"]),
-                "security_composite_percentile": float(
-                    row["security_composite_percentile"]
-                ),
+                "security_composite_percentile": float(row["security_composite_percentile"]),
                 "relative_momentum_63_vs_benchmark": float(
                     row["relative_momentum_63_vs_benchmark"]
                 ),
@@ -611,18 +591,14 @@ def build_hierarchical_rotation_history(
             basket_history.append(snapshot)
             for row in security_rows_by_basket[basket]:
                 row["basket_selected"] = basket in selected_set
-                row["portfolio_selected"] = (
-                    basket in selected_set and row["within_basket_selected"]
-                )
+                row["portfolio_selected"] = basket in selected_set and row["within_basket_selected"]
                 security_history.append(row)
 
         actionable = next_sessions.get(date)
         rotations.append(
             {
                 "date": date.date().isoformat(),
-                "actionable_from": (
-                    None if actionable is None else actionable.date().isoformat()
-                ),
+                "actionable_from": (None if actionable is None else actionable.date().isoformat()),
                 "market": str(spec["market"]),
                 "benchmark": benchmark_symbol,
                 "risk_on": risk_on,
@@ -710,14 +686,10 @@ def build_hierarchical_portfolio_history(
         history.append(
             {
                 "date": date.date().isoformat(),
-                "actionable_from": (
-                    None if actionable is None else actionable.date().isoformat()
-                ),
+                "actionable_from": (None if actionable is None else actionable.date().isoformat()),
                 "market": str(spec["market"]),
                 "benchmark": benchmark_symbol,
-                "rotation_date": (
-                    None if current_rotation is None else current_rotation["date"]
-                ),
+                "rotation_date": (None if current_rotation is None else current_rotation["date"]),
                 "risk_on": risk_on,
                 "market_regime": str(benchmark_row["market_regime"]),
                 "selected_baskets": selected_baskets,
@@ -752,9 +724,7 @@ def run_hierarchical_pool_rotation(
     basket_scores, security_scores, rotations = build_hierarchical_rotation_history(
         indicators, signal_history, spec, pool
     )
-    portfolio = build_hierarchical_portfolio_history(
-        indicators, signal_history, rotations, spec
-    )
+    portfolio = build_hierarchical_portfolio_history(indicators, signal_history, rotations, spec)
 
     output = Path(output_dir).resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -808,8 +778,7 @@ def run_hierarchical_pool_rotation(
     write_json(output / "decision.json", decision)
 
     output_hashes = {
-        filename: sha256_file(output / filename)
-        for filename in [*payloads, "decision.json"]
+        filename: sha256_file(output / filename) for filename in [*payloads, "decision.json"]
     }
     manifest = {
         "schema_version": "1.0",
@@ -818,9 +787,7 @@ def run_hierarchical_pool_rotation(
         "provider_identity_sha256": sha256_file(prices_path),
         "rotation_spec_identity_sha256": sha256_file(resolved_spec),
         "pool_file_identity_sha256": sha256_file(pool_path),
-        "pool_membership_identity_sha256": pool_identity[
-            "membership_identity_sha256"
-        ],
+        "pool_membership_identity_sha256": pool_identity["membership_identity_sha256"],
         "timing_formula_identity_sha256": sha256_file(formula_path),
         "input": {"prices_csv": str(prices_path)},
         "outputs": output_hashes,

@@ -593,7 +593,7 @@ def run_experiment_1_walk_forward(frame: pd.DataFrame) -> dict[str, Any]:
         }
 
         # Run backtest for this split
-        test_frame = frame.loc[X_test.index].copy()
+        frame.loc[X_test.index].copy()
         position = regime_to_position(preds, allocation="byd_100")
         position.index = X_test.index
 
@@ -697,7 +697,7 @@ def run_experiment_2_benchmarks(frame: pd.DataFrame) -> dict[str, Any]:
 
         # Dual allocation strategy
         byd_pos, etf_pos = regime_to_dual_position(preds)
-        byd_pos_s = pd.Series(byd_pos, index=X_test.index, dtype=float)
+        pd.Series(byd_pos, index=X_test.index, dtype=float)
         # For single-asset evaluation, use BYD position only
         regime_position = pd.Series(byd_pos, index=X_test.index, dtype=float)
 
@@ -903,7 +903,7 @@ def run_experiment_4_regime_exploration(frame: pd.DataFrame) -> dict[str, Any]:
             byd_pos_s = pd.Series(adjusted_byd, index=X_test.index, dtype=float)
         elif weights["BYD"] == 0.0 and weights["ETF"] == 1.0:
             # Pure ETF — use inverse regime (buy ETF in bear)
-            etf_pos_s = pd.Series(np.where(preds == 0, 1.0, np.where(preds == 1, 0.5, 0.0)), index=X_test.index, dtype=float)
+            pd.Series(np.where(preds == 0, 1.0, np.where(preds == 1, 0.5, 0.0)), index=X_test.index, dtype=float)
             byd_pos_s = pd.Series(0.0, index=X_test.index, dtype=float)
         elif weights["BYD"] == 0.75:
             byd_pos_s = pd.Series(np.where(preds == 2, 1.0, np.where(preds == 1, 0.75, 0.0)), index=X_test.index, dtype=float)
@@ -998,7 +998,7 @@ def main():
           f"bull={(labeled['regime_label'] == 2).sum()}")
 
     # —— Save dataset snapshot ————————————————————————————————————————
-    dataset_path = output_dir / "enhanced_dataset.parquet"
+    output_dir / "enhanced_dataset.parquet"
     # Use CSV for portability; parquet is faster but optional
     labeled.to_csv(output_dir / "enhanced_dataset.csv", float_format="%.8f")
     print(f"  Saved enhanced dataset to {output_dir / 'enhanced_dataset.csv'}")

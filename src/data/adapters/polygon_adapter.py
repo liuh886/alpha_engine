@@ -74,9 +74,7 @@ class PolygonHttpClient:
         last_error: Exception | None = None
         for attempt in range(1, self.max_attempts + 1):
             try:
-                with urllib.request.urlopen(
-                    request, timeout=self.timeout_seconds
-                ) as response:
+                with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                     return json.loads(response.read().decode("utf-8"))
             except urllib.error.HTTPError as exc:
                 last_error = exc
@@ -101,9 +99,7 @@ class PolygonHttpClient:
                             retry_after_seconds=retry_after,
                         ) from exc
                     time.sleep(
-                        retry_after
-                        if retry_after is not None
-                        else min(2 ** (attempt - 1), 4)
+                        retry_after if retry_after is not None else min(2 ** (attempt - 1), 4)
                     )
                     continue
                 raise PolygonHttpError(
@@ -169,9 +165,7 @@ def _bars(payload: Any, *, symbol: str) -> pd.DataFrame:
     required = {"t", "o", "h", "l", "c", "v"}
     missing = sorted(required.difference(frame.columns))
     if missing:
-        raise DataFetchError(
-            f"Polygon aggregates missing columns for {symbol}: {missing}"
-        )
+        raise DataFetchError(f"Polygon aggregates missing columns for {symbol}: {missing}")
     out = pd.DataFrame(
         {
             "date": pd.to_datetime(frame["t"], unit="ms", errors="coerce", utc=True)
@@ -198,12 +192,8 @@ def _bars(payload: Any, *, symbol: str) -> pd.DataFrame:
 
     valid, _, errors = validate_market_data(out, symbol)
     if not valid:
-        raise DataFetchError(
-            f"Polygon schema validation failed for {symbol}: {'; '.join(errors)}"
-        )
-    return out[
-        ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
-    ]
+        raise DataFetchError(f"Polygon schema validation failed for {symbol}: {'; '.join(errors)}")
+    return out[["date", "open", "high", "low", "close", "volume", "amount", "factor"]]
 
 
 @dataclass
@@ -237,14 +227,10 @@ class PolygonAdapter:
         if pd.Timestamp(end) < pd.Timestamp(start):
             raise DataFetchError("end must be on or after start")
         if self.client is None:
-            raise DataFetchError(
-                "Polygon is unavailable: POLYGON_API_KEY is not configured"
-            )
+            raise DataFetchError("Polygon is unavailable: POLYGON_API_KEY is not configured")
 
         started = time.perf_counter()
-        metadata = _metadata(
-            self.client.get_json(f"v3/reference/tickers/{symbol}"), symbol
-        )
+        metadata = _metadata(self.client.get_json(f"v3/reference/tickers/{symbol}"), symbol)
         payload = self.client.get_json(
             f"v2/aggs/ticker/{symbol}/range/1/day/{start}/{end}",
             params={

@@ -94,9 +94,7 @@ def _fetch_completed_quote(provider_symbol: str, cutoff: str) -> dict[str, float
         )
         response.raise_for_status()
     except Exception as exc:
-        raise DataFetchError(
-            f"Tencent quote request failed for {provider_symbol}: {exc}"
-        ) from exc
+        raise DataFetchError(f"Tencent quote request failed for {provider_symbol}: {exc}") from exc
     text = response.content.decode("gbk", errors="replace").strip()
     match = _QUOTE_PATTERN.match(text)
     if not match:
@@ -201,9 +199,7 @@ class TencentFqKlineAdapter:
         else:
             frame = frame.loc[frame["date"].astype(str).isin({start, end})].copy()
         if len(frame) != 2 or set(frame["date"].astype(str)) != {start, end}:
-            raise DataFetchError(
-                f"Tencent overlap/current rows are not exact: {provider_symbol}"
-            )
+            raise DataFetchError(f"Tencent overlap/current rows are not exact: {provider_symbol}")
         for row in frame.to_dict(orient="records"):
             prices = [float(row[key]) for key in ("open", "high", "low", "close")]
             if min(prices) <= 0:

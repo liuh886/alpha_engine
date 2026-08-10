@@ -97,12 +97,8 @@ def _formal_state_daily(
     prepared = prepare_vix_rotation_runtime_data(alias, config)
     decisions = generate_vix_decision_states(prepared, config)
     daily = prepared.join(decisions)
-    daily["position_state"] = (
-        daily["decision_state"].shift(1).fillna(0).astype(int)
-    )
-    daily["state_1_age_sessions"] = _state_age(
-        daily["position_state"], 1
-    )
+    daily["position_state"] = daily["decision_state"].shift(1).fillna(0).astype(int)
+    daily["state_1_age_sessions"] = _state_age(daily["position_state"], 1)
     return daily, config
 
 
@@ -126,19 +122,14 @@ def _episode_rows(
         if start_location <= 0:
             continue
         end_location = start_location
-        while (
-            end_location + 1 < len(index)
-            and int(state.iloc[end_location + 1]) == 2
-        ):
+        while end_location + 1 < len(index) and int(state.iloc[end_location + 1]) == 2:
             end_location += 1
         signal_close_date = index[start_location - 1]
         if signal_close_date not in feature_frame.index:
             continue
         window = daily.iloc[start_location : end_location + 1]
         leveraged_returns = window["TQQQ_next_open_return"].dropna()
-        cash_returns = feature_frame.reindex(window.index)[
-            "cash_next_open_return"
-        ].dropna()
+        cash_returns = feature_frame.reindex(window.index)["cash_next_open_return"].dropna()
         expected = end_location - start_location + 1
         if len(leveraged_returns) != expected or len(cash_returns) != expected:
             continue
@@ -154,9 +145,7 @@ def _episode_rows(
             "execution_date": execution_date,
             "episode_end_date": index[end_location],
             "holding_sessions": expected,
-            "leveraged_episode_return": float(
-                np.exp(leveraged_log) - 1.0
-            ),
+            "leveraged_episode_return": float(np.exp(leveraged_log) - 1.0),
             "cash_episode_return": float(np.exp(cash_log) - 1.0),
             "episode_excess_log_return": leveraged_log - cash_log,
             "positive_episode_excess": int(leveraged_log > cash_log),
@@ -175,9 +164,7 @@ def _augment_feature_frame(
     ma200 = close.rolling(200, min_periods=200).mean()
     out = frame.copy()
     out["underlying_distance_ma200"] = close / ma200 - 1.0
-    out["state_1_age_sessions"] = daily["state_1_age_sessions"].reindex(
-        out.index
-    )
+    out["state_1_age_sessions"] = daily["state_1_age_sessions"].reindex(out.index)
     return out
 
 
@@ -188,19 +175,11 @@ def build_donor_state2_panel(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build donor formal state-2 episodes and donor breadth."""
 
-    donor_pairs = {
-        str(key): str(value)
-        for key, value in contract["data"]["donor_pairs"].items()
-    }
+    donor_pairs = {str(key): str(value) for key, value in contract["data"]["donor_pairs"].items()}
     excluded = {
-        str(value)
-        for value in contract["boundaries"][
-            "target_symbols_excluded_from_training"
-        ]
+        str(value) for value in contract["boundaries"]["target_symbols_excluded_from_training"]
     }
-    if set(donor_pairs).intersection(excluded) or set(
-        donor_pairs.values()
-    ).intersection(excluded):
+    if set(donor_pairs).intersection(excluded) or set(donor_pairs.values()).intersection(excluded):
         raise AssertionError("target symbols leaked into donor pairs")
     breadth = _breadth_frame(
         bars,
@@ -228,39 +207,23 @@ def build_donor_state2_panel(
             breadth=breadth,
             contract={
                 "event_definition": {
-                    "ma_short": int(
-                        bridge_contract["price_logic"]["ma_short"]
-                    ),
-                    "ma_medium": int(
-                        bridge_contract["price_logic"]["ma_medium"]
-                    ),
-                    "ma_long": int(
-                        bridge_contract["price_logic"]["ma_long"]
-                    ),
+                    "ma_short": int(bridge_contract["price_logic"]["ma_short"]),
+                    "ma_medium": int(bridge_contract["price_logic"]["ma_medium"]),
+                    "ma_long": int(bridge_contract["price_logic"]["ma_long"]),
                     "ma_slope_sessions": 5,
                     "drawdown_window_sessions": 63,
                     "vix_high_window": 20,
                     "vix_percentile_window": 252,
-                    "vix_stress_quantile": float(
-                        bridge_contract["vix_logic"]["stress_quantile"]
-                    ),
+                    "vix_stress_quantile": float(bridge_contract["vix_logic"]["stress_quantile"]),
                     "vix_structural_normal_quantile": float(
-                        bridge_contract["vix_logic"][
-                            "normalization_quantile"
-                        ]
+                        bridge_contract["vix_logic"]["normalization_quantile"]
                     ),
                     "below_ma_short_exit_sessions": int(
-                        bridge_contract["price_logic"][
-                            "exit_below_ma_short_sessions"
-                        ]
+                        bridge_contract["price_logic"]["exit_below_ma_short_sessions"]
                     ),
-                    "shock_drawdown": float(
-                        bridge_contract["price_logic"]["shock_drawdown"]
-                    ),
+                    "shock_drawdown": float(bridge_contract["price_logic"]["shock_drawdown"]),
                     "vix_retreat_from_20d_high": float(
-                        bridge_contract["vix_logic"][
-                            "easing_retreat_for_qqq"
-                        ]
+                        bridge_contract["vix_logic"]["easing_retreat_for_qqq"]
                     ),
                 },
                 "data": {"risk_reference": "^VIX"},
@@ -281,9 +244,7 @@ def build_donor_state2_panel(
         raise ValueError("no donor formal state-2 episodes were generated")
     panel = pd.concat(parts, ignore_index=True)
     panel = assign_macro_clusters(
-        panel.rename(
-            columns={"asset_episode_id": "asset_event_id"}
-        ),
+        panel.rename(columns={"asset_episode_id": "asset_event_id"}),
         int(contract["clustering"]["macro_cluster_calendar_days"]),
     ).rename(columns={"asset_event_id": "asset_episode_id"})
     return panel, breadth
@@ -330,18 +291,13 @@ def fit_donor_state2_model(
 
     features = tuple(str(value) for value in contract["features"])
     excluded = {
-        str(value)
-        for value in contract["boundaries"][
-            "target_symbols_excluded_from_training"
-        ]
+        str(value) for value in contract["boundaries"]["target_symbols_excluded_from_training"]
     }
     leaked = set(donor_episodes["underlying"]).intersection(excluded) | set(
         donor_episodes["leveraged"]
     ).intersection(excluded)
     if leaked:
-        raise AssertionError(
-            f"target symbols leaked into donor episodes: {sorted(leaked)}"
-        )
+        raise AssertionError(f"target symbols leaked into donor episodes: {sorted(leaked)}")
     usable = donor_episodes.dropna(
         subset=[
             *features,
@@ -355,12 +311,8 @@ def fit_donor_state2_model(
     cluster_parts: list[pd.DataFrame] = []
     cluster_rows: list[dict[str, Any]] = []
     for cluster in sorted(usable["macro_cluster_id"].unique()):
-        validation = usable.loc[
-            usable["macro_cluster_id"].eq(cluster)
-        ].copy()
-        training = usable.loc[
-            ~usable["macro_cluster_id"].eq(cluster)
-        ].copy()
+        validation = usable.loc[usable["macro_cluster_id"].eq(cluster)].copy()
+        training = usable.loc[~usable["macro_cluster_id"].eq(cluster)].copy()
         if training["positive_episode_excess"].nunique() < 2:
             continue
         model = _fit_pipeline(training, features, contract)
@@ -375,9 +327,7 @@ def fit_donor_state2_model(
                 "episode_excess_log_return",
             ]
         ].copy()
-        predicted["probability"] = model.predict_proba(
-            validation[list(features)]
-        )[:, 1]
+        predicted["probability"] = model.predict_proba(validation[list(features)])[:, 1]
         predicted["training_episode_count"] = int(len(training))
         cluster_parts.append(predicted)
         metrics = _prediction_metrics(_model_table(predicted))
@@ -415,9 +365,7 @@ def fit_donor_state2_model(
                 "episode_excess_log_return",
             ]
         ].copy()
-        predicted["probability"] = model.predict_proba(
-            validation[list(features)]
-        )[:, 1]
+        predicted["probability"] = model.predict_proba(validation[list(features)])[:, 1]
         predicted["held_out_asset"] = asset
         loao_parts.append(predicted)
         metrics = _prediction_metrics(_model_table(predicted))
@@ -431,14 +379,10 @@ def fit_donor_state2_model(
         loao_rows.append(metrics)
     if not loao_parts:
         raise ValueError("no leave-one-asset-out predictions were produced")
-    loao = pd.concat(loao_parts, ignore_index=True).sort_values(
-        ["signal_close_date", "underlying"]
-    )
+    loao = pd.concat(loao_parts, ignore_index=True).sort_values(["signal_close_date", "underlying"])
     loao_metrics = _prediction_metrics(_model_table(loao))
     asset_spreads = _asset_probability_spreads(_model_table(loao))
-    cluster_contributions = _cluster_information_contributions(
-        _model_table(cluster_oof)
-    )
+    cluster_contributions = _cluster_information_contributions(_model_table(cluster_oof))
 
     cluster_metrics.update(
         {
@@ -498,31 +442,21 @@ def _target_feature_frame(
         breadth=breadth,
         contract={
             "event_definition": {
-                "ma_short": int(
-                    bridge_contract["price_logic"]["ma_short"]
-                ),
-                "ma_medium": int(
-                    bridge_contract["price_logic"]["ma_medium"]
-                ),
+                "ma_short": int(bridge_contract["price_logic"]["ma_short"]),
+                "ma_medium": int(bridge_contract["price_logic"]["ma_medium"]),
                 "ma_long": int(bridge_contract["price_logic"]["ma_long"]),
                 "ma_slope_sessions": 5,
                 "drawdown_window_sessions": 63,
                 "vix_high_window": 20,
                 "vix_percentile_window": 252,
-                "vix_stress_quantile": float(
-                    bridge_contract["vix_logic"]["stress_quantile"]
-                ),
+                "vix_stress_quantile": float(bridge_contract["vix_logic"]["stress_quantile"]),
                 "vix_structural_normal_quantile": float(
                     bridge_contract["vix_logic"]["normalization_quantile"]
                 ),
                 "below_ma_short_exit_sessions": int(
-                    bridge_contract["price_logic"][
-                        "exit_below_ma_short_sessions"
-                    ]
+                    bridge_contract["price_logic"]["exit_below_ma_short_sessions"]
                 ),
-                "shock_drawdown": float(
-                    bridge_contract["price_logic"]["shock_drawdown"]
-                ),
+                "shock_drawdown": float(bridge_contract["price_logic"]["shock_drawdown"]),
                 "vix_retreat_from_20d_high": float(
                     bridge_contract["vix_logic"]["easing_retreat_for_qqq"]
                 ),
@@ -532,11 +466,7 @@ def _target_feature_frame(
     )
     feature_frame = _augment_feature_frame(
         feature_frame,
-        baseline.daily.assign(
-            state_1_age_sessions=_state_age(
-                baseline.daily["position_state"], 1
-            )
-        ),
+        baseline.daily.assign(state_1_age_sessions=_state_age(baseline.daily["position_state"], 1)),
     )
     return feature_frame
 
@@ -549,9 +479,7 @@ def build_target_state2_episodes(
     contract: Mapping[str, Any],
     cash: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    feature_frame = _target_feature_frame(
-        bars, baseline, breadth, bridge_contract, cash
-    )
+    feature_frame = _target_feature_frame(bars, baseline, breadth, bridge_contract, cash)
     episodes = _episode_rows(
         baseline.daily,
         feature_frame,
@@ -585,24 +513,16 @@ def predict_target_episodes_walk_forward(
             continue
         model = _fit_pipeline(training, features, contract)
         predicted = validation.copy()
-        predicted["probability"] = model.predict_proba(
-            validation[list(features)]
-        )[:, 1]
+        predicted["probability"] = model.predict_proba(validation[list(features)])[:, 1]
         predicted["training_cutoff"] = cutoff
         predicted["training_episode_count"] = int(len(training))
-        predicted["training_asset_count"] = int(
-            training["underlying"].nunique()
-        )
+        predicted["training_asset_count"] = int(training["underlying"].nunique())
         predictions.append(predicted)
     if not predictions:
         raise ValueError("no target walk-forward probabilities were produced")
-    out = pd.concat(predictions, ignore_index=True).sort_values(
-        "execution_date"
-    )
+    out = pd.concat(predictions, ignore_index=True).sort_values("execution_date")
     low = float(contract["strategy_mapping"]["probability_low_below"])
-    high = float(
-        contract["strategy_mapping"]["probability_high_at_or_above"]
-    )
+    high = float(contract["strategy_mapping"]["probability_high_at_or_above"])
     out["probability_bucket"] = "medium"
     out.loc[out["probability"].lt(low), "probability_bucket"] = "low"
     out.loc[out["probability"].ge(high), "probability_bucket"] = "high"
@@ -618,20 +538,15 @@ def _episode_bucket_trace(
     trace["probability_bucket"] = "not_state_2"
     trace["episode_id"] = ""
     for episode in predicted_episodes.itertuples(index=False):
-        active = (
-            (trace.index >= pd.Timestamp(episode.execution_date))
-            & (trace.index <= pd.Timestamp(episode.episode_end_date))
+        active = (trace.index >= pd.Timestamp(episode.execution_date)) & (
+            trace.index <= pd.Timestamp(episode.episode_end_date)
         )
         trace.loc[active, "probability"] = float(episode.probability)
-        trace.loc[active, "probability_bucket"] = str(
-            episode.probability_bucket
-        )
+        trace.loc[active, "probability_bucket"] = str(episode.probability_bucket)
         trace.loc[active, "episode_id"] = str(episode.asset_episode_id)
     state2 = baseline_daily["position_state"].astype(int).eq(2)
     if trace.loc[state2, "probability"].isna().any():
-        missing_dates = trace.index[
-            state2 & trace["probability"].isna()
-        ]
+        missing_dates = trace.index[state2 & trace["probability"].isna()]
         raise ValueError(
             f"missing target episode probabilities for {len(missing_dates)} state-2 sessions"
         )
@@ -695,9 +610,7 @@ def run_state2_cash_budget(
         weights.at[date, "cash"] = 1.0 - tqqq
     if not np.allclose(weights.sum(axis=1), 1.0):
         raise AssertionError("state2 cash-budget weights must sum to one")
-    if (weights < -1e-12).any().any() or (
-        weights > 1.0 + 1e-12
-    ).any().any():
+    if (weights < -1e-12).any().any() or (weights > 1.0 + 1e-12).any().any():
         raise AssertionError("state2 cash-budget weights must stay in [0,1]")
 
     daily["weight_QQQI"] = weights["QQQI"]
@@ -713,9 +626,7 @@ def run_state2_cash_budget(
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
-    cost_bps = float(
-        contract["boundaries"]["transaction_cost_bps_per_turnover_unit"]
-    )
+    cost_bps = float(contract["boundaries"]["transaction_cost_bps_per_turnover_unit"])
     daily["turnover_units"] = turnover
     daily["transaction_cost"] = turnover * cost_bps / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
@@ -724,9 +635,7 @@ def run_state2_cash_budget(
     changed = weights.ne(weights.shift()).any(axis=1)
     metrics = _return_metrics(
         daily["net_return"],
-        annual_risk_free_rate=float(
-            contract["boundaries"]["annual_risk_free_rate"]
-        ),
+        annual_risk_free_rate=float(contract["boundaries"]["annual_risk_free_rate"]),
     )
     metrics.update(
         {
@@ -736,15 +645,11 @@ def run_state2_cash_budget(
             "switch_count": int(max(int(changed.sum()) - 1, 0)),
             "average_tqqq_weight": float(daily["weight_TQQQ"].mean()),
             "average_cash_weight": float(daily["weight_cash"].mean()),
-            "low_state2_sessions": int(
-                (state2 & daily["probability_bucket"].eq("low")).sum()
-            ),
+            "low_state2_sessions": int((state2 & daily["probability_bucket"].eq("low")).sum()),
             "medium_state2_sessions": int(
                 (state2 & daily["probability_bucket"].eq("medium")).sum()
             ),
-            "high_state2_sessions": int(
-                (state2 & daily["probability_bucket"].eq("high")).sum()
-            ),
+            "high_state2_sessions": int((state2 & daily["probability_bucket"].eq("high")).sum()),
         }
     )
     trades = daily.loc[
@@ -815,9 +720,7 @@ def state2_episode_attribution(
                 "probability_bucket": str(episode.probability_bucket),
                 "candidate_return": float(np.exp(candidate_log) - 1.0),
                 "v4_2_return": float(np.exp(baseline_log) - 1.0),
-                "relative_return": float(
-                    np.exp(candidate_log - baseline_log) - 1.0
-                ),
+                "relative_return": float(np.exp(candidate_log - baseline_log) - 1.0),
             }
         )
     return pd.DataFrame(rows)
@@ -854,13 +757,9 @@ def _donor_gate(
         "cluster_ic": np.isfinite(float(cm["spearman_ic"]))
         and float(cm["spearman_ic"]) >= float(cluster["spearman_ic_min"]),
         "cluster_spread": float(cm["top_bottom_quartile_spread"]) > 0.0,
-        "cluster_concentration": float(
-            cm["largest_positive_cluster_contribution_share"]
-        )
+        "cluster_concentration": float(cm["largest_positive_cluster_contribution_share"])
         <= float(cluster["largest_positive_cluster_contribution_max"]),
-        "asset_episode_share": float(
-            cm["maximum_single_asset_episode_share"]
-        )
+        "asset_episode_share": float(cm["maximum_single_asset_episode_share"])
         <= float(cluster["maximum_single_asset_episode_share"]),
         "loao_auc": np.isfinite(float(lm["roc_auc"]))
         and float(lm["roc_auc"]) >= float(loao["roc_auc_min"]),
@@ -886,20 +785,12 @@ def _primary_gate(
     thresholds = contract["validation"]["primary_target_gate"]
     baseline = results["frozen_v4_2"]
     joint = results["state2_joint_donor_budget"]
-    cagr_delta_pp = (
-        float(joint.metrics["cagr"]) - float(baseline.metrics["cagr"])
-    ) * 100.0
+    cagr_delta_pp = (float(joint.metrics["cagr"]) - float(baseline.metrics["cagr"])) * 100.0
     drawdown_worsening_pp = max(
         0.0,
-        (
-            float(baseline.metrics["max_drawdown"])
-            - float(joint.metrics["max_drawdown"])
-        )
-        * 100.0,
+        (float(baseline.metrics["max_drawdown"]) - float(joint.metrics["max_drawdown"])) * 100.0,
     )
-    calmar_delta = float(joint.metrics["calmar"]) - float(
-        baseline.metrics["calmar"]
-    )
+    calmar_delta = float(joint.metrics["calmar"]) - float(baseline.metrics["calmar"])
     calendar = _calendar_relative_returns(joint, baseline)
     positive_years = int(sum(value > 0.0 for value in calendar.values()))
     positive_events = (
@@ -913,9 +804,7 @@ def _primary_gate(
         else 1.0
     )
     turnover_increase = (
-        float(joint.metrics["turnover_units"])
-        / float(baseline.metrics["turnover_units"])
-        - 1.0
+        float(joint.metrics["turnover_units"]) / float(baseline.metrics["turnover_units"]) - 1.0
     )
     ablation_wins: dict[str, dict[str, bool]] = {}
     for key in (
@@ -925,34 +814,25 @@ def _primary_gate(
     ):
         comparator = results[key]
         ablation_wins[key] = {
-            "cagr": float(joint.metrics["cagr"])
-            > float(comparator.metrics["cagr"]),
+            "cagr": float(joint.metrics["cagr"]) > float(comparator.metrics["cagr"]),
             "max_drawdown": float(joint.metrics["max_drawdown"])
             > float(comparator.metrics["max_drawdown"]),
-            "sortino": float(joint.metrics["sortino"])
-            > float(comparator.metrics["sortino"]),
-            "calmar": float(joint.metrics["calmar"])
-            > float(comparator.metrics["calmar"]),
+            "sortino": float(joint.metrics["sortino"]) > float(comparator.metrics["sortino"]),
+            "calmar": float(joint.metrics["calmar"]) > float(comparator.metrics["calmar"]),
         }
     counts = {key: int(sum(values.values())) for key, values in ablation_wins.items()}
     checks = {
-        "cagr_improvement": cagr_delta_pp
-        >= float(thresholds["cagr_improvement_vs_v4_2_pp_min"]),
+        "cagr_improvement": cagr_delta_pp >= float(thresholds["cagr_improvement_vs_v4_2_pp_min"]),
         "max_drawdown": drawdown_worsening_pp
         <= float(thresholds["max_drawdown_worsening_vs_v4_2_pp_max"]),
-        "calmar_improvement": calmar_delta
-        >= float(thresholds["calmar_improvement_vs_v4_2_min"]),
-        "sortino": float(joint.metrics["sortino"])
-        >= float(baseline.metrics["sortino"]),
-        "positive_years": positive_years
-        >= int(thresholds["positive_relative_calendar_years_min"]),
+        "calmar_improvement": calmar_delta >= float(thresholds["calmar_improvement_vs_v4_2_min"]),
+        "sortino": float(joint.metrics["sortino"]) >= float(baseline.metrics["sortino"]),
+        "positive_years": positive_years >= int(thresholds["positive_relative_calendar_years_min"]),
         "episode_concentration": event_share
         <= float(thresholds["largest_positive_episode_share_max"]),
-        "turnover": turnover_increase
-        <= float(thresholds["turnover_increase_max"]),
+        "turnover": turnover_increase <= float(thresholds["turnover_increase_max"]),
         **{
-            f"beats_{key}": count
-            >= int(thresholds["ablation_metrics_to_beat_min"])
+            f"beats_{key}": count >= int(thresholds["ablation_metrics_to_beat_min"])
             for key, count in counts.items()
         },
     }
@@ -989,11 +869,7 @@ def _contradiction_gate(
     a_calmar = float(a_joint.metrics["calmar"]) - float(a_base.metrics["calmar"])
     a_drawdown_worsening_pp = max(
         0.0,
-        (
-            float(a_base.metrics["max_drawdown"])
-            - float(a_joint.metrics["max_drawdown"])
-        )
-        * 100.0,
+        (float(a_base.metrics["max_drawdown"]) - float(a_joint.metrics["max_drawdown"])) * 100.0,
     )
     checks = {
         "quarantine_not_jointly_negative": not (q_cagr < 0.0 and q_calmar < 0.0),
@@ -1032,14 +908,10 @@ def run_donor_state2_sgov_tqqq(
     if missing:
         raise ValueError(f"bars missing required symbols: {missing}")
 
-    donor_episodes, breadth = build_donor_state2_panel(
-        bars, bridge_contract, contract
-    )
+    donor_episodes, breadth = build_donor_state2_panel(bars, bridge_contract, contract)
     model = fit_donor_state2_model(donor_episodes, contract)
 
-    _, actual_base_results, _, _ = run_bridge_allocation_comparison(
-        bars, bridge_contract
-    )
+    _, actual_base_results, _, _ = run_bridge_allocation_comparison(bars, bridge_contract)
     _, proxy_base_results, _, _ = run_bridge_allocation_comparison(
         alias_qqqi_to_qqq(bars), bridge_contract
     )
@@ -1075,9 +947,7 @@ def run_donor_state2_sgov_tqqq(
             "feature_frame": proxy_feature_frame,
             "predictions": proxy_predictions,
             "cash": "BIL",
-            "start": pd.Timestamp(
-                contract["validation"]["primary_target_start"]
-            ),
+            "start": pd.Timestamp(contract["validation"]["primary_target_start"]),
             "end": pd.Timestamp(contract["validation"]["primary_target_end"]),
         },
         "quarantine": {
@@ -1085,12 +955,8 @@ def run_donor_state2_sgov_tqqq(
             "feature_frame": proxy_feature_frame,
             "predictions": proxy_predictions,
             "cash": "BIL",
-            "start": pd.Timestamp(
-                contract["validation"]["quarantine_proxy_start"]
-            ),
-            "end": pd.Timestamp(
-                contract["validation"]["quarantine_proxy_end"]
-            ),
+            "start": pd.Timestamp(contract["validation"]["quarantine_proxy_start"]),
+            "end": pd.Timestamp(contract["validation"]["quarantine_proxy_end"]),
         },
         "actual": {
             "baseline": actual_full,
@@ -1120,19 +986,19 @@ def run_donor_state2_sgov_tqqq(
             spec["start"],
             spec["end"],
         )
-        predictions = spec["predictions"].loc[
-            pd.to_datetime(spec["predictions"]["execution_date"]).between(
-                spec["start"], spec["end"]
-            )
-        ].copy()
+        predictions = (
+            spec["predictions"]
+            .loc[
+                pd.to_datetime(spec["predictions"]["execution_date"]).between(
+                    spec["start"], spec["end"]
+                )
+            ]
+            .copy()
+        )
         if predictions.empty:
             raise ValueError(f"{scope} has no target state-2 predictions")
-        baseline = _v4_2_result_on_index(
-            spec["baseline"], index, contract, "frozen_v4_2"
-        )
-        scope_results: dict[str, StrategyResult] = {
-            "frozen_v4_2": baseline
-        }
+        baseline = _v4_2_result_on_index(spec["baseline"], index, contract, "frozen_v4_2")
+        scope_results: dict[str, StrategyResult] = {"frozen_v4_2": baseline}
         for variant in VARIANTS:
             scope_results[variant] = run_state2_cash_budget(
                 spec["baseline"],
@@ -1145,20 +1011,14 @@ def run_donor_state2_sgov_tqqq(
             if not baseline.daily["position_state"].equals(
                 scope_results[variant].daily["position_state"]
             ):
-                raise AssertionError(
-                    f"{scope} {variant} changed the v4.2 state trace"
-                )
+                raise AssertionError(f"{scope} {variant} changed the v4.2 state trace")
             outside = baseline.daily["position_state"].astype(int).ne(2)
             for asset in V4_2_ASSETS:
                 if not np.allclose(
                     baseline.daily.loc[outside, f"weight_{asset}"],
-                    scope_results[variant].daily.loc[
-                        outside, f"weight_{asset}"
-                    ],
+                    scope_results[variant].daily.loc[outside, f"weight_{asset}"],
                 ):
-                    raise AssertionError(
-                        f"{scope} {variant} changed state0/state1 {asset} weights"
-                    )
+                    raise AssertionError(f"{scope} {variant} changed state0/state1 {asset} weights")
         results_by_scope[scope] = scope_results
         predictions_by_scope[scope] = predictions
         headline_by_scope[scope] = pd.DataFrame(
@@ -1181,11 +1041,7 @@ def run_donor_state2_sgov_tqqq(
         results_by_scope["actual"],
         contract,
     )
-    shadow = bool(
-        donor_gate["passed"]
-        and primary_gate["passed"]
-        and contradiction_gate["passed"]
-    )
+    shadow = bool(donor_gate["passed"] and primary_gate["passed"] and contradiction_gate["passed"])
     if not donor_gate["passed"]:
         decision = "donor_formal_state2_transfer_signal_not_stable"
     elif not primary_gate["passed"]:
@@ -1209,23 +1065,16 @@ def run_donor_state2_sgov_tqqq(
             scope: {
                 "start": results["frozen_v4_2"].daily.index.min(),
                 "end": results["frozen_v4_2"].daily.index.max(),
-                "observations": int(
-                    len(results["frozen_v4_2"].daily)
-                ),
-                "predicted_episodes": int(
-                    len(predictions_by_scope[scope])
-                ),
-                "bucket_counts": predictions_by_scope[scope][
-                    "probability_bucket"
-                ].value_counts().to_dict(),
+                "observations": int(len(results["frozen_v4_2"].daily)),
+                "predicted_episodes": int(len(predictions_by_scope[scope])),
+                "bucket_counts": predictions_by_scope[scope]["probability_bucket"]
+                .value_counts()
+                .to_dict(),
             }
             for scope, results in results_by_scope.items()
         },
         "tail_risk": {
-            scope: {
-                key: tail_risk_metrics(result)
-                for key, result in results.items()
-            }
+            scope: {key: tail_risk_metrics(result) for key, result in results.items()}
             for scope, results in results_by_scope.items()
         },
         "decision": decision,

@@ -62,9 +62,9 @@ def momentum_scale(
         raise ValueError("full_increment_momentum must be positive")
     if convex_power <= 0.0:
         raise ValueError("convex_power must be positive")
-    normalized = (
-        momentum.astype(float).clip(lower=0.0) / float(full_increment_momentum)
-    ).clip(lower=0.0, upper=1.0)
+    normalized = (momentum.astype(float).clip(lower=0.0) / float(full_increment_momentum)).clip(
+        lower=0.0, upper=1.0
+    )
     return normalized.pow(float(convex_power))
 
 
@@ -158,15 +158,9 @@ def _window_metrics(result: AllocationResult, start: str, end: str) -> dict[str,
     output.update(
         {
             "transaction_cost_paid": float(block.loc[returns.index, "cost"].sum()),
-            "financing_cost_paid": float(
-                block.loc[returns.index, "financing_cost"].sum()
-            ),
-            "mean_borrowed_weight": float(
-                block.loc[returns.index, "borrowed_weight"].mean()
-            ),
-            "financed_sessions": float(
-                block.loc[returns.index, "borrowed_weight"].gt(0.0).sum()
-            ),
+            "financing_cost_paid": float(block.loc[returns.index, "financing_cost"].sum()),
+            "mean_borrowed_weight": float(block.loc[returns.index, "borrowed_weight"].mean()),
+            "financed_sessions": float(block.loc[returns.index, "borrowed_weight"].gt(0.0).sum()),
         }
     )
     return output
@@ -251,9 +245,7 @@ def episode_attribution(results: dict[str, AllocationResult]) -> pd.DataFrame:
                 "maximum_financed_increment": float(block["borrowed_weight"].max()),
             }
         )
-    positive_total = sum(
-        max(row["relative_terminal_wealth"], 0.0) for row in rows
-    )
+    positive_total = sum(max(row["relative_terminal_wealth"], 0.0) for row in rows)
     for row in rows:
         row["positive_contribution_share"] = (
             max(row["relative_terminal_wealth"], 0.0) / positive_total
@@ -307,9 +299,7 @@ def episode_bootstrap(
         "samples": float(samples),
         "positive_probability": float(np.mean(terminal > 0.0)),
         "median_relative_terminal_wealth": float(np.median(terminal)),
-        "fifth_percentile_relative_terminal_wealth": float(
-            np.quantile(terminal, 0.05)
-        ),
+        "fifth_percentile_relative_terminal_wealth": float(np.quantile(terminal, 0.05)),
     }
 
 
@@ -357,10 +347,8 @@ def _spec_passes(
     period_map = periods.set_index("period")["relative_terminal_wealth"]
     return bool(
         float(candidate_primary["cagr"] - baseline_primary["cagr"]) >= 0.005
-        and float(candidate_primary["max_drawdown"] - baseline_primary["max_drawdown"])
-        >= -0.02
-        and float(candidate_stress["total_return"])
-        >= float(baseline_stress["total_return"])
+        and float(candidate_primary["max_drawdown"] - baseline_primary["max_drawdown"]) >= -0.02
+        and float(candidate_stress["total_return"]) >= float(baseline_stress["total_return"])
         and float(period_map["fixed_validation"]) > 0.0
         and float(period_map["retrospective_2025_plus"]) > 0.0
         and float(periods["positive_contribution_share"].max()) <= 0.60
@@ -393,38 +381,24 @@ def evaluate_decision(
         for power, momentum in NEIGHBOR_SPECS
     )
     stress_relative = float(
-        (1.0 + candidate_stress["total_return"])
-        / (1.0 + baseline_stress["total_return"])
-        - 1.0
+        (1.0 + candidate_stress["total_return"]) / (1.0 + baseline_stress["total_return"]) - 1.0
     )
     gates = {
-        "cagr_improvement_gte_0_50pp": float(
-            candidate_primary["cagr"] - baseline_primary["cagr"]
-        )
+        "cagr_improvement_gte_0_50pp": float(candidate_primary["cagr"] - baseline_primary["cagr"])
         >= 0.005,
         "mdd_worsening_lte_2pp": float(
             candidate_primary["max_drawdown"] - baseline_primary["max_drawdown"]
         )
         >= -0.02,
         "stress_relative_wealth_positive": stress_relative > 0.0,
-        "fixed_validation_relative_positive": float(
-            period_map["fixed_validation"]
-        )
-        > 0.0,
-        "retrospective_2025_plus_relative_positive": float(
-            period_map["retrospective_2025_plus"]
-        )
+        "fixed_validation_relative_positive": float(period_map["fixed_validation"]) > 0.0,
+        "retrospective_2025_plus_relative_positive": float(period_map["retrospective_2025_plus"])
         > 0.0,
         "period_concentration_lte_60pct": max_period_share <= 0.60,
         "episode_concentration_lte_40pct": max_episode_share <= 0.40,
         "minimum_10_episodes": int(len(episodes)) >= 10,
-        "round_trips_per_year_lte_3": float(
-            candidate_primary["round_trips_per_year"]
-        )
-        <= 3.0,
-        "leave_any_episode_out_positive": float(
-            leave_one_out["relative_terminal_wealth"].min()
-        )
+        "round_trips_per_year_lte_3": float(candidate_primary["round_trips_per_year"]) <= 3.0,
+        "leave_any_episode_out_positive": float(leave_one_out["relative_terminal_wealth"].min())
         > 0.0,
         "minimum_3_passing_neighbors": passing_neighbors >= 3,
     }
@@ -439,9 +413,7 @@ def evaluate_decision(
         promotion_authorized=False,
         gates=gates,
         diagnostics={
-            "cagr_delta": float(
-                candidate_primary["cagr"] - baseline_primary["cagr"]
-            ),
+            "cagr_delta": float(candidate_primary["cagr"] - baseline_primary["cagr"]),
             "mdd_delta": float(
                 candidate_primary["max_drawdown"] - baseline_primary["max_drawdown"]
             ),
@@ -450,9 +422,7 @@ def evaluate_decision(
             "max_episode_positive_share": max_episode_share,
             "completed_episodes": float(len(episodes)),
             "financed_sessions": float(candidate_primary["financed_sessions"]),
-            "round_trips_per_year": float(
-                candidate_primary["round_trips_per_year"]
-            ),
+            "round_trips_per_year": float(candidate_primary["round_trips_per_year"]),
             "minimum_leave_one_episode_out_relative_wealth": float(
                 leave_one_out["relative_terminal_wealth"].min()
             ),

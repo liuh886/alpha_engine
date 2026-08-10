@@ -214,7 +214,9 @@ def generate_interactive_report(
                     col=1,
                 )
 
-    fig.update_layout(title=main_title, height=250 * n_rows, template="plotly_dark", hovermode="x unified")
+    fig.update_layout(
+        title=main_title, height=250 * n_rows, template="plotly_dark", hovermode="x unified"
+    )
     for row in range(2 + row_offset, n_rows + 1):
         fig.update_yaxes(title_text="Price (Base 100)", row=row, col=1)
 
@@ -271,7 +273,10 @@ def run_backtest(
         "fit_end_time": start_date,
         "instruments": strategy_instruments,
         "infer_processors": [
-            {"class": "RobustZScoreNorm", "kwargs": {"fields_group": "feature", "clip_outlier": True}},
+            {
+                "class": "RobustZScoreNorm",
+                "kwargs": {"fields_group": "feature", "clip_outlier": True},
+            },
             {"class": "Fillna", "kwargs": {"fields_group": "feature"}},
         ],
         "learn_processors": [{"class": "DropnaLabel"}],
@@ -294,7 +299,11 @@ def run_backtest(
     close_prices = market_data["close"].unstack(level="instrument")
     ma60_data = market_data["ma60"].unstack(level="instrument")
     daily_rets = close_prices.pct_change()
-    bench_ret = daily_rets[benchmark] if benchmark in daily_rets.columns else pd.Series(0.0, index=daily_rets.index)
+    bench_ret = (
+        daily_rets[benchmark]
+        if benchmark in daily_rets.columns
+        else pd.Series(0.0, index=daily_rets.index)
+    )
 
     portfolio_value = float(initial_cash)
     history: list[dict[str, Any]] = []
@@ -374,13 +383,17 @@ def run_backtest(
 
     hist_df = pd.DataFrame(history).set_index("date")
     if hist_df.empty:
-        raise ValueError("Backtest produced no history rows; check data availability and date range")
+        raise ValueError(
+            "Backtest produced no history rows; check data availability and date range"
+        )
 
     total_ret = hist_df["portfolio_value"].iloc[-1] / initial_cash - 1
     bench_total_ret = hist_df["benchmark_value"].iloc[-1] / initial_cash - 1
 
     long_ret_series = pd.Series(long_ret_daily, name="long").sort_index()
-    short_ret_series = pd.Series(short_ret_daily, name="short").reindex(long_ret_series.index).fillna(0.0)
+    short_ret_series = (
+        pd.Series(short_ret_daily, name="short").reindex(long_ret_series.index).fillna(0.0)
+    )
     bench_daily = bench_ret.reindex(long_ret_series.index).fillna(0.0)
     spread_metrics = compute_spread(long_ret_series, short_ret_series, bench_daily)
 

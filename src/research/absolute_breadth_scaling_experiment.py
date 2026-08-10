@@ -64,9 +64,7 @@ def _run_scaled_attack_backtest(
         raise ValueError("weak breadth weight cannot exceed confirmed weight")
 
     daily = prepared.join(decisions)
-    daily["source_position_state"] = (
-        daily["decision_state"].shift(1).fillna(0).astype(int)
-    )
+    daily["source_position_state"] = daily["decision_state"].shift(1).fillna(0).astype(int)
     daily["position_state"] = daily["source_position_state"].eq(2).astype(int)
     daily["executed_reason"] = daily["decision_reason"].shift(1).fillna("initial_entry")
     daily["executed_breadth_confirmed"] = (
@@ -75,22 +73,18 @@ def _run_scaled_attack_backtest(
     leveraged = daily["position_state"].eq(1)
     daily["weight_TQQQ"] = 0.0
     if dynamic_breadth:
-        daily.loc[
-            leveraged & ~daily["executed_breadth_confirmed"], "weight_TQQQ"
-        ] = weak_tqqq_weight
-        daily.loc[
-            leveraged & daily["executed_breadth_confirmed"], "weight_TQQQ"
-        ] = confirmed_tqqq_weight
+        daily.loc[leveraged & ~daily["executed_breadth_confirmed"], "weight_TQQQ"] = (
+            weak_tqqq_weight
+        )
+        daily.loc[leveraged & daily["executed_breadth_confirmed"], "weight_TQQQ"] = (
+            confirmed_tqqq_weight
+        )
     else:
         daily.loc[leveraged, "weight_TQQQ"] = confirmed_tqqq_weight
     daily["weight_QQQ"] = 1.0 - daily["weight_TQQQ"]
     daily["leverage_tier"] = "none"
-    daily.loc[leveraged & daily["weight_TQQQ"].eq(weak_tqqq_weight), "leverage_tier"] = (
-        "reduced"
-    )
-    daily.loc[
-        leveraged & daily["weight_TQQQ"].eq(confirmed_tqqq_weight), "leverage_tier"
-    ] = "full"
+    daily.loc[leveraged & daily["weight_TQQQ"].eq(weak_tqqq_weight), "leverage_tier"] = "reduced"
+    daily.loc[leveraged & daily["weight_TQQQ"].eq(confirmed_tqqq_weight), "leverage_tier"] = "full"
 
     daily["gross_return"] = (
         daily["weight_QQQ"] * daily["QQQ_next_open_return"]
@@ -103,9 +97,7 @@ def _run_scaled_attack_backtest(
     elif not turnover.empty:
         turnover.iloc[0] = 0.0
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = (
-        turnover * config.transaction_cost_bps_per_turnover_unit / 10_000.0
-    )
+    daily["transaction_cost"] = turnover * config.transaction_cost_bps_per_turnover_unit / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()
@@ -165,9 +157,7 @@ def tier_contribution(result: StrategyResult) -> pd.DataFrame:
                     float((1.0 + values).prod() - 1.0) if len(values) else 0.0
                 ),
                 "mean_daily_net_return": float(values.mean()) if len(values) else 0.0,
-                "positive_session_rate": (
-                    float(values.gt(0).mean()) if len(values) else 0.0
-                ),
+                "positive_session_rate": (float(values.gt(0).mean()) if len(values) else 0.0),
                 "worst_daily_net_return": float(values.min()) if len(values) else 0.0,
             }
         )
@@ -197,9 +187,9 @@ def run_absolute_breadth_scaling_comparison(
     )
     prepared = full_prepared.join(breadth, how="left")
     prepared = prepared.dropna(subset=["qqqe_close", "qqqe_ma", "qqqe_momentum"]).copy()
-    prepared["absolute_breadth_confirmed"] = prepared[
-        "absolute_breadth_confirmed"
-    ].fillna(False).astype(bool)
+    prepared["absolute_breadth_confirmed"] = (
+        prepared["absolute_breadth_confirmed"].fillna(False).astype(bool)
+    )
     decisions = decisions.reindex(prepared.index)
     if decisions.isna().any().any():
         raise ValueError("breadth common window lost frozen decisions")
@@ -231,9 +221,9 @@ def run_absolute_breadth_scaling_comparison(
         "attack_vxn_v4_1_fixed_75": baseline,
         "attack_absolute_breadth_v4_2_soft_50_75": challenger,
     }
-    metrics = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
+    metrics = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
+    )
 
     validation = contract["validation"]
     periods = period_metrics(results, validation["chronological_periods"])
@@ -250,19 +240,13 @@ def run_absolute_breadth_scaling_comparison(
             "challenger_return": challenger.daily["net_return"],
         }
     )
-    changed = changed[
-        changed["baseline_weight_TQQQ"].ne(changed["challenger_weight_TQQQ"])
-    ].copy()
-    changed["challenger_minus_baseline"] = (
-        changed["challenger_return"] - changed["baseline_return"]
-    )
+    changed = changed[changed["baseline_weight_TQQQ"].ne(changed["challenger_weight_TQQQ"])].copy()
+    changed["challenger_minus_baseline"] = changed["challenger_return"] - changed["baseline_return"]
     changed = changed.reset_index(names="date")
 
     cost_rows: list[dict[str, Any]] = []
     for cost_bps in validation["cost_sensitivity_bps"]:
-        cost_config = replace(
-            config, transaction_cost_bps_per_turnover_unit=float(cost_bps)
-        )
+        cost_config = replace(config, transaction_cost_bps_per_turnover_unit=float(cost_bps))
         for key, dynamic, low in (
             ("attack_vxn_v4_1_fixed_75", False, confirmed_weight),
             ("attack_absolute_breadth_v4_2_soft_50_75", True, weak_weight),
@@ -291,9 +275,7 @@ def run_absolute_breadth_scaling_comparison(
         "weak_tqqq_weight": weak_weight,
         "confirmed_tqqq_weight": confirmed_weight,
         "changed_weight_sessions": int(len(changed)),
-        "changed_session_return_delta_sum": float(
-            changed["challenger_minus_baseline"].sum()
-        ),
+        "changed_session_return_delta_sum": float(changed["challenger_minus_baseline"].sum()),
         "no_parameter_grid": True,
     }
     tables = {

@@ -42,15 +42,10 @@ def attribute_sgov_drawdown_episodes_at_baseline_trough(
 
     episodes = episodes.copy()
     episodes["challenger_drawdown_at_baseline_trough"] = (
-        episodes["baseline_max_drawdown"]
-        + episodes["relative_return_at_baseline_trough"]
+        episodes["baseline_max_drawdown"] + episodes["relative_return_at_baseline_trough"]
     )
-    episodes["drawdown_improvement"] = episodes[
-        "relative_return_at_baseline_trough"
-    ]
-    episodes["drawdown_improvement_pp"] = (
-        episodes["drawdown_improvement"] * 100.0
-    )
+    episodes["drawdown_improvement"] = episodes["relative_return_at_baseline_trough"]
+    episodes["drawdown_improvement_pp"] = episodes["drawdown_improvement"] * 100.0
 
     gate = evaluate_prospective_monitor_gate(
         episodes,

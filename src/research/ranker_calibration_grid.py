@@ -67,16 +67,12 @@ class RankerGridCandidate:
     def __post_init__(self) -> None:
         if self.model_family not in VALID_MODEL_FAMILIES:
             raise ValueError(
-                f"model_family must be one of {VALID_MODEL_FAMILIES}, "
-                f"got {self.model_family!r}"
+                f"model_family must be one of {VALID_MODEL_FAMILIES}, got {self.model_family!r}"
             )
 
     @property
     def name(self) -> str:
-        return (
-            f"{self.model_family}:daily_ranker:"
-            f"{self.feature_group.name}:{self.calibration.name}"
-        )
+        return f"{self.model_family}:daily_ranker:{self.feature_group.name}:{self.calibration.name}"
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -145,14 +141,11 @@ def build_ranker_calibration_grid(
     for mf in families:
         if mf not in VALID_MODEL_FAMILIES:
             raise ValueError(
-                f"model_families must be a subset of {VALID_MODEL_FAMILIES}, "
-                f"got {mf!r}"
+                f"model_families must be a subset of {VALID_MODEL_FAMILIES}, got {mf!r}"
             )
     candidates: list[RankerGridCandidate] = []
     for group, calibration, mf in product(groups, settings, families):
-        candidates.append(
-            RankerGridCandidate(group, calibration, model_family=mf)
-        )
+        candidates.append(RankerGridCandidate(group, calibration, model_family=mf))
     return candidates
 
 

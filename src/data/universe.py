@@ -95,9 +95,7 @@ def clean_universe(
             end_time=warmup_end,
         )
         if not check_df.empty:
-            valid_tickers = (
-                check_df.index.get_level_values("instrument").unique().tolist()
-            )
+            valid_tickers = check_df.index.get_level_values("instrument").unique().tolist()
     except Exception:
         for ticker in all_tickers:
             try:
@@ -123,9 +121,7 @@ def apply_liquidity_filter(
 
     from src.common.universe import apply_profile_universe_filters
 
-    min_liquidity = (
-        (profile_data.get("universe", {}) or {}).get("filters", {}).get("min_liquidity")
-    )
+    min_liquidity = (profile_data.get("universe", {}) or {}).get("filters", {}).get("min_liquidity")
     if min_liquidity is not None:
         return apply_profile_universe_filters(
             tickers,

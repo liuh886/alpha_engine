@@ -21,9 +21,7 @@ ASSETS = ("QQQI", "QQQ", "TQQQ", "SGOV")
 V4_2_KEY = "rotation_vxn_bridge_v4_2_50_50"
 
 
-def _variant_weights(
-    contract: Mapping[str, Any], variant: str
-) -> dict[int, dict[str, float]]:
+def _variant_weights(contract: Mapping[str, Any], variant: str) -> dict[int, dict[str, float]]:
     portfolio = contract["portfolio"]
     if variant not in portfolio:
         raise ValueError(f"unknown portfolio variant: {variant}")
@@ -74,8 +72,7 @@ def run_state_weight_backtest(
             daily[f"weight_{asset}"] = weights[asset]
 
     daily["gross_return"] = sum(
-        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in ASSETS
+        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if bool(contract["portfolio"].get("charge_initial_entry", True)) and len(turnover):
@@ -139,9 +136,7 @@ def run_sgov_defense_comparison(
 ) -> tuple[pd.DataFrame, dict[str, StrategyResult], pd.DataFrame, dict[str, Any]]:
     """Run the two frozen SGOV structures against a common-window v4.2 baseline."""
 
-    _, bridge_results, prepared, _ = run_bridge_allocation_comparison(
-        bars, bridge_contract
-    )
+    _, bridge_results, prepared, _ = run_bridge_allocation_comparison(bars, bridge_contract)
     reference = _common_reference_daily(bridge_results[V4_2_KEY], bars)
     variants = (
         "current_v4_2",
@@ -165,13 +160,17 @@ def run_sgov_defense_comparison(
         ):
             raise AssertionError(f"{key} changed the frozen state-2 allocation")
 
-    headline = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
+    headline = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
+    )
     tail = {key: tail_risk_metrics(result) for key, result in results.items()}
     train_fraction = float(experiment_contract["validation"]["chronological_train_fraction"])
     chronological = pd.DataFrame(
-        [row for result in results.values() for row in _chronological_metrics(result, train_fraction)]
+        [
+            row
+            for result in results.values()
+            for row in _chronological_metrics(result, train_fraction)
+        ]
     )
     diagnostics = {
         "research_only": True,

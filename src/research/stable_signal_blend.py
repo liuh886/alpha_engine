@@ -50,13 +50,7 @@ def daily_cross_sectional_zscore(score: pd.DataFrame) -> pd.DataFrame:
             raise ValueError("score frame must have exactly one column")
         frame.columns = ["score"]
 
-    values = (
-        frame["score"]
-        .astype(float)
-        .replace([np.inf, -np.inf], np.nan)
-        .dropna()
-        .sort_index()
-    )
+    values = frame["score"].astype(float).replace([np.inf, -np.inf], np.nan).dropna().sort_index()
     if values.empty:
         result = values.to_frame("score")
         result.attrs.update(frame.attrs)
@@ -65,9 +59,7 @@ def daily_cross_sectional_zscore(score: pd.DataFrame) -> pd.DataFrame:
 
     sizes = values.groupby(level="datetime", sort=True).size()
     valid_dates = sizes[sizes >= 2].index
-    values = values.loc[
-        values.index.get_level_values("datetime").isin(valid_dates)
-    ]
+    values = values.loc[values.index.get_level_values("datetime").isin(valid_dates)]
 
     normalized_parts: list[pd.Series] = []
     for _, day in values.groupby(level="datetime", sort=True):
@@ -75,9 +67,7 @@ def daily_cross_sectional_zscore(score: pd.DataFrame) -> pd.DataFrame:
         if standard_deviation == 0.0:
             normalized = pd.Series(0.0, index=day.index, name="score")
         else:
-            normalized = ((day - float(day.mean())) / standard_deviation).rename(
-                "score"
-            )
+            normalized = ((day - float(day.mean())) / standard_deviation).rename("score")
         normalized_parts.append(normalized)
 
     if normalized_parts:

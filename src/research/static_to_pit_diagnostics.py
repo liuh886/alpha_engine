@@ -43,8 +43,7 @@ def topk_selections(
     series = _series(scores, kind="score")
     allowed = None if allowed_symbols is None else set(map(str, allowed_symbols))
     dates = sorted(
-        pd.Timestamp(item)
-        for item in series.index.get_level_values("datetime").unique()
+        pd.Timestamp(item) for item in series.index.get_level_values("datetime").unique()
     )
     result: dict[str, list[str]] = {}
     for date in dates[::rebalance_days]:
@@ -55,9 +54,7 @@ def topk_selections(
             ((str(symbol), float(score)) for symbol, score in group.items()),
             key=lambda item: (-item[1], item[0]),
         )
-        result[date.strftime("%Y-%m-%d")] = [
-            symbol for symbol, _ in ordered[:top_n]
-        ]
+        result[date.strftime("%Y-%m-%d")] = [symbol for symbol, _ in ordered[:top_n]]
     return result
 
 
@@ -107,12 +104,8 @@ def score_rank_migration(
     for date, group in frame.groupby(level="datetime", sort=True):
         if len(group) < 2:
             continue
-        static_rank = group["static_score"].rank(
-            method="average", ascending=False, pct=True
-        )
-        pit_rank = group["pit_score"].rank(
-            method="average", ascending=False, pct=True
-        )
+        static_rank = group["static_score"].rank(method="average", ascending=False, pct=True)
+        pit_rank = group["pit_score"].rank(method="average", ascending=False, pct=True)
         corr = static_rank.corr(pit_rank, method="spearman")
         shift = (pit_rank - static_rank).abs()
         if np.isfinite(corr):
@@ -122,9 +115,7 @@ def score_rank_migration(
             {
                 "date": pd.Timestamp(date).strftime("%Y-%m-%d"),
                 "common_count": len(group),
-                "spearman_rank_correlation": (
-                    None if not np.isfinite(corr) else float(corr)
-                ),
+                "spearman_rank_correlation": (None if not np.isfinite(corr) else float(corr)),
                 "mean_absolute_percentile_shift": float(shift.mean()),
                 "max_absolute_percentile_shift": float(shift.max()),
             }
@@ -135,9 +126,7 @@ def score_rank_migration(
         "mean_spearman_rank_correlation": (
             None if not correlations else float(np.mean(correlations))
         ),
-        "mean_absolute_percentile_shift": (
-            None if not shifts else float(np.mean(shifts))
-        ),
+        "mean_absolute_percentile_shift": (None if not shifts else float(np.mean(shifts))),
     }
 
 
@@ -156,10 +145,7 @@ def label_bin_migration(
     right = percentile_rank_to_gain(pit_target.loc[common], n_bins=n_bins)
     frame = pd.DataFrame({"static_gain": left, "pit_gain": right}).dropna()
     matrix = (
-        frame.groupby(["static_gain", "pit_gain"], sort=True)
-        .size()
-        .rename("count")
-        .reset_index()
+        frame.groupby(["static_gain", "pit_gain"], sort=True).size().rename("count").reset_index()
     )
     changed = frame["static_gain"] != frame["pit_gain"]
     return {
@@ -167,9 +153,7 @@ def label_bin_migration(
         "changed_rows": int(changed.sum()),
         "changed_ratio": float(changed.mean()) if len(frame) else None,
         "mean_absolute_gain_shift": (
-            float((frame["pit_gain"] - frame["static_gain"]).abs().mean())
-            if len(frame)
-            else None
+            float((frame["pit_gain"] - frame["static_gain"]).abs().mean()) if len(frame) else None
         ),
         "confusion": [
             {
@@ -240,9 +224,7 @@ def selected_return_contributions(
             if key in returns.index and np.isfinite(float(returns.loc[key])):
                 valid.append((symbol, float(returns.loc[key])))
         denominator = max(len(valid), 1)
-        contributions = [
-            (symbol, value / denominator) for symbol, value in valid
-        ]
+        contributions = [(symbol, value / denominator) for symbol, value in valid]
         for symbol, contribution in contributions:
             by_symbol[symbol] = by_symbol.get(symbol, 0.0) + contribution
             category = categories.get(symbol, "unclassified")
@@ -254,9 +236,7 @@ def selected_return_contributions(
             {
                 "date": date,
                 "selected": list(symbols),
-                "gross_period_return": float(
-                    sum(value for _, value in contributions)
-                ),
+                "gross_period_return": float(sum(value for _, value in contributions)),
                 "contributions": [
                     {
                         "symbol": symbol,
@@ -275,13 +255,10 @@ def selected_return_contributions(
         "by_symbol": dict(sorted(by_symbol.items())),
         "by_category": dict(sorted(by_category.items())),
         "top_contributors_by_absolute_value": [
-            {"symbol": symbol, "contribution": value}
-            for symbol, value in ordered[:20]
+            {"symbol": symbol, "contribution": value} for symbol, value in ordered[:20]
         ],
         "top5_absolute_concentration": (
-            None
-            if total_abs == 0
-            else sum(abs(value) for _, value in ordered[:5]) / total_abs
+            None if total_abs == 0 else sum(abs(value) for _, value in ordered[:5]) / total_abs
         ),
     }
 
@@ -292,29 +269,22 @@ def contribution_gap(
 ) -> dict[str, Any]:
     """Subtract P/P contribution from S/S contribution."""
 
-    left_symbol = {
-        str(key): float(value)
-        for key, value in dict(left.get("by_symbol", {})).items()
-    }
+    left_symbol = {str(key): float(value) for key, value in dict(left.get("by_symbol", {})).items()}
     right_symbol = {
-        str(key): float(value)
-        for key, value in dict(right.get("by_symbol", {})).items()
+        str(key): float(value) for key, value in dict(right.get("by_symbol", {})).items()
     }
     by_symbol = {
         symbol: left_symbol.get(symbol, 0.0) - right_symbol.get(symbol, 0.0)
         for symbol in sorted(set(left_symbol) | set(right_symbol))
     }
     left_category = {
-        str(key): float(value)
-        for key, value in dict(left.get("by_category", {})).items()
+        str(key): float(value) for key, value in dict(left.get("by_category", {})).items()
     }
     right_category = {
-        str(key): float(value)
-        for key, value in dict(right.get("by_category", {})).items()
+        str(key): float(value) for key, value in dict(right.get("by_category", {})).items()
     }
     by_category = {
-        category: left_category.get(category, 0.0)
-        - right_category.get(category, 0.0)
+        category: left_category.get(category, 0.0) - right_category.get(category, 0.0)
         for category in sorted(set(left_category) | set(right_category))
     }
     ordered = sorted(by_symbol.items(), key=lambda item: abs(item[1]), reverse=True)
@@ -324,12 +294,9 @@ def contribution_gap(
         "by_symbol": by_symbol,
         "by_category": by_category,
         "top_gap_contributors_by_absolute_value": [
-            {"symbol": symbol, "gap_contribution": value}
-            for symbol, value in ordered[:20]
+            {"symbol": symbol, "gap_contribution": value} for symbol, value in ordered[:20]
         ],
         "top5_absolute_gap_concentration": (
-            None
-            if total_abs == 0.0
-            else sum(abs(value) for _, value in ordered[:5]) / total_abs
+            None if total_abs == 0.0 else sum(abs(value) for _, value in ordered[:5]) / total_abs
         ),
     }

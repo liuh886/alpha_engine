@@ -14,9 +14,7 @@ import yaml
 from src.decision_support.shadow_decision_desk import build_shadow_decision_ticket
 from src.research.hierarchical_pool_rotation import run_hierarchical_pool_rotation
 
-ACKNOWLEDGEMENT = (
-    "REPURPOSE_2026H2_FOR_PROSPECTIVE_SHADOW_NO_INDEPENDENT_CLAIM"
-)
+ACKNOWLEDGEMENT = "REPURPOSE_2026H2_FOR_PROSPECTIVE_SHADOW_NO_INDEPENDENT_CLAIM"
 
 
 def _sha256_file(path: Path) -> str:
@@ -24,9 +22,9 @@ def _sha256_file(path: Path) -> str:
 
 
 def _canonical_hash(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -50,17 +48,18 @@ def load_cutover_contract(path: str | Path) -> dict[str, Any]:
     disposition = payload.get("reserved_evidence_disposition", {})
     if disposition.get("repurposed_for_forward_shadow_use") is not True:
         raise ValueError("reserved evidence has not been repurposed for shadow use")
-    if disposition.get(
-        "independent_validation_claim_prohibited_for_existing_families"
-    ) is not True:
+    if disposition.get("independent_validation_claim_prohibited_for_existing_families") is not True:
         raise ValueError("independent-validation claim prohibition is missing")
     if payload.get("acknowledgement", {}).get("recorded") is not True:
         raise ValueError("cutover acknowledgement is not recorded")
     if payload.get("acknowledgement", {}).get("exact_value") != ACKNOWLEDGEMENT:
         raise ValueError("cutover acknowledgement value is invalid")
-    if payload.get("future_multifactor_validation", {}).get(
-        "requires_new_reserved_window_after_factor_and_portfolio_freeze"
-    ) is not True:
+    if (
+        payload.get("future_multifactor_validation", {}).get(
+            "requires_new_reserved_window_after_factor_and_portfolio_freeze"
+        )
+        is not True
+    ):
         raise ValueError("future multifactor reserved-window requirement is missing")
     return payload
 
@@ -206,9 +205,7 @@ def run_prospective_shadow_cycle(
         "market_contract": market_contract,
         "price_summary": price_summary,
         "inputs": input_identity,
-        "rotation_manifest_sha256": _sha256_file(
-            rotation_dir / "evidence_manifest.json"
-        ),
+        "rotation_manifest_sha256": _sha256_file(rotation_dir / "evidence_manifest.json"),
         "ticket_identity_sha256": ticket["ticket_identity_sha256"],
         "ledger_ticket_path": str(ledger / market / f"{as_of.isoformat()}.json"),
     }

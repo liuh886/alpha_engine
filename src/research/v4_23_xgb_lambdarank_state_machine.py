@@ -78,9 +78,7 @@ def run_xgb_lambdarank_state_machine(
     if feature_names != actual_feature_names:
         raise AssertionError("proxy and actual model schemas diverged")
 
-    oof_scores, coverage, bundles = score_outer_folds(
-        proxy, feature_names, contract
-    )
+    oof_scores, coverage, bundles = score_outer_folds(proxy, feature_names, contract)
     selected, by_fold, by_action = ranking_metrics(oof_scores)
     concentration = concentration_metrics(selected, contract)
     gain, shap = importance_metrics(bundles, feature_names, contract)
@@ -96,9 +94,7 @@ def run_xgb_lambdarank_state_machine(
         contract,
     )
 
-    unique_dates = pd.DatetimeIndex(
-        sorted(pd.to_datetime(proxy["decision_date"].unique()))
-    )
+    unique_dates = pd.DatetimeIndex(sorted(pd.to_datetime(proxy["decision_date"].unique())))
     actual_start = pd.Timestamp(contract["data"]["actual_product_start"])
     training_end = embargo_train_end(
         unique_dates,
@@ -128,9 +124,7 @@ def run_xgb_lambdarank_state_machine(
             contract,
             actual=True,
         )
-        policy_gate = phase2_gate(
-            oof_headline, oof_results, selected, contract
-        )
+        policy_gate = phase2_gate(oof_headline, oof_results, selected, contract)
         contradiction_gate = actual_gate(actual_headline, contract)
     else:
         oof_headline = pd.DataFrame()
@@ -148,9 +142,7 @@ def run_xgb_lambdarank_state_machine(
 
     final = {
         "passed": bool(
-            ranking_gate["passed"]
-            and policy_gate["passed"]
-            and contradiction_gate["passed"]
+            ranking_gate["passed"] and policy_gate["passed"] and contradiction_gate["passed"]
         ),
         "checks": {
             "phase1_ranking_gate": bool(ranking_gate["passed"]),
@@ -158,9 +150,7 @@ def run_xgb_lambdarank_state_machine(
             "actual_contradiction_gate": bool(contradiction_gate["passed"]),
         },
         "prospective_shadow_authorized": bool(
-            ranking_gate["passed"]
-            and policy_gate["passed"]
-            and contradiction_gate["passed"]
+            ranking_gate["passed"] and policy_gate["passed"] and contradiction_gate["passed"]
         ),
         "direct_promotion_authorized": False,
         "baseline_and_alerts_unchanged": True,

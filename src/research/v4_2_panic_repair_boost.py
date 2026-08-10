@@ -30,9 +30,7 @@ def _normalise_fear_greed(fear_greed: pd.DataFrame) -> pd.DataFrame:
     if out.index.has_duplicates:
         raise ValueError("fear_greed index must be unique")
     out["fear_greed_score"] = pd.to_numeric(out["fear_greed_score"], errors="coerce")
-    invalid = out["fear_greed_score"].dropna().loc[
-        lambda value: (value < 0.0) | (value > 100.0)
-    ]
+    invalid = out["fear_greed_score"].dropna().loc[lambda value: (value < 0.0) | (value > 100.0)]
     if not invalid.empty:
         raise ValueError("fear_greed score must be in [0, 100]")
     return out
@@ -128,15 +126,9 @@ def build_panic_repair_trace(
             "panic_condition_at_close": panic.astype(bool),
             "panic_start_at_close": panic_start.astype(bool),
             "repair_ready_at_close": repair_ready.astype(bool),
-            "panic_repair_armed_at_close": pd.Series(
-                armed_rows, index=daily.index, dtype=bool
-            ),
-            "panic_repair_active_at_close": pd.Series(
-                active_rows, index=daily.index, dtype=bool
-            ),
-            "panic_repair_event_id": pd.Series(
-                event_rows, index=daily.index, dtype="Int64"
-            ),
+            "panic_repair_armed_at_close": pd.Series(armed_rows, index=daily.index, dtype=bool),
+            "panic_repair_active_at_close": pd.Series(active_rows, index=daily.index, dtype=bool),
+            "panic_repair_event_id": pd.Series(event_rows, index=daily.index, dtype="Int64"),
             "panic_repair_reason_at_close": reasons,
         },
         index=daily.index,
@@ -166,14 +158,16 @@ def panic_repair_weights(
         raise ValueError(f"daily trace missing weight columns: {missing}")
 
     assets = ["QQQI", "QQQ", "TQQQ"]
-    weights = daily[[f"weight_{asset}" for asset in assets]].rename(
-        columns={f"weight_{asset}": asset for asset in assets}
-    ).astype(float).copy()
-
-    active = (
-        trace["panic_repair_active_at_open"].reindex(weights.index).fillna(False)
-        & daily["position_state"].astype(int).isin([0, 1])
+    weights = (
+        daily[[f"weight_{asset}" for asset in assets]]
+        .rename(columns={f"weight_{asset}": asset for asset in assets})
+        .astype(float)
+        .copy()
     )
+
+    active = trace["panic_repair_active_at_open"].reindex(weights.index).fillna(False) & daily[
+        "position_state"
+    ].astype(int).isin([0, 1])
     funding_assets = [asset for asset in assets if asset != "TQQQ"]
     funding = weights[funding_assets].sum(axis=1)
     if bool((funding.loc[active] < TQQQ_BOOST - 1e-12).any()):
@@ -191,9 +185,9 @@ def panic_repair_weights(
         raise AssertionError("panic repair weights cannot be negative")
 
     formal_state_two = daily["position_state"].astype(int).eq(2)
-    original = daily.loc[
-        formal_state_two, [f"weight_{asset}" for asset in assets]
-    ].rename(columns={f"weight_{asset}": asset for asset in assets})
+    original = daily.loc[formal_state_two, [f"weight_{asset}" for asset in assets]].rename(
+        columns={f"weight_{asset}": asset for asset in assets}
+    )
     if bool(formal_state_two.any()) and not np.allclose(
         weights.loc[formal_state_two, assets],
         original[assets],
@@ -218,16 +212,13 @@ def run_panic_repair_backtest(
         daily[f"weight_{asset}"] = weights[asset]
 
     daily["gross_return"] = sum(
-        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in assets
+        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in assets
     )
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = (
-        turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
-    )
+    daily["transaction_cost"] = turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily.loc[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()
@@ -302,7 +293,5 @@ def run_panic_repair_comparison(
     )
     candidate = run_panic_repair_backtest(baseline, fear_greed)
     results = {"current_v4_2": baseline, "v4_27_panic_repair_boost": candidate}
-    headline = pd.DataFrame(
-        {key: result.metrics for key, result in results.items()}
-    ).T
+    headline = pd.DataFrame({key: result.metrics for key, result in results.items()}).T
     return headline, results

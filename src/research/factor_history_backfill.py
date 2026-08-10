@@ -121,9 +121,7 @@ def backfill_history_batch(
                 "reserved_start": str(entry.get("reserved_start", "")),
                 "reserved_end": str(entry.get("reserved_end", "")),
                 "cost_bps": entry.get("cost_bps"),
-                "execution_contract": str(
-                    entry.get("execution_contract", "historical_unknown")
-                ),
+                "execution_contract": str(entry.get("execution_contract", "historical_unknown")),
                 "evidence_manifest_hash": manifest_hash,
                 "authoritative": False,
                 "decision_status": status,
@@ -158,9 +156,7 @@ def backfill_history_batch(
     return {
         "schema_version": "1.0",
         "batch_status": str(payload.get("status", "historical_backfill")),
-        "inventory_sha256": hashlib.sha256(
-            Path(inventory_path).read_bytes()
-        ).hexdigest(),
+        "inventory_sha256": hashlib.sha256(Path(inventory_path).read_bytes()).hexdigest(),
         "card_count": len(imported),
         "status_counts": dict(sorted(status_counts.items())),
         "authoritative_evidence_created": 0,

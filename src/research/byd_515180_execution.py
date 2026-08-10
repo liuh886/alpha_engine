@@ -49,10 +49,7 @@ def run_allocation(
     executed = execute_next_common_open(decision, common["common_open_eligible"])
     byd_weight = executed["position_byd_weight"]
     etf_weight = executed["position_etf_weight"]
-    gross = (
-        byd_weight * common["byd_open_return"]
-        + etf_weight * common["etf_open_return"]
-    )
+    gross = byd_weight * common["byd_open_return"] + etf_weight * common["etf_open_return"]
     turnover = executed.diff().abs().sum(axis=1)
     turnover.iloc[0] = 0.0
     cost = turnover * cost_bps / 10_000.0

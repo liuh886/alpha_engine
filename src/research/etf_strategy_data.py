@@ -37,9 +37,7 @@ def _clip_frame(
         mask &= dates.le(end_ts)
     local = local.loc[mask].copy().reset_index(drop=True)
     if local.empty:
-        raise ValueError(
-            f"governed strategy data have no rows for {symbol} in requested range"
-        )
+        raise ValueError(f"governed strategy data have no rows for {symbol} in requested range")
     return local
 
 
@@ -93,12 +91,8 @@ def fetch_governed_etf_strategy_bars(
                 "manifest_path": str(strategy_manifest),
                 "manifest_sha256": _sha256(strategy_manifest),
                 "strategy_data_ready": manifest.get("status") == "ready",
-                "professional_source_ready": manifest.get(
-                    "professional_source_ready"
-                ),
-                "selected_providers": manifest.get("details", {}).get(
-                    "selected_providers", {}
-                ),
+                "professional_source_ready": manifest.get("professional_source_ready"),
+                "selected_providers": manifest.get("details", {}).get("selected_providers", {}),
                 "common_history_start": manifest.get("first_date"),
                 "common_history_end": manifest.get("last_date"),
                 "symbols": manifest.get("symbols", []),

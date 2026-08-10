@@ -74,19 +74,13 @@ def _phase1_gate(
     selected_regret = float(selected["selected_utility_regret"].mean())
     baseline_regret = float(selected["baseline_utility_regret"].mean())
     regret_reduction = (
-        1.0 - selected_regret / baseline_regret
-        if baseline_regret > 1e-12
-        else np.nan
+        1.0 - selected_regret / baseline_regret if baseline_regret > 1e-12 else np.nan
     )
     mean_auc = float(edge_summary["roc_auc"].mean())
     minimum_auc = float(edge_summary["roc_auc"].min())
     mean_balanced = float(edge_summary["balanced_accuracy"].mean())
-    median_advantage = float(
-        selected["selected_utility_advantage_vs_v4_2"].median()
-    )
-    positive_folds = int(
-        selection_by_fold["total_utility_advantage_vs_v4_2"].gt(0.0).sum()
-    )
+    median_advantage = float(selected["selected_utility_advantage_vs_v4_2"].median())
+    positive_folds = int(selection_by_fold["total_utility_advantage_vs_v4_2"].gt(0.0).sum())
     top_two_rate = float(selected["selected_top_two"].mean())
     minimum_state_count = int(selection_by_state["selected_groups"].min())
     maximum_state_share = float(selection_by_state["selection_share"].max())
@@ -97,35 +91,20 @@ def _phase1_gate(
     checks = {
         "mean_edge_auc": mean_auc >= float(gate["mean_edge_auc_min"]),
         "minimum_edge_auc": minimum_auc >= float(gate["minimum_edge_auc_min"]),
-        "mean_balanced_accuracy": mean_balanced
-        >= float(gate["mean_balanced_accuracy_min"]),
-        "utility_regret_reduction": regret_reduction
-        >= float(gate["utility_regret_reduction_min"]),
-        "median_utility_advantage": median_advantage
-        > float(gate["median_utility_advantage_min"]),
-        "positive_outer_folds": positive_folds
-        >= int(gate["positive_outer_folds_min"]),
+        "mean_balanced_accuracy": mean_balanced >= float(gate["mean_balanced_accuracy_min"]),
+        "utility_regret_reduction": regret_reduction >= float(gate["utility_regret_reduction_min"]),
+        "median_utility_advantage": median_advantage > float(gate["median_utility_advantage_min"]),
+        "positive_outer_folds": positive_folds >= int(gate["positive_outer_folds_min"]),
         "top_two_rate": top_two_rate >= float(gate["top_two_rate_min"]),
-        "minimum_state_selections": minimum_state_count
-        >= int(gate["minimum_state_selections"]),
+        "minimum_state_selections": minimum_state_count >= int(gate["minimum_state_selections"]),
         "maximum_state_selection_share": maximum_state_share
         <= float(gate["maximum_state_selection_share"]),
-        "year_concentration": float(
-            concentration_row["largest_positive_year_share"]
-        )
+        "year_concentration": float(concentration_row["largest_positive_year_share"])
         <= float(gate["largest_positive_year_share_max"]),
-        "cluster_concentration": float(
-            concentration_row["largest_positive_cluster_share"]
-        )
+        "cluster_concentration": float(concentration_row["largest_positive_cluster_share"])
         <= float(gate["largest_positive_cluster_share_max"]),
-        "without_best_year": float(
-            concentration_row["advantage_without_best_year"]
-        )
-        > 0.0,
-        "without_best_cluster": float(
-            concentration_row["advantage_without_best_cluster"]
-        )
-        > 0.0,
+        "without_best_year": float(concentration_row["advantage_without_best_year"]) > 0.0,
+        "without_best_cluster": float(concentration_row["advantage_without_best_cluster"]) > 0.0,
         "placebo": placebo_beat_rate >= float(gate["placebo_beat_rate_min"]),
         "single_feature_concentration": largest_feature
         <= float(gate["largest_single_feature_shap_share_max"]),
@@ -183,27 +162,17 @@ def run_adjacent_path_utility_study(
     if actual.empty:
         raise ValueError("actual 2024+ path-utility frame is empty")
 
-    oof_scores, fold_coverage, bundles = score_outer_folds(
-        proxy, feature_names, contract
-    )
+    oof_scores, fold_coverage, bundles = score_outer_folds(proxy, feature_names, contract)
     edge_summary, edge_by_fold = edge_metrics(oof_scores)
     oof_selected = select_ordinal_state(oof_scores, contract)
-    selection_by_fold, selection_by_state, concentration = selection_metrics(
-        oof_selected, contract
-    )
+    selection_by_fold, selection_by_state, concentration = selection_metrics(oof_selected, contract)
     selected_regret = float(oof_selected["selected_utility_regret"].mean())
     baseline_regret = float(oof_selected["baseline_utility_regret"].mean())
     observed_reduction = (
-        1.0 - selected_regret / baseline_regret
-        if baseline_regret > 1e-12
-        else np.nan
+        1.0 - selected_regret / baseline_regret if baseline_regret > 1e-12 else np.nan
     )
-    placebo = placebo_metrics(
-        proxy, feature_names, contract, observed_reduction
-    )
-    feature_importance, family_importance = importance_metrics(
-        bundles, feature_names, contract
-    )
+    placebo = placebo_metrics(proxy, feature_names, contract, observed_reduction)
+    feature_importance, family_importance = importance_metrics(bundles, feature_names, contract)
     phase1 = _phase1_gate(
         edge_summary,
         oof_selected,
@@ -216,12 +185,8 @@ def run_adjacent_path_utility_study(
         contract,
     )
 
-    training = proxy.loc[
-        proxy["decision_date"].le(pd.Timestamp("2023-12-29"))
-    ].copy()
-    actual_scores, _ = score_actual(
-        training, actual, feature_names, contract
-    )
+    training = proxy.loc[proxy["decision_date"].le(pd.Timestamp("2023-12-29"))].copy()
+    actual_scores, _ = score_actual(training, actual, feature_names, contract)
     actual_selected = select_ordinal_state(actual_scores, contract)
 
     empty_headline = pd.DataFrame()
@@ -287,11 +252,7 @@ def run_adjacent_path_utility_study(
             )
             actual_contradiction = actual_gate(actual_headline, contract)
 
-    prospective = bool(
-        phase1["passed"]
-        and phase2["passed"]
-        and actual_contradiction["passed"]
-    )
+    prospective = bool(phase1["passed"] and phase2["passed"] and actual_contradiction["passed"])
     final_gate = {
         "passed": prospective,
         "prospective_shadow_authorized": prospective,

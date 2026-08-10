@@ -411,9 +411,13 @@ class FactorKnowledgeRegistry(BaseIndex):
             raise ValueError(f"invalid evidence decision status: {decision_status}")
         authoritative = bool(payload.get("authoritative", False))
         if authoritative:
-            _require_nonempty(payload, AUTHORITATIVE_EVIDENCE_FIELDS, label="authoritative evidence")
+            _require_nonempty(
+                payload, AUTHORITATIVE_EVIDENCE_FIELDS, label="authoritative evidence"
+            )
             if decision_status in {"legacy_unverified", "data_blocked"}:
-                raise ValueError("authoritative evidence cannot use an unverified or blocked status")
+                raise ValueError(
+                    "authoritative evidence cannot use an unverified or blocked status"
+                )
 
         normalized = {
             "card_id": card_id,
@@ -448,8 +452,13 @@ class FactorKnowledgeRegistry(BaseIndex):
                     "SELECT evidence_id, identity_json FROM factor_evidence_v2 WHERE evidence_manifest_hash = ?",
                     (manifest,),
                 ).fetchone()
-                if existing_manifest is not None and existing_manifest["identity_json"] != identity_json:
-                    raise ValueError("evidence manifest hash is already bound to a different identity")
+                if (
+                    existing_manifest is not None
+                    and existing_manifest["identity_json"] != identity_json
+                ):
+                    raise ValueError(
+                        "evidence manifest hash is already bound to a different identity"
+                    )
             existing = conn.execute(
                 "SELECT identity_json FROM factor_evidence_v2 WHERE evidence_id = ?",
                 (evidence_id,),
@@ -524,9 +533,7 @@ class FactorKnowledgeRegistry(BaseIndex):
         if evidence is None:
             raise KeyError(evidence_id)
         missing = [
-            field
-            for field in AUTHORITATIVE_EVALUATION_METRICS
-            if metrics.get(field) is None
+            field for field in AUTHORITATIVE_EVALUATION_METRICS if metrics.get(field) is None
         ]
         if bool(evidence["authoritative"]) and missing:
             raise ValueError(
@@ -841,9 +848,7 @@ class FactorKnowledgeRegistry(BaseIndex):
                 factor_version="legacy-v1",
                 name=str(row["name"]),
                 canonical_definition=str(row["expression"]),
-                information_family=LEGACY_CATEGORY_TO_FAMILY.get(
-                    str(row["category"]), "other"
-                ),
+                information_family=LEGACY_CATEGORY_TO_FAMILY.get(str(row["category"]), "other"),
                 update_frequency="legacy_unknown",
                 availability_lag_days=0,
                 transformation="legacy_unknown",

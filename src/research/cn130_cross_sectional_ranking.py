@@ -158,13 +158,13 @@ def rolling_beta(
     variance = benchmark_returns.rolling(window, min_periods=minimum_observations).var()
     output: dict[str, pd.Series] = {}
     for symbol in stock_returns.columns:
-        covariance = stock_returns[symbol].rolling(
-            window, min_periods=minimum_observations
-        ).cov(benchmark_returns)
+        covariance = (
+            stock_returns[symbol]
+            .rolling(window, min_periods=minimum_observations)
+            .cov(benchmark_returns)
+        )
         output[symbol] = covariance / variance.replace(0.0, np.nan)
-    return pd.DataFrame(output, index=stock_returns.index).replace(
-        [np.inf, -np.inf], np.nan
-    )
+    return pd.DataFrame(output, index=stock_returns.index).replace([np.inf, -np.inf], np.nan)
 
 
 def build_feature_matrices(
@@ -204,14 +204,10 @@ def build_feature_matrices(
         "momentum_63": _safe_divide(close, close.shift(63)) - 1.0,
         "price_to_ma20": _safe_divide(close, close.rolling(20).mean()) - 1.0,
         "price_to_ma60": _safe_divide(close, close.rolling(60).mean()) - 1.0,
-        "bollinger_z20": _safe_divide(
-            close - close.rolling(20).mean(), close.rolling(20).std()
-        ),
+        "bollinger_z20": _safe_divide(close - close.rolling(20).mean(), close.rolling(20).std()),
         "rsi_20": _rsi(close, 20) / 100.0,
         "drawdown_63": _safe_divide(close, close.rolling(63).max()) - 1.0,
-        "volume_z20": _safe_divide(
-            volume - volume.rolling(20).mean(), volume.rolling(20).std()
-        ),
+        "volume_z20": _safe_divide(volume - volume.rolling(20).mean(), volume.rolling(20).std()),
         "amount_ratio_20": _safe_divide(amount, amount.rolling(20).mean()) - 1.0,
         "beta_60": beta_60,
     }
@@ -261,7 +257,8 @@ def build_feature_matrices(
         "realized_volatility_20": stack(("volatility_20",)).rename(
             columns={"volatility_20": "realized_volatility_20"}
         ),
-        "trailing_amount_20": amount.rolling(20).median()
+        "trailing_amount_20": amount.rolling(20)
+        .median()
         .stack(future_stack=True)
         .rename("trailing_amount_20")
         .to_frame(),
@@ -323,9 +320,9 @@ def make_label(
     elif mode == "sector_relative":
         meta = attach_classification(values.index, classification)
         temp = pd.DataFrame({"value": values, "sector": meta["sector"]}, index=values.index)
-        medians = temp.groupby(
-            [temp.index.get_level_values("datetime"), "sector"], sort=False
-        )["value"].transform("median")
+        medians = temp.groupby([temp.index.get_level_values("datetime"), "sector"], sort=False)[
+            "value"
+        ].transform("median")
         target = values - medians.to_numpy()
     elif mode == "risk_residual_partial":
         if risk_controls is None:
@@ -398,9 +395,7 @@ def _finite_aligned(
     sort_columns = [f"__group_{index}" for index in range(len(keys.columns))]
     sort_frame.columns = sort_columns
     sort_frame["__instrument"] = x.index.get_level_values("instrument").astype(str)
-    ordering = sort_frame.sort_values(
-        [*sort_columns, "__instrument"], kind="mergesort"
-    ).index
+    ordering = sort_frame.sort_values([*sort_columns, "__instrument"], kind="mergesort").index
     return x.loc[ordering], y.loc[ordering], keys.loc[ordering]
 
 
@@ -424,9 +419,9 @@ def fit_ranker(
     )
     if x.empty:
         raise ValueError("no finite ranker rows")
-    percentiles = y.groupby(
-        [keys[column] for column in keys.columns], sort=False
-    ).rank(method="average", pct=True)
+    percentiles = y.groupby([keys[column] for column in keys.columns], sort=False).rank(
+        method="average", pct=True
+    )
     gains = np.floor(percentiles.clip(0.0, 1.0) * 5).clip(0, 4).astype(int)
     sizes = keys.groupby([keys[column] for column in keys.columns], sort=True).size().tolist()
     matrix = xgb.DMatrix(x, label=gains.to_numpy())
@@ -514,9 +509,7 @@ def rank_metrics(
         "positive_rank_ic_ratio": float((rank_values > 0.0).mean())
         if not rank_values.empty
         else 0.0,
-        "mean_top_bottom_spread": float(spread_values.mean())
-        if not spread_values.empty
-        else 0.0,
+        "mean_top_bottom_spread": float(spread_values.mean()) if not spread_values.empty else 0.0,
         "positive_spread_ratio": float((spread_values > 0.0).mean())
         if not spread_values.empty
         else 0.0,
@@ -542,14 +535,11 @@ def transform_hierarchical_scores(
         sector_day = sector_lookup.xs(date, level="datetime").copy()
         sector_pct = sector_day["sector_score"].rank(method="average", pct=True)
         day = group.copy()
-        within = day.groupby("sector")["security_score"].rank(
-            method="average", pct=True
-        )
+        within = day.groupby("sector")["security_score"].rank(method="average", pct=True)
         sector_component = day["sector"].map(sector_pct)
-        output.loc[day.index] = (
-            sector_weight * sector_component.to_numpy(dtype=float)
-            + (1.0 - sector_weight) * within.to_numpy(dtype=float)
-        )
+        output.loc[day.index] = sector_weight * sector_component.to_numpy(dtype=float) + (
+            1.0 - sector_weight
+        ) * within.to_numpy(dtype=float)
     return output.to_frame()
 
 

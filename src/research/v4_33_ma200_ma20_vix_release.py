@@ -45,10 +45,9 @@ def build_ma200_ma20_vix_release_trace(daily: pd.DataFrame) -> pd.DataFrame:
     ma_long = pd.to_numeric(daily["ma_long"], errors="coerce")
     ma200_falling = ma_long.notna() & ma_long.shift(1).notna() & ma_long.lt(ma_long.shift(1))
     price_repaired = ~daily["stress_price_failure"].fillna(True).astype(bool)
-    volatility_repaired = (
-        daily["vix_easing"].fillna(False).astype(bool)
-        | daily["vix_normalized"].fillna(False).astype(bool)
-    )
+    volatility_repaired = daily["vix_easing"].fillna(False).astype(bool) | daily[
+        "vix_normalized"
+    ].fillna(False).astype(bool)
     fast_price_vol_repair = price_repaired & volatility_repaired
     strong_defense = ma200_falling & ~fast_price_vol_repair
 
@@ -63,9 +62,7 @@ def build_ma200_ma20_vix_release_trace(daily: pd.DataFrame) -> pd.DataFrame:
         },
         index=daily.index,
     )
-    trace["strong_defense_at_open"] = trace["strong_defense_at_close"].shift(
-        1, fill_value=False
-    )
+    trace["strong_defense_at_open"] = trace["strong_defense_at_close"].shift(1, fill_value=False)
     return trace
 
 
@@ -79,14 +76,10 @@ def run_ma20_vix_release_backtest(
     """Apply the frozen v4.33 release semantics to one source portfolio."""
     daily = source.daily.copy()
     trace = build_ma200_ma20_vix_release_trace(daily)
-    weights, active = apply_fast_release_state0_defense(
-        source, trace, cash_symbol=cash_symbol
-    )
+    weights, active = apply_fast_release_state0_defense(source, trace, cash_symbol=cash_symbol)
     daily = daily.join(trace)
     daily["ma200_ma20_vix_defense_active"] = active
-    daily[f"{cash_symbol}_next_open_return"] = cash_next_open_return(
-        bars, cash_symbol, daily.index
-    )
+    daily[f"{cash_symbol}_next_open_return"] = cash_next_open_return(bars, cash_symbol, daily.index)
     for asset in weights.columns:
         daily[f"weight_{asset}"] = weights[asset]
 
@@ -100,9 +93,7 @@ def run_ma20_vix_release_backtest(
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = (
-        turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
-    )
+    daily["transaction_cost"] = turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily.loc[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()
@@ -154,9 +145,7 @@ def run_v4_33_comparison(
     guard = run_ma20_vix_release_backtest(
         baseline, bars, cash_symbol=cash_symbol, strategy_key=GUARD
     )
-    joint = run_ma20_vix_release_backtest(
-        panic, bars, cash_symbol=cash_symbol, strategy_key=JOINT
-    )
+    joint = run_ma20_vix_release_backtest(panic, bars, cash_symbol=cash_symbol, strategy_key=JOINT)
     results = {BASELINE: baseline, PANIC: panic, GUARD: guard, JOINT: joint}
     if not all(
         result.daily["position_state"].equals(baseline.daily["position_state"])

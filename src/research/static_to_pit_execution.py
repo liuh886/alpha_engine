@@ -48,12 +48,8 @@ from src.research.window_policy import (
 )
 
 
-DEFAULT_STATIC_SPEC = Path(
-    "configs/research_paradigms/us_10d_lgbm_xgb_ranker_comparison.yaml"
-)
-DEFAULT_PIT_SPEC = Path(
-    "configs/research_paradigms/us_10d_lgbm_xgb_ranker_pit_robustness.yaml"
-)
+DEFAULT_STATIC_SPEC = Path("configs/research_paradigms/us_10d_lgbm_xgb_ranker_comparison.yaml")
+DEFAULT_PIT_SPEC = Path("configs/research_paradigms/us_10d_lgbm_xgb_ranker_pit_robustness.yaml")
 DEFAULT_OUTPUT = Path("artifacts/evidence/static_to_pit_alpha_decomposition")
 _PROVIDER_EFFECT_METRICS: tuple[str, ...] = (
     "mean_icir",
@@ -97,8 +93,7 @@ def _require_manifest_identity(metadata: Mapping[str, Any], *, label: str) -> st
     identity = str(metadata.get("provider_identity_sha256", "")).strip()
     if not identity:
         raise ValueError(
-            f"{label} must be a manifest-bound provider with a non-empty "
-            "provider_identity_sha256"
+            f"{label} must be a manifest-bound provider with a non-empty provider_identity_sha256"
         )
     return identity
 
@@ -224,9 +219,7 @@ def run_static_to_pit_decomposition(
     out_root = _repo_path(root, output_dir)
     out_root.mkdir(parents=True, exist_ok=True)
 
-    static_spec = load_research_paradigm_spec(
-        _repo_path(root, static_spec_path)
-    )
+    static_spec = load_research_paradigm_spec(_repo_path(root, static_spec_path))
     pit_spec = load_research_paradigm_spec(_repo_path(root, pit_spec_path))
     frozen_contract = validate_frozen_spec_pair(static_spec, pit_spec)
     static_plan = build_spec_bound_execution_plan(static_spec)
@@ -234,9 +227,7 @@ def run_static_to_pit_decomposition(
 
     candidates = materialize_ranker_candidates(static_plan)
     pit_candidates = materialize_ranker_candidates(pit_plan)
-    if [item.to_dict() for item in candidates] != [
-        item.to_dict() for item in pit_candidates
-    ]:
+    if [item.to_dict() for item in candidates] != [item.to_dict() for item in pit_candidates]:
         raise ValueError("static and PIT candidate identities differ")
 
     reference_stability, reference_metadata = _run_static_reference(
@@ -261,8 +252,7 @@ def run_static_to_pit_decomposition(
     )
 
     static_requested = [
-        str(item)
-        for item in static_plan.declared_contract["universe"]["requested_symbols"]
+        str(item) for item in static_plan.declared_contract["universe"]["requested_symbols"]
     ]
     normalization = normalize_market_symbols(
         "us",
@@ -300,9 +290,7 @@ def run_static_to_pit_decomposition(
         last_test_year=2025,
     )
     if static_alignment.skipped:
-        raise ValueError(
-            f"static universe alignment skipped: {static_alignment.skip_reason}"
-        )
+        raise ValueError(f"static universe alignment skipped: {static_alignment.skip_reason}")
     static_symbols = tuple(map(str, static_alignment.retained_symbols))
     if len(static_symbols) <= top_n:
         raise ValueError("static retained universe is too small for Top-N")
@@ -354,8 +342,7 @@ def run_static_to_pit_decomposition(
         )
     )
     expression_columns = {
-        expression: sanitize_factor_name(expression)
-        for expression in feature_expressions
+        expression: sanitize_factor_name(expression) for expression in feature_expressions
     }
     if len(set(expression_columns.values())) != len(expression_columns):
         raise ValueError("feature expression sanitization produced duplicates")
@@ -372,9 +359,7 @@ def run_static_to_pit_decomposition(
         cell.cell_id: [] for cell in build_four_cell_matrix()
     }
     payloads: list[dict[str, Any]] = []
-    declared_membership = pit_plan.declared_contract["universe"][
-        "pit_window_membership"
-    ]
+    declared_membership = pit_plan.declared_contract["universe"]["pit_window_membership"]
 
     for window in windows:
         declared_window = declared_membership[window.label]
@@ -391,13 +376,8 @@ def run_static_to_pit_decomposition(
             coverage_loader=runtime.date_coverage,
         )
         if pit_window.skipped:
-            raise ValueError(
-                f"PIT window {window.label} skipped: {pit_window.skip_reason}"
-            )
-        if (
-            static_alignment.aligned_train_start
-            != str(pit_window.aligned_train_start)
-        ):
+            raise ValueError(f"PIT window {window.label} skipped: {pit_window.skip_reason}")
+        if static_alignment.aligned_train_start != str(pit_window.aligned_train_start):
             raise ValueError(
                 "static and PIT aligned train starts differ; the matrix would "
                 "not be controlled: "
@@ -484,9 +464,7 @@ def run_static_to_pit_decomposition(
         ),
         "static_spec": str(_repo_path(root, static_spec_path)),
         "pit_spec": str(_repo_path(root, pit_spec_path)),
-        "static_declared_contract_sha256": (
-            static_plan.declared_contract_sha256
-        ),
+        "static_declared_contract_sha256": (static_plan.declared_contract_sha256),
         "pit_declared_contract_sha256": pit_plan.declared_contract_sha256,
         "static_alignment_on_controlled_provider": static_alignment.to_dict(),
         "windows": expected_windows,

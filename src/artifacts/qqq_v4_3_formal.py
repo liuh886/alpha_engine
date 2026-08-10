@@ -11,6 +11,7 @@ The formal model is the frozen v4.33 joint portfolio:
 This module contains only deterministic evidence projection. It does not search
 parameters, place orders, or weaken the research-only boundary.
 """
+
 from __future__ import annotations
 
 from typing import Any, Mapping
@@ -74,7 +75,9 @@ def _weights(daily: pd.DataFrame) -> pd.DataFrame:
     missing = sorted(set(columns) - set(daily.columns))
     if missing:
         raise ValueError(f"formal v4.3 result missing weights: {missing}")
-    weights = daily[columns].rename(columns={f"weight_{asset}": asset for asset in ASSETS}).astype(float)
+    weights = (
+        daily[columns].rename(columns={f"weight_{asset}": asset for asset in ASSETS}).astype(float)
+    )
     if not np.allclose(weights.sum(axis=1), 1.0, atol=1e-10):
         raise ValueError("formal v4.3 weights do not sum to one")
     if bool((weights < -1e-12).any().any()):
@@ -133,7 +136,9 @@ def _positions(daily: pd.DataFrame, bars: Mapping[str, pd.DataFrame]) -> list[di
                     "position_label": str(row.get("position_label", "")),
                     "executed_reason": str(row.get("executed_reason", "hold")),
                     "panic_repair_active": bool(row.get("panic_repair_active_at_open", False)),
-                    "slow_bear_defense_active": bool(row.get("ma200_ma20_vix_defense_active", False)),
+                    "slow_bear_defense_active": bool(
+                        row.get("ma200_ma20_vix_defense_active", False)
+                    ),
                 }
             )
     return rows
@@ -206,7 +211,9 @@ def _attribution(daily: pd.DataFrame) -> list[dict[str, Any]]:
         denominator = float(changes.sum())
         if denominator:
             for asset in ASSETS:
-                contribution[asset] -= float(row["transaction_cost"]) * float(changes[asset]) / denominator
+                contribution[asset] -= (
+                    float(row["transaction_cost"]) * float(changes[asset]) / denominator
+                )
         previous = current
     return [
         {

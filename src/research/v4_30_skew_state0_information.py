@@ -37,9 +37,7 @@ def build_skew_trace(daily: pd.DataFrame, skew: pd.DataFrame) -> pd.DataFrame:
     if not daily.index.is_monotonic_increasing or daily.index.has_duplicates:
         raise ValueError("daily trace index must be monotonic and unique")
     close = _normalise_skew(skew).reindex(daily.index)
-    threshold = close.rolling(SKEW_WINDOW, min_periods=SKEW_WINDOW).quantile(
-        SKEW_HIGH_QUANTILE
-    )
+    threshold = close.rolling(SKEW_WINDOW, min_periods=SKEW_WINDOW).quantile(SKEW_HIGH_QUANTILE)
     high = close.notna() & threshold.notna() & close.ge(threshold)
     return pd.DataFrame(
         {
@@ -76,9 +74,7 @@ def build_state0_forward_paths(
         raise ValueError(f"frozen horizons must equal {HORIZONS}")
 
     index = daily.index
-    eligible = daily["position_state"].astype(int).eq(0) & trace[
-        "skew_high_threshold"
-    ].notna()
+    eligible = daily["position_state"].astype(int).eq(0) & trace["skew_high_threshold"].notna()
     rows: list[dict[str, Any]] = []
     max_horizon = max(HORIZONS)
     for date in index[eligible]:
@@ -121,9 +117,7 @@ def _group_summary(sample: pd.DataFrame, *, segment: str, group: str) -> dict[st
         drawdown = sample[f"forward_max_drawdown_{horizon}d"].astype(float)
         row[f"median_return_{horizon}d"] = float(returns.median()) if len(returns) else None
         row[f"return_q10_{horizon}d"] = float(returns.quantile(0.10)) if len(returns) else None
-        row[f"median_max_drawdown_{horizon}d"] = (
-            float(drawdown.median()) if len(drawdown) else None
-        )
+        row[f"median_max_drawdown_{horizon}d"] = float(drawdown.median()) if len(drawdown) else None
         row[f"max_drawdown_q25_{horizon}d"] = (
             float(drawdown.quantile(0.25)) if len(drawdown) else None
         )
@@ -142,8 +136,12 @@ def summarize_state0_information(paths: pd.DataFrame) -> pd.DataFrame:
     }
     rows: list[dict[str, Any]] = []
     for segment, sample in segments.items():
-        rows.append(_group_summary(sample.loc[~sample["skew_high"]], segment=segment, group="ordinary"))
-        rows.append(_group_summary(sample.loc[sample["skew_high"]], segment=segment, group="high_skew"))
+        rows.append(
+            _group_summary(sample.loc[~sample["skew_high"]], segment=segment, group="ordinary")
+        )
+        rows.append(
+            _group_summary(sample.loc[sample["skew_high"]], segment=segment, group="high_skew")
+        )
     return pd.DataFrame(rows)
 
 
@@ -152,9 +150,7 @@ def information_gate(paths: pd.DataFrame, summary: pd.DataFrame) -> dict[str, An
     high = paths.loc[paths["skew_high"]].copy()
     year_counts = high["year"].value_counts()
     high_years = int(len(year_counts))
-    largest_year_share = (
-        float(year_counts.max() / year_counts.sum()) if len(year_counts) else 1.0
-    )
+    largest_year_share = float(year_counts.max() / year_counts.sum()) if len(year_counts) else 1.0
     table = summary.set_index(["segment", "group"])
 
     def metric(segment: str, group: str, name: str) -> float:
@@ -164,10 +160,9 @@ def information_gate(paths: pd.DataFrame, summary: pd.DataFrame) -> dict[str, An
     for horizon in HORIZONS:
         for segment in ("early", "late"):
             key = f"dd_{horizon}d_{segment}"
-            drawdown_checks[key] = (
-                metric(segment, "high_skew", f"median_max_drawdown_{horizon}d")
-                < metric(segment, "ordinary", f"median_max_drawdown_{horizon}d")
-            )
+            drawdown_checks[key] = metric(
+                segment, "high_skew", f"median_max_drawdown_{horizon}d"
+            ) < metric(segment, "ordinary", f"median_max_drawdown_{horizon}d")
 
     return_check_by_horizon: dict[int, bool] = {}
     for horizon in HORIZONS:

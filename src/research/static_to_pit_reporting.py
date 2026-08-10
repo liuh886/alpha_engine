@@ -17,11 +17,7 @@ def _original_rows(stability: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
 
 
 def _mean(values: Sequence[float | None]) -> float | None:
-    finite = [
-        float(value)
-        for value in values
-        if value is not None and np.isfinite(value)
-    ]
+    finite = [float(value) for value in values if value is not None and np.isfinite(value)]
     return None if not finite else float(np.mean(finite))
 
 
@@ -118,9 +114,7 @@ def render_markdown_report(
 
     lines.extend(["", "## Attribution answers", ""])
     rankers = sorted(
-        name
-        for name in _original_rows(stability["S/S"])
-        if name.startswith(("lgbm:", "xgb:"))
+        name for name in _original_rows(stability["S/S"]) if name.startswith(("lgbm:", "xgb:"))
     )
     for candidate in rankers:
         oos_effects: list[float] = []
@@ -134,40 +128,27 @@ def render_markdown_report(
 
         for payload in per_window_payloads:
             effect = (
-                payload.get("four_cell_effects", {})
-                .get(candidate, {})
-                .get("excess_return", {})
+                payload.get("four_cell_effects", {}).get(candidate, {}).get("excess_return", {})
             )
             if effect:
-                oos_effects.append(
-                    float(effect["oos_opportunity_set_effect"])
-                )
-                training_effects.append(
-                    float(effect["training_and_label_effect"])
-                )
+                oos_effects.append(float(effect["oos_opportunity_set_effect"]))
+                training_effects.append(float(effect["training_and_label_effect"]))
                 interactions.append(float(effect["interaction_residual"]))
                 total_gaps.append(float(effect["total_static_to_pit_gap"]))
 
-            diagnostics = payload.get("candidate_diagnostics", {}).get(
-                candidate, {}
-            )
+            diagnostics = payload.get("candidate_diagnostics", {}).get(candidate, {})
             overlaps.extend(
-                float(row["overlap_ratio"])
-                for row in diagnostics.get("selection_overlap", [])
+                float(row["overlap_ratio"]) for row in diagnostics.get("selection_overlap", [])
             )
             rank_correlations.append(
-                diagnostics.get("score_rank_migration", {}).get(
-                    "mean_spearman_rank_correlation"
-                )
+                diagnostics.get("score_rank_migration", {}).get("mean_spearman_rank_correlation")
             )
-            label_changes.append(
-                payload.get("label_bin_migration", {}).get("changed_ratio")
-            )
+            label_changes.append(payload.get("label_bin_migration", {}).get("changed_ratio"))
             gap_names.extend(
                 str(row["symbol"])
-                for row in diagnostics.get(
-                    "static_minus_pit_contribution_gap", {}
-                ).get("top_gap_contributors_by_absolute_value", [])[:3]
+                for row in diagnostics.get("static_minus_pit_contribution_gap", {}).get(
+                    "top_gap_contributors_by_absolute_value", []
+                )[:3]
                 if row.get("symbol")
             )
 
@@ -179,22 +160,15 @@ def render_markdown_report(
                 f"{(_mean(oos_effects) or 0.0):.2%}.",
                 "- Mean training/label effect on window excess: "
                 f"{(_mean(training_effects) or 0.0):.2%}.",
-                "- Mean interaction residual: "
-                f"{(_mean(interactions) or 0.0):.2%}.",
-                "- Mean controlled P/P minus S/S window gap: "
-                f"{(_mean(total_gaps) or 0.0):.2%}.",
-                "- Mean Top-15 selection overlap: "
-                f"{(_mean(overlaps) or 0.0):.1%}.",
+                f"- Mean interaction residual: {(_mean(interactions) or 0.0):.2%}.",
+                f"- Mean controlled P/P minus S/S window gap: {(_mean(total_gaps) or 0.0):.2%}.",
+                f"- Mean Top-15 selection overlap: {(_mean(overlaps) or 0.0):.1%}.",
                 "- Mean common-name score rank correlation: "
                 f"{(_mean(rank_correlations) or 0.0):.3f}.",
                 "- Mean processed gain-label migration ratio: "
                 f"{(_mean(label_changes) or 0.0):.1%}.",
                 "- Frequently material gap contributors: "
-                + (
-                    ", ".join(sorted(set(gap_names))[:10])
-                    if gap_names
-                    else "none recorded"
-                )
+                + (", ".join(sorted(set(gap_names))[:10]) if gap_names else "none recorded")
                 + ".",
                 "",
             ]

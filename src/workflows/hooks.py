@@ -173,7 +173,9 @@ def _repair_data(market: str, lookback_days: int = 60) -> bool:
         result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
         # Exit code 0 = success, 2 = succeeded with warnings (snapshot published)
         if result.returncode in (0, 2):
-            logger.info("Data repair successful", market=market.upper(), exit_code=result.returncode)
+            logger.info(
+                "Data repair successful", market=market.upper(), exit_code=result.returncode
+            )
             return True
         logger.error("Data repair failed", market=market.upper(), exit_code=result.returncode)
         return False
@@ -633,7 +635,9 @@ def run_training_pipeline(
                 sharpe = walk_forward_data.get("sharpe")
                 if not sharpe:
                     results_metrics = results.get("metrics", {})
-                    sharpe = results_metrics.get("sharpe", results_metrics.get("information_ratio", 0))
+                    sharpe = results_metrics.get(
+                        "sharpe", results_metrics.get("information_ratio", 0)
+                    )
                 mean_ic = walk_forward_data.get("mean_ic", 0)
                 if sharpe and mean_ic:
                     p_val = compute_model_p_value(

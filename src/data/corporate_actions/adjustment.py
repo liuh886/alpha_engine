@@ -58,12 +58,9 @@ def rebuild_adjusted_ohlcv(
         validate="one_to_one",
     )
     if merged["factor"].isna().any():
-        missing = merged.loc[merged["factor"].isna(), "date"].dt.strftime(
-            "%Y-%m-%d"
-        )
+        missing = merged.loc[merged["factor"].isna(), "date"].dt.strftime("%Y-%m-%d")
         raise ValueError(
-            "missing adjustment factor for raw-bar dates: "
-            + ", ".join(missing.tolist()[:10])
+            "missing adjustment factor for raw-bar dates: " + ", ".join(missing.tolist()[:10])
         )
 
     ratio = merged["factor"].astype(float) / cutoff_factor

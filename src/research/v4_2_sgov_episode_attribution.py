@@ -100,9 +100,7 @@ def _path_from_start(equity: pd.Series, start_date: pd.Timestamp) -> dict[str, A
     post_trough = relative.loc[trough_date:]
     recovered = post_trough.loc[post_trough.ge(1.0 - 1e-12)]
     recovery_date = recovered.index[0] if len(recovered) else pd.NaT
-    recovery_sessions = (
-        int(path.index.get_loc(recovery_date)) if pd.notna(recovery_date) else None
-    )
+    recovery_sessions = int(path.index.get_loc(recovery_date)) if pd.notna(recovery_date) else None
     return {
         "trough_date": trough_date,
         "max_drawdown": max_drawdown,
@@ -187,8 +185,7 @@ def attribute_sgov_drawdown_episodes(
         challenger_recovery_sessions = challenger_path["recovery_sessions"]
         recovery_lag = (
             challenger_recovery_sessions - baseline_recovery_sessions
-            if baseline_recovery_sessions is not None
-            and challenger_recovery_sessions is not None
+            if baseline_recovery_sessions is not None and challenger_recovery_sessions is not None
             else None
         )
 
@@ -263,9 +260,7 @@ def attribute_sgov_drawdown_episodes(
     output["severity_rank"] = (
         output["baseline_max_drawdown"].rank(method="first", ascending=True).astype(int)
     )
-    major_count = min(
-        int(contract["analysis"]["primary_major_episode_count"]), len(output)
-    )
+    major_count = min(int(contract["analysis"]["primary_major_episode_count"]), len(output))
     output["major_episode"] = output["severity_rank"].le(major_count)
     split_location = int(len(common) * float(contract["analysis"]["chronological_split_fraction"]))
     split_location = min(max(split_location, 1), len(common) - 1)
@@ -298,21 +293,13 @@ def evaluate_prospective_monitor_gate(
     median_improvement_pp = float(major["drawdown_improvement_pp"].median())
     recovered_major = major.loc[major["recovery_lag_sessions"].notna()]
     median_lag = (
-        float(recovered_major["recovery_lag_sessions"].median())
-        if len(recovered_major)
-        else None
+        float(recovered_major["recovery_lag_sessions"].median()) if len(recovered_major) else None
     )
     unresolved_major = int(major["recovery_lag_sessions"].isna().sum())
-    early_rate = _improvement_rate(
-        major.loc[major["chronological_segment"].eq("early")]
-    )
-    late_rate = _improvement_rate(
-        major.loc[major["chronological_segment"].eq("late")]
-    )
+    early_rate = _improvement_rate(major.loc[major["chronological_segment"].eq("early")])
+    late_rate = _improvement_rate(major.loc[major["chronological_segment"].eq("late")])
     positive = major["drawdown_improvement"].clip(lower=0.0)
-    largest_share = (
-        float(positive.max() / positive.sum()) if float(positive.sum()) > 0.0 else 1.0
-    )
+    largest_share = float(positive.max() / positive.sum()) if float(positive.sum()) > 0.0 else 1.0
     cagr_sacrifice_pp = float(
         (float(baseline.metrics["cagr"]) - float(challenger.metrics["cagr"])) * 100.0
     )
@@ -320,8 +307,7 @@ def evaluate_prospective_monitor_gate(
     checks = {
         "major_episode_drawdown_improvement_rate": bool(
             improvement_rate is not None
-            and improvement_rate
-            >= float(thresholds["major_episode_drawdown_improvement_rate_min"])
+            and improvement_rate >= float(thresholds["major_episode_drawdown_improvement_rate_min"])
         ),
         "median_major_episode_drawdown_improvement": bool(
             median_improvement_pp
@@ -330,26 +316,21 @@ def evaluate_prospective_monitor_gate(
         "major_episode_recovery_lag": bool(
             unresolved_major == 0
             and median_lag is not None
-            and median_lag
-            <= float(thresholds["median_major_episode_recovery_lag_sessions_max"])
+            and median_lag <= float(thresholds["median_major_episode_recovery_lag_sessions_max"])
         ),
         "early_episode_consistency": bool(
             early_rate is not None
-            and early_rate
-            >= float(thresholds["early_major_episode_improvement_rate_min"])
+            and early_rate >= float(thresholds["early_major_episode_improvement_rate_min"])
         ),
         "late_episode_consistency": bool(
             late_rate is not None
-            and late_rate
-            >= float(thresholds["late_major_episode_improvement_rate_min"])
+            and late_rate >= float(thresholds["late_major_episode_improvement_rate_min"])
         ),
         "episode_concentration": bool(
-            largest_share
-            <= float(thresholds["largest_episode_improvement_share_max"])
+            largest_share <= float(thresholds["largest_episode_improvement_share_max"])
         ),
         "cagr_sacrifice": bool(
-            cagr_sacrifice_pp
-            <= float(thresholds["full_sample_cagr_sacrifice_pp_max"])
+            cagr_sacrifice_pp <= float(thresholds["full_sample_cagr_sacrifice_pp_max"])
         ),
     }
     authorized = bool(all(checks.values()))

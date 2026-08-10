@@ -19,9 +19,9 @@ def _sha(path: Path) -> str:
 
 
 def _identity(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -121,9 +121,7 @@ def _no_sma_selection_rows(
     benchmark_dates: pd.DatetimeIndex,
 ) -> list[dict[str, Any]]:
     key = str(contract["stable_factor_key"])
-    frame = pd.DataFrame(
-        [row for row in score_rows if row.get("stable_factor_key") == key]
-    )
+    frame = pd.DataFrame([row for row in score_rows if row.get("stable_factor_key") == key])
     required = {
         "date",
         "symbol",
@@ -281,7 +279,9 @@ def _metrics(
     start: str,
     end: str,
 ) -> dict[str, float | int]:
-    period = returns.loc[(returns.index >= pd.Timestamp(start)) & (returns.index <= pd.Timestamp(end))]
+    period = returns.loc[
+        (returns.index >= pd.Timestamp(start)) & (returns.index <= pd.Timestamp(end))
+    ]
     if period.empty:
         raise ValueError(f"no returns in validation window {start} to {end}")
     years = max((period.index[-1] - period.index[0]).days / 365.25, 1 / 12)
@@ -404,7 +404,8 @@ def run_minimal_fundamental_validation(
     )
     qqq_returns = open_wide[benchmark].shift(-1).div(open_wide[benchmark]).sub(1.0).iloc[:-1]
     ew_returns = (
-        open_wide[list(basket_by_symbol)].shift(-1)
+        open_wide[list(basket_by_symbol)]
+        .shift(-1)
         .div(open_wide[list(basket_by_symbol)])
         .sub(1.0)
         .mean(axis=1)

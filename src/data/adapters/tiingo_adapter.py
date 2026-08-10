@@ -128,9 +128,7 @@ class TiingoHttpClient:
         last_error: Exception | None = None
         for attempt in range(1, self.max_attempts + 1):
             try:
-                with urllib.request.urlopen(
-                    request, timeout=self.timeout_seconds
-                ) as response:
+                with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                     raw = response.read().decode("utf-8")
                 return json.loads(raw)
             except urllib.error.HTTPError as exc:
@@ -142,10 +140,7 @@ class TiingoHttpClient:
                     "X-Rate-Limit-Reset",
                 )
                 retryable = exc.code == 429 or 500 <= exc.code < 600
-                can_wait = (
-                    retry_after is not None
-                    and retry_after <= self.max_retry_after_seconds
-                )
+                can_wait = retry_after is not None and retry_after <= self.max_retry_after_seconds
                 if retryable and attempt < self.max_attempts:
                     if exc.code == 429 and retry_after is not None and not can_wait:
                         raise TiingoRateLimitError(
@@ -237,9 +232,7 @@ def _normalise_prices(payload: Any, *, symbol: str) -> pd.DataFrame:
     }
     missing = sorted(required.difference(frame.columns))
     if missing:
-        raise DataFetchError(
-            f"Tiingo payload missing columns for {symbol}: {missing}"
-        )
+        raise DataFetchError(f"Tiingo payload missing columns for {symbol}: {missing}")
 
     out = pd.DataFrame(
         {
@@ -299,9 +292,7 @@ def _normalise_prices(payload: Any, *, symbol: str) -> pd.DataFrame:
 
     valid, _, errors = validate_market_data(out, symbol)
     if not valid:
-        raise DataFetchError(
-            f"Tiingo schema validation failed for {symbol}: {'; '.join(errors)}"
-        )
+        raise DataFetchError(f"Tiingo schema validation failed for {symbol}: {'; '.join(errors)}")
     return out[_BAR_COLUMNS]
 
 
@@ -338,35 +329,25 @@ class TiingoAdapter:
         if end is not None and pd.Timestamp(end) < pd.Timestamp(start):
             raise DataFetchError("end must be on or after start")
         if self.client is None:
-            raise DataFetchError(
-                "Tiingo is unavailable: TIINGO_API_TOKEN is not configured"
-            )
+            raise DataFetchError("Tiingo is unavailable: TIINGO_API_TOKEN is not configured")
 
         started = time.perf_counter()
-        metadata = _metadata_identity(
-            self.client.get_json(f"tiingo/daily/{symbol}"), symbol
-        )
+        metadata = _metadata_identity(self.client.get_json(f"tiingo/daily/{symbol}"), symbol)
         params = {"startDate": start, "resampleFreq": "daily"}
         if end is not None:
             params["endDate"] = end
-        prices = self.client.get_json(
-            f"tiingo/daily/{symbol}/prices", params=params
-        )
+        prices = self.client.get_json(f"tiingo/daily/{symbol}/prices", params=params)
         out = _normalise_prices(prices, symbol=symbol)
         if end is not None:
             out = out.loc[out["date"] <= pd.Timestamp(end)].reset_index(drop=True)
         out = out.loc[out["date"] >= pd.Timestamp(start)].reset_index(drop=True)
         if out.empty:
-            raise DataFetchError(
-                f"Tiingo has no rows in the request range for {symbol}"
-            )
+            raise DataFetchError(f"Tiingo has no rows in the request range for {symbol}")
         metadata["request_count"] = 2
         metadata["elapsed_seconds"] = round(time.perf_counter() - started, 6)
         out.attrs["provider_metadata"] = metadata
         out.attrs["price_mode"] = "adjusted_ohlcv_with_raw_audit_fields"
-        out.attrs["amount_semantics"] = (
-            "synthetic_adjusted_close_times_volume"
-        )
+        out.attrs["amount_semantics"] = "synthetic_adjusted_close_times_volume"
         return FetchResult(
             provider=self.name,
             symbol=symbol,

@@ -26,9 +26,7 @@ def _resolve_repo_file(raw: str, *, spec_path: Path) -> Path:
     raise FileNotFoundError(raw)
 
 
-def _candidate_factor_lineage(
-    library: FactorLibrary, groups: list[str]
-) -> dict[str, Any]:
+def _candidate_factor_lineage(library: FactorLibrary, groups: list[str]) -> dict[str, Any]:
     selected = library.select_groups(groups)
     definitions = library.factors_for_groups(groups)
     return {

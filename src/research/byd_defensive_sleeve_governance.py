@@ -51,16 +51,10 @@ def build_period_contribution(
         symbol_rows: list[dict[str, Any]] = []
         positive_total = 0.0
         for window in PERIOD_WINDOWS:
-            candidate = primary.loc[
-                primary["candidate"].eq(symbol) & primary["window"].eq(window)
-            ]
-            cash = primary.loc[
-                primary["candidate"].eq("cash") & primary["window"].eq(window)
-            ]
+            candidate = primary.loc[primary["candidate"].eq(symbol) & primary["window"].eq(window)]
+            cash = primary.loc[primary["candidate"].eq("cash") & primary["window"].eq(window)]
             if len(candidate) != 1 or len(cash) != 1:
-                raise RuntimeError(
-                    f"missing unique period metrics for {symbol} / {window}"
-                )
+                raise RuntimeError(f"missing unique period metrics for {symbol} / {window}")
             candidate_total = float(candidate.iloc[0]["total_return"])
             cash_total = float(cash.iloc[0]["total_return"])
             relative = relative_terminal_return(candidate_total, cash_total)
@@ -98,12 +92,10 @@ def govern_evaluation(
     periods = build_period_contribution(evaluation, available)
 
     full20 = evaluation.loc[
-        evaluation["window"].eq("full_overlap")
-        & evaluation["cost_bps"].eq(PRIMARY_COST_BPS)
+        evaluation["window"].eq("full_overlap") & evaluation["cost_bps"].eq(PRIMARY_COST_BPS)
     ].set_index("candidate")
     full40 = evaluation.loc[
-        evaluation["window"].eq("full_overlap")
-        & evaluation["cost_bps"].eq(STRESS_COST_BPS)
+        evaluation["window"].eq("full_overlap") & evaluation["cost_bps"].eq(STRESS_COST_BPS)
     ].set_index("candidate")
     cash20 = full20.loc["cash"]
     cash40 = full40.loc["cash"]
@@ -129,12 +121,8 @@ def govern_evaluation(
         current40 = full40.loc[symbol]
         symbol_periods = periods.loc[periods["candidate"].eq(symbol)]
         cash_gates = {
-            "cagr_delta_at_least_50bp": (
-                float(current20["cagr"] - cash20["cagr"]) >= 0.005
-            ),
-            "calmar_not_below_cash": (
-                float(current20["calmar"]) >= float(cash20["calmar"])
-            ),
+            "cagr_delta_at_least_50bp": (float(current20["cagr"] - cash20["cagr"]) >= 0.005),
+            "calmar_not_below_cash": (float(current20["calmar"]) >= float(cash20["calmar"])),
             "drawdown_not_worse_by_more_than_1pp": (
                 float(current20["max_drawdown"] - cash20["max_drawdown"]) >= -0.01
             ),
@@ -151,9 +139,7 @@ def govern_evaluation(
             "max_period_share_at_most_60pct": (
                 float(symbol_periods["positive_contribution_share"].max()) <= 0.60
             ),
-            "round_trips_at_most_3": (
-                float(current20["round_trips_per_year"]) <= 3.0
-            ),
+            "round_trips_at_most_3": (float(current20["round_trips_per_year"]) <= 3.0),
         }
         cash_qualified = all(cash_gates.values())
         challenge_gates: dict[str, bool] = {}
@@ -169,8 +155,7 @@ def govern_evaluation(
             )
             challenge_gates = {
                 "stress_total_not_below_515180": (
-                    float(current40["total_return"])
-                    >= float(reference40["total_return"])
+                    float(current40["total_return"]) >= float(reference40["total_return"])
                 ),
                 "calmar_or_drawdown_path": calmar_path or drawdown_path,
             }

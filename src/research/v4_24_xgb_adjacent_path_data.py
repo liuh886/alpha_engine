@@ -69,8 +69,7 @@ def _proxy_weights(row: pd.Series) -> np.ndarray:
     return np.asarray(
         [
             0.0,
-            float(row["next_open_weight_QQQI"])
-            + float(row["next_open_weight_QQQ"]),
+            float(row["next_open_weight_QQQI"]) + float(row["next_open_weight_QQQ"]),
             float(row["next_open_weight_TQQQ"]),
         ],
         dtype=float,
@@ -151,15 +150,12 @@ def build_path_utility_frame(
         frame.index,
         cash_symbol="SGOV" if actual else "BIL",
     )
-    baseline_returns = pd.to_numeric(
-        baseline_daily["net_return"], errors="coerce"
-    ).reindex(frame.index)
+    baseline_returns = pd.to_numeric(baseline_daily["net_return"], errors="coerce").reindex(
+        frame.index
+    )
     state_weights = _normalised_weights(contract)
     sessions = int(contract["decision"]["holding_sessions"])
-    cost_rate = (
-        float(contract["decision"]["transaction_cost_bps_per_turnover_unit"])
-        / 10_000.0
-    )
+    cost_rate = float(contract["decision"]["transaction_cost_bps_per_turnover_unit"]) / 10_000.0
     mae_penalty = float(contract["decision"]["mae_penalty"])
 
     rows: list[dict[str, Any]] = []
@@ -203,9 +199,7 @@ def build_path_utility_frame(
         ]
         if not np.isfinite(np.asarray(all_values, dtype=float)).all():
             continue
-        ranks = _utility_ranks(
-            {state: state_stats[state]["path_utility"] for state in STATE_ORDER}
-        )
+        ranks = _utility_ranks({state: state_stats[state]["path_utility"] for state in STATE_ORDER})
         row: dict[str, Any] = {
             "decision_date": pd.Timestamp(frame.index[location]),
             "execution_date": pd.Timestamp(frame.index[start]),
@@ -231,12 +225,10 @@ def build_path_utility_frame(
             lower = str(edge_spec["lower"])
             higher = str(edge_spec["higher"])
             row[f"label_{edge}"] = int(
-                state_stats[higher]["path_utility"]
-                > state_stats[lower]["path_utility"]
+                state_stats[higher]["path_utility"] > state_stats[lower]["path_utility"]
             )
             row[f"utility_delta_{edge}"] = (
-                state_stats[higher]["path_utility"]
-                - state_stats[lower]["path_utility"]
+                state_stats[higher]["path_utility"] - state_stats[lower]["path_utility"]
             )
         rows.append(row)
 

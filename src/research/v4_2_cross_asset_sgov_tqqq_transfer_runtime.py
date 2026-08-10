@@ -40,25 +40,26 @@ def _target_result_on_index(
     contract: Mapping[str, Any],
     strategy: str,
 ) -> StrategyResult:
-    daily = frame.reindex(index)[
-        ["cash_next_open_return", "leveraged_next_open_return"]
-    ].copy()
+    daily = frame.reindex(index)[["cash_next_open_return", "leveraged_next_open_return"]].copy()
     daily["weight_TQQQ"] = tqqq_weight.reindex(index).astype(float)
     daily["weight_SGOV"] = 1.0 - daily["weight_TQQQ"]
-    if daily[
-        [
-            "cash_next_open_return",
-            "leveraged_next_open_return",
-            "weight_TQQQ",
+    if (
+        daily[
+            [
+                "cash_next_open_return",
+                "leveraged_next_open_return",
+                "weight_TQQQ",
+            ]
         ]
-    ].isna().any().any():
+        .isna()
+        .any()
+        .any()
+    ):
         raise AssertionError(f"{strategy} target calendar contains missing values")
     weights = daily[["weight_SGOV", "weight_TQQQ"]]
     if not np.allclose(weights.sum(axis=1), 1.0):
         raise AssertionError("target SGOV/TQQQ weights must sum to one")
-    if (weights < -1e-12).any().any() or (
-        weights > 1.0 + 1e-12
-    ).any().any():
+    if (weights < -1e-12).any().any() or (weights > 1.0 + 1e-12).any().any():
         raise AssertionError("target weights must stay in [0, 1]")
 
     daily["gross_return"] = (
@@ -68,9 +69,7 @@ def _target_result_on_index(
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
-    cost_bps = float(
-        contract["boundaries"]["transaction_cost_bps_per_turnover_unit"]
-    )
+    cost_bps = float(contract["boundaries"]["transaction_cost_bps_per_turnover_unit"])
     daily["turnover_units"] = turnover
     daily["transaction_cost"] = turnover * cost_bps / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
@@ -80,9 +79,7 @@ def _target_result_on_index(
 
     metrics = _return_metrics(
         daily["net_return"],
-        annual_risk_free_rate=float(
-            contract["boundaries"]["annual_risk_free_rate"]
-        ),
+        annual_risk_free_rate=float(contract["boundaries"]["annual_risk_free_rate"]),
     )
     metrics.update(
         {
@@ -92,9 +89,7 @@ def _target_result_on_index(
             "switch_count": int(max(int(changed.sum()) - 1, 0)),
             "average_tqqq_weight": float(daily["weight_TQQQ"].mean()),
             "pct_time_sgov": float(daily["weight_TQQQ"].eq(0.0).mean()),
-            "pct_time_full_tqqq": float(
-                daily["weight_TQQQ"].eq(1.0).mean()
-            ),
+            "pct_time_full_tqqq": float(daily["weight_TQQQ"].eq(1.0).mean()),
         }
     )
     trades = daily.loc[
@@ -124,15 +119,12 @@ def _v4_2_result_on_index(
         raise AssertionError(f"{strategy} v4.2 calendar contains missing values")
     weights = daily[[f"weight_{asset}" for asset in V4_2_ASSETS]].copy()
     daily["gross_return"] = sum(
-        weights[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in V4_2_ASSETS
+        weights[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in V4_2_ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
-    cost_bps = float(
-        contract["boundaries"]["transaction_cost_bps_per_turnover_unit"]
-    )
+    cost_bps = float(contract["boundaries"]["transaction_cost_bps_per_turnover_unit"])
     daily["turnover_units"] = turnover
     daily["transaction_cost"] = turnover * cost_bps / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
@@ -142,9 +134,7 @@ def _v4_2_result_on_index(
 
     metrics = _return_metrics(
         daily["net_return"],
-        annual_risk_free_rate=float(
-            contract["boundaries"]["annual_risk_free_rate"]
-        ),
+        annual_risk_free_rate=float(contract["boundaries"]["annual_risk_free_rate"]),
     )
     metrics.update(
         {
@@ -201,14 +191,10 @@ def run_cross_asset_sgov_tqqq_transfer(
 
     donor_events, donor_frames = build_donor_event_panel(bars, contract)
     model = fit_cluster_transfer_model(donor_events, contract)
-    target_events, target_frame = build_target_events(
-        bars, donor_frames, model, contract
-    )
+    target_events, target_frame = build_target_events(bars, donor_frames, model, contract)
     schedules = _target_weight_schedules(target_frame, target_events, contract)
 
-    _, actual_base_results, _, _ = run_bridge_allocation_comparison(
-        bars, bridge_contract
-    )
+    _, actual_base_results, _, _ = run_bridge_allocation_comparison(bars, bridge_contract)
     _, proxy_base_results, _, _ = run_bridge_allocation_comparison(
         alias_qqqi_to_qqq(bars), bridge_contract
     )
@@ -223,17 +209,13 @@ def run_cross_asset_sgov_tqqq_transfer(
         actual_base_full.daily.index.max(),
         proxy_base_full.daily.index.max(),
     )
-    actual_index = _comparison_index(
-        target_frame, actual_base_full, common_end
-    )
+    actual_index = _comparison_index(target_frame, actual_base_full, common_end)
     proxy_index = _comparison_index(target_frame, proxy_base_full, common_end)
 
     actual_baseline = _v4_2_result_on_index(
         actual_base_full, actual_index, contract, "current_v4_2"
     )
-    proxy_baseline = _v4_2_result_on_index(
-        proxy_base_full, proxy_index, contract, "qqq_proxy_v4_2"
-    )
+    proxy_baseline = _v4_2_result_on_index(proxy_base_full, proxy_index, contract, "qqq_proxy_v4_2")
     results_by_scope: dict[str, dict[str, StrategyResult]] = {
         "actual": {"current_v4_2": actual_baseline},
         "qqq_proxy": {"qqq_proxy_v4_2": proxy_baseline},
@@ -252,9 +234,9 @@ def run_cross_asset_sgov_tqqq_transfer(
             raise AssertionError(f"{scope} comparator indices diverged")
 
     headlines = {
-        scope: pd.DataFrame(
-            [dict(result.metrics) for result in results.values()]
-        ).set_index("strategy")
+        scope: pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+            "strategy"
+        )
         for scope, results in results_by_scope.items()
     }
     event_attribution = {
@@ -297,14 +279,9 @@ def run_cross_asset_sgov_tqqq_transfer(
         "proxy_observations": int(len(proxy_index)),
         "sample_end": common_end,
         "target_event_count": int(len(target_events)),
-        "target_bucket_counts": target_events[
-            "probability_bucket"
-        ].value_counts().to_dict(),
+        "target_bucket_counts": target_events["probability_bucket"].value_counts().to_dict(),
         "tail_risk": {
-            scope: {
-                key: tail_risk_metrics(result)
-                for key, result in results.items()
-            }
+            scope: {key: tail_risk_metrics(result) for key, result in results.items()}
             for scope, results in results_by_scope.items()
         },
         "decision": decision,

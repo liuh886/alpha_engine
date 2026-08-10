@@ -20,8 +20,12 @@ import numpy as np
 import pandas as pd
 
 from src.research.byd_515180_allocation import (
-    AllocationResult, PRIMARY_COST_BPS, STRESS_COST_BPS,
-    WINDOWS, metrics, prepare_common_dataset,
+    AllocationResult,
+    PRIMARY_COST_BPS,
+    STRESS_COST_BPS,
+    WINDOWS,
+    metrics,
+    prepare_common_dataset,
 )
 from src.research.byd_515180_execution import execute_next_common_open
 
@@ -30,10 +34,10 @@ PRIMARY = "tactical_etf"
 ROBUSTNESS = "tactical_etf_light"
 
 # Tactical ETF parameters
-ETF_MIN = 0.10    # minimum ETF allocation in defense
-ETF_MAX = 0.40    # maximum ETF allocation in defense
+ETF_MIN = 0.10  # minimum ETF allocation in defense
+ETF_MAX = 0.40  # maximum ETF allocation in defense
 ETF_MOM_WINDOW = 20
-RS_WEIGHT = 0.5   # weight on relative strength signal
+RS_WEIGHT = 0.5  # weight on relative strength signal
 
 
 @dataclass(frozen=True)
@@ -75,16 +79,20 @@ def compute_tactical_weights(common, signals, etf_max=ETF_MAX):
 def build_decisions(common, signals):
     d = {
         BASELINE: pd.DataFrame(
-            {"byd_weight": signals["base_byd_weight"].astype(float),
-             "etf_weight": 1.0 - signals["base_byd_weight"].astype(float),
-             "cash_weight": 0.0},
+            {
+                "byd_weight": signals["base_byd_weight"].astype(float),
+                "etf_weight": 1.0 - signals["base_byd_weight"].astype(float),
+                "cash_weight": 0.0,
+            },
             index=common.index,
         ),
         PRIMARY: compute_tactical_weights(common, signals, ETF_MAX),
         ROBUSTNESS: compute_tactical_weights(common, signals, 0.35),
     }
     for name, frame in d.items():
-        assert np.allclose(frame.sum(axis=1), 1.0, atol=1e-12), f"{name}: {frame.sum(axis=1).describe()}"
+        assert np.allclose(frame.sum(axis=1), 1.0, atol=1e-12), (
+            f"{name}: {frame.sum(axis=1).describe()}"
+        )
         assert not (frame["byd_weight"] < -1e-12).any()
         assert not (frame["etf_weight"] < -1e-12).any()
     return d
@@ -95,19 +103,25 @@ def run_candidates(common, signals, *, cost_bps):
     results = {}
     for name, decision in decisions.items():
         e = execute_next_common_open(decision, common["common_open_eligible"])
-        gross = e["position_byd_weight"] * common["byd_open_return"] + e["position_etf_weight"] * common["etf_open_return"]
-        turnover = e.diff().abs().sum(axis=1); turnover.iloc[0] = 0.0
+        gross = (
+            e["position_byd_weight"] * common["byd_open_return"]
+            + e["position_etf_weight"] * common["etf_open_return"]
+        )
+        turnover = e.diff().abs().sum(axis=1)
+        turnover.iloc[0] = 0.0
         cost = turnover * cost_bps / 10000.0
         daily = pd.concat([decision.add_prefix("d_"), e], axis=1)
-        daily["gross_return"] = gross; daily["turnover_units"] = turnover
-        daily["cost"] = cost; daily["net_return"] = gross - cost
+        daily["gross_return"] = gross
+        daily["turnover_units"] = turnover
+        daily["cost"] = cost
+        daily["net_return"] = gross - cost
         daily = daily.iloc[:-1].copy()
         results[name] = AllocationResult(name=name, daily=daily, trades=pd.DataFrame())
     return results, decisions
 
 
 def _wm(result, start, end):
-    block = result.daily.loc[pd.Timestamp(start):pd.Timestamp(end)]
+    block = result.daily.loc[pd.Timestamp(start) : pd.Timestamp(end)]
     return metrics(block)
 
 
@@ -117,13 +131,15 @@ def build_evaluation(r20, r40):
         for name, result in results.items():
             for w, (s, e) in WINDOWS.items():
                 m = _wm(result, s, e)
-                m["model"] = name; m["cost_bps"] = cb; m["window"] = w
+                m["model"] = name
+                m["cost_bps"] = cb
+                m["window"] = w
                 rows.append(m)
     return pd.DataFrame(rows)
 
 
 def _tw(daily, s, e):
-    rs = daily.loc[pd.Timestamp(s):pd.Timestamp(e), "net_return"].dropna()
+    rs = daily.loc[pd.Timestamp(s) : pd.Timestamp(e), "net_return"].dropna()
     return float((1.0 + rs).prod())
 
 
@@ -136,19 +152,34 @@ def period_contribution(results):
             rel[p] = _tw(results[name].daily, s, e) / _tw(results[BASELINE].daily, s, e) - 1.0
         pt = sum(max(v, 0.0) for v in rel.values())
         for p, r in rel.items():
-            rows.append({"model": name, "period": p, "relative_terminal_wealth": r, "positive_contribution_share": max(r, 0.0)/pt if pt > 0 else 0.0})
+            rows.append(
+                {
+                    "model": name,
+                    "period": p,
+                    "relative_terminal_wealth": r,
+                    "positive_contribution_share": max(r, 0.0) / pt if pt > 0 else 0.0,
+                }
+            )
     return pd.DataFrame(rows)
 
 
 def governed_result(evaluation, contributions):
     def r(model, cb):
-        sel = evaluation.loc[(evaluation["model"]==model)&(evaluation["cost_bps"]==cb)&(evaluation["window"]=="full_overlap")]
+        sel = evaluation.loc[
+            (evaluation["model"] == model)
+            & (evaluation["cost_bps"] == cb)
+            & (evaluation["window"] == "full_overlap")
+        ]
         return sel.iloc[0]
-    bp = r(BASELINE, PRIMARY_COST_BPS); pp = r(PRIMARY, PRIMARY_COST_BPS)
-    rp = r(ROBUSTNESS, PRIMARY_COST_BPS)
-    bs = r(BASELINE, STRESS_COST_BPS); ps = r(PRIMARY, STRESS_COST_BPS)
-    cagr_d = float(pp["cagr"] - bp["cagr"]); mdd_d = float(pp["max_drawdown"] - bp["max_drawdown"])
-    pc = contributions[contributions["model"]==PRIMARY]
+
+    bp = r(BASELINE, PRIMARY_COST_BPS)
+    pp = r(PRIMARY, PRIMARY_COST_BPS)
+    r(ROBUSTNESS, PRIMARY_COST_BPS)
+    bs = r(BASELINE, STRESS_COST_BPS)
+    ps = r(PRIMARY, STRESS_COST_BPS)
+    cagr_d = float(pp["cagr"] - bp["cagr"])
+    mdd_d = float(pp["max_drawdown"] - bp["max_drawdown"])
+    pc = contributions[contributions["model"] == PRIMARY]
     neg = int(pc["relative_terminal_wealth"].lt(0).sum())
     ms = float(pc["positive_contribution_share"].max()) if not pc.empty else 1.0
 

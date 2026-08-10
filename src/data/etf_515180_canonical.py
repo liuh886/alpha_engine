@@ -82,15 +82,14 @@ def build_515180_bundle(
         )
         common = sessions["secondary_status"].eq("common")
         traded = sessions["session_status"].eq("traded")
-        difference_ok = sessions["secondary_open_return_difference"].le(
-            OPEN_RETURN_TOLERANCE
-        ) | sessions["secondary_open_return_difference"].isna()
+        difference_ok = (
+            sessions["secondary_open_return_difference"].le(OPEN_RETURN_TOLERANCE)
+            | sessions["secondary_open_return_difference"].isna()
+        )
         sessions["open_research_eligible"] = common & traded & difference_ok
         secondary_coverage = float(common.mean())
         valid_diff = comparison["absolute_return_difference"].dropna()
-        p99_difference = (
-            float(valid_diff.quantile(0.99)) if not valid_diff.empty else None
-        )
+        p99_difference = float(valid_diff.quantile(0.99)) if not valid_diff.empty else None
 
     manifest = dict(base.manifest)
     manifest.update(
@@ -104,9 +103,7 @@ def build_515180_bundle(
             ),
             "secondary_coverage": secondary_coverage,
             "p99_open_return_difference": p99_difference,
-            "research_eligible_opens": int(
-                sessions["open_research_eligible"].fillna(False).sum()
-            ),
+            "research_eligible_opens": int(sessions["open_research_eligible"].fillna(False).sum()),
             "cash_dividend_semantics": (
                 "corporate_actions_are_sealed_separately_from_adjusted_total_return_prices"
             ),
@@ -129,9 +126,7 @@ def build_515180_bundle(
             and np.isfinite(p99_difference)
             and p99_difference <= MAX_P99_OPEN_RETURN_DIFFERENCE
         ),
-        "eligible_open_coverage": float(
-            sessions["open_research_eligible"].fillna(False).mean()
-        )
+        "eligible_open_coverage": float(sessions["open_research_eligible"].fillna(False).mean())
         >= 0.95,
     }
     quality = ETFCanonicalQuality(passed=all(gates.values()), gates=gates)

@@ -63,9 +63,7 @@ def prepare_vix_rotation_runtime_data(
     )
     qqq_close = _normalise_close(bars["QQQ"], "QQQ")
     price = pd.DataFrame(index=qqq_close.index)
-    price["ma_medium"] = qqq_close.rolling(
-        config.ma_medium, min_periods=config.ma_medium
-    ).mean()
+    price["ma_medium"] = qqq_close.rolling(config.ma_medium, min_periods=config.ma_medium).mean()
     price["rolling_high_shock"] = qqq_close.rolling(
         config.shock_lookback_sessions,
         min_periods=config.shock_lookback_sessions,
@@ -102,9 +100,7 @@ def prepare_vix_rotation_runtime_data(
         | (qqq_close.gt(prepared["ma_short"].reindex(qqq_close.index)) & base_short_rising)
     ).fillna(False)
     price["medium_repair"] = qqq_close.gt(price["ma_medium"]).fillna(False)
-    price["secondary_confirmation"] = (
-        price["breakout_confirm"] | base_short_rising
-    ).fillna(False)
+    price["secondary_confirmation"] = (price["breakout_confirm"] | base_short_rising).fillna(False)
     price["long_break"] = qqq_close.lt(
         prepared["ma_long"].reindex(qqq_close.index) * (1.0 - config.ma_long_buffer)
     ).fillna(False)
@@ -213,9 +209,7 @@ def _run_weighted_state_backtest(
     else:
         turnover.iloc[0] = 0.0
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = (
-        turnover * config.transaction_cost_bps_per_turnover_unit / 10_000.0
-    )
+    daily["transaction_cost"] = turnover * config.transaction_cost_bps_per_turnover_unit / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()

@@ -90,8 +90,7 @@ def _precompute_for_vectorized(
         raise
     except Exception as exc:
         raise VectorizedPrecomputeError(
-            "Vectorized Qlib precomputation failed; refusing unverified "
-            f"slow-path fallback: {exc}"
+            f"Vectorized Qlib precomputation failed; refusing unverified slow-path fallback: {exc}"
         ) from exc
 
 
@@ -121,9 +120,7 @@ def run_backtest(
         precompute_status = "not_required"
         # Pre-compute signals for vectorized strategy before PortAnaRecord
         if _is_vectorized_strategy(port_analysis_config):
-            precompute = _precompute_for_vectorized(
-                pred_score, dataset, port_analysis_config
-            )
+            precompute = _precompute_for_vectorized(pred_score, dataset, port_analysis_config)
             precompute_status = str(precompute["status"])
         execution_receipt = build_execution_receipt(
             "authoritative_qlib", precompute_status=precompute_status

@@ -226,18 +226,14 @@ def _resolve_symbols(spec: CrossSectionalExperimentSpec, runtime) -> list[str]:
         raise ValueError(f"provider is missing experiment symbols: {missing}")
     min_symbols = int(spec.parent.universe["min_symbols"])
     if len(resolved) < min_symbols:
-        raise ValueError(
-            f"resolved universe has {len(resolved)} symbols; requires {min_symbols}"
-        )
+        raise ValueError(f"resolved universe has {len(resolved)} symbols; requires {min_symbols}")
     return resolved
 
 
 def _benchmark_instrument(spec: CrossSectionalExperimentSpec, runtime) -> str:
     available = runtime.available_symbols()
     if spec.market == "us":
-        matches = normalize_market_symbols(
-            "us", [spec.benchmark], available_symbols=available
-        )
+        matches = normalize_market_symbols("us", [spec.benchmark], available_symbols=available)
         if not matches or matches[0].normalized_symbol not in available:
             raise ValueError(f"benchmark {spec.benchmark!r} is unavailable")
         return matches[0].normalized_symbol
@@ -359,7 +355,9 @@ def run_cross_sectional_experiment(
     )
     evaluation_dates_by_window = horizon_eligible_dates_by_window(window_plan, calendar)
     required_windows = set(spec.contract.selection_windows) | set(spec.contract.reporting_windows)
-    windows = [window for window in window_plan.selected_windows if window.label in required_windows]
+    windows = [
+        window for window in window_plan.selected_windows if window.label in required_windows
+    ]
     missing_windows = sorted(required_windows - {window.label for window in windows})
     if missing_windows:
         raise ValueError(f"mission windows unavailable: {missing_windows}")
@@ -377,9 +375,7 @@ def run_cross_sectional_experiment(
     observations: list[dict[str, Any]] = []
     candidate_metadata: dict[str, dict[str, Any]] = {}
     window_reports: list[str] = []
-    cost_levels = sorted(
-        {int(value) for value in spec.raw["execution"]["cost_stress_bps"]}
-    )
+    cost_levels = sorted({int(value) for value in spec.raw["execution"]["cost_stress_bps"]})
     for candidate in spec.candidates:
         candidate_metadata[candidate.candidate_id] = {
             "role": candidate.role,
@@ -471,8 +467,7 @@ def run_cross_sectional_experiment(
                 features_test_all.loc[:, columns],
             )
             candidate_name = (
-                f"xgb:daily_ranker:{candidate.candidate_id}:native:"
-                f"{candidate.calibration.name}"
+                f"xgb:daily_ranker:{candidate.candidate_id}:native:{candidate.calibration.name}"
             )
             names_by_id[candidate.candidate_id] = candidate_name
             scores_by_id[candidate.candidate_id] = scores
@@ -517,9 +512,7 @@ def run_cross_sectional_experiment(
         for candidate in spec.candidates:
             candidate_name = names_by_id[candidate.candidate_id]
             base_result = _original_result(report, candidate_name)
-            by_cost: dict[int, dict[str, Any]] = {
-                int(spec.contract.base_cost_bps): base_result
-            }
+            by_cost: dict[int, dict[str, Any]] = {int(spec.contract.base_cost_bps): base_result}
             for cost_bps in cost_levels:
                 if cost_bps == spec.contract.base_cost_bps:
                     continue

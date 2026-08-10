@@ -54,17 +54,22 @@ def build_regime_state(
     """Build strictly trailing market-state votes at every provider session."""
 
     benchmark_close = close[benchmark]
-    long_trend = benchmark_close > benchmark_close.rolling(
-        long_ma_sessions,
-        min_periods=long_ma_sessions,
-    ).mean()
+    long_trend = (
+        benchmark_close
+        > benchmark_close.rolling(
+            long_ma_sessions,
+            min_periods=long_ma_sessions,
+        ).mean()
+    )
     medium_momentum = benchmark_close / benchmark_close.shift(momentum_sessions) - 1.0 > 0.0
     breadth_values = (
         close.loc[:, list(symbols)]
-        > close.loc[:, list(symbols)].rolling(
+        > close.loc[:, list(symbols)]
+        .rolling(
             breadth_ma_sessions,
             min_periods=breadth_ma_sessions,
-        ).mean()
+        )
+        .mean()
     ).mean(axis=1)
     breadth = breadth_values >= breadth_threshold
     output = pd.DataFrame(
@@ -76,9 +81,9 @@ def build_regime_state(
         },
         index=close.index,
     )
-    output["votes"] = output[
-        ["long_trend", "medium_momentum", "cross_sectional_breadth"]
-    ].sum(axis=1).astype(int)
+    output["votes"] = (
+        output[["long_trend", "medium_momentum", "cross_sectional_breadth"]].sum(axis=1).astype(int)
+    )
     return output
 
 
@@ -144,9 +149,7 @@ def run_regime_portfolio(
             period_turnover = turnover(previous, weights)
             cost = period_turnover * cost_bps / 10000.0
             net_return = gross_return - cost
-            relative_log_return = float(
-                np.log1p(net_return) - np.log1p(benchmark_return)
-            )
+            relative_log_return = float(np.log1p(net_return) - np.log1p(benchmark_return))
             period_rows.append(
                 {
                     "window": window,
@@ -156,9 +159,7 @@ def run_regime_portfolio(
                     "votes": int(state.loc[date, "votes"]),
                     "long_trend": bool(state.loc[date, "long_trend"]),
                     "medium_momentum": bool(state.loc[date, "medium_momentum"]),
-                    "cross_sectional_breadth": bool(
-                        state.loc[date, "cross_sectional_breadth"]
-                    ),
+                    "cross_sectional_breadth": bool(state.loc[date, "cross_sectional_breadth"]),
                     "breadth_value": float(state.loc[date, "breadth_value"]),
                     "gross_return": gross_return,
                     "net_return": net_return,
@@ -183,8 +184,7 @@ def run_regime_portfolio(
                             "raw_return": float(row.execution_forward_return),
                             "benchmark_return": benchmark_return,
                             "net_contribution": (
-                                weight * float(row.execution_forward_return)
-                                - cost / len(chosen)
+                                weight * float(row.execution_forward_return) - cost / len(chosen)
                             ),
                             "precision_hit": (
                                 float(row.execution_forward_return) > benchmark_return
@@ -223,9 +223,7 @@ def run_regime_portfolio(
                 "window": window,
                 "total_return": total_return,
                 "benchmark_return": benchmark_return,
-                "relative_excess": (
-                    (1.0 + total_return) / (1.0 + benchmark_return) - 1.0
-                ),
+                "relative_excess": ((1.0 + total_return) / (1.0 + benchmark_return) - 1.0),
                 "max_drawdown": max_drawdown(group["net_return"]),
                 "all_period_hit_rate": float(group["benchmark_hit"].mean()),
                 "risk_on_share": float(group["risk_on"].mean()),

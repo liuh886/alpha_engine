@@ -4,6 +4,7 @@ The alert layer consumes the frozen base, paired and trend-state observations.
 It does not refit or search. The exact continuous target weight is reproduced
 from the formal model contract and evaluated for next eligible open execution.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -154,11 +155,7 @@ def build_byd_signal_alert(
     should_alert = bool(changed and data_freshness_ok and open_eligible)
 
     mode = _mode(base_target, increment)
-    previous_mode = (
-        str(previous_alert.get("target_mode"))
-        if previous_alert is not None
-        else None
-    )
+    previous_mode = str(previous_alert.get("target_mode")) if previous_alert is not None else None
     if previous_alert is None:
         transition_type = "initialize"
         transition_label = "启用正式 BYD v1.2 信号"
@@ -251,8 +248,10 @@ def _order_lines(alert: Mapping[str, Any], *, markdown: bool) -> list[str]:
     for item in alert.get("orders", []):
         asset = str(item["asset"])
         action = (
-            "融资" if asset == "CASH" and item["side"] == "sell"
-            else "还款" if asset == "CASH"
+            "融资"
+            if asset == "CASH" and item["side"] == "sell"
+            else "还款"
+            if asset == "CASH"
             else labels[str(item["side"])]
         )
         text = (

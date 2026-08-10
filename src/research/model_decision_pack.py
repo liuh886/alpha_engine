@@ -35,7 +35,9 @@ def _candidate_rows(stability_summary: dict[str, Any]) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def _validate_stability_summary(stability_summary: dict[str, Any], rows: list[dict[str, Any]]) -> int:
+def _validate_stability_summary(
+    stability_summary: dict[str, Any], rows: list[dict[str, Any]]
+) -> int:
     if stability_summary.get("schema_version") != "1.0":
         raise ValueError("stability_summary schema_version must be '1.0'")
     min_windows = int(stability_summary.get("min_windows", 0))
@@ -160,7 +162,9 @@ def _recommended_next_step(candidate: dict[str, Any] | None, decision: dict[str,
     if "ready_ratio" in failed:
         return "Expand the universe and validate cross-window robustness before any trade-guidance claim."
     if "worst_drawdown" in failed:
-        return "Stress drawdown under universe expansion and robustness validation before promotion."
+        return (
+            "Stress drawdown under universe expansion and robustness validation before promotion."
+        )
     return "Run universe expansion and robustness validation before promotion."
 
 
@@ -197,7 +201,9 @@ def render_model_decision_markdown(pack: dict[str, Any]) -> str:
             "",
             "## Warning",
             "",
-            str(pack.get("non_trade_ready_warning", "Research evidence is not trade authorization.")),
+            str(
+                pack.get("non_trade_ready_warning", "Research evidence is not trade authorization.")
+            ),
             "",
             "## Recommended next step",
             "",

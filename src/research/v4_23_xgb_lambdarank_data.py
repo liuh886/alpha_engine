@@ -60,9 +60,7 @@ def action_asset_returns(
 
 
 def forward_product(series: pd.Series, location: int, sessions: int) -> float:
-    window = pd.to_numeric(
-        series.iloc[location + 1 : location + 1 + sessions], errors="coerce"
-    )
+    window = pd.to_numeric(series.iloc[location + 1 : location + 1 + sessions], errors="coerce")
     if len(window) != sessions or window.isna().any():
         return np.nan
     return float((1.0 + window).prod() - 1.0)
@@ -72,8 +70,7 @@ def baseline_proxy_weights(row: pd.Series) -> np.ndarray:
     return np.asarray(
         [
             0.0,
-            float(row["next_open_weight_QQQI"])
-            + float(row["next_open_weight_QQQ"]),
+            float(row["next_open_weight_QQQI"]) + float(row["next_open_weight_QQQ"]),
             float(row["next_open_weight_TQQQ"]),
         ]
     )
@@ -130,17 +127,12 @@ def build_group_frame(
     frame = base.loc[:, list(market)].join(credit_block[list(credit)]).join(states)
     frame["global_training_sample"] = base["global_training_sample"].astype(bool)
     state_frame = _state_features(baseline_daily, frame.index)
-    returns = action_asset_returns(
-        bars, frame.index, cash_symbol="SGOV" if actual else "BIL"
+    returns = action_asset_returns(bars, frame.index, cash_symbol="SGOV" if actual else "BIL")
+    baseline_returns = pd.to_numeric(baseline_daily["net_return"], errors="coerce").reindex(
+        frame.index
     )
-    baseline_returns = pd.to_numeric(
-        baseline_daily["net_return"], errors="coerce"
-    ).reindex(frame.index)
     sessions = int(contract["decision"]["holding_sessions"])
-    cost_rate = (
-        float(contract["decision"]["transaction_cost_bps_per_turnover_unit"])
-        / 10_000.0
-    )
+    cost_rate = float(contract["decision"]["transaction_cost_bps_per_turnover_unit"]) / 10_000.0
     rows: list[dict[str, Any]] = []
     locations = np.flatnonzero(frame["global_training_sample"].to_numpy(dtype=bool))
     for location in locations:
@@ -165,9 +157,7 @@ def build_group_frame(
             gross = forward_product(daily, location, sessions)
             turnover = float(np.abs(weights - start_weights).sum())
             turnover += float(np.abs(end_weights - weights).sum())
-            action_returns[action] = (
-                gross - turnover * cost_rate if np.isfinite(gross) else np.nan
-            )
+            action_returns[action] = gross - turnover * cost_rate if np.isfinite(gross) else np.nan
         labels = action_rank_labels(pd.Series(action_returns))
         if labels.isna().any() or not np.isfinite(baseline_block):
             continue
@@ -182,24 +172,20 @@ def build_group_frame(
                 "realized_action_return": float(action_returns[action]),
                 "relevance": int(labels[action]),
                 "baseline_block_return_10d": baseline_block,
-                "realized_advantage_vs_v4_2": float(
-                    action_returns[action] - baseline_block
-                ),
+                "realized_advantage_vs_v4_2": float(action_returns[action] - baseline_block),
                 "v4_2_comparator_action": _comparator_action(market_row),
                 "candidate_cash_weight": weights[0],
                 "candidate_qqq_weight": weights[1],
                 "candidate_tqqq_weight": weights[2],
-                "candidate_l1_from_v4_2_proxy": float(
-                    np.abs(weights - start_weights).sum()
-                ),
+                "candidate_l1_from_v4_2_proxy": float(np.abs(weights - start_weights).sum()),
                 "sample": "actual_2024_plus" if actual else "proxy_oof",
             }
             for feature in market + credit + STATE_FEATURES:
                 row[feature] = market_row[feature]
             rows.append(row)
-    output = pd.DataFrame(rows).sort_values(
-        ["decision_date", "action_order"]
-    ).reset_index(drop=True)
+    output = (
+        pd.DataFrame(rows).sort_values(["decision_date", "action_order"]).reset_index(drop=True)
+    )
     if output.empty:
         raise ValueError("no complete ten-session action-ranking groups")
     if not output.groupby("decision_date").size().eq(len(ACTION_ORDER)).all():

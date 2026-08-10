@@ -147,9 +147,7 @@ def build_professional_price_shard(
     all_symbols = _symbols(repo, contract)
     shard_size = int(contract.get("sharding", {}).get("shard_size", 10))
     total_shards = shard_count(all_symbols, shard_size=shard_size)
-    selected = shard_symbols(
-        all_symbols, shard_size=shard_size, shard_index=shard_index
-    )
+    selected = shard_symbols(all_symbols, shard_size=shard_size, shard_index=shard_index)
     if not selected:
         raise ProfessionalPriceBundleError(
             f"shard index outside range: {shard_index}/{total_shards}"
@@ -196,9 +194,7 @@ def build_professional_price_shard(
                 }
                 validator = None
             else:
-                validator, attempt = _fetch(
-                    adapter, symbol=symbol, start=start, cutoff=cutoff
-                )
+                validator, attempt = _fetch(adapter, symbol=symbol, start=start, cutoff=cutoff)
                 validator_attempts[name] = attempt
                 if not attempt.get("ok") and attempt.get("error_class") in _PROVIDER_WIDE_ERRORS:
                     circuit.update(
@@ -236,7 +232,9 @@ def build_professional_price_shard(
         elif any(row.get("status") == "quarantine" for row in reconciliations.values()):
             status = "validation_conflict"
         else:
-            present = sum(1 for row in reconciliations.values() if row.get("status") in _VALIDATION_PASS)
+            present = sum(
+                1 for row in reconciliations.values() if row.get("status") in _VALIDATION_PASS
+            )
             configured = len(validation_adapters)
             if configured and present == configured:
                 status = "canonical_ready_validated"
@@ -330,9 +328,7 @@ def finalize_professional_price_bundle(
         value in {"canonical_ready_validated", "canonical_ready_partially_validated"}
         for value in statuses.values()
     )
-    fully_validated = sum(
-        value == "canonical_ready_validated" for value in statuses.values()
-    )
+    fully_validated = sum(value == "canonical_ready_validated" for value in statuses.values())
     manifest = {
         "schema_version": "1.1",
         "component_id": "prices.us_selected_equities_v2.governed",

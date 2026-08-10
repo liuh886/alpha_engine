@@ -63,13 +63,10 @@ def _validate_payload_identity(payload: Any, symbol: str) -> None:
         raise DataFetchError(f"Polygon intraday aggregates are invalid for {symbol}")
     returned = _normalise_symbol(payload.get("ticker", ""))
     if not returned:
-        raise DataFetchError(
-            f"Polygon intraday aggregate identity is missing for {symbol}"
-        )
+        raise DataFetchError(f"Polygon intraday aggregate identity is missing for {symbol}")
     if returned != symbol:
         raise DataFetchError(
-            "Polygon intraday identity mismatch: "
-            f"requested={symbol}, returned={returned}"
+            f"Polygon intraday identity mismatch: requested={symbol}, returned={returned}"
         )
 
 
@@ -80,9 +77,7 @@ def _next_request(next_url: str) -> tuple[str, dict[str, str]]:
     path = parsed.path.lstrip("/")
     params = {
         str(key): str(value)
-        for key, value in urllib.parse.parse_qsl(
-            parsed.query, keep_blank_values=True
-        )
+        for key, value in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
         if str(key).lower() != "apikey"
     }
     if not path:
@@ -109,8 +104,7 @@ def _collect_payload_results(
     while True:
         if pages >= max_pages:
             raise DataFetchError(
-                f"Polygon intraday pagination exceeded max_pages={max_pages} "
-                f"for {symbol}"
+                f"Polygon intraday pagination exceeded max_pages={max_pages} for {symbol}"
             )
         if pages > 0 and request_delay_seconds > 0.0:
             time.sleep(request_delay_seconds)
@@ -118,13 +112,9 @@ def _collect_payload_results(
         _validate_payload_identity(payload, symbol)
         page = payload.get("results")
         if not isinstance(page, list) or not page:
-            raise DataFetchError(
-                f"Polygon returned an empty intraday page for {symbol}"
-            )
+            raise DataFetchError(f"Polygon returned an empty intraday page for {symbol}")
         if not all(isinstance(item, dict) for item in page):
-            raise DataFetchError(
-                f"Polygon intraday page contains invalid rows for {symbol}"
-            )
+            raise DataFetchError(f"Polygon intraday page contains invalid rows for {symbol}")
         results.extend(page)
         page_counts.append(len(page))
         pages += 1
@@ -153,13 +143,9 @@ def _normalise_intraday_results(
     required = {"t", "o", "h", "l", "c", "v"}
     missing = sorted(required.difference(frame.columns))
     if missing:
-        raise DataFetchError(
-            f"Polygon intraday aggregates missing columns for {symbol}: {missing}"
-        )
+        raise DataFetchError(f"Polygon intraday aggregates missing columns for {symbol}: {missing}")
 
-    timestamp_utc = pd.to_datetime(
-        frame["t"], unit="ms", errors="coerce", utc=True
-    )
+    timestamp_utc = pd.to_datetime(frame["t"], unit="ms", errors="coerce", utc=True)
     if timestamp_utc.duplicated().any():
         raise DataFetchError(
             f"Polygon intraday pagination produced duplicate timestamps for {symbol}"
@@ -192,29 +178,18 @@ def _normalise_intraday_results(
         ]
     )
     if regular_session_only:
-        local_minutes = (
-            out["timestamp_et"].dt.hour * 60
-            + out["timestamp_et"].dt.minute
-        )
-        out = out.loc[
-            (local_minutes >= 9 * 60 + 30) & (local_minutes < 16 * 60)
-        ]
+        local_minutes = out["timestamp_et"].dt.hour * 60 + out["timestamp_et"].dt.minute
+        out = out.loc[(local_minutes >= 9 * 60 + 30) & (local_minutes < 16 * 60)]
     out = out.sort_values("timestamp_utc").reset_index(drop=True)
     if out.empty:
         raise DataFetchError(f"Polygon returned no usable intraday bars for {symbol}")
     numeric = out[["open", "high", "low", "close", "volume"]]
     if not np.isfinite(numeric.to_numpy(dtype=float)).all():
-        raise DataFetchError(
-            f"Polygon intraday bars contain non-finite values for {symbol}"
-        )
+        raise DataFetchError(f"Polygon intraday bars contain non-finite values for {symbol}")
     if not numeric.gt(0.0).all().all():
-        raise DataFetchError(
-            f"Polygon intraday bars contain non-positive values for {symbol}"
-        )
+        raise DataFetchError(f"Polygon intraday bars contain non-positive values for {symbol}")
     if out["timestamp_utc"].duplicated().any():
-        raise DataFetchError(
-            f"Polygon intraday bars contain duplicate timestamps for {symbol}"
-        )
+        raise DataFetchError(f"Polygon intraday bars contain duplicate timestamps for {symbol}")
     return out[_INTRADAY_COLUMNS]
 
 
@@ -238,9 +213,7 @@ class PolygonIntradayAdapter:
     def name(self) -> str:
         return self._name
 
-    def fetch_aggregate_bars(
-        self, req: PolygonIntradayRequest
-    ) -> PolygonIntradayResult:
+    def fetch_aggregate_bars(self, req: PolygonIntradayRequest) -> PolygonIntradayResult:
         symbol = _normalise_symbol(req.symbol)
         market = str(req.market or "").strip().lower()
         start = _date(req.start, field="start")
@@ -248,9 +221,7 @@ class PolygonIntradayAdapter:
         if not symbol:
             raise DataFetchError("symbol is required")
         if market != "us":
-            raise DataFetchError(
-                "Polygon intraday adapter currently supports market=us only"
-            )
+            raise DataFetchError("Polygon intraday adapter currently supports market=us only")
         if pd.Timestamp(end) < pd.Timestamp(start):
             raise DataFetchError("end must be on or after start")
         if req.multiplier <= 0:
@@ -269,10 +240,7 @@ class PolygonIntradayAdapter:
             )
 
         started = time.perf_counter()
-        path = (
-            f"v2/aggs/ticker/{symbol}/range/{req.multiplier}/"
-            f"{req.timespan}/{start}/{end}"
-        )
+        path = f"v2/aggs/ticker/{symbol}/range/{req.multiplier}/{req.timespan}/{start}/{end}"
         page_results, pagination = _collect_payload_results(
             self.client,
             initial_path=path,
@@ -295,9 +263,7 @@ class PolygonIntradayAdapter:
         )
         out = out.loc[boundary].reset_index(drop=True)
         if out.empty:
-            raise DataFetchError(
-                f"Polygon has no intraday rows in the request range for {symbol}"
-            )
+            raise DataFetchError(f"Polygon has no intraday rows in the request range for {symbol}")
         metadata = {
             "ticker": symbol,
             "identity_source": "aggregate_payload_ticker",
@@ -316,9 +282,7 @@ class PolygonIntradayAdapter:
         }
         out.attrs["provider_metadata"] = metadata
         out.attrs["price_mode"] = "adjusted_intraday_aggregates"
-        out.attrs["timestamp_semantics"] = (
-            "bar_start_utc_and_america_new_york"
-        )
+        out.attrs["timestamp_semantics"] = "bar_start_utc_and_america_new_york"
         return PolygonIntradayResult(
             provider=self.name,
             symbol=symbol,

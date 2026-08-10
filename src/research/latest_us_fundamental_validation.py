@@ -40,16 +40,16 @@ def _sha(path: Path) -> str:
 
 
 def _identity(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
 def _write_immutable(path: Path, payload: Mapping[str, Any]) -> None:
-    content = json.dumps(
-        payload, ensure_ascii=False, indent=2, sort_keys=True, default=str
-    ).encode("utf-8")
+    content = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str).encode(
+        "utf-8"
+    )
     if path.exists():
         if path.read_bytes() != content:
             raise ValueError(f"immutable live validation conflict: {path}")
@@ -272,9 +272,7 @@ class FrozenPoolSecClient:
         }
 
     def companyfacts(self, cik10: str) -> Mapping[str, Any]:
-        return standardise_companyfacts(
-            self.delegate.companyfacts(cik10), contract=self.contract
-        )
+        return standardise_companyfacts(self.delegate.companyfacts(cik10), contract=self.contract)
 
 
 def _default_sec_client() -> FrozenPoolSecClient | None:
@@ -301,9 +299,7 @@ def _default_sec_client() -> FrozenPoolSecClient | None:
 
 
 def _build_factor_applicability(sec_dir: Path) -> dict[str, Any]:
-    coverage = json.loads(
-        (sec_dir / "coverage_report.json").read_text(encoding="utf-8")
-    )
+    coverage = json.loads((sec_dir / "coverage_report.json").read_text(encoding="utf-8"))
     pool = yaml.safe_load(POOL.read_text(encoding="utf-8"))
     factor_contract = yaml.safe_load(VALIDATION_CONTRACT.read_text(encoding="utf-8"))
     policy = factor_contract["applicability"]
@@ -327,9 +323,7 @@ def _build_factor_applicability(sec_dir: Path) -> dict[str, Any]:
             "active_for_factor": active,
             "reason": None if active else "INSUFFICIENT_FACTOR_READY_PEERS",
         }
-    active_baskets = sorted(
-        basket for basket, row in baskets.items() if row["active_for_factor"]
-    )
+    active_baskets = sorted(basket for basket, row in baskets.items() if row["active_for_factor"])
     minimum_active = int(policy["minimum_active_baskets"])
     all_members = {
         str(symbol).upper()
@@ -360,9 +354,7 @@ def _build_factor_applicability(sec_dir: Path) -> dict[str, Any]:
     return result
 
 
-def _write_factor_eligible_fundamentals(
-    sec_dir: Path, eligible_symbols: set[str]
-) -> Path:
+def _write_factor_eligible_fundamentals(sec_dir: Path, eligible_symbols: set[str]) -> Path:
     source = pd.read_csv(sec_dir / "fundamentals.csv", dtype={"symbol": "string"})
     source["symbol"] = source["symbol"].astype(str).str.upper()
     eligible = source[source["symbol"].isin(eligible_symbols)].copy()
@@ -471,9 +463,7 @@ def run_latest_us_fundamental_validation(
         },
         "outputs": {
             "validation_decision": decision["decision"],
-            "validation_manifest_sha256": _sha(
-                validation_dir / "evidence_manifest.json"
-            ),
+            "validation_manifest_sha256": _sha(validation_dir / "evidence_manifest.json"),
             "validation_decision_sha256": _sha(validation_dir / "decision.json"),
         },
     }

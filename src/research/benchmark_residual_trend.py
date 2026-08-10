@@ -41,9 +41,7 @@ def _normalise_stock_returns(stock_returns: pd.DataFrame) -> pd.DataFrame:
     if not isinstance(stock_returns.index, pd.MultiIndex):
         raise ValueError("stock_returns must use a MultiIndex")
     if set(stock_returns.index.names) != {"datetime", "instrument"}:
-        raise ValueError(
-            "stock_returns index levels must be named datetime and instrument"
-        )
+        raise ValueError("stock_returns index levels must be named datetime and instrument")
     if stock_returns.shape[1] != 1:
         raise ValueError("stock_returns must contain exactly one return column")
     if stock_returns.index.has_duplicates:
@@ -67,9 +65,7 @@ def _normalise_benchmark_returns(
 ) -> pd.Series:
     if isinstance(benchmark_returns, pd.DataFrame):
         if benchmark_returns.shape[1] != 1:
-            raise ValueError(
-                "benchmark_returns must contain exactly one return column"
-            )
+            raise ValueError("benchmark_returns must contain exactly one return column")
         series = benchmark_returns.iloc[:, 0].copy()
     elif isinstance(benchmark_returns, pd.Series):
         series = benchmark_returns.copy()
@@ -160,19 +156,13 @@ def compute_benchmark_residual_trend(
         variance_benchmark = rolling_benchmark.var(ddof=1)
         covariance = rolling_stock.cov(lagged_benchmark)
 
-        valid_benchmark_variance = variance_benchmark.where(
-            variance_benchmark > MIN_VARIANCE
-        )
+        valid_benchmark_variance = variance_benchmark.where(variance_benchmark > MIN_VARIANCE)
         beta = covariance / valid_benchmark_variance
         residual_mean = mean_stock - beta * mean_benchmark
         residual_variance = (
-            variance_stock
-            + beta.pow(2) * variance_benchmark
-            - 2.0 * beta * covariance
+            variance_stock + beta.pow(2) * variance_benchmark - 2.0 * beta * covariance
         )
-        residual_variance = residual_variance.where(
-            residual_variance > MIN_VARIANCE
-        )
+        residual_variance = residual_variance.where(residual_variance > MIN_VARIANCE)
         residual_volatility = np.sqrt(residual_variance)
         score = residual_mean / residual_volatility
 

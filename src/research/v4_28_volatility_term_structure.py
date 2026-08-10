@@ -79,9 +79,9 @@ def build_term_structure_trace(
     trace["acute_normalized_at_open"] = trace["acute_normalized_at_close"].shift(
         1, fill_value=False
     )
-    trace["curve_backwardation_at_open"] = trace[
-        "curve_backwardation_at_close"
-    ].shift(1, fill_value=False)
+    trace["curve_backwardation_at_open"] = trace["curve_backwardation_at_close"].shift(
+        1, fill_value=False
+    )
     return trace
 
 
@@ -98,10 +98,9 @@ def build_term_confirmed_panic_trace(
     if missing:
         raise ValueError(f"term trace missing columns: {missing}")
 
-    activation_ready = (
-        base["repair_ready_at_close"].astype(bool)
-        & term["acute_normalized_at_close"].fillna(False).astype(bool)
-    )
+    activation_ready = base["repair_ready_at_close"].astype(bool) & term[
+        "acute_normalized_at_close"
+    ].fillna(False).astype(bool)
     armed = False
     active = False
     current_event: int | None = None
@@ -153,12 +152,12 @@ def build_term_confirmed_panic_trace(
     trace["panic_repair_active_at_close"] = pd.Series(active_rows, index=daily.index, dtype=bool)
     trace["panic_repair_event_id"] = pd.Series(event_rows, index=daily.index, dtype="Int64")
     trace["panic_repair_reason_at_close"] = reasons
-    trace["panic_repair_active_at_open"] = trace[
-        "panic_repair_active_at_close"
-    ].shift(1, fill_value=False)
-    trace["panic_repair_reason_at_open"] = trace[
-        "panic_repair_reason_at_close"
-    ].shift(1).fillna("initial_entry")
+    trace["panic_repair_active_at_open"] = trace["panic_repair_active_at_close"].shift(
+        1, fill_value=False
+    )
+    trace["panic_repair_reason_at_open"] = (
+        trace["panic_repair_reason_at_close"].shift(1).fillna("initial_entry")
+    )
     return trace
 
 
@@ -167,13 +166,18 @@ def _source_weights(source: StrategyResult) -> pd.DataFrame:
     missing = sorted(set(columns) - set(source.daily.columns))
     if missing:
         raise ValueError(f"source missing weight columns: {missing}")
-    return source.daily[columns].rename(
-        columns={
-            "weight_QQQI": "QQQI",
-            "weight_QQQ": "QQQ",
-            "weight_TQQQ": "TQQQ",
-        }
-    ).astype(float).copy()
+    return (
+        source.daily[columns]
+        .rename(
+            columns={
+                "weight_QQQI": "QQQI",
+                "weight_QQQ": "QQQ",
+                "weight_TQQQ": "TQQQ",
+            }
+        )
+        .astype(float)
+        .copy()
+    )
 
 
 def apply_backwardation_guard(
@@ -183,9 +187,9 @@ def apply_backwardation_guard(
 ) -> tuple[pd.DataFrame, pd.Series]:
     """Cap TQQQ at 50% only in executed state 2 after a backwardated close."""
     out = weights.copy()
-    backwardation_at_open = term_trace[
-        "curve_backwardation_at_open"
-    ].reindex(out.index).fillna(False).astype(bool)
+    backwardation_at_open = (
+        term_trace["curve_backwardation_at_open"].reindex(out.index).fillna(False).astype(bool)
+    )
     eligible = daily["position_state"].astype(int).eq(2) & backwardation_at_open
     out.loc[eligible, "QQQI"] = 0.0
     out.loc[eligible, "QQQ"] = 1.0 - STATE2_GUARDED_TQQQ_WEIGHT
@@ -225,9 +229,7 @@ def _run_weights(
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = (
-        turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
-    )
+    daily["transaction_cost"] = turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily.loc[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()
@@ -280,11 +282,13 @@ def run_term_structure_comparison(
         timing_weights,
         name=TIMING,
         extra_daily=term.join(
-            timing_trace[[
-                "term_confirmed_repair_ready_at_close",
-                "panic_repair_active_at_open",
-                "panic_repair_reason_at_open",
-            ]]
+            timing_trace[
+                [
+                    "term_confirmed_repair_ready_at_close",
+                    "panic_repair_active_at_open",
+                    "panic_repair_reason_at_open",
+                ]
+            ]
         ),
     )
 
@@ -301,11 +305,13 @@ def run_term_structure_comparison(
 
     joint_weights, joint_guarded = apply_backwardation_guard(daily, timing_weights, term)
     joint_extra = term.join(
-        timing_trace[[
-            "term_confirmed_repair_ready_at_close",
-            "panic_repair_active_at_open",
-            "panic_repair_reason_at_open",
-        ]]
+        timing_trace[
+            [
+                "term_confirmed_repair_ready_at_close",
+                "panic_repair_active_at_open",
+                "panic_repair_reason_at_open",
+            ]
+        ]
     )
     joint_extra["backwardation_guard_active"] = joint_guarded
     joint = _run_weights(
@@ -330,7 +336,9 @@ def run_term_structure_comparison(
         "acute_normalized_sessions": int(term["acute_normalized_at_close"].sum()),
         "backwardation_sessions": int(term["curve_backwardation_at_close"].sum()),
         "timing_boost_sessions": int(
-            timing.daily.get("panic_repair_active_at_open", pd.Series(False, index=timing.daily.index))
+            timing.daily.get(
+                "panic_repair_active_at_open", pd.Series(False, index=timing.daily.index)
+            )
             .fillna(False)
             .sum()
         ),

@@ -104,9 +104,7 @@ def compare_10d_candidates(
             "n_promoted": len(report.promoted),
             "n_research_only": len(report.research_only),
             "best_candidate": (
-                f"{best.candidate_name}/"
-                f"{best.candidate_kind.value}/"
-                f"{best.orientation.value}"
+                f"{best.candidate_name}/{best.candidate_kind.value}/{best.orientation.value}"
             ),
             "best_icir": best.icir,
             "best_candidate_summary": {

@@ -47,9 +47,9 @@ def _sha256_file(path: Path) -> str:
 
 
 def _canonical_hash(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return _sha256_bytes(encoded)
 
 
@@ -127,7 +127,9 @@ def _normalise_result(result: FetchResult, symbol: PoolSymbol) -> pd.DataFrame:
         raise ValueError(
             f"provider result for {symbol.canonical_symbol} missing columns: {missing}"
         )
-    frame["date"] = pd.to_datetime(frame["date"], errors="coerce").dt.tz_localize(None).dt.normalize()
+    frame["date"] = (
+        pd.to_datetime(frame["date"], errors="coerce").dt.tz_localize(None).dt.normalize()
+    )
     for column in ("open", "high", "low", "close", "volume"):
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
     frame = frame.dropna(subset=["date", "open", "high", "low", "close", "volume"])
@@ -144,9 +146,7 @@ def _normalise_result(result: FetchResult, symbol: PoolSymbol) -> pd.DataFrame:
     if not invalid_ohlc.empty:
         raise ValueError(f"provider returned invalid OHLCV for {symbol.canonical_symbol}")
     frame["symbol"] = symbol.canonical_symbol
-    return frame[["date", "symbol", "open", "high", "low", "close", "volume"]].sort_values(
-        "date"
-    )
+    return frame[["date", "symbol", "open", "high", "low", "close", "volume"]].sort_values("date")
 
 
 def _write_immutable(path: Path, content: bytes) -> None:
@@ -219,17 +219,13 @@ def build_us_pool_price_snapshot(
 
     latest_dates = {row["latest_date"] for row in coverage}
     if len(latest_dates) != 1:
-        details = ", ".join(
-            f"{row['canonical_symbol']}={row['latest_date']}" for row in coverage
-        )
+        details = ", ".join(f"{row['canonical_symbol']}={row['latest_date']}" for row in coverage)
         raise ValueError("US pool latest-session coverage is inconsistent: " + details)
     resolved_as_of = date.fromisoformat(next(iter(latest_dates)))
     if resolved_as_of > target:
         raise ValueError("provider returned rows beyond requested-through cutoff")
     if (target - resolved_as_of).days > MAX_STALE_CALENDAR_DAYS:
-        raise ValueError(
-            f"US pool snapshot is stale: target={target}, latest={resolved_as_of}"
-        )
+        raise ValueError(f"US pool snapshot is stale: target={target}, latest={resolved_as_of}")
     local_now = (now_utc or datetime.now(timezone.utc)).astimezone(NEW_YORK)
     if (
         requested_through is None
@@ -288,9 +284,9 @@ def build_us_pool_price_snapshot(
         "prices_csv": str(prices_path),
     }
     decision_path = output / "decision.json"
-    decision_bytes = json.dumps(
-        decision, ensure_ascii=False, indent=2, sort_keys=True
-    ).encode("utf-8")
+    decision_bytes = json.dumps(decision, ensure_ascii=False, indent=2, sort_keys=True).encode(
+        "utf-8"
+    )
     _write_immutable(decision_path, decision_bytes)
 
     manifest: dict[str, Any] = {
@@ -304,8 +300,7 @@ def build_us_pool_price_snapshot(
             "start_date": start.isoformat(),
             "requested_through": target.isoformat(),
             "source_identities": {
-                row["canonical_symbol"]: row["source_identity_sha256"]
-                for row in coverage
+                row["canonical_symbol"]: row["source_identity_sha256"] for row in coverage
             },
         },
         "outputs": {
@@ -316,8 +311,8 @@ def build_us_pool_price_snapshot(
     }
     manifest["manifest_identity_sha256"] = _canonical_hash(manifest)
     manifest_path = output / "evidence_manifest.json"
-    manifest_bytes = json.dumps(
-        manifest, ensure_ascii=False, indent=2, sort_keys=True
-    ).encode("utf-8")
+    manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True).encode(
+        "utf-8"
+    )
     _write_immutable(manifest_path, manifest_bytes)
     return decision

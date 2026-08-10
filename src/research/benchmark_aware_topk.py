@@ -39,18 +39,14 @@ def _validate_raw_10d_returns(returns: pd.DataFrame) -> None:
     if not isinstance(returns.index, pd.MultiIndex):
         raise ValueError("returns frame must use a MultiIndex")
     if set(returns.index.names) != {"datetime", "instrument"}:
-        raise ValueError(
-            "returns frame index levels must be named 'datetime' and 'instrument'"
-        )
+        raise ValueError("returns frame index levels must be named 'datetime' and 'instrument'")
     if returns.empty:
         raise ValueError("returns frame must not be empty")
     if returns.index.duplicated().any():
         raise ValueError("returns frame index contains duplicate entries")
     provenance = returns.attrs.get("provenance")
     if provenance != "raw_forward_return":
-        raise ValueError(
-            f"returns provenance must be 'raw_forward_return', got {provenance!r}"
-        )
+        raise ValueError(f"returns provenance must be 'raw_forward_return', got {provenance!r}")
     horizon = returns.attrs.get("horizon")
     if horizon != 10:
         raise ValueError(f"returns horizon must be 10, got {horizon!r}")
@@ -64,27 +60,22 @@ def _validate_benchmark_returns(benchmark: pd.DataFrame) -> None:
         raise ValueError("benchmark_returns must not be empty")
     if len(benchmark.columns) != 1:
         raise ValueError(
-            "benchmark_returns must have exactly one column, "
-            f"got {len(benchmark.columns)}"
+            f"benchmark_returns must have exactly one column, got {len(benchmark.columns)}"
         )
     if not isinstance(benchmark.index, pd.DatetimeIndex):
         raise ValueError(
-            "benchmark_returns must have a DatetimeIndex, "
-            f"got {type(benchmark.index).__name__}"
+            f"benchmark_returns must have a DatetimeIndex, got {type(benchmark.index).__name__}"
         )
     if benchmark.index.duplicated().any():
         raise ValueError("benchmark_returns index contains duplicate dates")
     provenance = benchmark.attrs.get("provenance")
     if provenance != "raw_forward_return":
         raise ValueError(
-            f"benchmark_returns provenance must be 'raw_forward_return', "
-            f"got {provenance!r}"
+            f"benchmark_returns provenance must be 'raw_forward_return', got {provenance!r}"
         )
     horizon = benchmark.attrs.get("horizon")
     if horizon != 10:
-        raise ValueError(
-            f"benchmark_returns horizon must be 10, got {horizon!r}"
-        )
+        raise ValueError(f"benchmark_returns horizon must be 10, got {horizon!r}")
     if benchmark.dropna().empty:
         raise ValueError("benchmark_returns has no usable (non-NaN) data")
 
@@ -96,9 +87,7 @@ def _validate_scores(scores: pd.DataFrame) -> None:
     if not isinstance(scores.index, pd.MultiIndex):
         raise ValueError("score frame must use a MultiIndex")
     if set(scores.index.names) != {"datetime", "instrument"}:
-        raise ValueError(
-            "score frame index levels must be named 'datetime' and 'instrument'"
-        )
+        raise ValueError("score frame index levels must be named 'datetime' and 'instrument'")
     if scores.empty:
         raise ValueError("score frame must not be empty")
     if scores.index.duplicated().any():
@@ -153,9 +142,7 @@ def _evaluate_one_leg(
     )
 
     returns_array = np.asarray(report.period_returns, dtype=float)
-    positive_ratio = (
-        float((returns_array > 0).mean()) if len(returns_array) > 0 else 0.0
-    )
+    positive_ratio = float((returns_array > 0).mean()) if len(returns_array) > 0 else 0.0
 
     # Derive benchmark per-period returns from cumulative benchmark values
     bv = list(report.benchmark_values)
@@ -216,8 +203,7 @@ def _compute_top_minus_bottom_diagnostic(
     )
     if np.any(spread <= -1.0 + 1e-12):
         raise ValueError(
-            "Top-minus-Bottom spread contains value(s) <= -1.0, "
-            "invalid for compounding"
+            "Top-minus-Bottom spread contains value(s) <= -1.0, invalid for compounding"
         )
 
     # Cumulative return via compounding (NAV includes initial 1.0)
@@ -231,16 +217,10 @@ def _compute_top_minus_bottom_diagnostic(
 
     std = float(spread.std(ddof=0))
     periods_per_year = 252.0 / rebalance_days
-    sharpe = (
-        float(spread.mean() / std * np.sqrt(periods_per_year))
-        if std > 1e-10
-        else 0.0
-    )
+    sharpe = float(spread.mean() / std * np.sqrt(periods_per_year)) if std > 1e-10 else 0.0
 
     years = n * rebalance_days / 252.0
-    annual_return = (
-        float((1.0 + total_return) ** (1.0 / years) - 1.0) if years > 0 else 0.0
-    )
+    annual_return = float((1.0 + total_return) ** (1.0 / years) - 1.0) if years > 0 else 0.0
     volatility = float(std * np.sqrt(periods_per_year)) if n > 0 else 0.0
     positive_ratio = float((spread > 0).mean()) if n > 0 else 0.0
 
@@ -389,8 +369,7 @@ def evaluate_benchmark_aware_topk(
         "It does NOT model borrow availability, borrow cost, short-sale "
         "feasibility, or margin requirements.",
         "It is NOT trade-ready and must not be used for live position sizing.",
-        "Top-K long-only is the stronger research candidate for any future "
-        "executable path.",
+        "Top-K long-only is the stronger research candidate for any future executable path.",
     ]
 
     return BenchmarkAwareTopKResult(

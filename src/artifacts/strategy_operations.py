@@ -64,9 +64,7 @@ def _weights(value: object) -> dict[str, float]:
     for key, raw in value.items():
         number = _finite(raw)
         if number is None:
-            raise StrategyOperationsError(
-                f"allocation weight for {key!r} must be finite"
-            )
+            raise StrategyOperationsError(f"allocation weight for {key!r} must be finite")
         result[str(key)] = number
     return result
 
@@ -128,9 +126,7 @@ def _cadence(record: Mapping[str, Any]) -> tuple[str, str]:
     )
 
 
-def _source(
-    record: Mapping[str, Any], ledger: Mapping[str, Any] | None
-) -> dict[str, object]:
+def _source(record: Mapping[str, Any], ledger: Mapping[str, Any] | None) -> dict[str, object]:
     result: dict[str, object] = {
         "formal_bundle_id": record.get("bundle_id"),
         "formal_run_id": record.get("run_id"),
@@ -144,17 +140,11 @@ def _source(
     }
     if ledger is None:
         return result
-    delivery = (
-        ledger.get("delivery") if isinstance(ledger.get("delivery"), Mapping) else {}
-    )
-    workflow = (
-        ledger.get("workflow") if isinstance(ledger.get("workflow"), Mapping) else {}
-    )
+    delivery = ledger.get("delivery") if isinstance(ledger.get("delivery"), Mapping) else {}
+    workflow = ledger.get("workflow") if isinstance(ledger.get("workflow"), Mapping) else {}
     signal = ledger.get("signal") if isinstance(ledger.get("signal"), Mapping) else {}
     factor_evidence = (
-        signal.get("factor_evidence")
-        if isinstance(signal.get("factor_evidence"), Mapping)
-        else {}
+        signal.get("factor_evidence") if isinstance(signal.get("factor_evidence"), Mapping) else {}
     )
     result.update(
         {
@@ -176,15 +166,11 @@ def _unavailable(record: Mapping[str, Any], *, awaiting: bool) -> dict[str, obje
     if awaiting:
         status = "awaiting_observation"
         state_label = "Awaiting first governed evaluation"
-        note = (
-            "The signal publisher exists, but no cutoff-bound evaluation has been committed yet."
-        )
+        note = "The signal publisher exists, but no cutoff-bound evaluation has been committed yet."
     else:
         status = "pipeline_unavailable"
         state_label = "No governed current-target publisher"
-        note = (
-            "Formal historical evidence is available; live target state is intentionally unavailable."
-        )
+        note = "Formal historical evidence is available; live target state is intentionally unavailable."
     return {
         "model_version_id": str(record["model_version_id"]),
         "status": status,
@@ -200,9 +186,7 @@ def _unavailable(record: Mapping[str, Any], *, awaiting: bool) -> dict[str, obje
         "data_freshness": "unknown",
         "factor_freshness": "blocked" if awaiting else "unknown",
         "delivery_status": "not available",
-        "source_label": (
-            "Governed signal ledger" if awaiting else "Formal evidence only"
-        ),
+        "source_label": ("Governed signal ledger" if awaiting else "Formal evidence only"),
         "source_href": None,
         "note": note,
         "factor_evidence": [],
@@ -251,14 +235,10 @@ def _qqq_state(signal: Mapping[str, Any]) -> tuple[int, int, str]:
     current = signal.get("current_state", signal.get("current_formal_state", -1))
     target = signal.get("target_state", signal.get("target_formal_state", -1))
     current_state = (
-        int(current)
-        if isinstance(current, (int, float)) and not isinstance(current, bool)
-        else -1
+        int(current) if isinstance(current, (int, float)) and not isinstance(current, bool) else -1
     )
     target_state = (
-        int(target)
-        if isinstance(target, (int, float)) and not isinstance(target, bool)
-        else -1
+        int(target) if isinstance(target, (int, float)) and not isinstance(target, bool) else -1
     )
     from_label = QQQ_STATE_LABELS.get(current_state, f"State {current_state}")
     to_label = QQQ_STATE_LABELS.get(target_state, f"State {target_state}")
@@ -272,9 +252,7 @@ def _qqq_state(signal: Mapping[str, Any]) -> tuple[int, int, str]:
         )
         label = f"{to_label} · {overlay}"
     else:
-        label = (
-            to_label if current_state == target_state else f"{from_label} → {to_label}"
-        )
+        label = to_label if current_state == target_state else f"{from_label} → {to_label}"
     return current_state, target_state, label
 
 
@@ -303,14 +281,10 @@ def _qqq(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
     data_fresh = signal.get("data_freshness_ok") is True
     delivery_status, issue_number = _delivery(ledger)
     latest = signal.get("latest_data_date") or ledger.get("latest_data_date")
-    factor_freshness, factors, factor_error = _factor_snapshot(
-        signal, latest_data_date=latest
-    )
+    factor_freshness, factors, factor_error = _factor_snapshot(signal, latest_data_date=latest)
     _, _, state_label = _qqq_state(signal)
     cadence, next_policy = _cadence(record)
-    decision_reason = signal.get("decision_reason_label") or signal.get(
-        "decision_reason"
-    )
+    decision_reason = signal.get("decision_reason_label") or signal.get("decision_reason")
     if not decision_reason:
         current_overlay = signal.get("current_overlay")
         target_overlay = signal.get("target_overlay")
@@ -365,9 +339,7 @@ def _byd(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, obje
     data_fresh = signal.get("data_freshness_ok") is True
     delivery_status, issue_number = _delivery(ledger)
     latest = signal.get("latest_data_date") or ledger.get("latest_data_date")
-    factor_freshness, factors, factor_error = _factor_snapshot(
-        signal, latest_data_date=latest
-    )
+    factor_freshness, factors, factor_error = _factor_snapshot(signal, latest_data_date=latest)
     mode = str(signal.get("target_mode") or "")
     cadence, next_policy = _cadence(record)
     return {
@@ -418,11 +390,11 @@ def _ranker(record: Mapping[str, Any], ledger: Mapping[str, Any]) -> dict[str, o
     data_fresh = signal.get("data_freshness_ok") is True
     delivery_status, issue_number = _delivery(ledger)
     latest = signal.get("latest_data_date") or ledger.get("latest_data_date")
-    factor_freshness, factors, factor_error = _factor_snapshot(
-        signal, latest_data_date=latest
-    )
+    factor_freshness, factors, factor_error = _factor_snapshot(signal, latest_data_date=latest)
     family = str(record.get("model_family_id", ""))
-    diagnostics = signal.get("diagnostics") if isinstance(signal.get("diagnostics"), Mapping) else {}
+    diagnostics = (
+        signal.get("diagnostics") if isinstance(signal.get("diagnostics"), Mapping) else {}
+    )
     if family == US_RANKER_FAMILY:
         state_label = "US Top-15 rebalance"
     elif diagnostics.get("risk_on") is False:
@@ -480,20 +452,14 @@ def build_operations_payload(
                 model_version_id=model_version_id,
             )
         except (OSError, json.JSONDecodeError, StrategySignalLedgerError) as exc:
-            blocked = _unavailable(
-                formal, awaiting=family in SUPPORTED_SIGNAL_FAMILIES
-            )
+            blocked = _unavailable(formal, awaiting=family in SUPPORTED_SIGNAL_FAMILIES)
             blocked["status"] = "blocked"
             blocked["decision_reason"] = str(exc)
-            blocked["note"] = (
-                "Governed signal ledger failed validation; operations fail closed."
-            )
+            blocked["note"] = "Governed signal ledger failed validation; operations fail closed."
             records.append(blocked)
             continue
         if ledger is None:
-            records.append(
-                _unavailable(formal, awaiting=family in SUPPORTED_SIGNAL_FAMILIES)
-            )
+            records.append(_unavailable(formal, awaiting=family in SUPPORTED_SIGNAL_FAMILIES))
         elif family == QQQ_FAMILY:
             records.append(_qqq(formal, ledger))
         elif family == BYD_FAMILY:
@@ -506,9 +472,7 @@ def build_operations_payload(
             blocked["decision_reason"] = (
                 "A signal ledger exists but no governed operations adapter is registered."
             )
-            blocked["note"] = (
-                "Backend adapter required before this signal can be published."
-            )
+            blocked["note"] = "Backend adapter required before this signal can be published."
             records.append(blocked)
 
     return {
@@ -533,14 +497,10 @@ def validate_operations_payload(payload: object) -> None:
     seen: set[str] = set()
     for index, value in enumerate(records):
         if not isinstance(value, Mapping):
-            raise StrategyOperationsError(
-                f"operations record {index} must be an object"
-            )
+            raise StrategyOperationsError(f"operations record {index} must be an object")
         model_id = value.get("model_version_id")
         if not isinstance(model_id, str) or not model_id:
-            raise StrategyOperationsError(
-                f"operations record {index} has no model identity"
-            )
+            raise StrategyOperationsError(f"operations record {index} has no model identity")
         if model_id in seen:
             raise StrategyOperationsError(f"duplicate operations model: {model_id}")
         seen.add(model_id)
@@ -550,16 +510,10 @@ def validate_operations_payload(payload: object) -> None:
             value.get("data_freshness") not in FRESHNESS_VALUES
             or value.get("factor_freshness") not in FRESHNESS_VALUES
         ):
-            raise StrategyOperationsError(
-                f"invalid freshness state for {model_id}"
-            )
+            raise StrategyOperationsError(f"invalid freshness state for {model_id}")
         factor_evidence = value.get("factor_evidence")
-        if not isinstance(factor_evidence, Sequence) or isinstance(
-            factor_evidence, (str, bytes)
-        ):
-            raise StrategyOperationsError(
-                f"factor evidence must be a list for {model_id}"
-            )
+        if not isinstance(factor_evidence, Sequence) or isinstance(factor_evidence, (str, bytes)):
+            raise StrategyOperationsError(f"factor evidence must be a list for {model_id}")
         if value.get("factor_freshness") == "current" and not factor_evidence:
             raise StrategyOperationsError(
                 f"current factor freshness requires evidence for {model_id}"

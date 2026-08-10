@@ -79,9 +79,7 @@ def normalize_yahoo_raw(frame: pd.DataFrame) -> pd.DataFrame:
     if frame is None or frame.empty:
         raise ValueError("Yahoo raw frame is empty")
     result = _flatten_columns(frame).reset_index()
-    result.columns = [
-        str(column).strip().lower().replace(" ", "_") for column in result.columns
-    ]
+    result.columns = [str(column).strip().lower().replace(" ", "_") for column in result.columns]
     if "datetime" in result.columns and "date" not in result.columns:
         result = result.rename(columns={"datetime": "date"})
     required = ["date", "open", "high", "low", "close", "adj_close", "volume"]
@@ -118,9 +116,7 @@ def normalize_yahoo_raw(frame: pd.DataFrame) -> pd.DataFrame:
             "close": "raw_close",
         }
     )
-    normalized["adjustment_ratio"] = (
-        normalized["adj_close"] / normalized["raw_close"]
-    )
+    normalized["adjustment_ratio"] = normalized["adj_close"] / normalized["raw_close"]
     ratios = normalized["adjustment_ratio"].to_numpy(dtype=float)
     if not np.isfinite(ratios).all() or (ratios <= 0).any():
         raise ValueError("adjustment ratio must be finite and positive")
@@ -168,8 +164,12 @@ def derive_adjusted_bars(raw_frame: pd.DataFrame) -> pd.DataFrame:
     required_low = output[["open", "close", "high"]].min(axis=1)
     high_gap = (required_high - output["high"]).clip(lower=0.0)
     low_gap = (output["low"] - required_low).clip(lower=0.0)
-    high_scale = pd.concat([required_high.abs(), output["high"].abs()], axis=1).max(axis=1).clip(lower=1.0)
-    low_scale = pd.concat([required_low.abs(), output["low"].abs()], axis=1).max(axis=1).clip(lower=1.0)
+    high_scale = (
+        pd.concat([required_high.abs(), output["high"].abs()], axis=1).max(axis=1).clip(lower=1.0)
+    )
+    low_scale = (
+        pd.concat([required_low.abs(), output["low"].abs()], axis=1).max(axis=1).clip(lower=1.0)
+    )
     max_relative = float(max((high_gap / high_scale).max(), (low_gap / low_scale).max()))
     if max_relative > 1e-12:
         raise ValueError(
@@ -190,9 +190,7 @@ def derive_adjusted_bars(raw_frame: pd.DataFrame) -> pd.DataFrame:
 def _canonical_csv_bytes(frame: pd.DataFrame, *, columns: tuple[str, ...]) -> bytes:
     output = frame.loc[:, list(columns)].copy()
     output["date"] = pd.to_datetime(output["date"]).dt.strftime("%Y-%m-%d")
-    return output.to_csv(index=False, lineterminator="\n", float_format="%.17g").encode(
-        "utf-8"
-    )
+    return output.to_csv(index=False, lineterminator="\n", float_format="%.17g").encode("utf-8")
 
 
 def write_raw_contract(path: str | Path, frame: pd.DataFrame) -> str:

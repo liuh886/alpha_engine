@@ -18,9 +18,9 @@ def _sha256_file(path: Path) -> str:
 
 
 def _canonical_hash(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -122,8 +122,8 @@ def run_low_turnover_multifactor_pipeline(
     if not isinstance(contract, dict) or not contract.get("combination_version"):
         raise ValueError("multifactor contract requires combination_version")
     relationship_path = Path(relationship_map_path).resolve()
-    relationship_manifest_hash, relationship_manifest_identity = (
-        _verify_relationship_manifest(relationship_path)
+    relationship_manifest_hash, relationship_manifest_identity = _verify_relationship_manifest(
+        relationship_path
     )
     run_low_turnover_multifactor(
         contract_path=resolved_contract,
@@ -144,19 +144,13 @@ def run_low_turnover_multifactor_pipeline(
     decision_payload["decision_desk_factor_score_artifact"] = "multifactor_scores.json"
     decision_payload["score_row_count"] = score_rows
     decision_payload["relationship_manifest_sha256"] = relationship_manifest_hash
-    decision_payload["relationship_manifest_identity_sha256"] = (
-        relationship_manifest_identity
-    )
+    decision_payload["relationship_manifest_identity_sha256"] = relationship_manifest_identity
     _write_json(decision_path, decision_payload)
 
     manifest_path = output / "evidence_manifest.json"
     manifest = _load_json(manifest_path)
-    manifest.setdefault("inputs", {})["relationship_evidence_manifest"] = (
-        relationship_manifest_hash
-    )
-    manifest["inputs"]["relationship_evidence_manifest_identity"] = (
-        relationship_manifest_identity
-    )
+    manifest.setdefault("inputs", {})["relationship_evidence_manifest"] = relationship_manifest_hash
+    manifest["inputs"]["relationship_evidence_manifest_identity"] = relationship_manifest_identity
     manifest["outputs"] = {
         name: _sha256_file(output / name)
         for name in (

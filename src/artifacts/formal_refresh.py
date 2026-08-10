@@ -131,14 +131,10 @@ def accepted_records(root: Path) -> tuple[FormalModelRecord, ...]:
             raise FormalRefreshError(f"formal catalog record {index} is invalid")
         model_id = str(value.get("model_id") or "")
         if not model_id or model_id in observed:
-            raise FormalRefreshError(
-                f"duplicate or empty formal model id: {model_id!r}"
-            )
+            raise FormalRefreshError(f"duplicate or empty formal model id: {model_id!r}")
         observed.add(model_id)
         if value.get("publication_status") != "accepted_formal_baseline":
-            raise FormalRefreshError(
-                f"non-accepted record in formal catalog: {model_id}"
-            )
+            raise FormalRefreshError(f"non-accepted record in formal catalog: {model_id}")
         relative = str(value.get("path") or "")
         package_path = root / relative
         if not package_path.is_file():
@@ -158,9 +154,7 @@ def accepted_records(root: Path) -> tuple[FormalModelRecord, ...]:
             raise FormalRefreshError(f"formal package market is missing: {model_id}")
         cutoff = str(package.get("evidence_cutoff") or "")
         _date(cutoff, label=f"{model_id}.evidence_cutoff")
-        display_name = str(
-            value.get("display_name") or package.get("display_name") or model_id
-        )
+        display_name = str(value.get("display_name") or package.get("display_name") or model_id)
         records.append(
             FormalModelRecord(
                 model_id=model_id,
@@ -177,19 +171,12 @@ def accepted_records(root: Path) -> tuple[FormalModelRecord, ...]:
 
 def common_provider_cutoff(manifest: Mapping[str, Any], *, market: str) -> str:
     if manifest.get("market") != market:
-        raise FormalRefreshError(
-            f"provider manifest market mismatch: expected {market}"
-        )
+        raise FormalRefreshError(f"provider manifest market mismatch: expected {market}")
     if manifest.get("status") != "selected_pool_price_refresh_ready":
         raise FormalRefreshError(f"{market} provider refresh is not ready")
     if manifest.get("promotion_eligible") is not True:
-        raise FormalRefreshError(
-            f"{market} provider refresh is not promotion eligible"
-        )
-    if (
-        manifest.get("research_only") is not True
-        or manifest.get("trade_ready") is not False
-    ):
+        raise FormalRefreshError(f"{market} provider refresh is not promotion eligible")
+    if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
         raise FormalRefreshError(f"{market} provider refresh boundary is invalid")
     rows = manifest.get("records")
     if not isinstance(rows, list) or not rows:
@@ -242,9 +229,7 @@ def build_plan(
             )
         if target > current:
             stale.append(record.model_id)
-    timestamp = generated_at or datetime.now(timezone.utc).replace(
-        microsecond=0
-    ).isoformat()
+    timestamp = generated_at or datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     return FormalRefreshPlan(
         generated_at=timestamp,
         target_cutoffs=parsed_targets,
@@ -261,9 +246,7 @@ def _stable_prefix(
     field: str,
 ) -> None:
     if len(new) < len(old) or list(new[: len(old)]) != list(old):
-        raise FormalRefreshError(
-            f"{model_id}: historical {field} is not an immutable prefix"
-        )
+        raise FormalRefreshError(f"{model_id}: historical {field} is not an immutable prefix")
 
 
 def verify_append_only_package(
@@ -289,10 +272,7 @@ def verify_append_only_package(
             raise FormalRefreshError(f"{model_id}: immutable field changed: {key}")
     if candidate.get("portfolio_contract") != current.get("portfolio_contract"):
         raise FormalRefreshError(f"{model_id}: portfolio contract changed")
-    if (
-        candidate.get("research_only") is not True
-        or candidate.get("trade_ready") is not False
-    ):
+    if candidate.get("research_only") is not True or candidate.get("trade_ready") is not False:
         raise FormalRefreshError(f"{model_id}: research boundary changed")
 
     current_cutoff = _date(
@@ -306,33 +286,26 @@ def verify_append_only_package(
     target = _date(target_cutoff, label=f"{model_id} target cutoff")
     if candidate_cutoff != target or candidate_cutoff < current_cutoff:
         raise FormalRefreshError(
-            f"{model_id}: candidate cutoff {candidate_cutoff} "
-            f"does not match target {target}"
+            f"{model_id}: candidate cutoff {candidate_cutoff} does not match target {target}"
         )
 
     for field in ("report", "positions", "trades"):
         old_rows = current.get(field)
         new_rows = candidate.get(field)
         if not isinstance(old_rows, list) or not isinstance(new_rows, list):
-            raise FormalRefreshError(
-                f"{model_id}: {field} must be retained as a list"
-            )
+            raise FormalRefreshError(f"{model_id}: {field} must be retained as a list")
         _stable_prefix(old_rows, new_rows, model_id=model_id, field=field)
 
     current_range = current.get("date_range")
     candidate_range = candidate.get("date_range")
-    if not isinstance(current_range, Mapping) or not isinstance(
-        candidate_range, Mapping
-    ):
+    if not isinstance(current_range, Mapping) or not isinstance(candidate_range, Mapping):
         raise FormalRefreshError(f"{model_id}: date_range is invalid")
     if candidate_range.get("start") != current_range.get("start"):
         raise FormalRefreshError(f"{model_id}: historical start changed")
     old_end = _date(current_range.get("end"), label=f"{model_id} old end")
     new_end = _date(candidate_range.get("end"), label=f"{model_id} new end")
     if new_end < old_end or new_end > target:
-        raise FormalRefreshError(
-            f"{model_id}: candidate date_range.end is invalid"
-        )
+        raise FormalRefreshError(f"{model_id}: candidate date_range.end is invalid")
 
     freshness = candidate.get("freshness")
     if not isinstance(freshness, Mapping):
@@ -394,22 +367,13 @@ def finalize_candidate_tree(
     raw_rows = catalog.get("records")
     if not isinstance(raw_rows, list):
         raise FormalRefreshError("candidate catalog records are missing")
-    candidate_ids = [
-        str(row.get("model_id"))
-        for row in raw_rows
-        if isinstance(row, dict)
-    ]
+    candidate_ids = [str(row.get("model_id")) for row in raw_rows if isinstance(row, dict)]
     if candidate_ids != current_ids:
         raise FormalRefreshError(
-            "candidate catalog changed accepted model membership: "
-            f"{candidate_ids} != {current_ids}"
+            f"candidate catalog changed accepted model membership: {candidate_ids} != {current_ids}"
         )
 
-    rows_by_id = {
-        str(row.get("model_id")): row
-        for row in raw_rows
-        if isinstance(row, dict)
-    }
+    rows_by_id = {str(row.get("model_id")): row for row in raw_rows if isinstance(row, dict)}
     verification: list[dict[str, Any]] = []
     for record in current_records:
         current_package = load_object(current_root / record.path)
@@ -422,12 +386,8 @@ def finalize_candidate_tree(
                 target_cutoff=target,
             )
         )
-        rows_by_id[record.model_id]["sha256"] = sha256(
-            candidate_root / record.path
-        )
-    catalog["records"] = [
-        rows_by_id[record.model_id] for record in current_records
-    ]
+        rows_by_id[record.model_id]["sha256"] = sha256(candidate_root / record.path)
+    catalog["records"] = [rows_by_id[record.model_id] for record in current_records]
     catalog["published_at"] = generated_at
     catalog["research_only"] = True
     catalog["trade_ready"] = False

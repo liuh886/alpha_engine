@@ -81,13 +81,13 @@ def build_factor_dataset(adjusted_bars: pd.DataFrame) -> tuple[pd.DataFrame, lis
         features[f"mom_{window}"] = close.pct_change(window)
         features[f"open_mom_{window}"] = open_.pct_change(window)
     for recent, long_window in ((5, 20), (10, 40), (20, 60), (20, 120)):
-        features[f"skip_recent_{recent}_{long_window}"] = (
-            close.shift(recent).pct_change(long_window - recent)
+        features[f"skip_recent_{recent}_{long_window}"] = close.shift(recent).pct_change(
+            long_window - recent
         )
     for short, long_window in ((5, 20), (10, 40), (20, 60), (20, 120)):
-        features[f"momentum_accel_{short}_{long_window}"] = (
-            close.pct_change(short) - close.pct_change(long_window)
-        )
+        features[f"momentum_accel_{short}_{long_window}"] = close.pct_change(
+            short
+        ) - close.pct_change(long_window)
 
     for window in (20, 60, 120, 252):
         rolling_high = close.rolling(window).max()
@@ -96,9 +96,9 @@ def build_factor_dataset(adjusted_bars: pd.DataFrame) -> tuple[pd.DataFrame, lis
         distance_low = close / rolling_low - 1.0
         features[f"drawdown_{window}"] = drawdown
         features[f"distance_from_low_{window}"] = distance_low
-        features[f"range_position_{window}"] = (
-            (close - rolling_low) / (rolling_high - rolling_low).replace(0.0, np.nan)
-        )
+        features[f"range_position_{window}"] = (close - rolling_low) / (
+            rolling_high - rolling_low
+        ).replace(0.0, np.nan)
         features[f"trend_slope_{window}"] = _rolling_slope(close, window)
         features[f"efficiency_ratio_{window}"] = _efficiency_ratio(close, window)
 
@@ -111,9 +111,7 @@ def build_factor_dataset(adjusted_bars: pd.DataFrame) -> tuple[pd.DataFrame, lis
     features["recovery_velocity_20_60"] = (
         features["distance_from_low_20"] - features["distance_from_low_60"]
     )
-    features["short_continuation_long_reversal"] = (
-        features["mom_2"] - features["mom_120"]
-    )
+    features["short_continuation_long_reversal"] = features["mom_2"] - features["mom_120"]
 
     for window in (5, 10, 20):
         features[f"rsi_{window}"] = _rsi(close, window)
@@ -129,10 +127,9 @@ def build_factor_dataset(adjusted_bars: pd.DataFrame) -> tuple[pd.DataFrame, lis
     features["realized_vol_60"] = vol60
     features["vol_compression_20_60"] = vol20 / vol60.replace(0.0, np.nan)
     features["downside_vol_20"] = daily_return.clip(upper=0.0).rolling(20).std()
-    features["upside_downside_vol_ratio_20"] = (
-        daily_return.clip(lower=0.0).rolling(20).std()
-        / features["downside_vol_20"].replace(0.0, np.nan)
-    )
+    features["upside_downside_vol_ratio_20"] = daily_return.clip(lower=0.0).rolling(
+        20
+    ).std() / features["downside_vol_20"].replace(0.0, np.nan)
     features["return_autocorr_20"] = daily_return.rolling(20).corr(daily_return.shift(1))
     features["open_return_autocorr_20"] = open_return.rolling(20).corr(open_return.shift(1))
 
@@ -143,15 +140,14 @@ def build_factor_dataset(adjusted_bars: pd.DataFrame) -> tuple[pd.DataFrame, lis
     features["gap_reversal_5"] = -features["overnight_gap"].rolling(5).sum()
 
     log_volume = np.log(volume)
-    features["volume_z_20"] = (
-        log_volume - log_volume.rolling(20).mean()
-    ) / log_volume.rolling(20).std().replace(0.0, np.nan)
+    features["volume_z_20"] = (log_volume - log_volume.rolling(20).mean()) / log_volume.rolling(
+        20
+    ).std().replace(0.0, np.nan)
     features["volume_change_20"] = volume.pct_change(20)
     features["price_volume_corr_20"] = daily_return.rolling(20).corr(log_volume.diff())
-    features["up_volume_share_20"] = (
-        (volume.where(daily_return > 0, 0.0)).rolling(20).sum()
-        / volume.rolling(20).sum().replace(0.0, np.nan)
-    )
+    features["up_volume_share_20"] = (volume.where(daily_return > 0, 0.0)).rolling(
+        20
+    ).sum() / volume.rolling(20).sum().replace(0.0, np.nan)
     features["rebound_volume_confirmation"] = (
         features["distance_from_low_20"] * features["volume_z_20"]
     )
@@ -191,12 +187,27 @@ def factor_diagnostics(
         row: dict[str, object] = {"factor": factor}
         for name, (start, end) in periods.items():
             sample = dataset.loc[start:end, [factor, FORWARD_RETURN_COLUMN]].dropna()
-            ic = float(sample[factor].corr(sample[FORWARD_RETURN_COLUMN], method="spearman")) if len(sample) >= 30 else float("nan")
-            pearson = float(sample[factor].corr(sample[FORWARD_RETURN_COLUMN])) if len(sample) >= 30 else float("nan")
+            ic = (
+                float(sample[factor].corr(sample[FORWARD_RETURN_COLUMN], method="spearman"))
+                if len(sample) >= 30
+                else float("nan")
+            )
+            pearson = (
+                float(sample[factor].corr(sample[FORWARD_RETURN_COLUMN]))
+                if len(sample) >= 30
+                else float("nan")
+            )
             spread, monotonicity = _quintile_stats(sample, factor)
-            hit_rate = float(
-                (np.sign(sample[factor] - sample[factor].median()) == np.sign(sample[FORWARD_RETURN_COLUMN])).mean()
-            ) if len(sample) >= 30 else float("nan")
+            hit_rate = (
+                float(
+                    (
+                        np.sign(sample[factor] - sample[factor].median())
+                        == np.sign(sample[FORWARD_RETURN_COLUMN])
+                    ).mean()
+                )
+                if len(sample) >= 30
+                else float("nan")
+            )
             row[f"{name}_spearman"] = ic
             row[f"{name}_pearson"] = pearson
             row[f"{name}_spread"] = spread
@@ -230,10 +241,14 @@ def factor_diagnostics(
                 }
             )
         rows.append(row)
-    return pd.DataFrame(rows).sort_values(
-        ["period_sign_consistency", "stability_score", "mean_abs_ic"],
-        ascending=False,
-    ).reset_index(drop=True)
+    return (
+        pd.DataFrame(rows)
+        .sort_values(
+            ["period_sign_consistency", "stability_score", "mean_abs_ic"],
+            ascending=False,
+        )
+        .reset_index(drop=True)
+    )
 
 
 def discover_factors(adjusted_bars: pd.DataFrame) -> FactorDiscoveryResult:

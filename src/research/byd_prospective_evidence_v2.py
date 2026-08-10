@@ -129,8 +129,7 @@ def _read_records(directory: Path) -> list[dict[str, Any]]:
     if not directory.exists():
         return []
     return [
-        json.loads(path.read_text(encoding="utf-8"))
-        for path in sorted(directory.glob("*.json"))
+        json.loads(path.read_text(encoding="utf-8")) for path in sorted(directory.glob("*.json"))
     ]
 
 
@@ -201,13 +200,11 @@ def enrich_observations(
                 "observation_mode": mode,
                 "prospective_eligible": mode == "same_session_post_close",
                 "primary_raw_ohlcv": {
-                    column: _float(raw_row[column])
-                    for column in (*PRICE_COLUMNS, "volume")
+                    column: _float(raw_row[column]) for column in (*PRICE_COLUMNS, "volume")
                 },
                 "provider_adjusted_close": _float(provider_row["adj_close"]),
                 "chain_linked_adjusted_ohlcv": {
-                    column: _float(adjusted_row[column])
-                    for column in (*PRICE_COLUMNS, "volume")
+                    column: _float(adjusted_row[column]) for column in (*PRICE_COLUMNS, "volume")
                 },
                 "company_actions": {
                     "dividend": _float(provider_row["dividends"]),
@@ -223,9 +220,7 @@ def enrich_observations(
                 },
                 "independent_audit": {
                     "confirmed": bool(audit_row["independent_raw_confirmed"]),
-                    "open_research_eligible": bool(
-                        audit_row["open_research_eligible"]
-                    ),
+                    "open_research_eligible": bool(audit_row["open_research_eligible"]),
                     "open_level_abs_pct_difference": (
                         _float(audit_row["open_level_abs_pct_difference"])
                         if pd.notna(audit_row["open_level_abs_pct_difference"])
@@ -239,9 +234,7 @@ def enrich_observations(
                 },
             }
         )
-        row["data_version"] = (
-            f"byd-shadow-v2-{row['signal_date']}-{full_payload_sha[:12]}"
-        )
+        row["data_version"] = f"byd-shadow-v2-{row['signal_date']}-{full_payload_sha[:12]}"
         enriched.append(row)
     return enriched
 
@@ -254,15 +247,9 @@ def _observation_frame(observations: list[dict[str, Any]]) -> pd.DataFrame:
             {
                 "date": pd.Timestamp(observation["signal_date"]),
                 "open": _float(adjusted["open"]),
-                "open_research_eligible": bool(
-                    observation["open_research_eligible"]
-                ),
-                "base_target_position": _float(
-                    observation["base_target_position"]
-                ),
-                "shadow_target_position": _float(
-                    observation["shadow_target_position"]
-                ),
+                "open_research_eligible": bool(observation["open_research_eligible"]),
+                "base_target_position": _float(observation["base_target_position"]),
+                "shadow_target_position": _float(observation["shadow_target_position"]),
             }
         )
     if not rows:
@@ -314,12 +301,8 @@ def mature_outcomes_from_observations(
         return []
     strategies = {
         cost: {
-            "base": _stored_strategy_daily(
-                frame, "base_target_position", cost_bps=float(cost)
-            ),
-            "shadow": _stored_strategy_daily(
-                frame, "shadow_target_position", cost_bps=float(cost)
-            ),
+            "base": _stored_strategy_daily(frame, "base_target_position", cost_bps=float(cost)),
+            "shadow": _stored_strategy_daily(frame, "shadow_target_position", cost_bps=float(cost)),
         }
         for cost in COST_SCENARIOS_BPS
     }
@@ -327,10 +310,7 @@ def mature_outcomes_from_observations(
     for observation in records:
         signal_date = pd.Timestamp(observation["signal_date"])
         eligible = list(
-            frame.index[
-                (frame.index > signal_date)
-                & frame["open_research_eligible"].astype(bool)
-            ]
+            frame.index[(frame.index > signal_date) & frame["open_research_eligible"].astype(bool)]
         )
         for horizon in HORIZONS:
             if len(eligible) <= horizon:
@@ -340,22 +320,15 @@ def mature_outcomes_from_observations(
             scenarios: dict[str, dict[str, float]] = {}
             for cost, results in strategies.items():
                 base_block = results["base"].loc[
-                    (results["base"].index >= entry)
-                    & (results["base"].index < exit_)
+                    (results["base"].index >= entry) & (results["base"].index < exit_)
                 ]
                 shadow_block = results["shadow"].reindex(base_block.index)
-                base_return = float(
-                    (1.0 + base_block["net_return"]).prod() - 1.0
-                )
-                shadow_return = float(
-                    (1.0 + shadow_block["net_return"]).prod() - 1.0
-                )
+                base_return = float((1.0 + base_block["net_return"]).prod() - 1.0)
+                shadow_return = float((1.0 + shadow_block["net_return"]).prod() - 1.0)
                 scenarios[str(cost)] = {
                     "base_return": base_return,
                     "shadow_return": shadow_return,
-                    "incremental_return": (
-                        (1.0 + shadow_return) / (1.0 + base_return) - 1.0
-                    ),
+                    "incremental_return": ((1.0 + shadow_return) / (1.0 + base_return) - 1.0),
                 }
             outcomes.append(
                 {
@@ -381,8 +354,7 @@ def _derived_ledger_v2(
     observation_hashes: dict[str, str],
 ) -> pd.DataFrame:
     outcome_map = {
-        (row["signal_date"], int(row["horizon_eligible_opens"])): row
-        for row in outcomes
+        (row["signal_date"], int(row["horizon_eligible_opens"])): row for row in outcomes
     }
     rows: list[dict[str, Any]] = []
     for observation in observations:
@@ -436,19 +408,13 @@ def _derived_ledger_v2(
         }
         for horizon in HORIZONS:
             outcome = outcome_map.get((signal_date, horizon))
-            row[f"exit_open_date_{horizon}"] = (
-                outcome["exit_open_date"] if outcome else ""
-            )
+            row[f"exit_open_date_{horizon}"] = outcome["exit_open_date"] if outcome else ""
             if outcome and not row["entry_open_date"]:
                 row["entry_open_date"] = outcome["entry_open_date"]
             for cost in COST_SCENARIOS_BPS:
-                scenario = (
-                    outcome["cost_scenarios_bps"][str(cost)] if outcome else None
-                )
+                scenario = outcome["cost_scenarios_bps"][str(cost)] if outcome else None
                 for metric in ("base_return", "shadow_return", "incremental_return"):
-                    row[f"{metric}_{horizon}_{cost}bps"] = (
-                        scenario[metric] if scenario else np.nan
-                    )
+                    row[f"{metric}_{horizon}_{cost}bps"] = scenario[metric] if scenario else np.nan
         rows.append(row)
     return pd.DataFrame(rows, columns=LEDGER_COLUMNS_V2)
 
@@ -479,9 +445,7 @@ def persist_shadow_store_v2(
 
     outcomes = _read_records(outcome_dir)
     observation_hashes = {
-        row["signal_date"]: file_sha256(
-            observation_dir / f"{row['signal_date']}.json"
-        )
+        row["signal_date"]: file_sha256(observation_dir / f"{row['signal_date']}.json")
         for row in observations
     }
     ledger = _derived_ledger_v2(observations, outcomes, observation_hashes)

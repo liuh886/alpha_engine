@@ -109,9 +109,7 @@ def _normalize_index(frame: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
     missing = sorted(required.difference(frame.columns))
     if missing:
         raise DataFetchError(f"tushare index payload missing columns for {symbol}: {missing}")
-    out = frame[list(required)].rename(
-        columns={"trade_date": "date", "vol": "volume"}
-    )
+    out = frame[list(required)].rename(columns={"trade_date": "date", "vol": "volume"})
     out["date"] = pd.to_datetime(out["date"], format="%Y%m%d", errors="coerce")
     out = _numeric(out, ("open", "high", "low", "close", "volume", "amount"))
     out["volume"] = out["volume"] * 100.0
@@ -139,9 +137,7 @@ def _normalize_equity(
     missing_daily = sorted(required_daily.difference(daily.columns))
     missing_factor = sorted(required_factor.difference(factors.columns))
     if missing_daily:
-        raise DataFetchError(
-            f"tushare daily payload missing columns for {symbol}: {missing_daily}"
-        )
+        raise DataFetchError(f"tushare daily payload missing columns for {symbol}: {missing_daily}")
     if missing_factor:
         raise DataFetchError(
             f"tushare adj_factor payload missing columns for {symbol}: {missing_factor}"
@@ -152,9 +148,7 @@ def _normalize_equity(
     bars["trade_date"] = bars["trade_date"].astype(str)
     factor_frame["trade_date"] = factor_frame["trade_date"].astype(str)
     out = bars.merge(factor_frame, on="trade_date", how="left", validate="one_to_one")
-    out = out.rename(
-        columns={"trade_date": "date", "vol": "volume", "adj_factor": "factor"}
-    )
+    out = out.rename(columns={"trade_date": "date", "vol": "volume", "adj_factor": "factor"})
     out["date"] = pd.to_datetime(out["date"], format="%Y%m%d", errors="coerce")
     out = _numeric(
         out,
@@ -190,9 +184,7 @@ def _finish(frame: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
 
     valid, _, errors = validate_market_data(out, symbol)
     if not valid:
-        raise DataFetchError(
-            f"tushare schema validation failed for {symbol}: {'; '.join(errors)}"
-        )
+        raise DataFetchError(f"tushare schema validation failed for {symbol}: {'; '.join(errors)}")
     return out
 
 

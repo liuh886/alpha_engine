@@ -30,9 +30,7 @@ def _path_statistics(returns: pd.Series) -> dict[str, float | int]:
             "maximum_adverse_excursion": 0.0,
         }
     equity = (1.0 + clean).cumprod()
-    anchored = pd.concat(
-        [pd.Series([1.0]), equity.reset_index(drop=True)], ignore_index=True
-    )
+    anchored = pd.concat([pd.Series([1.0]), equity.reset_index(drop=True)], ignore_index=True)
     drawdown = anchored / anchored.cummax() - 1.0
     return {
         "sessions": int(len(clean)),
@@ -71,9 +69,7 @@ def open_to_open_contribution_decomposition(
         weight = pd.to_numeric(daily[f"weight_{asset}"], errors="coerce").fillna(0.0)
         open_price = pd.to_numeric(daily[f"{asset}_open"], errors="coerce")
         close_price = pd.to_numeric(daily[f"{asset}_close"], errors="coerce")
-        total_return = pd.to_numeric(
-            daily[f"{asset}_next_open_return"], errors="coerce"
-        )
+        total_return = pd.to_numeric(daily[f"{asset}_next_open_return"], errors="coerce")
         intraday = close_price / open_price - 1.0
         next_open = open_price * (1.0 + total_return)
         overnight = next_open / close_price - 1.0
@@ -102,15 +98,17 @@ def _warning_flags(daily: pd.DataFrame) -> pd.DataFrame:
         pd.to_numeric(daily.get("QQQ_close"), errors="coerce")
         < pd.to_numeric(daily.get("ma_short"), errors="coerce")
     ).fillna(False)
-    flags["vix_stress"] = daily.get(
-        "vix_stress", pd.Series(False, index=daily.index)
-    ).fillna(False).astype(bool)
-    flags["vxn_stress"] = daily.get(
-        "vxn_stress", pd.Series(False, index=daily.index)
-    ).fillna(False).astype(bool)
-    flags["below_ma_short_n"] = daily.get(
-        "below_ma_short_n", pd.Series(False, index=daily.index)
-    ).fillna(False).astype(bool)
+    flags["vix_stress"] = (
+        daily.get("vix_stress", pd.Series(False, index=daily.index)).fillna(False).astype(bool)
+    )
+    flags["vxn_stress"] = (
+        daily.get("vxn_stress", pd.Series(False, index=daily.index)).fillna(False).astype(bool)
+    )
+    flags["below_ma_short_n"] = (
+        daily.get("below_ma_short_n", pd.Series(False, index=daily.index))
+        .fillna(False)
+        .astype(bool)
+    )
     flags["qqq_below_ma20"] = qqq_below_ma20
     flags["any_warning"] = flags.any(axis=1)
     return flags
@@ -130,9 +128,7 @@ def state_two_episode_attribution(
         raise ValueError("strategy result has no position_state")
     decomposition = open_to_open_contribution_decomposition(daily)
     warnings = _warning_flags(daily)
-    frame = daily.join(decomposition).join(
-        warnings.add_prefix("warning_"), how="left"
-    )
+    frame = daily.join(decomposition).join(warnings.add_prefix("warning_"), how="left")
     states = frame["position_state"].astype(int)
     starts = states.eq(2) & states.shift(1).ne(2)
     rows: list[dict[str, Any]] = []
@@ -150,16 +146,10 @@ def state_two_episode_attribution(
         trough_date = net_equity.idxmin()
         worst_date = interval["net_return"].astype(float).idxmin()
 
-        intraday_loss = float(
-            -interval["intraday_contribution"].clip(upper=0.0).sum()
-        )
-        overnight_loss = float(
-            -interval["overnight_contribution"].clip(upper=0.0).sum()
-        )
+        intraday_loss = float(-interval["intraday_contribution"].clip(upper=0.0).sum())
+        overnight_loss = float(-interval["overnight_contribution"].clip(upper=0.0).sum())
         decomposed_loss = intraday_loss + overnight_loss
-        overnight_loss_share = (
-            overnight_loss / decomposed_loss if decomposed_loss > 1e-12 else 0.0
-        )
+        overnight_loss_share = overnight_loss / decomposed_loss if decomposed_loss > 1e-12 else 0.0
         mae = abs(float(net["maximum_adverse_excursion"]))
         worst_day_share = (
             min(abs(float(interval.loc[worst_date, "net_return"])) / mae, 1.0)
@@ -168,9 +158,7 @@ def state_two_episode_attribution(
         )
         prior_location = states.index.get_loc(worst_date) - 1
         prior_warning = (
-            bool(warnings.iloc[prior_location]["any_warning"])
-            if prior_location >= 0
-            else False
+            bool(warnings.iloc[prior_location]["any_warning"]) if prior_location >= 0 else False
         )
         same_close_exit = int(interval.loc[worst_date, "decision_state"]) < 2
         mechanism = (
@@ -187,9 +175,7 @@ def state_two_episode_attribution(
                 "sessions": int(len(interval)),
                 "entry_reason": str(interval.iloc[0]["executed_reason"]),
                 "exit_decision_date": (
-                    end_date
-                    if int(interval.iloc[-1]["decision_state"]) < 2
-                    else pd.NaT
+                    end_date if int(interval.iloc[-1]["decision_state"]) < 2 else pd.NaT
                 ),
                 "exit_decision_reason": (
                     str(interval.iloc[-1]["decision_reason"])
@@ -202,13 +188,9 @@ def state_two_episode_attribution(
                 "mfe": net["maximum_favourable_excursion"],
                 "mae": net["maximum_adverse_excursion"],
                 "trough_date": trough_date,
-                "sessions_to_trough": int(
-                    interval.index.get_loc(trough_date)
-                ),
+                "sessions_to_trough": int(interval.index.get_loc(trough_date)),
                 "worst_date": worst_date,
-                "worst_daily_net_return": float(
-                    interval.loc[worst_date, "net_return"]
-                ),
+                "worst_daily_net_return": float(interval.loc[worst_date, "net_return"]),
                 "worst_day_intraday_contribution": float(
                     interval.loc[worst_date, "intraday_contribution"]
                 ),
@@ -243,9 +225,7 @@ def state_two_episode_attribution(
                 "abrupt_or_gap_dominated_rate": float(
                     episodes["tail_mechanism"].eq("abrupt_or_gap_dominated").mean()
                 ),
-                "mean_overnight_loss_share": float(
-                    episodes["overnight_loss_share"].mean()
-                ),
+                "mean_overnight_loss_share": float(episodes["overnight_loss_share"].mean()),
                 "prior_warning_rate": float(
                     episodes["prior_close_warning_before_worst_day"].mean()
                 ),
@@ -291,9 +271,7 @@ def top_state_two_tail_days(
                 "vix_stress": bool(row["vix_stress"]),
                 "vxn_stress": bool(row["vxn_stress"]),
                 "below_ma_short_n": bool(row["below_ma_short_n"]),
-                "qqq_below_ma20": bool(
-                    float(row["QQQ_close"]) < float(row["ma_short"])
-                ),
+                "qqq_below_ma20": bool(float(row["QQQ_close"]) < float(row["ma_short"])),
             }
         )
     return pd.DataFrame(rows)
@@ -361,24 +339,19 @@ def run_execution_scenario(
         mode=scenario,
     )
     daily["position_state"] = states
-    daily["position_label"] = states.map(
-        {0: "defensive", 1: "attack", 2: "partial_leverage"}
-    )
+    daily["position_label"] = states.map({0: "defensive", 1: "attack", 2: "partial_leverage"})
     weights = bridge_weights_for_states(states, contract)
     for asset in ASSETS:
         daily[f"weight_{asset}"] = weights[asset]
     daily["gross_return"] = sum(
-        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in ASSETS
+        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if bool(contract["portfolio"]["charge_initial_entry"]) and not turnover.empty:
         turnover.iloc[0] = weights.iloc[0].abs().sum()
     else:
         turnover.iloc[0] = 0.0
-    base_cost_bps = float(
-        contract["portfolio"]["transaction_cost_bps_per_turnover_unit"]
-    )
+    base_cost_bps = float(contract["portfolio"]["transaction_cost_bps_per_turnover_unit"])
     daily["turnover_units"] = turnover
     daily["transaction_cost"] = (
         turnover * (base_cost_bps + extra_cost_bps_per_turnover_unit) / 10_000.0
@@ -394,12 +367,8 @@ def run_execution_scenario(
     metrics.update(
         {
             "strategy": scenario,
-            "extra_cost_bps_per_turnover_unit": float(
-                extra_cost_bps_per_turnover_unit
-            ),
-            "total_cost_bps_per_turnover_unit": (
-                base_cost_bps + extra_cost_bps_per_turnover_unit
-            ),
+            "extra_cost_bps_per_turnover_unit": float(extra_cost_bps_per_turnover_unit),
+            "total_cost_bps_per_turnover_unit": (base_cost_bps + extra_cost_bps_per_turnover_unit),
             "turnover_units": float(turnover.sum()),
             "transaction_cost_paid": float(daily["transaction_cost"].sum()),
             "state_2_sessions": int(daily["position_state"].eq(2).sum()),
@@ -487,13 +456,9 @@ def state_two_research_gate(
     observable_rate = float(tail_days["previous_close_warning"].mean())
     exit_signal_rate = float(tail_days["same_close_exit_signal"].mean())
     risk_reduction_delay_cagr_delta = float(
-        execution_table.loc[
-            "risk_reduction_delay_1", "cagr_delta_vs_baseline"
-        ]
+        execution_table.loc["risk_reduction_delay_1", "cagr_delta_vs_baseline"]
     )
-    gradual_rate = 1.0 - float(
-        episode_summary.iloc[0]["abrupt_or_gap_dominated_rate"]
-    )
+    gradual_rate = 1.0 - float(episode_summary.iloc[0]["abrupt_or_gap_dominated_rate"])
 
     gates = {
         "overnight_loss_share_below_limit": overnight_share
@@ -507,12 +472,8 @@ def state_two_research_gate(
     if eligible:
         next_direction = "design_one_continuous_state2_volatility_budget_challenger"
     elif overnight_share > float(thresholds["max_overnight_loss_share"]):
-        next_direction = (
-            "do_not_add_close_based_scaling; prioritize_gap_risk_and_low_risk_variant"
-        )
-    elif risk_reduction_delay_cagr_delta < float(
-        thresholds["max_risk_reduction_delay_cagr_delta"]
-    ):
+        next_direction = "do_not_add_close_based_scaling; prioritize_gap_risk_and_low_risk_variant"
+    elif risk_reduction_delay_cagr_delta < float(thresholds["max_risk_reduction_delay_cagr_delta"]):
         next_direction = "study_exit_execution_reliability_before_new_risk_budget"
     else:
         next_direction = "retain_v4_2_and_continue_prospective_monitoring"

@@ -87,8 +87,7 @@ def _first_transition(
 
 def _segment_bounds(chronological: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp]:
     rows = chronological.loc[
-        (chronological["strategy"] == BOLD_KEY)
-        & (chronological["segment"].isin(["early", "late"]))
+        (chronological["strategy"] == BOLD_KEY) & (chronological["segment"].isin(["early", "late"]))
     ].copy()
     if len(rows) != 2:
         raise ValueError("expected one early and one late chronological row")
@@ -106,8 +105,10 @@ def build_recovery_event_taxonomy(
 
     bold = proxy_result["proxy_results"][BOLD_KEY]
     prior = proxy_result["proxy_results"][PRIOR_KEY]
-    if not bold.daily["precursor_active"].astype(bool).equals(
-        prior.daily["precursor_active"].astype(bool)
+    if (
+        not bold.daily["precursor_active"]
+        .astype(bool)
+        .equals(prior.daily["precursor_active"].astype(bool))
     ):
         raise AssertionError("25% and 50% precursor dates diverged")
 
@@ -192,9 +193,7 @@ def build_recovery_event_taxonomy(
             "shock_memory_age_sessions": shock_age,
             "shock_memory_remaining_sessions": shock_remaining,
             "qqq_distance_ma_short": float(signal["qqq_close"] / signal["ma_short"] - 1.0),
-            "qqq_distance_ma_medium": float(
-                signal["qqq_close"] / signal["ma_medium"] - 1.0
-            ),
+            "qqq_distance_ma_medium": float(signal["qqq_close"] / signal["ma_medium"] - 1.0),
             "qqq_distance_ma_long": float(signal["qqq_close"] / signal["ma_long"] - 1.0),
             "qqq_drawdown_at_signal": float(signal["drawdown"]),
             "qqq_return_63d_at_signal": float(signal["return_63d"]),
@@ -203,12 +202,10 @@ def build_recovery_event_taxonomy(
             "ma_short_rising_at_signal": bool(signal["ma_short_rising"]),
             "vix_close": float(signal["vix_close"]),
             "vix_normalization_margin": float(
-                (signal["vix_q_normal"] - signal["vix_close"])
-                / signal["vix_q_normal"]
+                (signal["vix_q_normal"] - signal["vix_close"]) / signal["vix_q_normal"]
             ),
             "vix_stress_margin": float(
-                (signal["vix_q_stress"] - signal["vix_close"])
-                / signal["vix_q_stress"]
+                (signal["vix_q_stress"] - signal["vix_close"]) / signal["vix_q_stress"]
             ),
             "vix_return_1d": float(signal["vix_return_1d"]),
             "vix_return_5d": float(signal["vix_return_5d"]),
@@ -216,12 +213,10 @@ def build_recovery_event_taxonomy(
             "vix_falling": bool(signal["vix_falling"]),
             "vxn_close": float(signal["vxn_close"]),
             "vxn_normalization_margin": float(
-                (signal["vxn_q_normal"] - signal["vxn_close"])
-                / signal["vxn_q_normal"]
+                (signal["vxn_q_normal"] - signal["vxn_close"]) / signal["vxn_q_normal"]
             ),
             "vxn_stress_margin": float(
-                (signal["vxn_q_stress"] - signal["vxn_close"])
-                / signal["vxn_q_stress"]
+                (signal["vxn_q_stress"] - signal["vxn_close"]) / signal["vxn_q_stress"]
             ),
             "vxn_return_1d": float(signal["vxn_return_1d"]),
             "vxn_return_5d": float(signal["vxn_return_5d"]),
@@ -233,9 +228,7 @@ def build_recovery_event_taxonomy(
             "fresh_state_1_transition": bool(
                 int(signal["position_state"]) != 1 and int(signal["decision_state"]) == 1
             ),
-            "qqq_open_gap_at_execution": float(
-                execution["QQQ_open"] / signal["QQQ_close"] - 1.0
-            ),
+            "qqq_open_gap_at_execution": float(execution["QQQ_open"] / signal["QQQ_close"] - 1.0),
             "tqqq_open_gap_at_execution": float(
                 execution["TQQQ_open"] / signal["TQQQ_close"] - 1.0
             ),
@@ -296,9 +289,7 @@ def _loo_rows(frame: pd.DataFrame, feature: str, segment: str) -> list[dict[str,
                 "excluded_event_id": event_id,
                 "median_gap_success_minus_failure": gap,
                 "same_direction_as_full_segment": bool(
-                    np.isfinite(gap)
-                    and np.isfinite(full_sign)
-                    and np.sign(gap) == full_sign
+                    np.isfinite(gap) and np.isfinite(full_sign) and np.sign(gap) == full_sign
                 ),
             }
         )
@@ -333,9 +324,7 @@ def feature_separation_analysis(
         early_loo = _loo_rows(early, feature, "early")
         loo_rows.extend(full_loo)
         loo_rows.extend(early_loo)
-        full_stability = float(
-            np.mean([row["same_direction_as_full_segment"] for row in full_loo])
-        )
+        full_stability = float(np.mean([row["same_direction_as_full_segment"] for row in full_loo]))
         early_stability = float(
             np.mean([row["same_direction_as_full_segment"] for row in early_loo])
         )
@@ -388,10 +377,7 @@ def feature_separation_analysis(
         separation["same_direction_full_and_early"]
         & (separation["loo_direction_stability_full"] >= min_stability)
         & (separation["loo_direction_stability_early"] >= min_stability)
-        & (
-            separation["pairwise_distance_from_half_full"]
-            >= min_pairwise_distance
-        )
+        & (separation["pairwise_distance_from_half_full"] >= min_pairwise_distance)
     )
     separation = separation.sort_values(
         ["descriptively_stable", "pairwise_distance_from_half_full"],
@@ -415,8 +401,7 @@ def diagnostic_decision(
     candidate_features = stable["feature"].head(candidate_limit).tolist()
 
     checks = {
-        "minimum_event_count": len(taxonomy)
-        >= int(validation["minimum_event_count"]),
+        "minimum_event_count": len(taxonomy) >= int(validation["minimum_event_count"]),
         "minimum_failed_event_count": int((~taxonomy["marginal_success"]).sum())
         >= int(validation["minimum_failed_event_count"]),
         "minimum_stable_feature_count": len(stable)

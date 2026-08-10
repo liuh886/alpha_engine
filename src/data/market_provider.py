@@ -50,11 +50,7 @@ def _sha256_tree(path: Path) -> str:
 
 
 def _identity_sha256(payload: dict[str, Any]) -> str:
-    identity = {
-        key: value
-        for key, value in payload.items()
-        if key != "provider_identity_sha256"
-    }
+    identity = {key: value for key, value in payload.items() if key != "provider_identity_sha256"}
     encoded = json.dumps(
         identity,
         sort_keys=True,

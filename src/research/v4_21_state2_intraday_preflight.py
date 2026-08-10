@@ -32,9 +32,7 @@ def fetch_intraday_bars(
     resolved = adapter or PolygonIntradayAdapter()
     bars: dict[str, pd.DataFrame] = {}
     rows: list[dict[str, Any]] = []
-    inter_symbol_delay = float(
-        specification.get("inter_symbol_delay_seconds", 0.0)
-    )
+    inter_symbol_delay = float(specification.get("inter_symbol_delay_seconds", 0.0))
     for position, raw_symbol in enumerate(specification["symbols"]):
         symbol = str(raw_symbol).upper()
         if position > 0 and inter_symbol_delay > 0.0:
@@ -49,25 +47,17 @@ def fetch_intraday_bars(
                     multiplier=int(specification["multiplier"]),
                     timespan=str(specification["timespan"]),
                     adjusted=bool(specification["adjusted"]),
-                    regular_session_only=bool(
-                        specification["regular_session_only"]
-                    ),
+                    regular_session_only=bool(specification["regular_session_only"]),
                     maximum_results=int(specification["maximum_results"]),
                     max_pages=int(specification.get("max_pages", 10)),
-                    request_delay_seconds=float(
-                        specification.get("request_delay_seconds", 0.0)
-                    ),
+                    request_delay_seconds=float(specification.get("request_delay_seconds", 0.0)),
                 )
             )
             frame = result.df.copy()
             bars[symbol] = frame
             metadata = dict(frame.attrs.get("provider_metadata", {}))
-            pagination_complete = bool(
-                metadata.get("pagination_completed", False)
-            )
-            require_complete = bool(
-                specification.get("require_complete_pagination", True)
-            )
+            pagination_complete = bool(metadata.get("pagination_completed", False))
+            require_complete = bool(specification.get("require_complete_pagination", True))
             rows.append(
                 {
                     "symbol": symbol,
@@ -84,18 +74,12 @@ def fetch_intraday_bars(
                     "pages": metadata.get("pages"),
                     "pagination_used": metadata.get("pagination_used"),
                     "pagination_completed": pagination_complete,
-                    "duplicate_timestamps": bool(
-                        frame["timestamp_utc"].duplicated().any()
-                    ),
+                    "duplicate_timestamps": bool(frame["timestamp_utc"].duplicated().any()),
                     "positive_finite_ohlcv": bool(
                         np.isfinite(
-                            frame[["open", "high", "low", "close", "volume"]]
-                            .to_numpy(dtype=float)
+                            frame[["open", "high", "low", "close", "volume"]].to_numpy(dtype=float)
                         ).all()
-                        and frame[["open", "high", "low", "close", "volume"]]
-                        .gt(0.0)
-                        .all()
-                        .all()
+                        and frame[["open", "high", "low", "close", "volume"]].gt(0.0).all().all()
                     ),
                     "fetch_error": None,
                     "admissible": pagination_complete or not require_complete,
@@ -128,10 +112,7 @@ def fetch_intraday_bars(
 
 
 def _opening_table(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
-    local_minutes = (
-        frame["timestamp_et"].dt.hour * 60
-        + frame["timestamp_et"].dt.minute
-    )
+    local_minutes = frame["timestamp_et"].dt.hour * 60 + frame["timestamp_et"].dt.minute
     opening = frame.loc[local_minutes.eq(9 * 60 + 30)].copy()
     if opening["session_date"].duplicated().any():
         raise DataFetchError(f"duplicate opening bars for {symbol}")
@@ -149,9 +130,7 @@ def _opening_table(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
     opening[f"{symbol}_opening_low"] = opening["low"]
     opening[f"{symbol}_opening_volume"] = opening["volume"]
     opening[f"{symbol}_regular_close"] = closing.reindex(opening.index)
-    opening[f"{symbol}_previous_regular_close"] = closing.shift(1).reindex(
-        opening.index
-    )
+    opening[f"{symbol}_previous_regular_close"] = closing.shift(1).reindex(opening.index)
     opening[f"{symbol}_next_open"] = opening[f"{symbol}_open"].shift(-1)
     columns = [
         f"{symbol}_open",
@@ -170,9 +149,7 @@ def build_opening_alignment(
     bars: Mapping[str, pd.DataFrame],
     contract: Mapping[str, Any],
 ) -> pd.DataFrame:
-    required = [
-        str(value).upper() for value in contract["intraday_data"]["symbols"]
-    ]
+    required = [str(value).upper() for value in contract["intraday_data"]["symbols"]]
     missing = [symbol for symbol in required if symbol not in bars]
     if missing:
         return pd.DataFrame()
@@ -184,21 +161,15 @@ def build_opening_alignment(
     aligned.index.name = "session_date"
     aligned = aligned.sort_index()
     for symbol in required:
-        aligned[f"{symbol}_opening_present"] = aligned[
-            f"{symbol}_open"
-        ].notna()
-        aligned[f"{symbol}_next_open_present"] = aligned[
-            f"{symbol}_next_open"
-        ].notna()
+        aligned[f"{symbol}_opening_present"] = aligned[f"{symbol}_open"].notna()
+        aligned[f"{symbol}_next_open_present"] = aligned[f"{symbol}_next_open"].notna()
     aligned["all_openings_present"] = aligned[
         [f"{symbol}_opening_present" for symbol in required]
     ].all(axis=1)
     aligned["all_next_opens_present"] = aligned[
         [f"{symbol}_next_open_present" for symbol in required]
     ].all(axis=1)
-    aligned["usable_session"] = (
-        aligned["all_openings_present"] & aligned["all_next_opens_present"]
-    )
+    aligned["usable_session"] = aligned["all_openings_present"] & aligned["all_next_opens_present"]
     return aligned
 
 
@@ -213,9 +184,7 @@ def _state2_rows(
     if alignment.empty:
         return pd.DataFrame()
     index = baseline.index.intersection(alignment.index)
-    index = index[
-        (index >= pd.Timestamp(start)) & (index <= pd.Timestamp(end))
-    ]
+    index = index[(index >= pd.Timestamp(start)) & (index <= pd.Timestamp(end))]
     state = baseline["position_state"].reindex(index)
     usable = alignment["usable_session"].reindex(index).fillna(False)
     selected = index[state.eq(2) & usable]
@@ -268,9 +237,7 @@ def audit_phase0(
         else pd.DataFrame()
     )
 
-    required_symbols = [
-        str(value).upper() for value in contract["intraday_data"]["symbols"]
-    ]
+    required_symbols = [str(value).upper() for value in contract["intraday_data"]["symbols"]]
     sources_admissible = bool(
         len(source_coverage) == len(required_symbols)
         and source_coverage["admissible"].fillna(False).all()
@@ -282,10 +249,7 @@ def audit_phase0(
     development_start = pd.Timestamp(phase["development_start"])
     development_end = pd.Timestamp(phase["development_end"])
     development_alignment = (
-        alignment.loc[
-            (alignment.index >= development_start)
-            & (alignment.index <= development_end)
-        ]
+        alignment.loc[(alignment.index >= development_start) & (alignment.index <= development_end)]
         if not alignment.empty
         else pd.DataFrame()
     )
@@ -296,9 +260,7 @@ def audit_phase0(
     )
     complete_years = 0
     if not development_alignment.empty:
-        for _, year_frame in development_alignment.groupby(
-            development_alignment.index.year
-        ):
+        for _, year_frame in development_alignment.groupby(development_alignment.index.year):
             if len(year_frame) >= 200 and float(
                 year_frame["all_openings_present"].mean()
             ) >= 1.0 - float(phase["maximum_missing_opening_bar_rate"]):
@@ -324,9 +286,7 @@ def audit_phase0(
         "state2_weights_match_contract": state2_weights_valid,
         "next_open_available": bool(
             not alignment.empty
-            and alignment.loc[
-                alignment["all_openings_present"], "all_next_opens_present"
-            ].mean()
+            and alignment.loc[alignment["all_openings_present"], "all_next_opens_present"].mean()
             >= 1.0 - float(phase["maximum_missing_opening_bar_rate"])
         ),
     }
@@ -338,15 +298,11 @@ def audit_phase0(
             "development_state2_sessions": int(len(development)),
             "quarantine_state2_sessions": int(len(quarantine)),
             "aligned_sessions": int(len(alignment)),
-            "usable_aligned_sessions": int(
-                alignment["usable_session"].sum()
-            )
+            "usable_aligned_sessions": int(alignment["usable_session"].sum())
             if not alignment.empty
             else 0,
             "total_pages": int(
-                pd.to_numeric(source_coverage["pages"], errors="coerce")
-                .fillna(0)
-                .sum()
+                pd.to_numeric(source_coverage["pages"], errors="coerce").fillna(0).sum()
             )
             if not source_coverage.empty
             else 0,

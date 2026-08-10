@@ -9,7 +9,12 @@ import pandas as pd
 
 from src.research.breadth_vxn_rotation_experiment import VXN_SYMBOL, build_vxn_features
 from src.research.etf_rotation_experiment import StrategyResult
-from src.research.vix_rotation_experiment import VIX_SYMBOL, VixRotationConfig, config_from_contract, generate_vix_decision_states
+from src.research.vix_rotation_experiment import (
+    VIX_SYMBOL,
+    VixRotationConfig,
+    config_from_contract,
+    generate_vix_decision_states,
+)
 from src.research.vix_rotation_runtime import (
     _run_weighted_state_backtest,
     prepare_vix_rotation_runtime_data,
@@ -116,9 +121,7 @@ def _blocked_entries(
             window = prepared.iloc[int(location) + 1 : int(location) + 1 + int(horizon)]
             values = window["TQQQ_next_open_return"].dropna()
             row[f"TQQQ_return_{horizon}d"] = (
-                float((1.0 + values).prod() - 1.0)
-                if len(values) == int(horizon)
-                else np.nan
+                float((1.0 + values).prod() - 1.0) if len(values) == int(horizon) else np.nan
             )
         rows.append(row)
     return rows

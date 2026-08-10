@@ -23,9 +23,9 @@ def _sha256_file(path: Path) -> str:
 
 
 def _canonical_hash(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -37,9 +37,9 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _write_immutable_json(path: Path, payload: Mapping[str, Any]) -> None:
-    content = json.dumps(
-        payload, ensure_ascii=False, indent=2, sort_keys=True, default=str
-    ).encode("utf-8")
+    content = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str).encode(
+        "utf-8"
+    )
     if path.exists():
         if path.read_bytes() != content:
             raise ValueError(f"immutable latest-run manifest conflict: {path}")
@@ -103,26 +103,16 @@ def run_latest_us_low_turnover_decision(
         "performance_evaluated": False,
         "inputs": {
             "requested_through": snapshot_decision["requested_through"],
-            "snapshot_manifest_identity_sha256": snapshot_manifest[
-                "manifest_identity_sha256"
-            ],
-            "snapshot_manifest_sha256": _sha256_file(
-                snapshot_dir / "evidence_manifest.json"
-            ),
+            "snapshot_manifest_identity_sha256": snapshot_manifest["manifest_identity_sha256"],
+            "snapshot_manifest_sha256": _sha256_file(snapshot_dir / "evidence_manifest.json"),
             "prices_sha256": _sha256_file(prices_path),
             "fundamentals_sha256": (
-                None
-                if fundamentals_csv is None
-                else _sha256_file(Path(fundamentals_csv).resolve())
+                None if fundamentals_csv is None else _sha256_file(Path(fundamentals_csv).resolve())
             ),
         },
         "outputs": {
-            "pipeline_run_identity_sha256": pipeline_manifest[
-                "pipeline_run_identity_sha256"
-            ],
-            "ticket_identity_sha256": pipeline_manifest["outputs"][
-                "ticket_identity_sha256"
-            ],
+            "pipeline_run_identity_sha256": pipeline_manifest["pipeline_run_identity_sha256"],
+            "ticket_identity_sha256": pipeline_manifest["outputs"]["ticket_identity_sha256"],
         },
     }
     wrapper["latest_run_identity_sha256"] = _canonical_hash(wrapper)

@@ -61,9 +61,7 @@ def load_candidate_canonical(root: Path, symbol: str) -> ETFResearchData:
     adjusted = pd.read_csv(root / "adjusted_ohlcv.csv", parse_dates=["date"])
     sessions = pd.read_csv(root / "session_audit.csv", parse_dates=["date"])
     actions = pd.read_csv(root / "corporate_actions.csv", parse_dates=["date"])
-    sessions["open_research_eligible"] = sessions[
-        "open_research_eligible"
-    ].astype(bool)
+    sessions["open_research_eligible"] = sessions["open_research_eligible"].astype(bool)
     return ETFResearchData(
         raw=raw.sort_values("date").reset_index(drop=True),
         adjusted=adjusted.sort_values("date").reset_index(drop=True),
@@ -108,9 +106,7 @@ def prepare_master_dataset(
     for etf in etfs.values():
         etf_index = pd.to_datetime(etf.adjusted["date"]).dt.normalize()
         index = index.intersection(pd.Index(etf_index))
-    index = index[
-        (index >= pd.Timestamp(OVERLAP_START)) & (index <= pd.Timestamp(CUTOFF))
-    ]
+    index = index[(index >= pd.Timestamp(OVERLAP_START)) & (index <= pd.Timestamp(CUTOFF))]
     if len(index) < 1500:
         raise RuntimeError(f"insufficient common candidate overlap: {len(index)}")
 
@@ -118,9 +114,7 @@ def prepare_master_dataset(
     master["byd_open"] = byd_dataset.loc[index, "open"].astype(float)
     master["byd_close"] = byd_dataset.loc[index, "close"].astype(float)
     master["byd_open_return"] = master["byd_open"].shift(-1) / master["byd_open"] - 1.0
-    master["byd_open_eligible"] = byd_dataset.loc[
-        index, "open_research_eligible"
-    ].astype(bool)
+    master["byd_open_eligible"] = byd_dataset.loc[index, "open_research_eligible"].astype(bool)
     master["market_state"] = byd_dataset.loc[index, "market_state"].astype(str)
     master["vol_state"] = byd_dataset.loc[index, "vol_state"].astype(str)
 
@@ -135,12 +129,8 @@ def prepare_master_dataset(
         sessions = sessions.set_index("date")
         master[f"{key}_open"] = adjusted.loc[index, "open"].astype(float)
         master[f"{key}_close"] = adjusted.loc[index, "close"].astype(float)
-        master[f"{key}_open_return"] = (
-            master[f"{key}_open"].shift(-1) / master[f"{key}_open"] - 1.0
-        )
-        master[f"{key}_open_eligible"] = sessions.loc[
-            index, "open_research_eligible"
-        ].astype(bool)
+        master[f"{key}_open_return"] = master[f"{key}_open"].shift(-1) / master[f"{key}_open"] - 1.0
+        master[f"{key}_open_eligible"] = sessions.loc[index, "open_research_eligible"].astype(bool)
         eligibility &= master[f"{key}_open_eligible"]
     master["common_open_eligible"] = eligibility
 
@@ -193,9 +183,7 @@ def run_screen(
     results: dict[tuple[str, float], Any] = {}
     cash_view = _view(master, "515180.SH")
     for cost in (PRIMARY_COST_BPS, STRESS_COST_BPS):
-        results[("cash", cost)] = run_allocation(
-            "cash", cash_view, cash_decision, cost_bps=cost
-        )
+        results[("cash", cost)] = run_allocation("cash", cash_view, cash_decision, cost_bps=cost)
         for symbol in available:
             results[(symbol, cost)] = run_allocation(
                 symbol,
@@ -226,9 +214,7 @@ def run_screen(
             candidate_metric = _window_metrics(
                 results[(symbol, PRIMARY_COST_BPS)].daily, start, end
             )
-            cash_metric = _window_metrics(
-                results[("cash", PRIMARY_COST_BPS)].daily, start, end
-            )
+            cash_metric = _window_metrics(results[("cash", PRIMARY_COST_BPS)].daily, start, end)
             delta = candidate_metric["total_return"] - cash_metric["total_return"]
             positive_total += max(delta, 0.0)
             symbol_rows.append(
@@ -261,20 +247,16 @@ def run_screen(
                 "median_60d_rolling_correlation": float(
                     byd_return.rolling(60).corr(etf_return).median()
                 ),
-                "simultaneous_daily_loss_rate": float(
-                    ((byd_return < 0) & (etf_return < 0)).mean()
-                ),
+                "simultaneous_daily_loss_rate": float(((byd_return < 0) & (etf_return < 0)).mean()),
             }
         )
     correlations = pd.DataFrame(correlation_rows)
 
     full20 = evaluation.loc[
-        (evaluation["window"] == "full_overlap")
-        & (evaluation["cost_bps"] == PRIMARY_COST_BPS)
+        (evaluation["window"] == "full_overlap") & (evaluation["cost_bps"] == PRIMARY_COST_BPS)
     ].set_index("candidate")
     full40 = evaluation.loc[
-        (evaluation["window"] == "full_overlap")
-        & (evaluation["cost_bps"] == STRESS_COST_BPS)
+        (evaluation["window"] == "full_overlap") & (evaluation["cost_bps"] == STRESS_COST_BPS)
     ].set_index("candidate")
     cash20 = full20.loc["cash"]
     cash40 = full40.loc["cash"]
@@ -298,11 +280,8 @@ def run_screen(
         current40 = full40.loc[symbol]
         symbol_periods = periods.loc[periods["candidate"] == symbol]
         cash_gates = {
-            "cagr_delta_at_least_50bp": (
-                float(current20["cagr"] - cash20["cagr"]) >= 0.005
-            ),
-            "calmar_not_below_cash": float(current20["calmar"])
-            >= float(cash20["calmar"]),
+            "cagr_delta_at_least_50bp": (float(current20["cagr"] - cash20["cagr"]) >= 0.005),
+            "calmar_not_below_cash": float(current20["calmar"]) >= float(cash20["calmar"]),
             "drawdown_not_worse_by_more_than_1pp": (
                 float(current20["max_drawdown"] - cash20["max_drawdown"]) >= -0.01
             ),
@@ -331,8 +310,7 @@ def run_screen(
             )
             challenge_gates = {
                 "stress_total_not_below_515180": (
-                    float(current40["total_return"])
-                    >= float(reference40["total_return"])
+                    float(current40["total_return"]) >= float(reference40["total_return"])
                 ),
                 "calmar_or_drawdown_path": calmar_path or drawdown_path,
             }

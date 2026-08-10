@@ -53,9 +53,7 @@ def select_rules_on_development(
     rules = enumerate_rules(contract)
     rules_by_id = {rule.rule_id: rule for rule in rules}
     minimum_events = int(contract["rule_grammar"]["minimum_development_events"])
-    maximum_active = float(
-        contract["rule_grammar"]["maximum_active_session_fraction"]
-    )
+    maximum_active = float(contract["rule_grammar"]["maximum_active_session_fraction"])
     selected_count = int(contract["rule_grammar"]["selected_rules_per_family"])
     fdr_alpha = float(contract["rule_grammar"]["fdr_alpha"])
     selected_rows: list[dict[str, Any]] = []
@@ -69,18 +67,15 @@ def select_rules_on_development(
             ]
         )
         metrics["qvalue"] = _benjamini_hochberg(metrics["pvalue"])
-        metrics["meets_frequency_bounds"] = (
-            metrics["events"].ge(minimum_events)
-            & metrics["active_session_fraction"].le(maximum_active)
-        )
+        metrics["meets_frequency_bounds"] = metrics["events"].ge(minimum_events) & metrics[
+            "active_session_fraction"
+        ].le(maximum_active)
         metrics["fdr_pass"] = metrics["qvalue"].le(fdr_alpha)
         metrics = metrics.sort_values(
             ["meets_frequency_bounds", "fdr_pass", "score", "rule_id"],
             ascending=[False, False, False, True],
         ).reset_index(drop=True)
-        eligible = metrics.loc[metrics["meets_frequency_bounds"]].head(
-            selected_count
-        )
+        eligible = metrics.loc[metrics["meets_frequency_bounds"]].head(selected_count)
         for rank, row in enumerate(eligible.itertuples(index=False), start=1):
             executed = bool(rank == 1 and row.fdr_pass)
             selected_rows.append(
@@ -137,9 +132,7 @@ def selected_rule_events(
                 "action",
             ]
         )
-    return pd.concat(parts, ignore_index=True).sort_values(
-        ["execution_date", "event_family"]
-    )
+    return pd.concat(parts, ignore_index=True).sort_values(["execution_date", "event_family"])
 
 
 def _event_action_trace(
@@ -166,9 +159,8 @@ def _event_action_trace(
             continue
         family_events = event_rows.loc[event_rows["event_family"].eq(family)]
         for event in family_events.itertuples(index=False):
-            active = (
-                (trace.index >= pd.Timestamp(event.execution_date))
-                & (trace.index <= pd.Timestamp(event.event_end_date))
+            active = (trace.index >= pd.Timestamp(event.execution_date)) & (
+                trace.index <= pd.Timestamp(event.event_end_date)
             )
             trace.loc[active, "event_family"] = family
             trace.loc[active, "action"] = str(event.action)
@@ -252,9 +244,7 @@ def _run_policy(
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
-    cost_bps = float(
-        contract["boundaries"]["transaction_cost_bps_per_turnover_unit"]
-    )
+    cost_bps = float(contract["boundaries"]["transaction_cost_bps_per_turnover_unit"])
     daily["turnover_units"] = turnover
     daily["transaction_cost"] = turnover * cost_bps / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
@@ -263,9 +253,7 @@ def _run_policy(
     changed = weights.ne(weights.shift()).any(axis=1)
     metrics = _return_metrics(
         daily["net_return"],
-        annual_risk_free_rate=float(
-            contract["boundaries"]["annual_risk_free_rate"]
-        ),
+        annual_risk_free_rate=float(contract["boundaries"]["annual_risk_free_rate"]),
     )
     metrics.update(
         {
@@ -339,9 +327,11 @@ def _run_static(
         turnover = matrix.diff().abs().sum(axis=1)
         turnover.iloc[0] = float(matrix.iloc[0].abs().sum())
         daily["turnover_units"] = turnover
-        daily["transaction_cost"] = turnover * float(
-            contract["boundaries"]["transaction_cost_bps_per_turnover_unit"]
-        ) / 10_000.0
+        daily["transaction_cost"] = (
+            turnover
+            * float(contract["boundaries"]["transaction_cost_bps_per_turnover_unit"])
+            / 10_000.0
+        )
         daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
         daily["equity"] = (1.0 + daily["net_return"]).cumprod()
         daily["drawdown"] = daily["equity"] / daily["equity"].cummax() - 1.0
@@ -383,9 +373,11 @@ def _baseline_exact(
     turnover = weights.diff().abs().sum(axis=1)
     turnover.iloc[0] = float(weights.iloc[0].abs().sum())
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = turnover * float(
-        contract["boundaries"]["transaction_cost_bps_per_turnover_unit"]
-    ) / 10_000.0
+    daily["transaction_cost"] = (
+        turnover
+        * float(contract["boundaries"]["transaction_cost_bps_per_turnover_unit"])
+        / 10_000.0
+    )
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()
     daily["drawdown"] = daily["equity"] / daily["equity"].cummax() - 1.0
@@ -441,20 +433,12 @@ def _portfolio_gate(
     thresholds = contract["validation"]["portfolio_shadow_gate"]
     baseline = results["frozen_v4_2"]
     policy = results["full_event_policy"]
-    cagr_delta_pp = (
-        float(policy.metrics["cagr"]) - float(baseline.metrics["cagr"])
-    ) * 100.0
+    cagr_delta_pp = (float(policy.metrics["cagr"]) - float(baseline.metrics["cagr"])) * 100.0
     drawdown_worsening_pp = max(
         0.0,
-        (
-            float(baseline.metrics["max_drawdown"])
-            - float(policy.metrics["max_drawdown"])
-        )
-        * 100.0,
+        (float(baseline.metrics["max_drawdown"]) - float(policy.metrics["max_drawdown"])) * 100.0,
     )
-    calmar_delta = float(policy.metrics["calmar"]) - float(
-        baseline.metrics["calmar"]
-    )
+    calmar_delta = float(policy.metrics["calmar"]) - float(baseline.metrics["calmar"])
     aligned = pd.concat(
         [
             policy.daily["net_return"].rename("policy"),
@@ -468,25 +452,19 @@ def _portfolio_gate(
             (1.0 + group["policy"]).prod() - (1.0 + group["baseline"]).prod()
         )
     positive_year_rate = (
-        float(np.mean([value > 0.0 for value in year_relative.values()]))
-        if year_relative
-        else 0.0
+        float(np.mean([value > 0.0 for value in year_relative.values()])) if year_relative else 0.0
     )
     positive = attribution.loc[attribution["relative_return"].gt(0.0)].copy()
     total_positive = float(positive["relative_return"].sum()) if len(positive) else 0.0
     largest_event_share = (
-        float(positive["relative_return"].max() / total_positive)
-        if total_positive > 0.0
-        else 1.0
+        float(positive["relative_return"].max() / total_positive) if total_positive > 0.0 else 1.0
     )
     family_positive = positive.groupby("event_family")["relative_return"].sum()
     largest_family_share = (
         float(family_positive.max() / total_positive) if total_positive > 0.0 else 1.0
     )
     turnover_increase = (
-        float(policy.metrics["turnover_units"])
-        / float(baseline.metrics["turnover_units"])
-        - 1.0
+        float(policy.metrics["turnover_units"]) / float(baseline.metrics["turnover_units"]) - 1.0
     )
     ablation_wins: dict[str, int] = {}
     for family in FAMILIES:
@@ -494,29 +472,23 @@ def _portfolio_gate(
         comparator = results[key]
         comparisons = [
             float(policy.metrics["cagr"]) > float(comparator.metrics["cagr"]),
-            float(policy.metrics["max_drawdown"])
-            > float(comparator.metrics["max_drawdown"]),
+            float(policy.metrics["max_drawdown"]) > float(comparator.metrics["max_drawdown"]),
             float(policy.metrics["sortino"]) > float(comparator.metrics["sortino"]),
             float(policy.metrics["calmar"]) > float(comparator.metrics["calmar"]),
         ]
         ablation_wins[family] = int(sum(comparisons))
     checks = {
-        "cagr": cagr_delta_pp
-        >= float(thresholds["cagr_improvement_vs_v4_2_pp_min"]),
-        "max_drawdown": drawdown_worsening_pp
-        <= float(thresholds["max_drawdown_worsening_pp_max"]),
-        "calmar": calmar_delta
-        >= float(thresholds["calmar_improvement_vs_v4_2_min"]),
-        "sortino": float(policy.metrics["sortino"])
-        >= float(baseline.metrics["sortino"]),
+        "cagr": cagr_delta_pp >= float(thresholds["cagr_improvement_vs_v4_2_pp_min"]),
+        "max_drawdown": drawdown_worsening_pp <= float(thresholds["max_drawdown_worsening_pp_max"]),
+        "calmar": calmar_delta >= float(thresholds["calmar_improvement_vs_v4_2_min"]),
+        "sortino": float(policy.metrics["sortino"]) >= float(baseline.metrics["sortino"]),
         "positive_years": positive_year_rate
         >= float(thresholds["positive_calendar_year_rate_min"]),
         "family_concentration": largest_family_share
         <= float(thresholds["largest_family_positive_share_max"]),
         "event_concentration": largest_event_share
         <= float(thresholds["largest_event_positive_share_max"]),
-        "turnover": turnover_increase
-        <= float(thresholds["turnover_increase_max"]),
+        "turnover": turnover_increase <= float(thresholds["turnover_increase_max"]),
         **{f"beats_{family}_ablation": wins >= 2 for family, wins in ablation_wins.items()},
     }
     return {
@@ -548,17 +520,14 @@ def run_multifactor_event_policy(
     oof_start = pd.Timestamp(contract["outer_folds"][0]["test_start"])
     oof_end = pd.Timestamp(contract["outer_folds"][-1]["test_end"])
     proxy_index = proxy_baseline_daily.index[
-        (proxy_baseline_daily.index >= oof_start)
-        & (proxy_baseline_daily.index <= oof_end)
+        (proxy_baseline_daily.index >= oof_start) & (proxy_baseline_daily.index <= oof_end)
     ]
     features = discovery.features
     proxy_index = proxy_index.intersection(features.index).sort_values()
     baseline_proxy = _baseline_exact(proxy_baseline_daily, proxy_index, contract)
     voo_proxy = features["voo_next_open_return"].reindex(proxy_index)
     cash_proxy = features["bil_next_open_return"].reindex(proxy_index)
-    oof_trace = _event_action_trace(
-        proxy_index, discovery.outer_events, contract
-    )
+    oof_trace = _event_action_trace(proxy_index, discovery.outer_events, contract)
     oof_results: dict[str, StrategyResult] = {
         "frozen_v4_2": baseline_proxy,
         "full_event_policy": _run_policy(
@@ -619,12 +588,8 @@ def run_multifactor_event_policy(
         name="static_QQQ_TQQQ_25_75",
         weights={"QQQ": 0.25, "TQQQ": 0.75},
     )
-    oof_attribution = _event_attribution(
-        oof_results["full_event_policy"], baseline_proxy
-    )
-    portfolio_gate = _portfolio_gate(
-        oof_results, oof_attribution, contract
-    )
+    oof_attribution = _event_attribution(oof_results["full_event_policy"], baseline_proxy)
+    portfolio_gate = _portfolio_gate(oof_results, oof_attribution, contract)
 
     actual_start = max(
         pd.Timestamp(contract["data"]["actual_product_start"]),
@@ -647,12 +612,14 @@ def run_multifactor_event_policy(
     sgov = _normalise_bars(bars["SGOV"], "SGOV")
     voo = _normalise_bars(bars["VOO"], "VOO")
     actual_index = actual_baseline_daily.index[
-        (actual_baseline_daily.index >= actual_start)
-        & (actual_baseline_daily.index <= actual_end)
+        (actual_baseline_daily.index >= actual_start) & (actual_baseline_daily.index <= actual_end)
     ]
-    actual_index = actual_index.intersection(qqqi.index).intersection(sgov.index).intersection(
-        voo.index
-    ).sort_values()
+    actual_index = (
+        actual_index.intersection(qqqi.index)
+        .intersection(sgov.index)
+        .intersection(voo.index)
+        .sort_values()
+    )
     voo_return = voo["open"].shift(-1).div(voo["open"]).sub(1.0).reindex(actual_index)
     cash_return = sgov["open"].shift(-1).div(sgov["open"]).sub(1.0).reindex(actual_index)
     baseline_actual = _baseline_exact(actual_baseline_daily, actual_index, contract)
@@ -685,9 +652,7 @@ def run_multifactor_event_policy(
             name=f"ablation_{family}",
             proxy_mode=False,
         )
-    actual_attribution = _event_attribution(
-        actual_results["full_event_policy"], baseline_actual
-    )
+    actual_attribution = _event_attribution(actual_results["full_event_policy"], baseline_actual)
     oof_headline = pd.DataFrame(
         [dict(result.metrics) for result in oof_results.values()]
     ).set_index("strategy")
@@ -707,8 +672,7 @@ def run_multifactor_event_policy(
         "actual_events": int(len(actual_events)),
         "portfolio_gate": portfolio_gate,
         "shadow_candidate_authorized": bool(
-            portfolio_gate["passed"]
-            and bool(discovery.family_gates["passed"].astype(bool).any())
+            portfolio_gate["passed"] and bool(discovery.family_gates["passed"].astype(bool).any())
         ),
         "direct_promotion_authorized": False,
         "baseline_and_alerts_unchanged": True,

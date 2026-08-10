@@ -130,8 +130,7 @@ class ModelDriftMonitor:
         semantics = str(prediction_semantics).strip().lower()
         if semantics not in self._VALID_PREDICTION_SEMANTICS:
             raise ValueError(
-                "prediction_semantics must be one of "
-                f"{sorted(self._VALID_PREDICTION_SEMANTICS)}"
+                f"prediction_semantics must be one of {sorted(self._VALID_PREDICTION_SEMANTICS)}"
             )
         if min_evidence_days < 2:
             raise ValueError("min_evidence_days must be at least 2")
@@ -195,16 +194,8 @@ class ModelDriftMonitor:
             else None
         )
 
-        checks.append(
-            self._check_prediction_mean_shift(
-                pred_series, base_series, evidence_window
-            )
-        )
-        checks.append(
-            self._check_prediction_std_shift(
-                pred_series, base_series, evidence_window
-            )
-        )
+        checks.append(self._check_prediction_mean_shift(pred_series, base_series, evidence_window))
+        checks.append(self._check_prediction_std_shift(pred_series, base_series, evidence_window))
 
         if base_series is not None:
             checks.append(self._check_psi(pred_series, base_series, evidence_window))
@@ -227,16 +218,10 @@ class ModelDriftMonitor:
                 evidence_window,
             )
         )
-        checks.append(
-            self._check_calibration(predictions, returns, evidence_window)
-        )
+        checks.append(self._check_calibration(predictions, returns, evidence_window))
 
         if features is not None and baseline_features is not None:
-            checks.append(
-                self._check_feature_drift(
-                    features, baseline_features, evidence_window
-                )
-            )
+            checks.append(self._check_feature_drift(features, baseline_features, evidence_window))
 
         overall = self._overall_severity(checks)
         summary = self._build_summary(checks, overall)
@@ -762,9 +747,7 @@ class ModelDriftMonitor:
         return int(values.nunique())
 
     @classmethod
-    def _panel_series(
-        cls, data: pd.DataFrame | pd.Series
-    ) -> pd.Series | None:
+    def _panel_series(cls, data: pd.DataFrame | pd.Series) -> pd.Series | None:
         """Normalize a cross-sectional panel to (datetime, instrument) Series."""
         if isinstance(data, pd.DataFrame):
             if isinstance(data.index, pd.DatetimeIndex) and data.shape[1] >= 2:
@@ -834,9 +817,7 @@ class ModelDriftMonitor:
         return {
             "mean_rank_ic": round(mean, 6),
             "rank_icir": round(mean / std, 6) if std > 0 else 0.0,
-            "positive_rank_ic_ratio": round(float((values > 0).mean()), 6)
-            if len(values)
-            else 0.0,
+            "positive_rank_ic_ratio": round(float((values > 0).mean()), 6) if len(values) else 0.0,
             "n_dates": int(len(values)),
         }
 
@@ -912,12 +893,8 @@ class ModelDriftMonitor:
         current: pd.Series,
         baseline: pd.Series,
     ) -> float | None:
-        cur = pd.to_numeric(current, errors="coerce").replace(
-            [np.inf, -np.inf], np.nan
-        ).dropna()
-        base = pd.to_numeric(baseline, errors="coerce").replace(
-            [np.inf, -np.inf], np.nan
-        ).dropna()
+        cur = pd.to_numeric(current, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+        base = pd.to_numeric(baseline, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
         if len(cur) < 10 or len(base) < 10 or base.nunique() < 2:
             return None
 
@@ -990,9 +967,7 @@ class ModelDriftMonitor:
             DriftSeverity.CRITICAL: 4,
         }
         applicable = [
-            check
-            for check in checks
-            if not bool(check.details.get("not_applicable", False))
+            check for check in checks if not bool(check.details.get("not_applicable", False))
         ]
         if not applicable:
             return DriftSeverity.INCONCLUSIVE
@@ -1002,9 +977,7 @@ class ModelDriftMonitor:
         ).severity
 
     @staticmethod
-    def _build_summary(
-        checks: list[DriftCheck], overall: DriftSeverity
-    ) -> str:
+    def _build_summary(checks: list[DriftCheck], overall: DriftSeverity) -> str:
         alerts = [
             check
             for check in checks
@@ -1014,9 +987,7 @@ class ModelDriftMonitor:
         if alerts:
             return (
                 f"{len(alerts)} check(s) raised alerts: "
-                + "; ".join(
-                    f"{check.check_name}={check.severity.value}" for check in alerts
-                )
+                + "; ".join(f"{check.check_name}={check.severity.value}" for check in alerts)
                 + f". Recommended: {alerts[0].recommended_action}"
             )
 
@@ -1029,9 +1000,7 @@ class ModelDriftMonitor:
         if inconclusive:
             return (
                 f"No drift alert, but {len(inconclusive)} applicable check(s) are "
-                "inconclusive: "
-                + ", ".join(check.check_name for check in inconclusive)
-                + "."
+                "inconclusive: " + ", ".join(check.check_name for check in inconclusive) + "."
             )
         if overall == DriftSeverity.OK:
             return "All applicable checks passed — no drift detected."

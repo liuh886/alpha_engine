@@ -179,7 +179,9 @@ class DecisionLedgerReader:
                 {
                     "market": market,
                     "available": latest is not None,
-                    "ticket_count": int(manifest.get("ticket_count", len(manifest.get("tickets", [])))),
+                    "ticket_count": int(
+                        manifest.get("ticket_count", len(manifest.get("tickets", [])))
+                    ),
                     "latest": latest,
                 }
             )

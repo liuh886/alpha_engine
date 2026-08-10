@@ -107,9 +107,7 @@ class BaoStockAdapter:
         with _baostock_socket_guard():
             login = bs.login()
             if getattr(login, "error_code", "0") != "0":
-                raise DataFetchError(
-                    f"baostock login failed: {getattr(login, 'error_msg', '')}"
-                )
+                raise DataFetchError(f"baostock login failed: {getattr(login, 'error_msg', '')}")
 
             try:
                 fields = "date,open,high,low,close,volume,amount"
@@ -152,12 +150,8 @@ class BaoStockAdapter:
             raise DataFetchError(f"empty data for {code}")
 
         frame["factor"] = 1.0
-        out = frame[
-            ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
-        ].copy()
-        out = out.dropna(subset=["date", "open", "high", "low", "close"]).reset_index(
-            drop=True
-        )
+        out = frame[["date", "open", "high", "low", "close", "volume", "amount", "factor"]].copy()
+        out = out.dropna(subset=["date", "open", "high", "low", "close"]).reset_index(drop=True)
         if out.empty:
             raise DataFetchError(f"empty usable bars for {code}")
 

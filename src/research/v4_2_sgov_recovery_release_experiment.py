@@ -80,9 +80,7 @@ def recovery_release_weights(
         ],
         "state_1",
     )
-    precursor = _normalise_weights(
-        allocations["state_1_tqqq_precursor"], "state_1_tqqq_precursor"
-    )
+    precursor = _normalise_weights(allocations["state_1_tqqq_precursor"], "state_1_tqqq_precursor")
     state_2 = _normalise_weights(allocations["state_2_frozen"], "state_2_frozen")
 
     states = reference_daily["position_state"].astype(int)
@@ -126,8 +124,7 @@ def run_recovery_release_backtest(
     daily.loc[daily["position_state"].eq(2), "release_stage"] = "state_2"
 
     daily["gross_return"] = sum(
-        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in ASSETS
+        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
@@ -207,9 +204,7 @@ def _precursor_episode_rows(
         event_slice = slice(start_location, end_location + 1)
         candidate_event = candidate.daily["net_return"].iloc[event_slice]
         static_event = static_blended.daily["net_return"].iloc[event_slice]
-        event_log_relative = float(
-            np.log1p(candidate_event).sum() - np.log1p(static_event).sum()
-        )
+        event_log_relative = float(np.log1p(candidate_event).sum() - np.log1p(static_event).sum())
         row: dict[str, Any] = {
             "event_id": f"precursor_{event_number:03d}",
             "start_date": start,
@@ -225,9 +220,7 @@ def _precursor_episode_rows(
                 continue
             candidate_window = candidate.daily["net_return"].iloc[start_location:stop]
             static_window = static_blended.daily["net_return"].iloc[start_location:stop]
-            log_relative = float(
-                np.log1p(candidate_window).sum() - np.log1p(static_window).sum()
-            )
+            log_relative = float(np.log1p(candidate_window).sum() - np.log1p(static_window).sum())
             row[f"relative_return_{horizon}d"] = float(np.exp(log_relative) - 1.0)
         rows.append(row)
     return pd.DataFrame(rows)
@@ -249,19 +242,12 @@ def _candidate_gate(
     improvement_rate = float(major["drawdown_improvement"].gt(0.0).mean())
     median_protection = float(major["drawdown_improvement_pp"].median())
     resolved = major.loc[major["recovery_lag_sessions"].notna()]
-    median_lag = (
-        float(resolved["recovery_lag_sessions"].median()) if len(resolved) else None
-    )
+    median_lag = float(resolved["recovery_lag_sessions"].median()) if len(resolved) else None
     unresolved = int(major["recovery_lag_sessions"].isna().sum())
-    cagr_sacrifice = float(
-        (float(v4_2.metrics["cagr"]) - float(candidate.metrics["cagr"])) * 100.0
-    )
+    cagr_sacrifice = float((float(v4_2.metrics["cagr"]) - float(candidate.metrics["cagr"])) * 100.0)
     drawdown_worsening = max(
         0.0,
-        (
-            abs(float(candidate.metrics["max_drawdown"]))
-            - abs(float(v4_2.metrics["max_drawdown"]))
-        )
+        (abs(float(candidate.metrics["max_drawdown"])) - abs(float(v4_2.metrics["max_drawdown"])))
         * 100.0,
     )
 
@@ -292,9 +278,7 @@ def _candidate_gate(
             event_positive_rate = float(values.gt(0.0).mean())
             positive = values.clip(lower=0.0)
             largest_event_share = (
-                float(positive.max() / positive.sum())
-                if float(positive.sum()) > 0.0
-                else 1.0
+                float(positive.max() / positive.sum()) if float(positive.sum()) > 0.0 else 1.0
             )
 
     checks = {
@@ -303,8 +287,7 @@ def _candidate_gate(
         "median_major_episode_trough_protection": median_protection
         >= float(thresholds["median_major_episode_trough_protection_pp_min"]),
         "median_major_episode_recovery_lag": median_lag is not None
-        and median_lag
-        <= float(thresholds["median_major_episode_recovery_lag_sessions_max"]),
+        and median_lag <= float(thresholds["median_major_episode_recovery_lag_sessions_max"]),
         "unresolved_major_episodes": unresolved
         <= int(thresholds["unresolved_major_episode_count_max"]),
         "cagr_sacrifice_vs_v4_2": cagr_sacrifice
@@ -319,8 +302,7 @@ def _candidate_gate(
             True
             if not uses_precursor
             else event_positive_rate is not None
-            and event_positive_rate
-            >= float(thresholds["precursor_event_positive_rate_min"])
+            and event_positive_rate >= float(thresholds["precursor_event_positive_rate_min"])
         ),
         "precursor_event_concentration": (
             True
@@ -383,9 +365,7 @@ def run_sgov_recovery_release_comparison(
         "tqqq_release_on_precursor",
         "staged_qqqi_then_tqqq_release",
     ):
-        results[variant] = run_recovery_release_backtest(
-            reference, release_contract, variant
-        )
+        results[variant] = run_recovery_release_backtest(reference, release_contract, variant)
 
     baseline_states = v4_2.daily["position_state"].astype(int)
     for key, result in results.items():
@@ -400,12 +380,10 @@ def run_sgov_recovery_release_comparison(
         ):
             raise AssertionError(f"{key} changed the frozen state-2 allocation")
 
-    headline = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
-    train_fraction = float(
-        release_contract["validation"]["chronological_train_fraction"]
+    headline = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
     )
+    train_fraction = float(release_contract["validation"]["chronological_train_fraction"])
     chronological = pd.DataFrame(
         [
             row
@@ -457,21 +435,15 @@ def run_sgov_recovery_release_comparison(
         "same_v4_2_state_trace": True,
         "same_state_2_allocation": True,
         "cost_bps_per_turnover_unit": float(
-            release_contract["boundaries"][
-                "transaction_cost_bps_per_turnover_unit"
-            ]
+            release_contract["boundaries"]["transaction_cost_bps_per_turnover_unit"]
         ),
         "common_sample_start": reference.index.min().date().isoformat(),
         "common_sample_end": reference.index.max().date().isoformat(),
         "observations": int(len(reference)),
-        "tail_risk": {
-            key: tail_risk_metrics(result) for key, result in results.items()
-        },
+        "tail_risk": {key: tail_risk_metrics(result) for key, result in results.items()},
         "candidate_gates": gates,
         "authorized_candidates": [
-            key
-            for key, gate in gates.items()
-            if bool(gate["prospective_challenger_authorized"])
+            key for key, gate in gates.items() if bool(gate["prospective_challenger_authorized"])
         ],
         "direct_promotion_authorized": False,
     }

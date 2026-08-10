@@ -115,14 +115,12 @@ def build_v13_signals(
     if missing:
         raise ValueError(f"full BYD dataset missing V1.3 signal columns: {missing}")
 
-    risk_on_entry = (
-        full_byd_dataset["close"].gt(full_byd_dataset["sma_120"])
-        & full_byd_dataset["mom_20"].gt(0.0)
-    )
-    risk_off_exit = (
-        full_byd_dataset["close"].lt(full_byd_dataset["sma_120"])
-        & full_byd_dataset["mom_60"].lt(0.0)
-    )
+    risk_on_entry = full_byd_dataset["close"].gt(full_byd_dataset["sma_120"]) & full_byd_dataset[
+        "mom_20"
+    ].gt(0.0)
+    risk_off_exit = full_byd_dataset["close"].lt(full_byd_dataset["sma_120"]) & full_byd_dataset[
+        "mom_60"
+    ].lt(0.0)
     base_risk_on = _stateful_min_hold(
         risk_on_entry,
         risk_off_exit,
@@ -150,8 +148,7 @@ def build_v13_signals(
     restricted = result.reindex(index)
     if restricted.isna().any().any():
         missing_dates = [
-            stamp.strftime("%Y-%m-%d")
-            for stamp in restricted.index[restricted.isna().any(axis=1)]
+            stamp.strftime("%Y-%m-%d") for stamp in restricted.index[restricted.isna().any(axis=1)]
         ]
         raise ValueError(f"V1.3 signals missing target dates: {missing_dates[:5]}")
     return restricted

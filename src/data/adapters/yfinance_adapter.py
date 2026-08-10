@@ -62,12 +62,12 @@ def _reconcile_ohlc_rounding(
     required_low = result[["open", "close", "high"]].min(axis=1)
     high_gap = (required_high - result["high"]).clip(lower=0.0)
     low_gap = (result["low"] - required_low).clip(lower=0.0)
-    high_scale = pd.concat(
-        [required_high.abs(), result["high"].abs()], axis=1
-    ).max(axis=1).clip(lower=1.0)
-    low_scale = pd.concat(
-        [required_low.abs(), result["low"].abs()], axis=1
-    ).max(axis=1).clip(lower=1.0)
+    high_scale = (
+        pd.concat([required_high.abs(), result["high"].abs()], axis=1).max(axis=1).clip(lower=1.0)
+    )
+    low_scale = (
+        pd.concat([required_low.abs(), result["low"].abs()], axis=1).max(axis=1).clip(lower=1.0)
+    )
     high_relative = high_gap / high_scale
     low_relative = low_gap / low_scale
     max_relative = float(max(high_relative.max(), low_relative.max()))
@@ -75,11 +75,15 @@ def _reconcile_ohlc_rounding(
     high_mask = high_gap > 0.0
     low_mask = low_gap > 0.0
     corrected_mask = high_mask | low_mask
-    material_high = high_mask & (high_relative > relative_tolerance) & (
-        high_gap - absolute_tolerance > FLOAT_COMPARISON_EPSILON
+    material_high = (
+        high_mask
+        & (high_relative > relative_tolerance)
+        & (high_gap - absolute_tolerance > FLOAT_COMPARISON_EPSILON)
     )
-    material_low = low_mask & (low_relative > relative_tolerance) & (
-        low_gap - absolute_tolerance > FLOAT_COMPARISON_EPSILON
+    material_low = (
+        low_mask
+        & (low_relative > relative_tolerance)
+        & (low_gap - absolute_tolerance > FLOAT_COMPARISON_EPSILON)
     )
     evidence = {
         "relative_tolerance": relative_tolerance,
@@ -132,17 +136,17 @@ def _process_yfinance_df(
     result["date"] = pd.to_datetime(result["date"], errors="coerce")
     for column in ("open", "high", "low", "close", "volume"):
         result[column] = pd.to_numeric(result[column], errors="coerce")
-    result = result.dropna(
-        subset=["date", "open", "high", "low", "close"]
-    ).copy()
+    result = result.dropna(subset=["date", "open", "high", "low", "close"]).copy()
     # Yahoo does not expose reported turnover through this endpoint. Keep the
     # historical Alpha Engine column but classify it as synthetic in the
     # provider capability manifest.
     result["amount"] = result["close"] * result["volume"]
     result["factor"] = 1.0
-    out = result[
-        ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
-    ].sort_values("date").reset_index(drop=True)
+    out = (
+        result[["date", "open", "high", "low", "close", "volume", "amount", "factor"]]
+        .sort_values("date")
+        .reset_index(drop=True)
+    )
     reconciled, _ = _reconcile_ohlc_rounding(
         out,
         absolute_tolerance=absolute_tolerance,
@@ -164,9 +168,7 @@ def _exclusive_provider_end(value: str | None) -> str | None:
     return (requested_end + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
 
 
-def _clip_to_request(
-    frame: pd.DataFrame, *, start: str, end: str | None
-) -> pd.DataFrame:
+def _clip_to_request(frame: pd.DataFrame, *, start: str, end: str | None) -> pd.DataFrame:
     if frame.empty:
         return frame
     start_ts = _normalise_boundary(start, field_name="start")
@@ -222,9 +224,7 @@ class YFinanceAdapter:
         yf_ticker = self.provider_symbol(req)
         try:
             with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore", message=".*Timestamp.utcnow is deprecated.*"
-                )
+                warnings.filterwarnings("ignore", message=".*Timestamp.utcnow is deprecated.*")
                 df = yf.download(
                     yf_ticker,
                     start=start,
@@ -235,9 +235,7 @@ class YFinanceAdapter:
                     threads=False,
                 )
         except Exception as exc:
-            raise DataFetchError(
-                f"yfinance download failed for {yf_ticker}: {exc}"
-            ) from exc
+            raise DataFetchError(f"yfinance download failed for {yf_ticker}: {exc}") from exc
         out = _clip_to_request(
             _process_yfinance_df(
                 df,
@@ -253,8 +251,7 @@ class YFinanceAdapter:
         valid, _, errors = validate_market_data(out, symbol)
         if not valid:
             raise DataFetchError(
-                f"yfinance schema validation failed for {yf_ticker}: "
-                f"{'; '.join(errors)}"
+                f"yfinance schema validation failed for {yf_ticker}: {'; '.join(errors)}"
             )
         return FetchResult(
             provider=self.name,

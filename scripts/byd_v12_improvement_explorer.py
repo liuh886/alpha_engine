@@ -113,7 +113,7 @@ def compute_v12_state(frame: pd.DataFrame,
 
     # Market state
     bull = close.gt(sma_l) & sma_s.gt(sma_l)
-    bear = close.lt(sma_l) & sma_s.lt(sma_l)
+    close.lt(sma_l) & sma_s.lt(sma_l)
 
     # Vol state
     daily_ret = close.pct_change()
@@ -361,7 +361,7 @@ def explore_2_drawdown_scaled_core(frame: pd.DataFrame) -> list[dict]:
         r = evaluate_variant(frame, state, f"dd_scaled_{label}")
         results.append(r)
         fv = r.get("fixed_validation", {})
-        rp = r.get("retrospective_2025_plus", {})
+        r.get("retrospective_2025_plus", {})
         print(f"  {label}: val CAGR={fv.get('cagr', 0):.4f} (Δ={fv.get('cagr_delta', 0):+.4f}), "
               f"val MaxDD={fv.get('max_drawdown', 0):.4f} (Δ={fv.get('maxdd_delta', 0):+.4f})")
 
@@ -374,7 +374,7 @@ def explore_3_vol_adaptive_mom(frame: pd.DataFrame) -> list[dict]:
     results = []
 
     daily_ret = frame["close"].pct_change()
-    realized_vol = daily_ret.rolling(60).std()
+    daily_ret.rolling(60).std()
 
     configs = [
         # (base_divisor, vol_multiplier, label)
@@ -966,10 +966,14 @@ def main():
     # Save
     class NpEncoder(json.JSONEncoder):
         def default(self, obj):
-            if isinstance(obj, (np.integer,)): return int(obj)
-            if isinstance(obj, (np.floating,)): return float(obj)
-            if isinstance(obj, np.ndarray): return obj.tolist()
-            if isinstance(obj, (pd.Timestamp, Path)): return str(obj)
+            if isinstance(obj, (np.integer,)):
+                return int(obj)
+            if isinstance(obj, (np.floating,)):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            if isinstance(obj, (pd.Timestamp, Path)):
+                return str(obj)
             return super().default(obj)
 
     results_path = output_dir / "v12_improvements.json"

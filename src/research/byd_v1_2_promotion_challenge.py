@@ -108,12 +108,11 @@ def build_candidate_decisions(
         .mul(np.sqrt(FINANCING_DAY_COUNT))
     )
     volatility_scale = (
-        ANNUALIZED_VOLATILITY_BUDGET
-        / annualized_volatility.replace(0.0, np.nan)
-    ).clip(lower=0.0, upper=1.0).fillna(0.0)
-    volatility_increment = (
-        active.astype(float) * MAX_INCREMENT * volatility_scale
-    ).astype(float)
+        (ANNUALIZED_VOLATILITY_BUDGET / annualized_volatility.replace(0.0, np.nan))
+        .clip(lower=0.0, upper=1.0)
+        .fillna(0.0)
+    )
+    volatility_increment = (active.astype(float) * MAX_INCREMENT * volatility_scale).astype(float)
 
     byd_momentum = (
         (1.0 + common["byd_open_return"])
@@ -182,15 +181,9 @@ def _window_metrics(result: AllocationResult, start: str, end: str) -> dict[str,
     output.update(
         {
             "transaction_cost_paid": float(block.loc[returns.index, "cost"].sum()),
-            "financing_cost_paid": float(
-                block.loc[returns.index, "financing_cost"].sum()
-            ),
-            "mean_borrowed_weight": float(
-                block.loc[returns.index, "borrowed_weight"].mean()
-            ),
-            "financed_sessions": float(
-                block.loc[returns.index, "borrowed_weight"].gt(0.0).sum()
-            ),
+            "financing_cost_paid": float(block.loc[returns.index, "financing_cost"].sum()),
+            "mean_borrowed_weight": float(block.loc[returns.index, "borrowed_weight"].mean()),
+            "financed_sessions": float(block.loc[returns.index, "borrowed_weight"].gt(0.0).sum()),
         }
     )
     return output
@@ -280,9 +273,7 @@ def episode_attribution(results: dict[str, AllocationResult]) -> pd.DataFrame:
                     "mean_increment": float(block["borrowed_weight"].mean()),
                 }
             )
-        positive_total = sum(
-            max(row["relative_terminal_wealth"], 0.0) for row in candidate_rows
-        )
+        positive_total = sum(max(row["relative_terminal_wealth"], 0.0) for row in candidate_rows)
         for row in candidate_rows:
             row["positive_contribution_share"] = (
                 max(row["relative_terminal_wealth"], 0.0) / positive_total
@@ -332,21 +323,19 @@ def decide(
         cagr_delta = float(primary["cagr"] - baseline_primary["cagr"])
         mdd_delta = float(primary["max_drawdown"] - baseline_primary["max_drawdown"])
         stress_relative = float(
-            (1.0 + stress["total_return"])
-            / (1.0 + baseline_stress["total_return"])
-            - 1.0
+            (1.0 + stress["total_return"]) / (1.0 + baseline_stress["total_return"]) - 1.0
         )
 
         gates = {
             "cagr_improvement_gte_0_50pp": cagr_delta >= 0.005,
             "mdd_worsening_lte_2pp": mdd_delta >= -0.02,
             "stress_total_return_not_below_baseline": stress_relative >= 0.0,
-            "fixed_validation_relative_positive": float(
-                later.get("fixed_validation", np.nan)
-            ) > 0.0,
+            "fixed_validation_relative_positive": float(later.get("fixed_validation", np.nan))
+            > 0.0,
             "retrospective_2025_plus_relative_positive": float(
                 later.get("retrospective_2025_plus", np.nan)
-            ) > 0.0,
+            )
+            > 0.0,
             "period_concentration_lte_60pct": max_period_share <= 0.60,
             "episode_concentration_lte_40pct": max_episode_share <= 0.40,
             "minimum_10_episodes": completed_episodes >= 10,
@@ -382,9 +371,7 @@ def decide(
 
     return ChallengeDecision(
         decision=(
-            "select_one_prospective_challenger"
-            if selected is not None
-            else "retain_byd_v1_1"
+            "select_one_prospective_challenger" if selected is not None else "retain_byd_v1_1"
         ),
         selected_candidate=selected,
         eligible_candidates=tuple(sorted(eligible)),

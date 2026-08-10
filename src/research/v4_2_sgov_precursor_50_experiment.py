@@ -92,8 +92,7 @@ def run_precursor_50_backtest(
     daily.loc[daily["position_state"].eq(2), "release_stage"] = "state_2"
 
     daily["gross_return"] = sum(
-        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in ASSETS
+        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
@@ -238,8 +237,7 @@ def _shadow_gate(
             - float(chrono.loc[(PRIOR_KEY, "late"), "cagr"])
         )
         * 100.0,
-        "sharpe_delta_vs_25": float(bold.metrics["sharpe"])
-        - float(prior.metrics["sharpe"]),
+        "sharpe_delta_vs_25": float(bold.metrics["sharpe"]) - float(prior.metrics["sharpe"]),
         "maximum_drawdown_worsening_vs_25_pp": _risk_worsening_pp(
             float(bold.metrics["max_drawdown"]), float(prior.metrics["max_drawdown"])
         ),
@@ -264,12 +262,8 @@ def _shadow_gate(
         "median_resolved_recovery_lag_sessions": (
             float(resolved["recovery_lag_sessions"].median()) if len(resolved) else None
         ),
-        "unresolved_major_episode_count": int(
-            major["recovery_lag_sessions"].isna().sum()
-        ),
-        "cagr_delta_vs_v4_2_pp": (
-            float(bold.metrics["cagr"]) - float(v4_2.metrics["cagr"])
-        )
+        "unresolved_major_episode_count": int(major["recovery_lag_sessions"].isna().sum()),
+        "cagr_delta_vs_v4_2_pp": (float(bold.metrics["cagr"]) - float(v4_2.metrics["cagr"]))
         * 100.0,
     }
     checks = {
@@ -281,23 +275,15 @@ def _shadow_gate(
         <= float(thresholds["largest_marginal_event_benefit_share_max"]),
         "full_sample_cagr_delta_vs_25": metrics["full_sample_cagr_delta_vs_25_pp"]
         >= float(thresholds["full_sample_cagr_delta_vs_25_pp_min"]),
-        "early_segment_cagr_delta_vs_25": metrics[
-            "early_segment_cagr_delta_vs_25_pp"
-        ]
+        "early_segment_cagr_delta_vs_25": metrics["early_segment_cagr_delta_vs_25_pp"]
         >= float(thresholds["early_segment_cagr_delta_vs_25_pp_min"]),
-        "late_segment_cagr_delta_vs_25": metrics[
-            "late_segment_cagr_delta_vs_25_pp"
-        ]
+        "late_segment_cagr_delta_vs_25": metrics["late_segment_cagr_delta_vs_25_pp"]
         >= float(thresholds["late_segment_cagr_delta_vs_25_pp_min"]),
         "sharpe_delta_vs_25": metrics["sharpe_delta_vs_25"]
         >= float(thresholds["sharpe_delta_vs_25_min"]),
-        "maximum_drawdown_vs_25": metrics[
-            "maximum_drawdown_worsening_vs_25_pp"
-        ]
+        "maximum_drawdown_vs_25": metrics["maximum_drawdown_worsening_vs_25_pp"]
         <= float(thresholds["maximum_drawdown_worsening_vs_25_pp_max"]),
-        "expected_shortfall_95_vs_25": metrics[
-            "expected_shortfall_95_worsening_vs_25_pp"
-        ]
+        "expected_shortfall_95_vs_25": metrics["expected_shortfall_95_worsening_vs_25_pp"]
         <= float(thresholds["expected_shortfall_95_worsening_vs_25_pp_max"]),
         "worst_5d_vs_25": metrics["worst_5d_worsening_vs_25_pp"]
         <= float(thresholds["worst_5d_worsening_vs_25_pp_max"]),
@@ -361,12 +347,16 @@ def run_precursor_50_comparison(
     v4_2 = prior_results["current_v4_2"]
     static = prior_results["static_blended"]
     prior = prior_results[PRIOR_KEY]
-    if not bold.daily["position_state"].astype(int).equals(
-        v4_2.daily["position_state"].astype(int)
+    if (
+        not bold.daily["position_state"]
+        .astype(int)
+        .equals(v4_2.daily["position_state"].astype(int))
     ):
         raise AssertionError("50% precursor changed the frozen v4.2 state trace")
-    if not bold.daily["precursor_active"].astype(bool).equals(
-        prior.daily["precursor_active"].astype(bool)
+    if (
+        not bold.daily["precursor_active"]
+        .astype(bool)
+        .equals(prior.daily["precursor_active"].astype(bool))
     ):
         raise AssertionError("50% precursor dates differ from the frozen 25% precursor")
     state_two = bold.daily.loc[bold.daily["position_state"].eq(2)]
@@ -384,12 +374,10 @@ def run_precursor_50_comparison(
         PRIOR_KEY: prior,
         BOLD_KEY: bold,
     }
-    headline = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
-    train_fraction = float(
-        bold_contract["validation"]["chronological_train_fraction"]
+    headline = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
     )
+    train_fraction = float(bold_contract["validation"]["chronological_train_fraction"])
     chronological = pd.DataFrame(
         [
             row

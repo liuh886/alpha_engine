@@ -197,9 +197,7 @@ def find_common_coverage_start(
 
         last_ts = pd.Timestamp(last_raw)
         if last_ts < test_end_ts:
-            dropped[sym] = (
-                f"last_valid_date {last_raw} is before test_end {test_end}"
-            )
+            dropped[sym] = f"last_valid_date {last_raw} is before test_end {test_end}"
             continue
 
         first_ts = pd.Timestamp(first_raw)
@@ -236,6 +234,7 @@ def get_aligned_windows(
         first_test_year=first_test_year,
         last_test_year=last_test_year,
     )
+
 
 def _count_viable_oos_windows(
     aligned_start: str,
@@ -298,9 +297,7 @@ def align_train_start_to_coverage(
         ``.skipped``, and ``.retained_symbols`` to proceed or bail out.
     """
     if alignment_mode not in ("strict", "auto"):
-        raise ValueError(
-            f"alignment_mode must be 'strict' or 'auto', got {alignment_mode!r}"
-        )
+        raise ValueError(f"alignment_mode must be 'strict' or 'auto', got {alignment_mode!r}")
 
     market = spec.market
     requested_start = spec.train_start
@@ -337,9 +334,7 @@ def align_train_start_to_coverage(
         last_ts = pd.Timestamp(last_raw)
         if last_ts < test_end_ts:
             dropped.append(sym)
-            drop_reasons[sym] = (
-                f"last_valid_date {last_raw} before test_end {test_end}"
-            )
+            drop_reasons[sym] = f"last_valid_date {last_raw} before test_end {test_end}"
             continue
 
         # Strict mode: symbol must cover the requested train-start.
@@ -350,8 +345,7 @@ def align_train_start_to_coverage(
             if train_ok is False:
                 dropped.append(sym)
                 drop_reasons[sym] = (
-                    f"covers_train_start is False for "
-                    f"requested_start {requested_start}"
+                    f"covers_train_start is False for requested_start {requested_start}"
                 )
                 continue
             if train_ok is None:
@@ -359,8 +353,7 @@ def align_train_start_to_coverage(
                 if pd.Timestamp(first_raw) > requested_ts:
                     dropped.append(sym)
                     drop_reasons[sym] = (
-                        f"first_valid_date {first_raw} after "
-                        f"requested_start {requested_start}"
+                        f"first_valid_date {first_raw} after requested_start {requested_start}"
                     )
                     continue
 
@@ -396,9 +389,7 @@ def align_train_start_to_coverage(
                     first_raw = rec.get("first_valid_date")
                     if first_raw is None:
                         dropped.append(sym)
-                        drop_reasons[sym] = (
-                            "first_valid_date became None during re-filter"
-                        )
+                        drop_reasons[sym] = "first_valid_date became None during re-filter"
                         continue
                     if pd.Timestamp(first_raw) > common_ts:
                         dropped.append(sym)
@@ -540,8 +531,7 @@ def build_aligned_market_readiness(
         n_ret = len(alignment.retained_symbols)
         reports[market]["coverage_ratio"] = round(n_ret / n_req, 4) if n_req else 0.0
         reports[market]["normalization"] = [
-            {"original_symbol": s, "normalized_symbol": s, "candidates": [s]}
-            for s in spec.symbols
+            {"original_symbol": s, "normalized_symbol": s, "candidates": [s]} for s in spec.symbols
         ]
 
         logger.info(

@@ -96,11 +96,7 @@ class IndependentAudit:
 
 def _normalise_dates(frame: pd.DataFrame) -> pd.DataFrame:
     out = frame.copy(deep=True)
-    out["date"] = (
-        pd.to_datetime(out["date"], errors="raise")
-        .dt.tz_localize(None)
-        .dt.normalize()
-    )
+    out["date"] = pd.to_datetime(out["date"], errors="raise").dt.tz_localize(None).dt.normalize()
     return out.sort_values("date").drop_duplicates("date", keep="last")
 
 
@@ -197,9 +193,7 @@ def audit_independent_raw(
     for frame in (primary, secondary):
         for column in (*PRICE_COLUMNS, "volume"):
             frame[column] = pd.to_numeric(frame[column], errors="raise").astype(float)
-    secondary_sha = dataframe_sha256(
-        secondary[["date", *PRICE_COLUMNS, "volume"]]
-    )
+    secondary_sha = dataframe_sha256(secondary[["date", *PRICE_COLUMNS, "volume"]])
     merged = primary.merge(
         secondary,
         on="date",
@@ -302,45 +296,21 @@ def make_signal_observations(
             "primary_provider": primary_provider,
             "secondary_provider": audit.secondary_provider,
             "chain_scale": extension.chain_scale,
-            "anchor_provider_adjusted_close": (
-                extension.anchor_provider_adjusted_close
-            ),
-            "anchor_canonical_adjusted_close": (
-                extension.anchor_canonical_adjusted_close
-            ),
-            "open_research_eligible": bool(
-                audit_row["open_research_eligible"]
-            ),
-            "independent_raw_confirmed": bool(
-                audit_row["independent_raw_confirmed"]
-            ),
+            "anchor_provider_adjusted_close": (extension.anchor_provider_adjusted_close),
+            "anchor_canonical_adjusted_close": (extension.anchor_canonical_adjusted_close),
+            "open_research_eligible": bool(audit_row["open_research_eligible"]),
+            "independent_raw_confirmed": bool(audit_row["independent_raw_confirmed"]),
             "base_target_position": float(base_decision.loc[timestamp]),
-            "shadow_overlay_active": bool(
-                schedule.overlay_active.loc[timestamp]
-            ),
-            "shadow_overlay_branch": str(
-                schedule.overlay_branch.loc[timestamp]
-            ),
-            "shadow_target_position": float(
-                schedule.final_decision_position.loc[timestamp]
-            ),
-            "branch_a_condition": bool(
-                conditions.loc[timestamp, "bear_sideways_low_vol"]
-            ),
-            "branch_b_condition": bool(
-                conditions.loc[timestamp, "bull_high_vol"]
-            ),
+            "shadow_overlay_active": bool(schedule.overlay_active.loc[timestamp]),
+            "shadow_overlay_branch": str(schedule.overlay_branch.loc[timestamp]),
+            "shadow_target_position": float(schedule.final_decision_position.loc[timestamp]),
+            "branch_a_condition": bool(conditions.loc[timestamp, "bear_sideways_low_vol"]),
+            "branch_b_condition": bool(conditions.loc[timestamp, "bull_high_vol"]),
             "factors": {
                 "drawdown_252": _record_float(row["drawdown_252"]),
-                "distance_from_low_20": _record_float(
-                    row["distance_from_low_20"]
-                ),
-                "momentum_accel_20_60": _record_float(
-                    row["momentum_accel_20_60"]
-                ),
-                "open_return_autocorr_20": _record_float(
-                    row["open_return_autocorr_20"]
-                ),
+                "distance_from_low_20": _record_float(row["distance_from_low_20"]),
+                "momentum_accel_20_60": _record_float(row["momentum_accel_20_60"]),
+                "open_return_autocorr_20": _record_float(row["open_return_autocorr_20"]),
                 "market_state": str(row["market_state"]),
                 "vol_state": str(row["vol_state"]),
             },
@@ -350,10 +320,7 @@ def make_signal_observations(
                 else "prospective_observation_open_quarantined"
             ),
         }
-        observation["data_version"] = (
-            f"byd-shadow-{observation['signal_date']}-"
-            f"{extended_sha[:12]}"
-        )
+        observation["data_version"] = f"byd-shadow-{observation['signal_date']}-{extended_sha[:12]}"
         observations.append(observation)
     return observations, dataset, schedule.final_decision_position
 
@@ -406,14 +373,11 @@ def mature_outcomes(
             entry = eligible[0]
             exit_ = eligible[horizon]
             base_block = base_result.daily.loc[
-                (base_result.daily.index >= entry)
-                & (base_result.daily.index < exit_)
+                (base_result.daily.index >= entry) & (base_result.daily.index < exit_)
             ]
             shadow_block = shadow_result.daily.reindex(base_block.index)
             base_return = float((1.0 + base_block["net_return"]).prod() - 1.0)
-            shadow_return = float(
-                (1.0 + shadow_block["net_return"]).prod() - 1.0
-            )
+            shadow_return = float((1.0 + shadow_block["net_return"]).prod() - 1.0)
             outcome = {
                 "schema_version": SHADOW_SCHEMA,
                 "signal_date": observation["signal_date"],
@@ -422,9 +386,7 @@ def mature_outcomes(
                 "exit_open_date": exit_.strftime("%Y-%m-%d"),
                 "base_return": base_return,
                 "shadow_return": shadow_return,
-                "incremental_return": (
-                    (1.0 + shadow_return) / (1.0 + base_return) - 1.0
-                ),
+                "incremental_return": ((1.0 + shadow_return) / (1.0 + base_return) - 1.0),
                 "cost_bps_per_turnover_unit": primary_cost_bps,
                 "base_snapshot_sha256": SNAPSHOT_SHA256,
                 "observation_data_version": observation["data_version"],
@@ -450,8 +412,7 @@ def _derived_ledger(
     observation_hashes: dict[str, str],
 ) -> pd.DataFrame:
     outcome_map = {
-        (row["signal_date"], int(row["horizon_eligible_opens"])): row
-        for row in outcomes
+        (row["signal_date"], int(row["horizon_eligible_opens"])): row for row in outcomes
     }
     rows: list[dict[str, Any]] = []
     for observation in observations:
@@ -485,15 +446,9 @@ def _derived_ledger(
         }
         for horizon in HORIZONS:
             outcome = outcome_map.get((signal_date, horizon))
-            row[f"exit_open_date_{horizon}"] = (
-                outcome["exit_open_date"] if outcome else ""
-            )
-            row[f"base_return_{horizon}"] = (
-                outcome["base_return"] if outcome else np.nan
-            )
-            row[f"shadow_return_{horizon}"] = (
-                outcome["shadow_return"] if outcome else np.nan
-            )
+            row[f"exit_open_date_{horizon}"] = outcome["exit_open_date"] if outcome else ""
+            row[f"base_return_{horizon}"] = outcome["base_return"] if outcome else np.nan
+            row[f"shadow_return_{horizon}"] = outcome["shadow_return"] if outcome else np.nan
             row[f"incremental_return_{horizon}"] = (
                 outcome["incremental_return"] if outcome else np.nan
             )
@@ -530,9 +485,7 @@ def persist_shadow_store(
     observations = _read_records(observation_dir)
     outcomes = _read_records(outcome_dir)
     observation_hashes = {
-        row["signal_date"]: file_sha256(
-            observation_dir / f"{row['signal_date']}.json"
-        )
+        row["signal_date"]: file_sha256(observation_dir / f"{row['signal_date']}.json")
         for row in observations
     }
     ledger = _derived_ledger(observations, outcomes, observation_hashes)
@@ -554,12 +507,8 @@ def persist_shadow_store(
         "baseline_cutoff": CANONICAL_CUTOFF,
         "observation_count": len(observations),
         "outcome_count": len(outcomes),
-        "first_signal_date": (
-            observations[0]["signal_date"] if observations else None
-        ),
-        "last_signal_date": (
-            observations[-1]["signal_date"] if observations else None
-        ),
+        "first_signal_date": (observations[0]["signal_date"] if observations else None),
+        "last_signal_date": (observations[-1]["signal_date"] if observations else None),
         "observation_sha256": observation_hashes,
         "ledger_sha256": file_sha256(ledger_path),
         "append_only": True,

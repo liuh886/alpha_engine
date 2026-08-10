@@ -282,6 +282,7 @@ def _ohlc_order_evidence(
         "max_ignored_roundoff": max_ignored_roundoff,
     }
 
+
 def _inspect_csv(path: Path) -> dict[str, Any]:
     frame = pd.read_csv(path)
     missing_columns = [column for column in _REQUIRED_CSV_COLUMNS if column not in frame.columns]
@@ -428,7 +429,9 @@ def evaluate_real_market_acceptance(
         )
     )
 
-    non_string_rows = [index for index, value in enumerate(raw_symbols) if not isinstance(value, str)]
+    non_string_rows = [
+        index for index, value in enumerate(raw_symbols) if not isinstance(value, str)
+    ]
     checks.append(
         _check(
             "source_symbol_types",
@@ -470,7 +473,10 @@ def evaluate_real_market_acceptance(
     )
 
     fixture_markers = (
-        sorted(str(path.relative_to(provider_path)) for path in provider_path.rglob("fixture_manifest.json"))
+        sorted(
+            str(path.relative_to(provider_path))
+            for path in provider_path.rglob("fixture_manifest.json")
+        )
         if provider_path.is_dir()
         else []
     )
@@ -498,9 +504,7 @@ def evaluate_real_market_acceptance(
     except Exception as exc:  # noqa: BLE001 - identity failures are evidence
         provider_manifest_error = str(exc)
     provider_identity = (
-        None
-        if provider_manifest is None
-        else provider_manifest.get("provider_identity_sha256")
+        None if provider_manifest is None else provider_manifest.get("provider_identity_sha256")
     )
     checks.append(
         _check(

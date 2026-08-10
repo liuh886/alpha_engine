@@ -22,13 +22,9 @@ class FactorCatalog:
         if any(row.factor_id == definition.factor_id for row in self.definitions):
             raise ValueError(f"duplicate factor_id: {definition.factor_id}")
         if any(
-            row.implementation_hash == definition.implementation_hash
-            for row in self.definitions
+            row.implementation_hash == definition.implementation_hash for row in self.definitions
         ):
-            raise ValueError(
-                "duplicate factor implementation: "
-                f"{definition.factor_id}"
-            )
+            raise ValueError(f"duplicate factor implementation: {definition.factor_id}")
         self.definitions.append(definition)
 
     def extend(self, definitions: Iterable[FactorDefinition]) -> None:

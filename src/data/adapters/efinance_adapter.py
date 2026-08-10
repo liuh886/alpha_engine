@@ -44,9 +44,7 @@ class EFinanceAdapter:
             raise DataFetchError("invalid start date")
 
         try:
-            frame = ef.stock.get_quote_history(
-                symbol, beg=beg, end=end, klt=101, fqt=1
-            )
+            frame = ef.stock.get_quote_history(symbol, beg=beg, end=end, klt=101, fqt=1)
         except Exception as exc:
             raise DataFetchError(f"efinance fetch failed for {symbol}: {exc}") from exc
 

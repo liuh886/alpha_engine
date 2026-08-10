@@ -54,8 +54,7 @@ def _sha256_file(path: Path) -> str:
 
 def _canonical_json(payload: Mapping[str, Any]) -> bytes:
     return (
-        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
-        + "\n"
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
     ).encode("utf-8")
 
 
@@ -169,15 +168,11 @@ def _reuse_market_evidence_tree(
             raise MarketEvidenceError("reusable market evidence identity is incomplete")
         source = _bounded_evidence_path(source_root, relative)
         if not source.is_file() or _sha256_file(source) != expected_sha:
-            raise MarketEvidenceError(
-                f"reusable market evidence hash mismatch: {relative}"
-            )
+            raise MarketEvidenceError(f"reusable market evidence hash mismatch: {relative}")
         verified.append((source, destination_root / relative))
 
     if destination_root.exists() and any(destination_root.iterdir()):
-        raise MarketEvidenceError(
-            f"market evidence destination is not empty: {destination_root}"
-        )
+        raise MarketEvidenceError(f"market evidence destination is not empty: {destination_root}")
     destination_root.mkdir(parents=True, exist_ok=True)
     for source, destination in verified:
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -190,9 +185,7 @@ def _instrument_id(market: str, provider_symbol: str) -> str:
     return f"{market.lower()}:{provider_symbol.upper()}"
 
 
-def _provider_symbol_for_formal_instrument(
-    market: str, formal_instrument: object
-) -> str | None:
+def _provider_symbol_for_formal_instrument(market: str, formal_instrument: object) -> str | None:
     source = str(formal_instrument or "").strip().upper()
     if not source or source == "CASH":
         return None
@@ -225,15 +218,9 @@ def _chart_studies(frame: pd.DataFrame) -> dict[str, list[dict[str, Any]]]:
     ready = average_gain.notna() & average_loss.notna()
     relative_strength = average_gain / average_loss.where(average_loss != 0.0)
     rsi = 100.0 - 100.0 / (1.0 + relative_strength)
-    rsi = rsi.where(
-        ~(ready & (average_loss == 0.0) & (average_gain > 0.0)), 100.0
-    )
-    rsi = rsi.where(
-        ~(ready & (average_gain == 0.0) & (average_loss > 0.0)), 0.0
-    )
-    rsi = rsi.where(
-        ~(ready & (average_gain == 0.0) & (average_loss == 0.0)), 50.0
-    )
+    rsi = rsi.where(~(ready & (average_loss == 0.0) & (average_gain > 0.0)), 100.0)
+    rsi = rsi.where(~(ready & (average_gain == 0.0) & (average_loss > 0.0)), 0.0)
+    rsi = rsi.where(~(ready & (average_gain == 0.0) & (average_loss == 0.0)), 50.0)
 
     dates = pd.to_datetime(frame["date"], errors="coerce")
 
@@ -256,9 +243,7 @@ def _chart_studies(frame: pd.DataFrame) -> dict[str, list[dict[str, Any]]]:
 
     return {
         "boll20": rows({"middle": middle, "upper": upper, "lower": lower}),
-        "macd_12_26_9": rows(
-            {"macd": macd, "signal": signal, "histogram": histogram}
-        ),
+        "macd_12_26_9": rows({"macd": macd, "signal": signal, "histogram": histogram}),
         "rsi14": rows({"value": rsi}),
     }
 
@@ -271,20 +256,11 @@ def _bars(frame: pd.DataFrame) -> list[dict[str, Any]]:
     output: list[dict[str, Any]] = []
     for row in frame.loc[:, list(required)].itertuples(index=False):
         date = pd.to_datetime(row.date, errors="coerce")
-        values = [
-            _finite(value)
-            for value in (row.open, row.high, row.low, row.close, row.volume)
-        ]
+        values = [_finite(value) for value in (row.open, row.high, row.low, row.close, row.volume)]
         if pd.isna(date) or any(value is None for value in values):
             continue
         open_value, high, low, close, volume = values
-        if (
-            open_value is None
-            or high is None
-            or low is None
-            or close is None
-            or volume is None
-        ):
+        if open_value is None or high is None or low is None or close is None or volume is None:
             continue
         if min(open_value, high, low, close) <= 0 or high < low:
             continue
@@ -334,9 +310,7 @@ def _trade_events(
                 if not isinstance(row, dict):
                     continue
                 source_instrument = str(row.get("instrument", "")).strip().upper()
-                provider_symbol = _provider_symbol_for_formal_instrument(
-                    market, source_instrument
-                )
+                provider_symbol = _provider_symbol_for_formal_instrument(market, source_instrument)
                 label = str(row.get("name") or row.get("entity") or "").strip()
                 if provider_symbol:
                     labels.setdefault(
@@ -349,9 +323,7 @@ def _trade_events(
             if not isinstance(row, dict):
                 continue
             source_instrument = str(row.get("instrument", "")).strip().upper()
-            provider_symbol = _provider_symbol_for_formal_instrument(
-                market, source_instrument
-            )
+            provider_symbol = _provider_symbol_for_formal_instrument(market, source_instrument)
             date = str(row.get("date", ""))
             action = str(row.get("action", "")).upper()
             if (
@@ -372,9 +344,7 @@ def _trade_events(
                 "previous_weight": _finite(row.get("previous_weight")),
                 "target_weight": _finite(row.get("target_weight")),
                 "weight_delta": _finite(row.get("weight_delta")),
-                "reason": str(
-                    row.get("reason") or row.get("executed_reason") or ""
-                ),
+                "reason": str(row.get("reason") or row.get("executed_reason") or ""),
                 "research_only": True,
                 "trade_ready": False,
             }
@@ -401,9 +371,7 @@ def _rename_factor_frame(
     return result
 
 
-def _filter_factor_frame(
-    evaluated: pd.DataFrame, symbols: Sequence[str]
-) -> pd.DataFrame:
+def _filter_factor_frame(evaluated: pd.DataFrame, symbols: Sequence[str]) -> pd.DataFrame:
     if not isinstance(evaluated.index, pd.MultiIndex):
         return evaluated
     names = list(evaluated.index.names)
@@ -523,9 +491,7 @@ def _factor_series(
             value = _finite(raw)
             if value is None:
                 continue
-            rows.append(
-                {"time": pd.Timestamp(date).date().isoformat(), "value": value}
-            )
+            rows.append({"time": pd.Timestamp(date).date().isoformat(), "value": value})
         if rows:
             output[factor_id] = rows
     return output
@@ -547,32 +513,20 @@ def build_market_evidence(
     provider_root = provider_root.resolve()
     formal_root = formal_root.resolve()
     output_root = output_root.resolve() / market
-    manifest_path = (
-        provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
-    )
+    manifest_path = provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
     manifest = _load_json(manifest_path)
     if (
         manifest.get("status") != "selected_pool_price_refresh_ready"
         or manifest.get("promotion_eligible") is not True
     ):
-        raise MarketEvidenceError(
-            f"selected-pool provider is not publication eligible: {market}"
-        )
+        raise MarketEvidenceError(f"selected-pool provider is not publication eligible: {market}")
     if str(manifest.get("market", "")) != market:
         raise MarketEvidenceError("provider manifest market mismatch")
 
-    records = [
-        row for row in manifest.get("records", []) if isinstance(row, dict)
-    ]
-    symbols = [
-        str(row.get("symbol", "")).strip().upper()
-        for row in records
-        if row.get("symbol")
-    ]
+    records = [row for row in manifest.get("records", []) if isinstance(row, dict)]
+    symbols = [str(row.get("symbol", "")).strip().upper() for row in records if row.get("symbol")]
     if not symbols or len(symbols) != len(set(symbols)):
-        raise MarketEvidenceError(
-            "selected-pool provider symbols must be non-empty and unique"
-        )
+        raise MarketEvidenceError("selected-pool provider symbols must be non-empty and unique")
     candidate_symbols = [
         str(value).strip().upper()
         for value in manifest.get("candidate_symbols", [])
@@ -591,9 +545,7 @@ def build_market_evidence(
         if str(value).strip()
     ]
     source_hashes = {
-        str(row.get("symbol", "")).strip().upper(): str(
-            row.get("output_sha256", "")
-        )
+        str(row.get("symbol", "")).strip().upper(): str(row.get("output_sha256", ""))
         for row in records
     }
 
@@ -602,8 +554,7 @@ def build_market_evidence(
     uncovered = sorted(set(events) - set(symbols))
     if uncovered:
         raise MarketEvidenceError(
-            "formal traded securities are missing from governed provider: "
-            + ", ".join(uncovered)
+            "formal traded securities are missing from governed provider: " + ", ".join(uncovered)
         )
     traded_symbols = sorted(events)
 
@@ -630,9 +581,7 @@ def build_market_evidence(
                     if isinstance(row, dict)
                 ),
                 "factor_count": len(
-                    _load_json(output_root / "factor-diagnostics.json").get(
-                        "factors", []
-                    )
+                    _load_json(output_root / "factor-diagnostics.json").get("factors", [])
                 ),
                 "catalog_sha256": _sha256_file(output_root / "catalog.json"),
                 "input_identity_sha256": input_identity,
@@ -684,28 +633,20 @@ def build_market_evidence(
         "research_only": True,
         "trade_ready": False,
     }
-    factor_stats_sha = _write_json(
-        output_root / "factor-diagnostics.json", stats_payload
-    )
+    factor_stats_sha = _write_json(output_root / "factor-diagnostics.json", stats_payload)
 
     catalog_rows: list[dict[str, Any]] = []
     csv_root = provider_root / "data" / "csv_source"
     for symbol in symbols:
         source_path = csv_root / f"{symbol}.csv"
         if not source_path.is_file():
-            raise MarketEvidenceError(
-                f"selected-pool CSV is missing: {source_path}"
-            )
+            raise MarketEvidenceError(f"selected-pool CSV is missing: {source_path}")
         source_sha = _sha256_file(source_path)
         if source_hashes.get(symbol) and source_hashes[symbol] != source_sha:
-            raise MarketEvidenceError(
-                f"selected-pool CSV hash mismatch: {symbol}"
-            )
+            raise MarketEvidenceError(f"selected-pool CSV hash mismatch: {symbol}")
         frame = pd.read_csv(source_path)
         bars = _bars(frame)
-        symbol_factors = _factor_series(
-            _symbol_factor_frame(evaluated, symbol), series_factor_ids
-        )
+        symbol_factors = _factor_series(_symbol_factor_frame(evaluated, symbol), series_factor_ids)
         roles: list[str] = []
         if symbol in candidate_symbols:
             roles.append("selected_pool_candidate")
@@ -777,9 +718,7 @@ def build_market_evidence(
         "auxiliary_symbols": auxiliary_symbols,
         "start": str(manifest.get("start", "")),
         "cutoff": str(manifest.get("cutoff", "")),
-        "provider_identity_sha256": str(
-            manifest.get("provider_identity_sha256", "")
-        ),
+        "provider_identity_sha256": str(manifest.get("provider_identity_sha256", "")),
         "provider_manifest_sha256": _sha256_file(manifest_path),
         "factor_diagnostics_path": "factor-diagnostics.json",
         "factor_diagnostics_sha256": factor_stats_sha,

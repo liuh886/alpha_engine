@@ -23,12 +23,8 @@ TOPK = 15
 HORIZON_SESSIONS = 10
 REBALANCE_SESSIONS = 10
 BASE_COST_BPS = 20
-EXPECTED_PROVIDER_IDENTITY = (
-    "5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95"
-)
-EXPECTED_PARAMETER_IDENTITY = (
-    "c45831d096e5da0d8e0fe15762ec29c949d69ff9d6dfc022fa7f6244b5e6ec0d"
-)
+EXPECTED_PROVIDER_IDENTITY = "5c09d0fbc8348e182ce8829c44d43d96aaae4ed8a2c2ba8901e69034a7c6aa95"
+EXPECTED_PARAMETER_IDENTITY = "c45831d096e5da0d8e0fe15762ec29c949d69ff9d6dfc022fa7f6244b5e6ec0d"
 
 
 @dataclass(frozen=True)
@@ -87,8 +83,7 @@ def _resolve_provider_paths(provider_root: Path) -> tuple[Path, Path]:
         if csv_root.is_dir() and manifest.is_file():
             return csv_root.resolve(), manifest.resolve()
     raise FileNotFoundError(
-        "provider root must contain data/csv_source and "
-        "data/providers/us/provider_manifest.json"
+        "provider root must contain data/csv_source and data/providers/us/provider_manifest.json"
     )
 
 
@@ -100,9 +95,7 @@ def _resolve_reproduction_root(reproduction_root: Path) -> Path:
     for candidate in candidates:
         if (candidate / "deterministic_reproduction.json").is_file():
             return candidate.resolve()
-    raise FileNotFoundError(
-        "reproduction root must contain deterministic_reproduction.json"
-    )
+    raise FileNotFoundError("reproduction root must contain deterministic_reproduction.json")
 
 
 def _rank_scores(scores: pd.DataFrame) -> pd.DataFrame:
@@ -133,9 +126,7 @@ def _load_scores(path: Path) -> pd.DataFrame:
         raise ValueError(f"duplicate score rows: {path}")
     if not np.isfinite(frame["score"].to_numpy(dtype=float)).all():
         raise ValueError(f"non-finite score rows: {path}")
-    return frame.sort_values(["datetime", "instrument"], kind="mergesort").reset_index(
-        drop=True
-    )
+    return frame.sort_values(["datetime", "instrument"], kind="mergesort").reset_index(drop=True)
 
 
 def _load_prices(
@@ -188,9 +179,7 @@ def _max_drawdown(period_returns: pd.Series) -> float:
     equity = (1.0 + period_returns.astype(float)).cumprod()
     if not len(equity):
         return 0.0
-    running_peak = np.maximum.accumulate(
-        np.concatenate(([1.0], equity.to_numpy(dtype=float)))
-    )[1:]
+    running_peak = np.maximum.accumulate(np.concatenate(([1.0], equity.to_numpy(dtype=float))))[1:]
     drawdown = equity.to_numpy(dtype=float) / running_peak - 1.0
     return float(drawdown.min())
 
@@ -290,9 +279,7 @@ def _build_window(
         how="left",
         validate="one_to_one",
     )
-    aligned["economic_eligible"] = np.isfinite(
-        aligned["forward_return"].to_numpy(dtype=float)
-    )
+    aligned["economic_eligible"] = np.isfinite(aligned["forward_return"].to_numpy(dtype=float))
     economic = aligned.loc[aligned["economic_eligible"]].copy()
     economic_ranks = _rank_scores(economic[["datetime", "instrument", "score"]])
     economic = economic.drop(columns=["score"]).merge(
@@ -341,16 +328,13 @@ def _build_window(
 
     for period_index, rebalance_date in enumerate(rebalance_dates, start=1):
         day = economic.loc[economic["datetime"] == rebalance_date].copy()
-        selected = day.sort_values(
-            ["rank", "instrument"], kind="mergesort"
-        ).head(TOPK)
+        selected = day.sort_values(["rank", "instrument"], kind="mergesort").head(TOPK)
         if len(selected) != TOPK:
             raise ValueError(f"fewer than {TOPK} eligible names on {rebalance_date}")
         current_weights = {str(name): 1.0 / TOPK for name in selected["instrument"]}
         union = sorted(set(previous_weights) | set(current_weights))
         absolute_weight_change = sum(
-            abs(current_weights.get(name, 0.0) - previous_weights.get(name, 0.0))
-            for name in union
+            abs(current_weights.get(name, 0.0) - previous_weights.get(name, 0.0)) for name in union
         )
         turnover = 0.5 * absolute_weight_change
         transaction_cost = turnover * BASE_COST_BPS / 10000.0
@@ -421,12 +405,9 @@ def _build_window(
                 "forward_return": float(row["forward_return"]),
                 "target_weight": 1.0 / TOPK,
                 "previous_weight": float(previous_weights.get(instrument, 0.0)),
-                "weight_delta": 1.0 / TOPK
-                - float(previous_weights.get(instrument, 0.0)),
+                "weight_delta": 1.0 / TOPK - float(previous_weights.get(instrument, 0.0)),
             }
-            common["action"] = (
-                "BUY" if common["previous_weight"] == 0.0 else "HOLD"
-            )
+            common["action"] = "BUY" if common["previous_weight"] == 0.0 else "HOLD"
             rebalance_signal_rows.append(dict(common))
             holding_rows.append(dict(common))
             attribution_rows.append(
@@ -476,16 +457,13 @@ def _build_window(
     periods["strategy_drawdown"] = (
         periods["strategy_equity"].to_numpy(dtype=float) / strategy_peak - 1.0
     )
-    periods["qqq_drawdown"] = (
-        periods["qqq_equity"].to_numpy(dtype=float) / qqq_peak - 1.0
-    )
+    periods["qqq_drawdown"] = periods["qqq_equity"].to_numpy(dtype=float) / qqq_peak - 1.0
 
     expected = _expected_window(summary, window)
     observed = {
         "total_return": _compound(periods["net_return"]),
         "benchmark_return": _compound(periods["qqq_return"]),
-        "excess_return": _compound(periods["net_return"])
-        - _compound(periods["qqq_return"]),
+        "excess_return": _compound(periods["net_return"]) - _compound(periods["qqq_return"]),
         "turnover": float(periods["turnover"].sum()),
         "costs": float(periods["transaction_cost"].sum()),
         "max_drawdown": _max_drawdown(periods["net_return"]),
@@ -550,12 +528,10 @@ def _security_summary(attribution: pd.DataFrame, trades: pd.DataFrame) -> pd.Dat
         .rename(columns={"allocated_transaction_cost": "total_trading_cost"})
     )
     result = gross.merge(all_costs, on="instrument", how="outer").fillna(0.0)
-    result["net_contribution"] = (
-        result["gross_contribution"] - result["total_trading_cost"]
+    result["net_contribution"] = result["gross_contribution"] - result["total_trading_cost"]
+    return result.sort_values("net_contribution", ascending=False, kind="mergesort").reset_index(
+        drop=True
     )
-    return result.sort_values(
-        "net_contribution", ascending=False, kind="mergesort"
-    ).reset_index(drop=True)
 
 
 def _window_summary(periods: pd.DataFrame) -> pd.DataFrame:
@@ -646,13 +622,9 @@ def build_complete_backtest(
 
     score_symbols: set[str] = {"QQQ"}
     for window in WINDOWS:
-        scores = _load_scores(
-            reproduction_root / "ledgers" / "a" / window / "scores.csv"
-        )
+        scores = _load_scores(reproduction_root / "ledgers" / "a" / window / "scores.csv")
         score_symbols.update(scores["instrument"].unique())
-    prices, source_identity_rows = _load_prices(
-        csv_root, sorted(score_symbols), provider_manifest
-    )
+    prices, source_identity_rows = _load_prices(csv_root, sorted(score_symbols), provider_manifest)
     identity_rows.extend(source_identity_rows)
 
     window_results = [
@@ -674,9 +646,7 @@ def build_complete_backtest(
     trades = pd.concat([result["trades"] for result in window_results], ignore_index=True)
     holdings = pd.concat([result["holdings"] for result in window_results], ignore_index=True)
     periods = pd.concat([result["periods"] for result in window_results], ignore_index=True)
-    attribution = pd.concat(
-        [result["attribution"] for result in window_results], ignore_index=True
-    )
+    attribution = pd.concat([result["attribution"] for result in window_results], ignore_index=True)
     reproduction = pd.DataFrame(
         [row for result in window_results for row in result["reproduction_rows"]]
     )
@@ -738,9 +708,7 @@ def build_complete_backtest(
         "regime_attribution.csv": regime_attribution,
         "reproduction_summary.csv": reproduction,
     }
-    export_hashes = {
-        name: _write_csv(output_dir / name, frame) for name, frame in exports.items()
-    }
+    export_hashes = {name: _write_csv(output_dir / name, frame) for name, frame in exports.items()}
     manifest = {
         "schema_version": "1.0",
         "decision": "complete_backtest_reproduced",

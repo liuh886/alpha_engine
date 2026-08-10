@@ -114,9 +114,9 @@ def _sha256_file(path: Path) -> str:
 
 
 def _canonical_hash(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return _sha256_bytes(encoded)
 
 
@@ -201,9 +201,7 @@ def _normalise_fact_rows(
     if not isinstance(facts, dict):
         return pd.DataFrame()
     accepted_forms = {str(value) for value in contract["forms"]["accepted"]}
-    accepted_units = {
-        str(value) for value in contract["unit_contract"]["accepted_currency_units"]
-    }
+    accepted_units = {str(value) for value in contract["unit_contract"]["accepted_currency_units"]}
     rows: list[dict[str, Any]] = []
     for namespace, concept, priority in _concept_candidates(contract, field):
         namespace_facts = facts.get(namespace)
@@ -257,42 +255,32 @@ def _normalise_fact_rows(
         return pd.DataFrame()
     frame = pd.DataFrame(rows)
     frame["fy"] = pd.to_numeric(frame["fy"], errors="coerce").astype("Int64")
-    return frame.sort_values(
-        ["end", "filed", "accn", "concept_priority"]
-    ).reset_index(drop=True)
+    return frame.sort_values(["end", "filed", "accn", "concept_priority"]).reset_index(drop=True)
 
 
 def _direct_quarters(frame: pd.DataFrame) -> pd.DataFrame:
     if frame.empty:
         return frame.copy()
     quarter = frame[
-        frame["duration_days"].between(70, 120)
-        & frame["fp"].isin({"Q1", "Q2", "Q3", "Q4"})
+        frame["duration_days"].between(70, 120) & frame["fp"].isin({"Q1", "Q2", "Q3", "Q4"})
     ].copy()
     if quarter.empty:
         return quarter
     quarter = quarter.sort_values(
         ["field", "end", "filed", "accn", "concept_priority"]
-    ).drop_duplicates(
-        ["field", "end", "filed", "accn", "unit"], keep="first"
-    )
+    ).drop_duplicates(["field", "end", "filed", "accn", "unit"], keep="first")
     return quarter.reset_index(drop=True)
 
 
 def _annual_facts(frame: pd.DataFrame) -> pd.DataFrame:
     if frame.empty:
         return frame.copy()
-    annual = frame[
-        frame["duration_days"].between(300, 400)
-        & frame["fp"].isin({"FY", "Q4"})
-    ].copy()
+    annual = frame[frame["duration_days"].between(300, 400) & frame["fp"].isin({"FY", "Q4"})].copy()
     if annual.empty:
         return annual
     annual = annual.sort_values(
         ["field", "end", "filed", "accn", "concept_priority"]
-    ).drop_duplicates(
-        ["field", "end", "filed", "accn", "unit"], keep="first"
-    )
+    ).drop_duplicates(["field", "end", "filed", "accn", "unit"], keep="first")
     return annual.reset_index(drop=True)
 
 
@@ -350,9 +338,7 @@ def _latest_quarter_before(
     ]
     if subset.empty:
         return None
-    return subset.sort_values(
-        ["filed", "accn", "concept_priority"]
-    ).iloc[-1]
+    return subset.sort_values(["filed", "accn", "concept_priority"]).iloc[-1]
 
 
 def _derive_q4(
@@ -445,9 +431,7 @@ def extract_company_quarters(
 ) -> pd.DataFrame:
     revenue_all = _normalise_fact_rows(companyfacts, contract=contract, field="revenue")
     gross_all = _normalise_fact_rows(companyfacts, contract=contract, field="gross_profit")
-    direct = _pair_direct_quarters(
-        _direct_quarters(revenue_all), _direct_quarters(gross_all)
-    )
+    direct = _pair_direct_quarters(_direct_quarters(revenue_all), _direct_quarters(gross_all))
     derived = _derive_q4(revenue_all, gross_all)
     frames = [frame for frame in (direct, derived) if not frame.empty]
     if not frames:
@@ -471,9 +455,7 @@ def _coverage_row(
     blocker: str | None = None,
 ) -> dict[str, Any]:
     quarter_count = int(len(quarters))
-    direct_count = (
-        0 if quarters.empty else int((quarters["derivation"] == "direct_quarter").sum())
-    )
+    direct_count = 0 if quarters.empty else int((quarters["derivation"] == "direct_quarter").sum())
     derived_count = (
         0 if quarters.empty else int((quarters["derivation"] == "fy_minus_q1_q2_q3").sum())
     )
@@ -529,9 +511,7 @@ def build_sec_companyfacts_fundamentals(
             user_agent=user_agent,
             ticker_mapping_url=str(contract["http"]["ticker_mapping_url"]),
             companyfacts_url_template=str(contract["http"]["companyfacts_url_template"]),
-            minimum_interval_seconds=float(
-                contract["http"]["minimum_request_interval_seconds"]
-            ),
+            minimum_interval_seconds=float(contract["http"]["minimum_request_interval_seconds"]),
             timeout_seconds=int(contract["http"]["timeout_seconds"]),
         )
     ticker_payload = client.ticker_mapping()
@@ -540,9 +520,7 @@ def build_sec_companyfacts_fundamentals(
     minimum_quarters = int(contract["coverage"]["minimum_quarters_per_symbol_for_factor"])
     rows: list[pd.DataFrame] = []
     coverage: list[dict[str, Any]] = []
-    source_hashes: dict[str, str] = {
-        "ticker_mapping": _canonical_hash(ticker_payload)
-    }
+    source_hashes: dict[str, str] = {"ticker_mapping": _canonical_hash(ticker_payload)}
     for symbol in symbols:
         cik = ticker_map.get(symbol)
         if cik is None:
@@ -571,9 +549,7 @@ def build_sec_companyfacts_fundamentals(
             continue
         source_hashes[symbol] = _canonical_hash(companyfacts)
         quarters = extract_company_quarters(companyfacts, contract=contract)
-        source_url = str(contract["http"]["companyfacts_url_template"]).format(
-            cik10=cik
-        )
+        source_url = str(contract["http"]["companyfacts_url_template"]).format(cik10=cik)
         if not quarters.empty:
             quarters = quarters.copy()
             quarters.insert(0, "symbol", symbol)
@@ -585,10 +561,7 @@ def build_sec_companyfacts_fundamentals(
         if isinstance(facts, dict):
             gross_found = any(
                 isinstance(facts.get(namespace), dict)
-                and any(
-                    concept in facts[namespace]
-                    for concept in concepts
-                )
+                and any(concept in facts[namespace] for concept in concepts)
                 for namespace, concepts in contract["concepts"]["gross_profit"][
                     "namespaces"
                 ].items()
@@ -607,9 +580,7 @@ def build_sec_companyfacts_fundamentals(
 
     columns = [*REQUIRED_OUTPUT_COLUMNS, *DIAGNOSTIC_COLUMNS]
     fundamentals = (
-        pd.concat(rows, ignore_index=True)[columns]
-        if rows
-        else pd.DataFrame(columns=columns)
+        pd.concat(rows, ignore_index=True)[columns] if rows else pd.DataFrame(columns=columns)
     )
     if not fundamentals.empty:
         fundamentals = fundamentals.sort_values(

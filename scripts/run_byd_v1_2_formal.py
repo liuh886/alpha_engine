@@ -36,7 +36,8 @@ def parse_args():
 
 def main():
     args = parse_args()
-    out = args.output_dir; out.mkdir(parents=True, exist_ok=True)
+    out = args.output_dir
+    out.mkdir(parents=True, exist_ok=True)
     (out / "daily").mkdir(exist_ok=True)
 
     common, signals, _ = prepare_common_dataset(args.byd_dir, args.etf_dir)
@@ -50,7 +51,7 @@ def main():
     evaluation = build_evaluation(r20, r40)
     pc = period_contribution(r20)
     gov = governed_result(evaluation, pc)
-    full = evaluation.loc[
+    evaluation.loc[
         (evaluation["window"] == "full_overlap") & (evaluation["scenario"] == "primary")
     ].set_index("model")
 

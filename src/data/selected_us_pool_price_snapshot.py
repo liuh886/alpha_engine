@@ -132,9 +132,7 @@ def build_selected_us_pool_price_snapshot(
 
     latest_dates = {row["latest_date"] for row in coverage}
     if len(latest_dates) != 1:
-        details = ", ".join(
-            f"{row['canonical_symbol']}={row['latest_date']}" for row in coverage
-        )
+        details = ", ".join(f"{row['canonical_symbol']}={row['latest_date']}" for row in coverage)
         raise ValueError("selected US pool latest-session coverage is inconsistent: " + details)
     resolved_as_of = date.fromisoformat(next(iter(latest_dates)))
     if resolved_as_of > target:
@@ -144,7 +142,11 @@ def build_selected_us_pool_price_snapshot(
             f"selected US pool snapshot is stale: target={target}, latest={resolved_as_of}"
         )
     local_now = (now_utc or datetime.now(timezone.utc)).astimezone(NEW_YORK)
-    if requested_through is None and resolved_as_of == local_now.date() and local_now.time() < POST_CLOSE_TIME:
+    if (
+        requested_through is None
+        and resolved_as_of == local_now.date()
+        and local_now.time() < POST_CLOSE_TIME
+    ):
         raise ValueError("intraday US daily bar cannot be accepted as a complete session")
 
     combined = pd.concat(frames, ignore_index=True)

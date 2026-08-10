@@ -53,9 +53,7 @@ def apply_material_factor_quality(
             "material_factor_jumps": material_jumps,
             "unexplained_factor_jumps": unexplained,
             "quality_gates": gates,
-            "data_quality_status": (
-                "canonical_v1_pass" if passed else "canonical_v1_blocked"
-            ),
+            "data_quality_status": ("canonical_v1_pass" if passed else "canonical_v1_blocked"),
         }
     )
     manifest["manifest_sha256"] = _manifest_sha(manifest)

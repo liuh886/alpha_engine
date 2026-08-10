@@ -72,9 +72,7 @@ def _normalise_close_frame(close: pd.DataFrame) -> pd.DataFrame:
     if not isinstance(close.index, pd.MultiIndex):
         raise ValueError("close must use a MultiIndex")
     if set(close.index.names) != {"datetime", "instrument"}:
-        raise ValueError(
-            "close index levels must be named datetime and instrument"
-        )
+        raise ValueError("close index levels must be named datetime and instrument")
     if close.index.has_duplicates:
         raise ValueError("close index must not contain duplicates")
     if close.empty:
@@ -170,17 +168,23 @@ def compute_technical_indicator_scores(
 
     rsi_window = RSI_STRENGTH.parameters["window"]
     daily_return = wide.pct_change(fill_method=None)
-    positive_magnitude = daily_return.clip(lower=0.0).rolling(
-        rsi_window,
-        min_periods=rsi_window,
-    ).mean()
-    absolute_magnitude = daily_return.abs().rolling(
-        rsi_window,
-        min_periods=rsi_window,
-    ).mean()
-    rsi_strength = positive_magnitude / absolute_magnitude.where(
-        absolute_magnitude > MIN_SCALE
+    positive_magnitude = (
+        daily_return.clip(lower=0.0)
+        .rolling(
+            rsi_window,
+            min_periods=rsi_window,
+        )
+        .mean()
     )
+    absolute_magnitude = (
+        daily_return.abs()
+        .rolling(
+            rsi_window,
+            min_periods=rsi_window,
+        )
+        .mean()
+    )
+    rsi_strength = positive_magnitude / absolute_magnitude.where(absolute_magnitude > MIN_SCALE)
 
     return {
         BOLLINGER_REVERSION.name: _score_frame(
@@ -222,17 +226,19 @@ def compute_ohlc_technical_indicator_scores(
     finite = aligned.replace([np.inf, -np.inf], np.nan)
     if finite.isna().any().any():
         raise ValueError("high and low must be finite")
-    scale = pd.concat(
-        [finite["high"].abs(), finite["low"].abs(), close["close"].abs()],
-        axis=1,
-    ).max(axis=1).clip(lower=1.0)
+    scale = (
+        pd.concat(
+            [finite["high"].abs(), finite["low"].abs(), close["close"].abs()],
+            axis=1,
+        )
+        .max(axis=1)
+        .clip(lower=1.0)
+    )
     tolerance = 1e-12 + scale * 1e-10
     invalid = (
-        finite["high"] + tolerance < finite["low"]
-    ) | (
-        finite["high"] + tolerance < close["close"]
-    ) | (
-        finite["low"] - tolerance > close["close"]
+        (finite["high"] + tolerance < finite["low"])
+        | (finite["high"] + tolerance < close["close"])
+        | (finite["low"] - tolerance > close["close"])
     )
     if invalid.any():
         raise ValueError("bars contain invalid high/low/close relationships")
@@ -241,10 +247,7 @@ def compute_ohlc_technical_indicator_scores(
     low = finite["low"].unstack(level="instrument")
     close_wide = close["close"].unstack(level="instrument")
     price_range = high - low
-    daily_location = (
-        (2.0 * close_wide - high - low)
-        / price_range.where(price_range > MIN_SCALE)
-    )
+    daily_location = (2.0 * close_wide - high - low) / price_range.where(price_range > MIN_SCALE)
     window = CLOSE_LOCATION_PRESSURE.parameters["window"]
     pressure = daily_location.rolling(
         window,

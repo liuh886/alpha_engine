@@ -48,16 +48,12 @@ def _validate_multiindex(
         raise TypeError(f"{label} argument has no index attribute")
     idx = obj.index
     if not isinstance(idx, pd.MultiIndex):
-        raise TypeError(
-            f"{label} index must be pd.MultiIndex, got {type(idx).__name__}"
-        )
+        raise TypeError(f"{label} index must be pd.MultiIndex, got {type(idx).__name__}")
     for level_name in ("datetime", "instrument"):
         if level_name not in idx.names:
             raise ValueError(f"{label} index missing level {level_name!r}")
     if require_unique and not idx.is_unique:
-        raise ValueError(
-            f"{label} index contains duplicate (datetime, instrument) entries"
-        )
+        raise ValueError(f"{label} index contains duplicate (datetime, instrument) entries")
 
 
 # ---------------------------------------------------------------------------
@@ -93,9 +89,7 @@ def compute_mean_daily_cs_ic(
         Indexed by feature name with columns ``mean_daily_ic`` and ``n_days``.
     """
     if min_instruments_per_day < 2:
-        raise ValueError(
-            f"min_instruments_per_day must be >= 2, got {min_instruments_per_day}"
-        )
+        raise ValueError(f"min_instruments_per_day must be >= 2, got {min_instruments_per_day}")
 
     _validate_multiindex(X, "X")
     _validate_multiindex(y, "y")
@@ -132,9 +126,7 @@ def compute_mean_daily_cs_ic(
             continue
 
         for feat in feature_names:
-            x_day = pd.to_numeric(
-                X[feat].values[mask], errors="coerce"
-            ).astype(float)
+            x_day = pd.to_numeric(X[feat].values[mask], errors="coerce").astype(float)
 
             # Filter non-finite (x, y) pairs *pairwise*.
             fin = np.isfinite(x_day) & np.isfinite(y_day)
@@ -157,9 +149,7 @@ def compute_mean_daily_cs_ic(
         if not ics:
             records.append({"mean_daily_ic": 0.0, "n_days": 0})
         else:
-            records.append(
-                {"mean_daily_ic": float(np.mean(ics)), "n_days": len(ics)}
-            )
+            records.append({"mean_daily_ic": float(np.mean(ics)), "n_days": len(ics)})
 
     return pd.DataFrame(records, index=pd.Index(feature_names, name="feature"))
 
@@ -330,16 +320,12 @@ def compute_relevance_labels(
         raise TypeError(f"y must be a pd.Series, got {type(y).__name__}")
     _validate_multiindex(y, "y")
     if not isinstance(n_bins, int) or n_bins < 2:
-        raise ValueError(
-            f"n_bins must be an integer >= 2, got {n_bins!r}"
-        )
+        raise ValueError(f"n_bins must be an integer >= 2, got {n_bins!r}")
 
     values = pd.to_numeric(y, errors="coerce").values.astype(float)
 
     if np.any(~np.isfinite(values)):
-        raise ValueError(
-            "y contains NaN or non-finite values; filter them before binning"
-        )
+        raise ValueError("y contains NaN or non-finite values; filter them before binning")
 
     dates = y.index.get_level_values("datetime")
     unique_dates = pd.unique(dates)
@@ -348,9 +334,7 @@ def compute_relevance_labels(
     for date in dates:
         if date != previous_date:
             if date in seen_dates:
-                raise ValueError(
-                    "y rows must be date-contiguous for LightGBM group alignment"
-                )
+                raise ValueError("y rows must be date-contiguous for LightGBM group alignment")
             seen_dates.add(date)
             previous_date = date
     n_dates = len(unique_dates)
@@ -366,9 +350,7 @@ def compute_relevance_labels(
         dense_ranks = pd.Series(date_vals).rank(method="dense").to_numpy() - 1
         max_rank = int(dense_ranks.max())
         if max_rank > 0:
-            labels[mask] = np.floor(
-                dense_ranks * (n_bins - 1) / max_rank
-            ).astype(int)
+            labels[mask] = np.floor(dense_ranks * (n_bins - 1) / max_rank).astype(int)
 
     return pd.Series(labels, index=y.index, name="relevance"), groups
 
@@ -392,9 +374,7 @@ def monotone_constraints_from_selection(selection: pd.DataFrame) -> list[int]:
             or valid_ic == 0.0
             or np.sign(train_ic) != np.sign(valid_ic)
         ):
-            raise ValueError(
-                f"Feature {feature!r} must have a stable non-zero train/valid IC sign"
-            )
+            raise ValueError(f"Feature {feature!r} must have a stable non-zero train/valid IC sign")
         constraints.append(1 if train_ic > 0 else -1)
     return constraints
 
@@ -450,21 +430,16 @@ def make_daily_cs_ic_eval(
         index-aligned.
     """
     if min_instruments_per_day < 2:
-        raise ValueError(
-            f"min_instruments_per_day must be >= 2, got {min_instruments_per_day}"
-        )
+        raise ValueError(f"min_instruments_per_day must be >= 2, got {min_instruments_per_day}")
 
     if not isinstance(validation_index, pd.MultiIndex):
         raise TypeError(
-            f"validation_index must be pd.MultiIndex, "
-            f"got {type(validation_index).__name__}"
+            f"validation_index must be pd.MultiIndex, got {type(validation_index).__name__}"
         )
 
     for level_name in ("datetime", "instrument"):
         if level_name not in validation_index.names:
-            raise ValueError(
-                f"validation_index missing level {level_name!r}"
-            )
+            raise ValueError(f"validation_index missing level {level_name!r}")
 
     if not validation_index.is_unique:
         raise ValueError("validation_index contains duplicate entries")
@@ -475,7 +450,7 @@ def make_daily_cs_ic_eval(
     # Pre-compute date boolean masks.
     date_masks: dict[pd.Timestamp, np.ndarray] = {}
     for date in unique_dates:
-        date_masks[date] = (dates == date)
+        date_masks[date] = dates == date
 
     n_total = len(validation_index)
 
@@ -484,9 +459,7 @@ def make_daily_cs_ic_eval(
         if not isinstance(continuous_labels, pd.Series):
             raise TypeError("continuous_labels must be a pd.Series")
         if not continuous_labels.index.equals(validation_index):
-            raise ValueError(
-                "continuous_labels index must exactly match validation_index"
-            )
+            raise ValueError("continuous_labels index must exactly match validation_index")
         _external_labels = continuous_labels.to_numpy(dtype=float)
     else:
         _external_labels = None

@@ -67,9 +67,7 @@ def prospective_return_metrics(
     if "position_state" in sample.columns:
         state_series = sample.loc[returns.index, "position_state"].astype(int)
         counts = state_series.value_counts().reindex([0, 1, 2], fill_value=0)
-        state_counts = {
-            STATE_LABELS[state]: int(counts.loc[state]) for state in (0, 1, 2)
-        }
+        state_counts = {STATE_LABELS[state]: int(counts.loc[state]) for state in (0, 1, 2)}
         switches = int(max(state_series.ne(state_series.shift()).sum() - 1, 0))
 
     turnover_units = (
@@ -113,9 +111,7 @@ def prospective_state_differences(
     """Record prospective closes where VXN changes the next-session state."""
 
     start = pd.Timestamp(start_date).tz_localize(None).normalize()
-    changed = baseline_decisions["decision_state"].ne(
-        overlay_decisions["decision_state"]
-    )
+    changed = baseline_decisions["decision_state"].ne(overlay_decisions["decision_state"])
     changed &= baseline_decisions.index >= start
     rows: list[dict[str, Any]] = []
     for location in np.flatnonzero(changed.to_numpy(dtype=bool)):
@@ -133,12 +129,8 @@ def prospective_state_differences(
             "overlay_decision_state": overlay_state,
             "baseline_decision_label": STATE_LABELS[baseline_state],
             "overlay_decision_label": STATE_LABELS[overlay_state],
-            "baseline_reason": str(
-                baseline_decisions.iloc[int(location)]["decision_reason"]
-            ),
-            "overlay_reason": str(
-                overlay_decisions.iloc[int(location)]["decision_reason"]
-            ),
+            "baseline_reason": str(baseline_decisions.iloc[int(location)]["decision_reason"]),
+            "overlay_reason": str(overlay_decisions.iloc[int(location)]["decision_reason"]),
             "vix_close": float(prepared.iloc[int(location)]["vix_close"]),
             "vxn_close": float(prepared.iloc[int(location)]["vxn_close"]),
             "vix_stress": bool(prepared.iloc[int(location)]["vix_stress"]),
@@ -148,9 +140,7 @@ def prospective_state_differences(
             window = prepared.iloc[int(location) + 1 : int(location) + 1 + int(horizon)]
             values = window["TQQQ_next_open_return"].dropna()
             row[f"TQQQ_return_{int(horizon)}d"] = (
-                float((1.0 + values).prod() - 1.0)
-                if len(values) == int(horizon)
-                else np.nan
+                float((1.0 + values).prod() - 1.0) if len(values) == int(horizon) else np.nan
             )
         rows.append(row)
     columns = [
@@ -249,14 +239,10 @@ def latest_monitor_snapshot(
         "shock_memory": bool(latest_prepared.get("shock_memory", False)),
         "early_repair": bool(latest_prepared.get("early_repair", False)),
         "medium_repair": bool(latest_prepared.get("medium_repair", False)),
-        "secondary_confirmation": bool(
-            latest_prepared.get("secondary_confirmation", False)
-        ),
+        "secondary_confirmation": bool(latest_prepared.get("secondary_confirmation", False)),
         "below_ma_short_n": bool(latest_prepared.get("below_ma_short_n", False)),
         "long_break": bool(latest_prepared.get("long_break", False)),
-        "stress_price_failure": bool(
-            latest_prepared.get("stress_price_failure", False)
-        ),
+        "stress_price_failure": bool(latest_prepared.get("stress_price_failure", False)),
     }
     volatility_context = {
         "vix_close": _optional_float(latest_prepared, "vix_close"),
@@ -264,9 +250,7 @@ def latest_monitor_snapshot(
         "vix_q_normal": _optional_float(latest_prepared, "vix_q_normal"),
         "vix_return_1d": _optional_float(latest_prepared, "vix_return_1d"),
         "vix_return_5d": _optional_float(latest_prepared, "vix_return_5d"),
-        "vix_retreat_from_peak": _optional_float(
-            latest_prepared, "vix_retreat_from_peak"
-        ),
+        "vix_retreat_from_peak": _optional_float(latest_prepared, "vix_retreat_from_peak"),
         "vix_regime": str(latest_prepared.get("vix_regime", "unavailable")),
         "vix_stress": bool(latest_prepared.get("vix_stress", False)),
         "vix_easing": bool(latest_prepared.get("vix_easing", False)),
@@ -276,9 +260,7 @@ def latest_monitor_snapshot(
         "vxn_q_normal": _optional_float(latest_prepared, "vxn_q_normal"),
         "vxn_return_1d": _optional_float(latest_prepared, "vxn_return_1d"),
         "vxn_return_5d": _optional_float(latest_prepared, "vxn_return_5d"),
-        "vxn_retreat_from_peak": _optional_float(
-            latest_prepared, "vxn_retreat_from_peak"
-        ),
+        "vxn_retreat_from_peak": _optional_float(latest_prepared, "vxn_retreat_from_peak"),
         "vxn_regime": str(latest_prepared.get("vxn_regime", "unavailable")),
         "vxn_stress": bool(latest_prepared.get("vxn_stress", False)),
     }

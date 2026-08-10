@@ -140,18 +140,13 @@ def _validate_acceptance(
     if not isinstance(checks, list):
         raise ValueError("acceptance report is missing checks")
     statuses = {
-        str(item.get("name")): str(item.get("status"))
-        for item in checks
-        if isinstance(item, dict)
+        str(item.get("name")): str(item.get("status")) for item in checks if isinstance(item, dict)
     }
     missing = sorted(_REQUIRED_ACCEPTANCE_CHECKS - set(statuses))
-    failed = sorted(
-        name for name in _REQUIRED_ACCEPTANCE_CHECKS if statuses.get(name) != "pass"
-    )
+    failed = sorted(name for name in _REQUIRED_ACCEPTANCE_CHECKS if statuses.get(name) != "pass")
     if missing or failed:
         raise ValueError(
-            "acceptance evidence is incomplete: "
-            f"missing={missing}, non_passing={failed}"
+            f"acceptance evidence is incomplete: missing={missing}, non_passing={failed}"
         )
 
     provider_dir = Path(str(inputs.get("provider_dir", "")))
@@ -443,9 +438,7 @@ def run_factor_diagnostics(
         }
     )
 
-    available_dates = pd.DatetimeIndex(
-        sorted(set(raw_returns.index.get_level_values("datetime")))
-    )
+    available_dates = pd.DatetimeIndex(sorted(set(raw_returns.index.get_level_values("datetime"))))
     date_map, windows, window_policy = _window_date_map(available_dates, spec)
     returns_series = raw_returns["return"]
     top_n = int(spec.strategy["top_n"])
@@ -541,9 +534,7 @@ def run_factor_diagnostics_from_files(
 ) -> dict[str, Any]:
     spec = load_research_paradigm_spec(spec_path)
     acceptance, report_path = load_acceptance_report(acceptance_path)
-    accepted_provider = Path(
-        str(acceptance.get("inputs", {}).get("provider_dir", ""))
-    ).resolve()
+    accepted_provider = Path(str(acceptance.get("inputs", {}).get("provider_dir", ""))).resolve()
     selected_provider = Path(provider_dir).resolve() if provider_dir else accepted_provider
     if selected_provider != accepted_provider:
         raise ValueError("factor diagnostics must use the provider accepted by the report")

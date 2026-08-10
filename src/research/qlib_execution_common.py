@@ -141,9 +141,7 @@ def materialize_ranker_candidates(
         candidate = RankerGridCandidate(
             feature_group=RankerFeatureGroup(
                 name=str(feature_raw["name"]),
-                expressions=tuple(
-                    str(item) for item in feature_raw["expressions"]
-                ),
+                expressions=tuple(str(item) for item in feature_raw["expressions"]),
             ),
             calibration=RankerCalibration(
                 n_gain_bins=int(calibration_raw["n_gain_bins"]),
@@ -202,9 +200,7 @@ def build_effective_execution_contract(
         "factors": {
             "source": declared["factors"]["source"],
             "source_sha256": declared["factors"]["source_sha256"],
-            "selected_groups": [
-                str(item) for item in plan.spec.factor_library["groups"]
-            ],
+            "selected_groups": [str(item) for item in plan.spec.factor_library["groups"]],
             "candidates": [candidate.to_dict() for candidate in candidates],
             "baseline_factors": dict(sorted(baselines.items())),
         },
@@ -232,10 +228,7 @@ def fit_ranker_scores(
     params — the XGB adapter owns its own structural configuration.
     """
 
-    columns = [
-        expression_columns[item]
-        for item in candidate.feature_group.expressions
-    ]
+    columns = [expression_columns[item] for item in candidate.feature_group.expressions]
     x_rank, y_rank, groups = prepare_ranker_frame(
         features_train.loc[:, columns],
         returns_train,
@@ -290,17 +283,14 @@ def load_window_benchmark_returns(
     )
     if raw.empty:
         raise ValueError(
-            f"Benchmark '{benchmark_instrument}' produced empty data "
-            f"in [{start}, {end}]"
+            f"Benchmark '{benchmark_instrument}' produced empty data in [{start}, {end}]"
         )
     if isinstance(raw.index, pd.MultiIndex):
         raw = raw.xs(benchmark_instrument, level="instrument")
     series = raw.iloc[:, 0] if isinstance(raw, pd.DataFrame) else raw
     result = series.to_frame("return").sort_index()
     if not result.index.is_unique:
-        raise ValueError(
-            f"Benchmark '{benchmark_instrument}' contains duplicate dates"
-        )
+        raise ValueError(f"Benchmark '{benchmark_instrument}' contains duplicate dates")
 
     required_dates = pd.DatetimeIndex(evaluation_dates)
     missing_dates = required_dates.difference(result.index)
@@ -356,9 +346,7 @@ def _resolve_benchmark_instrument(
             [declared_benchmark],
             available_symbols=None,
         )
-        candidates: list[str] = (
-            list(general[0].candidates) if general else []
-        )
+        candidates: list[str] = list(general[0].candidates) if general else []
 
         # 2. For CN indexes with 000XXX codes, add SH-prefixed aliases
         #    (000XXX indexes trade on Shanghai, unlike 000XXX stocks which are SZ)
@@ -403,8 +391,7 @@ def _resolve_benchmark_instrument(
     )
     if not normalized:
         raise ValueError(
-            f"Benchmark '{declared_benchmark}' could not be normalized "
-            f"against available symbols"
+            f"Benchmark '{declared_benchmark}' could not be normalized against available symbols"
         )
     result = normalized[0].normalized_symbol
     if result.upper() not in {s.upper() for s in available_symbols}:
@@ -475,8 +462,7 @@ def execute_qlib_plan(
     # ── market gate ──────────────────────────────────────────────────────
     if plan.spec.market != market:
         raise ValueError(
-            f"{market.upper()} Qlib adapter requires a market={market!r} "
-            f"research spec"
+            f"{market.upper()} Qlib adapter requires a market={market!r} research spec"
         )
 
     # ── contract materialisation ─────────────────────────────────────────
@@ -495,10 +481,7 @@ def execute_qlib_plan(
         str(item) for item in plan.declared_contract["universe"]["requested_symbols"]
     ]
     universe_contract = plan.declared_contract["universe"]
-    pit_mode = (
-        universe_contract.get("membership_mode")
-        == "window_start_point_in_time"
-    )
+    pit_mode = universe_contract.get("membership_mode") == "window_start_point_in_time"
     effective_contract = build_effective_execution_contract(
         plan,
         candidates=candidates,
@@ -527,13 +510,9 @@ def execute_qlib_plan(
     last_test_year = int(walk_forward["last_test_year"])
     min_windows = int(walk_forward["min_windows"])
     partial_window_policy = str(walk_forward["partial_window_policy"])
-    raw_partial_minimum = walk_forward.get(
-        "min_partial_window_eligible_sessions"
-    )
+    raw_partial_minimum = walk_forward.get("min_partial_window_eligible_sessions")
     min_partial_window_eligible_sessions = (
-        None
-        if raw_partial_minimum is None
-        else int(raw_partial_minimum)
+        None if raw_partial_minimum is None else int(raw_partial_minimum)
     )
 
     runtime_metadata: dict[str, Any] = {
@@ -591,9 +570,7 @@ def execute_qlib_plan(
         min_symbols=min_symbols,
     )
     if pit_mode:
-        available_by_upper = {
-            symbol.upper(): symbol for symbol in available_symbols
-        }
+        available_by_upper = {symbol.upper(): symbol for symbol in available_symbols}
         retained_inventory = tuple(
             available_by_upper[row.normalized_symbol.upper()]
             for row in normalization
@@ -601,9 +578,7 @@ def execute_qlib_plan(
         )
         retained_set = set(retained_inventory)
         dropped_inventory = tuple(
-            symbol
-            for symbol in normalized_symbols
-            if symbol not in retained_set
+            symbol for symbol in normalized_symbols if symbol not in retained_set
         )
         sufficient = len(retained_inventory) >= min_symbols
         skip_reason = (
@@ -622,14 +597,11 @@ def execute_qlib_plan(
             retained_symbols=retained_inventory,
             dropped_symbols=dropped_inventory,
             drop_reasons={
-                symbol: "not present in provider inventory"
-                for symbol in dropped_inventory
+                symbol: "not present in provider inventory" for symbol in dropped_inventory
             },
             min_symbols=min_symbols,
             test_end=test_end,
-            alignment_reason=(
-                "PIT coverage is validated per symbol membership interval"
-            ),
+            alignment_reason=("PIT coverage is validated per symbol membership interval"),
             sufficient=sufficient,
             skipped=not sufficient,
             skip_reason=skip_reason,
@@ -730,9 +702,7 @@ def execute_qlib_plan(
             plan,
             paths=paths,
             effective_contract=effective_contract,
-            reason=(
-                f"{market.upper()} Qlib calendar is empty in the aligned range"
-            ),
+            reason=(f"{market.upper()} Qlib calendar is empty in the aligned range"),
             runtime_metadata=runtime_metadata,
             evidence_paths=base_evidence,
         )
@@ -745,16 +715,12 @@ def execute_qlib_plan(
         last_test_year=last_test_year,
         min_complete_windows=min_windows,
         partial_window_policy=partial_window_policy,
-        min_partial_window_eligible_sessions=(
-            min_partial_window_eligible_sessions
-        ),
+        min_partial_window_eligible_sessions=(min_partial_window_eligible_sessions),
         horizon_sessions=int(strategy["horizon_days"]),
         cadence_sessions=int(strategy["rebalance_days"]),
     )
     windows = list(window_plan.selected_windows)
-    evaluation_dates_by_window = horizon_eligible_dates_by_window(
-        window_plan, calendar
-    )
+    evaluation_dates_by_window = horizon_eligible_dates_by_window(window_plan, calendar)
     window_payload = {
         **window_plan.to_dict(),
         "experiment_id": plan.spec.experiment_id,
@@ -769,18 +735,14 @@ def execute_qlib_plan(
             "viability_evidence_scope": "session_aware",
             "partial_window_policy": partial_window_policy,
             "partial_window_count": window_plan.partial_window_count,
-            "complete_minimum_satisfied": (
-                window_plan.complete_minimum_satisfied
-            ),
+            "complete_minimum_satisfied": (window_plan.complete_minimum_satisfied),
         }
     )
     write_json(paths.data_readiness, readiness)
     write_json(paths.walk_forward_windows, window_payload)
     runtime_metadata["windows"] = window_payload["windows"]
     runtime_metadata["window_policy"] = {
-        key: value
-        for key, value in window_payload.items()
-        if key != "windows"
+        key: value for key, value in window_payload.items() if key != "windows"
     }
     evidence_with_windows = {
         **base_evidence,
@@ -827,7 +789,9 @@ def execute_qlib_plan(
                 evidence_paths=evidence_with_windows,
             )
         ndx_snapshot = load_ndx_snapshot(
-            snapshot_path, validate_hashes=True, validate_source=True,
+            snapshot_path,
+            validate_hashes=True,
+            validate_source=True,
         )
         declared_membership = universe_contract.get("pit_window_membership", {})
 
@@ -844,8 +808,7 @@ def execute_qlib_plan(
                     "missing_count": 0,
                     "skipped": True,
                     "skip_reason": (
-                        f"window label {window.label!r} not declared in "
-                        f"pit_window_membership"
+                        f"window label {window.label!r} not declared in pit_window_membership"
                     ),
                 }
                 continue
@@ -907,7 +870,11 @@ def execute_qlib_plan(
         pit_aligned_starts_by_window: dict[str, str] = {}
         for window in windows:
             plan_result = pit_window_results.get(window.label)
-            if plan_result is not None and not plan_result.skipped and plan_result.aligned_train_start:
+            if (
+                plan_result is not None
+                and not plan_result.skipped
+                and plan_result.aligned_train_start
+            ):
                 pit_aligned_starts_by_window[window.label] = plan_result.aligned_train_start
 
         if pit_aligned_starts_by_window:
@@ -964,8 +931,7 @@ def execute_qlib_plan(
         }
     )
     expression_columns = {
-        expression: sanitize_factor_name(expression)
-        for expression in feature_expressions
+        expression: sanitize_factor_name(expression) for expression in feature_expressions
     }
     if len(set(expression_columns.values())) != len(expression_columns):
         raise ValueError("Feature expression sanitization produced duplicate columns")
@@ -989,34 +955,36 @@ def execute_qlib_plan(
             plan_result = pit_window_results.get(window.label)
             provenance = pit_window_provenance.get(window.label, {})
             if plan_result is None or plan_result.skipped:
-                skipped_windows.append({
-                    "window": window.label,
-                    "reason": (
-                        plan_result.skip_reason
-                        if plan_result is not None
-                        else provenance.get("skip_reason", "pit_skip")
-                    ),
-                })
+                skipped_windows.append(
+                    {
+                        "window": window.label,
+                        "reason": (
+                            plan_result.skip_reason
+                            if plan_result is not None
+                            else provenance.get("skip_reason", "pit_skip")
+                        ),
+                    }
+                )
                 continue
 
             oos_symbols = list(plan_result.oos_symbols)
             train_only_symbols = list(plan_result.train_symbols)
             if len(oos_symbols) <= max(top_n, bottom_n):
-                skipped_windows.append({
-                    "window": window.label,
-                    "reason": (
-                        f"PIT OOS membership retained {len(oos_symbols)} symbols "
-                        f"(requested={plan_result.oos_requested_count}, "
-                        f"missing={len(plan_result.oos_missing_symbols)}), "
-                        f"insufficient for Top/Bottom N={max(top_n, bottom_n)}"
-                    ),
-                })
+                skipped_windows.append(
+                    {
+                        "window": window.label,
+                        "reason": (
+                            f"PIT OOS membership retained {len(oos_symbols)} symbols "
+                            f"(requested={plan_result.oos_requested_count}, "
+                            f"missing={len(plan_result.oos_missing_symbols)}), "
+                            f"insufficient for Top/Bottom N={max(top_n, bottom_n)}"
+                        ),
+                    }
+                )
                 continue
 
             # Load the union of training and OOS symbols.
-            load_symbols = sorted(
-                set(train_only_symbols) | set(oos_symbols)
-            )
+            load_symbols = sorted(set(train_only_symbols) | set(oos_symbols))
             win_symbols = load_symbols
             effective_train_start = str(plan_result.aligned_train_start)
         else:
@@ -1094,6 +1062,7 @@ def execute_qlib_plan(
             from src.research.ndx_window_start_universe import (
                 filter_training_by_asof_membership,
             )
+
             features_train_raw = filter_training_by_asof_membership(
                 features_train_raw,
                 ndx_snapshot,
@@ -1162,9 +1131,7 @@ def execute_qlib_plan(
                 horizon=int(strategy["horizon_days"]),
             )
         except Exception as exc:
-            skipped_windows.append(
-                {"window": window.label, "reason": str(exc)}
-            )
+            skipped_windows.append({"window": window.label, "reason": str(exc)})
             continue
 
         report = run_10d_experiment(
@@ -1180,11 +1147,7 @@ def execute_qlib_plan(
             if artifact_path:
                 write_json(
                     Path(str(artifact_path)),
-                    {
-                        key: value
-                        for key, value in report.items()
-                        if key != "artifact_path"
-                    },
+                    {key: value for key, value in report.items() if key != "artifact_path"},
                 )
         reports.append(report)
         survived_windows.append(window.label)
@@ -1201,8 +1164,7 @@ def execute_qlib_plan(
             paths=paths,
             effective_contract=effective_contract,
             reason=(
-                f"only {len(reports)} reports survived validation; "
-                f"need at least {min_windows}"
+                f"only {len(reports)} reports survived validation; need at least {min_windows}"
             ),
             runtime_metadata=runtime_metadata,
             evidence_paths=evidence_with_windows,

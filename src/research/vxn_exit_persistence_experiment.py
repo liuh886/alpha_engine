@@ -81,9 +81,7 @@ def generate_vxn_exit_persistence_states(
     )
 
 
-def position_difference_table(
-    baseline: StrategyResult, challenger: StrategyResult
-) -> pd.DataFrame:
+def position_difference_table(baseline: StrategyResult, challenger: StrategyResult) -> pd.DataFrame:
     """Report every economic session changed by the persistence rule."""
 
     joined = pd.DataFrame(
@@ -95,9 +93,7 @@ def position_difference_table(
         }
     )
     changed = joined[joined["baseline_state"].ne(joined["challenger_state"])].copy()
-    changed["challenger_minus_baseline"] = (
-        changed["challenger_return"] - changed["baseline_return"]
-    )
+    changed["challenger_minus_baseline"] = changed["challenger_return"] - changed["baseline_return"]
     return changed.reset_index(names="date")
 
 
@@ -139,9 +135,9 @@ def run_vxn_exit_persistence_comparison(
         "attack_vxn_v4_1_75": baseline,
         "attack_vxn_exit_persistence_v4_2_75": challenger,
     }
-    metrics = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
+    metrics = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
+    )
 
     validation = contract["validation"]
     periods = period_metrics(results, validation["chronological_periods"])
@@ -155,9 +151,7 @@ def run_vxn_exit_persistence_comparison(
 
     cost_rows: list[dict[str, Any]] = []
     for cost_bps in validation["cost_sensitivity_bps"]:
-        cost_config = replace(
-            config, transaction_cost_bps_per_turnover_unit=float(cost_bps)
-        )
+        cost_config = replace(config, transaction_cost_bps_per_turnover_unit=float(cost_bps))
         for key, decisions in (
             ("attack_vxn_v4_1_75", baseline_decisions),
             (
@@ -189,9 +183,7 @@ def run_vxn_exit_persistence_comparison(
         "immediate_vix_exit_frozen": True,
         "immediate_price_exit_frozen": True,
         "changed_economic_sessions": int(len(differences)),
-        "changed_session_return_delta_sum": float(
-            differences["challenger_minus_baseline"].sum()
-        ),
+        "changed_session_return_delta_sum": float(differences["challenger_minus_baseline"].sum()),
         "no_parameter_grid": True,
     }
     tables = {

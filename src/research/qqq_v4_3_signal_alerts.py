@@ -1,4 +1,5 @@
 """Research-only signal cards for formal QQQ Rotation v4.3."""
+
 from __future__ import annotations
 
 import base64
@@ -145,9 +146,7 @@ def build_v4_3_signal_alert(summary: Mapping[str, Any]) -> dict[str, Any]:
     alert["current_state"] = alert["current_formal_state"]
     alert["target_state"] = alert["target_formal_state"]
     alert["transition_type"] = "risk_budget_change" if orders else "hold"
-    alert["decision_reason_label"] = (
-        f"{alert['current_overlay']} → {alert['target_overlay']}"
-    )
+    alert["decision_reason_label"] = f"{alert['current_overlay']} → {alert['target_overlay']}"
     alert["price_context"] = {
         "qqq_close": qqq_close,
         "ma20": ma20,

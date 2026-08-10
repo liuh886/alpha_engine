@@ -39,9 +39,7 @@ def check_profile(
         if isinstance(row, dict) and str(row.get("profile_id")) == profile_id
     ]
     if len(matches) != 1:
-        raise ModelDataBundleError(
-            f"training profile must resolve exactly once: {profile_id}"
-        )
+        raise ModelDataBundleError(f"training profile must resolve exactly once: {profile_id}")
     profile = matches[0]
     if profile.get("status") != "ready":
         failed = profile.get("failed_gates", [])

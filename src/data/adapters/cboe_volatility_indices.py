@@ -13,9 +13,7 @@ from urllib.request import Request, urlopen
 import pandas as pd
 
 SUPPORTED_INDICES = ("VIX9D", "VIX3M", "VVIX", "SKEW")
-CBOE_HISTORY_URL = (
-    "https://cdn.cboe.com/api/global/us_indices/daily_prices/{symbol}_History.csv"
-)
+CBOE_HISTORY_URL = "https://cdn.cboe.com/api/global/us_indices/daily_prices/{symbol}_History.csv"
 _USER_AGENT = "Mozilla/5.0 AlphaEngine/1.0"
 
 

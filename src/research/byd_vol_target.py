@@ -36,12 +36,13 @@ ROBUSTNESS = "vol_target_wide"
 
 # Parameters
 VOL_LOOKBACK = 60
-TARGET_VOL = 0.35        # 35% annualized target
-VOL_FLOOR = 0.18         # prevent division by zero
-MIN_BYD = 0.60           # minimum BYD weight (floor)
-MAX_BYD = 1.10           # maximum BYD weight (ceiling)
-MAX_ETF = 0.40           # maximum ETF allocation
-SMOOTHING = 3            # EMA smoothing days
+TARGET_VOL = 0.35  # 35% annualized target
+VOL_FLOOR = 0.18  # prevent division by zero
+MIN_BYD = 0.60  # minimum BYD weight (floor)
+MAX_BYD = 1.10  # maximum BYD weight (ceiling)
+MAX_ETF = 0.40  # maximum ETF allocation
+SMOOTHING = 3  # EMA smoothing days
+
 
 @dataclass(frozen=True)
 class GovernedResult:
@@ -85,9 +86,11 @@ def compute_vol_target(common, signals, max_byd=MAX_BYD):
     cash = 1.0 - byd_weight - etf_weight
 
     return pd.DataFrame(
-        {"byd_weight": byd_weight.astype(float),
-         "etf_weight": etf_weight.astype(float),
-         "cash_weight": cash.astype(float)},
+        {
+            "byd_weight": byd_weight.astype(float),
+            "etf_weight": etf_weight.astype(float),
+            "cash_weight": cash.astype(float),
+        },
         index=common.index,
     )
 
@@ -95,9 +98,11 @@ def compute_vol_target(common, signals, max_byd=MAX_BYD):
 def build_decisions(common, signals):
     d = {
         BASELINE: pd.DataFrame(
-            {"byd_weight": signals["base_byd_weight"].astype(float),
-             "etf_weight": 1.0 - signals["base_byd_weight"].astype(float),
-             "cash_weight": 0.0},
+            {
+                "byd_weight": signals["base_byd_weight"].astype(float),
+                "etf_weight": 1.0 - signals["base_byd_weight"].astype(float),
+                "cash_weight": 0.0,
+            },
             index=common.index,
         ),
         PRIMARY: compute_vol_target(common, signals, MAX_BYD),
@@ -120,15 +125,20 @@ def run_candidates(common, signals, *, cost_bps):
     results = {}
     for name, decision in decisions.items():
         e = execute_next_common_open(decision, common["common_open_eligible"])
-        bw = e["position_byd_weight"]; ew = e["position_etf_weight"]; cw = e["position_cash_weight"]
+        bw = e["position_byd_weight"]
+        ew = e["position_etf_weight"]
+        cw = e["position_cash_weight"]
         gross = bw * common["byd_open_return"] + ew * common["etf_open_return"]
-        turnover = e.diff().abs().sum(axis=1); turnover.iloc[0] = 0.0
+        turnover = e.diff().abs().sum(axis=1)
+        turnover.iloc[0] = 0.0
         cost = turnover * cost_bps / 10000.0
         borrowed = (-cw).clip(0)
         fcost = borrowed * FINANCING_RATE / FINANCING_DAY_COUNT
         daily = pd.concat([decision.add_prefix("d_"), e], axis=1)
-        daily["gross_return"] = gross; daily["turnover_units"] = turnover
-        daily["cost"] = cost; daily["financing_cost"] = fcost
+        daily["gross_return"] = gross
+        daily["turnover_units"] = turnover
+        daily["cost"] = cost
+        daily["financing_cost"] = fcost
         daily["net_return"] = gross - cost - fcost
         daily = daily.iloc[:-1].copy()
         results[name] = AllocationResult(name=name, daily=daily, trades=pd.DataFrame())
@@ -136,8 +146,9 @@ def run_candidates(common, signals, *, cost_bps):
 
 
 def _wm(result, start, end):
-    block = result.daily.loc[pd.Timestamp(start):pd.Timestamp(end)]
-    if block.empty: raise ValueError(f"empty window {start} to {end}")
+    block = result.daily.loc[pd.Timestamp(start) : pd.Timestamp(end)]
+    if block.empty:
+        raise ValueError(f"empty window {start} to {end}")
     out = metrics(block)
     returns = block["net_return"].dropna()
     out["mean_byd_weight"] = float(block.loc[returns.index, "position_byd_weight"].mean())
@@ -146,15 +157,26 @@ def _wm(result, start, end):
 
 def build_evaluation(r20, r40):
     rows = []
-    for label, cb, results in [("primary", PRIMARY_COST_BPS, r20), ("stress", STRESS_COST_BPS, r40)]:
+    for label, cb, results in [
+        ("primary", PRIMARY_COST_BPS, r20),
+        ("stress", STRESS_COST_BPS, r40),
+    ]:
         for name, result in results.items():
             for w, (s, e) in WINDOWS.items():
-                rows.append({"scenario": label, "model": name, "cost_bps": cb, "window": w, **_wm(result, s, e)})
+                rows.append(
+                    {
+                        "scenario": label,
+                        "model": name,
+                        "cost_bps": cb,
+                        "window": w,
+                        **_wm(result, s, e),
+                    }
+                )
     return pd.DataFrame(rows)
 
 
 def _tw(daily, s, e):
-    rs = daily.loc[pd.Timestamp(s):pd.Timestamp(e), "net_return"].dropna()
+    rs = daily.loc[pd.Timestamp(s) : pd.Timestamp(e), "net_return"].dropna()
     return float((1.0 + rs).prod())
 
 
@@ -167,20 +189,38 @@ def period_contribution(results):
             rel[p] = _tw(results[name].daily, s, e) / _tw(results[BASELINE].daily, s, e) - 1.0
         pt = sum(max(v, 0.0) for v in rel.values())
         for p, r in rel.items():
-            rows.append({"model": name, "period": p, "relative_terminal_wealth": r, "positive_contribution_share": max(r, 0.0) / pt if pt > 0 else 0.0})
+            rows.append(
+                {
+                    "model": name,
+                    "period": p,
+                    "relative_terminal_wealth": r,
+                    "positive_contribution_share": max(r, 0.0) / pt if pt > 0 else 0.0,
+                }
+            )
     return pd.DataFrame(rows)
 
 
 def governed_result(evaluation, contributions):
     def r(model, sc, cb=PRIMARY_COST_BPS):
-        sel = evaluation.loc[(evaluation["model"]==model) & (evaluation["scenario"]==sc) & (evaluation["cost_bps"]==cb) & (evaluation["window"]=="full_overlap")]
+        sel = evaluation.loc[
+            (evaluation["model"] == model)
+            & (evaluation["scenario"] == sc)
+            & (evaluation["cost_bps"] == cb)
+            & (evaluation["window"] == "full_overlap")
+        ]
         if len(sel) != 1:
             raise ValueError(f"Expected 1 row for {model}/{sc}/{cb}, got {len(sel)}")
         return sel.iloc[0]
-    bp = r(BASELINE, "primary"); pp = r(PRIMARY, "primary"); rp = r(ROBUSTNESS, "primary")
-    bs = r(BASELINE, "stress", STRESS_COST_BPS); ps = r(PRIMARY, "stress", STRESS_COST_BPS); rs = r(ROBUSTNESS, "stress", STRESS_COST_BPS)
-    cagr_d = float(pp["cagr"] - bp["cagr"]); mdd_d = float(pp["max_drawdown"] - bp["max_drawdown"])
-    pc = contributions[contributions["model"]==PRIMARY]
+
+    bp = r(BASELINE, "primary")
+    pp = r(PRIMARY, "primary")
+    r(ROBUSTNESS, "primary")
+    bs = r(BASELINE, "stress", STRESS_COST_BPS)
+    ps = r(PRIMARY, "stress", STRESS_COST_BPS)
+    r(ROBUSTNESS, "stress", STRESS_COST_BPS)
+    cagr_d = float(pp["cagr"] - bp["cagr"])
+    mdd_d = float(pp["max_drawdown"] - bp["max_drawdown"])
+    pc = contributions[contributions["model"] == PRIMARY]
     neg = int(pc["relative_terminal_wealth"].lt(0).sum())
     ms = float(pc["positive_contribution_share"].max()) if not pc.empty else 1.0
 
@@ -196,6 +236,12 @@ def governed_result(evaluation, contributions):
     return GovernedResult(
         decision="promote" if all(gates.values()) else "retain",
         gates=gates,
-        diagnostics={"cagr_delta": cagr_d, "mdd_delta": mdd_d, "neg": neg, "max_share": ms,
-                      "primary_cagr": float(pp["cagr"]), "primary_mdd": float(pp["max_drawdown"])},
+        diagnostics={
+            "cagr_delta": cagr_d,
+            "mdd_delta": mdd_d,
+            "neg": neg,
+            "max_share": ms,
+            "primary_cagr": float(pp["cagr"]),
+            "primary_mdd": float(pp["max_drawdown"]),
+        },
     )

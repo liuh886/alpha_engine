@@ -41,9 +41,7 @@ def extract_original_candidate_metrics(
         values: dict[str, float] = {}
         for metric in DECOMPOSITION_METRICS:
             value = (
-                direction.get(metric)
-                if metric == "top_minus_bottom_spread"
-                else raw.get(metric)
+                direction.get(metric) if metric == "top_minus_bottom_spread" else raw.get(metric)
             )
             if value is not None:
                 values[metric] = float(value)

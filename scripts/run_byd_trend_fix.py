@@ -37,7 +37,8 @@ def write_csv(path, frame):
 
 def main():
     args = parse_args()
-    out = args.output_dir; out.mkdir(parents=True, exist_ok=True)
+    out = args.output_dir
+    out.mkdir(parents=True, exist_ok=True)
     common, signals, _ = prepare_common_dataset(args.byd_dir, args.etf_dir)
     print(f"Overlap: {len(common)} sessions, {common.index.min().date()} to {common.index.max().date()}")
 

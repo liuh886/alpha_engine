@@ -49,8 +49,7 @@ def _sha256_file(path: Path) -> str:
 
 def _canonical_json(payload: Mapping[str, Any]) -> bytes:
     return (
-        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
-        + "\n"
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
     ).encode("utf-8")
 
 
@@ -143,9 +142,7 @@ def _validate_manifest(
     provider_root: Path,
     contract: Mapping[str, Any],
 ) -> tuple[Path, dict[str, Any]]:
-    manifest_path = (
-        provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
-    )
+    manifest_path = provider_root / "artifacts" / "selected_pool_price_refresh_manifest.json"
     manifest = _load_json(manifest_path)
     market = str(contract.get("market", ""))
     if str(manifest.get("market", "")) != market:
@@ -193,17 +190,13 @@ def seal_provider_cache(
     manifest_path, manifest = _validate_manifest(provider_root, contract)
     market = str(contract["market"])
     csv_digest, csv_count = _tree_identity(provider_root / "data" / "csv_source")
-    qlib_digest, qlib_count = _tree_identity(
-        provider_root / "data" / "providers" / market
-    )
+    qlib_digest, qlib_count = _tree_identity(provider_root / "data" / "providers" / market)
     receipt: dict[str, Any] = {
         "schema_version": CACHE_SCHEMA_VERSION,
         "evidence_type": "formal_provider_cache_receipt",
         "contract_sha256": str(contract["contract_sha256"]),
         "provider_manifest_sha256": _sha256_file(manifest_path),
-        "provider_identity_sha256": str(
-            manifest.get("provider_identity_sha256", "")
-        ),
+        "provider_identity_sha256": str(manifest.get("provider_identity_sha256", "")),
         "market": market,
         "requested_cutoff": str(contract["requested_cutoff"]),
         "provider_cutoff": str(manifest.get("cutoff", "")),
@@ -245,9 +238,7 @@ def verify_provider_cache(
         raise FormalProviderCacheError("provider identity hash mismatch")
     market = str(contract["market"])
     csv_digest, csv_count = _tree_identity(provider_root / "data" / "csv_source")
-    qlib_digest, qlib_count = _tree_identity(
-        provider_root / "data" / "providers" / market
-    )
+    qlib_digest, qlib_count = _tree_identity(provider_root / "data" / "providers" / market)
     expected = {
         "csv_tree_sha256": csv_digest,
         "csv_file_count": csv_count,

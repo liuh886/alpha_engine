@@ -39,9 +39,7 @@ def build_xgb_pred_contribs(
     selected_instruments = selected.index.get_level_values("instrument").astype(str)
     if set(selected_instruments) != set(requested):
         missing = sorted(set(requested) - set(selected_instruments))
-        raise XGBRankerExplainabilityError(
-            f"missing explanation rows for instruments: {missing}"
-        )
+        raise XGBRankerExplainabilityError(f"missing explanation rows for instruments: {missing}")
     columns = [str(column) for column in selected.columns]
     missing_columns = sorted(set(columns) - set(column_to_factor_id))
     if missing_columns:
@@ -52,9 +50,7 @@ def build_xgb_pred_contribs(
     contributions = np.asarray(model.predict(matrix, pred_contribs=True), dtype=float)
     predictions = np.asarray(model.predict(matrix), dtype=float).reshape(-1)
     if contributions.shape != (len(selected), len(columns) + 1):
-        raise XGBRankerExplainabilityError(
-            "unexpected XGBoost pred_contribs shape"
-        )
+        raise XGBRankerExplainabilityError("unexpected XGBoost pred_contribs shape")
     reconciled = contributions.sum(axis=1)
     if not np.allclose(reconciled, predictions, rtol=1e-6, atol=1e-6):
         raise XGBRankerExplainabilityError(
@@ -97,9 +93,7 @@ def build_xgb_pred_contribs(
                 "bias": float(contributions[offset, -1]),
                 "top_positive": positives,
                 "top_negative": negatives,
-                "factor_contributions": sorted(
-                    feature_rows, key=lambda row: str(row["factor_id"])
-                ),
+                "factor_contributions": sorted(feature_rows, key=lambda row: str(row["factor_id"])),
             }
         )
     rows.sort(key=lambda row: str(row["instrument"]))

@@ -425,21 +425,21 @@ def evaluate_variant_weights(
         for symbol, weight in current_holdings.items():
             raw_ret = daily.get(symbol)
             if raw_ret is None:
-                raise ValueError(
-                    f"Selected holding {symbol} on {date.date()} has no return data"
-                )
+                raise ValueError(f"Selected holding {symbol} on {date.date()} has no return data")
             if not np.isfinite(raw_ret):
                 raise ValueError(
                     f"Selected holding {symbol} on {date.date()} has non-finite "
                     f"raw return {raw_ret}"
                 )
             contribution = weight * raw_ret
-            holding_details.append(HoldingDetail(
-                symbol=symbol,
-                weight=weight,
-                raw_return=raw_ret,
-                gross_contribution=contribution,
-            ))
+            holding_details.append(
+                HoldingDetail(
+                    symbol=symbol,
+                    weight=weight,
+                    raw_return=raw_ret,
+                    gross_contribution=contribution,
+                )
+            )
             gross_return += contribution
 
         portfolio_return = gross_return - cost
@@ -447,51 +447,45 @@ def evaluate_variant_weights(
         period_returns.append(portfolio_return)
 
         if date not in benchmark_series.index:
-            raise ValueError(
-                f"Benchmark on {date.date()} has no raw return data"
-            )
+            raise ValueError(f"Benchmark on {date.date()} has no raw return data")
         benchmark_return = float(benchmark_series.loc[date])
         if not np.isfinite(benchmark_return):
             raise ValueError(
-                f"Benchmark on {date.date()} has non-finite raw return "
-                f"{benchmark_return}"
+                f"Benchmark on {date.date()} has non-finite raw return {benchmark_return}"
             )
         if benchmark_return <= -1.0:
             raise ValueError(
-                f"Benchmark on {date.date()} has invalid raw return "
-                f"{benchmark_return}"
+                f"Benchmark on {date.date()} has invalid raw return {benchmark_return}"
             )
         benchmark_values.append(benchmark_values[-1] * (1.0 + benchmark_return))
         benchmark_period_returns.append(benchmark_return)
 
         relative_excess = (1.0 + portfolio_return) / (1.0 + benchmark_return) - 1.0
-        period_details.append(PeriodDetail(
-            date=str(date.date()),
-            holdings=tuple(holding_details),
-            gross_exposure=float(sum(current_holdings.values())),
-            turnover=turnover,
-            cost=cost,
-            gross_return=gross_return,
-            net_return=portfolio_return,
-            benchmark_return=benchmark_return,
-            relative_excess=relative_excess,
-        ))
+        period_details.append(
+            PeriodDetail(
+                date=str(date.date()),
+                holdings=tuple(holding_details),
+                gross_exposure=float(sum(current_holdings.values())),
+                turnover=turnover,
+                cost=cost,
+                gross_return=gross_return,
+                net_return=portfolio_return,
+                benchmark_return=benchmark_return,
+                relative_excess=relative_excess,
+            )
+        )
 
     total_return = portfolio_values[-1] / portfolio_values[0] - 1.0
     benchmark_return = benchmark_values[-1] / benchmark_values[0] - 1.0
     excess_return = total_return - benchmark_return
     relative_excess_return = (1.0 + total_return) / (1.0 + benchmark_return) - 1.0
     portfolio_array = np.asarray(portfolio_values, dtype=float)
-    max_drawdown = float(
-        (portfolio_array / np.maximum.accumulate(portfolio_array) - 1.0).min()
-    )
+    max_drawdown = float((portfolio_array / np.maximum.accumulate(portfolio_array) - 1.0).min())
     returns_array = np.asarray(period_returns, dtype=float)
     periods_per_year = 252.0 / rebalance_days
     std = float(returns_array.std())
     sharpe_ratio = (
-        float(returns_array.mean() / std * np.sqrt(periods_per_year))
-        if std > 1e-10
-        else 0.0
+        float(returns_array.mean() / std * np.sqrt(periods_per_year)) if std > 1e-10 else 0.0
     )
     n_periods = len(period_returns)
     years = n_periods * rebalance_days / 252.0
@@ -594,16 +588,12 @@ def aggregate_variant_reports(
         if not reports:
             continue
         all_period_returns = [r for report in reports for r in report.period_returns]
-        all_benchmark_returns = [
-            r for report in reports for r in report.benchmark_period_returns
-        ]
+        all_benchmark_returns = [r for report in reports for r in report.benchmark_period_returns]
         compounded_portfolio = float(np.prod(1.0 + np.asarray(all_period_returns)) - 1.0)
-        compounded_benchmark = float(
-            np.prod(1.0 + np.asarray(all_benchmark_returns)) - 1.0
-        )
-        compounded_relative_excess = (
-            (1.0 + compounded_portfolio) / (1.0 + compounded_benchmark) - 1.0
-        )
+        compounded_benchmark = float(np.prod(1.0 + np.asarray(all_benchmark_returns)) - 1.0)
+        compounded_relative_excess = (1.0 + compounded_portfolio) / (
+            1.0 + compounded_benchmark
+        ) - 1.0
         positive_excess_windows = sum(report.excess_return > 0 for report in reports)
         worst_drawdown = min(report.max_drawdown for report in reports)
         passes = (
@@ -625,9 +615,7 @@ def aggregate_variant_reports(
             "mean_costs": float(np.mean([r.costs for r in reports])),
             "cost_bps": float(reports[0].cost_bps),
             "turnover_model": "cash_inclusive_one_way",
-            "mean_gross_exposure": float(
-                np.mean([r.mean_gross_exposure for r in reports])
-            ),
+            "mean_gross_exposure": float(np.mean([r.mean_gross_exposure for r in reports])),
             "passes_candidate_v2_gate": passes,
         }
         if passes and compounded_relative_excess > selected_relative_excess:

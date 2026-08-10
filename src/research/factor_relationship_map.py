@@ -34,9 +34,9 @@ def _sha256_file(path: Path) -> str:
 
 
 def _canonical_hash(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -191,13 +191,8 @@ def _pairwise_return_correlation(
 
 
 def _sets_by_date(selections: pd.DataFrame, factor: str) -> dict[pd.Timestamp, set[str]]:
-    factor_rows = selections[
-        (selections["stable_factor_key"] == factor) & selections["selected"]
-    ]
-    return {
-        date: set(group["symbol"])
-        for date, group in factor_rows.groupby("date", sort=True)
-    }
+    factor_rows = selections[(selections["stable_factor_key"] == factor) & selections["selected"]]
+    return {date: set(group["symbol"]) for date, group in factor_rows.groupby("date", sort=True)}
 
 
 def _jaccard(left: set[str], right: set[str]) -> float:
@@ -217,9 +212,7 @@ def _selection_metrics(
     dates = sorted(set(left_sets) | set(right_sets))
     if len(dates) < minimum:
         return None, None, len(dates)
-    overlaps = [
-        _jaccard(left_sets.get(day, set()), right_sets.get(day, set())) for day in dates
-    ]
+    overlaps = [_jaccard(left_sets.get(day, set()), right_sets.get(day, set())) for day in dates]
     left_changes: dict[pd.Timestamp, set[str]] = {}
     right_changes: dict[pd.Timestamp, set[str]] = {}
     previous_left: set[str] = set()
@@ -231,9 +224,7 @@ def _selection_metrics(
         right_changes[day] = current_right ^ previous_right
         previous_left = current_left
         previous_right = current_right
-    turnover_overlaps = [
-        _jaccard(left_changes[day], right_changes[day]) for day in dates
-    ]
+    turnover_overlaps = [_jaccard(left_changes[day], right_changes[day]) for day in dates]
     return float(np.mean(overlaps)), float(np.mean(turnover_overlaps)), len(dates)
 
 
@@ -245,16 +236,13 @@ def _is_redundant(
     contract: Mapping[str, Any],
 ) -> bool:
     rules = contract["correlation"]
-    score_redundant = (
-        score_correlation is not None
-        and abs(score_correlation)
-        >= float(rules["absolute_score_redundancy_threshold"])
+    score_redundant = score_correlation is not None and abs(score_correlation) >= float(
+        rules["absolute_score_redundancy_threshold"]
     )
     return_redundant = (
         return_correlation is not None
         and selection_overlap is not None
-        and abs(return_correlation)
-        >= float(rules["absolute_return_redundancy_threshold"])
+        and abs(return_correlation) >= float(rules["absolute_return_redundancy_threshold"])
         and selection_overlap >= float(rules["selection_overlap_threshold"])
     )
     return score_redundant or return_redundant
@@ -308,14 +296,11 @@ def build_factor_relationship_map(
         for kind in ARTIFACT_COLUMNS
     }
     frames = {
-        kind: _load_artifact(path, kind=kind, scope=scope)
-        for kind, path in artifact_paths.items()
+        kind: _load_artifact(path, kind=kind, scope=scope) for kind, path in artifact_paths.items()
     }
     factors = _factor_keys(frames["scores"], frames["returns"], frames["selections"])
     registry = FactorKnowledgeRegistry(registry_db)
-    cards = {
-        str(card["stable_factor_key"]): card for card in registry.list_cards()
-    }
+    cards = {str(card["stable_factor_key"]): card for card in registry.list_cards()}
     missing_cards = sorted(set(factors) - set(cards))
     if missing_cards:
         raise ValueError("relationship factors missing from registry: " + ", ".join(missing_cards))
@@ -413,20 +398,13 @@ def build_factor_relationship_map(
         "trade_ready": False,
         "factor_count": len(factors),
         "pair_count": len(pairs),
-        "redundancy_cluster_count": len(
-            {value for value in cluster_by_factor.values() if value}
-        ),
-        "insufficient_score_pairs": sum(
-            pair["score_correlation"] is None for pair in pairs
-        ),
-        "insufficient_return_pairs": sum(
-            pair["return_correlation"] is None for pair in pairs
-        ),
+        "redundancy_cluster_count": len({value for value in cluster_by_factor.values() if value}),
+        "insufficient_score_pairs": sum(pair["score_correlation"] is None for pair in pairs),
+        "insufficient_return_pairs": sum(pair["return_correlation"] is None for pair in pairs),
     }
     _write_json(output / "decision.json", decision)
     outputs = {
-        name: _sha256_file(output / name)
-        for name in ("factor_relationships.json", "decision.json")
+        name: _sha256_file(output / name) for name in ("factor_relationships.json", "decision.json")
     }
     output_manifest: dict[str, Any] = {
         "schema_version": "1.0",

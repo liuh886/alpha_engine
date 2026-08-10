@@ -155,9 +155,7 @@ def compute_focus_indicators(
     if qqq.empty:
         raise ValueError(f"market reference {qqq_symbol} is absent")
     qqq = qqq.sort_values("date")
-    qqq["risk_on"] = (qqq["close"] > qqq["sma_200"]) & (
-        qqq["sma_50"] > qqq["sma_200"]
-    )
+    qqq["risk_on"] = (qqq["close"] > qqq["sma_200"]) & (qqq["sma_50"] > qqq["sma_200"])
     qqq["market_regime"] = _regime_labels(qqq["close"], qqq["sma_50"], qqq["sma_200"])
     qqq_context = qqq[
         ["date", "return_63", "risk_on", "market_regime", "sma_50", "sma_200", "close"]
@@ -321,7 +319,9 @@ def generate_signal_history(
                     "reason_codes": reasons,
                     "market_regime": str(row["market_regime"]),
                     "risk_on": None if pd.isna(row["risk_on"]) else bool(row["risk_on"]),
-                    "actionable_from": None if actionable is None else actionable.date().isoformat(),
+                    "actionable_from": None
+                    if actionable is None
+                    else actionable.date().isoformat(),
                     "indicators": _indicator_payload(row, reported_trailing_stop),
                 }
             )

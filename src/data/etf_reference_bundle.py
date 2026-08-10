@@ -70,11 +70,7 @@ def _normalise_frame(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
     if missing:
         raise ETFReferenceBundleError(f"{symbol} bars missing columns: {missing}")
     out = frame.copy()
-    out["date"] = (
-        pd.to_datetime(out["date"], errors="coerce")
-        .dt.tz_localize(None)
-        .dt.normalize()
-    )
+    out["date"] = pd.to_datetime(out["date"], errors="coerce").dt.tz_localize(None).dt.normalize()
     for column in required.difference({"date"}):
         out[column] = pd.to_numeric(out[column], errors="coerce")
     out = (
@@ -85,9 +81,7 @@ def _normalise_frame(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
     )
     valid, _, errors = validate_market_data(out, symbol)
     if not valid:
-        raise ETFReferenceBundleError(
-            f"{symbol} schema validation failed: {'; '.join(errors)}"
-        )
+        raise ETFReferenceBundleError(f"{symbol} schema validation failed: {'; '.join(errors)}")
     if out.empty:
         raise ETFReferenceBundleError(f"{symbol} has no usable bars")
     return out
@@ -136,9 +130,7 @@ def _compounded_drift(primary: pd.Series, fallback: pd.Series) -> float:
 
 
 def _maximum_annual_open_drift(comparison: pd.DataFrame) -> float:
-    usable = comparison[
-        ["primary_open_return", "fallback_open_return"]
-    ].dropna()
+    usable = comparison[["primary_open_return", "fallback_open_return"]].dropna()
     if usable.empty:
         return 0.0
     drifts = [
@@ -188,12 +180,10 @@ def reconcile_adjusted_bars(
     comparison["primary_open_return"] = left.loc[common, "open"].pct_change()
     comparison["fallback_open_return"] = right.loc[common, "open"].pct_change()
     comparison["close_diff"] = (
-        comparison["primary_close_return"]
-        - comparison["fallback_close_return"]
+        comparison["primary_close_return"] - comparison["fallback_close_return"]
     ).abs()
     comparison["open_diff"] = (
-        comparison["primary_open_return"]
-        - comparison["fallback_open_return"]
+        comparison["primary_open_return"] - comparison["fallback_open_return"]
     ).abs()
     close_diff = comparison["close_diff"].dropna()
     open_diff = comparison["open_diff"].dropna()
@@ -207,12 +197,8 @@ def reconcile_adjusted_bars(
     )
     max_annual_open_drift = _maximum_annual_open_drift(comparison)
 
-    close_p99_limit = float(
-        settings.get("consensus_p99_adjusted_close_return_diff", 0.001)
-    )
-    close_max_limit = float(
-        settings.get("consensus_max_adjusted_close_return_diff", 0.01)
-    )
+    close_p99_limit = float(settings.get("consensus_p99_adjusted_close_return_diff", 0.001))
+    close_max_limit = float(settings.get("consensus_max_adjusted_close_return_diff", 0.01))
     open_p99_limit = float(
         settings.get(
             "consensus_p99_adjusted_open_return_diff",
@@ -236,9 +222,7 @@ def reconcile_adjusted_bars(
     material_dates = {
         pd.Timestamp(value)
         for value in comparison.index[
-            comparison[["close_diff", "open_diff"]]
-            .max(axis=1)
-            .gt(material_limit)
+            comparison[["close_diff", "open_diff"]].max(axis=1).gt(material_limit)
         ]
     }
     allowed_event_dates = _event_window_dates(
@@ -247,9 +231,7 @@ def reconcile_adjusted_bars(
         event_window,
     )
 
-    close_consensus = (
-        p99_close <= close_p99_limit and max_close <= close_max_limit
-    )
+    close_consensus = p99_close <= close_p99_limit and max_close <= close_max_limit
     open_execution_consensus = (
         p99_open <= open_p99_limit
         and max_open <= open_max_limit
@@ -288,9 +270,7 @@ def reconcile_adjusted_bars(
         "abs_full_period_compounded_open_return_drift": full_period_open_drift,
         "close_consensus": close_consensus,
         "open_execution_consensus": open_execution_consensus,
-        "material_difference_dates": [
-            value.date().isoformat() for value in sorted(material_dates)
-        ],
+        "material_difference_dates": [value.date().isoformat() for value in sorted(material_dates)],
         "recorded_action_dates": [
             value.date().isoformat() for value in sorted(_event_dates(primary))
         ],
@@ -307,16 +287,9 @@ def _corporate_actions(frame: pd.DataFrame | None, symbol: str) -> pd.DataFrame:
         return pd.DataFrame(columns=columns)
     out = frame[["date", "cash_distribution", "split_factor"]].copy()
     out["date"] = pd.to_datetime(out["date"], errors="coerce").dt.normalize()
-    out["cash_distribution"] = pd.to_numeric(
-        out["cash_distribution"], errors="coerce"
-    ).fillna(0.0)
-    out["split_factor"] = pd.to_numeric(
-        out["split_factor"], errors="coerce"
-    ).fillna(1.0)
-    out = out.loc[
-        out["cash_distribution"].ne(0.0)
-        | out["split_factor"].ne(1.0)
-    ].copy()
+    out["cash_distribution"] = pd.to_numeric(out["cash_distribution"], errors="coerce").fillna(0.0)
+    out["split_factor"] = pd.to_numeric(out["split_factor"], errors="coerce").fillna(1.0)
+    out = out.loc[out["cash_distribution"].ne(0.0) | out["split_factor"].ne(1.0)].copy()
     out.insert(0, "symbol", symbol)
     return out[columns].reset_index(drop=True)
 
@@ -383,19 +356,13 @@ def _provider_health_summary(
     provider: str,
     attempt_column: str,
 ) -> dict[str, Any]:
-    attempts = [
-        json.loads(str(value))
-        for value in coverage[attempt_column].tolist()
-    ]
+    attempts = [json.loads(str(value)) for value in coverage[attempt_column].tolist()]
     failures = [attempt for attempt in attempts if not attempt.get("ok")]
-    error_counts = Counter(
-        str(attempt.get("error_class", "unknown")) for attempt in failures
-    )
+    error_counts = Counter(str(attempt.get("error_class", "unknown")) for attempt in failures)
     latencies = [
         float(attempt.get("metadata", {}).get("elapsed_seconds"))
         for attempt in attempts
-        if attempt.get("ok")
-        and attempt.get("metadata", {}).get("elapsed_seconds") is not None
+        if attempt.get("ok") and attempt.get("metadata", {}).get("elapsed_seconds") is not None
     ]
     return {
         "provider": provider,
@@ -403,20 +370,15 @@ def _provider_health_summary(
         "successful_symbols": int(len(attempts) - len(failures)),
         "failed_symbols": int(len(failures)),
         "success_ratio": (
-            float((len(attempts) - len(failures)) / len(attempts))
-            if attempts
-            else 0.0
+            float((len(attempts) - len(failures)) / len(attempts)) if attempts else 0.0
         ),
         "error_class_counts": dict(sorted(error_counts.items())),
         "rate_limited_symbols": sorted(
             str(row.symbol)
             for row in coverage.itertuples()
-            if json.loads(str(getattr(row, attempt_column))).get("error_class")
-            == "rate_limited"
+            if json.loads(str(getattr(row, attempt_column))).get("error_class") == "rate_limited"
         ),
-        "mean_elapsed_seconds": (
-            float(sum(latencies) / len(latencies)) if latencies else None
-        ),
+        "mean_elapsed_seconds": (float(sum(latencies) / len(latencies)) if latencies else None),
     }
 
 
@@ -489,9 +451,7 @@ def build_etf_reference_bundle(
             canonical_path = root / "canonical" / f"{symbol}.csv"
             canonical_path.parent.mkdir(parents=True, exist_ok=True)
             canonical.to_csv(canonical_path, index=False)
-            file_hashes[str(canonical_path.relative_to(root))] = _sha256(
-                canonical_path
-            )
+            file_hashes[str(canonical_path.relative_to(root))] = _sha256(canonical_path)
             canonical_status = "ready"
 
         actions = _corporate_actions(primary, symbol)
@@ -511,14 +471,10 @@ def build_etf_reference_bundle(
                 "fallback_source_ok": bool(fallback_attempt.get("ok")),
                 "canonical_rows": int(len(canonical)) if canonical is not None else 0,
                 "canonical_first_date": (
-                    canonical["date"].min().date().isoformat()
-                    if canonical is not None
-                    else None
+                    canonical["date"].min().date().isoformat() if canonical is not None else None
                 ),
                 "canonical_last_date": (
-                    canonical["date"].max().date().isoformat()
-                    if canonical is not None
-                    else None
+                    canonical["date"].max().date().isoformat() if canonical is not None else None
                 ),
                 "corporate_action_rows": int(len(actions)),
                 "primary_attempt": json.dumps(primary_attempt, sort_keys=True),
@@ -526,19 +482,9 @@ def build_etf_reference_bundle(
             }
         )
 
-    coverage = (
-        pd.DataFrame(coverage_rows).sort_values("symbol").reset_index(drop=True)
-    )
-    reconciliations = (
-        pd.DataFrame(reconciliation_rows)
-        .sort_values("symbol")
-        .reset_index(drop=True)
-    )
-    all_actions = (
-        pd.concat(action_frames, ignore_index=True)
-        if action_frames
-        else pd.DataFrame()
-    )
+    coverage = pd.DataFrame(coverage_rows).sort_values("symbol").reset_index(drop=True)
+    reconciliations = pd.DataFrame(reconciliation_rows).sort_values("symbol").reset_index(drop=True)
+    all_actions = pd.concat(action_frames, ignore_index=True) if action_frames else pd.DataFrame()
     coverage_path = root / "coverage.csv"
     reconciliation_path = root / "reconciliation.csv"
     actions_path = root / "corporate_actions.csv"
@@ -600,8 +546,7 @@ def build_etf_reference_bundle(
         "strategy_data_ready": strategy_data_ready,
         "professional_source_ready": professional_source_ready,
         "selected_providers": {
-            str(row.symbol): row.selected_provider
-            for row in coverage.itertuples()
+            str(row.symbol): row.selected_provider for row in coverage.itertuples()
         },
         "reconciliation_status": {
             str(row.symbol): row.status for row in reconciliations.itertuples()
@@ -635,9 +580,7 @@ def load_etf_reference_bundle(
     root = Path(bundle_root).resolve()
     manifest_path = root / MANIFEST_NAME
     if not manifest_path.is_file():
-        raise ETFReferenceBundleError(
-            f"ETF bundle manifest is missing: {manifest_path}"
-        )
+        raise ETFReferenceBundleError(f"ETF bundle manifest is missing: {manifest_path}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if require_strategy_ready and manifest.get("strategy_data_ready") is not True:
         raise ETFReferenceBundleError("ETF bundle is not strategy-data ready")
@@ -645,9 +588,7 @@ def load_etf_reference_bundle(
     requested = [str(symbol).strip().upper() for symbol in symbols]
     undeclared = sorted(set(requested).difference(manifest.get("symbols", [])))
     if undeclared:
-        raise ETFReferenceBundleError(
-            f"ETF bundle does not declare symbols: {undeclared}"
-        )
+        raise ETFReferenceBundleError(f"ETF bundle does not declare symbols: {undeclared}")
 
     bars: dict[str, pd.DataFrame] = {}
     for symbol in requested:
@@ -659,8 +600,7 @@ def load_etf_reference_bundle(
         actual_hash = _sha256(path)
         if actual_hash != expected_hash:
             raise ETFReferenceBundleError(
-                f"canonical ETF hash mismatch for {symbol}: "
-                f"{actual_hash} != {expected_hash}"
+                f"canonical ETF hash mismatch for {symbol}: {actual_hash} != {expected_hash}"
             )
         bars[symbol] = _normalise_frame(pd.read_csv(path), symbol)
 

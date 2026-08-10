@@ -47,11 +47,7 @@ def _repository_root(spec_path: Path) -> Path:
 
 def _candidate_symbols(pool: Mapping[str, Any]) -> list[str]:
     baskets = pool.get("baskets", {})
-    return [
-        str(symbol)
-        for basket in baskets.values()
-        for symbol in basket.get("symbols", [])
-    ]
+    return [str(symbol) for basket in baskets.values() for symbol in basket.get("symbols", [])]
 
 
 def validate_rotation_contract(
@@ -165,10 +161,7 @@ def build_pool_identity(
         str(name): [str(symbol) for symbol in basket["symbols"]]
         for name, basket in pool["baskets"].items()
     }
-    references = {
-        str(symbol): dict(metadata)
-        for symbol, metadata in pool["references"].items()
-    }
+    references = {str(symbol): dict(metadata) for symbol, metadata in pool["references"].items()}
     membership_payload = {
         "pool_id": str(pool["pool_id"]),
         "baskets": baskets,
@@ -200,9 +193,11 @@ def compute_rotation_indicators(
         group["high_63"] = group["close"].rolling(63, min_periods=63).max()
         group["drawdown_from_63d_high"] = group["close"] / group["high_63"] - 1.0
         enriched.append(group)
-    return pd.concat(enriched, ignore_index=True).sort_values(
-        ["symbol", "date"]
-    ).reset_index(drop=True)
+    return (
+        pd.concat(enriched, ignore_index=True)
+        .sort_values(["symbol", "date"])
+        .reset_index(drop=True)
+    )
 
 
 def _state_frame(signal_history: list[dict[str, Any]]) -> pd.DataFrame:
@@ -236,9 +231,7 @@ def _rotation_dates(
 ) -> list[pd.Timestamp]:
     qqq_dates = [
         pd.Timestamp(value)
-        for value in sorted(
-            indicators.loc[indicators["symbol"] == "QQQ", "date"].dropna().unique()
-        )
+        for value in sorted(indicators.loc[indicators["symbol"] == "QQQ", "date"].dropna().unique())
     ]
     anchor = pd.Timestamp(spec["rotation"]["rotation_anchor_date"])
     eligible = [date for date in qqq_dates if date >= anchor]
@@ -254,9 +247,7 @@ def _basket_snapshot(
     states: pd.DataFrame,
     spec: Mapping[str, Any],
 ) -> dict[str, Any]:
-    day = indicators[
-        (indicators["date"] == date) & indicators["symbol"].isin(members)
-    ].copy()
+    day = indicators[(indicators["date"] == date) & indicators["symbol"].isin(members)].copy()
     metric_columns = (
         "rel_mom_63_vs_qqq",
         "momentum_20",
@@ -284,15 +275,12 @@ def _basket_snapshot(
         reasons.append("BASKET_INSUFFICIENT_COVERAGE")
     if breadth is None or breadth < float(eligibility["minimum_breadth_above_sma50"]):
         reasons.append("BASKET_BREADTH_BELOW_GATE")
-    if (
-        bool(eligibility["require_positive_median_relative_momentum_63"])
-        and (median_relative is None or median_relative <= 0)
+    if bool(eligibility["require_positive_median_relative_momentum_63"]) and (
+        median_relative is None or median_relative <= 0
     ):
         reasons.append("BASKET_RELATIVE_MOMENTUM_NONPOSITIVE")
 
-    state_day = states[
-        (states["date"] == date) & states["symbol"].isin(members)
-    ]
+    state_day = states[(states["date"] == date) & states["symbol"].isin(members)]
     eligible_states = {
         state
         for state, multiplier in spec["security_selection"]["eligible_states"].items()
@@ -343,8 +331,7 @@ def _add_component_ranks(
     minimum = float(spec["rotation"]["score"]["minimum_composite_percentile"])
     for index in eligible_indexes:
         composite = sum(
-            float(snapshots[index][f"{field}_percentile"])
-            * float(components[field]["weight"])
+            float(snapshots[index][f"{field}_percentile"]) * float(components[field]["weight"])
             for field in _SCORE_FIELDS
         )
         snapshots[index]["composite_percentile"] = float(composite)
@@ -360,12 +347,12 @@ def _select_securities(
     states: pd.DataFrame,
     spec: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
-    day = indicators[
-        (indicators["date"] == date) & indicators["symbol"].isin(members)
-    ][["symbol", "rel_mom_63_vs_qqq"]]
-    state_day = states[
-        (states["date"] == date) & states["symbol"].isin(members)
-    ].merge(day, on="symbol", how="left", validate="one_to_one")
+    day = indicators[(indicators["date"] == date) & indicators["symbol"].isin(members)][
+        ["symbol", "rel_mom_63_vs_qqq"]
+    ]
+    state_day = states[(states["date"] == date) & states["symbol"].isin(members)].merge(
+        day, on="symbol", how="left", validate="one_to_one"
+    )
 
     multipliers = {
         str(state): float(value)
@@ -378,8 +365,7 @@ def _select_securities(
     state_day["exposure_multiplier"] = state_day["state"].map(multipliers).fillna(0.0)
     state_day["state_priority"] = state_day["state"].map(priorities).fillna(0).astype(int)
     eligible = state_day[
-        (state_day["exposure_multiplier"] > 0)
-        & state_day["rel_mom_63_vs_qqq"].notna()
+        (state_day["exposure_multiplier"] > 0) & state_day["rel_mom_63_vs_qqq"].notna()
     ].copy()
     eligible = eligible.sort_values(
         ["state_priority", "rel_mom_63_vs_qqq", "symbol"],
@@ -449,18 +435,14 @@ def build_rotation_history(
                     spec,
                 )
                 if not securities:
-                    snapshot["reason_codes"].append(
-                        "BASKET_NO_STATE_ELIGIBLE_SECURITY"
-                    )
+                    snapshot["reason_codes"].append("BASKET_NO_STATE_ELIGIBLE_SECURITY")
                     continue
                 basket_name = str(snapshot["basket"])
                 selected_baskets.append(basket_name)
                 selected_symbols[basket_name] = securities
                 snapshot["selected"] = True
                 snapshot["reason_codes"].append("BASKET_SELECTED")
-                if len(selected_baskets) >= int(
-                    spec["rotation"]["maximum_selected_baskets"]
-                ):
+                if len(selected_baskets) >= int(spec["rotation"]["maximum_selected_baskets"]):
                     break
             if not selected_baskets:
                 rotation_reasons.append("ROTATION_NO_ELIGIBLE_BASKET")
@@ -479,9 +461,7 @@ def build_rotation_history(
         rotations.append(
             {
                 "date": date.date().isoformat(),
-                "actionable_from": (
-                    None if actionable is None else actionable.date().isoformat()
-                ),
+                "actionable_from": (None if actionable is None else actionable.date().isoformat()),
                 "risk_on": risk_on,
                 "market_regime": str(qqq_row["market_regime"]),
                 "selected_baskets": selected_baskets,
@@ -501,10 +481,7 @@ def build_portfolio_state_history(
     states = _state_frame(signal_history).set_index(["date", "symbol"])
     qqq = indicators[indicators["symbol"] == "QQQ"].sort_values("date")
     next_sessions = _next_session_map(qqq["date"])
-    rotations_by_date = {
-        pd.Timestamp(row["date"]): row
-        for row in rotations
-    }
+    rotations_by_date = {pd.Timestamp(row["date"]): row for row in rotations}
     multipliers = {
         str(state): float(value)
         for state, value in spec["security_selection"]["eligible_states"].items()
@@ -519,9 +496,7 @@ def build_portfolio_state_history(
 
         risk_on = bool(qqq_row["risk_on"]) if not pd.isna(qqq_row["risk_on"]) else False
         selected_baskets = (
-            list(current_rotation["selected_baskets"])
-            if current_rotation is not None
-            else []
+            list(current_rotation["selected_baskets"]) if current_rotation is not None else []
         )
         selected_map = (
             dict(current_rotation["selected_symbols_by_basket"])
@@ -572,12 +547,8 @@ def build_portfolio_state_history(
         history.append(
             {
                 "date": date.date().isoformat(),
-                "actionable_from": (
-                    None if actionable is None else actionable.date().isoformat()
-                ),
-                "rotation_date": (
-                    None if current_rotation is None else current_rotation["date"]
-                ),
+                "actionable_from": (None if actionable is None else actionable.date().isoformat()),
+                "rotation_date": (None if current_rotation is None else current_rotation["date"]),
                 "risk_on": risk_on,
                 "market_regime": str(qqq_row["market_regime"]),
                 "selected_baskets": selected_baskets,
@@ -660,8 +631,7 @@ def run_small_pool_rotation(
     write_json(output_dir / "decision.json", decision)
 
     output_hashes = {
-        filename: sha256_file(output_dir / filename)
-        for filename in [*payloads, "decision.json"]
+        filename: sha256_file(output_dir / filename) for filename in [*payloads, "decision.json"]
     }
     manifest = {
         "schema_version": "1.0",
@@ -669,9 +639,7 @@ def run_small_pool_rotation(
         "provider_identity_sha256": sha256_file(prices_csv),
         "rotation_spec_identity_sha256": sha256_file(resolved_spec_path),
         "pool_file_identity_sha256": sha256_file(pool_path),
-        "pool_membership_identity_sha256": pool_identity[
-            "membership_identity_sha256"
-        ],
+        "pool_membership_identity_sha256": pool_identity["membership_identity_sha256"],
         "timing_formula_identity_sha256": sha256_file(formula_path),
         "input": {"prices_csv": str(prices_csv)},
         "outputs": output_hashes,

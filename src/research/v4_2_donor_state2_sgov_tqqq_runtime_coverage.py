@@ -34,10 +34,7 @@ def build_all_target_state2_prediction_rows(
         if start_location <= 0:
             continue
         end_location = start_location
-        while (
-            end_location + 1 < len(index)
-            and int(state.iloc[end_location + 1]) == 2
-        ):
+        while end_location + 1 < len(index) and int(state.iloc[end_location + 1]) == 2:
             end_location += 1
         signal_close_date = index[start_location - 1]
         row: dict[str, Any] = {
@@ -53,9 +50,7 @@ def build_all_target_state2_prediction_rows(
         if signal_close_date in feature_frame.index:
             signal = feature_frame.loc[signal_close_date]
             if isinstance(signal, pd.DataFrame):
-                raise AssertionError(
-                    "target feature frame contains duplicate dates"
-                )
+                raise AssertionError("target feature frame contains duplicate dates")
             for feature in features:
                 row[str(feature)] = signal.get(str(feature), float("nan"))
         else:
@@ -86,13 +81,8 @@ def predict_target_episodes_with_coverage(
         predicted = validation.copy()
         predicted["training_cutoff"] = cutoff
         predicted["training_episode_count"] = int(len(training))
-        predicted["training_asset_count"] = int(
-            training["underlying"].nunique()
-        )
-        usable_training = (
-            len(training) >= 10
-            and training["positive_episode_excess"].nunique() >= 2
-        )
+        predicted["training_asset_count"] = int(training["underlying"].nunique())
+        usable_training = len(training) >= 10 and training["positive_episode_excess"].nunique() >= 2
         usable_signal = predicted["signal_row_available"].astype(bool)
         predicted["probability"] = -1.0
         predicted["probability_available"] = False
@@ -107,19 +97,13 @@ def predict_target_episodes_with_coverage(
 
     if not rows:
         raise ValueError("no target state-2 episode rows were produced")
-    output = pd.concat(rows, ignore_index=True).sort_values(
-        "execution_date"
-    )
+    output = pd.concat(rows, ignore_index=True).sort_values("execution_date")
     low = float(contract["strategy_mapping"]["probability_low_below"])
-    high = float(
-        contract["strategy_mapping"]["probability_high_at_or_above"]
-    )
+    high = float(contract["strategy_mapping"]["probability_high_at_or_above"])
     output["probability_bucket"] = "medium"
     output.loc[output["probability"].lt(low), "probability_bucket"] = "low"
     output.loc[output["probability"].ge(high), "probability_bucket"] = "high"
-    output.loc[
-        ~output["probability_available"], "probability_bucket"
-    ] = "unavailable"
+    output.loc[~output["probability_available"], "probability_bucket"] = "unavailable"
     return output.reset_index(drop=True)
 
 
@@ -136,23 +120,24 @@ def run_donor_state2_sgov_tqqq(
     bars: Mapping[str, pd.DataFrame],
     bridge_contract: Mapping[str, Any],
     contract: Mapping[str, Any],
-) -> tuple[Any, dict[str, pd.DataFrame], dict[str, pd.DataFrame], dict[str, Any], dict[str, pd.DataFrame], dict[str, Any]]:
+) -> tuple[
+    Any,
+    dict[str, pd.DataFrame],
+    dict[str, pd.DataFrame],
+    dict[str, Any],
+    dict[str, pd.DataFrame],
+    dict[str, Any],
+]:
     """Run the base target-safe runtime with explicit model availability."""
 
     original_builder = base.build_target_state2_prediction_rows
     original_predictor = base.predict_target_episodes_walk_forward
     original_weight = core._variant_tqqq_weight
-    base.build_target_state2_prediction_rows = (
-        build_all_target_state2_prediction_rows
-    )
-    base.predict_target_episodes_walk_forward = (
-        predict_target_episodes_with_coverage
-    )
+    base.build_target_state2_prediction_rows = build_all_target_state2_prediction_rows
+    base.predict_target_episodes_walk_forward = predict_target_episodes_with_coverage
     core._variant_tqqq_weight = _coverage_safe_variant_weight
     try:
-        result = base.run_donor_state2_sgov_tqqq(
-            bars, bridge_contract, contract
-        )
+        result = base.run_donor_state2_sgov_tqqq(bars, bridge_contract, contract)
     finally:
         base.build_target_state2_prediction_rows = original_builder
         base.predict_target_episodes_walk_forward = original_predictor
@@ -175,26 +160,20 @@ def run_donor_state2_sgov_tqqq(
             "unavailable_episodes": int((~available).sum()),
             "modeled_episode_rate": float(available.mean()),
             "imputed_signal_episodes": int(
-                (
-                    available
-                    & predictions[list(contract["features"])].isna().any(axis=1)
-                ).sum()
+                (available & predictions[list(contract["features"])].isna().any(axis=1)).sum()
             ),
             "unavailable_years": sorted(
-                pd.to_datetime(
-                    predictions.loc[~available, "signal_close_date"]
-                ).dt.year.unique().astype(int).tolist()
+                pd.to_datetime(predictions.loc[~available, "signal_close_date"])
+                .dt.year.unique()
+                .astype(int)
+                .tolist()
             ),
         }
         diagnostics["scope_samples"][scope].update(coverage[scope])
 
     primary_complete = coverage["primary"]["unavailable_episodes"] == 0
-    diagnostics["primary_gate"]["checks"][
-        "all_primary_episodes_modeled"
-    ] = primary_complete
-    diagnostics["primary_gate"]["metrics"][
-        "model_coverage"
-    ] = coverage["primary"]
+    diagnostics["primary_gate"]["checks"]["all_primary_episodes_modeled"] = primary_complete
+    diagnostics["primary_gate"]["metrics"]["model_coverage"] = coverage["primary"]
     diagnostics["primary_gate"]["passed"] = bool(
         all(diagnostics["primary_gate"]["checks"].values())
     )
@@ -211,25 +190,15 @@ def run_donor_state2_sgov_tqqq(
         and diagnostics["contradiction_gate"]["passed"]
     )
     if not primary_complete:
-        diagnostics["decision"] = (
-            "state2_cash_budget_primary_model_coverage_incomplete"
-        )
+        diagnostics["decision"] = "state2_cash_budget_primary_model_coverage_incomplete"
     elif diagnostics["shadow_candidate_authorized"]:
-        diagnostics["decision"] = (
-            "state2_cash_budget_prospective_shadow_supported"
-        )
+        diagnostics["decision"] = "state2_cash_budget_prospective_shadow_supported"
     elif not diagnostics["donor_gate"]["passed"]:
-        diagnostics["decision"] = (
-            "donor_formal_state2_transfer_signal_not_stable"
-        )
+        diagnostics["decision"] = "donor_formal_state2_transfer_signal_not_stable"
     elif not diagnostics["primary_gate"]["passed"]:
-        diagnostics["decision"] = (
-            "state2_cash_budget_does_not_beat_v4_2_primary_window"
-        )
+        diagnostics["decision"] = "state2_cash_budget_does_not_beat_v4_2_primary_window"
     else:
-        diagnostics["decision"] = (
-            "state2_cash_budget_blocked_by_later_contradiction"
-        )
+        diagnostics["decision"] = "state2_cash_budget_blocked_by_later_contradiction"
     return (
         model,
         predictions_by_scope,

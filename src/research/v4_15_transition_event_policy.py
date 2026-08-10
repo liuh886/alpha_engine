@@ -38,16 +38,13 @@ def run_transition_event_policy(
     oof_end = pd.Timestamp(contract["outer_folds"][-1]["test_end"])
     features = discovery.features
     proxy_index = proxy_baseline_daily.index[
-        (proxy_baseline_daily.index >= oof_start)
-        & (proxy_baseline_daily.index <= oof_end)
+        (proxy_baseline_daily.index >= oof_start) & (proxy_baseline_daily.index <= oof_end)
     ]
     proxy_index = proxy_index.intersection(features.index).sort_values()
     baseline_proxy = _baseline_exact(proxy_baseline_daily, proxy_index, contract)
     voo_proxy = features["voo_next_open_return"].reindex(proxy_index)
     cash_proxy = features["bil_next_open_return"].reindex(proxy_index)
-    oof_trace = _event_action_trace(
-        proxy_index, discovery.outer_events, contract
-    )
+    oof_trace = _event_action_trace(proxy_index, discovery.outer_events, contract)
     oof_results: dict[str, StrategyResult] = {
         "frozen_v4_2": baseline_proxy,
         "full_event_policy": _run_policy(
@@ -108,9 +105,7 @@ def run_transition_event_policy(
         name="static_QQQ_TQQQ_25_75",
         weights={"QQQ": 0.25, "TQQQ": 0.75},
     )
-    oof_attribution = _event_attribution(
-        oof_results["full_event_policy"], baseline_proxy
-    )
+    oof_attribution = _event_attribution(oof_results["full_event_policy"], baseline_proxy)
     portfolio_gate = _portfolio_gate(oof_results, oof_attribution, contract)
 
     actual_start = max(
@@ -142,8 +137,7 @@ def run_transition_event_policy(
     sgov = _normalise_bars(bars["SGOV"], "SGOV")
     voo = _normalise_bars(bars["VOO"], "VOO")
     actual_index = actual_baseline_daily.index[
-        (actual_baseline_daily.index >= actual_start)
-        & (actual_baseline_daily.index <= actual_end)
+        (actual_baseline_daily.index >= actual_start) & (actual_baseline_daily.index <= actual_end)
     ]
     actual_index = (
         actual_index.intersection(qqqi.index)
@@ -152,9 +146,7 @@ def run_transition_event_policy(
         .sort_values()
     )
     voo_return = voo["open"].shift(-1).div(voo["open"]).sub(1.0).reindex(actual_index)
-    cash_return = (
-        sgov["open"].shift(-1).div(sgov["open"]).sub(1.0).reindex(actual_index)
-    )
+    cash_return = sgov["open"].shift(-1).div(sgov["open"]).sub(1.0).reindex(actual_index)
     baseline_actual = _baseline_exact(actual_baseline_daily, actual_index, contract)
     actual_trace = _event_action_trace(actual_index, actual_events, contract)
     actual_results: dict[str, StrategyResult] = {
@@ -185,9 +177,7 @@ def run_transition_event_policy(
             name=f"ablation_{family}",
             proxy_mode=False,
         )
-    actual_attribution = _event_attribution(
-        actual_results["full_event_policy"], baseline_actual
-    )
+    actual_attribution = _event_attribution(actual_results["full_event_policy"], baseline_actual)
     oof_headline = pd.DataFrame(
         [dict(result.metrics) for result in oof_results.values()]
     ).set_index("strategy")
@@ -207,8 +197,7 @@ def run_transition_event_policy(
         "actual_events": int(len(actual_events)),
         "portfolio_gate": portfolio_gate,
         "shadow_candidate_authorized": bool(
-            portfolio_gate["passed"]
-            and bool(discovery.family_gates["passed"].astype(bool).any())
+            portfolio_gate["passed"] and bool(discovery.family_gates["passed"].astype(bool).any())
         ),
         "direct_promotion_authorized": False,
         "baseline_and_alerts_unchanged": True,

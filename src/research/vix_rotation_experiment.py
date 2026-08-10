@@ -111,9 +111,7 @@ def config_from_contract(contract: Mapping[str, Any]) -> VixRotationConfig:
         vix_spike_1d=float(vix["spike_1d"]),
         vix_spike_5d=float(vix["spike_5d"]),
         vix_easing_retreat_for_qqq=float(vix["easing_retreat_for_qqq"]),
-        vix_normalization_retreat_for_tqqq=float(
-            vix["normalization_retreat_for_tqqq"]
-        ),
+        vix_normalization_retreat_for_tqqq=float(vix["normalization_retreat_for_tqqq"]),
         vix_falling_sessions=int(vix["falling_sessions"]),
         leveraged_tqqq_weight=float(portfolio["leveraged_tqqq_weight"]),
         transaction_cost_bps_per_turnover_unit=float(
@@ -183,9 +181,7 @@ def build_vix_features(vix_bars: pd.DataFrame, config: VixRotationConfig) -> pd.
     features["vix_normalized"] = (
         (
             close.le(features["vix_q_normal"])
-            | features["vix_retreat_from_peak"].le(
-                -config.vix_normalization_retreat_for_tqqq
-            )
+            | features["vix_retreat_from_peak"].le(-config.vix_normalization_retreat_for_tqqq)
         )
         & close.lt(features["vix_ma20"])
         & ~features["vix_stress"]
@@ -197,9 +193,7 @@ def build_vix_features(vix_bars: pd.DataFrame, config: VixRotationConfig) -> pd.
     return features
 
 
-def generate_vix_decision_states(
-    prepared: pd.DataFrame, config: VixRotationConfig
-) -> pd.DataFrame:
+def generate_vix_decision_states(prepared: pd.DataFrame, config: VixRotationConfig) -> pd.DataFrame:
     """Generate close-decided states for next-open execution."""
 
     state = 0

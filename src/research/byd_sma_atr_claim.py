@@ -64,9 +64,7 @@ def add_claim_features(dataset: pd.DataFrame) -> pd.DataFrame:
     frame["prior_high_55"] = (
         close.shift(1).rolling(BREAKOUT_WINDOW, min_periods=BREAKOUT_WINDOW).max()
     )
-    frame["trend_bull"] = frame["sma_25"].gt(frame["sma_70"]) & close.gt(
-        frame["sma_70"]
-    )
+    frame["trend_bull"] = frame["sma_25"].gt(frame["sma_70"]) & close.gt(frame["sma_70"])
     frame["breakout"] = close.gt(frame["prior_high_55"])
     frame["entry_condition"] = frame["trend_bull"] | (
         frame["breakout"] & frame["sma_25"].gt(frame["sma_70"] * 0.98)
@@ -106,14 +104,8 @@ def build_candidate_schedule(
 
     for row in dataset.itertuples():
         close = float(row.close)
-        atr = (
-            float(row.atr_14_wilder)
-            if pd.notna(row.atr_14_wilder)
-            else float("nan")
-        )
-        entry_now = (
-            bool(row.entry_condition) if pd.notna(row.entry_condition) else False
-        )
+        atr = float(row.atr_14_wilder) if pd.notna(row.atr_14_wilder) else float("nan")
+        entry_now = bool(row.entry_condition) if pd.notna(row.entry_condition) else False
         reason = ""
         entry_signal = False
         exit_signal = False
@@ -258,15 +250,11 @@ def metrics(daily: pd.DataFrame) -> dict[str, float]:
         if returns.std(ddof=0) > 0.0
         else 0.0
     )
-    downside = float(
-        np.sqrt(returns.clip(upper=0.0).pow(2).mean()) * np.sqrt(252.0)
-    )
+    downside = float(np.sqrt(returns.clip(upper=0.0).pow(2).mean()) * np.sqrt(252.0))
     sortino = float(returns.mean() * 252.0 / downside) if downside > 0.0 else 0.0
     calmar = float(cagr / abs(max_drawdown)) if max_drawdown < 0.0 else 0.0
     turnover = float(daily.loc[returns.index, "turnover_units"].sum())
-    position_column = (
-        "position_at_open" if "position_at_open" in daily else "position_at_close"
-    )
+    position_column = "position_at_open" if "position_at_open" in daily else "position_at_close"
     return {
         "sessions": float(len(returns)),
         "years": years,
@@ -312,12 +300,8 @@ def candidate_development_table(
                 "exit_confirmation_days": spec.exit_confirmation_days,
                 "complexity_rank": spec.complexity_rank,
                 **item,
-                "development_cagr_vs_v1_pp": (
-                    item["cagr"] - v1_metrics["cagr"]
-                )
-                * 100.0,
-                "development_selection_gate": item["cagr"]
-                >= v1_metrics["cagr"] - 0.01,
+                "development_cagr_vs_v1_pp": (item["cagr"] - v1_metrics["cagr"]) * 100.0,
+                "development_selection_gate": item["cagr"] >= v1_metrics["cagr"] - 0.01,
             }
         )
     table = pd.DataFrame(rows)
@@ -350,15 +334,10 @@ def tactical_episode_table(
     daily = result.daily.copy()
     asset_return = dataset["open"].shift(-1) / dataset["open"] - 1.0
     asset_return = asset_return.reindex(daily.index)
-    tactical_weight = (
-        daily["position_at_open"] - spec.core_position
-    ).clip(lower=0.0)
+    tactical_weight = (daily["position_at_open"] - spec.core_position).clip(lower=0.0)
     tactical_turnover = tactical_weight.diff().abs()
     tactical_turnover.iloc[0] = abs(float(tactical_weight.iloc[0]))
-    tactical_net = (
-        tactical_weight * asset_return
-        - tactical_turnover * cost_bps / 10_000.0
-    )
+    tactical_net = tactical_weight * asset_return - tactical_turnover * cost_bps / 10_000.0
     active = tactical_weight.gt(1e-12)
     starts = active & ~active.shift(1, fill_value=False)
     episode_id = starts.cumsum().where(active)
@@ -381,9 +360,7 @@ def tactical_episode_table(
     if not table.empty:
         positive = table["tactical_net_return"].clip(lower=0.0)
         total_positive = float(positive.sum())
-        table["positive_return_share"] = (
-            positive / total_positive if total_positive > 0.0 else 0.0
-        )
+        table["positive_return_share"] = positive / total_positive if total_positive > 0.0 else 0.0
     return table
 
 
@@ -441,9 +418,7 @@ def period_relative_concentration(
         "retrospective_2025_plus",
     ):
         start, end = EVALUATION_WINDOWS[window]
-        candidate_return = window_metrics(candidate, start=start, end=end)[
-            "total_return"
-        ]
+        candidate_return = window_metrics(candidate, start=start, end=end)["total_return"]
         v1_return = window_metrics(v1, start=start, end=end)["total_return"]
         relative = (1.0 + candidate_return) / (1.0 + v1_return) - 1.0
         rows.append(
@@ -458,15 +433,9 @@ def period_relative_concentration(
     table = pd.DataFrame(rows)
     total_positive = float(table["positive_relative_return"].sum())
     table["positive_relative_share"] = (
-        table["positive_relative_return"] / total_positive
-        if total_positive > 0.0
-        else 0.0
+        table["positive_relative_return"] / total_positive if total_positive > 0.0 else 0.0
     )
-    largest = (
-        float(table["positive_relative_share"].max())
-        if total_positive > 0.0
-        else 1.0
-    )
+    largest = float(table["positive_relative_share"].max()) if total_positive > 0.0 else 1.0
     return table, largest
 
 
@@ -493,13 +462,9 @@ def governed_decision(
     candidate_val = window_metrics(selected_20, start=val_start, end=val_end)
     v1_val = window_metrics(v1_20, start=val_start, end=val_end)
     buy_val = window_metrics(buy_hold_20, start=val_start, end=val_end)
-    candidate_retro = window_metrics(
-        selected_20, start=retro_start, end=retro_end
-    )
+    candidate_retro = window_metrics(selected_20, start=retro_start, end=retro_end)
     v1_retro = window_metrics(v1_20, start=retro_start, end=retro_end)
-    candidate_full_40 = window_metrics(
-        selected_40, start=full_start, end=full_end
-    )
+    candidate_full_40 = window_metrics(selected_40, start=full_start, end=full_end)
     v1_full_40 = window_metrics(v1_40, start=full_start, end=full_end)
 
     largest_episode_share = (
@@ -511,24 +476,17 @@ def governed_decision(
         "development_selection_gate": bool(selection_gate_pass),
         "full_cagr_above_buy_hold": candidate_full["cagr"] > buy_full["cagr"],
         "full_cagr_above_v1": candidate_full["cagr"] > v1_full["cagr"],
-        "full_calmar_not_below_buy_hold": candidate_full["calmar"]
-        >= buy_full["calmar"],
-        "full_calmar_not_below_v1": candidate_full["calmar"]
-        >= v1_full["calmar"],
+        "full_calmar_not_below_buy_hold": candidate_full["calmar"] >= buy_full["calmar"],
+        "full_calmar_not_below_v1": candidate_full["calmar"] >= v1_full["calmar"],
         "validation_total_not_below_buy_hold": candidate_val["total_return"]
         >= buy_val["total_return"],
-        "validation_total_not_below_v1": candidate_val["total_return"]
-        >= v1_val["total_return"],
-        "validation_drawdown_not_worse_than_buy_hold": candidate_val[
-            "max_drawdown"
-        ]
+        "validation_total_not_below_v1": candidate_val["total_return"] >= v1_val["total_return"],
+        "validation_drawdown_not_worse_than_buy_hold": candidate_val["max_drawdown"]
         >= buy_val["max_drawdown"],
         "retrospective_total_within_1pp_of_v1": candidate_retro["total_return"]
         >= v1_retro["total_return"] - 0.01,
-        "stress_40bps_full_cagr_above_v1": candidate_full_40["cagr"]
-        > v1_full_40["cagr"],
-        "round_trips_per_year_le_3": candidate_full["round_trips_per_year"]
-        <= 3.0,
+        "stress_40bps_full_cagr_above_v1": candidate_full_40["cagr"] > v1_full_40["cagr"],
+        "round_trips_per_year_le_3": candidate_full["round_trips_per_year"] <= 3.0,
         "largest_positive_episode_share_le_50pct": largest_episode_share <= 0.50,
         "largest_positive_period_share_le_60pct": period_concentration <= 0.60,
     }
@@ -579,7 +537,5 @@ def build_all(
     sessions: pd.DataFrame,
 ) -> tuple[pd.DataFrame, dict[str, DecisionSchedule]]:
     dataset = add_claim_features(build_research_dataset(adjusted, sessions))
-    schedules = {
-        spec.name: build_candidate_schedule(dataset, spec) for spec in CANDIDATES
-    }
+    schedules = {spec.name: build_candidate_schedule(dataset, spec) for spec in CANDIDATES}
     return dataset, schedules

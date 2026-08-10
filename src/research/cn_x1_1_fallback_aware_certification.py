@@ -41,9 +41,7 @@ def verify_frozen_economic_identity(
         observed_hash = sha256(path)
         observed[filename] = observed_hash
         if observed_hash != expected_hash:
-            mismatches.append(
-                f"hash:{filename}:expected={expected_hash}:observed={observed_hash}"
-            )
+            mismatches.append(f"hash:{filename}:expected={expected_hash}:observed={observed_hash}")
     if mismatches:
         raise ValueError("frozen economic evidence identity mismatch: " + " | ".join(mismatches))
     return observed
@@ -85,9 +83,7 @@ def build_certified_decision(
             else "fallback_aware_candidate_gate_failed"
         ),
         "candidate_name": (
-            "CN x1.1 Candidate A — Regime-Gated Sector Breadth"
-            if authorized
-            else ""
+            "CN x1.1 Candidate A — Regime-Gated Sector Breadth" if authorized else ""
         ),
         "candidate_authorized": authorized,
         "risk_on_active_hit_rate": float(active_hit_rate),

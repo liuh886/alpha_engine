@@ -77,9 +77,7 @@ def risk_controls(metadata: dict[str, pd.DataFrame]) -> pd.DataFrame:
     output["log_trailing_amount_20"] = np.log(
         output["trailing_amount_20"].where(output["trailing_amount_20"] > 0.0)
     )
-    return output[
-        ["beta_60", "realized_volatility_20", "log_trailing_amount_20"]
-    ]
+    return output[["beta_60", "realized_volatility_20", "log_trailing_amount_20"]]
 
 
 def purged_training_dates(
@@ -134,19 +132,17 @@ def sector_aggregate(
         joined.index.get_level_values("datetime"),
         joined["sector"],
     ]
-    sector_features = joined[list(features.columns)].groupby(
-        groupers,
-        sort=True,
-    ).median()
-    sector_target = joined["target"].groupby(groupers, sort=True).median().to_frame(
-        "target_return"
+    sector_features = (
+        joined[list(features.columns)]
+        .groupby(
+            groupers,
+            sort=True,
+        )
+        .median()
     )
-    sector_features.index = sector_features.index.set_names(
-        ["datetime", "instrument"]
-    )
-    sector_target.index = sector_target.index.set_names(
-        ["datetime", "instrument"]
-    )
+    sector_target = joined["target"].groupby(groupers, sort=True).median().to_frame("target_return")
+    sector_features.index = sector_features.index.set_names(["datetime", "instrument"])
+    sector_target.index = sector_target.index.set_names(["datetime", "instrument"])
     return sector_features.sort_index(), sector_target.sort_index()
 
 
@@ -228,10 +224,14 @@ def label_rank_identity(
     first: pd.DataFrame,
     second: pd.DataFrame,
 ) -> dict[str, Any]:
-    joined = first.rename(columns={first.columns[0]: "first"}).join(
-        second.rename(columns={second.columns[0]: "second"}),
-        how="inner",
-    ).dropna()
+    joined = (
+        first.rename(columns={first.columns[0]: "first"})
+        .join(
+            second.rename(columns={second.columns[0]: "second"}),
+            how="inner",
+        )
+        .dropna()
+    )
     correlations: list[float] = []
     gains_equal = True
     for _, group in joined.groupby(level="datetime", sort=True):
@@ -239,24 +239,14 @@ def label_rank_identity(
             continue
         first_rank = group["first"].rank(method="average", pct=True)
         second_rank = group["second"].rank(method="average", pct=True)
-        correlations.append(
-            float(first_rank.corr(second_rank, method="spearman"))
-        )
+        correlations.append(float(first_rank.corr(second_rank, method="spearman")))
         first_gain = np.floor(first_rank.clip(0.0, 1.0) * 5).clip(0, 4).astype(int)
-        second_gain = (
-            np.floor(second_rank.clip(0.0, 1.0) * 5).clip(0, 4).astype(int)
-        )
-        gains_equal = gains_equal and bool(
-            (first_gain.to_numpy() == second_gain.to_numpy()).all()
-        )
+        second_gain = np.floor(second_rank.clip(0.0, 1.0) * 5).clip(0, 4).astype(int)
+        gains_equal = gains_equal and bool((first_gain.to_numpy() == second_gain.to_numpy()).all())
     return {
         "n_dates": len(correlations),
-        "minimum_daily_rank_correlation": min(correlations)
-        if correlations
-        else 0.0,
-        "mean_daily_rank_correlation": float(np.mean(correlations))
-        if correlations
-        else 0.0,
+        "minimum_daily_rank_correlation": min(correlations) if correlations else 0.0,
+        "mean_daily_rank_correlation": float(np.mean(correlations)) if correlations else 0.0,
         "gain_labels_exactly_equal": gains_equal,
     }
 
@@ -269,9 +259,6 @@ def turnover(
     current_cash = 1.0 - sum(current.values())
     names = set(previous) | set(current)
     return 0.5 * (
-        sum(
-            abs(current.get(name, 0.0) - previous.get(name, 0.0))
-            for name in names
-        )
+        sum(abs(current.get(name, 0.0) - previous.get(name, 0.0)) for name in names)
         + abs(current_cash - previous_cash)
     )

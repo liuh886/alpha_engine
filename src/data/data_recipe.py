@@ -51,8 +51,7 @@ def _sha256(path: Path) -> str:
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
-        + "\n",
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
 
@@ -85,9 +84,7 @@ def load_recipe_registry(root: str | Path = Path.cwd()) -> dict[str, dict[str, s
     if payload.get("trade_ready") is not False:
         raise DataRecipeError("data recipe registry violates trade-ready boundary")
     declared_builders = {
-        str(value).strip()
-        for value in payload.get("allowed_builders", [])
-        if str(value).strip()
+        str(value).strip() for value in payload.get("allowed_builders", []) if str(value).strip()
     }
     if not declared_builders or not declared_builders.issubset(ALLOWED_BUILDERS):
         raise DataRecipeError(
@@ -274,9 +271,7 @@ def _strategy_symbol_contract(
                 "tradable",
                 "signal_reference",
             }:
-                raise DataRecipeError(
-                    f"invalid supplemental symbol role: {symbol}={role}"
-                )
+                raise DataRecipeError(f"invalid supplemental symbol role: {symbol}={role}")
             supplemental.append(normalized_symbol)
             roles[normalized_symbol] = normalized_role
     else:
@@ -308,9 +303,7 @@ def _build_strategy_recipe(
         if source_etf_bundle is not None
         else _resolve(normalized_root, source_products["etf_bundle_root"])
     )
-    if source_etf_bundle is None and not _can_reuse_etf_bundle(
-        etf_root, requested_cutoff
-    ):
+    if source_etf_bundle is None and not _can_reuse_etf_bundle(etf_root, requested_cutoff):
         build_etf_reference_bundle(
             contract_path=_resolve(normalized_root, source_products["etf_contract"]),
             output_root=etf_root,
@@ -321,9 +314,7 @@ def _build_strategy_recipe(
     load_etf_reference_bundle(etf_root, require_strategy_ready=True)
 
     supplemental, roles = _strategy_symbol_contract(recipe)
-    strategy_root = _resolve(
-        normalized_root, source_products["strategy_bundle_root"]
-    )
+    strategy_root = _resolve(normalized_root, source_products["strategy_bundle_root"])
     manifest = build_strategy_data_bundle(
         etf_bundle_root=etf_root,
         output_root=strategy_root,
@@ -341,8 +332,7 @@ def _build_strategy_recipe(
     )
     if manifest.get("status") != "ready":
         raise DataRecipeError(
-            "strategy data bundle is blocked: "
-            f"missing={manifest.get('missing_symbols', [])}"
+            f"strategy data bundle is blocked: missing={manifest.get('missing_symbols', [])}"
         )
     return strategy_root / STRATEGY_MANIFEST_NAME, strategy_root
 
@@ -579,9 +569,7 @@ def run_research_recipe(
     cutoff_flag = str(args_spec.get("cutoff_flag", "--end-date"))
     bundle_root = prepared.get("strategy_bundle_root")
     if not bundle_root:
-        raise DataRecipeError(
-            f"research command requires a strategy bundle: recipe={recipe_id}"
-        )
+        raise DataRecipeError(f"research command requires a strategy bundle: recipe={recipe_id}")
     args = [
         sys.executable,
         str(runner),
@@ -602,9 +590,7 @@ def run_research_recipe(
         args.extend([cutoff_flag, str(prepared["requested_cutoff"])])
     completed = subprocess.run(args, cwd=normalized_root, check=False)
     if completed.returncode != 0:
-        raise DataRecipeError(
-            f"research command failed: {command_id}; exit={completed.returncode}"
-        )
+        raise DataRecipeError(f"research command failed: {command_id}; exit={completed.returncode}")
     return {
         "recipe_id": recipe_id,
         "command_id": command_id,

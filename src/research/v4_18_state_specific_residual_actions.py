@@ -67,9 +67,7 @@ class StateSpecificResearchResult:
 def _fit_contract(contract: Mapping[str, Any]) -> dict[str, Any]:
     result = dict(contract)
     training = dict(contract["training"])
-    training["minimum_training_samples"] = int(
-        training["minimum_training_samples_per_state"]
-    )
+    training["minimum_training_samples"] = int(training["minimum_training_samples_per_state"])
     result["training"] = training
     return result
 
@@ -118,9 +116,7 @@ def _predict_fold(
         int(contract["training"]["embargo_sessions"]),
     )
     test = frame.loc[test_start:test_end].copy()
-    output = test[
-        [str(contract["actions"][action]["target"]) for action in ACTION_KEYS]
-    ].copy()
+    output = test[[str(contract["actions"][action]["target"]) for action in ACTION_KEYS]].copy()
     for action in ACTION_KEYS:
         output[f"predicted_{action}"] = np.nan
     output["fold"] = fold
@@ -140,12 +136,8 @@ def _predict_fold(
     fit_contract = _fit_contract(contract)
     for state in (0, 1, 2):
         actions = _state_actions(contract, state)
-        target_names = tuple(
-            str(contract["actions"][action]["target"]) for action in actions
-        )
-        training = frame.loc[
-            pd.Timestamp(fold_specification["train_start"]) : train_end
-        ].copy()
+        target_names = tuple(str(contract["actions"][action]["target"]) for action in actions)
+        training = frame.loc[pd.Timestamp(fold_specification["train_start"]) : train_end].copy()
         training = training.loc[
             training["global_training_sample"].astype(bool)
             & training["next_open_position_state"].eq(state)
@@ -166,12 +158,8 @@ def _predict_fold(
         )
         if len(complete) < minimum or not bool(test_mask.any()):
             continue
-        model = _fit_model(
-            training, feature_names, target_names, fit_contract
-        )
-        predicted = np.asarray(
-            model.predict(test.loc[test_mask, list(feature_names)]), dtype=float
-        )
+        model = _fit_model(training, feature_names, target_names, fit_contract)
+        predicted = np.asarray(model.predict(test.loc[test_mask, list(feature_names)]), dtype=float)
         for position, action in enumerate(actions):
             output.loc[test_mask, f"predicted_{action}"] = predicted[:, position]
         coefficient = _coefficient_frame(
@@ -185,9 +173,7 @@ def _predict_fold(
     coefficients = (
         pd.concat(coefficient_parts, ignore_index=True)
         if coefficient_parts
-        else pd.DataFrame(
-            columns=["fold", "target", "feature", "coefficient", "state"]
-        )
+        else pd.DataFrame(columns=["fold", "target", "feature", "coefficient", "state"])
     )
     return output, coefficients, pd.DataFrame(coverage_rows)
 
@@ -223,9 +209,7 @@ def select_state_specific_events(
     sample: str,
 ) -> pd.DataFrame:
     score = pd.DataFrame(
-        {
-            action: predictions[f"predicted_{action}"] for action in ACTION_KEYS
-        },
+        {action: predictions[f"predicted_{action}"] for action in ACTION_KEYS},
         index=predictions.index,
     )
     for action in ACTION_KEYS:
@@ -238,14 +222,10 @@ def select_state_specific_events(
     )
     qualifies = (
         top_score.ge(float(contract["training"]["advantage_threshold"]))
-        & (top_score - second_score).ge(
-            float(contract["training"]["action_margin_threshold"])
-        )
+        & (top_score - second_score).ge(float(contract["training"]["action_margin_threshold"]))
         & np.isfinite(top_score)
     )
-    fresh = qualifies & ~(
-        qualifies.shift(1, fill_value=False) & top_action.eq(top_action.shift(1))
-    )
+    fresh = qualifies & ~(qualifies.shift(1, fill_value=False) & top_action.eq(top_action.shift(1)))
     rows: list[dict[str, Any]] = []
     next_allowed = 0
     cooldown = int(contract["training"]["cooldown_sessions"])
@@ -267,11 +247,9 @@ def select_state_specific_events(
                 "fold": str(predictions.iloc[location].get("fold", sample)),
                 "event_family": action,
                 "action": str(contract["actions"][action]["action"]),
-                "event_id": f"{sample}_{action}_{len(rows)+1:03d}",
+                "event_id": f"{sample}_{action}_{len(rows) + 1:03d}",
                 "rule_id": "ridge_state_specific_residual_v4_18",
-                "baseline_state": int(
-                    predictions.iloc[location]["next_open_position_state"]
-                ),
+                "baseline_state": int(predictions.iloc[location]["next_open_position_state"]),
                 "signal_close_date": index[location],
                 "execution_date": index[location + 1],
                 "event_end_date": index[location + horizon],
@@ -300,12 +278,13 @@ def _action_state_metrics(
             target = str(contract["actions"][action]["target"])
             mask = predictions["next_open_position_state"].eq(state)
             mask &= _asset_eligible(predictions, action, contract)
-            aligned = predictions.loc[
-                mask, [f"predicted_{action}", target]
-            ].replace([np.inf, -np.inf], np.nan).dropna()
+            aligned = (
+                predictions.loc[mask, [f"predicted_{action}", target]]
+                .replace([np.inf, -np.inf], np.nan)
+                .dropna()
+            )
             cell_events = events.loc[
-                events["baseline_state"].eq(state)
-                & events["event_family"].eq(action)
+                events["baseline_state"].eq(state) & events["event_family"].eq(action)
             ]
             rows.append(
                 {
@@ -320,18 +299,14 @@ def _action_state_metrics(
                     "top_bottom_quintile_spread": _quintile_spread(
                         aligned.iloc[:, 0], aligned.iloc[:, 1]
                     ),
-                    "unconditional_positive_rate": float(
-                        aligned.iloc[:, 1].gt(0.0).mean()
-                    )
+                    "unconditional_positive_rate": float(aligned.iloc[:, 1].gt(0.0).mean())
                     if len(aligned)
                     else np.nan,
                     "triggered_events": int(len(cell_events)),
                     "triggered_precision": float(cell_events["win"].mean())
                     if len(cell_events)
                     else np.nan,
-                    "median_triggered_advantage": float(
-                        cell_events["realized_advantage"].median()
-                    )
+                    "median_triggered_advantage": float(cell_events["realized_advantage"].median())
                     if len(cell_events)
                     else np.nan,
                 }
@@ -390,12 +365,8 @@ def _state_stability(coefficients: pd.DataFrame) -> pd.DataFrame:
                 "folds": int(table["fold"].nunique()),
                 "pairwise_comparisons": int(len(pairs)),
                 "median_cosine": median,
-                "minimum_cosine": float(pairs["cosine"].min())
-                if len(pairs)
-                else np.nan,
-                "maximum_cosine": float(pairs["cosine"].max())
-                if len(pairs)
-                else np.nan,
+                "minimum_cosine": float(pairs["cosine"].min()) if len(pairs) else np.nan,
+                "maximum_cosine": float(pairs["cosine"].max()) if len(pairs) else np.nan,
             }
         )
     return pd.DataFrame(rows)
@@ -412,12 +383,8 @@ def _model_gate(
     ic_pass = cells["spearman_ic"].ge(float(threshold["action_state_ic_min"]))
     spread_pass = cells["top_bottom_quintile_spread"].gt(0.0)
     joint_pass = ic_pass & spread_pass
-    states_with_two = int(
-        joint_pass.groupby(cells["state"]).sum().ge(2).sum()
-    )
-    large = cells.loc[
-        cells["observations"].ge(int(threshold["large_cell_observations_min"]))
-    ]
+    states_with_two = int(joint_pass.groupby(cells["state"]).sum().ge(2).sum())
+    large = cells.loc[cells["observations"].ge(int(threshold["large_cell_observations_min"]))]
     eligible_values: list[pd.Series] = []
     for state in (0, 1, 2):
         for action in _state_actions(contract, state):
@@ -425,30 +392,20 @@ def _model_gate(
             mask = predictions["next_open_position_state"].eq(state)
             mask &= _asset_eligible(predictions, action, contract)
             eligible_values.append(predictions.loc[mask, target])
-    base_rate = float(
-        pd.concat(eligible_values, ignore_index=True).dropna().gt(0.0).mean()
-    )
+    base_rate = float(pd.concat(eligible_values, ignore_index=True).dropna().gt(0.0).mean())
     precision = float(events["win"].mean()) if len(events) else np.nan
-    median_advantage = (
-        float(events["realized_advantage"].median()) if len(events) else np.nan
-    )
+    median_advantage = float(events["realized_advantage"].median()) if len(events) else np.nan
     clustered = _assign_macro_clusters(
         events,
         int(contract["training"]["macro_cluster_calendar_days"]),
     )
     positive_cluster = (
-        clustered.groupby("macro_cluster_id")["realized_advantage"]
-        .sum()
-        .clip(lower=0.0)
+        clustered.groupby("macro_cluster_id")["realized_advantage"].sum().clip(lower=0.0)
         if len(clustered)
         else pd.Series(dtype=float)
     )
     total_positive = float(positive_cluster.sum())
-    cluster_share = (
-        float(positive_cluster.max() / total_positive)
-        if total_positive > 0.0
-        else 1.0
-    )
+    cluster_share = float(positive_cluster.max() / total_positive) if total_positive > 0.0 else 1.0
     yearly = (
         events.groupby(pd.to_datetime(events["signal_close_date"]).dt.year)[
             "realized_advantage"
@@ -456,14 +413,9 @@ def _model_gate(
         if len(events)
         else pd.Series(dtype=float)
     )
-    without_best = (
-        float(yearly.drop(index=yearly.idxmax()).sum())
-        if len(yearly) > 1
-        else np.nan
-    )
+    without_best = float(yearly.drop(index=yearly.idxmax()).sum()) if len(yearly) > 1 else np.nan
     checks = {
-        "cells_passing_ic": int(ic_pass.sum())
-        >= int(threshold["eligible_cells_passing_ic_min"]),
+        "cells_passing_ic": int(ic_pass.sum()) >= int(threshold["eligible_cells_passing_ic_min"]),
         "cells_positive_spread": int(spread_pass.sum())
         >= int(threshold["eligible_cells_positive_quintile_spread_min"]),
         "states_with_two_actions": states_with_two
@@ -477,8 +429,7 @@ def _model_gate(
             .all()
         ),
         "precision_lift": np.isfinite(precision)
-        and precision - base_rate
-        >= float(threshold["triggered_precision_lift_min"]),
+        and precision - base_rate >= float(threshold["triggered_precision_lift_min"]),
         "median_advantage": np.isfinite(median_advantage)
         and median_advantage > float(threshold["median_triggered_advantage_min"]),
         "macro_clusters": int(clustered["macro_cluster_id"].nunique())
@@ -496,9 +447,7 @@ def _model_gate(
             "states_with_two_actions_passing": states_with_two,
             "pooled_eligible_positive_rate": base_rate,
             "triggered_precision": precision,
-            "triggered_precision_lift": precision - base_rate
-            if np.isfinite(precision)
-            else np.nan,
+            "triggered_precision_lift": precision - base_rate if np.isfinite(precision) else np.nan,
             "median_triggered_advantage": median_advantage,
             "macro_clusters": int(clustered["macro_cluster_id"].nunique()),
             "largest_positive_cluster_share": cluster_share,
@@ -521,9 +470,7 @@ def run_state_specific_model(
     coefficient_parts: list[pd.DataFrame] = []
     coverage_parts: list[pd.DataFrame] = []
     for fold in contract["outer_folds"]:
-        prediction, coefficient, coverage = _predict_fold(
-            proxy, features, contract, fold
-        )
+        prediction, coefficient, coverage = _predict_fold(proxy, features, contract, fold)
         prediction_parts.append(prediction)
         coefficient_parts.append(coefficient)
         coverage_parts.append(coverage)
@@ -536,9 +483,7 @@ def run_state_specific_model(
     gate = _model_gate(oof, events, cells, stability, contract)
     action_metrics = _pooled_action_metrics(cells)
 
-    actual_start = max(
-        pd.Timestamp(contract["data"]["actual_product_start"]), actual.index.min()
-    )
+    actual_start = max(pd.Timestamp(contract["data"]["actual_product_start"]), actual.index.min())
     train_end = _embargo_train_end(
         proxy.index,
         actual_start,
@@ -550,9 +495,7 @@ def run_state_specific_model(
     for action in ACTION_KEYS:
         actual_output[f"predicted_{action}"] = np.nan
     actual_output["fold"] = "actual_2024_plus"
-    actual_output["next_open_position_state"] = actual_sample[
-        "next_open_position_state"
-    ]
+    actual_output["next_open_position_state"] = actual_sample["next_open_position_state"]
     carry = [
         "qqq_distance_ma20",
         "qqq_distance_ma200",
@@ -567,26 +510,20 @@ def run_state_specific_model(
     fit_contract = _fit_contract(contract)
     for state in (0, 1, 2):
         actions = _state_actions(contract, state)
-        target_names = tuple(
-            str(contract["actions"][action]["target"]) for action in actions
-        )
+        target_names = tuple(str(contract["actions"][action]["target"]) for action in actions)
         training = proxy.loc[pd.Timestamp("2011-01-03") : train_end]
         training = training.loc[
             training["global_training_sample"].astype(bool)
             & training["next_open_position_state"].eq(state)
         ]
         complete = training.dropna(subset=list(target_names))
-        if len(complete) < int(
-            contract["training"]["minimum_training_samples_per_state"]
-        ):
+        if len(complete) < int(contract["training"]["minimum_training_samples_per_state"]):
             continue
         mask = actual_sample["next_open_position_state"].eq(state)
         if not bool(mask.any()):
             continue
         model = _fit_model(training, features, target_names, fit_contract)
-        predicted = np.asarray(
-            model.predict(actual_sample.loc[mask, list(features)]), dtype=float
-        )
+        predicted = np.asarray(model.predict(actual_sample.loc[mask, list(features)]), dtype=float)
         for position, action in enumerate(actions):
             actual_output.loc[mask, f"predicted_{action}"] = predicted[:, position]
         coefficient = _coefficient_frame(
@@ -600,13 +537,9 @@ def run_state_specific_model(
     actual_coefficients = (
         pd.concat(actual_coefficient_parts, ignore_index=True)
         if actual_coefficient_parts
-        else pd.DataFrame(
-            columns=["fold", "target", "feature", "coefficient", "state"]
-        )
+        else pd.DataFrame(columns=["fold", "target", "feature", "coefficient", "state"])
     )
-    actual_events = select_state_specific_events(
-        actual_output, contract, sample="actual_2024_plus"
-    )
+    actual_events = select_state_specific_events(actual_output, contract, sample="actual_2024_plus")
     result = AdvantageModelResult(
         frame=proxy,
         feature_names=features,
@@ -632,21 +565,13 @@ def _improvement_gate(
     threshold = contract["validation"]["v4_17_improvement_gate"]
     current_cells = int(model.model_gate["metrics"]["eligible_cells_passing_both"])
     previous_cells = int(
-        comparator.state_model.model_gate["metrics"].get(
-            "eligible_cells_passing_ic", 0
-        )
+        comparator.state_model.model_gate["metrics"].get("eligible_cells_passing_ic", 0)
     )
     current_lift = float(model.model_gate["metrics"]["triggered_precision_lift"])
-    previous_lift = float(
-        comparator.state_model.model_gate["metrics"]["triggered_precision_lift"]
-    )
+    previous_lift = float(comparator.state_model.model_gate["metrics"]["triggered_precision_lift"])
     current_metrics = policy.oof_results["full_event_policy"].metrics
-    previous_metrics = comparator.state_policy.oof_results[
-        "full_event_policy"
-    ].metrics
-    cagr_pp = (
-        float(current_metrics["cagr"]) - float(previous_metrics["cagr"])
-    ) * 100.0
+    previous_metrics = comparator.state_policy.oof_results["full_event_policy"].metrics
+    cagr_pp = (float(current_metrics["cagr"]) - float(previous_metrics["cagr"])) * 100.0
     calmar = float(current_metrics["calmar"]) - float(previous_metrics["calmar"])
     checks = {
         "passing_cells": current_cells - previous_cells

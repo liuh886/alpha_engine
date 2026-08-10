@@ -36,9 +36,7 @@ def validate_promotion_payload(payload: dict[str, Any]) -> dict[str, Any]:
     trade_ready = bool(payload.get("trade_ready", False))
     expected = status == "trade_guidance_candidate"
     if trade_ready != expected:
-        raise ValueError(
-            "promotion trade_ready must be true only for trade_guidance_candidate"
-        )
+        raise ValueError("promotion trade_ready must be true only for trade_guidance_candidate")
     subject_id = str(payload.get("subject_id", "")).strip()
     if not subject_id:
         raise ValueError("promotion decision subject_id must be non-empty")

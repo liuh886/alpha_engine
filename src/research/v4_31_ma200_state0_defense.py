@@ -39,9 +39,7 @@ def build_ma200_trend_trace(daily: pd.DataFrame) -> pd.DataFrame:
         },
         index=daily.index,
     )
-    trace["ma200_falling_at_open"] = trace["ma200_falling_at_close"].shift(
-        1, fill_value=False
-    )
+    trace["ma200_falling_at_open"] = trace["ma200_falling_at_close"].shift(1, fill_value=False)
     return trace
 
 
@@ -50,13 +48,18 @@ def _source_weights(source: StrategyResult) -> pd.DataFrame:
     missing = sorted(set(columns) - set(source.daily.columns))
     if missing:
         raise ValueError(f"source missing weight columns: {missing}")
-    return source.daily[columns].rename(
-        columns={
-            "weight_QQQI": "QQQI",
-            "weight_QQQ": "QQQ",
-            "weight_TQQQ": "TQQQ",
-        }
-    ).astype(float).copy()
+    return (
+        source.daily[columns]
+        .rename(
+            columns={
+                "weight_QQQI": "QQQI",
+                "weight_QQQ": "QQQ",
+                "weight_TQQQ": "TQQQ",
+            }
+        )
+        .astype(float)
+        .copy()
+    )
 
 
 def cash_next_open_return(
@@ -123,9 +126,7 @@ def run_ma200_defensive_backtest(
     weights, active = apply_ma200_state0_defense(source, trace, cash_symbol=cash_symbol)
     daily = daily.join(trace)
     daily["ma200_state0_defense_active"] = active
-    daily[f"{cash_symbol}_next_open_return"] = cash_next_open_return(
-        bars, cash_symbol, daily.index
-    )
+    daily[f"{cash_symbol}_next_open_return"] = cash_next_open_return(bars, cash_symbol, daily.index)
     for asset in weights.columns:
         daily[f"weight_{asset}"] = weights[asset]
 
@@ -139,9 +140,7 @@ def run_ma200_defensive_backtest(
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = (
-        turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
-    )
+    daily["transaction_cost"] = turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily.loc[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()

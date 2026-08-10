@@ -11,9 +11,7 @@ from src.data.market_provider import load_provider_manifest
 STATIC_REFERENCE_PROVIDER_IDENTITY = (
     "66129d0727beb8d7b014966651f8b72c119f99195e33553d9781c9954ef267d8"
 )
-DECOMPOSITION_PROVIDER_IDENTITY = (
-    "6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407"
-)
+DECOMPOSITION_PROVIDER_IDENTITY = "6aa6c0c0351e7dc1f2f6e6495df053d57790bd90e289fe695a2d130774034407"
 
 
 def require_provider_identity(
@@ -55,9 +53,7 @@ def validate_authoritative_provider_pair(
     static_provider = Path(static_reference_provider_uri).resolve()
     pit_provider = Path(decomposition_provider_uri).resolve()
     if static_provider == pit_provider:
-        raise ValueError(
-            "static reference and decomposition providers must be different"
-        )
+        raise ValueError("static reference and decomposition providers must be different")
     return {
         "static_reference": require_provider_identity(
             static_provider,

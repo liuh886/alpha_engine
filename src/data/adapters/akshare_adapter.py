@@ -32,9 +32,7 @@ def _normalize_index_frame(
     required = ("date", "open", "high", "low", "close", "volume")
     missing = [column for column in required if column not in frame.columns]
     if missing:
-        raise DataFetchError(
-            f"akshare index payload missing columns for {symbol}: {missing}"
-        )
+        raise DataFetchError(f"akshare index payload missing columns for {symbol}: {missing}")
 
     out = frame[list(required)].copy()
     out["date"] = pd.to_datetime(out["date"], errors="coerce")
@@ -43,9 +41,7 @@ def _normalize_index_frame(
 
     start_ts = pd.Timestamp(start)
     end_ts = pd.Timestamp(end)
-    out = out.loc[
-        out["date"].between(start_ts, end_ts, inclusive="both")
-    ].copy()
+    out = out.loc[out["date"].between(start_ts, end_ts, inclusive="both")].copy()
     out = (
         out.dropna(subset=["date", "open", "high", "low", "close"])
         .sort_values("date")
@@ -149,9 +145,7 @@ class AkShareAdapter:
         except DataFetchError:
             raise
         except Exception as exc:
-            raise DataFetchError(
-                f"akshare fetch failed for {provider_symbol}: {exc}"
-            ) from exc
+            raise DataFetchError(f"akshare fetch failed for {provider_symbol}: {exc}") from exc
 
         return FetchResult(
             provider=self.name,

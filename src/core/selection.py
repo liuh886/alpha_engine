@@ -3,6 +3,7 @@
 All functions accept a ``pd.Series`` of scores (index = instrument ticker)
 and return a plain ``list`` of selected tickers.  No I/O, no state.
 """
+
 from __future__ import annotations
 
 import pandas as pd

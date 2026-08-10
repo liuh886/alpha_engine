@@ -209,8 +209,7 @@ def load_snapshot(
     source_url = str(raw.get("source_url_template", ""))
     if validate_source and source_url != SOURCE_URL_TEMPLATE:
         raise ValueError(
-            f"NDX source URL template mismatch: expected={SOURCE_URL_TEMPLATE} "
-            f"actual={source_url}"
+            f"NDX source URL template mismatch: expected={SOURCE_URL_TEMPLATE} actual={source_url}"
         )
 
     raw_dates = raw.get("snapshot_dates", [])
@@ -367,9 +366,7 @@ def filter_training_by_asof_membership(
     for index, entry in enumerate(snap_sorted):
         interval_start = pd.Timestamp(entry.date)
         interval_end = (
-            pd.Timestamp(snap_sorted[index + 1].date)
-            if index + 1 < len(snap_sorted)
-            else None
+            pd.Timestamp(snap_sorted[index + 1].date) if index + 1 < len(snap_sorted) else None
         )
         date_match = dates >= interval_start
         if interval_end is not None:
@@ -590,12 +587,8 @@ class NdxUniverseResult:
         """Evidence-compatible coverage metadata (backward-compatible shape)."""
         return {
             "oos_snapshot_date": self.oos_snapshot_date,
-            "oos_requested_symbols": list(
-                self.provenance.get("oos_requested_symbols", [])
-            ),
-            "oos_provider_retained": list(
-                self.provenance.get("oos_provider_retained", [])
-            ),
+            "oos_requested_symbols": list(self.provenance.get("oos_requested_symbols", [])),
+            "oos_provider_retained": list(self.provenance.get("oos_provider_retained", [])),
             "oos_provider_missing": list(self.oos_missing_symbols),
             "oos_date_coverage_dropped": list(self.oos_dropped_symbols),
             "oos_test_symbols": list(self.oos_symbols),
@@ -613,15 +606,9 @@ class NdxUniverseResult:
                 self.provenance.get("training_membership_required_bounds", {})
             ),
             "training_symbols": list(self.train_symbols),
-            "per_snapshot_requested": dict(
-                self.provenance.get("per_snapshot_requested", {})
-            ),
-            "per_snapshot_retained": dict(
-                self.provenance.get("per_snapshot_retained", {})
-            ),
-            "per_snapshot_missing": dict(
-                self.provenance.get("per_snapshot_missing", {})
-            ),
+            "per_snapshot_requested": dict(self.provenance.get("per_snapshot_requested", {})),
+            "per_snapshot_retained": dict(self.provenance.get("per_snapshot_retained", {})),
+            "per_snapshot_missing": dict(self.provenance.get("per_snapshot_missing", {})),
             "aligned_train_start": self.aligned_train_start,
             "training_membership_asof_semiannual": self.pit_flags.get(
                 "training_membership_asof_semiannual", True
@@ -629,13 +616,9 @@ class NdxUniverseResult:
             "training_uses_future_oos_snapshot": self.pit_flags.get(
                 "training_uses_future_oos_snapshot", False
             ),
-            "full_daily_point_in_time": self.pit_flags.get(
-                "full_daily_point_in_time", False
-            ),
+            "full_daily_point_in_time": self.pit_flags.get("full_daily_point_in_time", False),
             "provider_coverage_incomplete": bool(
-                self.oos_missing_symbols
-                or self.oos_dropped_symbols
-                or self.train_dropped_symbols
+                self.oos_missing_symbols or self.oos_dropped_symbols or self.train_dropped_symbols
             ),
             "oos_membership_point_in_time": self.pit_flags.get(
                 "oos_membership_point_in_time", True
@@ -735,9 +718,7 @@ def filter_training_union_by_membership_coverage(
         bounds = required_bounds.get(symbol)
         if bounds is None:
             dropped.append(symbol)
-            dropped_reasons[symbol] = (
-                "no membership interval in aligned training range"
-            )
+            dropped_reasons[symbol] = "no membership interval in aligned training range"
             continue
         required_start, required_end = bounds
         serialized_bounds[symbol] = {
@@ -757,15 +738,13 @@ def filter_training_union_by_membership_coverage(
         if first_valid > required_start + gap:
             dropped.append(symbol)
             dropped_reasons[symbol] = (
-                f"history starts {first_valid.date()} after required "
-                f"{required_start.date()}"
+                f"history starts {first_valid.date()} after required {required_start.date()}"
             )
             continue
         if last_valid < required_end - gap:
             dropped.append(symbol)
             dropped_reasons[symbol] = (
-                f"history ends {last_valid.date()} before required "
-                f"{required_end.date()}"
+                f"history ends {last_valid.date()} before required {required_end.date()}"
             )
             continue
         retained.append(symbol)
@@ -805,9 +784,7 @@ def plan_ndx_window_universe(
     snapshot_map: dict[str, str] | None = None,
     min_symbols: int = DEFAULT_MIN_WINDOW_SYMBOLS,
     max_gap_days: int = DEFAULT_MAX_MEMBERSHIP_BOUNDARY_GAP_DAYS,
-    coverage_loader: Callable[
-        [list[str], str, str], dict[str, dict[str, Any]]
-    ],
+    coverage_loader: Callable[[list[str], str, str], dict[str, dict[str, Any]]],
     benchmark_exclusion_set: frozenset[str] | None = None,
 ) -> NdxUniverseResult:
     """Plan one NDX window-start universe: OOS symbols, training union, alignment.
@@ -863,9 +840,7 @@ def plan_ndx_window_universe(
     if oos_snapshot_date is not None:
         resolved_oos_date = oos_snapshot_date
     else:
-        resolved_oos_date = resolve_window_snapshot_date(
-            window_label, snapshot_map=snapshot_map
-        )
+        resolved_oos_date = resolve_window_snapshot_date(window_label, snapshot_map=snapshot_map)
 
     # ── OOS test symbols (window-start snapshot) ────────────────────────
     oos_entry = get_snapshot_by_date(snapshot, resolved_oos_date)
@@ -912,8 +887,7 @@ def plan_ndx_window_universe(
             window_label=window_label,
             skipped=True,
             skip_reason=(
-                f"fewer than {min_symbols} OOS test symbols retained "
-                f"({len(test_symbols)})"
+                f"fewer than {min_symbols} OOS test symbols retained ({len(test_symbols)})"
             ),
             oos_snapshot_date=resolved_oos_date,
         )
@@ -927,9 +901,7 @@ def plan_ndx_window_universe(
         return NdxUniverseResult(
             window_label=window_label,
             skipped=True,
-            skip_reason=(
-                f"no NDX snapshots on or before train_end={train_end}"
-            ),
+            skip_reason=(f"no NDX snapshots on or before train_end={train_end}"),
             oos_snapshot_date=resolved_oos_date,
         )
 
@@ -953,16 +925,13 @@ def plan_ndx_window_universe(
             window_label=window_label,
             skipped=True,
             skip_reason=(
-                f"training-union symbols ({len(train_union_list)}) below "
-                f"minimum {min_symbols}"
+                f"training-union symbols ({len(train_union_list)}) below minimum {min_symbols}"
             ),
             oos_snapshot_date=resolved_oos_date,
         )
 
     # ── Aligned training start: 50th earliest first-valid date ─────────
-    train_union_coverage = coverage_loader(
-        train_union_list, train_start, train_end
-    )
+    train_union_coverage = coverage_loader(train_union_list, train_start, train_end)
     first_valid_dates: list[str] = []
     for s in train_union_list:
         rec = train_union_coverage.get(s, {})
@@ -989,16 +958,13 @@ def plan_ndx_window_universe(
             window_label=window_label,
             skipped=True,
             skip_reason=(
-                f"aligned training start {aligned_train_start} falls after "
-                f"train_end {train_end}"
+                f"aligned training start {aligned_train_start} falls after train_end {train_end}"
             ),
             oos_snapshot_date=resolved_oos_date,
         )
 
     # ── Retain symbols over their actual membership intervals ───────────
-    aligned_train_coverage = coverage_loader(
-        train_union_list, aligned_train_start, train_end
-    )
+    aligned_train_coverage = coverage_loader(train_union_list, aligned_train_start, train_end)
     train_coverage_filter = filter_training_union_by_membership_coverage(
         train_union_list,
         snapshot=snapshot,
@@ -1050,13 +1016,9 @@ def plan_ndx_window_universe(
         "oos_requested_symbols": oos_requested,
         "oos_provider_retained": oos_retained_raw,
         "per_snapshot_requested": per_snapshot_requested,
-        "per_snapshot_retained": {
-            d: len(v) for d, v in per_snapshot_retained.items()
-        },
+        "per_snapshot_retained": {d: len(v) for d, v in per_snapshot_retained.items()},
         "per_snapshot_missing": per_snapshot_missing,
-        "training_membership_required_bounds": train_coverage_filter[
-            "required_bounds"
-        ],
+        "training_membership_required_bounds": train_coverage_filter["required_bounds"],
         "ranker_mode": "",
     }
 

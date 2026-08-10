@@ -32,9 +32,7 @@ REASON_LABELS = {
     "enter_partial_tqqq_vix_normalized_vxn_not_stressed": (
         "价格修复进一步确认、VIX 已正常化且 VXN 未处于压力状态"
     ),
-    "exit_partial_tqqq_vix_vxn_or_ma20": (
-        "VIX/VXN 压力上升或 QQQ 跌破短期趋势条件"
-    ),
+    "exit_partial_tqqq_vix_vxn_or_ma20": ("VIX/VXN 压力上升或 QQQ 跌破短期趋势条件"),
     "defensive_price_or_vix_stress": "价格防线失守或 VIX 压力显著上升",
     "hold": "继续保持当前状态",
 }
@@ -60,9 +58,7 @@ def _normalise_weights(raw: Mapping[str, Any] | None) -> dict[str, float]:
     return {asset: float(raw.get(asset, 0.0)) for asset in ASSETS}
 
 
-def _orders(
-    current: Mapping[str, float], target: Mapping[str, float]
-) -> list[dict[str, Any]]:
+def _orders(current: Mapping[str, float], target: Mapping[str, float]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for asset in ASSETS:
         delta = float(target[asset]) - float(current[asset])
@@ -104,9 +100,7 @@ def _fmt_number(value: Any, digits: int = 2) -> str:
     return f"{float(value):.{digits}f}"
 
 
-def _decision_support(
-    policy: Mapping[str, Any] | None, transition: str
-) -> dict[str, str]:
+def _decision_support(policy: Mapping[str, Any] | None, transition: str) -> dict[str, str]:
     if policy is None:
         return {}
     root = policy.get("alert_decision_support", {})
@@ -144,9 +138,7 @@ def build_signal_alert(
     signal_date = str(signal["signal_date"])
     latest_data_date = str(prospective_summary.get("latest_data_date") or signal_date)
     data_freshness_ok = signal_date == latest_data_date
-    should_alert = (
-        current_state != target_state and bool(order_rows) and data_freshness_ok
-    )
+    should_alert = current_state != target_state and bool(order_rows) and data_freshness_ok
     fingerprint_payload = {
         "experiment_id": baseline_contract["experiment_id"],
         "signal_date": signal_date,
@@ -161,9 +153,7 @@ def build_signal_alert(
     transition = _transition_type(current_state, target_state)
     decision_reason = str(signal.get("decision_reason", ""))
     turnover_units = float(sum(row["weight_change"] for row in order_rows))
-    cost_bps = float(
-        baseline_contract["portfolio"]["transaction_cost_bps_per_turnover_unit"]
-    )
+    cost_bps = float(baseline_contract["portfolio"]["transaction_cost_bps_per_turnover_unit"])
     estimated_transaction_cost = turnover_units * cost_bps / 10_000.0
     provider_identity = prospective_summary.get("data_identity", {})
     if not isinstance(provider_identity, Mapping):
@@ -196,9 +186,7 @@ def build_signal_alert(
         "transaction_cost_bps_per_turnover_unit": cost_bps,
         "estimated_transaction_cost": estimated_transaction_cost,
         "decision_reason": decision_reason,
-        "decision_reason_label": REASON_LABELS.get(
-            decision_reason, "策略冻结规则触发状态变化"
-        ),
+        "decision_reason_label": REASON_LABELS.get(decision_reason, "策略冻结规则触发状态变化"),
         "price_context": dict(signal.get("price_context", {})),
         "volatility_context": dict(signal.get("volatility_context", {})),
         "decision_support": support,
@@ -210,8 +198,7 @@ def build_signal_alert(
         },
     }
     alert["title"] = (
-        f"[策略信号] {signal_date} "
-        f"{STATE_LABELS[current_state]} → {STATE_LABELS[target_state]}"
+        f"[策略信号] {signal_date} {STATE_LABELS[current_state]} → {STATE_LABELS[target_state]}"
     )
     alert["markdown"] = render_signal_alert_markdown(alert)
     alert["telegram_text"] = render_signal_alert_telegram(alert)
@@ -232,9 +219,7 @@ def _order_lines(alert: Mapping[str, Any], *, markdown: bool) -> list[str]:
     if rows:
         return rows
     return [
-        "- 当前仓位已与信号一致，无需调整。"
-        if markdown
-        else "• 当前仓位已与信号一致，无需调整。"
+        "- 当前仓位已与信号一致，无需调整。" if markdown else "• 当前仓位已与信号一致，无需调整。"
     ]
 
 

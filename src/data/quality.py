@@ -105,9 +105,7 @@ def _read_calendar_days(provider_dir: Path, *, freq: str) -> list[str]:
     )
 
 
-def _lag_sessions(
-    *, series_end: str, required_end: str, quality_calendar_days: list[str]
-) -> int:
+def _lag_sessions(*, series_end: str, required_end: str, quality_calendar_days: list[str]) -> int:
     return sum(series_end < day <= required_end for day in quality_calendar_days)
 
 
@@ -270,9 +268,7 @@ def generate_data_quality_summary(
     attempts = _attempts_by_symbol(provider_attempts)
 
     try:
-        requested_start = _normalise_boundary(
-            requested_start, field_name="requested_start"
-        )
+        requested_start = _normalise_boundary(requested_start, field_name="requested_start")
         requested_end = _normalise_boundary(requested_end, field_name="requested_end")
     except ValueError as exc:
         return {
@@ -379,9 +375,7 @@ def generate_data_quality_summary(
                 f"market={market}: {quality.get('csv_missing')} csv files missing under {csv_dir}"
             )
         if isinstance(quality, dict) and quality.get("csv_parse_errors"):
-            warnings.append(
-                f"market={market}: {quality.get('csv_parse_errors')} csv parse errors"
-            )
+            warnings.append(f"market={market}: {quality.get('csv_parse_errors')} csv parse errors")
 
     return {
         "ok": True,

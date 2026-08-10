@@ -61,17 +61,11 @@ def _pick_value_column(frame: pd.DataFrame, source: Mapping[str, Any]) -> str:
     series_id = source.get("series_id")
     if series_id and str(series_id) in frame.columns:
         return str(series_id)
-    ratio_columns = [
-        str(column)
-        for column in frame.columns
-        if "RATIO" in str(column).upper()
-    ]
+    ratio_columns = [str(column) for column in frame.columns if "RATIO" in str(column).upper()]
     if ratio_columns:
         return ratio_columns[-1]
     candidates = [
-        str(column)
-        for column in frame.columns
-        if str(column) != _pick_date_column(frame)
+        str(column) for column in frame.columns if str(column) != _pick_date_column(frame)
     ]
     if not candidates:
         raise ValueError("no numeric source column found")
@@ -91,14 +85,10 @@ def _numeric(series: pd.Series) -> pd.Series:
 def _cboe_computed_ratio(frame: pd.DataFrame) -> pd.Series:
     columns = [str(column) for column in frame.columns]
     call_candidates = [
-        column
-        for column in columns
-        if "CALL" in column.upper() and "RATIO" not in column.upper()
+        column for column in columns if "CALL" in column.upper() and "RATIO" not in column.upper()
     ]
     put_candidates = [
-        column
-        for column in columns
-        if "PUT" in column.upper() and "RATIO" not in column.upper()
+        column for column in columns if "PUT" in column.upper() and "RATIO" not in column.upper()
     ]
     if not call_candidates or not put_candidates:
         if len(columns) < 3:
@@ -140,16 +130,12 @@ def _safe_decision_dates(
     values: list[pd.Timestamp | pd.NaT] = []
     for raw in pd.to_datetime(observation_dates):
         date = pd.Timestamp(raw).normalize()
-        location = int(calendar.searchsorted(date, side="right")) + max(
-            safe_lag_sessions - 1, 0
-        )
+        location = int(calendar.searchsorted(date, side="right")) + max(safe_lag_sessions - 1, 0)
         values.append(calendar[location] if location < len(calendar) else pd.NaT)
     return pd.Series(values, index=observation_dates.index, dtype="datetime64[ns]")
 
 
-def _maximum_gap_sessions(
-    dates: pd.DatetimeIndex, reference: pd.DatetimeIndex
-) -> int | None:
+def _maximum_gap_sessions(dates: pd.DatetimeIndex, reference: pd.DatetimeIndex) -> int | None:
     if len(reference) == 0:
         return None
     positions = np.unique(reference.get_indexer(dates))
@@ -177,9 +163,7 @@ def _numeric_probe(
         availability["family"] = str(source["family"])
         availability["value_present"] = parsed["value"].notna()
         availability["published_at_class"] = str(source["nominal_timing"])
-        availability["safe_lag_qqq_sessions"] = int(
-            source["safe_lag_qqq_sessions"]
-        )
+        availability["safe_lag_qqq_sessions"] = int(source["safe_lag_qqq_sessions"])
         availability["safe_decision_date"] = _safe_decision_dates(
             availability["observation_date"],
             qqq_calendar,
@@ -190,8 +174,7 @@ def _numeric_probe(
         required_calendar = qqq_calendar[qqq_calendar >= required_start]
         safe_dates = pd.DatetimeIndex(
             availability.loc[
-                availability["value_present"]
-                & availability["safe_decision_date"].notna(),
+                availability["value_present"] & availability["safe_decision_date"].notna(),
                 "safe_decision_date",
             ].unique()
         ).sort_values()
@@ -209,9 +192,7 @@ def _numeric_probe(
             "unresolved",
         }
         start_pass = bool(pd.notna(first) and first <= required_start)
-        coverage_pass = coverage >= float(
-            contract["boundaries"]["minimum_decision_date_coverage"]
-        )
+        coverage_pass = coverage >= float(contract["boundaries"]["minimum_decision_date_coverage"])
         gap_pass = gap is not None and gap <= int(
             contract["boundaries"]["maximum_unexplained_gap_sessions"]
         )
@@ -277,9 +258,7 @@ def _numeric_probe(
         return SourceProbe(source_id, audit, pd.DataFrame(), None, None)
 
 
-def _non_numeric_probe(
-    source_id: str, source: Mapping[str, Any]
-) -> SourceProbe:
+def _non_numeric_probe(source_id: str, source: Mapping[str, Any]) -> SourceProbe:
     source_type = str(source["source_type"])
     reason = (
         "documentation_only_no_numeric_history"
@@ -364,9 +343,7 @@ def run_new_information_phase0(
                 "family": str(family),
                 "required_sources": ",".join(required),
                 "rejected_sources": ",".join(rejected),
-                "minimum_distinct_features": int(
-                    specification["minimum_distinct_features"]
-                ),
+                "minimum_distinct_features": int(specification["minimum_distinct_features"]),
                 "existing_feature_overlap_audit": (
                     "deferred_until_upstream_source_admissibility"
                     if rejected
@@ -374,9 +351,7 @@ def run_new_information_phase0(
                 ),
                 "admissible": passed,
                 "rejection_reason": (
-                    f"required_sources_inadmissible:{','.join(rejected)}"
-                    if rejected
-                    else None
+                    f"required_sources_inadmissible:{','.join(rejected)}" if rejected else None
                 ),
             }
         )
@@ -412,9 +387,7 @@ def run_new_information_phase0(
                     "fold": str(fold["fold"]),
                     "reference_sessions": int(len(reference)),
                     "covered_sessions": int(len(observed)),
-                    "coverage": (
-                        float(len(observed) / len(reference)) if len(reference) else 0.0
-                    ),
+                    "coverage": (float(len(observed) / len(reference)) if len(reference) else 0.0),
                     "non_empty": bool(len(observed)),
                 }
             )

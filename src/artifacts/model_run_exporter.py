@@ -160,7 +160,9 @@ class DeclarativeJsonAdapter:
 
 
 def _section_filename(section_id: str) -> str:
-    if not section_id or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_" for character in section_id):
+    if not section_id or any(
+        character not in "abcdefghijklmnopqrstuvwxyz0123456789_" for character in section_id
+    ):
         raise ModelRunExportError(f"unsafe section_id: {section_id!r}")
     return f"{section_id}.json"
 
@@ -170,7 +172,9 @@ def _manifest_for_plan(plan: RunExportPlan, staging: Path) -> dict[str, Any]:
     for section in plan.sections:
         if section.availability_status == "available":
             if section.payload is None:
-                raise ModelRunExportError(f"available section missing payload: {section.section_id}")
+                raise ModelRunExportError(
+                    f"available section missing payload: {section.section_id}"
+                )
             filename = _section_filename(section.section_id)
             encoded = canonical_json_bytes(section.payload)
             (staging / filename).write_bytes(encoded)
@@ -237,9 +241,7 @@ def export_model_run(
 
     target = output_root / plan.model_family_id / plan.model_version_id / plan.run_id
     target.parent.mkdir(parents=True, exist_ok=True)
-    staging = Path(
-        tempfile.mkdtemp(prefix=f".{plan.run_id}.", dir=str(target.parent))
-    )
+    staging = Path(tempfile.mkdtemp(prefix=f".{plan.run_id}.", dir=str(target.parent)))
     try:
         manifest = _manifest_for_plan(plan, staging)
         (staging / "manifest.json").write_bytes(canonical_json_bytes(manifest))
@@ -293,7 +295,9 @@ def update_catalog(
             row["run_id"],
         )
     )
-    if len({(row["model_family_id"], row["model_version_id"], row["run_id"]) for row in records}) != len(records):
+    if len(
+        {(row["model_family_id"], row["model_version_id"], row["run_id"]) for row in records}
+    ) != len(records):
         raise ModelRunExportError("duplicate run identity in catalog input")
     generated_at_values = []
     for path in manifest_paths:

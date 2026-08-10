@@ -13,4 +13,3 @@ __all__ = [
     "UpdateAccountingReport",
     "create_accounting_report",
 ]
-

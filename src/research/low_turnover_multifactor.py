@@ -28,9 +28,9 @@ def _sha256_file(path: Path) -> str:
 
 
 def _canonical_hash(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -158,7 +158,9 @@ def _load_basket_scores(path: Path, factors: list[Mapping[str, Any]]) -> pd.Data
     required_fields = [str(row["source_percentile_field"]) for row in factors]
     missing_fields = sorted(set(required_fields) - set(frame.columns))
     if missing_fields:
-        raise ValueError("basket score artifact missing percentile fields: " + ", ".join(missing_fields))
+        raise ValueError(
+            "basket score artifact missing percentile fields: " + ", ".join(missing_fields)
+        )
     frame["date"] = pd.to_datetime(frame["date"], errors="coerce").dt.normalize()
     frame["basket"] = frame["basket"].astype(str).str.strip()
     if frame.duplicated(["date", "basket"]).any():
@@ -194,9 +196,10 @@ def _relationship_gate(
     contract: Mapping[str, Any],
 ) -> tuple[dict[str, Any], str]:
     payload = _load_json(path)
-    if payload.get("relationship_contract_id") != contract["relationship_gate"][
-        "relationship_contract_id"
-    ]:
+    if (
+        payload.get("relationship_contract_id")
+        != contract["relationship_gate"]["relationship_contract_id"]
+    ):
         raise ValueError("relationship contract identity mismatch")
     factors = {
         str(row["stable_factor_key"]): row
@@ -261,12 +264,8 @@ def _build_scores_for_date(
     fundamental_scores: pd.DataFrame,
     basket_scores: pd.DataFrame,
 ) -> pd.DataFrame:
-    security_factors = [
-        row for row in contract["factors"] if str(row["scope"]) == "security"
-    ]
-    basket_factors = [
-        row for row in contract["factors"] if str(row["scope"]) == "basket"
-    ]
+    security_factors = [row for row in contract["factors"] if str(row["scope"]) == "security"]
+    basket_factors = [row for row in contract["factors"] if str(row["scope"]) == "basket"]
     latest_fundamental = _latest_rows(fundamental_scores, as_of)
     latest_basket = _latest_rows(basket_scores, as_of)
     rows = [
@@ -277,22 +276,16 @@ def _build_scores_for_date(
     for factor in security_factors:
         key = str(factor["stable_factor_key"])
         subset = latest_fundamental[
-            (latest_fundamental["stable_factor_key"] == key)
-            & latest_fundamental["eligible"]
+            (latest_fundamental["stable_factor_key"] == key) & latest_fundamental["eligible"]
         ][["symbol", "percentile"]].rename(columns={"percentile": key})
         output = output.merge(subset, on="symbol", how="left", validate="one_to_one")
     for factor in basket_factors:
         key = str(factor["stable_factor_key"])
         source_field = str(factor["source_percentile_field"])
-        subset = latest_basket[["basket", source_field]].rename(
-            columns={source_field: key}
-        )
+        subset = latest_basket[["basket", source_field]].rename(columns={source_field: key})
         output = output.merge(subset, on="basket", how="left", validate="many_to_one")
     factor_keys = [str(row["stable_factor_key"]) for row in contract["factors"]]
-    weights = {
-        str(row["stable_factor_key"]): float(row["weight"])
-        for row in contract["factors"]
-    }
+    weights = {str(row["stable_factor_key"]): float(row["weight"]) for row in contract["factors"]}
     output["component_complete"] = output[factor_keys].notna().all(axis=1)
     output["composite_score"] = sum(
         pd.to_numeric(output[key], errors="coerce") * weights[key] for key in factor_keys
@@ -389,7 +382,10 @@ def _portfolio_history(
                 weights[symbol] = basket_weight / len(symbols)
         all_symbols = set(weights) | set(previous_weights)
         turnover = float(
-            sum(abs(weights.get(symbol, 0.0) - previous_weights.get(symbol, 0.0)) for symbol in all_symbols)
+            sum(
+                abs(weights.get(symbol, 0.0) - previous_weights.get(symbol, 0.0))
+                for symbol in all_symbols
+            )
         )
         turnover_by_year[as_of.year] = turnover_by_year.get(as_of.year, 0.0) + turnover
         previous_weights = weights
@@ -408,8 +404,7 @@ def _portfolio_history(
                 "ticket_turnover": turnover,
                 "year_to_date_turnover": turnover_by_year[as_of.year],
                 "within_annual_turnover_budget": (
-                    turnover_by_year[as_of.year]
-                    <= float(policy["annual_turnover_ceiling"]) + 1e-12
+                    turnover_by_year[as_of.year] <= float(policy["annual_turnover_ceiling"]) + 1e-12
                 ),
             }
         )
@@ -444,9 +439,7 @@ def run_low_turnover_multifactor(
     factor_rows = list(contract["factors"])
     factor_keys = [str(row["stable_factor_key"]) for row in factor_rows]
     security_factor_keys = {
-        str(row["stable_factor_key"])
-        for row in factor_rows
-        if str(row["scope"]) == "security"
+        str(row["stable_factor_key"]) for row in factor_rows if str(row["scope"]) == "security"
     }
     basket_factor_rows = [row for row in factor_rows if str(row["scope"]) == "basket"]
 
@@ -454,20 +447,14 @@ def run_low_turnover_multifactor(
     basket_path = Path(basket_scores_path).resolve()
     relationship_path = Path(relationship_map_path).resolve()
     prices_path = Path(prices_csv).resolve()
-    fundamental_manifest, fundamental_manifest_hash = _verify_sibling_manifest(
-        fundamental_path
-    )
+    fundamental_manifest, fundamental_manifest_hash = _verify_sibling_manifest(fundamental_path)
     basket_manifest, basket_manifest_hash = _verify_sibling_manifest(basket_path)
     relationship_payload, relationship_hash = _relationship_gate(
         relationship_path, factor_keys, contract
     )
-    fundamental_scores = _load_fundamental_scores(
-        fundamental_path, security_factor_keys
-    )
+    fundamental_scores = _load_fundamental_scores(fundamental_path, security_factor_keys)
     basket_scores = _load_basket_scores(basket_path, basket_factor_rows)
-    prices = _load_prices(
-        prices_path, set(basket_by_symbol) | set(references)
-    )
+    prices = _load_prices(prices_path, set(basket_by_symbol) | set(references))
     benchmark = str(contract["benchmark"]).upper()
     benchmark_dates = pd.DatetimeIndex(
         prices.loc[prices["symbol"] == benchmark, "date"].sort_values().unique()
@@ -489,9 +476,7 @@ def run_low_turnover_multifactor(
     if inadmissible:
         raise ValueError(f"configured factors have inadmissible statuses: {inadmissible}")
     incomplete_statuses = {
-        key: cards[key]["status"]
-        for key in factor_keys
-        if cards[key]["status"] == "data_blocked"
+        key: cards[key]["status"] for key in factor_keys if cards[key]["status"] == "data_blocked"
     }
 
     score_rows, portfolio_rows, diagnostics = _portfolio_history(
@@ -524,9 +509,7 @@ def run_low_turnover_multifactor(
         "contract": _sha256_file(resolved_contract),
         "pool": _sha256_file(pool_path),
         "fundamental_manifest": fundamental_manifest_hash,
-        "fundamental_manifest_identity": fundamental_manifest.get(
-            "manifest_identity_sha256"
-        ),
+        "fundamental_manifest_identity": fundamental_manifest.get("manifest_identity_sha256"),
         "basket_manifest": basket_manifest_hash,
         "basket_manifest_identity": basket_manifest.get("manifest_identity_sha256"),
         "relationship_map": relationship_hash,
@@ -538,7 +521,9 @@ def run_low_turnover_multifactor(
         registry.record_combination_usage(
             str(cards[key]["card_id"]),
             combination_id=str(contract["combination_id"]),
-            weight=float(next(row["weight"] for row in factor_rows if row["stable_factor_key"] == key)),
+            weight=float(
+                next(row["weight"] for row in factor_rows if row["stable_factor_key"] == key)
+            ),
             role="primary_equal_weight",
             evidence_manifest_hash=evidence_identity,
         )
@@ -561,9 +546,7 @@ def run_low_turnover_multifactor(
         "performance_evaluated": False,
         "independent_validation_completed": False,
         "factor_keys": factor_keys,
-        "information_family_count": len(
-            {str(row["information_family"]) for row in factor_rows}
-        ),
+        "information_family_count": len({str(row["information_family"]) for row in factor_rows}),
         "relationship_gate_passed": True,
         "registry_incomplete_statuses": incomplete_statuses,
         "turnover_diagnostics": diagnostics,

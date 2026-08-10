@@ -161,10 +161,7 @@ def run_formal_baseline_onboarding(
         Path(output_dir).resolve()
         if output_dir is not None
         else (
-            PROJECT_ROOT
-            / "artifacts"
-            / "research_experiments"
-            / str(raw["experiment_id"])
+            PROJECT_ROOT / "artifacts" / "research_experiments" / str(raw["experiment_id"])
         ).resolve()
     )
     target.mkdir(parents=True, exist_ok=True)

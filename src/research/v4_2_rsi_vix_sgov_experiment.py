@@ -94,12 +94,8 @@ def wilder_rsi(close: pd.Series, period: int = 14) -> pd.Series:
         result.loc[block_index[period]] = from_averages(avg_gain, avg_loss)
         for location in range(period + 1, len(block_index)):
             current_index = block_index[location]
-            avg_gain = (
-                avg_gain * (period - 1) + float(block_gain.loc[current_index])
-            ) / period
-            avg_loss = (
-                avg_loss * (period - 1) + float(block_loss.loc[current_index])
-            ) / period
+            avg_gain = (avg_gain * (period - 1) + float(block_gain.loc[current_index])) / period
+            avg_loss = (avg_loss * (period - 1) + float(block_loss.loc[current_index])) / period
             result.loc[current_index] = from_averages(avg_gain, avg_loss)
     return result
 
@@ -135,12 +131,9 @@ def _overlay_close_trace(
         .eq(release_closes)
     )
     vix_stressed = reference_daily["vix_stress"].fillna(False).astype(bool)
-    vix_repaired = (
-        ~vix_stressed
-        & (
-            reference_daily["vix_easing"].fillna(False).astype(bool)
-            | reference_daily["vix_normalized"].fillna(False).astype(bool)
-        )
+    vix_repaired = ~vix_stressed & (
+        reference_daily["vix_easing"].fillna(False).astype(bool)
+        | reference_daily["vix_normalized"].fillna(False).astype(bool)
     )
 
     if variant == "vix_only_adaptive_sgov":
@@ -176,9 +169,7 @@ def _overlay_close_trace(
             "vix_repaired_for_overlay": vix_repaired.astype(bool),
             "overlay_activation": activation.astype(bool),
             "overlay_release": release.astype(bool),
-            "overlay_active_at_close": pd.Series(
-                states, index=reference_daily.index, dtype=bool
-            ),
+            "overlay_active_at_close": pd.Series(states, index=reference_daily.index, dtype=bool),
             "overlay_reason_at_close": reasons,
         },
         index=reference_daily.index,
@@ -241,15 +232,12 @@ def run_adaptive_overlay_backtest(
     daily = daily.join(trace)
     weights, active_at_open = _weights_from_overlay(daily, trace, contract)
     daily["overlay_active"] = active_at_open
-    daily["overlay_reason"] = daily["overlay_reason_at_close"].shift(1).fillna(
-        "initial_entry"
-    )
+    daily["overlay_reason"] = daily["overlay_reason_at_close"].shift(1).fillna("initial_entry")
     for asset in ASSETS:
         daily[f"weight_{asset}"] = weights[asset]
 
     daily["gross_return"] = sum(
-        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in ASSETS
+        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
@@ -263,9 +251,7 @@ def run_adaptive_overlay_backtest(
     daily["drawdown"] = daily["equity"] / daily["equity"].cummax() - 1.0
 
     metrics = _return_metrics(daily["net_return"], annual_risk_free_rate=0.0)
-    weight_changes = weights.loc[daily.index].ne(weights.loc[daily.index].shift()).any(
-        axis=1
-    )
+    weight_changes = weights.loc[daily.index].ne(weights.loc[daily.index].shift()).any(axis=1)
     metrics.update(
         {
             "strategy": variant,
@@ -326,9 +312,7 @@ def _overlay_episodes(
         candidate_log = float(np.log1p(candidate_slice["net_return"]).sum())
         baseline_log = float(np.log1p(baseline_slice["net_return"]).sum())
         baseline_equity = (1.0 + baseline_slice["net_return"]).cumprod()
-        forward_drawdown = float(
-            baseline_equity.div(baseline_equity.cummax()).sub(1.0).min()
-        )
+        forward_drawdown = float(baseline_equity.div(baseline_equity.cummax()).sub(1.0).min())
         row: dict[str, Any] = {
             "event_id": f"overlay_{event_number:03d}",
             "start_date": start,
@@ -353,11 +337,7 @@ def _overlay_episodes(
             candidate_window = candidate.daily["net_return"].iloc[release_location:stop]
             baseline_window = baseline.daily["net_return"].iloc[release_location:stop]
             row[field] = float(
-                np.exp(
-                    np.log1p(candidate_window).sum()
-                    - np.log1p(baseline_window).sum()
-                )
-                - 1.0
+                np.exp(np.log1p(candidate_window).sum() - np.log1p(baseline_window).sum()) - 1.0
             )
         rows.append(row)
     if not rows:
@@ -369,9 +349,7 @@ def _overlay_episodes(
     return pd.DataFrame(rows)
 
 
-def _capture_ratio(
-    strategy: pd.Series, benchmark: pd.Series, *, up: bool
-) -> float | None:
+def _capture_ratio(strategy: pd.Series, benchmark: pd.Series, *, up: bool) -> float | None:
     aligned = pd.concat([strategy, benchmark], axis=1).dropna()
     if aligned.empty:
         return None
@@ -394,9 +372,7 @@ def _opportunity_metrics(result: StrategyResult) -> dict[str, Any]:
     sgov_active = daily["weight_SGOV"].gt(0.0)
     return {
         "upside_capture_vs_qqq": _capture_ratio(daily["net_return"], qqq, up=True),
-        "downside_capture_vs_qqq": _capture_ratio(
-            daily["net_return"], qqq, up=False
-        ),
+        "downside_capture_vs_qqq": _capture_ratio(daily["net_return"], qqq, up=False),
         "qqq_top_decile_return_threshold": threshold,
         "qqq_top_decile_sessions": int(top.sum()),
         "qqq_top_decile_sessions_with_sgov": int((top & sgov_active).sum()),
@@ -423,16 +399,12 @@ def _gate(
     contract: Mapping[str, Any],
 ) -> dict[str, Any]:
     thresholds = contract["validation"]["promotion_gate"]
-    major = joint_drawdown_episodes.loc[
-        joint_drawdown_episodes["major_episode"]
-    ].copy()
+    major = joint_drawdown_episodes.loc[joint_drawdown_episodes["major_episode"]].copy()
     median_lag = _median_recovery_lag(joint_drawdown_episodes)
     max_drawdown_improvement = (
         float(joint.metrics["max_drawdown"]) - float(baseline.metrics["max_drawdown"])
     ) * 100.0
-    cagr_sacrifice = (
-        float(baseline.metrics["cagr"]) - float(joint.metrics["cagr"])
-    ) * 100.0
+    cagr_sacrifice = (float(baseline.metrics["cagr"]) - float(joint.metrics["cagr"])) * 100.0
     improvement_rate = float(major["drawdown_improvement"].gt(0.0).mean())
     median_protection = float(major["drawdown_improvement_pp"].median())
 
@@ -458,10 +430,8 @@ def _gate(
         comparator_lag = _median_recovery_lag(single_factor_drawdowns[key])
         comparator_recovery_lags[key] = comparator_lag
         checks = {
-            "calmar": float(joint.metrics["calmar"])
-            > float(comparator.metrics["calmar"]),
-            "sortino": float(joint.metrics["sortino"])
-            > float(comparator.metrics["sortino"]),
+            "calmar": float(joint.metrics["calmar"]) > float(comparator.metrics["calmar"]),
+            "sortino": float(joint.metrics["sortino"]) > float(comparator.metrics["sortino"]),
             "max_drawdown": float(joint.metrics["max_drawdown"])
             > float(comparator.metrics["max_drawdown"]),
             "recovery_lag": median_lag is not None
@@ -480,17 +450,12 @@ def _gate(
         "major_trough_improvement_rate": improvement_rate
         >= float(thresholds["major_trough_improvement_rate_min"]),
         "median_major_trough_protection": median_protection > 0.0,
-        "cagr_sacrifice": cagr_sacrifice
-        <= float(thresholds["cagr_sacrifice_pp_max"]),
+        "cagr_sacrifice": cagr_sacrifice <= float(thresholds["cagr_sacrifice_pp_max"]),
         "median_recovery_lag": median_lag is not None
         and median_lag <= float(thresholds["median_recovery_lag_sessions_max"]),
-        "beats_vix_only_on_two_metrics": win_counts.get(
-            "vix_only_adaptive_sgov", 0
-        )
+        "beats_vix_only_on_two_metrics": win_counts.get("vix_only_adaptive_sgov", 0)
         >= int(thresholds["single_factor_metrics_to_beat_min"]),
-        "beats_rsi_only_on_two_metrics": win_counts.get(
-            "rsi_only_adaptive_sgov", 0
-        )
+        "beats_rsi_only_on_two_metrics": win_counts.get("rsi_only_adaptive_sgov", 0)
         >= int(thresholds["single_factor_metrics_to_beat_min"]),
         "chronological_stability": bool(chronological_pass),
         "event_concentration": largest_share
@@ -543,9 +508,7 @@ def run_rsi_vix_sgov_comparison(
     reference = reference.dropna(subset=["rsi_14"]).copy()
 
     baseline = run_state_weight_backtest(reference, sgov_contract, "current_v4_2")
-    static = run_state_weight_backtest(
-        reference, sgov_contract, "qqqi_sgov_blended_defense"
-    )
+    static = run_state_weight_backtest(reference, sgov_contract, "qqqi_sgov_blended_defense")
     static.metrics["strategy"] = "static_blended_sgov"
     static.name = "static_blended_sgov"
     results: dict[str, StrategyResult] = {
@@ -553,9 +516,7 @@ def run_rsi_vix_sgov_comparison(
         "static_blended_sgov": static,
     }
     for variant in VARIANTS:
-        results[variant] = run_adaptive_overlay_backtest(
-            reference, overlay_contract, variant
-        )
+        results[variant] = run_adaptive_overlay_backtest(reference, overlay_contract, variant)
 
     baseline_states = baseline.daily["position_state"].astype(int)
     for key, result in results.items():
@@ -570,12 +531,10 @@ def run_rsi_vix_sgov_comparison(
         ):
             raise AssertionError(f"{key} changed the frozen state-2 allocation")
 
-    headline = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
-    train_fraction = float(
-        overlay_contract["validation"]["chronological_train_fraction"]
+    headline = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
     )
+    train_fraction = float(overlay_contract["validation"]["chronological_train_fraction"])
     chronological = pd.DataFrame(
         [
             row
@@ -592,9 +551,7 @@ def run_rsi_vix_sgov_comparison(
         )
         drawdown_episodes[key] = drawdowns
         if key in VARIANTS:
-            overlay_episodes[key] = _overlay_episodes(
-                results[key], baseline, overlay_contract
-            )
+            overlay_episodes[key] = _overlay_episodes(results[key], baseline, overlay_contract)
 
     gate = _gate(
         results["rsi_vix_adaptive_sgov"],
@@ -607,12 +564,8 @@ def run_rsi_vix_sgov_comparison(
         chronological,
         drawdown_episodes["rsi_vix_adaptive_sgov"],
         {
-            "vix_only_adaptive_sgov": drawdown_episodes[
-                "vix_only_adaptive_sgov"
-            ],
-            "rsi_only_adaptive_sgov": drawdown_episodes[
-                "rsi_only_adaptive_sgov"
-            ],
+            "vix_only_adaptive_sgov": drawdown_episodes["vix_only_adaptive_sgov"],
+            "rsi_only_adaptive_sgov": drawdown_episodes["rsi_only_adaptive_sgov"],
         },
         overlay_contract,
     )
@@ -627,9 +580,7 @@ def run_rsi_vix_sgov_comparison(
             "end": reference.index.max().date().isoformat(),
             "observations": int(len(reference)),
         },
-        "tail_risk": {
-            key: tail_risk_metrics(result) for key, result in results.items()
-        },
+        "tail_risk": {key: tail_risk_metrics(result) for key, result in results.items()},
         "opportunity_metrics": {
             key: _opportunity_metrics(result) for key, result in results.items()
         },

@@ -1,0 +1,117 @@
+{
+  "actions_sha256": "c87c85e020ddda4c8af73a268d67971b6a6bd8c3812d405def8a55cce2de00b5",
+  "adjusted_sha256": "0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960",
+  "close_return_correlation": 0.9997905194608817,
+  "common_return_correlation": 0.9973391834403824,
+  "common_return_rows": 3651,
+  "cross_provider_stitching": false,
+  "cutoff": "2026-08-03",
+  "data_quality_status": "canonical_v1_pass",
+  "factor_event_audit_sha256": "3b98f7dc8e6205bddb8e19fdb97b635b2c6e84df3e9d20c911d8becf425fbbc7",
+  "factor_jump_count": 12,
+  "factor_jump_tolerance": 1e-06,
+  "factor_method": "provider_adjusted_close_divided_by_same_provider_raw_close_cutoff_anchored",
+  "factor_sha256": "949209c67f361376b784937af87f35c9f86697d50e677132085d78878128d0dc",
+  "first_date": "2011-06-30",
+  "last_date": "2026-08-03",
+  "manifest_sha256": "06202b594b036b0c815e4ffb46e9f3d14ba647d699aad0fd927f1665142a363e",
+  "mean_absolute_return_difference": 0.00015457626153614692,
+  "model_promotion_allowed": false,
+  "open_label_policy": "entry_and_exit_open_must_be_independently_confirmed_and_not_quarantined",
+  "precision_decimals": 8,
+  "price_roles": {
+    "adjusted": "features_labels_and_total_return_research",
+    "raw": "execution_and_event_accounting"
+  },
+  "primary_provider": "yfinance_unadjusted_plus_adj_close",
+  "provider_audit_summary_sha256": "504d864dd8c2a41a55d38bd6b40fe79f226e1e1b4adf9de2e634d1778e249883",
+  "provider_comparison_sha256": "61c720a4c4efbea24cdc9205e38a5cd1ea961e7c34b4bedf7e35af6dd36beaab",
+  "provider_parameters": {
+    "primary": {
+      "actions": true,
+      "auto_adjust": false,
+      "provider": "yfinance",
+      "provider_end_exclusive": "2026-08-04",
+      "provider_symbol": "002594.SZ",
+      "raw_and_adjusted_close_same_response": true,
+      "repair": true
+    },
+    "secondary": {
+      "adjust": "",
+      "attempts": [
+        {
+          "attempt": 1,
+          "error": "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "error_type": "ConnectionError",
+          "status": "failed"
+        },
+        {
+          "attempt": 2,
+          "error": "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "error_type": "ConnectionError",
+          "status": "failed"
+        }
+      ],
+      "provider": "akshare_eastmoney_unadjusted",
+      "provider_symbol": "002594",
+      "status": "unavailable"
+    }
+  },
+  "quarantined_open_rows": 11,
+  "raw_semantics": "provider_reported_ohlcv_auto_adjust_false; dividend_unadjusted; split_normalization_follows_provider_history",
+  "raw_sha256": "159d72d7770292f0c1a8975e596fc3b41a60e1a364e20c916490740465388510",
+  "research_eligible_open_rows": 3640,
+  "return_differences_over_1pct": 9,
+  "rows": 3663,
+  "schema_version": "byd_canonical_adjusted_ohlcv_v1",
+  "secondary_provider": "akshare_eastmoney_unadjusted",
+  "secondary_provider_attempts": {
+    "akshare_eastmoney_unadjusted": [
+      {
+        "attempt": 1,
+        "first_date": "2011-06-30",
+        "last_date": "2026-08-03",
+        "rows": 3654,
+        "status": "success"
+      }
+    ],
+    "akshare_sina_unadjusted": [
+      {
+        "attempt": 1,
+        "first_date": "2011-06-30",
+        "last_date": "2026-08-03",
+        "rows": 3654,
+        "status": "success"
+      }
+    ],
+    "baostock_adjustflag_3_unadjusted": [
+      {
+        "attempt": 1,
+        "error": "baostock connection failed: timed out",
+        "error_type": "DataFetchError",
+        "status": "failed"
+      }
+    ]
+  },
+  "secondary_quality": {
+    "close_return_correlation": 0.9997905194608817,
+    "common_rows": 3651,
+    "coverage": 0.9967239967239967,
+    "mean_open_return_difference": 0.00015457626153614692,
+    "median_open_level_difference": 2.533152376749115e-08,
+    "open_level_differences_over_1pct": 9,
+    "open_quarantine_rate": 0.0030128731854286495,
+    "open_quarantine_rows": 11,
+    "open_return_correlation": 0.9973391834403824,
+    "p99_open_return_difference": 0.00034740612454977026,
+    "provider": "akshare_eastmoney_unadjusted",
+    "quality_pass": true,
+    "rows": 3654
+  },
+  "secondary_raw_sha256": "2d9455380680fdbc7f021efa920b820c1eddb1fe746ec6a1e29be083f91193d5",
+  "symbol": "002594.SZ",
+  "trade_ready": false,
+  "unexplained_factor_jumps": 0,
+  "volume_adjustment_method": "preserve_primary_provider_volume_no_cash_dividend_scaling",
+  "zero_volume_sessions": 15
+}

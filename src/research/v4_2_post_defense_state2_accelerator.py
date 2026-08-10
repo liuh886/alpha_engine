@@ -54,9 +54,7 @@ def build_single_use_accelerator_trace(
     if not daily.index.is_monotonic_increasing or daily.index.has_duplicates:
         raise ValueError("daily trace index must be monotonic and unique")
 
-    raw_defense_at_open = (
-        daily["overlay_active_at_close"].shift(1).fillna(False).astype(bool)
-    )
+    raw_defense_at_open = daily["overlay_active_at_close"].shift(1).fillna(False).astype(bool)
     previous_raw_defense = raw_defense_at_open.shift(1, fill_value=False)
     defense_activation_execution = raw_defense_at_open & ~previous_raw_defense
     defense_release_execution = ~raw_defense_at_open & previous_raw_defense
@@ -101,12 +99,7 @@ def build_single_use_accelerator_trace(
             current_release_execution = pd.Timestamp(date)
             reason = "defense_release_arms"
 
-        if (
-            not accelerating
-            and armed
-            and int(state) == 2
-            and not bool(defense_active)
-        ):
+        if not accelerating and armed and int(state) == 2 and not bool(defense_active):
             accelerating = True
             armed = False
             reason = "formal_state2_consumes_arm"
@@ -136,22 +129,16 @@ def build_single_use_accelerator_trace(
             "defense_activation_execution": defense_activation_execution,
             "defense_release_execution": defense_release_execution,
             "accelerator_armed": pd.Series(armed_rows, index=daily.index, dtype=bool),
-            "accelerator_active": pd.Series(
-                accelerating_rows, index=daily.index, dtype=bool
-            ),
+            "accelerator_active": pd.Series(accelerating_rows, index=daily.index, dtype=bool),
             "accelerator_arm_id": pd.Series(arm_ids, index=daily.index, dtype="Int64"),
             "arm_release_execution_date": release_execution_dates,
             "accelerator_reason": reasons,
         },
         index=daily.index,
     )
-    if bool(
-        trace.loc[trace["accelerator_active"], "raw_defense_active_at_open"].any()
-    ):
+    if bool(trace.loc[trace["accelerator_active"], "raw_defense_active_at_open"].any()):
         raise AssertionError("accelerator cannot overlap raw defense at execution")
-    if bool(
-        daily.loc[trace["accelerator_active"], "position_state"].astype(int).ne(2).any()
-    ):
+    if bool(daily.loc[trace["accelerator_active"], "position_state"].astype(int).ne(2).any()):
         raise AssertionError("accelerator appeared outside formal state 2")
     return trace
 
@@ -163,16 +150,18 @@ def _candidate_weights(
 ) -> pd.DataFrame:
     """Copy source weights and replace only accelerated state-2 sessions."""
 
-    weights = source.daily[
-        ["weight_QQQI", "weight_QQQ", "weight_TQQQ", "weight_SGOV"]
-    ].rename(
-        columns={
-            "weight_QQQI": "QQQI",
-            "weight_QQQ": "QQQ",
-            "weight_TQQQ": "TQQQ",
-            "weight_SGOV": "SGOV",
-        }
-    ).copy()
+    weights = (
+        source.daily[["weight_QQQI", "weight_QQQ", "weight_TQQQ", "weight_SGOV"]]
+        .rename(
+            columns={
+                "weight_QQQI": "QQQI",
+                "weight_QQQ": "QQQ",
+                "weight_TQQQ": "TQQQ",
+                "weight_SGOV": "SGOV",
+            }
+        )
+        .copy()
+    )
     acceleration = trace["accelerator_active"].reindex(weights.index).fillna(False)
     target = {
         asset: float(contract["allocations"]["accelerated_state_2"].get(asset, 0.0))
@@ -187,9 +176,7 @@ def _candidate_weights(
         raise AssertionError("candidate weights must sum to one")
     if bool((weights < -1e-12).any().any()):
         raise AssertionError("candidate weights cannot be negative")
-    non_accelerated_state_two = (
-        source.daily["position_state"].astype(int).eq(2) & ~acceleration
-    )
+    non_accelerated_state_two = source.daily["position_state"].astype(int).eq(2) & ~acceleration
     if bool(non_accelerated_state_two.any()):
         if not (
             np.allclose(weights.loc[non_accelerated_state_two, "QQQ"], 0.25)
@@ -220,8 +207,7 @@ def run_accelerated_backtest(
         daily[f"weight_{asset}"] = weights[asset]
 
     daily["gross_return"] = sum(
-        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in ASSETS
+        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
@@ -235,9 +221,7 @@ def run_accelerated_backtest(
     daily["drawdown"] = daily["equity"] / daily["equity"].cummax() - 1.0
 
     metrics = _return_metrics(daily["net_return"], annual_risk_free_rate=0.0)
-    weight_changes = weights.loc[daily.index].ne(
-        weights.loc[daily.index].shift()
-    ).any(axis=1)
+    weight_changes = weights.loc[daily.index].ne(weights.loc[daily.index].shift()).any(axis=1)
     metrics.update(
         {
             "strategy": strategy_key,
@@ -313,9 +297,7 @@ def accelerator_episode_attribution(
 
         release_execution = window.iloc[0]["arm_release_execution_date"]
         release_execution_date = (
-            pd.Timestamp(release_execution)
-            if pd.notna(release_execution)
-            else pd.NaT
+            pd.Timestamp(release_execution) if pd.notna(release_execution) else pd.NaT
         )
         release_signal_date = pd.NaT
         if pd.notna(release_execution_date):
@@ -324,14 +306,8 @@ def accelerator_episode_attribution(
                 release_signal_date = daily.index[location - 1]
 
         entry_location = start
-        state2_signal_date = (
-            daily.index[entry_location - 1] if entry_location > 0 else pd.NaT
-        )
-        next_state = (
-            int(daily.iloc[end + 1]["position_state"])
-            if end + 1 < len(daily)
-            else None
-        )
+        state2_signal_date = daily.index[entry_location - 1] if entry_location > 0 else pd.NaT
+        next_state = int(daily.iloc[end + 1]["position_state"]) if end + 1 < len(daily) else None
         candidate_return = _compounded(window["net_return"])
         ordinary_return = _compounded(ordinary_window["net_return"])
         row: dict[str, Any] = {
@@ -419,13 +395,10 @@ def _scope_gate(
     sacrifice = baseline_cagr - candidate_cagr
     defense_sacrifice = baseline_cagr - defense_cagr
     recovered_fraction = (
-        (candidate_cagr - defense_cagr) / defense_sacrifice
-        if defense_sacrifice > 0.0
-        else 0.0
+        (candidate_cagr - defense_cagr) / defense_sacrifice if defense_sacrifice > 0.0 else 0.0
     )
     max_drawdown_improvement_pp = (
-        float(candidate.metrics["max_drawdown"])
-        - float(baseline.metrics["max_drawdown"])
+        float(candidate.metrics["max_drawdown"]) - float(baseline.metrics["max_drawdown"])
     ) * 100.0
     chrono = chronological.set_index(["strategy", "segment"])
     late_candidate_calmar = float(chrono.loc[(COMBINED, "late"), "calmar"])
@@ -435,21 +408,18 @@ def _scope_gate(
         1.0 + float(thresholds["turnover_increase_max"])
     )
     worst_20d_delta_pp = (
-        float(candidate_tail["worst_20d_return"])
-        - float(baseline_tail["worst_20d_return"])
+        float(candidate_tail["worst_20d_return"]) - float(baseline_tail["worst_20d_return"])
     ) * 100.0
     checks = {
         "max_drawdown_improvement": max_drawdown_improvement_pp
         >= float(thresholds["max_drawdown_improvement_pp_min"]),
-        "cagr_gap": sacrifice * 100.0
-        <= float(thresholds["cagr_gap_pp_max"]),
+        "cagr_gap": sacrifice * 100.0 <= float(thresholds["cagr_gap_pp_max"]),
         "defense_cagr_sacrifice_recovered": recovered_fraction
         >= float(thresholds["defense_cagr_sacrifice_recovered_min"]),
         "full_sample_calmar": float(candidate.metrics["calmar"])
         >= float(baseline.metrics["calmar"]),
         "late_segment_calmar": late_candidate_calmar >= late_baseline_calmar,
-        "worst_20d": worst_20d_delta_pp
-        >= -float(thresholds["worst_20d_worsening_pp_max"]),
+        "worst_20d": worst_20d_delta_pp >= -float(thresholds["worst_20d_worsening_pp_max"]),
         "accelerator_event_positive_rate": (
             event_summary["positive_event_rate"] is not None
             and float(event_summary["positive_event_rate"])
@@ -528,18 +498,12 @@ def run_post_defense_state2_accelerator_comparison(
         if not baseline_states.equals(result.daily["position_state"].astype(int)):
             raise AssertionError(f"{key} changed the frozen v4.2 state trace")
 
-    headline = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
-    fraction = float(
-        accelerator_contract["validation"]["chronological_train_fraction"]
+    headline = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
     )
+    fraction = float(accelerator_contract["validation"]["chronological_train_fraction"])
     chronological = pd.DataFrame(
-        [
-            row
-            for result in results.values()
-            for row in _chronological_metrics(result, fraction)
-        ]
+        [row for result in results.values() for row in _chronological_metrics(result, fraction)]
     )
     tag_events = accelerator_episode_attribution(
         tag_only,
@@ -572,9 +536,7 @@ def run_post_defense_state2_accelerator_comparison(
             "end": baseline.daily.index.max().date().isoformat(),
             "observations": int(len(baseline.daily)),
         },
-        "tail_risk": {
-            key: tail_risk_metrics(result) for key, result in results.items()
-        },
+        "tail_risk": {key: tail_risk_metrics(result) for key, result in results.items()},
         "opportunity_metrics": {
             key: _opportunity_metrics(result) for key, result in results.items()
         },
@@ -590,8 +552,6 @@ def run_post_defense_state2_accelerator_comparison(
         "accelerator_tag_only": tag_events,
         "accelerator_combined": combined_events,
         "drawdown_combined": drawdowns,
-        "inherited_defense_overlay": inherited_episodes[
-            "overlay_rsi_vix_adaptive_sgov"
-        ],
+        "inherited_defense_overlay": inherited_episodes["overlay_rsi_vix_adaptive_sgov"],
     }
     return headline.sort_index(), results, chronological, episodes, diagnostics

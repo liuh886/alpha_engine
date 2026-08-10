@@ -60,9 +60,7 @@ def prepare_attack_layer_data(
         annual_risk_free_rate=config.annual_risk_free_rate,
         charge_initial_entry=config.charge_initial_entry,
     )
-    normalised = {
-        symbol: _normalise_bars(bars[symbol], symbol) for symbol in ("QQQ", "TQQQ")
-    }
+    normalised = {symbol: _normalise_bars(bars[symbol], symbol) for symbol in ("QQQ", "TQQQ")}
     common_index = normalised["QQQ"].index.intersection(normalised["TQQQ"].index)
     common_index = common_index.sort_values()
     if common_index.empty:
@@ -71,9 +69,7 @@ def prepare_attack_layer_data(
     signal = build_signal_frame(bars["QQQ"], base_config)
     qqq_close = normalised["QQQ"]["close"]
     price = pd.DataFrame(index=qqq_close.index)
-    price["ma_medium"] = qqq_close.rolling(
-        config.ma_medium, min_periods=config.ma_medium
-    ).mean()
+    price["ma_medium"] = qqq_close.rolling(config.ma_medium, min_periods=config.ma_medium).mean()
     price["rolling_high_shock"] = qqq_close.rolling(
         config.shock_lookback_sessions,
         min_periods=config.shock_lookback_sessions,
@@ -110,9 +106,7 @@ def prepare_attack_layer_data(
         | (qqq_close.gt(signal["ma_short"].reindex(qqq_close.index)) & short_rising)
     ).fillna(False)
     price["medium_repair"] = qqq_close.gt(price["ma_medium"]).fillna(False)
-    price["secondary_confirmation"] = (
-        price["breakout_confirm"] | short_rising
-    ).fillna(False)
+    price["secondary_confirmation"] = (price["breakout_confirm"] | short_rising).fillna(False)
     price["long_break"] = qqq_close.lt(
         signal["ma_long"].reindex(qqq_close.index) * (1.0 - config.ma_long_buffer)
     ).fillna(False)
@@ -181,9 +175,7 @@ def _run_attack_backtest(
     """Map source states 0/1 to QQQ and source state 2 to 25% QQQ/75% TQQQ."""
 
     daily = prepared.join(decisions)
-    daily["source_position_state"] = (
-        daily["decision_state"].shift(1).fillna(0).astype(int)
-    )
+    daily["source_position_state"] = daily["decision_state"].shift(1).fillna(0).astype(int)
     daily["position_state"] = daily["source_position_state"].eq(2).astype(int)
     daily["position_label"] = daily["position_state"].map(ATTACK_STATE_TO_LABEL)
     daily["executed_reason"] = daily["decision_reason"].shift(1).fillna("initial_entry")
@@ -203,9 +195,7 @@ def _run_attack_backtest(
     elif not turnover.empty:
         turnover.iloc[0] = 0.0
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = (
-        turnover * config.transaction_cost_bps_per_turnover_unit / 10_000.0
-    )
+    daily["transaction_cost"] = turnover * config.transaction_cost_bps_per_turnover_unit / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()
@@ -246,9 +236,7 @@ def _run_attack_backtest(
 
 
 def _constant_decisions(index: pd.Index, state: int, reason: str) -> pd.DataFrame:
-    return pd.DataFrame(
-        {"decision_state": state, "decision_reason": reason}, index=index
-    )
+    return pd.DataFrame({"decision_state": state, "decision_reason": reason}, index=index)
 
 
 def _leverage_capture(result: StrategyResult) -> dict[str, float | int]:
@@ -319,9 +307,7 @@ def blocked_vxn_entries(
             window = prepared.iloc[int(location) + 1 : int(location) + 1 + int(horizon)]
             values = window["TQQQ_next_open_return"].dropna()
             row[f"TQQQ_return_{int(horizon)}d"] = (
-                float((1.0 + values).prod() - 1.0)
-                if len(values) == int(horizon)
-                else np.nan
+                float((1.0 + values).prod() - 1.0) if len(values) == int(horizon) else np.nan
             )
         rows.append(row)
     return pd.DataFrame(rows)
@@ -343,9 +329,7 @@ def period_metrics(
     return pd.DataFrame(rows)
 
 
-def rolling_metrics(
-    results: Mapping[str, StrategyResult], windows: Sequence[int]
-) -> pd.DataFrame:
+def rolling_metrics(results: Mapping[str, StrategyResult], windows: Sequence[int]) -> pd.DataFrame:
     """Produce rolling risk-adjusted metrics for fixed one- and three-year windows."""
 
     rows: list[dict[str, Any]] = []
@@ -417,9 +401,9 @@ def run_attack_layer_comparison(
             display_name="Frozen v4.1 VXN-veto attack layer",
         ),
     }
-    metrics = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
+    metrics = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
+    )
 
     validation = contract["validation"]
     periods = period_metrics(results, validation["chronological_periods"])
@@ -441,9 +425,7 @@ def run_attack_layer_comparison(
 
     cost_rows: list[dict[str, Any]] = []
     for cost_bps in validation["cost_sensitivity_bps"]:
-        cost_config = replace(
-            config, transaction_cost_bps_per_turnover_unit=float(cost_bps)
-        )
+        cost_config = replace(config, transaction_cost_bps_per_turnover_unit=float(cost_bps))
         for key, decisions in (
             ("attack_vix_v3_75", vix_decisions),
             ("attack_vxn_v4_1_75", vxn_decisions),

@@ -23,8 +23,6 @@ def embargo_train_end(
     # ten sessions, the immediately preceding group is not admissible. The next
     # earlier group leaves nineteen intervening sessions, satisfying the frozen
     # ten-session embargo without accidentally removing ten complete groups.
-    embargo_groups = int(
-        math.ceil((embargo_sessions + 1) / sample_every_sessions)
-    )
+    embargo_groups = int(math.ceil((embargo_sessions + 1) / sample_every_sessions))
     location = max(location - embargo_groups, 0)
     return min(declared_train_end, pd.Timestamp(index[location]))

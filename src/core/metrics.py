@@ -3,6 +3,7 @@
 All functions are stateless and return plain Python dicts or pd.Series so
 they are easy to inspect in notebooks.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -46,7 +47,7 @@ def compute_spread(
     >>> print(f"Spread Sharpe: {result['spread_sharpe']:.2f}")
     """
     spread = long_returns - short_returns
-    
+
     if bench_returns is not None:
         bench = bench_returns.reindex(long_returns.index).fillna(0.0)
         alpha_long = (long_returns - bench).mean()
@@ -57,16 +58,15 @@ def compute_spread(
 
     spread_std = spread.std()
     spread_sharpe = (
-        spread.mean() / spread_std * np.sqrt(annualize)
-        if spread_std > 1e-10 else float("nan")
+        spread.mean() / spread_std * np.sqrt(annualize) if spread_std > 1e-10 else float("nan")
     )
 
     return {
-        "spread_mean":   float(spread.mean()),
-        "spread_std":    float(spread_std),
+        "spread_mean": float(spread.mean()),
+        "spread_std": float(spread_std),
         "spread_sharpe": float(spread_sharpe),
-        "alpha_long":    float(alpha_long),
-        "alpha_short":   float(alpha_short),
+        "alpha_long": float(alpha_long),
+        "alpha_short": float(alpha_short),
         "spread_series": spread,
         "spread_equity": (1 + spread).cumprod(),
     }
@@ -104,6 +104,7 @@ def compute_ic_series(
     >>> print(f"IC Mean: {ic['ic_mean']:.4f}  IR: {ic['ic_ir']:.4f}")
     >>> ic["ic_series"].plot(title="Daily IC")
     """
+
     def _normalise(df: pd.DataFrame) -> pd.DataFrame:
         if df.index.names[0] != "datetime" and df.index.names[1] == "datetime":
             return df.swaplevel().sort_index()
@@ -134,10 +135,10 @@ def compute_ic_series(
     ic_std = ic_series.std()
 
     return {
-        "ic_series":  ic_series,
-        "ic_mean":    float(ic_series.mean()) if len(ic_series) else float("nan"),
-        "ic_std":     float(ic_std),
-        "ic_ir":      float(ic_series.mean() / ic_std) if ic_std > 1e-10 else float("nan"),
+        "ic_series": ic_series,
+        "ic_mean": float(ic_series.mean()) if len(ic_series) else float("nan"),
+        "ic_std": float(ic_std),
+        "ic_ir": float(ic_series.mean() / ic_std) if ic_std > 1e-10 else float("nan"),
         "ic_pos_pct": float((ic_series > 0).mean()) if len(ic_series) else float("nan"),
-        "n_days":     len(ic_series),
+        "n_days": len(ic_series),
     }

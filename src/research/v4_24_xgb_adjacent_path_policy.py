@@ -30,10 +30,7 @@ def strategy_daily(
     returns = _asset_returns(bars, index, cash_symbol=cash_symbol)
     weights_by_state = _normalised_weights(contract)
     sessions = int(contract["decision"]["holding_sessions"])
-    cost_rate = (
-        float(contract["decision"]["transaction_cost_bps_per_turnover_unit"])
-        / 10_000.0
-    )
+    cost_rate = float(contract["decision"]["transaction_cost_bps_per_turnover_unit"]) / 10_000.0
     previous = np.zeros(3, dtype=float)
     daily_rows: list[dict[str, Any]] = []
     trade_rows: list[dict[str, Any]] = []
@@ -50,9 +47,7 @@ def strategy_daily(
             date = pd.Timestamp(index[location + 1 + offset])
             asset = returns.loc[date]
             gross = float(
-                weights[0] * asset["cash"]
-                + weights[1] * asset["QQQ"]
-                + weights[2] * asset["TQQQ"]
+                weights[0] * asset["cash"] + weights[1] * asset["QQQ"] + weights[2] * asset["TQQQ"]
             )
             cost = turnover * cost_rate if offset == 0 else 0.0
             daily_rows.append(
@@ -157,9 +152,7 @@ def phase2_evidence(
     cash_symbol = "SGOV" if actual else "BIL"
     sessions = int(contract["decision"]["holding_sessions"])
     results: dict[str, StrategyResult] = {
-        "v4_2": baseline_result(
-            baseline_daily, selected, "frozen_v4_2", sessions=sessions
-        ),
+        "v4_2": baseline_result(baseline_daily, selected, "frozen_v4_2", sessions=sessions),
         "xgb_ordinal_state_machine": strategy_daily(
             selected,
             bars,
@@ -200,8 +193,7 @@ def _annual_relative(candidate: StrategyResult, baseline: StrategyResult) -> pd.
     rows: dict[int, float] = {}
     for year, table in aligned.groupby(aligned.index.year):
         rows[int(year)] = float(
-            (1.0 + table["candidate"]).prod()
-            - (1.0 + table["baseline"]).prod()
+            (1.0 + table["candidate"]).prod() - (1.0 + table["baseline"]).prod()
         )
     return pd.Series(rows, dtype=float)
 
@@ -216,9 +208,7 @@ def phase2_gate(
     gate = contract["validation"]["phase2"]
     baseline = headline.loc["v4_2"]
     candidate = headline.loc["xgb_ordinal_state_machine"]
-    annual = _annual_relative(
-        results["xgb_ordinal_state_machine"], results["v4_2"]
-    )
+    annual = _annual_relative(results["xgb_ordinal_state_machine"], results["v4_2"])
     baseline_turnover = float(baseline["turnover_units"])
     turnover_increase = (
         float(candidate["turnover_units"] / baseline_turnover - 1.0)
@@ -226,9 +216,7 @@ def phase2_gate(
         else np.inf
     )
     contribution = (
-        selected.assign(
-            positive=selected["selected_utility_advantage_vs_v4_2"].clip(lower=0.0)
-        )
+        selected.assign(positive=selected["selected_utility_advantage_vs_v4_2"].clip(lower=0.0))
         .groupby("selected_state")["positive"]
         .sum()
     )
@@ -239,27 +227,20 @@ def phase2_gate(
     checks = {
         "cagr": float(candidate["cagr"] - baseline["cagr"])
         >= float(gate["cagr_improvement_pp_min"]) / 100.0,
-        "max_drawdown": float(
-            abs(candidate["max_drawdown"]) - abs(baseline["max_drawdown"])
-        )
+        "max_drawdown": float(abs(candidate["max_drawdown"]) - abs(baseline["max_drawdown"]))
         <= float(gate["max_drawdown_worsening_pp_max"]) / 100.0,
         "calmar": float(candidate["calmar"] - baseline["calmar"])
         >= float(gate["calmar_improvement_min"]),
         "sortino": float(candidate["sortino"]) >= float(baseline["sortino"]),
-        "positive_years": int(annual.gt(0.0).sum())
-        >= int(gate["positive_calendar_years_min"]),
+        "positive_years": int(annual.gt(0.0).sum()) >= int(gate["positive_calendar_years_min"]),
         "turnover": turnover_increase <= float(gate["turnover_increase_max"]),
         "without_best_year": float(concentration["advantage_without_best_year"]) > 0.0,
-        "without_best_cluster": float(
-            concentration["advantage_without_best_cluster"]
-        )
-        > 0.0,
+        "without_best_cluster": float(concentration["advantage_without_best_cluster"]) > 0.0,
         "state_concentration": largest_state_share
         <= float(gate["largest_state_positive_share_max"]),
         "beats_ablations": all(
             float(candidate["cagr"]) > float(headline.loc[f"{state}_only", "cagr"])
-            and float(candidate["calmar"])
-            > float(headline.loc[f"{state}_only", "calmar"])
+            and float(candidate["calmar"]) > float(headline.loc[f"{state}_only", "calmar"])
             for state in STATE_ORDER
         ),
     }
@@ -288,13 +269,10 @@ def actual_gate(headline: pd.DataFrame, contract: Mapping[str, Any]) -> dict[str
         float(candidate["cagr"]) < float(baseline["cagr"])
         and float(candidate["calmar"]) < float(baseline["calmar"])
     )
-    worsening = float(
-        abs(candidate["max_drawdown"]) - abs(baseline["max_drawdown"])
-    ) * 100.0
+    worsening = float(abs(candidate["max_drawdown"]) - abs(baseline["max_drawdown"])) * 100.0
     checks = {
         "not_both_cagr_and_calmar_trail": not both_trail,
-        "max_drawdown": worsening
-        <= float(gate["max_drawdown_worsening_pp_max"]),
+        "max_drawdown": worsening <= float(gate["max_drawdown_worsening_pp_max"]),
     }
     return {
         "passed": bool(all(checks.values())),

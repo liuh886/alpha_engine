@@ -97,9 +97,7 @@ def _load_array(root: Path, record: Mapping[str, Any]) -> np.ndarray | None:
         values = np.load(path, allow_pickle=False, mmap_mode="r")
     except (OSError, ValueError):
         return None
-    if list(values.shape) != record.get("shape") or str(values.dtype) != record.get(
-        "dtype"
-    ):
+    if list(values.shape) != record.get("shape") or str(values.dtype) != record.get("dtype"):
         return None
     return values
 
@@ -125,24 +123,18 @@ def write_model_matrix_snapshot(
 
     cache_root = Path(root)
     cache_root.mkdir(parents=True, exist_ok=True)
-    dates = pd.DatetimeIndex(
-        features.index.get_level_values("datetime")
-    ).to_numpy()
+    dates = pd.DatetimeIndex(features.index.get_level_values("datetime")).to_numpy()
     instruments = features.index.get_level_values("instrument").astype(str).to_numpy()
     files = {
         "features": _save_array(cache_root, "features", features.to_numpy()),
         "labels": _save_array(cache_root, "labels", labels.to_numpy()),
         "index_dates": _save_array(cache_root, "index_dates", dates),
-        "index_instruments": _save_array(
-            cache_root, "index_instruments", instruments.astype(str)
-        ),
+        "index_instruments": _save_array(cache_root, "index_instruments", instruments.astype(str)),
     }
     benchmark_columns: list[str] = []
     if benchmark is not None:
         benchmark_columns = [str(column) for column in benchmark.columns]
-        files["benchmark"] = _save_array(
-            cache_root, "benchmark", benchmark.to_numpy()
-        )
+        files["benchmark"] = _save_array(cache_root, "benchmark", benchmark.to_numpy())
         files["benchmark_dates"] = _save_array(
             cache_root,
             "benchmark_dates",
@@ -201,9 +193,7 @@ def load_model_matrix_snapshot(
 
     dates = pd.DatetimeIndex(np.asarray(loaded["index_dates"]))
     instruments = np.asarray(loaded["index_instruments"]).astype(str)
-    index = pd.MultiIndex.from_arrays(
-        [dates, instruments], names=["datetime", "instrument"]
-    )
+    index = pd.MultiIndex.from_arrays([dates, instruments], names=["datetime", "instrument"])
     features = pd.DataFrame(
         np.asarray(loaded["features"]),
         index=index,

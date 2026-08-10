@@ -164,7 +164,12 @@ def _ref_offsets(expression: str) -> list[int]:
 
 def _max_label_forward_horizon(cfg: dict) -> int:
     return max(
-        (abs(offset) for label in _label_expressions(cfg) for offset in _ref_offsets(label) if offset < 0),
+        (
+            abs(offset)
+            for label in _label_expressions(cfg)
+            for offset in _ref_offsets(label)
+            if offset < 0
+        ),
         default=0,
     )
 
@@ -210,9 +215,7 @@ def _purged_end(calendar, start, end, next_start, horizon: int, name: str):
     original_end_position = calendar.searchsorted(end, side="right") - 1
     resolved_position = min(safe_position, original_end_position)
     if resolved_position < 0 or calendar[resolved_position] < start:
-        raise ValueError(
-            f"{name} segment is empty after purging label horizon {horizon}"
-        )
+        raise ValueError(f"{name} segment is empty after purging label horizon {horizon}")
     return calendar[resolved_position]
 
 
@@ -224,9 +227,7 @@ def apply_label_horizon_purge(cfg: dict, calendar) -> dict:
         return result
 
     observed = _trading_calendar(calendar)
-    segments = (
-        result.get("task", {}).get("dataset", {}).get("kwargs", {}).get("segments")
-    )
+    segments = result.get("task", {}).get("dataset", {}).get("kwargs", {}).get("segments")
     if not isinstance(segments, dict):
         raise ValueError("Workflow segments are required for label-horizon purge")
 
@@ -234,12 +235,8 @@ def apply_label_horizon_purge(cfg: dict, calendar) -> dict:
     valid_start, valid_end = _segment(segments, "valid")
     test_start, test_end = _segment(segments, "test")
 
-    train_end = _purged_end(
-        observed, train_start, train_end, valid_start, horizon, "train"
-    )
-    valid_end = _purged_end(
-        observed, valid_start, valid_end, test_start, horizon, "valid"
-    )
+    train_end = _purged_end(observed, train_start, train_end, valid_start, horizon, "train")
+    valid_end = _purged_end(observed, valid_start, valid_end, test_start, horizon, "valid")
     if observed.searchsorted(test_end, side="right") <= observed.searchsorted(
         test_start, side="left"
     ):

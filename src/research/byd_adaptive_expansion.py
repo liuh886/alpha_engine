@@ -49,20 +49,20 @@ FINANCING_DAY_COUNT = 252.0
 RULES = {
     "entry_base_byd_weight": 1.0,
     "entry_market_state": "bull",
-    "entry_mom_20_floor": 0.02,       # slight positive threshold
+    "entry_mom_20_floor": 0.02,  # slight positive threshold
     "entry_mom_60_floor": 0.0,
     "entry_drawdown_252_floor": -0.15,  # relaxed from -0.10
     "exit_base_byd_weight": 0.75,
     "exit_mom_20_ceiling": -0.02,
     "exit_drawdown_252_ceiling": -0.25,  # drawdown emergency exit
     # Tiered leverage: strong momentum → higher leverage
-    "tier1_byd_weight": 1.05,          # base expansion (robustness)
-    "tier2_byd_weight": 1.10,          # moderate expansion
-    "tier3_byd_weight": 1.15,          # strong expansion (primary)
-    "tier2_mom_20_min": 0.05,          # mom_20 > 5% for tier 2
-    "tier2_mom_60_min": 0.03,          # mom_60 > 3% for tier 2
-    "tier3_mom_20_min": 0.10,          # mom_20 > 10% for tier 3
-    "tier3_mom_60_min": 0.05,          # mom_60 > 5% for tier 3
+    "tier1_byd_weight": 1.05,  # base expansion (robustness)
+    "tier2_byd_weight": 1.10,  # moderate expansion
+    "tier3_byd_weight": 1.15,  # strong expansion (primary)
+    "tier2_mom_20_min": 0.05,  # mom_20 > 5% for tier 2
+    "tier2_mom_60_min": 0.03,  # mom_60 > 3% for tier 2
+    "tier3_mom_20_min": 0.10,  # mom_20 > 10% for tier 3
+    "tier3_mom_60_min": 0.05,  # mom_60 > 5% for tier 3
     # Continuous variant parameters
     "continuous_base": 1.0,
     "continuous_max": 1.125,
@@ -81,14 +81,13 @@ class GovernedResult:
 # State machine: adaptive tiered expansion
 # ---------------------------------------------------------------------------
 
+
 def _stateful_expansion(entry: pd.Series, exit_: pd.Series) -> pd.Series:
     if not entry.index.equals(exit_.index):
         raise ValueError("entry and exit indices must match")
     active = False
     values: list[bool] = []
-    for enter_now, exit_now in zip(
-        entry.fillna(False), exit_.fillna(False), strict=True
-    ):
+    for enter_now, exit_now in zip(entry.fillna(False), exit_.fillna(False), strict=True):
         if active and bool(exit_now):
             active = False
         elif not active and bool(enter_now):
@@ -143,11 +142,7 @@ def build_expansion_state(
     # Tier 3 (strongest): mom_20 > 10% AND mom_60 > 5%
     # Tier 2 (moderate): mom_20 > 5% AND mom_60 > 3%
     # Tier 1 (base): everything else (just meets entry conditions)
-    tier3 = (
-        active
-        & mom_20.gt(RULES["tier3_mom_20_min"])
-        & mom_60.gt(RULES["tier3_mom_60_min"])
-    )
+    tier3 = active & mom_20.gt(RULES["tier3_mom_20_min"]) & mom_60.gt(RULES["tier3_mom_60_min"])
     tier2 = (
         active
         & ~tier3
@@ -194,9 +189,11 @@ def _make_decision(
     etf = (1.0 - byd_weight).clip(lower=0.0)
     cash = 1.0 - byd_weight - etf
     frame = pd.DataFrame(
-        {"byd_weight": byd_weight.astype(float),
-         "etf_weight": etf.astype(float),
-         "cash_weight": cash.astype(float)},
+        {
+            "byd_weight": byd_weight.astype(float),
+            "etf_weight": etf.astype(float),
+            "cash_weight": cash.astype(float),
+        },
         index=base.index,
     )
     if (frame["byd_weight"] < -1e-12).any():
@@ -220,24 +217,28 @@ def build_decisions(
     baseline_byd = base.copy()
 
     # Robustness (105%): tier1 expansion, moderate leverage
-    robust_byd = base.where(~active, other=base.where(
-        tier.isin(["tier1", "tier2", "tier3"]),
-        RULES["tier1_byd_weight"],
-    ))
+    robust_byd = base.where(
+        ~active,
+        other=base.where(
+            tier.isin(["tier1", "tier2", "tier3"]),
+            RULES["tier1_byd_weight"],
+        ),
+    )
 
     # Primary (tiered): graduated by momentum strength
-    primary_byd = base.where(~active, other=np.select(
-        [tier == "tier3", tier == "tier2", tier == "tier1"],
-        [RULES["tier3_byd_weight"],
-         RULES["tier2_byd_weight"],
-         RULES["tier1_byd_weight"]],
-        default=base,
-    ))
+    primary_byd = base.where(
+        ~active,
+        other=np.select(
+            [tier == "tier3", tier == "tier2", tier == "tier1"],
+            [RULES["tier3_byd_weight"], RULES["tier2_byd_weight"], RULES["tier1_byd_weight"]],
+            default=base,
+        ),
+    )
 
     # Diagnostic (continuous): momentum-scaled position
-    expansion_factor = (
-        mom_composite * RULES["continuous_momentum_scale"]
-    ).clip(upper=RULES["continuous_max"] - RULES["continuous_base"])
+    expansion_factor = (mom_composite * RULES["continuous_momentum_scale"]).clip(
+        upper=RULES["continuous_max"] - RULES["continuous_base"]
+    )
     continuous_byd = base.where(~active, other=base + expansion_factor)
 
     decisions = {
@@ -252,6 +253,7 @@ def build_decisions(
 # ---------------------------------------------------------------------------
 # Allocation runner with financing cost
 # ---------------------------------------------------------------------------
+
 
 def run_financed_allocation(
     name: str,
@@ -270,17 +272,12 @@ def run_financed_allocation(
     byd_weight = executed["position_byd_weight"]
     etf_weight = executed["position_etf_weight"]
     cash_weight = executed["position_cash_weight"]
-    gross_return = (
-        byd_weight * common["byd_open_return"]
-        + etf_weight * common["etf_open_return"]
-    )
+    gross_return = byd_weight * common["byd_open_return"] + etf_weight * common["etf_open_return"]
     turnover = executed.diff().abs().sum(axis=1)
     turnover.iloc[0] = 0.0
     transaction_cost = turnover * cost_bps / 10_000.0
     borrowed_weight = (-cash_weight).clip(lower=0.0)
-    financing_cost = (
-        borrowed_weight * annual_financing_rate / FINANCING_DAY_COUNT
-    )
+    financing_cost = borrowed_weight * annual_financing_rate / FINANCING_DAY_COUNT
 
     daily = pd.concat([decision.add_prefix("decision_"), executed], axis=1)
     daily["common_open_eligible"] = common["common_open_eligible"]
@@ -323,7 +320,9 @@ def run_candidates(
     decisions, state = build_decisions(common, signals)
     results = {
         name: run_financed_allocation(
-            name, common, decision,
+            name,
+            common,
+            decision,
             cost_bps=cost_bps,
             annual_financing_rate=annual_financing_rate,
         )
@@ -336,6 +335,7 @@ def run_candidates(
 # Evaluation
 # ---------------------------------------------------------------------------
 
+
 def _window_metrics(
     result: AllocationResult,
     start: str,
@@ -347,13 +347,15 @@ def _window_metrics(
     output = metrics(block)
     returns = block["net_return"].dropna()
     b = block.loc[returns.index]
-    output.update({
-        "transaction_cost_paid": float(b["cost"].sum()),
-        "financing_cost_paid": float(b["financing_cost"].sum()),
-        "mean_borrowed_weight": float(b["borrowed_weight"].mean()),
-        "max_gross_exposure": float(b["gross_exposure"].max()),
-        "financed_sessions": float(b["borrowed_weight"].gt(0.0).sum()),
-    })
+    output.update(
+        {
+            "transaction_cost_paid": float(b["cost"].sum()),
+            "financing_cost_paid": float(b["financing_cost"].sum()),
+            "mean_borrowed_weight": float(b["borrowed_weight"].mean()),
+            "max_gross_exposure": float(b["gross_exposure"].max()),
+            "financed_sessions": float(b["borrowed_weight"].gt(0.0).sum()),
+        }
+    )
     return output
 
 
@@ -368,14 +370,16 @@ def build_evaluation(
     ):
         for name, result in results.items():
             for window, (start, end) in WINDOWS.items():
-                rows.append({
-                    "scenario": label,
-                    "model": name,
-                    "cost_bps": cost_bps,
-                    "annual_financing_rate": frate,
-                    "window": window,
-                    **_window_metrics(result, start, end),
-                })
+                rows.append(
+                    {
+                        "scenario": label,
+                        "model": name,
+                        "cost_bps": cost_bps,
+                        "annual_financing_rate": frate,
+                        "window": window,
+                        **_window_metrics(result, start, end),
+                    }
+                )
     return pd.DataFrame(rows)
 
 
@@ -400,12 +404,14 @@ def period_contribution(
         pos_total = sum(max(v, 0.0) for v in rel.values())
         for period, r in rel.items():
             share = max(r, 0.0) / pos_total if pos_total > 0 else 0.0
-            rows.append({
-                "model": name,
-                "period": period,
-                "relative_terminal_wealth": r,
-                "positive_contribution_share": share,
-            })
+            rows.append(
+                {
+                    "model": name,
+                    "period": period,
+                    "relative_terminal_wealth": r,
+                    "positive_contribution_share": share,
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -427,22 +433,22 @@ def episode_attribution(
         st = state.reindex(block.index)
         cw = float((1.0 + block["net_return"]).prod())
         bw = float((1.0 + bb["net_return"]).prod())
-        rows.append({
-            "episode_id": int(rid),
-            "start": block.index.min(),
-            "end": block.index.max(),
-            "sessions": int(len(block)),
-            "candidate_return": cw - 1.0,
-            "baseline_return": bw - 1.0,
-            "relative_terminal_wealth": cw / bw - 1.0,
-            "financing_cost_paid": float(block["financing_cost"].sum()),
-            "transaction_cost_paid": float(block["cost"].sum()),
-            "min_drawdown_252": float(st["drawdown_252"].min()),
-            "mean_mom_20": float(st["mom_20"].mean()),
-            "expansion_tier_distribution": (
-                st["expansion_tier"].value_counts().to_dict()
-            ),
-        })
+        rows.append(
+            {
+                "episode_id": int(rid),
+                "start": block.index.min(),
+                "end": block.index.max(),
+                "sessions": int(len(block)),
+                "candidate_return": cw - 1.0,
+                "baseline_return": bw - 1.0,
+                "relative_terminal_wealth": cw / bw - 1.0,
+                "financing_cost_paid": float(block["financing_cost"].sum()),
+                "transaction_cost_paid": float(block["cost"].sum()),
+                "min_drawdown_252": float(st["drawdown_252"].min()),
+                "mean_mom_20": float(st["mom_20"].mean()),
+                "expansion_tier_distribution": (st["expansion_tier"].value_counts().to_dict()),
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -481,9 +487,7 @@ def governed_result(
         "cagr_improves_0_5pp": cagr_d >= 0.005,
         "max_drawdown_worsening_le_2pp": mdd_d >= -0.02,
         "calmar_not_declining": calmar_d >= -0.01,
-        "stress_return_above_baseline": bool(
-            float(ps["total_return"]) > float(bs["total_return"])
-        ),
+        "stress_return_above_baseline": bool(float(ps["total_return"]) > float(bs["total_return"])),
         "no_more_than_one_negative_period": neg <= 1,
         "contribution_not_concentrated": bool(
             max_share <= 0.60 and pc["relative_terminal_wealth"].gt(0.0).any()
@@ -496,11 +500,7 @@ def governed_result(
             and float(rs["total_return"]) > float(bs["total_return"])
         ),
     }
-    decision = (
-        "promote_adaptive_expansion"
-        if all(gates.values())
-        else "retain_byd_v1_1"
-    )
+    decision = "promote_adaptive_expansion" if all(gates.values()) else "retain_byd_v1_1"
     diagnostics = {
         "cagr_delta": cagr_d,
         "max_drawdown_delta": mdd_d,

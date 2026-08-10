@@ -40,16 +40,12 @@ def select_factor_groups(
     selected: list[FactorGroup] = []
     for name in group_names:
         if name not in library:
-            raise ValueError(
-                f"FactorGroup {name!r} not found. Available: {sorted(library)}"
-            )
+            raise ValueError(f"FactorGroup {name!r} not found. Available: {sorted(library)}")
         selected.append(library[name])
     return selected
 
 
-def resolve_factor_expressions(
-    factor_ids: list[str], library: dict[str, FactorGroup]
-) -> list[str]:
+def resolve_factor_expressions(factor_ids: list[str], library: dict[str, FactorGroup]) -> list[str]:
     definitions = {
         definition.factor_id: definition
         for group in library.values()
@@ -65,9 +61,7 @@ def resolve_factor_expressions(
 
 def factor_library_manifest(groups: list[FactorGroup]) -> dict[str, object]:
     definitions = {
-        definition.factor_id: definition
-        for group in groups
-        for definition in group.factors
+        definition.factor_id: definition for group in groups for definition in group.factors
     }
     return {
         "schema_version": FACTOR_LIBRARY_SCHEMA_VERSION,

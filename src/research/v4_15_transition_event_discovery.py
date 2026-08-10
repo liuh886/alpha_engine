@@ -116,9 +116,7 @@ def build_transition_flags(
     for identifier, specification in definitions.items():
         kind = str(specification["kind"])
         if kind in {"cross_up", "cross_down"}:
-            values = pd.to_numeric(
-                features[str(specification["feature"])], errors="coerce"
-            )
+            values = pd.to_numeric(features[str(specification["feature"])], errors="coerce")
             threshold = float(specification["threshold"])
             signal = (
                 _cross_up(values, threshold)
@@ -141,11 +139,7 @@ def build_transition_flags(
             signal = state & ~state.shift(1, fill_value=False)
         elif kind == "tech_premium_repaired":
             prior_premium = (
-                features["vxn_vix_ratio_z63"]
-                .shift(1)
-                .rolling(10, min_periods=1)
-                .max()
-                .ge(1.00)
+                features["vxn_vix_ratio_z63"].shift(1).rolling(10, min_periods=1).max().ge(1.00)
             )
             state = prior_premium & features["vxn_vix_ratio_z63"].le(0.50)
             signal = state & ~state.shift(1, fill_value=False)
@@ -157,9 +151,7 @@ def build_transition_flags(
                 .max()
                 .ge(0.80)
             )
-            signal = prior_stress & _cross_down(
-                features["vol_max_percentile_252"], 0.60
-            )
+            signal = prior_stress & _cross_down(features["vol_max_percentile_252"], 0.60)
         elif kind == "compression_release":
             prior_compression = (
                 features["qqq_bollinger_bandwidth_z63"]
@@ -168,9 +160,7 @@ def build_transition_flags(
                 .min()
                 .le(-0.50)
             )
-            signal = prior_compression & _cross_up(
-                features["qqq_bollinger_bandwidth_z63"], 0.0
-            )
+            signal = prior_compression & _cross_up(features["qqq_bollinger_bandwidth_z63"], 0.0)
         else:
             raise ValueError(f"unsupported transition kind: {kind}")
         flags[str(identifier)] = signal.fillna(False).astype(bool)
@@ -228,9 +218,7 @@ def transition_rule_catalog(rules: Sequence[TransitionRule]) -> pd.DataFrame:
 
 
 def _recent_confirmation(flags: pd.Series, window: int) -> pd.Series:
-    return (
-        flags.astype(int).rolling(window, min_periods=1).max().gt(0).astype(bool)
-    )
+    return flags.astype(int).rolling(window, min_periods=1).max().gt(0).astype(bool)
 
 
 def transition_rule_mask(
@@ -247,9 +235,7 @@ def transition_rule_mask(
         _recent_confirmation(flags[rule.price_transition], window),
     ]
     if rule.cross_transition is not None:
-        components.append(
-            _recent_confirmation(flags[rule.cross_transition], window)
-        )
+        components.append(_recent_confirmation(flags[rule.cross_transition], window))
     confirmed = components[0].copy()
     for component in components[1:]:
         confirmed &= component
@@ -262,11 +248,7 @@ def transition_rule_mask(
     eligibility = str(specification["eligibility"])
     if eligibility == "extension_capped":
         mask &= features["qqq_distance_ma20"].le(
-            float(
-                contract["transition_rules"][
-                    "repair_and_acceleration_extension_cap"
-                ]
-            )
+            float(contract["transition_rules"]["repair_and_acceleration_extension_cap"])
         )
     elif eligibility == "voo_long_trend_positive":
         mask &= features["voo_distance_ma200"].ge(0.0)
@@ -316,9 +298,7 @@ def events_for_transition_rule(
 ) -> pd.DataFrame:
     specification = contract["families"][rule.event_family]
     horizon = int(specification["holding_sessions"])
-    candidate_column, reference_column = _target_column(
-        rule.event_family, horizon
-    )
+    candidate_column, reference_column = _target_column(rule.event_family, horizon)
     mask = transition_rule_mask(features, flags, rule, contract)
     mask &= features[candidate_column].notna() & features[reference_column].notna()
     locations = _nonoverlap_locations(
@@ -346,16 +326,10 @@ def events_for_transition_rule(
                 "reference_return": reference_return,
                 "target_excess_return": candidate_return - reference_return,
                 "win": bool(candidate_return > reference_return),
-                "signal_qqq_distance_ma20": float(
-                    features.iloc[location]["qqq_distance_ma20"]
-                ),
+                "signal_qqq_distance_ma20": float(features.iloc[location]["qqq_distance_ma20"]),
                 "signal_rsi20": float(features.iloc[location]["qqq_rsi20"]),
-                "signal_vol_percentile": float(
-                    features.iloc[location]["vol_max_percentile_252"]
-                ),
-                "signal_vol_retreat": float(
-                    features.iloc[location]["vol_min_retreat_20d"]
-                ),
+                "signal_vol_percentile": float(features.iloc[location]["vol_max_percentile_252"]),
+                "signal_vol_retreat": float(features.iloc[location]["vol_min_retreat_20d"]),
             }
         )
     return pd.DataFrame(rows)
@@ -371,18 +345,12 @@ def evaluate_transition_rule(
 ) -> dict[str, Any]:
     specification = contract["families"][rule.event_family]
     horizon = int(specification["holding_sessions"])
-    candidate_column, reference_column = _target_column(
-        rule.event_family, horizon
-    )
-    baseline = (
-        features[candidate_column] - features[reference_column]
-    ).dropna()
+    candidate_column, reference_column = _target_column(rule.event_family, horizon)
+    baseline = (features[candidate_column] - features[reference_column]).dropna()
     events = events_for_transition_rule(
         features, flags, rule, contract, fold=fold, sample="development"
     )
-    event_values = (
-        events["target_excess_return"] if not events.empty else pd.Series(dtype=float)
-    )
+    event_values = events["target_excess_return"] if not events.empty else pd.Series(dtype=float)
     mask = transition_rule_mask(features, flags, rule, contract)
     base_win_rate = float(baseline.gt(0.0).mean()) if len(baseline) else np.nan
     event_win_rate = float(event_values.gt(0.0).mean()) if len(event_values) else np.nan
@@ -391,9 +359,7 @@ def evaluate_transition_rule(
     median_excess = float(event_values.median()) if len(event_values) else np.nan
     score = (
         mean_excess + median_excess + 0.02 * lift
-        if np.isfinite(mean_excess)
-        and np.isfinite(median_excess)
-        and np.isfinite(lift)
+        if np.isfinite(mean_excess) and np.isfinite(median_excess) and np.isfinite(lift)
         else -np.inf
     )
     return {
@@ -424,15 +390,9 @@ def select_transition_rules(
 ) -> tuple[pd.DataFrame, dict[str, TransitionRule], pd.DataFrame]:
     rules = enumerate_transition_rules(contract)
     by_id = {rule.rule_id: rule for rule in rules}
-    minimum_events = int(
-        contract["transition_rules"]["minimum_development_events"]
-    )
-    maximum_active = float(
-        contract["transition_rules"]["maximum_active_session_fraction"]
-    )
-    selected_count = int(
-        contract["transition_rules"]["selected_rules_per_family"]
-    )
+    minimum_events = int(contract["transition_rules"]["minimum_development_events"])
+    maximum_active = float(contract["transition_rules"]["maximum_active_session_fraction"])
+    selected_count = int(contract["transition_rules"]["selected_rules_per_family"])
     fdr_alpha = float(contract["transition_rules"]["fdr_alpha"])
     candidate_parts: list[pd.DataFrame] = []
     selected_rows: list[dict[str, Any]] = []
@@ -441,17 +401,14 @@ def select_transition_rules(
         family_rules = [rule for rule in rules if rule.event_family == family]
         metrics = pd.DataFrame(
             [
-                evaluate_transition_rule(
-                    features, flags, rule, contract, fold=fold
-                )
+                evaluate_transition_rule(features, flags, rule, contract, fold=fold)
                 for rule in family_rules
             ]
         )
         metrics["qvalue"] = _benjamini_hochberg(metrics["pvalue"])
-        metrics["meets_frequency_bounds"] = (
-            metrics["events"].ge(minimum_events)
-            & metrics["active_session_fraction"].le(maximum_active)
-        )
+        metrics["meets_frequency_bounds"] = metrics["events"].ge(minimum_events) & metrics[
+            "active_session_fraction"
+        ].le(maximum_active)
         metrics["fdr_pass"] = metrics["qvalue"].le(fdr_alpha)
         metrics = metrics.sort_values(
             ["meets_frequency_bounds", "fdr_pass", "score", "rule_id"],
@@ -459,9 +416,7 @@ def select_transition_rules(
         ).reset_index(drop=True)
         metrics["development_rank"] = np.arange(1, len(metrics) + 1)
         candidate_parts.append(metrics)
-        eligible = metrics.loc[metrics["meets_frequency_bounds"]].head(
-            selected_count
-        )
+        eligible = metrics.loc[metrics["meets_frequency_bounds"]].head(selected_count)
         for rank, row in enumerate(eligible.itertuples(index=False), start=1):
             executed = bool(rank == 1 and row.fdr_pass)
             selected_rows.append(
@@ -521,9 +476,7 @@ def selected_transition_events(
                 "action",
             ]
         )
-    return pd.concat(parts, ignore_index=True).sort_values(
-        ["execution_date", "event_family"]
-    )
+    return pd.concat(parts, ignore_index=True).sort_values(["execution_date", "event_family"])
 
 
 def _family_gate(
@@ -536,12 +489,10 @@ def _family_gate(
     thresholds = contract["validation"]["event_quality"]
     family_events = events.loc[events["event_family"].eq(family)].copy()
     family_folds = fold_metrics.loc[
-        fold_metrics["event_family"].eq(family)
-        & fold_metrics["events"].gt(0)
+        fold_metrics["event_family"].eq(family) & fold_metrics["events"].gt(0)
     ].copy()
     executed = selected.loc[
-        selected["event_family"].eq(family)
-        & selected["executed_in_outer_fold"].astype(bool)
+        selected["event_family"].eq(family) & selected["executed_in_outer_fold"].astype(bool)
     ]
     if family_events.empty:
         return {
@@ -562,16 +513,12 @@ def _family_gate(
         int(contract["transition_rules"]["macro_cluster_calendar_days"]),
     )
     positive_fold_rate = (
-        float(family_folds["mean_excess_return"].gt(0.0).mean())
-        if len(family_folds)
-        else 0.0
+        float(family_folds["mean_excess_return"].gt(0.0).mean()) if len(family_folds) else 0.0
     )
     lift = float(family_folds["conditional_win_rate_lift"].mean())
     median = float(family_events["target_excess_return"].median())
     positive_clusters = (
-        clustered.groupby("macro_cluster_id")["target_excess_return"]
-        .sum()
-        .clip(lower=0.0)
+        clustered.groupby("macro_cluster_id")["target_excess_return"].sum().clip(lower=0.0)
     )
     total_cluster_positive = float(positive_clusters.sum())
     cluster_share = (
@@ -582,16 +529,12 @@ def _family_gate(
     positive_events = family_events["target_excess_return"].clip(lower=0.0)
     total_event_positive = float(positive_events.sum())
     event_share = (
-        float(positive_events.max() / total_event_positive)
-        if total_event_positive > 0.0
-        else 1.0
+        float(positive_events.max() / total_event_positive) if total_event_positive > 0.0 else 1.0
     )
-    yearly = family_events.groupby(
-        pd.to_datetime(family_events["signal_close_date"]).dt.year
-    )["target_excess_return"].sum()
-    without_best = (
-        float(yearly.drop(index=yearly.idxmax()).sum()) if len(yearly) > 1 else np.nan
-    )
+    yearly = family_events.groupby(pd.to_datetime(family_events["signal_close_date"]).dt.year)[
+        "target_excess_return"
+    ].sum()
+    without_best = float(yearly.drop(index=yearly.idxmax()).sum()) if len(yearly) > 1 else np.nan
     recurrence = (
         float(executed["motif_id"].value_counts().max() / len(contract["outer_folds"]))
         if len(executed)
@@ -602,17 +545,13 @@ def _family_gate(
         >= int(thresholds["minimum_macro_clusters"]),
         "positive_outer_fold_rate": positive_fold_rate
         >= float(thresholds["positive_outer_fold_rate_min"]),
-        "conditional_win_rate_lift": lift
-        >= float(thresholds["conditional_win_rate_lift_min"]),
-        "median_excess_return": median
-        > float(thresholds["median_excess_return_min"]),
+        "conditional_win_rate_lift": lift >= float(thresholds["conditional_win_rate_lift_min"]),
+        "median_excess_return": median > float(thresholds["median_excess_return_min"]),
         "cluster_concentration": cluster_share
         <= float(thresholds["largest_positive_cluster_share_max"]),
-        "event_concentration": event_share
-        <= float(thresholds["largest_positive_event_share_max"]),
+        "event_concentration": event_share <= float(thresholds["largest_positive_event_share_max"]),
         "without_best_year": np.isfinite(without_best) and without_best >= 0.0,
-        "motif_recurrence": recurrence
-        >= float(thresholds["recurrence_rate_min"]),
+        "motif_recurrence": recurrence >= float(thresholds["recurrence_rate_min"]),
     }
     return {
         "event_family": family,
@@ -678,12 +617,8 @@ def run_nested_transition_discovery(
                     {
                         "fold": fold,
                         "event_family": family,
-                        "rule_id": champions[family].rule_id
-                        if family in champions
-                        else "none",
-                        "motif_id": champions[family].motif_id
-                        if family in champions
-                        else "none",
+                        "rule_id": champions[family].rule_id if family in champions else "none",
+                        "motif_id": champions[family].motif_id if family in champions else "none",
                         "events": 0,
                         "base_win_rate": np.nan,
                         "event_win_rate": np.nan,
@@ -709,12 +644,8 @@ def run_nested_transition_discovery(
                     "base_win_rate": base_win_rate,
                     "event_win_rate": event_win_rate,
                     "conditional_win_rate_lift": event_win_rate - base_win_rate,
-                    "mean_excess_return": float(
-                        family_events["target_excess_return"].mean()
-                    ),
-                    "median_excess_return": float(
-                        family_events["target_excess_return"].median()
-                    ),
+                    "mean_excess_return": float(family_events["target_excess_return"].mean()),
+                    "median_excess_return": float(family_events["target_excess_return"].median()),
                 }
             )
     candidates = pd.concat(candidate_parts, ignore_index=True)
@@ -746,10 +677,7 @@ def run_nested_transition_discovery(
     )
     folds = pd.DataFrame(fold_rows)
     gates = pd.DataFrame(
-        [
-            _family_gate(events, folds, selected, family, contract)
-            for family in contract["families"]
-        ]
+        [_family_gate(events, folds, selected, family, contract) for family in contract["families"]]
     )
     rules = enumerate_transition_rules(contract)
     diagnostics = {

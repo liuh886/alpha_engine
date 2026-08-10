@@ -15,8 +15,7 @@ import pandas as pd
 
 CNN_FEAR_GREED_START = "2021-02-01"
 CNN_FEAR_GREED_URL = (
-    "https://production.dataviz.cnn.io/index/fearandgreed/graphdata/"
-    f"{CNN_FEAR_GREED_START}"
+    f"https://production.dataviz.cnn.io/index/fearandgreed/graphdata/{CNN_FEAR_GREED_START}"
 )
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -52,9 +51,7 @@ def parse_cnn_fear_greed(payload: dict[str, Any]) -> pd.DataFrame:
             }
         )
 
-    frame = pd.DataFrame(rows).sort_values(
-        ["date", "timestamp_utc"], kind="stable"
-    )
+    frame = pd.DataFrame(rows).sort_values(["date", "timestamp_utc"], kind="stable")
     frame = frame.drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
     return frame.drop(columns=["timestamp_utc"]).set_index("date")
 

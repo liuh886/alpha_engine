@@ -48,9 +48,7 @@ def load_exploratory_factor_pool(path: str | Path | None = None) -> list[dict[st
             if expression in seen_expressions:
                 continue
             seen_expressions.add(expression)
-            factors.append(
-                {"name": name, "expression": expression, "category": category}
-            )
+            factors.append({"name": name, "expression": expression, "category": category})
     return factors
 
 

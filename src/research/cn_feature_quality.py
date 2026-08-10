@@ -8,7 +8,11 @@ blend-weight work.
 
 from __future__ import annotations
 
-from src.research.ranker_calibration_grid import RankerCalibration, RankerFeatureGroup, RankerGridCandidate
+from src.research.ranker_calibration_grid import (
+    RankerCalibration,
+    RankerFeatureGroup,
+    RankerGridCandidate,
+)
 
 
 def cn_ranker_feature_groups() -> list[RankerFeatureGroup]:

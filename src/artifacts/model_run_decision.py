@@ -5,6 +5,7 @@ bundle by ``bundle_id`` and reference only section paths and SHA-256 values
 already declared in that bundle's manifest. Keeping decisions outside the
 manifest avoids a circular identity dependency.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -57,9 +58,7 @@ def _claim_rows(decision: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     return rows
 
 
-def validate_bound_decision(
-    manifest: Mapping[str, Any], decision: Mapping[str, Any]
-) -> None:
+def validate_bound_decision(manifest: Mapping[str, Any], decision: Mapping[str, Any]) -> None:
     """Validate decision semantics and every evidence reference."""
 
     validate_manifest(manifest)
@@ -69,8 +68,7 @@ def validate_bound_decision(
     available = {
         str(section["path"]): str(section["sha256"])
         for section in sections
-        if isinstance(section, Mapping)
-        and section.get("availability_status") == "available"
+        if isinstance(section, Mapping) and section.get("availability_status") == "available"
     }
     rows = _claim_rows(decision)
     _require(bool(decision.get("gates")), "at least one decision gate is required")
@@ -91,7 +89,10 @@ def validate_bound_decision(
         _require(verdict == "blocked", "pending decision must remain blocked")
     if verdict == "supported":
         _require(status == "completed", "supported decision must be completed")
-        _require(all(value == "passed" for value in outcomes), "supported decision requires all gates passed")
+        _require(
+            all(value == "passed" for value in outcomes),
+            "supported decision requires all gates passed",
+        )
         _require(
             not any(str(row.get("outcome")) in {"failed", "blocked"} for row in rows),
             "supported decision cannot retain failed or blocked evidence",
@@ -112,9 +113,7 @@ def validate_bound_decision(
     )
 
 
-def build_decision(
-    *, manifest_path: Path, draft_path: Path, output_path: Path
-) -> dict[str, Any]:
+def build_decision(*, manifest_path: Path, draft_path: Path, output_path: Path) -> dict[str, Any]:
     manifest = _read(manifest_path)
     decision = _read(draft_path)
     validate_bound_decision(manifest, decision)

@@ -62,9 +62,7 @@ def _stateful_expansion(entry: pd.Series, exit_: pd.Series) -> pd.Series:
         raise ValueError("entry and exit indices must match")
     active = False
     values: list[bool] = []
-    for enter_now, exit_now in zip(
-        entry.fillna(False), exit_.fillna(False), strict=True
-    ):
+    for enter_now, exit_now in zip(entry.fillna(False), exit_.fillna(False), strict=True):
         if active and bool(exit_now):
             active = False
         elif not active and bool(enter_now):
@@ -195,17 +193,12 @@ def run_financed_allocation(
     byd_weight = executed["position_byd_weight"]
     etf_weight = executed["position_etf_weight"]
     cash_weight = executed["position_cash_weight"]
-    gross_return = (
-        byd_weight * common["byd_open_return"]
-        + etf_weight * common["etf_open_return"]
-    )
+    gross_return = byd_weight * common["byd_open_return"] + etf_weight * common["etf_open_return"]
     turnover = executed.diff().abs().sum(axis=1)
     turnover.iloc[0] = 0.0
     transaction_cost = turnover * cost_bps / 10_000.0
     borrowed_weight = (-cash_weight).clip(lower=0.0)
-    financing_cost = (
-        borrowed_weight * annual_financing_rate / FINANCING_DAY_COUNT
-    )
+    financing_cost = borrowed_weight * annual_financing_rate / FINANCING_DAY_COUNT
 
     daily = pd.concat([decision.add_prefix("decision_"), executed], axis=1)
     daily["common_open_eligible"] = common["common_open_eligible"]
@@ -272,18 +265,10 @@ def _window_metrics(
     output.update(
         {
             "transaction_cost_paid": float(block.loc[returns.index, "cost"].sum()),
-            "financing_cost_paid": float(
-                block.loc[returns.index, "financing_cost"].sum()
-            ),
-            "mean_borrowed_weight": float(
-                block.loc[returns.index, "borrowed_weight"].mean()
-            ),
-            "max_gross_exposure": float(
-                block.loc[returns.index, "gross_exposure"].max()
-            ),
-            "financed_sessions": float(
-                block.loc[returns.index, "borrowed_weight"].gt(0.0).sum()
-            ),
+            "financing_cost_paid": float(block.loc[returns.index, "financing_cost"].sum()),
+            "mean_borrowed_weight": float(block.loc[returns.index, "borrowed_weight"].mean()),
+            "max_gross_exposure": float(block.loc[returns.index, "gross_exposure"].max()),
+            "financed_sessions": float(block.loc[returns.index, "borrowed_weight"].gt(0.0).sum()),
         }
     )
     return output
@@ -334,18 +319,14 @@ def period_contribution(
     results: dict[str, AllocationResult],
 ) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
-    periods = {
-        key: value for key, value in WINDOWS.items() if key != "full_overlap"
-    }
+    periods = {key: value for key, value in WINDOWS.items() if key != "full_overlap"}
     for name in (PRIMARY, ROBUSTNESS, DIAGNOSTIC):
         relative_by_period: dict[str, float] = {}
         for period, (start, end) in periods.items():
             candidate_wealth = _terminal_wealth(results[name].daily, start, end)
             baseline_wealth = _terminal_wealth(results[BASELINE].daily, start, end)
             relative_by_period[period] = candidate_wealth / baseline_wealth - 1.0
-        positive_total = sum(
-            max(value, 0.0) for value in relative_by_period.values()
-        )
+        positive_total = sum(max(value, 0.0) for value in relative_by_period.values())
         for period, relative in relative_by_period.items():
             share = max(relative, 0.0) / positive_total if positive_total > 0 else 0.0
             rows.append(
@@ -422,12 +403,8 @@ def governed_result(
     mdd_delta = float(primary["max_drawdown"] - baseline_primary["max_drawdown"])
     calmar_delta = float(primary["calmar"] - baseline_primary["calmar"])
     primary_contrib = contributions.loc[contributions["model"] == PRIMARY]
-    negative_periods = int(
-        primary_contrib["relative_terminal_wealth"].lt(0.0).sum()
-    )
-    max_positive_share = float(
-        primary_contrib["positive_contribution_share"].max()
-    )
+    negative_periods = int(primary_contrib["relative_terminal_wealth"].lt(0.0).sum())
+    max_positive_share = float(primary_contrib["positive_contribution_share"].max())
     expansion_sessions = int(primary["financed_sessions"])
     completed_episodes = int(len(episodes))
 
@@ -436,32 +413,23 @@ def governed_result(
         "max_drawdown_worsening_le_3pp": mdd_delta >= -0.03,
         "calmar_decline_le_0_02": calmar_delta >= -0.02,
         "stress_total_return_above_baseline": bool(
-            float(primary_stress["total_return"])
-            > float(baseline_stress["total_return"])
+            float(primary_stress["total_return"]) > float(baseline_stress["total_return"])
         ),
         "no_more_than_one_negative_period": negative_periods <= 1,
         "positive_contribution_not_concentrated": bool(
-            max_positive_share <= 0.60
-            and primary_contrib["relative_terminal_wealth"].gt(0.0).any()
+            max_positive_share <= 0.60 and primary_contrib["relative_terminal_wealth"].gt(0.0).any()
         ),
-        "round_trips_per_year_le_3": bool(
-            float(primary["round_trips_per_year"]) <= 3.0
-        ),
+        "round_trips_per_year_le_3": bool(float(primary["round_trips_per_year"]) <= 3.0),
         "minimum_10_episodes": completed_episodes >= 10,
         "minimum_126_financed_sessions": expansion_sessions >= 126,
         "robustness_improves_primary_and_stress_return": bool(
             float(robustness["cagr"]) > float(baseline_primary["cagr"])
-            and float(robustness_stress["total_return"])
-            > float(baseline_stress["total_return"])
-            and float(robustness["max_drawdown"])
-            - float(baseline_primary["max_drawdown"])
-            >= -0.02
+            and float(robustness_stress["total_return"]) > float(baseline_stress["total_return"])
+            and float(robustness["max_drawdown"]) - float(baseline_primary["max_drawdown"]) >= -0.02
         ),
     }
     decision = (
-        "promote_byd_v1_2_trend_expansion_candidate"
-        if all(gates.values())
-        else "retain_byd_v1_1"
+        "promote_byd_v1_2_trend_expansion_candidate" if all(gates.values()) else "retain_byd_v1_1"
     )
     diagnostics = {
         "cagr_delta": cagr_delta,
@@ -474,9 +442,7 @@ def governed_result(
         "primary_total_return": float(primary["total_return"]),
         "baseline_total_return": float(baseline_primary["total_return"]),
         "primary_stress_total_return": float(primary_stress["total_return"]),
-        "baseline_stress_total_return": float(
-            baseline_stress["total_return"]
-        ),
+        "baseline_stress_total_return": float(baseline_stress["total_return"]),
         "primary_financing_cost_paid": float(primary["financing_cost_paid"]),
     }
     return GovernedResult(decision=decision, gates=gates, diagnostics=diagnostics)

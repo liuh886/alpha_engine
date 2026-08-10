@@ -236,9 +236,7 @@ def _quality_rows(
     near_constant_threshold: float,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    available = pd.to_numeric(
-        source_availability.reindex(frame.index), errors="coerce"
-    ).notna()
+    available = pd.to_numeric(source_availability.reindex(frame.index), errors="coerce").notna()
     for definition in definitions:
         values = pd.to_numeric(frame.get(definition.factor_id), errors="coerce")
         lookback = int(definition.minimum_lookback)
@@ -389,9 +387,7 @@ def build_alpha158_panel(
     field_policy = contract.get("field_policy", {})
     if not isinstance(field_policy, dict):
         raise FactorPanelError("field_policy must be a mapping")
-    source_role_path, source_role_hash, source_role = _source_role_manifest(
-        provider, role_policy
-    )
+    source_role_path, source_role_hash, source_role = _source_role_manifest(provider, role_policy)
     role_blocker = _provider_role_blocker(
         source_role,
         policy=role_policy,
@@ -455,9 +451,7 @@ def build_alpha158_panel(
 
     quality_settings = contract.get("quality", {})
     minimum_rows = int(quality_settings.get("minimum_post_warmup_rows", 20))
-    near_constant = float(
-        quality_settings.get("near_constant_unique_ratio_threshold", 0.001)
-    )
+    near_constant = float(quality_settings.get("near_constant_unique_ratio_threshold", 0.001))
     files: dict[str, str] = {}
     quality_rows: list[dict[str, Any]] = []
     ready_symbols: list[str] = []
@@ -483,16 +477,12 @@ def build_alpha158_panel(
             near_constant_threshold=near_constant,
         )
         quality_rows.extend(symbol_quality)
-        if all(
-            row["status"] in {"ready", "ready_with_formula_nan"}
-            for row in symbol_quality
-        ):
+        if all(row["status"] in {"ready", "ready_with_formula_nan"} for row in symbol_quality):
             ready_symbols.append(symbol)
         else:
             blocked_rows = [row for row in symbol_quality if row["status"] == "blocked"]
             if blocked_rows and all(
-                str(row["reasons"]).split("|")
-                == ["insufficient_post_warmup_rows"]
+                str(row["reasons"]).split("|") == ["insufficient_post_warmup_rows"]
                 for row in blocked_rows
             ):
                 not_yet_applicable_symbols.append(symbol)

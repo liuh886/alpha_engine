@@ -49,9 +49,7 @@ def _raw_overlap(symbol: str, provider_symbol: str, date: str) -> pd.DataFrame:
         raise DataFetchError(f"Sina raw overlap failed for {provider_symbol}: {exc}") from exc
 
     if out is None or len(out) != 1:
-        raise DataFetchError(
-            f"Sina raw overlap must contain exactly {date} for {provider_symbol}"
-        )
+        raise DataFetchError(f"Sina raw overlap must contain exactly {date} for {provider_symbol}")
     out["factor"] = 1.0
     return out[_BAR_COLUMNS]
 
@@ -69,11 +67,15 @@ def _closed_quote(provider_symbol: str, cutoff: str) -> tuple[pd.DataFrame, str]
         )
         response.raise_for_status()
     except Exception as exc:
-        raise DataFetchError(f"Sina close quote request failed for {provider_symbol}: {exc}") from exc
+        raise DataFetchError(
+            f"Sina close quote request failed for {provider_symbol}: {exc}"
+        ) from exc
     text = response.content.decode("gbk", errors="replace").strip()
     match = _QUOTE_PATTERN.match(text)
     if not match:
-        raise DataFetchError(f"invalid Sina close quote envelope for {provider_symbol}: {text[:120]!r}")
+        raise DataFetchError(
+            f"invalid Sina close quote envelope for {provider_symbol}: {text[:120]!r}"
+        )
     fields = match.group("payload").split(",")
     if len(fields) < 32 or not fields[0]:
         raise DataFetchError(
@@ -103,9 +105,7 @@ def _closed_quote(provider_symbol: str, cutoff: str) -> tuple[pd.DataFrame, str]
         raise DataFetchError(
             f"Sina quote has no executable completed bar for {provider_symbol}: {row}"
         )
-    if row["high"] < max(row["open"], row["close"]) or row["low"] > min(
-        row["open"], row["close"]
-    ):
+    if row["high"] < max(row["open"], row["close"]) or row["low"] > min(row["open"], row["close"]):
         raise DataFetchError(f"Sina close quote violates OHLC envelope for {provider_symbol}")
     return pd.DataFrame([row], columns=_BAR_COLUMNS), quote_time
 

@@ -89,9 +89,7 @@ class QlibUSExecutionRuntime:
     def calendar(self, start: str, end: str) -> pd.DatetimeIndex:
         from qlib.data import D
 
-        return pd.DatetimeIndex(
-            D.calendar(start_time=start, end_time=end, freq="day")
-        )
+        return pd.DatetimeIndex(D.calendar(start_time=start, end_time=end, freq="day"))
 
     def features(
         self,

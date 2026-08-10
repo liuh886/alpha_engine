@@ -291,9 +291,7 @@ def _insert_runs(
             curve = _read_json(curve_path)
             points = curve.get("points")
             if not isinstance(points, list):
-                raise RepositoryMetadataCacheError(
-                    f"equity curve points are invalid: {run_id}"
-                )
+                raise RepositoryMetadataCacheError(f"equity curve points are invalid: {run_id}")
             for point in points:
                 if not isinstance(point, dict):
                     continue
@@ -338,11 +336,7 @@ def _insert_runs(
                     str(evidence["run"].get("generated_at") or "")[:10],
                     '["json"]',
                     json.dumps(
-                        {
-                            "json": str(
-                                attribution_path.relative_to(run_root.parents[3]).as_posix()
-                            )
-                        }
+                        {"json": str(attribution_path.relative_to(run_root.parents[3]).as_posix())}
                     ),
                     json.dumps({"source": "repository_research_store"}),
                     now,

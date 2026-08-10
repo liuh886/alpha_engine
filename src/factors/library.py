@@ -209,9 +209,7 @@ def load_factor_library(path: str | Path) -> FactorLibrary:
     if not isinstance(payload, dict):
         raise ValueError("factor library YAML must be a mapping")
     if str(payload.get("schema_version", "")) != FACTOR_LIBRARY_SCHEMA_VERSION:
-        raise ValueError(
-            f"factor library requires schema_version={FACTOR_LIBRARY_SCHEMA_VERSION}"
-        )
+        raise ValueError(f"factor library requires schema_version={FACTOR_LIBRARY_SCHEMA_VERSION}")
 
     catalog_cfg = payload.get("catalog")
     defaults = payload.get("defaults")
@@ -251,16 +249,12 @@ def load_factor_library(path: str | Path) -> FactorLibrary:
         expression_ids[canonical_expression] = factor_id
         definition = FactorDefinition.create(
             factor_id=factor_id,
-            factor_version=str(
-                raw.get("factor_version", defaults.get("factor_version", "1.0"))
-            ),
+            factor_version=str(raw.get("factor_version", defaults.get("factor_version", "1.0"))),
             display_name=str(raw.get("display_name", factor_id)),
             namespace=str(raw.get("namespace", namespace)),
             information_family=str(raw.get("information_family", "")).strip(),
             expression=expression,
-            source_name=str(
-                raw.get("source_name", defaults.get("source_name", ""))
-            ).strip(),
+            source_name=str(raw.get("source_name", defaults.get("source_name", ""))).strip(),
             source_version=str(
                 raw.get("source_version", defaults.get("source_version", ""))
             ).strip(),
@@ -286,15 +280,11 @@ def load_factor_library(path: str | Path) -> FactorLibrary:
             output_frequency=str(
                 raw.get("output_frequency", defaults.get("output_frequency", "day"))
             ),
-            output_dtype=str(
-                raw.get("output_dtype", defaults.get("output_dtype", "float64"))
-            ),
+            output_dtype=str(raw.get("output_dtype", defaults.get("output_dtype", "float64"))),
             missing_value_policy=str(
                 raw.get(
                     "missing_value_policy",
-                    defaults.get(
-                        "missing_value_policy", "preserve_nan_after_warmup"
-                    ),
+                    defaults.get("missing_value_policy", "preserve_nan_after_warmup"),
                 )
             ),
             status=str(raw.get("status", defaults.get("status", "unvalidated_formula"))),
@@ -310,9 +300,7 @@ def load_factor_library(path: str | Path) -> FactorLibrary:
         factor_ids = _required_tuple(raw.get("factor_ids"), "factor_ids")
         unknown = [factor_id for factor_id in factor_ids if factor_id not in definitions_by_id]
         if unknown:
-            raise ValueError(
-                f"factor group {group_name!r} references unknown factors: {unknown}"
-            )
+            raise ValueError(f"factor group {group_name!r} references unknown factors: {unknown}")
         groups[group_name] = FactorGroup(
             name=group_name,
             description=str(raw.get("description", "")),

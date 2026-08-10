@@ -131,9 +131,7 @@ def _normalise_columns(frame: pd.DataFrame) -> pd.DataFrame:
 
 def _normalise_symbols(frame: pd.DataFrame, aliases: Mapping[str, str]) -> pd.DataFrame:
     output = frame.copy()
-    output["symbol"] = (
-        output["symbol"].astype("string").astype(str).str.strip().str.upper()
-    )
+    output["symbol"] = output["symbol"].astype("string").astype(str).str.strip().str.upper()
     output["symbol"] = output["symbol"].replace(dict(aliases))
     return output
 
@@ -225,9 +223,9 @@ def _load_bars(
         raise ValueError("bar CSV contains non-positive prices")
     if (frame["volume"] < 0).any():
         raise ValueError("bar CSV contains negative volume")
-    invalid_ohlc = (
-        frame["high"] < frame[["open", "low", "close"]].max(axis=1)
-    ) | (frame["low"] > frame[["open", "high", "close"]].min(axis=1))
+    invalid_ohlc = (frame["high"] < frame[["open", "low", "close"]].max(axis=1)) | (
+        frame["low"] > frame[["open", "high", "close"]].min(axis=1)
+    )
     if invalid_ohlc.any():
         raise ValueError("bar CSV violates OHLC internal consistency")
 
@@ -238,20 +236,14 @@ def _load_bars(
     frame["adjustment_convention"] = (
         frame["adjustment_convention"].astype(str).str.strip().str.lower()
     )
-    frame["source_bar_provider"] = (
-        frame["source_bar_provider"].astype(str).str.strip().str.lower()
-    )
+    frame["source_bar_provider"] = frame["source_bar_provider"].astype(str).str.strip().str.lower()
     if (frame["source_bar_provider"] == "").any():
         raise ValueError("bar CSV contains blank source_bar_provider")
 
     stock_rows = frame[frame["symbol"].isin(candidates)]
     reference_rows = frame[frame["symbol"].isin(references)]
-    expected_stock = str(
-        contract["source_roles"]["stock_bars"]["adjustment_convention"]
-    )
-    expected_reference = str(
-        contract["source_roles"]["reference_bars"]["adjustment_convention"]
-    )
+    expected_stock = str(contract["source_roles"]["stock_bars"]["adjustment_convention"])
+    expected_reference = str(contract["source_roles"]["reference_bars"]["adjustment_convention"])
     if set(stock_rows["adjustment_convention"].unique()) != {expected_stock}:
         raise ValueError("candidate bars must use one declared adjustment convention")
     if set(reference_rows["adjustment_convention"].unique()) != {expected_reference}:
@@ -388,9 +380,7 @@ def build_cn_pool_provider(
     contract, pool, research, resolved_contract, pool_path, research_path = (
         load_cn_provider_contract(contract_path)
     )
-    reserved_start = pd.Timestamp(
-        contract["reserved_evidence"]["independent_reserved_start"]
-    )
+    reserved_start = pd.Timestamp(contract["reserved_evidence"]["independent_reserved_start"])
     bars, excluded_bars = _load_bars(
         bars_csv,
         contract=contract,
@@ -424,15 +414,9 @@ def build_cn_pool_provider(
     required = candidates + references
     first_eligible_dates: dict[str, str | None] = {}
     for symbol in required:
-        eligible = status[
-            (status["symbol"] == symbol)
-            & status["listed"]
-            & ~status["delisted"]
-        ]
+        eligible = status[(status["symbol"] == symbol) & status["listed"] & ~status["delisted"]]
         first_eligible_dates[symbol] = (
-            None
-            if eligible.empty
-            else pd.Timestamp(eligible["date"].min()).date().isoformat()
+            None if eligible.empty else pd.Timestamp(eligible["date"].min()).date().isoformat()
         )
 
     quality = {

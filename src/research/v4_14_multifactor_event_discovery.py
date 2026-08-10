@@ -40,8 +40,10 @@ class EventRule:
 
     @property
     def rule_id(self) -> str:
-        return self.event_family + "__" + "__".join(
-            condition.identifier for condition in self.conditions
+        return (
+            self.event_family
+            + "__"
+            + "__".join(condition.identifier for condition in self.conditions)
         )
 
     @property
@@ -96,9 +98,7 @@ def _bollinger(close: pd.Series, window: int = 20, width: float = 2.0) -> pd.Dat
     bandwidth = scale / mean.where(mean.abs() > 1e-12)
     bandwidth_mean = bandwidth.rolling(63, min_periods=63).mean()
     bandwidth_std = bandwidth.rolling(63, min_periods=63).std(ddof=0)
-    bandwidth_z = (bandwidth - bandwidth_mean) / bandwidth_std.where(
-        bandwidth_std.abs() > 1e-12
-    )
+    bandwidth_z = (bandwidth - bandwidth_mean) / bandwidth_std.where(bandwidth_std.abs() > 1e-12)
     return pd.DataFrame(
         {
             "mid": mean,
@@ -149,9 +149,7 @@ def _common_signal_frame(
     bars: Mapping[str, pd.DataFrame],
 ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     symbols = ("QQQ", "TQQQ", "VOO", "BIL", "^VIX", "^VXN")
-    normalized = {
-        symbol: _normalise_bars(bars[symbol], symbol) for symbol in symbols
-    }
+    normalized = {symbol: _normalise_bars(bars[symbol], symbol) for symbol in symbols}
     index = normalized["QQQ"].index
     for symbol in symbols[1:]:
         index = index.intersection(normalized[symbol].index)
@@ -202,18 +200,12 @@ def build_multifactor_feature_frame(
     qqq_voo_ratio_ma20 = qqq_voo_ratio.rolling(20, min_periods=20).mean()
     qqq_daily_return = qqq.pct_change(fill_method=None)
 
-    frame["vol_max_percentile_252"] = pd.concat(
-        [vix_pct, vxn_pct], axis=1
-    ).max(axis=1)
-    frame["vol_max_return_5d"] = pd.concat(
-        [vix.pct_change(5), vxn.pct_change(5)], axis=1
-    ).max(axis=1)
-    frame["vol_min_retreat_20d"] = pd.concat(
-        [vix_retreat, vxn_retreat], axis=1
-    ).min(axis=1)
-    frame["vxn_vix_ratio_z63"] = (ratio - ratio_mean) / ratio_std.where(
-        ratio_std.abs() > 1e-12
+    frame["vol_max_percentile_252"] = pd.concat([vix_pct, vxn_pct], axis=1).max(axis=1)
+    frame["vol_max_return_5d"] = pd.concat([vix.pct_change(5), vxn.pct_change(5)], axis=1).max(
+        axis=1
     )
+    frame["vol_min_retreat_20d"] = pd.concat([vix_retreat, vxn_retreat], axis=1).min(axis=1)
+    frame["vxn_vix_ratio_z63"] = (ratio - ratio_mean) / ratio_std.where(ratio_std.abs() > 1e-12)
     frame["vxn_minus_vix_percentile"] = vxn_pct - vix_pct
     frame["vxn_minus_vix_return_5d"] = vxn.pct_change(5) - vix.pct_change(5)
 
@@ -225,24 +217,18 @@ def build_multifactor_feature_frame(
     frame["qqq_distance_ma200"] = qqq / qqq_ma200 - 1.0
     frame["qqq_ma20_slope_5d"] = qqq_ma20 / qqq_ma20.shift(5) - 1.0
     frame["qqq_drawdown_63d"] = qqq / qqq.rolling(63, min_periods=63).max() - 1.0
-    frame["qqq_realized_volatility_20d"] = (
-        qqq_daily_return.rolling(20, min_periods=20).std(ddof=0) * np.sqrt(252.0)
-    )
+    frame["qqq_realized_volatility_20d"] = qqq_daily_return.rolling(20, min_periods=20).std(
+        ddof=0
+    ) * np.sqrt(252.0)
 
     frame["qqq_minus_voo_return_5d"] = qqq.pct_change(5) - voo.pct_change(5)
     frame["qqq_minus_voo_return_20d"] = qqq.pct_change(20) - voo.pct_change(20)
-    frame["qqq_voo_rs_distance_ma20"] = (
-        qqq_voo_ratio / qqq_voo_ratio_ma20 - 1.0
-    )
-    frame["qqq_voo_trend_gap"] = qqq.gt(qqq_ma50).astype(float) - voo.gt(
-        voo_ma50
-    ).astype(float)
+    frame["qqq_voo_rs_distance_ma20"] = qqq_voo_ratio / qqq_voo_ratio_ma20 - 1.0
+    frame["qqq_voo_trend_gap"] = qqq.gt(qqq_ma50).astype(float) - voo.gt(voo_ma50).astype(float)
     frame["qqq_voo_bollinger_gap"] = qqq_boll["pct_b"] - voo_boll["pct_b"]
     frame["voo_distance_ma200"] = voo / voo_ma200 - 1.0
 
-    stress_now = frame["vol_max_percentile_252"].ge(0.80) | frame[
-        "qqq_drawdown_63d"
-    ].le(-0.08)
+    stress_now = frame["vol_max_percentile_252"].ge(0.80) | frame["qqq_drawdown_63d"].le(-0.08)
     frame["recent_stress"] = (
         stress_now.astype(float).rolling(20, min_periods=1).max().fillna(0.0).gt(0.0)
     )
@@ -255,24 +241,12 @@ def build_multifactor_feature_frame(
             frame[f"forward_{symbol}_{horizon}d"] = _forward_total_return(
                 frame[f"{symbol}_next_open_return"], horizon
             )
-    frame["forward_qqq_mae_20d"] = _forward_mae(
-        frame["qqq_next_open_return"], 20
-    )
-    frame["forward_tqqq_mae_20d"] = _forward_mae(
-        frame["tqqq_next_open_return"], 20
-    )
-    frame["target_defense"] = frame["forward_bil_10d"] - frame[
-        "forward_qqq_10d"
-    ]
-    frame["target_repair"] = frame["forward_qqq_10d"] - frame[
-        "forward_bil_10d"
-    ]
-    frame["target_tech_acceleration"] = frame["forward_tqqq_10d"] - frame[
-        "forward_qqq_10d"
-    ]
-    frame["target_broad_rotation"] = frame["forward_voo_10d"] - frame[
-        "forward_qqq_10d"
-    ]
+    frame["forward_qqq_mae_20d"] = _forward_mae(frame["qqq_next_open_return"], 20)
+    frame["forward_tqqq_mae_20d"] = _forward_mae(frame["tqqq_next_open_return"], 20)
+    frame["target_defense"] = frame["forward_bil_10d"] - frame["forward_qqq_10d"]
+    frame["target_repair"] = frame["forward_qqq_10d"] - frame["forward_bil_10d"]
+    frame["target_tech_acceleration"] = frame["forward_tqqq_10d"] - frame["forward_qqq_10d"]
+    frame["target_broad_rotation"] = frame["forward_voo_10d"] - frame["forward_qqq_10d"]
     frame.index.name = "signal_close_date"
     return frame
 
@@ -299,18 +273,12 @@ def enumerate_rules(contract: Mapping[str, Any]) -> list[EventRule]:
             _condition_from_dict("volatility", raw)
             for raw in specification["volatility_conditions"]
         ]
-        price = [
-            _condition_from_dict("price", raw)
-            for raw in specification["price_conditions"]
-        ]
+        price = [_condition_from_dict("price", raw) for raw in specification["price_conditions"]]
         cross = [
-            _condition_from_dict("cross_index", raw)
-            for raw in specification["cross_conditions"]
+            _condition_from_dict("cross_index", raw) for raw in specification["cross_conditions"]
         ]
         for volatility_condition, price_condition in product(volatility, price):
-            rules.append(
-                EventRule(event_family, (volatility_condition, price_condition))
-            )
+            rules.append(EventRule(event_family, (volatility_condition, price_condition)))
             for cross_condition in cross:
                 rules.append(
                     EventRule(
@@ -444,9 +412,9 @@ def _one_sided_mean_pvalue(event: pd.Series, baseline: pd.Series) -> float:
     baseline_values = pd.to_numeric(baseline, errors="coerce").dropna()
     if len(event_values) < 2 or len(baseline_values) < 2:
         return 1.0
-    variance = event_values.var(ddof=1) / len(event_values) + baseline_values.var(
-        ddof=1
-    ) / len(baseline_values)
+    variance = event_values.var(ddof=1) / len(event_values) + baseline_values.var(ddof=1) / len(
+        baseline_values
+    )
     if not np.isfinite(variance) or variance <= 1e-18:
         return 0.0 if event_values.mean() > baseline_values.mean() else 1.0
     z_score = float((event_values.mean() - baseline_values.mean()) / sqrt(variance))
@@ -482,9 +450,7 @@ def evaluate_rule_development(
     eligibility = _eligibility_mask(frame, str(specification["eligibility"]))
     baseline = frame.loc[eligibility, target_column].dropna()
     events = events_for_rule(frame, rule, contract, fold=fold, sample="development")
-    event_values = (
-        events["target_excess_return"] if not events.empty else pd.Series(dtype=float)
-    )
+    event_values = events["target_excess_return"] if not events.empty else pd.Series(dtype=float)
     raw_mask = rule_mask(frame, rule, contract)
     active_fraction = float(raw_mask.mean()) if len(raw_mask) else 0.0
     base_win_rate = float(baseline.gt(0.0).mean()) if len(baseline) else np.nan
@@ -493,13 +459,8 @@ def evaluate_rule_development(
     mean_excess = float(event_values.mean()) if len(event_values) else np.nan
     median_excess = float(event_values.median()) if len(event_values) else np.nan
     score = (
-        mean_excess
-        + median_excess
-        + 0.02 * lift
-        - 0.005 * active_fraction
-        if np.isfinite(mean_excess)
-        and np.isfinite(median_excess)
-        and np.isfinite(lift)
+        mean_excess + median_excess + 0.02 * lift - 0.005 * active_fraction
+        if np.isfinite(mean_excess) and np.isfinite(median_excess) and np.isfinite(lift)
         else -np.inf
     )
     return {
@@ -576,25 +537,21 @@ def _family_gate(
         int(contract["rule_grammar"]["macro_cluster_calendar_days"]),
     )
     positive_fold_rate = (
-        float(family_folds["mean_excess_return"].gt(0.0).mean())
-        if len(family_folds)
-        else 0.0
+        float(family_folds["mean_excess_return"].gt(0.0).mean()) if len(family_folds) else 0.0
     )
     conditional_lift = float(family_folds["conditional_win_rate_lift"].mean())
     median_excess = float(family_events["target_excess_return"].median())
     cluster_positive = (
-        clustered.groupby("macro_cluster_id")["target_excess_return"]
-        .sum()
-        .clip(lower=0.0)
+        clustered.groupby("macro_cluster_id")["target_excess_return"].sum().clip(lower=0.0)
     )
     largest_cluster_share = (
         float(cluster_positive.max() / cluster_positive.sum())
         if float(cluster_positive.sum()) > 0.0
         else 1.0
     )
-    yearly = clustered.groupby(
-        pd.to_datetime(clustered["signal_close_date"]).dt.year
-    )["target_excess_return"].sum()
+    yearly = clustered.groupby(pd.to_datetime(clustered["signal_close_date"]).dt.year)[
+        "target_excess_return"
+    ].sum()
     if len(yearly) > 1:
         best_year = yearly.idxmax()
         without_best_year = float(yearly.drop(index=best_year).sum())
@@ -612,14 +569,11 @@ def _family_gate(
         >= float(thresholds["positive_outer_fold_rate_min"]),
         "conditional_win_rate_lift": conditional_lift
         >= float(thresholds["conditional_win_rate_lift_min"]),
-        "median_excess_return": median_excess
-        > float(thresholds["median_excess_return_min"]),
+        "median_excess_return": median_excess > float(thresholds["median_excess_return_min"]),
         "cluster_concentration": largest_cluster_share
         <= float(thresholds["largest_positive_cluster_share_max"]),
-        "without_best_year": np.isfinite(without_best_year)
-        and without_best_year >= 0.0,
-        "rule_recurrence": recurrence
-        >= float(thresholds["recurrence_rate_min"]),
+        "without_best_year": np.isfinite(without_best_year) and without_best_year >= 0.0,
+        "rule_recurrence": recurrence >= float(thresholds["recurrence_rate_min"]),
     }
     return {
         "event_family": family,
@@ -650,9 +604,7 @@ def run_nested_event_discovery(
     fold_rows: list[dict[str, Any]] = []
     selected_count = int(contract["rule_grammar"]["selected_rules_per_family"])
     minimum_events = int(contract["rule_grammar"]["minimum_development_events"])
-    maximum_active = float(
-        contract["rule_grammar"]["maximum_active_session_fraction"]
-    )
+    maximum_active = float(contract["rule_grammar"]["maximum_active_session_fraction"])
     fdr_alpha = float(contract["rule_grammar"]["fdr_alpha"])
 
     for fold_specification in contract["outer_folds"]:
@@ -671,17 +623,14 @@ def run_nested_event_discovery(
             family_rules = [rule for rule in rules if rule.event_family == family]
             metrics = pd.DataFrame(
                 [
-                    evaluate_rule_development(
-                        development, rule, contract, fold=fold
-                    )
+                    evaluate_rule_development(development, rule, contract, fold=fold)
                     for rule in family_rules
                 ]
             )
             metrics["qvalue"] = _benjamini_hochberg(metrics["pvalue"])
-            metrics["meets_frequency_bounds"] = (
-                metrics["events"].ge(minimum_events)
-                & metrics["active_session_fraction"].le(maximum_active)
-            )
+            metrics["meets_frequency_bounds"] = metrics["events"].ge(minimum_events) & metrics[
+                "active_session_fraction"
+            ].le(maximum_active)
             metrics["fdr_pass"] = metrics["qvalue"].le(fdr_alpha)
             metrics = metrics.sort_values(
                 ["meets_frequency_bounds", "fdr_pass", "score", "rule_id"],
@@ -690,9 +639,7 @@ def run_nested_event_discovery(
             metrics["development_rank"] = np.arange(1, len(metrics) + 1)
             candidate_rows.extend(metrics.to_dict(orient="records"))
 
-            eligible = metrics.loc[metrics["meets_frequency_bounds"]].head(
-                selected_count
-            )
+            eligible = metrics.loc[metrics["meets_frequency_bounds"]].head(selected_count)
             champion_rule: EventRule | None = None
             for rank, row in enumerate(eligible.itertuples(index=False), start=1):
                 executed = bool(rank == 1 and row.fdr_pass)
@@ -737,9 +684,7 @@ def run_nested_event_discovery(
             )
             specification = contract["families"][family]
             target_column = f"target_{family}"
-            eligibility = _eligibility_mask(
-                outer, str(specification["eligibility"])
-            )
+            eligibility = _eligibility_mask(outer, str(specification["eligibility"]))
             baseline = outer.loc[eligibility, target_column].dropna()
             base_win_rate = float(baseline.gt(0.0).mean()) if len(baseline) else np.nan
             if events.empty:

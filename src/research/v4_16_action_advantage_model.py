@@ -112,26 +112,15 @@ def build_action_advantage_frame(
     baseline_10d = _forward_total_return(baseline_return, 10)
     baseline_5d = _forward_total_return(baseline_return, 5)
     acceleration_daily = (
-        0.25 * frame["qqq_next_open_return"]
-        + 0.75 * frame["tqqq_next_open_return"]
+        0.25 * frame["qqq_next_open_return"] + 0.75 * frame["tqqq_next_open_return"]
     )
     acceleration_5d = _forward_total_return(acceleration_daily, 5)
     label_cost = float(contract["boundaries"]["label_round_trip_cost_bps"]) / 10_000.0
-    frame["cash_defense_advantage_10d"] = (
-        frame["forward_bil_10d"] - baseline_10d - label_cost
-    )
-    frame["broad_equity_advantage_10d"] = (
-        frame["forward_voo_10d"] - baseline_10d - label_cost
-    )
-    frame["nasdaq_core_advantage_10d"] = (
-        frame["forward_qqq_10d"] - baseline_10d - label_cost
-    )
-    frame["nasdaq_acceleration_advantage_5d"] = (
-        acceleration_5d - baseline_5d - label_cost
-    )
-    target_names = tuple(
-        str(contract["actions"][action]["target"]) for action in ACTION_KEYS
-    )
+    frame["cash_defense_advantage_10d"] = frame["forward_bil_10d"] - baseline_10d - label_cost
+    frame["broad_equity_advantage_10d"] = frame["forward_voo_10d"] - baseline_10d - label_cost
+    frame["nasdaq_core_advantage_10d"] = frame["forward_qqq_10d"] - baseline_10d - label_cost
+    frame["nasdaq_acceleration_advantage_5d"] = acceleration_5d - baseline_5d - label_cost
+    target_names = tuple(str(contract["actions"][action]["target"]) for action in ACTION_KEYS)
     frame["global_training_sample"] = (
         (np.arange(len(frame)) - int(contract["training"]["global_anchor_position"]))
         % int(contract["training"]["sample_every_sessions"])
@@ -170,9 +159,7 @@ def _coefficient_frame(
                     "fold": fold,
                     "target": target,
                     "feature": feature,
-                    "coefficient": float(
-                        coefficient[target_position, feature_position]
-                    ),
+                    "coefficient": float(coefficient[target_position, feature_position]),
                 }
             )
     return pd.DataFrame(rows)
@@ -218,9 +205,7 @@ def _predict_fold(
     output["fold"] = fold
     output["training_start"] = training.index.min()
     output["training_end"] = training.index.max()
-    output["training_samples"] = int(
-        training.dropna(subset=list(target_names)).shape[0]
-    )
+    output["training_samples"] = int(training.dropna(subset=list(target_names)).shape[0])
     output["qqq_distance_ma20"] = test["qqq_distance_ma20"]
     output["qqq_distance_ma200"] = test["qqq_distance_ma200"]
     output["voo_distance_ma200"] = test["voo_distance_ma200"]
@@ -277,14 +262,11 @@ def select_advantage_events(
     )
     qualifies = (
         top_score.ge(float(contract["training"]["advantage_threshold"]))
-        & (top_score - second_score).ge(
-            float(contract["training"]["action_margin_threshold"])
-        )
+        & (top_score - second_score).ge(float(contract["training"]["action_margin_threshold"]))
         & np.isfinite(top_score)
     )
-    previous_same_qualified = (
-        qualifies.shift(1, fill_value=False)
-        & top_action.eq(top_action.shift(1))
+    previous_same_qualified = qualifies.shift(1, fill_value=False) & top_action.eq(
+        top_action.shift(1)
     )
     fresh = qualifies & ~previous_same_qualified
     next_allowed = 0
@@ -308,16 +290,14 @@ def select_advantage_events(
                 "fold": str(predictions.iloc[location].get("fold", sample)),
                 "event_family": action,
                 "action": str(contract["actions"][action]["action"]),
-                "event_id": f"{sample}_{action}_{len(rows)+1:03d}",
+                "event_id": f"{sample}_{action}_{len(rows) + 1:03d}",
                 "signal_close_date": index[location],
                 "execution_date": index[location + 1],
                 "event_end_date": index[location + horizon],
                 "holding_sessions": horizon,
                 "predicted_advantage": float(top_score.iloc[location]),
                 "second_best_advantage": float(second_score.iloc[location]),
-                "predicted_margin": float(
-                    top_score.iloc[location] - second_score.iloc[location]
-                ),
+                "predicted_margin": float(top_score.iloc[location] - second_score.iloc[location]),
                 "realized_advantage": float(realized),
                 "win": bool(realized > 0.0),
             }
@@ -389,33 +369,23 @@ def _model_metrics(
         int(contract["training"]["macro_cluster_calendar_days"]),
     )
     positive_cluster = (
-        clustered.groupby("macro_cluster_id")["realized_advantage"]
-        .sum()
-        .clip(lower=0.0)
+        clustered.groupby("macro_cluster_id")["realized_advantage"].sum().clip(lower=0.0)
         if not clustered.empty
         else pd.Series(dtype=float)
     )
     total_positive = float(positive_cluster.sum())
-    cluster_share = (
-        float(positive_cluster.max() / total_positive)
-        if total_positive > 0.0
-        else 1.0
-    )
+    cluster_share = float(positive_cluster.max() / total_positive) if total_positive > 0.0 else 1.0
     pooled_unconditional = float(
         pd.concat(
-            [
-                predictions[str(contract["actions"][action]["target"])]
-                for action in ACTION_KEYS
-            ],
+            [predictions[str(contract["actions"][action]["target"])] for action in ACTION_KEYS],
             ignore_index=True,
-        ).dropna().gt(0.0).mean()
+        )
+        .dropna()
+        .gt(0.0)
+        .mean()
     )
-    triggered_precision = (
-        float(events["win"].mean()) if not events.empty else np.nan
-    )
-    median_triggered = (
-        float(events["realized_advantage"].median()) if not events.empty else np.nan
-    )
+    triggered_precision = float(events["win"].mean()) if not events.empty else np.nan
+    median_triggered = float(events["realized_advantage"].median()) if not events.empty else np.nan
     yearly = (
         events.groupby(pd.to_datetime(events["signal_close_date"]).dt.year)[
             "realized_advantage"
@@ -427,15 +397,10 @@ def _model_metrics(
         float(yearly.drop(index=yearly.idxmax()).sum()) if len(yearly) > 1 else np.nan
     )
     thresholds = contract["validation"]["model_gate"]
-    passing_ic = int(
-        action_metrics["spearman_ic"].ge(float(thresholds["action_ic_min"])).sum()
-    )
-    positive_spreads = int(
-        action_metrics["top_bottom_quintile_spread"].gt(0.0).sum()
-    )
+    passing_ic = int(action_metrics["spearman_ic"].ge(float(thresholds["action_ic_min"])).sum())
+    positive_spreads = int(action_metrics["top_bottom_quintile_spread"].gt(0.0).sum())
     checks = {
-        "actions_passing_ic": passing_ic
-        >= int(thresholds["actions_passing_ic_min"]),
+        "actions_passing_ic": passing_ic >= int(thresholds["actions_passing_ic_min"]),
         "actions_positive_spread": positive_spreads
         >= int(thresholds["actions_positive_quintile_spread_min"]),
         "triggered_precision_lift": np.isfinite(triggered_precision)
@@ -448,10 +413,8 @@ def _model_metrics(
         "cluster_concentration": cluster_share
         <= float(thresholds["largest_positive_cluster_share_max"]),
         "coefficient_stability": np.isfinite(cosine_median)
-        and cosine_median
-        >= float(thresholds["coefficient_cosine_similarity_median_min"]),
-        "without_best_year": np.isfinite(without_best_year)
-        and without_best_year >= 0.0,
+        and cosine_median >= float(thresholds["coefficient_cosine_similarity_median_min"]),
+        "without_best_year": np.isfinite(without_best_year) and without_best_year >= 0.0,
     }
     gate = {
         "checks": checks,
@@ -485,9 +448,7 @@ def run_action_advantage_model(
     prediction_parts: list[pd.DataFrame] = []
     coefficient_parts: list[pd.DataFrame] = []
     for fold in contract["outer_folds"]:
-        prediction, coefficient = _predict_fold(
-            frame, feature_names, target_names, contract, fold
-        )
+        prediction, coefficient = _predict_fold(frame, feature_names, target_names, contract, fold)
         prediction_parts.append(prediction)
         coefficient_parts.append(coefficient)
     oof = pd.concat(prediction_parts).sort_index()
@@ -513,9 +474,7 @@ def run_action_advantage_model(
     training = training.loc[training["global_training_sample"].astype(bool)]
     actual_model = _fit_model(training, feature_names, target_names, contract)
     actual = frame.loc[actual_start:].copy()
-    prediction = np.asarray(
-        actual_model.predict(actual[list(feature_names)]), dtype=float
-    )
+    prediction = np.asarray(actual_model.predict(actual[list(feature_names)]), dtype=float)
     actual_output = actual[list(target_names)].copy()
     for position, action in enumerate(ACTION_KEYS):
         actual_output[f"predicted_{action}"] = prediction[:, position]
@@ -524,9 +483,7 @@ def run_action_advantage_model(
     actual_output["qqq_distance_ma200"] = actual["qqq_distance_ma200"]
     actual_output["voo_distance_ma200"] = actual["voo_distance_ma200"]
     actual_output["vol_max_percentile_252"] = actual["vol_max_percentile_252"]
-    actual_events = select_advantage_events(
-        actual_output, contract, sample="actual_2024_plus"
-    )
+    actual_events = select_advantage_events(actual_output, contract, sample="actual_2024_plus")
     actual_coefficients = _coefficient_frame(
         actual_model,
         fold="actual_2024_plus",
@@ -557,20 +514,12 @@ def _portfolio_gate(
     threshold = contract["validation"]["portfolio_shadow_gate"]
     baseline = results["frozen_v4_2"]
     policy = results["full_event_policy"]
-    cagr_delta_pp = (
-        float(policy.metrics["cagr"]) - float(baseline.metrics["cagr"])
-    ) * 100.0
+    cagr_delta_pp = (float(policy.metrics["cagr"]) - float(baseline.metrics["cagr"])) * 100.0
     drawdown_worsening_pp = max(
         0.0,
-        (
-            float(baseline.metrics["max_drawdown"])
-            - float(policy.metrics["max_drawdown"])
-        )
-        * 100.0,
+        (float(baseline.metrics["max_drawdown"]) - float(policy.metrics["max_drawdown"])) * 100.0,
     )
-    calmar_delta = float(policy.metrics["calmar"]) - float(
-        baseline.metrics["calmar"]
-    )
+    calmar_delta = float(policy.metrics["calmar"]) - float(baseline.metrics["calmar"])
     aligned = pd.concat(
         [
             policy.daily["net_return"].rename("policy"),
@@ -583,9 +532,7 @@ def _portfolio_gate(
         relative_years[str(int(year))] = float(
             (1.0 + group["policy"]).prod() - (1.0 + group["baseline"]).prod()
         )
-    positive_year_rate = float(
-        np.mean([value > 0.0 for value in relative_years.values()])
-    )
+    positive_year_rate = float(np.mean([value > 0.0 for value in relative_years.values()]))
     year_series = pd.Series(relative_years, dtype=float)
     without_best_year = (
         float(year_series.drop(index=year_series.idxmax()).sum())
@@ -595,14 +542,10 @@ def _portfolio_gate(
     positive = attribution.loc[attribution["relative_return"].gt(0.0)].copy()
     total_positive = float(positive["relative_return"].sum()) if len(positive) else 0.0
     event_share = (
-        float(positive["relative_return"].max() / total_positive)
-        if total_positive > 0.0
-        else 1.0
+        float(positive["relative_return"].max() / total_positive) if total_positive > 0.0 else 1.0
     )
     family_positive = positive.groupby("event_family")["relative_return"].sum()
-    family_share = (
-        float(family_positive.max() / total_positive) if total_positive > 0.0 else 1.0
-    )
+    family_share = float(family_positive.max() / total_positive) if total_positive > 0.0 else 1.0
     event_cluster = _assign_macro_clusters(
         events,
         int(contract["training"]["macro_cluster_calendar_days"]),
@@ -617,9 +560,7 @@ def _portfolio_gate(
         else np.nan
     )
     turnover_increase = (
-        float(policy.metrics["turnover_units"])
-        / float(baseline.metrics["turnover_units"])
-        - 1.0
+        float(policy.metrics["turnover_units"]) / float(baseline.metrics["turnover_units"]) - 1.0
     )
     ablation_wins: dict[str, int] = {}
     for action in ACTION_KEYS:
@@ -630,34 +571,23 @@ def _portfolio_gate(
                     float(policy.metrics["cagr"]) > float(comparator.metrics["cagr"]),
                     float(policy.metrics["max_drawdown"])
                     > float(comparator.metrics["max_drawdown"]),
-                    float(policy.metrics["sortino"])
-                    > float(comparator.metrics["sortino"]),
-                    float(policy.metrics["calmar"])
-                    > float(comparator.metrics["calmar"]),
+                    float(policy.metrics["sortino"]) > float(comparator.metrics["sortino"]),
+                    float(policy.metrics["calmar"]) > float(comparator.metrics["calmar"]),
                 ]
             )
         )
     checks = {
-        "cagr": cagr_delta_pp
-        >= float(threshold["cagr_improvement_vs_v4_2_pp_min"]),
-        "max_drawdown": drawdown_worsening_pp
-        <= float(threshold["max_drawdown_worsening_pp_max"]),
-        "calmar": calmar_delta
-        >= float(threshold["calmar_improvement_vs_v4_2_min"]),
-        "sortino": float(policy.metrics["sortino"])
-        >= float(baseline.metrics["sortino"]),
-        "positive_years": positive_year_rate
-        >= float(threshold["positive_calendar_year_rate_min"]),
+        "cagr": cagr_delta_pp >= float(threshold["cagr_improvement_vs_v4_2_pp_min"]),
+        "max_drawdown": drawdown_worsening_pp <= float(threshold["max_drawdown_worsening_pp_max"]),
+        "calmar": calmar_delta >= float(threshold["calmar_improvement_vs_v4_2_min"]),
+        "sortino": float(policy.metrics["sortino"]) >= float(baseline.metrics["sortino"]),
+        "positive_years": positive_year_rate >= float(threshold["positive_calendar_year_rate_min"]),
         "family_concentration": family_share
         <= float(threshold["largest_family_positive_share_max"]),
-        "event_concentration": event_share
-        <= float(threshold["largest_event_positive_share_max"]),
-        "turnover": turnover_increase
-        <= float(threshold["turnover_increase_max"]),
-        "without_best_year": np.isfinite(without_best_year)
-        and without_best_year >= 0.0,
-        "without_best_cluster": np.isfinite(without_best_cluster)
-        and without_best_cluster >= 0.0,
+        "event_concentration": event_share <= float(threshold["largest_event_positive_share_max"]),
+        "turnover": turnover_increase <= float(threshold["turnover_increase_max"]),
+        "without_best_year": np.isfinite(without_best_year) and without_best_year >= 0.0,
+        "without_best_cluster": np.isfinite(without_best_cluster) and without_best_cluster >= 0.0,
         **{f"beats_{action}_ablation": wins >= 2 for action, wins in ablation_wins.items()},
     }
     return {
@@ -692,14 +622,11 @@ def run_action_advantage_policy(
     oof_start = pd.Timestamp(contract["outer_folds"][0]["test_start"])
     oof_end = pd.Timestamp(contract["outer_folds"][-1]["test_end"])
     oof_index = proxy_baseline_daily.index[
-        (proxy_baseline_daily.index >= oof_start)
-        & (proxy_baseline_daily.index <= oof_end)
+        (proxy_baseline_daily.index >= oof_start) & (proxy_baseline_daily.index <= oof_end)
     ]
     oof_index = oof_index.intersection(frame.index).sort_values()
     baseline_oof = _baseline_exact(proxy_baseline_daily, oof_index, contract)
-    oof_trace = _event_action_trace(
-        oof_index, model_result.oof_events, contract
-    )
+    oof_trace = _event_action_trace(oof_index, model_result.oof_events, contract)
     voo_return = frame["voo_next_open_return"].reindex(oof_index)
     cash_return = frame["bil_next_open_return"].reindex(oof_index)
     oof_results: dict[str, StrategyResult] = {
@@ -754,9 +681,7 @@ def run_action_advantage_policy(
         name="static_QQQ_TQQQ_25_75",
         weights={"QQQ": 0.25, "TQQQ": 0.75},
     )
-    oof_attribution = _event_attribution(
-        oof_results["full_event_policy"], baseline_oof
-    )
+    oof_attribution = _event_attribution(oof_results["full_event_policy"], baseline_oof)
     portfolio_gate = _portfolio_gate(
         oof_results, oof_attribution, model_result.oof_events, contract
     )
@@ -768,27 +693,17 @@ def run_action_advantage_policy(
         pd.Timestamp(contract["data"]["actual_product_start"]),
         actual_baseline_daily.index.min(),
     )
-    actual_index = actual_baseline_daily.index[
-        actual_baseline_daily.index >= actual_start
-    ]
+    actual_index = actual_baseline_daily.index[actual_baseline_daily.index >= actual_start]
     actual_index = (
         actual_index.intersection(qqqi.index)
         .intersection(sgov.index)
         .intersection(voo.index)
         .sort_values()
     )
-    baseline_actual = _baseline_exact(
-        actual_baseline_daily, actual_index, contract
-    )
-    actual_trace = _event_action_trace(
-        actual_index, model_result.actual_events, contract
-    )
-    actual_voo = (
-        voo["open"].shift(-1).div(voo["open"]).sub(1.0).reindex(actual_index)
-    )
-    actual_cash = (
-        sgov["open"].shift(-1).div(sgov["open"]).sub(1.0).reindex(actual_index)
-    )
+    baseline_actual = _baseline_exact(actual_baseline_daily, actual_index, contract)
+    actual_trace = _event_action_trace(actual_index, model_result.actual_events, contract)
+    actual_voo = voo["open"].shift(-1).div(voo["open"]).sub(1.0).reindex(actual_index)
+    actual_cash = sgov["open"].shift(-1).div(sgov["open"]).sub(1.0).reindex(actual_index)
     actual_results: dict[str, StrategyResult] = {
         "frozen_v4_2": baseline_actual,
         "full_event_policy": _run_policy(
@@ -817,9 +732,7 @@ def run_action_advantage_policy(
             name=f"ablation_{action}",
             proxy_mode=False,
         )
-    actual_attribution = _event_attribution(
-        actual_results["full_event_policy"], baseline_actual
-    )
+    actual_attribution = _event_attribution(actual_results["full_event_policy"], baseline_actual)
     oof_headline = pd.DataFrame(
         [dict(result.metrics) for result in oof_results.values()]
     ).set_index("strategy")
@@ -827,26 +740,16 @@ def run_action_advantage_policy(
         [dict(result.metrics) for result in actual_results.values()]
     ).set_index("strategy")
     threshold = float(
-        contract["validation"]["portfolio_shadow_gate"][
-            "actual_max_drawdown_worsening_pp_max"
-        ]
+        contract["validation"]["portfolio_shadow_gate"]["actual_max_drawdown_worsening_pp_max"]
     )
     actual_base = actual_results["frozen_v4_2"]
     actual_policy = actual_results["full_event_policy"]
-    actual_cagr_delta = float(
-        actual_policy.metrics["cagr"] - actual_base.metrics["cagr"]
-    )
-    actual_calmar_delta = float(
-        actual_policy.metrics["calmar"] - actual_base.metrics["calmar"]
-    )
+    actual_cagr_delta = float(actual_policy.metrics["cagr"] - actual_base.metrics["cagr"])
+    actual_calmar_delta = float(actual_policy.metrics["calmar"] - actual_base.metrics["calmar"])
     actual_drawdown_worsening_pp = max(
         0.0,
         float(
-            (
-                actual_base.metrics["max_drawdown"]
-                - actual_policy.metrics["max_drawdown"]
-            )
-            * 100.0
+            (actual_base.metrics["max_drawdown"] - actual_policy.metrics["max_drawdown"]) * 100.0
         ),
     )
     contradiction_checks = {

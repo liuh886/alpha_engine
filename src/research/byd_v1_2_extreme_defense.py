@@ -57,9 +57,7 @@ def _stateful_extreme(entry: pd.Series, exit_: pd.Series) -> pd.Series:
         raise ValueError("entry and exit indices must match")
     active = False
     values: list[bool] = []
-    for enter_now, exit_now in zip(
-        entry.fillna(False), exit_.fillna(False), strict=True
-    ):
+    for enter_now, exit_now in zip(entry.fillna(False), exit_.fillna(False), strict=True):
         if active and bool(exit_now):
             active = False
         elif not active and bool(enter_now):
@@ -197,9 +195,7 @@ def period_contribution(
     results: dict[str, AllocationResult],
 ) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
-    periods = {
-        key: value for key, value in WINDOWS.items() if key != "full_overlap"
-    }
+    periods = {key: value for key, value in WINDOWS.items() if key != "full_overlap"}
     for name in (PRIMARY, ROBUSTNESS, CASH_DIAGNOSTIC):
         relatives: dict[str, float] = {}
         for period, (start, end) in periods.items():
@@ -228,9 +224,7 @@ def episode_attribution(
 ) -> pd.DataFrame:
     daily = primary.daily.copy()
     benchmark = baseline.daily.reindex(daily.index)
-    active = daily["position_byd_weight"].lt(
-        benchmark["position_byd_weight"] - 1e-12
-    )
+    active = daily["position_byd_weight"].lt(benchmark["position_byd_weight"] - 1e-12)
     starts = active & ~active.shift(1, fill_value=False)
     episode_id = starts.cumsum().where(active)
     rows: list[dict[str, Any]] = []
@@ -280,17 +274,14 @@ def governed_result(
 
     cagr_delta = float(primary20["cagr"] - baseline20["cagr"])
     calmar_delta = float(primary20["calmar"] - baseline20["calmar"])
-    drawdown_improvement = float(
-        primary20["max_drawdown"] - baseline20["max_drawdown"]
-    )
+    drawdown_improvement = float(primary20["max_drawdown"] - baseline20["max_drawdown"])
     primary_contrib = contributions.loc[contributions["model"] == PRIMARY]
     negative_periods = int((primary_contrib["relative_terminal_wealth"] < 0.0).sum())
     max_positive_share = float(primary_contrib["positive_contribution_share"].max())
 
     gates = {
         "cagr_or_calmar_improvement": bool(
-            cagr_delta >= 0.005
-            or (calmar_delta >= 0.05 and cagr_delta >= -0.0025)
+            cagr_delta >= 0.005 or (calmar_delta >= 0.05 and cagr_delta >= -0.0025)
         ),
         "max_drawdown_improves_3pp": bool(drawdown_improvement >= 0.03),
         "stress_40bps_not_below_baseline": bool(
@@ -300,9 +291,7 @@ def governed_result(
         "positive_contribution_not_concentrated": bool(
             max_positive_share <= 0.60 and primary_contrib["relative_terminal_wealth"].gt(0.0).any()
         ),
-        "round_trips_per_year_le_2": bool(
-            float(primary20["round_trips_per_year"]) <= 2.0
-        ),
+        "round_trips_per_year_le_2": bool(float(primary20["round_trips_per_year"]) <= 2.0),
         "robustness_same_direction": bool(
             float(robust20["max_drawdown"]) > float(baseline20["max_drawdown"])
             and float(robust20["calmar"]) > float(baseline20["calmar"])

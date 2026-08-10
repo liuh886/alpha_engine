@@ -91,9 +91,7 @@ class ResearchParadigmSpec:
         return spec
 
     @classmethod
-    def from_dict(
-        cls, data: dict[str, Any], spec_path: str = ""
-    ) -> "ResearchParadigmSpec":
+    def from_dict(cls, data: dict[str, Any], spec_path: str = "") -> "ResearchParadigmSpec":
         return cls(
             schema_version=str(data.get("schema_version", "")),
             experiment_id=str(data.get("experiment_id", "")),
@@ -132,9 +130,7 @@ def _resolve_relative_path(spec: ResearchParadigmSpec, source: str) -> Path:
     for candidate in candidates:
         if candidate.is_file():
             return candidate.resolve()
-    raise FileNotFoundError(
-        f"Source '{source}' not found relative to spec dir ({spec_dir}) or cwd"
-    )
+    raise FileNotFoundError(f"Source '{source}' not found relative to spec dir ({spec_dir}) or cwd")
 
 
 def _require_mapping(value: Any, name: str) -> dict[str, Any]:
@@ -168,9 +164,7 @@ def _validate_calibrations(calibrations: list[Any]) -> None:
         item = _require_mapping(raw, f"candidate_grid.ranker.calibrations[{index}]")
         missing = [key for key in required if key not in item]
         if missing:
-            raise ValueError(
-                f"candidate_grid.ranker.calibrations[{index}] missing {missing}"
-            )
+            raise ValueError(f"candidate_grid.ranker.calibrations[{index}] missing {missing}")
         values = (
             int(item["n_gain_bins"]),
             int(item["num_boost_round"]),
@@ -232,9 +226,10 @@ def validate_research_paradigm_spec(spec: ResearchParadigmSpec) -> None:
     if not factor_source:
         raise ValueError("factor_library.source must be non-empty")
     _resolve_relative_path(spec, factor_source)
-    groups = [str(item) for item in _require_non_empty_list(
-        factor_library.get("groups"), "factor_library.groups"
-    )]
+    groups = [
+        str(item)
+        for item in _require_non_empty_list(factor_library.get("groups"), "factor_library.groups")
+    ]
     if len(groups) != len(set(groups)):
         raise ValueError("factor_library.groups must be unique")
 
@@ -247,9 +242,7 @@ def validate_research_paradigm_spec(spec: ResearchParadigmSpec) -> None:
     _validate_calibrations(calibrations)
     model_families = ranker.get("model_families", ["lgbm"])
     if not isinstance(model_families, list) or not model_families:
-        raise ValueError(
-            "candidate_grid.ranker.model_families must be a non-empty list"
-        )
+        raise ValueError("candidate_grid.ranker.model_families must be a non-empty list")
     for mf in model_families:
         if str(mf) not in VALID_MODEL_FAMILIES:
             raise ValueError(
@@ -296,12 +289,8 @@ def validate_research_paradigm_spec(spec: ResearchParadigmSpec) -> None:
     if int(walk_forward.get("train_embargo_sessions", 0)) != 10:
         raise ValueError("walk_forward.train_embargo_sessions must be 10")
     partial_policy = str(walk_forward.get("partial_window_policy", ""))
-    raw_partial_minimum = walk_forward.get(
-        "min_partial_window_eligible_sessions"
-    )
-    partial_minimum = (
-        None if raw_partial_minimum is None else int(raw_partial_minimum)
-    )
+    raw_partial_minimum = walk_forward.get("min_partial_window_eligible_sessions")
+    partial_minimum = None if raw_partial_minimum is None else int(raw_partial_minimum)
     validate_partial_window_contract(
         policy=partial_policy,
         min_partial_window_eligible_sessions=partial_minimum,
@@ -310,29 +299,21 @@ def validate_research_paradigm_spec(spec: ResearchParadigmSpec) -> None:
     if partial_policy == COMPLETE_WINDOWS_ONLY and (
         "min_partial_window_eligible_sessions" in walk_forward
     ):
-        raise ValueError(
-            "complete_windows_only must not declare a partial-window session minimum"
-        )
+        raise ValueError("complete_windows_only must not declare a partial-window session minimum")
 
     evaluation = _require_mapping(spec.evaluation, "evaluation")
     if str(evaluation.get("benchmark_mode", "")) != "reference_only":
         raise ValueError("evaluation.benchmark_mode must be 'reference_only'")
     metrics = [
         str(item)
-        for item in _require_non_empty_list(
-            evaluation.get("metrics"), "evaluation.metrics"
-        )
+        for item in _require_non_empty_list(evaluation.get("metrics"), "evaluation.metrics")
     ]
     if tuple(metrics) != REQUIRED_METRICS:
-        raise ValueError(
-            "evaluation.metrics must exactly match the canonical ordered metric set"
-        )
+        raise ValueError("evaluation.metrics must exactly match the canonical ordered metric set")
     if str(evaluation.get("gate_profile", "")) != GATE_PROFILE:
         raise ValueError(f"evaluation.gate_profile must be '{GATE_PROFILE}'")
     if "gates" in evaluation:
-        raise ValueError(
-            "evaluation.gates must not duplicate thresholds; use gate_profile"
-        )
+        raise ValueError("evaluation.gates must not duplicate thresholds; use gate_profile")
 
     outputs = _require_mapping(spec.outputs, "outputs")
     if str(outputs.get("artifact_profile", "")) != ARTIFACT_PROFILE:
@@ -367,9 +348,7 @@ def _selected_factor_groups(
 ) -> tuple[Path, dict[str, FactorGroup], list[FactorGroup]]:
     library_path = _resolve_relative_path(spec, str(spec.factor_library["source"]))
     library = load_factor_library(library_path)
-    selected = select_factor_groups(
-        library, [str(name) for name in spec.factor_library["groups"]]
-    )
+    selected = select_factor_groups(library, [str(name) for name in spec.factor_library["groups"]])
     return library_path, library, selected
 
 

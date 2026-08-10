@@ -82,8 +82,7 @@ def overlap_event_concordance(
         }
     )
     merged["direction_match"] = (
-        np.sign(merged["actual_marginal_return"])
-        == np.sign(merged["proxy_marginal_return"])
+        np.sign(merged["actual_marginal_return"]) == np.sign(merged["proxy_marginal_return"])
     ) & merged["proxy_marginal_return"].notna()
     return merged
 
@@ -102,9 +101,7 @@ def _long_sample_support_gate(
     actual_count = int(len(actual_events))
     proxy_count = int(len(proxy_events))
     matched = int(concordance["proxy_marginal_return"].notna().sum())
-    sign_concordance = (
-        float(concordance["direction_match"].mean()) if len(concordance) else 0.0
-    )
+    sign_concordance = float(concordance["direction_match"].mean()) if len(concordance) else 0.0
     actual_start = pd.Timestamp(actual_diagnostics["common_sample_start"])
     proxy_start = pd.Timestamp(proxy_diagnostics["common_sample_start"])
 
@@ -151,34 +148,20 @@ def _long_sample_support_gate(
         ),
         "full_cagr_delta_50_vs_25": (
             metrics["long_sample_full_cagr_delta_50_vs_25_pp"] >= 0.0
-            if bool(
-                thresholds[
-                    "require_long_sample_50_vs_25_full_cagr_delta_nonnegative"
-                ]
-            )
+            if bool(thresholds["require_long_sample_50_vs_25_full_cagr_delta_nonnegative"])
             else True
         ),
         "early_cagr_delta_50_vs_25": (
             metrics["long_sample_early_cagr_delta_50_vs_25_pp"] >= 0.0
-            if bool(
-                thresholds[
-                    "require_long_sample_50_vs_25_early_cagr_delta_nonnegative"
-                ]
-            )
+            if bool(thresholds["require_long_sample_50_vs_25_early_cagr_delta_nonnegative"])
             else True
         ),
         "late_cagr_delta_50_vs_25": (
             metrics["long_sample_late_cagr_delta_50_vs_25_pp"] >= 0.0
-            if bool(
-                thresholds[
-                    "require_long_sample_50_vs_25_late_cagr_delta_nonnegative"
-                ]
-            )
+            if bool(thresholds["require_long_sample_50_vs_25_late_cagr_delta_nonnegative"])
             else True
         ),
-        "marginal_event_positive_rate": metrics[
-            "long_sample_marginal_event_positive_rate"
-        ]
+        "marginal_event_positive_rate": metrics["long_sample_marginal_event_positive_rate"]
         >= float(thresholds["minimum_long_sample_marginal_event_positive_rate"]),
         "event_concentration": metrics["long_sample_largest_event_benefit_share"]
         <= float(thresholds["maximum_long_sample_largest_event_share"]),
@@ -250,8 +233,11 @@ def run_qqq_proxy_long_history_comparison(
         concordance,
         proxy_contract,
     )
-    if not proxy_results[BOLD_KEY].daily["precursor_active"].astype(bool).equals(
-        proxy_results[PRIOR_KEY].daily["precursor_active"].astype(bool)
+    if (
+        not proxy_results[BOLD_KEY]
+        .daily["precursor_active"]
+        .astype(bool)
+        .equals(proxy_results[PRIOR_KEY].daily["precursor_active"].astype(bool))
     ):
         raise AssertionError("QQQ proxy changed 25% versus 50% precursor dates")
 

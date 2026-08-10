@@ -18,19 +18,11 @@ import pandas as pd
 
 CANONICAL_SCHEMA = "byd_canonical_adjusted_ohlcv_v1"
 CANONICAL_EXTENDED_SCHEMA = "byd_canonical_adjusted_ohlcv_v2"
-CANONICAL_ADJUSTED_SHA256 = (
-    "0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960"
-)
-CANONICAL_MANIFEST_SHA256 = (
-    "06202b594b036b0c815e4ffb46e9f3d14ba647d699aad0fd927f1665142a363e"
-)
-CANONICAL_SESSION_AUDIT_SHA256 = (
-    "9b20d587abe8621fcfaf1abd0ebbec68eed993092d6b97d520e573605a410247"
-)
+CANONICAL_ADJUSTED_SHA256 = "0cde8d3f1b6a94406532c6e8e04fabdc20d7830d0a58034aa489e87f94b77960"
+CANONICAL_MANIFEST_SHA256 = "06202b594b036b0c815e4ffb46e9f3d14ba647d699aad0fd927f1665142a363e"
+CANONICAL_SESSION_AUDIT_SHA256 = "9b20d587abe8621fcfaf1abd0ebbec68eed993092d6b97d520e573605a410247"
 CANONICAL_CUTOFF = "2026-08-03"
-OPEN_LABEL_POLICY = (
-    "entry_and_exit_open_must_be_independently_confirmed_and_not_quarantined"
-)
+OPEN_LABEL_POLICY = "entry_and_exit_open_must_be_independently_confirmed_and_not_quarantined"
 
 SHORTLIST_FACTORS = (
     "drawdown_252",
@@ -135,9 +127,7 @@ def manifest_payload_sha256(payload: Mapping[str, Any]) -> str:
 
 def _is_sha256(value: Any) -> bool:
     candidate = str(value)
-    return len(candidate) == 64 and all(
-        character in "0123456789abcdef" for character in candidate
-    )
+    return len(candidate) == 64 and all(character in "0123456789abcdef" for character in candidate)
 
 
 def _validate_extended_manifest(
@@ -192,9 +182,7 @@ def _validate_extended_manifest(
     prefix = adjusted.loc[adjusted["date"] <= pd.Timestamp(CANONICAL_CUTOFF)]
     if dataframe_sha256(prefix) != CANONICAL_ADJUSTED_SHA256:
         raise RuntimeError("extended canonical history changed before the v1 cutoff")
-    session_prefix = sessions.loc[
-        sessions["date"] <= pd.Timestamp(CANONICAL_CUTOFF)
-    ]
+    session_prefix = sessions.loc[sessions["date"] <= pd.Timestamp(CANONICAL_CUTOFF)]
     if dataframe_sha256(session_prefix) != CANONICAL_SESSION_AUDIT_SHA256:
         raise RuntimeError("extended canonical session history changed before the v1 cutoff")
     observations = manifest.get("observation_sha256")
@@ -208,18 +196,14 @@ def _validate_extended_manifest(
         or not _is_sha256(manifest.get("source_shadow_manifest_sha256"))
     ):
         raise RuntimeError("extended canonical observation evidence is inconsistent")
-    appended_dates = set(
-        adjusted.loc[adjusted["date"] > pd.Timestamp(CANONICAL_CUTOFF), "date"]
-    )
+    appended_dates = set(adjusted.loc[adjusted["date"] > pd.Timestamp(CANONICAL_CUTOFF), "date"])
     if appended_dates != set(observation_dates):
         raise RuntimeError("extended canonical rows do not match observation evidence")
     appended_session_dates = set(
         sessions.loc[sessions["date"] > pd.Timestamp(CANONICAL_CUTOFF), "date"]
     )
     if appended_session_dates != set(observation_dates):
-        raise RuntimeError(
-            "extended canonical session rows do not match observation evidence"
-        )
+        raise RuntimeError("extended canonical session rows do not match observation evidence")
 
 
 def load_canonical_snapshot(root: str | Path) -> CanonicalResearchData:
@@ -247,8 +231,7 @@ def load_canonical_snapshot(root: str | Path) -> CanonicalResearchData:
         for key, expected in exact.items():
             if manifest.get(key) != expected:
                 raise RuntimeError(
-                    f"canonical contract mismatch for {key}: "
-                    f"{manifest.get(key)!r} != {expected!r}"
+                    f"canonical contract mismatch for {key}: {manifest.get(key)!r} != {expected!r}"
                 )
         if dataframe_sha256(adjusted) != CANONICAL_ADJUSTED_SHA256:
             raise RuntimeError("adjusted_ohlcv.csv does not match the sealed canonical SHA")
@@ -303,11 +286,7 @@ def build_research_dataset(
         raise ValueError(f"adjusted bars missing columns: {missing}")
     frame = adjusted_bars.copy(deep=True)
     frame["date"] = pd.to_datetime(frame["date"], errors="raise").dt.normalize()
-    frame = (
-        frame.sort_values("date")
-        .drop_duplicates("date", keep="last")
-        .set_index("date")
-    )
+    frame = frame.sort_values("date").drop_duplicates("date", keep="last").set_index("date")
     for column in ("open", "high", "low", "close", "volume"):
         frame[column] = pd.to_numeric(frame[column], errors="raise").astype(float)
 
@@ -346,19 +325,11 @@ def build_research_dataset(
     frame["distance_from_low_20"] = close / low20 - 1.0
     frame["distance_from_low_60"] = close / low60 - 1.0
     frame["distance_from_low_120"] = close / low120 - 1.0
-    frame["range_position_252"] = (
-        (close - low252) / (high252 - low252).replace(0.0, np.nan)
-    )
-    frame["drawdown120_x_rebound20"] = (
-        -frame["drawdown_120"] * frame["distance_from_low_20"]
-    )
-    frame["drawdown252_x_rebound60"] = (
-        -frame["drawdown_252"] * frame["distance_from_low_60"]
-    )
+    frame["range_position_252"] = (close - low252) / (high252 - low252).replace(0.0, np.nan)
+    frame["drawdown120_x_rebound20"] = -frame["drawdown_120"] * frame["distance_from_low_20"]
+    frame["drawdown252_x_rebound60"] = -frame["drawdown_252"] * frame["distance_from_low_60"]
     frame["trend_slope_120"] = _rolling_slope(close, 120)
-    frame["open_return_autocorr_20"] = open_return.rolling(20).corr(
-        open_return.shift(1)
-    )
+    frame["open_return_autocorr_20"] = open_return.rolling(20).corr(open_return.shift(1))
     frame["intraday_range"] = (high - low) / close
 
     frame["sma_60"] = close.rolling(60).mean()
@@ -368,10 +339,7 @@ def build_research_dataset(
     frame["mom_60"] = close.pct_change(60)
     frame["realized_vol_60"] = daily_return.rolling(60).std()
     frame["historical_vol_median"] = (
-        frame["realized_vol_60"]
-        .rolling(756, min_periods=252)
-        .median()
-        .shift(1)
+        frame["realized_vol_60"].rolling(756, min_periods=252).median().shift(1)
     )
 
     bull = close.gt(frame["sma_200"]) & frame["sma_60"].gt(frame["sma_200"])
@@ -388,19 +356,12 @@ def build_research_dataset(
     )
 
     for horizon in (5, 10, 20):
-        entry_eligible = (
-            frame["open_research_eligible"].shift(-1).fillna(False).astype(bool)
-        )
+        entry_eligible = frame["open_research_eligible"].shift(-1).fillna(False).astype(bool)
         exit_eligible = (
-            frame["open_research_eligible"]
-            .shift(-(horizon + 1))
-            .fillna(False)
-            .astype(bool)
+            frame["open_research_eligible"].shift(-(horizon + 1)).fillna(False).astype(bool)
         )
         label = open_.shift(-(horizon + 1)) / open_.shift(-1) - 1.0
-        frame[f"forward_open_return_{horizon}"] = label.where(
-            entry_eligible & exit_eligible
-        )
+        frame[f"forward_open_return_{horizon}"] = label.where(entry_eligible & exit_eligible)
     return frame
 
 
@@ -425,8 +386,7 @@ def cluster_shortlist_factors(
             neighbours = {
                 factor
                 for factor in unseen
-                if factor != current
-                and abs(float(correlation.loc[current, factor])) >= threshold
+                if factor != current and abs(float(correlation.loc[current, factor])) >= threshold
             }
             new = neighbours - component
             component.update(new)
@@ -443,14 +403,10 @@ def cluster_shortlist_factors(
                 }
             )
     clusters = pd.DataFrame(rows).sort_values(["cluster_id", "factor"])
-    representative_counts = clusters.groupby("cluster_id")[
-        "is_model_representative"
-    ].sum()
+    representative_counts = clusters.groupby("cluster_id")["is_model_representative"].sum()
     if (representative_counts > 2).any():
         bad = representative_counts[representative_counts > 2].to_dict()
-        raise RuntimeError(
-            f"too many model representatives in correlation cluster: {bad}"
-        )
+        raise RuntimeError(f"too many model representatives in correlation cluster: {bad}")
     return clusters.reset_index(drop=True), correlation
 
 
@@ -462,10 +418,7 @@ def conditional_ic_table(dataset: pd.DataFrame) -> pd.DataFrame:
             f"market_{state}": dataset["market_state"].eq(state)
             for state in ("bull", "bear", "sideways")
         },
-        **{
-            f"vol_{state}": dataset["vol_state"].eq(state)
-            for state in ("high", "low")
-        },
+        **{f"vol_{state}": dataset["vol_state"].eq(state) for state in ("high", "low")},
     }
     for factor in MODEL_FACTORS:
         orientation = FACTOR_ORIENTATION[factor]
@@ -510,31 +463,24 @@ def _stateful_binary(entry: pd.Series, exit_: pd.Series) -> pd.Series:
 
 def build_v1_2_decision_position(dataset: pd.DataFrame) -> pd.Series:
     rules = MODEL_RULES
-    trend_expansion = (
-        dataset["drawdown_252"] > rules["trend_expansion_drawdown_floor"]
-    ) & dataset["mom_120"].gt(0.0)
+    trend_expansion = (dataset["drawdown_252"] > rules["trend_expansion_drawdown_floor"]) & dataset[
+        "mom_120"
+    ].gt(0.0)
     recovery_confirmed = (
-        dataset["drawdown_252"] <= rules["recovery_drawdown_ceiling"]
-    ) & (
-        dataset["distance_from_low_20"]
-        >= rules["recovery_distance_from_low_20_floor"]
-    ) & (
-        dataset["momentum_accel_20_60"].gt(0.0)
-        | dataset["open_return_autocorr_20"].gt(0.0)
+        (dataset["drawdown_252"] <= rules["recovery_drawdown_ceiling"])
+        & (dataset["distance_from_low_20"] >= rules["recovery_distance_from_low_20_floor"])
+        & (dataset["momentum_accel_20_60"].gt(0.0) | dataset["open_return_autocorr_20"].gt(0.0))
     )
     deterioration = (
-        dataset["drawdown_252"] <= rules["recovery_drawdown_ceiling"]
-    ) & (
-        dataset["distance_from_low_20"]
-        < rules["deterioration_distance_from_low_20_ceiling"]
-    ) & dataset["momentum_accel_20_60"].le(0.0)
+        (dataset["drawdown_252"] <= rules["recovery_drawdown_ceiling"])
+        & (dataset["distance_from_low_20"] < rules["deterioration_distance_from_low_20_ceiling"])
+        & dataset["momentum_accel_20_60"].le(0.0)
+    )
     tactical = _stateful_binary(
         trend_expansion | recovery_confirmed,
         deterioration,
     )
-    position = rules["core_position"] + (
-        rules["full_position"] - rules["core_position"]
-    ) * tactical
+    position = rules["core_position"] + (rules["full_position"] - rules["core_position"]) * tactical
     position.name = "decision_position"
     allowed = {rules["core_position"], rules["full_position"]}
     if not set(position.dropna().unique()).issubset(allowed):
@@ -563,9 +509,7 @@ def execute_next_eligible_open(
     current = initial_position
     executed: list[float] = []
     prior_decision = initial_position
-    for i, (decision, eligible) in enumerate(
-        zip(decision_position, open_eligible, strict=True)
-    ):
+    for i, (decision, eligible) in enumerate(zip(decision_position, open_eligible, strict=True)):
         if i > 0:
             pending = prior_decision
         if bool(eligible):
@@ -609,10 +553,9 @@ def run_strategy(
         index=dataset.index,
     )
     daily["net_return"] = daily["gross_return"] - daily["cost"]
-    daily["clean_open_interval"] = (
-        dataset["open_research_eligible"]
-        & dataset["open_research_eligible"].shift(-1).fillna(False).astype(bool)
-    )
+    daily["clean_open_interval"] = dataset["open_research_eligible"] & dataset[
+        "open_research_eligible"
+    ].shift(-1).fillna(False).astype(bool)
     daily = daily.iloc[:-1].copy()
     changes = daily["position_at_open"].ne(daily["position_at_open"].shift(1))
     trades = daily.loc[
@@ -666,14 +609,8 @@ def _metrics(daily: pd.DataFrame) -> dict[str, float]:
         if returns.std(ddof=0) > 0.0
         else 0.0
     )
-    downside = float(
-        np.sqrt(returns.clip(upper=0.0).pow(2).mean()) * np.sqrt(252.0)
-    )
-    sortino = (
-        float(returns.mean() * 252.0 / downside)
-        if downside > 0.0
-        else 0.0
-    )
+    downside = float(np.sqrt(returns.clip(upper=0.0).pow(2).mean()) * np.sqrt(252.0))
+    sortino = float(returns.mean() * 252.0 / downside) if downside > 0.0 else 0.0
     drawdown = wealth / wealth.cummax() - 1.0
     max_drawdown = float(drawdown.min())
     calmar = float(cagr / abs(max_drawdown)) if max_drawdown < 0.0 else 0.0
@@ -689,12 +626,8 @@ def _metrics(daily: pd.DataFrame) -> dict[str, float]:
         "max_drawdown": max_drawdown,
         "calmar": calmar,
         "turnover_units": turnover_units,
-        "round_trips_per_year": (
-            turnover_units / (2.0 * years) if years > 0 else 0.0
-        ),
-        "exposure": float(
-            daily.loc[returns.index, "position_at_open"].mean()
-        ),
+        "round_trips_per_year": (turnover_units / (2.0 * years) if years > 0 else 0.0),
+        "exposure": float(daily.loc[returns.index, "position_at_open"].mean()),
     }
 
 
@@ -760,12 +693,8 @@ def evaluate_v1_2(
     )
     clusters, correlation = cluster_shortlist_factors(dataset)
     conditional_ic = conditional_ic_table(dataset)
-    primary_cost = float(
-        contract["costs"]["primary_bps_per_turnover_unit"]
-    )
-    stress_cost = float(
-        contract["costs"]["stress_bps_per_turnover_unit"]
-    )
+    primary_cost = float(contract["costs"]["primary_bps_per_turnover_unit"])
+    stress_cost = float(contract["costs"]["stress_bps_per_turnover_unit"])
 
     decision_v12 = build_v1_2_decision_position(dataset)
     decision_v10 = build_v1_0_decision_position(dataset)
@@ -813,29 +742,17 @@ def evaluate_v1_2(
     buy_full = full["buy_hold"]
     v10_full = full["v1_0"]
     gates = {
-        "full_cagr_retention_95pct": (
-            v12_full["cagr"] >= 0.95 * buy_full["cagr"]
-        ),
+        "full_cagr_retention_95pct": (v12_full["cagr"] >= 0.95 * buy_full["cagr"]),
         "full_drawdown_improvement_3pp": (
             v12_full["max_drawdown"] - buy_full["max_drawdown"] >= 0.03
         ),
-        "full_calmar_not_below_buy_hold": (
-            v12_full["calmar"] >= buy_full["calmar"]
-        ),
-        "validation_total_return_positive": (
-            validation["v1_2"]["total_return"] > 0.0
-        ),
+        "full_calmar_not_below_buy_hold": (v12_full["calmar"] >= buy_full["calmar"]),
+        "validation_total_return_positive": (validation["v1_2"]["total_return"] > 0.0),
         "validation_drawdown_improvement_3pp": (
-            validation["v1_2"]["max_drawdown"]
-            - validation["buy_hold"]["max_drawdown"]
-            >= 0.03
+            validation["v1_2"]["max_drawdown"] - validation["buy_hold"]["max_drawdown"] >= 0.03
         ),
-        "stress_40_total_return_positive": (
-            full["v1_2_stress"]["total_return"] > 0.0
-        ),
-        "round_trip_cap": (
-            v12_full["round_trips_per_year"] <= 2.0
-        ),
+        "stress_40_total_return_positive": (full["v1_2_stress"]["total_return"] > 0.0),
+        "round_trip_cap": (v12_full["round_trips_per_year"] <= 2.0),
         "episode_concentration_cap": concentration <= 0.50,
         "not_dominated_by_v1_0": (
             v12_full["cagr"] >= v10_full["cagr"] - 0.005
@@ -860,15 +777,9 @@ def evaluate_v1_2(
                 "target_position": float(decision_v12.loc[CANONICAL_CUTOFF]),
                 "drawdown_252": float(last_row["drawdown_252"]),
                 "mom_120": float(last_row["mom_120"]),
-                "distance_from_low_20": float(
-                    last_row["distance_from_low_20"]
-                ),
-                "momentum_accel_20_60": float(
-                    last_row["momentum_accel_20_60"]
-                ),
-                "open_return_autocorr_20": float(
-                    last_row["open_return_autocorr_20"]
-                ),
+                "distance_from_low_20": float(last_row["distance_from_low_20"]),
+                "momentum_accel_20_60": float(last_row["momentum_accel_20_60"]),
+                "open_return_autocorr_20": float(last_row["open_return_autocorr_20"]),
                 "status": "awaiting_first_post_cutoff_eligible_open",
                 "realized_return": np.nan,
             }

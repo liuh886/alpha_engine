@@ -36,9 +36,7 @@ def _stateful(entry: pd.Series, exit_: pd.Series) -> pd.Series:
         raise ValueError("entry and exit indices must match")
     active = False
     states: list[float] = []
-    for enter_now, exit_now in zip(
-        entry.fillna(False), exit_.fillna(False), strict=True
-    ):
+    for enter_now, exit_now in zip(entry.fillna(False), exit_.fillna(False), strict=True):
         if active and bool(exit_now):
             active = False
         elif not active and bool(enter_now):
@@ -68,29 +66,21 @@ def build_candidate_positions(features: pd.DataFrame) -> dict[str, pd.Series]:
 
     close = features["close"]
     regime_mom_120 = _stateful(
-        entry=close.gt(features["sma_120"])
-        & features["momentum_20"].gt(0.0),
-        exit_=close.lt(features["sma_120"])
-        & features["momentum_60"].lt(0.0),
+        entry=close.gt(features["sma_120"]) & features["momentum_20"].gt(0.0),
+        exit_=close.lt(features["sma_120"]) & features["momentum_60"].lt(0.0),
     )
     regime_60_200 = _stateful(
-        entry=close.gt(features["sma_200"])
-        & features["sma_60"].gt(features["sma_200"]),
-        exit_=close.lt(features["sma_120"])
-        & features["sma_60"].lt(features["sma_200"]),
+        entry=close.gt(features["sma_200"]) & features["sma_60"].gt(features["sma_200"]),
+        exit_=close.lt(features["sma_120"]) & features["sma_60"].lt(features["sma_200"]),
     )
     risk_off_drawdown = _stateful(
-        entry=features["drawdown_252"].le(-0.20)
-        & close.lt(features["sma_120"]),
-        exit_=features["drawdown_252"].ge(-0.10)
-        & close.gt(features["sma_60"]),
+        entry=features["drawdown_252"].le(-0.20) & close.lt(features["sma_120"]),
+        exit_=features["drawdown_252"].ge(-0.10) & close.gt(features["sma_60"]),
     )
     drawdown_risk_on = 1.0 - risk_off_drawdown
     symmetric_momentum = _stateful(
-        entry=close.gt(features["sma_120"])
-        & features["momentum_20"].gt(0.0),
-        exit_=close.lt(features["sma_120"])
-        | features["momentum_20"].lt(0.0),
+        entry=close.gt(features["sma_120"]) & features["momentum_20"].gt(0.0),
+        exit_=close.lt(features["sma_120"]) | features["momentum_20"].lt(0.0),
     )
 
     positions = {
@@ -133,13 +123,9 @@ def _metrics(daily: pd.DataFrame) -> dict[str, float]:
         if returns.std(ddof=0) > 0.0
         else 0.0
     )
-    downside_deviation = float(
-        np.sqrt(returns.clip(upper=0.0).pow(2).mean()) * np.sqrt(252.0)
-    )
+    downside_deviation = float(np.sqrt(returns.clip(upper=0.0).pow(2).mean()) * np.sqrt(252.0))
     sortino = (
-        float(returns.mean() * 252.0 / downside_deviation)
-        if downside_deviation > 0.0
-        else 0.0
+        float(returns.mean() * 252.0 / downside_deviation) if downside_deviation > 0.0 else 0.0
     )
     drawdown = wealth.div(wealth.cummax()).sub(1.0)
     max_drawdown = float(drawdown.min())
@@ -156,9 +142,7 @@ def _metrics(daily: pd.DataFrame) -> dict[str, float]:
         "max_drawdown": max_drawdown,
         "calmar": calmar,
         "turnover_units": turnover_units,
-        "round_trips_per_year": (
-            float(turnover_units / (2.0 * years)) if years > 0.0 else 0.0
-        ),
+        "round_trips_per_year": (float(turnover_units / (2.0 * years)) if years > 0.0 else 0.0),
         "exposure": float(daily["position_at_open"].mean()),
     }
 
@@ -183,17 +167,13 @@ def _yearly_comparison(
         {"candidate_return": candidate, "buy_hold_return": benchmark}
     ).dropna()
     comparison["relative_return"] = (
-        (1.0 + comparison["candidate_return"])
-        .div(1.0 + comparison["buy_hold_return"])
-        .sub(1.0)
+        (1.0 + comparison["candidate_return"]).div(1.0 + comparison["buy_hold_return"]).sub(1.0)
     )
     comparison.index.name = "year"
     return comparison
 
 
-def _defense_episodes(
-    candidate_daily: pd.DataFrame, benchmark_daily: pd.DataFrame
-) -> pd.DataFrame:
+def _defense_episodes(candidate_daily: pd.DataFrame, benchmark_daily: pd.DataFrame) -> pd.DataFrame:
     aligned_benchmark = benchmark_daily.reindex(candidate_daily.index)
     if aligned_benchmark["net_return"].isna().any():
         raise ValueError("benchmark is missing candidate dates")
@@ -206,12 +186,8 @@ def _defense_episodes(
             continue
         benchmark_block = aligned_benchmark.loc[block.index]
         candidate_return = float((1.0 + block["net_return"]).prod() - 1.0)
-        buy_hold_return = float(
-            (1.0 + benchmark_block["net_return"]).prod() - 1.0
-        )
-        relative_return = float(
-            (1.0 + candidate_return) / (1.0 + buy_hold_return) - 1.0
-        )
+        buy_hold_return = float((1.0 + benchmark_block["net_return"]).prod() - 1.0)
+        relative_return = float((1.0 + candidate_return) / (1.0 + buy_hold_return) - 1.0)
         records.append(
             {
                 "episode_id": int(raw_id),
@@ -235,9 +211,7 @@ def _largest_positive_episode_share(episodes: pd.DataFrame) -> float:
     return float(positive.max() / total) if total > 0.0 else 1.0
 
 
-def evaluate_research(
-    ohlcv: pd.DataFrame, contract: Mapping[str, Any]
-) -> dict[str, Any]:
+def evaluate_research(ohlcv: pd.DataFrame, contract: Mapping[str, Any]) -> dict[str, Any]:
     """Select a profit-retaining core/tactical rule and run the holdout check."""
 
     features = build_features(ohlcv)
@@ -253,15 +227,9 @@ def evaluate_research(
     holdout_end = str(windows["retrospective_holdout_end"])
 
     benchmark_full = run_buy_and_hold(features, primary_cost)
-    benchmark_selection_daily = _slice_daily(
-        benchmark_full, selection_start, selection_end
-    )
-    benchmark_validation_daily = _slice_daily(
-        benchmark_full, validation_start, validation_end
-    )
-    benchmark_holdout_daily = _slice_daily(
-        benchmark_full, holdout_start, holdout_end
-    )
+    benchmark_selection_daily = _slice_daily(benchmark_full, selection_start, selection_end)
+    benchmark_validation_daily = _slice_daily(benchmark_full, validation_start, validation_end)
+    benchmark_holdout_daily = _slice_daily(benchmark_full, holdout_start, holdout_end)
     benchmark_selection = _metrics(benchmark_selection_daily)
     benchmark_validation = _metrics(benchmark_validation_daily)
     benchmark_holdout = _metrics(benchmark_holdout_daily)
@@ -276,12 +244,8 @@ def evaluate_research(
         selection = _metrics(selection_daily)
         validation = _metrics(validation_daily)
         stress_full = run_backtest(features, positions[name], stress_cost, name)
-        stress_selection = _metrics(
-            _slice_daily(stress_full, selection_start, selection_end)
-        )
-        episodes = _defense_episodes(
-            selection_daily, benchmark_selection_daily
-        )
+        stress_selection = _metrics(_slice_daily(stress_full, selection_start, selection_end))
+        episodes = _defense_episodes(selection_daily, benchmark_selection_daily)
         largest_episode_share = _largest_positive_episode_share(episodes)
         cagr_retention = (
             selection["cagr"] / benchmark_selection["cagr"]
@@ -296,8 +260,7 @@ def evaluate_research(
             - benchmark_selection["max_drawdown"]
             >= 0.02,
             "validation_positive_total_return": validation["total_return"] > 0.0,
-            "validation_cagr_within_1pp": validation["cagr"]
-            >= benchmark_validation["cagr"] - 0.01,
+            "validation_cagr_within_1pp": validation["cagr"] >= benchmark_validation["cagr"] - 0.01,
             "validation_calmar_not_below_buy_hold": validation["calmar"]
             >= benchmark_validation["calmar"],
             "validation_drawdown_improvement_4pp": validation["max_drawdown"]
@@ -316,9 +279,7 @@ def evaluate_research(
                 "selection_stress_40_metrics": stress_selection,
                 "largest_positive_defense_episode_share": largest_episode_share,
                 "defense_episodes": episodes.to_dict(orient="records"),
-                "yearly_comparison": _yearly_comparison(
-                    selection_daily, benchmark_selection_daily
-                )
+                "yearly_comparison": _yearly_comparison(selection_daily, benchmark_selection_daily)
                 .reset_index()
                 .to_dict(orient="records"),
                 "selection_gates": gates,
@@ -342,22 +303,16 @@ def evaluate_research(
 
     if selected_name is not None:
         selected_full = full_results[selected_name]
-        selected_holdout_daily = _slice_daily(
-            selected_full, holdout_start, holdout_end
-        )
+        selected_holdout_daily = _slice_daily(selected_full, holdout_start, holdout_end)
         selected_holdout = _metrics(selected_holdout_daily)
         stress_holdout_full = run_backtest(
             features, positions[selected_name], stress_cost, selected_name
         )
-        stress_holdout = _metrics(
-            _slice_daily(stress_holdout_full, holdout_start, holdout_end)
-        )
+        stress_holdout = _metrics(_slice_daily(stress_holdout_full, holdout_start, holdout_end))
         holdout_gates = {
             "positive_total_return": selected_holdout["total_return"] > 0.0,
-            "cagr_not_below_buy_hold": selected_holdout["cagr"]
-            >= benchmark_holdout["cagr"],
-            "calmar_not_below_buy_hold": selected_holdout["calmar"]
-            >= benchmark_holdout["calmar"],
+            "cagr_not_below_buy_hold": selected_holdout["cagr"] >= benchmark_holdout["cagr"],
+            "calmar_not_below_buy_hold": selected_holdout["calmar"] >= benchmark_holdout["calmar"],
             "drawdown_improvement_4pp": selected_holdout["max_drawdown"]
             - benchmark_holdout["max_drawdown"]
             >= 0.04,
@@ -365,8 +320,7 @@ def evaluate_research(
             "not_unanimously_worse": not (
                 selected_holdout["cagr"] < benchmark_holdout["cagr"]
                 and selected_holdout["calmar"] < benchmark_holdout["calmar"]
-                and selected_holdout["max_drawdown"]
-                < benchmark_holdout["max_drawdown"]
+                and selected_holdout["max_drawdown"] < benchmark_holdout["max_drawdown"]
             ),
         }
         holdout = {
@@ -384,19 +338,13 @@ def evaluate_research(
         if holdout["pass"]:
             decision = "byd_v1_0_core_tactical_supported"
 
-    latest_signals = {
-        name: float(position.iloc[-1]) for name, position in positions.items()
-    }
+    latest_signals = {name: float(position.iloc[-1]) for name, position in positions.items()}
     latest_open_positions = {
         name: float(full_results[name].daily["position_at_open"].iloc[-1])
         for name in CANDIDATE_NAMES
     }
-    selected_latest_signal = (
-        latest_signals.get(selected_name) if selected_name else None
-    )
-    selected_current_position = (
-        latest_open_positions.get(selected_name) if selected_name else None
-    )
+    selected_latest_signal = latest_signals.get(selected_name) if selected_name else None
+    selected_current_position = latest_open_positions.get(selected_name) if selected_name else None
 
     return {
         "experiment_id": str(contract["experiment_id"]),

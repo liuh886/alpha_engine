@@ -110,9 +110,9 @@ def build_recovery_quality_frame(
     for window in (20, 50, 200):
         average = qqq.rolling(window, min_periods=window).mean()
         frame[f"qqq_distance_ma{window}"] = qqq / average - 1.0
-    frame["qqq_realized_volatility_20d"] = (
-        qqq_return.rolling(20, min_periods=20).std(ddof=0) * np.sqrt(252.0)
-    )
+    frame["qqq_realized_volatility_20d"] = qqq_return.rolling(20, min_periods=20).std(
+        ddof=0
+    ) * np.sqrt(252.0)
     frame["qqq_downside_volatility_20d"] = _downside_volatility(qqq_return, 20)
     frame["vix_return_5d"] = vix.pct_change(5)
     frame["vix_retreat_from_20d_high"] = vix / vix.rolling(20, min_periods=20).max() - 1.0
@@ -184,9 +184,7 @@ def _prediction_metrics(
         "observations": int(len(valid)),
         "positive_rate": float(label.mean()),
         "class_count": class_count,
-        "roc_auc": (
-            float(roc_auc_score(label, probability)) if class_count >= 2 else np.nan
-        ),
+        "roc_auc": (float(roc_auc_score(label, probability)) if class_count >= 2 else np.nan),
         "brier_score": float(brier_score_loss(label, probability)),
         "spearman_ic": float(probability.corr(continuous, method="spearman")),
         "top_quartile_mean_marginal_log_return": float(top.mean()),
@@ -277,9 +275,7 @@ def fit_walk_forward_factor_model(
     if final_training["positive_marginal_return"].nunique() < 2:
         raise ValueError("final training sample requires both label classes")
     final_model = _pipeline(contract)
-    final_model.fit(
-        final_training[list(features)], final_training["positive_marginal_return"]
-    )
+    final_model.fit(final_training[list(features)], final_training["positive_marginal_return"])
 
     holdout = frame.loc[frame.index >= holdout_start].copy()
     holdout_probability = final_model.predict_proba(holdout[list(features)])[:, 1]
@@ -396,8 +392,7 @@ def run_factor_budget_backtest(
     for asset in ASSETS:
         daily[f"weight_{asset}"] = weights[asset]
     daily["gross_return"] = sum(
-        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in ASSETS
+        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
@@ -475,9 +470,7 @@ def factor_budget_episodes(
             "entry_date": start,
             "exit_date": index[end_location],
             "sessions": int(end_location - start_location + 1),
-            "factor_probability": float(
-                result.daily.loc[start, "factor_probability_at_entry"]
-            ),
+            "factor_probability": float(result.daily.loc[start, "factor_probability_at_entry"]),
             "factor_bucket": str(result.daily.loc[start, "factor_bucket"]),
             "candidate_return": float(np.exp(candidate_log) - 1.0),
             "v4_2_return": float(np.exp(baseline_log) - 1.0),
@@ -544,13 +537,10 @@ def _strategy_gate(
     joint = actual_results["factor_joint_budget"]
     proxy_baseline = proxy_results["current_v4_2"]
     proxy_joint = proxy_results["factor_joint_budget"]
-    cagr_delta_pp = (
-        float(joint.metrics["cagr"]) - float(baseline.metrics["cagr"])
-    ) * 100.0
+    cagr_delta_pp = (float(joint.metrics["cagr"]) - float(baseline.metrics["cagr"])) * 100.0
     max_drawdown_worsening_pp = max(
         0.0,
-        (float(baseline.metrics["max_drawdown"]) - float(joint.metrics["max_drawdown"]))
-        * 100.0,
+        (float(baseline.metrics["max_drawdown"]) - float(joint.metrics["max_drawdown"])) * 100.0,
     )
     calmar_delta = float(joint.metrics["calmar"]) - float(baseline.metrics["calmar"])
     calendar = _calendar_relative_returns(joint, baseline)
@@ -562,8 +552,7 @@ def _strategy_gate(
         else 1.0
     )
     turnover_increase = (
-        float(joint.metrics["turnover_units"]) / float(baseline.metrics["turnover_units"])
-        - 1.0
+        float(joint.metrics["turnover_units"]) / float(baseline.metrics["turnover_units"]) - 1.0
     )
     ablation_wins: dict[str, dict[str, bool]] = {}
     for key in ("factor_defensive_ablation", "factor_offensive_ablation"):
@@ -572,32 +561,24 @@ def _strategy_gate(
             "cagr": float(joint.metrics["cagr"]) > float(comparator.metrics["cagr"]),
             "max_drawdown": float(joint.metrics["max_drawdown"])
             > float(comparator.metrics["max_drawdown"]),
-            "sortino": float(joint.metrics["sortino"])
-            > float(comparator.metrics["sortino"]),
+            "sortino": float(joint.metrics["sortino"]) > float(comparator.metrics["sortino"]),
             "calmar": float(joint.metrics["calmar"]) > float(comparator.metrics["calmar"]),
         }
     ablation_win_counts = {key: int(sum(values.values())) for key, values in ablation_wins.items()}
-    actual_cagr_sign = np.sign(
-        float(joint.metrics["cagr"]) - float(baseline.metrics["cagr"])
-    )
+    actual_cagr_sign = np.sign(float(joint.metrics["cagr"]) - float(baseline.metrics["cagr"]))
     proxy_cagr_sign = np.sign(
         float(proxy_joint.metrics["cagr"]) - float(proxy_baseline.metrics["cagr"])
     )
-    actual_calmar_sign = np.sign(
-        float(joint.metrics["calmar"]) - float(baseline.metrics["calmar"])
-    )
+    actual_calmar_sign = np.sign(float(joint.metrics["calmar"]) - float(baseline.metrics["calmar"]))
     proxy_calmar_sign = np.sign(
         float(proxy_joint.metrics["calmar"]) - float(proxy_baseline.metrics["calmar"])
     )
     checks = {
-        "cagr_improvement": cagr_delta_pp
-        >= float(thresholds["cagr_improvement_vs_v4_2_pp_min"]),
+        "cagr_improvement": cagr_delta_pp >= float(thresholds["cagr_improvement_vs_v4_2_pp_min"]),
         "max_drawdown_not_materially_worse": max_drawdown_worsening_pp
         <= float(thresholds["max_drawdown_worsening_vs_v4_2_pp_max"]),
-        "calmar_improvement": calmar_delta
-        >= float(thresholds["calmar_improvement_vs_v4_2_min"]),
-        "sortino_not_below": float(joint.metrics["sortino"])
-        >= float(baseline.metrics["sortino"]),
+        "calmar_improvement": calmar_delta >= float(thresholds["calmar_improvement_vs_v4_2_min"]),
+        "sortino_not_below": float(joint.metrics["sortino"]) >= float(baseline.metrics["sortino"]),
         "positive_relative_calendar_years": positive_calendar_years
         >= int(thresholds["positive_relative_calendar_years_min"]),
         "event_concentration": largest_positive_episode_share
@@ -664,9 +645,7 @@ def run_recovery_quality_factor_experiment(
         baseline = StrategyResult(
             "current_v4_2",
             baseline_daily,
-            full_baseline.trades.loc[
-                pd.to_datetime(full_baseline.trades["date"]).ge(start)
-            ].copy(),
+            full_baseline.trades.loc[pd.to_datetime(full_baseline.trades["date"]).ge(start)].copy(),
             {},
         )
         baseline.metrics = _return_metrics(baseline.daily["net_return"], annual_risk_free_rate=0.0)
@@ -679,9 +658,7 @@ def run_recovery_quality_factor_experiment(
         )
         probability = close_probability.reindex(baseline.daily.index)
         scope_results = {
-            variant: run_factor_budget_backtest(
-                baseline, probability, factor_contract, variant
-            )
+            variant: run_factor_budget_backtest(baseline, probability, factor_contract, variant)
             for variant in VARIANTS
         }
         baseline_states = scope_results["current_v4_2"].daily["position_state"]
@@ -720,17 +697,12 @@ def run_recovery_quality_factor_experiment(
         "factor_gate": factor_gate,
         "strategy_gate": strategy_gate,
         "tail_risk": {
-            scope: {
-                key: tail_risk_metrics(result)
-                for key, result in results.items()
-            }
+            scope: {key: tail_risk_metrics(result) for key, result in results.items()}
             for scope, results in results_by_scope.items()
         },
         "chronological": {
             scope: [
-                row
-                for result in results.values()
-                for row in _chronological_metrics(result, 0.60)
+                row for result in results.values() for row in _chronological_metrics(result, 0.60)
             ]
             for scope, results in results_by_scope.items()
         },

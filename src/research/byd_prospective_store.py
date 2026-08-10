@@ -59,9 +59,7 @@ def apply_immutable_shadow_schedule(
         "open_research_eligible",
     ]
     historical = baseline_dataset.loc[:CANONICAL_CUTOFF, required].copy()
-    historical_base = build_v1_0_decision_position(baseline_dataset).loc[
-        :CANONICAL_CUTOFF
-    ]
+    historical_base = build_v1_0_decision_position(baseline_dataset).loc[:CANONICAL_CUTOFF]
 
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -81,18 +79,10 @@ def apply_immutable_shadow_schedule(
                 "vol_state": str(factors["vol_state"]),
                 "drawdown_252": float(factors["drawdown_252"]),
                 "distance_from_low_20": float(factors["distance_from_low_20"]),
-                "open_return_autocorr_20": float(
-                    factors["open_return_autocorr_20"]
-                ),
-                "momentum_accel_20_60": float(
-                    factors["momentum_accel_20_60"]
-                ),
-                "open_research_eligible": bool(
-                    observation["open_research_eligible"]
-                ),
-                "base_target_position": float(
-                    observation["base_target_position"]
-                ),
+                "open_return_autocorr_20": float(factors["open_return_autocorr_20"]),
+                "momentum_accel_20_60": float(factors["momentum_accel_20_60"]),
+                "open_research_eligible": bool(observation["open_research_eligible"]),
+                "base_target_position": float(observation["base_target_position"]),
             }
         )
     post = pd.DataFrame(rows).set_index("date").sort_index()
@@ -112,29 +102,19 @@ def apply_immutable_shadow_schedule(
             float(observation["shadow_target_position"]),
             expected_target,
         ):
-            raise RuntimeError(
-                f"immutable shadow target drift on {observation['signal_date']}"
-            )
+            raise RuntimeError(f"immutable shadow target drift on {observation['signal_date']}")
         if bool(observation["shadow_overlay_active"]) != expected_active:
             raise RuntimeError(
                 f"immutable shadow active-state drift on {observation['signal_date']}"
             )
         if str(observation["shadow_overlay_branch"]) != expected_branch:
-            raise RuntimeError(
-                f"immutable shadow branch drift on {observation['signal_date']}"
-            )
+            raise RuntimeError(f"immutable shadow branch drift on {observation['signal_date']}")
 
     for observation in new_records:
         date = pd.Timestamp(observation["signal_date"])
-        observation["shadow_target_position"] = float(
-            schedule.final_decision_position.loc[date]
-        )
-        observation["shadow_overlay_active"] = bool(
-            schedule.overlay_active.loc[date]
-        )
-        observation["shadow_overlay_branch"] = str(
-            schedule.overlay_branch.loc[date]
-        )
+        observation["shadow_target_position"] = float(schedule.final_decision_position.loc[date])
+        observation["shadow_overlay_active"] = bool(schedule.overlay_active.loc[date])
+        observation["shadow_overlay_branch"] = str(schedule.overlay_branch.loc[date])
     return new_records
 
 
@@ -164,10 +144,7 @@ def mature_outcomes_from_immutable_observations(
     for observation in records:
         signal_date = pd.Timestamp(observation["signal_date"])
         eligible = list(
-            frame.index[
-                (frame.index > signal_date)
-                & frame["open_research_eligible"].astype(bool)
-            ]
+            frame.index[(frame.index > signal_date) & frame["open_research_eligible"].astype(bool)]
         )
         for horizon in HORIZONS:
             if len(eligible) <= horizon:
@@ -177,33 +154,20 @@ def mature_outcomes_from_immutable_observations(
             scenarios: dict[str, dict[str, float]] = {}
             for cost, results in strategies.items():
                 base_block = results["base"].loc[
-                    (results["base"].index >= entry)
-                    & (results["base"].index < exit_)
+                    (results["base"].index >= entry) & (results["base"].index < exit_)
                 ]
                 shadow_block = results["shadow"].reindex(base_block.index)
-                base_return = float(
-                    (1.0 + base_block["net_return"]).prod() - 1.0
-                )
-                shadow_return = float(
-                    (1.0 + shadow_block["net_return"]).prod() - 1.0
-                )
+                base_return = float((1.0 + base_block["net_return"]).prod() - 1.0)
+                shadow_return = float((1.0 + shadow_block["net_return"]).prod() - 1.0)
                 scenarios[str(cost)] = {
                     "base_return": base_return,
                     "shadow_return": shadow_return,
-                    "incremental_return": (
-                        (1.0 + shadow_return) / (1.0 + base_return) - 1.0
-                    ),
+                    "incremental_return": ((1.0 + shadow_return) / (1.0 + base_return) - 1.0),
                 }
             settlement_records = [
-                row
-                for row in records
-                if signal_date
-                <= pd.Timestamp(row["signal_date"])
-                <= exit_
+                row for row in records if signal_date <= pd.Timestamp(row["signal_date"]) <= exit_
             ]
-            settlement_payload = b"".join(
-                _json_bytes(row) + b"\n" for row in settlement_records
-            )
+            settlement_payload = b"".join(_json_bytes(row) + b"\n" for row in settlement_records)
             outcomes.append(
                 {
                     "schema_version": SHADOW_SCHEMA_V2,
@@ -215,15 +179,9 @@ def mature_outcomes_from_immutable_observations(
                     "base_snapshot_sha256": SNAPSHOT_SHA256,
                     "observation_data_version": observation["data_version"],
                     "settlement_source": "immutable_daily_observations_only",
-                    "settlement_input_sha256": hashlib.sha256(
-                        settlement_payload
-                    ).hexdigest(),
-                    "settlement_last_observation_date": exit_.strftime(
-                        "%Y-%m-%d"
-                    ),
-                    "prospective_eligible": bool(
-                        observation["prospective_eligible"]
-                    ),
+                    "settlement_input_sha256": hashlib.sha256(settlement_payload).hexdigest(),
+                    "settlement_last_observation_date": exit_.strftime("%Y-%m-%d"),
+                    "prospective_eligible": bool(observation["prospective_eligible"]),
                     "research_only": True,
                     "shadow_only": True,
                 }
@@ -254,18 +212,13 @@ def persist_immutable_shadow_store(
     for outcome in matured:
         _atomic_json_record(
             outcome_dir
-            / (
-                f"{outcome['signal_date']}-"
-                f"h{int(outcome['horizon_eligible_opens']):02d}.json"
-            ),
+            / (f"{outcome['signal_date']}-h{int(outcome['horizon_eligible_opens']):02d}.json"),
             outcome,
         )
 
     outcomes = _read_records(outcome_dir)
     observation_hashes = {
-        row["signal_date"]: file_sha256(
-            observation_dir / f"{row['signal_date']}.json"
-        )
+        row["signal_date"]: file_sha256(observation_dir / f"{row['signal_date']}.json")
         for row in observations
     }
     ledger = _derived_ledger_v2(observations, outcomes, observation_hashes)
@@ -301,9 +254,7 @@ def persist_immutable_shadow_store(
         "outcome_settlement": "immutable_daily_observations_only",
         "cost_scenarios_bps": list(COST_SCENARIOS_BPS),
         "provider_history_may_not_overwrite_existing_observations": True,
-        "last_updated_at_utc": (
-            observations[-1]["observed_at_utc"] if observations else None
-        ),
+        "last_updated_at_utc": (observations[-1]["observed_at_utc"] if observations else None),
     }
     (root / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",

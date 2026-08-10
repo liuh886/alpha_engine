@@ -111,8 +111,7 @@ def select_from_scores(scored: pd.DataFrame) -> pd.DataFrame:
     selected["selected_realized_rank"] = 5 - selected["relevance"].astype(int)
     selected["selected_ndcg_at_1"] = selected["relevance"].map(_ndcg_at_one)
     selected["selected_regret"] = (
-        selected["decision_date"].map(best_return)
-        - selected["realized_action_return"]
+        selected["decision_date"].map(best_return) - selected["realized_action_return"]
     )
     return selected.sort_values("decision_date").reset_index(drop=True)
 
@@ -122,9 +121,7 @@ def score_outer_folds(
     feature_names: Sequence[str],
     contract: Mapping[str, Any],
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[tuple[str, RankModelBundle, pd.DataFrame]]]:
-    unique_dates = pd.DatetimeIndex(
-        sorted(pd.to_datetime(frame["decision_date"].unique()))
-    )
+    unique_dates = pd.DatetimeIndex(sorted(pd.to_datetime(frame["decision_date"].unique())))
     scored_parts: list[pd.DataFrame] = []
     coverage_rows: list[dict[str, Any]] = []
     bundles: list[tuple[str, RankModelBundle, pd.DataFrame]] = []
@@ -148,9 +145,7 @@ def score_outer_folds(
         testing = frame.loc[
             frame["decision_date"].between(test_start, test_end, inclusive="both")
         ].copy()
-        if training["decision_date"].nunique() < int(
-            contract["training"]["minimum_groups"]
-        ):
+        if training["decision_date"].nunique() < int(contract["training"]["minimum_groups"]):
             raise ValueError(f"{fold} has insufficient training groups")
         if testing.empty:
             raise ValueError(f"{fold} has no test groups")
@@ -170,9 +165,7 @@ def score_outer_folds(
                 "test_end": testing["decision_date"].max(),
                 "test_groups": int(testing["decision_date"].nunique()),
                 "test_rows": int(len(testing)),
-                "declared_embargo_sessions": int(
-                    contract["decision"]["embargo_sessions"]
-                ),
+                "declared_embargo_sessions": int(contract["decision"]["embargo_sessions"]),
             }
         )
     scored = pd.concat(scored_parts, ignore_index=True).sort_values(
@@ -185,23 +178,18 @@ def ranking_metrics(
     scored: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     selected = select_from_scores(scored)
-    comparator = scored.loc[
-        scored["action"].eq(scored["v4_2_comparator_action"])
-    ].set_index("decision_date")
+    comparator = scored.loc[scored["action"].eq(scored["v4_2_comparator_action"])].set_index(
+        "decision_date"
+    )
     best = scored.groupby("decision_date")["realized_action_return"].max()
-    comparator["comparator_ndcg_at_1"] = comparator["relevance"].map(
-        _ndcg_at_one
-    )
-    comparator["comparator_regret"] = (
-        best - comparator["realized_action_return"]
-    )
+    comparator["comparator_ndcg_at_1"] = comparator["relevance"].map(_ndcg_at_one)
+    comparator["comparator_regret"] = best - comparator["realized_action_return"]
     indexed = selected.set_index("decision_date")
     indexed["comparator_ndcg_at_1"] = comparator["comparator_ndcg_at_1"]
     indexed["comparator_regret"] = comparator["comparator_regret"]
     indexed["comparator_action_return"] = comparator["realized_action_return"]
     indexed["selected_advantage_over_comparator_action"] = (
-        indexed["realized_action_return"]
-        - indexed["comparator_action_return"]
+        indexed["realized_action_return"] - indexed["comparator_action_return"]
     )
     selected = indexed.reset_index()
     fold_rows: list[dict[str, Any]] = []
@@ -212,15 +200,10 @@ def ranking_metrics(
             {
                 "fold": fold,
                 "groups": int(len(table)),
-                "selected_ndcg_at_1": float(
-                    table["selected_ndcg_at_1"].mean()
-                ),
-                "comparator_ndcg_at_1": float(
-                    table["comparator_ndcg_at_1"].mean()
-                ),
+                "selected_ndcg_at_1": float(table["selected_ndcg_at_1"].mean()),
+                "comparator_ndcg_at_1": float(table["comparator_ndcg_at_1"].mean()),
                 "ndcg_improvement": float(
-                    table["selected_ndcg_at_1"].mean()
-                    - table["comparator_ndcg_at_1"].mean()
+                    table["selected_ndcg_at_1"].mean() - table["comparator_ndcg_at_1"].mean()
                 ),
                 "selected_mean_regret": selected_regret,
                 "comparator_mean_regret": comparator_regret,
@@ -230,12 +213,8 @@ def ranking_metrics(
                     else np.nan
                 ),
                 "top_two_rate": float(table["relevance"].ge(3).mean()),
-                "median_advantage_vs_v4_2": float(
-                    table["realized_advantage_vs_v4_2"].median()
-                ),
-                "total_advantage_vs_v4_2": float(
-                    table["realized_advantage_vs_v4_2"].sum()
-                ),
+                "median_advantage_vs_v4_2": float(table["realized_advantage_vs_v4_2"].median()),
+                "total_advantage_vs_v4_2": float(table["realized_advantage_vs_v4_2"].sum()),
             }
         )
     action_rows: list[dict[str, Any]] = []
@@ -245,29 +224,19 @@ def ranking_metrics(
             {
                 "action": action,
                 "selected_groups": int(len(table)),
-                "top_two_rate": (
-                    float(table["relevance"].ge(3).mean())
-                    if len(table)
-                    else np.nan
-                ),
+                "top_two_rate": (float(table["relevance"].ge(3).mean()) if len(table) else np.nan),
                 "median_advantage_vs_v4_2": (
-                    float(table["realized_advantage_vs_v4_2"].median())
-                    if len(table)
-                    else np.nan
+                    float(table["realized_advantage_vs_v4_2"].median()) if len(table) else np.nan
                 ),
                 "total_advantage_vs_v4_2": (
-                    float(table["realized_advantage_vs_v4_2"].sum())
-                    if len(table)
-                    else 0.0
+                    float(table["realized_advantage_vs_v4_2"].sum()) if len(table) else 0.0
                 ),
             }
         )
     return selected, pd.DataFrame(fold_rows), pd.DataFrame(action_rows)
 
 
-def concentration_metrics(
-    selected: pd.DataFrame, contract: Mapping[str, Any]
-) -> pd.DataFrame:
+def concentration_metrics(selected: pd.DataFrame, contract: Mapping[str, Any]) -> pd.DataFrame:
     table = selected.copy()
     table["year"] = pd.to_datetime(table["decision_date"]).dt.year
     dates = pd.to_datetime(table["decision_date"]).sort_values()
@@ -281,35 +250,23 @@ def concentration_metrics(
             cluster_id += 1
             cluster_start = timestamp
         cluster_by_date[timestamp] = cluster_id
-    table["macro_cluster"] = pd.to_datetime(table["decision_date"]).map(
-        cluster_by_date
-    )
+    table["macro_cluster"] = pd.to_datetime(table["decision_date"]).map(cluster_by_date)
     positive = table["realized_advantage_vs_v4_2"].clip(lower=0.0)
     total_positive = float(positive.sum())
     by_year = table.assign(positive=positive).groupby("year")["positive"].sum()
-    by_cluster = (
-        table.assign(positive=positive)
-        .groupby("macro_cluster")["positive"]
-        .sum()
-    )
+    by_cluster = table.assign(positive=positive).groupby("macro_cluster")["positive"].sum()
     best_year = int(by_year.idxmax()) if total_positive > 0 else None
     best_cluster = by_cluster.idxmax() if total_positive > 0 else None
     return pd.DataFrame(
         [
             {
-                "total_advantage": float(
-                    table["realized_advantage_vs_v4_2"].sum()
-                ),
+                "total_advantage": float(table["realized_advantage_vs_v4_2"].sum()),
                 "positive_advantage": total_positive,
                 "largest_positive_year_share": (
-                    float(by_year.max() / total_positive)
-                    if total_positive > 0
-                    else np.nan
+                    float(by_year.max() / total_positive) if total_positive > 0 else np.nan
                 ),
                 "largest_positive_cluster_share": (
-                    float(by_cluster.max() / total_positive)
-                    if total_positive > 0
-                    else np.nan
+                    float(by_cluster.max() / total_positive) if total_positive > 0 else np.nan
                 ),
                 "best_year": best_year,
                 "best_macro_cluster": best_cluster,
@@ -341,9 +298,7 @@ def placebo_metrics(
     for trial in range(int(contract["validation"]["placebo_trials"])):
         rng = np.random.default_rng(seed + trial + 1)
         scored_parts: list[pd.DataFrame] = []
-        unique_dates = pd.DatetimeIndex(
-            sorted(pd.to_datetime(frame["decision_date"].unique()))
-        )
+        unique_dates = pd.DatetimeIndex(sorted(pd.to_datetime(frame["decision_date"].unique())))
         for specification in contract["outer_folds"]:
             test_start = pd.Timestamp(specification["test_start"])
             train_end = embargo_train_end(
@@ -371,9 +326,7 @@ def placebo_metrics(
                 values = permuted.loc[group.index].to_numpy(copy=True)
                 rng.shuffle(values)
                 permuted.loc[group.index] = values
-            bundle = fit_ranker(
-                training, feature_names, contract, relevance=permuted
-            )
+            bundle = fit_ranker(training, feature_names, contract, relevance=permuted)
             testing["score"] = predict(bundle, testing)
             scored_parts.append(testing)
         selected = select_from_scores(pd.concat(scored_parts, ignore_index=True))
@@ -404,9 +357,7 @@ def importance_metrics(
             feature_names=list(feature_names),
             missing=np.nan,
         )
-        contributions = np.asarray(
-            bundle.booster.predict(matrix, pred_contribs=True), dtype=float
-        )
+        contributions = np.asarray(bundle.booster.predict(matrix, pred_contribs=True), dtype=float)
         absolute = np.abs(contributions[:, :-1]).mean(axis=0)
         total_shap = float(absolute.sum())
         for feature, shap_value in zip(feature_names, absolute):
@@ -424,9 +375,7 @@ def importance_metrics(
                     "fold": fold,
                     "feature": feature,
                     "mean_abs_shap": float(shap_value),
-                    "shap_share": (
-                        float(shap_value / total_shap) if total_shap else 0.0
-                    ),
+                    "shap_share": (float(shap_value / total_shap) if total_shap else 0.0),
                 }
             )
     family_lookup = {
@@ -456,9 +405,7 @@ def phase1_gate(
     selected_regret = float(selected["selected_regret"].mean())
     comparator_regret = float(selected["comparator_regret"].mean())
     regret_reduction = (
-        1.0 - selected_regret / comparator_regret
-        if comparator_regret > 1e-12
-        else np.nan
+        1.0 - selected_regret / comparator_regret if comparator_regret > 1e-12 else np.nan
     )
     feature_mean = shap.groupby("feature")["mean_abs_shap"].mean()
     family_mean = shap.groupby("family")["mean_abs_shap"].mean()
@@ -466,17 +413,11 @@ def phase1_gate(
     largest_family = float(family_mean.max() / family_mean.sum())
     row = concentration.iloc[0]
     checks = {
-        "ndcg_improvement": ndcg - comparator_ndcg
-        >= float(gate["ndcg_improvement_min"]),
-        "regret_reduction": regret_reduction
-        >= float(gate["regret_reduction_min"]),
-        "positive_median_advantage": float(
-            selected["realized_advantage_vs_v4_2"].median()
-        )
+        "ndcg_improvement": ndcg - comparator_ndcg >= float(gate["ndcg_improvement_min"]),
+        "regret_reduction": regret_reduction >= float(gate["regret_reduction_min"]),
+        "positive_median_advantage": float(selected["realized_advantage_vs_v4_2"].median())
         > float(gate["median_advantage_min"]),
-        "positive_outer_folds": int(
-            by_fold["total_advantage_vs_v4_2"].gt(0.0).sum()
-        )
+        "positive_outer_folds": int(by_fold["total_advantage_vs_v4_2"].gt(0.0).sum())
         >= int(gate["positive_outer_folds_min"]),
         "top_two_rate": float(selected["relevance"].ge(3).mean())
         >= float(gate["top_two_rate_min"]),
@@ -485,8 +426,7 @@ def phase1_gate(
         "cluster_concentration": float(row["largest_positive_cluster_share"])
         <= float(gate["largest_positive_cluster_share_max"]),
         "without_best_year": float(row["advantage_without_best_year"]) > 0.0,
-        "without_best_cluster": float(row["advantage_without_best_cluster"])
-        > 0.0,
+        "without_best_cluster": float(row["advantage_without_best_cluster"]) > 0.0,
         "placebo": float(placebo["observed_beats_placebo"].mean())
         >= float(gate["placebo_beat_rate_min"]),
         "single_feature_concentration": largest_feature
@@ -495,9 +435,7 @@ def phase1_gate(
         <= float(gate["largest_feature_family_share_max"]),
     }
     unsupported = by_action.loc[
-        by_action["selected_groups"].lt(
-            int(gate["minimum_selected_groups_per_action"])
-        ),
+        by_action["selected_groups"].lt(int(gate["minimum_selected_groups_per_action"])),
         "action",
     ].tolist()
     return {
@@ -509,17 +447,11 @@ def phase1_gate(
         "selected_mean_regret": selected_regret,
         "comparator_mean_regret": comparator_regret,
         "regret_reduction": regret_reduction,
-        "median_advantage_vs_v4_2": float(
-            selected["realized_advantage_vs_v4_2"].median()
-        ),
-        "positive_outer_folds": int(
-            by_fold["total_advantage_vs_v4_2"].gt(0.0).sum()
-        ),
+        "median_advantage_vs_v4_2": float(selected["realized_advantage_vs_v4_2"].median()),
+        "positive_outer_folds": int(by_fold["total_advantage_vs_v4_2"].gt(0.0).sum()),
         "top_two_rate": float(selected["relevance"].ge(3).mean()),
         "unsupported_actions": unsupported,
-        "placebo_beat_rate": float(
-            placebo["observed_beats_placebo"].mean()
-        ),
+        "placebo_beat_rate": float(placebo["observed_beats_placebo"].mean()),
         "largest_single_feature_share": largest_feature,
         "largest_feature_family_share": largest_family,
     }

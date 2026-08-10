@@ -129,9 +129,7 @@ def _signal_features(summary: Mapping[str, Any]) -> dict[str, Any]:
         "vxn_return_1d": _optional_float(volatility.get("vxn_return_1d")),
         "qqq_distance_ma_short": _optional_float(price.get("qqq_vs_ma20")),
         "vix_close": _optional_float(volatility.get("vix_close")),
-        "vxn_retreat_from_peak": _optional_float(
-            volatility.get("vxn_retreat_from_peak")
-        ),
+        "vxn_retreat_from_peak": _optional_float(volatility.get("vxn_retreat_from_peak")),
         "qqq_close": _optional_float(price.get("qqq_close")),
         "shock_memory": bool(price.get("shock_memory", False)),
         "medium_repair": bool(price.get("medium_repair", False)),
@@ -146,10 +144,7 @@ def _active_precursor_exists(existing_events: Sequence[Mapping[str, Any]]) -> bo
         if not isinstance(record, Mapping):
             continue
         status = str(item.get("latest_status") or record.get("status") or "")
-        if (
-            record.get("event_type") == "recovery_precursor"
-            and status == "active_precursor"
-        ):
+        if record.get("event_type") == "recovery_precursor" and status == "active_precursor":
             return True
     return False
 
@@ -200,9 +195,7 @@ def _common_record(
         "current_weights": current_weights,
         "target_weights": target_weights,
         "turnover_units": float(alert.get("turnover_units", 0.0)),
-        "estimated_transaction_cost": float(
-            alert.get("estimated_transaction_cost", 0.0)
-        ),
+        "estimated_transaction_cost": float(alert.get("estimated_transaction_cost", 0.0)),
         "signal_close_features": _signal_features(summary),
         "recovery_precursor_boolean": recovery_precursor_boolean(summary),
         "data_identity": {
@@ -243,9 +236,7 @@ def build_candidate_event_records(
         )
         precursor["actionable"] = False
         precursor["transition_type"] = "recovery_precursor_shadow"
-        precursor["target_weights"] = _normalise_weights(
-            {"QQQI": 0.25, "QQQ": 0.50, "TQQQ": 0.25}
-        )
+        precursor["target_weights"] = _normalise_weights({"QQQI": 0.25, "QQQ": 0.50, "TQQQ": 0.25})
         precursor["shadow_allocations"] = {
             "tqqq_25": {"QQQI": 0.25, "QQQ": 0.50, "TQQQ": 0.25},
             "tqqq_50": {"QQQI": 0.00, "QQQ": 0.50, "TQQQ": 0.50},
@@ -285,9 +276,7 @@ def validate_event_record(record: Mapping[str, Any]) -> None:
         raise ValueError("unsupported event_type")
     if record["research_only"] is not True or record["trade_ready"] is not False:
         raise ValueError("ledger records must remain research-only and not trade-ready")
-    if pd.Timestamp(record["signal_date"]) > pd.Timestamp(
-        record["latest_data_date_at_creation"]
-    ):
+    if pd.Timestamp(record["signal_date"]) > pd.Timestamp(record["latest_data_date_at_creation"]):
         raise ValueError("signal date cannot be after latest data date")
     if not bool(record["data_freshness_ok"]):
         raise ValueError("new event requires fresh governed data")
@@ -344,17 +333,13 @@ def _path_metrics(future: pd.DataFrame, horizon: int) -> dict[str, Any]:
             {
                 "qqq_mfe": float(qqq_path.max()),
                 "qqq_mae": float(qqq_path.min()),
-                "qqq_realized_volatility_annualized": float(
-                    qqq.std(ddof=0) * np.sqrt(252.0)
-                ),
+                "qqq_realized_volatility_annualized": float(qqq.std(ddof=0) * np.sqrt(252.0)),
                 "qqq_sign_reversals": _sign_reversals(qqq),
             }
         )
         if {"QQQ_open", "QQQ_close"}.issubset(future.columns):
             sample = future.iloc[:horizon]
-            intraday = sample["QQQ_close"].astype(float) / sample[
-                "QQQ_open"
-            ].astype(float) - 1.0
+            intraday = sample["QQQ_close"].astype(float) / sample["QQQ_open"].astype(float) - 1.0
             overnight = (1.0 + qqq.to_numpy()) / (1.0 + intraday.to_numpy()) - 1.0
             result["qqq_intraday_log_return"] = float(np.log1p(intraday).sum())
             result["qqq_overnight_log_return"] = float(np.log1p(overnight).sum())
@@ -388,17 +373,14 @@ def compute_event_observation(
         future = future.iloc[0:0]
     else:
         future = future.loc[
-            future["QQQ_next_open_return"].notna()
-            & future["TQQQ_next_open_return"].notna()
+            future["QQQ_next_open_return"].notna() & future["TQQQ_next_open_return"].notna()
         ]
 
     horizons = [int(value) for value in record["outcome_horizons_sessions"]]
     completed = [horizon for horizon in horizons if len(future) >= horizon]
     posted = {int(value) for value in posted_horizons}
     new_horizons = [value for value in completed if value not in posted]
-    outcomes = {
-        str(horizon): _path_metrics(future, horizon) for horizon in completed
-    }
+    outcomes = {str(horizon): _path_metrics(future, horizon) for horizon in completed}
 
     execution: dict[str, Any] | None = None
     if not future.empty:
@@ -409,9 +391,7 @@ def compute_event_observation(
                 asset: _optional_float(first.get(f"{asset}_open")) for asset in ASSETS
             },
         }
-        qqq_signal_close = _optional_float(
-            record.get("signal_close_features", {}).get("qqq_close")
-        )
+        qqq_signal_close = _optional_float(record.get("signal_close_features", {}).get("qqq_close"))
         qqq_open = execution["theoretical_next_open_prices"]["QQQ"]
         execution["qqq_opening_gap"] = (
             qqq_open / qqq_signal_close - 1.0
@@ -562,12 +542,8 @@ def build_monthly_summary(
         for item in event_items
         if isinstance(item.get("record", item), Mapping)
     ]
-    month_records = [
-        item for item in records if str(item.get("signal_date", "")).startswith(month)
-    ]
-    observation_by_id = {
-        str(item["event_id"]): item for item in observations if "event_id" in item
-    }
+    month_records = [item for item in records if str(item.get("signal_date", "")).startswith(month)]
+    observation_by_id = {str(item["event_id"]): item for item in observations if "event_id" in item}
     completed_counts = {str(horizon): 0 for horizon in (1, 2, 3, 5, 10, 20, 40)}
     unresolved = 0
     for record in month_records:

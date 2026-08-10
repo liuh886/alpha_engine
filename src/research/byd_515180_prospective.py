@@ -53,8 +53,7 @@ def _read_json_records(directory: Path) -> list[dict[str, Any]]:
     if not directory.exists():
         return []
     records = [
-        json.loads(path.read_text(encoding="utf-8"))
-        for path in sorted(directory.glob("*.json"))
+        json.loads(path.read_text(encoding="utf-8")) for path in sorted(directory.glob("*.json"))
     ]
     return sorted(
         records,
@@ -64,11 +63,7 @@ def _read_json_records(directory: Path) -> list[dict[str, Any]]:
 
 def _normalise_dates(frame: pd.DataFrame) -> pd.DataFrame:
     out = frame.copy(deep=True)
-    out["date"] = (
-        pd.to_datetime(out["date"], errors="raise")
-        .dt.tz_localize(None)
-        .dt.normalize()
-    )
+    out["date"] = pd.to_datetime(out["date"], errors="raise").dt.tz_localize(None).dt.normalize()
     return out.sort_values("date").drop_duplicates("date", keep="last")
 
 
@@ -120,21 +115,15 @@ def build_paired_observations(
             base_target,
             1.0,
         ):
-            raise RuntimeError(
-                f"unexpected BYD V1.0 target on {signal_date}: {base_target}"
-            )
+            raise RuntimeError(f"unexpected BYD V1.0 target on {signal_date}: {base_target}")
 
         same_session = date == observed_date
-        observation_mode = (
-            "same_session_post_close" if same_session else "catch_up"
-        )
+        observation_mode = "same_session_post_close" if same_session else "catch_up"
         common_eligible = bool(byd["open_research_eligible"]) and bool(
             etf_audit["open_research_eligible"]
         )
         prospective_eligible = (
-            bool(byd.get("prospective_eligible", False))
-            and same_session
-            and common_eligible
+            bool(byd.get("prospective_eligible", False)) and same_session and common_eligible
         )
         etf_raw = primary_raw.loc[date]
         etf_adjusted = adjusted.loc[date]
@@ -156,17 +145,11 @@ def build_paired_observations(
                 "observation_sha256": byd["observation_sha256"],
                 "data_version": byd["data_version"],
                 "observation_mode": byd["observation_mode"],
-                "prospective_eligible": bool(
-                    byd.get("prospective_eligible", False)
-                ),
-                "open_research_eligible": bool(
-                    byd["open_research_eligible"]
-                ),
+                "prospective_eligible": bool(byd.get("prospective_eligible", False)),
+                "open_research_eligible": bool(byd["open_research_eligible"]),
                 "base_target_position": base_target,
                 "primary_raw_ohlcv": byd["primary_raw_ohlcv"],
-                "chain_linked_adjusted_ohlcv": byd[
-                    "chain_linked_adjusted_ohlcv"
-                ],
+                "chain_linked_adjusted_ohlcv": byd["chain_linked_adjusted_ohlcv"],
                 "company_actions": byd["company_actions"],
                 "market_state": byd["factors"]["market_state"],
                 "vol_state": byd["factors"]["vol_state"],
@@ -184,18 +167,10 @@ def build_paired_observations(
                 "provider_parameters": provider_parameters,
                 "secondary_attempts": secondary_attempts,
                 "chain_scale": extension.chain_scale,
-                "anchor_provider_adjusted_close": (
-                    extension.anchor_provider_adjusted_close
-                ),
-                "anchor_canonical_adjusted_close": (
-                    extension.anchor_canonical_adjusted_close
-                ),
-                "open_research_eligible": bool(
-                    etf_audit["open_research_eligible"]
-                ),
-                "independent_raw_confirmed": bool(
-                    etf_audit["independent_raw_confirmed"]
-                ),
+                "anchor_provider_adjusted_close": (extension.anchor_provider_adjusted_close),
+                "anchor_canonical_adjusted_close": (extension.anchor_canonical_adjusted_close),
+                "open_research_eligible": bool(etf_audit["open_research_eligible"]),
+                "independent_raw_confirmed": bool(etf_audit["independent_raw_confirmed"]),
                 "primary_raw_ohlcv": {
                     column: float(etf_raw[column])
                     for column in ("open", "high", "low", "close", "volume")
@@ -206,14 +181,10 @@ def build_paired_observations(
                 },
                 "company_actions": {
                     "dividend": float(provider_row.get("dividends", 0.0)),
-                    "stock_split": float(
-                        provider_row.get("stock_splits", 0.0)
-                    ),
+                    "stock_split": float(provider_row.get("stock_splits", 0.0)),
                 },
                 "independent_audit": {
-                    "confirmed": bool(
-                        etf_audit["independent_raw_confirmed"]
-                    ),
+                    "confirmed": bool(etf_audit["independent_raw_confirmed"]),
                     "open_level_abs_pct_difference": float(
                         etf_audit["open_level_abs_pct_difference"]
                     ),
@@ -261,12 +232,8 @@ def _observation_frame(records: Iterable[dict[str, Any]]) -> pd.DataFrame:
             "date": pd.Timestamp(row["signal_date"]),
             "common_open_eligible": bool(row["common_open_eligible"]),
             "prospective_eligible": bool(row["prospective_eligible"]),
-            "byd_open": float(
-                row["byd"]["chain_linked_adjusted_ohlcv"]["open"]
-            ),
-            "etf_open": float(
-                row["etf"]["chain_linked_adjusted_ohlcv"]["open"]
-            ),
+            "byd_open": float(row["byd"]["chain_linked_adjusted_ohlcv"]["open"]),
+            "etf_open": float(row["etf"]["chain_linked_adjusted_ohlcv"]["open"]),
             "market_state": str(row["byd"]["market_state"]),
             "vol_state": str(row["byd"]["vol_state"]),
         }
@@ -294,18 +261,11 @@ def execute_next_common_open(
             previous = frame.iloc[index - 1]
             current = pd.Series(
                 {
-                    asset: float(
-                        previous[f"{strategy}_{asset}_weight"]
-                    )
+                    asset: float(previous[f"{strategy}_{asset}_weight"])
                     for asset in ("byd", "etf", "cash")
                 }
             )
-        rows.append(
-            {
-                f"position_{asset}_weight": float(current[asset])
-                for asset in current.index
-            }
-        )
+        rows.append({f"position_{asset}_weight": float(current[asset]) for asset in current.index})
     return pd.DataFrame(rows, index=frame.index)
 
 
@@ -321,8 +281,7 @@ def strategy_daily(
     byd_return = frame["byd_open"].shift(-1) / frame["byd_open"] - 1.0
     etf_return = frame["etf_open"].shift(-1) / frame["etf_open"] - 1.0
     gross = (
-        executed["position_byd_weight"] * byd_return
-        + executed["position_etf_weight"] * etf_return
+        executed["position_byd_weight"] * byd_return + executed["position_etf_weight"] * etf_return
     )
     turnover = executed.diff().abs().sum(axis=1)
     initial_cash = pd.Series(
@@ -362,8 +321,7 @@ def mature_horizon_outcomes(
         return []
     daily = {
         str(int(cost)): {
-            strategy: strategy_daily(frame, strategy, cost_bps=cost)
-            for strategy in STRATEGIES
+            strategy: strategy_daily(frame, strategy, cost_bps=cost) for strategy in STRATEGIES
         }
         for cost in COST_SCENARIOS_BPS
     }
@@ -371,10 +329,7 @@ def mature_horizon_outcomes(
     for observation in ordered:
         signal_date = pd.Timestamp(observation["signal_date"])
         eligible = list(
-            frame.index[
-                (frame.index > signal_date)
-                & frame["common_open_eligible"].astype(bool)
-            ]
+            frame.index[(frame.index > signal_date) & frame["common_open_eligible"].astype(bool)]
         )
         for horizon in HORIZONS:
             if len(eligible) <= horizon:
@@ -396,16 +351,10 @@ def mature_horizon_outcomes(
                 candidate = returns["v1_dividend_75_25"]
                 scenarios[cost_key] = {
                     "strategy_returns": returns,
-                    "candidate_incremental_return": (
-                        (1.0 + candidate) / (1.0 + baseline) - 1.0
-                    ),
+                    "candidate_incremental_return": ((1.0 + candidate) / (1.0 + baseline) - 1.0),
                 }
             settlement = [
-                row
-                for row in ordered
-                if signal_date
-                <= pd.Timestamp(row["signal_date"])
-                <= exit_
+                row for row in ordered if signal_date <= pd.Timestamp(row["signal_date"]) <= exit_
             ]
             outcomes.append(
                 {
@@ -416,18 +365,11 @@ def mature_horizon_outcomes(
                     "entry_open_date": entry.strftime("%Y-%m-%d"),
                     "exit_open_date": exit_.strftime("%Y-%m-%d"),
                     "cost_scenarios_bps": scenarios,
-                    "settlement_source": (
-                        "immutable_paired_observations_only"
-                    ),
+                    "settlement_source": ("immutable_paired_observations_only"),
                     "settlement_input_sha256": hashlib.sha256(
-                        b"".join(
-                            _json_bytes(row) + b"\n"
-                            for row in settlement
-                        )
+                        b"".join(_json_bytes(row) + b"\n" for row in settlement)
                     ).hexdigest(),
-                    "prospective_eligible": bool(
-                        observation["prospective_eligible"]
-                    ),
+                    "prospective_eligible": bool(observation["prospective_eligible"]),
                     "research_only": True,
                     "trade_ready": False,
                     "shadow_only": True,
@@ -447,9 +389,7 @@ def mature_defense_episodes(
         [float(row["byd"]["base_target_position"]) for row in ordered],
         index=frame.index,
     )
-    starts = frame.index[
-        targets.eq(0.75) & targets.shift(1).eq(1.0)
-    ]
+    starts = frame.index[targets.eq(0.75) & targets.shift(1).eq(1.0)]
     outcomes: list[dict[str, Any]] = []
     for start in starts:
         later = targets.loc[targets.index > start]
@@ -458,16 +398,10 @@ def mature_defense_episodes(
             continue
         end_signal = ends[0]
         eligible_after_start = list(
-            frame.index[
-                (frame.index > start)
-                & frame["common_open_eligible"].astype(bool)
-            ]
+            frame.index[(frame.index > start) & frame["common_open_eligible"].astype(bool)]
         )
         eligible_after_end = list(
-            frame.index[
-                (frame.index > end_signal)
-                & frame["common_open_eligible"].astype(bool)
-            ]
+            frame.index[(frame.index > end_signal) & frame["common_open_eligible"].astype(bool)]
         )
         if not eligible_after_start or not eligible_after_end:
             continue
@@ -486,9 +420,7 @@ def mature_defense_episodes(
             scenarios[str(int(cost))] = {
                 "strategy_returns": returns,
                 "candidate_incremental_return": (
-                    (1.0 + returns["v1_dividend_75_25"])
-                    / (1.0 + returns["byd_v1_cash"])
-                    - 1.0
+                    (1.0 + returns["v1_dividend_75_25"]) / (1.0 + returns["byd_v1_cash"]) - 1.0
                 ),
             }
         outcomes.append(
@@ -526,37 +458,25 @@ def _derived_ledger(
         row: dict[str, Any] = {
             "signal_date": observation["signal_date"],
             "observed_at_utc": observation["observed_at_utc"],
-            "observation_sha256": observation_hashes[
-                observation["signal_date"]
-            ],
+            "observation_sha256": observation_hashes[observation["signal_date"]],
             "data_version": observation["data_version"],
             "observation_mode": observation["observation_mode"],
             "prospective_eligible": observation["prospective_eligible"],
             "common_open_eligible": observation["common_open_eligible"],
-            "base_target_position": observation["byd"][
-                "base_target_position"
-            ],
-            "candidate_etf_weight": observation["targets"][
-                "v1_dividend_75_25"
-            ]["etf_weight"],
+            "base_target_position": observation["byd"]["base_target_position"],
+            "candidate_etf_weight": observation["targets"]["v1_dividend_75_25"]["etf_weight"],
             "market_state": observation["byd"]["market_state"],
             "vol_state": observation["byd"]["vol_state"],
         }
         for horizon in HORIZONS:
-            outcome = outcome_lookup.get(
-                (observation["signal_date"], horizon)
-            )
+            outcome = outcome_lookup.get((observation["signal_date"], horizon))
             row[f"incremental_return_{horizon}_20bps"] = (
-                outcome["cost_scenarios_bps"]["20"][
-                    "candidate_incremental_return"
-                ]
+                outcome["cost_scenarios_bps"]["20"]["candidate_incremental_return"]
                 if outcome
                 else np.nan
             )
             row[f"incremental_return_{horizon}_40bps"] = (
-                outcome["cost_scenarios_bps"]["40"][
-                    "candidate_incremental_return"
-                ]
+                outcome["cost_scenarios_bps"]["40"]["candidate_incremental_return"]
                 if outcome
                 else np.nan
             )
@@ -575,33 +495,20 @@ def _scorecard(
         for strategy in STRATEGIES:
             daily = strategy_daily(frame, strategy, cost_bps=cost)
             strategy_returns[strategy] = (
-                float((1.0 + daily["net_return"]).prod() - 1.0)
-                if not daily.empty
-                else 0.0
+                float((1.0 + daily["net_return"]).prod() - 1.0) if not daily.empty else 0.0
             )
         baseline = strategy_returns["byd_v1_cash"]
         candidate = strategy_returns["v1_dividend_75_25"]
         cumulative[str(int(cost))] = {
             "strategy_returns": strategy_returns,
-            "candidate_incremental_return": (
-                (1.0 + candidate) / (1.0 + baseline) - 1.0
-            ),
+            "candidate_incremental_return": ((1.0 + candidate) / (1.0 + baseline) - 1.0),
         }
-    eligible = [
-        row for row in observations if row["prospective_eligible"]
-    ]
+    eligible = [row for row in observations if row["prospective_eligible"]]
     dates = [pd.Timestamp(row["signal_date"]) for row in eligible]
-    prospective_days = (
-        (max(dates) - min(dates)).days if len(dates) >= 2 else 0
-    )
-    episode_count = sum(
-        row["kind"] == "defense_episode_outcome" for row in outcomes
-    )
+    prospective_days = (max(dates) - min(dates)).days if len(dates) >= 2 else 0
+    episode_count = sum(row["kind"] == "defense_episode_outcome" for row in outcomes)
     states = sorted({row["byd"]["market_state"] for row in eligible})
-    dividend_count = sum(
-        float(row["etf"]["company_actions"]["dividend"]) > 0.0
-        for row in eligible
-    )
+    dividend_count = sum(float(row["etf"]["company_actions"]["dividend"]) > 0.0 for row in eligible)
     return {
         "schema_version": SCHEMA_VERSION,
         "research_only": True,
@@ -640,13 +547,8 @@ def persist_store(
         )
 
     observations = _read_json_records(observation_dir)
-    if any(
-        row.get("schema_version") != SCHEMA_VERSION
-        for row in observations
-    ):
-        raise RuntimeError(
-            "paired store contains an incompatible observation"
-        )
+    if any(row.get("schema_version") != SCHEMA_VERSION for row in observations):
+        raise RuntimeError("paired store contains an incompatible observation")
 
     outcomes = [
         *mature_horizon_outcomes(observations),
@@ -659,17 +561,12 @@ def persist_store(
                 f"h{int(outcome['horizon_common_eligible_opens']):02d}.json"
             )
         else:
-            filename = (
-                f"episode-{outcome['signal_date']}-"
-                f"{outcome['defense_end_signal_date']}.json"
-            )
+            filename = f"episode-{outcome['signal_date']}-{outcome['defense_end_signal_date']}.json"
         _atomic_json(outcome_dir / filename, outcome)
 
     stored_outcomes = _read_json_records(outcome_dir)
     observation_hashes = {
-        row["signal_date"]: file_sha256(
-            observation_dir / f"{row['signal_date']}.json"
-        )
+        row["signal_date"]: file_sha256(observation_dir / f"{row['signal_date']}.json")
         for row in observations
     }
     ledger = _derived_ledger(
@@ -712,15 +609,10 @@ def persist_store(
         ),
         "outcome_count": len(stored_outcomes),
         "completed_defense_episode_count": sum(
-            row["kind"] == "defense_episode_outcome"
-            for row in stored_outcomes
+            row["kind"] == "defense_episode_outcome" for row in stored_outcomes
         ),
-        "first_signal_date": (
-            observations[0]["signal_date"] if observations else None
-        ),
-        "last_signal_date": (
-            observations[-1]["signal_date"] if observations else None
-        ),
+        "first_signal_date": (observations[0]["signal_date"] if observations else None),
+        "last_signal_date": (observations[-1]["signal_date"] if observations else None),
         "observation_sha256": observation_hashes,
         "ledger_sha256": file_sha256(ledger_path),
         "scorecard_sha256": file_sha256(scorecard_path),

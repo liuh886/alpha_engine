@@ -35,8 +35,7 @@ def _sha256(path: Path) -> str:
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
-        + "\n",
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
 
@@ -51,11 +50,7 @@ def _normalise_strategy_frame(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
     if missing:
         raise StrategyDataBundleError(f"{symbol} bars missing columns: {missing}")
     out = frame[["date", "open", "close"]].copy()
-    out["date"] = (
-        pd.to_datetime(out["date"], errors="coerce")
-        .dt.tz_localize(None)
-        .dt.normalize()
-    )
+    out["date"] = pd.to_datetime(out["date"], errors="coerce").dt.tz_localize(None).dt.normalize()
     out["open"] = pd.to_numeric(out["open"], errors="coerce")
     out["close"] = pd.to_numeric(out["close"], errors="coerce")
     out = (
@@ -92,9 +87,7 @@ def _normalise_supplemental_contract(
             continue
         role = str(declared_roles.get(symbol, "signal_reference")).strip()
         if role not in ALLOWED_STRATEGY_ROLES:
-            raise StrategyDataBundleError(
-                f"unsupported strategy symbol role: {symbol}={role}"
-            )
+            raise StrategyDataBundleError(f"unsupported strategy symbol role: {symbol}={role}")
         symbols.append(symbol)
         roles[symbol] = role
     unknown_roles = sorted(set(declared_roles) - set(symbols))
@@ -140,8 +133,7 @@ def build_strategy_data_bundle(
         raise StrategyDataBundleError("source ETF bundle manifest is missing")
 
     frames: dict[str, pd.DataFrame] = {
-        symbol: _normalise_strategy_frame(frame, symbol)
-        for symbol, frame in etf_bars.items()
+        symbol: _normalise_strategy_frame(frame, symbol) for symbol, frame in etf_bars.items()
     }
     providers: dict[str, str] = {
         symbol: str(etf_manifest.get("selected_providers", {}).get(symbol, "unknown"))
@@ -254,9 +246,7 @@ def build_strategy_data_bundle(
         "invalid_symbols": [],
         "quarantined_symbols": [],
         "providers": sorted(set(providers.values())),
-        "professional_source_ready": bool(
-            etf_manifest.get("professional_source_ready", False)
-        ),
+        "professional_source_ready": bool(etf_manifest.get("professional_source_ready", False)),
         "research_only": True,
         "trade_ready": False,
         "symbols": list(symbols),
@@ -314,14 +304,10 @@ def load_strategy_data_bundle(
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, dict[str, Any]]:
     root = Path(bundle_root).resolve()
     manifest = verify_strategy_data_bundle(root)
-    declared_order = [
-        str(value).strip().upper() for value in manifest.get("symbols", [])
-    ]
+    declared_order = [str(value).strip().upper() for value in manifest.get("symbols", [])]
     declared = set(declared_order)
     requested = (
-        declared_order
-        if symbols is None
-        else [str(value).strip().upper() for value in symbols]
+        declared_order if symbols is None else [str(value).strip().upper() for value in symbols]
     )
     missing = sorted(set(requested).difference(declared))
     if missing:
@@ -329,11 +315,7 @@ def load_strategy_data_bundle(
 
     bars: dict[str, pd.DataFrame] = {}
     coverage = pd.read_csv(root / "coverage.csv")
-    records = {
-        str(row.symbol): row
-        for row in coverage.itertuples()
-        if str(row.status) == "ready"
-    }
+    records = {str(row.symbol): row for row in coverage.itertuples() if str(row.status) == "ready"}
     for symbol in requested:
         row = records.get(symbol)
         if row is None:

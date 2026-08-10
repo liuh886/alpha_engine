@@ -330,21 +330,12 @@ def grid_search(byd_frame, etf_frame, cost_bps=COST_BPS):
     print("=" * 70)
 
     # Parameter grid — focus on high-impact dimensions
-    grid = {
-        "risk_sma": [100, 120, 150],
-        "risk_mom_exit": [40, 60, 80],
-        "min_hold_risk": [0, 20, 30, 40],
-        "min_hold_expansion": [0, 20, 30, 40],
-        "expansion_pct": [0.125, 0.15, 0.175],
-        "convex_power": [3.0, 4.0],
-        "defense_byd": [0.70, 0.75, 0.80],
-    }
 
     # Baseline first
     baseline_params = V12Params()
     baseline_state = compute_v12_state(byd_frame, baseline_params)
     baseline_eval = evaluate_all(byd_frame, etf_frame, baseline_state, cost_bps)
-    print(f"\nBaseline V1.2 (real ETF):")
+    print("\nBaseline V1.2 (real ETF):")
     for w in ["full_overlap", "fixed_validation", "retrospective_2025_plus"]:
         m = baseline_eval.get(w, {})
         r = V12_REF.get(w, {})
@@ -536,10 +527,14 @@ def main():
     # Save
     class NpEncoder(json.JSONEncoder):
         def default(self, obj):
-            if isinstance(obj, (np.integer,)): return int(obj)
-            if isinstance(obj, (np.floating,)): return float(obj)
-            if isinstance(obj, np.ndarray): return obj.tolist()
-            if isinstance(obj, (pd.Timestamp, Path)): return str(obj)
+            if isinstance(obj, (np.integer,)):
+                return int(obj)
+            if isinstance(obj, (np.floating,)):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            if isinstance(obj, (pd.Timestamp, Path)):
+                return str(obj)
             return super().default(obj)
 
     output = {

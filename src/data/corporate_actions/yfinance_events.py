@@ -50,7 +50,9 @@ def yfinance_actions_to_corporate_actions(
             parsed.date(), datetime.min.time(), tzinfo=timezone.utc
         ).isoformat()
         dividend = pd.to_numeric(raw.get("Dividends", raw.get("dividends", 0.0)), errors="coerce")
-        split = pd.to_numeric(raw.get("Stock Splits", raw.get("stock splits", 0.0)), errors="coerce")
+        split = pd.to_numeric(
+            raw.get("Stock Splits", raw.get("stock splits", 0.0)), errors="coerce"
+        )
         common = {
             "market": "us",
             "symbol": symbol,

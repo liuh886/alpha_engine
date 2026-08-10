@@ -160,9 +160,7 @@ def build_canonical_factor_row(
     if len(factor_ids) != 1:
         raise ValueError("one diagnostic expression must map to exactly one factor_id")
     metric_payload = {
-        key: value
-        for key, value in diagnostic_row.items()
-        if key not in _ALIAS_SPECIFIC_FIELDS
+        key: value for key, value in diagnostic_row.items() if key not in _ALIAS_SPECIFIC_FIELDS
     }
     return {
         "factor_id": factor_ids[0],
@@ -173,9 +171,7 @@ def build_canonical_factor_row(
         "normalized_expression": canonical_spec.normalized_expression,
         "group_count": len({row["group"] for row in memberships}),
         "groups": sorted({row["group"] for row in memberships}),
-        "information_families": sorted(
-            {row["information_family"] for row in memberships}
-        ),
+        "information_families": sorted({row["information_family"] for row in memberships}),
         "group_memberships": memberships,
         **metric_payload,
     }
@@ -193,13 +189,9 @@ def expand_alias_rows(canonical_row: dict[str, Any]) -> list[dict[str, Any]]:
         rows.append(
             {
                 **membership,
-                "canonical_expression_id": str(
-                    canonical_row["canonical_expression_id"]
-                ),
+                "canonical_expression_id": str(canonical_row["canonical_expression_id"]),
                 "identity_scheme": str(canonical_row["identity_scheme"]),
-                "canonical_expression_sha256": str(
-                    canonical_row["canonical_expression_sha256"]
-                ),
+                "canonical_expression_sha256": str(canonical_row["canonical_expression_sha256"]),
                 "canonical_rank": canonical_rank,
                 **metrics,
             }
@@ -218,15 +210,10 @@ def validate_alias_metric_consistency(alias_rows: list[dict[str, Any]]) -> None:
         grouped.setdefault(factor_id, []).append(row)
 
     for factor_id, rows in grouped.items():
-        expected = json.dumps(
-            _metric_payload(rows[0]), sort_keys=True, separators=(",", ":")
-        )
+        expected = json.dumps(_metric_payload(rows[0]), sort_keys=True, separators=(",", ":"))
         for row in rows[1:]:
-            observed = json.dumps(
-                _metric_payload(row), sort_keys=True, separators=(",", ":")
-            )
+            observed = json.dumps(_metric_payload(row), sort_keys=True, separators=(",", ":"))
             if observed != expected:
                 raise ValueError(
-                    "factor group-membership metrics diverged for canonical factor "
-                    f"{factor_id}"
+                    f"factor group-membership metrics diverged for canonical factor {factor_id}"
                 )

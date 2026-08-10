@@ -70,9 +70,7 @@ def _validate_source_files(source: Path) -> list[Path]:
         files.append(item)
     missing = [name for name in REQUIRED_FILES if not (source / name).is_file()]
     if missing:
-        raise RepositoryRunStoreError(
-            f"run source is missing required files: {', '.join(missing)}"
-        )
+        raise RepositoryRunStoreError(f"run source is missing required files: {', '.join(missing)}")
     return files
 
 

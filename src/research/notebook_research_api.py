@@ -37,7 +37,9 @@ def daily_correlation_table(
     rows: list[dict[str, Any]] = []
     for name in values.columns:
         common = values[name].index.intersection(target_series.index)
-        frame = pd.DataFrame({"x": values.loc[common, name], "y": target_series.loc[common]}).dropna()
+        frame = pd.DataFrame(
+            {"x": values.loc[common, name], "y": target_series.loc[common]}
+        ).dropna()
         daily: list[float] = []
         for _, group in frame.groupby(level="datetime"):
             if len(group) < min_items_per_day:

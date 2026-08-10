@@ -111,21 +111,15 @@ def _add_state_conditioning(
     feature_names.extend(state_features)
     state_interactions: list[str] = []
     for state_feature in contract["state_interactions"]["states"]:
-        for market_interaction in contract["state_interactions"][
-            "market_interactions"
-        ]:
+        for market_interaction in contract["state_interactions"]["market_interactions"]:
             name = f"{state_feature}__{market_interaction}"
-            output[name] = output[str(state_feature)] * output[
-                str(market_interaction)
-            ]
+            output[name] = output[str(state_feature)] * output[str(market_interaction)]
             state_interactions.append(name)
     expected = int(contract["state_interactions"]["expected_count"])
     if len(state_interactions) != expected:
         raise AssertionError("unexpected state interaction count")
     feature_names.extend(state_interactions)
-    if len(feature_names) != int(
-        contract["state_interactions"]["total_model_inputs"]
-    ):
+    if len(feature_names) != int(contract["state_interactions"]["total_model_inputs"]):
         raise AssertionError("unexpected total state-conditioned model inputs")
     return output, tuple(feature_names)
 
@@ -155,34 +149,23 @@ def _market_frame_and_labels(
     if actual:
         qqqi = _normalise_bars(bars["QQQI"], "QQQI")
         sgov = _normalise_bars(bars["SGOV"], "SGOV")
-        qqqi_daily = qqqi["open"].shift(-1).div(qqqi["open"]).sub(1.0).reindex(
-            frame.index
-        )
-        cash_daily = sgov["open"].shift(-1).div(sgov["open"]).sub(1.0).reindex(
-            frame.index
-        )
+        qqqi_daily = qqqi["open"].shift(-1).div(qqqi["open"]).sub(1.0).reindex(frame.index)
+        cash_daily = sgov["open"].shift(-1).div(sgov["open"]).sub(1.0).reindex(frame.index)
         cash_10d = _forward_total_return(cash_daily, 10)
         core_10d = _forward_total_return(qqqi_daily, 10)
     else:
         cash_10d = frame["forward_bil_10d"]
         core_10d = frame["forward_qqq_10d"]
     acceleration_daily = (
-        0.25 * frame["qqq_next_open_return"]
-        + 0.75 * frame["tqqq_next_open_return"]
+        0.25 * frame["qqq_next_open_return"] + 0.75 * frame["tqqq_next_open_return"]
     )
     acceleration_5d = _forward_total_return(acceleration_daily, 5)
     label_cost = float(contract["boundaries"]["label_round_trip_cost_bps"]) / 10_000.0
     frame["cash_defense_advantage_10d"] = cash_10d - baseline_10d - label_cost
-    frame["broad_equity_advantage_10d"] = (
-        frame["forward_voo_10d"] - baseline_10d - label_cost
-    )
+    frame["broad_equity_advantage_10d"] = frame["forward_voo_10d"] - baseline_10d - label_cost
     frame["nasdaq_core_advantage_10d"] = core_10d - baseline_10d - label_cost
-    frame["nasdaq_acceleration_advantage_5d"] = (
-        acceleration_5d - baseline_5d - label_cost
-    )
-    target_names = tuple(
-        str(contract["actions"][action]["target"]) for action in ACTION_KEYS
-    )
+    frame["nasdaq_acceleration_advantage_5d"] = acceleration_5d - baseline_5d - label_cost
+    target_names = tuple(str(contract["actions"][action]["target"]) for action in ACTION_KEYS)
     positions = np.arange(len(frame), dtype=int)
     frame["global_training_sample"] = (
         (positions - int(contract["training"]["global_anchor_position"]))
@@ -326,15 +309,10 @@ def select_novel_action_events(
     sample: str,
 ) -> pd.DataFrame:
     score = pd.DataFrame(
-        {
-            action: predictions[f"predicted_{action}"] for action in ACTION_KEYS
-        },
+        {action: predictions[f"predicted_{action}"] for action in ACTION_KEYS},
         index=predictions.index,
     )
-    novelty = {
-        action: action_novelty_l1(predictions, action, contract)
-        for action in ACTION_KEYS
-    }
+    novelty = {action: action_novelty_l1(predictions, action, contract) for action in ACTION_KEYS}
     for action in ACTION_KEYS:
         score.loc[~_action_eligible(predictions, action, contract), action] = -np.inf
     top_action = score.idxmax(axis=1)
@@ -344,14 +322,10 @@ def select_novel_action_events(
     )
     qualifies = (
         top_score.ge(float(contract["training"]["advantage_threshold"]))
-        & (top_score - second_score).ge(
-            float(contract["training"]["action_margin_threshold"])
-        )
+        & (top_score - second_score).ge(float(contract["training"]["action_margin_threshold"]))
         & np.isfinite(top_score)
     )
-    fresh = qualifies & ~(
-        qualifies.shift(1, fill_value=False) & top_action.eq(top_action.shift(1))
-    )
+    fresh = qualifies & ~(qualifies.shift(1, fill_value=False) & top_action.eq(top_action.shift(1)))
     rows: list[dict[str, Any]] = []
     next_allowed = 0
     index = predictions.index
@@ -373,11 +347,9 @@ def select_novel_action_events(
                 "fold": str(predictions.iloc[location].get("fold", sample)),
                 "event_family": action,
                 "action": str(contract["actions"][action]["action"]),
-                "event_id": f"{sample}_{action}_{len(rows)+1:03d}",
+                "event_id": f"{sample}_{action}_{len(rows) + 1:03d}",
                 "rule_id": "ridge_state_conditioned_action_advantage_v4_17",
-                "baseline_state": int(
-                    predictions.iloc[location]["next_open_position_state"]
-                ),
+                "baseline_state": int(predictions.iloc[location]["next_open_position_state"]),
                 "novelty_l1": float(novelty[action].iloc[location]),
                 "signal_close_date": index[location],
                 "execution_date": index[location + 1],
@@ -435,8 +407,7 @@ def _action_state_metrics(
             mask &= _action_eligible(predictions, action, contract)
             aligned = predictions.loc[mask, [f"predicted_{action}", target]].dropna()
             cell_events = events.loc[
-                events["event_family"].eq(action)
-                & events["baseline_state"].eq(int(state))
+                events["event_family"].eq(action) & events["baseline_state"].eq(int(state))
             ]
             rows.append(
                 {
@@ -451,18 +422,14 @@ def _action_state_metrics(
                     "top_bottom_quintile_spread": _quintile_spread(
                         aligned.iloc[:, 0], aligned.iloc[:, 1]
                     ),
-                    "unconditional_positive_rate": float(
-                        aligned.iloc[:, 1].gt(0.0).mean()
-                    )
+                    "unconditional_positive_rate": float(aligned.iloc[:, 1].gt(0.0).mean())
                     if len(aligned)
                     else np.nan,
                     "triggered_events": int(len(cell_events)),
                     "triggered_precision": float(cell_events["win"].mean())
                     if len(cell_events)
                     else np.nan,
-                    "median_triggered_advantage": float(
-                        cell_events["realized_advantage"].median()
-                    )
+                    "median_triggered_advantage": float(cell_events["realized_advantage"].median())
                     if len(cell_events)
                     else np.nan,
                 }
@@ -480,22 +447,12 @@ def _state_model_gate(
 ) -> dict[str, Any]:
     threshold = contract["validation"]["model_gate"]
     cosine_pairs, cosine_median = _coefficient_cosine(coefficients)
-    passing_actions = int(
-        action_metrics["spearman_ic"].ge(float(threshold["action_ic_min"])).sum()
-    )
-    positive_action_spreads = int(
-        action_metrics["top_bottom_quintile_spread"].gt(0.0).sum()
-    )
-    passing_cells = int(
-        cell_metrics["spearman_ic"].ge(float(threshold["action_ic_min"])).sum()
-    )
-    positive_cell_spreads = int(
-        cell_metrics["top_bottom_quintile_spread"].gt(0.0).sum()
-    )
+    passing_actions = int(action_metrics["spearman_ic"].ge(float(threshold["action_ic_min"])).sum())
+    positive_action_spreads = int(action_metrics["top_bottom_quintile_spread"].gt(0.0).sum())
+    passing_cells = int(cell_metrics["spearman_ic"].ge(float(threshold["action_ic_min"])).sum())
+    positive_cell_spreads = int(cell_metrics["top_bottom_quintile_spread"].gt(0.0).sum())
     large_cells = cell_metrics.loc[
-        cell_metrics["observations"].ge(
-            int(threshold["large_cell_observations_min"])
-        )
+        cell_metrics["observations"].ge(int(threshold["large_cell_observations_min"]))
     ]
     large_cell_floor = bool(
         large_cells["spearman_ic"].ge(float(threshold["large_cell_ic_floor"])).all()
@@ -519,9 +476,7 @@ def _state_model_gate(
         else pd.Series(dtype=float)
     )
     total_positive = float(positive_cluster.sum())
-    cluster_share = (
-        float(positive_cluster.max() / total_positive) if total_positive > 0.0 else 1.0
-    )
+    cluster_share = float(positive_cluster.max() / total_positive) if total_positive > 0.0 else 1.0
     yearly = (
         events.groupby(pd.to_datetime(events["signal_close_date"]).dt.year)[
             "realized_advantage"
@@ -533,8 +488,7 @@ def _state_model_gate(
         float(yearly.drop(index=yearly.idxmax()).sum()) if len(yearly) > 1 else np.nan
     )
     checks = {
-        "actions_passing_ic": passing_actions
-        >= int(threshold["actions_passing_ic_min"]),
+        "actions_passing_ic": passing_actions >= int(threshold["actions_passing_ic_min"]),
         "actions_positive_spread": positive_action_spreads
         >= int(threshold["actions_positive_quintile_spread_min"]),
         "eligible_cells_passing_ic": passing_cells
@@ -552,10 +506,8 @@ def _state_model_gate(
         "cluster_concentration": cluster_share
         <= float(threshold["largest_positive_cluster_share_max"]),
         "coefficient_stability": np.isfinite(cosine_median)
-        and cosine_median
-        >= float(threshold["coefficient_cosine_similarity_median_min"]),
-        "without_best_year": np.isfinite(without_best_year)
-        and without_best_year >= 0.0,
+        and cosine_median >= float(threshold["coefficient_cosine_similarity_median_min"]),
+        "without_best_year": np.isfinite(without_best_year) and without_best_year >= 0.0,
     }
     return {
         "checks": checks,
@@ -593,9 +545,7 @@ def run_state_conditioned_model(
     prediction_parts: list[pd.DataFrame] = []
     coefficient_parts: list[pd.DataFrame] = []
     for fold in contract["outer_folds"]:
-        prediction, coefficient = _predict_fold(
-            proxy, feature_names, target_names, contract, fold
-        )
+        prediction, coefficient = _predict_fold(proxy, feature_names, target_names, contract, fold)
         prediction_parts.append(prediction)
         coefficient_parts.append(coefficient)
     oof = pd.concat(prediction_parts).sort_index()
@@ -607,9 +557,7 @@ def run_state_conditioned_model(
         oof, events, coefficients, action_metrics, cell_metrics, contract
     )
 
-    actual_start = max(
-        pd.Timestamp(contract["data"]["actual_product_start"]), actual.index.min()
-    )
+    actual_start = max(pd.Timestamp(contract["data"]["actual_product_start"]), actual.index.min())
     train_end = _embargo_train_end(
         proxy.index,
         actual_start,
@@ -636,9 +584,7 @@ def run_state_conditioned_model(
         "next_open_weight_TQQQ",
     ]
     actual_output[carry] = actual_sample[carry]
-    actual_events = select_novel_action_events(
-        actual_output, contract, sample="actual_2024_plus"
-    )
+    actual_events = select_novel_action_events(actual_output, contract, sample="actual_2024_plus")
     actual_coefficients = _coefficient_frame(
         model,
         fold="actual_2024_plus",
@@ -670,34 +616,22 @@ def _improvement_gate(
 ) -> dict[str, Any]:
     threshold = contract["validation"]["v4_16_improvement_gate"]
     state_actions = int(state_model.model_gate["metrics"]["actions_passing_ic"])
-    unconditioned_actions = int(
-        unconditioned_model.model_gate["metrics"]["actions_passing_ic"]
-    )
-    state_precision_lift = float(
-        state_model.model_gate["metrics"]["triggered_precision_lift"]
-    )
+    unconditioned_actions = int(unconditioned_model.model_gate["metrics"]["actions_passing_ic"])
+    state_precision_lift = float(state_model.model_gate["metrics"]["triggered_precision_lift"])
     unconditioned_precision_lift = float(
         unconditioned_model.model_gate["metrics"]["triggered_precision_lift"]
     )
     state_oof = state_policy.oof_results["full_event_policy"].metrics
-    unconditioned_oof = unconditioned_policy.oof_results[
-        "full_event_policy"
-    ].metrics
-    cagr_improvement_pp = (
-        float(state_oof["cagr"]) - float(unconditioned_oof["cagr"])
-    ) * 100.0
-    calmar_improvement = float(state_oof["calmar"]) - float(
-        unconditioned_oof["calmar"]
-    )
+    unconditioned_oof = unconditioned_policy.oof_results["full_event_policy"].metrics
+    cagr_improvement_pp = (float(state_oof["cagr"]) - float(unconditioned_oof["cagr"])) * 100.0
+    calmar_improvement = float(state_oof["calmar"]) - float(unconditioned_oof["calmar"])
     checks = {
         "actions_passing_ic": state_actions - unconditioned_actions
         >= int(threshold["actions_passing_ic_improvement_min"]),
         "precision_lift": state_precision_lift - unconditioned_precision_lift
         >= float(threshold["triggered_precision_lift_improvement_min"]),
-        "oof_cagr": cagr_improvement_pp
-        >= float(threshold["oof_cagr_improvement_pp_min"]),
-        "oof_calmar": calmar_improvement
-        >= float(threshold["oof_calmar_improvement_min"]),
+        "oof_cagr": cagr_improvement_pp >= float(threshold["oof_cagr_improvement_pp_min"]),
+        "oof_calmar": calmar_improvement >= float(threshold["oof_calmar_improvement_min"]),
     }
     return {
         "checks": checks,
@@ -729,9 +663,7 @@ def run_state_conditioned_research(
         contract,
     )
     v416_contract = _v4_16_compatible_contract(contract)
-    unconditioned_model = run_unconditioned_v4_16_model(
-        bars, proxy_baseline_daily, v416_contract
-    )
+    unconditioned_model = run_unconditioned_v4_16_model(bars, proxy_baseline_daily, v416_contract)
     unconditioned_policy = run_action_advantage_policy(
         bars,
         proxy_baseline_daily,

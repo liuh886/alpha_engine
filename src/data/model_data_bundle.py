@@ -87,8 +87,7 @@ def _sha256(path: Path) -> str:
 def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
-        + "\n",
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
 
@@ -106,15 +105,7 @@ def _load_mapping(path: Path) -> dict[str, Any]:
 
 
 def _clean_symbols(values: Iterable[Any]) -> tuple[str, ...]:
-    return tuple(
-        sorted(
-            {
-                str(value).strip().upper()
-                for value in values
-                if str(value).strip()
-            }
-        )
-    )
+    return tuple(sorted({str(value).strip().upper() for value in values if str(value).strip()}))
 
 
 def _parse_date(value: Any) -> str | None:
@@ -189,8 +180,7 @@ def _selected_pool_prices(
     if expected <= 0:
         expected = len(records)
     missing = _clean_symbols(
-        [row.get("symbol") for row in failures]
-        + list(payload.get("missing_symbols", []))
+        [row.get("symbol") for row in failures] + list(payload.get("missing_symbols", []))
     )
     invalid = _clean_symbols(payload.get("invalid_symbols", []))
     quarantined = _clean_symbols(payload.get("quarantined_symbols", []))
@@ -199,9 +189,7 @@ def _selected_pool_prices(
     status = "ready" if promotion_eligible and ready == expected else "blocked"
     selected = payload.get("selected_providers", {})
     providers = (
-        _clean_symbols(selected.values())
-        if isinstance(selected, dict)
-        else _clean_symbols([])
+        _clean_symbols(selected.values()) if isinstance(selected, dict) else _clean_symbols([])
     )
     first_dates = [str(row.get("first_date", "")) for row in records if row.get("first_date")]
     last_dates = [str(row.get("last_date", "")) for row in records if row.get("last_date")]
@@ -248,11 +236,15 @@ def _etf_reference_bundle(
     expected = len(symbols)
     ready_flag = bool(payload.get("strategy_data_ready", False))
     reconciliation = payload.get("reconciliation_status", {})
-    quarantined = _clean_symbols(
-        symbol
-        for symbol, status in reconciliation.items()
-        if str(status).lower() == "quarantine"
-    ) if isinstance(reconciliation, dict) else tuple()
+    quarantined = (
+        _clean_symbols(
+            symbol
+            for symbol, status in reconciliation.items()
+            if str(status).lower() == "quarantine"
+        )
+        if isinstance(reconciliation, dict)
+        else tuple()
+    )
     ready = expected if ready_flag and not quarantined else max(0, expected - len(quarantined))
     selected = payload.get("selected_providers", {})
     providers = _clean_symbols(selected.values()) if isinstance(selected, dict) else tuple()
@@ -279,7 +271,9 @@ def _etf_reference_bundle(
         trade_ready=bool(payload.get("trade_ready", False)),
         details={
             "symbols": list(symbols),
-            "reconciliation_status": dict(reconciliation) if isinstance(reconciliation, dict) else {},
+            "reconciliation_status": dict(reconciliation)
+            if isinstance(reconciliation, dict)
+            else {},
             "strategy_data_ready": ready_flag,
         },
     )
@@ -304,12 +298,8 @@ def _generic_coverage(
     )
     if isinstance(payload.get("ready_symbols"), list):
         ready = len(payload["ready_symbols"])
-    missing = _clean_symbols(
-        payload.get("missing_symbols", payload.get("missing_candidates", []))
-    )
-    invalid = _clean_symbols(
-        payload.get("invalid_symbols", payload.get("invalid_candidates", []))
-    )
+    missing = _clean_symbols(payload.get("missing_symbols", payload.get("missing_candidates", [])))
+    invalid = _clean_symbols(payload.get("invalid_symbols", payload.get("invalid_candidates", [])))
     quarantined = _clean_symbols(payload.get("quarantined_symbols", []))
     if expected <= 0:
         expected = ready + len(set(missing) | set(invalid) | set(quarantined))
@@ -429,10 +419,7 @@ def evaluate_training_profile(
         if not isinstance(raw, dict):
             raise ModelDataBundleError(f"invalid component requirement: {profile_id}")
         component_id = str(raw.get("component_id", "")).strip()
-        accepted = {
-            str(value).strip().lower()
-            for value in raw.get("accepted_statuses", ["ready"])
-        }
+        accepted = {str(value).strip().lower() for value in raw.get("accepted_statuses", ["ready"])}
         minimum = float(raw.get("minimum_coverage_ratio", 1.0))
         component = components.get(component_id)
         gate_status = "passed"
@@ -443,14 +430,10 @@ def evaluate_training_profile(
         else:
             if component.status not in accepted:
                 gate_status = "failed"
-                gate_reasons.append(
-                    f"status={component.status} not in {sorted(accepted)}"
-                )
+                gate_reasons.append(f"status={component.status} not in {sorted(accepted)}")
             if component.coverage_ratio + 1e-12 < minimum:
                 gate_status = "failed"
-                gate_reasons.append(
-                    f"coverage={component.coverage_ratio:.6f} below {minimum:.6f}"
-                )
+                gate_reasons.append(f"coverage={component.coverage_ratio:.6f} below {minimum:.6f}")
             if component.evidence_cutoff and component.evidence_cutoff > evidence_cutoff:
                 gate_status = "failed"
                 gate_reasons.append(
@@ -463,16 +446,12 @@ def evaluate_training_profile(
                 and component.pool_id != candidate_pool_id
             ):
                 gate_status = "failed"
-                gate_reasons.append(
-                    f"pool_id={component.pool_id} expected {candidate_pool_id}"
-                )
+                gate_reasons.append(f"pool_id={component.pool_id} expected {candidate_pool_id}")
             if component.trade_ready:
                 gate_status = "failed"
                 gate_reasons.append("component illegally declares trade_ready=true")
         if gate_status == "failed":
-            failed_gates.append(
-                f"component:{component_id}:{'|'.join(gate_reasons)}"
-            )
+            failed_gates.append(f"component:{component_id}:{'|'.join(gate_reasons)}")
         requirements.append(
             {
                 "component_id": component_id,
@@ -552,15 +531,9 @@ def build_model_data_bundle(
     ]
     summary = {
         "component_count": len(component_payload),
-        "ready_component_count": sum(
-            row["status"] == "ready" for row in component_payload
-        ),
-        "partial_component_count": sum(
-            row["status"] == "partial" for row in component_payload
-        ),
-        "blocked_component_count": sum(
-            row["status"] == "blocked" for row in component_payload
-        ),
+        "ready_component_count": sum(row["status"] == "ready" for row in component_payload),
+        "partial_component_count": sum(row["status"] == "partial" for row in component_payload),
+        "blocked_component_count": sum(row["status"] == "blocked" for row in component_payload),
         "ready_training_profiles": [
             row["profile_id"] for row in profile_results if row["status"] == "ready"
         ],
@@ -620,7 +593,10 @@ def build_model_data_bundle(
 
     if frontend_data_dir is not None:
         destination = frontend_data_dir.resolve()
-        _write_json(destination / "model-data-readiness.json", json.loads(readiness_path.read_text(encoding="utf-8")))
+        _write_json(
+            destination / "model-data-readiness.json",
+            json.loads(readiness_path.read_text(encoding="utf-8")),
+        )
         _write_json(destination / "data-components.json", component_payload)
         _write_json(destination / "training-profiles.json", profile_results)
 

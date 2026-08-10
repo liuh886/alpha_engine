@@ -40,13 +40,13 @@ def _state_weights(contract: Mapping[str, Any]) -> dict[int, dict[str, float]]:
     return output
 
 
-def bridge_weights_for_states(
-    states: pd.Series, contract: Mapping[str, Any]
-) -> pd.DataFrame:
+def bridge_weights_for_states(states: pd.Series, contract: Mapping[str, Any]) -> pd.DataFrame:
     """Map executed state labels to the frozen bridge allocation."""
 
     mapping = _state_weights(contract)
-    unknown = sorted(set(pd.to_numeric(states, errors="coerce").dropna().astype(int)) - set(mapping))
+    unknown = sorted(
+        set(pd.to_numeric(states, errors="coerce").dropna().astype(int)) - set(mapping)
+    )
     if unknown:
         raise ValueError(f"unknown position states: {unknown}")
     weights = pd.DataFrame(0.0, index=states.index, columns=list(ASSETS))
@@ -77,8 +77,7 @@ def run_bridge_state_backtest(
     for asset in ASSETS:
         daily[f"weight_{asset}"] = weights[asset]
     daily["gross_return"] = sum(
-        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in ASSETS
+        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if config.charge_initial_entry and not turnover.empty:
@@ -86,9 +85,7 @@ def run_bridge_state_backtest(
     else:
         turnover.iloc[0] = 0.0
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = (
-        turnover * config.transaction_cost_bps_per_turnover_unit / 10_000.0
-    )
+    daily["transaction_cost"] = turnover * config.transaction_cost_bps_per_turnover_unit / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()
@@ -224,7 +221,10 @@ def run_bridge_allocation_comparison(
         "strategy"
     )
     same_trace = baseline.daily["position_state"].equals(bridge.daily["position_state"])
-    if contract["validation"].get("require_same_decision_state_every_session", False) and not same_trace:
+    if (
+        contract["validation"].get("require_same_decision_state_every_session", False)
+        and not same_trace
+    ):
         raise AssertionError("bridge allocation changed the v4.1 state trace")
     horizons = [int(value) for value in contract["validation"]["event_horizons"]]
     diagnostics = {
@@ -246,9 +246,7 @@ def run_bridge_allocation_comparison(
             "baseline": _transition_costs(baseline),
             "bridge": _transition_costs(bridge),
         },
-        "bridge_entry_event_study": _bridge_entry_event_study(
-            prepared, baseline, horizons
-        ),
+        "bridge_entry_event_study": _bridge_entry_event_study(prepared, baseline, horizons),
         "inherited_v4_1_diagnostics": base_diagnostics,
     }
     return metrics.sort_index(), results, prepared, diagnostics

@@ -109,9 +109,7 @@ def parameter_activity_audit(
                 continue
             matched_groups += 1
             local_changes = [
-                outcome
-                for outcome in outcomes
-                if group[outcome].nunique(dropna=False) > 1
+                outcome for outcome in outcomes if group[outcome].nunique(dropna=False) > 1
             ]
             if local_changes:
                 changed_groups += 1

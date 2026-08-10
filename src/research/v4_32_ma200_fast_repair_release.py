@@ -60,9 +60,7 @@ def build_ma200_fast_release_trace(daily: pd.DataFrame) -> pd.DataFrame:
         },
         index=daily.index,
     )
-    trace["strong_defense_at_open"] = trace["strong_defense_at_close"].shift(
-        1, fill_value=False
-    )
+    trace["strong_defense_at_open"] = trace["strong_defense_at_close"].shift(1, fill_value=False)
     return trace
 
 
@@ -71,9 +69,12 @@ def _source_weights(source: StrategyResult) -> pd.DataFrame:
     missing = sorted(set(columns) - set(source.daily.columns))
     if missing:
         raise ValueError(f"source missing weight columns: {missing}")
-    return source.daily[columns].rename(
-        columns={"weight_QQQI": "QQQI", "weight_QQQ": "QQQ", "weight_TQQQ": "TQQQ"}
-    ).astype(float).copy()
+    return (
+        source.daily[columns]
+        .rename(columns={"weight_QQQI": "QQQI", "weight_QQQ": "QQQ", "weight_TQQQ": "TQQQ"})
+        .astype(float)
+        .copy()
+    )
 
 
 def cash_next_open_return(
@@ -138,9 +139,7 @@ def run_fast_release_backtest(
     weights, active = apply_fast_release_state0_defense(source, trace, cash_symbol=cash_symbol)
     daily = daily.join(trace)
     daily["ma200_fast_defense_active"] = active
-    daily[f"{cash_symbol}_next_open_return"] = cash_next_open_return(
-        bars, cash_symbol, daily.index
-    )
+    daily[f"{cash_symbol}_next_open_return"] = cash_next_open_return(bars, cash_symbol, daily.index)
     for asset in weights.columns:
         daily[f"weight_{asset}"] = weights[asset]
 
@@ -154,9 +153,7 @@ def run_fast_release_backtest(
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = (
-        turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
-    )
+    daily["transaction_cost"] = turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily.loc[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()
@@ -178,7 +175,10 @@ def run_fast_release_backtest(
                 float(year_counts.max() / year_counts.sum()) if len(year_counts) else 1.0
             ),
             "repair_release_sessions": int(
-                (daily["position_state"].astype(int).eq(0) & daily["fast_repair_ready_at_close"].shift(1, fill_value=False)).sum()
+                (
+                    daily["position_state"].astype(int).eq(0)
+                    & daily["fast_repair_ready_at_close"].shift(1, fill_value=False)
+                ).sum()
             ),
         }
     )
@@ -201,12 +201,8 @@ def run_v4_32_comparison(
         result.metrics.setdefault("guard_years", 0)
         result.metrics.setdefault("largest_guard_year_share", 0.0)
         result.metrics.setdefault("repair_release_sessions", 0)
-    guard = run_fast_release_backtest(
-        baseline, bars, cash_symbol=cash_symbol, strategy_key=GUARD
-    )
-    joint = run_fast_release_backtest(
-        panic, bars, cash_symbol=cash_symbol, strategy_key=JOINT
-    )
+    guard = run_fast_release_backtest(baseline, bars, cash_symbol=cash_symbol, strategy_key=GUARD)
+    joint = run_fast_release_backtest(panic, bars, cash_symbol=cash_symbol, strategy_key=JOINT)
     results = {BASELINE: baseline, PANIC: panic, GUARD: guard, JOINT: joint}
     if not all(
         result.daily["position_state"].equals(baseline.daily["position_state"])

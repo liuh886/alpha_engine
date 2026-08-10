@@ -20,7 +20,8 @@ def parse_args():
 
 def main():
     args = parse_args()
-    out = args.output_dir; out.mkdir(parents=True, exist_ok=True)
+    out = args.output_dir
+    out.mkdir(parents=True, exist_ok=True)
     (out/"daily").mkdir(exist_ok=True)
     common, signals, _ = prepare_common_dataset(args.byd_dir, args.etf_dir)
     r20, s20 = run_candidates(common, signals, cost_bps=PRIMARY_COST_BPS, annual_financing_rate=PRIMARY_FINANCING_RATE)

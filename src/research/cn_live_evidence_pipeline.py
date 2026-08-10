@@ -68,9 +68,7 @@ def build_cn_live_evidence_sources(
     try:
         _, pool, _, _, _, _ = load_cn_provider_contract(contract_path)
         candidates = [
-            str(symbol)
-            for basket in pool["baskets"].values()
-            for symbol in basket["symbols"]
+            str(symbol) for basket in pool["baskets"].values() for symbol in basket["symbols"]
         ]
         references = [str(symbol) for symbol in pool["references"]]
         bao.login()
@@ -96,9 +94,7 @@ def build_cn_live_evidence_sources(
             reference_by_symbol[symbol] = raw
 
         bars, raw_execution = _bars(raw_by_symbol, qfq_by_symbol, reference_by_symbol)
-        status = _build_status(
-            raw_by_symbol, reference_by_symbol, calendar, listing, limits
-        )
+        status = _build_status(raw_by_symbol, reference_by_symbol, calendar, listing, limits)
         # The contract requires a single status-provider identity. Candidate and
         # reference semantics differ, but both are produced by this reconciled
         # source pipeline and share one field-level provenance contract.
@@ -145,9 +141,7 @@ def build_cn_live_evidence_sources(
             "token_persisted": False,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
-        source_manifest["source_manifest_identity_sha256"] = canonical_sha256(
-            source_manifest
-        )
+        source_manifest["source_manifest_identity_sha256"] = canonical_sha256(source_manifest)
         write_json(staging / "source_manifest.json", source_manifest)
         write_json(
             staging / "source_capability_report.json",

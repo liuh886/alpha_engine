@@ -124,9 +124,7 @@ def build_features(ohlcv: pd.DataFrame) -> pd.DataFrame:
     daily["sma_60"] = close.rolling(60, min_periods=60).mean()
     daily["sma_120"] = close.rolling(120, min_periods=120).mean()
     daily["momentum_20"] = close.pct_change(20)
-    daily["prior_high_55"] = (
-        daily["high"].rolling(55, min_periods=55).max().shift(1)
-    )
+    daily["prior_high_55"] = daily["high"].rolling(55, min_periods=55).max().shift(1)
     daily["prior_low_20"] = daily["low"].rolling(20, min_periods=20).min().shift(1)
     daily["rsi_14"] = _wilder_rsi(close, 14)
     rolling_std = close.rolling(20, min_periods=20).std(ddof=0)
@@ -139,17 +137,13 @@ def _stateful_position(entry: pd.Series, exit_: pd.Series) -> pd.Series:
         raise ValueError("entry and exit indices must match")
     active = False
     states: list[float] = []
-    for enter_now, exit_now in zip(
-        entry.fillna(False), exit_.fillna(False), strict=True
-    ):
+    for enter_now, exit_now in zip(entry.fillna(False), exit_.fillna(False), strict=True):
         if active and bool(exit_now):
             active = False
         elif not active and bool(enter_now):
             active = True
         states.append(1.0 if active else 0.0)
-    return pd.Series(
-        states, index=entry.index, dtype=float, name="decision_position"
-    )
+    return pd.Series(states, index=entry.index, dtype=float, name="decision_position")
 
 
 def build_candidate_positions(features: pd.DataFrame) -> dict[str, pd.Series]:
@@ -157,30 +151,23 @@ def build_candidate_positions(features: pd.DataFrame) -> dict[str, pd.Series]:
 
     close = features["close"]
     trend_20_60 = _stateful_position(
-        entry=close.gt(features["sma_60"])
-        & features["sma_20"].gt(features["sma_60"]),
-        exit_=close.lt(features["sma_20"])
-        | features["sma_20"].lt(features["sma_60"]),
+        entry=close.gt(features["sma_60"]) & features["sma_20"].gt(features["sma_60"]),
+        exit_=close.lt(features["sma_20"]) | features["sma_20"].lt(features["sma_60"]),
     )
     breakout_55_20 = _stateful_position(
         entry=close.gt(features["prior_high_55"]),
         exit_=close.lt(features["prior_low_20"]),
     )
     momentum_20_120 = _stateful_position(
-        entry=close.gt(features["sma_120"])
-        & features["momentum_20"].gt(0.0),
-        exit_=close.lt(features["sma_120"])
-        | features["momentum_20"].lt(0.0),
+        entry=close.gt(features["sma_120"]) & features["momentum_20"].gt(0.0),
+        exit_=close.lt(features["sma_120"]) | features["momentum_20"].lt(0.0),
     )
     rsi_trend_reversion = _stateful_position(
-        entry=close.gt(features["sma_120"])
-        & features["rsi_14"].lt(35.0),
-        exit_=close.lt(features["sma_120"])
-        | features["rsi_14"].gt(55.0),
+        entry=close.gt(features["sma_120"]) & features["rsi_14"].lt(35.0),
+        exit_=close.lt(features["sma_120"]) | features["rsi_14"].gt(55.0),
     )
     bollinger_trend_reversion = _stateful_position(
-        entry=close.gt(features["sma_120"])
-        & close.lt(features["bollinger_lower_20_2"]),
+        entry=close.gt(features["sma_120"]) & close.lt(features["bollinger_lower_20_2"]),
         exit_=close.lt(features["sma_120"]) | close.ge(features["sma_20"]),
     )
     positions = {
@@ -216,26 +203,16 @@ def _return_metrics(
     )
     volatility = float(clean.std(ddof=0) * np.sqrt(252.0))
     sharpe = (
-        float(clean.mean() / clean.std(ddof=0) * np.sqrt(252.0))
-        if clean.std(ddof=0) > 0.0
-        else 0.0
+        float(clean.mean() / clean.std(ddof=0) * np.sqrt(252.0)) if clean.std(ddof=0) > 0.0 else 0.0
     )
     downside = clean.clip(upper=0.0)
-    downside_deviation = float(
-        np.sqrt((downside.pow(2)).mean()) * np.sqrt(252.0)
-    )
-    sortino = (
-        float(clean.mean() * 252.0 / downside_deviation)
-        if downside_deviation > 0.0
-        else 0.0
-    )
+    downside_deviation = float(np.sqrt((downside.pow(2)).mean()) * np.sqrt(252.0))
+    sortino = float(clean.mean() * 252.0 / downside_deviation) if downside_deviation > 0.0 else 0.0
     drawdown = wealth.div(wealth.cummax()).sub(1.0)
     max_drawdown = float(drawdown.min())
     calmar = float(cagr / abs(max_drawdown)) if max_drawdown < 0.0 else 0.0
     turnover_units = float(aligned_turnover.sum())
-    round_trips_per_year = (
-        float(turnover_units / (2.0 * years)) if years > 0.0 else 0.0
-    )
+    round_trips_per_year = float(turnover_units / (2.0 * years)) if years > 0.0 else 0.0
     return {
         "sessions": float(len(clean)),
         "years": float(years),
@@ -280,12 +257,8 @@ def _build_trades(daily: pd.DataFrame) -> pd.DataFrame:
     if active_trade is not None:
         active_trade["exit_date"] = pd.NaT
         active_trade["exit_open"] = np.nan
-        trade_returns = daily.loc[
-            labels.eq(float(active_trade["trade_id"])), "net_return"
-        ]
-        active_trade["gross_return"] = float(
-            (1.0 + trade_returns).prod() - 1.0
-        )
+        trade_returns = daily.loc[labels.eq(float(active_trade["trade_id"])), "net_return"]
+        active_trade["gross_return"] = float((1.0 + trade_returns).prod() - 1.0)
         records.append(active_trade)
     daily["trade_id"] = labels
     columns = [
@@ -315,22 +288,13 @@ def run_backtest(
         raise ValueError("decision position has missing dates")
     daily["decision_position"] = decision.astype(float)
     daily["position_at_open"] = daily["decision_position"].shift(1).fillna(0.0)
-    daily["asset_open_to_open_return"] = (
-        daily["open"].shift(-1).div(daily["open"]).sub(1.0)
-    )
+    daily["asset_open_to_open_return"] = daily["open"].shift(-1).div(daily["open"]).sub(1.0)
     daily = daily.iloc[:-1].copy()
     daily["turnover_units"] = (
-        daily["position_at_open"]
-        .diff()
-        .abs()
-        .fillna(daily["position_at_open"].abs())
+        daily["position_at_open"].diff().abs().fillna(daily["position_at_open"].abs())
     )
-    daily["transaction_cost"] = (
-        daily["turnover_units"] * float(cost_bps) / 10_000.0
-    )
-    daily["gross_return"] = (
-        daily["position_at_open"] * daily["asset_open_to_open_return"]
-    )
+    daily["transaction_cost"] = daily["turnover_units"] * float(cost_bps) / 10_000.0
+    daily["gross_return"] = daily["position_at_open"] * daily["asset_open_to_open_return"]
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily["wealth"] = (1.0 + daily["net_return"]).cumprod()
     daily["drawdown"] = daily["wealth"].div(daily["wealth"].cummax()).sub(1.0)
@@ -353,21 +317,15 @@ def run_backtest(
         if yearly_records
         else pd.DataFrame(columns=["strategy_return"])
     )
-    return BacktestResult(
-        name=name, daily=daily, metrics=metrics, yearly=yearly, trades=trades
-    )
+    return BacktestResult(name=name, daily=daily, metrics=metrics, yearly=yearly, trades=trades)
 
 
 def run_buy_and_hold(features: pd.DataFrame, cost_bps: float) -> BacktestResult:
-    decision = pd.Series(
-        1.0, index=features.index, dtype=float, name="decision_position"
-    )
+    decision = pd.Series(1.0, index=features.index, dtype=float, name="decision_position")
     return run_backtest(features, decision, cost_bps, "buy_hold_byd")
 
 
-def _slice_result(
-    result: BacktestResult, start: str, end: str
-) -> BacktestResult:
+def _slice_result(result: BacktestResult, start: str, end: str) -> BacktestResult:
     block = result.daily.loc[pd.Timestamp(start) : pd.Timestamp(end)].copy()
     if block.empty:
         raise ValueError(f"empty evaluation window {start} to {end}")
@@ -386,9 +344,7 @@ def _slice_result(
         yearly_records.append(
             {
                 "year": float(year),
-                "strategy_return": float(
-                    (1.0 + year_block["net_return"]).prod() - 1.0
-                ),
+                "strategy_return": float((1.0 + year_block["net_return"]).prod() - 1.0),
             }
         )
     yearly = pd.DataFrame(yearly_records).set_index("year")
@@ -409,19 +365,13 @@ def _ex_best_trade_total_return(result: BacktestResult) -> float:
     return float((1.0 + reduced).prod() - 1.0)
 
 
-def _year_comparison(
-    candidate: BacktestResult, benchmark: BacktestResult
-) -> pd.DataFrame:
-    comparison = candidate.yearly.rename(
-        columns={"strategy_return": "candidate_return"}
-    ).join(
+def _year_comparison(candidate: BacktestResult, benchmark: BacktestResult) -> pd.DataFrame:
+    comparison = candidate.yearly.rename(columns={"strategy_return": "candidate_return"}).join(
         benchmark.yearly.rename(columns={"strategy_return": "buy_hold_return"}),
         how="inner",
     )
     comparison["relative_return"] = (
-        (1.0 + comparison["candidate_return"])
-        .div(1.0 + comparison["buy_hold_return"])
-        .sub(1.0)
+        (1.0 + comparison["candidate_return"]).div(1.0 + comparison["buy_hold_return"]).sub(1.0)
     )
     return comparison
 
@@ -432,18 +382,13 @@ def _largest_positive_year_share(year_comparison: pd.DataFrame) -> float:
     return float(positive.max() / total) if total > 0.0 else 1.0
 
 
-def evaluate_research(
-    ohlcv: pd.DataFrame, contract: Mapping[str, Any]
-) -> dict[str, Any]:
+def evaluate_research(ohlcv: pd.DataFrame, contract: Mapping[str, Any]) -> dict[str, Any]:
     """Evaluate, select and quarantine-check the frozen BYD V1.0 candidates."""
 
     features = build_features(ohlcv)
     candidates = build_candidate_positions(features)
     primary_cost = float(contract["costs"]["primary_bps_per_turnover_unit"])
-    stress_costs = [
-        float(value)
-        for value in contract["costs"]["stress_bps_per_turnover_unit"]
-    ]
+    stress_costs = [float(value) for value in contract["costs"]["stress_bps_per_turnover_unit"]]
     windows = contract["windows"]
     selection_start = str(windows["development_start"])
     selection_end = str(windows["validation_end"])
@@ -453,15 +398,9 @@ def evaluate_research(
     quarantine_end = str(windows["quarantine_end"])
 
     benchmark_full = run_buy_and_hold(features, primary_cost)
-    benchmark_selection = _slice_result(
-        benchmark_full, selection_start, selection_end
-    )
-    benchmark_validation = _slice_result(
-        benchmark_full, validation_start, validation_end
-    )
-    benchmark_quarantine = _slice_result(
-        benchmark_full, quarantine_start, quarantine_end
-    )
+    benchmark_selection = _slice_result(benchmark_full, selection_start, selection_end)
+    benchmark_validation = _slice_result(benchmark_full, validation_start, validation_end)
+    benchmark_quarantine = _slice_result(benchmark_full, quarantine_start, quarantine_end)
 
     full_results: dict[str, BacktestResult] = {}
     rows: list[dict[str, Any]] = []
@@ -471,37 +410,25 @@ def evaluate_research(
         selection = _slice_result(full, selection_start, selection_end)
         validation = _slice_result(full, validation_start, validation_end)
         year_comparison = _year_comparison(selection, benchmark_selection)
-        positive_year_fraction = float(
-            year_comparison["relative_return"].gt(0.0).mean()
-        )
-        largest_positive_year_share = _largest_positive_year_share(
-            year_comparison
-        )
-        stress_40 = run_backtest(
-            features, candidates[name], max(stress_costs), name
-        )
-        stress_40_selection = _slice_result(
-            stress_40, selection_start, selection_end
-        )
+        positive_year_fraction = float(year_comparison["relative_return"].gt(0.0).mean())
+        largest_positive_year_share = _largest_positive_year_share(year_comparison)
+        stress_40 = run_backtest(features, candidates[name], max(stress_costs), name)
+        stress_40_selection = _slice_result(stress_40, selection_start, selection_end)
         ex_best_trade = _ex_best_trade_total_return(selection)
         gates = {
             "calmar_above_buy_hold": selection.metrics["calmar"]
             > benchmark_selection.metrics["calmar"],
             "drawdown_or_sortino_improved": (
-                selection.metrics["max_drawdown"]
-                - benchmark_selection.metrics["max_drawdown"]
+                selection.metrics["max_drawdown"] - benchmark_selection.metrics["max_drawdown"]
                 >= 0.08
-                or selection.metrics["sortino"]
-                - benchmark_selection.metrics["sortino"]
-                >= 0.20
+                or selection.metrics["sortino"] - benchmark_selection.metrics["sortino"] >= 0.20
             ),
             "cagr_retention": selection.metrics["cagr"]
             >= benchmark_selection.metrics["cagr"] - 0.05,
             "positive_year_fraction": positive_year_fraction >= 0.50,
             "turnover_cap": selection.metrics["round_trips_per_year"] <= 12.0,
             "year_concentration_cap": largest_positive_year_share <= 0.50,
-            "stress_40_positive": stress_40_selection.metrics["total_return"]
-            > 0.0,
+            "stress_40_positive": stress_40_selection.metrics["total_return"] > 0.0,
             "not_best_trade_dependent": ex_best_trade > 0.0,
         }
         rows.append(
@@ -512,9 +439,7 @@ def evaluate_research(
                 "positive_year_fraction": positive_year_fraction,
                 "largest_positive_year_share": largest_positive_year_share,
                 "selection_total_return_ex_best_trade": ex_best_trade,
-                "selection_stress_40_total_return": stress_40_selection.metrics[
-                    "total_return"
-                ],
+                "selection_stress_40_total_return": stress_40_selection.metrics["total_return"],
                 "selection_gates": gates,
                 "selection_pass": all(gates.values()),
             }
@@ -536,44 +461,30 @@ def evaluate_research(
     decision = "byd_v1_0_not_supported"
     if selected_name is not None:
         selected_full = full_results[selected_name]
-        selected_quarantine = _slice_result(
-            selected_full, quarantine_start, quarantine_end
-        )
+        selected_quarantine = _slice_result(selected_full, quarantine_start, quarantine_end)
         stress_40_full = run_backtest(
             features, candidates[selected_name], max(stress_costs), selected_name
         )
-        stress_40_quarantine = _slice_result(
-            stress_40_full, quarantine_start, quarantine_end
-        )
+        stress_40_quarantine = _slice_result(stress_40_full, quarantine_start, quarantine_end)
         ex_best_trade = _ex_best_trade_total_return(selected_quarantine)
         q_gates = {
-            "positive_total_return": selected_quarantine.metrics["total_return"]
-            > 0.0,
+            "positive_total_return": selected_quarantine.metrics["total_return"] > 0.0,
             "calmar_not_below_buy_hold": selected_quarantine.metrics["calmar"]
             >= benchmark_quarantine.metrics["calmar"],
-            "drawdown_not_materially_worse": selected_quarantine.metrics[
-                "max_drawdown"
-            ]
+            "drawdown_not_materially_worse": selected_quarantine.metrics["max_drawdown"]
             >= benchmark_quarantine.metrics["max_drawdown"] - 0.03,
             "not_both_cagr_and_sortino_lower": not (
-                selected_quarantine.metrics["cagr"]
-                < benchmark_quarantine.metrics["cagr"]
-                and selected_quarantine.metrics["sortino"]
-                < benchmark_quarantine.metrics["sortino"]
+                selected_quarantine.metrics["cagr"] < benchmark_quarantine.metrics["cagr"]
+                and selected_quarantine.metrics["sortino"] < benchmark_quarantine.metrics["sortino"]
             ),
             "positive_ex_best_trade": ex_best_trade > 0.0,
-            "stress_40_not_below_minus_5pct": stress_40_quarantine.metrics[
-                "total_return"
-            ]
-            >= -0.05,
+            "stress_40_not_below_minus_5pct": stress_40_quarantine.metrics["total_return"] >= -0.05,
         }
         quarantine = {
             "candidate_metrics": selected_quarantine.metrics,
             "buy_hold_metrics": benchmark_quarantine.metrics,
             "total_return_ex_best_trade": ex_best_trade,
-            "stress_40_total_return": stress_40_quarantine.metrics[
-                "total_return"
-            ],
+            "stress_40_total_return": stress_40_quarantine.metrics["total_return"],
             "gates": q_gates,
             "pass": all(q_gates.values()),
         }
@@ -581,19 +492,13 @@ def evaluate_research(
             decision = "byd_v1_0_supported"
 
     latest_date = features.index[-1]
-    latest_signals = {
-        name: float(series.iloc[-1]) for name, series in candidates.items()
-    }
+    latest_signals = {name: float(series.iloc[-1]) for name, series in candidates.items()}
     latest_positions = {
         name: float(full_results[name].daily["position_at_open"].iloc[-1])
         for name in CANDIDATE_NAMES
     }
-    selected_latest_signal = (
-        latest_signals.get(selected_name) if selected_name else None
-    )
-    selected_current_position = (
-        latest_positions.get(selected_name) if selected_name else None
-    )
+    selected_latest_signal = latest_signals.get(selected_name) if selected_name else None
+    selected_current_position = latest_positions.get(selected_name) if selected_name else None
 
     return {
         "experiment_id": str(contract["experiment_id"]),

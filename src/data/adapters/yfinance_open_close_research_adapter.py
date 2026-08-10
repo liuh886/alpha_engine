@@ -51,9 +51,7 @@ class YFinanceOpenCloseResearchAdapter:
         provider_symbol = self.provider_symbol(req)
         try:
             with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore", message=".*Timestamp.utcnow is deprecated.*"
-                )
+                warnings.filterwarnings("ignore", message=".*Timestamp.utcnow is deprecated.*")
                 raw = yf.download(
                     provider_symbol,
                     start=start,
@@ -64,9 +62,7 @@ class YFinanceOpenCloseResearchAdapter:
                     threads=False,
                 )
         except Exception as exc:
-            raise DataFetchError(
-                f"yfinance download failed for {provider_symbol}: {exc}"
-            ) from exc
+            raise DataFetchError(f"yfinance download failed for {provider_symbol}: {exc}") from exc
         if raw is None or raw.empty:
             raise DataFetchError(f"empty data for {provider_symbol}")
         frame = raw.copy()
@@ -92,9 +88,11 @@ class YFinanceOpenCloseResearchAdapter:
         out["low"] = out[["open", "close"]].min(axis=1)
         out["amount"] = out["close"] * out["volume"]
         out["factor"] = 1.0
-        out = out[
-            ["date", "open", "high", "low", "close", "volume", "amount", "factor"]
-        ].sort_values("date").reset_index(drop=True)
+        out = (
+            out[["date", "open", "high", "low", "close", "volume", "amount", "factor"]]
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
         out.attrs["open_close_only_research"] = {
             "provider_adjusted_open_close_preserved": True,
             "high_low_synthetic_envelope_only": True,

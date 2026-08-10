@@ -143,10 +143,7 @@ def _fit_model(
     returns_train: pd.DataFrame,
     expression_columns: dict[str, str],
 ) -> Any:
-    columns = [
-        expression_columns[item]
-        for item in candidate.feature_group.expressions
-    ]
+    columns = [expression_columns[item] for item in candidate.feature_group.expressions]
     x_rank, y_rank, groups = prepare_ranker_frame(
         features_train.loc[:, columns],
         returns_train,
@@ -176,10 +173,7 @@ def _predict_model(
     features_test: pd.DataFrame,
     expression_columns: dict[str, str],
 ) -> pd.DataFrame:
-    columns = [
-        expression_columns[item]
-        for item in candidate.feature_group.expressions
-    ]
+    columns = [expression_columns[item] for item in candidate.feature_group.expressions]
     matrix = features_test.loc[:, columns]
     if candidate.model_family == "xgb":
         return predict_xgb_daily_ranker(model, matrix)
@@ -213,8 +207,7 @@ def _run_cell(
         factor_expressions=context.feature_expressions,
         return_expression=context.return_expression,
         experiment_id=(
-            f"{context.experiment_id}_{window.label}_"
-            f"{cell_id.replace('/', '').lower()}"
+            f"{context.experiment_id}_{window.label}_{cell_id.replace('/', '').lower()}"
         ),
     )
     return run_10d_experiment(
@@ -222,9 +215,7 @@ def _run_cell(
         candidates=candidate_scores,
         raw_returns=raw_returns,
         benchmark_returns=benchmark_returns,
-        output_dir=(
-            context.output_dir / window.label / cell_id.replace("/", "")
-        ),
+        output_dir=(context.output_dir / window.label / cell_id.replace("/", "")),
     )
 
 
@@ -247,9 +238,7 @@ def _direct_gain_migration(
         "common_rows": int(len(common)),
         "changed_rows": int(changed.sum()),
         "changed_ratio": float(changed.mean()) if len(common) else None,
-        "mean_absolute_gain_shift": (
-            float((right - left).abs().mean()) if len(common) else None
-        ),
+        "mean_absolute_gain_shift": (float((right - left).abs().mean()) if len(common) else None),
         "confusion": [
             {
                 "static_gain": int(row.static_gain),
@@ -291,9 +280,7 @@ def _common_intersection_report(
             context=context,
             window=window,
             cell_id=f"common_{candidate.model_family}_SS",
-            candidate_scores={
-                candidate_name: _subset(ss_scores, common_symbols)
-            },
+            candidate_scores={candidate_name: _subset(ss_scores, common_symbols)},
             raw_returns=common_static_returns,
             benchmark_returns=benchmark_returns,
             symbols=common_symbols,
@@ -304,9 +291,7 @@ def _common_intersection_report(
             context=context,
             window=window,
             cell_id=f"common_{candidate.model_family}_PP",
-            candidate_scores={
-                candidate_name: _subset(pp_scores, common_symbols)
-            },
+            candidate_scores={candidate_name: _subset(pp_scores, common_symbols)},
             raw_returns=common_pit_returns,
             benchmark_returns=benchmark_returns,
             symbols=common_symbols,
@@ -326,15 +311,11 @@ def execute_decomposition_window(
     """Train two frozen model sets, cross-score four cells and attribute gaps."""
 
     union_symbols = sorted(
-        set(context.static_symbols)
-        | set(context.pit_train_symbols)
-        | set(context.pit_oos_symbols)
+        set(context.static_symbols) | set(context.pit_train_symbols) | set(context.pit_oos_symbols)
     )
     missing = sorted(set(union_symbols) - context.provider_symbols)
     if missing:
-        raise ValueError(
-            f"provider misses {len(missing)} decomposition symbols: {missing}"
-        )
+        raise ValueError(f"provider misses {len(missing)} decomposition symbols: {missing}")
 
     evaluation_start = evaluation_dates.min().strftime("%Y-%m-%d")
     evaluation_end = evaluation_dates.max().strftime("%Y-%m-%d")
@@ -346,10 +327,7 @@ def execute_decomposition_window(
             window.test_end,
         )
     ).replace([np.inf, -np.inf], np.nan)
-    features.columns = [
-        context.expression_columns[item]
-        for item in context.feature_expressions
-    ]
+    features.columns = [context.expression_columns[item] for item in context.feature_expressions]
 
     returns = normalize_qlib_frame_index(
         runtime.features(
@@ -389,16 +367,12 @@ def execute_decomposition_window(
         provider_symbols=context.provider_symbols,
     )
 
-    test_mask = features.index.get_level_values("datetime").isin(
-        evaluation_dates
-    )
+    test_mask = features.index.get_level_values("datetime").isin(evaluation_dates)
     test_features = features.loc[test_mask].copy()
     static_test = _subset(test_features, context.static_symbols)
     pit_test = _subset(test_features, context.pit_oos_symbols)
 
-    return_mask = returns.index.get_level_values("datetime").isin(
-        evaluation_dates
-    )
+    return_mask = returns.index.get_level_values("datetime").isin(evaluation_dates)
     test_returns = returns.loc[return_mask].copy()
     test_returns.attrs.update(returns.attrs)
     static_returns = _subset(test_returns, context.static_symbols)
@@ -469,9 +443,7 @@ def execute_decomposition_window(
             baseline.index.get_level_values("datetime").isin(evaluation_dates)
         ].copy()
         baseline.columns = ["score"]
-        baseline.attrs.update(
-            {"provenance": "factor_baseline", "expression": expression}
-        )
+        baseline.attrs.update({"provenance": "factor_baseline", "expression": expression})
         static_baseline = _subset(baseline, context.static_symbols)
         pit_baseline = _subset(baseline, context.pit_oos_symbols)
         scores["S/S"][name] = static_baseline
@@ -489,11 +461,7 @@ def execute_decomposition_window(
             candidate_scores=scores[cell.cell_id],
             raw_returns=static_returns if static_oos else pit_returns,
             benchmark_returns=benchmark_returns,
-            symbols=(
-                context.static_symbols
-                if static_oos
-                else context.pit_oos_symbols
-            ),
+            symbols=(context.static_symbols if static_oos else context.pit_oos_symbols),
             evaluation_start=evaluation_start,
             evaluation_end=evaluation_end,
         )
@@ -505,9 +473,7 @@ def execute_decomposition_window(
         first_snapshot_by_symbol=context.first_snapshot_by_symbol,
         window_snapshot_date=context.window_snapshot_date,
     )
-    common_symbols = sorted(
-        set(context.static_symbols).intersection(context.pit_oos_symbols)
-    )
+    common_symbols = sorted(set(context.static_symbols).intersection(context.pit_oos_symbols))
     diagnostics: dict[str, Any] = {}
     for candidate in context.candidates:
         ss_scores = scores["S/S"][candidate.name]
@@ -571,8 +537,7 @@ def execute_decomposition_window(
         }
 
     metrics = {
-        cell_id: extract_original_candidate_metrics(report)
-        for cell_id, report in reports.items()
+        cell_id: extract_original_candidate_metrics(report) for cell_id, report in reports.items()
     }
     return {
         "schema_version": "1.0",

@@ -48,9 +48,7 @@ def build_vvix_stress_trace(daily: pd.DataFrame, vvix: pd.DataFrame) -> pd.DataF
     if not daily.index.is_monotonic_increasing or daily.index.has_duplicates:
         raise ValueError("daily trace index must be monotonic and unique")
     close = _normalise_vvix(vvix).reindex(daily.index)
-    threshold = close.rolling(VVIX_WINDOW, min_periods=VVIX_WINDOW).quantile(
-        VVIX_STRESS_QUANTILE
-    )
+    threshold = close.rolling(VVIX_WINDOW, min_periods=VVIX_WINDOW).quantile(VVIX_STRESS_QUANTILE)
     stress = close.notna() & threshold.notna() & close.ge(threshold)
     trace = pd.DataFrame(
         {
@@ -60,9 +58,7 @@ def build_vvix_stress_trace(daily: pd.DataFrame, vvix: pd.DataFrame) -> pd.DataF
         },
         index=daily.index,
     )
-    trace["vvix_stress_at_open"] = trace["vvix_stress_at_close"].shift(
-        1, fill_value=False
-    )
+    trace["vvix_stress_at_open"] = trace["vvix_stress_at_close"].shift(1, fill_value=False)
     return trace
 
 
@@ -89,13 +85,18 @@ def _source_weights(source: StrategyResult) -> pd.DataFrame:
     missing = sorted(set(columns) - set(source.daily.columns))
     if missing:
         raise ValueError(f"source missing weight columns: {missing}")
-    return source.daily[columns].rename(
-        columns={
-            "weight_QQQI": "QQQI",
-            "weight_QQQ": "QQQ",
-            "weight_TQQQ": "TQQQ",
-        }
-    ).astype(float).copy()
+    return (
+        source.daily[columns]
+        .rename(
+            columns={
+                "weight_QQQI": "QQQI",
+                "weight_QQQ": "QQQ",
+                "weight_TQQQ": "TQQQ",
+            }
+        )
+        .astype(float)
+        .copy()
+    )
 
 
 def apply_vvix_state0_defense(
@@ -147,9 +148,7 @@ def run_vvix_defensive_backtest(
     weights, active = apply_vvix_state0_defense(source, trace, cash_symbol=cash_symbol)
     daily = daily.join(trace)
     daily["vvix_state0_defense_active"] = active
-    daily[f"{cash_symbol}_next_open_return"] = cash_next_open_return(
-        bars, cash_symbol, daily.index
-    )
+    daily[f"{cash_symbol}_next_open_return"] = cash_next_open_return(bars, cash_symbol, daily.index)
     for asset in weights.columns:
         daily[f"weight_{asset}"] = weights[asset]
 
@@ -163,9 +162,7 @@ def run_vvix_defensive_backtest(
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
     daily["turnover_units"] = turnover
-    daily["transaction_cost"] = (
-        turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
-    )
+    daily["transaction_cost"] = turnover * TRANSACTION_COST_BPS_PER_TURNOVER_UNIT / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily.loc[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()

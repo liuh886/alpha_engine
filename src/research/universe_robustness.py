@@ -64,7 +64,9 @@ class UniverseSpec:
                 duplicates.append(s)
             seen.add(s)
         if duplicates:
-            raise ValueError(f"UniverseSpec symbols must be unique, duplicates: {sorted(set(duplicates))}")
+            raise ValueError(
+                f"UniverseSpec symbols must be unique, duplicates: {sorted(set(duplicates))}"
+            )
 
     def to_dict(self) -> dict[str, object]:
         return {"name": self.name, "symbols": list(self.symbols), "min_symbols": self.min_symbols}
@@ -204,8 +206,7 @@ def _identify_index_levels(df: pd.DataFrame) -> tuple[int | None, int | None]:
                 non_date_str_count = sum(
                     1
                     for v in samples
-                    if isinstance(v, str) and v.strip()
-                    and not _looks_like_date(v.strip())
+                    if isinstance(v, str) and v.strip() and not _looks_like_date(v.strip())
                 )
                 majority = len(samples) * 0.5
                 if date_count >= majority and dt_level is None:
@@ -358,7 +359,8 @@ def load_symbol_date_coverage(
         )
 
         return _parse_qlib_features_frame(
-            df, instruments,
+            df,
+            instruments,
             field=field,
             req_start=req_start,
             req_end=req_end,
@@ -627,7 +629,8 @@ def filter_universe_by_coverage(
     if date_coverage_data is not None:
         # Symbols with sufficient_coverage = True are available
         available = sorted(
-            s for s in requested
+            s
+            for s in requested
             if s in date_coverage_data and date_coverage_data[s].get("sufficient_coverage")
         )
         available_set = set(available)
@@ -795,6 +798,7 @@ def summarize_universe_robustness(
     **Stronger research** requires *mean_icir >= 0.20* **and**
     *worst_drawdown >= -0.15*.
     """
+
     # ------------------------------------------------------------------
     # Helper: locate the fixed research blend within a walk-forward summary
     # ------------------------------------------------------------------
@@ -874,7 +878,9 @@ def summarize_universe_robustness(
         )
 
     # ── overall decision ──────────────────────────────────────────────
-    evaluated = [r for r in universe_rows if r["status"] == "evaluated" and r["mean_icir"] is not None]
+    evaluated = [
+        r for r in universe_rows if r["status"] == "evaluated" and r["mean_icir"] is not None
+    ]
     decision_status = "no_universe_evaluated"
     trade_ready = False
 

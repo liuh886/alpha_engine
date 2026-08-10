@@ -157,24 +157,16 @@ def build_signal_frame(qqq_bars: pd.DataFrame, config: RotationConfig) -> pd.Dat
     ).mean()
     signal["bb_upper"] = signal["bb_mid"] + config.bollinger_std * signal["std_short"]
     signal["bb_lower"] = signal["bb_mid"] - config.bollinger_std * signal["std_short"]
-    signal["high_window"] = close.rolling(
-        config.high_window, min_periods=config.high_window
-    ).max()
+    signal["high_window"] = close.rolling(config.high_window, min_periods=config.high_window).max()
     signal["drawdown"] = close / signal["high_window"] - 1.0
     signal["return_63d"] = close.pct_change(63)
 
     ma_diff = signal["ma_short"].diff()
     signal["ma_short_rising"] = (
-        ma_diff.gt(0)
-        .rolling(config.n_rise, min_periods=config.n_rise)
-        .sum()
-        .eq(config.n_rise)
+        ma_diff.gt(0).rolling(config.n_rise, min_periods=config.n_rise).sum().eq(config.n_rise)
     )
     signal["ma_short_falling"] = (
-        ma_diff.lt(0)
-        .rolling(config.n_fall, min_periods=config.n_fall)
-        .sum()
-        .eq(config.n_fall)
+        ma_diff.lt(0).rolling(config.n_fall, min_periods=config.n_fall).sum().eq(config.n_fall)
     )
     signal["below_ma_short_n"] = (
         close.lt(signal["ma_short"])
@@ -216,9 +208,7 @@ def build_signal_frame(qqq_bars: pd.DataFrame, config: RotationConfig) -> pd.Dat
     )
     signal.loc[sideways, "regime"] = "sideways_above_ma200"
     uptrend = (
-        close.ge(signal["ma_long"])
-        & signal["return_63d"].ge(0.05)
-        & signal["ma_short_rising"]
+        close.ge(signal["ma_long"]) & signal["return_63d"].ge(0.05) & signal["ma_short_rising"]
     )
     signal.loc[uptrend, "regime"] = "uptrend"
     return signal
@@ -267,22 +257,16 @@ def generate_decision_states(
         state = next_state
         states.append(state)
         reasons.append(reason)
-    return pd.DataFrame(
-        {"decision_state": states, "decision_reason": reasons}, index=signal.index
-    )
+    return pd.DataFrame({"decision_state": states, "decision_reason": reasons}, index=signal.index)
 
 
-def prepare_rotation_data(
-    bars: Mapping[str, pd.DataFrame], config: RotationConfig
-) -> pd.DataFrame:
+def prepare_rotation_data(bars: Mapping[str, pd.DataFrame], config: RotationConfig) -> pd.DataFrame:
     """Align the common tradable interval while retaining QQQ indicator warm-up."""
 
     missing = sorted(set(REQUIRED_SYMBOLS) - {str(key).upper() for key in bars})
     if missing:
         raise ValueError(f"bars missing required symbols: {missing}")
-    normalised = {
-        symbol: _normalise_bars(bars[symbol], symbol) for symbol in REQUIRED_SYMBOLS
-    }
+    normalised = {symbol: _normalise_bars(bars[symbol], symbol) for symbol in REQUIRED_SYMBOLS}
     signal = build_signal_frame(bars["QQQ"], config)
     common_index = normalised["QQQI"].index
     for symbol in ("QQQ", "TQQQ"):
@@ -336,9 +320,7 @@ def _return_metrics(
     downside = np.minimum(excess.to_numpy(dtype=float), 0.0)
     downside_dev = float(np.sqrt(np.mean(np.square(downside))))
     sortino = (
-        float(excess.mean() / downside_dev * np.sqrt(252.0))
-        if downside_dev > 1e-12
-        else np.nan
+        float(excess.mean() / downside_dev * np.sqrt(252.0)) if downside_dev > 1e-12 else np.nan
     )
     drawdown = equity / equity.cummax() - 1.0
     max_drawdown = float(drawdown.min())
@@ -393,9 +375,7 @@ def run_rotation_backtest(
     if config.charge_initial_entry and len(legs):
         legs.iloc[0] = 1.0
     daily["turnover_legs"] = legs
-    daily["transaction_cost"] = (
-        legs * config.transaction_cost_bps_per_leg / 10_000.0
-    )
+    daily["transaction_cost"] = legs * config.transaction_cost_bps_per_leg / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
     daily = daily[daily["net_return"].notna()].copy()
     daily["equity"] = (1.0 + daily["net_return"]).cumprod()
@@ -571,7 +551,9 @@ def phase_metrics(
         start_ts, end_ts = pd.Timestamp(start), pd.Timestamp(end)
         for key, result in results.items():
             series = result.daily.loc[start_ts:end_ts, "net_return"]
-            coverage = "available" if len(series) >= minimum_sessions else "insufficient_common_history"
+            coverage = (
+                "available" if len(series) >= minimum_sessions else "insufficient_common_history"
+            )
             metrics = _return_metrics(series) if coverage == "available" else {}
             rows.append(
                 {
@@ -599,7 +581,10 @@ def chronological_split_metrics(
         raise ValueError("train_fraction must be between 0.2 and 0.8")
     series = result.daily["net_return"].dropna()
     split_at = max(1, min(len(series) - 1, int(len(series) * train_fraction)))
-    pieces = {"early_common_sample": series.iloc[:split_at], "late_common_sample": series.iloc[split_at:]}
+    pieces = {
+        "early_common_sample": series.iloc[:split_at],
+        "late_common_sample": series.iloc[split_at:],
+    }
     rows = []
     for name, values in pieces.items():
         row = {"segment": name, **_return_metrics(values)}

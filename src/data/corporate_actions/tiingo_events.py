@@ -14,9 +14,7 @@ from src.data.corporate_actions.event_store import (
 
 def _hash(row: Mapping[str, Any]) -> str:
     return hashlib.sha256(
-        json.dumps(dict(row), sort_keys=True, default=str, separators=(",", ":")).encode(
-            "utf-8"
-        )
+        json.dumps(dict(row), sort_keys=True, default=str, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
 
 
@@ -115,6 +113,4 @@ def tiingo_bars_to_corporate_actions(
                 )
             )
     unique = {event.event_id: event for event in actions}
-    return sorted(
-        unique.values(), key=lambda event: (event.effective_date, event.event_type)
-    )
+    return sorted(unique.values(), key=lambda event: (event.effective_date, event.event_type))

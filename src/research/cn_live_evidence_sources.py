@@ -338,7 +338,15 @@ def _listing_metadata(
         part = tushare.query(
             "stock_basic",
             params={"exchange": "", "list_status": status},
-            fields=["ts_code", "symbol", "name", "exchange", "list_status", "list_date", "delist_date"],
+            fields=[
+                "ts_code",
+                "symbol",
+                "name",
+                "exchange",
+                "list_status",
+                "list_date",
+                "delist_date",
+            ],
         )
         if not part.empty:
             ts_parts.append(part)
@@ -357,9 +365,7 @@ def _listing_metadata(
         bao_frame.columns = [str(column).lower() for column in bao_frame.columns]
         ts_row = ts_frame[ts_frame["symbol"] == symbol].iloc[-1]
         bao_row = bao_frame.iloc[-1]
-        bao_list = pd.to_datetime(
-            bao_row.get("ipoDate", bao_row.get("ipodate")), errors="coerce"
-        )
+        bao_list = pd.to_datetime(bao_row.get("ipoDate", bao_row.get("ipodate")), errors="coerce")
         ts_list = pd.to_datetime(ts_row.get("list_date"), errors="coerce")
         if pd.isna(bao_list) or pd.isna(ts_list) or bao_list.normalize() != ts_list.normalize():
             raise SourceCoverageError(f"listing-date conflict: {symbol}")
@@ -576,9 +582,7 @@ def _promote_live_contract(output: Path, source_manifest: Mapping[str, Any]) -> 
         payload["authoritative_provider_artifact"] = True
     decision["decision"] = "cn_provider_contract_ready"
     quality["decision"] = "live_source_contract_pass"
-    manifest["source_manifest_identity_sha256"] = source_manifest[
-        "source_manifest_identity_sha256"
-    ]
+    manifest["source_manifest_identity_sha256"] = source_manifest["source_manifest_identity_sha256"]
     write_json(decision_path, decision)
     write_json(quality_path, quality)
     output_names = [
@@ -588,9 +592,7 @@ def _promote_live_contract(output: Path, source_manifest: Mapping[str, Any]) -> 
         "data_quality_report.json",
         "decision.json",
     ]
-    manifest["outputs"] = {
-        name: sha256_file(output / name) for name in output_names
-    }
+    manifest["outputs"] = {name: sha256_file(output / name) for name in output_names}
     manifest["manifest_identity_sha256"] = canonical_sha256(
         {
             "inputs": manifest["inputs"],
@@ -645,9 +647,7 @@ def build_cn_live_evidence_sources(
     try:
         contract, pool, _, _, _, _ = load_cn_provider_contract(contract_path)
         candidates = [
-            str(symbol)
-            for basket in pool["baskets"].values()
-            for symbol in basket["symbols"]
+            str(symbol) for basket in pool["baskets"].values() for symbol in basket["symbols"]
         ]
         references = [str(symbol) for symbol in pool["references"]]
         bao.login()
@@ -663,9 +663,7 @@ def build_cn_live_evidence_sources(
         qfq_by_symbol: dict[str, pd.DataFrame] = {}
         reference_by_symbol: dict[str, pd.DataFrame] = {}
         for symbol in candidates:
-            raw, qfq = _query_baostock_symbol(
-                bao, symbol, config, index=False
-            )
+            raw, qfq = _query_baostock_symbol(bao, symbol, config, index=False)
             assert qfq is not None
             raw_by_symbol[symbol] = raw
             qfq_by_symbol[symbol] = qfq
@@ -674,9 +672,7 @@ def build_cn_live_evidence_sources(
             reference_by_symbol[symbol] = raw
 
         bars, raw_execution = _bars(raw_by_symbol, qfq_by_symbol, reference_by_symbol)
-        status = _build_status(
-            raw_by_symbol, reference_by_symbol, calendar, listing, limits
-        )
+        status = _build_status(raw_by_symbol, reference_by_symbol, calendar, listing, limits)
         staging.mkdir(parents=True, exist_ok=True)
         paths = {
             "contract_bars": staging / "contract_bars.csv",
@@ -718,9 +714,7 @@ def build_cn_live_evidence_sources(
             "fixture_mode": fixture_mode,
             "token_persisted": False,
         }
-        source_manifest["source_manifest_identity_sha256"] = canonical_sha256(
-            source_manifest
-        )
+        source_manifest["source_manifest_identity_sha256"] = canonical_sha256(source_manifest)
         write_json(staging / "source_manifest.json", source_manifest)
         write_json(
             staging / "source_capability_report.json",

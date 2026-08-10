@@ -101,20 +101,14 @@ def run_aggressive_tqqq_comparison(
     challenger_config = config_from_contract(challenger_contract)
 
     _, baseline_results, baseline_prepared = run_vix_runtime_comparison(bars, baseline_config)
-    _, challenger_results, challenger_prepared = run_vix_runtime_comparison(
-        bars, challenger_config
-    )
+    _, challenger_results, challenger_prepared = run_vix_runtime_comparison(bars, challenger_config)
     pd.testing.assert_index_equal(baseline_prepared.index, challenger_prepared.index)
 
     baseline_raw = baseline_results["rotation_vix_v2"]
     challenger_raw = challenger_results["rotation_vix_v2"]
-    if not baseline_raw.daily["decision_state"].equals(
-        challenger_raw.daily["decision_state"]
-    ):
+    if not baseline_raw.daily["decision_state"].equals(challenger_raw.daily["decision_state"]):
         raise ValueError("challenger changed the close decision-state trace")
-    if not baseline_raw.daily["position_state"].equals(
-        challenger_raw.daily["position_state"]
-    ):
+    if not baseline_raw.daily["position_state"].equals(challenger_raw.daily["position_state"]):
         raise ValueError("challenger changed the executed position-state trace")
 
     baseline = _relabel_result(
@@ -144,9 +138,7 @@ def run_aggressive_tqqq_comparison(
         "rotation_vix_v3_75": challenger,
         "rotation_price_repair_v3_75": no_vix,
     }
-    metrics = pd.DataFrame([result.metrics for result in results.values()]).set_index(
-        "strategy"
-    )
+    metrics = pd.DataFrame([result.metrics for result in results.values()]).set_index("strategy")
 
     base_capture = _state_capture(baseline)
     challenger_capture = _state_capture(challenger)
@@ -163,8 +155,7 @@ def run_aggressive_tqqq_comparison(
             "baseline": base_capture,
             "challenger": challenger_capture,
             "incremental_cumulative_return": float(
-                challenger_capture["cumulative_net_return"]
-                - base_capture["cumulative_net_return"]
+                challenger_capture["cumulative_net_return"] - base_capture["cumulative_net_return"]
             ),
         },
     }

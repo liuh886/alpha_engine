@@ -33,9 +33,7 @@ def state_dwell_table(result: StrategyResult) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def round_trip_summary(
-    dwell: pd.DataFrame, thresholds: Sequence[int]
-) -> pd.DataFrame:
+def round_trip_summary(dwell: pd.DataFrame, thresholds: Sequence[int]) -> pd.DataFrame:
     """Count short leveraged episodes at predeclared session thresholds."""
 
     leveraged = dwell[dwell["state"].eq(1)].copy()
@@ -157,10 +155,7 @@ def vxn_only_exit_events(
         reentries = future_overlay.index[future_overlay["position_state"].eq(1)]
         reentry_date = reentries[0] if len(reentries) else pd.NaT
         reentry_gap = (
-            int(
-                overlay_daily.index.get_loc(reentry_date)
-                - overlay_daily.index.get_loc(date)
-            )
+            int(overlay_daily.index.get_loc(reentry_date) - overlay_daily.index.get_loc(date))
             if pd.notna(reentry_date)
             else np.nan
         )
@@ -174,9 +169,7 @@ def vxn_only_exit_events(
             if not future_equal.empty
             else len(overlay_daily) - 1
         )
-        baseline_segment = baseline_daily.iloc[location : end_location + 1][
-            "net_return"
-        ]
+        baseline_segment = baseline_daily.iloc[location : end_location + 1]["net_return"]
         overlay_segment = overlay_daily.iloc[location : end_location + 1]["net_return"]
         row: dict[str, Any] = {
             "exit_date": date,
@@ -186,19 +179,12 @@ def vxn_only_exit_events(
             "different_position_sessions": int(end_location - location + 1),
             "signal_vix_stress": bool(prepared.iloc[signal_location]["vix_stress"]),
             "signal_vxn_stress": bool(prepared.iloc[signal_location]["vxn_stress"]),
-            "signal_below_ma_short_n": bool(
-                prepared.iloc[signal_location]["below_ma_short_n"]
-            ),
-            "baseline_return_while_different": float(
-                (1.0 + baseline_segment).prod() - 1.0
-            ),
-            "overlay_return_while_different": float(
-                (1.0 + overlay_segment).prod() - 1.0
-            ),
+            "signal_below_ma_short_n": bool(prepared.iloc[signal_location]["below_ma_short_n"]),
+            "baseline_return_while_different": float((1.0 + baseline_segment).prod() - 1.0),
+            "overlay_return_while_different": float((1.0 + overlay_segment).prod() - 1.0),
         }
         row["overlay_minus_baseline_while_different"] = (
-            row["overlay_return_while_different"]
-            - row["baseline_return_while_different"]
+            row["overlay_return_while_different"] - row["baseline_return_while_different"]
         )
         for horizon in horizons:
             row[f"QQQ_return_{int(horizon)}d"] = _future_compounded_return(
@@ -245,19 +231,13 @@ def summarize_churn(
             float(group["sessions"].median()) if len(group) else np.nan
         )
     overlay_cycles = cycles[cycles["strategy"].eq(str(overlay.metrics["strategy"]))]
-    summary["overlay_same_month_reentries"] = int(
-        overlay_cycles["same_calendar_month"].sum()
-    )
+    summary["overlay_same_month_reentries"] = int(overlay_cycles["same_calendar_month"].sum())
     summary["overlay_reentries_within_quick_window"] = int(
         overlay_cycles["gap_sessions"].le(int(quick_reentry_sessions)).sum()
     )
     summary["vxn_only_exit_count"] = int(len(exit_events))
-    quick = exit_events[
-        exit_events["reentry_gap_sessions"].le(int(quick_reentry_sessions))
-    ]
-    slow = exit_events[
-        exit_events["reentry_gap_sessions"].gt(int(quick_reentry_sessions))
-    ]
+    quick = exit_events[exit_events["reentry_gap_sessions"].le(int(quick_reentry_sessions))]
+    slow = exit_events[exit_events["reentry_gap_sessions"].gt(int(quick_reentry_sessions))]
     summary["vxn_only_quick_exit_count"] = int(len(quick))
     summary["vxn_only_quick_exit_positive_rate"] = (
         float(quick["overlay_minus_baseline_while_different"].gt(0).mean())
@@ -265,14 +245,10 @@ def summarize_churn(
         else np.nan
     )
     summary["vxn_only_quick_exit_aggregate_delta"] = (
-        float(quick["overlay_minus_baseline_while_different"].sum())
-        if len(quick)
-        else 0.0
+        float(quick["overlay_minus_baseline_while_different"].sum()) if len(quick) else 0.0
     )
     summary["vxn_only_slow_exit_aggregate_delta"] = (
-        float(slow["overlay_minus_baseline_while_different"].sum())
-        if len(slow)
-        else 0.0
+        float(slow["overlay_minus_baseline_while_different"].sum()) if len(slow) else 0.0
     )
     summary["diagnostic_only"] = True
     summary["strategy_rule_changed"] = False

@@ -14,9 +14,7 @@ CST = timezone(timedelta(hours=8))
 
 def _hash(row: Mapping[str, Any]) -> str:
     return hashlib.sha256(
-        json.dumps(dict(row), sort_keys=True, default=str, separators=(",", ":")).encode(
-            "utf-8"
-        )
+        json.dumps(dict(row), sort_keys=True, default=str, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
 
 
@@ -76,9 +74,9 @@ def tushare_indicator_to_events(
                         "symbol": symbol,
                         "exchange": exchange,
                         "entity_id": ts_code,
-                        "fiscal_period_end": datetime.strptime(
-                            period_end, "%Y%m%d"
-                        ).date().isoformat(),
+                        "fiscal_period_end": datetime.strptime(period_end, "%Y%m%d")
+                        .date()
+                        .isoformat(),
                         "fiscal_year": fiscal_year,
                         "fiscal_period": fiscal_period,
                         "reported_at": reported_at,

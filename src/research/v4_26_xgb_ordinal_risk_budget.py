@@ -184,7 +184,9 @@ def _selection_evidence(scored: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for raw in scored.sort_values("decision_date").to_dict(orient="records"):
         state = str(raw["selected_state"])
-        utilities = {candidate: float(raw[f"{candidate}_path_utility"]) for candidate in STATE_ORDER}
+        utilities = {
+            candidate: float(raw[f"{candidate}_path_utility"]) for candidate in STATE_ORDER
+        }
         ordered = sorted(
             STATE_ORDER,
             key=lambda candidate: (utilities[candidate], -STATE_ORDER.index(candidate)),
@@ -203,9 +205,7 @@ def _selection_evidence(scored: pd.DataFrame) -> pd.DataFrame:
                     utilities[state] - float(raw["baseline_path_utility"])
                 ),
                 "selected_utility_regret": float(oracle - utilities[state]),
-                "baseline_utility_regret": float(
-                    oracle - float(raw["baseline_path_utility"])
-                ),
+                "baseline_utility_regret": float(oracle - float(raw["baseline_path_utility"])),
             }
         )
         rows.append(row)
@@ -343,7 +343,9 @@ def classification_metrics(scored: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataF
                     cohen_kappa_score(y, predicted, weights="quadratic")
                 ),
                 "macro_recall": float(
-                    recall_score(y, predicted, labels=list(range(4)), average="macro", zero_division=0)
+                    recall_score(
+                        y, predicted, labels=list(range(4)), average="macro", zero_division=0
+                    )
                 ),
                 "multiclass_log_loss": float(log_loss(y, probabilities, labels=list(range(4)))),
                 "exact_state_accuracy": float(np.mean(y == predicted)),
@@ -388,9 +390,7 @@ def selection_metrics(
                 "selected_mean_utility_regret": selected_regret,
                 "baseline_mean_utility_regret": baseline_regret,
                 "utility_regret_reduction": (
-                    1.0 - selected_regret / baseline_regret
-                    if baseline_regret > 1e-12
-                    else np.nan
+                    1.0 - selected_regret / baseline_regret if baseline_regret > 1e-12 else np.nan
                 ),
                 "median_utility_advantage_vs_v4_2": float(
                     table["selected_utility_advantage_vs_v4_2"].median()
@@ -453,7 +453,9 @@ def selection_metrics(
                 "best_year": best_year,
                 "best_macro_cluster": best_cluster,
                 "advantage_without_best_year": float(
-                    table.loc[table["year"].ne(best_year), "selected_utility_advantage_vs_v4_2"].sum()
+                    table.loc[
+                        table["year"].ne(best_year), "selected_utility_advantage_vs_v4_2"
+                    ].sum()
                 ),
                 "advantage_without_best_cluster": float(
                     table.loc[
@@ -581,22 +583,20 @@ def _phase1_gate(
     largest_feature = float(feature_importance["shap_share"].max())
     largest_family = float(family_importance["shap_share"].max())
     geometry_pass = bool(
-        coverage["unique_expected_risk_values"].ge(
-            int(contract["model"]["minimum_unique_expected_risk_values"])
-        ).all()
+        coverage["unique_expected_risk_values"]
+        .ge(int(contract["model"]["minimum_unique_expected_risk_values"]))
+        .all()
     )
     checks = {
         "macro_ovr_auc": float(pooled["macro_ovr_auc"]) >= float(gate["macro_ovr_auc_min"]),
         "quadratic_weighted_kappa": float(pooled["quadratic_weighted_kappa"])
         >= float(gate["quadratic_weighted_kappa_min"]),
         "macro_recall": float(pooled["macro_recall"]) >= float(gate["macro_recall_min"]),
-        "utility_regret_reduction": regret_reduction
-        >= float(gate["utility_regret_reduction_min"]),
+        "utility_regret_reduction": regret_reduction >= float(gate["utility_regret_reduction_min"]),
         "median_utility_advantage": median_advantage > float(gate["median_utility_advantage_min"]),
         "positive_outer_folds": positive_folds >= int(gate["positive_outer_folds_min"]),
         "top_two_rate": top_two_rate >= float(gate["top_two_rate_min"]),
-        "minimum_state_selections": minimum_state_count
-        >= int(gate["minimum_state_selections"]),
+        "minimum_state_selections": minimum_state_count >= int(gate["minimum_state_selections"]),
         "maximum_state_selection_share": maximum_state_share
         <= float(gate["maximum_state_selection_share"]),
         "probability_geometry": geometry_pass,
@@ -650,9 +650,7 @@ def run_ordinal_risk_budget_study(
     selection_by_fold, selection_by_state, concentration = selection_metrics(oof_scores, contract)
     observed_reduction = _regret_reduction(oof_scores)
     placebo = placebo_metrics(proxy, feature_names, contract, observed_reduction)
-    feature_importance, family_importance = importance_metrics(
-        bundles, feature_names, contract
-    )
+    feature_importance, family_importance = importance_metrics(bundles, feature_names, contract)
     phase1 = _phase1_gate(
         model_metrics,
         oof_scores,
@@ -665,9 +663,7 @@ def run_ordinal_risk_budget_study(
         fold_coverage,
         contract,
     )
-    training = proxy.loc[
-        proxy["decision_date"].le(pd.Timestamp("2023-12-29"))
-    ].copy()
+    training = proxy.loc[proxy["decision_date"].le(pd.Timestamp("2023-12-29"))].copy()
     actual_scores, _ = score_actual(training, actual, feature_names, contract)
 
     empty_headline = pd.DataFrame()
@@ -710,9 +706,7 @@ def run_ordinal_risk_budget_study(
                 actual_scores, bars, actual_baseline_daily, contract, actual=True
             )
             actual_contradiction = actual_gate(actual_headline, contract)
-    prospective = bool(
-        phase1["passed"] and phase2["passed"] and actual_contradiction["passed"]
-    )
+    prospective = bool(phase1["passed"] and phase2["passed"] and actual_contradiction["passed"])
     final_gate = {
         "passed": prospective,
         "candidate_shadow_authorized": prospective,

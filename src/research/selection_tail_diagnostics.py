@@ -105,9 +105,7 @@ def _compute_period_diagnostics(
     # Cross-sectional scores and returns for this date
     try:
         daily_scores = (
-            scores.xs(date, level="datetime")["score"]
-            .replace([np.inf, -np.inf], np.nan)
-            .dropna()
+            scores.xs(date, level="datetime")["score"].replace([np.inf, -np.inf], np.nan).dropna()
         )
     except KeyError:
         raise ValueError(f"no scores for date {date_str}")
@@ -116,8 +114,7 @@ def _compute_period_diagnostics(
 
     if len(daily_scores) < 2 * top_n:
         raise ValueError(
-            f"insufficient scored symbols on {date_str}: "
-            f"need {2 * top_n}, got {len(daily_scores)}"
+            f"insufficient scored symbols on {date_str}: need {2 * top_n}, got {len(daily_scores)}"
         )
 
     # Select tails from scores alone.  Intersecting with realized-return
@@ -126,29 +123,23 @@ def _compute_period_diagnostics(
     top_k_idx = daily_scores.nlargest(top_n).index
     bot_k_idx = daily_scores.nsmallest(top_n).index
     missing_tail_returns = [
-        str(symbol)
-        for symbol in top_k_idx.append(bot_k_idx).unique()
-        if symbol not in xret.index
+        str(symbol) for symbol in top_k_idx.append(bot_k_idx).unique() if symbol not in xret.index
     ]
     if missing_tail_returns:
         raise ValueError(
-            f"tail selections on {date_str} have no finite raw returns: "
-            f"{missing_tail_returns}"
+            f"tail selections on {date_str} have no finite raw returns: {missing_tail_returns}"
         )
 
     report_symbols = {holding.symbol for holding in period_detail.holdings}
     if report_symbols != {str(symbol) for symbol in top_k_idx}:
-        raise ValueError(
-            f"report holdings on {date_str} do not match score-selected Top-{top_n}"
-        )
+        raise ValueError(f"report holdings on {date_str} do not match score-selected Top-{top_n}")
 
     # The common return cross-section is used only for realized percentiles,
     # never to choose the portfolio or diagnostic tails.
     common = daily_scores.index.intersection(xret.index)
     if len(common) < 2 * top_n:
         raise ValueError(
-            f"insufficient common symbols on {date_str}: "
-            f"need {2 * top_n}, got {len(common)}"
+            f"insufficient common symbols on {date_str}: need {2 * top_n}, got {len(common)}"
         )
 
     s_common = daily_scores.loc[common]
@@ -160,9 +151,7 @@ def _compute_period_diagnostics(
     spread = top_k_mean - bot_k_mean
 
     # Selected holdings: realized return percentiles
-    selected_present = [
-        h.symbol for h in period_detail.holdings if h.symbol in r_common.index
-    ]
+    selected_present = [h.symbol for h in period_detail.holdings if h.symbol in r_common.index]
 
     n_cs = len(r_common)
     ranks = r_common.rank(method="average")
@@ -177,25 +166,15 @@ def _compute_period_diagnostics(
     # Selected above cross-sectional median
     median_ret = float(r_common.median())
     selected_above_median = sum(
-        1 for sym in selected_present
-        if float(r_common.loc[sym]) > median_ret
+        1 for sym in selected_present if float(r_common.loc[sym]) > median_ret
     )
     selected_above_median_ratio = (
-        selected_above_median / len(selected_present)
-        if selected_present
-        else 0.0
+        selected_above_median / len(selected_present) if selected_present else 0.0
     )
 
     # Selected positive return ratio
-    selected_positive = sum(
-        1 for sym in selected_present
-        if float(r_common.loc[sym]) > 0.0
-    )
-    selected_positive_ratio = (
-        selected_positive / len(selected_present)
-        if selected_present
-        else 0.0
-    )
+    selected_positive = sum(1 for sym in selected_present if float(r_common.loc[sym]) > 0.0)
+    selected_positive_ratio = selected_positive / len(selected_present) if selected_present else 0.0
 
     return {
         "date": date_str,
@@ -295,21 +274,15 @@ def _aggregate_period_diagnostics(
         "n_periods": n,
         "mean_spread": float(np.mean(spreads)) if spreads else float("nan"),
         "positive_spread_count": positive_spread_count,
-        "positive_spread_ratio": (
-            positive_spread_count / n if n > 0 else float("nan")
-        ),
+        "positive_spread_ratio": (positive_spread_count / n if n > 0 else float("nan")),
         "mean_selected_realized_percentile": (
             float(np.mean(all_percentiles)) if all_percentiles else float("nan")
         ),
         "selected_above_median_ratio": (
-            float(np.mean(all_above_median_flags))
-            if all_above_median_flags
-            else float("nan")
+            float(np.mean(all_above_median_flags)) if all_above_median_flags else float("nan")
         ),
         "selected_positive_return_ratio": (
-            float(np.mean(all_positive_flags))
-            if all_positive_flags
-            else float("nan")
+            float(np.mean(all_positive_flags)) if all_positive_flags else float("nan")
         ),
         "total_turnover": total_turnover,
         "total_cost": total_cost,
@@ -375,9 +348,7 @@ def compute_selection_tail_diagnostics(
 
     period_diags: list[dict[str, Any]] = []
     for date in dates:
-        diag = _compute_period_diagnostics(
-            scores, returns, report, date, top_n=n_top
-        )
+        diag = _compute_period_diagnostics(scores, returns, report, date, top_n=n_top)
         period_diags.append(diag)
 
     aggregate = _aggregate_period_diagnostics(period_diags)
@@ -408,20 +379,13 @@ def summarize_window_diagnostics(
     """
     failed = [d for d in per_window_diags if d and d.get("skipped", False)]
     if failed:
-        reasons = [
-            str(d.get("skip_reason", "selection tail diagnostics skipped"))
-            for d in failed
-        ]
+        reasons = [str(d.get("skip_reason", "selection tail diagnostics skipped")) for d in failed]
         raise ValueError(
-            "cannot summarize incomplete selection tail diagnostics: "
-            + "; ".join(reasons)
+            "cannot summarize incomplete selection tail diagnostics: " + "; ".join(reasons)
         )
 
     valid = [
-        d for d in per_window_diags
-        if d is not None
-        and isinstance(d, dict)
-        and "periods" in d
+        d for d in per_window_diags if d is not None and isinstance(d, dict) and "periods" in d
     ]
     n_windows = len(valid)
 
@@ -462,9 +426,7 @@ def summarize_window_diagnostics(
         # evidence file.  Keep the cross-window artifact compact instead of
         # duplicating those large payloads four times.
         window_breakdown[label] = {
-            key: value
-            for key, value in window_aggregate.items()
-            if key != "symbol_contributions"
+            key: value for key, value in window_aggregate.items() if key != "symbol_contributions"
         }
 
     return {
@@ -475,15 +437,9 @@ def summarize_window_diagnostics(
         "n_periods_total": aggregate["n_periods"],
         "mean_spread": aggregate["mean_spread"],
         "mean_positive_spread_ratio": aggregate["positive_spread_ratio"],
-        "mean_selected_realized_percentile": (
-            aggregate["mean_selected_realized_percentile"]
-        ),
-        "mean_selected_above_median_ratio": (
-            aggregate["selected_above_median_ratio"]
-        ),
-        "mean_selected_positive_return_ratio": (
-            aggregate["selected_positive_return_ratio"]
-        ),
+        "mean_selected_realized_percentile": (aggregate["mean_selected_realized_percentile"]),
+        "mean_selected_above_median_ratio": (aggregate["selected_above_median_ratio"]),
+        "mean_selected_positive_return_ratio": (aggregate["selected_positive_return_ratio"]),
         "total_turnover": aggregate["total_turnover"],
         "total_cost": aggregate["total_cost"],
         "worst_net_return_period": aggregate["worst_net_return_period"],

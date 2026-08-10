@@ -1,0 +1,7 @@
+date,dividend,stock_split,event_source
+2020-10-26,0.051000000000,0.000000000000,yfinance_download_actions
+2021-10-21,0.051000000000,0.000000000000,yfinance_download_actions
+2022-10-25,0.044000000000,0.000000000000,yfinance_download_actions
+2023-10-24,0.062000000000,0.000000000000,yfinance_download_actions
+2024-10-18,0.063000000000,0.000000000000,yfinance_download_actions
+2025-10-21,0.061000000000,0.000000000000,yfinance_download_actions

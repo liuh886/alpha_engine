@@ -90,9 +90,7 @@ class PromotionDecision:
     def __post_init__(self) -> None:
         should_be_ready = self.status is PromotionStatus.TRADE_GUIDANCE_CANDIDATE
         if self.trade_ready != should_be_ready:
-            raise ValueError(
-                "trade_ready must be true only for trade_guidance_candidate"
-            )
+            raise ValueError("trade_ready must be true only for trade_guidance_candidate")
         if self.missing_evidence and self.status is not PromotionStatus.MISSING_EVIDENCE:
             raise ValueError("missing evidence requires status='missing_evidence'")
 
@@ -151,11 +149,7 @@ def _candidate_rows(stability: dict[str, Any]) -> list[dict[str, Any]]:
 def _select_best_stable_candidate(
     stability: dict[str, Any],
 ) -> dict[str, Any] | None:
-    rows = [
-        row
-        for row in _candidate_rows(stability)
-        if bool(row.get("stable_research_candidate"))
-    ]
+    rows = [row for row in _candidate_rows(stability) if bool(row.get("stable_research_candidate"))]
     if not rows:
         return None
     return max(
@@ -185,15 +179,9 @@ def _metric_failures(
         failed.append("worst_drawdown")
     if float(candidate.get("ready_ratio", 0.0)) < thresholds.min_ready_ratio:
         failed.append("ready_ratio")
-    if (
-        float(candidate.get("positive_icir_ratio", 0.0))
-        < thresholds.min_positive_icir_ratio
-    ):
+    if float(candidate.get("positive_icir_ratio", 0.0)) < thresholds.min_positive_icir_ratio:
         failed.append("positive_icir_ratio")
-    if (
-        float(candidate.get("positive_spread_ratio", 0.0))
-        < thresholds.min_positive_spread_ratio
-    ):
+    if float(candidate.get("positive_spread_ratio", 0.0)) < thresholds.min_positive_spread_ratio:
         failed.append("positive_spread_ratio")
     return tuple(failed)
 
@@ -223,9 +211,7 @@ def build_promotion_decision(
             rationale="Declared and effective execution contracts did not match.",
         )
 
-    if data_readiness.get("sufficient") is not True or bool(
-        data_readiness.get("skipped")
-    ):
+    if data_readiness.get("sufficient") is not True or bool(data_readiness.get("skipped")):
         return PromotionDecision(
             subject_id=subject_id,
             status=PromotionStatus.REJECTED,
@@ -234,10 +220,7 @@ def build_promotion_decision(
             evidence_refs=evidence_refs,
             contract_sha256=contract_sha,
             thresholds=limits,
-            rationale=str(
-                data_readiness.get("skip_reason")
-                or "Data readiness was insufficient."
-            ),
+            rationale=str(data_readiness.get("skip_reason") or "Data readiness was insufficient."),
         )
 
     min_windows = int(walk_forward_stability.get("min_windows", 0))
@@ -276,8 +259,7 @@ def build_promotion_decision(
         rationale = "All execution, readiness, stability, and promotion gates passed."
     elif (
         float(candidate.get("mean_icir", 0.0)) >= limits.stronger_research_icir
-        and float(candidate.get("worst_drawdown", 0.0))
-        >= limits.max_drawdown_floor
+        and float(candidate.get("worst_drawdown", 0.0)) >= limits.max_drawdown_floor
     ):
         status = PromotionStatus.STRONGER_RESEARCH_CANDIDATE
         rationale = "Candidate is stronger research evidence but failed promotion gates."
@@ -306,9 +288,7 @@ def build_promotion_decision_from_run(
 ) -> PromotionDecision:
     """Read required run artifacts and fail closed when any evidence is missing."""
     root = Path(run_dir).resolve()
-    resolved = {
-        name: root / filename for name, filename in REQUIRED_EVIDENCE_FILES.items()
-    }
+    resolved = {name: root / filename for name, filename in REQUIRED_EVIDENCE_FILES.items()}
     missing = tuple(name for name, path in resolved.items() if not path.is_file())
     effective_subject = subject_id or root.name
     present = {name: path for name, path in resolved.items() if path.is_file()}

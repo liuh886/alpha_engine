@@ -91,16 +91,11 @@ def build_recovery_event_frame(
         config.ma_medium, min_periods=config.ma_medium
     ).mean()
     for window in config.breakout_windows:
-        frame[f"prior_high_{window}"] = (
-            close.rolling(window, min_periods=window).max().shift(1)
-        )
+        frame[f"prior_high_{window}"] = close.rolling(window, min_periods=window).max().shift(1)
 
     shock_hit = drawdown.le(-config.shock_threshold).fillna(False)
     shock_active = (
-        shock_hit.astype(int)
-        .rolling(config.shock_memory_sessions, min_periods=1)
-        .max()
-        .gt(0)
+        shock_hit.astype(int).rolling(config.shock_memory_sessions, min_periods=1).max().gt(0)
     )
     episode_start = shock_active & ~shock_active.shift(1, fill_value=False)
     episode_number = episode_start.cumsum().astype("Int64")
@@ -122,9 +117,7 @@ def build_recovery_event_frame(
     if 20 in config.breakout_windows:
         ordered_families.append("breakout_20d")
     ordered_families.append("ma200_reclaim")
-    ordered_families.extend(
-        family for family in events if family not in set(ordered_families)
-    )
+    ordered_families.extend(family for family in events if family not in set(ordered_families))
 
     rows: list[dict[str, Any]] = []
     max_horizon = max(config.horizons)
@@ -184,9 +177,11 @@ def build_recovery_event_frame(
             rows.append(row)
     if not rows:
         return pd.DataFrame()
-    return pd.DataFrame(rows).sort_values(
-        ["shock_episode", "stage_order", "event_date"]
-    ).reset_index(drop=True)
+    return (
+        pd.DataFrame(rows)
+        .sort_values(["shock_episode", "stage_order", "event_date"])
+        .reset_index(drop=True)
+    )
 
 
 def summarize_recovery_returns(
@@ -214,8 +209,12 @@ def summarize_recovery_returns(
                     ),
                     "QQQ_mean_return": float(sample[qqq_col].mean()) if len(sample) else np.nan,
                     "QQQI_mean_return": float(sample[qqqi_col].mean()) if len(sample) else np.nan,
-                    "QQQ_minus_QQQI_mean": float(sample[diff_col].mean()) if len(sample) else np.nan,
-                    "QQQ_minus_QQQI_median": float(sample[diff_col].median()) if len(sample) else np.nan,
+                    "QQQ_minus_QQQI_mean": float(sample[diff_col].mean())
+                    if len(sample)
+                    else np.nan,
+                    "QQQ_minus_QQQI_median": float(sample[diff_col].median())
+                    if len(sample)
+                    else np.nan,
                     "QQQ_win_rate": float(sample[diff_col].gt(0).mean()) if len(sample) else np.nan,
                 }
             )
@@ -235,9 +234,7 @@ def summarize_recovery_speed(
     for family, family_events in events.groupby("event_family", sort=False):
         for target in config.target_returns:
             target_bps = int(round(target * 10_000))
-            qqq_days = pd.to_numeric(
-                family_events[f"QQQ_days_to_{target_bps}bps"], errors="coerce"
-            )
+            qqq_days = pd.to_numeric(family_events[f"QQQ_days_to_{target_bps}bps"], errors="coerce")
             qqqi_days = pd.to_numeric(
                 family_events[f"QQQI_days_to_{target_bps}bps"], errors="coerce"
             )
@@ -249,8 +246,12 @@ def summarize_recovery_speed(
                     "events": int(len(family_events)),
                     "QQQ_hit_rate": float(qqq_days.notna().mean()),
                     "QQQI_hit_rate": float(qqqi_days.notna().mean()),
-                    "QQQ_median_days": float(qqq_days.median()) if qqq_days.notna().any() else np.nan,
-                    "QQQI_median_days": float(qqqi_days.median()) if qqqi_days.notna().any() else np.nan,
+                    "QQQ_median_days": float(qqq_days.median())
+                    if qqq_days.notna().any()
+                    else np.nan,
+                    "QQQI_median_days": float(qqqi_days.median())
+                    if qqqi_days.notna().any()
+                    else np.nan,
                     "QQQ_faster_rate_when_both_hit": (
                         float(comparable["QQQ"].lt(comparable["QQQI"]).mean())
                         if len(comparable)

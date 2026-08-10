@@ -102,9 +102,7 @@ def validate_frozen_spec_pair(
         "evaluation": (static_spec.evaluation, pit_spec.evaluation),
         "outputs": (static_spec.outputs, pit_spec.outputs),
     }
-    mismatches = [
-        name for name, (left, right) in shared_fields.items() if left != right
-    ]
+    mismatches = [name for name, (left, right) in shared_fields.items() if left != right]
 
     static_walk = dict(static_spec.walk_forward)
     pit_walk = dict(pit_spec.walk_forward)
@@ -176,8 +174,7 @@ def validate_endpoint_reproduction(
                         "candidate_prefix": prefix,
                         "passed": False,
                         "reason": (
-                            "expected exactly one original candidate, found "
-                            f"{len(matches)}"
+                            f"expected exactly one original candidate, found {len(matches)}"
                         ),
                     }
                 )
@@ -194,9 +191,7 @@ def validate_endpoint_reproduction(
                         "actual": actual,
                         "delta": delta,
                         "tolerance": tolerance,
-                        "passed": bool(
-                            np.isfinite(actual) and abs(delta) <= tolerance
-                        ),
+                        "passed": bool(np.isfinite(actual) and abs(delta) <= tolerance),
                     }
                 )
             checks.append(

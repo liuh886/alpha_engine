@@ -77,12 +77,16 @@ def bind_final_signal_identity(alert: dict[str, Any]) -> dict[str, Any]:
 
     identity = {
         "decision_fingerprint": decision_fingerprint,
-        "source_manifests": dict(sorted((str(k), str(v)) for k, v in provenance.items() if k.endswith("_sha256"))),
+        "source_manifests": dict(
+            sorted((str(k), str(v)) for k, v in provenance.items() if k.endswith("_sha256"))
+        ),
         "factor_catalog_implementation_hash": catalog_hash,
         "factor_source_sha256": source_sha256,
     }
     final_fingerprint = hashlib.sha256(
-        json.dumps(identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        json.dumps(identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
     ).hexdigest()[:20]
 
     alert["decision_fingerprint"] = decision_fingerprint

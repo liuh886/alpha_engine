@@ -116,11 +116,7 @@ def compare_refresh_manifests(
         new = new_records.get(symbol, {})
         old_rows = int(old["rows"]) if old.get("rows") is not None else None
         new_rows = int(new["rows"]) if new.get("rows") is not None else None
-        row_delta = (
-            new_rows - old_rows
-            if old_rows is not None and new_rows is not None
-            else None
-        )
+        row_delta = new_rows - old_rows if old_rows is not None and new_rows is not None else None
         old_hash = str(old.get("output_sha256") or "").strip().lower() or None
         new_hash = str(new.get("output_sha256") or "").strip().lower() or None
         prefix_equal: bool | None = None
@@ -129,8 +125,7 @@ def compare_refresh_manifests(
 
         same_identity = (
             str(old.get("provider") or "") == str(new.get("provider") or "")
-            and str(old.get("provider_symbol") or "")
-            == str(new.get("provider_symbol") or "")
+            and str(old.get("provider_symbol") or "") == str(new.get("provider_symbol") or "")
             and str(old.get("first_date") or "") == str(new.get("first_date") or "")
         )
         if not old or not new:

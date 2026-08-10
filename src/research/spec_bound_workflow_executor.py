@@ -177,9 +177,7 @@ class SpecBoundResearchWorkflowExecutor:
                 output={
                     **self._base_output(),
                     "reason": str(
-                        self._spec_result.get(
-                            "skip_reason", "Spec-bound execution was skipped."
-                        )
+                        self._spec_result.get("skip_reason", "Spec-bound execution was skipped.")
                     ),
                 },
                 started_at=now,
@@ -236,8 +234,7 @@ class SpecBoundResearchWorkflowExecutor:
                 status=WorkflowStatus.FAILED,
                 output=step_output,
                 error=(
-                    f"Spec-bound execution did not return required "
-                    f"{required_output!r} evidence."
+                    f"Spec-bound execution did not return required {required_output!r} evidence."
                 ),
                 started_at=now,
                 completed_at=now,
@@ -259,10 +256,7 @@ class SpecBoundResearchWorkflowExecutor:
             return StepResult(
                 step=ResearchStep.PROMOTE,
                 status=WorkflowStatus.FAILED,
-                error=(
-                    "Spec-bound execution did not produce a valid "
-                    "promotion_decision dict."
-                ),
+                error=("Spec-bound execution did not produce a valid promotion_decision dict."),
                 started_at=now,
                 completed_at=now,
             )
@@ -295,9 +289,7 @@ class SpecBoundResearchWorkflowExecutor:
             return {
                 **base,
                 "stage": "compile",
-                "factor_library_source": str(
-                    self._spec.factor_library.get("source", "")
-                ),
+                "factor_library_source": str(self._spec.factor_library.get("source", "")),
             }
         if step is ResearchStep.TRAIN:
             return {
@@ -327,12 +319,8 @@ class SpecBoundResearchWorkflowExecutor:
             "resolved_spec_path": self._spec.spec_path,
             "experiment_id": self._spec.experiment_id,
             "market": self._spec.market,
-            "contract_identity_verified": bool(
-                self._spec_result.get("contract_identity_verified")
-            ),
-            "declared_contract_sha256": str(
-                self._spec_result.get("declared_contract_sha256", "")
-            ),
+            "contract_identity_verified": bool(self._spec_result.get("contract_identity_verified")),
+            "declared_contract_sha256": str(self._spec_result.get("declared_contract_sha256", "")),
             "requested_goal": self._requested_goal,
             "goal_semantics": "audit_metadata_only",
         }

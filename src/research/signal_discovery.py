@@ -222,9 +222,7 @@ def _validate_raw_return_provenance(
     if require_horizon:
         horizon = raw_returns.attrs.get("horizon")
         if horizon is not None and horizon != 10:
-            raise ValueError(
-                "The 10D signal discovery report requires returns attrs horizon=10"
-            )
+            raise ValueError("The 10D signal discovery report requires returns attrs horizon=10")
     if list(raw_returns.columns) != ["return"]:
         raise ValueError("Economic evaluation requires a single 'return' column")
 
@@ -321,8 +319,8 @@ def compute_direction_diagnostics(
         top_returns.append(float(ordered["return"].iloc[:n_bucket].mean()))
         bottom_returns.append(float(ordered["return"].iloc[-n_bucket:].mean()))
 
-        rank_corr = ordered["score"].rank(method="average").corr(
-            ordered["return"].rank(method="average")
+        rank_corr = (
+            ordered["score"].rank(method="average").corr(ordered["return"].rank(method="average"))
         )
         if np.isfinite(rank_corr):
             rank_ics.append(float(rank_corr))
@@ -375,9 +373,7 @@ def _compute_candidate_ic_metrics(
         if group["score"].std(ddof=0) < 1e-12 or group["return"].std(ddof=0) < 1e-12:
             continue
         ic = group["score"].corr(group["return"])
-        rank_ic = group["score"].rank(method="average").corr(
-            group["return"].rank(method="average")
-        )
+        rank_ic = group["score"].rank(method="average").corr(group["return"].rank(method="average"))
         if np.isfinite(ic):
             daily_ics.append(float(ic))
         if np.isfinite(rank_ic):
@@ -428,9 +424,7 @@ def _build_rationale(
     if direction.recommendation == DirectionRecommendation.KEEP.value:
         strengths.append(f"applied orientation is aligned ({result.orientation.value})")
     elif direction.recommendation == DirectionRecommendation.INVERT.value:
-        weaknesses.append(
-            f"applied orientation still points backward ({result.orientation.value})"
-        )
+        weaknesses.append(f"applied orientation still points backward ({result.orientation.value})")
     else:
         weaknesses.append(f"direction uncertain ({direction.recommendation})")
 
@@ -461,8 +455,10 @@ def _top_selected_stocks(scores: pd.Series, topk: int) -> list[str]:
 def _make_ranking_candidate(predictions: pd.DataFrame) -> pd.DataFrame:
     """Derive per-date percentile ranks from LGBM predictions."""
 
-    ranks = predictions["score"].groupby(level="datetime", group_keys=False).apply(
-        lambda g: g.rank(ascending=True, method="average") / len(g)
+    ranks = (
+        predictions["score"]
+        .groupby(level="datetime", group_keys=False)
+        .apply(lambda g: g.rank(ascending=True, method="average") / len(g))
     )
     return ranks.to_frame("score")
 
@@ -566,25 +562,20 @@ def evaluate_candidate(
         if icir < PROMOTION_THRESHOLDS["min_icir"]:
             blockers.append(f"ICIR {icir:.4f} < {PROMOTION_THRESHOLDS['min_icir']}")
         if rank_ic < PROMOTION_THRESHOLDS["min_rank_ic"]:
-            blockers.append(
-                f"Rank IC {rank_ic:.4f} < {PROMOTION_THRESHOLDS['min_rank_ic']}"
-            )
+            blockers.append(f"Rank IC {rank_ic:.4f} < {PROMOTION_THRESHOLDS['min_rank_ic']}")
         if positive_ic_ratio < PROMOTION_THRESHOLDS["min_positive_ic_ratio"]:
             blockers.append(
                 f"Positive IC ratio {positive_ic_ratio:.4f} < "
                 f"{PROMOTION_THRESHOLDS['min_positive_ic_ratio']}"
             )
-        if direction.top_minus_bottom_spread <= PROMOTION_THRESHOLDS[
-            "min_top_minus_bottom"
-        ]:
+        if direction.top_minus_bottom_spread <= PROMOTION_THRESHOLDS["min_top_minus_bottom"]:
             blockers.append(
                 f"Top−bottom spread {direction.top_minus_bottom_spread:.6f} ≤ "
                 f"{PROMOTION_THRESHOLDS['min_top_minus_bottom']}"
             )
         if bt_result.sharpe_ratio < PROMOTION_THRESHOLDS["min_sharpe"]:
             blockers.append(
-                f"Sharpe {bt_result.sharpe_ratio:.4f} < "
-                f"{PROMOTION_THRESHOLDS['min_sharpe']}"
+                f"Sharpe {bt_result.sharpe_ratio:.4f} < {PROMOTION_THRESHOLDS['min_sharpe']}"
             )
         if bt_result.max_drawdown < PROMOTION_THRESHOLDS["max_drawdown"]:
             blockers.append(
@@ -779,8 +770,7 @@ def run_signal_discovery_comparison(
 
     if output_dir is not None:
         report.summary["report_path"] = (
-            f"artifacts/evidence/10d_signal_discovery/"
-            f"{market}_signal_discovery_report.json"
+            f"artifacts/evidence/10d_signal_discovery/{market}_signal_discovery_report.json"
         )
         report.write(output_dir)
 

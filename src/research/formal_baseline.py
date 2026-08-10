@@ -157,9 +157,7 @@ def load_formal_baseline(
         required = bool(section.get("required_for_model_kind"))
         available = section.get("availability_status") == "available"
         if required and not available:
-            raise ValueError(
-                f"required formal section unavailable: {section.get('section_id')}"
-            )
+            raise ValueError(f"required formal section unavailable: {section.get('section_id')}")
         if not available:
             continue
         relative = str(section.get("path", ""))

@@ -56,9 +56,7 @@ def _open_to_open_components(
     frame = daily.iloc[start : start + horizon]
     if len(frame) != horizon:
         return float("nan"), float("nan")
-    intraday = frame[f"{symbol}_close"].astype(float) / frame[
-        f"{symbol}_open"
-    ].astype(float) - 1.0
+    intraday = frame[f"{symbol}_close"].astype(float) / frame[f"{symbol}_open"].astype(float) - 1.0
     next_open = daily[f"{symbol}_open"].shift(-1).iloc[start : start + horizon]
     overnight = next_open.astype(float) / frame[f"{symbol}_close"].astype(float) - 1.0
     if intraday.isna().any() or overnight.isna().any():
@@ -85,12 +83,8 @@ def _horizon_metrics(
     counterfactual = _cumulative_return(counterfactual_leverage * qqq)
     qqq_mfe, qqq_mae, qqq_mae_session = _path_excursion(qqq)
     tqqq_mfe, tqqq_mae, tqqq_mae_session = _path_excursion(tqqq)
-    qqq_intraday, qqq_overnight = _open_to_open_components(
-        daily, "QQQ", start, horizon
-    )
-    tqqq_intraday, tqqq_overnight = _open_to_open_components(
-        daily, "TQQQ", start, horizon
-    )
+    qqq_intraday, qqq_overnight = _open_to_open_components(daily, "QQQ", start, horizon)
+    tqqq_intraday, tqqq_overnight = _open_to_open_components(daily, "TQQQ", start, horizon)
     denominator = counterfactual_leverage * qqq_return
     efficiency = (
         float(tqqq_return / denominator)
@@ -102,8 +96,7 @@ def _horizon_metrics(
         f"qqq_return_{suffix}": qqq_return,
         f"tqqq_return_{suffix}": tqqq_return,
         f"counterfactual_3x_qqq_return_{suffix}": counterfactual,
-        f"tqqq_tracking_compounding_residual_{suffix}": tqqq_return
-        - counterfactual,
+        f"tqqq_tracking_compounding_residual_{suffix}": tqqq_return - counterfactual,
         f"tqqq_realized_leverage_efficiency_{suffix}": efficiency,
         f"qqq_mfe_{suffix}": qqq_mfe,
         f"qqq_mae_{suffix}": qqq_mae,
@@ -154,9 +147,7 @@ def build_path_efficiency_table(
             "failure_type": event.failure_type,
             "marginal_success": bool(event.marginal_success),
             "event_sessions": event_horizon,
-            "strategy_marginal_50_vs_25_return": float(
-                event.marginal_50_vs_25_return
-            ),
+            "strategy_marginal_50_vs_25_return": float(event.marginal_50_vs_25_return),
             "time_to_formal_state_2_sessions": event.time_to_formal_state_2_sessions,
             "time_to_revert_state_0_sessions": event.time_to_revert_state_0_sessions,
         }
@@ -180,12 +171,9 @@ def build_path_efficiency_table(
                 "event_directional_leverage_component": directional_component,
                 "event_tracking_compounding_component": tracking_component,
                 "event_raw_extra_25_component": raw_component,
-                "strategy_minus_raw_component": float(
-                    event.marginal_50_vs_25_return
-                )
+                "strategy_minus_raw_component": float(event.marginal_50_vs_25_return)
                 - raw_component,
-                "event_tqqq_tracking_compounding_residual": tqqq_event
-                - counterfactual_event,
+                "event_tqqq_tracking_compounding_residual": tqqq_event - counterfactual_event,
                 "event_tqqq_realized_leverage_efficiency": (
                     tqqq_event / (leverage * qqq_event)
                     if abs(leverage * qqq_event) > 1e-12
@@ -194,9 +182,7 @@ def build_path_efficiency_table(
                 "event_qqq_realized_volatility": event_metrics[
                     f"qqq_realized_volatility_{event_horizon}d"
                 ],
-                "event_qqq_sign_reversals": event_metrics[
-                    f"qqq_sign_reversals_{event_horizon}d"
-                ],
+                "event_qqq_sign_reversals": event_metrics[f"qqq_sign_reversals_{event_horizon}d"],
             }
         )
         if not np.isclose(
@@ -356,12 +342,8 @@ def path_efficiency_decision(
     early = table.loc[table["chronological_segment"] == "early"]
     stable = separation.loc[separation["descriptively_stable"]]
 
-    directional_loss = float(
-        -failed["event_directional_leverage_component"].clip(upper=0.0).sum()
-    )
-    tracking_loss = float(
-        -failed["event_tracking_compounding_component"].clip(upper=0.0).sum()
-    )
+    directional_loss = float(-failed["event_directional_leverage_component"].clip(upper=0.0).sum())
+    tracking_loss = float(-failed["event_tracking_compounding_component"].clip(upper=0.0).sum())
     total_attributed_loss = directional_loss + tracking_loss
     directional_loss_share = (
         directional_loss / total_attributed_loss if total_attributed_loss > 0.0 else np.nan
@@ -378,13 +360,9 @@ def path_efficiency_decision(
         "early_segment_contains_success_and_failure": bool(
             early["marginal_success"].nunique() == 2
         ),
-        "late_segment_contains_success_and_failure": bool(
-            late["marginal_success"].nunique() == 2
-        ),
+        "late_segment_contains_success_and_failure": bool(late["marginal_success"].nunique() == 2),
     }
-    mechanism_fields = stable["feature"].head(
-        int(validation["maximum_mechanism_fields"])
-    ).tolist()
+    mechanism_fields = stable["feature"].head(int(validation["maximum_mechanism_fields"])).tolist()
     explanation_justified = bool(
         checks["minimum_event_count"]
         and checks["minimum_successful_event_count"]

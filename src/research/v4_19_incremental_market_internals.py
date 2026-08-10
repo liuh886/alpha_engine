@@ -89,9 +89,7 @@ def _rolling_percentile(series: pd.Series, window: int = 252) -> pd.Series:
         return float(np.mean(values <= values[-1]))
 
     observed = series.dropna()
-    ranked = observed.rolling(window, min_periods=window).apply(
-        _last_rank, raw=True
-    )
+    ranked = observed.rolling(window, min_periods=window).apply(_last_rank, raw=True)
     return ranked.reindex(series.index)
 
 
@@ -108,9 +106,7 @@ def _ratio_distance_ma20(left: pd.Series, right: pd.Series) -> pd.Series:
     return ratio / ma20 - 1.0
 
 
-def _reference_gap(
-    dates: pd.DatetimeIndex, reference: pd.DatetimeIndex
-) -> int:
+def _reference_gap(dates: pd.DatetimeIndex, reference: pd.DatetimeIndex) -> int:
     if len(dates) < 2:
         return 0
     locations = reference.get_indexer(dates)
@@ -131,27 +127,17 @@ def audit_source_admissibility(
     candidate_symbols: set[str] = set()
     for symbols in contract["data"]["candidate_symbols"].values():
         candidate_symbols.update(str(value).upper() for value in symbols)
-    existing = {
-        str(value).upper()
-        for value in contract["data"]["existing_required_symbols"]
-    }
+    existing = {str(value).upper() for value in contract["data"]["existing_required_symbols"]}
     all_symbols = sorted(existing | candidate_symbols)
     coverage_by_symbol = (
-        coverage.assign(symbol=coverage["symbol"].astype(str).str.upper())
-        .set_index("symbol")
+        coverage.assign(symbol=coverage["symbol"].astype(str).str.upper()).set_index("symbol")
         if not coverage.empty
         else pd.DataFrame()
     )
     qqq = _normalise_bars(bars["QQQ"], "QQQ")
     reference = qqq.index
-    maximum_missing = float(
-        contract["data"]["coverage"]["maximum_missing_session_rate"]
-    )
-    maximum_gap = int(
-        contract["data"]["coverage"][
-            "maximum_unexplained_gap_trading_sessions"
-        ]
-    )
+    maximum_missing = float(contract["data"]["coverage"]["maximum_missing_session_rate"])
+    maximum_gap = int(contract["data"]["coverage"]["maximum_unexplained_gap_trading_sessions"])
     rows: list[dict[str, Any]] = []
     for symbol in all_symbols:
         if symbol not in bars:
@@ -204,14 +190,10 @@ def audit_source_admissibility(
             continue
         first = normalised.index.min()
         last = normalised.index.max()
-        relevant_reference = reference[
-            (reference >= first) & (reference <= last)
-        ]
+        relevant_reference = reference[(reference >= first) & (reference <= last)]
         observed = normalised.index.intersection(relevant_reference)
         missing_rate = (
-            1.0 - len(observed) / len(relevant_reference)
-            if len(relevant_reference)
-            else 1.0
+            1.0 - len(observed) / len(relevant_reference) if len(relevant_reference) else 1.0
         )
         maximum_observed_gap = _reference_gap(observed, relevant_reference)
         finite_positive = bool(
@@ -250,20 +232,15 @@ def audit_source_admissibility(
                 "rejection_reason": ",".join(reasons) if reasons else None,
             }
         )
-    source_audit = pd.DataFrame(rows).sort_values("symbol").reset_index(
-        drop=True
-    )
+    source_audit = pd.DataFrame(rows).sort_values("symbol").reset_index(drop=True)
     audit_lookup = source_audit.set_index("symbol")
     family_rows: list[dict[str, Any]] = []
     for family, specification in contract["families"].items():
-        required = [
-            str(value).upper() for value in specification["required_symbols"]
-        ]
+        required = [str(value).upper() for value in specification["required_symbols"]]
         unavailable = [
             symbol
             for symbol in required
-            if symbol not in audit_lookup.index
-            or not bool(audit_lookup.loc[symbol, "admissible"])
+            if symbol not in audit_lookup.index or not bool(audit_lookup.loc[symbol, "admissible"])
         ]
         family_rows.append(
             {
@@ -272,9 +249,7 @@ def audit_source_admissibility(
                 "unavailable_symbols": ",".join(unavailable),
                 "admissible": not unavailable,
                 "rejection_reason": (
-                    f"inadmissible_sources:{','.join(unavailable)}"
-                    if unavailable
-                    else None
+                    f"inadmissible_sources:{','.join(unavailable)}" if unavailable else None
                 ),
             }
         )
@@ -287,10 +262,7 @@ def build_market_internal_feature_blocks(
 ) -> dict[str, pd.DataFrame]:
     """Build the four frozen complete feature blocks using close data only."""
 
-    close = {
-        symbol: _close_series(bars, symbol).reindex(base_index)
-        for symbol in bars
-    }
+    close = {symbol: _close_series(bars, symbol).reindex(base_index) for symbol in bars}
     blocks: dict[str, pd.DataFrame] = {}
 
     if {"^VIX9D", "^VIX", "^VIX3M", "^VVIX"}.issubset(close):
@@ -306,26 +278,20 @@ def build_market_internal_feature_blocks(
         block["vix9d_vix_ratio_z63"] = _rolling_zscore(front_ratio)
         block["vix_vix3m_ratio"] = three_month_ratio
         block["vix_vix3m_ratio_z63"] = _rolling_zscore(three_month_ratio)
-        block["volatility_curve_slope_front_three_month"] = (
-            vix3m - vix9d
-        ) / vix.replace(0.0, np.nan)
+        block["volatility_curve_slope_front_three_month"] = (vix3m - vix9d) / vix.replace(
+            0.0, np.nan
+        )
         block["vvix_percentile_252"] = _rolling_percentile(vvix)
         block["vvix_return_5d"] = vvix.pct_change(5)
         block["term_structure_inverted"] = inverted.astype(float)
-        block["sessions_since_term_structure_inversion"] = (
-            _sessions_since_change(inverted)
-        )
+        block["sessions_since_term_structure_inversion"] = _sessions_since_change(inverted)
         blocks["implied_volatility_term_structure"] = block
 
     if {"^VIX", "^VXN", "QQQ", "VOO"}.issubset(close):
         qqq_log = np.log(close["QQQ"]).diff()
         voo_log = np.log(close["VOO"]).diff()
-        broad_realized = (
-            voo_log.rolling(20, min_periods=20).std(ddof=0) * np.sqrt(252.0)
-        )
-        nasdaq_realized = (
-            qqq_log.rolling(20, min_periods=20).std(ddof=0) * np.sqrt(252.0)
-        )
+        broad_realized = voo_log.rolling(20, min_periods=20).std(ddof=0) * np.sqrt(252.0)
+        nasdaq_realized = qqq_log.rolling(20, min_periods=20).std(ddof=0) * np.sqrt(252.0)
         broad_implied = close["^VIX"] / 100.0
         nasdaq_implied = close["^VXN"] / 100.0
         broad_premium = broad_implied - broad_realized
@@ -333,27 +299,17 @@ def build_market_internal_feature_blocks(
         block = pd.DataFrame(index=base_index)
         block["broad_implied_minus_realized_vol_20d"] = broad_premium
         block["nasdaq_implied_minus_realized_vol_20d"] = nasdaq_premium
-        block["broad_implied_realized_ratio_20d"] = (
-            broad_implied / broad_realized.replace(0.0, np.nan)
+        block["broad_implied_realized_ratio_20d"] = broad_implied / broad_realized.replace(
+            0.0, np.nan
         )
-        block["nasdaq_implied_realized_ratio_20d"] = (
-            nasdaq_implied / nasdaq_realized.replace(0.0, np.nan)
+        block["nasdaq_implied_realized_ratio_20d"] = nasdaq_implied / nasdaq_realized.replace(
+            0.0, np.nan
         )
-        block["broad_volatility_risk_premium_return_5d"] = (
-            broad_premium.diff(5)
-        )
-        block["nasdaq_volatility_risk_premium_return_5d"] = (
-            nasdaq_premium.diff(5)
-        )
-        block["broad_volatility_risk_premium_percentile_252"] = (
-            _rolling_percentile(broad_premium)
-        )
-        block["nasdaq_volatility_risk_premium_percentile_252"] = (
-            _rolling_percentile(nasdaq_premium)
-        )
-        block["nasdaq_minus_broad_volatility_risk_premium"] = (
-            nasdaq_premium - broad_premium
-        )
+        block["broad_volatility_risk_premium_return_5d"] = broad_premium.diff(5)
+        block["nasdaq_volatility_risk_premium_return_5d"] = nasdaq_premium.diff(5)
+        block["broad_volatility_risk_premium_percentile_252"] = _rolling_percentile(broad_premium)
+        block["nasdaq_volatility_risk_premium_percentile_252"] = _rolling_percentile(nasdaq_premium)
+        block["nasdaq_minus_broad_volatility_risk_premium"] = nasdaq_premium - broad_premium
         blocks["volatility_risk_premium"] = block
 
     if {"HYG", "LQD", "SHY", "IEF", "TLT"}.issubset(close):
@@ -395,9 +351,7 @@ def build_market_internal_feature_blocks(
             np.sign(rsp_distance) == np.sign(iwm_distance)
         ).astype(float)
         block["breadth_confirmation_with_qqq"] = confirmation.astype(float)
-        block["sessions_since_breadth_confirmation_change"] = (
-            _sessions_since_change(confirmation)
-        )
+        block["sessions_since_breadth_confirmation_change"] = _sessions_since_change(confirmation)
         blocks["breadth_size_participation"] = block
 
     return blocks
@@ -456,9 +410,7 @@ def _coefficient_frame(
                     "model": model_name,
                     "target": target,
                     "feature": feature,
-                    "coefficient": float(
-                        coefficients[target_position, feature_position]
-                    ),
+                    "coefficient": float(coefficients[target_position, feature_position]),
                 }
             )
     return pd.DataFrame(rows)
@@ -467,9 +419,7 @@ def _coefficient_frame(
 def _cosine_stability(coefficients: pd.DataFrame) -> pd.DataFrame:
     candidate = coefficients.loc[coefficients["model"].eq("candidate")]
     if candidate.empty:
-        return pd.DataFrame(
-            columns=["fold_left", "fold_right", "cosine"]
-        )
+        return pd.DataFrame(columns=["fold_left", "fold_right", "cosine"])
     pivot = candidate.pivot_table(
         index="fold", columns=["target", "feature"], values="coefficient"
     ).sort_index(axis=1)
@@ -482,11 +432,7 @@ def _cosine_stability(coefficients: pd.DataFrame) -> pd.DataFrame:
             {
                 "fold_left": left,
                 "fold_right": right,
-                "cosine": (
-                    float(np.dot(a, b) / denominator)
-                    if denominator > 1e-18
-                    else np.nan
-                ),
+                "cosine": (float(np.dot(a, b) / denominator) if denominator > 1e-18 else np.nan),
             }
         )
     return pd.DataFrame(rows)
@@ -526,41 +472,19 @@ def _evaluate_family(
             int(contract["training"]["embargo_sessions"]),
         )
         training = frame.loc[train_start:train_end].copy()
-        training = training.loc[
-            training["global_training_sample"].astype(bool)
-        ]
-        shared_train = training.dropna(
-            subset=list(targets) + list(base_features) + features
-        )
+        training = training.loc[training["global_training_sample"].astype(bool)]
+        shared_train = training.dropna(subset=list(targets) + list(base_features) + features)
         testing = frame.loc[test_start:test_end].copy()
-        shared_test = testing.dropna(
-            subset=list(targets) + list(base_features) + features
-        )
+        shared_test = testing.dropna(subset=list(targets) + list(base_features) + features)
         source_rows.append(
             {
                 "family": family,
                 "fold": fold,
-                "training_start": (
-                    shared_train.index.min()
-                    if not shared_train.empty
-                    else pd.NaT
-                ),
-                "training_end": (
-                    shared_train.index.max()
-                    if not shared_train.empty
-                    else pd.NaT
-                ),
+                "training_start": (shared_train.index.min() if not shared_train.empty else pd.NaT),
+                "training_end": (shared_train.index.max() if not shared_train.empty else pd.NaT),
                 "training_samples": int(len(shared_train)),
-                "test_start": (
-                    shared_test.index.min()
-                    if not shared_test.empty
-                    else pd.NaT
-                ),
-                "test_end": (
-                    shared_test.index.max()
-                    if not shared_test.empty
-                    else pd.NaT
-                ),
+                "test_start": (shared_test.index.min() if not shared_test.empty else pd.NaT),
+                "test_end": (shared_test.index.max() if not shared_test.empty else pd.NaT),
                 "test_samples": int(len(shared_test)),
             }
         )
@@ -599,9 +523,7 @@ def _evaluate_family(
         output["position_state"] = pd.to_numeric(state, errors="coerce")
         for position, action in enumerate(ACTION_KEYS):
             output[f"base_predicted_{action}"] = baseline_prediction[:, position]
-            output[f"candidate_predicted_{action}"] = candidate_prediction[
-                :, position
-            ]
+            output[f"candidate_predicted_{action}"] = candidate_prediction[:, position]
         prediction_parts.append(output)
         coefficient_parts.append(
             _coefficient_frame(
@@ -623,9 +545,7 @@ def _evaluate_family(
         )
         action_deltas: list[float] = []
         for action, target in zip(ACTION_KEYS, targets):
-            base_ic = output[f"base_predicted_{action}"].corr(
-                output[target], method="spearman"
-            )
+            base_ic = output[f"base_predicted_{action}"].corr(output[target], method="spearman")
             candidate_ic = output[f"candidate_predicted_{action}"].corr(
                 output[target], method="spearman"
             )
@@ -634,9 +554,7 @@ def _evaluate_family(
             {
                 "family": family,
                 "fold": fold,
-                "mean_action_ic_improvement": float(
-                    np.nanmean(action_deltas)
-                ),
+                "mean_action_ic_improvement": float(np.nanmean(action_deltas)),
                 "actions_with_positive_ic_improvement": int(
                     np.sum(np.asarray(action_deltas) > 0.0)
                 ),
@@ -676,33 +594,22 @@ def _metric_tables(
                 "ic_improvement": float(candidate_ic - base_ic),
                 "base_top_bottom_quintile_spread": base_spread,
                 "candidate_top_bottom_quintile_spread": candidate_spread,
-                "quintile_spread_improvement": float(
-                    candidate_spread - base_spread
-                ),
-                "base_mae": float(
-                    mean_absolute_error(realized, base_prediction)
-                ),
-                "candidate_mae": float(
-                    mean_absolute_error(realized, candidate_prediction)
-                ),
+                "quintile_spread_improvement": float(candidate_spread - base_spread),
+                "base_mae": float(mean_absolute_error(realized, base_prediction)),
+                "candidate_mae": float(mean_absolute_error(realized, candidate_prediction)),
                 "incremental_mae_improvement": float(
                     mean_absolute_error(realized, base_prediction)
                     - mean_absolute_error(realized, candidate_prediction)
                 ),
                 "base_r_squared": float(r2_score(realized, base_prediction)),
-                "candidate_r_squared": float(
-                    r2_score(realized, candidate_prediction)
-                ),
+                "candidate_r_squared": float(r2_score(realized, candidate_prediction)),
                 "incremental_oof_r_squared": float(
-                    r2_score(realized, candidate_prediction)
-                    - r2_score(realized, base_prediction)
+                    r2_score(realized, candidate_prediction) - r2_score(realized, base_prediction)
                 ),
             }
         )
         for state in (0, 1, 2):
-            cell = predictions.loc[
-                predictions["position_state"].eq(state)
-            ]
+            cell = predictions.loc[predictions["position_state"].eq(state)]
             if len(cell) < 10:
                 base_cell_ic = np.nan
                 candidate_cell_ic = np.nan
@@ -712,12 +619,10 @@ def _metric_tables(
                 base_cell_ic = cell[f"base_predicted_{action}"].corr(
                     cell[target], method="spearman"
                 )
-                candidate_cell_ic = cell[
-                    f"candidate_predicted_{action}"
-                ].corr(cell[target], method="spearman")
-                base_cell_spread = _quintile_spread(
-                    cell[f"base_predicted_{action}"], cell[target]
+                candidate_cell_ic = cell[f"candidate_predicted_{action}"].corr(
+                    cell[target], method="spearman"
                 )
+                base_cell_spread = _quintile_spread(cell[f"base_predicted_{action}"], cell[target])
                 candidate_cell_spread = _quintile_spread(
                     cell[f"candidate_predicted_{action}"], cell[target]
                 )
@@ -731,16 +636,14 @@ def _metric_tables(
                     "candidate_spearman_ic": candidate_cell_ic,
                     "ic_improvement": (
                         float(candidate_cell_ic - base_cell_ic)
-                        if np.isfinite(base_cell_ic)
-                        and np.isfinite(candidate_cell_ic)
+                        if np.isfinite(base_cell_ic) and np.isfinite(candidate_cell_ic)
                         else np.nan
                     ),
                     "base_top_bottom_quintile_spread": base_cell_spread,
                     "candidate_top_bottom_quintile_spread": candidate_cell_spread,
                     "quintile_spread_improvement": (
                         float(candidate_cell_spread - base_cell_spread)
-                        if np.isfinite(base_cell_spread)
-                        and np.isfinite(candidate_cell_spread)
+                        if np.isfinite(base_cell_spread) and np.isfinite(candidate_cell_spread)
                         else np.nan
                     ),
                 }
@@ -748,16 +651,12 @@ def _metric_tables(
     return pd.DataFrame(action_rows), pd.DataFrame(state_rows)
 
 
-def _raw_family_pvalue(
-    predictions: pd.DataFrame, targets: Sequence[str]
-) -> float:
+def _raw_family_pvalue(predictions: pd.DataFrame, targets: Sequence[str]) -> float:
     positive = 0
     total = 0
     for _, group in predictions.groupby("fold"):
         for action, target in zip(ACTION_KEYS, targets):
-            base_ic = group[f"base_predicted_{action}"].corr(
-                group[target], method="spearman"
-            )
+            base_ic = group[f"base_predicted_{action}"].corr(group[target], method="spearman")
             candidate_ic = group[f"candidate_predicted_{action}"].corr(
                 group[target], method="spearman"
             )
@@ -766,14 +665,10 @@ def _raw_family_pvalue(
                 positive += int(candidate_ic > base_ic)
     if total == 0:
         return 1.0
-    return float(
-        binomtest(positive, total, p=0.5, alternative="greater").pvalue
-    )
+    return float(binomtest(positive, total, p=0.5, alternative="greater").pvalue)
 
 
-def benjamini_hochberg(
-    pvalues: Mapping[str, float]
-) -> pd.DataFrame:
+def benjamini_hochberg(pvalues: Mapping[str, float]) -> pd.DataFrame:
     rows = sorted(
         ((family, float(value)) for family, value in pvalues.items()),
         key=lambda item: item[1],
@@ -810,103 +705,61 @@ def _family_gate(
 ) -> dict[str, Any]:
     threshold = contract["validation"]["family_admission"]
     ic_threshold = float(threshold["action_ic_improvement_threshold"])
-    actions_ic = int(
-        action_metrics["ic_improvement"].ge(ic_threshold).sum()
-    )
-    actions_spread = int(
-        action_metrics["quintile_spread_improvement"].gt(0.0).sum()
-    )
+    actions_ic = int(action_metrics["ic_improvement"].ge(ic_threshold).sum())
+    actions_spread = int(action_metrics["quintile_spread_improvement"].gt(0.0).sum())
     large = action_metrics.loc[
-        action_metrics["observations"].ge(
-            int(threshold["large_action_observations_min"])
-        )
+        action_metrics["observations"].ge(int(threshold["large_action_observations_min"]))
     ]
     no_large_degradation = bool(
         large.empty
-        or large["ic_improvement"]
-        .ge(float(threshold["maximum_large_action_ic_degradation"]))
-        .all()
+        or large["ic_improvement"].ge(float(threshold["maximum_large_action_ic_degradation"])).all()
     )
-    state_cells = int(
-        state_metrics["ic_improvement"].ge(ic_threshold).sum()
-    )
+    state_cells = int(state_metrics["ic_improvement"].ge(ic_threshold).sum())
     cosine_median = (
-        float(coefficient_cosines["cosine"].median())
-        if not coefficient_cosines.empty
-        else np.nan
+        float(coefficient_cosines["cosine"].median()) if not coefficient_cosines.empty else np.nan
     )
-    positive_eras = int(
-        fold_metrics["mean_action_ic_improvement"].gt(0.0).sum()
-    )
-    era_values = fold_metrics.set_index("fold")[
-        "mean_action_ic_improvement"
-    ]
+    positive_eras = int(fold_metrics["mean_action_ic_improvement"].gt(0.0).sum())
+    era_values = fold_metrics.set_index("fold")["mean_action_ic_improvement"]
     without_best = (
-        float(era_values.drop(index=era_values.idxmax()).sum())
-        if len(era_values) > 1
-        else np.nan
+        float(era_values.drop(index=era_values.idxmax()).sum()) if len(era_values) > 1 else np.nan
     )
     positive_values = era_values.clip(lower=0.0)
     positive_total = float(positive_values.sum())
     largest_era_share = (
-        float(positive_values.max() / positive_total)
-        if positive_total > 0.0
-        else 1.0
+        float(positive_values.max() / positive_total) if positive_total > 0.0 else 1.0
     )
     cluster = predictions.copy()
-    cluster["macro_cluster"] = (
-        (cluster.index - cluster.index.min()).days // 30
-    )
+    cluster["macro_cluster"] = (cluster.index - cluster.index.min()).days // 30
     improvements: list[pd.Series] = []
     for action, target in zip(ACTION_KEYS, targets):
         improvements.append(
             (
-                (
-                    cluster[target]
-                    - cluster[f"base_predicted_{action}"]
-                ).abs()
-                - (
-                    cluster[target]
-                    - cluster[f"candidate_predicted_{action}"]
-                ).abs()
+                (cluster[target] - cluster[f"base_predicted_{action}"]).abs()
+                - (cluster[target] - cluster[f"candidate_predicted_{action}"]).abs()
             ).rename(action)
         )
-    cluster["incremental_error_reduction"] = pd.concat(
-        improvements, axis=1
-    ).sum(axis=1)
+    cluster["incremental_error_reduction"] = pd.concat(improvements, axis=1).sum(axis=1)
     cluster_positive = (
-        cluster.groupby("macro_cluster")[
-            "incremental_error_reduction"
-        ]
-        .sum()
-        .clip(lower=0.0)
+        cluster.groupby("macro_cluster")["incremental_error_reduction"].sum().clip(lower=0.0)
     )
     cluster_total = float(cluster_positive.sum())
     largest_cluster_share = (
-        float(cluster_positive.max() / cluster_total)
-        if cluster_total > 0.0
-        else 1.0
+        float(cluster_positive.max() / cluster_total) if cluster_total > 0.0 else 1.0
     )
     checks = {
         "fdr": qvalue <= float(threshold["fdr_qvalue_max"]),
-        "actions_ic_improvement": actions_ic
-        >= int(threshold["actions_ic_improvement_min"]),
+        "actions_ic_improvement": actions_ic >= int(threshold["actions_ic_improvement_min"]),
         "actions_quintile_spread_improvement": actions_spread
         >= int(threshold["actions_quintile_spread_improvement_min"]),
         "no_large_action_ic_degradation": no_large_degradation,
         "action_state_cells_ic_improvement": state_cells
         >= int(threshold["action_state_cells_ic_improvement_min"]),
         "coefficient_stability": np.isfinite(cosine_median)
-        and cosine_median
-        >= float(threshold["coefficient_cosine_similarity_median_min"]),
-        "positive_outer_eras": positive_eras
-        >= int(threshold["positive_outer_eras_min"]),
+        and cosine_median >= float(threshold["coefficient_cosine_similarity_median_min"]),
+        "positive_outer_eras": positive_eras >= int(threshold["positive_outer_eras_min"]),
         "improvement_without_best_year": np.isfinite(without_best)
         and (
-            not bool(
-                threshold["improvement_without_best_year_nonnegative"]
-            )
-            or without_best >= 0.0
+            not bool(threshold["improvement_without_best_year_nonnegative"]) or without_best >= 0.0
         ),
         "single_era_concentration": largest_era_share
         <= float(threshold["maximum_single_era_positive_share"]),
@@ -951,16 +804,11 @@ def run_market_internal_research(
     pvalues: dict[str, float] = {}
     family_source_lookup = family_source_audit.set_index("family")
     for family, specification in contract["families"].items():
-        expected_features = tuple(
-            str(value) for value in specification["minimum_feature_block"]
-        )
-        source_ok = bool(
-            family_source_lookup.loc[family, "admissible"]
-        )
+        expected_features = tuple(str(value) for value in specification["minimum_feature_block"])
+        source_ok = bool(family_source_lookup.loc[family, "admissible"])
         if not source_ok or family not in blocks:
             reason = str(
-                family_source_lookup.loc[family, "rejection_reason"]
-                or "feature_block_unavailable"
+                family_source_lookup.loc[family, "rejection_reason"] or "feature_block_unavailable"
             )
             provisional[family] = {
                 "admissible": False,
@@ -995,9 +843,7 @@ def run_market_internal_research(
             }
             pvalues[family] = 1.0
             continue
-        action_metrics, state_metrics = _metric_tables(
-            family, predictions, targets
-        )
+        action_metrics, state_metrics = _metric_tables(family, predictions, targets)
         cosines = _cosine_stability(coefficients)
         raw_pvalue = _raw_family_pvalue(predictions, targets)
         provisional[family] = {
@@ -1081,17 +927,13 @@ def run_market_internal_research(
         results[family] = evaluation
     final_gate = {
         "checks": {
-            "phase_0_completed": bool(
-                not source_audit.empty and not family_source_audit.empty
-            ),
+            "phase_0_completed": bool(not source_audit.empty and not family_source_audit.empty),
             "at_least_one_family_admitted": bool(admitted),
             "no_portfolio_policy_evaluated": True,
         },
         "metrics": {
             "families_tested": len(contract["families"]),
-            "source_admissible_families": int(
-                family_source_audit["admissible"].sum()
-            ),
+            "source_admissible_families": int(family_source_audit["admissible"].sum()),
             "admitted_families": admitted,
         },
         "passed": bool(admitted),

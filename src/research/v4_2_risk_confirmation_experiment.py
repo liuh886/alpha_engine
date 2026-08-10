@@ -113,17 +113,14 @@ def run_confirmation_scenario(
     for asset in ASSETS:
         daily[f"weight_{asset}"] = weights[asset]
     daily["gross_return"] = sum(
-        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in ASSETS
+        daily[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if bool(contract["portfolio"]["charge_initial_entry"]) and not turnover.empty:
         turnover.iloc[0] = weights.iloc[0].abs().sum()
     else:
         turnover.iloc[0] = 0.0
-    cost_bps = float(
-        contract["portfolio"]["transaction_cost_bps_per_turnover_unit"]
-    )
+    cost_bps = float(contract["portfolio"]["transaction_cost_bps_per_turnover_unit"])
     daily["turnover_units"] = turnover
     daily["transaction_cost"] = turnover * cost_bps / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
@@ -132,17 +129,13 @@ def run_confirmation_scenario(
     daily["drawdown"] = daily["equity"] / daily["equity"].cummax() - 1.0
     metrics = _return_metrics(
         daily["net_return"],
-        annual_risk_free_rate=float(
-            contract["portfolio"]["annual_risk_free_rate"]
-        ),
+        annual_risk_free_rate=float(contract["portfolio"]["annual_risk_free_rate"]),
     )
     metrics.update(
         {
             "strategy": scenario,
             "turnover_units": float(daily["turnover_units"].sum()),
-            "transaction_cost_paid": float(
-                daily["transaction_cost"].sum()
-            ),
+            "transaction_cost_paid": float(daily["transaction_cost"].sum()),
             "state_0_sessions": int(states.eq(0).sum()),
             "state_1_sessions": int(states.eq(1).sum()),
             "state_2_sessions": int(states.eq(2).sum()),
@@ -160,9 +153,7 @@ def scenario_difference_events(
     common = baseline.daily.index.intersection(challenger.daily.index)
     left = baseline.daily.loc[common]
     right = challenger.daily.loc[common]
-    changed = left["position_state"].astype(int).ne(
-        right["position_state"].astype(int)
-    )
+    changed = left["position_state"].astype(int).ne(right["position_state"].astype(int))
     rows: list[dict[str, Any]] = []
     groups = changed.ne(changed.shift()).cumsum()
     event_number = 0
@@ -176,9 +167,7 @@ def scenario_difference_events(
         base_interval = left.loc[start_date:end_date]
         challenger_interval = right.loc[start_date:end_date]
         base_net = float((1.0 + base_interval["net_return"]).prod() - 1.0)
-        challenger_net = float(
-            (1.0 + challenger_interval["net_return"]).prod() - 1.0
-        )
+        challenger_net = float((1.0 + challenger_interval["net_return"]).prod() - 1.0)
         rows.append(
             {
                 "event_id": event_number,
@@ -200,12 +189,8 @@ def scenario_difference_events(
                 "baseline_net_return": base_net,
                 "challenger_net_return": challenger_net,
                 "net_return_delta": challenger_net - base_net,
-                "baseline_turnover_units": float(
-                    base_interval["turnover_units"].sum()
-                ),
-                "challenger_turnover_units": float(
-                    challenger_interval["turnover_units"].sum()
-                ),
+                "baseline_turnover_units": float(base_interval["turnover_units"].sum()),
+                "challenger_turnover_units": float(challenger_interval["turnover_units"].sum()),
                 "turnover_saved": float(
                     base_interval["turnover_units"].sum()
                     - challenger_interval["turnover_units"].sum()
@@ -217,28 +202,16 @@ def scenario_difference_events(
         return events, pd.DataFrame()
     positive = events["net_return_delta"].clip(lower=0.0)
     total_positive = float(positive.sum())
-    top_positive_share = (
-        float(positive.max() / total_positive)
-        if total_positive > 1e-12
-        else 0.0
-    )
+    top_positive_share = float(positive.max() / total_positive) if total_positive > 1e-12 else 0.0
     summary = pd.DataFrame(
         [
             {
                 "events": int(len(events)),
-                "positive_event_rate": float(
-                    events["net_return_delta"].gt(0.0).mean()
-                ),
-                "mean_net_return_delta": float(
-                    events["net_return_delta"].mean()
-                ),
-                "total_arithmetic_net_return_delta": float(
-                    events["net_return_delta"].sum()
-                ),
+                "positive_event_rate": float(events["net_return_delta"].gt(0.0).mean()),
+                "mean_net_return_delta": float(events["net_return_delta"].mean()),
+                "total_arithmetic_net_return_delta": float(events["net_return_delta"].sum()),
                 "top_positive_event_share": top_positive_share,
-                "total_turnover_saved": float(
-                    events["turnover_saved"].sum()
-                ),
+                "total_turnover_saved": float(events["turnover_saved"].sum()),
             }
         ]
     )
@@ -307,9 +280,9 @@ def run_confirmation_comparison(
     ):
         raise AssertionError("confirmation baseline does not reproduce v4.2")
 
-    table = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
+    table = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
+    )
     base_metrics = table.loc["baseline"]
     for metric in (
         "total_return",
@@ -319,9 +292,7 @@ def run_confirmation_comparison(
         "max_drawdown",
         "calmar",
     ):
-        table[f"{metric}_delta_vs_baseline"] = (
-            table[metric] - float(base_metrics[metric])
-        )
+        table[f"{metric}_delta_vs_baseline"] = table[metric] - float(base_metrics[metric])
 
     split = max(1, min(len(source) - 1, int(len(source) * train_fraction)))
     segment_rows: list[dict[str, Any]] = []
@@ -334,9 +305,7 @@ def run_confirmation_comparison(
             "leverage_entry_confirmation_1",
             "risk_increase_confirmation_1",
         }:
-            events, event_summary = scenario_difference_events(
-                baseline, result
-            )
+            events, event_summary = scenario_difference_events(baseline, result)
             if not events.empty:
                 events.insert(0, "scenario", key)
                 event_frames.append(events)
@@ -344,11 +313,7 @@ def run_confirmation_comparison(
             if not event_summary.empty:
                 row.update(event_summary.iloc[0].to_dict())
             event_summary_rows.append(row)
-    events = (
-        pd.concat(event_frames, ignore_index=True)
-        if event_frames
-        else pd.DataFrame()
-    )
+    events = pd.concat(event_frames, ignore_index=True) if event_frames else pd.DataFrame()
     event_summary = pd.DataFrame(event_summary_rows)
     segments = pd.DataFrame(segment_rows)
     return table.sort_index(), segments, events, results
@@ -369,14 +334,8 @@ def confirmation_research_gate(
     candidate_events = events.loc[events["scenario"].eq(candidate)]
     positive = candidate_events["net_return_delta"].clip(lower=0.0)
     positive_sum = float(positive.sum())
-    top_share = (
-        float(positive.max() / positive_sum)
-        if positive_sum > 1e-12
-        else 0.0
-    )
-    positive_rate = float(
-        candidate_events["net_return_delta"].gt(0.0).mean()
-    )
+    top_share = float(positive.max() / positive_sum) if positive_sum > 1e-12 else 0.0
+    positive_rate = float(candidate_events["net_return_delta"].gt(0.0).mean())
     segment_table = segments.set_index(["strategy", "segment"])
     early_delta = float(
         segment_table.loc[(candidate, "early"), "cagr"]
@@ -388,22 +347,17 @@ def confirmation_research_gate(
     )
     gates = {
         "cagr_improves": float(challenger["cagr"]) > float(baseline["cagr"]),
-        "sharpe_improves": float(challenger["sharpe"])
-        > float(baseline["sharpe"]),
-        "sortino_improves": float(challenger["sortino"])
-        > float(baseline["sortino"]),
-        "calmar_improves": float(challenger["calmar"])
-        > float(baseline["calmar"]),
+        "sharpe_improves": float(challenger["sharpe"]) > float(baseline["sharpe"]),
+        "sortino_improves": float(challenger["sortino"]) > float(baseline["sortino"]),
+        "calmar_improves": float(challenger["calmar"]) > float(baseline["calmar"]),
         "max_drawdown_within_tolerance": float(
             challenger["max_drawdown"] - baseline["max_drawdown"]
         )
         >= -float(rules["max_drawdown_worsening_tolerance"]),
         "turnover_not_higher": float(challenger["turnover_units"])
         <= float(baseline["turnover_units"]),
-        "positive_event_rate": positive_rate
-        >= float(rules["min_positive_event_rate"]),
-        "top_event_not_dominant": top_share
-        <= float(rules["max_top_positive_event_share"]),
+        "positive_event_rate": positive_rate >= float(rules["min_positive_event_rate"]),
+        "top_event_not_dominant": top_share <= float(rules["max_top_positive_event_share"]),
         "early_segment_positive": early_delta > 0.0,
         "late_segment_positive": late_delta > 0.0,
     }
@@ -422,8 +376,6 @@ def confirmation_research_gate(
             "top_positive_event_share": top_share,
             "early_segment_cagr_delta": early_delta,
             "late_segment_cagr_delta": late_delta,
-            "turnover_delta": float(
-                challenger["turnover_units"] - baseline["turnover_units"]
-            ),
+            "turnover_delta": float(challenger["turnover_units"] - baseline["turnover_units"]),
         },
     }

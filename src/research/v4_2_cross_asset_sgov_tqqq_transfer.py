@@ -83,12 +83,8 @@ def _breadth_frame(
     above_medium = pd.DataFrame(index=panel.index)
     for symbol in underlyings:
         close = panel[symbol]
-        above_short[symbol] = close.gt(
-            close.rolling(ma_short, min_periods=ma_short).mean()
-        )
-        above_medium[symbol] = close.gt(
-            close.rolling(ma_medium, min_periods=ma_medium).mean()
-        )
+        above_short[symbol] = close.gt(close.rolling(ma_short, min_periods=ma_short).mean())
+        above_medium[symbol] = close.gt(close.rolling(ma_medium, min_periods=ma_medium).mean())
     return pd.DataFrame(
         {
             "donor_breadth_above_ma20": above_short.mean(axis=1),
@@ -144,13 +140,11 @@ def build_asset_feature_frame(
     frame["underlying_return_20d"] = close.pct_change(20)
     frame["underlying_distance_ma20"] = close / frame["ma20"] - 1.0
     frame["underlying_distance_ma50"] = close / frame["ma50"] - 1.0
-    frame["underlying_ma20_slope_5d"] = (
-        frame["ma20"] / frame["ma20"].shift(slope_n) - 1.0
-    )
+    frame["underlying_ma20_slope_5d"] = frame["ma20"] / frame["ma20"].shift(slope_n) - 1.0
     daily_return = close.pct_change()
-    frame["underlying_realized_volatility_20d"] = (
-        daily_return.rolling(20, min_periods=20).std(ddof=0) * np.sqrt(252.0)
-    )
+    frame["underlying_realized_volatility_20d"] = daily_return.rolling(20, min_periods=20).std(
+        ddof=0
+    ) * np.sqrt(252.0)
     rolling_high = close.rolling(drawdown_n, min_periods=drawdown_n).max()
     frame["underlying_drawdown_63d"] = close / rolling_high - 1.0
 
@@ -160,36 +154,24 @@ def build_asset_feature_frame(
         vix / vix.rolling(vix_high_n, min_periods=vix_high_n).max() - 1.0
     )
     frame["vix_percentile_252d"] = _rolling_percentile(vix, vix_percentile_n)
-    frame["vix_stress"] = frame["vix_percentile_252d"].ge(
-        float(event["vix_stress_quantile"])
-    )
+    frame["vix_stress"] = frame["vix_percentile_252d"].ge(float(event["vix_stress_quantile"]))
     frame["vix_structural_normal"] = frame["vix_percentile_252d"].lt(
         float(event["vix_structural_normal_quantile"])
     )
 
     below = close.lt(frame["ma20"])
     below_n = int(event["below_ma_short_exit_sessions"])
-    frame["below_ma20_exit"] = (
-        below.rolling(below_n, min_periods=below_n).sum().eq(below_n)
-    )
-    frame["shock"] = frame["underlying_drawdown_63d"].le(
-        -abs(float(event["shock_drawdown"]))
-    )
+    frame["below_ma20_exit"] = below.rolling(below_n, min_periods=below_n).sum().eq(below_n)
+    frame["shock"] = frame["underlying_drawdown_63d"].le(-abs(float(event["shock_drawdown"])))
     frame["entry_ready"] = (
         close.gt(frame["ma20"])
         & frame["underlying_ma20_slope_5d"].gt(0.0)
-        & frame["vix_retreat_from_20d_high"].le(
-            -abs(float(event["vix_retreat_from_20d_high"]))
-        )
+        & frame["vix_retreat_from_20d_high"].le(-abs(float(event["vix_retreat_from_20d_high"])))
     )
     frame["structural_bull"] = (
-        close.gt(frame["ma200"])
-        & frame["ma50"].gt(frame["ma200"])
-        & frame["vix_structural_normal"]
+        close.gt(frame["ma200"]) & frame["ma50"].gt(frame["ma200"]) & frame["vix_structural_normal"]
     )
-    frame["leveraged_next_open_return"] = _next_open_return(
-        frame["leveraged_open"]
-    )
+    frame["leveraged_next_open_return"] = _next_open_return(frame["leveraged_open"])
     frame["cash_next_open_return"] = _next_open_return(frame["cash_open"])
     return frame.dropna(
         subset=[
@@ -242,11 +224,7 @@ def build_nonoverlapping_events(
         ):
             cycle_locked = False
 
-        if (
-            not cycle_active
-            and not cycle_locked
-            and bool(frame.iloc[position]["shock"])
-        ):
+        if not cycle_active and not cycle_locked and bool(frame.iloc[position]["shock"]):
             cycle_active = True
             shock_position = position
 
@@ -273,12 +251,14 @@ def build_nonoverlapping_events(
                     exit_reason = "vix_stress"
                     break
 
-            leveraged_returns = frame["leveraged_next_open_return"].iloc[
-                execution_position : end_position + 1
-            ].dropna()
-            cash_returns = frame["cash_next_open_return"].iloc[
-                execution_position : end_position + 1
-            ].dropna()
+            leveraged_returns = (
+                frame["leveraged_next_open_return"]
+                .iloc[execution_position : end_position + 1]
+                .dropna()
+            )
+            cash_returns = (
+                frame["cash_next_open_return"].iloc[execution_position : end_position + 1].dropna()
+            )
             expected_length = end_position - execution_position + 1
             if (
                 len(leveraged_returns) == expected_length
@@ -302,9 +282,7 @@ def build_nonoverlapping_events(
                     "cash_event_return": float(np.exp(cash_log) - 1.0),
                     "event_excess_log_return": leveraged_log - cash_log,
                     "positive_event_excess": int(leveraged_log > cash_log),
-                    "leveraged_event_max_drawdown": _path_drawdown(
-                        leveraged_returns
-                    ),
+                    "leveraged_event_max_drawdown": _path_drawdown(leveraged_returns),
                 }
                 for feature in features:
                     output[feature] = float(signal[feature])
@@ -342,16 +320,14 @@ def build_nonoverlapping_events(
     return events
 
 
-def assign_macro_clusters(
-    events: pd.DataFrame, calendar_days: int
-) -> pd.DataFrame:
+def assign_macro_clusters(events: pd.DataFrame, calendar_days: int) -> pd.DataFrame:
     """Assign one cluster to events whose starts share one macro window."""
 
     if events.empty:
         return events.copy()
-    ordered = events.sort_values(
-        ["signal_close_date", "underlying", "asset_event_id"]
-    ).reset_index(drop=True)
+    ordered = events.sort_values(["signal_close_date", "underlying", "asset_event_id"]).reset_index(
+        drop=True
+    )
     cluster_number = 0
     cluster_anchor: pd.Timestamp | None = None
     cluster_ids: list[str] = []
@@ -371,19 +347,11 @@ def build_donor_event_panel(
 ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     """Build six donor event sets without any QQQ-family fitting input."""
 
-    donor_pairs = {
-        str(key): str(value)
-        for key, value in contract["data"]["donor_pairs"].items()
-    }
+    donor_pairs = {str(key): str(value) for key, value in contract["data"]["donor_pairs"].items()}
     excluded = {
-        str(value)
-        for value in contract["boundaries"][
-            "target_symbols_excluded_from_training"
-        ]
+        str(value) for value in contract["boundaries"]["target_symbols_excluded_from_training"]
     }
-    if set(donor_pairs).intersection(excluded) or set(
-        donor_pairs.values()
-    ).intersection(excluded):
+    if set(donor_pairs).intersection(excluded) or set(donor_pairs.values()).intersection(excluded):
         raise AssertionError("target symbols leaked into donor pairs")
 
     breadth = _breadth_frame(
@@ -457,12 +425,8 @@ def _probability_groups(valid: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
         if quartile.notna().any():
             minimum = quartile.min()
             maximum = quartile.max()
-            bottom = ordered.loc[
-                quartile.eq(minimum), "event_excess_log_return"
-            ]
-            top = ordered.loc[
-                quartile.eq(maximum), "event_excess_log_return"
-            ]
+            bottom = ordered.loc[quartile.eq(minimum), "event_excess_log_return"]
+            top = ordered.loc[quartile.eq(maximum), "event_excess_log_return"]
             if len(bottom) and len(top):
                 return bottom.astype(float), top.astype(float)
 
@@ -488,9 +452,7 @@ def _prediction_metrics(table: pd.DataFrame) -> dict[str, Any]:
         "observations": int(len(valid)),
         "positive_rate": float(label.mean()),
         "roc_auc": (
-            float(roc_auc_score(label, probability))
-            if label.nunique() >= 2
-            else float("nan")
+            float(roc_auc_score(label, probability)) if label.nunique() >= 2 else float("nan")
         ),
         "brier_score": float(brier_score_loss(label, probability)),
         "spearman_ic": float(probability.corr(continuous, method="spearman")),
@@ -511,12 +473,8 @@ def _asset_probability_spreads(oof: pd.DataFrame) -> pd.DataFrame:
             {
                 "underlying": asset,
                 "events": int(len(local)),
-                "high_probability_mean_excess": float(high.mean())
-                if len(high)
-                else float("nan"),
-                "low_probability_mean_excess": float(low.mean())
-                if len(low)
-                else float("nan"),
+                "high_probability_mean_excess": float(high.mean()) if len(high) else float("nan"),
+                "low_probability_mean_excess": float(low.mean()) if len(low) else float("nan"),
                 "high_minus_low_spread": float(high.mean() - low.mean())
                 if len(high) and len(low)
                 else float("nan"),
@@ -528,26 +486,17 @@ def _asset_probability_spreads(oof: pd.DataFrame) -> pd.DataFrame:
 def _cluster_information_contributions(oof: pd.DataFrame) -> pd.DataFrame:
     local = oof.copy()
     p_centered = local["probability"] - local["probability"].mean()
-    y_centered = (
-        local["event_excess_log_return"]
-        - local["event_excess_log_return"].mean()
-    )
-    local["positive_information_contribution"] = (
-        p_centered * y_centered
-    ).clip(lower=0.0)
+    y_centered = local["event_excess_log_return"] - local["event_excess_log_return"].mean()
+    local["positive_information_contribution"] = (p_centered * y_centered).clip(lower=0.0)
     result = (
-        local.groupby("macro_cluster_id", as_index=False)[
-            "positive_information_contribution"
-        ]
+        local.groupby("macro_cluster_id", as_index=False)["positive_information_contribution"]
         .sum()
         .sort_values("positive_information_contribution", ascending=False)
         .reset_index(drop=True)
     )
     total = float(result["positive_information_contribution"].sum())
     result["positive_contribution_share"] = (
-        result["positive_information_contribution"] / total
-        if total > 0.0
-        else 0.0
+        result["positive_information_contribution"] / total if total > 0.0 else 0.0
     )
     return result
 
@@ -561,10 +510,7 @@ def fit_cluster_transfer_model(
     features = tuple(str(value) for value in contract["features"])
     development_end = pd.Timestamp(contract["data"]["model_development_end"])
     excluded = {
-        str(value)
-        for value in contract["boundaries"][
-            "target_symbols_excluded_from_training"
-        ]
+        str(value) for value in contract["boundaries"]["target_symbols_excluded_from_training"]
     }
     development = donor_events.loc[
         pd.to_datetime(donor_events["signal_close_date"]).le(development_end)
@@ -575,9 +521,7 @@ def fit_cluster_transfer_model(
         development["leveraged"]
     ).intersection(excluded)
     if leaked:
-        raise AssertionError(
-            f"target symbols leaked into donor training: {sorted(leaked)}"
-        )
+        raise AssertionError(f"target symbols leaked into donor training: {sorted(leaked)}")
     development = development.dropna(
         subset=[*features, "positive_event_excess", "event_excess_log_return"]
     ).copy()
@@ -585,12 +529,8 @@ def fit_cluster_transfer_model(
     oof_parts: list[pd.DataFrame] = []
     fold_rows: list[dict[str, Any]] = []
     for cluster_id in sorted(development["macro_cluster_id"].unique()):
-        validation = development.loc[
-            development["macro_cluster_id"].eq(cluster_id)
-        ].copy()
-        training = development.loc[
-            ~development["macro_cluster_id"].eq(cluster_id)
-        ].copy()
+        validation = development.loc[development["macro_cluster_id"].eq(cluster_id)].copy()
+        training = development.loc[~development["macro_cluster_id"].eq(cluster_id)].copy()
         if training["positive_event_excess"].nunique() < 2:
             continue
         model = _pipeline(contract)
@@ -609,13 +549,9 @@ def fit_cluster_transfer_model(
                 "event_excess_log_return",
             ]
         ].copy()
-        predicted["probability"] = model.predict_proba(
-            validation[list(features)]
-        )[:, 1]
+        predicted["probability"] = model.predict_proba(validation[list(features)])[:, 1]
         predicted["training_event_count"] = int(len(training))
-        predicted["training_cluster_count"] = int(
-            training["macro_cluster_id"].nunique()
-        )
+        predicted["training_cluster_count"] = int(training["macro_cluster_id"].nunique())
         oof_parts.append(predicted)
         fold_metrics = _prediction_metrics(predicted)
         fold_metrics.update(
@@ -623,24 +559,16 @@ def fit_cluster_transfer_model(
                 "macro_cluster_id": cluster_id,
                 "validation_events": int(len(validation)),
                 "training_events": int(len(training)),
-                "training_clusters": int(
-                    training["macro_cluster_id"].nunique()
-                ),
-                "validation_start": pd.to_datetime(
-                    validation["signal_close_date"]
-                ).min(),
-                "validation_end": pd.to_datetime(
-                    validation["signal_close_date"]
-                ).max(),
+                "training_clusters": int(training["macro_cluster_id"].nunique()),
+                "validation_start": pd.to_datetime(validation["signal_close_date"]).min(),
+                "validation_end": pd.to_datetime(validation["signal_close_date"]).max(),
             }
         )
         fold_rows.append(fold_metrics)
 
     if not oof_parts:
         raise ValueError("no cluster-isolated OOF predictions were produced")
-    oof = pd.concat(oof_parts, ignore_index=True).sort_values(
-        ["signal_close_date", "underlying"]
-    )
+    oof = pd.concat(oof_parts, ignore_index=True).sort_values(["signal_close_date", "underlying"])
     aggregate = _prediction_metrics(oof)
     asset_spreads = _asset_probability_spreads(oof)
     cluster_contributions = _cluster_information_contributions(oof)
@@ -660,9 +588,7 @@ def fit_cluster_transfer_model(
             "maximum_single_asset_event_share": float(
                 development["underlying"].value_counts(normalize=True).max()
             ),
-            "training_assets": sorted(
-                development["underlying"].unique().tolist()
-            ),
+            "training_assets": sorted(development["underlying"].unique().tolist()),
             "development_end": development_end,
         }
     )
@@ -682,9 +608,7 @@ def fit_cluster_transfer_model(
     return ClusterTransferModel(
         donor_events=development,
         oof_predictions=oof,
-        fold_metrics=pd.DataFrame(fold_rows)
-        .sort_values("macro_cluster_id")
-        .reset_index(drop=True),
+        fold_metrics=pd.DataFrame(fold_rows).sort_values("macro_cluster_id").reset_index(drop=True),
         asset_spreads=asset_spreads,
         cluster_contributions=cluster_contributions,
         aggregate_metrics=aggregate,
@@ -704,9 +628,7 @@ def build_target_events(
 
     donor_breadth = pd.concat(
         [
-            frame[
-                ["donor_breadth_above_ma20", "donor_breadth_above_ma50"]
-            ]
+            frame[["donor_breadth_above_ma20", "donor_breadth_above_ma50"]]
             for frame in donor_frames.values()
         ],
         axis=0,
@@ -730,9 +652,9 @@ def build_target_events(
     )
     if events.empty:
         raise ValueError("no target QQQ events were generated")
-    events["probability"] = model.fitted_pipeline.predict_proba(
-        events[list(model.feature_names)]
-    )[:, 1]
+    events["probability"] = model.fitted_pipeline.predict_proba(events[list(model.feature_names)])[
+        :, 1
+    ]
     low = float(contract["strategy"]["probability_low_below"])
     high = float(contract["strategy"]["probability_high_at_or_above"])
     events["probability_bucket"] = "medium"
@@ -751,18 +673,15 @@ def _target_weight_schedules(
     contract: Mapping[str, Any],
 ) -> dict[str, pd.Series]:
     structural_signal = frame["structural_bull"].astype(bool)
-    structural = (
-        structural_signal.shift(1).fillna(False).astype(float)
-        * float(contract["strategy"]["structural_tqqq_weight"])
+    structural = structural_signal.shift(1).fillna(False).astype(float) * float(
+        contract["strategy"]["structural_tqqq_weight"]
     )
     event_weight = pd.Series(np.nan, index=frame.index, dtype=float)
     for event in events.itertuples(index=False):
         active = (frame.index >= pd.Timestamp(event.execution_date)) & (
             frame.index <= pd.Timestamp(event.event_end_date)
         )
-        event_weight.loc[active] = _target_weight_from_bucket(
-            str(event.probability_bucket)
-        )
+        event_weight.loc[active] = _target_weight_from_bucket(str(event.probability_bucket))
 
     joint = structural.copy()
     joint.loc[event_weight.notna()] = event_weight.loc[event_weight.notna()]
@@ -784,9 +703,7 @@ def _backtest_target_weights(
     start: pd.Timestamp | None = None,
     end: pd.Timestamp | None = None,
 ) -> StrategyResult:
-    daily = frame[
-        ["cash_next_open_return", "leveraged_next_open_return"]
-    ].copy()
+    daily = frame[["cash_next_open_return", "leveraged_next_open_return"]].copy()
     daily["weight_TQQQ"] = tqqq_weight.reindex(daily.index)
     daily["weight_SGOV"] = 1.0 - daily["weight_TQQQ"]
     if start is not None:
@@ -803,9 +720,7 @@ def _backtest_target_weights(
     weights = daily[["weight_SGOV", "weight_TQQQ"]]
     if not np.allclose(weights.sum(axis=1), 1.0):
         raise AssertionError("target SGOV/TQQQ weights must sum to one")
-    if (weights < -1e-12).any().any() or (
-        weights > 1.0 + 1e-12
-    ).any().any():
+    if (weights < -1e-12).any().any() or (weights > 1.0 + 1e-12).any().any():
         raise AssertionError("target weights must stay in [0, 1]")
     daily["gross_return"] = (
         daily["weight_SGOV"] * daily["cash_next_open_return"]
@@ -814,9 +729,7 @@ def _backtest_target_weights(
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
-    cost_bps = float(
-        contract["boundaries"]["transaction_cost_bps_per_turnover_unit"]
-    )
+    cost_bps = float(contract["boundaries"]["transaction_cost_bps_per_turnover_unit"])
     daily["turnover_units"] = turnover
     daily["transaction_cost"] = turnover * cost_bps / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
@@ -825,9 +738,7 @@ def _backtest_target_weights(
     change = weights.ne(weights.shift()).any(axis=1)
     metrics = _return_metrics(
         daily["net_return"],
-        annual_risk_free_rate=float(
-            contract["boundaries"]["annual_risk_free_rate"]
-        ),
+        annual_risk_free_rate=float(contract["boundaries"]["annual_risk_free_rate"]),
     )
     metrics.update(
         {
@@ -837,9 +748,7 @@ def _backtest_target_weights(
             "switch_count": int(max(int(change.sum()) - 1, 0)),
             "average_tqqq_weight": float(daily["weight_TQQQ"].mean()),
             "pct_time_sgov": float(daily["weight_TQQQ"].eq(0.0).mean()),
-            "pct_time_full_tqqq": float(
-                daily["weight_TQQQ"].eq(1.0).mean()
-            ),
+            "pct_time_full_tqqq": float(daily["weight_TQQQ"].eq(1.0).mean()),
         }
     )
     trades = daily.loc[
@@ -862,20 +771,15 @@ def _rebuild_v4_2_scope(
     contract: Mapping[str, Any],
     strategy: str,
 ) -> StrategyResult:
-    daily = result.daily.loc[
-        (result.daily.index >= start) & (result.daily.index <= end)
-    ].copy()
+    daily = result.daily.loc[(result.daily.index >= start) & (result.daily.index <= end)].copy()
     weights = daily[[f"weight_{asset}" for asset in V4_2_ASSETS]].copy()
     daily["gross_return"] = sum(
-        weights[f"weight_{asset}"] * daily[f"{asset}_next_open_return"]
-        for asset in V4_2_ASSETS
+        weights[f"weight_{asset}"] * daily[f"{asset}_next_open_return"] for asset in V4_2_ASSETS
     )
     turnover = weights.diff().abs().sum(axis=1)
     if len(turnover):
         turnover.iloc[0] = float(weights.iloc[0].abs().sum())
-    cost_bps = float(
-        contract["boundaries"]["transaction_cost_bps_per_turnover_unit"]
-    )
+    cost_bps = float(contract["boundaries"]["transaction_cost_bps_per_turnover_unit"])
     daily["turnover_units"] = turnover
     daily["transaction_cost"] = turnover * cost_bps / 10_000.0
     daily["net_return"] = daily["gross_return"] - daily["transaction_cost"]
@@ -884,9 +788,7 @@ def _rebuild_v4_2_scope(
     daily["drawdown"] = daily["equity"] / daily["equity"].cummax() - 1.0
     metrics = _return_metrics(
         daily["net_return"],
-        annual_risk_free_rate=float(
-            contract["boundaries"]["annual_risk_free_rate"]
-        ),
+        annual_risk_free_rate=float(contract["boundaries"]["annual_risk_free_rate"]),
     )
     metrics.update(
         {
@@ -954,9 +856,7 @@ def target_event_attribution(
                 "probability_bucket": str(event.probability_bucket),
                 "candidate_return": float(np.exp(candidate_log) - 1.0),
                 "v4_2_return": float(np.exp(baseline_log) - 1.0),
-                "relative_return": float(
-                    np.exp(candidate_log - baseline_log) - 1.0
-                ),
+                "relative_return": float(np.exp(candidate_log - baseline_log) - 1.0),
             }
         )
     return pd.DataFrame(rows)
@@ -974,26 +874,17 @@ def _donor_gate(
         "minimum_macro_clusters": int(metrics["macro_clusters"])
         >= int(thresholds["minimum_macro_clusters"]),
         "aggregate_oof_auc": np.isfinite(float(metrics["roc_auc"]))
-        and float(metrics["roc_auc"])
-        >= float(thresholds["aggregate_oof_auc_min"]),
+        and float(metrics["roc_auc"]) >= float(thresholds["aggregate_oof_auc_min"]),
         "aggregate_oof_spearman_ic": np.isfinite(float(metrics["spearman_ic"]))
-        and float(metrics["spearman_ic"])
-        >= float(thresholds["aggregate_oof_spearman_ic_min"]),
-        "top_bottom_quartile_spread": float(
-            metrics["top_bottom_quartile_spread"]
-        )
-        > 0.0,
-        "positive_asset_spread_count": int(
-            metrics["positive_asset_spread_count"]
-        )
+        and float(metrics["spearman_ic"]) >= float(thresholds["aggregate_oof_spearman_ic_min"]),
+        "top_bottom_quartile_spread": float(metrics["top_bottom_quartile_spread"]) > 0.0,
+        "positive_asset_spread_count": int(metrics["positive_asset_spread_count"])
         >= int(thresholds["positive_asset_spread_count_min"]),
         "largest_positive_cluster_contribution": float(
             metrics["largest_positive_cluster_contribution_share"]
         )
         <= float(thresholds["largest_positive_cluster_contribution_max"]),
-        "maximum_single_asset_event_share": float(
-            metrics["maximum_single_asset_event_share"]
-        )
+        "maximum_single_asset_event_share": float(metrics["maximum_single_asset_event_share"])
         <= float(thresholds["maximum_single_asset_event_share"]),
     }
     return {
@@ -1014,20 +905,12 @@ def _strategy_gate(
     joint = actual["joint_structural_event"]
     proxy_baseline = proxy["qqq_proxy_v4_2"]
     proxy_joint = proxy["joint_structural_event"]
-    cagr_delta_pp = (
-        float(joint.metrics["cagr"]) - float(baseline.metrics["cagr"])
-    ) * 100.0
+    cagr_delta_pp = (float(joint.metrics["cagr"]) - float(baseline.metrics["cagr"])) * 100.0
     drawdown_worsening_pp = max(
         0.0,
-        (
-            float(baseline.metrics["max_drawdown"])
-            - float(joint.metrics["max_drawdown"])
-        )
-        * 100.0,
+        (float(baseline.metrics["max_drawdown"]) - float(joint.metrics["max_drawdown"])) * 100.0,
     )
-    calmar_delta = float(joint.metrics["calmar"]) - float(
-        baseline.metrics["calmar"]
-    )
+    calmar_delta = float(joint.metrics["calmar"]) - float(baseline.metrics["calmar"])
     calendar = _calendar_relative_returns(joint, baseline)
     positive_years = int(sum(value > 0.0 for value in calendar.values()))
     positive_events = (
@@ -1041,48 +924,33 @@ def _strategy_gate(
         else 1.0
     )
     turnover_increase = (
-        float(joint.metrics["turnover_units"])
-        / float(baseline.metrics["turnover_units"])
-        - 1.0
+        float(joint.metrics["turnover_units"]) / float(baseline.metrics["turnover_units"]) - 1.0
     )
 
     ablation_wins: dict[str, dict[str, bool]] = {}
     for comparator_key in ("structural_only", "event_only"):
         comparator = actual[comparator_key]
         ablation_wins[comparator_key] = {
-            "cagr": float(joint.metrics["cagr"])
-            > float(comparator.metrics["cagr"]),
+            "cagr": float(joint.metrics["cagr"]) > float(comparator.metrics["cagr"]),
             "max_drawdown": float(joint.metrics["max_drawdown"])
             > float(comparator.metrics["max_drawdown"]),
-            "sortino": float(joint.metrics["sortino"])
-            > float(comparator.metrics["sortino"]),
-            "calmar": float(joint.metrics["calmar"])
-            > float(comparator.metrics["calmar"]),
+            "sortino": float(joint.metrics["sortino"]) > float(comparator.metrics["sortino"]),
+            "calmar": float(joint.metrics["calmar"]) > float(comparator.metrics["calmar"]),
         }
-    ablation_counts = {
-        key: int(sum(values.values())) for key, values in ablation_wins.items()
-    }
-    actual_cagr_sign = np.sign(
-        float(joint.metrics["cagr"]) - float(baseline.metrics["cagr"])
-    )
+    ablation_counts = {key: int(sum(values.values())) for key, values in ablation_wins.items()}
+    actual_cagr_sign = np.sign(float(joint.metrics["cagr"]) - float(baseline.metrics["cagr"]))
     proxy_cagr_sign = np.sign(
-        float(proxy_joint.metrics["cagr"])
-        - float(proxy_baseline.metrics["cagr"])
+        float(proxy_joint.metrics["cagr"]) - float(proxy_baseline.metrics["cagr"])
     )
-    actual_calmar_sign = np.sign(
-        float(joint.metrics["calmar"]) - float(baseline.metrics["calmar"])
-    )
+    actual_calmar_sign = np.sign(float(joint.metrics["calmar"]) - float(baseline.metrics["calmar"]))
     proxy_calmar_sign = np.sign(
-        float(proxy_joint.metrics["calmar"])
-        - float(proxy_baseline.metrics["calmar"])
+        float(proxy_joint.metrics["calmar"]) - float(proxy_baseline.metrics["calmar"])
     )
     checks = {
         "actual_cagr_improvement": cagr_delta_pp
         >= float(thresholds["actual_cagr_improvement_vs_v4_2_pp_min"]),
         "actual_max_drawdown_not_materially_worse": drawdown_worsening_pp
-        <= float(
-            thresholds["actual_max_drawdown_worsening_vs_v4_2_pp_max"]
-        ),
+        <= float(thresholds["actual_max_drawdown_worsening_vs_v4_2_pp_max"]),
         "actual_calmar_improvement": calmar_delta
         >= float(thresholds["actual_calmar_improvement_vs_v4_2_min"]),
         "actual_sortino_not_below": float(joint.metrics["sortino"])
@@ -1091,15 +959,13 @@ def _strategy_gate(
         >= int(thresholds["positive_relative_calendar_years_min"]),
         "target_event_concentration": event_share
         <= float(thresholds["largest_positive_target_event_share_max"]),
-        "turnover": turnover_increase
-        <= float(thresholds["turnover_increase_vs_v4_2_max"]),
+        "turnover": turnover_increase <= float(thresholds["turnover_increase_vs_v4_2_max"]),
         "beats_structural_only": ablation_counts["structural_only"]
         >= int(thresholds["ablation_metrics_to_beat_min"]),
         "beats_event_only": ablation_counts["event_only"]
         >= int(thresholds["ablation_metrics_to_beat_min"]),
         "actual_proxy_cagr_direction": actual_cagr_sign == proxy_cagr_sign,
-        "actual_proxy_calmar_direction": actual_calmar_sign
-        == proxy_calmar_sign,
+        "actual_proxy_calmar_direction": actual_calmar_sign == proxy_calmar_sign,
     }
     return {
         "checks": checks,
@@ -1139,18 +1005,12 @@ def run_cross_asset_sgov_tqqq_transfer(
 
     donor_events, donor_frames = build_donor_event_panel(bars, contract)
     model = fit_cluster_transfer_model(donor_events, contract)
-    target_events, target_frame = build_target_events(
-        bars, donor_frames, model, contract
-    )
+    target_events, target_frame = build_target_events(bars, donor_frames, model, contract)
     schedules = _target_weight_schedules(target_frame, target_events, contract)
 
-    _, actual_base_results, _, _ = run_bridge_allocation_comparison(
-        bars, bridge_contract
-    )
+    _, actual_base_results, _, _ = run_bridge_allocation_comparison(bars, bridge_contract)
     proxy_bars = alias_qqqi_to_qqq(bars)
-    _, proxy_base_results, _, _ = run_bridge_allocation_comparison(
-        proxy_bars, bridge_contract
-    )
+    _, proxy_base_results, _, _ = run_bridge_allocation_comparison(proxy_bars, bridge_contract)
     actual_base_full = actual_base_results[BASELINE_KEY]
     proxy_base_full = proxy_base_results[BASELINE_KEY]
 
@@ -1162,12 +1022,8 @@ def run_cross_asset_sgov_tqqq_transfer(
         actual_base_full.daily.index.max(),
         proxy_base_full.daily.index.max(),
     )
-    actual_start = max(
-        target_available.index.min(), actual_base_full.daily.index.min()
-    )
-    proxy_start = max(
-        target_available.index.min(), proxy_base_full.daily.index.min()
-    )
+    actual_start = max(target_available.index.min(), actual_base_full.daily.index.min())
+    proxy_start = max(target_available.index.min(), proxy_base_full.daily.index.min())
     if actual_start >= common_end or proxy_start >= common_end:
         raise ValueError("target comparison windows are invalid")
 
@@ -1218,9 +1074,9 @@ def run_cross_asset_sgov_tqqq_transfer(
                 raise AssertionError(f"{scope} comparator indices diverged")
 
     headlines = {
-        scope: pd.DataFrame(
-            [dict(result.metrics) for result in results.values()]
-        ).set_index("strategy")
+        scope: pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+            "strategy"
+        )
         for scope, results in results_by_scope.items()
     }
     event_attribution = {
@@ -1261,14 +1117,9 @@ def run_cross_asset_sgov_tqqq_transfer(
         "proxy_sample_start": proxy_start,
         "sample_end": common_end,
         "target_event_count": int(len(target_events)),
-        "target_bucket_counts": target_events[
-            "probability_bucket"
-        ].value_counts().to_dict(),
+        "target_bucket_counts": target_events["probability_bucket"].value_counts().to_dict(),
         "tail_risk": {
-            scope: {
-                key: tail_risk_metrics(result)
-                for key, result in results.items()
-            }
+            scope: {key: tail_risk_metrics(result) for key, result in results.items()}
             for scope, results in results_by_scope.items()
         },
         "decision": decision,

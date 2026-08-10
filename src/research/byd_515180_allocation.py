@@ -118,12 +118,10 @@ def prepare_common_dataset(
         common[f"etf_{column}"] = etf_adjusted.loc[common_index, column].astype(float)
         common[f"etf_raw_{column}"] = etf_raw.loc[common_index, column].astype(float)
     common["byd_open_eligible"] = common["open_research_eligible"].astype(bool)
-    common["etf_open_eligible"] = etf_sessions.loc[
-        common_index, "open_research_eligible"
-    ].astype(bool)
-    common["common_open_eligible"] = (
-        common["byd_open_eligible"] & common["etf_open_eligible"]
+    common["etf_open_eligible"] = etf_sessions.loc[common_index, "open_research_eligible"].astype(
+        bool
     )
+    common["common_open_eligible"] = common["byd_open_eligible"] & common["etf_open_eligible"]
     common["byd_open_return"] = common["byd_open"].shift(-1) / common["byd_open"] - 1.0
     common["etf_open_return"] = common["etf_open"].shift(-1) / common["etf_open"] - 1.0
 
@@ -132,7 +130,8 @@ def prepare_common_dataset(
     dividend = actions.groupby("date")["dividend"].sum().reindex(common_index).fillna(0.0)
     common["etf_dividend_next"] = dividend.shift(-1).fillna(0.0)
     common["etf_raw_plus_cash_return"] = (
-        common["etf_raw_open"].shift(-1) / common["etf_raw_open"] - 1.0
+        common["etf_raw_open"].shift(-1) / common["etf_raw_open"]
+        - 1.0
         + common["etf_dividend_next"] / common["etf_raw_open"]
     )
     common["etf_total_return_reconciliation_error"] = (
@@ -189,8 +188,6 @@ def build_decisions(common: pd.DataFrame, signals: pd.DataFrame) -> dict[str, pd
     return decisions
 
 
-
-
 def metrics(daily: pd.DataFrame) -> dict[str, float]:
     returns = daily["net_return"].dropna()
     years = len(returns) / 252.0
@@ -200,7 +197,11 @@ def metrics(daily: pd.DataFrame) -> dict[str, float]:
     drawdown = wealth / wealth.cummax() - 1.0
     mdd = float(drawdown.min())
     volatility = float(returns.std(ddof=0) * np.sqrt(252.0))
-    sharpe = float(returns.mean() / returns.std(ddof=0) * np.sqrt(252.0)) if returns.std(ddof=0) > 0 else 0.0
+    sharpe = (
+        float(returns.mean() / returns.std(ddof=0) * np.sqrt(252.0))
+        if returns.std(ddof=0) > 0
+        else 0.0
+    )
     calmar = float(cagr / abs(mdd)) if mdd < 0 else 0.0
     turnover = float(daily.loc[returns.index, "turnover_units"].sum())
     return {
@@ -231,12 +232,19 @@ def evaluation_table(results: dict[str, AllocationResult], cost_bps: float) -> p
     for name, result in results.items():
         for window, (start, end) in WINDOWS.items():
             rows.append(
-                {"model": name, "cost_bps": cost_bps, "window": window, **window_metrics(result, start, end)}
+                {
+                    "model": name,
+                    "cost_bps": cost_bps,
+                    "window": window,
+                    **window_metrics(result, start, end),
+                }
             )
     return pd.DataFrame(rows)
 
 
-def complementarity_diagnostics(common: pd.DataFrame, signals: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def complementarity_diagnostics(
+    common: pd.DataFrame, signals: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     close_returns = pd.DataFrame(
         {
             "byd": common["byd_close"].pct_change(),
@@ -253,7 +261,9 @@ def complementarity_diagnostics(common: pd.DataFrame, signals: pd.DataFrame) -> 
                         "byd": common["byd_close"].resample("W-FRI").last().pct_change(),
                         "etf": common["etf_close"].resample("W-FRI").last().pct_change(),
                     }
-                ).corr().iloc[0, 1]
+                )
+                .corr()
+                .iloc[0, 1]
             ),
         },
         {
@@ -264,7 +274,9 @@ def complementarity_diagnostics(common: pd.DataFrame, signals: pd.DataFrame) -> 
                         "byd": common["byd_close"].pct_change(20),
                         "etf": common["etf_close"].pct_change(20),
                     }
-                ).corr().iloc[0, 1]
+                )
+                .corr()
+                .iloc[0, 1]
             ),
         },
         {
@@ -277,7 +289,9 @@ def complementarity_diagnostics(common: pd.DataFrame, signals: pd.DataFrame) -> 
         },
         {
             "measure": "p90_abs_total_return_reconciliation_error",
-            "value": float(common["etf_total_return_reconciliation_error"].abs().dropna().quantile(0.90)),
+            "value": float(
+                common["etf_total_return_reconciliation_error"].abs().dropna().quantile(0.90)
+            ),
         },
     ]
 
@@ -294,8 +308,12 @@ def complementarity_diagnostics(common: pd.DataFrame, signals: pd.DataFrame) -> 
     rows: list[dict[str, Any]] = []
     for state, mask in states.items():
         for horizon in (5, 10, 20):
-            byd_forward = common["byd_open"].shift(-(horizon + 1)) / common["byd_open"].shift(-1) - 1.0
-            etf_forward = common["etf_open"].shift(-(horizon + 1)) / common["etf_open"].shift(-1) - 1.0
+            byd_forward = (
+                common["byd_open"].shift(-(horizon + 1)) / common["byd_open"].shift(-1) - 1.0
+            )
+            etf_forward = (
+                common["etf_open"].shift(-(horizon + 1)) / common["etf_open"].shift(-1) - 1.0
+            )
             sample = pd.DataFrame({"byd": byd_forward, "etf": etf_forward}).loc[mask].dropna()
             rows.append(
                 {
@@ -304,14 +322,20 @@ def complementarity_diagnostics(common: pd.DataFrame, signals: pd.DataFrame) -> 
                     "samples": int(len(sample)),
                     "mean_byd_return": float(sample["byd"].mean()) if not sample.empty else np.nan,
                     "mean_etf_return": float(sample["etf"].mean()) if not sample.empty else np.nan,
-                    "mean_byd_minus_etf": float((sample["byd"] - sample["etf"]).mean()) if not sample.empty else np.nan,
-                    "etf_outperformance_rate": float((sample["etf"] > sample["byd"]).mean()) if not sample.empty else np.nan,
+                    "mean_byd_minus_etf": float((sample["byd"] - sample["etf"]).mean())
+                    if not sample.empty
+                    else np.nan,
+                    "etf_outperformance_rate": float((sample["etf"] > sample["byd"]).mean())
+                    if not sample.empty
+                    else np.nan,
                 }
             )
     return pd.DataFrame(correlation_rows), pd.DataFrame(rows)
 
 
-def period_concentration(candidate: AllocationResult, baseline: AllocationResult) -> tuple[pd.DataFrame, float]:
+def period_concentration(
+    candidate: AllocationResult, baseline: AllocationResult
+) -> tuple[pd.DataFrame, float]:
     rows: list[dict[str, Any]] = []
     for window in ("development", "fixed_validation", "retrospective_2025_plus"):
         start, end = WINDOWS[window]
@@ -367,8 +391,10 @@ def governed_decisions(
         gates = {
             "full_cagr_not_below_v1_cash": full["cagr"] >= baseline_full["cagr"],
             "risk_improvement": risk_gate,
-            "validation_total_within_1pp": val["total_return"] >= baseline_val["total_return"] - 0.01,
-            "retrospective_total_within_1pp": retro["total_return"] >= baseline_retro["total_return"] - 0.01,
+            "validation_total_within_1pp": val["total_return"]
+            >= baseline_val["total_return"] - 0.01,
+            "retrospective_total_within_1pp": retro["total_return"]
+            >= baseline_retro["total_return"] - 0.01,
             "stress_calmar_not_below_v1_cash": full40["calmar"] >= baseline_full40["calmar"],
             "round_trips_per_year_le_3": full["round_trips_per_year"] <= 3.0,
             "largest_positive_period_share_le_60pct": largest <= 0.60,

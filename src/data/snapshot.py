@@ -54,10 +54,7 @@ def _list_data_files(data_dir: Path) -> list[Path]:
 
 
 def _checksums(data_dir: Path, files: list[Path]) -> dict[str, str]:
-    return {
-        path.relative_to(data_dir).as_posix(): _hash_file(path)
-        for path in files
-    }
+    return {path.relative_to(data_dir).as_posix(): _hash_file(path) for path in files}
 
 
 class DataSnapshot:
@@ -193,9 +190,7 @@ class DataSnapshot:
                 )
 
     @classmethod
-    def resolve_snapshot(
-        cls, snapshot_id: str, *, store: str | Path | None = None
-    ) -> DataSnapshot:
+    def resolve_snapshot(cls, snapshot_id: str, *, store: str | Path | None = None) -> DataSnapshot:
         from src.common.paths import SNAPSHOT_STORE
 
         snapshot_id = str(snapshot_id or "").strip()
@@ -209,9 +204,7 @@ class DataSnapshot:
         return cls(snapshot_id=snapshot_id, manifest=manifest, store=store)
 
     @classmethod
-    def publish_snapshot(
-        cls, snapshot_id: str, *, store: str | Path | None = None
-    ) -> None:
+    def publish_snapshot(cls, snapshot_id: str, *, store: str | Path | None = None) -> None:
         from src.common.paths import SNAPSHOT_STORE
 
         store = Path(store if store is not None else SNAPSHOT_STORE).resolve()
@@ -229,9 +222,7 @@ class DataSnapshot:
         os.replace(temp_path, latest_path)
 
     @classmethod
-    def get_latest_snapshot(
-        cls, *, store: str | Path | None = None
-    ) -> DataSnapshot | None:
+    def get_latest_snapshot(cls, *, store: str | Path | None = None) -> DataSnapshot | None:
         from src.common.paths import SNAPSHOT_STORE
 
         store = Path(store if store is not None else SNAPSHOT_STORE).resolve()

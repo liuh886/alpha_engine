@@ -57,10 +57,7 @@ def build_target_state2_prediction_rows(
         if start_location <= 0:
             continue
         end_location = start_location
-        while (
-            end_location + 1 < len(index)
-            and int(state.iloc[end_location + 1]) == 2
-        ):
+        while end_location + 1 < len(index) and int(state.iloc[end_location + 1]) == 2:
             end_location += 1
         signal_close_date = index[start_location - 1]
         if signal_close_date not in feature_frame.index:
@@ -100,17 +97,13 @@ def build_target_state2_predictions(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build target features, all formal episodes and donor-only probabilities."""
 
-    feature_frame = _target_feature_frame(
-        bars, baseline, breadth, bridge_contract, cash
-    )
+    feature_frame = _target_feature_frame(bars, baseline, breadth, bridge_contract, cash)
     rows = build_target_state2_prediction_rows(
         baseline.daily,
         feature_frame,
         features=[str(value) for value in contract["features"]],
     )
-    predictions = predict_target_episodes_walk_forward(
-        rows, donor_episodes, contract
-    )
+    predictions = predict_target_episodes_walk_forward(rows, donor_episodes, contract)
     return predictions, feature_frame
 
 
@@ -124,9 +117,7 @@ def _overlapping_predictions(
 
     execution = pd.to_datetime(predictions["execution_date"])
     episode_end = pd.to_datetime(predictions["episode_end_date"])
-    selected = predictions.loc[
-        episode_end.ge(start) & execution.le(end)
-    ].copy()
+    selected = predictions.loc[episode_end.ge(start) & execution.le(end)].copy()
     if selected.empty:
         raise ValueError("target scope has no overlapping state-2 predictions")
     return selected.sort_values("execution_date").reset_index(drop=True)
@@ -139,9 +130,7 @@ def _assert_scope_probability_coverage(
 ) -> None:
     """Verify every exact-calendar state-2 date belongs to one predicted episode."""
 
-    state2_dates = index[
-        baseline.daily.reindex(index)["position_state"].astype(int).eq(2)
-    ]
+    state2_dates = index[baseline.daily.reindex(index)["position_state"].astype(int).eq(2)]
     covered = pd.Series(False, index=index)
     for episode in predictions.itertuples(index=False):
         covered.loc[
@@ -150,9 +139,7 @@ def _assert_scope_probability_coverage(
         ] = True
     missing = state2_dates[~covered.reindex(state2_dates).to_numpy(dtype=bool)]
     if len(missing):
-        raise AssertionError(
-            f"scope has {len(missing)} state-2 dates without target probabilities"
-        )
+        raise AssertionError(f"scope has {len(missing)} state-2 dates without target probabilities")
 
 
 def run_donor_state2_sgov_tqqq(
@@ -174,14 +161,10 @@ def run_donor_state2_sgov_tqqq(
     if missing:
         raise ValueError(f"bars missing required symbols: {missing}")
 
-    donor_episodes, breadth = build_donor_state2_panel(
-        bars, bridge_contract, contract
-    )
+    donor_episodes, breadth = build_donor_state2_panel(bars, bridge_contract, contract)
     model = fit_donor_state2_model(donor_episodes, contract)
 
-    _, actual_base_results, _, _ = run_bridge_allocation_comparison(
-        bars, bridge_contract
-    )
+    _, actual_base_results, _, _ = run_bridge_allocation_comparison(bars, bridge_contract)
     _, proxy_base_results, _, _ = run_bridge_allocation_comparison(
         alias_qqqi_to_qqq(bars), bridge_contract
     )
@@ -212,21 +195,15 @@ def run_donor_state2_sgov_tqqq(
             "baseline": proxy_full,
             "feature_frame": proxy_feature_frame,
             "predictions": proxy_predictions,
-            "start": pd.Timestamp(
-                contract["validation"]["primary_target_start"]
-            ),
+            "start": pd.Timestamp(contract["validation"]["primary_target_start"]),
             "end": pd.Timestamp(contract["validation"]["primary_target_end"]),
         },
         "quarantine": {
             "baseline": proxy_full,
             "feature_frame": proxy_feature_frame,
             "predictions": proxy_predictions,
-            "start": pd.Timestamp(
-                contract["validation"]["quarantine_proxy_start"]
-            ),
-            "end": pd.Timestamp(
-                contract["validation"]["quarantine_proxy_end"]
-            ),
+            "start": pd.Timestamp(contract["validation"]["quarantine_proxy_start"]),
+            "end": pd.Timestamp(contract["validation"]["quarantine_proxy_end"]),
         },
         "actual": {
             "baseline": actual_full,
@@ -250,18 +227,12 @@ def run_donor_state2_sgov_tqqq(
 
     for scope, spec in scopes.items():
         cash_returns = spec["feature_frame"]["cash_next_open_return"]
-        index = _scope_index(
-            spec["baseline"], cash_returns, spec["start"], spec["end"]
-        )
+        index = _scope_index(spec["baseline"], cash_returns, spec["start"], spec["end"])
         predictions = _overlapping_predictions(
             spec["predictions"], start=spec["start"], end=spec["end"]
         )
-        _assert_scope_probability_coverage(
-            spec["baseline"], predictions, index
-        )
-        baseline = _v4_2_result_on_index(
-            spec["baseline"], index, contract, "frozen_v4_2"
-        )
+        _assert_scope_probability_coverage(spec["baseline"], predictions, index)
+        baseline = _v4_2_result_on_index(spec["baseline"], index, contract, "frozen_v4_2")
         scope_results: dict[str, Any] = {"frozen_v4_2": baseline}
         for variant in VARIANTS:
             result = run_state2_cash_budget(
@@ -272,21 +243,15 @@ def run_donor_state2_sgov_tqqq(
                 contract,
                 variant,
             )
-            if not baseline.daily["position_state"].equals(
-                result.daily["position_state"]
-            ):
-                raise AssertionError(
-                    f"{scope} {variant} changed the v4.2 state trace"
-                )
+            if not baseline.daily["position_state"].equals(result.daily["position_state"]):
+                raise AssertionError(f"{scope} {variant} changed the v4.2 state trace")
             outside_state2 = baseline.daily["position_state"].astype(int).ne(2)
             for asset in V4_2_ASSETS:
                 if not np.allclose(
                     baseline.daily.loc[outside_state2, f"weight_{asset}"],
                     result.daily.loc[outside_state2, f"weight_{asset}"],
                 ):
-                    raise AssertionError(
-                        f"{scope} {variant} changed state0/state1 {asset} weights"
-                    )
+                    raise AssertionError(f"{scope} {variant} changed state0/state1 {asset} weights")
             scope_results[variant] = result
         results_by_scope[scope] = scope_results
         predictions_by_scope[scope] = predictions
@@ -310,11 +275,7 @@ def run_donor_state2_sgov_tqqq(
         results_by_scope["actual"],
         contract,
     )
-    shadow = bool(
-        donor_gate["passed"]
-        and primary_gate["passed"]
-        and contradiction_gate["passed"]
-    )
+    shadow = bool(donor_gate["passed"] and primary_gate["passed"] and contradiction_gate["passed"])
     if not donor_gate["passed"]:
         decision = "donor_formal_state2_transfer_signal_not_stable"
     elif not primary_gate["passed"]:
@@ -341,17 +302,14 @@ def run_donor_state2_sgov_tqqq(
                 "end": results["frozen_v4_2"].daily.index.max(),
                 "observations": int(len(results["frozen_v4_2"].daily)),
                 "predicted_episodes": int(len(predictions_by_scope[scope])),
-                "bucket_counts": predictions_by_scope[scope][
-                    "probability_bucket"
-                ].value_counts().to_dict(),
+                "bucket_counts": predictions_by_scope[scope]["probability_bucket"]
+                .value_counts()
+                .to_dict(),
             }
             for scope, results in results_by_scope.items()
         },
         "tail_risk": {
-            scope: {
-                key: tail_risk_metrics(result)
-                for key, result in results.items()
-            }
+            scope: {key: tail_risk_metrics(result) for key, result in results.items()}
             for scope, results in results_by_scope.items()
         },
         "decision": decision,

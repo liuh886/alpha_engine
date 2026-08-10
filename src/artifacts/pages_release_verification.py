@@ -120,7 +120,9 @@ def validate_formal_catalog(payload: object) -> tuple[PublishedFormalRun, ...]:
 
     records: list[PublishedFormalRun] = []
     observed_versions: set[str] = set()
-    for index, value in enumerate(_sequence(catalog.get("records"), label="formal catalog records")):
+    for index, value in enumerate(
+        _sequence(catalog.get("records"), label="formal catalog records")
+    ):
         record = _mapping(value, label=f"formal catalog record {index}")
         version = _string(record.get("model_version_id"), label=f"record {index}.model_version_id")
         if version in observed_versions:
@@ -199,9 +201,7 @@ def validate_formal_manifest(
             f"formal channel/status mismatch for {record.model_version_id}"
         )
     if manifest.get("research_only") is not True or manifest.get("trade_ready") is not False:
-        raise ReleaseVerificationError(
-            f"research boundary mismatch for {record.model_version_id}"
-        )
+        raise ReleaseVerificationError(f"research boundary mismatch for {record.model_version_id}")
 
     sections: list[PublishedSection] = []
     for index, value in enumerate(_sequence(manifest.get("sections"), label="manifest sections")):
@@ -255,9 +255,7 @@ def validate_formal_section(
         summary.get("model_version_id") != record.model_version_id
         or summary.get("run_id") != record.run_id
     ):
-        raise ReleaseVerificationError(
-            f"summary identity mismatch for {record.model_version_id}"
-        )
+        raise ReleaseVerificationError(f"summary identity mismatch for {record.model_version_id}")
     _string(
         summary.get("display_name"),
         label=f"{record.model_version_id}.display_name",
@@ -281,7 +279,9 @@ def validate_bundle_manifest(payload: object) -> tuple[str, tuple[PublishedBundl
         raise ReleaseVerificationError("research bundle boundary is invalid")
     bundle_id = _digest(bundle.get("bundle_id"), label="bundle.bundle_id")
     required: list[PublishedBundleArtifact] = []
-    for index, value in enumerate(_sequence(bundle.get("artifacts"), label="research bundle artifacts")):
+    for index, value in enumerate(
+        _sequence(bundle.get("artifacts"), label="research bundle artifacts")
+    ):
         artifact = _mapping(value, label=f"bundle artifact {index}")
         if artifact.get("required") is not True:
             continue
@@ -348,9 +348,7 @@ def validate_bundle_artifact_bytes(
 def validate_shell(payload: bytes) -> None:
     shell = payload.decode("utf-8", errors="replace")
     if SHELL_MARKER not in shell:
-        raise ReleaseVerificationError(
-            f"deployed shell is missing marker {SHELL_MARKER!r}"
-        )
+        raise ReleaseVerificationError(f"deployed shell is missing marker {SHELL_MARKER!r}")
 
 
 def _cache_busted_url(base_url: str, path: str) -> str:
@@ -439,9 +437,7 @@ def verify_once(
         "base_url": base_url,
         "commit_sha": expected_commit,
         "bundle_id": bundle_id,
-        "required_bundle_artifacts": [
-            artifact.path for artifact in required_artifacts
-        ],
+        "required_bundle_artifacts": [artifact.path for artifact in required_artifacts],
         "formal_models": sorted(record.model_version_id for record in records),
         "formal_sections_verified": section_count,
         "research_only": True,
@@ -467,7 +463,9 @@ def verify_with_retries(
                 expected_commit=expected_commit,
                 timeout_seconds=timeout_seconds,
             )
-        except Exception as exc:  # bounded retry includes temporary network/CDN propagation failures
+        except (
+            Exception
+        ) as exc:  # bounded retry includes temporary network/CDN propagation failures
             last_error = exc
             if attempt < attempts:
                 time.sleep(delay_seconds)

@@ -87,15 +87,9 @@ def build_trend_guard_decisions(
     baseline = _weights(base, pd.Series(True, index=base.index), below_trend_etf_weight=0.25)
     decisions = {
         "v1_dividend_75_25": baseline,
-        "v1_dividend_ma200_soft": _weights(
-            base, ma200, below_trend_etf_weight=0.125
-        ),
-        "v1_dividend_ma120_soft": _weights(
-            base, ma120, below_trend_etf_weight=0.125
-        ),
-        "v1_dividend_ma200_hard": _weights(
-            base, ma200, below_trend_etf_weight=0.0
-        ),
+        "v1_dividend_ma200_soft": _weights(base, ma200, below_trend_etf_weight=0.125),
+        "v1_dividend_ma120_soft": _weights(base, ma120, below_trend_etf_weight=0.125),
+        "v1_dividend_ma200_hard": _weights(base, ma200, below_trend_etf_weight=0.0),
     }
     state = pd.DataFrame(
         {
@@ -126,9 +120,9 @@ def _period_contribution(evaluation: pd.DataFrame) -> pd.DataFrame:
         model_rows: list[dict[str, Any]] = []
         positive_total = 0.0
         for window in windows:
-            candidate = primary.loc[
-                primary["model"].eq(model) & primary["window"].eq(window)
-            ].iloc[0]
+            candidate = primary.loc[primary["model"].eq(model) & primary["window"].eq(window)].iloc[
+                0
+            ]
             baseline = primary.loc[
                 primary["model"].eq(MODELS[0]) & primary["window"].eq(window)
             ].iloc[0]
@@ -160,12 +154,10 @@ def _govern(
     periods: pd.DataFrame,
 ) -> dict[str, Any]:
     full20 = evaluation.loc[
-        evaluation["window"].eq("full_overlap")
-        & evaluation["cost_bps"].eq(PRIMARY_COST_BPS)
+        evaluation["window"].eq("full_overlap") & evaluation["cost_bps"].eq(PRIMARY_COST_BPS)
     ].set_index("model")
     full40 = evaluation.loc[
-        evaluation["window"].eq("full_overlap")
-        & evaluation["cost_bps"].eq(STRESS_COST_BPS)
+        evaluation["window"].eq("full_overlap") & evaluation["cost_bps"].eq(STRESS_COST_BPS)
     ].set_index("model")
     baseline20 = full20.loc[MODELS[0]]
     baseline40 = full40.loc[MODELS[0]]
@@ -179,10 +171,9 @@ def _govern(
         float(primary20["max_drawdown"] - baseline20["max_drawdown"]) >= 0.015
         or float(primary20["calmar"] - baseline20["calmar"]) >= 0.02
     )
-    robustness_direction = (
-        float(robust20["max_drawdown"]) >= float(baseline20["max_drawdown"])
-        or float(robust20["calmar"]) >= float(baseline20["calmar"])
-    )
+    robustness_direction = float(robust20["max_drawdown"]) >= float(
+        baseline20["max_drawdown"]
+    ) or float(robust20["calmar"]) >= float(baseline20["calmar"])
     gates = {
         "cagr_not_below_baseline_by_more_than_50bp": (
             float(primary20["cagr"] - baseline20["cagr"]) >= -0.005
@@ -211,9 +202,7 @@ def _govern(
         "stress_candidate": "v1_dividend_ma200_hard",
         "gates": gates,
         "governed_decision": (
-            "trend_guard_supported_historical"
-            if supported
-            else "retain_v1_dividend_75_25"
+            "trend_guard_supported_historical" if supported else "retain_v1_dividend_75_25"
         ),
         "research_only": True,
         "trade_ready": False,
@@ -230,9 +219,7 @@ def run_trend_guard_screen(
     results: dict[tuple[str, float], AllocationResult] = {}
     for cost in (PRIMARY_COST_BPS, STRESS_COST_BPS):
         for model, decision in decisions.items():
-            results[(model, cost)] = run_allocation(
-                model, common, decision, cost_bps=cost
-            )
+            results[(model, cost)] = run_allocation(model, common, decision, cost_bps=cost)
 
     rows: list[dict[str, Any]] = []
     for (model, cost), result in results.items():
@@ -273,11 +260,15 @@ def run_trend_guard_screen(
             },
             {
                 "measure": "ma200_signal_transitions",
-                "value": float(state["ma200_positive"].ne(state["ma200_positive"].shift()).sum() - 1),
+                "value": float(
+                    state["ma200_positive"].ne(state["ma200_positive"].shift()).sum() - 1
+                ),
             },
             {
                 "measure": "ma120_signal_transitions",
-                "value": float(state["ma120_positive"].ne(state["ma120_positive"].shift()).sum() - 1),
+                "value": float(
+                    state["ma120_positive"].ne(state["ma120_positive"].shift()).sum() - 1
+                ),
             },
         ]
     )

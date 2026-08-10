@@ -84,18 +84,14 @@ def derive_adjustment_factors(
         raise ValueError("adjusted_close requires date and adjusted_close columns")
     adjusted = adjusted_close.loc[:, ["date", "adjusted_close"]].copy()
     adjusted["date"] = pd.to_datetime(adjusted["date"], errors="raise").dt.normalize()
-    adjusted["adjusted_close"] = pd.to_numeric(
-        adjusted["adjusted_close"], errors="raise"
-    ).astype(float)
+    adjusted["adjusted_close"] = pd.to_numeric(adjusted["adjusted_close"], errors="raise").astype(
+        float
+    )
     if adjusted["date"].duplicated().any():
         raise ValueError("adjusted_close contains duplicate dates")
-    merged = raw[["date", "close"]].merge(
-        adjusted, on="date", how="left", validate="one_to_one"
-    )
+    merged = raw[["date", "close"]].merge(adjusted, on="date", how="left", validate="one_to_one")
     if merged["adjusted_close"].isna().any():
-        missing = merged.loc[merged["adjusted_close"].isna(), "date"].dt.strftime(
-            "%Y-%m-%d"
-        )
+        missing = merged.loc[merged["adjusted_close"].isna(), "date"].dt.strftime("%Y-%m-%d")
         raise ValueError(
             "adjusted close missing for raw dates: " + ", ".join(missing.tolist()[:10])
         )
@@ -182,15 +178,17 @@ def compare_raw_providers(
     right = _normalise_frame(secondary, name="secondary_raw")
     left = left.assign(primary_open_return=left["open"].pct_change())
     right = right.assign(secondary_open_return=right["open"].pct_change())
-    merged = left[
-        ["date", "primary_open_return", "volume"]
-    ].rename(columns={"volume": "primary_volume"}).merge(
-        right[["date", "secondary_open_return", "volume"]].rename(
-            columns={"volume": "secondary_volume"}
-        ),
-        on="date",
-        how="inner",
-        validate="one_to_one",
+    merged = (
+        left[["date", "primary_open_return", "volume"]]
+        .rename(columns={"volume": "primary_volume"})
+        .merge(
+            right[["date", "secondary_open_return", "volume"]].rename(
+                columns={"volume": "secondary_volume"}
+            ),
+            on="date",
+            how="inner",
+            validate="one_to_one",
+        )
     )
     merged["absolute_return_difference"] = (
         merged["primary_open_return"] - merged["secondary_open_return"]
@@ -237,9 +235,7 @@ def build_canonical_bundle(
     if raw.empty or raw["date"].iloc[-1] != cutoff_date:
         raise ValueError("primary raw history must end exactly on the declared cutoff")
 
-    factors = derive_adjustment_factors(
-        raw, provider_adjusted_close, cutoff=cutoff_date
-    )
+    factors = derive_adjustment_factors(raw, provider_adjusted_close, cutoff=cutoff_date)
     adjusted = rebuild_adjusted_ohlcv(raw, factors, cutoff=cutoff_date)
     # Persist at high precision. This assertion prevents a two-decimal adjusted
     # history from becoming the model input even if the upstream source rounds.
@@ -254,19 +250,13 @@ def build_canonical_bundle(
     mean_absolute_return_difference = None
     return_differences_over_1pct = None
     if not comparison.empty:
-        valid = comparison.dropna(
-            subset=["primary_open_return", "secondary_open_return"]
-        )
+        valid = comparison.dropna(subset=["primary_open_return", "secondary_open_return"])
         if not valid.empty:
             common_return_correlation = float(
                 valid["primary_open_return"].corr(valid["secondary_open_return"])
             )
-            mean_absolute_return_difference = float(
-                valid["absolute_return_difference"].mean()
-            )
-            return_differences_over_1pct = int(
-                (valid["absolute_return_difference"] > 0.01).sum()
-            )
+            mean_absolute_return_difference = float(valid["absolute_return_difference"].mean())
+            return_differences_over_1pct = int((valid["absolute_return_difference"] > 0.01).sum())
 
     manifest = {
         "schema_version": "byd_canonical_adjusted_ohlcv_v1",

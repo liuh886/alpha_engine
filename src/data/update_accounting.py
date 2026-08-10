@@ -211,12 +211,12 @@ class UpdateAccountingReport:
         return "unknown", "optional"
 
     def validate_for_publish(
-        self, 
-        *, 
-        selected_markets: set[str], 
-        strict: bool = False, 
+        self,
+        *,
+        selected_markets: set[str],
+        strict: bool = False,
         max_missing_pct: float = 0.05,
-        max_missing_count: int = 20
+        max_missing_count: int = 20,
     ) -> list[str]:
         warnings = []
         selected_markets = {str(market).lower() for market in selected_markets}
@@ -245,29 +245,33 @@ class UpdateAccountingReport:
             for symbol in symbols
             if market in selected_markets
         }
-        
+
         if attempted != selected_symbols or failed or accounted != selected_symbols:
             missing = sorted(selected_symbols - accounted)
-            
+
             # Grouping
             grouped = {"core": [], "optional": [], "unsupported": []}
             for market, symbol in missing:
                 typ, imp = self._categorize_symbol(market, symbol)
                 grouped[imp].append(f"{market}:{symbol}({typ})")
-                
+
             core_missing_count = len(grouped["core"])
-            core_expected_count = sum(1 for m, s in selected_symbols if self._categorize_symbol(m, s)[1] == "core")
+            core_expected_count = sum(
+                1 for m, s in selected_symbols if self._categorize_symbol(m, s)[1] == "core"
+            )
             core_missing_pct = core_missing_count / max(1, core_expected_count)
-            
-            is_within_threshold = core_missing_pct <= max_missing_pct and core_missing_count <= max_missing_count
-            
+
+            is_within_threshold = (
+                core_missing_pct <= max_missing_pct and core_missing_count <= max_missing_count
+            )
+
             report = (
                 f"Missing symbols grouped by importance:\n"
                 f"  - Core missing ({core_missing_count}): {grouped['core'][:10]}{'...' if core_missing_count > 10 else ''}\n"
                 f"  - Optional missing ({len(grouped['optional'])}): {grouped['optional'][:10]}{'...' if len(grouped['optional']) > 10 else ''}\n"
                 f"  - Unsupported missing ({len(grouped['unsupported'])}): {grouped['unsupported'][:10]}{'...' if len(grouped['unsupported']) > 10 else ''}\n"
             )
-            
+
             if strict or not is_within_threshold:
                 raise DataUpdateFailure(
                     f"partial update failed (strict={strict}, core_max_missing={max_missing_pct:.1%}, core_max_count={max_missing_count}): \n"
@@ -287,7 +291,11 @@ class UpdateAccountingReport:
 
         for market, symbols in self.configured.items():
             if market in selected_markets:
-                self.stale[market] = set(symbols) - set(self.updated.get(market, [])) - set(self.reused.get(market, []))
+                self.stale[market] = (
+                    set(symbols)
+                    - set(self.updated.get(market, []))
+                    - set(self.reused.get(market, []))
+                )
                 continue
             expected = set(symbols)
             if not expected.issubset(self.excluded.get(market, set())):

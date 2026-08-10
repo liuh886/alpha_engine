@@ -84,9 +84,7 @@ def run_sector_breadth_portfolio(
                     "gross_return": gross_return,
                     "net_return": net_return,
                     "benchmark_return": benchmark_return,
-                    "relative_log_return": float(
-                        np.log1p(net_return) - np.log1p(benchmark_return)
-                    ),
+                    "relative_log_return": float(np.log1p(net_return) - np.log1p(benchmark_return)),
                     "turnover": period_turnover,
                     "cost": cost,
                     "n_holdings": len(chosen),
@@ -106,8 +104,7 @@ def run_sector_breadth_portfolio(
                         "benchmark_return": benchmark_return,
                         "weight": weight,
                         "net_contribution": (
-                            weight * float(row.execution_forward_return)
-                            - cost / len(chosen)
+                            weight * float(row.execution_forward_return) - cost / len(chosen)
                         ),
                         "precision_hit": bool(
                             float(row.execution_forward_return) > benchmark_return

@@ -58,9 +58,7 @@ def _finish(frame: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
 
     valid, _, errors = validate_market_data(out, symbol)
     if not valid:
-        raise DataFetchError(
-            f"Sina schema validation failed for {symbol}: {'; '.join(errors)}"
-        )
+        raise DataFetchError(f"Sina schema validation failed for {symbol}: {'; '.join(errors)}")
     return out
 
 
@@ -125,9 +123,7 @@ class AkShareSinaAdapter:
                 out["date"] = pd.to_datetime(out["date"], errors="coerce")
                 start_ts = pd.Timestamp(start)
                 end_ts = pd.Timestamp(end)
-                out = out.loc[
-                    out["date"].between(start_ts, end_ts, inclusive="both")
-                ].copy()
+                out = out.loc[out["date"].between(start_ts, end_ts, inclusive="both")].copy()
                 out["amount"] = np.nan
                 out["factor"] = 1.0
             else:
@@ -161,9 +157,7 @@ class AkShareSinaAdapter:
         except DataFetchError:
             raise
         except Exception as exc:
-            raise DataFetchError(
-                f"AKShare Sina fetch failed for {provider_symbol}: {exc}"
-            ) from exc
+            raise DataFetchError(f"AKShare Sina fetch failed for {provider_symbol}: {exc}") from exc
 
         normalized = _finish(out, symbol=symbol)
         return FetchResult(

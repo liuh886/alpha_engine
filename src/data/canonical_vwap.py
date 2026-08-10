@@ -86,9 +86,9 @@ def derive_adjusted_vwap(
             "amount": "raw_amount",
         }
     )
-    adjusted_columns = adjusted[
-        ["date", "open", "high", "low", "close", "volume"]
-    ].rename(columns={"volume": "adjusted_volume"})
+    adjusted_columns = adjusted[["date", "open", "high", "low", "close", "volume"]].rename(
+        columns={"volume": "adjusted_volume"}
+    )
     merged = adjusted_columns.merge(raw_columns, on="date", how="inner", validate="one_to_one")
     if len(merged) != len(raw) or len(merged) != len(adjusted):
         raise CanonicalVwapError(
@@ -131,9 +131,7 @@ def derive_adjusted_vwap(
     if not np.isfinite(adjusted_vwap).all() or (adjusted_vwap <= 0).any():
         raise CanonicalVwapError(f"{symbol}: adjusted VWAP is invalid")
 
-    relative_tolerance = np.maximum(
-        merged["close"].abs() * envelope_tolerance, 1e-8
-    )
+    relative_tolerance = np.maximum(merged["close"].abs() * envelope_tolerance, 1e-8)
     below_distance = (merged["low"] - adjusted_vwap).clip(lower=0.0)
     above_distance = (adjusted_vwap - merged["high"]).clip(lower=0.0)
     envelope_distance = np.maximum(below_distance, above_distance)
@@ -212,9 +210,7 @@ def write_source_role_manifest(
             "low": "same_source_qfq_adjusted",
             "close": "same_source_qfq_adjusted",
             "vwap": (
-                "reported_turnover_divided_by_reported_volume"
-                if vwap_ready
-                else "unavailable"
+                "reported_turnover_divided_by_reported_volume" if vwap_ready else "unavailable"
             ),
             "volume": "reported_shares_unadjusted",
             "amount": "reported_CNY_turnover_unadjusted",

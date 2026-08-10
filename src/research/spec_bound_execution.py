@@ -70,9 +70,7 @@ class SpecBoundExecutionResult:
     evidence_paths: dict[str, str] = field(default_factory=dict)
 
 
-SpecBoundExecutor = Callable[
-    [SpecBoundExecutionPlan, Path], SpecBoundExecutionResult
-]
+SpecBoundExecutor = Callable[[SpecBoundExecutionPlan, Path], SpecBoundExecutionResult]
 
 
 def _canonical_json(payload: dict[str, Any]) -> str:
@@ -96,9 +94,7 @@ def _source_path(spec: ResearchParadigmSpec, source: str) -> Path:
     for candidate in (spec_dir / source, Path.cwd() / source):
         if candidate.is_file():
             return candidate.resolve()
-    raise FileNotFoundError(
-        f"Source '{source}' not found relative to spec dir ({spec_dir}) or cwd"
-    )
+    raise FileNotFoundError(f"Source '{source}' not found relative to spec dir ({spec_dir}) or cwd")
 
 
 def _file_sha256(path: Path) -> str:
@@ -123,9 +119,7 @@ def build_declared_execution_contract(
             load_snapshot,
         )
 
-        snapshot = load_snapshot(
-            universe_path, validate_hashes=True, validate_source=True
-        )
+        snapshot = load_snapshot(universe_path, validate_hashes=True, validate_source=True)
         # Union of all snapshot-date symbols for the declared universe.
         all_symbols: set[str] = set()
         for entry in snapshot.snapshot_dates:
@@ -209,9 +203,7 @@ def build_declared_execution_contract(
         "factors": {
             "source": factor_source,
             "source_sha256": _file_sha256(factor_path),
-            "selected_groups": [
-                str(name) for name in spec.factor_library["groups"]
-            ],
+            "selected_groups": [str(name) for name in spec.factor_library["groups"]],
             "candidates": [candidate.to_dict() for candidate in candidates],
             "baseline_factors": dict(sorted(baseline_factors.items())),
         },
@@ -228,9 +220,7 @@ def build_spec_bound_execution_plan(
     """Build the immutable adapter input from one validated paradigm spec."""
 
     declared_contract = build_declared_execution_contract(spec)
-    candidates = tuple(
-        dict(item) for item in declared_contract["factors"]["candidates"]
-    )
+    candidates = tuple(dict(item) for item in declared_contract["factors"]["candidates"])
     baseline_factors = dict(declared_contract["factors"]["baseline_factors"])
     return SpecBoundExecutionPlan(
         spec=spec,
@@ -249,10 +239,7 @@ def _contract_differences(
 ) -> list[str]:
     differences: list[str] = []
     if type(declared) is not type(effective):
-        return [
-            f"{path}: type {type(declared).__name__} != "
-            f"{type(effective).__name__}"
-        ]
+        return [f"{path}: type {type(declared).__name__} != {type(effective).__name__}"]
     if isinstance(declared, dict):
         declared_keys = set(declared)
         effective_keys = set(effective)
@@ -262,20 +249,14 @@ def _contract_differences(
             differences.append(f"{path}.{key}: unexpected effective field")
         for key in sorted(declared_keys & effective_keys):
             differences.extend(
-                _contract_differences(
-                    declared[key], effective[key], path=f"{path}.{key}"
-                )
+                _contract_differences(declared[key], effective[key], path=f"{path}.{key}")
             )
         return differences
     if isinstance(declared, list):
         if len(declared) != len(effective):
-            differences.append(
-                f"{path}: length {len(declared)} != {len(effective)}"
-            )
+            differences.append(f"{path}: length {len(declared)} != {len(effective)}")
         for index, (left, right) in enumerate(zip(declared, effective)):
-            differences.extend(
-                _contract_differences(left, right, path=f"{path}[{index}]")
-            )
+            differences.extend(_contract_differences(left, right, path=f"{path}[{index}]"))
         return differences
     if declared != effective:
         differences.append(f"{path}: {declared!r} != {effective!r}")
@@ -405,17 +386,13 @@ def _finalize_promotion_outputs(
         metrics["current_best_candidate"] = promotion.get("candidate")
         metrics["decision"] = dict(decision_pack["decision"])
         metrics["decision_source"] = "promotion_decision"
-        metrics["promotion_contract_sha256"] = str(
-            promotion.get("contract_sha256", "")
-        )
+        metrics["promotion_contract_sha256"] = str(promotion.get("contract_sha256", ""))
         write_json(paths.metrics_summary, metrics)
 
     readiness = _read_optional_json(paths.data_readiness)
     artifact_paths = {
         **resolved_evidence_paths,
-        "execution_identity": str(
-            paths.run_dir / EXECUTION_IDENTITY_FILENAME
-        ),
+        "execution_identity": str(paths.run_dir / EXECUTION_IDENTITY_FILENAME),
         "promotion_decision": str(promotion_path),
         "model_decision_pack": str(paths.model_decision_pack),
         "model_decision_markdown": str(paths.model_decision_markdown),
@@ -462,8 +439,7 @@ def execute_spec_bound_research(
     result = executor(plan, paths.run_dir)
     if result.status not in {"passed", "skipped"}:
         raise ValueError(
-            "Spec-bound executor status must be 'passed' or 'skipped'; "
-            f"got {result.status!r}"
+            f"Spec-bound executor status must be 'passed' or 'skipped'; got {result.status!r}"
         )
 
     write_json(effective_path, result.effective_contract)

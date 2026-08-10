@@ -60,13 +60,9 @@ def _default_sec_client() -> FrozenPoolSecClient | None:
 
 
 def _build_factor_applicability(sec_dir: Path) -> dict[str, Any]:
-    coverage = json.loads(
-        (sec_dir / "coverage_report.json").read_text(encoding="utf-8")
-    )
+    coverage = json.loads((sec_dir / "coverage_report.json").read_text(encoding="utf-8"))
     pool = yaml.safe_load(POOL.read_text(encoding="utf-8"))
-    factor_contract = yaml.safe_load(
-        VALIDATION_CONTRACT.read_text(encoding="utf-8")
-    )
+    factor_contract = yaml.safe_load(VALIDATION_CONTRACT.read_text(encoding="utf-8"))
     policy = factor_contract["applicability"]
     ready = {
         str(row["symbol"]).upper()
@@ -88,9 +84,7 @@ def _build_factor_applicability(sec_dir: Path) -> dict[str, Any]:
             "active_for_factor": active,
             "reason": None if active else "INSUFFICIENT_FACTOR_READY_PEERS",
         }
-    active_baskets = sorted(
-        basket for basket, row in baskets.items() if row["active_for_factor"]
-    )
+    active_baskets = sorted(basket for basket, row in baskets.items() if row["active_for_factor"])
     minimum_active = int(policy["minimum_active_baskets"])
     all_members = {
         str(symbol).upper()
@@ -122,9 +116,7 @@ def _build_factor_applicability(sec_dir: Path) -> dict[str, Any]:
     return result
 
 
-def _write_factor_eligible_fundamentals(
-    sec_dir: Path, eligible_symbols: set[str]
-) -> Path:
+def _write_factor_eligible_fundamentals(sec_dir: Path, eligible_symbols: set[str]) -> Path:
     source = pd.read_csv(sec_dir / "fundamentals.csv", dtype={"symbol": "string"})
     source["symbol"] = source["symbol"].astype(str).str.upper()
     eligible = source[source["symbol"].isin(eligible_symbols)].copy()

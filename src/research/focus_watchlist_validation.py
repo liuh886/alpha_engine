@@ -106,9 +106,7 @@ def _window_frame(
     if not prior.empty:
         previous_exposure = float(exposure_map[str(prior.iloc[-1]["state"])])
 
-    frame = all_rows[
-        (all_rows["date"] >= start_date) & (all_rows["date"] <= end_date)
-    ].copy()
+    frame = all_rows[(all_rows["date"] >= start_date) & (all_rows["date"] <= end_date)].copy()
     frame = frame.sort_values("date").reset_index(drop=True)
     if frame.empty:
         return frame
@@ -150,9 +148,7 @@ def _evaluate_symbol_window(
         one_way_cost_bps,
     )
     history_sessions_total = int(
-        prices[
-            (prices["symbol"] == symbol) & (prices["date"] <= pd.Timestamp(end))
-        ].shape[0]
+        prices[(prices["symbol"] == symbol) & (prices["date"] <= pd.Timestamp(end))].shape[0]
     )
     if frame.empty:
         metrics = {
@@ -253,9 +249,11 @@ def _aggregate_book(
     for symbol, frame in symbol_frames.items():
         if frame.empty:
             continue
-        part = frame[
-            ["date", "strategy_return", "qqq_return", "market_regime", "exposure"]
-        ].dropna(subset=["strategy_return", "qqq_return"]).copy()
+        part = (
+            frame[["date", "strategy_return", "qqq_return", "market_regime", "exposure"]]
+            .dropna(subset=["strategy_return", "qqq_return"])
+            .copy()
+        )
         if part.empty:
             continue
         part["symbol"] = symbol
@@ -268,13 +266,17 @@ def _aggregate_book(
         return {}, {}, contributions
 
     long = pd.concat(pieces, ignore_index=True)
-    book = long.groupby("date", sort=True).agg(
-        weighted_return=("weighted_return", "sum"),
-        available_weight=("risk_weight", "sum"),
-        weighted_exposure=("weighted_exposure", "sum"),
-        qqq_return=("qqq_return", "first"),
-        market_regime=("market_regime", "first"),
-    ).reset_index()
+    book = (
+        long.groupby("date", sort=True)
+        .agg(
+            weighted_return=("weighted_return", "sum"),
+            available_weight=("risk_weight", "sum"),
+            weighted_exposure=("weighted_exposure", "sum"),
+            qqq_return=("qqq_return", "first"),
+            market_regime=("market_regime", "first"),
+        )
+        .reset_index()
+    )
     denominator = book["available_weight"].replace(0, np.nan)
     book["strategy_return"] = book["weighted_return"] / denominator
     book["average_exposure"] = book["weighted_exposure"] / denominator
@@ -380,24 +382,51 @@ def _development_gate_summary(
     )
     supported_regimes = 0
     for row in regime_metrics.get("market", {}).values():
-        if row["strategy_return"] > 0 or (
-            row["qqq_return"] < 0 and row["relative_return"] > 0
-        ):
+        if row["strategy_return"] > 0 or (row["qqq_return"] < 0 and row["relative_return"] > 0):
             supported_regimes += 1
     observed["supported_market_regimes"] = supported_regimes
 
     comparisons = {
-        "median_drawdown_reduction_vs_buy_hold_min": observed["median_drawdown_reduction_vs_buy_hold"] is not None and observed["median_drawdown_reduction_vs_buy_hold"] >= float(targets["median_drawdown_reduction_vs_buy_hold_min"]),
-        "aggregate_qqq_relative_return_after_costs_min": observed["aggregate_qqq_relative_return_after_costs"] is not None and observed["aggregate_qqq_relative_return_after_costs"] >= float(targets["aggregate_qqq_relative_return_after_costs_min"]),
-        "positive_20d_enter_return_symbol_ratio_min": observed["positive_20d_enter_return_symbol_ratio"] >= float(targets["positive_20d_enter_return_symbol_ratio_min"]),
-        "maximum_single_symbol_profit_contribution": observed["maximum_single_symbol_profit_contribution"] <= float(targets["maximum_single_symbol_profit_contribution"]),
-        "median_trades_per_year_max": observed["median_trades_per_year"] is not None and observed["median_trades_per_year"] <= float(targets["median_trades_per_year_max"]),
-        "median_average_holding_sessions_min": observed["median_average_holding_sessions"] is not None and observed["median_average_holding_sessions"] >= float(targets["median_average_holding_sessions_min"]),
-        "positive_strategy_return_symbol_ratio_min": observed["positive_strategy_return_symbol_ratio"] >= float(targets["positive_strategy_return_symbol_ratio_min"]),
-        "positive_qqq_relative_symbol_ratio_min": observed["positive_qqq_relative_symbol_ratio"] >= float(targets["positive_qqq_relative_symbol_ratio_min"]),
-        "minimum_supported_market_regimes": observed["supported_market_regimes"] >= int(targets["minimum_supported_market_regimes"]),
+        "median_drawdown_reduction_vs_buy_hold_min": observed[
+            "median_drawdown_reduction_vs_buy_hold"
+        ]
+        is not None
+        and observed["median_drawdown_reduction_vs_buy_hold"]
+        >= float(targets["median_drawdown_reduction_vs_buy_hold_min"]),
+        "aggregate_qqq_relative_return_after_costs_min": observed[
+            "aggregate_qqq_relative_return_after_costs"
+        ]
+        is not None
+        and observed["aggregate_qqq_relative_return_after_costs"]
+        >= float(targets["aggregate_qqq_relative_return_after_costs_min"]),
+        "positive_20d_enter_return_symbol_ratio_min": observed[
+            "positive_20d_enter_return_symbol_ratio"
+        ]
+        >= float(targets["positive_20d_enter_return_symbol_ratio_min"]),
+        "maximum_single_symbol_profit_contribution": observed[
+            "maximum_single_symbol_profit_contribution"
+        ]
+        <= float(targets["maximum_single_symbol_profit_contribution"]),
+        "median_trades_per_year_max": observed["median_trades_per_year"] is not None
+        and observed["median_trades_per_year"] <= float(targets["median_trades_per_year_max"]),
+        "median_average_holding_sessions_min": observed["median_average_holding_sessions"]
+        is not None
+        and observed["median_average_holding_sessions"]
+        >= float(targets["median_average_holding_sessions_min"]),
+        "positive_strategy_return_symbol_ratio_min": observed[
+            "positive_strategy_return_symbol_ratio"
+        ]
+        >= float(targets["positive_strategy_return_symbol_ratio_min"]),
+        "positive_qqq_relative_symbol_ratio_min": observed["positive_qqq_relative_symbol_ratio"]
+        >= float(targets["positive_qqq_relative_symbol_ratio_min"]),
+        "minimum_supported_market_regimes": observed["supported_market_regimes"]
+        >= int(targets["minimum_supported_market_regimes"]),
     }
-    return {"observed": observed, "comparisons": comparisons, "all_passed": all(comparisons.values())}
+    return {
+        "observed": observed,
+        "comparisons": comparisons,
+        "all_passed": all(comparisons.values()),
+    }
 
 
 def _falsification_gate_summary(
@@ -408,13 +437,34 @@ def _falsification_gate_summary(
 ) -> dict[str, Any]:
     observed = _common_observed_metrics(metrics, aggregate, contributions)
     comparisons = {
-        "median_drawdown_reduction_vs_buy_hold_min": observed["median_drawdown_reduction_vs_buy_hold"] is not None and observed["median_drawdown_reduction_vs_buy_hold"] >= float(targets["median_drawdown_reduction_vs_buy_hold_min"]),
-        "aggregate_qqq_relative_return_after_costs_min": observed["aggregate_qqq_relative_return_after_costs"] is not None and observed["aggregate_qqq_relative_return_after_costs"] >= float(targets["aggregate_qqq_relative_return_after_costs_min"]),
-        "maximum_single_symbol_profit_contribution": observed["maximum_single_symbol_profit_contribution"] <= float(targets["maximum_single_symbol_profit_contribution"]),
-        "positive_strategy_return_symbol_ratio_min": observed["positive_strategy_return_symbol_ratio"] >= float(targets["positive_strategy_return_symbol_ratio_min"]),
-        "positive_qqq_relative_symbol_ratio_min": observed["positive_qqq_relative_symbol_ratio"] >= float(targets["positive_qqq_relative_symbol_ratio_min"]),
+        "median_drawdown_reduction_vs_buy_hold_min": observed[
+            "median_drawdown_reduction_vs_buy_hold"
+        ]
+        is not None
+        and observed["median_drawdown_reduction_vs_buy_hold"]
+        >= float(targets["median_drawdown_reduction_vs_buy_hold_min"]),
+        "aggregate_qqq_relative_return_after_costs_min": observed[
+            "aggregate_qqq_relative_return_after_costs"
+        ]
+        is not None
+        and observed["aggregate_qqq_relative_return_after_costs"]
+        >= float(targets["aggregate_qqq_relative_return_after_costs_min"]),
+        "maximum_single_symbol_profit_contribution": observed[
+            "maximum_single_symbol_profit_contribution"
+        ]
+        <= float(targets["maximum_single_symbol_profit_contribution"]),
+        "positive_strategy_return_symbol_ratio_min": observed[
+            "positive_strategy_return_symbol_ratio"
+        ]
+        >= float(targets["positive_strategy_return_symbol_ratio_min"]),
+        "positive_qqq_relative_symbol_ratio_min": observed["positive_qqq_relative_symbol_ratio"]
+        >= float(targets["positive_qqq_relative_symbol_ratio_min"]),
     }
-    return {"observed": observed, "comparisons": comparisons, "all_passed": all(comparisons.values())}
+    return {
+        "observed": observed,
+        "comparisons": comparisons,
+        "all_passed": all(comparisons.values()),
+    }
 
 
 def run_focus_watchlist_validation(
@@ -438,8 +488,7 @@ def run_focus_watchlist_validation(
     stale_symbols = sorted(
         symbol
         for symbol in spec["universe"]["symbols"]
-        if observed_prices.loc[observed_prices["symbol"] == symbol, "date"].max()
-        < required_end
+        if observed_prices.loc[observed_prices["symbol"] == symbol, "date"].max() < required_end
     )
     if stale_symbols:
         raise ValueError(f"observed provider is stale for focus symbols: {stale_symbols}")
@@ -553,9 +602,7 @@ def run_focus_watchlist_validation(
         "reserved_start": reserved_start.date().isoformat(),
         "observed_evidence_end": required_end.date().isoformat(),
         "reserved_performance_opened": False,
-        "outputs": {
-            filename: sha256_file(output_dir / filename) for filename in payloads
-        },
+        "outputs": {filename: sha256_file(output_dir / filename) for filename in payloads},
     }
     manifest = {
         **manifest_without_identity,

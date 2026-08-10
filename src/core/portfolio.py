@@ -3,6 +3,7 @@
 Builds rolling long (and optionally long-short) portfolios from a panel
 of scores.  All functions return plain DataFrames and Series; no I/O.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -19,9 +20,9 @@ class RollingPortfolioResult:
 
     # Daily portfolio returns (equal-weight within each leg)
     long_returns: pd.Series
-    short_returns: pd.Series        # empty Series if long-only
-    spread_returns: pd.Series       # long_returns - short_returns
-    bench_returns: pd.Series        # empty Series if benchmark not provided
+    short_returns: pd.Series  # empty Series if long-only
+    spread_returns: pd.Series  # long_returns - short_returns
+    bench_returns: pd.Series  # empty Series if benchmark not provided
 
     # Holdings per rebalance date: {date: [ticker, ...]}
     long_holdings: dict = field(default_factory=dict)
@@ -85,6 +86,7 @@ def build_rolling_portfolio(
     >>> result = build_rolling_portfolio(score_panel, return_panel, k=10, holding_days=10)
     >>> result.spread_equity.plot(title="Long-Short Spread Equity Curve")
     """
+
     # ── Normalise MultiIndex orientation to (datetime, instrument) ─────────
     def _to_dt_instr(df: pd.DataFrame) -> pd.DataFrame:
         if df.index.names[0] != "datetime" and df.index.names[1] == "datetime":
@@ -113,16 +115,11 @@ def build_rolling_portfolio(
             except KeyError:
                 pass
             else:
-                prices_today = (
-                    prices.xs(date, level=0).iloc[:, 0]
-                    if prices is not None else None
-                )
-                ma_today = (
-                    ma.xs(date, level=0).iloc[:, 0]
-                    if ma is not None else None
-                )
+                prices_today = prices.xs(date, level=0).iloc[:, 0] if prices is not None else None
+                ma_today = ma.xs(date, level=0).iloc[:, 0] if ma is not None else None
                 current_long = select_topk(
-                    scores_today, k,
+                    scores_today,
+                    k,
                     guardrail=guardrail,
                     prices=prices_today,
                     ma=ma_today,

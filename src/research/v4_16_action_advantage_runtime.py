@@ -55,27 +55,15 @@ def build_action_advantage_frame(
     baseline_10d = _forward_total_return(baseline_return, 10)
     baseline_5d = _forward_total_return(baseline_return, 5)
     acceleration_daily = (
-        0.25 * frame["qqq_next_open_return"]
-        + 0.75 * frame["tqqq_next_open_return"]
+        0.25 * frame["qqq_next_open_return"] + 0.75 * frame["tqqq_next_open_return"]
     )
     acceleration_5d = _forward_total_return(acceleration_daily, 5)
     label_cost = float(contract["boundaries"]["label_round_trip_cost_bps"]) / 10_000.0
-    frame["cash_defense_advantage_10d"] = (
-        frame["forward_bil_10d"] - baseline_10d - label_cost
-    )
-    frame["broad_equity_advantage_10d"] = (
-        frame["forward_voo_10d"] - baseline_10d - label_cost
-    )
-    frame["nasdaq_core_advantage_10d"] = (
-        frame["forward_qqq_10d"] - baseline_10d - label_cost
-    )
-    frame["nasdaq_acceleration_advantage_5d"] = (
-        acceleration_5d - baseline_5d - label_cost
-    )
-    target_names = tuple(
-        str(contract["actions"][action]["target"])
-        for action in core.ACTION_KEYS
-    )
+    frame["cash_defense_advantage_10d"] = frame["forward_bil_10d"] - baseline_10d - label_cost
+    frame["broad_equity_advantage_10d"] = frame["forward_voo_10d"] - baseline_10d - label_cost
+    frame["nasdaq_core_advantage_10d"] = frame["forward_qqq_10d"] - baseline_10d - label_cost
+    frame["nasdaq_acceleration_advantage_5d"] = acceleration_5d - baseline_5d - label_cost
+    target_names = tuple(str(contract["actions"][action]["target"]) for action in core.ACTION_KEYS)
     positions = np.arange(len(frame), dtype=int)
     sample_every = int(contract["training"]["sample_every_sessions"])
     anchor = int(contract["training"]["global_anchor_position"])
@@ -94,9 +82,7 @@ def select_advantage_events(
 ) -> pd.DataFrame:
     """Run the frozen selector and preserve stable schema and model provenance."""
 
-    events = _ORIGINAL_SELECT_ADVANTAGE_EVENTS(
-        predictions, contract, sample=sample
-    )
+    events = _ORIGINAL_SELECT_ADVANTAGE_EVENTS(predictions, contract, sample=sample)
     if events.empty:
         return pd.DataFrame(columns=list(_EVENT_COLUMNS))
     events = events.copy()
@@ -119,9 +105,7 @@ def run_action_advantage_model(
     core.build_action_advantage_frame = build_action_advantage_frame
     core.select_advantage_events = select_advantage_events
     try:
-        return core.run_action_advantage_model(
-            bars, proxy_baseline_daily, contract
-        )
+        return core.run_action_advantage_model(bars, proxy_baseline_daily, contract)
     finally:
         core.build_action_advantage_frame = original_frame
         core.select_advantage_events = original_select

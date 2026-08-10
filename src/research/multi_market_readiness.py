@@ -171,7 +171,9 @@ def normalize_market_symbol(
             if candidate.upper() in available_upper:
                 normalized = available_upper[candidate.upper()]
                 break
-    return NormalizedSymbol(original_symbol=original, normalized_symbol=normalized, candidates=candidates)
+    return NormalizedSymbol(
+        original_symbol=original, normalized_symbol=normalized, candidates=candidates
+    )
 
 
 def normalize_market_symbols(
@@ -196,8 +198,18 @@ def default_market_specs(
     test_end: str = "2026-06-18",
     watchlist_path: str | Path = "configs/watchlist.yaml",
 ) -> list[MarketReadinessSpec]:
-    us_norm = [row.normalized_symbol for row in normalize_market_symbols("us", load_market_watchlist("us", watchlist_path=watchlist_path))]
-    cn_norm = [row.normalized_symbol for row in normalize_market_symbols("cn", load_market_watchlist("cn", watchlist_path=watchlist_path))]
+    us_norm = [
+        row.normalized_symbol
+        for row in normalize_market_symbols(
+            "us", load_market_watchlist("us", watchlist_path=watchlist_path)
+        )
+    ]
+    cn_norm = [
+        row.normalized_symbol
+        for row in normalize_market_symbols(
+            "cn", load_market_watchlist("cn", watchlist_path=watchlist_path)
+        )
+    ]
     specs: list[MarketReadinessSpec] = []
     if len(us_norm) >= 2:
         specs.append(
@@ -230,10 +242,14 @@ def check_market_data_coverage(
     available_symbols: set[str] | None = None,
     date_coverage_data: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    normalized_rows = normalize_market_symbols(spec.market, list(spec.symbols), available_symbols=available_symbols)
+    normalized_rows = normalize_market_symbols(
+        spec.market, list(spec.symbols), available_symbols=available_symbols
+    )
     normalized_symbols = tuple(row.normalized_symbol for row in normalized_rows)
     if date_coverage_data is None:
-        date_coverage_data = load_symbol_date_coverage(normalized_symbols, spec.train_start, spec.test_end)
+        date_coverage_data = load_symbol_date_coverage(
+            normalized_symbols, spec.train_start, spec.test_end
+        )
     coverage = filter_universe_by_coverage(
         normalized_symbols,
         available_symbols=available_symbols,
@@ -252,7 +268,9 @@ def check_market_data_coverage(
         }
     )
     if coverage.get("skipped") and not coverage.get("skip_reason"):
-        coverage["skip_reason"] = f"{spec.market} skipped because retained symbols are below min_symbols"
+        coverage["skip_reason"] = (
+            f"{spec.market} skipped because retained symbols are below min_symbols"
+        )
     return coverage
 
 
@@ -273,7 +291,9 @@ def summarize_multi_market_readiness(reports: dict[str, dict[str, Any]]) -> dict
     return {
         "schema_version": "1.0",
         "n_markets": len(reports),
-        "ready_markets": [row["market"] for row in market_rows if row["sufficient"] and not row["skipped"]],
+        "ready_markets": [
+            row["market"] for row in market_rows if row["sufficient"] and not row["skipped"]
+        ],
         "skipped_markets": [row["market"] for row in market_rows if row["skipped"]],
         "markets": market_rows,
     }
@@ -295,7 +315,16 @@ def render_readiness_markdown(reports: dict[str, dict[str, Any]], summary: dict[
             f"| {row['market']} | {row['requested']} | {row['retained']} | "
             f"{float(row['coverage_ratio']):.3f} | {status} | {row.get('skip_reason') or ''} |"
         )
-    lines.extend(["", "## Notes", "", "Coverage is fail-closed. A skipped market produces no model evidence.", "CN symbols are normalized explicitly and leading zeroes are preserved.", ""])
+    lines.extend(
+        [
+            "",
+            "## Notes",
+            "",
+            "Coverage is fail-closed. A skipped market produces no model evidence.",
+            "CN symbols are normalized explicitly and leading zeroes are preserved.",
+            "",
+        ]
+    )
     for market, report in reports.items():
         lines.extend(
             [

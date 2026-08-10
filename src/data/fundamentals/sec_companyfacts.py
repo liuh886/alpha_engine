@@ -14,8 +14,7 @@ from src.data.fundamentals.event_store import FundamentalEvent, normalize_event_
 
 SEC_DATA_ROOT = "https://data.sec.gov"
 DEFAULT_SEC_USER_AGENT = (
-    "AlphaEngine research data pipeline "
-    "https://github.com/liuh886/alpha_engine/issues"
+    "AlphaEngine research data pipeline https://github.com/liuh886/alpha_engine/issues"
 )
 
 
@@ -74,9 +73,9 @@ class SecCompanyFactsClient:
 
 
 def _source_hash(value: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        dict(value), sort_keys=True, separators=(",", ":"), default=str
-    ).encode("utf-8")
+    encoded = json.dumps(dict(value), sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 

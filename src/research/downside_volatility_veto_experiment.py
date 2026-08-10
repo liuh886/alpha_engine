@@ -44,13 +44,9 @@ def build_downside_volatility_features(
     close = pd.to_numeric(qqq_close, errors="coerce")
     returns = close.pct_change()
     negative = returns.clip(upper=0.0)
-    downside = (
-        negative.pow(2)
-        .rolling(lookback_sessions, min_periods=lookback_sessions)
-        .mean()
-        .pow(0.5)
-        * np.sqrt(252.0)
-    )
+    downside = negative.pow(2).rolling(lookback_sessions, min_periods=lookback_sessions).mean().pow(
+        0.5
+    ) * np.sqrt(252.0)
     threshold = downside.rolling(
         threshold_window_sessions,
         min_periods=minimum_threshold_history_sessions,
@@ -117,9 +113,7 @@ def generate_downside_volatility_veto_states(
     )
 
 
-def _future_return(
-    prepared: pd.DataFrame, location: int, column: str, horizon: int
-) -> float:
+def _future_return(prepared: pd.DataFrame, location: int, column: str, horizon: int) -> float:
     window = prepared.iloc[location + 1 : location + 1 + int(horizon)]
     values = window[column].dropna()
     if len(values) != int(horizon):
@@ -135,9 +129,7 @@ def changed_transition_events(
 ) -> pd.DataFrame:
     """Report every close where downside volatility changes the next state."""
 
-    changed = baseline_decisions["decision_state"].ne(
-        challenger_decisions["decision_state"]
-    )
+    changed = baseline_decisions["decision_state"].ne(challenger_decisions["decision_state"])
     rows: list[dict[str, Any]] = []
     for location in np.flatnonzero(changed.to_numpy(dtype=bool)):
         baseline_state = int(baseline_decisions.iloc[location]["decision_state"])
@@ -149,9 +141,7 @@ def changed_transition_events(
             "event_type": (
                 "blocked_entry" if baseline_state == 2 and challenger_state == 1 else "early_exit"
             ),
-            "downside_volatility": float(
-                prepared.iloc[int(location)]["qqq_downside_volatility"]
-            ),
+            "downside_volatility": float(prepared.iloc[int(location)]["qqq_downside_volatility"]),
             "downside_volatility_threshold": float(
                 prepared.iloc[int(location)]["qqq_downside_volatility_threshold"]
             ),
@@ -187,9 +177,7 @@ def stress_overlap(prepared: pd.DataFrame) -> dict[str, Any]:
             float((downside & vxn).sum() / downside.sum()) if downside.sum() else 0.0
         ),
         "downside_share_unique_vs_vix_vxn": (
-            float((downside & ~vix & ~vxn).sum() / downside.sum())
-            if downside.sum()
-            else 0.0
+            float((downside & ~vix & ~vxn).sum() / downside.sum()) if downside.sum() else 0.0
         ),
     }
 
@@ -206,15 +194,11 @@ def economic_position_differences(
             "baseline_return": baseline.daily["net_return"],
             "challenger_return": challenger.daily["net_return"],
             "downside_volatility": challenger.daily["qqq_downside_volatility"],
-            "downside_volatility_threshold": challenger.daily[
-                "qqq_downside_volatility_threshold"
-            ],
+            "downside_volatility_threshold": challenger.daily["qqq_downside_volatility_threshold"],
         }
     )
     changed = joined[joined["baseline_state"].ne(joined["challenger_state"])].copy()
-    changed["challenger_minus_baseline"] = (
-        changed["challenger_return"] - changed["baseline_return"]
-    )
+    changed["challenger_minus_baseline"] = changed["challenger_return"] - changed["baseline_return"]
     return changed.reset_index(names="date")
 
 
@@ -238,17 +222,15 @@ def run_downside_volatility_veto_comparison(
         lookback_sessions=int(logic["lookback_sessions"]),
         threshold_window_sessions=int(logic["threshold_window_sessions"]),
         threshold_quantile=float(logic["threshold_quantile"]),
-        minimum_threshold_history_sessions=int(
-            logic["minimum_threshold_history_sessions"]
-        ),
+        minimum_threshold_history_sessions=int(logic["minimum_threshold_history_sessions"]),
     )
     prepared = prepared.join(features, how="left")
     prepared = prepared.dropna(
         subset=["qqq_downside_volatility", "qqq_downside_volatility_threshold"]
     ).copy()
-    prepared["qqq_downside_volatility_stress"] = prepared[
-        "qqq_downside_volatility_stress"
-    ].fillna(False).astype(bool)
+    prepared["qqq_downside_volatility_stress"] = (
+        prepared["qqq_downside_volatility_stress"].fillna(False).astype(bool)
+    )
 
     baseline_decisions = generate_vxn_leverage_veto_states(prepared, config)
     challenger_decisions = generate_downside_volatility_veto_states(prepared, config)
@@ -270,9 +252,9 @@ def run_downside_volatility_veto_comparison(
         "attack_vxn_v4_1_75": baseline,
         "attack_downside_volatility_v4_2_75": challenger,
     }
-    metrics = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
+    metrics = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
+    )
 
     validation = contract["validation"]
     periods = period_metrics(results, validation["chronological_periods"])
@@ -292,9 +274,7 @@ def run_downside_volatility_veto_comparison(
 
     cost_rows: list[dict[str, Any]] = []
     for cost_bps in validation["cost_sensitivity_bps"]:
-        cost_config = replace(
-            config, transaction_cost_bps_per_turnover_unit=float(cost_bps)
-        )
+        cost_config = replace(config, transaction_cost_bps_per_turnover_unit=float(cost_bps))
         for key, decisions in (
             ("attack_vxn_v4_1_75", baseline_decisions),
             ("attack_downside_volatility_v4_2_75", challenger_decisions),
@@ -317,16 +297,12 @@ def run_downside_volatility_veto_comparison(
         "lookback_sessions": int(logic["lookback_sessions"]),
         "threshold_window_sessions": int(logic["threshold_window_sessions"]),
         "threshold_quantile": float(logic["threshold_quantile"]),
-        "minimum_threshold_history_sessions": int(
-            logic["minimum_threshold_history_sessions"]
-        ),
+        "minimum_threshold_history_sessions": int(logic["minimum_threshold_history_sessions"]),
         "entry_veto": True,
         "existing_leverage_exit": True,
         "changed_transition_dates": int(len(transition_events)),
         "changed_economic_sessions": int(len(differences)),
-        "changed_session_return_delta_sum": float(
-            differences["challenger_minus_baseline"].sum()
-        ),
+        "changed_session_return_delta_sum": float(differences["challenger_minus_baseline"].sum()),
         "stress_overlap": overlap,
         "no_parameter_grid": True,
     }

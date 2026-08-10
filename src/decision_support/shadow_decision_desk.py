@@ -246,9 +246,7 @@ def _build_markdown(ticket: Mapping[str, Any]) -> str:
         composite_text = "" if composite is None else f"{float(composite):.2f}"
         breadth_text = "" if breadth is None else f"{float(breadth):.0%}"
         selected = "yes" if row.get("selected") else "no"
-        lines.append(
-            f"| {row['basket']} | {selected} | {composite_text} | {breadth_text} |"
-        )
+        lines.append(f"| {row['basket']} | {selected} | {composite_text} | {breadth_text} |")
     lines.extend(
         [
             "",
@@ -342,9 +340,7 @@ def build_shadow_decision_ticket(
         raise ValueError(f"market mismatch: artifact={artifact_market}, requested={market}")
 
     basket_rows = _rows(payloads["basket_score_history.json"], label="basket score history")
-    security_rows = _rows(
-        payloads["security_score_history.json"], label="security score history"
-    )
+    security_rows = _rows(payloads["security_score_history.json"], label="security score history")
     rotation_rows = _rows(payloads["rotation_history.json"], label="rotation history")
     portfolio_rows = _rows(
         payloads["portfolio_state_history.json"], label="portfolio state history"
@@ -387,9 +383,7 @@ def build_shadow_decision_ticket(
         if isinstance(row, dict) and row.get("symbol")
     }
     security_by_symbol = {
-        str(row["symbol"]): dict(row)
-        for row in latest_security
-        if row.get("symbol")
+        str(row["symbol"]): dict(row) for row in latest_security if row.get("symbol")
     }
     symbols = sorted(set(positions) | set(previous_weights) | set(security_by_symbol))
     current_weights: dict[str, float] = {}
@@ -427,9 +421,7 @@ def build_shadow_decision_ticket(
                 "target_weight": current_weight,
                 "previous_weight": previous_weight,
                 "weight_change": current_weight - previous_weight,
-                "security_composite_percentile": score_row.get(
-                    "security_composite_percentile"
-                ),
+                "security_composite_percentile": score_row.get("security_composite_percentile"),
                 "eligible_factor_count": len(eligible_factors),
                 "excluded_factor_count": len(excluded_factors),
                 "factor_scores": factor_rows,
@@ -480,9 +472,7 @@ def build_shadow_decision_ticket(
         "as_of_date": as_of.isoformat(),
         "rotation_manifest_identity_sha256": manifest.get("manifest_identity_sha256"),
         "rotation_output_hashes": manifest.get("outputs"),
-        "pool_membership_identity_sha256": pool_identity.get(
-            "membership_identity_sha256"
-        ),
+        "pool_membership_identity_sha256": pool_identity.get("membership_identity_sha256"),
         "basket_snapshot_date": basket_date.isoformat(),
         "security_snapshot_date": security_date.isoformat(),
         "rotation_snapshot_date": rotation_date.isoformat(),
@@ -521,9 +511,7 @@ def build_shadow_decision_ticket(
             "pool_id": pool_identity.get("pool_id"),
             "candidate_count": pool_identity.get("candidate_count"),
             "basket_count": pool_identity.get("basket_count"),
-            "membership_identity_sha256": pool_identity.get(
-                "membership_identity_sha256"
-            ),
+            "membership_identity_sha256": pool_identity.get("membership_identity_sha256"),
         },
         "market_context": {
             "benchmark": portfolio.get("benchmark"),

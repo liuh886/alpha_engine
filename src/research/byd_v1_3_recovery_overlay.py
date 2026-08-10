@@ -31,9 +31,7 @@ from src.research.byd_v1_2_recovery_state import (
 )
 
 SNAPSHOT_PATH = "data/research/byd_canonical_v1_snapshot.tar.xz"
-SNAPSHOT_SHA256 = (
-    "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179"
-)
+SNAPSHOT_SHA256 = "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179"
 HOLD_ELIGIBLE_INTERVALS = 10
 COOLDOWN_ELIGIBLE_OPENS = 10
 
@@ -246,9 +244,7 @@ def attribute_overlay_events(
             (candidate.daily.index >= entry) & (candidate.daily.index < exit_)
         ]
         base_block = base.daily.reindex(candidate_block.index)
-        candidate_return = float(
-            (1.0 + candidate_block["net_return"]).prod() - 1.0
-        )
+        candidate_return = float((1.0 + candidate_block["net_return"]).prod() - 1.0)
         base_return = float((1.0 + base_block["net_return"]).prod() - 1.0)
         relative = (1.0 + candidate_return) / (1.0 + base_return) - 1.0
         row.update(
@@ -286,12 +282,8 @@ def evaluate_v1_3(
     base_decision = build_v1_0_decision_position(dataset)
     schedule = build_overlay_schedule(dataset, base_decision)
 
-    primary_cost = float(
-        contract["costs"]["primary_bps_per_turnover_unit"]
-    )
-    stress_cost = float(
-        contract["costs"]["stress_bps_per_turnover_unit"]
-    )
+    primary_cost = float(contract["costs"]["primary_bps_per_turnover_unit"])
+    stress_cost = float(contract["costs"]["stress_bps_per_turnover_unit"])
     v1_3 = run_strategy(
         dataset,
         schedule.final_decision_position,
@@ -326,9 +318,7 @@ def evaluate_v1_3(
         v1_3,
         v1_0,
     )
-    largest_episode_share, largest_period_share = _positive_concentration(
-        event_ledger
-    )
+    largest_episode_share, largest_period_share = _positive_concentration(event_ledger)
 
     metrics: dict[str, dict[str, dict[str, float]]] = {}
     for window_name, (start, end) in EVALUATION_WINDOWS.items():
@@ -345,35 +335,25 @@ def evaluate_v1_3(
     recent = metrics["retrospective_2025_plus"]
     completed_event_count = int(event_ledger["completed"].sum())
     incremental_round_trips = (
-        full["v1_3"]["round_trips_per_year"]
-        - full["v1_0"]["round_trips_per_year"]
+        full["v1_3"]["round_trips_per_year"] - full["v1_0"]["round_trips_per_year"]
     )
     gates = {
-        "full_cagr_shortfall_cap": (
-            full["v1_3"]["cagr"] >= full["v1_0"]["cagr"] - 0.0025
-        ),
+        "full_cagr_shortfall_cap": (full["v1_3"]["cagr"] >= full["v1_0"]["cagr"] - 0.0025),
         "full_drawdown_worsening_cap": (
-            full["v1_3"]["max_drawdown"]
-            >= full["v1_0"]["max_drawdown"] - 0.005
+            full["v1_3"]["max_drawdown"] >= full["v1_0"]["max_drawdown"] - 0.005
         ),
-        "full_calmar_strictly_above_v1_0": (
-            full["v1_3"]["calmar"] > full["v1_0"]["calmar"]
-        ),
+        "full_calmar_strictly_above_v1_0": (full["v1_3"]["calmar"] > full["v1_0"]["calmar"]),
         "validation_total_return_at_least_v1_0": (
-            validation["v1_3"]["total_return"]
-            >= validation["v1_0"]["total_return"]
+            validation["v1_3"]["total_return"] >= validation["v1_0"]["total_return"]
         ),
         "validation_drawdown_worsening_cap": (
-            validation["v1_3"]["max_drawdown"]
-            >= validation["v1_0"]["max_drawdown"] - 0.01
+            validation["v1_3"]["max_drawdown"] >= validation["v1_0"]["max_drawdown"] - 0.01
         ),
         "retrospective_2025_plus_return_shortfall_cap": (
-            recent["v1_3"]["total_return"]
-            >= recent["v1_0"]["total_return"] - 0.01
+            recent["v1_3"]["total_return"] >= recent["v1_0"]["total_return"] - 0.01
         ),
         "stress_40_calmar_not_below_v1_0_stress": (
-            full["v1_3_stress"]["calmar"]
-            >= full["v1_0_stress"]["calmar"]
+            full["v1_3_stress"]["calmar"] >= full["v1_0_stress"]["calmar"]
         ),
         "incremental_turnover_cap": incremental_round_trips <= 0.50,
         "minimum_completed_overlay_events": completed_event_count >= 10,
@@ -392,18 +372,10 @@ def evaluate_v1_3(
                 "prospective_start_date": "2026-08-04",
                 "execution_date": "",
                 "base_target_position": float(base_decision.loc[CANONICAL_CUTOFF]),
-                "overlay_active": bool(
-                    schedule.overlay_active.loc[CANONICAL_CUTOFF]
-                ),
-                "overlay_branch": str(
-                    schedule.overlay_branch.loc[CANONICAL_CUTOFF]
-                ),
-                "target_position": float(
-                    schedule.final_decision_position.loc[CANONICAL_CUTOFF]
-                ),
-                "branch_a_condition": bool(
-                    latest_conditions["bear_sideways_low_vol"]
-                ),
+                "overlay_active": bool(schedule.overlay_active.loc[CANONICAL_CUTOFF]),
+                "overlay_branch": str(schedule.overlay_branch.loc[CANONICAL_CUTOFF]),
+                "target_position": float(schedule.final_decision_position.loc[CANONICAL_CUTOFF]),
+                "branch_a_condition": bool(latest_conditions["bear_sideways_low_vol"]),
                 "branch_b_condition": bool(latest_conditions["bull_high_vol"]),
                 "status": "awaiting_first_post_cutoff_eligible_open",
                 "realized_incremental_return": np.nan,

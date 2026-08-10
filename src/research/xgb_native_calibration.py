@@ -83,11 +83,7 @@ class XGBNativeCalibration:
         unknown = sorted(set(raw) - allowed)
         if unknown:
             raise ValueError(f"unknown XGBoost calibration fields: {unknown}")
-        missing = [
-            field
-            for field in ("n_gain_bins", "num_boost_round")
-            if field not in raw
-        ]
+        missing = [field for field in ("n_gain_bins", "num_boost_round") if field not in raw]
         if missing:
             raise ValueError(f"missing XGBoost calibration fields: {missing}")
         return cls(
@@ -163,9 +159,7 @@ class XGBNativeCalibration:
             "identity_tie": "declared_native_fields_equal_effective_runtime",
         }
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-        payload["identity_sha256"] = hashlib.sha256(
-            canonical.encode("utf-8")
-        ).hexdigest()
+        payload["identity_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
         return payload
 
 
@@ -248,10 +242,6 @@ def predict_xgb_native_daily_ranker(
     scores.attrs["model_type"] = "xgb_rank_ndcg_native_contract"
     scores.attrs["n_gain_bins"] = result.calibration.n_gain_bins
     scores.attrs["num_boost_round"] = result.calibration.num_boost_round
-    scores.attrs["effective_runtime_parameters"] = (
-        result.calibration.effective_model_parameters()
-    )
-    scores.attrs["parameter_identity_sha256"] = result.identity_manifest[
-        "identity_sha256"
-    ]
+    scores.attrs["effective_runtime_parameters"] = result.calibration.effective_model_parameters()
+    scores.attrs["parameter_identity_sha256"] = result.identity_manifest["identity_sha256"]
     return scores

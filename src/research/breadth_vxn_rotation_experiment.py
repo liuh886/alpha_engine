@@ -54,26 +54,25 @@ def build_breadth_features(
     aligned = aligned.dropna()
     features = pd.DataFrame(index=aligned.index)
     features["qqqe_qqq_ratio"] = aligned["qqqe_close"] / aligned["qqq_close"]
-    features["breadth_ratio_ma"] = features["qqqe_qqq_ratio"].rolling(
-        ratio_ma_window,
-        min_periods=ratio_ma_window,
-    ).mean()
-    features["breadth_ratio_momentum"] = features["qqqe_qqq_ratio"].pct_change(
-        momentum_sessions
+    features["breadth_ratio_ma"] = (
+        features["qqqe_qqq_ratio"]
+        .rolling(
+            ratio_ma_window,
+            min_periods=ratio_ma_window,
+        )
+        .mean()
     )
-    features["breadth_above_ma"] = features["qqqe_qqq_ratio"].gt(
-        features["breadth_ratio_ma"]
-    )
+    features["breadth_ratio_momentum"] = features["qqqe_qqq_ratio"].pct_change(momentum_sessions)
+    features["breadth_above_ma"] = features["qqqe_qqq_ratio"].gt(features["breadth_ratio_ma"])
     features["breadth_positive_momentum"] = features["breadth_ratio_momentum"].gt(0.0)
     features["breadth_confirmed"] = (
         features["breadth_above_ma"] & features["breadth_positive_momentum"]
     ).fillna(False)
     features["breadth_regime"] = "mixed"
     features.loc[features["breadth_confirmed"], "breadth_regime"] = "broadening"
-    narrowing = (
-        ~features["breadth_above_ma"].fillna(False)
-        & ~features["breadth_positive_momentum"].fillna(False)
-    )
+    narrowing = ~features["breadth_above_ma"].fillna(False) & ~features[
+        "breadth_positive_momentum"
+    ].fillna(False)
     features.loc[narrowing, "breadth_regime"] = "narrowing"
     return features
 
@@ -212,9 +211,7 @@ def generate_dual_volatility_decision_states(
         next_state = state
         reason = "hold"
         either_stress = bool(row.vix_stress) or bool(row.vxn_stress)
-        severe_defense = bool(row.long_break) or (
-            either_stress and bool(row.stress_price_failure)
-        )
+        severe_defense = bool(row.long_break) or (either_stress and bool(row.stress_price_failure))
         if severe_defense:
             next_state = 0
             reason = "defensive_price_or_vix_vxn_stress"
@@ -280,11 +277,7 @@ def _blocked_entry_outcomes(
     horizons: Sequence[int],
 ) -> list[dict[str, Any]]:
     previous = baseline["decision_state"].shift(1).fillna(0).astype(int)
-    blocked = (
-        baseline["decision_state"].eq(2)
-        & previous.ne(2)
-        & challenger["decision_state"].ne(2)
-    )
+    blocked = baseline["decision_state"].eq(2) & previous.ne(2) & challenger["decision_state"].ne(2)
     rows: list[dict[str, Any]] = []
     for location in np.flatnonzero(blocked.to_numpy(dtype=bool)):
         row: dict[str, Any] = {
@@ -298,9 +291,7 @@ def _blocked_entry_outcomes(
             for symbol in ("QQQ", "TQQQ"):
                 values = window[f"{symbol}_next_open_return"].dropna()
                 row[f"{symbol}_return_{horizon}d"] = (
-                    float((1.0 + values).prod() - 1.0)
-                    if len(values) == int(horizon)
-                    else np.nan
+                    float((1.0 + values).prod() - 1.0) if len(values) == int(horizon) else np.nan
                 )
         rows.append(row)
     return rows
@@ -309,9 +300,7 @@ def _blocked_entry_outcomes(
 def _volatility_overlap(prepared: pd.DataFrame) -> dict[str, Any]:
     returns = prepared[["vix_return_1d", "vxn_return_1d"]].dropna()
     output: dict[str, Any] = {
-        "level_correlation": float(
-            prepared[["vix_close", "vxn_close"]].dropna().corr().iloc[0, 1]
-        ),
+        "level_correlation": float(prepared[["vix_close", "vxn_close"]].dropna().corr().iloc[0, 1]),
         "daily_change_correlation": float(returns.corr().iloc[0, 1]),
     }
     for state in ("stress", "easing", "normalized"):

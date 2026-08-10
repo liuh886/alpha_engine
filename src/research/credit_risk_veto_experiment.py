@@ -53,9 +53,7 @@ def build_credit_proxy_features(
         raise ValueError(
             f"credit proxy common history {len(common)} is below {minimum_common_sessions}"
         )
-    span_index = prepared_index[
-        (prepared_index >= common.min()) & (prepared_index <= common.max())
-    ]
+    span_index = prepared_index[(prepared_index >= common.min()) & (prepared_index <= common.max())]
     coverage_ratio = float(len(common) / len(span_index)) if len(span_index) else 0.0
     if coverage_ratio < minimum_coverage_ratio_within_common_span:
         raise ValueError(
@@ -69,9 +67,7 @@ def build_credit_proxy_features(
     ratio_return = ratio.pct_change()
     max_abs_return = float(ratio_return.abs().max())
     if max_abs_return > maximum_absolute_daily_ratio_return:
-        raise ValueError(
-            f"credit proxy daily return {max_abs_return:.4f} exceeds quality guard"
-        )
+        raise ValueError(f"credit proxy daily return {max_abs_return:.4f} exceeds quality guard")
 
     features = pd.DataFrame(index=common)
     features["hyg_close"] = hyg.reindex(common)
@@ -154,9 +150,7 @@ def generate_credit_risk_veto_states(
     )
 
 
-def _future_return(
-    prepared: pd.DataFrame, location: int, column: str, horizon: int
-) -> float:
+def _future_return(prepared: pd.DataFrame, location: int, column: str, horizon: int) -> float:
     window = prepared.iloc[location + 1 : location + 1 + int(horizon)]
     values = window[column].dropna()
     if len(values) != int(horizon):
@@ -172,9 +166,7 @@ def changed_transition_events(
 ) -> pd.DataFrame:
     """Report every close where the credit proxy changes the next state."""
 
-    changed = baseline_decisions["decision_state"].ne(
-        challenger_decisions["decision_state"]
-    )
+    changed = baseline_decisions["decision_state"].ne(challenger_decisions["decision_state"])
     rows: list[dict[str, Any]] = []
     for location in np.flatnonzero(changed.to_numpy(dtype=bool)):
         baseline_state = int(baseline_decisions.iloc[location]["decision_state"])
@@ -220,9 +212,7 @@ def stress_overlap(prepared: pd.DataFrame) -> dict[str, Any]:
             float((credit & vxn).sum() / credit.sum()) if credit.sum() else 0.0
         ),
         "credit_share_unique_vs_vix_vxn": (
-            float((credit & ~vix & ~vxn).sum() / credit.sum())
-            if credit.sum()
-            else 0.0
+            float((credit & ~vix & ~vxn).sum() / credit.sum()) if credit.sum() else 0.0
         ),
     }
 
@@ -243,9 +233,7 @@ def economic_position_differences(
         }
     )
     changed = joined[joined["baseline_state"].ne(joined["challenger_state"])].copy()
-    changed["challenger_minus_baseline"] = (
-        changed["challenger_return"] - changed["baseline_return"]
-    )
+    changed["challenger_minus_baseline"] = changed["challenger_return"] - changed["baseline_return"]
     return changed.reset_index(names="date")
 
 
@@ -274,9 +262,7 @@ def run_credit_risk_veto_comparison(
         minimum_coverage_ratio_within_common_span=float(
             quality["minimum_coverage_ratio_within_common_span"]
         ),
-        maximum_absolute_daily_ratio_return=float(
-            quality["maximum_absolute_daily_ratio_return"]
-        ),
+        maximum_absolute_daily_ratio_return=float(quality["maximum_absolute_daily_ratio_return"]),
     )
     prepared = prepared.join(credit_features, how="left")
     prepared = prepared.dropna(subset=["hyg_shy_ratio", "hyg_shy_ma"]).copy()
@@ -302,9 +288,9 @@ def run_credit_risk_veto_comparison(
         "attack_vxn_v4_1_75": baseline,
         "attack_credit_risk_v4_2_75": challenger,
     }
-    metrics = pd.DataFrame(
-        [dict(result.metrics) for result in results.values()]
-    ).set_index("strategy")
+    metrics = pd.DataFrame([dict(result.metrics) for result in results.values()]).set_index(
+        "strategy"
+    )
 
     validation = contract["validation"]
     periods = period_metrics(results, validation["chronological_periods"])
@@ -324,9 +310,7 @@ def run_credit_risk_veto_comparison(
 
     cost_rows: list[dict[str, Any]] = []
     for cost_bps in validation["cost_sensitivity_bps"]:
-        cost_config = replace(
-            config, transaction_cost_bps_per_turnover_unit=float(cost_bps)
-        )
+        cost_config = replace(config, transaction_cost_bps_per_turnover_unit=float(cost_bps))
         for key, decisions in (
             ("attack_vxn_v4_1_75", baseline_decisions),
             ("attack_credit_risk_v4_2_75", challenger_decisions),
@@ -351,9 +335,7 @@ def run_credit_risk_veto_comparison(
         "existing_leverage_exit": True,
         "changed_transition_dates": int(len(transition_events)),
         "changed_economic_sessions": int(len(differences)),
-        "changed_session_return_delta_sum": float(
-            differences["challenger_minus_baseline"].sum()
-        ),
+        "changed_session_return_delta_sum": float(differences["challenger_minus_baseline"].sum()),
         "data_quality": quality_diagnostics,
         "stress_overlap": overlap,
         "proxy_is_not_pure_credit_spread": True,

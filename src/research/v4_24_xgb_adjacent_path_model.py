@@ -165,9 +165,7 @@ def score_outer_folds(
                     "test_start": testing["decision_date"].min(),
                     "test_end": testing["decision_date"].max(),
                     "test_groups": int(len(testing)),
-                    "declared_embargo_sessions": int(
-                        contract["decision"]["embargo_sessions"]
-                    ),
+                    "declared_embargo_sessions": int(contract["decision"]["embargo_sessions"]),
                     "intervening_decision_groups": 1,
                 }
             )
@@ -192,9 +190,7 @@ def score_actual(
     return output, bundles
 
 
-def select_ordinal_state(
-    scored: pd.DataFrame, contract: Mapping[str, Any]
-) -> pd.DataFrame:
+def select_ordinal_state(scored: pd.DataFrame, contract: Mapping[str, Any]) -> pd.DataFrame:
     threshold = float(contract["decision"]["probability_threshold"])
     rows: list[dict[str, Any]] = []
     for raw in scored.sort_values("decision_date").to_dict(orient="records"):
@@ -209,8 +205,7 @@ def select_ordinal_state(
             selected_index += 1
         state = STATE_ORDER[selected_index]
         state_utilities = {
-            candidate: float(raw[f"{candidate}_path_utility"])
-            for candidate in STATE_ORDER
+            candidate: float(raw[f"{candidate}_path_utility"]) for candidate in STATE_ORDER
         }
         oracle = max([*state_utilities.values(), float(raw["baseline_path_utility"])])
         ordered_states = sorted(
@@ -226,9 +221,7 @@ def select_ordinal_state(
             {
                 "selected_state": state,
                 "edge_trace": "|".join(edge_trace),
-                "selected_terminal_return": float(
-                    raw[f"{state}_terminal_return"]
-                ),
+                "selected_terminal_return": float(raw[f"{state}_terminal_return"]),
                 "selected_mae": float(raw[f"{state}_mae"]),
                 "selected_path_utility": state_utilities[state],
                 "selected_utility_rank": int(ordered_states.index(state) + 1),
@@ -237,9 +230,7 @@ def select_ordinal_state(
                     state_utilities[state] - float(raw["baseline_path_utility"])
                 ),
                 "selected_utility_regret": float(oracle - state_utilities[state]),
-                "baseline_utility_regret": float(
-                    oracle - float(raw["baseline_path_utility"])
-                ),
+                "baseline_utility_regret": float(oracle - float(raw["baseline_path_utility"])),
             }
         )
         rows.append(row)
@@ -283,9 +274,7 @@ def edge_metrics(scored: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
                     "groups": int(len(table)),
                     "positive_rate": float(fy.mean()),
                     "roc_auc": _safe_auc(fy, fp),
-                    "balanced_accuracy": float(
-                        balanced_accuracy_score(fy, predicted)
-                    ),
+                    "balanced_accuracy": float(balanced_accuracy_score(fy, predicted)),
                     "brier_score": float(brier_score_loss(fy, fp)),
                 }
             )
@@ -306,9 +295,7 @@ def selection_metrics(
                 "selected_mean_utility_regret": selected_regret,
                 "baseline_mean_utility_regret": baseline_regret,
                 "utility_regret_reduction": (
-                    1.0 - selected_regret / baseline_regret
-                    if baseline_regret > 1e-12
-                    else np.nan
+                    1.0 - selected_regret / baseline_regret if baseline_regret > 1e-12 else np.nan
                 ),
                 "median_utility_advantage_vs_v4_2": float(
                     table["selected_utility_advantage_vs_v4_2"].median()
@@ -327,9 +314,7 @@ def selection_metrics(
                 "state": state,
                 "selected_groups": int(len(table)),
                 "selection_share": float(len(table) / len(selected)),
-                "top_two_rate": (
-                    float(table["selected_top_two"].mean()) if len(table) else np.nan
-                ),
+                "top_two_rate": (float(table["selected_top_two"].mean()) if len(table) else np.nan),
                 "median_utility_advantage_vs_v4_2": (
                     float(table["selected_utility_advantage_vs_v4_2"].median())
                     if len(table)
@@ -357,29 +342,19 @@ def selection_metrics(
     positive = table["selected_utility_advantage_vs_v4_2"].clip(lower=0.0)
     total_positive = float(positive.sum())
     by_year = table.assign(positive=positive).groupby("year")["positive"].sum()
-    by_cluster = (
-        table.assign(positive=positive)
-        .groupby("macro_cluster")["positive"]
-        .sum()
-    )
+    by_cluster = table.assign(positive=positive).groupby("macro_cluster")["positive"].sum()
     best_year = int(by_year.idxmax()) if total_positive > 0.0 else None
     best_cluster = int(by_cluster.idxmax()) if total_positive > 0.0 else None
     concentration = pd.DataFrame(
         [
             {
-                "total_utility_advantage": float(
-                    table["selected_utility_advantage_vs_v4_2"].sum()
-                ),
+                "total_utility_advantage": float(table["selected_utility_advantage_vs_v4_2"].sum()),
                 "positive_utility_advantage": total_positive,
                 "largest_positive_year_share": (
-                    float(by_year.max() / total_positive)
-                    if total_positive > 0.0
-                    else np.nan
+                    float(by_year.max() / total_positive) if total_positive > 0.0 else np.nan
                 ),
                 "largest_positive_cluster_share": (
-                    float(by_cluster.max() / total_positive)
-                    if total_positive > 0.0
-                    else np.nan
+                    float(by_cluster.max() / total_positive) if total_positive > 0.0 else np.nan
                 ),
                 "best_year": best_year,
                 "best_macro_cluster": best_cluster,
@@ -420,9 +395,7 @@ def placebo_metrics(
                 test_start,
                 pd.Timestamp(fold_spec["train_end"]),
                 embargo_sessions=int(contract["decision"]["embargo_sessions"]),
-                sample_every_sessions=int(
-                    contract["decision"]["sample_every_sessions"]
-                ),
+                sample_every_sessions=int(contract["decision"]["sample_every_sessions"]),
             )
             training = frame.loc[
                 frame["decision_date"].between(
@@ -455,11 +428,7 @@ def placebo_metrics(
         selected = select_ordinal_state(pd.concat(scored_parts, ignore_index=True), contract)
         selected_regret = float(selected["selected_utility_regret"].mean())
         baseline_regret = float(selected["baseline_utility_regret"].mean())
-        reduction = (
-            1.0 - selected_regret / baseline_regret
-            if baseline_regret > 1e-12
-            else np.nan
-        )
+        reduction = 1.0 - selected_regret / baseline_regret if baseline_regret > 1e-12 else np.nan
         rows.append(
             {
                 "trial": trial,
@@ -485,9 +454,9 @@ def importance_metrics(
             feature_names=list(feature_names),
             missing=np.nan,
         )
-        contributions = np.asarray(
-            bundle.booster.predict(matrix, pred_contribs=True), dtype=float
-        )[:, :-1]
+        contributions = np.asarray(bundle.booster.predict(matrix, pred_contribs=True), dtype=float)[
+            :, :-1
+        ]
         gain = bundle.booster.get_score(importance_type="gain")
         for position, feature in enumerate(feature_names):
             rows.append(
@@ -518,9 +487,7 @@ def importance_metrics(
     family = feature_total.groupby("family", as_index=False).agg(
         mean_abs_shap=("mean_abs_shap", "sum"), gain=("gain", "sum")
     )
-    family["shap_share"] = (
-        family["mean_abs_shap"] / shap_sum if shap_sum > 0.0 else np.nan
-    )
+    family["shap_share"] = family["mean_abs_shap"] / shap_sum if shap_sum > 0.0 else np.nan
     return (
         feature_total.sort_values("shap_share", ascending=False).reset_index(drop=True),
         family.sort_values("shap_share", ascending=False).reset_index(drop=True),

@@ -54,9 +54,7 @@ def _optional_int(value: object, *, label: str) -> int | None:
 def _signal_copy(signal: Mapping[str, Any]) -> dict[str, Any]:
     # Rendered prose is delivery material, not part of the machine read model.
     return {
-        str(key): value
-        for key, value in signal.items()
-        if key not in {"markdown", "telegram_text"}
+        str(key): value for key, value in signal.items() if key not in {"markdown", "telegram_text"}
     }
 
 
@@ -102,9 +100,7 @@ def append_signal_evaluation(
     signal_date = _required_string(signal.get("signal_date"), label="signal.signal_date")
     fingerprint = _required_string(signal.get("fingerprint"), label="signal.fingerprint")
     latest_data_date = _required_string(
-        signal.get("latest_data_date")
-        or signal.get("latest_data_date_at_creation")
-        or signal_date,
+        signal.get("latest_data_date") or signal.get("latest_data_date_at_creation") or signal_date,
         label="signal.latest_data_date",
     )
     delivery_status = _required_string(delivery_status, label="delivery_status")
@@ -170,9 +166,7 @@ def append_signal_evaluation(
     return record_path
 
 
-def read_latest_evaluation(
-    ledger_root: Path, *, model_version_id: str
-) -> dict[str, Any] | None:
+def read_latest_evaluation(ledger_root: Path, *, model_version_id: str) -> dict[str, Any] | None:
     path = ledger_root / "latest.json"
     if not path.is_file():
         return None

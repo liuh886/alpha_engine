@@ -32,9 +32,7 @@ def _sha256_file(path: Path) -> str:
 
 
 def _canonical_hash(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), default=str
-    ).encode()
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -96,9 +94,7 @@ def load_fundamentals(
         raise ValueError("fundamentals missing columns: " + ", ".join(missing))
     frame = frame[list(REQUIRED_FUNDAMENTAL_COLUMNS)].copy()
     frame["symbol"] = frame["symbol"].str.upper().str.strip()
-    frame["fiscal_period_end"] = pd.to_datetime(
-        frame["fiscal_period_end"], errors="coerce"
-    )
+    frame["fiscal_period_end"] = pd.to_datetime(frame["fiscal_period_end"], errors="coerce")
     frame["filed_date"] = pd.to_datetime(frame["filed_date"], errors="coerce")
     frame["revenue"] = pd.to_numeric(frame["revenue"], errors="coerce")
     frame["gross_profit"] = pd.to_numeric(frame["gross_profit"], errors="coerce")
@@ -111,12 +107,9 @@ def load_fundamentals(
     if (frame["filed_date"] < frame["fiscal_period_end"]).any():
         raise ValueError("filed_date cannot precede fiscal_period_end")
     accepted = {
-        str(value).upper()
-        for value in contract["point_in_time_input"]["accepted_form_types"]
+        str(value).upper() for value in contract["point_in_time_input"]["accepted_form_types"]
     }
-    frame = frame[
-        frame["form_type"].isin(accepted) & frame["symbol"].isin(symbols)
-    ].copy()
+    frame = frame[frame["form_type"].isin(accepted) & frame["symbol"].isin(symbols)].copy()
     if frame.empty:
         raise ValueError("fundamentals contain no frozen-pool observations")
     if (frame["revenue"] <= 0).any():
@@ -139,18 +132,16 @@ def compute_pit_features(fundamentals: pd.DataFrame) -> pd.DataFrame:
             .sort_values("fiscal_period_end")
             .reset_index(drop=True)
         )
-        period_latest["gross_margin"] = (
-            period_latest["gross_profit"] / period_latest["revenue"]
-        )
+        period_latest["gross_margin"] = period_latest["gross_profit"] / period_latest["revenue"]
         period_latest["revenue_yoy"] = (
             period_latest["revenue"] / period_latest["revenue"].shift(4) - 1.0
         )
-        period_latest["revenue_growth_acceleration"] = (
-            period_latest["revenue_yoy"] - period_latest["revenue_yoy"].shift(1)
-        )
-        period_latest["gross_margin_yoy_change"] = (
-            period_latest["gross_margin"] - period_latest["gross_margin"].shift(4)
-        )
+        period_latest["revenue_growth_acceleration"] = period_latest["revenue_yoy"] - period_latest[
+            "revenue_yoy"
+        ].shift(1)
+        period_latest["gross_margin_yoy_change"] = period_latest["gross_margin"] - period_latest[
+            "gross_margin"
+        ].shift(4)
         currencies = period_latest["currency"]
         comparable = (
             currencies.eq(currencies.shift(1))
@@ -282,9 +273,7 @@ def build_factor_history(
                         None if latest is None else latest["filed_date"].date().isoformat()
                     ),
                     "fiscal_period_end": (
-                        None
-                        if latest is None
-                        else latest["fiscal_period_end"].date().isoformat()
+                        None if latest is None else latest["fiscal_period_end"].date().isoformat()
                     ),
                     **components,
                     "price": None if pd.isna(close) else float(close),
@@ -430,9 +419,7 @@ def register_factor_cards(registry_db: str | Path, contract: Mapping[str, Any]) 
             contract,
             key="revenue_growth_acceleration",
             name="Revenue growth acceleration",
-            definition=str(
-                contract["components"]["revenue_growth_acceleration"]["definition"]
-            ),
+            definition=str(contract["components"]["revenue_growth_acceleration"]["definition"]),
             family="growth",
             transformation="within_basket_percentile_rank",
             thesis="Improving revenue growth may identify strengthening operating momentum.",
@@ -441,9 +428,7 @@ def register_factor_cards(registry_db: str | Path, contract: Mapping[str, Any]) 
             contract,
             key="gross_margin_yoy_change",
             name="Gross-margin year-over-year improvement",
-            definition=str(
-                contract["components"]["gross_margin_yoy_change"]["definition"]
-            ),
+            definition=str(contract["components"]["gross_margin_yoy_change"]["definition"]),
             family="quality",
             transformation="within_basket_percentile_rank",
             thesis=(
@@ -456,8 +441,7 @@ def register_factor_cards(registry_db: str | Path, contract: Mapping[str, Any]) 
             key=str(contract["stable_factor_key"]),
             name="Equal-weight fundamental acceleration",
             definition=(
-                "0.5 * rank(revenue growth acceleration) + "
-                "0.5 * rank(gross-margin YoY change)"
+                "0.5 * rank(revenue growth acceleration) + 0.5 * rank(gross-margin YoY change)"
             ),
             family="composite",
             transformation="equal_weight_within_basket_percentile_mean",
@@ -483,9 +467,7 @@ def run_fundamental_acceleration(
     required_symbols = set(basket_by_symbol) | set(references)
     fundamentals_path = Path(fundamentals_csv).resolve()
     prices_path = Path(prices_csv).resolve()
-    fundamentals = load_fundamentals(
-        fundamentals_path, contract, set(basket_by_symbol)
-    )
+    fundamentals = load_fundamentals(fundamentals_path, contract, set(basket_by_symbol))
     features = compute_pit_features(fundamentals)
     prices = load_prices(prices_path, required_symbols)
     score_history, selection_history = build_factor_history(
@@ -528,8 +510,7 @@ def run_fundamental_acceleration(
     }
     _write_json(output / "decision.json", decision)
     output_hashes = {
-        filename: _sha256_file(output / filename)
-        for filename in [*payloads, "decision.json"]
+        filename: _sha256_file(output / filename) for filename in [*payloads, "decision.json"]
     }
     manifest: dict[str, Any] = {
         "schema_version": "1.0",

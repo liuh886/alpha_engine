@@ -1,5 +1,8 @@
-import json, sys; sys.path.insert(0, '.')
-import numpy as np, pandas as pd
+import json
+import sys
+sys.path.insert(0, '.')
+import numpy as np
+import pandas as pd
 
 # Load formal V1.2 trace
 with open('data/research/formal_model_runs/byd_allocation/byd_v1_2_convex_momentum_budget_v1/byd_v1_2_convex_momentum_budget_v1-through-2026_08_07/performance.json') as f:
@@ -35,7 +38,7 @@ print(f'  Mean ETF w: {formal["weight_515180"].mean():.4f}')
 
 # Check first active day
 active = formal[formal['gross_return'] != 0]
-print(f'\nFirst 3 active days:')
+print('\nFirst 3 active days:')
 for dt, row in active.head(3).iterrows():
     print(f'  {dt.date()}: gross={row["gross_return"]:.6f}, BYDw={row["weight_BYD"]:.3f}, ETFw={row["weight_515180"]:.3f}')
 

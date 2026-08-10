@@ -85,34 +85,22 @@ def _validate_calendar(
     up to 14 calendar days inside the requested range.
     """
     if len(cal) == 0:
-        raise RuntimeError(
-            "Trading calendar is empty — Qlib may not be initialized"
-        )
+        raise RuntimeError("Trading calendar is empty — Qlib may not be initialized")
     if cal.hasnans:
         raise RuntimeError("Trading calendar contains NaT values")
     if not cal.is_unique:
         raise RuntimeError("Trading calendar contains duplicate dates")
     if not cal.is_monotonic_increasing:
-        raise RuntimeError(
-            "Trading calendar is not monotonically increasing (unordered)"
-        )
+        raise RuntimeError("Trading calendar is not monotonically increasing (unordered)")
     req_start_ts = pd.Timestamp(required_start)
     req_end_ts = pd.Timestamp(required_end)
-    if (
-        cal[0] > req_start_ts
-        and (cal[0] - req_start_ts).days > _MAX_CALENDAR_BOUNDARY_GAP_DAYS
-    ):
+    if cal[0] > req_start_ts and (cal[0] - req_start_ts).days > _MAX_CALENDAR_BOUNDARY_GAP_DAYS:
         raise RuntimeError(
-            f"Trading calendar starts at {cal[0].date()}, "
-            f"after required start {required_start}"
+            f"Trading calendar starts at {cal[0].date()}, after required start {required_start}"
         )
-    if (
-        cal[-1] < req_end_ts
-        and (req_end_ts - cal[-1]).days > _MAX_CALENDAR_BOUNDARY_GAP_DAYS
-    ):
+    if cal[-1] < req_end_ts and (req_end_ts - cal[-1]).days > _MAX_CALENDAR_BOUNDARY_GAP_DAYS:
         raise RuntimeError(
-            f"Trading calendar ends at {cal[-1].date()}, "
-            f"before required end {required_end}"
+            f"Trading calendar ends at {cal[-1].date()}, before required end {required_end}"
         )
 
 
@@ -257,9 +245,7 @@ def generate_splits(
     from src.common.dates import default_train_end
 
     if min_train_months < 1:
-        raise ValueError(
-            f"min_train_months must be >= 1, got {min_train_months}"
-        )
+        raise ValueError(f"min_train_months must be >= 1, got {min_train_months}")
 
     train_end = train_end or default_train_end()
     start = datetime.strptime(train_start, "%Y-%m-%d")
@@ -434,25 +420,19 @@ def _align_multiindex(
         idx = obj.index
         if not isinstance(idx, pd.MultiIndex):
             raise TypeError(
-                f"{label} argument index must be pd.MultiIndex, "
-                f"got {type(idx).__name__}"
+                f"{label} argument index must be pd.MultiIndex, got {type(idx).__name__}"
             )
         for level_name in ("datetime", "instrument"):
             if level_name not in idx.names:
-                raise ValueError(
-                    f"{label} argument index missing level {level_name!r}"
-                )
+                raise ValueError(f"{label} argument index missing level {level_name!r}")
         if not idx.is_unique:
             raise ValueError(
-                f"{label} argument index contains duplicate "
-                "(datetime, instrument) entries"
+                f"{label} argument index contains duplicate (datetime, instrument) entries"
             )
 
     common = a.index.intersection(b.index).sort_values()
     if len(common) == 0:
-        raise ValueError(
-            "No common (datetime, instrument) pairs between the two arguments"
-        )
+        raise ValueError("No common (datetime, instrument) pairs between the two arguments")
     return a.loc[common], b.loc[common]
 
 
@@ -484,9 +464,7 @@ def _normalize_qlib_index(data: pd.Series | pd.DataFrame):
     if not isinstance(data.index, pd.MultiIndex):
         return data
     if set(data.index.names) != {"datetime", "instrument"}:
-        raise ValueError(
-            "Qlib data must use exactly the 'datetime' and 'instrument' index levels"
-        )
+        raise ValueError("Qlib data must use exactly the 'datetime' and 'instrument' index levels")
     return data.reorder_levels(["datetime", "instrument"]).sort_index()
 
 
@@ -523,8 +501,7 @@ def _load_raw_labels(
     label_exprs: list[str] = list(handler_kwargs.get("label", []))
     if not label_exprs:
         raise RuntimeError(
-            "No label expression in handler kwargs. "
-            "Cannot load raw forward returns."
+            "No label expression in handler kwargs. Cannot load raw forward returns."
         )
     label_expr = label_exprs[0]
     instr_key = handler_kwargs.get("instruments", "us")
@@ -540,9 +517,7 @@ def _load_raw_labels(
             "No data available — check Qlib data coverage."
         )
     if raw.shape[1] == 0:
-        raise RuntimeError(
-            f"Raw labels DataFrame has no columns for expression {label_expr!r}."
-        )
+        raise RuntimeError(f"Raw labels DataFrame has no columns for expression {label_expr!r}.")
     col = raw.iloc[:, 0]
     # Replace inf with NaN, then drop non-finite rows
     col = col.replace([np.inf, -np.inf], np.nan)
@@ -616,9 +591,7 @@ def _prepare_native_dataset(
 
         try:
             X = dataset.prepare(segments=seg_name, col_set="feature")
-            y = dataset.prepare(
-                segments=seg_name, col_set="label", data_key=DataHandler.DK_L
-            )
+            y = dataset.prepare(segments=seg_name, col_set="label", data_key=DataHandler.DK_L)
         except Exception:
             log.warning("Cannot prepare native dataset segment", segment=seg_name)
             continue
@@ -772,8 +745,9 @@ def _run_single_split(
     train_start_dt = datetime.strptime(train_start, "%Y-%m-%d")
     train_end_dt = datetime.strptime(train_end, "%Y-%m-%d")
     train_months = max(
-        1, (train_end_dt.year - train_start_dt.year) * 12
-        + (train_end_dt.month - train_start_dt.month)
+        1,
+        (train_end_dt.year - train_start_dt.year) * 12
+        + (train_end_dt.month - train_start_dt.month),
     )
     val_months = max(3, min(6, int(train_months * 0.2)))
     val_start_dt = _add_months(train_end_dt, -val_months)
@@ -878,9 +852,7 @@ def _run_single_split(
             status="skipped",
             error_message=f"Index alignment failed: {e}",
         )
-    pearson_ic, rank_ic = _compute_mean_daily_ic(
-        pred_aligned, act_aligned
-    )
+    pearson_ic, rank_ic = _compute_mean_daily_ic(pred_aligned, act_aligned)
 
     return SplitResult(
         split_id=split_id,
@@ -1114,17 +1086,11 @@ def walk_forward_vectorized(
     from src.common.qlib_init import build_qlib_init_cfg, safe_qlib_init
 
     if min_train_months < 1:
-        raise ValueError(
-            f"min_train_months must be >= 1, got {min_train_months}"
-        )
+        raise ValueError(f"min_train_months must be >= 1, got {min_train_months}")
     if training_objective not in {"regression", "lambdarank"}:
-        raise ValueError(
-            "training_objective must be 'regression' or 'lambdarank'"
-        )
+        raise ValueError("training_objective must be 'regression' or 'lambdarank'")
     if feature_profile not in {"alpha158", "curated_us_momentum"}:
-        raise ValueError(
-            "feature_profile must be 'alpha158' or 'curated_us_momentum'"
-        )
+        raise ValueError("feature_profile must be 'alpha158' or 'curated_us_momentum'")
 
     train_end = train_end or default_train_end()
     qlib_cfg = build_qlib_init_cfg(None, market=market)
@@ -1230,9 +1196,7 @@ def walk_forward_vectorized(
                 end_time=full_end,
             )
             if isinstance(benchmark_data.index, pd.MultiIndex):
-                benchmark_data = benchmark_data.xs(
-                    benchmark_symbol, level="instrument"
-                )
+                benchmark_data = benchmark_data.xs(benchmark_symbol, level="instrument")
         if use_model_matrix_cache:
             write_model_matrix_snapshot(
                 cache_path,
@@ -1241,9 +1205,7 @@ def walk_forward_vectorized(
                 labels=y_all,
                 benchmark=benchmark_data,
             )
-            cache_status = (
-                "refreshed" if refresh_model_matrix_cache else "built"
-            )
+            cache_status = "refreshed" if refresh_model_matrix_cache else "built"
 
     X_all = X_all.fillna(0.0)
     y_series = y_all.iloc[:, 0]
@@ -1303,8 +1265,7 @@ def walk_forward_vectorized(
         n_splits=len(splits),
         min_train_months=min_train_months,
         training_protocol=(
-            f"minimum {min_train_months} months of training "
-            f"history before first evaluation"
+            f"minimum {min_train_months} months of training history before first evaluation"
         ),
     )
     result = WalkForwardResult(
@@ -1500,9 +1461,7 @@ def walk_forward_vectorized(
             val_months = max(3, min(6, int(train_months * 0.2)))
             val_start_dt = _add_months(train_end_dt, -val_months)
             val_start_str = val_start_dt.strftime("%Y-%m-%d")
-            safe_train_end = (
-                val_start_dt - timedelta(days=1)
-            ).strftime("%Y-%m-%d")
+            safe_train_end = (val_start_dt - timedelta(days=1)).strftime("%Y-%m-%d")
             safe_valid_end = min(
                 pd.Timestamp(safe_te), pd.Timestamp(vs) - timedelta(days=1)
             ).strftime("%Y-%m-%d")
@@ -1511,9 +1470,7 @@ def walk_forward_vectorized(
         # The safe_train_end above accounts for validation hold-out and
         # label-horizon purges.  Compare it against the calendar threshold
         # rather than the nominal train_end from generate_splits.
-        min_actual_dt = _add_months(
-            datetime.strptime(ts, "%Y-%m-%d"), min_train_months
-        )
+        min_actual_dt = _add_months(datetime.strptime(ts, "%Y-%m-%d"), min_train_months)
         if pd.Timestamp(safe_train_end) < pd.Timestamp(min_actual_dt):
             log.info(
                 "Vectorized WF split skipped: insufficient actual training",
@@ -1578,9 +1535,7 @@ def walk_forward_vectorized(
                 continue
 
             # Select stable features using train+valid ONLY (selector NEVER sees test).
-            selection = select_stable_features(
-                X_tr, y_tr, X_va, y_va, max_features=10
-            )
+            selection = select_stable_features(X_tr, y_tr, X_va, y_va, max_features=10)
             if len(selection) == 0:
                 result.splits.append(
                     SplitResult(
@@ -1599,9 +1554,7 @@ def walk_forward_vectorized(
             selected = selection.index.tolist()
             use_monotone_constraints = feature_profile != "curated_us_momentum"
             monotone_constraints = (
-                monotone_constraints_from_selection(selection)
-                if use_monotone_constraints
-                else None
+                monotone_constraints_from_selection(selection) if use_monotone_constraints else None
             )
 
             # Subset to selected features.
@@ -1632,9 +1585,7 @@ def walk_forward_vectorized(
                     reference=train_data,
                     group=valid_groups,
                 )
-                feval = make_daily_cs_ic_eval(
-                    rank_X_va.index, continuous_labels=rank_y_va
-                )
+                feval = make_daily_cs_ic_eval(rank_X_va.index, continuous_labels=rank_y_va)
             else:
                 train_data = lgb.Dataset(X_tr, label=y_tr)
                 valid_data = lgb.Dataset(X_va, label=y_va, reference=train_data)
@@ -1659,9 +1610,7 @@ def walk_forward_vectorized(
             y_pred_arr = booster.predict(X_te)
             y_pred = pd.Series(y_pred_arr, index=X_te.index, name="prediction")
             pred_aligned, act_aligned = _align_multiindex(y_pred, y_te)
-            pearson_ic, rank_ic = _compute_mean_daily_ic(
-                pred_aligned.values, act_aligned
-            )
+            pearson_ic, rank_ic = _compute_mean_daily_ic(pred_aligned.values, act_aligned)
 
             result.splits.append(
                 SplitResult(

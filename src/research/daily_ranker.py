@@ -44,12 +44,7 @@ def make_daily_rank_groups(index: pd.MultiIndex) -> list[int]:
 
     if "datetime" not in index.names:
         raise ValueError("index must include a datetime level")
-    return [
-        int(size)
-        for size in index.to_frame(index=False)
-        .groupby("datetime", sort=True)
-        .size()
-    ]
+    return [int(size) for size in index.to_frame(index=False).groupby("datetime", sort=True).size()]
 
 
 def make_daily_topk_relevance_target(
@@ -94,9 +89,7 @@ def make_daily_topk_relevance_target(
     instrument_level = values.index.names.index("instrument")
     for _, group in values.groupby(level="datetime", sort=True):
         if len(group) <= top_k:
-            raise ValueError(
-                "each Top-K ranker group must contain more rows than top_k"
-            )
+            raise ValueError("each Top-K ranker group must contain more rows than top_k")
         ordered = sorted(
             group.items(),
             key=lambda item: (
@@ -138,16 +131,9 @@ def _prepare_valid_ranker_inputs(
         raise ValueError("minimum_group_size must be at least two")
 
     common = features.index.intersection(raw_returns.index)
-    frame_x = (
-        features.loc[common]
-        .sort_index()
-        .replace([np.inf, -np.inf], np.nan)
-    )
+    frame_x = features.loc[common].sort_index().replace([np.inf, -np.inf], np.nan)
     frame_returns = (
-        raw_returns.loc[common]
-        .sort_index()
-        .astype(float)
-        .replace([np.inf, -np.inf], np.nan)
+        raw_returns.loc[common].sort_index().astype(float).replace([np.inf, -np.inf], np.nan)
     )
 
     valid_rows = frame_x.notna().all(axis=1) & frame_returns.iloc[:, 0].notna()
