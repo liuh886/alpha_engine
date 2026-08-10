@@ -16,19 +16,26 @@ on:
           - "false"
           - "true"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: research-validation-${{ inputs.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 1
           show-progress: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -65,7 +72,7 @@ jobs:
 
       - name: Upload validation artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: research-validation-${{ inputs.ref }}
           path: |
@@ -73,3 +80,4 @@ jobs:
             artifacts/evidence/notebook_10d_lab/*.json
             /tmp/*_out.ipynb
           if-no-files-found: ignore
+          retention-days: 14
