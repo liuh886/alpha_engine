@@ -90,7 +90,7 @@ describe("PerformanceCharts benchmark infrastructure", () => {
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "BYD");
     expect(screen.getByTestId("benchmark-line")).toHaveTextContent("BYD");
 
-    fireEvent.change(screen.getByLabelText("Chart baseline"), { target: { value: "benchmark_byd_v1_1" } });
+    fireEvent.change(screen.getByLabelText("Chart baseline"), { target: { value: "benchmark_bydv11" } });
 
     expect(screen.getByTestId("equity-curve-container")).toHaveAttribute("data-default-benchmark", "BYD v1.1");
     expect(screen.getByTestId("benchmark-line")).toHaveTextContent("BYD v1.1");
