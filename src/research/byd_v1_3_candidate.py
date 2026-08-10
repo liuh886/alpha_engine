@@ -1,308 +1,241 @@
-"""Frozen BYD v1.3 challenger built strictly as a delta on formal v1.2.
+"""Frozen BYD v1.3 challenger logic.
 
-The challenger may change only three things relative to the maintained v1.2
-implementation:
+This module contains only the candidate delta relative to the accepted BYD v1.2
+architecture:
 
-1. a 20-session minimum hold on the existing base risk-state target changes;
-2. a 55% BYD / 45% 515180 allocation while the held base target is defensive
-   and the governed market state is ``bear``;
-3. a 15% maximum financed expansion with convex power 2.0.
+1. a 20 eligible-session minimum hold on the V1.0 risk-on/off hysteresis;
+2. 55% BYD / 45% 515180.SH defense while the canonical market state is bear;
+3. a 15% maximum financed trend-expansion increment with convex power 2.
 
-Everything else -- canonical inputs, v1.2 baseline, market/volatility states,
-execution, costs, financing and metrics -- is reused from maintained modules.
-There is intentionally no duplicate v1.2 reconstruction here.
+The accepted V1.2 baseline is never reimplemented here. Certification must bind
+the current formal Bundle v2 baseline and may use the maintained V1.2 runner only
+to reproduce stress scenarios after its primary trace has been checked against
+the formal bundle.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from typing import Iterable
 
 import numpy as np
 import pandas as pd
 
-from src.research.byd_515180_allocation import (
-    AllocationResult,
-    PRIMARY_COST_BPS,
-    STRESS_COST_BPS,
-    WINDOWS,
-    metrics,
-)
-from src.research.byd_v1_2_convex_momentum import (
-    CANDIDATE as V12_MODEL_ID,
-    build_decisions as build_v12_decisions,
-    momentum_scale,
-    run_candidates as run_v12_candidates,
-)
+from src.research.byd_515180_allocation import AllocationResult
+from src.research.byd_v1_2_convex_momentum import momentum_scale
 from src.research.byd_v1_2_trend_expansion import (
-    PRIMARY_FINANCING_RATE,
-    STRESS_FINANCING_RATE,
     build_expansion_state,
     run_financed_allocation,
 )
 
-MODEL_ID = "byd_v1_3_min_hold_bear_defense"
-MIN_HOLD_SESSIONS = 20
-BEAR_DEFENSE_BYD = 0.55
-BEAR_DEFENSE_ETF = 0.45
-MAX_FINANCED_INCREMENT = 0.15
-FULL_INCREMENT_MOMENTUM = 0.15
-CONVEX_POWER = 2.0
+CANDIDATE_NAME = "byd_v1_3_min_hold_bear_defense"
+
+V13_MIN_HOLD_DAYS = 20
+V13_BEAR_DEFENSE_BYD = 0.55
+V13_BEAR_DEFENSE_ETF = 0.45
+V13_EXPANSION_PCT = 0.15
+V13_CONVEX_POWER = 2.0
+V13_FULL_INCREMENT_MOMENTUM = 0.15
+
+_REQUIRED_FULL_HISTORY_COLUMNS = {
+    "sma_120",
+    "mom_20",
+    "mom_60",
+    "market_state",
+    "open_research_eligible",
+}
+_REQUIRED_COMMON_COLUMNS = {
+    "market_state",
+    "vol_state",
+    "drawdown_252",
+    "mom_20",
+    "mom_60",
+    "common_open_eligible",
+    "byd_open_return",
+    "etf_open_return",
+}
 
 
-@dataclass(frozen=True)
-class ChallengeResult:
-    decision: str
-    gates: dict[str, bool]
-    diagnostics: dict[str, Any]
-    comparison: pd.DataFrame
-    period_attribution: pd.DataFrame
-
-
-def _minimum_hold_targets(
-    desired: pd.Series,
+def _stateful_min_hold(
+    entry: pd.Series,
+    exit_: pd.Series,
+    eligible: pd.Series,
     *,
-    min_hold_sessions: int = MIN_HOLD_SESSIONS,
+    min_hold: int,
 ) -> pd.Series:
-    """Delay formal base-target changes until the current state is mature.
+    """Return a hysteresis state with a minimum count of eligible sessions.
 
-    The first overlap state is treated as already mature because it is inherited
-    from the canonical pre-overlap v1.2 history rather than created on the ETF
-    overlap start date. No market indicator is recomputed inside this function.
+    The state is decided at the close. The hold counter advances only on rows
+    whose BYD open is research eligible, matching the evidence clock rather than
+    counting quarantined opens as valid holding opportunities.
     """
-    if min_hold_sessions < 1:
-        raise ValueError("min_hold_sessions must be positive")
-    if desired.empty:
-        return desired.astype(float).copy()
-    if desired.isna().any():
-        raise ValueError("base target contains missing values")
 
-    current = float(desired.iloc[0])
-    held = min_hold_sessions
-    values = [current]
-    for raw_target in desired.iloc[1:]:
-        target = float(raw_target)
-        if not np.isclose(target, current, atol=1e-12) and held >= min_hold_sessions:
-            current = target
-            held = 1
-        else:
-            held += 1
-        values.append(current)
-    return pd.Series(values, index=desired.index, dtype=float, name="base_byd_weight")
+    if min_hold < 1:
+        raise ValueError("min_hold must be positive")
+    if not entry.index.equals(exit_.index) or not entry.index.equals(eligible.index):
+        raise ValueError("entry, exit and eligible indices must match")
+
+    active = False
+    eligible_held = 0
+    values: list[float] = []
+    for enter_now, exit_now, eligible_now in zip(
+        entry.fillna(False),
+        exit_.fillna(False),
+        eligible.fillna(False),
+        strict=True,
+    ):
+        if active and bool(eligible_now):
+            eligible_held += 1
+
+        if active and bool(exit_now) and eligible_held >= min_hold:
+            active = False
+            eligible_held = 0
+        elif not active and bool(enter_now):
+            active = True
+            eligible_held = 0
+
+        values.append(1.0 if active else 0.0)
+
+    return pd.Series(values, index=entry.index, dtype=float, name="base_risk_on")
+
+
+def build_v13_signals(
+    full_byd_dataset: pd.DataFrame,
+    *,
+    target_index: Iterable[pd.Timestamp] | pd.Index | None = None,
+) -> pd.DataFrame:
+    """Build V1.3 signals on the full canonical BYD history.
+
+    `full_byd_dataset` must be the output of `build_research_dataset()` before
+    any 515180 overlap restriction. This preserves the pre-ETF SMA and hysteresis
+    state. `target_index` may then restrict the finished signal path to the
+    executable BYD/515180 overlap.
+    """
+
+    missing = sorted(_REQUIRED_FULL_HISTORY_COLUMNS - set(full_byd_dataset.columns))
+    if missing:
+        raise ValueError(f"full BYD dataset missing V1.3 signal columns: {missing}")
+
+    risk_on_entry = (
+        full_byd_dataset["close"].gt(full_byd_dataset["sma_120"])
+        & full_byd_dataset["mom_20"].gt(0.0)
+    )
+    risk_off_exit = (
+        full_byd_dataset["close"].lt(full_byd_dataset["sma_120"])
+        & full_byd_dataset["mom_60"].lt(0.0)
+    )
+    base_risk_on = _stateful_min_hold(
+        risk_on_entry,
+        risk_off_exit,
+        full_byd_dataset["open_research_eligible"].astype(bool),
+        min_hold=V13_MIN_HOLD_DAYS,
+    )
+
+    bear = full_byd_dataset["market_state"].eq("bear")
+    base_byd = pd.Series(0.75, index=full_byd_dataset.index, dtype=float)
+    base_byd.loc[base_risk_on.gt(0.5)] = 1.0
+    base_byd.loc[base_risk_on.lt(0.5) & bear] = V13_BEAR_DEFENSE_BYD
+
+    result = pd.DataFrame(
+        {
+            "base_byd_weight": base_byd,
+            "base_risk_on": base_risk_on,
+            "is_bear": bear.astype(bool),
+        },
+        index=full_byd_dataset.index,
+    )
+    if target_index is None:
+        return result
+
+    index = pd.DatetimeIndex(pd.to_datetime(list(target_index))).normalize()
+    restricted = result.reindex(index)
+    if restricted.isna().any().any():
+        missing_dates = [
+            stamp.strftime("%Y-%m-%d")
+            for stamp in restricted.index[restricted.isna().any(axis=1)]
+        ]
+        raise ValueError(f"V1.3 signals missing target dates: {missing_dates[:5]}")
+    return restricted
 
 
 def build_v13_decision(
     common: pd.DataFrame,
     signals: pd.DataFrame,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Return exact v1.2 baseline decision, v1.3 decision and diagnostics."""
-    v12_decisions, v12_diagnostics = build_v12_decisions(common, signals)
-    v12_decision = v12_decisions[V12_MODEL_ID]
-    formal_base = v12_diagnostics["base_byd_weight"].astype(float)
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Build the frozen V1.3 allocation and rule-input diagnostics."""
 
-    held_base = _minimum_hold_targets(formal_base)
-    is_bear = common["market_state"].eq("bear")
-    v13_base = held_base.copy()
-    bear_defense = v13_base.lt(1.0) & is_bear
-    v13_base.loc[bear_defense] = BEAR_DEFENSE_BYD
+    missing = sorted(_REQUIRED_COMMON_COLUMNS - set(common.columns))
+    if missing:
+        raise ValueError(f"common dataset missing V1.3 execution columns: {missing}")
+    if not common.index.equals(signals.index):
+        raise ValueError("common and V1.3 signal indices must match")
+    if "base_byd_weight" not in signals:
+        raise ValueError("V1.3 signals missing base_byd_weight")
 
-    v13_signals = signals.copy()
-    v13_signals["base_byd_weight"] = v13_base
-    v13_state = build_expansion_state(common, v13_signals)
-    active = v13_state["trend_expansion_active"].astype(bool)
+    expansion_state = build_expansion_state(
+        common,
+        signals[["base_byd_weight"]],
+    )
+    active = expansion_state["trend_expansion_active"].astype(bool)
     scale = momentum_scale(
         common["mom_20"],
-        full_increment_momentum=FULL_INCREMENT_MOMENTUM,
-        convex_power=CONVEX_POWER,
+        full_increment_momentum=V13_FULL_INCREMENT_MOMENTUM,
+        convex_power=V13_CONVEX_POWER,
     )
-    increment = active.astype(float) * MAX_FINANCED_INCREMENT * scale
+    increment = active.astype(float) * V13_EXPANSION_PCT * scale
 
-    byd_weight = v13_base + increment
-    etf_weight = (1.0 - v13_base).where(increment.eq(0.0), 0.0)
-    cash_weight = 1.0 - byd_weight - etf_weight
-    v13_decision = pd.DataFrame(
+    base = signals["base_byd_weight"].astype(float)
+    byd = base + increment
+    etf = (1.0 - base).where(increment.eq(0.0), 0.0)
+    cash = 1.0 - byd - etf
+    decision = pd.DataFrame(
         {
-            "byd_weight": byd_weight,
-            "etf_weight": etf_weight,
-            "cash_weight": cash_weight,
+            "byd_weight": byd,
+            "etf_weight": etf,
+            "cash_weight": cash,
         },
         index=common.index,
     )
 
-    if not np.allclose(v13_decision.sum(axis=1), 1.0, atol=1e-12):
-        raise AssertionError("v1.3 weights do not sum to one")
-    if v13_decision["byd_weight"].lt(0.0).any() or v13_decision["etf_weight"].lt(0.0).any():
-        raise AssertionError("v1.3 contains a negative risky-asset weight")
-    if v13_decision["byd_weight"].gt(1.15 + 1e-12).any():
-        raise AssertionError("v1.3 exceeds the frozen 115% BYD cap")
-    if (increment.gt(0.0) & ~active).any():
-        raise AssertionError("v1.3 financing exists outside the inherited expansion state")
+    if not np.allclose(decision.sum(axis=1), 1.0, atol=1e-12):
+        raise AssertionError("V1.3 weights do not sum to one")
+    if decision["byd_weight"].lt(0.0).any() or decision["etf_weight"].lt(0.0).any():
+        raise AssertionError("V1.3 contains negative risky-asset weight")
+    if decision["byd_weight"].gt(1.15 + 1e-12).any():
+        raise AssertionError("V1.3 exceeds the frozen 115% BYD cap")
+    bear_defense = signals["is_bear"] & signals["base_risk_on"].lt(0.5)
+    if not np.allclose(
+        decision.loc[bear_defense & increment.eq(0.0), "etf_weight"],
+        V13_BEAR_DEFENSE_ETF,
+        atol=1e-12,
+    ):
+        raise AssertionError("V1.3 bear defense ETF weight drifted")
 
-    diagnostics = v13_state.copy()
-    diagnostics["formal_base_byd_weight"] = formal_base
-    diagnostics["held_base_byd_weight"] = held_base
-    diagnostics["bear_defense_active"] = bear_defense
+    diagnostics = expansion_state.copy()
+    diagnostics["base_risk_on"] = signals["base_risk_on"]
+    diagnostics["is_bear"] = signals["is_bear"]
     diagnostics["momentum_scale"] = scale
     diagnostics["financed_increment"] = increment
-    diagnostics["candidate_byd_weight"] = byd_weight
-    return v12_decision, v13_decision, diagnostics
+    diagnostics["candidate_byd_weight"] = byd
+    diagnostics["candidate_etf_weight"] = etf
+    diagnostics["candidate_cash_weight"] = cash
+    return decision, diagnostics
 
 
-def run_challenger(
+def run_v13_candidate(
     common: pd.DataFrame,
     signals: pd.DataFrame,
     *,
     cost_bps: float,
     annual_financing_rate: float,
-) -> dict[str, AllocationResult]:
-    """Run exact maintained v1.2 and the frozen v1.3 challenger."""
-    v12_results, _ = run_v12_candidates(
+) -> tuple[AllocationResult, pd.DataFrame]:
+    """Execute the frozen candidate through the maintained allocation engine."""
+
+    decision, diagnostics = build_v13_decision(common, signals)
+    result = run_financed_allocation(
+        CANDIDATE_NAME,
         common,
-        signals,
+        decision,
         cost_bps=cost_bps,
         annual_financing_rate=annual_financing_rate,
     )
-    _, v13_decision, _ = build_v13_decision(common, signals)
-    v13_result = run_financed_allocation(
-        MODEL_ID,
-        common,
-        v13_decision,
-        cost_bps=cost_bps,
-        annual_financing_rate=annual_financing_rate,
-    )
-    return {V12_MODEL_ID: v12_results[V12_MODEL_ID], MODEL_ID: v13_result}
-
-
-def run_primary_and_stress(
-    common: pd.DataFrame,
-    signals: pd.DataFrame,
-) -> tuple[dict[str, AllocationResult], dict[str, AllocationResult]]:
-    primary = run_challenger(
-        common,
-        signals,
-        cost_bps=PRIMARY_COST_BPS,
-        annual_financing_rate=PRIMARY_FINANCING_RATE,
-    )
-    stress = run_challenger(
-        common,
-        signals,
-        cost_bps=STRESS_COST_BPS,
-        annual_financing_rate=STRESS_FINANCING_RATE,
-    )
-    return primary, stress
-
-
-def _window_metrics(result: AllocationResult, window: str) -> dict[str, float]:
-    start, end = WINDOWS[window]
-    block = result.daily.loc[pd.Timestamp(start) : pd.Timestamp(end)]
-    if block.empty:
-        raise ValueError(f"empty evaluation window: {window}")
-    return metrics(block)
-
-
-def comparison_table(
-    primary: dict[str, AllocationResult],
-    stress: dict[str, AllocationResult],
-) -> pd.DataFrame:
-    rows: list[dict[str, Any]] = []
-    for scenario, results in (("primary", primary), ("stress", stress)):
-        for model_id in (V12_MODEL_ID, MODEL_ID):
-            for window in WINDOWS:
-                rows.append(
-                    {
-                        "scenario": scenario,
-                        "model": model_id,
-                        "window": window,
-                        **_window_metrics(results[model_id], window),
-                    }
-                )
-    return pd.DataFrame(rows)
-
-
-def period_attribution(primary: dict[str, AllocationResult]) -> pd.DataFrame:
-    rows: list[dict[str, Any]] = []
-    positive: dict[str, float] = {}
-    for window in ("development", "fixed_validation", "retrospective_2025_plus"):
-        start, end = WINDOWS[window]
-        baseline = primary[V12_MODEL_ID].daily.loc[start:end, "net_return"].dropna()
-        candidate = primary[MODEL_ID].daily.loc[start:end, "net_return"].dropna()
-        baseline_wealth = float((1.0 + baseline).prod())
-        candidate_wealth = float((1.0 + candidate).prod())
-        relative = candidate_wealth / baseline_wealth - 1.0
-        positive[window] = max(relative, 0.0)
-        rows.append({"window": window, "relative_terminal_wealth": relative})
-    positive_total = sum(positive.values())
-    for row in rows:
-        contribution = positive[row["window"]]
-        row["positive_contribution_share"] = (
-            contribution / positive_total if positive_total > 0.0 else 0.0
-        )
-    return pd.DataFrame(rows)
-
-
-def evaluate_challenge(
-    primary: dict[str, AllocationResult],
-    stress: dict[str, AllocationResult],
-    *,
-    maximum_cagr_shortfall_pp: float = 0.50,
-    minimum_drawdown_improvement_pp: float = 2.0,
-    maximum_round_trips_per_year: float = 4.0,
-    maximum_positive_period_share: float = 0.60,
-) -> ChallengeResult:
-    comparison = comparison_table(primary, stress)
-    attribution = period_attribution(primary)
-
-    def row(scenario: str, model: str, window: str) -> pd.Series:
-        selected = comparison[
-            (comparison["scenario"] == scenario)
-            & (comparison["model"] == model)
-            & (comparison["window"] == window)
-        ]
-        if len(selected) != 1:
-            raise AssertionError(f"missing comparison row: {scenario}/{model}/{window}")
-        return selected.iloc[0]
-
-    p_base = row("primary", V12_MODEL_ID, "full_overlap")
-    p_cand = row("primary", MODEL_ID, "full_overlap")
-    s_base = row("stress", V12_MODEL_ID, "full_overlap")
-    s_cand = row("stress", MODEL_ID, "full_overlap")
-    val_base = row("primary", V12_MODEL_ID, "fixed_validation")
-    val_cand = row("primary", MODEL_ID, "fixed_validation")
-    recent_base = row("primary", V12_MODEL_ID, "retrospective_2025_plus")
-    recent_cand = row("primary", MODEL_ID, "retrospective_2025_plus")
-
-    cagr_tolerance = maximum_cagr_shortfall_pp / 100.0
-    drawdown_improvement = minimum_drawdown_improvement_pp / 100.0
-    largest_period_share = float(attribution["positive_contribution_share"].max())
-
-    gates = {
-        "primary_full_cagr": float(p_cand["cagr"]) >= float(p_base["cagr"]) - cagr_tolerance,
-        "primary_full_sharpe": float(p_cand["sharpe"]) >= float(p_base["sharpe"]),
-        "primary_full_calmar": float(p_cand["calmar"]) >= float(p_base["calmar"]),
-        "primary_full_drawdown": float(p_cand["max_drawdown"]) >= float(p_base["max_drawdown"]) + drawdown_improvement,
-        "fixed_validation_cagr": float(val_cand["cagr"]) >= float(val_base["cagr"]),
-        "retrospective_2025_plus_cagr": float(recent_cand["cagr"]) >= float(recent_base["cagr"]),
-        "turnover_cap": float(p_cand["round_trips_per_year"]) <= maximum_round_trips_per_year,
-        "stress_full_cagr": float(s_cand["cagr"]) >= float(s_base["cagr"]) - cagr_tolerance,
-        "stress_full_calmar": float(s_cand["calmar"]) >= float(s_base["calmar"]),
-        "stress_full_drawdown": float(s_cand["max_drawdown"]) >= float(s_base["max_drawdown"]) + drawdown_improvement,
-        "positive_period_concentration": largest_period_share <= maximum_positive_period_share,
-    }
-    supported = all(gates.values())
-    diagnostics = {
-        "largest_positive_period_share": largest_period_share,
-        "primary_cagr_delta": float(p_cand["cagr"] - p_base["cagr"]),
-        "primary_sharpe_delta": float(p_cand["sharpe"] - p_base["sharpe"]),
-        "primary_calmar_delta": float(p_cand["calmar"] - p_base["calmar"]),
-        "primary_drawdown_improvement": float(p_cand["max_drawdown"] - p_base["max_drawdown"]),
-        "stress_cagr_delta": float(s_cand["cagr"] - s_base["cagr"]),
-        "stress_calmar_delta": float(s_cand["calmar"] - s_base["calmar"]),
-        "stress_drawdown_improvement": float(s_cand["max_drawdown"] - s_base["max_drawdown"]),
-    }
-    return ChallengeResult(
-        decision="byd_v1_3_supported" if supported else "byd_v1_3_not_supported",
-        gates=gates,
-        diagnostics=diagnostics,
-        comparison=comparison,
-        period_attribution=attribution,
-    )
+    return result, diagnostics
