@@ -44,7 +44,10 @@ export function SecurityExplorerAccessPreview({ openAccount }: { openAccount: ()
                 const rising = index % 4 !== 1;
                 return (
                   <div key={`${height}-${index}`} className="relative flex h-full flex-1 items-end justify-center">
-                    <span className={`absolute bottom-[${Math.max(4, height - 14)}px] h-[${height + 20}px] w-px ${rising ? 'bg-emerald-500/55' : 'bg-rose-500/55'}`} />
+                    <span
+                      className={rising ? 'absolute w-px bg-emerald-500/55' : 'absolute w-px bg-rose-500/55'}
+                      style={{ bottom: `${Math.max(4, height - 14)}px`, height: `${height + 20}px` }}
+                    />
                     <span
                       className={rising ? 'w-full max-w-[10px] rounded-[2px] bg-emerald-500/75' : 'w-full max-w-[10px] rounded-[2px] bg-rose-500/75'}
                       style={{ height: `${height}px` }}
