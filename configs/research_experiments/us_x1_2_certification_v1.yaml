@@ -1,0 +1,109 @@
+schema_version: '1.0'
+experiment_id: us_x1_2_certification_v1
+parent_model_id: us_x1_1
+status: preregistered_certification
+research_only: true
+trade_ready: false
+
+fixed_contract:
+  market: us
+  universe_id: us_selected_equities_v2
+  benchmark: QQQ
+  factor_group: momentum_volatility_volume
+  label_horizon_sessions: 10
+  holding_sessions: 10
+  rebalance_sessions: 10
+  top_n: 15
+  weighting: equal_weight
+  max_names_per_sector: 4
+  development_windows: [2024H1, 2024H2, 2025H1, 2025H2]
+  reporting_only_windows: [2026H1]
+  fresh_challenge: 2026H2_partial_through_provider_cutoff
+  cost_stress_bps: [20, 40, 60]
+
+candidates:
+  sector_cap_only:
+    calibration:
+      n_gain_bins: 7
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 1.0
+      colsample_bytree: 1.0
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+  r11_sampled:
+    calibration:
+      n_gain_bins: 7
+      num_boost_round: 200
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+  r11_lower_lr:
+    calibration:
+      n_gain_bins: 7
+      num_boost_round: 300
+      max_leaves: 31
+      max_depth: 0
+      min_child_weight: 1.0
+      learning_rate: 0.03
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.0
+      reg_lambda: 1.0
+      seed: 42
+
+baseline:
+  calibration_id: us_x1_1_effective_baseline
+  sector_cap: false
+  calibration:
+    n_gain_bins: 7
+    num_boost_round: 200
+    max_leaves: 31
+    max_depth: 0
+    min_child_weight: 1.0
+    learning_rate: 0.05
+    subsample: 1.0
+    colsample_bytree: 1.0
+    reg_alpha: 0.0
+    reg_lambda: 1.0
+    seed: 42
+
+promotion_gates:
+  development:
+    - four_positive_relative_excess_windows
+    - positive_60bps_compounded_relative_excess
+    - retain_at_least_90pct_baseline_relative_excess
+    - drawdown_improves_3pp_or_stays_above_minus_22pct
+    - mean_rank_ic_not_materially_weaker_than_baseline
+    - strongest_positive_window_share_below_55pct
+  fresh_challenge:
+    - challenge_window_exists
+    - positive_20bps_relative_excess
+    - positive_60bps_relative_excess
+    - drawdown_not_more_than_2pp_worse_than_baseline
+  determinism:
+    - selected_candidate_score_path_reproduces_exactly
+
+selection_policy:
+  scope: development_windows_only
+  reporting_windows_may_rank_candidates: false
+  fresh_challenge_may_rank_candidates: false
+  among_development_gate_passers: maximize_existing_native_selection_score
+  native_selection_score: relative_excess_20bps_minus_drawdown_penalty_plus_ic_and_diversification_terms
+  no_fallback_to_second_candidate_if_fresh_challenge_fails: true
+
+version_policy:
+  target_version: US x1.2
+  automatic_promotion: false
+  explicit_user_direction_required: true
+  current_user_direction_date: '2026-08-11'
