@@ -12,6 +12,8 @@ on:
       - 'src/research/experiment_harness.py'
       - 'src/research/formal_baseline.py'
       - 'src/research/formal_baseline_onboarding.py'
+      - 'src/research/rules_based_allocation_experiment_runner.py'
+      - 'src/research/byd_v1_3_candidate.py'
       - 'src/research/research_receipt.py'
       - 'scripts/prepare_research_source_repair.py'
       - 'scripts/promote_approved_research_source_repair.py'
@@ -21,6 +23,7 @@ on:
       - 'tests/test_cross_sectional_experiment_runner.py'
       - 'tests/test_experiment_harness.py'
       - 'tests/test_formal_baseline_onboarding.py'
+      - 'tests/test_rules_based_allocation_experiment_runner.py'
       - 'tests/test_research_receipt.py'
       - '.github/workflows/research-experiment.yml'
   workflow_dispatch:
@@ -171,6 +174,8 @@ jobs:
             src/research/cross_sectional_experiment_runner.py \
             src/research/formal_baseline.py \
             src/research/formal_baseline_onboarding.py \
+            src/research/rules_based_allocation_experiment_runner.py \
+            src/research/byd_v1_3_candidate.py \
             src/research/research_receipt.py \
             scripts/prepare_research_source_repair.py \
             scripts/promote_approved_research_source_repair.py \
@@ -180,11 +185,13 @@ jobs:
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_formal_baseline_onboarding.py \
+            tests/test_rules_based_allocation_experiment_runner.py \
             tests/test_research_receipt.py
           uv run pytest \
             tests/test_experiment_harness.py \
             tests/test_cross_sectional_experiment_runner.py \
             tests/test_formal_baseline_onboarding.py \
+            tests/test_rules_based_allocation_experiment_runner.py \
             tests/test_research_receipt.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
