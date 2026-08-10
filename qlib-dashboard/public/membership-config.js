@@ -19,8 +19,8 @@
       en: 'AlphaEngine research account',
     },
     description: {
-      zh: '登录用于统一账户身份。AlphaEngine Pro 解锁高级模型、完整回测、归因与研究证据。',
-      en: 'Sign in to keep one account identity. AlphaEngine Pro unlocks advanced models, full backtests, attribution, and research evidence.',
+      zh: '登录用于统一账户身份。正式模型的历史绩效与风险证据公开展示；AlphaEngine Pro 解锁高级模型的当前持仓、目标调仓与实时信号。',
+      en: 'Sign in to keep one account identity. Formal historical performance and risk evidence stay public; AlphaEngine Pro unlocks current holdings, target allocations, and live signals for advanced models.',
     },
     privacyNote: {
       zh: '本地研究包、持仓文件、模型参数与实验数据不会上传到共享账户。AlphaEngine 是研究工具，不构成投资建议或收益承诺。',
@@ -28,22 +28,23 @@
     },
     proUpgrade: {
       title: { zh: 'Free 与 AlphaEngine Pro', en: 'Free and AlphaEngine Pro' },
-      freeTitle: { zh: '公开研究保持开放', en: 'Public research stays open' },
+      freeTitle: { zh: '正式绩效公开', en: 'Formal performance stays public' },
       freeFeatures: [
-        { zh: '浏览公开模型与公开模块；登录后使用同一 Hao Apps 身份', en: 'Browse public models and modules, and use the same Hao Apps identity after sign-in' },
+        { zh: '查看正式模型的历史收益、风险与公开研究证据', en: 'View historical return, risk, and public research evidence for formal models' },
+        { zh: '登录后使用 Security Explorer，并沿用同一 Hao Apps 身份', en: 'Sign in to use Security Explorer with the same Hao Apps identity' },
       ],
       proTitle: { zh: 'AlphaEngine Pro', en: 'AlphaEngine Pro' },
       proFeatures: [
-        { zh: '访问 Pro 高级模型与模块', en: 'Access Pro advanced models and modules' },
-        { zh: '查看完整回测、归因与研究证据', en: 'View full backtests, attribution, and research evidence' },
+        { zh: '查看 Pro 模型的当前持仓与目标调仓', en: 'View current holdings and target allocations for Pro models' },
+        { zh: '查看当前交易信号、驱动因子与下一决策状态', en: 'View current trade signals, signal drivers, and next-decision state' },
       ],
       note: {
         zh: 'AlphaEngine 是研究工具，不构成投资建议或收益承诺。',
         en: 'AlphaEngine is a research tool, not investment advice or a return promise.',
       },
       checkoutDescription: {
-        zh: 'US$1/月开通 AlphaEngine Pro，解锁高级模型、模块、完整回测与研究证据。',
-        en: 'AlphaEngine Pro is US$1/month and unlocks advanced models, modules, full backtests, and research evidence.',
+        zh: 'US$1/月开通 AlphaEngine Pro，解锁高级模型的当前持仓、目标调仓与实时决策信号。',
+        en: 'AlphaEngine Pro is US$1/month and unlocks current holdings, target allocations, and live decision signals for advanced models.',
       },
       ctaTitle: { zh: '开通 AlphaEngine Pro', en: 'Upgrade to AlphaEngine Pro' },
     },
