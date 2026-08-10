@@ -17,8 +17,9 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
   const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
   const [selectedBenchmarkKey, setSelectedBenchmarkKey] = useState<BenchmarkKey | null>(null);
 
-  const toggleVisibility = (entry: { dataKey?: string | number }) => {
-    const key = String(entry?.dataKey ?? '');
+  const toggleVisibility = (entry: { dataKey?: unknown }) => {
+    const rawKey = entry?.dataKey;
+    const key = typeof rawKey === 'string' || typeof rawKey === 'number' ? String(rawKey) : '';
     if (key) {
       setHiddenSeries(prev => ({ ...prev, [key]: !prev[key] }));
     }
