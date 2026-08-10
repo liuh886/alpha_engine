@@ -429,8 +429,8 @@ def _invalid(raw: dict[str, Any], reason: str) -> dict[str, Any]:
 def run_rules_based_allocation_experiment(spec_path: str | Path) -> dict[str, Any]:
     """Run one frozen rules-based allocation certification mission."""
     raw = _load_spec(spec_path)
-    if raw.get("active") is not True:
-        raise ValueError("rules-based certification spec must be active")
+    if not isinstance(raw.get("active"), bool):
+        raise ValueError("rules-based certification spec active flag must be boolean")
     if raw.get("research_only") is not True or raw.get("trade_ready") is not False:
         raise ValueError("rules-based certification must remain research-only")
     params = _validate_candidate(raw)
