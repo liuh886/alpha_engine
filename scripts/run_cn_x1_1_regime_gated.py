@@ -30,7 +30,7 @@ HISTORICAL_WINDOWS = (
     "2025H1",
     "2025H2",
 )
-REPORTING_WINDOWS = ("2026H1", "2026H2_PARTIAL")
+REPORTING_WINDOWS = ("2026H1",)
 
 
 def sha256(path: Path) -> str:
@@ -189,6 +189,7 @@ def run(
         [*symbols, spec.benchmark],
         fields=("close",),
     )
+    symbols = [s for s in symbols if s in panel.fields["close"].columns]
     close = panel.fields["close"]
     state = build_regime_state(
         close,
@@ -212,7 +213,7 @@ def run(
             state,
             windows=HISTORICAL_WINDOWS,
             variant=spec.variant(),
-            rule="two_of_three",
+            rule=spec.rule,
             rebalance_sessions=spec.rebalance_sessions,
             cost_bps=spec.cost_bps,
         )
@@ -224,7 +225,7 @@ def run(
             state,
             windows=REPORTING_WINDOWS,
             variant=spec.variant(),
-            rule="two_of_three",
+            rule=spec.rule,
             rebalance_sessions=spec.rebalance_sessions,
             cost_bps=spec.cost_bps,
         )
@@ -235,7 +236,7 @@ def run(
         state,
         windows=HISTORICAL_WINDOWS,
         variant=spec.variant(),
-        rule="two_of_three",
+        rule=spec.rule,
         rebalance_sessions=spec.rebalance_sessions,
         cost_bps=40,
     )
@@ -245,7 +246,7 @@ def run(
         state,
         windows=HISTORICAL_WINDOWS,
         variant=spec.variant(),
-        rule="two_of_three",
+        rule=spec.rule,
         rebalance_sessions=spec.rebalance_sessions,
         cost_bps=spec.cost_bps,
         excluded_name=historical["top_contributor_name"],
@@ -256,7 +257,7 @@ def run(
         state,
         windows=HISTORICAL_WINDOWS,
         variant=spec.variant(),
-        rule="two_of_three",
+        rule=spec.rule,
         rebalance_sessions=spec.rebalance_sessions,
         cost_bps=spec.cost_bps,
         excluded_sector=historical["top_contributor_sector"],

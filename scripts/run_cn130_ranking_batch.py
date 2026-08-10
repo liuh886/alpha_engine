@@ -24,6 +24,9 @@ from src.research.cn130_cross_sectional_ranking import (
 )
 
 WINDOWS = {
+    "2022H2": ("2022-07-01", "2022-12-31"),
+    "2023H1": ("2023-01-01", "2023-06-30"),
+    "2023H2": ("2023-07-01", "2023-12-31"),
     "2024H1": ("2024-01-01", "2024-06-30"),
     "2024H2": ("2024-07-01", "2024-12-31"),
     "2025H1": ("2025-01-01", "2025-06-30"),
@@ -68,6 +71,7 @@ def run(root: Path, provider_dir: Path, output_dir: Path, window_label: str, bat
     classification = load_yaml(root / "configs/research_classifications/cn130_sector_industry_v1.yaml")["symbols"]
     symbols = [str(x) for x in universe["symbols"]]
     panel = load_provider_panel(provider_dir, [*symbols, core.BENCHMARK])
+    symbols = [s for s in symbols if s in panel.fields["close"].columns]
     families, metadata_parts = build_feature_matrices(panel, symbols=symbols, benchmark=core.BENCHMARK)
     controls = core.risk_controls(metadata_parts)
     combined_metadata = (
