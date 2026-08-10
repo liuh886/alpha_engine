@@ -172,6 +172,12 @@ def sync(source_root: Path, output_root: Path) -> dict[str, Any]:
             f"accepted={accepted}, supported={supported}"
         )
 
+    mtm_models = [
+        model_id
+        for model_id in accepted
+        if _object(source_root / f"{model_id}.json").get("provisional_mtm") is not None
+    ]
+
     prior_map = dict(migration.MODEL_MAP)
     prior_build_plan = migration.build_plan
     try:
@@ -188,10 +194,12 @@ def sync(source_root: Path, output_root: Path) -> dict[str, Any]:
         migration.MODEL_MAP.clear()
         migration.MODEL_MAP.update(prior_map)
 
-    migration_receipt["status"] = "formal_v1_projected_with_current_mtm"
-    (output_root / "migration-receipt.json").write_bytes(
-        canonical_json_bytes(migration_receipt)
-    )
+    if mtm_models:
+        migration_receipt["status"] = "formal_v1_projected_with_current_mtm"
+        migration_receipt["provisional_mtm_models"] = mtm_models
+        (output_root / "migration-receipt.json").write_bytes(
+            canonical_json_bytes(migration_receipt)
+        )
 
     freshness_sha = _publish_freshness_policy(source_root, output_root)
     catalog_path = output_root / "catalog.json"
