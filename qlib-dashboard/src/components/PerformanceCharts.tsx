@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Line, ComposedChart, ReferenceLine, Brush } from 'recharts';
+import { Area, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Line, ComposedChart, ReferenceLine, Brush } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartBaselineSelector } from '@/components/ChartBaselineSelector';
 import { format, parseISO } from 'date-fns';
@@ -13,9 +13,26 @@ import {
 } from '@/lib/performanceBenchmarks';
 import type { ReportRow } from '@/lib/types';
 
+type RangeKey = '6m' | '1y' | '3y' | 'all';
+
+const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; months: number | null }> = [
+  { key: '6m', label: '6M', months: 6 },
+  { key: '1y', label: '1Y', months: 12 },
+  { key: '3y', label: '3Y', months: 36 },
+  { key: 'all', label: 'All', months: null },
+];
+
+function periodReturn(startValue: unknown, endValue: unknown) {
+  const start = Number(startValue);
+  const end = Number(endValue);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start <= -1) return null;
+  return ((1 + end) / (1 + start)) - 1;
+}
+
 export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]; benchmarkId?: string }) {
   const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
   const [selectedBenchmarkKey, setSelectedBenchmarkKey] = useState<BenchmarkKey | null>(null);
+  const [rangeKey, setRangeKey] = useState<RangeKey>('all');
 
   const toggleVisibility = (entry: { dataKey?: unknown }) => {
     const rawKey = entry?.dataKey;
@@ -69,6 +86,7 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
       const posRatio = Number.isFinite(account) && account > 0 && Number.isFinite(value)
         ? value / account
         : null as unknown as number;
+      const turnover = Number(row.turnover);
       const benchmarkValues: Record<string, number | null> = Object.fromEntries(
         benchmarkOptions.map(option => [option.key, option.series[index] ?? null]),
       );
@@ -85,10 +103,29 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
           ? strategy - Number(activeValue)
           : null as unknown as number,
         pos_ratio: posRatio,
+        turnover: Number.isFinite(turnover) ? turnover : null as unknown as number,
         provisional_mtm: row.provisional_mtm === true || row.settlement_status === 'provisional_mtm',
       };
     });
   }, [activeBenchmarkKey, benchmarkOptions, declaredBenchmark, report]);
+
+  const visibleChartData = useMemo(() => {
+    const selectedRange = RANGE_OPTIONS.find(option => option.key === rangeKey);
+    if (!selectedRange?.months || chartData.length < 2) return chartData;
+
+    const endTimestamp = Date.parse(`${chartData[chartData.length - 1].date}T00:00:00Z`);
+    if (!Number.isFinite(endTimestamp)) return chartData;
+
+    const threshold = new Date(endTimestamp);
+    threshold.setUTCMonth(threshold.getUTCMonth() - selectedRange.months);
+    const thresholdTimestamp = threshold.getTime();
+    const filtered = chartData.filter(row => {
+      const rowTimestamp = Date.parse(`${row.date}T00:00:00Z`);
+      return Number.isFinite(rowTimestamp) && rowTimestamp >= thresholdTimestamp;
+    });
+
+    return filtered.length ? filtered : chartData;
+  }, [chartData, rangeKey]);
 
   const drawdownData = useMemo(() => {
     if (!chartData.length) return [];
@@ -103,18 +140,49 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
     });
   }, [chartData]);
 
-  const maxDrawdown = useMemo(() => {
-    if (!drawdownData.length) return null;
+  const visibleDrawdownData = useMemo(() => {
+    if (visibleChartData.length === chartData.length) return drawdownData;
+    const visibleDates = new Set(visibleChartData.map(row => row.date));
+    return drawdownData.filter(row => visibleDates.has(row.date));
+  }, [chartData.length, drawdownData, visibleChartData]);
+
+  const visibleMaxDrawdown = useMemo(() => {
+    if (!visibleDrawdownData.length) return null;
     let worst = 0;
     let worstIdx = 0;
-    drawdownData.forEach((row, index) => {
+    visibleDrawdownData.forEach((row, index) => {
       if (Number.isFinite(row.drawdown) && (row.drawdown as number) < worst) {
         worst = row.drawdown as number;
         worstIdx = index;
       }
     });
-    return worst < 0 ? { value: worst, date: drawdownData[worstIdx].date, index: worstIdx } : null;
-  }, [drawdownData]);
+    return worst < 0 ? { value: worst, date: visibleDrawdownData[worstIdx].date } : null;
+  }, [visibleDrawdownData]);
+
+  const currentDrawdown = useMemo(() => {
+    for (let index = visibleDrawdownData.length - 1; index >= 0; index -= 1) {
+      const value = visibleDrawdownData[index].drawdown;
+      if (Number.isFinite(value)) return value as number;
+    }
+    return null;
+  }, [visibleDrawdownData]);
+
+  const visibleSummary = useMemo(() => {
+    if (!visibleChartData.length) {
+      return { strategy: null, benchmark: null, excess: null };
+    }
+    const first = visibleChartData[0];
+    const last = visibleChartData[visibleChartData.length - 1];
+    const strategy = periodReturn(first.strategy, last.strategy);
+    const benchmark = activeBenchmarkKey
+      ? periodReturn(first[activeBenchmarkKey], last[activeBenchmarkKey])
+      : null;
+    return {
+      strategy,
+      benchmark,
+      excess: strategy !== null && benchmark !== null ? strategy - benchmark : null,
+    };
+  }, [activeBenchmarkKey, visibleChartData]);
 
   const monthlyReturns = useMemo(() => {
     if (!report.length) return [];
@@ -151,15 +219,15 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number | string; color: string }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
-      <div className="bg-background/95 border shadow-lg rounded p-2.5 text-[10px] min-w-[140px]">
-        <p className="font-semibold mb-1.5 pb-1 border-b">{label}</p>
+      <div className="min-w-[140px] rounded border bg-background/95 p-2.5 text-[10px] shadow-lg">
+        <p className="mb-1.5 border-b pb-1 font-semibold">{label}</p>
         {payload.map((item) => (
           <div key={item.name} className="flex justify-between gap-4 py-0.5">
             <span className="flex items-center gap-1 text-muted-foreground">
               <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: item.color }} />
               {item.name}
             </span>
-            <span className="font-mono" style={{ color: item.color }}>
+            <span className="font-mono tabular-nums" style={{ color: item.color }}>
               {typeof item.value === 'number' ? `${(item.value * 100).toFixed(2)}%` : item.value}
             </span>
           </div>
@@ -169,20 +237,24 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
   };
 
   const colorReturn = (value: number | null) => {
-    if (value === null) return "text-muted-foreground/30";
-    return value >= 0 ? "text-green-500" : "text-red-500";
+    if (value === null) return "text-muted-foreground/40";
+    return value >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400";
   };
 
   const bgReturn = (value: number | null) => {
     if (value === null) return "";
-    const intensity = Math.min(Math.abs(value) * 5, 0.3);
+    const intensity = Math.min(Math.abs(value) * 5, 0.28);
     return value >= 0 ? `rgba(34,197,94,${intensity})` : `rgba(239,68,68,${intensity})`;
   };
 
+  const formatPercent = (value: number | null, digits = 2) => value === null ? '—' : `${(value * 100).toFixed(digits)}%`;
   const strategyPointCount = chartData.filter(row => Number.isFinite(row.strategy)).length;
   const performanceThrough = chartData.length ? chartData[chartData.length - 1].date : null;
   const latestRow = report[report.length - 1];
   const isProvisionalMtm = latestRow?.provisional_mtm === true || latestRow?.settlement_status === 'provisional_mtm';
+  const hasExposure = chartData.some(row => Number.isFinite(row.pos_ratio));
+  const hasTurnover = chartData.some(row => Number.isFinite(row.turnover));
+  const hasCapitalUseChart = Boolean(excessBaseline || hasExposure || hasTurnover);
 
   return (
     <div className="space-y-5">
@@ -192,9 +264,10 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
         data-default-benchmark={excessBaseline ?? 'unavailable'}
         data-realized-through={performanceThrough ?? 'unavailable'}
         data-equity-status={isProvisionalMtm ? 'provisional_mtm' : 'settled'}
+        data-range={rangeKey}
       >
-        <CardHeader className="pb-3 border-b">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <CardHeader className="border-b pb-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <CardTitle className="text-sm font-semibold">Equity Curve</CardTitle>
               {performanceThrough && (
@@ -203,17 +276,55 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
                 </p>
               )}
             </div>
-            <ChartBaselineSelector
-              options={benchmarkOptions}
-              activeKey={activeBenchmarkKey}
-              unavailableLabel={declaredBenchmark ? `${declaredBenchmark.label} unavailable` : undefined}
-              onChange={setSelectedBenchmarkKey}
-            />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <ChartBaselineSelector
+                options={benchmarkOptions}
+                activeKey={activeBenchmarkKey}
+                unavailableLabel={declaredBenchmark ? `${declaredBenchmark.label} unavailable` : undefined}
+                onChange={setSelectedBenchmarkKey}
+              />
+              <div aria-label="Performance range" className="inline-flex rounded-md border bg-muted/20 p-0.5">
+                {RANGE_OPTIONS.map(option => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    aria-pressed={rangeKey === option.key}
+                    onClick={() => setRangeKey(option.key)}
+                    className={cn(
+                      "rounded px-2 py-1 text-[10px] font-medium transition-colors",
+                      rangeKey === option.key
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3 sm:grid-cols-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Strategy</p>
+              <p data-testid="visible-strategy-return" className={cn("mt-1 font-mono text-sm font-semibold tabular-nums", colorReturn(visibleSummary.strategy))}>{formatPercent(visibleSummary.strategy)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{excessBaseline ?? 'Benchmark'}</p>
+              <p data-testid="visible-benchmark-return" className={cn("mt-1 font-mono text-sm font-semibold tabular-nums", colorReturn(visibleSummary.benchmark))}>{formatPercent(visibleSummary.benchmark)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Excess</p>
+              <p data-testid="visible-excess-return" className={cn("mt-1 font-mono text-sm font-semibold tabular-nums", colorReturn(visibleSummary.excess))}>{formatPercent(visibleSummary.excess)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Max drawdown</p>
+              <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-rose-600 dark:text-rose-400">{visibleMaxDrawdown ? formatPercent(visibleMaxDrawdown.value) : '—'}</p>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="h-[400px] pt-4">
+        <CardContent className="h-[330px] pt-4 sm:h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData}>
+            <ComposedChart data={visibleChartData} syncId="performance-analysis">
               <defs>
                 <linearGradient id="gradStrategy" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
@@ -239,27 +350,26 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
                   name={activeBenchmark.label}
                 />
               )}
-              <Brush dataKey="date" height={28} stroke="hsl(var(--primary))" fill="hsl(var(--background))" tickFormatter={date => format(parseISO(date), 'MMM yy')} />
+              <Brush dataKey="date" height={26} stroke="hsl(var(--primary))" fill="hsl(var(--background))" tickFormatter={date => format(parseISO(date), 'MMM yy')} />
             </ComposedChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {drawdownData.length > 0 && (
+      {visibleDrawdownData.length > 0 && (
         <Card data-testid="drawdown-container">
-          <CardHeader className="pb-3 border-b">
-            <div className="flex items-center justify-between">
+          <CardHeader className="border-b pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-sm font-semibold">Drawdown</CardTitle>
-              {maxDrawdown && (
-                <span className="text-xs text-red-500 font-mono">
-                  Max: {(maxDrawdown.value * 100).toFixed(2)}% ({maxDrawdown.date})
-                </span>
-              )}
+              <div className="flex items-center gap-3 font-mono text-[11px] tabular-nums">
+                {currentDrawdown !== null && <span className="text-muted-foreground">Current {formatPercent(currentDrawdown)}</span>}
+                {visibleMaxDrawdown && <span className="text-rose-600 dark:text-rose-400">Max {formatPercent(visibleMaxDrawdown.value)} · {visibleMaxDrawdown.date}</span>}
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="h-[200px] pt-4">
+          <CardContent className="h-[180px] pt-4 sm:h-[210px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={drawdownData}>
+              <ComposedChart data={visibleDrawdownData} syncId="performance-analysis">
                 <defs>
                   <linearGradient id="gradDD" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#ef4444" stopOpacity={0} />
@@ -280,18 +390,18 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
 
       {monthlyReturns.length > 0 && (
         <Card>
-          <CardHeader className="pb-3 border-b">
+          <CardHeader className="border-b pb-3">
             <CardTitle className="text-sm font-semibold">Monthly Returns</CardTitle>
           </CardHeader>
-          <CardContent className="pt-4 overflow-x-auto">
-            <table className="w-full text-xs">
+          <CardContent className="overflow-x-auto pt-4">
+            <table className="w-full min-w-[760px] text-xs">
               <thead>
                 <tr>
-                  <th className="text-left py-1 pr-3 text-muted-foreground font-medium">Year</th>
+                  <th className="py-1 pr-3 text-left font-medium text-muted-foreground">Year</th>
                   {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map(month => (
-                    <th key={month} className="text-center py-1 px-1 text-muted-foreground font-medium">{month}</th>
+                    <th key={month} className="px-1 py-1 text-center font-medium text-muted-foreground">{month}</th>
                   ))}
-                  <th className="text-center py-1 pl-3 text-muted-foreground font-medium">Total</th>
+                  <th className="py-1 pl-3 text-center font-medium text-muted-foreground">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -300,16 +410,18 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
                   const yearReturn = yearTotal !== null ? yearTotal - 1 : null;
                   return (
                     <tr key={year}>
-                      <td className="py-1 pr-3 font-mono font-medium">{year}</td>
+                      <td className="py-1 pr-3 font-mono font-medium tabular-nums">{year}</td>
                       {months.map((value, index) => (
-                        <td key={index} className="text-center py-1 px-1">
-                          <span className={cn("font-mono", colorReturn(value))} style={{ backgroundColor: bgReturn(value) }}>
+                        <td key={index} className="px-1 py-1 text-center">
+                          <span className={cn("block rounded px-1.5 py-1 font-mono tabular-nums", colorReturn(value))} style={{ backgroundColor: bgReturn(value) }}>
                             {value !== null ? `${(value * 100).toFixed(1)}%` : "—"}
                           </span>
                         </td>
                       ))}
-                      <td className={cn("text-center py-1 pl-3 font-mono font-medium", colorReturn(yearReturn))}>
-                        {yearReturn !== null ? `${(yearReturn * 100).toFixed(1)}%` : "—"}
+                      <td className="py-1 pl-3 text-center">
+                        <span className={cn("block rounded px-1.5 py-1 font-mono font-medium tabular-nums", colorReturn(yearReturn))} style={{ backgroundColor: bgReturn(yearReturn) }}>
+                          {yearReturn !== null ? `${(yearReturn * 100).toFixed(1)}%` : "—"}
+                        </span>
                       </td>
                     </tr>
                   );
@@ -320,28 +432,32 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
         </Card>
       )}
 
-      <Card>
-        <CardHeader className="pb-3 border-b">
-          <CardTitle className="text-sm font-semibold">
-            {excessBaseline ? `Excess vs ${excessBaseline} & Exposure` : 'Exposure'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="h-[250px] pt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-              <XAxis dataKey="date" tickFormatter={date => format(parseISO(date), 'MM/yy')} minTickGap={30} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="left" tickFormatter={value => `${(value * 100).toFixed(1)}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={45} />
-              <YAxis yAxisId="right" orientation="right" tickFormatter={value => `${(value * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={40} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend verticalAlign="top" align="right" height={24} iconType="circle" onClick={toggleVisibility} wrapperStyle={{ fontSize: '11px', cursor: 'pointer' }} />
-              {excessBaseline && <Area yAxisId="left" hide={hiddenSeries.excess} type="monotone" dataKey="excess" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.08} name={`Excess vs ${excessBaseline}`} />}
-              <Area yAxisId="right" hide={hiddenSeries.pos_ratio} type="monotone" dataKey="pos_ratio" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.05} name="Position Ratio" />
-              <ReferenceLine yAxisId="left" y={0} stroke="red" strokeDasharray="3 3" strokeOpacity={0.3} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {hasCapitalUseChart && (
+        <Card>
+          <CardHeader className="border-b pb-3">
+            <CardTitle className="text-sm font-semibold">{excessBaseline ? 'Relative Performance & Capital Use' : 'Capital Use'}</CardTitle>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              {excessBaseline ? `Excess vs ${excessBaseline}` : 'Portfolio usage'}{hasExposure ? ' · invested ratio' : ''}{hasTurnover ? ' · turnover' : ''}
+            </p>
+          </CardHeader>
+          <CardContent className="h-[220px] pt-4 sm:h-[250px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={visibleChartData} syncId="performance-analysis">
+                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                <XAxis dataKey="date" tickFormatter={date => format(parseISO(date), 'MM/yy')} minTickGap={30} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                {excessBaseline && <YAxis yAxisId="left" tickFormatter={value => `${(value * 100).toFixed(1)}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={45} />}
+                {(hasExposure || hasTurnover) && <YAxis yAxisId="right" orientation="right" tickFormatter={value => `${(value * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={40} />}
+                <Tooltip content={<CustomTooltip />} />
+                <Legend verticalAlign="top" align="right" height={24} iconType="circle" onClick={toggleVisibility} wrapperStyle={{ fontSize: '11px', cursor: 'pointer' }} />
+                {excessBaseline && <Area yAxisId="left" hide={hiddenSeries.excess} type="monotone" dataKey="excess" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.08} name={`Excess vs ${excessBaseline}`} />}
+                {hasExposure && <Area yAxisId="right" hide={hiddenSeries.pos_ratio} type="monotone" dataKey="pos_ratio" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.05} name="Invested Ratio" />}
+                {hasTurnover && <Bar yAxisId="right" hide={hiddenSeries.turnover} dataKey="turnover" fill="hsl(var(--muted-foreground))" fillOpacity={0.2} maxBarSize={8} name="Turnover" />}
+                {excessBaseline && <ReferenceLine yAxisId="left" y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity={0.3} />}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
