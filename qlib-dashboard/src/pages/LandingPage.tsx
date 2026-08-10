@@ -20,10 +20,10 @@ import { useGlobalStore } from '@/store/globalStore';
 const FAMILY_ORDER = ['qqq_rotation', 'cn_ranker', 'byd_allocation', 'us_ranker'];
 
 const fallbackFleetRows = [
-  { name: 'QQQR v4.3', detail: 'US systematic rotation', status: 'Formal' },
-  { name: 'CN x1.1', detail: 'China equity ranking', status: 'Formal' },
-  { name: 'BYD v1.2', detail: 'Adaptive single-stock allocation', status: 'Formal' },
-  { name: 'US x1.1', detail: 'US equity ranking', status: 'Formal' },
+  { name: 'QQQR v4.3', detail: 'US systematic rotation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'CN x1.1', detail: 'China equity ranking', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'BYD v1.2', detail: 'Adaptive single-stock allocation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'US x1.1', detail: 'US equity ranking', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
 ];
 
 const evidenceChecks = [
@@ -37,6 +37,14 @@ type LandingPerformancePoint = {
   account: number;
   bench_qqq?: number;
   date: string;
+};
+
+type FleetRow = {
+  name: string;
+  detail: string;
+  totalReturn: string;
+  cagr: string;
+  maxDrawdown: string;
 };
 
 function metric(run: GovernedRunSummary, id: string): CanonicalMetricV2 | null {
@@ -100,13 +108,27 @@ function WindowChrome({ title, meta }: { title: string; meta: string }) {
   );
 }
 
+function FleetPerformance({ row }: { row: FleetRow }) {
+  return (
+    <span className="flex min-w-[94px] flex-col items-start gap-1 tabular-nums" aria-label={`Total return ${row.totalReturn}, CAGR ${row.cagr}, max drawdown ${row.maxDrawdown}`}>
+      <span className="landing-run-badge landing-run-badge-blue">{row.totalReturn}</span>
+      <span className="flex items-center gap-2 text-[8px] font-semibold leading-none text-muted-foreground">
+        <span><span className="mr-1 text-muted-foreground/65">CAGR</span>{row.cagr}</span>
+        <span><span className="mr-1 text-muted-foreground/65">MDD</span>{row.maxDrawdown}</span>
+      </span>
+    </span>
+  );
+}
+
 function FleetPreview({ runs }: { runs: GovernedRunSummary[] }) {
   const selectedRuns = selectFleetRuns(runs);
-  const rows = selectedRuns.length > 0
+  const rows: FleetRow[] = selectedRuns.length > 0
     ? selectedRuns.map((run) => ({
         name: run.title,
         detail: strategyFocus(run),
-        status: metricPercent(run, 'total_return', true),
+        totalReturn: metricPercent(run, 'total_return', true),
+        cagr: metricPercent(run, 'annualized_return', true),
+        maxDrawdown: metricPercent(run, 'max_drawdown'),
       }))
     : fallbackFleetRows;
   const evidenceCutoff = selectedRuns[0]?.evidenceCutoff;
@@ -125,12 +147,12 @@ function FleetPreview({ runs }: { runs: GovernedRunSummary[] }) {
             <div className="landing-preview-status"><ShieldCheck className="h-3.5 w-3.5" /> Formal evidence</div>
           </div>
           <div className="landing-run-table">
-            <div className="landing-run-table-head"><span>Strategy</span><span>Focus</span><span>Total return</span><span>Inspect</span></div>
+            <div className="landing-run-table-head"><span>Strategy</span><span>Focus</span><span>Performance</span><span>Inspect</span></div>
             {rows.map((row, index) => (
               <div className={`landing-run-row ${index === 0 ? 'is-selected' : ''}`} key={row.name}>
                 <span className="landing-run-name"><Layers3 className="h-4 w-4" />{row.name}</span>
                 <span>{row.detail}</span>
-                <span className="landing-run-badge landing-run-badge-blue">{row.status}</span>
+                <FleetPerformance row={row} />
                 <span className="landing-evidence-link">Open <ChevronRight className="h-3.5 w-3.5" /></span>
               </div>
             ))}
