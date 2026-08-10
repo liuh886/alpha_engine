@@ -3,7 +3,7 @@ candidate_id: byd_v1_3_min_hold_bear_defense
 public_version: byd_v1_3
 parent_issue: 724
 source_exploration_issue: 716
-status: frozen_formal_challenger
+status: completed_not_supported
 research_only: true
 trade_ready: false
 historical_evidence_consumed: true
@@ -79,6 +79,21 @@ forbidden_after_freeze:
   - cost_change
   - evaluation_window_change
   - gate_change
+
+formal_result:
+  decision: byd_v1_3_not_supported
+  promotion_authorized: false
+  workflow_run_id: 31367573154
+  artifact_id: 9054791084
+  artifact_sha256: 9a6db5312f573882a9b20491114b20205280d58657b818e3e7f205b11a95af9a
+  evidence_dir: docs/evidence/byd_v1_3_formal_challenge
+  failed_gates:
+    - primary_full_cagr
+    - primary_full_sharpe
+    - retrospective_2025_plus_cagr
+    - stress_full_cagr
+    - stress_full_calmar
+    - positive_period_concentration
 
 promotion:
   require_every_gate: true
