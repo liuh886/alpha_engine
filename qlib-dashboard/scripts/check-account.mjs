@@ -40,9 +40,9 @@ for (const value of [
   "entitlementCode: 'alpha_engine.pro'",
   "mountSelectors: ['[data-account-slot]']",
   'billingEnabled: true',
-  'AlphaEngine Pro 解锁高级模型、完整回测、归因与研究证据',
-  '访问 Pro 高级模型与模块',
-  '查看完整回测、归因与研究证据',
+  '正式模型的历史绩效与风险证据公开展示',
+  '查看 Pro 模型的当前持仓与目标调仓',
+  '查看当前交易信号、驱动因子与下一决策状态',
   'feedbackEnabled: false',
 ]) {
   if (!content.config.includes(value)) throw new Error(`account config missing: ${value}`);
@@ -73,8 +73,13 @@ if (!content.routes.includes("path: 'settings/access'") || !content.routes.inclu
 for (const value of ['ACCESS_TIERS', 'access.savePolicy', 'Model families', 'Product modules']) {
   if (!content.settings.includes(value)) throw new Error(`Owner settings missing: ${value}`);
 }
+if (!content.fleet.includes('requiredTierForModel') || !content.fleet.includes('Live holdings & signals')) {
+  throw new Error('fleet missing policy-driven live execution access.');
+}
+for (const [label, source] of [['runs', content.runs], ['compare', content.compare]]) {
+  if (!source.includes('requiredTierForModel')) throw new Error(`${label} missing policy-driven model access.`);
+}
 for (const [label, source] of [['fleet', content.fleet], ['runs', content.runs], ['compare', content.compare]]) {
-  if (!source.includes('requiredTierForModel') || !source.includes('Pro product') && label !== 'compare') throw new Error(`${label} missing policy-driven model access.`);
   if (/isProModelRun|PRO_MODEL_FAMILIES|QQQ Pro|QQQ family/.test(source)) throw new Error(`${label} still binds product tier to QQQ identity.`);
 }
 for (const value of ['enable row level security', 'to anon, authenticated', "alpha_engine_role') = 'owner'", "('alpha_engine', 'model', 'qqq_rotation', 'pro')", "('alpha_engine', 'module', 'securities', 'authenticated')"]) {
@@ -86,4 +91,4 @@ for (const forbidden of [/sk_(live|test)_/, /whsec_/, /sb_secret_/, /service_rol
   if (forbidden.test(combined)) throw new Error(`browser assets contain forbidden material: ${forbidden}`);
 }
 
-console.log('AlphaEngine access contract passed: public account copy is user-facing while internal access policy remains enforced separately.');
+console.log('AlphaEngine access contract passed: formal performance remains public while policy-driven execution surfaces stay gated.');

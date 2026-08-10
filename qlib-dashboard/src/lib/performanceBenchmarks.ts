@@ -39,7 +39,9 @@ function identity(value: string): string {
 
 function suffixLabel(suffix: string): string {
   const normalized = suffix.toLowerCase();
-  if (FIELD_LABELS[normalized]) return FIELD_LABELS[normalized];
+  const ident = identity(normalized);
+  const aliased = DECLARED_ALIASES[ident] ?? normalized;
+  if (FIELD_LABELS[aliased]) return FIELD_LABELS[aliased];
 
   const parts = suffix.split('_').filter(Boolean);
   return parts.map((part, index) => {
@@ -62,7 +64,9 @@ function descriptorForField(field: string, declaredBenchmarkId?: string): Benchm
     };
   }
   const suffix = field.slice('bench_'.length);
-  const canonicalSuffix = CANONICAL_KEYS[suffix.toLowerCase()] ?? suffix;
+  const ident = identity(suffix);
+  const aliased = DECLARED_ALIASES[ident] ?? suffix.toLowerCase();
+  const canonicalSuffix = CANONICAL_KEYS[aliased] ?? aliased;
   return {
     key: `benchmark_${canonicalSuffix}`,
     field,

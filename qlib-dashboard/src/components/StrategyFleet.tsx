@@ -14,7 +14,14 @@ function metric(run: GovernedRunSummary, id: string): CanonicalMetricV2 | null {
 function metricPercent(run: GovernedRunSummary, id: string): string {
   const item = metric(run, id);
   return item?.availability_status === 'available' && typeof item.value === 'number'
-    ? `${(item.value * 100).toFixed(1)}%`
+    ? `${item.value >= 0 ? '+' : ''}${(item.value * 100).toFixed(1)}%`
+    : '—';
+}
+
+function metricDecimal(run: GovernedRunSummary, id: string): string {
+  const item = metric(run, id);
+  return item?.availability_status === 'available' && typeof item.value === 'number'
+    ? item.value.toFixed(2)
     : '—';
 }
 
@@ -24,15 +31,6 @@ function allocationSummary(snapshot: StrategyOperationsSnapshot | undefined, sid
     .filter((leg) => Math.abs(leg[side]) > 1e-9)
     .map((leg) => `${leg.asset} ${(leg[side] * 100).toFixed(0)}%`)
     .join(' · ') || 'Cash / flat';
-}
-
-function changeSummary(snapshot: StrategyOperationsSnapshot | undefined): string {
-  if (!snapshot || snapshot.allocations.length === 0) return 'No governed live target';
-  const changes = snapshot.allocations.filter((leg) => Math.abs(leg.delta) > 1e-9);
-  if (changes.length === 0) return 'No allocation change';
-  return changes
-    .map((leg) => `${leg.delta > 0 ? '+' : ''}${(leg.delta * 100).toFixed(0)}pp ${leg.asset}`)
-    .join(' · ');
 }
 
 function statusClass(status: StrategyOperationsSnapshot['status'] | undefined): string {
@@ -62,81 +60,73 @@ export function StrategyFleet({
 
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm" aria-label="Formal strategy fleet">
-      <div className="hidden grid-cols-[minmax(220px,1.35fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(160px,0.8fr)_120px_36px] gap-4 border-b bg-muted/25 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground lg:grid">
-        <span>Strategy</span><span>Now</span><span>Target / change</span><span>Next decision</span><span>Risk</span><span />
+      <div className="hidden grid-cols-[minmax(220px,1.35fr)_112px_112px_88px_108px_minmax(210px,1fr)_36px] gap-4 border-b bg-muted/25 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground lg:grid">
+        <span>Strategy</span><span>Total return</span><span>CAGR</span><span>Sharpe</span><span>Max DD</span><span>Live decision</span><span />
       </div>
       <div className="divide-y">
         {runs.map((run) => {
           const snapshot = snapshots.get(run.modelVersionId);
           const requiredTier = access.requiredTierForModel(run);
-          const locked = !access.canAccess(requiredTier);
+          const liveLocked = !access.canAccess(requiredTier);
           const label = snapshot ? STRATEGY_STATUS_LABEL[snapshot.status] : loading ? 'Loading operations' : 'Operating status unavailable';
           return (
             <button
               key={run.key}
               type="button"
               onClick={() => navigate(`/strategies/${encodeURIComponent(run.modelVersionId)}`)}
-              className="group grid w-full gap-4 px-5 py-5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary lg:grid-cols-[minmax(220px,1.35fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(160px,0.8fr)_120px_36px] lg:items-center"
-              aria-label={locked ? `${run.title}, ${requiredTier} product` : run.title}
+              className="group grid w-full gap-4 px-5 py-5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary lg:grid-cols-[minmax(220px,1.35fr)_112px_112px_88px_108px_minmax(210px,1fr)_36px] lg:items-center"
+              aria-label={liveLocked ? `${run.title}, performance public, live signals require ${requiredTier}` : run.title}
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="truncate text-base font-semibold">{run.title}</h3>
                   {requiredTier !== 'public' && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-primary">
-                      <Crown className="h-3 w-3" /> {requiredTier === 'authenticated' ? 'Member' : requiredTier}
-                    </span>
-                  )}
-                  {!locked && (
-                    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold', statusClass(snapshot?.status))}>
-                      <StatusIcon status={snapshot?.status} />{label}
+                      <Crown className="h-3 w-3" /> {requiredTier === 'pro' ? 'Pro live' : requiredTier}
                     </span>
                   )}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{run.market.toUpperCase()} · {run.benchmark} · evidence {run.evidenceCutoff}</p>
               </div>
 
-              {locked ? (
-                <>
-                  <div className="lg:col-span-4">
-                    <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><LockKeyhole className="h-4 w-4" />{requiredTier === 'pro' ? 'AlphaEngine Pro product' : `${requiredTier} access required`}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Open the product to see its access requirements and account options.</p>
-                  </div>
-                  <Crown className="hidden h-4 w-4 text-primary lg:block" />
-                </>
+              <div className="grid grid-cols-4 gap-3 lg:contents">
+                <PublicMetric label="Total return" value={metricPercent(run, 'total_return')} emphasis />
+                <PublicMetric label="CAGR" value={metricPercent(run, 'annualized_return')} />
+                <PublicMetric label="Sharpe" value={metricDecimal(run, 'sharpe_ratio')} />
+                <PublicMetric label="Max DD" value={metricPercent(run, 'max_drawdown')} />
+              </div>
+
+              {liveLocked ? (
+                <div className="rounded-lg border border-primary/15 bg-primary/[0.035] p-3 lg:border-0 lg:bg-transparent lg:p-0">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><LockKeyhole className="h-4 w-4" />Live holdings & signals</p>
+                  <p className="mt-1 text-xs text-muted-foreground">AlphaEngine {requiredTier === 'pro' ? 'Pro' : requiredTier} unlocks the execution layer.</p>
+                </div>
               ) : (
-                <>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground lg:hidden">Now</p>
-                    <p className="mt-1 text-sm font-medium lg:mt-0">{snapshot?.stateLabel || 'Formal evidence only'}</p>
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{allocationSummary(snapshot, 'current')}</p>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold', statusClass(snapshot?.status))}>
+                      <StatusIcon status={snapshot?.status} />{label}
+                    </span>
                   </div>
-
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground lg:hidden">Target / change</p>
-                    <p className="mt-1 text-sm font-medium lg:mt-0">{allocationSummary(snapshot, 'target')}</p>
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{changeSummary(snapshot)}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground lg:hidden">Next decision</p>
-                    <p className="mt-1 text-sm font-medium lg:mt-0">{snapshot?.nextDecision || 'Not declared'}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{snapshot?.decisionCadence || '—'}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground lg:hidden">Risk</p>
-                    <p className="mt-1 font-mono text-sm font-semibold lg:mt-0">{metricPercent(run, 'max_drawdown')}</p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">Max drawdown</p>
-                  </div>
-
-                  <ArrowRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary lg:block" />
-                </>
+                  <p className="mt-2 text-sm font-medium">{snapshot?.stateLabel || 'Formal evidence only'}</p>
+                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{allocationSummary(snapshot, 'current')} → {allocationSummary(snapshot, 'target')}</p>
+                </div>
               )}
+
+              <ArrowRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary lg:block" />
             </button>
           );
         })}
       </div>
     </section>
+  );
+}
+
+function PublicMetric({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
+  return (
+    <div>
+      <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-muted-foreground lg:hidden">{label}</p>
+      <p className={cn('mt-1 font-mono text-sm font-semibold tabular-nums lg:mt-0', emphasis && value !== '—' && 'text-primary')}>{value}</p>
+    </div>
   );
 }

@@ -91,10 +91,11 @@ async function openConsole(page: Page) {
   await page.goto('/#/app');
   await expect(page.locator('#root')).not.toBeEmpty();
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
+  await expect(page.getByText('Featured formal performance', { exact: true })).toBeVisible();
   await expect(page.locator('.research-context-bar').getByText('Static Browser Fixture', { exact: true })).toBeVisible();
 }
 
-test('Security Explorer requires sign-in and remains available to Free accounts', async ({ page }) => {
+test('Security Explorer explains its value before sign-in and remains available to Free accounts', async ({ page }) => {
   const marketEvidenceRequests: string[] = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname.includes('/data/market-evidence/')) marketEvidenceRequests.push(request.url());
@@ -102,8 +103,10 @@ test('Security Explorer requires sign-in and remains available to Free accounts'
   await installMembershipFixture(page, { loading: false, isPro: false, user: null });
 
   await page.goto('/#/securities');
-  await expect(page.getByRole('heading', { name: 'Sign in to open Security Explorer' })).toBeVisible();
-  await expect(page.getByText('AlphaEngine Pro is not required.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in to view model trade signals on the price chart.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in to open Security Explorer' })).toBeVisible();
+  await expect(page.getByText('A free signed-in AlphaEngine account is sufficient. Pro is not required.')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Illustrative Security Explorer preview' })).toBeVisible();
   expect(marketEvidenceRequests).toEqual([]);
 
   await page.evaluate(() => {
@@ -113,12 +116,17 @@ test('Security Explorer requires sign-in and remains available to Free accounts'
   await expect.poll(() => marketEvidenceRequests.length).toBeGreaterThan(0);
 });
 
-test('Free users see an explicit Pro product gate for an advanced model', async ({ page }) => {
+test('Free users can inspect QQQR performance while live execution remains Pro', async ({ page }) => {
   await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'free-fixture' } });
   await page.goto('/#/strategies');
-  await page.getByRole('region', { name: 'Formal strategy fleet' }).getByText('QQQR v4.3', { exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'QQQR v4.3 is a Pro product' })).toBeVisible();
-  await expect(page.getByText('This product requires an active AlphaEngine Pro subscription.')).toBeVisible();
+  const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
+  await fleet.getByText('QQQR v4.3', { exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'QQQR v4.3', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Formal performance', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pro execution layer', exact: true })).toBeVisible();
+  await expect(page.getByText('Current holdings', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'View AlphaEngine Pro access' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current decision state' })).toHaveCount(0);
 });
 
 test('only a verified Owner can open access settings', async ({ page }) => {
@@ -157,14 +165,15 @@ test('product homepage opens the strategy console', async ({ page }, testInfo) =
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
   await page.goto('/#/');
-  await expect(page.getByRole('heading', { name: 'Run systematic strategies with the evidence still attached.' })).toBeVisible();
-  await expect(page.getByText('Start with what the strategies are doing now.').first()).toBeVisible();
-  await expect(page.getByText('Decision first. Evidence on demand.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Know what your systematic strategy is doing — and why.' })).toBeVisible();
+  await expect(page.getByText('QQQR v4.3', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Performance before persuasion.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Every decision is traceable.' })).toBeVisible();
   await assertNoHorizontalOverflow(page);
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: `test-results/static-artifact/landing-${testInfo.project.name}.png`, fullPage: true });
 
-  await page.getByRole('link', { name: 'Open Strategy Console' }).click();
+  await page.locator('.landing-actions').getByRole('link', { name: 'Open console' }).click();
   await expect(page).toHaveURL(/#\/app$/);
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
 });

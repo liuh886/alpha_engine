@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -13,21 +13,76 @@ import {
   ShieldCheck,
   Sun,
 } from 'lucide-react';
+import type { GovernedRunSummary } from '@/lib/governed-run';
+import type { CanonicalMetricV2 } from '@/lib/model-run-bundle-v2';
 import { useGlobalStore } from '@/store/globalStore';
 
-const fleetRows = [
-  { name: 'Current state', detail: 'What the strategy holds now', status: 'Visible', tone: 'blue' },
-  { name: 'Target allocation', detail: 'What changes at the next decision', status: 'Governed', tone: 'blue' },
-  { name: 'Decision cadence', detail: 'When the strategy evaluates again', status: 'Explicit', tone: 'blue' },
-  { name: 'Risk & freshness', detail: 'Whether the evidence can be trusted now', status: 'Attached', tone: 'blue' },
+const FAMILY_ORDER = ['qqq_rotation', 'cn_ranker', 'byd_allocation', 'us_ranker'];
+
+const fallbackFleetRows = [
+  { name: 'QQQR v4.3', detail: 'US systematic rotation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'CN x1.1', detail: 'China equity ranking', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'BYD v1.2', detail: 'Adaptive single-stock allocation', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
+  { name: 'US x1.1', detail: 'US equity ranking', totalReturn: '—', cagr: '—', maxDrawdown: '—' },
 ];
 
 const evidenceChecks = [
-  'Formal model identity and benchmark stay attached',
+  'Model identity, benchmark and evidence cutoff stay attached',
   'Performance, drawdown, holdings and trades are retained',
   'Current targets never imply brokerage execution',
   'Missing or stale operating evidence fails visibly',
 ];
+
+type LandingPerformancePoint = {
+  account: number;
+  bench_qqq?: number;
+  date: string;
+};
+
+type FleetRow = {
+  name: string;
+  detail: string;
+  totalReturn: string;
+  cagr: string;
+  maxDrawdown: string;
+};
+
+function metric(run: GovernedRunSummary, id: string): CanonicalMetricV2 | null {
+  const metrics = Array.isArray(run.summary.metrics) ? run.summary.metrics : [];
+  return (metrics as CanonicalMetricV2[]).find((item) => item.metric_id === id) ?? null;
+}
+
+function metricPercent(run: GovernedRunSummary, id: string, signed = false): string {
+  const item = metric(run, id);
+  if (item?.availability_status !== 'available' || typeof item.value !== 'number') return '—';
+  const value = item.value * 100;
+  return `${signed && value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+}
+
+function metricDecimal(run: GovernedRunSummary, id: string): string {
+  const item = metric(run, id);
+  return item?.availability_status === 'available' && typeof item.value === 'number'
+    ? item.value.toFixed(2)
+    : '—';
+}
+
+function strategyFocus(run: GovernedRunSummary): string {
+  if (run.modelFamilyId === 'qqq_rotation') return 'US systematic rotation';
+  if (run.modelFamilyId === 'cn_ranker') return 'China equity ranking';
+  if (run.modelFamilyId === 'byd_allocation') return 'Adaptive single-stock allocation';
+  if (run.modelFamilyId === 'us_ranker') return 'US equity ranking';
+  return `${run.market.toUpperCase()} systematic strategy`;
+}
+
+function selectFleetRuns(runs: GovernedRunSummary[]): GovernedRunSummary[] {
+  const latestByFamily = new Map<string, GovernedRunSummary>();
+  [...runs]
+    .sort((a, b) => b.evidenceCutoff.localeCompare(a.evidenceCutoff))
+    .forEach((run) => {
+      if (!latestByFamily.has(run.modelFamilyId)) latestByFamily.set(run.modelFamilyId, run);
+    });
+  return FAMILY_ORDER.map((family) => latestByFamily.get(family)).filter((run): run is GovernedRunSummary => Boolean(run));
+}
 
 function ThemeButton() {
   const { theme, setTheme } = useGlobalStore();
@@ -53,10 +108,34 @@ function WindowChrome({ title, meta }: { title: string; meta: string }) {
   );
 }
 
-function FleetPreview() {
+function FleetPerformance({ row }: { row: FleetRow }) {
+  return (
+    <span className="flex min-w-[94px] flex-col items-start gap-1 tabular-nums" aria-label={`Total return ${row.totalReturn}, CAGR ${row.cagr}, max drawdown ${row.maxDrawdown}`}>
+      <span className="landing-run-badge landing-run-badge-blue">{row.totalReturn}</span>
+      <span className="flex items-center gap-2 text-[8px] font-semibold leading-none text-muted-foreground">
+        <span><span className="mr-1 text-muted-foreground/65">CAGR</span>{row.cagr}</span>
+        <span><span className="mr-1 text-muted-foreground/65">MDD</span>{row.maxDrawdown}</span>
+      </span>
+    </span>
+  );
+}
+
+function FleetPreview({ runs }: { runs: GovernedRunSummary[] }) {
+  const selectedRuns = selectFleetRuns(runs);
+  const rows: FleetRow[] = selectedRuns.length > 0
+    ? selectedRuns.map((run) => ({
+        name: run.title,
+        detail: strategyFocus(run),
+        totalReturn: metricPercent(run, 'total_return', true),
+        cagr: metricPercent(run, 'annualized_return', true),
+        maxDrawdown: metricPercent(run, 'max_drawdown'),
+      }))
+    : fallbackFleetRows;
+  const evidenceCutoff = selectedRuns[0]?.evidenceCutoff;
+
   return (
     <div className="landing-product-window landing-runs-window">
-      <WindowChrome title="Strategy fleet" meta="Decision surface" />
+      <WindowChrome title="Strategy fleet" meta="Formal strategy surface" />
       <div className="landing-window-body">
         <div className="landing-preview-sidebar" aria-hidden="true">
           <div className="landing-mini-brand"><Orbit className="h-4 w-4" /></div>
@@ -64,25 +143,134 @@ function FleetPreview() {
         </div>
         <div className="landing-runs-content">
           <div className="landing-preview-heading">
-            <div><p className="landing-preview-kicker">Operating console</p><h2>Start with what the strategies are doing now.</h2></div>
-            <div className="landing-preview-status"><ShieldCheck className="h-3.5 w-3.5" /> Evidence attached</div>
+            <div><p className="landing-preview-kicker">Strategy console</p><h2>See the models before reading the machinery.</h2></div>
+            <div className="landing-preview-status"><ShieldCheck className="h-3.5 w-3.5" /> Formal evidence</div>
           </div>
           <div className="landing-run-table">
-            <div className="landing-run-table-head"><span>Decision</span><span>Meaning</span><span>Status</span><span>Inspect</span></div>
-            {fleetRows.map((row, index) => (
+            <div className="landing-run-table-head"><span>Strategy</span><span>Focus</span><span>Performance</span><span>Inspect</span></div>
+            {rows.map((row, index) => (
               <div className={`landing-run-row ${index === 0 ? 'is-selected' : ''}`} key={row.name}>
                 <span className="landing-run-name"><Layers3 className="h-4 w-4" />{row.name}</span>
                 <span>{row.detail}</span>
-                <span className={`landing-run-badge landing-run-badge-${row.tone}`}>{row.status}</span>
+                <FleetPerformance row={row} />
                 <span className="landing-evidence-link">Open <ChevronRight className="h-3.5 w-3.5" /></span>
               </div>
             ))}
           </div>
           <div className="landing-run-footer">
-            <span><Database className="h-3.5 w-3.5" /> Data cutoff declared</span>
-            <span><ShieldCheck className="h-3.5 w-3.5" /> Fail-closed status</span>
-            <span><BarChart3 className="h-3.5 w-3.5" /> Formal evidence below</span>
+            <span><Database className="h-3.5 w-3.5" /> {evidenceCutoff ? `Evidence through ${evidenceCutoff}` : 'Formal catalog loading'}</span>
+            <span><ShieldCheck className="h-3.5 w-3.5" /> Read-only research surface</span>
+            <span><BarChart3 className="h-3.5 w-3.5" /> Performance stays public</span>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function isPerformancePoint(value: unknown): value is LandingPerformancePoint {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.account === 'number' && typeof row.date === 'string';
+}
+
+function PerformancePreview({ run }: { run: GovernedRunSummary | null }) {
+  const [performance, setPerformance] = useState<LandingPerformancePoint[]>([]);
+  const [loadState, setLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+
+  useEffect(() => {
+    if (!run) {
+      setPerformance([]);
+      setLoadState('idle');
+      return undefined;
+    }
+    let cancelled = false;
+    setLoadState('loading');
+    void import('@/lib/governed-run')
+      .then(({ loadRunSection }) => loadRunSection(run, 'performance'))
+      .then((section) => {
+        if (cancelled) return;
+        const report = section && typeof section === 'object' && Array.isArray((section as Record<string, unknown>).report)
+          ? ((section as Record<string, unknown>).report as unknown[]).filter(isPerformancePoint)
+          : [];
+        setPerformance(report);
+        setLoadState(report.length > 1 ? 'ready' : 'error');
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPerformance([]);
+          setLoadState('error');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [run]);
+
+  const trace = useMemo(() => {
+    if (performance.length < 2) return null;
+    const stride = Math.max(1, Math.ceil(performance.length / 96));
+    const sampled = performance.filter((_, index) => index % stride === 0 || index === performance.length - 1);
+    const values = sampled.flatMap((point) => [point.account, point.bench_qqq ?? 1]).filter(Number.isFinite);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const spread = max - min || 1;
+    const width = 1000;
+    const height = 300;
+    const pad = 24;
+    const makePoints = (pick: (point: LandingPerformancePoint) => number) => sampled.map((point, index) => {
+      const x = pad + (index / Math.max(1, sampled.length - 1)) * (width - pad * 2);
+      const y = height - pad - ((pick(point) - min) / spread) * (height - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return {
+      strategy: makePoints((point) => point.account),
+      benchmark: makePoints((point) => point.bench_qqq ?? 1),
+      start: sampled[0].date,
+      end: sampled[sampled.length - 1].date,
+    };
+  }, [performance]);
+
+  const stats = run ? [
+    ['Total return', metricPercent(run, 'total_return', true)],
+    ['CAGR', metricPercent(run, 'annualized_return', true)],
+    ['Sharpe', metricDecimal(run, 'sharpe_ratio')],
+    ['Max drawdown', metricPercent(run, 'max_drawdown')],
+  ] : [
+    ['Total return', '—'],
+    ['CAGR', '—'],
+    ['Sharpe', '—'],
+    ['Max drawdown', '—'],
+  ];
+
+  return (
+    <div className="landing-product-window landing-evidence-window">
+      <WindowChrome title="Formal performance" meta={run ? `Evidence through ${run.evidenceCutoff}` : 'Retained trace'} />
+      <div className="landing-backtest-body">
+        <div className="landing-backtest-header">
+          <div>
+            <p className="landing-preview-kicker">Performance & risk</p>
+            <h3>{run ? `${run.title} against ${run.benchmark.toUpperCase()}` : 'Formal strategy against its declared benchmark.'}</h3>
+          </div>
+          <div className="landing-chart-legend" aria-label="Performance chart legend">
+            <span className="strategy" /> Strategy
+            <span className="benchmark" /> Benchmark
+          </div>
+        </div>
+        <div className="landing-chart-area" role="img" aria-label={run ? `${run.title} formal performance trace` : 'Formal performance trace loading'}>
+          <div className="landing-chart-grid" aria-hidden="true" />
+          {trace ? (
+            <svg viewBox="0 0 1000 300" preserveAspectRatio="none" aria-hidden="true">
+              <polyline points={trace.benchmark} className="landing-chart-benchmark" />
+              <polyline points={trace.strategy} className="landing-chart-strategy" />
+            </svg>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+              {loadState === 'error' ? 'Formal trace unavailable' : 'Loading retained formal trace'}
+            </div>
+          )}
+          {trace && <p className="absolute bottom-3 left-4 text-[9px] font-semibold text-muted-foreground">{trace.start} → {trace.end}</p>}
+        </div>
+        <div className="landing-backtest-rail">
+          {stats.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
         </div>
       </div>
     </div>
@@ -92,7 +280,7 @@ function FleetPreview() {
 function EvidencePreview() {
   return (
     <div className="landing-product-window landing-evidence-window">
-      <WindowChrome title="Strategy evidence" meta="Performance to provenance" />
+      <WindowChrome title="Strategy evidence" meta="Decision to provenance" />
       <div className="landing-evidence-body">
         <div className="landing-evidence-map">
           <div className="landing-evidence-node"><Layers3 className="h-4 w-4" /><span>Now</span><small>State</small></div>
@@ -105,8 +293,8 @@ function EvidencePreview() {
         </div>
         <div className="landing-decision-panel">
           <div>
-            <p className="landing-preview-kicker">One strategy, one workspace</p>
-            <h3>Move from the current target to the evidence behind it.</h3>
+            <p className="landing-preview-kicker">One strategy, one evidence path</p>
+            <h3>Move from the decision to the proof behind it.</h3>
             <p>Alpha Engine keeps operating state and formal research in one reading path instead of making users navigate the repository's subsystem structure.</p>
           </div>
           <div className="landing-check-list">
@@ -120,13 +308,29 @@ function EvidencePreview() {
 
 export function LandingPage() {
   const theme = useGlobalStore((state) => state.theme);
+  const [formalRuns, setFormalRuns] = useState<GovernedRunSummary[]>([]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
-    document.title = 'Alpha Engine — Systematic Strategy Console';
+    document.title = 'Alpha Engine — Systematic Strategy Research & Monitoring';
     const description = document.querySelector('meta[name="description"]');
-    description?.setAttribute('content', 'Monitor governed medium-frequency strategies, inspect target allocations, and drill into performance, risk, holdings, drivers and evidence.');
+    description?.setAttribute('content', 'Inspect systematic strategies, formal performance, risk, current decision state and the governed evidence behind each model.');
   }, [theme]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void import('@/lib/governed-run')
+      .then(({ loadFormalRuns }) => loadFormalRuns())
+      .then((result) => {
+        if (!cancelled) setFormalRuns(result.runs);
+      })
+      .catch(() => {
+        if (!cancelled) setFormalRuns([]);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const featuredRun = selectFleetRuns(formalRuns).find((run) => run.modelFamilyId === 'qqq_rotation') ?? selectFleetRuns(formalRuns)[0] ?? null;
 
   return (
     <div className="alpha-landing">
@@ -136,7 +340,8 @@ export function LandingPage() {
           <span><strong>Alpha Engine</strong><small>Systematic strategies</small></span>
         </Link>
         <nav aria-label="Product navigation">
-          <a href="#workflow">Workflow</a>
+          <a href="#strategies">Strategies</a>
+          <a href="#performance">Performance</a>
           <a href="#evidence">Evidence</a>
           <a href="https://github.com/liuh886/alpha_engine" target="_blank" rel="noreferrer"><Github className="h-4 w-4" /><span className="sr-only">GitHub</span></a>
           <ThemeButton />
@@ -145,42 +350,42 @@ export function LandingPage() {
       </header>
 
       <main>
-        <section className="landing-hero">
+        <section className="landing-hero" id="strategies">
           <div className="landing-hero-copy">
-            <h1>Run systematic strategies with the evidence still attached.</h1>
-            <p>Alpha Engine turns governed research into a decision-first console for medium-frequency strategies: current state, target allocation, next decision, risk and the evidence behind each model.</p>
+            <h1>Know what your systematic strategy is doing — and why.</h1>
+            <p>Alpha Engine brings current state, target allocation, next decision, formal performance, risk and research evidence into one medium-frequency strategy console.</p>
             <div className="landing-actions">
-              <Link className="landing-primary-action" to="/app">Open Strategy Console <ArrowRight className="h-4 w-4" /></Link>
-              <Link className="landing-secondary-action" to="/strategies">View formal strategies</Link>
+              <Link className="landing-primary-action" to="/strategies">Explore strategies <ArrowRight className="h-4 w-4" /></Link>
+              <Link className="landing-secondary-action" to="/app">Open console</Link>
             </div>
             <p className="landing-trust-line">Read-only · Evidence-governed · No broker execution</p>
           </div>
-          <FleetPreview />
+          <FleetPreview runs={formalRuns} />
         </section>
 
-        <section className="landing-story-section" id="workflow">
+        <section className="landing-story-section" id="performance">
           <div className="landing-section-copy">
             <span>01</span>
-            <h2>Decision first. Evidence on demand.</h2>
-            <p>See what each strategy is doing now, what it targets next, what changed, and when it evaluates again. Only then drill into performance, risk and holdings.</p>
-            <Link to="/strategies">Explore strategies <ArrowRight className="h-4 w-4" /></Link>
+            <h2>Performance before persuasion.</h2>
+            <p>Each formal strategy exposes retained return and risk evidence against its declared benchmark. Start with the result, then decide how much operational detail you need.</p>
+            <Link to="/strategies">Inspect formal performance <ArrowRight className="h-4 w-4" /></Link>
           </div>
-          <FleetPreview />
+          <PerformancePreview run={featuredRun} />
         </section>
 
         <section className="landing-story-section landing-story-reverse" id="evidence">
           <div className="landing-section-copy">
             <span>02</span>
-            <h2>Every target keeps its research context.</h2>
-            <p>Formal Bundle v2 evidence, data lineage, factor drivers and research decisions remain inspectable without turning the normal operating screen into an infrastructure dashboard.</p>
-            <Link to="/research">Open research <ArrowRight className="h-4 w-4" /></Link>
+            <h2>Every decision is traceable.</h2>
+            <p>Model identity, benchmark, evidence cutoff, performance, drivers and retained research artifacts stay connected without turning the operating screen into an infrastructure dashboard.</p>
+            <Link to="/research">Open research evidence <ArrowRight className="h-4 w-4" /></Link>
           </div>
           <EvidencePreview />
         </section>
 
         <section className="landing-final-cta">
-          <div><h2>Know what the strategy says before reading every artifact.</h2><p>Open the strategy fleet, then drill down only where the decision requires it.</p></div>
-          <Link className="landing-primary-action" to="/app">Enter Alpha Engine <ArrowRight className="h-4 w-4" /></Link>
+          <div><h2>See the model. Then inspect the decision.</h2><p>Start with the formal strategy fleet and drill into operating detail only when the decision requires it.</p></div>
+          <Link className="landing-primary-action" to="/strategies">Explore Alpha Engine <ArrowRight className="h-4 w-4" /></Link>
         </section>
       </main>
 
