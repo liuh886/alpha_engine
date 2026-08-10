@@ -101,7 +101,7 @@ def run_candidates(
     signals: pd.DataFrame,
     *,
     cost_bps: float,
-) -> tuple[dict[str, AllocationResult], pd.DataFrame]:
+) -> tuple[dict[str, AllocationResult], pd.DataFrame | None]:
     decisions = build_decisions(common, signals)
     results: dict[str, AllocationResult] = {}
     for name, decision in decisions.items():
@@ -120,7 +120,7 @@ def run_candidates(
         daily["net_return"] = gross - cost
         daily = daily.iloc[:-1].copy()
         results[name] = AllocationResult(name=name, daily=daily, trades=pd.DataFrame())
-    return results, decisions
+    return results, None
 
 
 def _wm(result, start, end):
