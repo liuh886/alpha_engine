@@ -727,7 +727,7 @@ class ModelDriftMonitor:
         if isinstance(data, pd.DataFrame):
             if data.shape[1] == 1:
                 return data.iloc[:, 0]
-            return data.stack(dropna=True)
+            return data.stack(future_stack=True).dropna()
         return data
 
     @staticmethod
@@ -768,7 +768,7 @@ class ModelDriftMonitor:
         """Normalize a cross-sectional panel to (datetime, instrument) Series."""
         if isinstance(data, pd.DataFrame):
             if isinstance(data.index, pd.DatetimeIndex) and data.shape[1] >= 2:
-                series = data.stack(dropna=False)
+                series = data.stack(future_stack=True)
                 series.index = series.index.set_names(["datetime", "instrument"])
                 return pd.to_numeric(series, errors="coerce").sort_index()
             if isinstance(data.index, pd.MultiIndex) and data.shape[1] == 1:
