@@ -1,0 +1,80 @@
+schema_version: "1.0"
+candidate_id: byd_v1_3_min_hold_bear_defense
+public_version: byd_v1_3
+parent_issue: 724
+source_exploration_issue: 716
+status: frozen_formal_challenger
+research_only: true
+trade_ready: false
+historical_evidence_consumed: true
+fresh_historical_holdout: false
+automatic_promotion_allowed: false
+promotion_authority: explicit_user_direction_2026_08_10
+
+champion:
+  model_id: byd_v1_2_convex_momentum_budget_v1
+  public_version: byd_v1_2
+  config: configs/models/byd_v1_2_convex_momentum_budget_v1.yaml
+  formal_package: data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json
+  baseline_reimplementation_forbidden: true
+
+immutable_data:
+  byd_snapshot: data/research/byd_canonical_v1_snapshot.tar.xz
+  byd_snapshot_sha256: 2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179
+  etf_artifact: data/research/515180_canonical_v1_artifact.zip.b64
+  etf_decoded_sha256: 7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f
+  cutoff: "2026-08-03"
+
+frozen_delta:
+  minimum_hold_sessions: 20
+  minimum_hold_scope: base_risk_target_transitions_only
+  initial_overlap_state: inherited_and_mature_from_canonical_pre_overlap_history
+  bear_state_source: governed_market_state
+  bear_defense:
+    BYD: 0.55
+    515180.SH: 0.45
+    CASH: 0.0
+  expansion:
+    maximum_financed_increment: 0.15
+    full_increment_momentum: 0.15
+    convex_power: 2.0
+    state_rules: inherit_v1_2_exactly
+
+execution:
+  signal_time: session_close_t
+  execution_time: next_common_independently_confirmed_eligible_open_t_plus_1
+  primary_transaction_cost_bps: 20.0
+  stress_transaction_cost_bps: 40.0
+  primary_annual_financing_rate: 0.06
+  stress_annual_financing_rate: 0.10
+
+formal_gates:
+  maximum_full_cagr_shortfall_percentage_points: 0.50
+  primary_full_sharpe_not_below_champion: true
+  primary_full_calmar_not_below_champion: true
+  minimum_full_drawdown_improvement_percentage_points: 2.0
+  fixed_validation_cagr_not_below_champion: true
+  retrospective_2025_plus_cagr_not_below_champion: true
+  maximum_round_trips_per_year: 4.0
+  stress_full_cagr_shortfall_percentage_points: 0.50
+  stress_full_calmar_not_below_champion: true
+  stress_minimum_drawdown_improvement_percentage_points: 2.0
+  maximum_positive_period_share: 0.60
+
+forbidden_after_freeze:
+  - parameter_search
+  - threshold_change
+  - min_hold_change
+  - bear_weight_change
+  - expansion_change
+  - sma_window_change
+  - entry_delay_change
+  - exit_rule_change
+  - cost_change
+  - evaluation_window_change
+  - gate_change
+
+promotion:
+  require_every_gate: true
+  registry_change_only_after_supported_decision: true
+  prospective_monitoring_continues_after_promotion: true
