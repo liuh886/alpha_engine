@@ -1,0 +1,98 @@
+schema_version: '1.0'
+experiment_id: byd_v1_3_min_hold_bear_defense_certification_v1
+runner: rules_based_allocation_v1
+active: true
+status: running
+issue: 726
+parent_model_id: byd_v1_2_convex_momentum_budget_v1
+research_only: true
+trade_ready: false
+
+purpose: >-
+  Certify the frozen BYD v1.3 min-hold + bear-defense challenger against the
+  current accepted BYD v1.2 formal Bundle v2. Historical evidence is already
+  consumed by prior exploration, so this mission can establish historical
+  support or rejection but cannot authorize automatic promotion.
+
+baseline:
+  model_version_id: byd_v1_2_convex_momentum_budget_v1
+  model_family_id: byd_allocation
+  model_kind: rules_based_allocation
+  bundle_id: a28519df32797e0a135736e8626b6cf1fb9a1ba950d01248bc48a45b7fc540f9
+  manifest_sha256: 149b3becabd6dbdc1d2e24abeca4a4350362f33f829d965173a3207d61ce8c2d
+  performance_sha256: f0e24803bc777bc115e266006929363026a2e6d8fcd84d48fb2ea62dc72f2501
+  evidence_cutoff: '2026-08-07'
+
+challenger:
+  candidate_id: byd_v1_3_min_hold_bear_defense
+  executor: byd_v1_3_min_hold_bear_defense_v1
+  parameters:
+    min_hold_risk_eligible_sessions: 20
+    bear_defense_byd_weight: 0.55
+    bear_defense_etf_weight: 0.45
+    max_financed_increment: 0.15
+    convex_power: 2.0
+    full_increment_momentum: 0.15
+
+data:
+  historical_cutoff: '2026-08-03'
+  byd_snapshot_tar: data/research/byd_canonical_v1_snapshot.tar.xz
+  byd_snapshot_sha256: 2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179
+  etf_artifact_b64: data/research/515180_canonical_v1_artifact.zip.b64
+  etf_decoded_sha256: 7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f
+  provider_substitution_allowed: false
+  cross_provider_stitching_allowed: false
+  quarantined_open_repair_allowed: false
+
+windows:
+  development:
+    start: '2019-11-26'
+    end: '2022-12-31'
+  fixed_validation:
+    start: '2023-01-01'
+    end: '2024-12-31'
+  retrospective_2025_plus:
+    start: '2025-01-01'
+    end: '2026-08-03'
+  full_overlap:
+    start: '2019-11-26'
+    end: '2026-08-03'
+
+execution:
+  signal_time: session_close_t
+  execution_time: next_common_independently_confirmed_eligible_open
+  primary_cost_bps: 20.0
+  stress_cost_bps: 40.0
+  primary_financing_rate: 0.06
+  stress_financing_rate: 0.10
+
+evaluation:
+  decision_if_supported: historically_supported_challenger
+  thresholds:
+    min_calmar_improvement: 0.03
+    max_cagr_shortfall: 0.005
+    min_drawdown_improvement: 0.01
+    min_cagr_improvement_for_return_path: 0.01
+    max_round_trips_per_year: 4.0
+    max_positive_period_contribution_share: 0.60
+
+governance:
+  historical_evidence_consumed: true
+  fresh_holdout: false
+  baseline_must_come_from_current_formal_bundle: true
+  maintained_v12_runner_must_reproduce_formal_primary_trace: true
+  candidate_state_must_initialize_on_full_byd_history: true
+  post_result_parameter_change_allowed: false
+  automatic_promotion_allowed: false
+  prospective_confirmation_required: true
+
+stop_rules:
+  - no_parameter_search
+  - no_threshold_changes
+  - no_sma_changes
+  - no_exit_changes
+  - no_entry_delay_changes
+  - no_new_features
+  - no_branch_selection
+  - no_gate_changes
+  - no_automatic_formal_promotion
