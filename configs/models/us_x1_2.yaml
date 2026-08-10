@@ -1,8 +1,8 @@
 schema_version: '1.2'
 model_id: us_x1_2
-display_name: US x1.2 Candidate
+display_name: US x1.2
 release_date: '2026-08-11'
-status: frozen_candidate_pending_acceptance
+status: baseline_research_active
 research_only: true
 trade_ready: false
 market: us
@@ -10,14 +10,16 @@ benchmark: QQQ
 objective: Rank the governed US87 equity pool for 10-session forward return with sampled XGBoost and a max-four-names-per-sector portfolio constraint.
 lineage:
   parent: us_x1_1
+  supersedes: us_x1_1
   selected_candidate: r11_sampled
   source_research_pr: 765
   certification_pr: 767
+  promotion_pr: 770
   certification_workflow_run_id: 31425868143
   certification_artifact_id: 9077297330
   certification_artifact_digest: sha256:8b1457b926c8dbc675dae04cd2f71b5476625a011fca641976d88ab9ba813b2c
-  adoption_decision: frozen_candidate_only
-  promotion_note: Development winner frozen as US x1.2 Candidate; US x1.1 remains the accepted US baseline until the required untouched future six-month window is complete and supportive.
+  adoption_decision: explicit_user_directed_research_baseline_promotion
+  promotion_note: User-directed research-baseline promotion after corrected full certification. This does not satisfy the untouched six-month prospective acceptance gate and does not authorize trade readiness.
 universe:
   universe_id: us_selected_equities_v2
   source: configs/research_universes/us_selected_equities_v2.yaml
@@ -135,15 +137,17 @@ selection_decision:
   - r11_lower_lr
   selected_by: preregistered_development_selection_score
   formal_acceptance: false
-  reason: untouched_future_six_month_window_required_and_current_2026H2_partial_challenge_not_positive_vs_qqq
+  research_baseline_promotion: true
+  promotion_authority: explicit_user_direction_2026_08_11
+  reason: user_directed_research_baseline_promotion_preserving_incomplete_prospective_boundary
 acceptance_gate:
-  earliest_complete_window: 2026H2
   requirement_source: configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml
   untouched_future_six_month_window_required: true
-  no_automatic_promotion: true
-  current_active_baseline_remains: us_x1_1
+  prospective_acceptance_pending: true
+  no_automatic_trade_readiness: true
 known_limitations:
 - Static curated membership carries survivorship bias.
 - 2026H1 is consumed reporting evidence and cannot be reused for model selection.
 - The current 2026H2 challenge contains only 18 horizon-contained dates through 2026-07-27 and is not the required complete six-month acceptance window.
-- The candidate improved the incumbent in the partial 2026H2 challenge but still underperformed QQQ in that interval.
+- The model improved the incumbent in the partial 2026H2 challenge but still underperformed QQQ in that interval.
+- This is an active research baseline, not a trade-ready model.
