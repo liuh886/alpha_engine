@@ -11,6 +11,7 @@ on:
       - "configs/research_experiments/cn_x1_1_fallback_aware_certification_v1.yaml"
       - "notebooks/models/*_baseline.ipynb"
       - "notebooks/models/cn_x1_1_complete_backtest.ipynb"
+      - "data/research/experiment_receipts/us_x1_2_certification_v1.json"
       - "data/research/cn_x1_1_regime_gated_candidate_v1/**"
       - "data/research/formal_backtests/cn_x1_1.json"
       - "docs/models/BASELINE_MODEL_GOVERNANCE.md"
@@ -65,13 +66,16 @@ jobs:
             configs/models
             configs/research_paradigms/us_10d_xgb_optimization_frozen_v1.yaml
             configs/research_paradigms/us_x1_1_frozen_v1.yaml
+            configs/research_paradigms/us_x1_2_frozen_v1.yaml
             configs/research_paradigms/cn_x1_0_frozen_v1.yaml
             configs/research_experiments/us_x1_1_risk_control_v1.yaml
             configs/research_experiments/cn_x1_1_fallback_aware_certification_v1.yaml
             notebooks/models/us_x1_0_baseline.ipynb
             notebooks/models/us_x1_1_baseline.ipynb
+            notebooks/models/us_x1_2_baseline.ipynb
             notebooks/models/cn_x1_0_baseline.ipynb
             notebooks/models/cn_x1_1_complete_backtest.ipynb
+            data/research/experiment_receipts/us_x1_2_certification_v1.json
             data/research/cn_x1_1_regime_gated_candidate_v1
             data/research/formal_backtests/cn_x1_1.json
             docs/models/BASELINE_MODEL_GOVERNANCE.md
