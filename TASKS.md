@@ -364,3 +364,25 @@
   - **Goal**: Review the missing data inventory. Ensure the backend correctly populates high-value fields for new models. For legacy models, decide whether to backfill, hide unused fields, or improve the fallback UI to reduce confusion.
   - **Status**: Recorded as an issue for evaluation.
 
+## USx Iteration — 2026-08-11
+
+### Round 1: XGBoost Native Calibration Grid
+
+- [x] **T55.1: Run native XGB calibration grid on development windows**
+  - Deliver: `artifacts/evidence/us_x1_1_native_xgb_grid_v1/native_grid_decision.json`
+  - 6 calibrations tested: baseline, lower_learning_rate, higher_child_weight, row_and_column_sampling, regularized, lower_leaf_capacity
+  - All 5 challengers pass 5/6 gates; universal blocker is `drawdown_improves_3pp_or_stays_above_minus_22pct`
+  - **Best challenger: `row_and_column_sampling`** (subsample=0.8, colsample_bytree=0.8): compounded excess +109.75% vs baseline +99.87% (+9.88pp), better diversification (strongest_share 0.43 vs 0.49), replaces BE with HOOD in recurring names
+  - Worst drawdown: -29.10% (challenger) vs -28.40% (baseline) — fail on 3pp improvement gate
+  - Provider identity mismatch → decision `data_blocked`, but evidence generated for relative comparison
+  - **Accept**: 5 challenger calibrations evaluated, 4 complete development windows per calibration.
+
+- [x] **T55.2: Attempt combined calibration + risk_controlled_momentum experiment**
+  - Deliver: `configs/research_experiments/us_x1_2_calibrated_risk_control_v1.yaml`
+  - Blocked by cross_sectional_experiment_runner provider identity strict matching
+  - Experiment config committed for future run with matching provider
+
+- [ ] **T55.3 [Next] Run sector cap experiment once score ledgers are available**
+  - Pre-registered in `configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml`
+  - Requires deterministic reproduction score ledgers (not locally available)
+  - Targeting drawdown reduction through 4-names-per-sector constraint
