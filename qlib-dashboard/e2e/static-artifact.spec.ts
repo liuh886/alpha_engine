@@ -165,14 +165,15 @@ test('product homepage opens the strategy console', async ({ page }, testInfo) =
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
   await page.goto('/#/');
-  await expect(page.getByRole('heading', { name: 'Run systematic strategies with the evidence still attached.' })).toBeVisible();
-  await expect(page.getByText('Start with what the strategies are doing now.').first()).toBeVisible();
-  await expect(page.getByText('Decision first. Evidence on demand.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Know what your systematic strategy is doing — and why.' })).toBeVisible();
+  await expect(page.getByText('QQQR v4.3', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Performance before persuasion.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Every decision is traceable.' })).toBeVisible();
   await assertNoHorizontalOverflow(page);
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: `test-results/static-artifact/landing-${testInfo.project.name}.png`, fullPage: true });
 
-  await page.getByRole('link', { name: 'Open Strategy Console' }).click();
+  await page.locator('.landing-actions').getByRole('link', { name: 'Open console' }).click();
   await expect(page).toHaveURL(/#\/app$/);
   await expect(page.getByRole('heading', { name: 'What are the strategies doing now?' })).toBeVisible();
 });
