@@ -117,11 +117,11 @@ function Layout(props: LayoutProps) {
     selectRun: props.selectRun,
   };
 
-  const lockedSurface = declaredRoute?.path === 'securities'
+  const lockedPreview = declaredRoute?.path === 'securities'
     ? <SecurityExplorerAccessPreview openAccount={access.openAccount} />
     : declaredRoute?.path === 'strategies/:strategyId' && protectedRun
       ? <StrategyPublicPreview run={protectedRun} openAccount={access.openAccount} />
-      : <AccessGate requiredTier={requiredTier} resource={accessResource} openAccount={access.openAccount} />;
+      : null;
 
   return (
     <div className="research-app-shell">
@@ -174,7 +174,7 @@ function Layout(props: LayoutProps) {
               <Skeleton className="h-[360px] rounded-xl" />
             </div>
           ) : accessLocked && requiredTier !== 'public' ? (
-            lockedSurface
+            lockedPreview ?? <AccessGate requiredTier={requiredTier} resource={accessResource} openAccount={access.openAccount} />
           ) : props.loadError ? (
             <div className="research-empty-state">
               <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
