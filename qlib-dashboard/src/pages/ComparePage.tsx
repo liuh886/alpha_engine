@@ -9,6 +9,7 @@ import type { RunWorkspaceContext } from '@/lib/run-workspace';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RiskReturnMap } from '@/components/RiskReturnMap';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const MAX_COMPARE = 5;
@@ -34,10 +35,8 @@ function formatMetric(value: number | null, format: 'pct' | 'number'): string {
 function buildEquitySeries(models: ModelData[]) {
   const rows = new Map<string, Record<string, string | number | null>>();
   for (const model of models) {
-    const report: EquityReportRow[] = Array.isArray(model.backtest?.report)
-      ? model.backtest.report
-      : [];
-    const firstAccount = Number(report.find((row: EquityReportRow) => Number.isFinite(Number(row.account)))?.account);
+    const report: EquityReportRow[] = Array.isArray(model.backtest?.report) ? model.backtest.report : [];
+    const firstAccount = Number(report.find((row) => Number.isFinite(Number(row.account)))?.account);
     if (!Number.isFinite(firstAccount) || firstAccount <= 0) continue;
     for (const row of report) {
       if (!row.date) continue;
@@ -48,7 +47,7 @@ function buildEquitySeries(models: ModelData[]) {
       rows.set(date, current);
     }
   }
-  return Array.from(rows.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  return Array.from(rows.values()).sort((left, right) => String(left.date).localeCompare(String(right.date)));
 }
 
 function contractValue(model: ModelData, key: 'benchmark' | 'start' | 'end'): string {
@@ -109,6 +108,7 @@ export function ComparePage({ models }: { models: ModelData[] }) {
   const identity = useMemo(() => compareIdentity(selected), [selected]);
   const equity = useMemo(() => buildEquitySeries(selected), [selected]);
   const incompatibleRows = identity.filter((row) => !row.aligned);
+  const comparable = incompatibleRows.length === 0;
 
   const updateSelection = (nextIds: string[]) => {
     const limited = nextIds.filter((id) => accessibleModels.some((model) => model.id === id)).slice(0, MAX_COMPARE);
@@ -125,37 +125,154 @@ export function ComparePage({ models }: { models: ModelData[] }) {
   };
 
   if (accessibleModels.length === 0) {
-    return <div className="research-empty-state"><GitCompareArrows className="mx-auto h-8 w-8 text-muted-foreground" /><h2 className="mt-4 text-lg font-semibold">No comparable records</h2><p className="mt-2 text-sm text-muted-foreground">No Free-tier comparison records are available for the active research bundle.</p></div>;
+    return (
+      <div className="research-empty-state">
+        <GitCompareArrows className="mx-auto h-8 w-8 text-muted-foreground" />
+        <h2 className="mt-4 text-lg font-semibold">No comparable records</h2>
+        <p className="mt-2 text-sm text-muted-foreground">No Free-tier comparison records are available for the active research bundle.</p>
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6 pb-12">
-      <section><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Like-for-like review</p><h2 className="mt-2 text-2xl font-black tracking-tight">Compare formal evidence</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">Select up to {MAX_COMPARE} accessible records. Metrics are descriptive unless market, benchmark, window, snapshot and formal cost contract are aligned.</p></section>
+      <section>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Like-for-like review</p>
+        <h2 className="mt-2 text-2xl font-black tracking-tight">Compare formal evidence</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          Select up to {MAX_COMPARE} accessible records. Metrics are descriptive unless market, benchmark, window, snapshot and formal cost contract are aligned.
+        </p>
+      </section>
 
       {lockedModelCount > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
-          <div><p className="flex items-center gap-2 font-semibold text-primary"><Crown className="h-4 w-4" />{lockedModelCount} restricted model {lockedModelCount === 1 ? 'is' : 'are'} excluded</p><p className="mt-1 text-xs text-muted-foreground">{lockedProCount > 0 ? `${lockedProCount} require AlphaEngine Pro.` : 'Sign in with the required account level to include them.'}</p></div>
+          <div>
+            <p className="flex items-center gap-2 font-semibold text-primary"><Crown className="h-4 w-4" />{lockedModelCount} restricted model {lockedModelCount === 1 ? 'is' : 'are'} excluded</p>
+            <p className="mt-1 text-xs text-muted-foreground">{lockedProCount > 0 ? `${lockedProCount} require AlphaEngine Pro.` : 'Sign in with the required account level to include them.'}</p>
+          </div>
           <Button type="button" size="sm" variant="outline" onClick={access.openAccount}>{lockedProCount > 0 ? 'View Pro access' : 'Open account'}</Button>
         </div>
       )}
 
-      <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Evidence records</CardTitle></CardHeader><CardContent className="flex flex-wrap gap-2">{accessibleModels.map((model) => {
-        const active = selectedIds.includes(model.id);
-        return <Button key={model.id} type="button" variant={active ? 'default' : 'outline'} size="sm" disabled={!active && selectedIds.length >= MAX_COMPARE} onClick={() => toggleModel(model.id)} aria-pressed={active} className="max-w-full gap-2">{active && <Check className="h-3.5 w-3.5" />}<span className="truncate">{model.name || model.id}</span><span className="text-[9px] uppercase opacity-70">{model.market || 'n/a'}</span></Button>;
-      })}</CardContent></Card>
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-sm">Evidence records</CardTitle></CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {accessibleModels.map((model) => {
+            const active = selectedIds.includes(model.id);
+            return (
+              <Button
+                key={model.id}
+                type="button"
+                variant={active ? 'default' : 'outline'}
+                size="sm"
+                disabled={!active && selectedIds.length >= MAX_COMPARE}
+                onClick={() => toggleModel(model.id)}
+                aria-pressed={active}
+                className="max-w-full gap-2"
+              >
+                {active && <Check className="h-3.5 w-3.5" />}
+                <span className="truncate">{model.name || model.id}</span>
+                <span className="text-[9px] uppercase opacity-70">{model.market || 'n/a'}</span>
+              </Button>
+            );
+          })}
+        </CardContent>
+      </Card>
 
-      {selected.length < 2 ? <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Select at least two accessible evidence records to compare.</div> : <>
-        <Card className={incompatibleRows.length ? 'border-amber-500/40' : 'border-emerald-500/30'}><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><Scale className="h-4 w-4" /> Comparison identity</CardTitle></CardHeader><CardContent>{incompatibleRows.length > 0 && <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-800 dark:text-amber-200"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{incompatibleRows.map((row) => row.label).join(', ')} differ. No winner is inferred.</span></div>}<div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead className="min-w-32">Identity</TableHead>{selected.map((model) => <TableHead key={model.id} className="min-w-44">{model.name || model.id}</TableHead>)}</TableRow></TableHeader><TableBody>{identity.map((row) => <TableRow key={row.label}><TableCell className="font-medium">{row.label} {!row.aligned && <Badge variant="outline" className="ml-2 text-[9px] text-amber-700">Differs</Badge>}</TableCell>{row.values.map((value, index) => <TableCell key={`${row.label}-${selected[index].id}`} className="font-mono text-xs">{value}</TableCell>)}</TableRow>)}</TableBody></Table></div></CardContent></Card>
+      {selected.length < 2 ? (
+        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Select at least two accessible evidence records to compare.</div>
+      ) : (
+        <>
+          <Card className={comparable ? 'border-emerald-500/30' : 'border-amber-500/40'}>
+            <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><Scale className="h-4 w-4" /> Comparison identity</CardTitle></CardHeader>
+            <CardContent>
+              {!comparable && (
+                <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-800 dark:text-amber-200">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{incompatibleRows.map((row) => row.label).join(', ')} differ. No winner is inferred.</span>
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow><TableHead className="min-w-32">Identity</TableHead>{selected.map((model) => <TableHead key={model.id} className="min-w-44">{model.name || model.id}</TableHead>)}</TableRow></TableHeader>
+                  <TableBody>
+                    {identity.map((row) => (
+                      <TableRow key={row.label}>
+                        <TableCell className="font-medium">{row.label} {!row.aligned && <Badge variant="outline" className="ml-2 text-[9px] text-amber-700">Differs</Badge>}</TableCell>
+                        {row.values.map((value, index) => <TableCell key={`${row.label}-${selected[index].id}`} className="font-mono text-xs">{value}</TableCell>)}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Metric comparison</CardTitle></CardHeader><CardContent className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead className="min-w-44">Metric</TableHead>{selected.map((model) => <TableHead key={model.id} className="min-w-44">{model.name || model.id}</TableHead>)}</TableRow></TableHeader><TableBody>{METRICS.map((metric) => {
-          const projected = selected.map((model) => projectFormalMetric(model, metric.aliases));
-          const finite = projected.map((row) => row.value).filter((value): value is number => value !== null);
-          const best = incompatibleRows.length === 0 && finite.length ? (metric.higherIsBetter ? Math.max(...finite) : Math.min(...finite)) : null;
-          return <TableRow key={metric.label}><TableCell><div className="font-medium">{metric.label}</div><div className="text-[10px] text-muted-foreground">{metric.aliases.join(' / ')}</div></TableCell>{projected.map((row, index) => <TableCell key={`${metric.label}-${selected[index].id}`} className="font-mono" title={row.reason}><span className={row.value !== null && best !== null && row.value === best ? 'font-bold text-primary' : ''}>{formatMetric(row.value, metric.format)}</span></TableCell>)}</TableRow>;
-        })}</TableBody></Table></CardContent></Card>
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Metric comparison</CardTitle></CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader><TableRow><TableHead className="min-w-44">Metric</TableHead>{selected.map((model) => <TableHead key={model.id} className="min-w-44">{model.name || model.id}</TableHead>)}</TableRow></TableHeader>
+                <TableBody>
+                  {METRICS.map((metric) => {
+                    const projected = selected.map((model) => projectFormalMetric(model, metric.aliases));
+                    const finite = projected.map((row) => row.value).filter((value): value is number => value !== null);
+                    const best = comparable && finite.length ? (metric.higherIsBetter ? Math.max(...finite) : Math.min(...finite)) : null;
+                    return (
+                      <TableRow key={metric.label}>
+                        <TableCell><div className="font-medium">{metric.label}</div><div className="text-[10px] text-muted-foreground">{metric.aliases.join(' / ')}</div></TableCell>
+                        {projected.map((row, index) => (
+                          <TableCell key={`${metric.label}-${selected[index].id}`} className="font-mono" title={row.reason}>
+                            <span className={row.value !== null && best !== null && row.value === best ? 'font-bold text-primary' : ''}>{formatMetric(row.value, metric.format)}</span>
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
-        <Card><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><LineChartIcon className="h-4 w-4" /> Normalized equity evidence</CardTitle><p className="text-xs text-muted-foreground">Each retained series is normalized at its first declared account value. Missing observations remain gaps.</p></CardHeader><CardContent>{equity.length === 0 ? <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">No comparable equity series are declared.</div> : <div className="h-[380px] w-full" aria-label="Normalized equity comparison chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={equity} margin={{ top: 8, right: 12, bottom: 8, left: 4 }}><CartesianGrid strokeDasharray="3 3" opacity={0.2} /><XAxis dataKey="date" minTickGap={48} tick={{ fontSize: 10 }} /><YAxis tickFormatter={(value) => `${(Number(value) * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} width={52} /><Tooltip formatter={(value) => [`${(Number(value) * 100).toFixed(2)}%`, 'Return']} /><Legend />{selected.map((model, index) => <Line key={model.id} type="monotone" dataKey={model.id} name={model.name || model.id} stroke={CHART_COLORS[index % CHART_COLORS.length]} dot={false} connectNulls={false} strokeWidth={2} />)}</LineChart></ResponsiveContainer></div>}</CardContent></Card>
-      </>}
+          <RiskReturnMap models={selected} comparable={comparable} />
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm"><LineChartIcon className="h-4 w-4" /> Normalized equity evidence</CardTitle>
+              <p className="text-xs text-muted-foreground">Each retained series is normalized at its first declared account value. Missing observations remain gaps.</p>
+            </CardHeader>
+            <CardContent>
+              {equity.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">No comparable equity series are declared.</div>
+              ) : (
+                <div className="h-[380px] w-full" aria-label="Normalized equity comparison chart">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={equity} margin={{ top: 8, right: 12, bottom: 8, left: 4 }}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                      <XAxis dataKey="date" minTickGap={48} tick={{ fontSize: 10 }} />
+                      <YAxis tickFormatter={(value) => `${(Number(value) * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} width={52} />
+                      <Tooltip formatter={(value) => [`${(Number(value) * 100).toFixed(2)}%`, 'Return']} />
+                      <Legend />
+                      {selected.map((model, index) => (
+                        <Line
+                          key={model.id}
+                          type="monotone"
+                          dataKey={model.id}
+                          name={model.name || model.id}
+                          stroke={CHART_COLORS[index % CHART_COLORS.length]}
+                          dot={false}
+                          connectNulls={false}
+                          strokeWidth={2}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
