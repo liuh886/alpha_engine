@@ -10,7 +10,9 @@ import { AccessGate } from './components/AccessGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileNavigation } from './components/MobileNavigation';
 import { ResearchContextBar } from './components/ResearchContextBar';
+import { SecurityExplorerAccessPreview } from './components/SecurityExplorerAccessPreview';
 import { Sidebar } from './components/Sidebar';
+import { StrategyPublicPreview } from './components/StrategyPublicPreview';
 import { Button } from './components/ui/button';
 import { Skeleton } from './components/ui/skeleton';
 import { AccessControlProvider, useAccessControl } from './hooks/useAccessControl';
@@ -115,6 +117,12 @@ function Layout(props: LayoutProps) {
     selectRun: props.selectRun,
   };
 
+  const lockedSurface = declaredRoute?.path === 'securities'
+    ? <SecurityExplorerAccessPreview openAccount={access.openAccount} />
+    : declaredRoute?.path === 'strategies/:strategyId' && protectedRun
+      ? <StrategyPublicPreview run={protectedRun} openAccount={access.openAccount} />
+      : <AccessGate requiredTier={requiredTier} resource={accessResource} openAccount={access.openAccount} />;
+
   return (
     <div className="research-app-shell">
       <Sidebar activeRun={activeRun} />
@@ -166,7 +174,7 @@ function Layout(props: LayoutProps) {
               <Skeleton className="h-[360px] rounded-xl" />
             </div>
           ) : accessLocked && requiredTier !== 'public' ? (
-            <AccessGate requiredTier={requiredTier} resource={accessResource} openAccount={access.openAccount} />
+            lockedSurface
           ) : props.loadError ? (
             <div className="research-empty-state">
               <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
