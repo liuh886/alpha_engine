@@ -12,6 +12,10 @@ export interface ReportRow {
   account: number;
   value?: number;
   turnover?: number;
+  holding_end_date?: string;
+  benchmark_id?: string;
+  provisional_mtm?: boolean;
+  settlement_status?: 'settled' | 'provisional_mtm' | string;
   bench?: number;          // Qlib native daily benchmark returns
   bench_qqq?: number;      // merged US benchmark (equity level or daily return)
   bench_hs300?: number;    // merged CN benchmark (equity level or daily return)
