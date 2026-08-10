@@ -3,6 +3,7 @@ import type { BacktestData } from '@/lib/data-parser';
 import type { FormalBacktestPackage } from '@/lib/formal-backtest';
 import type { ModelParams } from '@/lib/types';
 import { projectFormalPackage } from '@/lib/formal-evidence';
+import { AttributionEvidence } from './AttributionEvidence';
 import { AttributionInterpretation } from './AttributionInterpretation';
 import { FormalBacktestEvidence, FormalBacktestTrades } from './FormalBacktestEvidence';
 import { HoldingsSummary } from './HoldingsSummary';
@@ -13,49 +14,7 @@ import { OverviewCards } from './OverviewCards';
 import { PerformanceCharts } from './PerformanceCharts';
 import { PositionsTable } from './PositionsTable';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-function AttributionEvidence({ rows }: { rows: Array<{ instrument?: string; name?: string; value?: number }> | null | undefined }) {
-  const normalized = Array.isArray(rows)
-    ? rows
-      .filter((row) => typeof row?.value === 'number' && Number.isFinite(row.value))
-      .sort((a, b) => Math.abs(Number(b.value)) - Math.abs(Number(a.value)))
-    : [];
-
-  if (!normalized.length) {
-    return (
-      <div className="rounded-xl border border-dashed p-10 text-center">
-        <Info className="mx-auto h-7 w-7 text-muted-foreground/40" />
-        <p className="mt-3 text-sm font-medium">Attribution evidence is not declared</p>
-        <p className="mt-1 text-xs text-muted-foreground">The formal source package contains no retained contribution ledger. No attribution is inferred.</p>
-      </div>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-3"><CardTitle className="text-sm">Contribution table</CardTitle></CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table>
-          <TableHeader><TableRow><TableHead>Instrument</TableHead><TableHead>Name</TableHead><TableHead className="text-right">Contribution</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {normalized.slice(0, 100).map((row, index) => (
-              <TableRow key={`${row.instrument || row.name || 'row'}-${index}`}>
-                <TableCell className="font-mono text-xs">{row.instrument || '—'}</TableCell>
-                <TableCell>{row.name || row.instrument || 'Unknown'}</TableCell>
-                <TableCell className={`text-right font-mono ${Number(row.value) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                  {(Number(row.value) * 100).toFixed(3)}%
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
-}
 
 export function Dashboard({ data, params }: { data: BacktestData; params?: ModelParams }) {
   const meta = data.meta;
