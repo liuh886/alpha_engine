@@ -39,10 +39,6 @@ PRIMARY_FINANCING_RATE = 0.06
 STRESS_FINANCING_RATE = 0.10
 FINANCING_DAY_COUNT = 252.0
 
-# Key changes from v1.2:
-# - No vol_state filter! This was the #1 limiter
-# - dd floor -15% instead of -10%
-# - Slight mom_20 floor to avoid whipsaw at exactly 0
 RULES = {
     "entry_base_byd_weight": 1.0,
     "entry_market_state": "bull",
@@ -70,8 +66,10 @@ def _stateful(entry, exit_):
     active = False
     vals = []
     for en, ex in zip(entry.fillna(False), exit_.fillna(False), strict=True):
-        if active and bool(ex): active = False
-        elif not active and bool(en): active = True
+        if active and bool(ex):
+            active = False
+        elif not active and bool(en):
+            active = True
         vals.append(active)
     return pd.Series(vals, index=entry.index, name="expansion_active")
 
@@ -91,13 +89,19 @@ def build_state(common, signals):
         | common["drawdown_252"].le(RULES["exit_drawdown_emergency"])
     )
     active = _stateful(entry, exit_)
-    return pd.DataFrame({
-        "base_byd_weight": base, "entry": entry, "exit": exit_,
-        "expansion_active": active,
-        "market_state": common["market_state"],
-        "drawdown_252": common["drawdown_252"],
-        "mom_20": common["mom_20"], "mom_60": common["mom_60"],
-    }, index=common.index)
+    return pd.DataFrame(
+        {
+            "base_byd_weight": base,
+            "entry": entry,
+            "exit": exit_,
+            "expansion_active": active,
+            "market_state": common["market_state"],
+            "drawdown_252": common["drawdown_252"],
+            "mom_20": common["mom_20"],
+            "mom_60": common["mom_60"],
+        },
+        index=common.index,
+    )
 
 
 def _decision(base, active, expansion_byd):
@@ -110,9 +114,12 @@ def _decision(base, active, expansion_byd):
         byd = base.where(~active, expansion_byd).astype(float)
         etf = baseline_etf.where(~active, 0.0).astype(float)
         cash = 1.0 - byd - etf
-    f = pd.DataFrame({"byd_weight": byd, "etf_weight": etf, "cash_weight": cash}, index=base.index)
-    assert np.allclose(f.sum(axis=1), 1.0)
-    return f
+    frame = pd.DataFrame(
+        {"byd_weight": byd, "etf_weight": etf, "cash_weight": cash},
+        index=base.index,
+    )
+    assert np.allclose(frame.sum(axis=1), 1.0)
+    return frame
 
 
 def build_decisions(common, signals):
@@ -129,98 +136,189 @@ def build_decisions(common, signals):
 
 def run_financed(name, common, decision, cost_bps, annual_fr):
     executed = execute_next_common_open(decision, common["common_open_eligible"])
-    bw, ew, cw = executed["position_byd_weight"], executed["position_etf_weight"], executed["position_cash_weight"]
-    gross = bw * common["byd_open_return"] + ew * common["etf_open_return"]
-    turnover = executed.diff().abs().sum(axis=1); turnover.iloc[0] = 0.0
+    byd_weight = executed["position_byd_weight"]
+    etf_weight = executed["position_etf_weight"]
+    cash_weight = executed["position_cash_weight"]
+    gross = (
+        byd_weight * common["byd_open_return"]
+        + etf_weight * common["etf_open_return"]
+    )
+    turnover = executed.diff().abs().sum(axis=1)
+    turnover.iloc[0] = 0.0
     tcost = turnover * cost_bps / 10000.0
-    borrowed = (-cw).clip(lower=0.0)
+    borrowed = (-cash_weight).clip(lower=0.0)
     fcost = borrowed * annual_fr / FINANCING_DAY_COUNT
     daily = pd.concat([decision.add_prefix("d_"), executed], axis=1)
     daily["common_open_eligible"] = common["common_open_eligible"]
-    daily["gross_return"] = gross; daily["turnover_units"] = turnover
-    daily["cost"] = tcost; daily["financing_cost"] = fcost
+    daily["gross_return"] = gross
+    daily["turnover_units"] = turnover
+    daily["cost"] = tcost
+    daily["financing_cost"] = fcost
     daily["borrowed_weight"] = borrowed
     daily["net_return"] = gross - tcost - fcost
     daily = daily.iloc[:-1].copy()
     changes = executed.ne(executed.shift(1)).any(axis=1)
-    trades = daily.loc[changes.reindex(daily.index).fillna(False),
-        ["position_byd_weight","position_etf_weight","position_cash_weight",
-         "turnover_units","cost","financing_cost","borrowed_weight"]].copy()
+    trade_columns = [
+        "position_byd_weight",
+        "position_etf_weight",
+        "position_cash_weight",
+        "turnover_units",
+        "cost",
+        "financing_cost",
+        "borrowed_weight",
+    ]
+    trades = daily.loc[
+        changes.reindex(daily.index).fillna(False), trade_columns
+    ].copy()
     trades.index.name = "date"
     return AllocationResult(name=name, daily=daily, trades=trades.reset_index())
 
 
 def run_candidates(common, signals, *, cost_bps, annual_financing_rate):
     decisions, state = build_decisions(common, signals)
-    results = {n: run_financed(n, common, d, cost_bps, annual_financing_rate) for n, d in decisions.items()}
+    results = {
+        name: run_financed(
+            name, common, decision, cost_bps, annual_financing_rate
+        )
+        for name, decision in decisions.items()
+    }
     return results, state
 
 
 def _wm(result, start, end):
-    block = result.daily.loc[pd.Timestamp(start):pd.Timestamp(end)]
+    block = result.daily.loc[pd.Timestamp(start) : pd.Timestamp(end)]
     out = metrics(block)
-    rs = block["net_return"].dropna()
-    out.update({
-        "financing_cost_paid": float(block.loc[rs.index, "financing_cost"].sum()),
-        "financed_sessions": float(block.loc[rs.index, "borrowed_weight"].gt(0).sum()),
-    })
+    returns = block["net_return"].dropna()
+    out.update(
+        {
+            "financing_cost_paid": float(
+                block.loc[returns.index, "financing_cost"].sum()
+            ),
+            "financed_sessions": float(
+                block.loc[returns.index, "borrowed_weight"].gt(0).sum()
+            ),
+        }
+    )
     return out
 
 
 def build_evaluation(r20, r40):
     rows = []
-    for label, cb, fr, results in (("primary", PRIMARY_COST_BPS, PRIMARY_FINANCING_RATE, r20), ("stress", STRESS_COST_BPS, STRESS_FINANCING_RATE, r40)):
+    scenarios = (
+        ("primary", PRIMARY_COST_BPS, PRIMARY_FINANCING_RATE, r20),
+        ("stress", STRESS_COST_BPS, STRESS_FINANCING_RATE, r40),
+    )
+    for label, cost_bps, financing_rate, results in scenarios:
         for name, result in results.items():
-            for w, (s, e) in WINDOWS.items():
-                rows.append({"scenario": label, "model": name, "cost_bps": cb, "annual_financing_rate": fr, "window": w, **_wm(result, s, e)})
+            for window, (start, end) in WINDOWS.items():
+                rows.append(
+                    {
+                        "scenario": label,
+                        "model": name,
+                        "cost_bps": cost_bps,
+                        "annual_financing_rate": financing_rate,
+                        "window": window,
+                        **_wm(result, start, end),
+                    }
+                )
     return pd.DataFrame(rows)
 
 
-def _tw(daily, s, e):
-    rs = daily.loc[pd.Timestamp(s):pd.Timestamp(e), "net_return"].dropna()
-    return float((1.0 + rs).prod())
+def _tw(daily, start, end):
+    returns = daily.loc[
+        pd.Timestamp(start) : pd.Timestamp(end), "net_return"
+    ].dropna()
+    return float((1.0 + returns).prod())
 
 
 def period_contribution(results):
     rows = []
-    periods = {k: v for k, v in WINDOWS.items() if k != "full_overlap"}
+    periods = {key: value for key, value in WINDOWS.items() if key != "full_overlap"}
     for name in (PRIMARY, ROBUSTNESS, DIAGNOSTIC):
-        rel = {}
-        for p, (s, e) in periods.items():
-            rel[p] = _tw(results[name].daily, s, e) / _tw(results[BASELINE].daily, s, e) - 1.0
-        pt = sum(max(v, 0.0) for v in rel.values())
-        for p, r in rel.items():
-            rows.append({"model": name, "period": p, "relative_terminal_wealth": r, "positive_contribution_share": max(r, 0.0)/pt if pt > 0 else 0.0})
+        relative = {}
+        for period, (start, end) in periods.items():
+            relative[period] = (
+                _tw(results[name].daily, start, end)
+                / _tw(results[BASELINE].daily, start, end)
+                - 1.0
+            )
+        positive_total = sum(max(value, 0.0) for value in relative.values())
+        for period, value in relative.items():
+            rows.append(
+                {
+                    "model": name,
+                    "period": period,
+                    "relative_terminal_wealth": value,
+                    "positive_contribution_share": (
+                        max(value, 0.0) / positive_total
+                        if positive_total > 0
+                        else 0.0
+                    ),
+                }
+            )
     return pd.DataFrame(rows)
 
 
 def governed_result(evaluation, contributions):
-    def r(model, sc):
-        sel = evaluation.loc[(evaluation["model"]==model)&(evaluation["scenario"]==sc)&(evaluation["window"]=="full_overlap")]
-        return sel.iloc[0]
-    bp = r(BASELINE, "primary"); primary = r(PRIMARY, "primary")
-    robust = r(ROBUSTNESS, "primary")
-    bs = r(BASELINE, "stress"); ps = r(PRIMARY, "stress"); rs = r(ROBUSTNESS, "stress")
-    cagr_d = float(primary["cagr"] - bp["cagr"])
-    mdd_d = float(primary["max_drawdown"] - bp["max_drawdown"])
-    pc = contributions.loc[contributions["model"]==PRIMARY]
-    neg = int(pc["relative_terminal_wealth"].lt(0).sum())
-    ms = float(pc["positive_contribution_share"].max())
-    fs = int(primary["financed_sessions"])
+    def row(model, scenario):
+        selected = evaluation.loc[
+            (evaluation["model"] == model)
+            & (evaluation["scenario"] == scenario)
+            & (evaluation["window"] == "full_overlap")
+        ]
+        return selected.iloc[0]
+
+    baseline_primary = row(BASELINE, "primary")
+    primary = row(PRIMARY, "primary")
+    robust = row(ROBUSTNESS, "primary")
+    baseline_stress = row(BASELINE, "stress")
+    primary_stress = row(PRIMARY, "stress")
+    robust_stress = row(ROBUSTNESS, "stress")
+    cagr_delta = float(primary["cagr"] - baseline_primary["cagr"])
+    mdd_delta = float(
+        primary["max_drawdown"] - baseline_primary["max_drawdown"]
+    )
+    primary_contributions = contributions.loc[contributions["model"] == PRIMARY]
+    negative_periods = int(
+        primary_contributions["relative_terminal_wealth"].lt(0).sum()
+    )
+    max_share = float(primary_contributions["positive_contribution_share"].max())
+    financed_sessions = int(primary["financed_sessions"])
 
     gates = {
-        "cagr_improves_0_5pp": cagr_d >= 0.005,
-        "mdd_worsening_le_2pp": mdd_d >= -0.02,
-        "calmar_not_below_baseline": float(primary["calmar"]) >= float(bp["calmar"]),
-        "stress_return_above_baseline": float(ps["total_return"]) > float(bs["total_return"]),
-        "no_more_than_one_negative_period": neg <= 1,
-        "contribution_not_concentrated": ms <= 0.60 and pc["relative_terminal_wealth"].gt(0).any(),
+        "cagr_improves_0_5pp": cagr_delta >= 0.005,
+        "mdd_worsening_le_2pp": mdd_delta >= -0.02,
+        "calmar_not_below_baseline": float(primary["calmar"])
+        >= float(baseline_primary["calmar"]),
+        "stress_return_above_baseline": float(primary_stress["total_return"])
+        > float(baseline_stress["total_return"]),
+        "no_more_than_one_negative_period": negative_periods <= 1,
+        "contribution_not_concentrated": (
+            max_share <= 0.60
+            and primary_contributions["relative_terminal_wealth"].gt(0).any()
+        ),
         "round_trips_le_4": float(primary["round_trips_per_year"]) <= 4.0,
-        "minimum_126_sessions": fs >= 126,
-        "robustness_confirms": float(robust["cagr"]) > float(bp["cagr"]) and float(rs["total_return"]) > float(bs["total_return"]),
+        "minimum_126_sessions": financed_sessions >= 126,
+        "robustness_confirms": (
+            float(robust["cagr"]) > float(baseline_primary["cagr"])
+            and float(robust_stress["total_return"])
+            > float(baseline_stress["total_return"])
+        ),
     }
     return GovernedResult(
-        decision="promote_trend_expansion_fixed" if all(gates.values()) else "retain_byd_v1_1",
+        decision=(
+            "promote_trend_expansion_fixed"
+            if all(gates.values())
+            else "retain_byd_v1_1"
+        ),
         gates=gates,
-        diagnostics={"cagr_delta": cagr_d, "mdd_delta": mdd_d, "sessions": fs, "neg_periods": neg, "max_share": ms, "primary_cagr": float(primary["cagr"]), "baseline_cagr": float(bp["cagr"])},
+        diagnostics={
+            "cagr_delta": cagr_delta,
+            "mdd_delta": mdd_delta,
+            "sessions": financed_sessions,
+            "neg_periods": negative_periods,
+            "max_share": max_share,
+            "primary_cagr": float(primary["cagr"]),
+            "baseline_cagr": float(baseline_primary["cagr"]),
+        },
     )
