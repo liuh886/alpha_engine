@@ -98,12 +98,12 @@ def build_champion_targets(
         index=dataset.index,
     )
     expansion = build_expansion_state(dataset, signals)
-    scale = momentum_scale(dataset["mom_20"])
-    increment = (
-        expansion["trend_expansion_active"].astype(float)
-        * MAX_FINANCED_INCREMENT
-        * scale
-    )
+    active = expansion["trend_expansion_active"].astype(bool)
+    raw_scale = momentum_scale(dataset["mom_20"])
+    if raw_scale.loc[active].isna().any():
+        raise AssertionError("active V1.2 expansion is missing its momentum scale")
+    scale = raw_scale.fillna(0.0)
+    increment = active.astype(float) * MAX_FINANCED_INCREMENT * scale
     byd = base_target.astype(float) + increment
     etf = (1.0 - base_target.astype(float)).where(increment.eq(0.0), 0.0)
     cash = 1.0 - byd - etf
