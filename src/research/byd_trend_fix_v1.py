@@ -39,10 +39,6 @@ PRIMARY_FINANCING_RATE = 0.06
 STRESS_FINANCING_RATE = 0.10
 FINANCING_DAY_COUNT = 252.0
 
-# Key changes from v1.2:
-# - No vol_state filter! This was the #1 limiter
-# - dd floor -15% instead of -10%
-# - Slight mom_20 floor to avoid whipsaw at exactly 0
 RULES = {
     "entry_base_byd_weight": 1.0,
     "entry_market_state": "bull",
@@ -118,9 +114,12 @@ def _decision(base, active, expansion_byd):
         byd = base.where(~active, expansion_byd).astype(float)
         etf = baseline_etf.where(~active, 0.0).astype(float)
         cash = 1.0 - byd - etf
-    f = pd.DataFrame({"byd_weight": byd, "etf_weight": etf, "cash_weight": cash}, index=base.index)
-    assert np.allclose(f.sum(axis=1), 1.0)
-    return f
+    frame = pd.DataFrame(
+        {"byd_weight": byd, "etf_weight": etf, "cash_weight": cash},
+        index=base.index,
+    )
+    assert np.allclose(frame.sum(axis=1), 1.0)
+    return frame
 
 
 def build_decisions(common, signals):
@@ -174,10 +173,17 @@ def run_financed(name, common, decision, cost_bps, annual_fr):
     return AllocationResult(name=name, daily=daily, trades=trades.reset_index())
 
 
-def run_candidates(common, signals, *, cost_bps, annual_financing_rate):
+def run_candidates(
+    common: pd.DataFrame,
+    signals: pd.DataFrame,
+    *,
+    cost_bps: float,
+    annual_financing_rate: float,
+) -> tuple[dict[str, AllocationResult], pd.DataFrame]:
     decisions, state = build_decisions(common, signals)
-    results = {
-        n: run_financed(n, common, d, cost_bps, annual_financing_rate) for n, d in decisions.items()
+    results: dict[str, AllocationResult] = {
+        name: run_financed(name, common, decision, cost_bps, annual_financing_rate)
+        for name, decision in decisions.items()
     }
     return results, state
 
