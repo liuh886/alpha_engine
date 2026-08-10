@@ -65,7 +65,7 @@ def test_migration_preserves_current_accepted_evidence(tmp_path: Path) -> None:
         _, robustness = _section(bundle_root, manifest, "robustness")
         assert robustness["window_summary"] == source["window_summary"]
         _, lineage = _section(bundle_root, manifest, "lineage")
-        assert lineage["source_sha256"] == _sha(v1_paths[model_id])
+        assert lineage["source_package_sha256"] == _sha(v1_paths[model_id])
         assert lineage["historical_evidence_recomputed"] is False
         assert lineage["model_selection_reopened"] is False
 
