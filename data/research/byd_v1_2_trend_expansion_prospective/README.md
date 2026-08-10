@@ -2,7 +2,7 @@
 
 - Candidate: `112.5% BYD / -12.5% financing` in the frozen trend state
 - Baseline: `BYD v1.1`
-- Observations: `2`
+- Observations: `3`
 - Outcomes: `0`
 - Execution: prior close target, next independently confirmed common open
 - Primary costs: 20 bps + 6% annual financing

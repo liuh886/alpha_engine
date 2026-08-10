@@ -1,3 +1,4 @@
 signal_date,observation_sha256,prospective_eligible,common_open_eligible,trend_expansion_active,base_target_position,market_state,vol_state,mom_20,mom_60,drawdown_252,relative_wealth_5_primary,relative_wealth_5_stress,relative_wealth_10_primary,relative_wealth_10_stress,relative_wealth_20_primary,relative_wealth_20_stress
 2026-08-06,ba5f45ffd6377f563b9ee6fd76ab4cf7a660d3cf5c82d80108b18ab89aaec9c9,False,False,False,0.75,bear,high,0.03354574799670851,-0.0894105558037751,-0.21283429507169782,,,,,,
 2026-08-07,38f648701d3197dfe78a925ec41f0cc79d9f6cb54aee948fbe9e1db22b127d22,False,False,False,0.75,bear,high,0.004181464855370187,-0.08461129702179493,-0.2076422223532689,,,,,,
+2026-08-10,ef556def1f2731084bde86f8004448d23d1f56b4339acf427b8272769f758b51,True,True,False,0.75,bear,high,0.05185647108265479,-0.04994313831527075,-0.1978741458554707,,,,,,
