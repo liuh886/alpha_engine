@@ -111,21 +111,6 @@ jobs:
           tests/test_t47_drift_monitor.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-      - name: Diagnose BYD post-2024 activity decay
-        if: github.event_name == 'pull_request'
-        run: >-
-          uv run python scripts/diagnose_byd_activity_decay.py
-          --output artifacts/byd-post-2024-activity-diagnostic.json
-
-      - name: Upload BYD activity diagnostic
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: byd-post-2024-activity-${{ github.run_id }}
-          path: artifacts/byd-post-2024-activity-diagnostic.json
-          if-no-files-found: error
-          retention-days: 14
-
       - name: Package build
         if: github.event_name != 'pull_request'
         run: uv build
