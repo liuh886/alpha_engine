@@ -53,7 +53,7 @@ jobs:
           cat artifacts/pages-impact-decision.json
       - name: Record impact decision
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: pages-impact-decision
           path: artifacts/pages-impact-decision.json
@@ -210,7 +210,7 @@ jobs:
         run: npx playwright test --config=playwright.live.config.ts
       - name: Upload live-browser evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: pages-live-browser-evidence
           path: qlib-dashboard/test-results/live-pages
