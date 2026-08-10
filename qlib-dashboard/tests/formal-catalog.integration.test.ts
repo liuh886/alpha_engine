@@ -5,6 +5,7 @@ import { loadFormalRunEvidence } from '../src/lib/formal-run-evidence';
 import { loadFormalRuns } from '../src/lib/governed-run';
 
 const publicRoot = path.resolve(process.cwd(), 'public');
+const BYD_V13 = 'byd_v1_3_recovery_event_low_vol_confirmation_v1';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -28,7 +29,7 @@ describe('published formal catalog', () => {
     const result = await loadFormalRuns();
     expect(result.errors).toEqual([]);
     expect(result.runs.map((run) => run.modelVersionId).sort()).toEqual([
-      'byd_v1_2_convex_momentum_budget_v1',
+      BYD_V13,
       'cn_x1_1',
       'qqqi_qqq_tqqq_v4_3',
       'us_x1_1',
@@ -42,7 +43,7 @@ describe('published formal catalog', () => {
       evidenceByModel.set(run.modelVersionId, evidence);
     }
 
-    const byd = evidenceByModel.get('byd_v1_2_convex_momentum_budget_v1');
+    const byd = evidenceByModel.get(BYD_V13);
     expect(byd).toBeDefined();
     const bydWeights = byd?.portfolio.positions.map((position) => position.weight) ?? [];
     expect(bydWeights.some((weight) => weight > 1)).toBe(true);
