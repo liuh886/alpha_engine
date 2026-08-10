@@ -174,8 +174,10 @@ export function PerformanceCharts({ report, benchmarkId }: { report: ReportRow[]
     const first = visibleChartData[0];
     const last = visibleChartData[visibleChartData.length - 1];
     const strategy = periodReturn(first.strategy, last.strategy);
+    const firstRecord = first as unknown as Record<string, unknown>;
+    const lastRecord = last as unknown as Record<string, unknown>;
     const benchmark = activeBenchmarkKey
-      ? periodReturn(first[activeBenchmarkKey], last[activeBenchmarkKey])
+      ? periodReturn(firstRecord[activeBenchmarkKey], lastRecord[activeBenchmarkKey])
       : null;
     return {
       strategy,
