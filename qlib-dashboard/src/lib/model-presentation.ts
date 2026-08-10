@@ -1,5 +1,3 @@
-export const QQQR_DISPLAY_NAME = 'QQQR';
-
 interface ModelPresentationIdentity {
   modelFamilyId?: string | null;
   modelVersionId?: string | null;
@@ -25,7 +23,7 @@ export function publicModelDisplayName(
   fallback: string,
   identity: ModelPresentationIdentity,
 ): string {
-  if (isQqqRotation(identity)) return QQQR_DISPLAY_NAME;
+  if (isQqqRotation(identity)) return fallback.replace(/^QQQ Rotation\b/, 'QQQR');
   if (identity.modelId && PUBLIC_DISPLAY_NAME_BY_MODEL_ID[identity.modelId]) {
     return PUBLIC_DISPLAY_NAME_BY_MODEL_ID[identity.modelId];
   }
