@@ -6,13 +6,11 @@ import pandas as pd
 import pytest
 import yaml
 
+from scripts.run_active_research_experiments import run_spec
 from src.research.byd_v1_3_candidate import (
     V13_BEAR_DEFENSE_BYD,
     _stateful_min_hold,
     build_v13_signals,
-)
-from src.research.rules_based_allocation_experiment_runner import (
-    run_rules_based_allocation_experiment,
 )
 
 SPEC = Path(
@@ -86,7 +84,7 @@ def test_bear_defense_uses_frozen_weight() -> None:
 
 def test_completed_certification_is_not_replayed() -> None:
     with pytest.raises(ValueError, match="must be active"):
-        run_rules_based_allocation_experiment(SPEC)
+        run_spec(SPEC)
 
 
 def test_completed_certification_receipt_is_immutable_and_rejected() -> None:
