@@ -1,7 +1,7 @@
 schema_version: '1.0'
 experiment_id: us_x1_2_certification_v1
 parent_model_id: us_x1_1
-status: preregistered_certification
+status: certification_running
 research_only: true
 trade_ready: false
 
