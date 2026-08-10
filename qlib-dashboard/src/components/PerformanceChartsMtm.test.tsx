@@ -8,6 +8,7 @@ vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <>{children}</>,
   ComposedChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Area: () => null,
+  Bar: () => null,
   Brush: () => null,
   CartesianGrid: () => null,
   Legend: () => null,
