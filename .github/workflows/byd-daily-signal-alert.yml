@@ -10,13 +10,10 @@ on:
       - "src/factors/strategy_snapshot.py"
       - "configs/factor_libraries/strategy_inputs.yaml"
       - "src/artifacts/strategy_signal_ledger.py"
-      - "src/artifacts/strategy_operations.py"
       - "scripts/run_byd_signal_alert.py"
       - "scripts/persist_strategy_signal_evaluation.py"
-      - "scripts/build_strategy_operations.py"
       - "tests/test_byd_signal_alerts.py"
       - "tests/test_byd_signal_evidence.py"
-      - "tests/test_strategy_operations.py"
       - "data/research/byd_v1_3_low_vol_prospective/**"
   push:
     branches: [main]
@@ -27,10 +24,8 @@ on:
       - "src/factors/strategy_snapshot.py"
       - "configs/factor_libraries/strategy_inputs.yaml"
       - "src/artifacts/strategy_signal_ledger.py"
-      - "src/artifacts/strategy_operations.py"
       - "scripts/run_byd_signal_alert.py"
       - "scripts/persist_strategy_signal_evaluation.py"
-      - "scripts/build_strategy_operations.py"
       - "data/research/byd_v1_3_low_vol_prospective/**"
   workflow_run:
     workflows: ["BYD v1.2 Trend Expansion Prospective"]
@@ -70,23 +65,19 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv sync --frozen --extra dev
-      - name: Validate formal signal and operations contracts
+      - name: Validate formal V1.3 signal contract
         run: |
           uv run ruff check \
             src/research/byd_signal_alerts.py \
             src/research/byd_signal_evidence.py \
             src/artifacts/strategy_signal_ledger.py \
-            src/artifacts/strategy_operations.py \
             scripts/run_byd_signal_alert.py \
             scripts/persist_strategy_signal_evaluation.py \
-            scripts/build_strategy_operations.py \
             tests/test_byd_signal_alerts.py \
-            tests/test_byd_signal_evidence.py \
-            tests/test_strategy_operations.py
+            tests/test_byd_signal_evidence.py
           uv run pytest \
             tests/test_byd_signal_alerts.py \
             tests/test_byd_signal_evidence.py \
-            tests/test_strategy_operations.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
   evaluate-and-deliver:
@@ -119,14 +110,11 @@ jobs:
             src/research/byd_signal_alerts.py \
             src/research/byd_signal_evidence.py \
             src/artifacts/strategy_signal_ledger.py \
-            src/artifacts/strategy_operations.py \
             scripts/run_byd_signal_alert.py \
-            scripts/persist_strategy_signal_evaluation.py \
-            scripts/build_strategy_operations.py
+            scripts/persist_strategy_signal_evaluation.py
           uv run pytest \
             tests/test_byd_signal_alerts.py \
             tests/test_byd_signal_evidence.py \
-            tests/test_strategy_operations.py \
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
       - name: Build exact formal V1.3 signal
         id: signal
