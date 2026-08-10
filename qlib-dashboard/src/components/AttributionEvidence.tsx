@@ -41,7 +41,7 @@ export function AttributionEvidence({ rows }: { rows: AttributionRow[] | null | 
     : [], [rows]);
 
   const chartRows = useMemo(
-    () => normalized.slice(0, 12).toSorted((left, right) => left.value - right.value),
+    () => [...normalized.slice(0, 12)].sort((left, right) => left.value - right.value),
     [normalized],
   );
   const largestPositive = normalized.reduce<NormalizedAttributionRow | null>(
