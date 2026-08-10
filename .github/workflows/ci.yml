@@ -127,7 +127,7 @@ jobs:
           name: byd-v1-3-low-vol-confirmation-${{ github.run_id }}
           path: artifacts/research/byd_recovery_event_low_vol_confirmation_v1.json
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 30
 
       - name: Package build
         if: github.event_name != 'pull_request'
