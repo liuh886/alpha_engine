@@ -37,6 +37,6 @@ describe('shared performance benchmark discovery', () => {
       { date: '2026-01-01', account: 1, bench_qqq: 100, bench_hs300: 100 },
     ];
 
-    expect(declaredBenchmarkDescriptor(report, '000300.SH')?.key).toBe('benchmark_hs300');
+    expect(declaredBenchmarkDescriptor(report, '000300.SH')?.key).toBe('benchmark_csi300');
   });
 });
