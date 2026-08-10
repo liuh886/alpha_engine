@@ -23,14 +23,15 @@ def _compound(values: list[float]) -> float:
     return math.prod(1.0 + value for value in values) - 1.0
 
 
-def test_us_x1_1_is_the_active_research_baseline() -> None:
+def test_us_x1_1_is_immutable_superseded_baseline() -> None:
     registry = _load(REGISTRY)
     model = _load(MODEL)
-    assert registry["active_baselines"]["us"] == "us_x1_1"
+    assert registry["active_baselines"]["us"] == "us_x1_2"
     assert registry["models"]["us_x1_0"]["superseded_by"] == "us_x1_1"
     assert registry["models"]["us_x1_1"]["status"] == (
-        "baseline_research_active"
+        "historical_baseline_superseded"
     )
+    assert registry["models"]["us_x1_1"]["superseded_by"] == "us_x1_2"
     assert model["model_id"] == "us_x1_1"
     assert model["lineage"]["parent"] == "us_x1_0"
     assert model["lineage"]["adopted_from_candidate"] == (
@@ -91,7 +92,7 @@ def test_us_x1_1_development_economics_tie() -> None:
     assert development["all_window_recurring_names"] == ["AAOI", "AEHR", "BE"]
 
 
-def test_next_experiment_starts_from_us_x1_1() -> None:
+def test_historical_risk_control_contract_remains_frozen() -> None:
     experiment = _load(EXPERIMENT)
     assert experiment["parent_model_id"] == "us_x1_1"
     assert experiment["fixed_model"]["model_id"] == "us_x1_1"

@@ -1,0 +1,73 @@
+schema_version: '1.0'
+paradigm_id: us_x1_2_frozen_v1
+model_id: us_x1_2
+market: us
+benchmark: QQQ
+status: frozen_active_research_baseline
+research_only: true
+trade_ready: false
+
+universe:
+  universe_id: us_selected_equities_v2
+  candidate_count: 87
+
+features:
+  library: configs/factor_libraries/ohlcv.yaml
+  group: momentum_volatility_volume
+  expressions:
+  - $close/Ref($close,10)-1
+  - $close/Ref($close,20)-1
+  - $close/Ref($close,5)-1
+  - Std($close/Ref($close,1)-1,10)
+  - Std($close/Ref($close,1)-1,20)
+  - $volume/Ref($volume,10)-1
+  - $volume/Mean($volume,20)-1
+
+label:
+  economic_return_expression: Ref($close, -10) / $close - 1
+  horizon_sessions: 10
+  gain_bins: 7
+
+xgboost:
+  objective: rank:ndcg
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 31
+  max_depth: 0
+  min_child_weight: 1.0
+  learning_rate: 0.05
+  num_boost_round: 200
+  subsample: 0.8
+  colsample_bytree: 0.8
+  reg_alpha: 0.0
+  reg_lambda: 1.0
+  seed: 42
+
+portfolio:
+  holding_sessions: 10
+  rebalance_sessions: 10
+  top_n: 15
+  weighting: equal_weight
+  maximum_names_per_sector: 4
+  effective_maximum_sector_weight: 0.26666666666666666
+  sector_classification: configs/research_classifications/us87_sector_industry_v1.yaml
+  fill_contract: scan_complete_eligible_cross_section_until_exactly_15
+  fail_closed_if_unfillable: true
+  cost_bps: 20
+
+selection_evidence:
+  certification_receipt: data/research/experiment_receipts/us_x1_2_certification_v1.json
+  development_windows: [2024H1, 2024H2, 2025H1, 2025H2]
+  reporting_only_windows: [2026H1]
+  selected_candidate: r11_sampled
+  deterministic_reproduction: true
+
+promotion_boundary:
+  authority: explicit_user_direction_2026_08_11
+  research_baseline_promotion: true
+  formal_acceptance_gate_passed: false
+  untouched_future_six_month_window_required: true
+  prospective_acceptance_pending: true
+  trade_ready: false
+  automatic_promotion_allowed: false
+  no_holdout_reuse_for_future_selection: true

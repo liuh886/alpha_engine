@@ -1,0 +1,153 @@
+schema_version: '1.2'
+model_id: us_x1_2
+display_name: US x1.2
+release_date: '2026-08-11'
+status: baseline_research_active
+research_only: true
+trade_ready: false
+market: us
+benchmark: QQQ
+objective: Rank the governed US87 equity pool for 10-session forward return with sampled XGBoost and a max-four-names-per-sector portfolio constraint.
+lineage:
+  parent: us_x1_1
+  supersedes: us_x1_1
+  selected_candidate: r11_sampled
+  source_research_pr: 765
+  certification_pr: 767
+  promotion_pr: 770
+  certification_workflow_run_id: 31425868143
+  certification_artifact_id: 9077297330
+  certification_artifact_digest: sha256:8b1457b926c8dbc675dae04cd2f71b5476625a011fca641976d88ab9ba813b2c
+  adoption_decision: explicit_user_directed_research_baseline_promotion
+  promotion_note: User-directed research-baseline promotion after corrected full certification. This does not satisfy the untouched six-month prospective acceptance gate and does not authorize trade readiness.
+universe:
+  universe_id: us_selected_equities_v2
+  source: configs/research_universes/us_selected_equities_v2.yaml
+  declared_candidate_count: 87
+  membership_mode: static_curated
+  survivorship_bias: true
+  listing_policy: no_prelisting_fill_coverage_qualified_static_members
+provider_binding:
+  policy: certification_rebuilt_governed_provider
+  certification_provider_identity_sha256: b016eaa5a11e2d3e75110dceb9a4bf1ae2445d704fe7aded8b95bf3d338c14c6
+  cutoff: '2026-08-10'
+features:
+  library: configs/factor_libraries/ohlcv.yaml
+  group: momentum_volatility_volume
+  expressions:
+  - $close/Ref($close,10)-1
+  - $close/Ref($close,20)-1
+  - $close/Ref($close,5)-1
+  - Std($close/Ref($close,1)-1,10)
+  - Std($close/Ref($close,1)-1,20)
+  - $volume/Ref($volume,10)-1
+  - $volume/Mean($volume,20)-1
+label:
+  type: processed_daily_cross_sectional_percentile_gain
+  economic_return_expression: Ref($close, -10) / $close - 1
+  horizon_sessions: 10
+  gain_bins: 7
+model:
+  family: xgb
+  objective: rank:ndcg
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 31
+  max_depth: 0
+  min_child_weight: 1.0
+  learning_rate: 0.05
+  num_boost_round: 200
+  subsample: 0.8
+  colsample_bytree: 0.8
+  reg_alpha: 0.0
+  reg_lambda: 1.0
+  seed: 42
+  score_orientation: original
+strategy:
+  holding_sessions: 10
+  rebalance_sessions: 10
+  top_n: 15
+  bottom_n_diagnostic: 15
+  weighting: equal_weight
+  maximum_names_per_sector: 4
+  effective_maximum_sector_weight: 0.26666666666666666
+  sector_classification: configs/research_classifications/us87_sector_industry_v1.yaml
+  fill_contract: scan_complete_eligible_cross_section_until_exactly_15
+  fail_closed_if_unfillable: true
+  cost_bps: 20
+  benchmark_mode: reference_only
+certification_evidence:
+  development:
+    period: 2024H1-2025H2
+    windows:
+    - window: 2024H1
+      relative_excess_20bps: 0.39332573477560073
+      relative_excess_60bps: 0.3658251265974357
+      max_drawdown_20bps: -0.07087162927786506
+      turnover: 5.166666666666667
+    - window: 2024H2
+      relative_excess_20bps: 0.3853871755517764
+      relative_excess_60bps: 0.3554630410568673
+      max_drawdown_20bps: -0.12885640492465067
+      turnover: 5.633333333333334
+    - window: 2025H1
+      relative_excess_20bps: 0.28420024591566717
+      relative_excess_60bps: 0.2534533592160042
+      max_drawdown_20bps: -0.2686851648387356
+      turnover: 6.233333333333333
+    - window: 2025H2
+      relative_excess_20bps: 0.2418591667600385
+      relative_excess_60bps: 0.21689755243166342
+      max_drawdown_20bps: -0.23135984312660107
+      turnover: 5.166666666666667
+    compounded_strategy_return_20bps: 3.7776647555759926
+    compounded_benchmark_return: 0.5519822666476806
+    compounded_relative_excess_20bps: 2.0784274139264904
+    compounded_relative_excess_60bps: 1.8238717874486041
+    worst_drawdown_20bps: -0.2686851648387356
+    baseline_worst_drawdown_20bps: -0.3449117109371844
+    drawdown_improvement: 0.07622654609844881
+    mean_rank_ic: 0.0439345
+    mean_icir: 0.2464135
+    strongest_positive_window_share: 0.3014516232765549
+    positive_windows: 4
+  consumed_reporting_window:
+    window: 2026H1
+    selection_eligible: false
+    relative_excess_20bps: 0.5407017260339861
+    relative_excess_60bps: 0.5102837847830741
+    max_drawdown_20bps: -0.10457249320348105
+    incumbent_relative_excess_20bps: 0.9167806670158223
+  fresh_partial_challenge:
+    window: 2026H2
+    period: '2026-07-01/2026-07-27'
+    eligible_dates: 18
+    relative_excess_20bps: -0.12078055866797399
+    relative_excess_60bps: -0.12426564263281747
+    max_drawdown_20bps: -0.17124194909801715
+    incumbent_relative_excess_20bps: -0.14383495955354797
+    incumbent_max_drawdown_20bps: -0.19297317960139937
+    result: candidate_improves_incumbent_but_does_not_beat_qqq
+  determinism:
+    exact_score_path_reproduction: true
+selection_decision:
+  development_gates_passed: true
+  selected_over:
+  - sector_cap_only
+  - r11_lower_lr
+  selected_by: preregistered_development_selection_score
+  formal_acceptance: false
+  research_baseline_promotion: true
+  promotion_authority: explicit_user_direction_2026_08_11
+  reason: user_directed_research_baseline_promotion_preserving_incomplete_prospective_boundary
+acceptance_gate:
+  requirement_source: configs/research_experiments/us_x1_1_rank_aware_sector_cap_v1.yaml
+  untouched_future_six_month_window_required: true
+  prospective_acceptance_pending: true
+  no_automatic_trade_readiness: true
+known_limitations:
+- Static curated membership carries survivorship bias.
+- 2026H1 is consumed reporting evidence and cannot be reused for model selection.
+- The current 2026H2 challenge contains only 18 horizon-contained dates through 2026-07-27 and is not the required complete six-month acceptance window.
+- The model improved the incumbent in the partial 2026H2 challenge but still underperformed QQQ in that interval.
+- This is an active research baseline, not a trade-ready model.
