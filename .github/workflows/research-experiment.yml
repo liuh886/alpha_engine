@@ -45,7 +45,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       actions: read
@@ -120,7 +120,7 @@ jobs:
 
       - name: Upload source promotion receipt
         if: steps.detect.outputs.needed == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: approved-research-source-promotion
           path: artifacts/research_source_repair/*/artifacts/source_repair_promotion_receipt.json
@@ -149,7 +149,7 @@ jobs:
       always() &&
       (needs.source-promotion.result == 'success' || needs.source-promotion.result == 'skipped') &&
       needs.source-promotion.outputs.changed != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
@@ -196,17 +196,18 @@ jobs:
             -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
       - name: Prepare authoritative source repair candidate
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
+          if [[ -n "${{ inputs.spec }}" ]]; then
             uv run python scripts/prepare_research_source_repair.py --spec "${{ inputs.spec }}"
           else
             uv run python scripts/prepare_research_source_repair.py
           fi
 
       - name: Upload source repair candidate
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch' && always()
+        uses: actions/upload-artifact@v6
         with:
           name: research-source-repair
           path: artifacts/research_source_repair/
@@ -214,6 +215,7 @@ jobs:
           retention-days: 30
 
       - name: Require canonical research sources
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           if [[ -f artifacts/research_source_repair/repair_required ]]; then
@@ -223,26 +225,28 @@ jobs:
           fi
 
       - name: Rebuild exact mission provider when required
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
+          if [[ -n "${{ inputs.spec }}" ]]; then
             uv run python scripts/rebuild_active_research_providers.py --spec "${{ inputs.spec }}"
           else
             uv run python scripts/rebuild_active_research_providers.py
           fi
 
       - name: Run committed research mission
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.spec }}" ]]; then
+          if [[ -n "${{ inputs.spec }}" ]]; then
             uv run python scripts/run_active_research_experiments.py --spec "${{ inputs.spec }}"
           else
             uv run python scripts/run_active_research_experiments.py
           fi
 
       - name: Upload research receipts
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch' && always()
+        uses: actions/upload-artifact@v6
         with:
           name: research-experiment-receipts
           path: artifacts/research_experiments/
