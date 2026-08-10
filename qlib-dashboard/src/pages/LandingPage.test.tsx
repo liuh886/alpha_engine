@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { LandingPage } from './LandingPage';
@@ -10,7 +10,7 @@ vi.mock('@/lib/governed-run', () => ({
 
 describe('Alpha Engine landing page', () => {
   it('leads with product value, comparative performance proof and traceable evidence', () => {
-    render(
+    const { container } = render(
       <MemoryRouter>
         <LandingPage />
       </MemoryRouter>,
@@ -20,8 +20,13 @@ describe('Alpha Engine landing page', () => {
     expect(screen.getByText('QQQR v4.3')).toBeInTheDocument();
     expect(screen.getByText('CN x1.1')).toBeInTheDocument();
     expect(screen.getByText('BYD v1.2')).toBeInTheDocument();
-    expect(screen.getAllByText('CAGR', { exact: true })).toHaveLength(4);
-    expect(screen.getAllByText('MDD', { exact: true })).toHaveLength(4);
+
+    const fleetTable = container.querySelector('.landing-run-table');
+    expect(fleetTable).not.toBeNull();
+    const fleet = within(fleetTable as HTMLElement);
+    expect(fleet.getAllByText('CAGR', { exact: true })).toHaveLength(4);
+    expect(fleet.getAllByText('MDD', { exact: true })).toHaveLength(4);
+
     expect(screen.getByRole('heading', { name: /performance before persuasion/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /every decision is traceable/i })).toBeInTheDocument();
     expect(screen.getAllByText('Strategy fleet')).toHaveLength(1);
