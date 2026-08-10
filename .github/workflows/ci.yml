@@ -71,8 +71,6 @@ jobs:
           src/research/cross_sectional_experiment_runner.py
           src/research/formal_baseline.py
           src/research/formal_baseline_onboarding.py
-          src/research/rules_based_allocation_experiment_runner.py
-          src/research/byd_v1_3_candidate.py
           src/research/ranker_current_target.py
           src/research/drift_monitor.py
           src/factors/ranker_snapshot.py
@@ -83,7 +81,6 @@ jobs:
           scripts/check_legacy_web_boundary.py
           scripts/check_ci_governance.py
           tests/test_formal_baseline_onboarding.py
-          tests/test_rules_based_allocation_experiment_runner.py
           tests/test_ranker_current_target.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
@@ -104,7 +101,6 @@ jobs:
           tests/test_experiment_harness.py
           tests/test_cross_sectional_experiment_runner.py
           tests/test_formal_baseline_onboarding.py
-          tests/test_rules_based_allocation_experiment_runner.py
           tests/test_ranker_current_target.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
