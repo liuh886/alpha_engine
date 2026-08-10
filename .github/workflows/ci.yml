@@ -69,6 +69,8 @@ jobs:
           src/models/metric_contract.py
           src/research/experiment_harness.py
           src/research/cross_sectional_experiment_runner.py
+          src/research/formal_baseline.py
+          src/research/formal_baseline_onboarding.py
           src/research/ranker_current_target.py
           src/research/drift_monitor.py
           src/factors/ranker_snapshot.py
@@ -78,6 +80,7 @@ jobs:
           scripts/run_ranker_current_target.py
           scripts/check_legacy_web_boundary.py
           scripts/check_ci_governance.py
+          tests/test_formal_baseline_onboarding.py
           tests/test_ranker_current_target.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
@@ -97,6 +100,7 @@ jobs:
           tests/test_data_runtime_truth.py
           tests/test_experiment_harness.py
           tests/test_cross_sectional_experiment_runner.py
+          tests/test_formal_baseline_onboarding.py
           tests/test_ranker_current_target.py
           tests/test_strategy_operations.py
           tests/test_t47_drift_monitor.py
