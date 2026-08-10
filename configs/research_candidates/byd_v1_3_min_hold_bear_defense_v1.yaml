@@ -17,7 +17,7 @@ champion:
   config: configs/models/byd_v1_2_convex_momentum_budget_v1.yaml
   rolling_formal_package: data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json
   frozen_receipt: data/research/experiment_receipts/byd_v1_2_research_loop_onboarding_v1.json
-  frozen_receipt_sha: f13a43414f24ec809d3e129eabb4cb127189243f
+  frozen_receipt_blob_sha: f13a43414f24ec809d3e129eabb4cb127189243f
   frozen_bundle_id: a36cee1bab0069369b4a994158a96998829846eb7cf7997cef86b3e447cf41a1
   frozen_manifest_sha256: e727056e6016e217747703b4f01c7e944edb4300b624ee0bec6f474beb787dd1
   frozen_evidence_cutoff: "2026-08-03"
