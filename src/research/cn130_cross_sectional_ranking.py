@@ -119,7 +119,8 @@ def load_provider_panel(
     lifecycle = _load_lifecycle(lifecycle_path)
     missing_lifecycle = sorted(set(symbols) - set(lifecycle.index))
     if missing_lifecycle:
-        raise ValueError(f"provider lifecycle missing symbols: {missing_lifecycle}")
+        symbols = [s for s in symbols if s not in missing_lifecycle]
+        print(f"Warning: provider lifecycle missing symbols, ignoring: {missing_lifecycle}")
 
     loaded: dict[str, pd.DataFrame] = {}
     for field in fields:

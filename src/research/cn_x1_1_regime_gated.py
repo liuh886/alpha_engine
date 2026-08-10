@@ -18,9 +18,10 @@ class RegimeGateSpec:
     model_id: str = "cn_x1_1_regime_gated_sector_breadth_v1"
     benchmark: str = "000300"
     long_ma_sessions: int = 200
-    momentum_sessions: int = 60
+    momentum_sessions: int = 40
     breadth_ma_sessions: int = 60
-    breadth_threshold: float = 0.50
+    breadth_threshold: float = 0.55
+    rule: str = "momentum_and_breadth"
     votes_required: int = 2
     sectors: int = 4
     names_per_sector: int = 1
