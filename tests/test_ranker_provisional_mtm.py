@@ -7,12 +7,57 @@ import numpy as np
 import pytest
 
 import scripts.ranker_provisional_mtm as mtm
+from scripts.run_formal_refresh_transaction import _mtm_refresh_model_ids
 
 
 def _write_close(provider: Path, instrument: str, values: list[float]) -> None:
     path = provider / "features" / instrument.lower() / "close.day.bin"
     path.parent.mkdir(parents=True, exist_ok=True)
     np.asarray([0.0, *values], dtype="<f4").tofile(path)
+
+
+def _write_ranker_package(
+    root: Path,
+    *,
+    model_id: str,
+    settled_end: str,
+    cutoff: str,
+    provisional_as_of: str | None = None,
+) -> None:
+    benchmark_key = "bench_qqq" if model_id == "us_x1_1" else "bench_hs300"
+    payload: dict[str, object] = {
+        "model_id": model_id,
+        "evidence_cutoff": cutoff,
+        "freshness": {
+            "status": "current",
+            "latest_realized_holding_end": settled_end,
+        },
+        "report": [
+            {
+                "date": settled_end,
+                "holding_end_date": settled_end,
+                "account": 1.0,
+                benchmark_key: 1.0,
+            }
+        ],
+    }
+    if provisional_as_of is not None:
+        payload["provisional_mtm"] = {
+            "schema_version": "ranker_provisional_mtm_v1",
+            "as_of": provisional_as_of,
+            "research_only": True,
+            "trade_ready": False,
+            "performance_row": {
+                "date": settled_end,
+                "holding_end_date": provisional_as_of,
+                "provisional_mtm": True,
+                "settlement_status": "provisional_mtm",
+            },
+        }
+    (root / f"{model_id}.json").write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
 
 
 def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
@@ -99,3 +144,44 @@ def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
     assert persisted["provisional_mtm"]["as_of"] == "2026-08-07"
     assert persisted["freshness"]["latest_mtm_date"] == "2026-08-07"
     assert persisted["freshness"]["performance_observation_status"] == "provisional_mtm"
+
+
+def test_mtm_planner_refreshes_current_cutoff_when_performance_is_stale(
+    tmp_path: Path,
+) -> None:
+    _write_ranker_package(
+        tmp_path,
+        model_id="us_x1_1",
+        settled_end="2026-07-30",
+        cutoff="2026-08-07",
+    )
+    _write_ranker_package(
+        tmp_path,
+        model_id="cn_x1_1",
+        settled_end="2026-07-29",
+        cutoff="2026-08-07",
+    )
+
+    assert _mtm_refresh_model_ids(
+        tmp_path,
+        cutoffs={"us": "2026-08-07", "cn": "2026-08-07"},
+    ) == ("us_x1_1", "cn_x1_1")
+
+
+def test_mtm_planner_is_current_after_cutoff_mtm_is_published(tmp_path: Path) -> None:
+    for model_id, settled_end in (
+        ("us_x1_1", "2026-07-30"),
+        ("cn_x1_1", "2026-07-29"),
+    ):
+        _write_ranker_package(
+            tmp_path,
+            model_id=model_id,
+            settled_end=settled_end,
+            cutoff="2026-08-07",
+            provisional_as_of="2026-08-07",
+        )
+
+    assert _mtm_refresh_model_ids(
+        tmp_path,
+        cutoffs={"us": "2026-08-07", "cn": "2026-08-07"},
+    ) == ()
