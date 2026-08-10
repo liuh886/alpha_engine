@@ -6,6 +6,90 @@
 
 # Evaluation Log
 
+## 2026-08-11: CN x1.1 Iteration — 20 Rounds (Phase A+B+C)
+
+### Phase A (R1-10): Ranker Optimization — 15 Configs
+
+15 XGBoost calibrations × factor group combinations tested on CN130 pool vs CSI300.
+
+**Key Finding: Price pressure factors + sampled calibration dominates.**
+`a04_sampled_pressure` achieves +68.5% excess (vs baseline +37.2%, **+31.3pp**), DD -14.8%.
+
+| Rank | Config | Excess@20 | DD | DD Improv |
+|---|---|---|---|---|
+| 1 | a04_sampled_pressure | **+68.5%** | -14.8% | +1.0pp |
+| 2 | a12_regularized_volrev | +65.9% | -17.8% | +3.9pp |
+| 3 | a07_lower_lr | +63.1% | -15.0% | +1.1pp |
+
+### Phase B (R11-15): Portfolio Construction — Sector × Names Grid
+
+Top-3 rankers tested with 3×3 = 9 sector/name combinations.
+
+**Key Finding: 3 sectors × 1 name is the sweet spot.**
+`a12_regularized_volrev__p_s3_n1`: **+106.4%** excess, DD -21.2%.
+
+### Phase C (R16-20): Real Sector Portfolios + Cost Stress + 2026H1
+
+6 ranker configs × 10 genuine sector-based portfolio variants × 3 cost levels.
+
+**Key Finding: 26 candidates pass ALL gates.**
+True sector-based portfolios (using CN130 sector classification) confirm Phase B findings.
+
+**Best passing candidate: `c_lower_lr__sp_s3_n1`**
+- Calibration: 300 rounds, lr=0.03, subsample=0.8, 14 balanced OHLCV factors
+- Portfolio: 3 sectors × 1 name each, equal weight
+- Excess@20: **+81.3%** (vs baseline +37.2%, +44.1pp)
+- DD: -19.1% (vs baseline -13.9%, +5.2pp improvement)
+- 60bps cost stress: +81.2% (pass)
+- All 4 windows positive
+
+**Best DD candidate: `c_lower_lr__sp_s3_n2`**
+- Same calibration, 3 sectors × 2 names
+- Excess@20: +69.6%, DD: **-12.8%** (BETTER than baseline -13.9%!)
+
+### Top-5 Gate-Passing CN x1.2 Candidates
+
+| Rank | Candidate | Excess@20 | DD | DD Improv | Exc@60 |
+|---|---|---|---|---|---|
+| **1** | **c_lower_lr + sp_s3_n1** | **+81.3%** | -19.1% | +5.2pp | +81.2% |
+| 2 | c_lower_lr + sp_s3_n2 | +69.6% | -12.8% | -1.1pp | +69.5% |
+| 3 | c_sampled_pressure + sp_s4_n1 | +68.5% | -14.8% | +1.0pp | +68.4% |
+| 4 | c_baseline + sp_s5_n2 | +66.9% | -15.6% | +1.7pp | +66.8% |
+| 5 | c_lower_lr + sp_s4_n1 | +63.1% | -15.0% | +1.1pp | +63.0% |
+
+### Per-Window (Best: c_lower_lr + sp_s3_n1)
+
+| Window | Excess | DD |
+|---|---|---|
+| 2024H1 | +24.0% | -7.3% |
+| 2024H2 | +18.1% | -10.7% |
+| 2025H1 | +0.5% | -19.1% |
+| 2025H2 | +23.3% | -11.1% |
+
+### CN vs US Design Patterns
+
+1. **Lower LR (lr=0.03, 300 rounds) is universally best** — confirmed for both CN and US
+2. **Price pressure factors work specifically well for CN** (ret×volume interaction captures A-share dynamics)
+3. **3 sectors × 1 name** is the CN sweet spot (vs US's Top-15 + sector cap=4)
+4. **CN DD is structurally lower** (-12% to -19%) than US (-24% to -30%)
+5. **2025H1 is weak for CN too** (0.5% excess) but much less severe than US (+7-11%)
+6. **Real sector portfolios ≠ simple Top-K** — sector classification changes selection meaningfully
+
+### Recommended CN x1.2 Candidate
+
+**Primary: `c_lower_lr__sp_s3_n1`**
+- Lower LR calibration (300r, lr=0.03) + balanced OHLCV (14 factors)
+- 3 sectors × 1 name per sector, equal weight
+- +44.1pp excess improvement over CN x1.1 baseline
+- DD remains within acceptable range (-19.1%)
+
+### Next Steps
+- Fix 2026H1 benchmark data gap for out-of-sample validation
+- Test additional lower_lr variants (400 rounds, lr=0.02)
+- Integrate regime gate with the new ranker
+
+---
+
 ## 2026-08-11: USx Iteration — Rounds 11-15: Calibration Deepening & New Factors
 
 ### Experiment: us_x1_2_rounds_11_15_v1

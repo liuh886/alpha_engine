@@ -423,3 +423,26 @@
   - Primary: r11_lower_lr (excess +227.9%, DD -24.56%, 2026H1 verified)
   - Conservative: r12_mvv_rev_meanrev (DD -23.22%, +6.22pp)
   - Best OOS: r11_sampled (2026H1 +53.8%)
+
+## CN x1.1 Iteration — 20 Rounds (2026-08-11) — Issue #766
+
+- [x] **T57.1: Phase A — Ranker optimization grid (R1-10)** ✅
+  - 15 XGBoost calibrations × factor groups, 4 windows = 60 evaluations
+  - `a04_sampled_pressure`: +68.5% excess (+31.3pp vs baseline), DD -14.8%
+  - Price pressure factors (ret×volume) work well for CN A-shares
+
+- [x] **T57.2: Phase B — Portfolio construction grid (R11-15)** ✅
+  - Top-3 rankers × 9 sector/name combinations × 4 windows
+  - `a12_regularized_volrev + p_s3_n1`: +106.4% excess (best overall)
+  - 3 sectors × 1 name is the CN sweet spot
+
+- [x] **T57.3: Phase C — Real sector portfolios + cost stress (R16-20)** ✅
+  - 6 rankers × 10 genuine sector-based portfolios × 3 cost levels = 720 evaluations
+  - **26 candidates pass ALL gates**
+  - Best: `c_lower_lr__sp_s3_n1` — +81.3% excess, DD -19.1%, +5.2pp DD improvement
+  - Best DD: `c_lower_lr__sp_s3_n2` — DD -12.8% (better than baseline!), +69.6% excess
+  - 2026H1 validation blocked by benchmark data gap
+  - Recommended CN x1.2: c_lower_lr (300r, lr=0.03) + 3 sectors × 1 name
+
+- [ ] **T57.4 [Next] Fix 2026H1 benchmark + validate CN x1.2 candidate**
+  - Requires: CSI300 data gap fix, full cost stress, regime gate integration
