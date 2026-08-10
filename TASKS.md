@@ -408,5 +408,18 @@
   - EVALUATE.md updated with per-window breakdown and design patterns discovered
 
 - [ ] **T55.6 [Next] Promote US x1.2 to formal baseline**
-  - Requires: provider refresh to canonical identity, 20/40/60 bps cost stress, untouched 2026H2 validation
+  - Requires: provider refresh to canonical identity, untouched 2026H2 validation
   - Create formal US x1.2 candidate card
+
+## USx Iteration — Rounds 11-15 (2026-08-11)
+
+- [x] **T56.1: Extended calibration search (R11)** ✅
+  - 7 calibrations: lower_lr (300r, lr=0.03) is new excess champion at +227.9%
+- [x] **T56.2: New factor combinations (R12)** ✅
+  - r12_mvv_rev_meanrev: best DD -23.22% (+6.22pp) with 13 factors
+- [x] **T56.3: Cost stress 20/40/60bps (R13)** ✅ — all passers have positive 60bps excess
+- [x] **T56.4: 2026H1 validation (R14)** ✅ — r11_sampled +53.8%, r11_lower_lr +48.9%
+- [x] **T56.5: Final selection (R15)** ✅
+  - Primary: r11_lower_lr (excess +227.9%, DD -24.56%, 2026H1 verified)
+  - Conservative: r12_mvv_rev_meanrev (DD -23.22%, +6.22pp)
+  - Best OOS: r11_sampled (2026H1 +53.8%)

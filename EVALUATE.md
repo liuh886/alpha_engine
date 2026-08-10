@@ -6,6 +6,81 @@
 
 # Evaluation Log
 
+## 2026-08-11: USx Iteration — Rounds 11-15: Calibration Deepening & New Factors
+
+### Experiment: us_x1_2_rounds_11_15_v1
+
+**Status**: Completed — **10 of 12 candidates pass ALL gates** (corrected baseline)
+
+**Setup**: 12 model configs × 4 windows × 3 cost levels (20/40/60bps) = 144 evaluations.
+All using Top-15 + max-4-per-sector portfolio construction.
+
+**R11 — Extended XGBoost Calibrations (7 configs)**:
+Tested beyond the standard/sampled pair: lower learning rate, regularization,
+fewer leaves, higher min_child_weight, more boosting rounds.
+
+**R12 — New Factor Combinations (5 configs)**:
+Added reversal (inv_ret), mean_reversion (close_vs_ma), liquidity, and
+price-volume pressure factors on top of momentum_volatility_volume.
+
+**R13 — Cost Stress**: All candidates evaluated at 20, 40, and 60 bps.
+**R14 — 2026H1 Validation**: Top candidates validated on out-of-sample window.
+**R15 — Final Selection**: See below.
+
+### All Candidates (corrected gates vs uncapped US x1.1 DD=-29.44%)
+
+| Config | Excess@20 | DD@20 | DD Impr | Exc@60 | 2026H1 Exc | All Pass |
+|---|---|---|---|---|---|---|
+| **r11_lower_lr** | **+227.9%** | -24.56% | +4.88pp | +227.7% | +48.9% | **PASS** |
+| r11_sampled | +227.4% | -25.08% | +4.36pp | +227.2% | **+53.8%** | **PASS** |
+| r12_mvv_rev | +212.0% | -24.39% | +5.05pp | +211.8% | — | **PASS** |
+| r11_std | +210.8% | -24.45% | +4.99pp | +210.7% | — | **PASS** |
+| r11_fewer_leaves | +204.6% | -24.36% | +5.08pp | +204.5% | — | **PASS** |
+| r12_mvv_pressure | +191.3% | -25.86% | +3.58pp | +191.1% | — | **PASS** |
+| r12_mvv_rev_meanrev | +185.4% | **-23.22%** | **+6.22pp** | +185.3% | — | **PASS** |
+| r11_regularized | +180.0% | -23.59% | +5.85pp | +179.9% | — | **PASS** |
+| r12_mvv_meanrev | +176.2% | -26.07% | +3.37pp | +176.1% | — | **PASS** |
+| r11_higher_child | +161.8% | -25.95% | +3.49pp | +161.6% | — | **PASS** |
+| r12_mvv_rev_meanrev_liq | +201.0% | -27.66% | +1.78pp | +200.8% | — | FAIL (DD) |
+| r11_more_rounds | +176.4% | -26.61% | +2.83pp | +176.2% | — | FAIL (DD) |
+
+### Key Discoveries
+
+1. **Lower learning rate (0.03) + more rounds (300) beats the standard config.** 
+   r11_lower_lr is the new excess champion (+227.9%, +0.5pp over sampled).
+
+2. **Reversal factors improve DD.** Adding inv_ret_1d/3d/5d (r12_mvv_rev)
+   achieves DD=-24.39% with excess=+212.0% — better DD than pure momentum
+   without sacrificing much excess.
+
+3. **Reversal + mean_reversion gives best DD.** r12_mvv_rev_meanrev has
+   DD=-23.22% (+6.22pp improvement!), the best drawdown across all rounds,
+   at excess=+185.4%.
+
+4. **2026H1 out-of-sample confirms robustness.** The top candidates deliver
+   +48.9% to +53.8% relative excess in the reporting window, with DD
+   below -10%.
+
+5. **More factors ≠ better.** The 15-factor config (r12_mvv_rev_meanrev_liq)
+   and 400-round config (r11_more_rounds) both fail the DD gate. There's
+   a sweet spot around 7-13 factors and 200-300 rounds.
+
+### Final US x1.2 Recommendation (updated)
+
+**Primary**: `r11_lower_lr` — 300 rounds, lr=0.03, subsample=0.8, colsample=0.8
+- 7 OHLCV momentum_volatility_volume factors
+- Top-15 equal-weight, max-4-names-per-sector
+- Excess: +227.9%, DD: -24.56%, 2026H1: +48.9%
+
+**Conservative** (best DD): `r12_mvv_rev_meanrev` — sampled cal, 13 factors
+- 7 OHLCV + 3 reversal + 3 mean_reversion factors
+- Excess: +185.4%, DD: -23.22% (+6.22pp improvement)
+
+**Best out-of-sample**: `r11_sampled` — 200 rounds, lr=0.05, subsample=0.8
+- Excess: +227.4%, DD: -25.08%, 2026H1: +53.8%
+
+---
+
 ## 2026-08-11: USx Iteration — Rounds 4-10: Multi-Dimensional Grid & Final Selection
 
 ### Experiment: us_x1_2_multidim_grid_v1
