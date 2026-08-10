@@ -9,7 +9,7 @@ vi.mock('@/lib/governed-run', () => ({
 }));
 
 describe('Alpha Engine landing page', () => {
-  it('leads with product value, performance proof and traceable evidence', () => {
+  it('leads with product value, comparative performance proof and traceable evidence', () => {
     render(
       <MemoryRouter>
         <LandingPage />
@@ -20,6 +20,9 @@ describe('Alpha Engine landing page', () => {
     expect(screen.getByText('QQQR v4.3')).toBeInTheDocument();
     expect(screen.getByText('CN x1.1')).toBeInTheDocument();
     expect(screen.getByText('BYD v1.2')).toBeInTheDocument();
+    expect(screen.getByText('Performance', { exact: true })).toBeInTheDocument();
+    expect(screen.getAllByText('CAGR', { exact: true })).toHaveLength(4);
+    expect(screen.getAllByText('MDD', { exact: true })).toHaveLength(4);
     expect(screen.getByRole('heading', { name: /performance before persuasion/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /every decision is traceable/i })).toBeInTheDocument();
     expect(screen.getAllByText('Strategy fleet')).toHaveLength(1);
