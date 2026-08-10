@@ -1,7 +1,8 @@
 """T49.1: Model-bound factor attribution tests.
 
-Verify that attribution accepts and enforces model version / data snapshot
-identities, minimum-observation policies, and regularization options.
+Verify the maintained attribution engine's observation policy, regularization,
+and model/data identity metadata. The retired factor API router is not part of
+the current application surface and is intentionally not recreated here.
 """
 
 import sys
@@ -9,7 +10,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))
@@ -24,12 +24,13 @@ def test_estimate_factor_model_enforces_min_observations():
     """Returns zero betas when observations are below the minimum."""
     from src.research.factor_attribution import _estimate_factor_model
 
-    # 5 periods, min_observations=10 → should fail
     idx = [f"2021-{m:02d}-01" for m in range(1, 6)]
     portfolio = pd.Series([0.01, -0.02, 0.03, 0.01, 0.02], index=idx)
     factors = pd.DataFrame({"momentum": [0.02, 0.01, -0.01, 0.03, 0.01]}, index=idx)
 
-    betas, r2, residuals = _estimate_factor_model(portfolio, factors, min_observations=10)
+    betas, r2, residuals = _estimate_factor_model(
+        portfolio, factors, min_observations=10
+    )
     assert len(betas) == 1
     assert betas[0] == 0.0
     assert r2 == 0.0
@@ -44,12 +45,13 @@ def test_estimate_factor_model_passes_with_enough_observations():
     n = 24
     idx = [f"2021-{m:02d}-01" for m in range(1, n + 1)]
     factor_ret = np.random.randn(n) * 0.02
-    # Portfolio = 0.5 * factor + noise
     portfolio_ret = 0.5 * factor_ret + np.random.randn(n) * 0.005
     portfolio = pd.Series(portfolio_ret, index=idx)
     factors = pd.DataFrame({"f1": factor_ret}, index=idx)
 
-    betas, r2, residuals = _estimate_factor_model(portfolio, factors, min_observations=12)
+    betas, r2, residuals = _estimate_factor_model(
+        portfolio, factors, min_observations=12
+    )
     assert len(betas) == 1
     assert abs(betas[0]) > 0
     assert r2 > 0
@@ -69,14 +71,13 @@ def test_estimate_factor_model_ridge_returns_valid_betas():
     n = 24
     idx = [f"2021-{m:02d}-01" for m in range(1, n + 1)]
     base = np.random.randn(n) * 0.02
-    # Two nearly identical factors
     f1 = base + np.random.randn(n) * 0.001
     f2 = base + np.random.randn(n) * 0.001
     portfolio_ret = 0.3 * f1 + 0.2 * f2 + np.random.randn(n) * 0.005
     portfolio = pd.Series(portfolio_ret, index=idx)
     factors = pd.DataFrame({"f1": f1, "f2": f2}, index=idx)
 
-    betas, r2, residuals = _estimate_factor_model(
+    betas, r2, _residuals = _estimate_factor_model(
         portfolio, factors, min_observations=12, regularization="ridge"
     )
     assert len(betas) == 2
@@ -125,14 +126,14 @@ def test_attribution_report_includes_observation_metadata():
         data_snapshot_id="ds_xyz789",
         confidence_note="Low confidence: only 12 monthly observations.",
     )
-    d = report.to_dict()
-    assert d["observation_count"] == 12
-    assert d["observation_window"] == "12 monthly periods"
-    assert d["methodology"] == "OLS"
-    assert d["n_factors"] == 1
-    assert d["model_version_id"] == "mv_abc123"
-    assert d["data_snapshot_id"] == "ds_xyz789"
-    assert "Low confidence" in d["confidence_note"]
+    result = report.to_dict()
+    assert result["observation_count"] == 12
+    assert result["observation_window"] == "12 monthly periods"
+    assert result["methodology"] == "OLS"
+    assert result["n_factors"] == 1
+    assert result["model_version_id"] == "mv_abc123"
+    assert result["data_snapshot_id"] == "ds_xyz789"
+    assert "Low confidence" in result["confidence_note"]
 
 
 def test_attribution_report_defaults_observation_fields():
@@ -151,55 +152,9 @@ def test_attribution_report_defaults_observation_fields():
         factor_coverage=0.0,
         attribution_confidence=0.0,
     )
-    d = report.to_dict()
-    assert d["observation_count"] == 0
-    assert d["methodology"] == "OLS"
-    assert d["n_factors"] == 0
-    assert d["model_version_id"] is None
-    assert d["confidence_note"] == ""
-
-
-# ---------------------------------------------------------------------------
-# API contract: AttributionRequest validation
-# ---------------------------------------------------------------------------
-
-
-def test_attribution_request_accepts_model_version_id():
-    """AttributionRequest accepts and validates model_version_id."""
-    from src.api.routers.factors import AttributionRequest
-
-    req = AttributionRequest(
-        market="us",
-        model_version_id="mv_test123",
-        min_observations=24,
-        regularization="ridge",
-    )
-    assert req.model_version_id == "mv_test123"
-    assert req.min_observations == 24
-    assert req.regularization == "ridge"
-
-
-def test_attribution_request_rejects_invalid_regularization():
-    """AttributionRequest rejects unknown regularization values."""
-    from src.api.routers.factors import AttributionRequest
-
-    with pytest.raises(Exception):  # Pydantic validation error
-        AttributionRequest(market="us", regularization="lasso")
-
-
-def test_attribution_request_min_observations_bounds():
-    """min_observations is clamped to [3, 120]."""
-    from src.api.routers.factors import AttributionRequest
-
-    with pytest.raises(Exception):
-        AttributionRequest(market="us", min_observations=2)
-    with pytest.raises(Exception):
-        AttributionRequest(market="us", min_observations=121)
-
-
-def test_attribution_request_default_min_observations():
-    """Default min_observations is 12."""
-    from src.api.routers.factors import AttributionRequest
-
-    req = AttributionRequest(market="us")
-    assert req.min_observations == 12
+    result = report.to_dict()
+    assert result["observation_count"] == 0
+    assert result["methodology"] == "OLS"
+    assert result["n_factors"] == 0
+    assert result["model_version_id"] is None
+    assert result["confidence_note"] == ""
