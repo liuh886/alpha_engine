@@ -1,0 +1,181 @@
+{
+  "schema_version": "1.0",
+  "issue": 732,
+  "research_only": true,
+  "historical_evidence_consumed": true,
+  "automatic_promotion": false,
+  "source_run": {
+    "workflow_run_id": 31390503404,
+    "artifact_id": 9063515775,
+    "artifact_zip_sha256": "b6b0ad5667ad6829255acce00612238532ad161490b242ee5d495eb72263191b"
+  },
+  "baseline": {
+    "model_id": "byd_v1_2_convex_momentum_budget_v1",
+    "formal_trace_exact": true,
+    "vol_ratio_1_00_trace_exact": true,
+    "sma_120_core_exact": true
+  },
+  "vol_relaxation": {
+    "contract": "realized_vol_60 <= ratio * rolling_historical_vol_median; all other V1.2 expansion rules and convex sizing unchanged",
+    "ratios_tested": [1.0, 1.15, 1.3],
+    "primary": {
+      "1.00": {
+        "fixed_validation_cagr": 0.081560,
+        "retrospective_2025_plus_cagr": 0.061599,
+        "full_overlap_cagr": 0.358435,
+        "full_overlap_sharpe": 0.926614,
+        "full_overlap_turnover_units": 16.763111,
+        "full_overlap_financed_sessions": 86
+      },
+      "1.15": {
+        "fixed_validation_cagr": 0.075259,
+        "retrospective_2025_plus_cagr": 0.064949,
+        "full_overlap_cagr": 0.355321,
+        "full_overlap_sharpe": 0.918430,
+        "full_overlap_turnover_units": 17.161964,
+        "full_overlap_financed_sessions": 122,
+        "retrospective_2025_plus_relative_terminal_wealth_vs_1_00": 0.004788,
+        "full_overlap_relative_terminal_wealth_vs_1_00": -0.014546
+      },
+      "1.30": {
+        "fixed_validation_cagr": 0.070847,
+        "retrospective_2025_plus_cagr": 0.060134,
+        "full_overlap_cagr": 0.351903,
+        "full_overlap_sharpe": 0.909328,
+        "full_overlap_turnover_units": 19.030647,
+        "full_overlap_financed_sessions": 199,
+        "retrospective_2025_plus_relative_terminal_wealth_vs_1_00": -0.002092,
+        "full_overlap_relative_terminal_wealth_vs_1_00": -0.030309
+      }
+    },
+    "stress": {
+      "1.00_full_overlap_cagr": 0.351212,
+      "1.15_full_overlap_cagr": 0.347812,
+      "1.30_full_overlap_cagr": 0.343381,
+      "1.15_retrospective_2025_plus_relative_terminal_wealth_vs_1_00": 0.003679,
+      "1.30_retrospective_2025_plus_relative_terminal_wealth_vs_1_00": -0.004597
+    },
+    "coverage": {
+      "2024": {
+        "1.00_active_sessions": 53,
+        "1.15_active_sessions": 55,
+        "1.30_active_sessions": 76
+      },
+      "2025": {
+        "1.00_active_sessions": 1,
+        "1.15_active_sessions": 18,
+        "1.30_active_sessions": 40
+      },
+      "2026": {
+        "1.00_active_sessions": 0,
+        "1.15_active_sessions": 0,
+        "1.30_active_sessions": 0
+      }
+    },
+    "decision": "1.15 is informative as a diagnostic/watch control but is not a standalone successor; 1.30 is rejected. The 2026 zero-coverage result confirms that volatility relaxation alone does not solve the state-representation gap."
+  },
+  "sma_sensitivity": {
+    "contract": "SMA120/90/60 only; mom20 entry, mom60 exit, 75/25-to-100/0 allocation and next-open execution unchanged",
+    "primary": {
+      "sma_120": {
+        "retrospective_2025_plus_cagr": 0.061367,
+        "full_overlap_cagr": 0.350728,
+        "full_overlap_sharpe": 0.916589,
+        "retrospective_2025_plus_turnover_units": 3.0,
+        "full_overlap_turnover_units": 13.5
+      },
+      "sma_90": {
+        "retrospective_2025_plus_cagr": 0.033079,
+        "full_overlap_cagr": 0.336803,
+        "full_overlap_sharpe": 0.893365,
+        "retrospective_2025_plus_turnover_units": 7.0,
+        "full_overlap_turnover_units": 23.5,
+        "full_overlap_relative_terminal_wealth_vs_sma_120": -0.064023
+      },
+      "sma_60": {
+        "retrospective_2025_plus_cagr": 0.005985,
+        "full_overlap_cagr": 0.322452,
+        "full_overlap_sharpe": 0.866746,
+        "retrospective_2025_plus_turnover_units": 13.5,
+        "full_overlap_turnover_units": 40.5,
+        "full_overlap_relative_terminal_wealth_vs_sma_120": -0.126356
+      }
+    },
+    "stress": {
+      "sma_120_retrospective_2025_plus_cagr": 0.057184,
+      "sma_90_retrospective_2025_plus_cagr": 0.023546,
+      "sma_60_retrospective_2025_plus_cagr": -0.011851
+    },
+    "decision": "Reject SMA90 and SMA60 as successor directions. They increase switching and turnover but materially weaken post-2024 and full-period performance."
+  },
+  "state_feature_screen": {
+    "threshold_policy": "development q70 for positive orientation / q30 for negative orientation; applied unchanged to later consumed-history blocks",
+    "advance": [
+      {
+        "feature": "drawdown252_x_rebound60",
+        "family": "recovery",
+        "development_threshold": 0.026937,
+        "period_session_counts": [74, 34, 21],
+        "maximum_period_session_share": 0.573643,
+        "mean_forward_10": [0.047365, 0.059784, 0.055837],
+        "mean_forward_20": [0.140772, 0.082550, 0.061418],
+        "state_sessions_2026": 21,
+        "decision": "primary Phase 2 recovery state"
+      },
+      {
+        "feature": "distance_from_low_20",
+        "family": "recovery",
+        "development_threshold": 0.087207,
+        "period_session_counts": [74, 25, 27],
+        "maximum_period_session_share": 0.587302,
+        "mean_forward_10": [0.034314, 0.052462, 0.046833],
+        "mean_forward_20": [0.101768, 0.071512, 0.040880],
+        "state_sessions_2026": 25,
+        "decision": "secondary recovery ablation"
+      },
+      {
+        "feature": "drawdown_252",
+        "family": "recovery",
+        "development_threshold": -0.294443,
+        "period_session_counts": [74, 93, 36],
+        "maximum_period_session_share": 0.458128,
+        "mean_forward_10": [0.048345, 0.017923, 0.031891],
+        "mean_forward_20": [0.107202, 0.031485, 0.076197],
+        "state_sessions_2026": 31,
+        "decision": "context / depth-state ablation, not primary trigger"
+      }
+    ],
+    "stop_or_hold": [
+      {
+        "feature": "norm_mom_20",
+        "reason": "fixed-validation mean forward returns are negative and 2026 opportunity coverage remains zero"
+      },
+      {
+        "feature": "norm_mom_60",
+        "reason": "later-period forward returns are negative, 94.3% of state sessions concentrate in development, and 2026 coverage is zero"
+      },
+      {
+        "feature": "directional_efficiency_20",
+        "reason": "forward-return sign is stable but development concentration is 67.6%, above the pre-registered 60% screen cap, and 2026 coverage remains zero"
+      },
+      {
+        "feature": "directional_efficiency_60",
+        "reason": "later-period forward returns are negative and development concentration is 83.8%"
+      },
+      {
+        "feature": "momentum_accel_20_60",
+        "reason": "fixed-validation 10-day mean is negative, retrospective 20-day mean is approximately flat, and concentration exceeds 60%"
+      }
+    ]
+  },
+  "phase_1_conclusion": "The post-2024 gap is not best solved by a faster SMA or broad volatility relaxation. A modest 1.15x volatility allowance recovers some 2025 expansion coverage but loses value elsewhere and still produces zero 2026 expansion coverage. The strongest stable successor information is recovery structure, especially long drawdown combined with medium-horizon rebound.",
+  "phase_2_frozen_direction": {
+    "architecture": "V1.2 Champion unchanged + one recovery-only re-risk satellite",
+    "primary_state": "base_byd_weight == 0.75 AND drawdown252_x_rebound60 >= 0.026937",
+    "satellite_action": "temporarily re-risk defensive sleeve from 75% BYD / 25% 515180 to 100% BYD / 0% 515180 while the frozen recovery state is active",
+    "offense_branch": "keep existing V1.2 expansion unchanged",
+    "vol_1_15": "watch-only ablation; do not combine with recovery in the first challenger",
+    "sma_90_60": "stopped",
+    "promotion": "not authorized; historical comparison remains retrospective and consumed"
+  }
+}
