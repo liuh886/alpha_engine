@@ -13,7 +13,6 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from scripts.refresh_allocation_formal import _qqq_metrics_from_report
 from src.artifacts.formal_refresh import FormalRefreshError, load_object, sha256, write_object
 from src.artifacts.qqq_v4_3_formal import ASSETS, JOINT_STRATEGY, MODEL_ID, build_formal_package
 from src.data.adapters.cnn_fear_greed import fetch_cnn_fear_greed
@@ -24,6 +23,49 @@ from src.research.v4_33_ma200_ma20_vix_release import run_v4_33_comparison
 
 class QqqV43RefreshError(FormalRefreshError):
     """Raised when the frozen v4.3 model path cannot be extended safely."""
+
+
+def _qqq_metrics_from_report(
+    report: list[dict[str, Any]], *, annual_risk_free_rate: float
+) -> dict[str, float]:
+    frame = pd.DataFrame(report)
+    if frame.empty or "period_return" not in frame:
+        raise QqqV43RefreshError("QQQ formal report has no realized returns")
+    index = pd.to_datetime(frame["date"], errors="coerce")
+    returns = pd.Series(
+        pd.to_numeric(frame["period_return"], errors="coerce").to_numpy(),
+        index=index,
+        dtype=float,
+    )
+    summary = _return_metrics(returns, annual_risk_free_rate=annual_risk_free_rate)
+    required = (
+        "total_return",
+        "cagr",
+        "annual_volatility",
+        "sharpe",
+        "sortino",
+        "max_drawdown",
+        "calmar",
+    )
+    if any(not math.isfinite(float(summary[key])) for key in required):
+        raise QqqV43RefreshError("QQQ refreshed summary metrics are not finite")
+    return {
+        "Total Return": float(summary["total_return"]),
+        "CAGR": float(summary["cagr"]),
+        "Annualized Volatility": float(summary["annual_volatility"]),
+        "Sharpe Ratio": float(summary["sharpe"]),
+        "Sortino Ratio": float(summary["sortino"]),
+        "Max Drawdown": float(summary["max_drawdown"]),
+        "Calmar Ratio": float(summary["calmar"]),
+        "Turnover": float(
+            pd.to_numeric(frame.get("turnover"), errors="coerce").fillna(0.0).sum()
+        ),
+        "Transaction Cost": float(
+            pd.to_numeric(frame.get("transaction_cost"), errors="coerce")
+            .fillna(0.0)
+            .sum()
+        ),
+    }
 
 
 def _json_safe(value: Any) -> Any:
