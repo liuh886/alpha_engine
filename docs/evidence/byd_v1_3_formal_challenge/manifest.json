@@ -1,0 +1,22 @@
+{
+  "candidate_id": "byd_v1_3_min_hold_bear_defense",
+  "contract": "configs/research_candidates/byd_v1_3_min_hold_bear_defense_v1.yaml",
+  "files": {
+    "comparison.csv": "1872b720f5a61f563ccf845d1a79ee5ec3d261b705cc812b64c3701ebda9bab9",
+    "decision.json": "76a9fc55e941f4243c88e8ef2a52c2c85bc32966810634c3389691f7771d7e68",
+    "period_attribution.csv": "825973f23a59e9d7cc2bc7a02f472ce8aae31386efc38774907d7bab13986278",
+    "v1_2_daily.csv": "8a6a22f4328198e2e9b44e6b244d88735b3fd321671ddc3cf769e65dc230a185",
+    "v1_3_daily.csv": "9a242044c8c99c7716b6502189d24f10d25b31c2b06862c39a7e553a59e8862b"
+  },
+  "frozen_champion_bundle_id": "a36cee1bab0069369b4a994158a96998829846eb7cf7997cef86b3e447cf41a1",
+  "frozen_champion_receipt": "data/research/experiment_receipts/byd_v1_2_research_loop_onboarding_v1.json",
+  "immutable_data": {
+    "byd_snapshot": "data/research/byd_canonical_v1_snapshot.tar.xz",
+    "byd_snapshot_sha256": "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179",
+    "cutoff": "2026-08-03",
+    "etf_artifact": "data/research/515180_canonical_v1_artifact.zip.b64",
+    "etf_decoded_sha256": "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f"
+  },
+  "rolling_formal_package": "data/research/formal_backtests/byd_v1_2_convex_momentum_budget_v1.json",
+  "schema_version": "1.0"
+}
