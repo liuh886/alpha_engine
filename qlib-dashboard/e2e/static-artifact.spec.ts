@@ -116,8 +116,8 @@ test('Security Explorer requires sign-in and remains available to Free accounts'
 test('Free users see an explicit Pro product gate for an advanced model', async ({ page }) => {
   await installMembershipFixture(page, { loading: false, isPro: false, user: { id: 'free-fixture' } });
   await page.goto('/#/strategies');
-  await page.getByRole('region', { name: 'Formal strategy fleet' }).getByText('QQQR', { exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'QQQR is a Pro product' })).toBeVisible();
+  await page.getByRole('region', { name: 'Formal strategy fleet' }).getByText('QQQR v4.3', { exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'QQQR v4.3 is a Pro product' })).toBeVisible();
   await expect(page.getByText('This product requires an active AlphaEngine Pro subscription.')).toBeVisible();
 });
 
@@ -144,7 +144,9 @@ async function loadFormalDisplayNames(page: Page): Promise<string[]> {
     expect(summaryResponse.ok()).toBeTruthy();
     const summary = await summaryResponse.json() as FormalSummary;
     expect(summary.display_name).toBeTruthy();
-    names.push(String(summary.model_version_id).startsWith('qqqi_qqq_tqqq_') ? 'QQQR' : String(summary.display_name));
+    names.push(String(summary.model_version_id).startsWith('qqqi_qqq_tqqq_')
+      ? String(summary.display_name).replace(/^QQQ Rotation\b/, 'QQQR')
+      : String(summary.display_name));
   }
   expect(names.length).toBeGreaterThan(0);
   return names;
@@ -190,9 +192,9 @@ test('strategy console exposes four primary destinations and formal strategy dri
   const formalNames = await loadFormalDisplayNames(page);
   const fleet = page.getByRole('region', { name: 'Formal strategy fleet' });
   for (const name of formalNames) await expect(fleet.getByText(name, { exact: true })).toBeVisible();
-  await fleet.getByText('QQQR', { exact: true }).click();
+  await fleet.getByText('QQQR v4.3', { exact: true }).click();
   await expect(page).toHaveURL(/#\/strategies\/qqqi_qqq_tqqq_v4_3$/);
-  await expect(page.getByRole('heading', { name: 'QQQR', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'QQQR v4.3', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current decision state' })).toBeVisible();
   const formalTabs = page.getByRole('tablist', { name: 'Formal backtest evidence views' });
   for (const label of ['Performance', 'Risk & robustness', 'Portfolio', 'Trades', 'Attribution', 'Evidence boundary']) {
