@@ -114,19 +114,6 @@ jobs:
           tests/test_t47_drift_monitor.py
           -q --strict-markers --tb=short --disable-warnings --maxfail=1
 
-      - name: Diagnose BYD recovery lifecycle
-        run: >-
-          uv run python scripts/diagnose_byd_recovery_lifecycle.py
-          --output artifacts/byd-recovery-lifecycle-v1.json
-
-      - name: Upload BYD recovery lifecycle evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: byd-recovery-lifecycle-${{ github.run_id }}
-          path: artifacts/byd-recovery-lifecycle-v1.json
-          if-no-files-found: error
-          retention-days: 14
-
       - name: Package build
         if: github.event_name != 'pull_request'
         run: uv build
