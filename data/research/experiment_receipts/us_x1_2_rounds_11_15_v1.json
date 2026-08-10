@@ -1,0 +1,473 @@
+{
+  "experiment_id": "us_x1_2_rounds_11_15_v1",
+  "rounds": "11-15",
+  "models_tested": 12,
+  "cost_levels_tested": [
+    20,
+    40,
+    60
+  ],
+  "aggregated_20bps": [
+    {
+      "config_id": "r11_lower_lr",
+      "round_tag": "R11_cal",
+      "n_factors": 7,
+      "compounded_relative_excess_20": 2.2791433659450306,
+      "compounded_relative_excess_40": 2.2782109149383336,
+      "compounded_relative_excess_60": 2.277278676330179,
+      "worst_drawdown_20": -0.24556639936462424,
+      "positive_windows": 4,
+      "strongest_share": 0.2966588145725395,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.32479652678129844,
+          "dd": -0.047562625222653136
+        },
+        "2024H2": {
+          "excess": 0.4116333993978185,
+          "dd": -0.14448544234927432
+        },
+        "2025H1": {
+          "excess": 0.38636105955922173,
+          "dd": -0.24556639936462424
+        },
+        "2025H2": {
+          "excess": 0.2647740525395488,
+          "dd": -0.22474671441378355
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": true,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false,
+      "reporting_2026H1": {
+        "strategy_compound": 0.7419595753067685,
+        "benchmark_compound": 0.16981323012375182,
+        "relative_excess": 0.4890920451656122,
+        "max_drawdown": -0.10025873155742875,
+        "n_periods": 11,
+        "positive_periods": 7
+      }
+    },
+    {
+      "config_id": "r11_sampled",
+      "round_tag": "R11_cal",
+      "n_factors": 7,
+      "compounded_relative_excess_20": 2.2736484426263326,
+      "compounded_relative_excess_40": 2.272719561315985,
+      "compounded_relative_excess_60": 2.2717908902459243,
+      "worst_drawdown_20": -0.2507861370280044,
+      "positive_windows": 4,
+      "strongest_share": 0.3481107353205999,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.35713383591006287,
+          "dd": -0.047562625222653226
+        },
+        "2024H2": {
+          "excess": 0.4867275986550139,
+          "dd": -0.1278562128902772
+        },
+        "2025H1": {
+          "excess": 0.37035359541593027,
+          "dd": -0.2507861370280044
+        },
+        "2025H2": {
+          "excess": 0.1839825814967082,
+          "dd": -0.2418925729982182
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": true,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false,
+      "reporting_2026H1": {
+        "strategy_compound": 0.7987722744715993,
+        "benchmark_compound": 0.16981323012375182,
+        "relative_excess": 0.5376576603440459,
+        "max_drawdown": -0.0948797358721494,
+        "n_periods": 11,
+        "positive_periods": 8
+      }
+    },
+    {
+      "config_id": "r12_mvv_rev",
+      "round_tag": "R12_factor",
+      "n_factors": 10,
+      "compounded_relative_excess_20": 2.1201282067473826,
+      "compounded_relative_excess_40": 2.119268583819026,
+      "compounded_relative_excess_60": 2.1184091485537175,
+      "worst_drawdown_20": -0.2439447919445933,
+      "positive_windows": 4,
+      "strongest_share": 0.3030174127069667,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.38491341638538823,
+          "dd": -0.049665827500820124
+        },
+        "2024H2": {
+          "excess": 0.40225912585791246,
+          "dd": -0.13051575708996216
+        },
+        "2025H1": {
+          "excess": 0.35189857193460194,
+          "dd": -0.2439447919445933
+        },
+        "2025H2": {
+          "excess": 0.1884404709299723,
+          "dd": -0.22152114105008125
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": true,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false
+    },
+    {
+      "config_id": "r11_std",
+      "round_tag": "R11_cal",
+      "n_factors": 7,
+      "compounded_relative_excess_20": 2.108220137976914,
+      "compounded_relative_excess_40": 2.107359436286977,
+      "compounded_relative_excess_60": 2.106498926814423,
+      "worst_drawdown_20": -0.24448973160339518,
+      "positive_windows": 4,
+      "strongest_share": 0.31302604431640163,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.3259360463375818,
+          "dd": -0.04928422176912428
+        },
+        "2024H2": {
+          "excess": 0.36134616321227564,
+          "dd": -0.12950897210067608
+        },
+        "2025H1": {
+          "excess": 0.412853353628027,
+          "dd": -0.24448973160339518
+        },
+        "2025H2": {
+          "excess": 0.21877499114877574,
+          "dd": -0.22591805461843154
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": true,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false
+    },
+    {
+      "config_id": "r11_fewer_leaves",
+      "round_tag": "R11_cal",
+      "n_factors": 7,
+      "compounded_relative_excess_20": 2.046310612146481,
+      "compounded_relative_excess_40": 2.045489627272424,
+      "compounded_relative_excess_60": 2.0446688148568706,
+      "worst_drawdown_20": -0.2435809750984964,
+      "positive_windows": 4,
+      "strongest_share": 0.36169340873623823,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.23080566018457183,
+          "dd": -0.046569765748828616
+        },
+        "2024H2": {
+          "excess": 0.470564307463714,
+          "dd": -0.1352999509479371
+        },
+        "2025H1": {
+          "excess": 0.3801854532033062,
+          "dd": -0.2435809750984964
+        },
+        "2025H2": {
+          "excess": 0.2194478490389824,
+          "dd": -0.23153505850990688
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": true,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false
+    },
+    {
+      "config_id": "r12_mvv_rev_meanrev_liq",
+      "round_tag": "R12_factor",
+      "n_factors": 15,
+      "compounded_relative_excess_20": 2.0100317112919,
+      "compounded_relative_excess_40": 2.0092289667248613,
+      "compounded_relative_excess_60": 2.008426386841116,
+      "worst_drawdown_20": -0.2765980469714425,
+      "positive_windows": 4,
+      "strongest_share": 0.35732145619253997,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.3218850352388416,
+          "dd": -0.048603270611912074
+        },
+        "2024H2": {
+          "excess": 0.4579473685230899,
+          "dd": -0.1481903618713149
+        },
+        "2025H1": {
+          "excess": 0.30463490660071835,
+          "dd": -0.2765980469714425
+        },
+        "2025H2": {
+          "excess": 0.19714441651984793,
+          "dd": -0.22085675359468745
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": true,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false
+    },
+    {
+      "config_id": "r12_mvv_pressure",
+      "round_tag": "R12_factor",
+      "n_factors": 12,
+      "compounded_relative_excess_20": 1.9125799797461975,
+      "compounded_relative_excess_40": 1.9118186074220676,
+      "compounded_relative_excess_60": 1.911057388100387,
+      "worst_drawdown_20": -0.2586109535926318,
+      "positive_windows": 4,
+      "strongest_share": 0.27739040684817107,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.28442519543238065,
+          "dd": -0.049163159150630104
+        },
+        "2024H2": {
+          "excess": 0.3402051097709937,
+          "dd": -0.15793117358332237
+        },
+        "2025H1": {
+          "excess": 0.3202698877957324,
+          "dd": -0.2586109535926318
+        },
+        "2025H2": {
+          "excess": 0.28154852826905197,
+          "dd": -0.21823951387509388
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": true,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false
+    },
+    {
+      "config_id": "r12_mvv_rev_meanrev",
+      "round_tag": "R12_factor",
+      "n_factors": 13,
+      "compounded_relative_excess_20": 1.8544019079263596,
+      "compounded_relative_excess_40": 1.8536588346674705,
+      "compounded_relative_excess_60": 1.8529159130968957,
+      "worst_drawdown_20": -0.23219360011878756,
+      "positive_windows": 4,
+      "strongest_share": 0.31469302513663494,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.27314692578805944,
+          "dd": -0.04794830933138731
+        },
+        "2024H2": {
+          "excess": 0.3791738163701228,
+          "dd": -0.1551642849321818
+        },
+        "2025H1": {
+          "excess": 0.33374755894236485,
+          "dd": -0.23219360011878756
+        },
+        "2025H2": {
+          "excess": 0.21883230387946884,
+          "dd": -0.18635293131562314
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": false,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false
+    },
+    {
+      "config_id": "r11_regularized",
+      "round_tag": "R11_cal",
+      "n_factors": 7,
+      "compounded_relative_excess_20": 1.8001245219416964,
+      "compounded_relative_excess_40": 1.7994041757300958,
+      "compounded_relative_excess_60": 1.7986839746618495,
+      "worst_drawdown_20": -0.235864001941703,
+      "positive_windows": 4,
+      "strongest_share": 0.3142929250652441,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.30686233091092596,
+          "dd": -0.04860327061191205
+        },
+        "2024H2": {
+          "excess": 0.3714179721833917,
+          "dd": -0.14745343917061826
+        },
+        "2025H1": {
+          "excess": 0.31883329845364394,
+          "dd": -0.23524370123595184
+        },
+        "2025H2": {
+          "excess": 0.18464374188027177,
+          "dd": -0.235864001941703
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": false,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false
+    },
+    {
+      "config_id": "r11_more_rounds",
+      "round_tag": "R11_cal",
+      "n_factors": 7,
+      "compounded_relative_excess_20": 1.7637484678209714,
+      "compounded_relative_excess_40": 1.7630443113983398,
+      "compounded_relative_excess_60": 1.762340295017406,
+      "worst_drawdown_20": -0.2660942290453746,
+      "positive_windows": 4,
+      "strongest_share": 0.28527929374946553,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.32826657068101306,
+          "dd": -0.04456673511490227
+        },
+        "2024H2": {
+          "excess": 0.3322518693564265,
+          "dd": -0.1493839140439422
+        },
+        "2025H1": {
+          "excess": 0.3286784956406914,
+          "dd": -0.2660942290453746
+        },
+        "2025H2": {
+          "excess": 0.17545776109145872,
+          "dd": -0.21236389744052633
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": false,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false
+    },
+    {
+      "config_id": "r12_mvv_meanrev",
+      "round_tag": "R12_factor",
+      "n_factors": 10,
+      "compounded_relative_excess_20": 1.762122033134323,
+      "compounded_relative_excess_40": 1.7614293989646566,
+      "compounded_relative_excess_60": 1.7607368945838515,
+      "worst_drawdown_20": -0.2606556603904702,
+      "positive_windows": 4,
+      "strongest_share": 0.30724257930621535,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.308567132820996,
+          "dd": -0.04934996744170774
+        },
+        "2024H2": {
+          "excess": 0.2111481114783289,
+          "dd": -0.16770171180133675
+        },
+        "2025H1": {
+          "excess": 0.3567115578963327,
+          "dd": -0.2606556603904702
+        },
+        "2025H2": {
+          "excess": 0.2845827125071003,
+          "dd": -0.20286622316417596
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": false,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false
+    },
+    {
+      "config_id": "r11_higher_child",
+      "round_tag": "R11_cal",
+      "n_factors": 7,
+      "compounded_relative_excess_20": 1.6176080067030782,
+      "compounded_relative_excess_40": 1.6169701893343698,
+      "compounded_relative_excess_60": 1.6163324895887858,
+      "worst_drawdown_20": -0.25949350311035935,
+      "positive_windows": 4,
+      "strongest_share": 0.40821842521762847,
+      "per_window": {
+        "2024H1": {
+          "excess": 0.19972316406612967,
+          "dd": -0.05086177897751338
+        },
+        "2024H2": {
+          "excess": 0.4527531678769927,
+          "dd": -0.11624512549430298
+        },
+        "2025H1": {
+          "excess": 0.31123347594918505,
+          "dd": -0.25949350311035935
+        },
+        "2025H2": {
+          "excess": 0.14538556827946136,
+          "dd": -0.22854010015237186
+        }
+      },
+      "gates": {
+        "DD_improve_3pp_or_m22": false,
+        "4_positive_windows": true,
+        "strongest_share_below_55pct": true,
+        "retain_90pct_excess_20bps": false,
+        "positive_60bps_excess": true
+      },
+      "all_gates_pass": false
+    }
+  ],
+  "gate_passing": []
+}
