@@ -232,7 +232,11 @@ def _trace_reproduction(
     formal: pd.DataFrame,
     reproduced: pd.DataFrame,
 ) -> dict[str, Any]:
-    reproduced = reproduced.loc[reproduced.index <= formal.index.max()].copy()
+    if reproduced.empty:
+        raise EvidenceInvalid("maintained V1.2 reproduction is empty")
+    comparison_end = min(formal.index.max(), reproduced.index.max())
+    formal = formal.loc[:comparison_end].copy()
+    reproduced = reproduced.loc[:comparison_end].copy()
     index_equal = formal.index.equals(reproduced.index)
     columns = {
         "net_return": "net_return",
@@ -264,6 +268,7 @@ def _trace_reproduction(
         "index_equal": index_equal,
         "formal_rows": int(len(formal)),
         "reproduced_rows": int(len(reproduced)),
+        "comparison_end": comparison_end.strftime("%Y-%m-%d"),
         "max_absolute_difference": max_abs,
     }
 
@@ -519,14 +524,14 @@ def run_rules_based_allocation_experiment(
                     reason="maintained V1.2 runner does not reproduce formal primary trace",
                 )
 
+            comparison_end = pd.Timestamp(str(trace["comparison_end"]))
+            formal_historical = formal_primary.loc[:comparison_end]
             evaluation = _evaluate(
                 raw,
-                formal_primary=formal_primary,
-                v12_stress=v12_stress[V12_MODEL_ID].daily.loc[
-                    : pd.Timestamp(cutoff)
-                ],
-                v13_primary=v13_primary.daily.loc[: pd.Timestamp(cutoff)],
-                v13_stress=v13_stress.daily.loc[: pd.Timestamp(cutoff)],
+                formal_primary=formal_historical,
+                v12_stress=v12_stress[V12_MODEL_ID].daily.loc[:comparison_end],
+                v13_primary=v13_primary.daily.loc[:comparison_end],
+                v13_stress=v13_stress.daily.loc[:comparison_end],
                 trace_reproduction=trace,
             )
 
