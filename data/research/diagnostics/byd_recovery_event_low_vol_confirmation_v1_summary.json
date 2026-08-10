@@ -1,0 +1,139 @@
+{
+  "schema_version": "1.0",
+  "issue": 744,
+  "challenger": "byd_v1_3_recovery_event_low_vol_confirmation_v1",
+  "research_only": true,
+  "fresh_holdout": false,
+  "historical_evidence_consumed": true,
+  "automatic_promotion_allowed": false,
+  "prospective_confirmation_required": true,
+  "decision": "prospective_shadow_worthy",
+  "authoritative_run": 31401564644,
+  "artifact_id": 9067940128,
+  "artifact_zip_sha256": "a4e598f42518c3cc4812309753d720d6092da7bacf65f6bd361ea7e02edfda49",
+  "data_identity": {
+    "byd_snapshot_sha256": "2e56595d3363b201469f6eefe5dd6390ba156da6fb7ea32a8348d25f06bac179",
+    "etf_decoded_sha256": "7e077664516b74546ec118f2bf0484ee650577a0898623f3f0cb8623397e061f"
+  },
+  "baseline": {
+    "model_id": "byd_v1_2_convex_momentum_budget_v1",
+    "bundle_id": "a28519df32797e0a135736e8626b6cf1fb9a1ba950d01248bc48a45b7fc540f9",
+    "performance_sha256": "f0e24803bc777bc115e266006929363026a2e6d8fcd84d48fb2ea62dc72f2501",
+    "formal_trace_exact": true,
+    "rebuilt_trace_exact": true,
+    "max_absolute_trace_difference": 0.0
+  },
+  "frozen_contract": {
+    "detector_threshold": 0.026937,
+    "entry": "false_to_true_detector_edge AND vol_state == low on the same decision date",
+    "missed_high_vol_edge_catch_up": false,
+    "hold_common_open_eligible_sessions": 20,
+    "overlay": "75% BYD + 25% 515180 -> 100% BYD",
+    "early_termination": "unchanged V1.2 core returns to 100%",
+    "detector_flicker_exit": false,
+    "retrigger_requires_new_edge": true
+  },
+  "gates": {
+    "passed": 11,
+    "total": 11,
+    "all_pass": true,
+    "max_period_positive_contribution_share": 0.5689759320440935,
+    "candidate_turnover_units": 16.76311113908823,
+    "frozen_event_turnover_units": 19.76311113908823,
+    "exact_v1_2_trace_reproduction": true,
+    "full_cagr_delta_ge_minus_50bp": true,
+    "full_sharpe_delta_nonnegative": true,
+    "mdd_deterioration_le_100bp": true,
+    "fixed_validation_relative_wealth_nonnegative": true,
+    "recent_relative_wealth_nonnegative": true,
+    "year_2026_relative_wealth_nonnegative": true,
+    "stress_full_relative_wealth_nonnegative": true,
+    "stress_recent_relative_wealth_nonnegative": true,
+    "turnover_le_frozen_event": true,
+    "period_positive_concentration_le_60pct": true
+  },
+  "primary": {
+    "full_overlap": {
+      "champion_cagr": 0.35843544390055615,
+      "candidate_cagr": 0.37838108480564925,
+      "frozen_event_cagr": 0.3655732572260588,
+      "champion_sharpe": 0.9266135973913004,
+      "candidate_sharpe": 0.9538094286223441,
+      "frozen_event_sharpe": 0.926885450133508,
+      "champion_max_drawdown": -0.4920228932073253,
+      "candidate_max_drawdown": -0.4892927084747377,
+      "frozen_event_max_drawdown": -0.48929270847473727,
+      "candidate_vs_champion_relative_terminal_wealth": 0.09753521715046087,
+      "candidate_vs_frozen_event_relative_terminal_wealth": 0.061417867117030456
+    },
+    "development": {
+      "candidate_vs_champion_relative_terminal_wealth": 0.03438143595829257,
+      "candidate_vs_frozen_event_relative_terminal_wealth": 0.060018121755845755,
+      "champion_cagr": 0.7888489490405057,
+      "candidate_cagr": 0.8094761522781959
+    },
+    "fixed_validation_2023_2024": {
+      "candidate_vs_champion_relative_terminal_wealth": 0.05409768030491224,
+      "candidate_vs_frozen_event_relative_terminal_wealth": 0.0,
+      "champion_cagr": 0.08156043457000539,
+      "candidate_cagr": 0.11163948770823051
+    },
+    "retrospective_2025_plus": {
+      "candidate_vs_champion_relative_terminal_wealth": 0.006599914778691485,
+      "candidate_vs_frozen_event_relative_terminal_wealth": 0.0013204919165621387,
+      "champion_cagr": 0.06159917236123835,
+      "candidate_cagr": 0.0662160622267669
+    }
+  },
+  "stress": {
+    "full_overlap": {
+      "champion_cagr": 0.3512124157802543,
+      "candidate_cagr": 0.37103803894568177,
+      "candidate_vs_champion_relative_terminal_wealth": 0.097463849659434,
+      "champion_sharpe": 0.9142134938028981,
+      "candidate_sharpe": 0.941514037174289
+    },
+    "retrospective_2025_plus": {
+      "champion_cagr": 0.057275148639069684,
+      "candidate_cagr": 0.06185841379700552,
+      "candidate_vs_champion_relative_terminal_wealth": 0.006578619641242955
+    }
+  },
+  "annual_relative_wealth_vs_champion": {
+    "2019": 0.0,
+    "2020": 0.02982149513607668,
+    "2021": 0.0,
+    "2022": 0.00442789439116531,
+    "2023": 0.02516219404121478,
+    "2024": 0.02822527638249772,
+    "2025": 0.0,
+    "2026": 0.006599914778691707
+  },
+  "period_attribution": {
+    "development": {
+      "relative_terminal_wealth": 0.03438143595829257,
+      "positive_contribution_share": 0.36160902757982977
+    },
+    "fixed_validation_2023_2024": {
+      "relative_terminal_wealth": 0.05409768030491224,
+      "positive_contribution_share": 0.5689759320440935
+    },
+    "retrospective_2025_plus": {
+      "relative_terminal_wealth": 0.006599914778691485,
+      "positive_contribution_share": 0.06941504037607674
+    }
+  },
+  "lifecycle": {
+    "detector_edges": 35,
+    "low_vol_confirmed_edges": 20,
+    "frozen_event_lifecycle_starts": 16,
+    "candidate_lifecycle_starts": 11,
+    "completed_candidate_episodes": 11
+  },
+  "conclusion": {
+    "high_vol_false_recovery_hypothesis_supported": true,
+    "historical_period_concentration_gate_passed": true,
+    "historical_support_can_authorize_promotion": false,
+    "next_action": "freeze this exact low-vol-confirmed event lifecycle as a distinct prospective shadow challenger; keep BYD v1.2 as Champion and do not retune the consumed history"
+  }
+}
