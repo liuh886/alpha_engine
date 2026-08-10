@@ -85,7 +85,8 @@ def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
                     }
                 ],
                 "positions": [
-                    {"date": "2026-07-16", "instrument": "OLD", "weight": 1.0}
+                    {"date": "2026-07-16", "instrument": "OLD", "weight": 1.0},
+                    {"date": "2026-07-30", "instrument": "CURRENT", "weight": 1.0},
                 ],
             }
         ),
@@ -129,6 +130,7 @@ def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
     )
 
     assert result is not None
+    assert result["signal_date"] == "2026-07-30"
     row = result["performance_row"]
     assert row["holding_end_date"] == "2026-08-07"
     assert row["provisional_mtm"] is True
@@ -141,6 +143,7 @@ def test_ranker_mtm_marks_current_target_to_evidence_cutoff(
 
     persisted = json.loads(package_path.read_text(encoding="utf-8"))
     assert len(persisted["report"]) == 1
+    assert persisted["report"][0]["date"] == "2026-07-16"
     assert persisted["provisional_mtm"]["as_of"] == "2026-08-07"
     assert persisted["freshness"]["latest_mtm_date"] == "2026-08-07"
     assert persisted["freshness"]["performance_observation_status"] == "provisional_mtm"
