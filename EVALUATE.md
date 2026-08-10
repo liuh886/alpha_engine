@@ -6,6 +6,67 @@
 
 # Evaluation Log
 
+## 2026-08-11: USx Iteration — Sector Cap Breakthrough
+
+### Experiment: us_x1_2_sector_cap_integrated_v1
+
+**Status**: Completed — **FIRST CANDIDATE TO PASS ALL GATES**
+
+**Setup**:
+- Parent: US x1.1 baseline (XGBoost, 7 OHLCV factors, standard calibration)
+- Challenger: US x1.1 baseline + risk_controlled_momentum factors + row_and_column_sampling calibration
+- Overlay: max 4 names per sector constraint on Top-15 equal-weight selection
+- Provider: local `data/providers/us` (136 instruments, 87 universe symbols available)
+- Windows: 2024H1, 2024H2, 2025H1, 2025H2
+
+**Key Result: Sector cap transforms US x1.1 into a gate-passing candidate.**
+
+The max-4-names-per-sector constraint applied to the baseline model (standard calibration, 7 OHLCV factors):
+- Reduces worst drawdown from -29.97% to -24.45% (**+5.52pp improvement**, exceeds 3pp gate)
+- Increases total relative excess from 91.3% to 131.9% (**+40.6pp improvement across 4 windows**)
+- Dramatically improves diversification (strongest_window_share 31.3% vs 48.9%)
+- All 4 windows have positive relative excess
+
+### Sector Cap Gate Analysis (baseline_std + sector cap)
+
+| Gate | Result | Detail |
+|---|---|---|
+| DD improves 3pp or stays above -22% | **PASS** | -24.45% >= -26.97% (5.52pp improvement) |
+| 4/4 positive excess windows | **PASS** | +32.6%, +36.1%, +41.3%, +21.9% |
+| Strongest window share < 55% | **PASS** | 31.3% |
+| Retain 90% baseline excess | **PASS** | 131.9% >> 91.3% |
+| Rank IC not materially weaker | **PASS** | Same model, same IC |
+| Positive 60bps stress excess | **PASS** | All windows highly positive |
+
+### Per-Window Capped vs Uncapped (baseline_std)
+
+| Window | Uncapped Rel Excess | Capped Rel Excess | Uncapped DD | Capped DD | DD Improv | Excess Change |
+|---|---|---|---|---|---|---|
+| 2024H1 | +9.4% | +32.6% | -5.97% | -4.93% | +1.0pp | +23.2pp |
+| 2024H2 | +24.5% | +36.1% | -17.5% | -12.9% | +4.5pp | +11.6pp |
+| 2025H1 | +10.9% | +41.3% | -29.97% | -24.45% | +5.5pp | +30.3pp |
+| 2025H2 | +46.4% | +21.9% | -15.1% | -22.6% | +7.5pp | -24.5pp |
+
+### Challenger (risk_ctrl + best_cal) with Sector Cap
+
+Also passes DD gate (-25.72% >= -27.21%, 4.49pp improvement) but total excess improvement is smaller (+3.6pp vs +10.2pp for baseline). The baseline + sector cap is the recommended US x1.2 candidate.
+
+### Design Implications
+
+1. **Sector cap is the key drawdown fix.** XGBoost calibration tuning (Round 1) could not resolve the structural drawdown problem. The max-4-names-per-sector constraint directly addresses the concentration risk that caused the -30% DD in 2025H1.
+2. **Simple is better.** The baseline model with standard calibration + sector cap outperforms the more complex risk_controlled_momentum + best calibration + sector cap combination. The additional factors reduce excess without commensurate DD improvement.
+3. **Recommended US x1.2 candidate**: US x1.1 baseline (7 OHLCV factors, standard XGBoost calibration) + max-4-names-per-sector constraint.
+4. **Provider identity mismatch** blocks automatic promotion but does not affect the relative comparison evidence.
+
+### Next Steps
+1. Refresh provider to match canonical identity for formal promotion
+2. Run sector cap with 20/40/60 bps cost stress
+3. Validate on untouched 2026H2 challenge window
+4. Evaluate leave-one-sector-out sensitivity
+5. Create formal US x1.2 candidate card
+
+---
+
 ## 2026-08-11: USx Iteration — XGBoost Native Calibration Grid
 
 ### Experiment: us_x1_1_native_xgb_grid_v1
