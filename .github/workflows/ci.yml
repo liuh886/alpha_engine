@@ -83,6 +83,7 @@ jobs:
           scripts/diagnose_byd_activity_decay.py
           scripts/screen_byd_successor_states.py
           scripts/evaluate_byd_recovery_satellite.py
+          scripts/diagnose_byd_recovery_lifecycle.py
           scripts/check_legacy_web_boundary.py
           scripts/check_ci_governance.py
           tests/test_formal_baseline_onboarding.py

@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "issue": 736,
+  "diagnostic": "byd_recovery_lifecycle_v1",
+  "research_only": true,
+  "historical_evidence_consumed": true,
+  "parameter_changes": false,
+  "candidate_construction": false,
+  "authoritative_run": 31395291269,
+  "artifact_id": 9065415994,
+  "artifact_zip_sha256": "ed532a6233b8564da7185877c670d744c6997b8998c69005df5c797a7449bbe0",
+  "frozen_state": {
+    "threshold": 0.026937,
+    "expression": "base_byd_weight == 0.75 and drawdown252_x_rebound60 >= 0.026937",
+    "allocation_mapping": "75% BYD + 25% 515180 -> 100% BYD while decision state is true"
+  },
+  "tieout": {
+    "formal_v1_2_trace_exact": true,
+    "phase2_executed_sessions": {
+      "2022": 47,
+      "2025": 0,
+      "2026": 20
+    }
+  },
+  "episode_totals": {
+    "episodes": 34,
+    "executed_sessions": 128,
+    "pre_registered_primary_labels": {
+      "A_late_entry": 5,
+      "B_false_recovery": 3,
+      "C_stale_persistence_late_exit": 1,
+      "D_oversized_rerisk_risk_asymmetry": 3,
+      "E_core_overlap_redundancy": 7,
+      "useful_or_unclassified": 15
+    }
+  },
+  "unexpected_post_result_observation": {
+    "name": "premature_exit_signal_flicker",
+    "classification_status": "not_added_to_pre_registered_A_to_E_labels",
+    "definition_for_interpretation_only": "negative useful_or_unclassified episode where time_to_mfe exceeds executed duration and 10d or 20d BYD-vs-515180 relative return is positive",
+    "negative_useful_or_unclassified_episodes": 10,
+    "matching_episodes": 9,
+    "matching_negative_episode_relative_wealth_sum": -0.059666693446052244,
+    "median_executed_sessions": 1.0,
+    "median_time_to_mfe_sessions": 18.0,
+    "mean_forward_relative_return_10": 0.05897062915684313,
+    "mean_forward_relative_return_20": 0.11796932696083788,
+    "2022": {
+      "negative_episodes": 8,
+      "matching_premature_exit_episodes": 4,
+      "matching_negative_episode_relative_wealth_sum": -0.046724858873051
+    },
+    "2026": {
+      "negative_episodes": 5,
+      "matching_premature_exit_episodes": 3,
+      "matching_negative_episode_relative_wealth_sum": -0.01655014089538831
+    }
+  },
+  "year_contrast": {
+    "2022": {
+      "episodes": 12,
+      "executed_sessions": 47,
+      "episode_relative_wealth_sum": -0.03422430716860414
+    },
+    "2023": {
+      "episodes": 8,
+      "executed_sessions": 14,
+      "episode_relative_wealth_sum": 0.008430611133403931
+    },
+    "2024": {
+      "episodes": 1,
+      "executed_sessions": 20,
+      "episode_relative_wealth_sum": 0.02720603014883105
+    },
+    "2025": {
+      "episodes": 0,
+      "executed_sessions": 0
+    },
+    "2026": {
+      "episodes": 7,
+      "executed_sessions": 20,
+      "episode_relative_wealth_sum": -0.021076275234879982
+    }
+  },
+  "conclusion": {
+    "recovery_detection_rejected": false,
+    "pointwise_state_mapping_rejected": true,
+    "dominant_new_lifecycle_hypothesis": "premature exit caused by a flickering pointwise recovery state",
+    "secondary_mechanisms": [
+      "late entry exists in some 2021-2023 episodes",
+      "false recovery exists but is not dominant in 2026",
+      "core overlap explains several profitable 2023 episodes and therefore limits independent alpha",
+      "risk asymmetry exists, including the profitable long 2024 episode"
+    ],
+    "next_research_rule": "test an event-triggered recovery lifecycle separately from the pointwise detector; do not retune the detector threshold"
+  }
+}
