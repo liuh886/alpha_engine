@@ -19,6 +19,10 @@ const FIELD_LABELS: Record<string, string> = {
   byd: 'BYD',
 };
 
+const CANONICAL_KEYS: Record<string, string> = {
+  hs300: 'csi300',
+};
+
 const DECLARED_ALIASES: Record<string, string> = {
   '000300': 'hs300',
   '000300sh': 'hs300',
@@ -58,8 +62,9 @@ function descriptorForField(field: string, declaredBenchmarkId?: string): Benchm
     };
   }
   const suffix = field.slice('bench_'.length);
+  const canonicalSuffix = CANONICAL_KEYS[suffix.toLowerCase()] ?? suffix;
   return {
-    key: `benchmark_${suffix}`,
+    key: `benchmark_${canonicalSuffix}`,
     field,
     label: suffixLabel(suffix),
   };
