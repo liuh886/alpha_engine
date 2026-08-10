@@ -9,6 +9,7 @@ frontend only after its accepted v1 package and adapter identity agree.
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import hashlib
 import json
 import shutil
@@ -107,6 +108,59 @@ def _publish_freshness_policy(source_root: Path, output_root: Path) -> str:
     return _sha256(destination)
 
 
+def _with_provisional_mtm(plan, source_path: Path):
+    package = _object(source_path)
+    provisional = package.get("provisional_mtm")
+    if provisional is None:
+        return plan
+    if not isinstance(provisional, Mapping):
+        raise FormalBundleV2SyncError(
+            f"provisional_mtm must be an object: {source_path}"
+        )
+    row = provisional.get("performance_row")
+    as_of = str(provisional.get("as_of") or "")
+    if (
+        provisional.get("schema_version") != "ranker_provisional_mtm_v1"
+        or provisional.get("research_only") is not True
+        or provisional.get("trade_ready") is not False
+        or not isinstance(row, Mapping)
+        or row.get("provisional_mtm") is not True
+        or row.get("settlement_status") != "provisional_mtm"
+        or str(row.get("holding_end_date") or "") != as_of
+        or as_of != plan.evidence_cutoff
+    ):
+        raise FormalBundleV2SyncError(
+            f"invalid provisional MTM contract: {source_path}"
+        )
+
+    sections = []
+    projected = False
+    for section in plan.sections:
+        if section.section_id != "performance":
+            sections.append(section)
+            continue
+        if not isinstance(section.payload, Mapping):
+            raise FormalBundleV2SyncError(
+                f"performance section is unavailable for MTM projection: {source_path}"
+            )
+        payload = dict(section.payload)
+        report = payload.get("report")
+        if not isinstance(report, list):
+            raise FormalBundleV2SyncError(
+                f"performance report is invalid: {source_path}"
+            )
+        payload["report"] = [*report, dict(row)]
+        payload["source_fields"] = ["report", "provisional_mtm.performance_row"]
+        payload["provisional_mtm_projected"] = True
+        sections.append(replace(section, payload=payload))
+        projected = True
+    if not projected:
+        raise FormalBundleV2SyncError(
+            f"performance section was not found for MTM projection: {source_path}"
+        )
+    return replace(plan, sections=tuple(sections))
+
+
 def sync(source_root: Path, output_root: Path) -> dict[str, Any]:
     source_root = source_root.resolve()
     output_root = output_root.resolve()
@@ -119,13 +173,25 @@ def sync(source_root: Path, output_root: Path) -> dict[str, Any]:
         )
 
     prior_map = dict(migration.MODEL_MAP)
+    prior_build_plan = migration.build_plan
     try:
         migration.MODEL_MAP.clear()
         migration.MODEL_MAP.update(FORMAL_MODEL_ADAPTERS)
+
+        def build_plan_with_mtm(source_path: Path):
+            return _with_provisional_mtm(prior_build_plan(source_path), source_path)
+
+        migration.build_plan = build_plan_with_mtm
         migration_receipt = migration.migrate(source_root, output_root)
     finally:
+        migration.build_plan = prior_build_plan
         migration.MODEL_MAP.clear()
         migration.MODEL_MAP.update(prior_map)
+
+    migration_receipt["status"] = "formal_v1_projected_with_current_mtm"
+    (output_root / "migration-receipt.json").write_bytes(
+        canonical_json_bytes(migration_receipt)
+    )
 
     freshness_sha = _publish_freshness_policy(source_root, output_root)
     catalog_path = output_root / "catalog.json"
