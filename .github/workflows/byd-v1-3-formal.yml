@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: byd-v1-3-formal-${{ github.event.pull_request.number || github.ref }}
@@ -25,13 +25,12 @@ env:
   GENERATED_AT: 2026-08-10T15:45:22Z
 
 jobs:
-  reproduce-promote-and-verify:
+  reproduce-and-verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
@@ -82,7 +81,7 @@ jobs:
           diff -ru artifacts/formal-a artifacts/formal-b
           cmp artifacts/promotion-a.json artifacts/promotion-b.json
 
-      - name: Rebuild Bundle v2 twice from promoted formal root
+      - name: Rebuild Bundle v2 twice from reproduced formal root
         run: |
           set -euo pipefail
           uv run python scripts/sync_formal_bundle_v2.py \
@@ -96,26 +95,9 @@ jobs:
           diff -ru artifacts/bundle-a artifacts/bundle-b
           cmp artifacts/bundle-receipt-a.json artifacts/bundle-receipt-b.json
 
-      - name: Publish deterministic formal v1 package to promotion branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          set -euo pipefail
-          rm -rf data/research/formal_backtests
-          cp -a artifacts/formal-a data/research/formal_backtests
-          git config user.name "AlphaEngine Release Agent"
-          git config user.email "release-agent@alphaengine.local"
-          git add data/research/formal_backtests
-          if git diff --cached --quiet; then
-            echo "BYD v1.3 formal package is byte-stable."
-          else
-            git commit -m "formal: publish BYD v1.3 complete backtest"
-            git pull --rebase origin ${{ github.head_ref }}
-            git push origin HEAD:${{ github.head_ref }}
-          fi
-
-      - name: Upload complete formal evidence
+      - name: Upload complete verification evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: byd-v1-3-formal-${{ github.run_id }}
           path: |

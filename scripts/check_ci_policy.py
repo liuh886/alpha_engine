@@ -16,6 +16,11 @@ LOCKFILES = {
 ACTION_RE = re.compile(r'uses:\s*([^\s@]+)@([^\s#]+)')
 RUN_ID_RE = re.compile(r'\brun-id\s*:\s*["\']?\d{6,}')
 RETENTION_RE = re.compile(r'retention-days:\s*(\d+)')
+LEGACY_ACTION_PREFIXES = (
+    'actions/checkout@v4',
+    'actions/setup-node@v4',
+    'actions/setup-python@v5',
+)
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -53,7 +58,13 @@ def upload_blocks(text: str) -> list[str]:
     return blocks
 
 
-def inspect_workflow(path: Path, governed: bool, required_pr: bool, max_days: int) -> tuple[dict[str, Any], list[str]]:
+def inspect_workflow(
+    path: Path,
+    governed: bool,
+    required_pr: bool,
+    modern_runtime_required: bool,
+    max_days: int,
+) -> tuple[dict[str, Any], list[str]]:
     text = path.read_text(encoding='utf-8')
     actions = sorted({f'{name}@{version}' for name, version in ACTION_RE.findall(text)})
     events = [event for event in ('pull_request', 'push', 'workflow_run', 'workflow_dispatch', 'schedule') if has_event(text, event)]
@@ -79,14 +90,17 @@ def inspect_workflow(path: Path, governed: bool, required_pr: bool, max_days: in
             elif int(match.group(1)) > max_days:
                 violations.append(f'upload-artifact retention exceeds {max_days} days')
 
-    for action in actions:
-        if action.startswith(('actions/checkout@v4', 'actions/setup-node@v4', 'actions/setup-python@v5')):
-            warnings.append(f'legacy action runtime: {action}')
+    legacy_actions = [action for action in actions if action.startswith(LEGACY_ACTION_PREFIXES)]
+    for action in legacy_actions:
+        warnings.append(f'legacy action runtime: {action}')
+    if modern_runtime_required:
+        violations.extend(f'critical workflow uses legacy action runtime: {action}' for action in legacy_actions)
 
     return {
         'path': path.as_posix(),
         'governed': governed,
         'required_pr': required_pr,
+        'modern_runtime_required': modern_runtime_required,
         'events': events,
         'permissions': permissions,
         'actions': actions,
@@ -127,7 +141,9 @@ def main() -> int:
     policy = read_json(args.policy)
     governed = set(policy.get('governed_workflows', []))
     required_pr = set(policy.get('required_pr_workflows', []))
-    declared = governed | required_pr | set(policy.get('release_workflows', [])) | set(policy.get('advisory_workflows', []))
+    release = set(policy.get('release_workflows', []))
+    declared = governed | required_pr | release | set(policy.get('advisory_workflows', []))
+    critical_runtime = governed | required_pr | release
     violations: list[str] = []
 
     for rel in sorted(declared):
@@ -153,7 +169,13 @@ def main() -> int:
     for path in sorted((*WORKFLOW_ROOT.glob('*.yml'), *WORKFLOW_ROOT.glob('*.yaml'))):
         rel = path.as_posix()
         max_days = exceptions.get(rel, pr_days if rel in required_pr else max(build_days, pr_days))
-        record, found = inspect_workflow(path, rel in governed, rel in required_pr, max_days)
+        record, found = inspect_workflow(
+            path,
+            rel in governed,
+            rel in required_pr,
+            rel in critical_runtime,
+            max_days,
+        )
         records.append(record)
         violations.extend(f'{rel}: {message}' for message in found)
 
