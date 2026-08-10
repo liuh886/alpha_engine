@@ -1,9 +1,8 @@
-"""Evidence binding for governed BYD v1.2 signal publications.
+"""Evidence binding for governed BYD v1.3 signal publications.
 
-The model-specific signal builder owns the allocation decision. This module owns
-publication semantics that must not be confused with that decision: whether the
-close-time evidence is current, whether the latest observed open was eligible,
-and the immutable identity of the fully materialized evidence packet.
+The final V1.3 prospective observation is the sole model-decision input to the
+formal signal layer. Prospective eligibility remains a forward-research label;
+it is not reused as a close-data freshness gate after explicit formal promotion.
 """
 
 from __future__ import annotations
@@ -12,6 +11,8 @@ import hashlib
 import json
 from collections.abc import Mapping
 from typing import Any
+
+from src.research.byd_v1_3_low_vol_recovery import MODEL_ID
 
 
 class BYDSignalEvidenceError(ValueError):
@@ -24,42 +25,30 @@ def _mapping(value: object, *, label: str) -> Mapping[str, Any]:
     return value
 
 
-def close_evidence_is_current(
-    shadow: Mapping[str, Any],
-    paired: Mapping[str, Any],
-    expansion: Mapping[str, Any],
-) -> bool:
-    """Return whether the close-time decision inputs are current and corroborated.
+def close_evidence_is_current(observation: Mapping[str, Any]) -> bool:
+    """Return whether the final governed V1.3 close-time decision is materialized."""
 
-    Same-session open eligibility is deliberately excluded. The formal execution
-    contract already says the close-time target waits for the next independently
-    confirmed eligible open, so an unusable *past* open cannot make current close
-    data stale.
-    """
-
-    dates = {
-        str(shadow.get("signal_date") or ""),
-        str(paired.get("signal_date") or ""),
-        str(expansion.get("signal_date") or ""),
-    }
-    if len(dates) != 1 or "" in dates:
+    if observation.get("schema_version") != "byd_v1_3_low_vol_prospective_v1":
         return False
-
-    paired_byd = _mapping(paired.get("byd"), label="paired.byd")
-    paired_etf = _mapping(paired.get("etf"), label="paired.etf")
-    factors = _mapping(expansion.get("factors"), label="expansion.factors")
+    if observation.get("candidate_model_id") != MODEL_ID:
+        return False
+    if not str(observation.get("signal_date") or ""):
+        return False
+    if not str(observation.get("data_version") or ""):
+        return False
+    source = observation.get("source")
+    targets = observation.get("targets")
+    factors = observation.get("factors")
+    champion = observation.get("champion")
+    if not all(isinstance(value, Mapping) for value in (source, targets, factors, champion)):
+        return False
     required_factors = {"market_state", "vol_state", "mom_20", "mom_60", "drawdown_252"}
     if not required_factors.issubset(factors):
         return False
-
-    return bool(
-        shadow.get("prospective_eligible") is True
-        and paired_byd.get("prospective_eligible") is True
-        and paired_etf.get("independent_raw_confirmed") is True
-        and shadow.get("data_version")
-        and paired.get("data_version")
-        and expansion.get("data_version")
-    )
+    if MODEL_ID not in targets:
+        return False
+    recovery_sha = str(source.get("recovery_event_observation_sha256") or "")
+    return len(recovery_sha) == 64
 
 
 def bind_final_signal_identity(alert: dict[str, Any]) -> dict[str, Any]:
