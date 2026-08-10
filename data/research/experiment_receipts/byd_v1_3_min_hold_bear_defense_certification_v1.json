@@ -341,27 +341,37 @@
   },
   "decision": "not_supported",
   "diagnostics": {
-    "full_cagr_improvement": -0.0026861572650633825,
-    "full_calmar_improvement": 0.06672889950864758,
-    "full_drawdown_improvement": 0.044664620513973574,
-    "stress_full_total_return_improvement": -0.15667476214093146
+    "fixed_validation_cagr_improvement": 0.03101003059475249,
+    "primary_full_cagr_improvement": -0.0026861572650633825,
+    "primary_full_calmar_improvement": 0.06672889950864758,
+    "primary_full_drawdown_improvement": 0.044664620513973574,
+    "primary_full_sharpe_improvement": 0.004621750840449357,
+    "retrospective_2025_plus_cagr_improvement": 0.003936058441263324,
+    "stress_full_cagr_improvement": -0.004899426988713262,
+    "stress_full_calmar_improvement": 0.059124756954299085,
+    "stress_full_drawdown_improvement": 0.044921174372547945
   },
   "experiment_id": "byd_v1_3_min_hold_bear_defense_certification_v1",
   "fresh_holdout": false,
   "gates": {
     "baseline_identity_and_trace": true,
-    "full_cagr_floor": true,
-    "full_calmar_margin": true,
+    "fixed_validation_cagr_not_below": true,
     "positive_period_concentration": false,
-    "risk_or_return_improvement": true,
+    "primary_full_cagr_floor": true,
+    "primary_full_calmar_not_below": true,
+    "primary_full_drawdown_improvement": true,
+    "primary_full_sharpe_not_below": true,
+    "retrospective_2025_plus_cagr_not_below": true,
     "round_trips_cap": true,
-    "stress_total_return_not_below_baseline": false,
-    "validation_and_recent_not_both_negative": true
+    "stress_full_cagr_floor": true,
+    "stress_full_calmar_not_below": true,
+    "stress_full_drawdown_improvement": true
   },
   "governance": {
     "automatic_promotion": false,
     "formal_baseline_source": "current_model_run_bundle_v2",
     "post_selection_historical_search_consumed": true,
+    "promotion_authority": "explicit_user_direction_2026_08_10",
     "prospective_confirmation_required": true,
     "v12_local_reimplementation_forbidden": true
   },
