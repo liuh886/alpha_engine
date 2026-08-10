@@ -53,19 +53,16 @@ class GovernedResult:
     diagnostics: dict[str, Any]
 
 
-
 def compute_weights(common, signals, etf_high=ETF_HIGH, etf_low=ETF_LOW):
     """Volatility-adaptive ETF sizing during defense."""
     v1_base = signals["base_byd_weight"].astype(float)
 
-    # BYD realized volatility
     byd_rets = common["byd_open_return"]
     realized_vol = byd_rets.rolling(VOL_WINDOW, min_periods=20).std(ddof=0) * np.sqrt(252)
     vol_median = realized_vol.rolling(VOL_MEDIAN_WINDOW, min_periods=60).median()
     vol_ratio = realized_vol / vol_median.replace(0, np.nan)
     vol_ratio = vol_ratio.fillna(1.0)
 
-    # ETF allocation based on vol regime (only in defense)
     in_defense = v1_base < 0.99
     etf_weight = pd.Series(ETF_BASE, index=common.index)
     etf_weight = etf_weight.where(~(in_defense & (vol_ratio > HIGH_VOL_RATIO)), etf_high)
@@ -99,26 +96,31 @@ def build_decisions(common, signals):
     }
 
 
-def run_candidates(common, signals, *, cost_bps):
+def run_candidates(
+    common: pd.DataFrame,
+    signals: pd.DataFrame,
+    *,
+    cost_bps: float,
+) -> tuple[dict[str, AllocationResult], pd.DataFrame]:
     decisions = build_decisions(common, signals)
-    results = {}
+    results: dict[str, AllocationResult] = {}
     for name, decision in decisions.items():
-        e = execute_next_common_open(decision, common["common_open_eligible"])
+        executed = execute_next_common_open(decision, common["common_open_eligible"])
         gross = (
-            e["position_byd_weight"] * common["byd_open_return"]
-            + e["position_etf_weight"] * common["etf_open_return"]
+            executed["position_byd_weight"] * common["byd_open_return"]
+            + executed["position_etf_weight"] * common["etf_open_return"]
         )
-        turnover = e.diff().abs().sum(axis=1)
+        turnover = executed.diff().abs().sum(axis=1)
         turnover.iloc[0] = 0.0
         cost = turnover * cost_bps / 10000.0
-        daily = pd.concat([decision.add_prefix("d_"), e], axis=1)
+        daily = pd.concat([decision.add_prefix("d_"), executed], axis=1)
         daily["gross_return"] = gross
         daily["turnover_units"] = turnover
         daily["cost"] = cost
         daily["net_return"] = gross - cost
         daily = daily.iloc[:-1].copy()
         results[name] = AllocationResult(name=name, daily=daily, trades=pd.DataFrame())
-    return results
+    return results, decisions
 
 
 def _wm(result, start, end):
