@@ -119,3 +119,74 @@ jobs:
       - name: Package build
         if: github.event_name != 'pull_request'
         run: uv build
+
+  us-x1-2-certification:
+    if: github.event_name == 'pull_request' && github.head_ref == 'agent/us-x1-2-certification'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      TIINGO_API_TOKEN: ${{ secrets.TIINGO_API_TOKEN }}
+      TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          show-progress: false
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install locked Python dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv sync --frozen --extra dev
+
+      - name: Validate certification implementation
+        run: |
+          uv run ruff check scripts/certify_us_x1_2.py
+          uv run python -m py_compile scripts/certify_us_x1_2.py
+
+      - name: Rebuild current governed US provider
+        run: |
+          set -euo pipefail
+          cutoff="$(date -u +%Y-%m-%d)"
+          echo "Provider cutoff: $cutoff"
+          rm -rf artifacts/us-x1-2/provider-us
+          uv run python scripts/data/refresh_selected_pool_prices_v2.py \
+            --root . \
+            --market us \
+            --source-csv-dir data/csv_clean \
+            --output-root artifacts/us-x1-2/provider-us \
+            --start 2021-01-01 \
+            --cutoff "$cutoff" \
+            --max-rounds 3 \
+            --full-refresh
+
+      - name: Run full US x1.2 certification
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/us-x1-2
+          uv run python scripts/certify_us_x1_2.py \
+            --provider-uri artifacts/us-x1-2/provider-us/data/providers/us \
+            --output-dir artifacts/us-x1-2/certification \
+            | tee artifacts/us-x1-2/certification.log
+          test -s artifacts/us-x1-2/certification/us_x1_2_certification.json
+          grep '^US_X1_2_CERTIFICATION=' artifacts/us-x1-2/certification.log
+
+      - name: Upload US x1.2 certification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: us-x1-2-certification-${{ github.run_id }}
+          path: |
+            artifacts/us-x1-2/certification/
+            artifacts/us-x1-2/certification.log
+            artifacts/us-x1-2/provider-us/artifacts/selected_pool_price_refresh_manifest.json
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 1
