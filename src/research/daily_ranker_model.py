@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
+
+if TYPE_CHECKING:
+    from src.research.xgb_native_calibration import XGBNativeCalibration
 
 
 @dataclass(frozen=True)
@@ -348,7 +351,7 @@ def fit_xgb_daily_ranker_with_calibration(
     rank_target: pd.Series,
     groups: list[int],
     *,
-    calibration: "XGBNativeCalibration",  # type: ignore[name-defined]
+    calibration: XGBNativeCalibration,
 ) -> DailyRankerResult:
     """Fit an XGBoost ranker using the explicit native calibration contract.
 
